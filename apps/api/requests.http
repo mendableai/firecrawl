@@ -2,7 +2,7 @@
 
 ### Crawl Website
 POST http://localhost:3002/v0/crawl HTTP/1.1
-Authorization: Bearer 1b5b20e4-3417-4298-b1b2-983920e1b74d
+Authorization: Bearer 
 
 {
     "url":"https://docs.mendable.ai"
@@ -15,39 +15,39 @@ GET http://localhost:3002/v0/jobs/active HTTP/1.1
 
 ### Scrape Website
 POST https://api.firecrawl.dev/v0/scrape HTTP/1.1
-Authorization: Bearer 1b5b20e4-3417-4298-b1b2-983920e1b74d
+Authorization: Bearer 
 content-type: application/json
 
 {
-    "url":"https://www.agentops.ai"
+    "url":"https://www.mendable.ai"
 }
 
 
 ### Scrape Website
 POST http://localhost:3002/v0/scrape HTTP/1.1
-Authorization: Bearer 1b5b20e4-3417-4298-b1b2-983920e1b74d
+Authorization: Bearer 
 content-type: application/json
 
 {
-    "url":"https://www.agentops.ai"
+    "url":"https://mendable.ai"
 }
 
 
 
 ### Check Job Status
 GET http://localhost:3002/v0/crawl/status/333ab225-dc3e-418b-9d4b-8fb833cbaf89 HTTP/1.1
-Authorization: Bearer 1b5b20e4-3417-4298-b1b2-983920e1b74d
+Authorization: Bearer 
 
 ### Get Job Result
 
 POST https://api.firecrawl.dev/v0/crawl HTTP/1.1
-Authorization: Bearer 30c90634-8377-4446-9ef9-a280b9be1702
+Authorization: Bearer 
 content-type: application/json
 
 {
-    "url":"https://markprompt.com"
+    "url":"https://mendable.ai"
 }
 
 ### Check Job Status
 GET https://api.firecrawl.dev/v0/crawl/status/cfcb71ac-23a3-4da5-bd85-d4e58b871d66
-Authorization: Bearer 30c90634-8377-4446-9ef9-a280b9be1702
+Authorization: Bearer 
