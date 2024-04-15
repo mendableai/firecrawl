@@ -15,7 +15,7 @@ jobs:
       - name: Change directory
         run: cd apps/api
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only -a firecrawl-scraper-js
+      - run: flyctl deploy ./apps/api --remote-only -a firecrawl-scraper-js
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
