@@ -13,8 +13,10 @@ Crawl and convert any website into clean markdown
 
 We provide an easy to use API with our hosted version. You can find the playground and documentation [here](https://firecrawl.com/playground). You can also self host the backend if you'd like. 
 
-- [x] API
-- [x] Python SDK
+- [x] [API](https://firecrawl.com/playground)
+- [x] [Python SDK](https://github.com/mendableai/firecrawl/tree/main/apps/python-sdk)
+- [x] [Langchain Integration 🦜🔗](https://python.langchain.com/docs/integrations/document_loaders/firecrawl/)
+- [x] [Llama Index Integration 🦙](https://docs.llamaindex.ai/en/stable/)
 - [x] JS SDK - Coming Soon
 
 Self-host. To self-host refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/SELF_HOST.md).
