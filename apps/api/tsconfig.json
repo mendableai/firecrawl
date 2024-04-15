@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "rootDir": "./src",
+    "lib": ["es6","DOM"],
+    "target": "ES2020", // or higher
+    "module": "commonjs",
+    "esModuleInterop": true,
+    "sourceMap": true,
+    "outDir": "./dist/src",
+    "moduleResolution": "node",
+    "baseUrl": ".",
+    "paths": {
+      "*": ["node_modules/*", "src/types/*"],
+    }
+  },
+  "include": ["src/","src/**/*", "services/db/supabase.ts", "utils/utils.ts", "services/db/supabaseEmbeddings.ts", "utils/EventEmmitter.ts", "src/services/queue-service.ts"]
+}

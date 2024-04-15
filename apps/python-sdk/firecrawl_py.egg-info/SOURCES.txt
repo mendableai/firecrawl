@@ -1,0 +1,9 @@
+README.md
+setup.py
+firecrawl/__init__.py
+firecrawl/firecrawl.py
+firecrawl_py.egg-info/PKG-INFO
+firecrawl_py.egg-info/SOURCES.txt
+firecrawl_py.egg-info/dependency_links.txt
+firecrawl_py.egg-info/requires.txt
+firecrawl_py.egg-info/top_level.txt

@@ -1,0 +1,47 @@
+# fly.toml app configuration file generated for firecrawl-scraper-js on 2024-04-07T21:09:59-03:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'firecrawl-scraper-js'
+primary_region = 'mia'
+kill_signal = 'SIGINT'
+kill_timeout = '5s'
+
+[build]
+
+[processes]
+  app = 'npm run start:production'
+  worker = 'npm run worker:production'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 8080
+  processes = ['app']
+
+[[services.ports]]
+    port = 80
+    handlers = ['http']
+    force_https = true
+
+[[services.ports]]
+    port = 443
+    handlers = ['tls', 'http']
+
+  [services.concurrency]
+    type = 'connections'
+    hard_limit = 45
+    soft_limit = 20
+
+[[vm]]
+  size = 'performance-1x'
+
+  

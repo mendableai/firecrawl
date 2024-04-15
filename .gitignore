@@ -1,0 +1,6 @@
+/node_modules/
+/dist/
+.env
+*.csv
+dump.rdb
+/mongo-data
