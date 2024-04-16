@@ -1,4 +1,4 @@
-import { FirecrawlApp } from '@mendableai/firecrawl-js';
+import FirecrawlApp from '@mendable/firecrawl-js';
 
 const app = new FirecrawlApp({apiKey: "YOUR_API_KEY"});
 
