@@ -74,7 +74,7 @@ export class WebScraperDataProvider {
       throw new Error("Url is required");
     }
 
-    if (true) {//!useCaching) {
+    if (!useCaching) {
       if (this.mode === "crawl") {
         const crawler = new WebCrawler({
           initialUrl: this.urls[0],
