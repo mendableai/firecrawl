@@ -8,6 +8,7 @@ import { supabase_service } from "./services/supabase";
 import { WebScraperDataProvider } from "./scraper/WebScraper";
 import { billTeam, checkTeamCredits } from "./services/billing/credit_billing";
 import { getRateLimiter, redisClient } from "./services/rate-limiter";
+import { parseApi } from "./lib/parseApi";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -71,11 +72,13 @@ async function authenticateUser(req, res, mode?: string): Promise<string> {
   if (token === "this_is_just_a_preview_token" && mode === "scrape") {
     return "preview";
   }
+
+  const normalizedApi = parseApi(token);
   // make sure api key is valid, based on the api_keys table in supabase
   const { data, error } = await supabase_service
     .from("api_keys")
     .select("*")
-    .eq("key", token);
+    .eq("key", normalizedApi);
   if (error || !data || data.length === 0) {
     return res.status(401).json({ error: "Unauthorized: Invalid token" });
   }
@@ -312,7 +315,7 @@ redisClient.connect();
 export function startServer(port = DEFAULT_PORT) {
   const server = app.listen(Number(port), HOST, () => {
     console.log(`Server listening on port ${port}`);
-    console.log(`For the UI, open http://${HOST}:${port}/admin/queues`);
+    console.log(`For the UI, open http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`);
     console.log("");
     console.log("1. Make sure Redis is running on port 6379 by default");
     console.log(
@@ -326,7 +329,7 @@ if (require.main === module) {
   startServer();
 }
 
-// Use this as a health check that way we dont destroy the server
+// Use this as a "health check" that way we dont destroy the server
 app.get(`/admin/${process.env.BULL_AUTH_KEY}/queues`, async (req, res) => {
   try {
     const webScraperQueue = getWebScraperQueue();

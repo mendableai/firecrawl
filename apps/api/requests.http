@@ -1,6 +1,7 @@
 ### Crawl Website
-POST http://localhost:3002/v0/crawl HTTP/1.1
-Authorization: Bearer 
+POST http://localhost:3002/v0/scrape HTTP/1.1
+Authorization: Bearer fc-a6a2d63aed2b46a9946d2a7207efed4d
+content-type: application/json
 
 {
     "url":"https://docs.mendable.ai"

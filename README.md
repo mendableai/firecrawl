@@ -26,7 +26,7 @@ Self-host. To self-host refer to guide [here](https://github.com/mendableai/fire
 ### API Key
 
 To use the API, you need to sign up on [Firecrawl](https://firecrawl.com) and get an API key.
-
+ 
 ### Crawling
 
 Used to crawl a URL and all accessible subpages. This submits a crawl job and returns a job ID to check the status of the crawl.
