@@ -1,7 +1,7 @@
 from firecrawl import FirecrawlApp
 
 
-app = FirecrawlApp(api_key="a6a2d63a-ed2b-46a9-946d-2a7207efed4d")
+app = FirecrawlApp(api_key="YOUR_API_KEY")
 
 crawl_result = app.crawl_url('mendable.ai', {'crawlerOptions': {'excludes': ['blog/*']}})
 print(crawl_result[0]['markdown'])
