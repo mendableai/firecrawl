@@ -1,6 +1,5 @@
 import * as cheerio from "cheerio";
 import { ScrapingBeeClient } from "scrapingbee";
-import { attemptScrapWithRequests, sanitizeText } from "./utils/utils";
 import { extractMetadata } from "./utils/metadata";
 import dotenv from "dotenv";
 import { Document } from "../../lib/entities";
@@ -9,9 +8,23 @@ import { parseMarkdown } from "../../lib/html-to-markdown";
 
 dotenv.config();
 
+export async function scrapWithCustomFirecrawl(
+  url: string,
+  options?: any
+): Promise<string> {
+  try {
+    // TODO: merge the custom firecrawl scraper into mono-repo when ready
+    return null;
+  } catch (error) {
+    console.error(`Error scraping with custom firecrawl-scraper: ${error}`);
+    return "";
+  }
+}
 
-
-export async function scrapWithScrapingBee(url: string, wait_browser:string = "domcontentloaded"): Promise<string> {
+export async function scrapWithScrapingBee(
+  url: string,
+  wait_browser: string = "domcontentloaded"
+): Promise<string> {
   try {
     const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY);
     const response = await client.get({
@@ -35,11 +48,10 @@ export async function scrapWithScrapingBee(url: string, wait_browser:string = "d
   }
 }
 
-
 export async function scrapWithPlaywright(url: string): Promise<string> {
   try {
     const response = await fetch(process.env.PLAYWRIGHT_MICROSERVICE_URL, {
-      method: 'POST',
+      method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
@@ -47,7 +59,9 @@ export async function scrapWithPlaywright(url: string): Promise<string> {
     });
 
     if (!response.ok) {
-      console.error(`Error fetching w/ playwright server -> URL: ${url} with status: ${response.status}`);
+      console.error(
+        `Error fetching w/ playwright server -> URL: ${url} with status: ${response.status}`
+      );
       return "";
     }
 
@@ -73,29 +87,42 @@ export async function scrapSingleUrl(
     return soup.html();
   };
 
-  const attemptScraping = async (url: string, method: 'scrapingBee' | 'playwright' | 'scrapingBeeLoad' | 'fetch') => {
+  const attemptScraping = async (
+    url: string,
+    method:
+      | "firecrawl-scraper"
+      | "scrapingBee"
+      | "playwright"
+      | "scrapingBeeLoad"
+      | "fetch"
+  ) => {
     let text = "";
     switch (method) {
-      case 'scrapingBee':
+      case "firecrawl-scraper":
+        text = await scrapWithCustomFirecrawl(url);
+        break;
+      case "scrapingBee":
         if (process.env.SCRAPING_BEE_API_KEY) {
           text = await scrapWithScrapingBee(url);
         }
         break;
-      case 'playwright':
+      case "playwright":
         if (process.env.PLAYWRIGHT_MICROSERVICE_URL) {
           text = await scrapWithPlaywright(url);
         }
         break;
-      case 'scrapingBeeLoad':
+      case "scrapingBeeLoad":
         if (process.env.SCRAPING_BEE_API_KEY) {
           text = await scrapWithScrapingBee(url, "networkidle2");
         }
         break;
-      case 'fetch':
+      case "fetch":
         try {
           const response = await fetch(url);
           if (!response.ok) {
-            console.error(`Error fetching URL: ${url} with status: ${response.status}`);
+            console.error(
+              `Error fetching URL: ${url} with status: ${response.status}`
+            );
             return "";
           }
           text = await response.text();
@@ -104,26 +131,32 @@ export async function scrapSingleUrl(
           return "";
         }
         break;
-      
     }
     const cleanedHtml = removeUnwantedElements(text);
     return [await parseMarkdown(cleanedHtml), text];
   };
 
   try {
-    let [text, html ] = await attemptScraping(urlToScrap, 'scrapingBee');
+    // TODO: comment this out once we're ready to merge firecrawl-scraper into the mono-repo
+    // let [text, html] = await attemptScraping(urlToScrap, 'firecrawl-scraper');
+    // if (!text || text.length < 100) {
+    //   console.log("Falling back to scraping bee load");
+    //   [text, html] = await attemptScraping(urlToScrap, 'scrapingBeeLoad');
+    // }
+
+    let [text, html] = await attemptScraping(urlToScrap, "scrapingBee");
     if (!text || text.length < 100) {
       console.log("Falling back to playwright");
-      [text, html] = await attemptScraping(urlToScrap, 'playwright');
+      [text, html] = await attemptScraping(urlToScrap, "playwright");
     }
 
     if (!text || text.length < 100) {
       console.log("Falling back to scraping bee load");
-      [text, html] = await attemptScraping(urlToScrap, 'scrapingBeeLoad');
+      [text, html] = await attemptScraping(urlToScrap, "scrapingBeeLoad");
     }
     if (!text || text.length < 100) {
       console.log("Falling back to fetch");
-      [text, html] = await attemptScraping(urlToScrap, 'fetch');
+      [text, html] = await attemptScraping(urlToScrap, "fetch");
     }
 
     const soup = cheerio.load(html);

@@ -13,7 +13,6 @@ export function parseApi(api: string) {
   return uuid;
 }
 
-console.log(parseApi("fc-a6a2d63aed2b46a9946d2a7207efed4d"))
 
 export function uuidToFcUuid(uuid: string) {
   const uuidWithoutDashes = uuid.replace(/-/g, "");
