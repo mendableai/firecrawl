@@ -4,6 +4,7 @@ import { scrapSingleUrl } from "./single_url";
 import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
 import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
+import { getImageDescription } from "./utils/gptVision";
 
 export type WebScraperOptions = {
   urls: string[];
@@ -14,7 +15,7 @@ export type WebScraperOptions = {
     excludes?: string[];
     maxCrawledLinks?: number;
     limit?: number;
-
+    generateImgAltText?: boolean;
   };
   concurrentRequests?: number;
 };
@@ -27,6 +28,7 @@ export class WebScraperDataProvider {
   private returnOnlyUrls: boolean;
   private limit: number = 10000;
   private concurrentRequests: number = 20;
+  private generateImgAltText: boolean = false;
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -80,6 +82,7 @@ export class WebScraperDataProvider {
           excludes: this.excludes,
           maxCrawledLinks: this.maxCrawledLinks,
           limit: this.limit,
+          generateImgAltText: this.generateImgAltText,
         });
         const links = await crawler.start(inProgress, 5, this.limit);
         if (this.returnOnlyUrls) {
@@ -93,6 +96,9 @@ export class WebScraperDataProvider {
         let documents = await this.convertUrlsToDocuments(links, inProgress);
         documents = await this.getSitemapData(this.urls[0], documents);
         console.log("documents", documents)
+        if (this.generateImgAltText) {
+          documents = await this.generatesImgAltText(documents);
+        }
 
         // CACHING DOCUMENTS
         // - parent document
@@ -116,7 +122,9 @@ export class WebScraperDataProvider {
 
       if (this.mode === "single_urls") {
         let documents = await this.convertUrlsToDocuments(this.urls, inProgress);
-        
+        if (this.generateImgAltText) {
+          documents = await this.generatesImgAltText(documents);
+        }
         const baseUrl = new URL(this.urls[0]).origin;
         documents = await this.getSitemapData(baseUrl, documents);
         
@@ -130,6 +138,9 @@ export class WebScraperDataProvider {
         let documents = await this.convertUrlsToDocuments(links.slice(0, this.limit), inProgress);
 
         documents = await this.getSitemapData(this.urls[0], documents);
+        if (this.generateImgAltText) {
+          documents = await this.generatesImgAltText(documents);
+        }
         
         await this.setCachedDocuments(documents);
         documents = this.removeChildLinks(documents);
@@ -244,6 +255,7 @@ export class WebScraperDataProvider {
     this.maxCrawledLinks = options.crawlerOptions?.maxCrawledLinks ?? 1000;
     this.returnOnlyUrls = options.crawlerOptions?.returnOnlyUrls ?? false;
     this.limit = options.crawlerOptions?.limit ?? 10000;
+    this.generateImgAltText = options.crawlerOptions?.generateImgAltText ?? false;
 
 
     //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
@@ -281,6 +293,32 @@ export class WebScraperDataProvider {
         }
       }
     }
+    return documents;
+  }
+  generatesImgAltText = async (documents: Document[]): Promise<Document[]> => {
+    await Promise.all(documents.map(async (document) => {
+      const baseUrl = new URL(document.metadata.sourceURL).origin;
+      const images = document.content.match(/!\[.*?\]\(((?:[^()]+|\((?:[^()]+|\([^()]*\))*\))*)\)/g) || [];
+
+      await Promise.all(images.map(async (image) => {
+        let imageUrl = image.match(/\(([^)]+)\)/)[1];
+        let altText = image.match(/\[(.*?)\]/)[1];
+        let newImageUrl = '';
+
+        if (!altText && !imageUrl.startsWith("data:image") && /\.(png|jpeg|gif|webp)$/.test(imageUrl)) {
+          newImageUrl = baseUrl + imageUrl;
+          const imageIndex = document.content.indexOf(image);
+          const contentLength = document.content.length;
+          let backText = document.content.substring(imageIndex + image.length, Math.min(imageIndex + image.length + 1000, contentLength));
+          let frontTextStartIndex = Math.max(imageIndex - 1000, 0);
+          let frontText = document.content.substring(frontTextStartIndex, imageIndex);
+          altText = await getImageDescription(newImageUrl, backText, frontText);
+        }
+
+        document.content = document.content.replace(image, `![${altText}](${newImageUrl})`);
+      }));
+    }));
+
     return documents;
   }
 }
