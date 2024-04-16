@@ -74,7 +74,7 @@ export class WebScraperDataProvider {
       throw new Error("Url is required");
     }
 
-    if (!useCaching) {
+    if (true) {//!useCaching) {
       if (this.mode === "crawl") {
         const crawler = new WebCrawler({
           initialUrl: this.urls[0],
@@ -95,7 +95,7 @@ export class WebScraperDataProvider {
         }
         let documents = await this.convertUrlsToDocuments(links, inProgress);
         documents = await this.getSitemapData(this.urls[0], documents);
-        console.log("documents", documents)
+        documents = this.replaceImgPathsWithAbsolutePaths(documents);
         if (this.generateImgAltText) {
           documents = await this.generatesImgAltText(documents);
         }
@@ -122,6 +122,7 @@ export class WebScraperDataProvider {
 
       if (this.mode === "single_urls") {
         let documents = await this.convertUrlsToDocuments(this.urls, inProgress);
+        documents = this.replaceImgPathsWithAbsolutePaths(documents);
         if (this.generateImgAltText) {
           documents = await this.generatesImgAltText(documents);
         }
@@ -138,6 +139,7 @@ export class WebScraperDataProvider {
         let documents = await this.convertUrlsToDocuments(links.slice(0, this.limit), inProgress);
 
         documents = await this.getSitemapData(this.urls[0], documents);
+        documents = this.replaceImgPathsWithAbsolutePaths(documents);
         if (this.generateImgAltText) {
           documents = await this.generatesImgAltText(documents);
         }
@@ -297,27 +299,44 @@ export class WebScraperDataProvider {
   }
   generatesImgAltText = async (documents: Document[]): Promise<Document[]> => {
     await Promise.all(documents.map(async (document) => {
-      const baseUrl = new URL(document.metadata.sourceURL).origin;
-      const images = document.content.match(/!\[.*?\]\(((?:[^()]+|\((?:[^()]+|\([^()]*\))*\))*)\)/g) || [];
+      const images = document.content.match(/!\[.*?\]\((.*?)\)/g) || [];
 
-      await Promise.all(images.map(async (image) => {
+      await Promise.all(images.map(async (image: string) => {
         let imageUrl = image.match(/\(([^)]+)\)/)[1];
         let altText = image.match(/\[(.*?)\]/)[1];
-        let newImageUrl = '';
 
         if (!altText && !imageUrl.startsWith("data:image") && /\.(png|jpeg|gif|webp)$/.test(imageUrl)) {
-          newImageUrl = baseUrl + imageUrl;
           const imageIndex = document.content.indexOf(image);
           const contentLength = document.content.length;
           let backText = document.content.substring(imageIndex + image.length, Math.min(imageIndex + image.length + 1000, contentLength));
           let frontTextStartIndex = Math.max(imageIndex - 1000, 0);
           let frontText = document.content.substring(frontTextStartIndex, imageIndex);
-          altText = await getImageDescription(newImageUrl, backText, frontText);
+          altText = await getImageDescription(imageUrl, backText, frontText);
         }
 
-        document.content = document.content.replace(image, `![${altText}](${newImageUrl})`);
+        document.content = document.content.replace(image, `![${altText}](${imageUrl})`);
       }));
     }));
+
+    return documents;
+  }
+  
+  replaceImgPathsWithAbsolutePaths = (documents: Document[]): Document[] => {
+    documents.forEach(document => {
+      const baseUrl = new URL(document.metadata.sourceURL).origin;
+      const images = document.content.match(/!\[.*?\]\(((?:[^()]+|\((?:[^()]+|\([^()]*\))*\))*)\)/g) || [];
+
+      images.forEach(image => {
+        let imageUrl = image.match(/\(([^)]+)\)/)[1];
+        let altText = image.match(/\[(.*?)\]/)[1];
+
+        if (!imageUrl.startsWith("data:image")) {
+          imageUrl = baseUrl + imageUrl;
+        }
+
+        document.content = document.content.replace(image, `![${altText}](${imageUrl})`);
+      });
+    });
 
     return documents;
   }
