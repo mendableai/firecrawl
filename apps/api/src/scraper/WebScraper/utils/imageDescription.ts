@@ -49,16 +49,6 @@ export async function getImageDescription(
         });
 
         return response.content[0].text;
-
-        // const response = await anthropic.messages.create({
-        //   messages: [
-        //     {
-        //       role: "user",
-        //       content: prompt,
-        //     },
-        //   ],
-        // });
-
       }
       default: {
         if (!process.env.OPENAI_API_KEY) {
