@@ -4,7 +4,7 @@ import { scrapSingleUrl } from "./single_url";
 import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
 import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
-import { getImageDescription } from "./utils/gptVision";
+import { getImageDescription } from "./utils/imageDescription";
 
 export type WebScraperOptions = {
   urls: string[];
@@ -16,6 +16,7 @@ export type WebScraperOptions = {
     maxCrawledLinks?: number;
     limit?: number;
     generateImgAltText?: boolean;
+    generateImgAltTextModel?: "gpt-4-turbo" | "anthropic";
   };
   concurrentRequests?: number;
 };
@@ -29,6 +30,7 @@ export class WebScraperDataProvider {
   private limit: number = 10000;
   private concurrentRequests: number = 20;
   private generateImgAltText: boolean = false;
+  private generateImgAltTextModel: "gpt-4-turbo" | "anthropic" = "gpt-4-turbo";
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -312,7 +314,7 @@ export class WebScraperDataProvider {
           let backText = document.content.substring(imageIndex + image.length, Math.min(imageIndex + image.length + 1000, contentLength));
           let frontTextStartIndex = Math.max(imageIndex - 1000, 0);
           let frontText = document.content.substring(frontTextStartIndex, imageIndex);
-          altText = await getImageDescription(newImageUrl, backText, frontText);
+          altText = await getImageDescription(newImageUrl, backText, frontText, this.generateImgAltTextModel);
         }
 
         document.content = document.content.replace(image, `![${altText}](${newImageUrl})`);
