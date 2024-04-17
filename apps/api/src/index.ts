@@ -45,14 +45,14 @@ app.get("/test", async (req, res) => {
   res.send("Hello, world!");
 });
 
-async function authenticateUser(req, res, mode?: string): Promise<string> {
+async function authenticateUser(req, res, mode?: string): Promise<{ success: boolean, team_id?: string, error?: string, status?: number }> {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
-    return res.status(401).json({ error: "Unauthorized" });
+    return { success: false, error: "Unauthorized", status: 401 };
   }
   const token = authHeader.split(" ")[1]; // Extract the token from "Bearer <token>"
   if (!token) {
-    return res.status(401).json({ error: "Unauthorized: Token missing" });
+    return { success: false, error: "Unauthorized: Token missing", status: 401 };
   }
 
   try {
@@ -64,13 +64,11 @@ async function authenticateUser(req, res, mode?: string): Promise<string> {
     ).consume(iptoken);
   } catch (rateLimiterRes) {
     console.error(rateLimiterRes);
-    return res.status(429).json({
-      error: "Rate limit exceeded. Too many requests, try again in 1 minute.",
-    });
+    return { success: false, error: "Rate limit exceeded. Too many requests, try again in 1 minute.", status: 429 };
   }
 
   if (token === "this_is_just_a_preview_token" && mode === "scrape") {
-    return "preview";
+    return { success: true, team_id: "preview" };
   }
 
   const normalizedApi = parseApi(token);
@@ -80,16 +78,19 @@ async function authenticateUser(req, res, mode?: string): Promise<string> {
     .select("*")
     .eq("key", normalizedApi);
   if (error || !data || data.length === 0) {
-    return res.status(401).json({ error: "Unauthorized: Invalid token" });
+    return { success: false, error: "Unauthorized: Invalid token", status: 401 };
   }
 
-  return data[0].team_id;
+  return { success: true, team_id: data[0].team_id };
 }
 
 app.post("/v0/scrape", async (req, res) => {
   try {
     // make sure to authenticate user first, Bearer <token>
-    const team_id = await authenticateUser(req, res, "scrape");
+    const { success, team_id, error, status } = await authenticateUser(req, res, "scrape");
+    if (!success) {
+      return res.status(status).json({ error });
+    }
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
@@ -155,7 +156,10 @@ app.post("/v0/scrape", async (req, res) => {
 
 app.post("/v0/crawl", async (req, res) => {
   try {
-    const team_id = await authenticateUser(req, res);
+    const { success, team_id, error, status } = await authenticateUser(req, res, "scrape");
+    if (!success) {
+      return res.status(status).json({ error });
+    }
 
     const { success: creditsCheckSuccess, message: creditsCheckMessage } =
       await checkTeamCredits(team_id, 1);
@@ -247,24 +251,9 @@ app.post("/v0/crawlWebsitePreview", async (req, res) => {
 
 app.get("/v0/crawl/status/:jobId", async (req, res) => {
   try {
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    const token = authHeader.split(" ")[1]; // Extract the token from "Bearer <token>"
-    if (!token) {
-      return res.status(401).json({ error: "Unauthorized: Token missing" });
-    }
-
-    const normalizedApi = parseApi(token);
-    // make sure api key is valid, based on the api_keys table in supabase
-    const { data, error } = await supabase_service
-      .from("api_keys")
-      .select("*")
-      .eq("key", normalizedApi);
-
-    if (error || !data || data.length === 0) {
-      return res.status(401).json({ error: "Unauthorized: Invalid token" });
+    const { success, team_id, error, status } = await authenticateUser(req, res, "scrape");
+    if (!success) {
+      return res.status(status).json({ error });
     }
     const job = await getWebScraperQueue().getJob(req.params.jobId);
     if (!job) {
