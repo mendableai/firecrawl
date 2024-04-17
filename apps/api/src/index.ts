@@ -256,11 +256,13 @@ app.get("/v0/crawl/status/:jobId", async (req, res) => {
       return res.status(401).json({ error: "Unauthorized: Token missing" });
     }
 
+    const normalizedApi = parseApi(token);
     // make sure api key is valid, based on the api_keys table in supabase
     const { data, error } = await supabase_service
       .from("api_keys")
       .select("*")
-      .eq("key", token);
+      .eq("key", normalizedApi);
+
     if (error || !data || data.length === 0) {
       return res.status(401).json({ error: "Unauthorized: Invalid token" });
     }
