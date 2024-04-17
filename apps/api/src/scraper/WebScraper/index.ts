@@ -16,7 +16,7 @@ export type WebScraperOptions = {
     maxCrawledLinks?: number;
     limit?: number;
     generateImgAltText?: boolean;
-    generateImgAltTextModel?: "gpt-4-turbo" | "anthropic";
+    generateImgAltTextModel?: "gpt-4-turbo" | "claude-3-opus";
   };
   concurrentRequests?: number;
 };
@@ -30,7 +30,7 @@ export class WebScraperDataProvider {
   private limit: number = 10000;
   private concurrentRequests: number = 20;
   private generateImgAltText: boolean = false;
-  private generateImgAltTextModel: "gpt-4-turbo" | "anthropic" = "gpt-4-turbo";
+  private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" = "gpt-4-turbo";
 
   authorize(): void {
     throw new Error("Method not implemented.");
