@@ -325,19 +325,24 @@ export class WebScraperDataProvider {
     documents.forEach(document => {
       const baseUrl = new URL(document.metadata.sourceURL).origin;
       const images = document.content.match(/!\[.*?\]\(((?:[^()]+|\((?:[^()]+|\([^()]*\))*\))*)\)/g) || [];
-
+  
       images.forEach(image => {
         let imageUrl = image.match(/\(([^)]+)\)/)[1];
         let altText = image.match(/\[(.*?)\]/)[1];
-
+  
         if (!imageUrl.startsWith("data:image")) {
-          imageUrl = baseUrl + imageUrl;
+          if (!imageUrl.startsWith("http")) {
+            if (imageUrl.startsWith("/")) {
+              imageUrl = imageUrl.substring(1);
+            }
+            imageUrl = new URL(imageUrl, baseUrl).toString();
+          }
         }
-
+  
         document.content = document.content.replace(image, `![${altText}](${imageUrl})`);
       });
     });
-
+  
     return documents;
   }
 }
