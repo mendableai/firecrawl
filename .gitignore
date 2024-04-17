@@ -1,7 +1,19 @@
+# OS
+.DS_Store
+
+# IDE and local environment
+
+# Dependencies
 /node_modules/
-/dist/
+/apps/js-sdk/node_modules/
+
+# Application
 .env
 *.csv
+
+# Tests
 dump.rdb
-/mongo-data
-apps/js-sdk/node_modules/
+/mongo-data/
+
+# Distribution
+/dist/
