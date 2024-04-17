@@ -4,6 +4,7 @@ import { extractMetadata } from "./utils/metadata";
 import dotenv from "dotenv";
 import { Document } from "../../lib/entities";
 import { parseMarkdown } from "../../lib/html-to-markdown";
+import { parseTablesToMarkdown } from "./utils/parseTable";
 // import puppeteer from "puppeteer";
 
 dotenv.config();
@@ -132,7 +133,7 @@ export async function scrapSingleUrl(
         }
         break;
     }
-    const cleanedHtml = removeUnwantedElements(text);
+    let cleanedHtml = removeUnwantedElements(text);
     return [await parseMarkdown(cleanedHtml), text];
   };
 

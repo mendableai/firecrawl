@@ -134,6 +134,9 @@ dependencies:
   turndown:
     specifier: ^7.1.3
     version: 7.1.3
+  turndown-plugin-gfm:
+    specifier: ^1.0.2
+    version: 1.0.2
   typesense:
     specifier: ^1.5.4
     version: 1.7.2(@babel/runtime@7.24.0)
@@ -5781,6 +5784,10 @@ packages:
 
   /tslib@2.6.2:
     resolution: {integrity: sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==}
+    dev: false
+
+  /turndown-plugin-gfm@1.0.2:
+    resolution: {integrity: sha512-vwz9tfvF7XN/jE0dGoBei3FXWuvll78ohzCZQuOb+ZjWrs3a0XhQVomJEb2Qh4VHTPNRO4GPZh0V7VRbiWwkRg==}
     dev: false
 
   /turndown@7.1.3:
