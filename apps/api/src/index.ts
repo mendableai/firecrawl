@@ -91,6 +91,7 @@ app.post("/v0/scrape", async (req, res) => {
     if (!success) {
       return res.status(status).json({ error });
     }
+    const crawlerOptions = req.body.crawlerOptions ?? {};
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
@@ -114,6 +115,9 @@ app.post("/v0/scrape", async (req, res) => {
       await a.setOptions({
         mode: "single_urls",
         urls: [url],
+        crawlerOptions: {
+          ...crawlerOptions,
+        },
       });
 
       const docs = await a.getDocuments(false);
