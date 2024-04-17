@@ -134,7 +134,6 @@ export async function scrapSingleUrl(
         break;
     }
     let cleanedHtml = removeUnwantedElements(text);
-    cleanedHtml = await parseTablesToMarkdown(cleanedHtml);
     return [await parseMarkdown(cleanedHtml), text];
   };
 
