@@ -1,66 +1,75 @@
-import cheerio from "cheerio";
+import cheerio, { CheerioAPI } from "cheerio";
 
-export const parseTablesToMarkdown = async (html: string) => {
-  let soup = cheerio.load(html, {
+interface Replacement {
+  start: number;
+  end: number;
+  markdownTable: string;
+}
+
+export const parseTablesToMarkdown = async (html: string): Promise<string> => {
+  const soup: CheerioAPI = cheerio.load(html, {
     xmlMode: true,
     withStartIndices: true,
     withEndIndices: true
   });
   let tables = soup("table");
-  let replacements = [];
-
+  let replacements: Replacement[] = [];
 
   if (tables.length) {
-    for (const table of Array.from(tables)) {
-      const start = table.startIndex;
-      const end = table.endIndex;
-      const markdownTable = await convertTableElementToMarkdown(cheerio.load(table));
+    tables.each((_, tableElement) => {
+      const start: number = tableElement.startIndex;
+      const end: number = tableElement.endIndex + 1; // Include the closing tag properly
+      let markdownTable: string = convertTableElementToMarkdown(cheerio.load(tableElement));
+      const isTableEmpty: boolean = markdownTable.replace(/[|\- \n]/g, '').length === 0;
+      if (isTableEmpty) {
+        markdownTable = '';
+      }
+      console.log({markdownTable})
       replacements.push({ start, end, markdownTable });
-    };
+    });
   }
 
   replacements.sort((a, b) => b.start - a.start);
   
-  let modifiedHtml = html;
-  for (const { start, end, markdownTable } of replacements) {
+  let modifiedHtml: string = html;
+  replacements.forEach(({ start, end, markdownTable }) => {
     modifiedHtml = modifiedHtml.slice(0, start) + `<div>${markdownTable}</div>` + modifiedHtml.slice(end);
-  }
-
-  return modifiedHtml;
-}
-
-const convertTableElementToMarkdown = async (tableSoup) => {
-  const rows = [];
-  const trEls = tableSoup("tr");
-
-  trEls.each((i, tr) => {
-    const markdownRow = convertTableRowElementToMarkdown(cheerio.load(tr), i);
-    rows.push(markdownRow);
   });
 
-  return rows.join('\n');
-}
+  return modifiedHtml.trim();
+};
 
-function convertTableRowElementToMarkdown(rowSoup, rowNumber) {
-  const cells = [];
-  const cellEls = rowSoup("td, th");
-
-  cellEls.each((i, cell) => {
-    let cellText = cheerio.load(cell).text();
-    cellText = cellText.replace(/\n/g, " ").trim();
-    cells.push(cellText + ' |');
+export const convertTableElementToMarkdown = (tableSoup: CheerioAPI): string => {
+  let rows: string[] = [];
+  let headerRowFound: boolean = false;
+  tableSoup("tr").each((i, tr) => {
+    const cells: string = tableSoup(tr).find("th, td").map((_, cell) => {
+      let cellText: string = tableSoup(cell).text().trim();
+      if (tableSoup(cell).is("th") && !headerRowFound) {
+        headerRowFound = true;
+      }
+      return ` ${cellText} |`;
+    }).get().join("");
+    if (cells) {
+      rows.push(`|${cells}`);
+    }
+    if (headerRowFound && i === 0) { // Header row
+      rows.push(createMarkdownDividerRow(tableSoup(tr).find("th, td").length));
+    }
   });
 
-  let row = '| ' + cells.join(" ");
+  return rows.join('\n').trim();
+};
 
-  if (rowNumber === 0) {
-    row += '\n' + createMarkdownDividerRow(cellEls.length);
-  }
+export function convertTableRowElementToMarkdown(rowSoup: CheerioAPI, rowNumber: number): string {
+  const cells: string = rowSoup("td, th").map((_, cell) => {
+    let cellText: string = rowSoup(cell).text().trim();
+    return ` ${cellText} |`;
+  }).get().join("");
 
-  return row;
-}
+  return `|${cells}`;
+};
 
-function createMarkdownDividerRow(cellCount) {
-  const dividerCells = Array(cellCount).fill('--- |');
-  return '| ' + dividerCells.join(" ");
+export function createMarkdownDividerRow(cellCount: number): string {
+  return '| ' + Array(cellCount).fill('---').join(' | ') + ' |';
 }
