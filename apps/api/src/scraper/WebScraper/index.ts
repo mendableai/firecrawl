@@ -439,6 +439,7 @@ export class WebScraperDataProvider {
 
       return documents;
     } catch (error) {
+      console.error("Error replacing img paths with absolute paths", error);
       return documents;
     }
   };
