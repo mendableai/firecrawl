@@ -79,10 +79,10 @@ export async function runWebScraper({
       filteredDocs.length
     );
     if (!success) {
-      // throw new Error("Failed to bill team, no subscribtion was found");
+      // throw new Error("Failed to bill team, no subscription was found");
       return {
         success: false,
-        message: "Failed to bill team, no subscribtion was found",
+        message: "Failed to bill team, no subscription was found",
         docs: [],
       };
     }

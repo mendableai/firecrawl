@@ -134,15 +134,15 @@ app.post("/v0/scrape", async (req, res) => {
         filteredDocs.length
       );
       if (!success) {
-        // throw new Error("Failed to bill team, no subscribtion was found");
+        // throw new Error("Failed to bill team, no subscription was found");
         // return {
         //   success: false,
-        //   message: "Failed to bill team, no subscribtion was found",
+        //   message: "Failed to bill team, no subscription was found",
         //   docs: [],
         // };
         return res
           .status(402)
-          .json({ error: "Failed to bill, no subscribtion was found" });
+          .json({ error: "Failed to bill, no subscription was found" });
       }
       return res.json({
         success: true,
