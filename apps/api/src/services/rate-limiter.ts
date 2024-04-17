@@ -3,7 +3,7 @@ import * as redis from "redis";
 
 const MAX_REQUESTS_PER_MINUTE_PREVIEW = 5;
 const MAX_CRAWLS_PER_MINUTE_STARTER = 2;
-const MAX_CRAWLS_PER_MINUTE_STANDAR = 4;
+const MAX_CRAWLS_PER_MINUTE_STANDARD = 4;
 const MAX_CRAWLS_PER_MINUTE_SCALE = 20;
 
 const MAX_REQUESTS_PER_MINUTE_ACCOUNT = 40;
@@ -35,7 +35,7 @@ export function crawlRateLimit(plan: string){
     return new RateLimiterRedis({
       storeClient: redisClient,
       keyPrefix: "middleware",
-      points: MAX_CRAWLS_PER_MINUTE_STANDAR,
+      points: MAX_CRAWLS_PER_MINUTE_STANDARD,
       duration: 60, // Duration in seconds
     });
   }else if(plan === "scale"){
