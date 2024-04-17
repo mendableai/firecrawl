@@ -11,9 +11,9 @@ Crawl and convert any website into LLM-ready markdown. Build by [Mendable.ai](ht
 
 ## How to use it?
 
-We provide an easy to use API with our hosted version. You can find the playground and documentation [here](https://firecrawl.com/playground). You can also self host the backend if you'd like. 
+We provide an easy to use API with our hosted version. You can find the playground and documentation [here](https://firecrawl.dev/playground). You can also self host the backend if you'd like. 
 
-- [x] [API](https://firecrawl.com/playground)
+- [x] [API](https://firecrawl.dev/playground)
 - [x] [Python SDK](https://github.com/mendableai/firecrawl/tree/main/apps/python-sdk)
 - [x] [Langchain Integration 🦜🔗](https://python.langchain.com/docs/integrations/document_loaders/firecrawl/)
 - [x] [Llama Index Integration 🦙](https://docs.llamaindex.ai/en/stable/)
@@ -25,7 +25,7 @@ Self-host. To self-host refer to guide [here](https://github.com/mendableai/fire
 
 ### API Key
 
-To use the API, you need to sign up on [Firecrawl](https://firecrawl.com) and get an API key.
+To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and get an API key.
  
 ### Crawling
 
