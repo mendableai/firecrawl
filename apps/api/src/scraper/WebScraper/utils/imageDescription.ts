@@ -15,7 +15,7 @@ export async function getImageDescription(
       ". Be super concise."
 
     switch (model) {
-      case 'anthropic': {
+      case 'claude-3-opus': {
         if (!process.env.ANTHROPIC_API_KEY) {
           throw new Error("No Anthropic API key provided");
         }
