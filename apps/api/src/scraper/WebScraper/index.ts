@@ -311,7 +311,6 @@ export class WebScraperDataProvider {
       throw new Error("Urls are required");
     }
 
-    console.log("options", options.crawlerOptions?.excludes);
     this.urls = options.urls;
     this.mode = options.mode;
     this.concurrentRequests = options.concurrentRequests ?? 20;
