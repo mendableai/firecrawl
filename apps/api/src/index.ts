@@ -103,10 +103,11 @@ app.post("/v0/scrape", async (req, res) => {
     }
 
     // authenticate on supabase
-    const url = req.body.url;
+    let url = req.body.url;
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
     }
+    url = url.trim().toLowerCase();
 
     try {
       const a = new WebScraperDataProvider();
@@ -164,10 +165,12 @@ app.post("/v0/crawl", async (req, res) => {
     }
 
     // authenticate on supabase
-    const url = req.body.url;
+    let url = req.body.url;
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
     }
+
+    url = url.trim().toLowerCase();
     const mode = req.body.mode ?? "crawl";
     const crawlerOptions = req.body.crawlerOptions ?? {};
 
@@ -225,10 +228,11 @@ app.post("/v0/crawlWebsitePreview", async (req, res) => {
     }
 
     // authenticate on supabase
-    const url = req.body.url;
+    let url = req.body.url;
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
     }
+    url = url.trim().toLowerCase();
     const mode = req.body.mode ?? "crawl";
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const job = await addWebScraperJob({
