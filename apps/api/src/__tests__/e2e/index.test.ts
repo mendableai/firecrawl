@@ -154,10 +154,10 @@ describe('E2E Tests for API Routes', () => {
         expect(completedResponse.body).toHaveProperty('status');
         expect(completedResponse.body.status).toBe('completed');
         expect(completedResponse.body).toHaveProperty('data');
-        expect(completedResponse.body.data).toHaveProperty('content');
-        expect(completedResponse.body.data).toHaveProperty('markdown');
-        expect(completedResponse.body.data).toHaveProperty('metadata');
-        expect(completedResponse.body.data.content).toContain('🔥 FireCrawl');
+        expect(completedResponse.body.data[0]).toHaveProperty('content');
+        expect(completedResponse.body.data[0]).toHaveProperty('markdown');
+        expect(completedResponse.body.data[0]).toHaveProperty('metadata');
+        expect(completedResponse.body.data[0].content).toContain('🔥 FireCrawl');
     }, 60000); // 60 seconds
   });
 
