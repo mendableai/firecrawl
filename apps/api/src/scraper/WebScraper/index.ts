@@ -93,8 +93,7 @@ export class WebScraperDataProvider {
           pdfDocuments.push({
             content: pdfContent,
             metadata: { sourceURL: pdfLink },
-            provider: "web",
-            type: "text",
+            provider: "web-scraper"
           });
         }
         links = links.filter((link) => !link.endsWith(".pdf"));
@@ -157,8 +156,7 @@ export class WebScraperDataProvider {
           pdfDocuments.push({
             content: pdfContent,
             metadata: { sourceURL: pdfLink },
-            provider: "web",
-            type: "text",
+            provider: "web-scraper"
           });
         }
 
@@ -188,8 +186,7 @@ export class WebScraperDataProvider {
           pdfDocuments.push({
             content: pdfContent,
             metadata: { sourceURL: pdfLink },
-            provider: "web",
-            type: "text",
+            provider: "web-scraper"
           });
         }
         links = links.filter((link) => !link.endsWith(".pdf"));
