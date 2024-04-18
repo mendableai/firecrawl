@@ -20,7 +20,9 @@ export interface WebScraperOptions {
   url: string;
   mode: "crawl" | "single_urls" | "sitemap";
   crawlerOptions: any;
+  pageOptions: any;
   team_id: string;
 }
+
 
 

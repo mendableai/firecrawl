@@ -14,6 +14,10 @@ describe("WebScraperDataProvider", () => {
           content: "![another alt text](./another-image.png)",
         },
         {
+          metadata: { sourceURL: "https://example.com/another-page" },
+          content: "![another alt text](./another-image.webp)",
+        },
+        {
           metadata: { sourceURL: "https://example.com/data-image" },
           content: "![data image](data:image/png;base64,...)",
         },
@@ -27,6 +31,10 @@ describe("WebScraperDataProvider", () => {
         {
           metadata: { sourceURL: "https://example.com/another-page" },
           content: "![another alt text](https://example.com/another-image.png)",
+        },
+        {
+          metadata: { sourceURL: "https://example.com/another-page" },
+          content: "![another alt text](https://example.com/another-image.webp)",
         },
         {
           metadata: { sourceURL: "https://example.com/data-image" },

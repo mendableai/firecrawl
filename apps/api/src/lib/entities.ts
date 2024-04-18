@@ -9,6 +9,24 @@ export interface Progress {
   currentDocumentUrl?: string;
 }
 
+export type PageOptions = {
+  onlyMainContent?: boolean;
+};
+export type WebScraperOptions = {
+  urls: string[];
+  mode: "single_urls" | "sitemap" | "crawl";
+  crawlerOptions?: {
+    returnOnlyUrls?: boolean;
+    includes?: string[];
+    excludes?: string[];
+    maxCrawledLinks?: number;
+    limit?: number;
+    generateImgAltText?: boolean;
+  };
+  pageOptions?: PageOptions;
+  concurrentRequests?: number;
+};
+
 export class Document {
   id?: string;
   content: string;
