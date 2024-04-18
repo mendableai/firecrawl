@@ -36,6 +36,14 @@ describe('E2E Tests for API Routes', () => {
         .send({ url: 'https://firecrawl.dev' });
       expect(response.statusCode).toBe(401);
     });
+    it('should return a successful response with a valid preview token', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer this_is_just_a_preview_token`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://firecrawl.dev' });
+      expect(response.statusCode).toBe(200);
+    });
 
     it('should return a successful response with a valid API key', async () => {
       const response = await request(TEST_URL)
