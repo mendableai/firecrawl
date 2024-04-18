@@ -1,0 +1,39 @@
+name: CI/CD
+on:
+  pull_request:
+    branches:
+      - main
+  # schedule:
+  #   - cron: '0 */4 * * *'
+
+jobs:
+  pre-deploy:
+    name: Pre-deploy checks
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - name: Install pnpm
+        run: npm install -g pnpm
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: ./apps/api
+      - name: Start the application
+        run: npm start &
+        working-directory: ./apps/api
+      - name: Start workers
+        run: npm run workers &
+        working-directory: ./apps/api
+      - name: Run E2E tests
+        run: npx jest -- src/__tests__/e2e/index.test.ts
+        working-directory: ./apps/api
+        env:
+          REDIS_URL: redis://localhost:6379
