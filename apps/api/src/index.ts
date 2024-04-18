@@ -230,16 +230,10 @@ app.post("/v0/crawl", async (req, res) => {
 });
 app.post("/v0/crawlWebsitePreview", async (req, res) => {
   try {
-    // make sure to authenticate user first, Bearer <token>
-    const authHeader = req.headers.authorization;
-    if (!authHeader) {
-      return res.status(401).json({ error: "Unauthorized" });
-    }
-    const token = authHeader.split(" ")[1]; // Extract the token from "Bearer <token>"
-    if (!token) {
-      return res.status(401).json({ error: "Unauthorized: Token missing" });
-    }
-
+    const { success, team_id, error, status } = await authenticateUser(req, res, "scrape");
+    if (!success) {
+      return res.status(status).json({ error });
+    } 
     // authenticate on supabase
     const url = req.body.url;
     if (!url) {

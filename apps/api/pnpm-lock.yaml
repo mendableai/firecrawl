@@ -179,7 +179,7 @@ devDependencies:
     specifier: ^4.17.17
     version: 4.17.21
   '@types/jest':
-    specifier: ^29.5.6
+    specifier: ^29.5.12
     version: 29.5.12
   body-parser:
     specifier: ^1.20.1
