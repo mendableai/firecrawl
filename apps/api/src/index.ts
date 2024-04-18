@@ -87,7 +87,7 @@ async function authenticateUser(req, res, mode?: string): Promise<{ success: boo
 app.post("/v0/scrape", async (req, res) => {
   try {
     // make sure to authenticate user first, Bearer <token>
-    const { success, team_id, error, status } = await authenticateUser(req, res, "crawl");
+    const { success, team_id, error, status } = await authenticateUser(req, res, "scrape");
     if (!success) {
       return res.status(status).json({ error });
     }
