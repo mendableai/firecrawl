@@ -37,3 +37,8 @@ jobs:
         working-directory: ./apps/api
         env:
           REDIS_URL: redis://localhost:6379
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_TOKEN: ${{ secrets.SUPABASE_SERVICE_TOKEN }}
+          TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
+
