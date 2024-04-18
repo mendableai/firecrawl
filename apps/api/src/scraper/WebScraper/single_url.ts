@@ -85,15 +85,9 @@ export async function scrapSingleUrl(
   urlToScrap = urlToScrap.trim();
 
   const removeUnwantedElements = (html: string, pageOptions: PageOptions) => {
-    const soup = cheerio.load(html);
-    soup("script, style, iframe, noscript, meta, head").remove();
-    if (pageOptions.onlyMainContent) {
-      // remove any other tags that are not in the main content
-      excludeNonMainTags.forEach((tag) => {
-        soup(tag).remove();
-      });
-    }
-    return soup.html();
+    // remove any other tags that are not in the main content
+    if (pageOptions?.onlyMainContent) return excludeNonMainTags(html);
+    else return html;
   };
 
   const attemptScraping = async (
