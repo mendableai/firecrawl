@@ -15,9 +15,9 @@ We provide an easy to use API with our hosted version. You can find the playgrou
 
 - [x] [API](https://firecrawl.dev/playground)
 - [x] [Python SDK](https://github.com/mendableai/firecrawl/tree/main/apps/python-sdk)
+- [X] [Node SDK](https://github.com/mendableai/firecrawl/tree/main/apps/js-sdk)
 - [x] [Langchain Integration 🦜🔗](https://python.langchain.com/docs/integrations/document_loaders/firecrawl/)
-- [x] [Llama Index Integration 🦙](https://docs.llamaindex.ai/en/stable/)
-- [X] [JS SDK](https://github.com/mendableai/firecrawl/tree/main/apps/js-sdk)
+- [x] [Llama Index Integration 🦙](https://docs.llamaindex.ai/en/latest/examples/data_connectors/WebPageDemo/#using-firecrawl-reader)
 - [ ] LangchainJS - Coming Soon
 
 
@@ -63,15 +63,16 @@ curl -X GET https://api.firecrawl.dev/v0/crawl/status/1234-5678-9101 \
     "total": 22,
     "data": [
         {
-        "content": "Raw Content ",
-        "markdown": "# Markdown Content",
-        "provider": "web-scraper",
-        "metadata": {
-            "title": "Mendable | AI for CX and Sales",
-            "description": "AI for CX and Sales",
-            "language": null,
-            "sourceURL": "https://www.mendable.ai/",
-        }
+         "content": "Raw Content ",
+         "markdown": "# Markdown Content",
+         "provider": "web-scraper",
+         "metadata": {
+             "title": "Mendable | AI for CX and Sales",
+             "description": "AI for CX and Sales",
+             "language": null,
+             "sourceURL": "https://www.mendable.ai/",
+         }
+       }
     ]
 }
 ```
