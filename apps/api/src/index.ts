@@ -16,6 +16,7 @@ const { ExpressAdapter } = require("@bull-board/express");
 
 export const app = express();
 
+
 global.isProduction = process.env.IS_PRODUCTION === "true";
 
 app.use(bodyParser.urlencoded({ extended: true }));
