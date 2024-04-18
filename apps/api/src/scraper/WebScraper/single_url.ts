@@ -2,9 +2,10 @@ import * as cheerio from "cheerio";
 import { ScrapingBeeClient } from "scrapingbee";
 import { extractMetadata } from "./utils/metadata";
 import dotenv from "dotenv";
-import { Document } from "../../lib/entities";
+import { Document, PageOptions } from "../../lib/entities";
 import { parseMarkdown } from "../../lib/html-to-markdown";
 import { parseTablesToMarkdown } from "./utils/parseTable";
+import { excludeNonMainTags } from "./utils/excludeTags";
 // import puppeteer from "puppeteer";
 
 dotenv.config();
@@ -77,14 +78,21 @@ export async function scrapWithPlaywright(url: string): Promise<string> {
 
 export async function scrapSingleUrl(
   urlToScrap: string,
-  toMarkdown: boolean = true
+  toMarkdown: boolean = true,
+  pageOptions: PageOptions = { onlyMainContent: true }
 ): Promise<Document> {
   console.log(`Scraping URL: ${urlToScrap}`);
   urlToScrap = urlToScrap.trim();
 
-  const removeUnwantedElements = (html: string) => {
+  const removeUnwantedElements = (html: string, pageOptions: PageOptions) => {
     const soup = cheerio.load(html);
     soup("script, style, iframe, noscript, meta, head").remove();
+    if (pageOptions.onlyMainContent) {
+      // remove any other tags that are not in the main content
+      excludeNonMainTags.forEach((tag) => {
+        soup(tag).remove();
+      });
+    }
     return soup.html();
   };
 
@@ -133,7 +141,7 @@ export async function scrapSingleUrl(
         }
         break;
     }
-    let cleanedHtml = removeUnwantedElements(text);
+    let cleanedHtml = removeUnwantedElements(text, pageOptions);
     return [await parseMarkdown(cleanedHtml), text];
   };
 

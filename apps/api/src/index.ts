@@ -110,6 +110,8 @@ app.post("/v0/scrape", async (req, res) => {
       return res.status(400).json({ error: "Url is required" });
     }
 
+    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
+
     try {
       const a = new WebScraperDataProvider();
       await a.setOptions({
@@ -118,6 +120,7 @@ app.post("/v0/scrape", async (req, res) => {
         crawlerOptions: {
           ...crawlerOptions,
         },
+        pageOptions: pageOptions,
       });
 
       const docs = await a.getDocuments(false);
@@ -178,6 +181,7 @@ app.post("/v0/crawl", async (req, res) => {
     }
     const mode = req.body.mode ?? "crawl";
     const crawlerOptions = req.body.crawlerOptions ?? {};
+    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
 
     if (mode === "single_urls" && !url.includes(",")) {
       try {
@@ -188,6 +192,7 @@ app.post("/v0/crawl", async (req, res) => {
           crawlerOptions: {
             returnOnlyUrls: true,
           },
+          pageOptions: pageOptions,
         });
 
         const docs = await a.getDocuments(false, (progress) => {
@@ -212,6 +217,8 @@ app.post("/v0/crawl", async (req, res) => {
       mode: mode ?? "crawl", // fix for single urls not working
       crawlerOptions: { ...crawlerOptions },
       team_id: team_id,
+      pageOptions: pageOptions,
+
     });
 
     res.json({ jobId: job.id });
@@ -239,11 +246,13 @@ app.post("/v0/crawlWebsitePreview", async (req, res) => {
     }
     const mode = req.body.mode ?? "crawl";
     const crawlerOptions = req.body.crawlerOptions ?? {};
+    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
     const job = await addWebScraperJob({
       url: url,
       mode: mode ?? "crawl", // fix for single urls not working
       crawlerOptions: { ...crawlerOptions, limit: 5, maxCrawledLinks: 5 },
       team_id: "preview",
+      pageOptions: pageOptions,
     });
 
     res.json({ jobId: job.id });

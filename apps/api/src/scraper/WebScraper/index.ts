@@ -1,4 +1,4 @@
-import { Document } from "../../lib/entities";
+import { Document, PageOptions, WebScraperOptions } from "../../lib/entities";
 import { Progress } from "../../lib/entities";
 import { scrapSingleUrl } from "./single_url";
 import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
@@ -6,19 +6,7 @@ import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
 import { getImageDescription } from "./utils/gptVision";
 
-export type WebScraperOptions = {
-  urls: string[];
-  mode: "single_urls" | "sitemap" | "crawl";
-  crawlerOptions?: {
-    returnOnlyUrls?: boolean;
-    includes?: string[];
-    excludes?: string[];
-    maxCrawledLinks?: number;
-    limit?: number;
-    generateImgAltText?: boolean;
-  };
-  concurrentRequests?: number;
-};
+
 export class WebScraperDataProvider {
   private urls: string[] = [""];
   private mode: "single_urls" | "sitemap" | "crawl" = "single_urls";
@@ -29,6 +17,7 @@ export class WebScraperDataProvider {
   private limit: number = 10000;
   private concurrentRequests: number = 20;
   private generateImgAltText: boolean = false;
+  private pageOptions?: PageOptions;
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -51,7 +40,7 @@ export class WebScraperDataProvider {
       const batchUrls = urls.slice(i, i + this.concurrentRequests);
       await Promise.all(
         batchUrls.map(async (url, index) => {
-          const result = await scrapSingleUrl(url, true);
+          const result = await scrapSingleUrl(url, true, this.pageOptions);
           processedUrls++;
           if (inProgress) {
             inProgress({
@@ -321,6 +310,7 @@ export class WebScraperDataProvider {
     this.limit = options.crawlerOptions?.limit ?? 10000;
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
+    this.pageOptions = options.pageOptions ?? {onlyMainContent: false};
 
     //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
