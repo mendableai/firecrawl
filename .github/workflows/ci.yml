@@ -56,8 +56,3 @@ jobs:
         run: |
           npx jest --detectOpenHandles --forceExit --openHandlesTimeout=60000 --watchAll=false -- src/__tests__/e2e/index.test.ts 
         working-directory: ./apps/api
-      - name: Kill background processes
-        if: always()
-        run: |
-          kill $(jobs -p)
-        working-directory: ./apps/api
