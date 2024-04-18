@@ -39,6 +39,7 @@ export class Document {
     [key: string]: any;
   };
   childrenLinks?: string[];
+  provider?: string;
 
   constructor(data: Partial<Document>) {
     if (!data.content) {
@@ -51,5 +52,6 @@ export class Document {
     this.metadata = data.metadata || { sourceURL: "" };
     this.markdown = data.markdown || "";
     this.childrenLinks = data.childrenLinks || undefined;
+    this.provider = data.provider || undefined;
   }
 }

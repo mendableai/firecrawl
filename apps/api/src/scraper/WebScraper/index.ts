@@ -5,6 +5,7 @@ import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
 import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
 import { getImageDescription } from "./utils/gptVision";
+import { fetchAndProcessPdf } from "./utils/pdfProcessor";
 
 
 export class WebScraperDataProvider {
@@ -65,7 +66,7 @@ export class WebScraperDataProvider {
       throw new Error("Url is required");
     }
 
-    if (!useCaching) {
+    if (true) { // !useCaching) {
       if (this.mode === "crawl") {
         const crawler = new WebCrawler({
           initialUrl: this.urls[0],
@@ -75,7 +76,7 @@ export class WebScraperDataProvider {
           limit: this.limit,
           generateImgAltText: this.generateImgAltText,
         });
-        const links = await crawler.start(inProgress, 5, this.limit);
+        let links = await crawler.start(inProgress, 5, this.limit);
         if (this.returnOnlyUrls) {
           return links.map((url) => ({
             content: "",
@@ -84,12 +85,27 @@ export class WebScraperDataProvider {
             type: "text",
           }));
         }
+
+        let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
+        let pdfDocuments: Document[] = [];
+        for (let pdfLink of pdfLinks) {
+          const pdfContent = await fetchAndProcessPdf(pdfLink);
+          pdfDocuments.push({
+            content: pdfContent,
+            metadata: { sourceURL: pdfLink },
+            provider: "web",
+            type: "text",
+          });
+        }
+        links = links.filter((link) => !link.endsWith(".pdf"));
+
         let documents = await this.convertUrlsToDocuments(links, inProgress);
         documents = await this.getSitemapData(this.urls[0], documents);
         documents = this.replaceImgPathsWithAbsolutePaths(documents);
         if (this.generateImgAltText) {
           documents = await this.generatesImgAltText(documents);
         }
+        documents = documents.concat(pdfDocuments);
 
         // CACHING DOCUMENTS
         // - parent document
@@ -134,8 +150,20 @@ export class WebScraperDataProvider {
       }
 
       if (this.mode === "single_urls") {
+        let pdfLinks = this.urls.filter((link) => link.endsWith(".pdf"));
+        let pdfDocuments: Document[] = [];
+        for (let pdfLink of pdfLinks) {
+          const pdfContent = await fetchAndProcessPdf(pdfLink);
+          pdfDocuments.push({
+            content: pdfContent,
+            metadata: { sourceURL: pdfLink },
+            provider: "web",
+            type: "text",
+          });
+        }
+
         let documents = await this.convertUrlsToDocuments(
-          this.urls,
+          this.urls.filter((link) => !link.endsWith(".pdf")),
           inProgress
         );
         documents = this.replaceImgPathsWithAbsolutePaths(documents);
@@ -144,6 +172,7 @@ export class WebScraperDataProvider {
         }
         const baseUrl = new URL(this.urls[0]).origin;
         documents = await this.getSitemapData(baseUrl, documents);
+        documents = documents.concat(pdfDocuments);
 
         await this.setCachedDocuments(documents);
         documents = this.removeChildLinks(documents);
@@ -151,7 +180,20 @@ export class WebScraperDataProvider {
         return documents;
       }
       if (this.mode === "sitemap") {
-        const links = await getLinksFromSitemap(this.urls[0]);
+        let links = await getLinksFromSitemap(this.urls[0]);
+        let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
+        let pdfDocuments: Document[] = [];
+        for (let pdfLink of pdfLinks) {
+          const pdfContent = await fetchAndProcessPdf(pdfLink);
+          pdfDocuments.push({
+            content: pdfContent,
+            metadata: { sourceURL: pdfLink },
+            provider: "web",
+            type: "text",
+          });
+        }
+        links = links.filter((link) => !link.endsWith(".pdf"));
+
         let documents = await this.convertUrlsToDocuments(
           links.slice(0, this.limit),
           inProgress
@@ -162,6 +204,7 @@ export class WebScraperDataProvider {
         if (this.generateImgAltText) {
           documents = await this.generatesImgAltText(documents);
         }
+        documents = documents.concat(pdfDocuments);
 
         await this.setCachedDocuments(documents);
         documents = this.removeChildLinks(documents);
