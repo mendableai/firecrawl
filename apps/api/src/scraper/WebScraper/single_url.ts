@@ -89,7 +89,6 @@ export async function scrapSingleUrl(
     soup("script, style, iframe, noscript, meta, head").remove();
     if (pageOptions.onlyMainContent) {
       // remove any other tags that are not in the main content
-      soup("").remove();
       excludeNonMainTags.forEach((tag) => {
         soup(tag).remove();
       });
