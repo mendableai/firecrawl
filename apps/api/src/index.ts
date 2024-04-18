@@ -164,7 +164,7 @@ app.post("/v0/scrape", async (req, res) => {
 
 app.post("/v0/crawl", async (req, res) => {
   try {
-    const { success, team_id, error, status } = await authenticateUser(req, res, "scrape");
+    const { success, team_id, error, status } = await authenticateUser(req, res, "crawl");
     if (!success) {
       return res.status(status).json({ error });
     }
