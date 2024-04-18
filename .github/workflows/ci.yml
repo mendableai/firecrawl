@@ -54,7 +54,7 @@ jobs:
         id: start_workers
       - name: Run E2E tests
         run: |
-          npx jest --openHandlesTimeout=60000 --watchAll=false -- src/__tests__/e2e/index.test.ts 
+          npx jest --detectOpenHandles --forceExit --openHandlesTimeout=60000 --watchAll=false -- src/__tests__/e2e/index.test.ts 
         working-directory: ./apps/api
       - name: Kill background processes
         if: always()
