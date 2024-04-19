@@ -22,14 +22,10 @@ export const excludeNonMainTags = (htmlString: string): string => {
   $("body").first();
 
   const tagsAndClassesToRemove = [
-    "script",
-    "style",
     "footer",
     "header",
     "nav",
     "aside",
-    "iframe",
-    "noscript",
     "input",
     "select",
     "textarea",
