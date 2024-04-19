@@ -3,7 +3,6 @@ import { getWebScraperQueue } from "./queue-service";
 import "dotenv/config";
 import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
-import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { callWebhook } from "./webhook";
 
 getWebScraperQueue().process(

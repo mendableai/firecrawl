@@ -6,6 +6,7 @@ import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
 import { getImageDescription } from "./utils/gptVision";
 import { fetchAndProcessPdf } from "./utils/pdfProcessor";
+import { replaceImgPathsWithAbsolutePaths, replacePathsWithAbsolutePaths } from "./utils/replacePaths";
 
 
 export class WebScraperDataProvider {
@@ -19,6 +20,7 @@ export class WebScraperDataProvider {
   private concurrentRequests: number = 20;
   private generateImgAltText: boolean = false;
   private pageOptions?: PageOptions;
+  private replaceAllPathsWithAbsolutePaths?: boolean = false;
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -100,7 +102,13 @@ export class WebScraperDataProvider {
 
         let documents = await this.convertUrlsToDocuments(links, inProgress);
         documents = await this.getSitemapData(this.urls[0], documents);
-        documents = this.replaceImgPathsWithAbsolutePaths(documents);
+
+        if (this.replaceAllPathsWithAbsolutePaths) {
+          documents = replacePathsWithAbsolutePaths(documents);
+        } else {
+          documents = replaceImgPathsWithAbsolutePaths(documents);
+        }
+
         if (this.generateImgAltText) {
           documents = await this.generatesImgAltText(documents);
         }
@@ -164,7 +172,13 @@ export class WebScraperDataProvider {
           this.urls.filter((link) => !link.endsWith(".pdf")),
           inProgress
         );
-        documents = this.replaceImgPathsWithAbsolutePaths(documents);
+
+        if (this.replaceAllPathsWithAbsolutePaths) {
+          documents = replacePathsWithAbsolutePaths(documents);
+        } else {
+          documents = replaceImgPathsWithAbsolutePaths(documents);
+        }
+
         if (this.generateImgAltText) {
           documents = await this.generatesImgAltText(documents);
         }
@@ -197,7 +211,13 @@ export class WebScraperDataProvider {
         );
 
         documents = await this.getSitemapData(this.urls[0], documents);
-        documents = this.replaceImgPathsWithAbsolutePaths(documents);
+
+        if (this.replaceAllPathsWithAbsolutePaths) {
+          documents = replacePathsWithAbsolutePaths(documents);
+        } else {
+          documents = replaceImgPathsWithAbsolutePaths(documents);
+        }
+
         if (this.generateImgAltText) {
           documents = await this.generatesImgAltText(documents);
         }
@@ -351,6 +371,7 @@ export class WebScraperDataProvider {
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
     this.pageOptions = options.pageOptions ?? {onlyMainContent: false};
+    this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
 
     //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
@@ -435,41 +456,5 @@ export class WebScraperDataProvider {
     );
 
     return documents;
-  };
-
-  replaceImgPathsWithAbsolutePaths = (documents: Document[]): Document[] => {
-    try {
-      documents.forEach((document) => {
-        const baseUrl = new URL(document.metadata.sourceURL).origin;
-        const images =
-          document.content.match(
-            /!\[.*?\]\(((?:[^()]+|\((?:[^()]+|\([^()]*\))*\))*)\)/g
-          ) || [];
-
-        images.forEach((image: string) => {
-          let imageUrl = image.match(/\(([^)]+)\)/)[1];
-          let altText = image.match(/\[(.*?)\]/)[1];
-
-          if (!imageUrl.startsWith("data:image")) {
-            if (!imageUrl.startsWith("http")) {
-              if (imageUrl.startsWith("/")) {
-                imageUrl = imageUrl.substring(1);
-              }
-              imageUrl = new URL(imageUrl, baseUrl).toString();
-            }
-          }
-
-          document.content = document.content.replace(
-            image,
-            `![${altText}](${imageUrl})`
-          );
-        });
-      });
-
-      return documents;
-    } catch (error) {
-      console.error("Error replacing img paths with absolute paths", error);
-      return documents;
-    }
   };
 }
