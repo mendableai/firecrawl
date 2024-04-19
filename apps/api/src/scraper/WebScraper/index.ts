@@ -88,7 +88,7 @@ export class WebScraperDataProvider {
           }));
         }
 
-        let pdfLinks = links.filter((link) => isUrlAPdf(link));
+        let pdfLinks = links.filter((link) => isUrlAPdf({url: link, fastMode: true}));
         let pdfDocuments: Document[] = [];
         for (let pdfLink of pdfLinks) {
           const pdfContent = await fetchAndProcessPdf(pdfLink);
@@ -98,7 +98,7 @@ export class WebScraperDataProvider {
             provider: "web-scraper"
           });
         }
-        links = links.filter((link) => !isUrlAPdf(link));
+        links = links.filter((link) => !isUrlAPdf({url: link, fastMode: true}));
 
         let documents = await this.convertUrlsToDocuments(links, inProgress);
         documents = await this.getSitemapData(this.urls[0], documents);
@@ -157,7 +157,7 @@ export class WebScraperDataProvider {
       }
 
       if (this.mode === "single_urls") {
-        let pdfLinks = this.urls.filter((link) => isUrlAPdf(link));
+        let pdfLinks = this.urls.filter((link) => isUrlAPdf({url: link, fastMode: false}));
         let pdfDocuments: Document[] = [];
         for (let pdfLink of pdfLinks) {
           const pdfContent = await fetchAndProcessPdf(pdfLink);
@@ -169,7 +169,7 @@ export class WebScraperDataProvider {
         }
 
         let documents = await this.convertUrlsToDocuments(
-          this.urls.filter((link) => !isUrlAPdf(link)),
+          this.urls.filter((link) => !isUrlAPdf({url: link, fastMode: true})),
           inProgress
         );
 
@@ -193,7 +193,7 @@ export class WebScraperDataProvider {
       }
       if (this.mode === "sitemap") {
         let links = await getLinksFromSitemap(this.urls[0]);
-        let pdfLinks = links.filter((link) => isUrlAPdf(link));
+        let pdfLinks = links.filter((link) => isUrlAPdf({url: link, fastMode: true}));
         let pdfDocuments: Document[] = [];
         for (let pdfLink of pdfLinks) {
           const pdfContent = await fetchAndProcessPdf(pdfLink);
@@ -203,7 +203,7 @@ export class WebScraperDataProvider {
             provider: "web-scraper"
           });
         }
-        links = links.filter((link) => !isUrlAPdf(link));
+        links = links.filter((link) => !isUrlAPdf({url: link, fastMode: true}));
 
         let documents = await this.convertUrlsToDocuments(
           links.slice(0, this.limit),

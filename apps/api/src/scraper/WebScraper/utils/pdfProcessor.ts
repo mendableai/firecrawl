@@ -112,10 +112,14 @@ async function processPdf(file: string){
 //   console.log(e);
 // })
 
-export async function isUrlAPdf(url: string): Promise<boolean> {
+export async function isUrlAPdf({url, fastMode}: {url: string, fastMode: boolean}): Promise<boolean> {
   try {
     if (url.endsWith('.pdf')) {
       return true;
+    }
+    // If fast mode is enabled, we skip the HEAD request and return false
+    if (fastMode) {
+      return false;
     }
     const response = await fetch(url, { method: 'HEAD' });
     const contentType = response.headers.get('Content-Type');
