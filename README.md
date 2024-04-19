@@ -19,9 +19,7 @@ We provide an easy to use API with our hosted version. You can find the playgrou
 - [x] [Langchain Integration 🦜🔗](https://python.langchain.com/docs/integrations/document_loaders/firecrawl/)
 - [x] [Llama Index Integration 🦙](https://docs.llamaindex.ai/en/latest/examples/data_connectors/WebPageDemo/#using-firecrawl-reader)
 - [ ] LangchainJS - Coming Soon
-
-
-Self-host. To self-host refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/SELF_HOST.md).
+- [ ] Self-host. To self-host refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/SELF_HOST.md).
 
 ### API Key
 
