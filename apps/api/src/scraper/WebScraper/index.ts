@@ -6,8 +6,10 @@ import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
 import { getImageDescription } from "./utils/gptVision";
 import { fetchAndProcessPdf, isUrlAPdf } from "./utils/pdfProcessor";
-import { replaceImgPathsWithAbsolutePaths, replacePathsWithAbsolutePaths } from "./utils/replacePaths";
-
+import {
+  replaceImgPathsWithAbsolutePaths,
+  replacePathsWithAbsolutePaths,
+} from "./utils/replacePaths";
 
 export class WebScraperDataProvider {
   private urls: string[] = [""];
@@ -36,8 +38,6 @@ export class WebScraperDataProvider {
   ): Promise<Document[]> {
     const totalUrls = urls.length;
     let processedUrls = 0;
-    console.log("Converting urls to documents");
-    console.log("Total urls", urls);
     const results: (Document | null)[] = new Array(urls.length).fill(null);
     for (let i = 0; i < urls.length; i += this.concurrentRequests) {
       const batchUrls = urls.slice(i, i + this.concurrentRequests);
@@ -88,17 +88,21 @@ export class WebScraperDataProvider {
           }));
         }
 
-        let pdfLinks = links.filter(async (link) => await isUrlAPdf({url: link, fastMode: true}));
+        let pdfLinks = links.filter(
+          async (link) => await isUrlAPdf({ url: link, fastMode: true })
+        );
         let pdfDocuments: Document[] = [];
         for (let pdfLink of pdfLinks) {
           const pdfContent = await fetchAndProcessPdf(pdfLink);
           pdfDocuments.push({
             content: pdfContent,
             metadata: { sourceURL: pdfLink },
-            provider: "web-scraper"
+            provider: "web-scraper",
           });
         }
-        links = links.filter(async (link) => !await isUrlAPdf({url: link, fastMode: true}));
+        links = links.filter(
+          async (link) => !(await isUrlAPdf({ url: link, fastMode: true }))
+        );
 
         let documents = await this.convertUrlsToDocuments(links, inProgress);
         documents = await this.getSitemapData(this.urls[0], documents);
@@ -157,21 +161,18 @@ export class WebScraperDataProvider {
       }
 
       if (this.mode === "single_urls") {
-        console.log("Single urls mode");
         let pdfDocuments: Document[] = [];
         let nonPdfUrls: string[] = [];
         for (let url of this.urls) {
-          console.log("Checking if url is a pdf", url);
-          if (await isUrlAPdf({url: url, fastMode: false})) {
+          if (await isUrlAPdf({ url: url, fastMode: false })) {
             const pdfContent = await fetchAndProcessPdf(url);
             pdfDocuments.push({
               content: pdfContent,
               metadata: { sourceURL: url },
-              provider: "web-scraper"
+              provider: "web-scraper",
             });
           } else {
             nonPdfUrls.push(url);
-            console.log("Fetching and processing url", url);
           }
         }
 
@@ -200,17 +201,21 @@ export class WebScraperDataProvider {
       }
       if (this.mode === "sitemap") {
         let links = await getLinksFromSitemap(this.urls[0]);
-        let pdfLinks = links.filter(async (link) => await isUrlAPdf({url: link, fastMode: true}));
+        let pdfLinks = links.filter(
+          async (link) => await isUrlAPdf({ url: link, fastMode: true })
+        );
         let pdfDocuments: Document[] = [];
         for (let pdfLink of pdfLinks) {
           const pdfContent = await fetchAndProcessPdf(pdfLink);
           pdfDocuments.push({
             content: pdfContent,
             metadata: { sourceURL: pdfLink },
-            provider: "web-scraper"
+            provider: "web-scraper",
           });
         }
-        links = links.filter(async (link) => !await isUrlAPdf({url: link, fastMode: true}));
+        links = links.filter(
+          async (link) => !(await isUrlAPdf({ url: link, fastMode: true }))
+        );
 
         let documents = await this.convertUrlsToDocuments(
           links.slice(0, this.limit),
@@ -377,8 +382,9 @@ export class WebScraperDataProvider {
     this.limit = options.crawlerOptions?.limit ?? 10000;
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
-    this.pageOptions = options.pageOptions ?? {onlyMainContent: false};
-    this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
+    this.pageOptions = options.pageOptions ?? { onlyMainContent: false };
+    this.replaceAllPathsWithAbsolutePaths =
+      options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
 
     //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
