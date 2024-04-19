@@ -2,23 +2,24 @@ import { excludeNonMainTags } from "../excludeTags";
 import * as cheerio from "cheerio";
 
 describe("excludeNonMainTags", () => {
-  it("removes script, style, and other non-essential tags", () => {
-    const html = `
-    <html>
-      <body>
-        <script>alert('hello');</script>
-        <style>body { color: red; }</style>
-        <article>Important content</article>
-      </body>
-    </html>
-    `;
-    const result = excludeNonMainTags(html);
-    const $ = cheerio.load(result);
+  // already removed in removeUnwantedElements
+  // it("removes script, style, and other non-essential tags", () => {
+  //   const html = `
+  //   <html>
+  //     <body>
+  //       <script>alert('hello');</script>
+  //       <style>body { color: red; }</style>
+  //       <article>Important content</article>
+  //     </body>
+  //   </html>
+  //   `;
+  //   const result = excludeNonMainTags(html);
+  //   const $ = cheerio.load(result);
 
-    expect($("script").length).toBe(0);
-    expect($("style").length).toBe(0);
-    expect($.text().trim()).toBe("Important content");
-  });
+  //   expect($("script").length).toBe(0);
+  //   expect($("style").length).toBe(0);
+  //   expect($.text().trim()).toBe("Important content");
+  // });
 
   it("removes specified classes like ads and popups", () => {
     const html = `
