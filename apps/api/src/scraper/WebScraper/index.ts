@@ -157,19 +157,23 @@ export class WebScraperDataProvider {
       }
 
       if (this.mode === "single_urls") {
-        let pdfLinks = this.urls.filter((link) => isUrlAPdf({url: link, fastMode: false}));
         let pdfDocuments: Document[] = [];
-        for (let pdfLink of pdfLinks) {
-          const pdfContent = await fetchAndProcessPdf(pdfLink);
-          pdfDocuments.push({
-            content: pdfContent,
-            metadata: { sourceURL: pdfLink },
-            provider: "web-scraper"
-          });
+        let nonPdfUrls: string[] = [];
+        for (let url of this.urls) {
+          if (isUrlAPdf({url: url, fastMode: false})) {
+            const pdfContent = await fetchAndProcessPdf(url);
+            pdfDocuments.push({
+              content: pdfContent,
+              metadata: { sourceURL: url },
+              provider: "web-scraper"
+            });
+          } else {
+            nonPdfUrls.push(url);
+          }
         }
 
         let documents = await this.convertUrlsToDocuments(
-          this.urls.filter((link) => !isUrlAPdf({url: link, fastMode: true})),
+          nonPdfUrls,
           inProgress
         );
 
