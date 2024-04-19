@@ -5,7 +5,7 @@ import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
 import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
 import { getImageDescription } from "./utils/gptVision";
-import { fetchAndProcessPdf } from "./utils/pdfProcessor";
+import { fetchAndProcessPdf, isUrlAPdf } from "./utils/pdfProcessor";
 import { replaceImgPathsWithAbsolutePaths, replacePathsWithAbsolutePaths } from "./utils/replacePaths";
 
 
@@ -88,7 +88,7 @@ export class WebScraperDataProvider {
           }));
         }
 
-        let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
+        let pdfLinks = links.filter((link) => isUrlAPdf(link));
         let pdfDocuments: Document[] = [];
         for (let pdfLink of pdfLinks) {
           const pdfContent = await fetchAndProcessPdf(pdfLink);
@@ -98,7 +98,7 @@ export class WebScraperDataProvider {
             provider: "web-scraper"
           });
         }
-        links = links.filter((link) => !link.endsWith(".pdf"));
+        links = links.filter((link) => !isUrlAPdf(link));
 
         let documents = await this.convertUrlsToDocuments(links, inProgress);
         documents = await this.getSitemapData(this.urls[0], documents);
@@ -157,7 +157,7 @@ export class WebScraperDataProvider {
       }
 
       if (this.mode === "single_urls") {
-        let pdfLinks = this.urls.filter((link) => link.endsWith(".pdf"));
+        let pdfLinks = this.urls.filter((link) => isUrlAPdf(link));
         let pdfDocuments: Document[] = [];
         for (let pdfLink of pdfLinks) {
           const pdfContent = await fetchAndProcessPdf(pdfLink);
@@ -169,7 +169,7 @@ export class WebScraperDataProvider {
         }
 
         let documents = await this.convertUrlsToDocuments(
-          this.urls.filter((link) => !link.endsWith(".pdf")),
+          this.urls.filter((link) => !isUrlAPdf(link)),
           inProgress
         );
 
@@ -193,7 +193,7 @@ export class WebScraperDataProvider {
       }
       if (this.mode === "sitemap") {
         let links = await getLinksFromSitemap(this.urls[0]);
-        let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
+        let pdfLinks = links.filter((link) => isUrlAPdf(link));
         let pdfDocuments: Document[] = [];
         for (let pdfLink of pdfLinks) {
           const pdfContent = await fetchAndProcessPdf(pdfLink);
@@ -203,7 +203,7 @@ export class WebScraperDataProvider {
             provider: "web-scraper"
           });
         }
-        links = links.filter((link) => !link.endsWith(".pdf"));
+        links = links.filter((link) => !isUrlAPdf(link));
 
         let documents = await this.convertUrlsToDocuments(
           links.slice(0, this.limit),
