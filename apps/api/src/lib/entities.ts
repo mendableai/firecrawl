@@ -22,6 +22,7 @@ export type WebScraperOptions = {
     maxCrawledLinks?: number;
     limit?: number;
     generateImgAltText?: boolean;
+    replaceAllPathsWithAbsolutePaths?: boolean;
   };
   pageOptions?: PageOptions;
   concurrentRequests?: number;
