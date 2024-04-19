@@ -352,7 +352,7 @@ export class WebScraperDataProvider {
       options.crawlerOptions?.generateImgAltText ?? false;
     this.pageOptions = options.pageOptions ?? {onlyMainContent: false};
 
-    //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
+    //! @nicolas, for some reason this was being injected and breaking everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
 
     // make sure all urls start with https://
