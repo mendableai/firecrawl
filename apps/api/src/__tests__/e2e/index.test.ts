@@ -42,6 +42,7 @@ describe('E2E Tests for API Routes', () => {
         .set('Authorization', `Bearer this_is_just_a_preview_token`)
         .set('Content-Type', 'application/json')
         .send({ url: 'https://firecrawl.dev' });
+
       expect(response.statusCode).toBe(200);
     }, 10000); // 10 seconds timeout
 
@@ -51,6 +52,8 @@ describe('E2E Tests for API Routes', () => {
         .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
         .set('Content-Type', 'application/json')
         .send({ url: 'https://firecrawl.dev' });
+        await new Promise((r) => setTimeout(r, 2000));
+
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('content');
