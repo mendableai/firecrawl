@@ -19,8 +19,8 @@ export async function fetchAndProcessPdf(url: string): Promise<string> {
 async function downloadPdf(url: string): Promise<string> {
   const response = await axios({
     url,
-    method: 'GET',
-    responseType: 'stream',
+    method: "GET",
+    responseType: "stream",
   });
 
   const tempFilePath = path.join(os.tmpdir(), `tempPdf-${Date.now()}.pdf`);
@@ -29,13 +29,12 @@ async function downloadPdf(url: string): Promise<string> {
   response.data.pipe(writer);
 
   return new Promise((resolve, reject) => {
-    writer.on('finish', () => resolve(tempFilePath));
-    writer.on('error', reject);
+    writer.on("finish", () => resolve(tempFilePath));
+    writer.on("error", reject);
   });
 }
 
 export async function processPdfToText(filePath: string): Promise<string> {
-
   let content = "";
 
   if (process.env.LLAMAPARSE_API_KEY) {
@@ -102,32 +101,37 @@ export async function processPdfToText(filePath: string): Promise<string> {
   return content;
 }
 
-async function processPdf(file: string){
+async function processPdf(file: string) {
   const fileContent = fs.readFileSync(file);
   const data = await pdf(fileContent);
   return data.text;
 }
-
-// fetchAndProcessPdf("https://www.fda.gov/media/167973/download?attachment").then((e)=>{
-//   console.log(e);
-// })
-
-export async function isUrlAPdf({url, fastMode}: {url: string, fastMode: boolean}): Promise<boolean> {
+/**
+ * Check if a url is a pdf
+ * @param url The url to check
+ * @param fastMode If true, the function will return false if the url is does not end with .pdf
+ * @returns A promise that resolves to true if the url is a pdf, false otherwise
+ */
+export async function isUrlAPdf({
+  url,
+  fastMode,
+}: {
+  url: string;
+  fastMode: boolean;
+}): Promise<boolean> {
   try {
-    if (url.endsWith('.pdf')) {
+    if (url.endsWith(".pdf")) {
       return true;
     }
     // If fast mode is enabled, we skip the HEAD request and return false
     if (fastMode) {
       return false;
     }
-    const response = await fetch(url, { method: 'HEAD' });
-    const contentType = response.headers.get('Content-Type');
-    return contentType !== null && contentType.includes('application/pdf');
+    const response = await fetch(url, { method: "HEAD" });
+    const contentType = response.headers.get("Content-Type");
+    return contentType !== null && contentType.includes("application/pdf");
   } catch (error) {
-    console.error('Error making HEAD request:', error);
+    console.error("Error making HEAD request:", error);
     return false;
   }
 }
-
-
