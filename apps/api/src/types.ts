@@ -25,4 +25,18 @@ export interface WebScraperOptions {
 }
 
 
+export interface FirecrawlJob {
+  success: boolean;
+  message: string;
+  num_docs: number;
+  docs: any[];
+  time_taken: number;
+  team_id: string;
+  mode: string;
+  url: string;
+  crawlerOptions?: any;
+  pageOptions?: any;
+}
+
+
 
