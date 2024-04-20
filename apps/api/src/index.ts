@@ -9,6 +9,7 @@ import { WebScraperDataProvider } from "./scraper/WebScraper";
 import { billTeam, checkTeamCredits } from "./services/billing/credit_billing";
 import { getRateLimiter, redisClient } from "./services/rate-limiter";
 import { parseApi } from "./lib/parseApi";
+import { RateLimiterMode } from "./types";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -46,7 +47,7 @@ app.get("/test", async (req, res) => {
   res.send("Hello, world!");
 });
 
-async function authenticateUser(req, res, mode?: string): Promise<{ success: boolean, team_id?: string, error?: string, status?: number }> {
+async function authenticateUser(req, res, mode?: RateLimiterMode): Promise<{ success: boolean, team_id?: string, error?: string, status?: number }> {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return { success: false, error: "Unauthorized", status: 401 };
@@ -56,19 +57,20 @@ async function authenticateUser(req, res, mode?: string): Promise<{ success: boo
     return { success: false, error: "Unauthorized: Token missing", status: 401 };
   }
 
+  
+
   try {
     const incomingIP = (req.headers["x-forwarded-for"] ||
       req.socket.remoteAddress) as string;
     const iptoken = incomingIP + token;
-    await getRateLimiter(
-      token === "this_is_just_a_preview_token" ? true : false
+    await getRateLimiter((token === "this_is_just_a_preview_token") ? RateLimiterMode.Preview : mode
     ).consume(iptoken);
   } catch (rateLimiterRes) {
     console.error(rateLimiterRes);
     return { success: false, error: "Rate limit exceeded. Too many requests, try again in 1 minute.", status: 429 };
   }
 
-  if (token === "this_is_just_a_preview_token" && mode === "scrape") {
+  if (token === "this_is_just_a_preview_token" && (mode === RateLimiterMode.Scrape || mode === RateLimiterMode.Preview)) {
     return { success: true, team_id: "preview" };
   }
 
@@ -88,7 +90,7 @@ async function authenticateUser(req, res, mode?: string): Promise<{ success: boo
 app.post("/v0/scrape", async (req, res) => {
   try {
     // make sure to authenticate user first, Bearer <token>
-    const { success, team_id, error, status } = await authenticateUser(req, res, "scrape");
+    const { success, team_id, error, status } = await authenticateUser(req, res, RateLimiterMode.Scrape);
     if (!success) {
       return res.status(status).json({ error });
     }
@@ -164,7 +166,7 @@ app.post("/v0/scrape", async (req, res) => {
 
 app.post("/v0/crawl", async (req, res) => {
   try {
-    const { success, team_id, error, status } = await authenticateUser(req, res, "crawl");
+    const { success, team_id, error, status } = await authenticateUser(req, res, RateLimiterMode.Crawl);
     if (!success) {
       return res.status(status).json({ error });
     }
@@ -230,7 +232,7 @@ app.post("/v0/crawl", async (req, res) => {
 });
 app.post("/v0/crawlWebsitePreview", async (req, res) => {
   try {
-    const { success, team_id, error, status } = await authenticateUser(req, res, "scrape");
+    const { success, team_id, error, status } = await authenticateUser(req, res, RateLimiterMode.Preview);
     if (!success) {
       return res.status(status).json({ error });
     } 
@@ -259,7 +261,7 @@ app.post("/v0/crawlWebsitePreview", async (req, res) => {
 
 app.get("/v0/crawl/status/:jobId", async (req, res) => {
   try {
-    const { success, team_id, error, status } = await authenticateUser(req, res, "scrape");
+    const { success, team_id, error, status } = await authenticateUser(req, res, RateLimiterMode.CrawlStatus);
     if (!success) {
       return res.status(status).json({ error });
     }

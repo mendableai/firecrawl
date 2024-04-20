@@ -26,3 +26,11 @@ export interface WebScraperOptions {
 
 
 
+export enum RateLimiterMode {
+  Crawl = "crawl",
+  CrawlStatus = "crawl-status",
+  Scrape = "scrape",
+  Preview = "preview",
+}
+
+
