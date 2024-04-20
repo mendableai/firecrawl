@@ -70,11 +70,12 @@ export function crawlRateLimit(plan: string){
 
 
 export function getRateLimiter(mode: RateLimiterMode){
-  if(mode === RateLimiterMode.Preview){
-    return previewRateLimiter;
-  }else if(mode === RateLimiterMode.CrawlStatus){
-    return crawlStatusRateLimiter;
-  }else{
-    return serverRateLimiter;
+  switch(mode) {
+    case RateLimiterMode.Preview:
+      return previewRateLimiter;
+    case RateLimiterMode.CrawlStatus:
+      return crawlStatusRateLimiter;
+    default:
+      return serverRateLimiter;
   }
 }

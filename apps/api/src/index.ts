@@ -70,7 +70,7 @@ async function authenticateUser(req, res, mode?: RateLimiterMode): Promise<{ suc
     return { success: false, error: "Rate limit exceeded. Too many requests, try again in 1 minute.", status: 429 };
   }
 
-  if (token === "this_is_just_a_preview_token" && mode === "scrape") {
+  if (token === "this_is_just_a_preview_token" && (mode === RateLimiterMode.Scrape || mode === RateLimiterMode.Preview)) {
     return { success: true, team_id: "preview" };
   }
 
