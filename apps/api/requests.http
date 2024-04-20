@@ -13,12 +13,15 @@ GET http://localhost:3002/v0/jobs/active HTTP/1.1
 
 
 ### Scrape Website
-POST https://api.firecrawl.dev/v0/scrape HTTP/1.1
+POST http://localhost:3002/v0/crawl HTTP/1.1
 Authorization: Bearer 
 content-type: application/json
 
 {
-    "url":"https://www.mendable.ai"
+    "url":"https://www.mendable.ai",
+    "crawlerOptions": {
+        "returnOnlyUrls": true
+    }
 }
 
 
@@ -34,7 +37,7 @@ content-type: application/json
 
 
 ### Check Job Status
-GET http://localhost:3002/v0/crawl/status/333ab225-dc3e-418b-9d4b-8fb833cbaf89 HTTP/1.1
+GET http://localhost:3002/v0/crawl/status/4dbf2b62-487d-45d7-a4f7-8f5e883dfecd HTTP/1.1
 Authorization: Bearer 
 
 ### Get Job Result
@@ -48,5 +51,5 @@ content-type: application/json
 }
 
 ### Check Job Status
-GET https://api.firecrawl.dev/v0/crawl/status/cfcb71ac-23a3-4da5-bd85-d4e58b871d66
+GET https://api.firecrawl.dev/v0/crawl/status/abd12f69-06b2-4378-8753-118b811df59d
 Authorization: Bearer 

@@ -66,6 +66,7 @@ export async function runWebScraper({
       inProgress(progress);
     })) as CrawlResult[];
 
+
     if (docs.length === 0) {
       return {
         success: true,
@@ -75,7 +76,7 @@ export async function runWebScraper({
     }
 
     // remove docs with empty content
-    const filteredDocs = docs.filter((doc) => doc.content.trim().length > 0);
+    const filteredDocs = crawlerOptions.returnOnlyUrls ? docs : docs.filter((doc) => doc.content.trim().length > 0);
     onSuccess(filteredDocs);
 
     const { success, credit_usage } = await billTeam(
