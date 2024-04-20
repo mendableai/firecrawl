@@ -1,8 +1,9 @@
 import { Job } from "bull";
 import { CrawlResult, WebScraperOptions } from "../types";
 import { WebScraperDataProvider } from "../scraper/WebScraper";
-import { Progress } from "../lib/entities";
+import { DocumentUrl, Progress } from "../lib/entities";
 import { billTeam } from "../services/billing/credit_billing";
+import { Document } from "../lib/entities";
 
 export async function startWebScraperPipeline({
   job,
@@ -44,7 +45,11 @@ export async function runWebScraper({
   onSuccess: (result: any) => void;
   onError: (error: any) => void;
   team_id: string;
-}): Promise<{ success: boolean; message: string; docs: CrawlResult[] }> {
+}): Promise<{
+  success: boolean;
+  message: string;
+  docs: Document[] | DocumentUrl[];
+}> {
   try {
     const provider = new WebScraperDataProvider();
     if (mode === "crawl") {
@@ -64,8 +69,7 @@ export async function runWebScraper({
     }
     const docs = (await provider.getDocuments(false, (progress: Progress) => {
       inProgress(progress);
-    })) as CrawlResult[];
-
+    })) as Document[];
 
     if (docs.length === 0) {
       return {
@@ -76,7 +80,14 @@ export async function runWebScraper({
     }
 
     // remove docs with empty content
-    const filteredDocs = crawlerOptions.returnOnlyUrls ? docs : docs.filter((doc) => doc.content.trim().length > 0);
+    const filteredDocs = crawlerOptions.returnOnlyUrls
+      ? docs.map((doc) => {
+          if (doc.metadata.sourceURL) {
+            return { url: doc.metadata.sourceURL };
+          }
+        })
+      : docs.filter((doc) => doc.content.trim().length > 0);
+
     onSuccess(filteredDocs);
 
     const { success, credit_usage } = await billTeam(
@@ -92,7 +103,7 @@ export async function runWebScraper({
       };
     }
 
-    return { success: true, message: "", docs: filteredDocs as CrawlResult[] };
+    return { success: true, message: "", docs: filteredDocs };
   } catch (error) {
     console.error("Error running web scraper", error);
     onError(error);
