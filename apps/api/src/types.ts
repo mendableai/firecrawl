@@ -22,6 +22,7 @@ export interface WebScraperOptions {
   crawlerOptions: any;
   pageOptions: any;
   team_id: string;
+  origin?: string;
 }
 
 
@@ -36,6 +37,7 @@ export interface FirecrawlJob {
   url: string;
   crawlerOptions?: any;
   pageOptions?: any;
+  origin: string;
 }
 
 

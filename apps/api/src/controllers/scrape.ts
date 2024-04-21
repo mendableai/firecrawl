@@ -72,6 +72,7 @@ export async function scrapeController(req: Request, res: Response) {
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
+    const origin = req.body.origin ?? "api";
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
@@ -83,24 +84,27 @@ export async function scrapeController(req: Request, res: Response) {
       console.error(error);
       return res.status(500).json({ error: "Internal server error" });
     }
-
+    const startTime = new Date().getTime();
     const result = await scrapeHelper(
       req,
       team_id,
       crawlerOptions,
       pageOptions
     );
+    const endTime = new Date().getTime();
+    const timeTakenInSeconds = (endTime - startTime) / 1000;
     logJob({
       success: result.success,
       message: result.error,
       num_docs: 1,
       docs: [result.data],
-      time_taken: 0,
+      time_taken: timeTakenInSeconds,
       team_id: team_id,
       mode: "scrape",
       url: req.body.url,
       crawlerOptions: crawlerOptions,
       pageOptions: pageOptions,
+      origin: origin,
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {

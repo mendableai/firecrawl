@@ -42,6 +42,7 @@ export async function crawlController(req: Request, res: Response) {
             returnOnlyUrls: true,
           },
           pageOptions: pageOptions,
+
         });
 
         const docs = await a.getDocuments(false, (progress) => {
@@ -67,6 +68,7 @@ export async function crawlController(req: Request, res: Response) {
       crawlerOptions: { ...crawlerOptions },
       team_id: team_id,
       pageOptions: pageOptions,
+      origin: req.body.origin ?? "api",
     });
 
     res.json({ jobId: job.id });

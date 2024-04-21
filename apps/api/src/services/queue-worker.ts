@@ -17,10 +17,11 @@ getWebScraperQueue().process(
         current_url: "",
       });
       const start = Date.now();
+      console.log("Processing job", job.data);
       const { success, message, docs } = await startWebScraperPipeline({ job });
       const end = Date.now();
       const timeTakenInSeconds = (end - start) / 1000;
-      
+
       const data = {
         success: success,
         result: {
@@ -33,7 +34,7 @@ getWebScraperQueue().process(
       };
 
       await callWebhook(job.data.team_id, data);
-      
+
       await logJob({
         success: success,
         message: message,
@@ -45,6 +46,7 @@ getWebScraperQueue().process(
         url: job.data.url,
         crawlerOptions: job.data.crawlerOptions,
         pageOptions: job.data.pageOptions,
+        origin: job.data.origin,
       });
       done(null, data);
     } catch (error) {
