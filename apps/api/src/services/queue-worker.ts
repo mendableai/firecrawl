@@ -17,7 +17,7 @@ getWebScraperQueue().process(
         current_url: "",
       });
       const start = Date.now();
-      console.log("Processing job", job.data);
+      
       const { success, message, docs } = await startWebScraperPipeline({ job });
       const end = Date.now();
       const timeTakenInSeconds = (end - start) / 1000;
