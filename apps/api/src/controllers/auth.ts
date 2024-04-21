@@ -3,6 +3,7 @@ import { getRateLimiter } from "../../src/services/rate-limiter";
 import { RateLimiterMode } from "../../src/types";
 import { supabase_service } from "../../src/services/supabase";
 
+
 export async function authenticateUser(
   req,
   res,
@@ -13,6 +14,16 @@ export async function authenticateUser(
   error?: string;
   status?: number;
 }> {
+
+  console.log(process.env)
+
+  if(process.env.USE_DB_AUTHENTICATION === "false"){
+    console.log("WARNING - YOU'RE bypassing Authentication");
+    return { success: true};
+  }
+
+  console.log("USING SUPABASE AUTH");
+
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return { success: false, error: "Unauthorized", status: 401 };

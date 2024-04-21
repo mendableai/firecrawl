@@ -8,6 +8,8 @@ import { addWebScraperJob } from "../../src/services/queue-jobs";
 
 export async function crawlController(req: Request, res: Response) {
   try {
+
+    console.log("hello")
     const { success, team_id, error, status } = await authenticateUser(
       req,
       res,
@@ -16,14 +18,15 @@ export async function crawlController(req: Request, res: Response) {
     if (!success) {
       return res.status(status).json({ error });
     }
-
-    const { success: creditsCheckSuccess, message: creditsCheckMessage } =
-      await checkTeamCredits(team_id, 1);
-    if (!creditsCheckSuccess) {
-      return res.status(402).json({ error: "Insufficient credits" });
+   
+    if (process.env.USE_DB_AUTHENTICATION === "true") {
+      const { success: creditsCheckSuccess, message: creditsCheckMessage } =
+        await checkTeamCredits(team_id, 1);
+      if (!creditsCheckSuccess) {
+        return res.status(402).json({ error: "Insufficient credits" });
+      }
     }
 
-    // authenticate on supabase
     const url = req.body.url;
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
