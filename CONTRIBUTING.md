@@ -1,12 +1,12 @@
 
 # Contributors guide: 
 
-Welcome to firecrawl 🔥! Here are some instructions on how to get the project locally, so you can run it on your own (and contribute) 
+Welcome to [Firecrawl](https://firecrawl.dev) 🔥! Here are some instructions on how to get the project locally, so you can run it on your own (and contribute) 
 
 If you're contributing, note that the process is similar to other open source repos i.e. (fork firecrawl, make changes, run tests, PR). If you have any questions, and would like help gettin on board, reach out to hello@mendable.ai for more or submit an issue!
 
 
-## Hosting locally
+## Running the project locally
 
 First, start by installing dependencies
 1. node.js [instructions](https://nodejs.org/en/learn/getting-started/how-to-install-nodejs)
@@ -46,6 +46,16 @@ LLAMAPARSE_API_KEY= #Set if you have a llamaparse key you'd like to use to parse
 
 ```
 
+### Installing dependencies
+
+First, install the dependencies using pnpm.
+
+```bash
+pnpm install
+```
+
+### Running the project
+
 You're going to need to open 3 terminals. 
 
 ### Terminal 1 - setting up redis
@@ -64,7 +74,7 @@ Now, navigate to the apps/api/ directory and run:
 
 
 To do this, navigate to the apps/api/ directory and run if you don’t have this already, install pnpm here: https://pnpm.io/installation
-Next, run your server with`pnpm run start`
+Next, run your server with `pnpm run start`
 
 
 
@@ -90,7 +100,8 @@ curl -X POST http://localhost:3002/v0/crawl \
     
 ## Tests:
 
-The best way to do this is run the test with npx:Once again, navigate to the `apps/api` directory`npx jest` 
+The best way to do this is run the test with `npm run test:local-no-auth` if you'd like to run the tests without authentication.
 
+If you'd like to run the tests with authentication, run `npm run test:prod`
 
 
