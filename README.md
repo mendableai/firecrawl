@@ -21,7 +21,7 @@ We provide an easy to use API with our hosted version. You can find the playgrou
 - [ ] LangchainJS - Coming Soon
 
 
-Self-host. To self-host refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/SELF_HOST.md).
+To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/CONTRIBUTING.md).
 
 ### API Key
 
