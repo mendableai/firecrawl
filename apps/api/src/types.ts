@@ -52,3 +52,5 @@ export interface AuthResponse {
   error?: string;
   status?: number;
 }
+
+
