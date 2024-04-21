@@ -10,7 +10,7 @@
     "flyio": "node dist/src/index.js",
     "start:dev": "nodemon --exec ts-node src/index.ts",
     "build": "tsc",
-    "test": "jest --verbose",
+    "test": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='src/__tests__/e2e_noAuth/*'",
     "test:local-no-auth":"npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='src/__tests__/e2e_withAuth/*'",
     "test:prod":"npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='src/__tests__/e2e_noAuth/*'",
     "workers": "nodemon --exec ts-node src/services/queue-worker.ts",
