@@ -1,9 +1,15 @@
 import { parseApi } from "../../src/lib/parseApi";
 import { getRateLimiter } from "../../src/services/rate-limiter";
-import { RateLimiterMode } from "../../src/types";
+import { AuthResponse, RateLimiterMode } from "../../src/types";
 import { supabase_service } from "../../src/services/supabase";
+import { withAuth } from "../../src/lib/withAuth";
 
-export async function authenticateUser(
+
+export async function authenticateUser(req, res, mode?: RateLimiterMode) : Promise<AuthResponse> {
+  return withAuth(supaAuthenticateUser)(req, res, mode);
+}
+
+export async function supaAuthenticateUser(
   req,
   res,
   mode?: RateLimiterMode
@@ -13,6 +19,7 @@ export async function authenticateUser(
   error?: string;
   status?: number;
 }> {
+
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return { success: false, error: "Unauthorized", status: 401 };

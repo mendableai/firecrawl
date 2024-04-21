@@ -5,7 +5,6 @@ import "dotenv/config";
 import { getWebScraperQueue } from "./services/queue-service";
 import { redisClient } from "./services/rate-limiter";
 import { v0Router } from "./routes/v0";
-
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
 const { ExpressAdapter } = require("@bull-board/express");
@@ -47,6 +46,7 @@ app.use(v0Router);
 const DEFAULT_PORT = process.env.PORT ?? 3002;
 const HOST = process.env.HOST ?? "localhost";
 redisClient.connect();
+
 
 export function startServer(port = DEFAULT_PORT) {
   const server = app.listen(Number(port), HOST, () => {

@@ -1,7 +1,12 @@
+import { withAuth } from "../../lib/withAuth";
 import { supabase_service } from "../supabase";
 
 const FREE_CREDITS = 100;
+
 export async function billTeam(team_id: string, credits: number) {
+  return withAuth(supaBillTeam)(team_id, credits);
+}
+export async function supaBillTeam(team_id: string, credits: number) {
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
   }
@@ -52,8 +57,11 @@ export async function billTeam(team_id: string, credits: number) {
   return { success: true, credit_usage };
 }
 
-// if team has enough credits for the operation, return true, else return false
 export async function checkTeamCredits(team_id: string, credits: number) {
+  return withAuth(supaCheckTeamCredits)(team_id, credits);
+}
+// if team has enough credits for the operation, return true, else return false
+export async function supaCheckTeamCredits(team_id: string, credits: number) {
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
   }

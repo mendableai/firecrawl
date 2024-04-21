@@ -40,18 +40,20 @@ export async function scrapeHelper(
   if (filteredDocs.length === 0) {
     return { success: true, error: "No page found", returnCode: 200 };
   }
-  const { success, credit_usage } = await billTeam(
-    team_id,
-    filteredDocs.length
-  );
-  if (!success) {
-    return {
-      success: false,
-      error:
-        "Failed to bill team. Insufficient credits or subscription not found.",
-      returnCode: 402,
-    };
-  }
+
+    const { success, credit_usage } = await billTeam(
+      team_id,
+      filteredDocs.length
+    );
+    if (!success) {
+      return {
+        success: false,
+        error:
+          "Failed to bill team. Insufficient credits or subscription not found.",
+        returnCode: 402,
+      };
+    }
+
   return {
     success: true,
     data: filteredDocs[0],

@@ -23,7 +23,6 @@ export async function crawlController(req: Request, res: Response) {
       return res.status(402).json({ error: "Insufficient credits" });
     }
 
-    // authenticate on supabase
     const url = req.body.url;
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
@@ -42,7 +41,6 @@ export async function crawlController(req: Request, res: Response) {
             returnOnlyUrls: true,
           },
           pageOptions: pageOptions,
-
         });
 
         const docs = await a.getDocuments(false, (progress) => {
