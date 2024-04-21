@@ -17,11 +17,12 @@ export async function logJob(job: FirecrawlJob) {
           num_docs: job.num_docs,
           docs: job.docs,
           time_taken: job.time_taken,
-          team_id: job.team_id,
+          team_id: job.team_id === "preview" ? null : job.team_id,
           mode: job.mode,
           url: job.url,
           crawler_options: job.crawlerOptions,
           page_options: job.pageOptions,
+          origin: job.origin,
         },
       ]);
     if (error) {

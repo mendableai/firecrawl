@@ -44,7 +44,11 @@ export async function runWebScraper({
   onSuccess: (result: any) => void;
   onError: (error: any) => void;
   team_id: string;
-}): Promise<{ success: boolean; message: string; docs: CrawlResult[] }> {
+}): Promise<{
+  success: boolean;
+  message: string;
+  docs: CrawlResult[];
+}> {
   try {
     const provider = new WebScraperDataProvider();
     if (mode === "crawl") {
@@ -70,7 +74,7 @@ export async function runWebScraper({
       return {
         success: true,
         message: "No pages found",
-        docs: [],
+        docs: []
       };
     }
 
@@ -87,7 +91,7 @@ export async function runWebScraper({
       return {
         success: false,
         message: "Failed to bill team, no subscription was found",
-        docs: [],
+        docs: []
       };
     }
 
