@@ -54,5 +54,5 @@ jobs:
         id: start_workers
       - name: Run E2E tests
         run: |
-          npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false
+          npm run test:prod
         working-directory: ./apps/api
