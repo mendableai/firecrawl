@@ -3,7 +3,7 @@ import { CrawlResult, WebScraperOptions } from "../types";
 import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { Progress } from "../lib/entities";
 import { billTeam } from "../services/billing/credit_billing";
-
+import { Document } from "../lib/entities";
 export async function startWebScraperPipeline({
   job,
 }: {
@@ -24,7 +24,7 @@ export async function startWebScraperPipeline({
       job.moveToFailed(error);
     },
     team_id: job.data.team_id,
-  })) as { success: boolean; message: string; docs: CrawlResult[] };
+  })) as { success: boolean; message: string; docs: Document[] };
 }
 export async function runWebScraper({
   url,
@@ -44,7 +44,11 @@ export async function runWebScraper({
   onSuccess: (result: any) => void;
   onError: (error: any) => void;
   team_id: string;
-}): Promise<{ success: boolean; message: string; docs: CrawlResult[] }> {
+}): Promise<{
+  success: boolean;
+  message: string;
+  docs: CrawlResult[];
+}> {
   try {
     const provider = new WebScraperDataProvider();
     if (mode === "crawl") {
@@ -70,28 +74,32 @@ export async function runWebScraper({
       return {
         success: true,
         message: "No pages found",
-        docs: [],
+        docs: []
       };
     }
 
     // remove docs with empty content
     const filteredDocs = docs.filter((doc) => doc.content.trim().length > 0);
-    onSuccess(filteredDocs);
 
     const { success, credit_usage } = await billTeam(
       team_id,
       filteredDocs.length
     );
+
     if (!success) {
       // throw new Error("Failed to bill team, no subscription was found");
       return {
         success: false,
         message: "Failed to bill team, no subscription was found",
-        docs: [],
+        docs: []
       };
     }
 
-    return { success: true, message: "", docs: filteredDocs as CrawlResult[] };
+    // This is where the returnvalue from the job is set
+    onSuccess(filteredDocs);
+
+    // this return doesn't matter too much for the job completion result
+    return { success: true, message: "", docs: filteredDocs };
   } catch (error) {
     console.error("Error running web scraper", error);
     onError(error);

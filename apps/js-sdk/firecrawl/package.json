@@ -1,8 +1,9 @@
 {
   "name": "@mendable/firecrawl-js",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "JavaScript SDK for Firecrawl API",
   "main": "build/index.js",
+  "types": "types/index.d.ts",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"

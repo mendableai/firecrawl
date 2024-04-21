@@ -1,6 +1,7 @@
 import { supabase_service } from "./supabase";
 
 export const callWebhook = async (teamId: string, data: any) => {
+  try {
   const { data: webhooksData, error } = await supabase_service
     .from('webhooks')
     .select('url')
@@ -37,5 +38,9 @@ export const callWebhook = async (teamId: string, data: any) => {
       data: dataToSend,
       error: data.error || undefined,
     }),
-  });
-}
+    });
+  } catch (error) {
+    console.error(`Error sending webhook for team ID: ${teamId}`, error.message);
+  }
+};
+

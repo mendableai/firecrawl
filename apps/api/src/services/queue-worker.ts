@@ -4,6 +4,7 @@ import "dotenv/config";
 import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
+import { logJob } from "./logging/log_job";
 
 getWebScraperQueue().process(
   Math.floor(Number(process.env.NUM_WORKERS_PER_QUEUE ?? 8)),
@@ -15,7 +16,11 @@ getWebScraperQueue().process(
         current_step: "SCRAPING",
         current_url: "",
       });
+      const start = Date.now();
+      
       const { success, message, docs } = await startWebScraperPipeline({ job });
+      const end = Date.now();
+      const timeTakenInSeconds = (end - start) / 1000;
 
       const data = {
         success: success,
@@ -29,6 +34,20 @@ getWebScraperQueue().process(
       };
 
       await callWebhook(job.data.team_id, data);
+
+      await logJob({
+        success: success,
+        message: message,
+        num_docs: docs.length,
+        docs: docs,
+        time_taken: timeTakenInSeconds,
+        team_id: job.data.team_id,
+        mode: "crawl",
+        url: job.data.url,
+        crawlerOptions: job.data.crawlerOptions,
+        pageOptions: job.data.pageOptions,
+        origin: job.data.origin,
+      });
       done(null, data);
     } catch (error) {
       if (error instanceof CustomError) {
