@@ -3,12 +3,20 @@ import { app } from '../../index';
 import dotenv from 'dotenv';
 
 dotenv.config();
-const TEST_URL = 'http://localhost:3002'
+
+// const TEST_URL = 'http://localhost:3002'
+const TEST_URL = 'http://127.0.0.1:3002'
+
+
+
+
 
 describe('E2E Tests for API Routes', () => {
   describe('GET /', () => {
     it('should return Hello, world! message', async () => {
-      const response = await request(TEST_URL).get('/');
+
+      const response = await request(TEST_URL).get('/');      
+
       expect(response.statusCode).toBe(200);
       expect(response.text).toContain('SCRAPERS-JS: Hello, world! Fly.io');
     });
@@ -16,6 +24,8 @@ describe('E2E Tests for API Routes', () => {
 
   describe('GET /test', () => {
     it('should return Hello, world! message', async () => {
+
+
       const response = await request(TEST_URL).get('/test');
       expect(response.statusCode).toBe(200);
       expect(response.text).toContain('Hello, world!');
