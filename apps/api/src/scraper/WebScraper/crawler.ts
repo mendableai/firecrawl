@@ -49,40 +49,37 @@ export class WebCrawler {
 
 
   private filterLinks(sitemapLinks: string[], limit: number): string[] {
-    return sitemapLinks
-      .filter((link) => {
+    const validLinks = sitemapLinks.filter((link) => {
         const url = new URL(link);
         const path = url.pathname;
 
-        // Check if the link should be excluded
+        // Check if the link should be excluded based on exclude patterns
         if (this.excludes.length > 0 && this.excludes[0] !== "") {
-          if (
-            this.excludes.some((excludePattern) =>
-              new RegExp(excludePattern).test(path)
-            )
-          ) {
-            return false;
-          }
+            if (this.excludes.some(excludePattern => new RegExp(excludePattern).test(path))) {
+                return false;
+            }
         }
 
-        // Check if the link matches the include patterns, if any are specified
+        // Check if the link matches any include patterns
         if (this.includes.length > 0 && this.includes[0] !== "") {
-          return this.includes.some((includePattern) =>
-            new RegExp(includePattern).test(path)
-          );
+            if (!this.includes.some(includePattern => new RegExp(includePattern).test(path))) {
+                return false;
+            }
         }
 
-        const isAllowed = this.robots.isAllowed(link, "FireCrawlAgent") ?? true;
         // Check if the link is disallowed by robots.txt
+        const isAllowed = this.robots.isAllowed(link, "FireCrawlAgent") ?? true;
         if (!isAllowed) {
-          console.log(`Link disallowed by robots.txt: ${link}`);
-          return false;
+            console.log(`Link disallowed by robots.txt: ${link}`);
+            return false;
         }
 
         return true;
-      })
-      .slice(0, limit);
+    });
+
+    return validLinks.slice(0, limit);
   }
+
 
   public async start(
     inProgress?: (progress: Progress) => void,
