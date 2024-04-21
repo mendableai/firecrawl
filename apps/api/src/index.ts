@@ -3,13 +3,7 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import "dotenv/config";
 import { getWebScraperQueue } from "./services/queue-service";
-import { addWebScraperJob } from "./services/queue-jobs";
-import { supabase_service } from "./services/supabase";
-import { WebScraperDataProvider } from "./scraper/WebScraper";
-import { billTeam, checkTeamCredits } from "./services/billing/credit_billing";
-import { getRateLimiter, redisClient } from "./services/rate-limiter";
-import { parseApi } from "./lib/parseApi";
-import { RateLimiterMode } from "./types";
+import { redisClient } from "./services/rate-limiter";
 import { v0Router } from "./routes/v0";
 
 const { createBullBoard } = require("@bull-board/api");

@@ -1,11 +1,10 @@
 import { Request, Response } from "express";
-import { WebScraperDataProvider } from "../../src/scraper/WebScraper";
-import { billTeam } from "../../src/services/billing/credit_billing";
-import { checkTeamCredits } from "../../src/services/billing/credit_billing";
+import { WebScraperDataProvider } from "../scraper/WebScraper";
+import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
 import { authenticateUser } from "./auth";
-import { RateLimiterMode } from "../../src/types";
-import { logJob } from "../../src/services/logging/log_job";
-import { Document } from "../../src/lib/entities";
+import { RateLimiterMode } from "../types";
+import { logJob } from "../services/logging/log_job";
+import { Document } from "../lib/entities";
 
 export async function scrapeHelper(
   req: Request,
@@ -16,7 +15,7 @@ export async function scrapeHelper(
   success: boolean;
   error?: string;
   data?: Document;
-  returnCode?: number;
+  returnCode: number;
 }> {
   const url = req.body.url;
   if (!url) {
@@ -103,7 +102,7 @@ export async function scrapeController(req: Request, res: Response) {
       crawlerOptions: crawlerOptions,
       pageOptions: pageOptions,
     });
-    return res.json(result);
+    return res.status(result.returnCode).json(result);
   } catch (error) {
     console.error(error);
     return res.status(500).json({ error: error.message });
