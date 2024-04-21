@@ -1,4 +1,3 @@
-
 # Contributors guide: 
 
 Welcome to [Firecrawl](https://firecrawl.dev) 🔥! Here are some instructions on how to get the project locally, so you can run it on your own (and contribute) 
@@ -11,14 +10,15 @@ If you're contributing, note that the process is similar to other open source re
 First, start by installing dependencies
 1. node.js [instructions](https://nodejs.org/en/learn/getting-started/how-to-install-nodejs)
 2. pnpm [instructions](https://pnpm.io/installation)
-3. redis - [instructions](https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/) 
+3. redis [instructions](https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/) 
 
 
 Set environment variables in a .env  in the /apps/api/ directoryyou can copy over the template in .env.example.
 
 To start, we wont set up authentication, or any optional sub services (pdf parsing, JS blocking support, AI features )
 
-```.env 
+.env:
+```
 # ===== Required ENVS ======
 NUM_WORKERS_PER_QUEUE=8 
 PORT=3002
@@ -62,21 +62,28 @@ You're going to need to open 3 terminals.
 
 Run the command anywhere within your project
 
-`redis-server`
+```bash
+redis-server
+```
 
-￼
 ### Terminal 2 - setting up workers
 
 Now, navigate to the apps/api/ directory and run:
-`pnpm run workers`
-￼
+```bash
+pnpm run workers
+```
+
+This will start the workers who are responsible for processing crawl jobs.
+
 ### Terminal 3 - setting up the main server
 
 
 To do this, navigate to the apps/api/ directory and run if you don’t have this already, install pnpm here: https://pnpm.io/installation
-Next, run your server with `pnpm run start`
+Next, run your server with:
 
-
+```bash
+pnpm run start
+```
 
 ### Terminal 3 - sending our first request.
 
