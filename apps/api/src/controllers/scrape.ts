@@ -41,7 +41,6 @@ export async function scrapeHelper(
     return { success: true, error: "No page found", returnCode: 200 };
   }
 
-  if (process.env.USE_DB_AUTHENTICATION === "true") {
     const { success, credit_usage } = await billTeam(
       team_id,
       filteredDocs.length
@@ -54,7 +53,6 @@ export async function scrapeHelper(
         returnCode: 402,
       };
     }
-  }
 
   return {
     success: true,

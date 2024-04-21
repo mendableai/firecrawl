@@ -25,7 +25,6 @@ export interface WebScraperOptions {
   origin?: string;
 }
 
-
 export interface FirecrawlJob {
   success: boolean;
   message: string;
@@ -40,8 +39,6 @@ export interface FirecrawlJob {
   origin: string;
 }
 
-
-
 export enum RateLimiterMode {
   Crawl = "crawl",
   CrawlStatus = "crawl-status",
@@ -49,4 +46,9 @@ export enum RateLimiterMode {
   Preview = "preview",
 }
 
-
+export interface AuthResponse {
+  success: boolean;
+  team_id?: string;
+  error?: string;
+  status?: number;
+}

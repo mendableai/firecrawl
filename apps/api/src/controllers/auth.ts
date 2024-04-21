@@ -1,10 +1,15 @@
 import { parseApi } from "../../src/lib/parseApi";
 import { getRateLimiter } from "../../src/services/rate-limiter";
-import { RateLimiterMode } from "../../src/types";
+import { AuthResponse, RateLimiterMode } from "../../src/types";
 import { supabase_service } from "../../src/services/supabase";
+import { withAuth } from "../../src/lib/withAuth";
 
 
-export async function authenticateUser(
+export async function authenticateUser(req, res, mode?: RateLimiterMode) : Promise<AuthResponse> {
+  return withAuth(supaAuthenticateUser)(req, res, mode);
+}
+
+export async function supaAuthenticateUser(
   req,
   res,
   mode?: RateLimiterMode
@@ -14,15 +19,6 @@ export async function authenticateUser(
   error?: string;
   status?: number;
 }> {
-
-  console.log(process.env)
-
-  if(process.env.USE_DB_AUTHENTICATION === "false"){
-    console.log("WARNING - YOU'RE bypassing Authentication");
-    return { success: true};
-  }
-
-  console.log("USING SUPABASE AUTH");
 
   const authHeader = req.headers.authorization;
   if (!authHeader) {
