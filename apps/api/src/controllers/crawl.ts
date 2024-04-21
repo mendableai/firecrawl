@@ -8,7 +8,6 @@ import { addWebScraperJob } from "../../src/services/queue-jobs";
 
 export async function crawlController(req: Request, res: Response) {
   try {
-    console.log("hello");
     const { success, team_id, error, status } = await authenticateUser(
       req,
       res,
