@@ -21,6 +21,7 @@ async def root(body: UrlModel):  # Using Pydantic model for request body
         await page.goto(body.url)  # Adjusted to use the url from the request body model
         page_content = await page.content()  # Get the HTML content of the page
 
+        await context.close()
         await browser.close()
 
         json_compatible_item_data = {"content": page_content}
