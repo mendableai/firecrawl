@@ -90,14 +90,14 @@ app.get(`/admin/${process.env.BULL_AUTH_KEY}/queues`, async (req, res) => {
 app.get(`/serverHealthCheck`, async (req, res) => {
   try {
     const webScraperQueue = getWebScraperQueue();
-    const [activeJobs] = await Promise.all([
-      webScraperQueue.getActiveCount(),
+    const [waitingJobs] = await Promise.all([
+      webScraperQueue.getWaitingCount(),
     ]);
 
-    const noActiveJobs = activeJobs === 0;
+    const noWaitingJobs = waitingJobs === 0;
     // 200 if no active jobs, 503 if there are active jobs
-    return res.status(noActiveJobs ? 200 : 500).json({
-      activeJobs,
+    return res.status(noWaitingJobs ? 200 : 500).json({
+      waitingJobs,
     });
   } catch (error) {
     console.error(error);
@@ -107,30 +107,31 @@ app.get(`/serverHealthCheck`, async (req, res) => {
 
 app.get('/serverHealthCheck/notify', async (req, res) => {
   if (process.env.SLACK_WEBHOOK_URL) {
-    const treshold = 5; // The treshold value for the active jobs
+    const treshold = 1; // The treshold value for the active jobs
     const timeout = 60000; // 1 minute // The timeout value for the check in milliseconds
 
-    const getActiveJobs = async () => {
+    const getWaitingJobsCount = async () => {
       const webScraperQueue = getWebScraperQueue();
-      const [activeJobs] = await Promise.all([
-        webScraperQueue.getActiveCount(),
+      const [waitingJobsCount] = await Promise.all([
+        webScraperQueue.getWaitingCount(),
       ]);
 
-      return activeJobs;
+      return waitingJobsCount;
     };
 
     res.status(200).json({ message: "Check initiated" });
 
-    const checkActiveJobs = async () => {
+    const checkWaitingJobs = async () => {
       try {
-        let activeJobs = await getActiveJobs();
-        if (activeJobs >= treshold) {
+        let waitingJobsCount = await getWaitingJobsCount();
+        if (waitingJobsCount >= treshold) {
           setTimeout(async () => {
-            activeJobs = await getActiveJobs(); // Re-check the active jobs count
-            if (activeJobs >= treshold) {
+            // Re-check the waiting jobs count after the timeout
+            waitingJobsCount = await getWaitingJobsCount(); 
+            if (waitingJobsCount >= treshold) {
               const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
               const message = {
-                text: `⚠️ Warning: The number of active jobs (${activeJobs}) has exceeded the threshold (${treshold}) for more than ${timeout/60000} minute(s).`,
+                text: `⚠️ Warning: The number of active jobs (${waitingJobsCount}) has exceeded the threshold (${treshold}) for more than ${timeout/60000} minute(s).`,
               };
 
               const response = await fetch(slackWebhookUrl, {
@@ -152,7 +153,7 @@ app.get('/serverHealthCheck/notify', async (req, res) => {
       }
     };
 
-    checkActiveJobs();
+    checkWaitingJobs();
   }
 });
 
