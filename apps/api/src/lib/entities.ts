@@ -11,6 +11,8 @@ export interface Progress {
 
 export type PageOptions = {
   onlyMainContent?: boolean;
+  fallback?: boolean;
+  fetchPageContent?: boolean;
 };
 export type WebScraperOptions = {
   urls: string[];

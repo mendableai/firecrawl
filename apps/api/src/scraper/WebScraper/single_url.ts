@@ -4,9 +4,7 @@ import { extractMetadata } from "./utils/metadata";
 import dotenv from "dotenv";
 import { Document, PageOptions } from "../../lib/entities";
 import { parseMarkdown } from "../../lib/html-to-markdown";
-import { parseTablesToMarkdown } from "./utils/parseTable";
 import { excludeNonMainTags } from "./utils/excludeTags";
-// import puppeteer from "puppeteer";
 
 dotenv.config();
 
@@ -155,6 +153,15 @@ export async function scrapSingleUrl(
     // }
 
     let [text, html] = await attemptScraping(urlToScrap, "scrapingBee");
+    if(pageOptions.fallback === false){
+      const soup = cheerio.load(html);
+      const metadata = extractMetadata(soup, urlToScrap);
+      return {
+        content: text,
+        markdown: text,
+        metadata: { ...metadata, sourceURL: urlToScrap },
+      } as Document;
+    }
     if (!text || text.length < 100) {
       console.log("Falling back to playwright");
       [text, html] = await attemptScraping(urlToScrap, "playwright");
