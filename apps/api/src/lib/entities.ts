@@ -14,6 +14,11 @@ export type PageOptions = {
   fallback?: boolean;
   fetchPageContent?: boolean;
 };
+
+export type SearchOptions = {
+  limit?: number;
+};
+
 export type WebScraperOptions = {
   urls: string[];
   mode: "single_urls" | "sitemap" | "crawl";

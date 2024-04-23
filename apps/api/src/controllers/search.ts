@@ -4,14 +4,15 @@ import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
 import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../types";
 import { logJob } from "../services/logging/log_job";
-import { PageOptions } from "../lib/entities";
+import { PageOptions, SearchOptions } from "../lib/entities";
 import { search } from "../search/googlesearch";
 
 export async function searchHelper(
   req: Request,
   team_id: string,
   crawlerOptions: any,
-  pageOptions: PageOptions
+  pageOptions: PageOptions,
+  searchOptions: SearchOptions
 ): Promise<{
   success: boolean;
   error?: string;
@@ -19,39 +20,44 @@ export async function searchHelper(
   returnCode: number;
 }> {
   const query = req.body.query;
+  const advanced = false;
   if (!query) {
     return { success: false, error: "Query is required", returnCode: 400 };
   }
 
-  const res = await search(query, true, 7);
+  const res = await search(query, advanced, searchOptions.limit ?? 7);
 
   let justSearch = pageOptions.fetchPageContent === false;
 
-  if(justSearch){
+  if (justSearch) {
     return { success: true, data: res, returnCode: 200 };
   }
 
   if (res.results.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
   }
+  console.log(res.results);
 
   const a = new WebScraperDataProvider();
   await a.setOptions({
     mode: "single_urls",
-    urls: res.results.map((r) => r.url),
+    urls: res.results.map((r) => (!advanced ? r : r.url)),
     crawlerOptions: {
       ...crawlerOptions,
     },
-    pageOptions: {...pageOptions, onlyMainContent: pageOptions?.onlyMainContent ?? true, fetchPageContent: pageOptions?.fetchPageContent ?? true, fallback:false},
+    pageOptions: {
+      ...pageOptions,
+      onlyMainContent: pageOptions?.onlyMainContent ?? true,
+      fetchPageContent: pageOptions?.fetchPageContent ?? true,
+      fallback: false,
+    },
   });
 
   const docs = await a.getDocuments(true);
-  if (docs.length === 0)
-  {
+  if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
   }
 
-  
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(
     (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
@@ -61,18 +67,18 @@ export async function searchHelper(
     return { success: true, error: "No page found", returnCode: 200 };
   }
 
-    const { success, credit_usage } = await billTeam(
-      team_id,
-      filteredDocs.length
-    );
-    if (!success) {
-      return {
-        success: false,
-        error:
-          "Failed to bill team. Insufficient credits or subscription not found.",
-        returnCode: 402,
-      };
-    }
+  const { success, credit_usage } = await billTeam(
+    team_id,
+    filteredDocs.length
+  );
+  if (!success) {
+    return {
+      success: false,
+      error:
+        "Failed to bill team. Insufficient credits or subscription not found.",
+      returnCode: 402,
+    };
+  }
 
   return {
     success: true,
@@ -93,8 +99,14 @@ export async function searchController(req: Request, res: Response) {
       return res.status(status).json({ error });
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
-    const pageOptions = req.body.pageOptions ?? { onlyMainContent: true, fetchPageContent: true, fallback: false};
+    const pageOptions = req.body.pageOptions ?? {
+      onlyMainContent: true,
+      fetchPageContent: true,
+      fallback: false,
+    };
     const origin = req.body.origin ?? "api";
+
+    const searchOptions = req.body.searchOptions ?? { limit: 7 };
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
@@ -111,7 +123,8 @@ export async function searchController(req: Request, res: Response) {
       req,
       team_id,
       crawlerOptions,
-      pageOptions
+      pageOptions,
+      searchOptions
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
