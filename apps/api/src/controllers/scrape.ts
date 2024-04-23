@@ -5,6 +5,7 @@ import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../types";
 import { logJob } from "../services/logging/log_job";
 import { Document } from "../lib/entities";
+import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 
 export async function scrapeHelper(
   req: Request,
@@ -20,6 +21,10 @@ export async function scrapeHelper(
   const url = req.body.url;
   if (!url) {
     return { success: false, error: "Url is required", returnCode: 400 };
+  }
+
+  if (isUrlBlocked(url)) {
+    return { success: false, error: "URL is blocked due to policy restrictions", returnCode: 403 };
   }
 
   const a = new WebScraperDataProvider();

@@ -47,6 +47,18 @@ const TEST_URL = "http://127.0.0.1:3002";
           .send({ url: "https://firecrawl.dev" });
         expect(response.statusCode).toBe(401);
       });
+
+      it("should return an error for a blocklisted URL", async () => {
+        const blocklistedUrl = "https://facebook.com/fake-test";
+        const response = await request(TEST_URL)
+          .post("/v0/scrape")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send({ url: blocklistedUrl });
+        expect(response.statusCode).toBe(403);
+        expect(response.body.error).toContain("URL is blocked due to policy restrictions");
+      });
+
       it("should return a successful response with a valid preview token", async () => {
         const response = await request(TEST_URL)
           .post("/v0/scrape")
@@ -86,6 +98,17 @@ const TEST_URL = "http://127.0.0.1:3002";
         expect(response.statusCode).toBe(401);
       });
 
+      it("should return an error for a blocklisted URL", async () => {
+        const blocklistedUrl = "https://twitter.com/fake-test";
+        const response = await request(TEST_URL)
+          .post("/v0/crawl")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send({ url: blocklistedUrl });
+        expect(response.statusCode).toBe(403);
+        expect(response.body.error).toContain("URL is blocked due to policy restrictions");
+      });
+
       it("should return a successful response with a valid API key", async () => {
         const response = await request(TEST_URL)
           .post("/v0/crawl")
@@ -98,6 +121,7 @@ const TEST_URL = "http://127.0.0.1:3002";
           /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
         );
       });
+
 
       // Additional tests for insufficient credits?
     });
@@ -117,6 +141,17 @@ const TEST_URL = "http://127.0.0.1:3002";
           .set("Content-Type", "application/json")
           .send({ url: "https://firecrawl.dev" });
         expect(response.statusCode).toBe(401);
+      });
+
+      it("should return an error for a blocklisted URL", async () => {
+        const blocklistedUrl = "https://instagram.com/fake-test";
+        const response = await request(TEST_URL)
+          .post("/v0/crawlWebsitePreview")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send({ url: blocklistedUrl });
+        expect(response.statusCode).toBe(403);
+        expect(response.body.error).toContain("URL is blocked due to policy restrictions");
       });
 
       it("should return a successful response with a valid API key", async () => {

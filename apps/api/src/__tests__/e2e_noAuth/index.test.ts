@@ -55,6 +55,16 @@ describe("E2E Tests for API Routes with No Authentication", () => {
       expect(response.statusCode).not.toBe(401);
     });
 
+    it("should return an error for a blocklisted URL without requiring authorization", async () => {
+      const blocklistedUrl = "https://facebook.com/fake-test";
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Content-Type", "application/json")
+        .send({ url: blocklistedUrl });
+      expect(response.statusCode).toBe(403);
+      expect(response.body.error).toContain("URL is blocked due to policy restrictions");
+    });
+
     it("should return a successful response", async () => {
       const response = await request(TEST_URL)
         .post("/v0/scrape")
@@ -68,6 +78,16 @@ describe("E2E Tests for API Routes with No Authentication", () => {
     it("should not require authorization", async () => {
       const response = await request(TEST_URL).post("/v0/crawl");
       expect(response.statusCode).not.toBe(401);
+    });
+
+    it("should return an error for a blocklisted URL", async () => {
+      const blocklistedUrl = "https://twitter.com/fake-test";
+      const response = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Content-Type", "application/json")
+        .send({ url: blocklistedUrl });
+      expect(response.statusCode).toBe(403);
+      expect(response.body.error).toContain("URL is blocked due to policy restrictions");
     });
 
     it("should return a successful response", async () => {
@@ -87,6 +107,16 @@ describe("E2E Tests for API Routes with No Authentication", () => {
     it("should not require authorization", async () => {
       const response = await request(TEST_URL).post("/v0/crawlWebsitePreview");
       expect(response.statusCode).not.toBe(401);
+    });
+
+    it("should return an error for a blocklisted URL", async () => {
+      const blocklistedUrl = "https://instagram.com/fake-test";
+      const response = await request(TEST_URL)
+        .post("/v0/crawlWebsitePreview")
+        .set("Content-Type", "application/json")
+        .send({ url: blocklistedUrl });
+      expect(response.statusCode).toBe(403);
+      expect(response.body.error).toContain("URL is blocked due to policy restrictions");
     });
 
     it("should return a successful response", async () => {

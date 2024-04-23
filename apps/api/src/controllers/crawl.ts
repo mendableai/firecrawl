@@ -5,6 +5,7 @@ import { checkTeamCredits } from "../../src/services/billing/credit_billing";
 import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../../src/types";
 import { addWebScraperJob } from "../../src/services/queue-jobs";
+import { isUrlBlocked } from "../../src/scraper/WebScraper/utils/blocklist";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -27,6 +28,11 @@ export async function crawlController(req: Request, res: Response) {
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
     }
+
+    if (isUrlBlocked(url)) {
+      return res.status(403).json({ error: "URL is blocked due to policy restrictions" });
+    }
+    
     const mode = req.body.mode ?? "crawl";
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
