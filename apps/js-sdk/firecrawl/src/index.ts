@@ -102,9 +102,9 @@ export default class FirecrawlApp {
    * @param {Params | null} params - Additional parameters for the crawl request.
    * @param {boolean} waitUntilDone - Whether to wait for the crawl job to complete.
    * @param {number} timeout - Timeout in seconds for job status checks.
-   * @returns {Promise<CrawlResponse>} The response from the crawl operation.
+   * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
    */
-  async crawlUrl(url: string, params: Params | null = null, waitUntilDone: boolean = true, timeout: number = 2): Promise<CrawlResponse> {
+  async crawlUrl(url: string, params: Params | null = null, waitUntilDone: boolean = true, timeout: number = 2): Promise<CrawlResponse | any> {
     const headers = this.prepareHeaders();
     let jsonData: Params = { url };
     if (params) {
