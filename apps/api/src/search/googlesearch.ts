@@ -61,40 +61,7 @@ export async function search(term: string, advanced = false, num_results = 7, la
         }
     }
 
-    // const response = await _req_scraping_bee(escaped_term, num_results, lang);
-    // const $ = cheerio.load(response);
-    
-    // const knowledgeGraphElement = $("div.kno-rdesc");
-    // console.log(knowledgeGraphElement);
-    // console.log(knowledgeGraphElement.html());
-
-    // let knowledgeGraph = null;
-    // if (knowledgeGraphElement.length > 0) {
-    //     console.log("Knowledge Graph found");
-    //     const title = knowledgeGraphElement.find("h2").text();
-    //     const type = knowledgeGraphElement.find("div[data-attrid='subtitle']").text();
-    //     const website = knowledgeGraphElement.find("a[data-ved]").attr("href");
-    //     const imageUrl = knowledgeGraphElement.find("g-img img").attr("src");
-    //     const description = knowledgeGraphElement.find("div[data-attrid='description'] span").text();
-    //     const descriptionSource = knowledgeGraphElement.find("div[data-attrid='description'] a").text();
-    //     const descriptionLink = knowledgeGraphElement.find("div[data-attrid='description'] a").attr("href");
-    //     const attributes = {};
-    //     knowledgeGraphElement.find("div[data-attrid='kc:/common:sideways']").each((index, element) => {
-    //         const attributeKey = $(element).find("span[data-attrid]").text();
-    //         const attributeValue = $(element).find("span[data-log-string]").text();
-    //         attributes[attributeKey] = attributeValue;
-    //     });
-    //     knowledgeGraph = {
-    //         "title": title,
-    //         "type": type,
-    //         "website": website,
-    //         "imageUrl": imageUrl,
-    //         "description": description,
-    //         "descriptionSource": descriptionSource,
-    //         "descriptionLink": descriptionLink,
-    //         "attributes": attributes
-    //     };
-    // }
+    // TODO: knowledge graph, answer box, etc.
 
     let start = 0;
     let results = [];
@@ -132,3 +99,39 @@ export async function search(term: string, advanced = false, num_results = 7, la
     }
     return {results: results};
 }
+
+
+// const response = await _req_scraping_bee(escaped_term, num_results, lang);
+    // const $ = cheerio.load(response);
+    
+    // const knowledgeGraphElement = $("div.kno-rdesc");
+    // console.log(knowledgeGraphElement);
+    // console.log(knowledgeGraphElement.html());
+
+    // let knowledgeGraph = null;
+    // if (knowledgeGraphElement.length > 0) {
+    //     console.log("Knowledge Graph found");
+    //     const title = knowledgeGraphElement.find("h2").text();
+    //     const type = knowledgeGraphElement.find("div[data-attrid='subtitle']").text();
+    //     const website = knowledgeGraphElement.find("a[data-ved]").attr("href");
+    //     const imageUrl = knowledgeGraphElement.find("g-img img").attr("src");
+    //     const description = knowledgeGraphElement.find("div[data-attrid='description'] span").text();
+    //     const descriptionSource = knowledgeGraphElement.find("div[data-attrid='description'] a").text();
+    //     const descriptionLink = knowledgeGraphElement.find("div[data-attrid='description'] a").attr("href");
+    //     const attributes = {};
+    //     knowledgeGraphElement.find("div[data-attrid='kc:/common:sideways']").each((index, element) => {
+    //         const attributeKey = $(element).find("span[data-attrid]").text();
+    //         const attributeValue = $(element).find("span[data-log-string]").text();
+    //         attributes[attributeKey] = attributeValue;
+    //     });
+    //     knowledgeGraph = {
+    //         "title": title,
+    //         "type": type,
+    //         "website": website,
+    //         "imageUrl": imageUrl,
+    //         "description": description,
+    //         "descriptionSource": descriptionSource,
+    //         "descriptionLink": descriptionLink,
+    //         "attributes": attributes
+    //     };
+    // }
