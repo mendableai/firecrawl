@@ -13,10 +13,13 @@ export type PageOptions = {
   onlyMainContent?: boolean;
   fallback?: boolean;
   fetchPageContent?: boolean;
+  
 };
 
 export type SearchOptions = {
   limit?: number;
+  tbs?: string;
+  filter?: string;
 };
 
 export type WebScraperOptions = {

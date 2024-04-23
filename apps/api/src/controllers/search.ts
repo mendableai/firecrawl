@@ -5,7 +5,7 @@ import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../types";
 import { logJob } from "../services/logging/log_job";
 import { PageOptions, SearchOptions } from "../lib/entities";
-import { search } from "../search/googlesearch";
+import { search } from "../search";
 
 export async function searchHelper(
   req: Request,
@@ -25,7 +25,10 @@ export async function searchHelper(
     return { success: false, error: "Query is required", returnCode: 400 };
   }
 
-  const res = await search(query, advanced, searchOptions.limit ?? 7);
+  const tbs = searchOptions.tbs ?? null;
+  const filter = searchOptions.filter ?? null;
+
+  const res = await search({query: query, advanced: advanced, num_results: searchOptions.limit ?? 7, tbs: tbs, filter: filter});
 
   let justSearch = pageOptions.fetchPageContent === false;
 
@@ -33,15 +36,14 @@ export async function searchHelper(
     return { success: true, data: res, returnCode: 200 };
   }
 
-  if (res.results.length === 0) {
+  if (res.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
   }
-  console.log(res.results);
 
   const a = new WebScraperDataProvider();
   await a.setOptions({
     mode: "single_urls",
-    urls: res.results.map((r) => (!advanced ? r : r.url)),
+    urls: res.map((r) => r),
     crawlerOptions: {
       ...crawlerOptions,
     },
