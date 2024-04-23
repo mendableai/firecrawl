@@ -24,7 +24,7 @@ async function _req(term: string, results: number, lang: string, start: number, 
         },
         params: {
             "q": term,
-            "num": results + 2,  // Prevents multiple requests
+            "num": results,  // Number of results to return
             "hl": lang,
         },
         proxy: proxies,
