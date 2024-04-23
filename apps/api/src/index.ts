@@ -87,6 +87,77 @@ app.get(`/admin/${process.env.BULL_AUTH_KEY}/queues`, async (req, res) => {
   }
 });
 
+app.get(`/serverHealthCheck`, async (req, res) => {
+  try {
+    const webScraperQueue = getWebScraperQueue();
+    const [waitingJobs] = await Promise.all([
+      webScraperQueue.getWaitingCount(),
+    ]);
+
+    const noWaitingJobs = waitingJobs === 0;
+    // 200 if no active jobs, 503 if there are active jobs
+    return res.status(noWaitingJobs ? 200 : 500).json({
+      waitingJobs,
+    });
+  } catch (error) {
+    console.error(error);
+    return res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/serverHealthCheck/notify', async (req, res) => {
+  if (process.env.SLACK_WEBHOOK_URL) {
+    const treshold = 1; // The treshold value for the active jobs
+    const timeout = 60000; // 1 minute // The timeout value for the check in milliseconds
+
+    const getWaitingJobsCount = async () => {
+      const webScraperQueue = getWebScraperQueue();
+      const [waitingJobsCount] = await Promise.all([
+        webScraperQueue.getWaitingCount(),
+      ]);
+
+      return waitingJobsCount;
+    };
+
+    res.status(200).json({ message: "Check initiated" });
+
+    const checkWaitingJobs = async () => {
+      try {
+        let waitingJobsCount = await getWaitingJobsCount();
+        if (waitingJobsCount >= treshold) {
+          setTimeout(async () => {
+            // Re-check the waiting jobs count after the timeout
+            waitingJobsCount = await getWaitingJobsCount(); 
+            if (waitingJobsCount >= treshold) {
+              const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
+              const message = {
+                text: `⚠️ Warning: The number of active jobs (${waitingJobsCount}) has exceeded the threshold (${treshold}) for more than ${timeout/60000} minute(s).`,
+              };
+
+              const response = await fetch(slackWebhookUrl, {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(message),
+              })
+              
+              if (!response.ok) {
+                console.error('Failed to send Slack notification')
+              }
+            }
+          }, timeout);
+        }
+      } catch (error) {
+        console.error(error);
+      }
+    };
+
+    checkWaitingJobs();
+  }
+});
+
+
 app.get("/is-production", (req, res) => {
   res.send({ isProduction: global.isProduction });
 });
