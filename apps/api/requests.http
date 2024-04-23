@@ -50,3 +50,12 @@ content-type: application/json
 ### Check Job Status
 GET https://api.firecrawl.dev/v0/crawl/status/cfcb71ac-23a3-4da5-bd85-d4e58b871d66
 Authorization: Bearer 
+
+### Get Active Jobs Count
+GET http://localhost:3002/serverHealthCheck
+content-type: application/json
+
+### Notify Server Health Check
+GET http://localhost:3002/serverHealthCheck/notify
+content-type: application/json
+
