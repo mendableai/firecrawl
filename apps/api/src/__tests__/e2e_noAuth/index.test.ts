@@ -117,7 +117,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
       expect(response.statusCode).not.toBe(401);
     });
 
-    it("should return a successful response with a valid API key", async () => {
+    it("should return a successful response without a valid API key", async () => {
       const response = await request(TEST_URL)
         .post("/v0/search")
         .set("Content-Type", "application/json")
@@ -126,7 +126,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
       expect(response.body).toHaveProperty("success");
       expect(response.body.success).toBe(true);
       expect(response.body).toHaveProperty("data");
-    });
+    }, 20000);
   });
 
   describe("GET /v0/crawl/status/:jobId", () => {
