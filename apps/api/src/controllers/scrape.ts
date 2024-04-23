@@ -24,7 +24,7 @@ export async function scrapeHelper(
   }
 
   if (isUrlBlocked(url)) {
-    return { success: false, error: "URL is blocked due to policy restrictions", returnCode: 403 };
+    return { success: false, error: "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.", returnCode: 403 };
   }
 
   const a = new WebScraperDataProvider();

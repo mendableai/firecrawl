@@ -30,7 +30,7 @@ export async function crawlController(req: Request, res: Response) {
     }
 
     if (isUrlBlocked(url)) {
-      return res.status(403).json({ error: "URL is blocked due to policy restrictions" });
+      return res.status(403).json({ error: "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it." });
     }
     
     const mode = req.body.mode ?? "crawl";

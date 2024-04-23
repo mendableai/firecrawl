@@ -56,7 +56,7 @@ const TEST_URL = "http://127.0.0.1:3002";
           .set("Content-Type", "application/json")
           .send({ url: blocklistedUrl });
         expect(response.statusCode).toBe(403);
-        expect(response.body.error).toContain("URL is blocked due to policy restrictions");
+        expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
       });
 
       it("should return a successful response with a valid preview token", async () => {
@@ -106,7 +106,7 @@ const TEST_URL = "http://127.0.0.1:3002";
           .set("Content-Type", "application/json")
           .send({ url: blocklistedUrl });
         expect(response.statusCode).toBe(403);
-        expect(response.body.error).toContain("URL is blocked due to policy restrictions");
+        expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
       });
 
       it("should return a successful response with a valid API key", async () => {
@@ -151,7 +151,7 @@ const TEST_URL = "http://127.0.0.1:3002";
           .set("Content-Type", "application/json")
           .send({ url: blocklistedUrl });
         expect(response.statusCode).toBe(403);
-        expect(response.body.error).toContain("URL is blocked due to policy restrictions");
+        expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
       });
 
       it("should return a successful response with a valid API key", async () => {

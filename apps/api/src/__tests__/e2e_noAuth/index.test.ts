@@ -62,7 +62,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
         .set("Content-Type", "application/json")
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain("URL is blocked due to policy restrictions");
+      expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
     });
 
     it("should return a successful response", async () => {
@@ -87,7 +87,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
         .set("Content-Type", "application/json")
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain("URL is blocked due to policy restrictions");
+      expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
     });
 
     it("should return a successful response", async () => {
@@ -116,7 +116,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
         .set("Content-Type", "application/json")
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain("URL is blocked due to policy restrictions");
+      expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
     });
 
     it("should return a successful response", async () => {
