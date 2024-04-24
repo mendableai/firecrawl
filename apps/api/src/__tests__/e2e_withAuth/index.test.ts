@@ -168,6 +168,34 @@ const TEST_URL = "http://127.0.0.1:3002";
       });
     });
 
+    describe("POST /v0/search", () => {
+      it("should require authorization", async () => {
+        const response = await request(TEST_URL).post("/v0/search");
+        expect(response.statusCode).toBe(401);
+      });
+
+      it("should return an error response with an invalid API key", async () => {
+        const response = await request(TEST_URL)
+          .post("/v0/search")
+          .set("Authorization", `Bearer invalid-api-key`)
+          .set("Content-Type", "application/json")
+          .send({ query: "test" });
+        expect(response.statusCode).toBe(401);
+      });
+
+      it("should return a successful response with a valid API key", async () => {
+        const response = await request(TEST_URL)
+          .post("/v0/search")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send({ query: "test" });
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty("success");
+        expect(response.body.success).toBe(true);
+        expect(response.body).toHaveProperty("data");
+      }, 20000); 
+    });
+
     describe("GET /v0/crawl/status/:jobId", () => {
       it("should require authorization", async () => {
         const response = await request(TEST_URL).get("/v0/crawl/status/123");

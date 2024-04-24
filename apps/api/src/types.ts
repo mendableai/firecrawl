@@ -44,6 +44,8 @@ export enum RateLimiterMode {
   CrawlStatus = "crawl-status",
   Scrape = "scrape",
   Preview = "preview",
+  Search = "search",
+
 }
 
 export interface AuthResponse {

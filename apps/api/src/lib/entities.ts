@@ -11,7 +11,17 @@ export interface Progress {
 
 export type PageOptions = {
   onlyMainContent?: boolean;
+  fallback?: boolean;
+  fetchPageContent?: boolean;
+  
 };
+
+export type SearchOptions = {
+  limit?: number;
+  tbs?: string;
+  filter?: string;
+};
+
 export type WebScraperOptions = {
   urls: string[];
   mode: "single_urls" | "sitemap" | "crawl";
@@ -30,6 +40,7 @@ export type WebScraperOptions = {
 
 export class Document {
   id?: string;
+  url?: string; // Used only in /search for now
   content: string;
   markdown?: string;
   createdAt?: Date;

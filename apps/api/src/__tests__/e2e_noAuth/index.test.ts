@@ -132,6 +132,33 @@ describe("E2E Tests for API Routes with No Authentication", () => {
     });
   });
 
+  describe("POST /v0/search", () => {
+    it("should require not authorization", async () => {
+      const response = await request(TEST_URL).post("/v0/search");
+      expect(response.statusCode).not.toBe(401);
+    });
+
+    it("should return no error response with an invalid API key", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/search")
+        .set("Authorization", `Bearer invalid-api-key`)
+        .set("Content-Type", "application/json")
+        .send({ query: "test" });
+      expect(response.statusCode).not.toBe(401);
+    });
+
+    it("should return a successful response without a valid API key", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/search")
+        .set("Content-Type", "application/json")
+        .send({ query: "test" });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("success");
+      expect(response.body.success).toBe(true);
+      expect(response.body).toHaveProperty("data");
+    }, 20000);
+  });
+
   describe("GET /v0/crawl/status/:jobId", () => {
     it("should not require authorization", async () => {
       const response = await request(TEST_URL).get("/v0/crawl/status/123");
