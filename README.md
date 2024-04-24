@@ -146,6 +146,8 @@ curl -X POST https://api.firecrawl.dev/v0/search \
 }
 ```
 
+Coming soon to the SDKs and Integrations.
+
 ## Using Python SDK
 
 ### Installing Python SDK
