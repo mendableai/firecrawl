@@ -171,6 +171,81 @@
         }
       }
     },
+    "/search": {
+      "post": {
+        "summary": "Search for a keyword in Google, returns top page results with markdown content for each page",
+        "operationId": "searchGoogle",
+        "tags": ["Search"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "The URL to scrape"
+                  },
+                  "pageOptions": {
+                    "type": "object",
+                    "properties": {
+                      "onlyMainContent": {
+                        "type": "boolean",
+                        "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
+                        "default": false
+                      },
+                      "fetchPageContent": {
+                        "type": "boolean",
+                        "description": "Fetch the content of each page. If false, defaults to a basic fast serp API.",
+                        "default": true
+                      }
+                    }
+                  },
+                  "searchOptions": {
+                    "type": "object",
+                    "properties": {
+                      "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results. Max is 20 during beta."
+                      }
+                    }
+                  }
+                },
+                "required": ["query"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required"
+          },
+          "429": {
+            "description": "Too many requests"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
     "/crawl/status/{jobId}": {
       "get": {
         "tags": ["Crawl"],
@@ -262,10 +337,51 @@
           "data": {
             "type": "object",
             "properties": {
+              "markdown": {
+                "type": "string"
+              },
               "content": {
                 "type": "string"
               },
+              "metadata": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "language": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "sourceURL": {
+                    "type": "string",
+                    "format": "uri"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "SearchResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "url": {
+                "type": "string"
+              },
               "markdown": {
+                "type": "string"
+              },
+              "content": {
                 "type": "string"
               },
               "metadata": {
