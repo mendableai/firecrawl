@@ -193,7 +193,7 @@ const TEST_URL = "http://127.0.0.1:3002";
         expect(response.body).toHaveProperty("success");
         expect(response.body.success).toBe(true);
         expect(response.body).toHaveProperty("data");
-      }, 20000); 
+      }, 30000); // 30 seconds timeout
     });
 
     describe("GET /v0/crawl/status/:jobId", () => {

@@ -4,10 +4,9 @@ import { scrapSingleUrl } from "./single_url";
 import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
 import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
-import { getImageDescription } from "./utils/gptVision";
+import { getImageDescription } from "./utils/imageDescription";
 import { fetchAndProcessPdf } from "./utils/pdfProcessor";
 import { replaceImgPathsWithAbsolutePaths, replacePathsWithAbsolutePaths } from "./utils/replacePaths";
-
 
 export class WebScraperDataProvider {
   private urls: string[] = [""];
@@ -21,6 +20,7 @@ export class WebScraperDataProvider {
   private generateImgAltText: boolean = false;
   private pageOptions?: PageOptions;
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
+  private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" = "gpt-4-turbo";
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -443,7 +443,7 @@ export class WebScraperDataProvider {
                 imageUrl,
                 backText,
                 frontText
-              );
+              , this.generateImgAltTextModel);
             }
 
             document.content = document.content.replace(
