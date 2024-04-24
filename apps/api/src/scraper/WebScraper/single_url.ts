@@ -154,10 +154,12 @@ export async function scrapSingleUrl(
     // }
 
     let [text, html] = await attemptScraping(urlToScrap, "scrapingBee");
+    // Basically means that it is using /search endpoint
     if(pageOptions.fallback === false){
       const soup = cheerio.load(html);
       const metadata = extractMetadata(soup, urlToScrap);
       return {
+        url: urlToScrap,
         content: text,
         markdown: text,
         metadata: { ...metadata, sourceURL: urlToScrap },

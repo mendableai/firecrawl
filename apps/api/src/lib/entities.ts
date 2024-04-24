@@ -40,6 +40,7 @@ export type WebScraperOptions = {
 
 export class Document {
   id?: string;
+  url?: string; // Used only in /search for now
   content: string;
   markdown?: string;
   createdAt?: Date;
