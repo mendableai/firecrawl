@@ -37,12 +37,13 @@ export async function searchHelper(
     return { success: true, data: res, returnCode: 200 };
   }
 
+  res = res.filter((r) => !isUrlBlocked(r));
+
   if (res.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
   }
 
   // filter out social media links
-  res = res.filter((r) => !isUrlBlocked(r));
 
   const a = new WebScraperDataProvider();
   await a.setOptions({
