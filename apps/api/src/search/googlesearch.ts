@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import * as querystring from 'querystring';
+import { SearchResult } from '../../src/lib/entities';
 
 const _useragent_list = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0',
@@ -47,23 +48,9 @@ async function _req(term: string, results: number, lang: string, start: number, 
     }
 }
 
-class SearchResult {
-    url: string;
-    title: string;
-    description: string;
 
-    constructor(url: string, title: string, description: string) {
-        this.url = url;
-        this.title = title;
-        this.description = description;
-    }
 
-    toString(): string {
-        return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description})`;
-    }
-}
-
-export async function google_search(term: string, advanced = false, num_results = 7, tbs = null, filter = null, lang = "en", proxy = null, sleep_interval = 0, timeout = 5000, ) :Promise<string[]> {
+export async function google_search(term: string, advanced = false, num_results = 7, tbs = null, filter = null, lang = "en", proxy = null, sleep_interval = 0, timeout = 5000, ) :Promise<SearchResult[]> {
     const escaped_term = querystring.escape(term);
 
     let proxies = null;
@@ -78,7 +65,7 @@ export async function google_search(term: string, advanced = false, num_results 
     // TODO: knowledge graph, answer box, etc.
 
     let start = 0;
-    let results : string[] = [];
+    let results : SearchResult[] = [];
     let attempts = 0;
     const maxAttempts = 20; // Define a maximum number of attempts to prevent infinite loop
     while (start < num_results && attempts < maxAttempts) {
@@ -103,11 +90,7 @@ export async function google_search(term: string, advanced = false, num_results 
                     const description = description_box.text();
                     if (link && title && description) {
                         start += 1;
-                        if (advanced) {
-                            // results.push(new SearchResult(link, title.text(), description));
-                        } else {
-                            results.push(link);
-                        }
+                        results.push(new SearchResult(link, title.text(), description));
                     }
                 }
             });

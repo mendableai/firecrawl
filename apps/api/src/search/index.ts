@@ -1,3 +1,4 @@
+import { SearchResult } from "../../src/lib/entities";
 import { google_search } from "./googlesearch";
 import { serper_search } from "./serper";
 
@@ -21,7 +22,7 @@ export async function search({
   proxy?: string;
   sleep_interval?: number;
   timeout?: number;
-}) {
+}) : Promise<SearchResult[]> {
   try {
     if (process.env.SERPER_API_KEY && !tbs) {
       return await serper_search(query, num_results);

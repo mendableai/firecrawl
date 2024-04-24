@@ -37,7 +37,7 @@ export async function searchHelper(
     return { success: true, data: res, returnCode: 200 };
   }
 
-  res = res.filter((r) => !isUrlBlocked(r));
+  res = res.filter((r) => !isUrlBlocked(r.url));
 
   if (res.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
@@ -48,7 +48,7 @@ export async function searchHelper(
   const a = new WebScraperDataProvider();
   await a.setOptions({
     mode: "single_urls",
-    urls: res.map((r) => r),
+    urls: res.map((r) => r.url),
     crawlerOptions: {
       ...crawlerOptions,
     },

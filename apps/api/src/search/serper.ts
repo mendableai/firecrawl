@@ -1,13 +1,13 @@
 import axios from "axios";
 import dotenv from "dotenv";
+import { SearchResult } from "../../src/lib/entities";
 
 dotenv.config();
 
-export async function serper_search(q, num_results) : Promise<string[]> {
+export async function serper_search(q, num_results): Promise<SearchResult[]> {
   let data = JSON.stringify({
     q: q,
-    "num": num_results,
-    
+    num: num_results,
   });
 
   let config = {
@@ -21,8 +21,12 @@ export async function serper_search(q, num_results) : Promise<string[]> {
   };
   const response = await axios(config);
   if (response && response.data && Array.isArray(response.data.organic)) {
-    return response.data.organic.map((a) => a.link);
-  } else {
+    return response.data.organic.map((a) => ({
+      url: a.link,
+      title: a.title,
+      description: a.snippet,
+    }));
+  }else{
     return [];
   }
 }

@@ -71,3 +71,20 @@ export class Document {
     this.provider = data.provider || undefined;
   }
 }
+
+
+export class SearchResult {
+  url: string;
+  title: string;
+  description: string;
+
+  constructor(url: string, title: string, description: string) {
+      this.url = url;
+      this.title = title;
+      this.description = description;
+  }
+
+  toString(): string {
+      return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description})`;
+  }
+}
