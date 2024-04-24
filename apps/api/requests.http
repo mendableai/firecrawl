@@ -14,7 +14,7 @@ GET http://localhost:3002/v0/jobs/active HTTP/1.1
 
 ### Scrape Website
 POST http://localhost:3002/v0/crawl HTTP/1.1
-Authorization: Bearer fc-879f515fdd5b418b8d55ec6ccb1acd46
+Authorization: Bearer 
 content-type: application/json
 
 {
@@ -23,6 +23,8 @@ content-type: application/json
         "returnOnlyUrls": true
     }
 }
+
+
 
 
 
@@ -42,7 +44,7 @@ content-type: application/json
 
 ### Check Job Status
 GET http://localhost:3002/v0/crawl/status/a6053912-d602-4709-841f-3d2cb46fea0a HTTP/1.1
-Authorization: Bearer fc-879f515fdd5b418b8d55ec6ccb1acd46
+Authorization: Bearer 
 
 ### Get Job Result
 
