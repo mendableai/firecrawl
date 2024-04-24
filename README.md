@@ -21,7 +21,8 @@ We provide an easy to use API with our hosted version. You can find the playgrou
 - [x] [Node SDK](https://github.com/mendableai/firecrawl/tree/main/apps/js-sdk)
 - [x] [Langchain Integration 🦜🔗](https://python.langchain.com/docs/integrations/document_loaders/firecrawl/)
 - [x] [Llama Index Integration 🦙](https://docs.llamaindex.ai/en/latest/examples/data_connectors/WebPageDemo/#using-firecrawl-reader)
-- [ ] LangchainJS - Coming Soon
+- [X] [Langchain JS Integration 🦜🔗](https://js.langchain.com/docs/integrations/document_loaders/web_loaders/firecrawl)
+- [ ] Want an SDK or Integration? Let us know by opening an issue.
 
 To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/CONTRIBUTING.md).
 
