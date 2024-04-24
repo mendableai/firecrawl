@@ -6,6 +6,7 @@ import { RateLimiterMode } from "../types";
 import { logJob } from "../services/logging/log_job";
 import { PageOptions, SearchOptions } from "../lib/entities";
 import { search } from "../search";
+import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 
 export async function searchHelper(
   req: Request,
@@ -28,7 +29,7 @@ export async function searchHelper(
   const tbs = searchOptions.tbs ?? null;
   const filter = searchOptions.filter ?? null;
 
-  const res = await search({query: query, advanced: advanced, num_results: searchOptions.limit ?? 7, tbs: tbs, filter: filter});
+  let res = await search({query: query, advanced: advanced, num_results: searchOptions.limit ?? 7, tbs: tbs, filter: filter});
 
   let justSearch = pageOptions.fetchPageContent === false;
 
@@ -39,6 +40,9 @@ export async function searchHelper(
   if (res.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
   }
+
+  // filter out social media links
+  res = res.filter((r) => !isUrlBlocked(r));
 
   const a = new WebScraperDataProvider();
   await a.setOptions({
