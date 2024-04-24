@@ -80,11 +80,16 @@ export class WebScraperDataProvider {
         });
         let links = await crawler.start(inProgress, 5, this.limit);
         if (this.returnOnlyUrls) {
+          inProgress({
+            current: links.length,
+            total: links.length,
+            status: "COMPLETED",
+            currentDocumentUrl: this.urls[0],
+          });
           return links.map((url) => ({
             content: "",
+            markdown: "",
             metadata: { sourceURL: url },
-            provider: "web",
-            type: "text",
           }));
         }
 

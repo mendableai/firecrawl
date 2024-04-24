@@ -38,6 +38,10 @@ export type WebScraperOptions = {
   concurrentRequests?: number;
 };
 
+export interface DocumentUrl {
+  url: string;
+}
+
 export class Document {
   id?: string;
   url?: string; // Used only in /search for now
