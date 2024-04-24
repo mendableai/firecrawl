@@ -23,7 +23,7 @@ export async function search({
   timeout?: number;
 }) {
   try {
-    if (process.env.SERPER_API_KEY) {
+    if (process.env.SERPER_API_KEY && !tbs) {
       return await serper_search(query, num_results);
     }
     return await google_search(

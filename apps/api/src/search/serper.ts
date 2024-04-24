@@ -6,7 +6,8 @@ dotenv.config();
 export async function serper_search(q, num_results) : Promise<string[]> {
   let data = JSON.stringify({
     q: q,
-    "num": num_results
+    "num": num_results,
+    
   });
 
   let config = {
