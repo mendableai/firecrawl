@@ -67,7 +67,7 @@ export default class FirecrawlApp {
      * @param {Params | null} params - Additional parameters for the crawl request.
      * @param {boolean} waitUntilDone - Whether to wait for the crawl job to complete.
      * @param {number} timeout - Timeout in seconds for job status checks.
-     * @returns {Promise<CrawlResponse>} The response from the crawl operation.
+     * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
      */
     crawlUrl(url_1) {
         return __awaiter(this, arguments, void 0, function* (url, params = null, waitUntilDone = true, timeout = 2) {

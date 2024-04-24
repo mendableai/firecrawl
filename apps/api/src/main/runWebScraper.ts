@@ -25,7 +25,7 @@ export async function startWebScraperPipeline({
       job.moveToFailed(error);
     },
     team_id: job.data.team_id,
-  })) as { success: boolean; message: string; docs: CrawlResult[] };
+  })) as { success: boolean; message: string; docs: Document[] };
 }
 export async function runWebScraper({
   url,
@@ -75,7 +75,7 @@ export async function runWebScraper({
       return {
         success: true,
         message: "No pages found",
-        docs: [],
+        docs: []
       };
     }
 
@@ -88,21 +88,25 @@ export async function runWebScraper({
         })
       : docs.filter((doc) => doc.content.trim().length > 0);
 
-    onSuccess(filteredDocs);
 
     const { success, credit_usage } = await billTeam(
       team_id,
       filteredDocs.length
     );
+
     if (!success) {
       // throw new Error("Failed to bill team, no subscription was found");
       return {
         success: false,
         message: "Failed to bill team, no subscription was found",
-        docs: [],
+        docs: []
       };
     }
 
+    // This is where the returnvalue from the job is set
+    onSuccess(filteredDocs);
+
+    // this return doesn't matter too much for the job completion result
     return { success: true, message: "", docs: filteredDocs };
   } catch (error) {
     console.error("Error running web scraper", error);

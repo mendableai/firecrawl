@@ -80,6 +80,9 @@ dependencies:
   ioredis:
     specifier: ^5.3.2
     version: 5.3.2
+  joplin-turndown-plugin-gfm:
+    specifier: ^1.0.12
+    version: 1.0.12
   keyword-extractor:
     specifier: ^0.0.25
     version: 0.0.25
@@ -3922,6 +3925,10 @@ packages:
       - supports-color
       - ts-node
     dev: true
+
+  /joplin-turndown-plugin-gfm@1.0.12:
+    resolution: {integrity: sha512-qL4+1iycQjZ1fs8zk3jSRk7cg3ROBUHk7GKtiLAQLFzLPKErnILUvz5DLszSQvz3s1sTjPbywLDISVUtBY6HaA==}
+    dev: false
 
   /js-tiktoken@1.0.10:
     resolution: {integrity: sha512-ZoSxbGjvGyMT13x6ACo9ebhDha/0FHdKA+OsQcMOWcm1Zs7r90Rhk5lhERLzji+3rA7EKpXCgwXcM5fF3DMpdA==}

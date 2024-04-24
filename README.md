@@ -2,12 +2,16 @@
 
 Crawl and convert any website into LLM-ready markdown. Build by [Mendable.ai](https://mendable.ai?ref=gfirecrawl)
 
-
 *This repository is currently in its early stages of development. We are in the process of merging custom modules into this mono repository. The primary objective is to enhance the accuracy of LLM responses by utilizing clean data. It is not ready for full self-host yet - we're working on it*
 
 ## What is Firecrawl?
 
 [Firecrawl](https://firecrawl.dev?ref=github) is an API service that takes a URL, crawls it, and converts it into clean markdown. We crawl all accessible subpages and give you clean markdown for each. No sitemap required.
+
+_Pst. hey, you, join our stargazers :)_
+
+<img src="https://github.com/mendableai/firecrawl/assets/44934913/53c4483a-0f0e-40c6-bd84-153a07f94d29" width="200">
+
 
 ## How to use it?
 
@@ -21,7 +25,7 @@ We provide an easy to use API with our hosted version. You can find the playgrou
 - [ ] LangchainJS - Coming Soon
 
 
-Self-host. To self-host refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/SELF_HOST.md).
+To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/CONTRIBUTING.md).
 
 ### API Key
 

@@ -1,0 +1,91 @@
+---
+title: "Build a 'Chat with website' using Groq Llama 3"
+description: "Learn how to use Firecrawl, Groq Llama 3, and Langchain to build a 'Chat with your website' bot."
+---
+
+## Setup
+
+Install our python dependencies, including langchain, groq, faiss, ollama, and firecrawl-py. 
+
+```bash
+pip install --upgrade --quiet langchain langchain-community groq faiss-cpu ollama firecrawl-py
+```
+
+We will be using Ollama for the embeddings, you can download Ollama [here](https://ollama.com/). But feel free to use any other embeddings you prefer.
+
+## Load website with Firecrawl
+
+To be able to get all the data from a website and make sure it is in the cleanest format, we will use FireCrawl. Firecrawl integrates very easily with Langchain as a document loader.
+
+Here is how you can load a website with FireCrawl:
+
+```python
+from langchain_community.document_loaders import FireCrawlLoader  # Importing the FireCrawlLoader
+
+url = "https://firecrawl.dev"
+loader = FireCrawlLoader(
+    api_key="fc-YOUR_API_KEY", # Note: Replace 'YOUR_API_KEY' with your actual FireCrawl API key
+    url=url,  # Target URL to crawl
+    mode="crawl"  # Mode set to 'crawl' to crawl all accessible subpages
+)
+docs = loader.load()
+```
+
+## Setup the Vectorstore
+
+Next, we will setup the vectorstore. The vectorstore is a data structure that allows us to store and query embeddings. We will use the Ollama embeddings and the FAISS vectorstore.
+We split the documents into chunks of 1000 characters each, with a 200 character overlap. This is to ensure that the chunks are not too small and not too big - and that it can fit into the LLM model when we query it.
+ 
+```python
+from langchain_community.embeddings import OllamaEmbeddings
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_community.vectorstores import FAISS
+
+text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+splits = text_splitter.split_documents(docs)
+vectorstore = FAISS.from_documents(documents=splits, embedding=OllamaEmbeddings())
+```
+
+## Retrieval and Generation
+
+Now that our documents  are loaded and the vectorstore is setup, we can, based on user's question, do a similarity search to retrieve the most relevant documents. That way we can use these documents to be fed to the LLM model.
+
+
+```python
+question = "What is firecrawl?"
+docs = vectorstore.similarity_search(query=question)
+```
+
+## Generation
+Last but not least, you can use the Groq to generate a response to a question based on the documents we have loaded.
+
+```python
+from groq import Groq
+
+client = Groq(
+    api_key="YOUR_GROQ_API_KEY",
+)
+
+completion = client.chat.completions.create(
+    model="llama3-8b-8192",
+    messages=[
+        {
+            "role": "user",
+            "content": f"You are a friendly assistant. Your job is to answer the users question based on the documentation provided below:\nDocs:\n\n{docs}\n\nQuestion: {question}"
+        }
+    ],
+    temperature=1,
+    max_tokens=1024,
+    top_p=1,
+    stream=False,
+    stop=None,
+)
+
+print(completion.choices[0].message)
+```
+
+## And Voila!
+
+You have now built a 'Chat with your website' bot using Llama 3, Groq Llama 3, Langchain, and Firecrawl. You can now use this bot to answer questions based on the documentation of your website.
+
+If you have any questions or need help, feel free to reach out to us at [Firecrawl](https://firecrawl.dev).
