@@ -111,7 +111,7 @@ Response:
 }
 ```
 
-### Search (Preview)
+### Search (Beta)
 
 Used to search the web, get the most relevant results, scrap each page and return the markdown.
 
