@@ -2,17 +2,60 @@ import axios, { AxiosResponse, AxiosRequestHeaders } from 'axios';
 import dotenv from 'dotenv';
 dotenv.config();
 
-interface FirecrawlAppConfig {
+/**
+ * Configuration interface for FirecrawlApp.
+ */
+export interface FirecrawlAppConfig {
   apiKey?: string | null;
 }
 
-interface Params {
+/**
+ * Generic parameter interface.
+ */
+export interface Params {
   [key: string]: any;
 }
 
+/**
+ * Response interface for scraping operations.
+ */
+export interface ScrapeResponse {
+  success: boolean;
+  data?: any;
+  error?: string;
+}
+
+/**
+ * Response interface for crawling operations.
+ */
+export interface CrawlResponse {
+  success: boolean;
+  jobId?: string;
+  data?: any;
+  error?: string;
+}
+
+/**
+ * Response interface for job status checks.
+ */
+export interface JobStatusResponse {
+  success: boolean;
+  status: string;
+  jobId?: string;
+  data?: any;
+  error?: string;
+}
+
+/**
+ * Main class for interacting with the Firecrawl API.
+ */
 export default class FirecrawlApp {
   private apiKey: string;
 
+  /**
+   * Initializes a new instance of the FirecrawlApp class.
+   * @param {FirecrawlAppConfig} config - Configuration options for the FirecrawlApp instance.
+   */
   constructor({ apiKey = null }: FirecrawlAppConfig) {
     this.apiKey = apiKey || process.env.FIRECRAWL_API_KEY || '';
     if (!this.apiKey) {
@@ -20,7 +63,13 @@ export default class FirecrawlApp {
     }
   }
 
-  async scrapeUrl(url: string, params: Params | null = null): Promise<any> {
+  /**
+   * Scrapes a URL using the Firecrawl API.
+   * @param {string} url - The URL to scrape.
+   * @param {Params | null} params - Additional parameters for the scrape request.
+   * @returns {Promise<ScrapeResponse>} The response from the scrape operation.
+   */
+  async scrapeUrl(url: string, params: Params | null = null): Promise<ScrapeResponse> {
     const headers: AxiosRequestHeaders = {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${this.apiKey}`,
@@ -34,7 +83,7 @@ export default class FirecrawlApp {
       if (response.status === 200) {
         const responseData = response.data;
         if (responseData.success) {
-          return responseData.data;
+          return responseData; 
         } else {
           throw new Error(`Failed to scrape URL. Error: ${responseData.error}`);
         }
@@ -44,9 +93,18 @@ export default class FirecrawlApp {
     } catch (error: any) {
       throw new Error(error.message);
     }
+    return { success: false, error: 'Internal server error.' };
   }
 
-  async crawlUrl(url: string, params: Params | null = null, waitUntilDone: boolean = true, timeout: number = 2): Promise<any> {
+  /**
+   * Initiates a crawl job for a URL using the Firecrawl API.
+   * @param {string} url - The URL to crawl.
+   * @param {Params | null} params - Additional parameters for the crawl request.
+   * @param {boolean} waitUntilDone - Whether to wait for the crawl job to complete.
+   * @param {number} timeout - Timeout in seconds for job status checks.
+   * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
+   */
+  async crawlUrl(url: string, params: Params | null = null, waitUntilDone: boolean = true, timeout: number = 2): Promise<CrawlResponse | any> {
     const headers = this.prepareHeaders();
     let jsonData: Params = { url };
     if (params) {
@@ -59,7 +117,7 @@ export default class FirecrawlApp {
         if (waitUntilDone) {
           return this.monitorJobStatus(jobId, headers, timeout);
         } else {
-          return { jobId };
+          return { success: true, jobId };
         }
       } else {
         this.handleError(response, 'start crawl job');
@@ -68,9 +126,15 @@ export default class FirecrawlApp {
       console.log(error)
       throw new Error(error.message);
     }
+    return { success: false, error: 'Internal server error.' };
   }
 
-  async checkCrawlStatus(jobId: string): Promise<any> {
+  /**
+   * Checks the status of a crawl job using the Firecrawl API.
+   * @param {string} jobId - The job ID of the crawl operation.
+   * @returns {Promise<JobStatusResponse>} The response containing the job status.
+   */
+  async checkCrawlStatus(jobId: string): Promise<JobStatusResponse> {
     const headers: AxiosRequestHeaders = this.prepareHeaders();
     try {
       const response: AxiosResponse = await this.getRequest(`https://api.firecrawl.dev/v0/crawl/status/${jobId}`, headers);
@@ -82,8 +146,13 @@ export default class FirecrawlApp {
     } catch (error: any) {
       throw new Error(error.message);
     }
+    return { success: false, status: 'unknown', error: 'Internal server error.' };
   }
 
+  /**
+   * Prepares the headers for an API request.
+   * @returns {AxiosRequestHeaders} The prepared headers.
+   */
   prepareHeaders(): AxiosRequestHeaders {
     return {
       'Content-Type': 'application/json',
@@ -91,14 +160,34 @@ export default class FirecrawlApp {
     } as AxiosRequestHeaders;
   }
 
+  /**
+   * Sends a POST request to the specified URL.
+   * @param {string} url - The URL to send the request to.
+   * @param {Params} data - The data to send in the request.
+   * @param {AxiosRequestHeaders} headers - The headers for the request.
+   * @returns {Promise<AxiosResponse>} The response from the POST request.
+   */
   postRequest(url: string, data: Params, headers: AxiosRequestHeaders): Promise<AxiosResponse> {
     return axios.post(url, data, { headers });
   }
 
+  /**
+   * Sends a GET request to the specified URL.
+   * @param {string} url - The URL to send the request to.
+   * @param {AxiosRequestHeaders} headers - The headers for the request.
+   * @returns {Promise<AxiosResponse>} The response from the GET request.
+   */
   getRequest(url: string, headers: AxiosRequestHeaders): Promise<AxiosResponse> {
     return axios.get(url, { headers });
   }
 
+  /**
+   * Monitors the status of a crawl job until completion or failure.
+   * @param {string} jobId - The job ID of the crawl operation.
+   * @param {AxiosRequestHeaders} headers - The headers for the request.
+   * @param {number} timeout - Timeout in seconds for job status checks.
+   * @returns {Promise<any>} The final job status or data.
+   */
   async monitorJobStatus(jobId: string, headers: AxiosRequestHeaders, timeout: number): Promise<any> {
     while (true) {
       const statusResponse: AxiosResponse = await this.getRequest(`https://api.firecrawl.dev/v0/crawl/status/${jobId}`, headers);
@@ -124,6 +213,11 @@ export default class FirecrawlApp {
     }
   }
 
+  /**
+   * Handles errors from API responses.
+   * @param {AxiosResponse} response - The response from the API.
+   * @param {string} action - The action being performed when the error occurred.
+   */
   handleError(response: AxiosResponse, action: string): void {
     if ([402, 409, 500].includes(response.status)) {
       const errorMessage: string = response.data.error || 'Unknown error occurred';

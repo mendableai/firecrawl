@@ -5,6 +5,9 @@ settings:
   excludeLinksFromLockfile: false
 
 dependencies:
+  '@anthropic-ai/sdk':
+    specifier: ^0.20.5
+    version: 0.20.5
   '@brillout/import':
     specifier: ^0.2.2
     version: 0.2.3
@@ -68,6 +71,9 @@ dependencies:
   express-rate-limit:
     specifier: ^6.7.0
     version: 6.11.2(express@4.18.3)
+  form-data:
+    specifier: ^4.0.0
+    version: 4.0.0
   glob:
     specifier: ^10.3.12
     version: 10.3.12
@@ -77,12 +83,15 @@ dependencies:
   ioredis:
     specifier: ^5.3.2
     version: 5.3.2
+  joplin-turndown-plugin-gfm:
+    specifier: ^1.0.12
+    version: 1.0.12
   keyword-extractor:
     specifier: ^0.0.25
     version: 0.0.25
   langchain:
     specifier: ^0.1.25
-    version: 0.1.25(@supabase/supabase-js@2.39.7)(axios@1.6.7)(cheerio@1.0.0-rc.12)(ioredis@5.3.2)(puppeteer@22.6.3)(redis@4.6.13)(typesense@1.7.2)
+    version: 0.1.25(@supabase/supabase-js@2.39.7)(axios@1.6.7)(cheerio@1.0.0-rc.12)(ioredis@5.3.2)(pdf-parse@1.1.1)(puppeteer@22.6.3)(redis@4.6.13)(typesense@1.7.2)
   languagedetect:
     specifier: ^2.0.0
     version: 2.0.0
@@ -107,6 +116,9 @@ dependencies:
   openai:
     specifier: ^4.28.4
     version: 4.28.4
+  pdf-parse:
+    specifier: ^1.1.1
+    version: 1.1.1
   pos:
     specifier: ^0.4.2
     version: 0.4.2
@@ -134,6 +146,9 @@ dependencies:
   turndown:
     specifier: ^7.1.3
     version: 7.1.3
+  turndown-plugin-gfm:
+    specifier: ^1.0.2
+    version: 1.0.2
   typesense:
     specifier: ^1.5.4
     version: 1.7.2(@babel/runtime@7.24.0)
@@ -170,7 +185,7 @@ devDependencies:
     specifier: ^4.17.17
     version: 4.17.21
   '@types/jest':
-    specifier: ^29.5.6
+    specifier: ^29.5.12
     version: 29.5.12
   body-parser:
     specifier: ^1.20.1
@@ -212,6 +227,21 @@ packages:
       '@jridgewell/gen-mapping': 0.3.5
       '@jridgewell/trace-mapping': 0.3.25
     dev: true
+
+  /@anthropic-ai/sdk@0.20.5:
+    resolution: {integrity: sha512-d0ch+zp6/gHR4+2wqWV7JU1EJ7PpHc3r3F6hebovJTouY+pkaId1FuYYaVsG3l/gyqhOZUwKCMSMqcFNf+ZmWg==}
+    dependencies:
+      '@types/node': 18.19.22
+      '@types/node-fetch': 2.6.11
+      abort-controller: 3.0.0
+      agentkeepalive: 4.5.0
+      form-data-encoder: 1.7.2
+      formdata-node: 4.4.1
+      node-fetch: 2.7.0
+      web-streams-polyfill: 3.3.3
+    transitivePeerDependencies:
+      - encoding
+    dev: false
 
   /@anthropic-ai/sdk@0.9.1:
     resolution: {integrity: sha512-wa1meQ2WSfoY8Uor3EdrJq0jTiZJoKoSii2ZVWRY1oN4Tlr5s59pADg9T79FTbPe1/se5c3pBeZgJL63wmuoBA==}
@@ -2495,7 +2525,6 @@ packages:
     dependencies:
       ms: 2.1.3
       supports-color: 5.5.0
-    dev: true
 
   /debug@4.3.4:
     resolution: {integrity: sha512-PRWFHuSU3eDtQJPvnNY7Jcket1j0t5OuOsFzPPzsekD52Zl8qUfFIPEiswXqIvHWGVHOgX+7G/vCNNhehwxfkQ==}
@@ -3915,6 +3944,10 @@ packages:
       - ts-node
     dev: true
 
+  /joplin-turndown-plugin-gfm@1.0.12:
+    resolution: {integrity: sha512-qL4+1iycQjZ1fs8zk3jSRk7cg3ROBUHk7GKtiLAQLFzLPKErnILUvz5DLszSQvz3s1sTjPbywLDISVUtBY6HaA==}
+    dev: false
+
   /js-tiktoken@1.0.10:
     resolution: {integrity: sha512-ZoSxbGjvGyMT13x6ACo9ebhDha/0FHdKA+OsQcMOWcm1Zs7r90Rhk5lhERLzji+3rA7EKpXCgwXcM5fF3DMpdA==}
     dependencies:
@@ -3994,7 +4027,7 @@ packages:
     engines: {node: '>=6'}
     dev: true
 
-  /langchain@0.1.25(@supabase/supabase-js@2.39.7)(axios@1.6.7)(cheerio@1.0.0-rc.12)(ioredis@5.3.2)(puppeteer@22.6.3)(redis@4.6.13)(typesense@1.7.2):
+  /langchain@0.1.25(@supabase/supabase-js@2.39.7)(axios@1.6.7)(cheerio@1.0.0-rc.12)(ioredis@5.3.2)(pdf-parse@1.1.1)(puppeteer@22.6.3)(redis@4.6.13)(typesense@1.7.2):
     resolution: {integrity: sha512-sfEChvr4H2CklHdSByNBbytwBrFhgtA5kPOnwcBrxuXGg1iOaTzhVxQA0QcNcQucI3hZrsNbZjxGp+Can1ooZQ==}
     engines: {node: '>=18'}
     peerDependencies:
@@ -4171,6 +4204,7 @@ packages:
       ml-distance: 4.0.1
       openapi-types: 12.1.3
       p-retry: 4.6.2
+      pdf-parse: 1.1.1
       puppeteer: 22.6.3(typescript@5.4.2)
       redis: 4.6.13
       uuid: 9.0.1
@@ -4650,6 +4684,10 @@ packages:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
 
+  /node-ensure@0.0.0:
+    resolution: {integrity: sha512-DRI60hzo2oKN1ma0ckc6nQWlHU69RH6xN0sjQTjMpChPfTYvKZdcQFfdYK2RWbJcKyUizSIy/l8OTGxMAM1QDw==}
+    dev: false
+
   /node-fetch@2.7.0:
     resolution: {integrity: sha512-c4FRfUm/dbcWZ7U+1Wq0AwCyFL+3nt2bEw05wfxSz+DWpWsitgmSgYmy2dQdWyKC1694ELPqMs/YzUSNozLt8A==}
     engines: {node: 4.x || >=6.0.0}
@@ -4947,6 +4985,16 @@ packages:
 
   /path-to-regexp@0.1.7:
     resolution: {integrity: sha512-5DFkuoqlv1uYQKxy8omFBeJPQcdoE07Kv2sferDCrAq1ohOU+MSDswDIbnx3YAM60qIOnYa53wBhXW0EbMonrQ==}
+
+  /pdf-parse@1.1.1:
+    resolution: {integrity: sha512-v6ZJ/efsBpGrGGknjtq9J/oC8tZWq0KWL5vQrk2GlzLEQPUDB1ex+13Rmidl1neNN358Jn9EHZw5y07FFtaC7A==}
+    engines: {node: '>=6.8.1'}
+    dependencies:
+      debug: 3.2.7(supports-color@5.5.0)
+      node-ensure: 0.0.0
+    transitivePeerDependencies:
+      - supports-color
+    dev: false
 
   /pend@1.2.0:
     resolution: {integrity: sha512-F3asv42UuXchdzt+xXqfW1OGlVBe+mxa2mqI0pg5yAHZPvFmY3Y6drSf/GQ1A86WgWEN9Kzh/WrgKa6iGcHXLg==}
@@ -5781,6 +5829,10 @@ packages:
 
   /tslib@2.6.2:
     resolution: {integrity: sha512-AEYxH93jGFPn/a2iVAwW87VuUIkR1FVUKB77NwMF7nBTDkDrrT/Hpt/IrCJ0QXhW27jTBDcf5ZY7w6RiqTMw2Q==}
+    dev: false
+
+  /turndown-plugin-gfm@1.0.2:
+    resolution: {integrity: sha512-vwz9tfvF7XN/jE0dGoBei3FXWuvll78ohzCZQuOb+ZjWrs3a0XhQVomJEb2Qh4VHTPNRO4GPZh0V7VRbiWwkRg==}
     dev: false
 
   /turndown@7.1.3:

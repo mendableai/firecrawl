@@ -1,5 +1,8 @@
+
 export function parseMarkdown(html: string) {
   var TurndownService = require("turndown");
+  var turndownPluginGfm = require('joplin-turndown-plugin-gfm')
+
 
   const turndownService = new TurndownService();
   turndownService.addRule("inlineLink", {
@@ -16,7 +19,8 @@ export function parseMarkdown(html: string) {
       return "[" + content.trim() + "](" + href + title + ")\n";
     },
   });
-
+  var gfm = turndownPluginGfm.gfm;
+  turndownService.use(gfm);
   let markdownContent = turndownService.turndown(html);
 
   // multiple line links

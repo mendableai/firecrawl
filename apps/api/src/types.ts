@@ -20,7 +20,39 @@ export interface WebScraperOptions {
   url: string;
   mode: "crawl" | "single_urls" | "sitemap";
   crawlerOptions: any;
+  pageOptions: any;
   team_id: string;
+  origin?: string;
+}
+
+export interface FirecrawlJob {
+  success: boolean;
+  message: string;
+  num_docs: number;
+  docs: any[];
+  time_taken: number;
+  team_id: string;
+  mode: string;
+  url: string;
+  crawlerOptions?: any;
+  pageOptions?: any;
+  origin: string;
+}
+
+export enum RateLimiterMode {
+  Crawl = "crawl",
+  CrawlStatus = "crawl-status",
+  Scrape = "scrape",
+  Preview = "preview",
+  Search = "search",
+
+}
+
+export interface AuthResponse {
+  success: boolean;
+  team_id?: string;
+  error?: string;
+  status?: number;
 }
 
 

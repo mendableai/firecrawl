@@ -30,14 +30,12 @@ scraped_data = app.scrape_url(url)
 
 # Crawl a website
 crawl_url = 'https://mendable.ai'
-crawl_params = {
-    'crawlerOptions': {
-        'excludes': ['blog/*'],
-        'includes': [], # leave empty for all pages
-        'limit': 1000,
+params = {
+    'pageOptions': {
+        'onlyMainContent': True
     }
 }
-crawl_result = app.crawl_url(crawl_url, params=crawl_params)
+crawl_result = app.crawl_url(crawl_url, params=params)
 ```
 
 ### Scraping a URL
@@ -57,14 +55,17 @@ The `wait_until_done` parameter determines whether the method should wait for th
 
 ```python
 crawl_url = 'https://example.com'
-crawl_params = {
+params = {
     'crawlerOptions': {
         'excludes': ['blog/*'],
         'includes': [], # leave empty for all pages
         'limit': 1000,
+    },
+    'pageOptions': {
+        'onlyMainContent': True
     }
 }
-crawl_result = app.crawl_url(crawl_url, params=crawl_params, wait_until_done=True, timeout=5)
+crawl_result = app.crawl_url(crawl_url, params=params, wait_until_done=True, timeout=5)
 ```
 
 If `wait_until_done` is set to `True`, the `crawl_url` method will return the crawl result once the job is completed. If the job fails or is stopped, an exception will be raised.

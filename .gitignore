@@ -1,3 +1,4 @@
+.DS_Store
 /node_modules/
 /dist/
 .env
@@ -5,3 +6,5 @@
 dump.rdb
 /mongo-data
 apps/js-sdk/node_modules/
+
+apps/api/.env.local

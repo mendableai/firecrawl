@@ -10,13 +10,26 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 import axios from 'axios';
 import dotenv from 'dotenv';
 dotenv.config();
+/**
+ * Main class for interacting with the Firecrawl API.
+ */
 export default class FirecrawlApp {
+    /**
+     * Initializes a new instance of the FirecrawlApp class.
+     * @param {FirecrawlAppConfig} config - Configuration options for the FirecrawlApp instance.
+     */
     constructor({ apiKey = null }) {
         this.apiKey = apiKey || process.env.FIRECRAWL_API_KEY || '';
         if (!this.apiKey) {
             throw new Error('No API key provided');
         }
     }
+    /**
+     * Scrapes a URL using the Firecrawl API.
+     * @param {string} url - The URL to scrape.
+     * @param {Params | null} params - Additional parameters for the scrape request.
+     * @returns {Promise<ScrapeResponse>} The response from the scrape operation.
+     */
     scrapeUrl(url_1) {
         return __awaiter(this, arguments, void 0, function* (url, params = null) {
             const headers = {
@@ -32,7 +45,7 @@ export default class FirecrawlApp {
                 if (response.status === 200) {
                     const responseData = response.data;
                     if (responseData.success) {
-                        return responseData.data;
+                        return responseData;
                     }
                     else {
                         throw new Error(`Failed to scrape URL. Error: ${responseData.error}`);
@@ -45,8 +58,17 @@ export default class FirecrawlApp {
             catch (error) {
                 throw new Error(error.message);
             }
+            return { success: false, error: 'Internal server error.' };
         });
     }
+    /**
+     * Initiates a crawl job for a URL using the Firecrawl API.
+     * @param {string} url - The URL to crawl.
+     * @param {Params | null} params - Additional parameters for the crawl request.
+     * @param {boolean} waitUntilDone - Whether to wait for the crawl job to complete.
+     * @param {number} timeout - Timeout in seconds for job status checks.
+     * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
+     */
     crawlUrl(url_1) {
         return __awaiter(this, arguments, void 0, function* (url, params = null, waitUntilDone = true, timeout = 2) {
             const headers = this.prepareHeaders();
@@ -62,7 +84,7 @@ export default class FirecrawlApp {
                         return this.monitorJobStatus(jobId, headers, timeout);
                     }
                     else {
-                        return { jobId };
+                        return { success: true, jobId };
                     }
                 }
                 else {
@@ -73,8 +95,14 @@ export default class FirecrawlApp {
                 console.log(error);
                 throw new Error(error.message);
             }
+            return { success: false, error: 'Internal server error.' };
         });
     }
+    /**
+     * Checks the status of a crawl job using the Firecrawl API.
+     * @param {string} jobId - The job ID of the crawl operation.
+     * @returns {Promise<JobStatusResponse>} The response containing the job status.
+     */
     checkCrawlStatus(jobId) {
         return __awaiter(this, void 0, void 0, function* () {
             const headers = this.prepareHeaders();
@@ -90,20 +118,45 @@ export default class FirecrawlApp {
             catch (error) {
                 throw new Error(error.message);
             }
+            return { success: false, status: 'unknown', error: 'Internal server error.' };
         });
     }
+    /**
+     * Prepares the headers for an API request.
+     * @returns {AxiosRequestHeaders} The prepared headers.
+     */
     prepareHeaders() {
         return {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${this.apiKey}`,
         };
     }
+    /**
+     * Sends a POST request to the specified URL.
+     * @param {string} url - The URL to send the request to.
+     * @param {Params} data - The data to send in the request.
+     * @param {AxiosRequestHeaders} headers - The headers for the request.
+     * @returns {Promise<AxiosResponse>} The response from the POST request.
+     */
     postRequest(url, data, headers) {
         return axios.post(url, data, { headers });
     }
+    /**
+     * Sends a GET request to the specified URL.
+     * @param {string} url - The URL to send the request to.
+     * @param {AxiosRequestHeaders} headers - The headers for the request.
+     * @returns {Promise<AxiosResponse>} The response from the GET request.
+     */
     getRequest(url, headers) {
         return axios.get(url, { headers });
     }
+    /**
+     * Monitors the status of a crawl job until completion or failure.
+     * @param {string} jobId - The job ID of the crawl operation.
+     * @param {AxiosRequestHeaders} headers - The headers for the request.
+     * @param {number} timeout - Timeout in seconds for job status checks.
+     * @returns {Promise<any>} The final job status or data.
+     */
     monitorJobStatus(jobId, headers, timeout) {
         return __awaiter(this, void 0, void 0, function* () {
             while (true) {
@@ -134,6 +187,11 @@ export default class FirecrawlApp {
             }
         });
     }
+    /**
+     * Handles errors from API responses.
+     * @param {AxiosResponse} response - The response from the API.
+     * @param {string} action - The action being performed when the error occurred.
+     */
     handleError(response, action) {
         if ([402, 409, 500].includes(response.status)) {
             const errorMessage = response.data.error || 'Unknown error occurred';

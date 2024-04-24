@@ -257,7 +257,7 @@ export class WebCrawler {
       ".js",
       ".ico",
       ".svg",
-      ".pdf",
+      // ".pdf", 
       ".zip",
       ".exe",
       ".dmg",

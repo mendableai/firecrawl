@@ -24,7 +24,6 @@ export const parseTablesToMarkdown = async (html: string): Promise<string> => {
       if (isTableEmpty) {
         markdownTable = '';
       }
-      console.log({markdownTable})
       replacements.push({ start, end, markdownTable });
     });
   }

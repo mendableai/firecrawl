@@ -1,24 +1,13 @@
-import { Document } from "../../lib/entities";
+import { Document, PageOptions, WebScraperOptions } from "../../lib/entities";
 import { Progress } from "../../lib/entities";
 import { scrapSingleUrl } from "./single_url";
 import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
 import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
-import { getImageDescription } from "./utils/gptVision";
+import { getImageDescription } from "./utils/imageDescription";
+import { fetchAndProcessPdf } from "./utils/pdfProcessor";
+import { replaceImgPathsWithAbsolutePaths, replacePathsWithAbsolutePaths } from "./utils/replacePaths";
 
-export type WebScraperOptions = {
-  urls: string[];
-  mode: "single_urls" | "sitemap" | "crawl";
-  crawlerOptions?: {
-    returnOnlyUrls?: boolean;
-    includes?: string[];
-    excludes?: string[];
-    maxCrawledLinks?: number;
-    limit?: number;
-    generateImgAltText?: boolean;
-  };
-  concurrentRequests?: number;
-};
 export class WebScraperDataProvider {
   private urls: string[] = [""];
   private mode: "single_urls" | "sitemap" | "crawl" = "single_urls";
@@ -29,6 +18,9 @@ export class WebScraperDataProvider {
   private limit: number = 10000;
   private concurrentRequests: number = 20;
   private generateImgAltText: boolean = false;
+  private pageOptions?: PageOptions;
+  private replaceAllPathsWithAbsolutePaths?: boolean = false;
+  private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" = "gpt-4-turbo";
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -49,19 +41,21 @@ export class WebScraperDataProvider {
     const results: (Document | null)[] = new Array(urls.length).fill(null);
     for (let i = 0; i < urls.length; i += this.concurrentRequests) {
       const batchUrls = urls.slice(i, i + this.concurrentRequests);
-      await Promise.all(batchUrls.map(async (url, index) => {
-        const result = await scrapSingleUrl(url, true);
-        processedUrls++;
-        if (inProgress) {
-          inProgress({
-            current: processedUrls,
-            total: totalUrls,
-            status: "SCRAPING",
-            currentDocumentUrl: url,
-          });
-        }
-        results[i + index] = result;
-      }));
+      await Promise.all(
+        batchUrls.map(async (url, index) => {
+          const result = await scrapSingleUrl(url, true, this.pageOptions);
+          processedUrls++;
+          if (inProgress) {
+            inProgress({
+              current: processedUrls,
+              total: totalUrls,
+              status: "SCRAPING",
+              currentDocumentUrl: url,
+            });
+          }
+          results[i + index] = result;
+        })
+      );
     }
     return results.filter((result) => result !== null) as Document[];
   }
@@ -84,7 +78,7 @@ export class WebScraperDataProvider {
           limit: this.limit,
           generateImgAltText: this.generateImgAltText,
         });
-        const links = await crawler.start(inProgress, 5, this.limit);
+        let links = await crawler.start(inProgress, 5, this.limit);
         if (this.returnOnlyUrls) {
           return links.map((url) => ({
             content: "",
@@ -93,55 +87,142 @@ export class WebScraperDataProvider {
             type: "text",
           }));
         }
+
+        let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
+        let pdfDocuments: Document[] = [];
+        for (let pdfLink of pdfLinks) {
+          const pdfContent = await fetchAndProcessPdf(pdfLink);
+          pdfDocuments.push({
+            content: pdfContent,
+            metadata: { sourceURL: pdfLink },
+            provider: "web-scraper"
+          });
+        }
+        links = links.filter((link) => !link.endsWith(".pdf"));
+
         let documents = await this.convertUrlsToDocuments(links, inProgress);
         documents = await this.getSitemapData(this.urls[0], documents);
-        console.log("documents", documents)
+
+        if (this.replaceAllPathsWithAbsolutePaths) {
+          documents = replacePathsWithAbsolutePaths(documents);
+        } else {
+          documents = replaceImgPathsWithAbsolutePaths(documents);
+        }
+
         if (this.generateImgAltText) {
           documents = await this.generatesImgAltText(documents);
         }
+        documents = documents.concat(pdfDocuments);
 
         // CACHING DOCUMENTS
         // - parent document
-        const cachedParentDocumentString = await getValue('web-scraper-cache:' + this.normalizeUrl(this.urls[0]));
+        const cachedParentDocumentString = await getValue(
+          "web-scraper-cache:" + this.normalizeUrl(this.urls[0])
+        );
         if (cachedParentDocumentString != null) {
           let cachedParentDocument = JSON.parse(cachedParentDocumentString);
-          if (!cachedParentDocument.childrenLinks || cachedParentDocument.childrenLinks.length < links.length - 1) {
-            cachedParentDocument.childrenLinks = links.filter((link) => link !== this.urls[0]);
-            await setValue('web-scraper-cache:' + this.normalizeUrl(this.urls[0]), JSON.stringify(cachedParentDocument), 60 * 60 * 24 * 10); // 10 days
+          if (
+            !cachedParentDocument.childrenLinks ||
+            cachedParentDocument.childrenLinks.length < links.length - 1
+          ) {
+            cachedParentDocument.childrenLinks = links.filter(
+              (link) => link !== this.urls[0]
+            );
+            await setValue(
+              "web-scraper-cache:" + this.normalizeUrl(this.urls[0]),
+              JSON.stringify(cachedParentDocument),
+              60 * 60 * 24 * 10
+            ); // 10 days
           }
         } else {
-          let parentDocument = documents.filter((document) => this.normalizeUrl(document.metadata.sourceURL) === this.normalizeUrl(this.urls[0]))
+          let parentDocument = documents.filter(
+            (document) =>
+              this.normalizeUrl(document.metadata.sourceURL) ===
+              this.normalizeUrl(this.urls[0])
+          );
           await this.setCachedDocuments(parentDocument, links);
         }
 
-        await this.setCachedDocuments(documents.filter((document) => this.normalizeUrl(document.metadata.sourceURL) !== this.normalizeUrl(this.urls[0])), []);
+        await this.setCachedDocuments(
+          documents.filter(
+            (document) =>
+              this.normalizeUrl(document.metadata.sourceURL) !==
+              this.normalizeUrl(this.urls[0])
+          ),
+          []
+        );
         documents = this.removeChildLinks(documents);
         documents = documents.splice(0, this.limit);
         return documents;
       }
 
       if (this.mode === "single_urls") {
-        let documents = await this.convertUrlsToDocuments(this.urls, inProgress);
+        let pdfLinks = this.urls.filter((link) => link.endsWith(".pdf"));
+        let pdfDocuments: Document[] = [];
+        for (let pdfLink of pdfLinks) {
+          const pdfContent = await fetchAndProcessPdf(pdfLink);
+          pdfDocuments.push({
+            content: pdfContent,
+            metadata: { sourceURL: pdfLink },
+            provider: "web-scraper"
+          });
+        }
+
+        let documents = await this.convertUrlsToDocuments(
+          this.urls.filter((link) => !link.endsWith(".pdf")),
+          inProgress
+        );
+
+        if (this.replaceAllPathsWithAbsolutePaths) {
+          documents = replacePathsWithAbsolutePaths(documents);
+        } else {
+          documents = replaceImgPathsWithAbsolutePaths(documents);
+        }
+
         if (this.generateImgAltText) {
           documents = await this.generatesImgAltText(documents);
         }
         const baseUrl = new URL(this.urls[0]).origin;
         documents = await this.getSitemapData(baseUrl, documents);
-        
+        documents = documents.concat(pdfDocuments);
+
         await this.setCachedDocuments(documents);
         documents = this.removeChildLinks(documents);
         documents = documents.splice(0, this.limit);
         return documents;
       }
       if (this.mode === "sitemap") {
-        const links = await getLinksFromSitemap(this.urls[0]);
-        let documents = await this.convertUrlsToDocuments(links.slice(0, this.limit), inProgress);
+        let links = await getLinksFromSitemap(this.urls[0]);
+        let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
+        let pdfDocuments: Document[] = [];
+        for (let pdfLink of pdfLinks) {
+          const pdfContent = await fetchAndProcessPdf(pdfLink);
+          pdfDocuments.push({
+            content: pdfContent,
+            metadata: { sourceURL: pdfLink },
+            provider: "web-scraper"
+          });
+        }
+        links = links.filter((link) => !link.endsWith(".pdf"));
+
+        let documents = await this.convertUrlsToDocuments(
+          links.slice(0, this.limit),
+          inProgress
+        );
 
         documents = await this.getSitemapData(this.urls[0], documents);
+
+        if (this.replaceAllPathsWithAbsolutePaths) {
+          documents = replacePathsWithAbsolutePaths(documents);
+        } else {
+          documents = replaceImgPathsWithAbsolutePaths(documents);
+        }
+
         if (this.generateImgAltText) {
           documents = await this.generatesImgAltText(documents);
         }
-        
+        documents = documents.concat(pdfDocuments);
+
         await this.setCachedDocuments(documents);
         documents = this.removeChildLinks(documents);
         documents = documents.splice(0, this.limit);
@@ -151,11 +232,22 @@ export class WebScraperDataProvider {
       return [];
     }
 
-    let documents = await this.getCachedDocuments(this.urls.slice(0, this.limit));
+    let documents = await this.getCachedDocuments(
+      this.urls.slice(0, this.limit)
+    );
     if (documents.length < this.limit) {
-       const newDocuments: Document[] = await this.getDocuments(false, inProgress);
-      newDocuments.forEach(doc => {
-        if (!documents.some(d => this.normalizeUrl(d.metadata.sourceURL) === this.normalizeUrl(doc.metadata?.sourceURL))) {
+      const newDocuments: Document[] = await this.getDocuments(
+        false,
+        inProgress
+      );
+      newDocuments.forEach((doc) => {
+        if (
+          !documents.some(
+            (d) =>
+              this.normalizeUrl(d.metadata.sourceURL) ===
+              this.normalizeUrl(doc.metadata?.sourceURL)
+          )
+        ) {
           documents.push(doc);
         }
       });
@@ -171,17 +263,23 @@ export class WebScraperDataProvider {
       const url = new URL(document.metadata.sourceURL);
       const path = url.pathname;
 
-      if (this.excludes.length > 0 && this.excludes[0] !== '') {
+      if (this.excludes.length > 0 && this.excludes[0] !== "") {
         // Check if the link should be excluded
-        if (this.excludes.some(excludePattern => new RegExp(excludePattern).test(path))) {
+        if (
+          this.excludes.some((excludePattern) =>
+            new RegExp(excludePattern).test(path)
+          )
+        ) {
           return false;
         }
       }
-      
-      if (this.includes.length > 0 && this.includes[0] !== '') {
+
+      if (this.includes.length > 0 && this.includes[0] !== "") {
         // Check if the link matches the include patterns, if any are specified
         if (this.includes.length > 0) {
-          return this.includes.some(includePattern => new RegExp(includePattern).test(path));
+          return this.includes.some((includePattern) =>
+            new RegExp(includePattern).test(path)
+          );
         }
       }
       return true;
@@ -198,7 +296,7 @@ export class WebScraperDataProvider {
   private removeChildLinks(documents: Document[]): Document[] {
     for (let document of documents) {
       if (document?.childrenLinks) delete document.childrenLinks;
-    };
+    }
     return documents;
   }
 
@@ -208,10 +306,14 @@ export class WebScraperDataProvider {
         continue;
       }
       const normalizedUrl = this.normalizeUrl(document.metadata.sourceURL);
-      await setValue('web-scraper-cache:' + normalizedUrl, JSON.stringify({
-        ...document,
-        childrenLinks: childrenLinks || []
-      }), 60 * 60 * 24 * 10); // 10 days
+      await setValue(
+        "web-scraper-cache:" + normalizedUrl,
+        JSON.stringify({
+          ...document,
+          childrenLinks: childrenLinks || [],
+        }),
+        60 * 60 * 24 * 10
+      ); // 10 days
     }
   }
 
@@ -219,8 +321,12 @@ export class WebScraperDataProvider {
     let documents: Document[] = [];
     for (const url of urls) {
       const normalizedUrl = this.normalizeUrl(url);
-      console.log("Getting cached document for web-scraper-cache:" + normalizedUrl)
-      const cachedDocumentString = await getValue('web-scraper-cache:' + normalizedUrl);
+      console.log(
+        "Getting cached document for web-scraper-cache:" + normalizedUrl
+      );
+      const cachedDocumentString = await getValue(
+        "web-scraper-cache:" + normalizedUrl
+      );
       if (cachedDocumentString) {
         const cachedDocument = JSON.parse(cachedDocumentString);
         documents.push(cachedDocument);
@@ -228,10 +334,18 @@ export class WebScraperDataProvider {
         // get children documents
         for (const childUrl of cachedDocument.childrenLinks) {
           const normalizedChildUrl = this.normalizeUrl(childUrl);
-          const childCachedDocumentString = await getValue('web-scraper-cache:' + normalizedChildUrl);
+          const childCachedDocumentString = await getValue(
+            "web-scraper-cache:" + normalizedChildUrl
+          );
           if (childCachedDocumentString) {
             const childCachedDocument = JSON.parse(childCachedDocumentString);
-            if (!documents.find((doc) => doc.metadata.sourceURL === childCachedDocument.metadata.sourceURL)) {
+            if (
+              !documents.find(
+                (doc) =>
+                  doc.metadata.sourceURL ===
+                  childCachedDocument.metadata.sourceURL
+              )
+            ) {
               documents.push(childCachedDocument);
             }
           }
@@ -246,7 +360,6 @@ export class WebScraperDataProvider {
       throw new Error("Urls are required");
     }
 
-    console.log("options", options.crawlerOptions?.excludes)
     this.urls = options.urls;
     this.mode = options.mode;
     this.concurrentRequests = options.concurrentRequests ?? 20;
@@ -255,13 +368,14 @@ export class WebScraperDataProvider {
     this.maxCrawledLinks = options.crawlerOptions?.maxCrawledLinks ?? 1000;
     this.returnOnlyUrls = options.crawlerOptions?.returnOnlyUrls ?? false;
     this.limit = options.crawlerOptions?.limit ?? 10000;
-    this.generateImgAltText = options.crawlerOptions?.generateImgAltText ?? false;
-
+    this.generateImgAltText =
+      options.crawlerOptions?.generateImgAltText ?? false;
+    this.pageOptions = options.pageOptions ?? {onlyMainContent: false};
+    this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
 
     //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
-    this.excludes = this.excludes.filter(item => item !== '');
-  
-  
+    this.excludes = this.excludes.filter((item) => item !== "");
+
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {
       if (!url.trim().startsWith("http")) {
@@ -272,10 +386,14 @@ export class WebScraperDataProvider {
   }
 
   private async getSitemapData(baseUrl: string, documents: Document[]) {
-    const sitemapData = await fetchSitemapData(baseUrl)
+    const sitemapData = await fetchSitemapData(baseUrl);
     if (sitemapData) {
       for (let i = 0; i < documents.length; i++) {
-        const docInSitemapData = sitemapData.find((data) => this.normalizeUrl(data.loc) === this.normalizeUrl(documents[i].metadata.sourceURL))
+        const docInSitemapData = sitemapData.find(
+          (data) =>
+            this.normalizeUrl(data.loc) ===
+            this.normalizeUrl(documents[i].metadata.sourceURL)
+        );
         if (docInSitemapData) {
           let sitemapDocData: Partial<SitemapEntry> = {};
           if (docInSitemapData.changefreq) {
@@ -296,30 +414,47 @@ export class WebScraperDataProvider {
     return documents;
   }
   generatesImgAltText = async (documents: Document[]): Promise<Document[]> => {
-    await Promise.all(documents.map(async (document) => {
-      const baseUrl = new URL(document.metadata.sourceURL).origin;
-      const images = document.content.match(/!\[.*?\]\(((?:[^()]+|\((?:[^()]+|\([^()]*\))*\))*)\)/g) || [];
+    await Promise.all(
+      documents.map(async (document) => {
+        const images = document.content.match(/!\[.*?\]\((.*?)\)/g) || [];
 
-      await Promise.all(images.map(async (image) => {
-        let imageUrl = image.match(/\(([^)]+)\)/)[1];
-        let altText = image.match(/\[(.*?)\]/)[1];
-        let newImageUrl = '';
+        await Promise.all(
+          images.map(async (image: string) => {
+            let imageUrl = image.match(/\(([^)]+)\)/)[1];
+            let altText = image.match(/\[(.*?)\]/)[1];
 
-        if (!altText && !imageUrl.startsWith("data:image") && /\.(png|jpeg|gif|webp)$/.test(imageUrl)) {
-          newImageUrl = baseUrl + imageUrl;
-          const imageIndex = document.content.indexOf(image);
-          const contentLength = document.content.length;
-          let backText = document.content.substring(imageIndex + image.length, Math.min(imageIndex + image.length + 1000, contentLength));
-          let frontTextStartIndex = Math.max(imageIndex - 1000, 0);
-          let frontText = document.content.substring(frontTextStartIndex, imageIndex);
-          altText = await getImageDescription(newImageUrl, backText, frontText);
-        }
+            if (
+              !altText &&
+              !imageUrl.startsWith("data:image") &&
+              /\.(png|jpeg|gif|webp)$/.test(imageUrl)
+            ) {
+              const imageIndex = document.content.indexOf(image);
+              const contentLength = document.content.length;
+              let backText = document.content.substring(
+                imageIndex + image.length,
+                Math.min(imageIndex + image.length + 1000, contentLength)
+              );
+              let frontTextStartIndex = Math.max(imageIndex - 1000, 0);
+              let frontText = document.content.substring(
+                frontTextStartIndex,
+                imageIndex
+              );
+              altText = await getImageDescription(
+                imageUrl,
+                backText,
+                frontText
+              , this.generateImgAltTextModel);
+            }
 
-        document.content = document.content.replace(image, `![${altText}](${newImageUrl})`);
-      }));
-    }));
+            document.content = document.content.replace(
+              image,
+              `![${altText}](${imageUrl})`
+            );
+          })
+        );
+      })
+    );
 
     return documents;
-  }
+  };
 }
-

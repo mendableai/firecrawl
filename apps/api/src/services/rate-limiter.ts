@@ -1,12 +1,16 @@
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import * as redis from "redis";
+import { RateLimiterMode } from "../../src/types";
 
 const MAX_REQUESTS_PER_MINUTE_PREVIEW = 5;
 const MAX_CRAWLS_PER_MINUTE_STARTER = 2;
-const MAX_CRAWLS_PER_MINUTE_STANDAR = 4;
+const MAX_CRAWLS_PER_MINUTE_STANDARD = 4;
 const MAX_CRAWLS_PER_MINUTE_SCALE = 20;
 
-const MAX_REQUESTS_PER_MINUTE_ACCOUNT = 40;
+const MAX_REQUESTS_PER_MINUTE_ACCOUNT = 20;
+
+const MAX_REQUESTS_PER_MINUTE_CRAWL_STATUS = 120;
+
 
 
 
@@ -29,13 +33,20 @@ export const serverRateLimiter = new RateLimiterRedis({
   duration: 60, // Duration in seconds
 });
 
+export const crawlStatusRateLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "middleware",
+  points: MAX_REQUESTS_PER_MINUTE_CRAWL_STATUS,
+  duration: 60, // Duration in seconds
+});
+
 
 export function crawlRateLimit(plan: string){
   if(plan === "standard"){
     return new RateLimiterRedis({
       storeClient: redisClient,
       keyPrefix: "middleware",
-      points: MAX_CRAWLS_PER_MINUTE_STANDAR,
+      points: MAX_CRAWLS_PER_MINUTE_STANDARD,
       duration: 60, // Duration in seconds
     });
   }else if(plan === "scale"){
@@ -56,10 +67,15 @@ export function crawlRateLimit(plan: string){
 }
 
 
-export function getRateLimiter(preview: boolean){
-  if(preview){
-    return previewRateLimiter;
-  }else{
-    return serverRateLimiter;
+
+
+export function getRateLimiter(mode: RateLimiterMode){
+  switch(mode) {
+    case RateLimiterMode.Preview:
+      return previewRateLimiter;
+    case RateLimiterMode.CrawlStatus:
+      return crawlStatusRateLimiter;
+    default:
+      return serverRateLimiter;
   }
 }

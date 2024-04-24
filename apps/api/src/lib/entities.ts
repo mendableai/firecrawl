@@ -9,8 +9,38 @@ export interface Progress {
   currentDocumentUrl?: string;
 }
 
+export type PageOptions = {
+  onlyMainContent?: boolean;
+  fallback?: boolean;
+  fetchPageContent?: boolean;
+  
+};
+
+export type SearchOptions = {
+  limit?: number;
+  tbs?: string;
+  filter?: string;
+};
+
+export type WebScraperOptions = {
+  urls: string[];
+  mode: "single_urls" | "sitemap" | "crawl";
+  crawlerOptions?: {
+    returnOnlyUrls?: boolean;
+    includes?: string[];
+    excludes?: string[];
+    maxCrawledLinks?: number;
+    limit?: number;
+    generateImgAltText?: boolean;
+    replaceAllPathsWithAbsolutePaths?: boolean;
+  };
+  pageOptions?: PageOptions;
+  concurrentRequests?: number;
+};
+
 export class Document {
   id?: string;
+  url?: string; // Used only in /search for now
   content: string;
   markdown?: string;
   createdAt?: Date;
@@ -21,6 +51,7 @@ export class Document {
     [key: string]: any;
   };
   childrenLinks?: string[];
+  provider?: string;
 
   constructor(data: Partial<Document>) {
     if (!data.content) {
@@ -33,5 +64,6 @@ export class Document {
     this.metadata = data.metadata || { sourceURL: "" };
     this.markdown = data.markdown || "";
     this.childrenLinks = data.childrenLinks || undefined;
+    this.provider = data.provider || undefined;
   }
 }

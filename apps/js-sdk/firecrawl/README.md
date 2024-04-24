@@ -33,15 +33,18 @@ Here's an example of how to use the SDK with error handling:
       
       // Crawl a website
       const crawlUrl = 'https://mendable.ai';
-      const crawlParams = {
+      const params = {
       crawlerOptions: {
         excludes: ['blog/'],
         includes: [], // leave empty for all pages 
         limit: 1000,
+        },
+        pageOptions: {
+            onlyMainContent: true
         }
       };
 
-      const crawlResult = await app.crawlUrl(crawlUrl, crawlParams);
+      const crawlResult = await app.crawlUrl(crawlUrl, params);
       console.log(crawlResult);
 
     } catch (error) {
@@ -83,18 +86,21 @@ To crawl a website with error handling, use the `crawlUrl` method. It takes the 
 async function crawlExample() {
   try {
     const crawlUrl = 'https://example.com';
-    const crawlParams = {
+    const params = {
       crawlerOptions: {
         excludes: ['blog/'],
         includes: [], // leave empty for all pages
         limit: 1000,
+      },
+      pageOptions: {
+        onlyMainContent: true
       }
     };
     const waitUntilDone = true;
     const timeout = 5;
     const crawlResult = await app.crawlUrl(
       crawlUrl,
-      crawlParams,
+      params,
       waitUntilDone,
       timeout
     );
