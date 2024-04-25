@@ -14,6 +14,14 @@ const socialMediaBlocklist = [
   'telegram.org',
 ];
 
+const allowedUrls = [
+  'linkedin.com/pulse'
+];
+
 export function isUrlBlocked(url: string): boolean {
+  if (allowedUrls.some(allowedUrl => url.includes(allowedUrl))) {
+    return false;
+  }
+
   return socialMediaBlocklist.some(domain => url.includes(domain));
 }
