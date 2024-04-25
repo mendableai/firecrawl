@@ -17,8 +17,7 @@
   "author": "Mendable.ai",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.6.8",
-    "dotenv": "^16.4.5"
+    "axios": "^1.6.8"
   },
   "bugs": {
     "url": "https://github.com/mendableai/firecrawl/issues"
@@ -26,7 +25,6 @@
   "homepage": "https://github.com/mendableai/firecrawl#readme",
   "devDependencies": {
     "@types/axios": "^0.14.0",
-    "@types/dotenv": "^8.2.0",
     "@types/node": "^20.12.7",
     "typescript": "^5.4.5"
   },

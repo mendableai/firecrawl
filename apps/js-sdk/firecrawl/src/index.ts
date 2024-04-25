@@ -1,6 +1,4 @@
 import axios, { AxiosResponse, AxiosRequestHeaders } from 'axios';
-import dotenv from 'dotenv';
-dotenv.config();
 
 /**
  * Configuration interface for FirecrawlApp.
