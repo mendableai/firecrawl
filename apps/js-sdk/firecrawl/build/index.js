@@ -62,6 +62,43 @@ export default class FirecrawlApp {
         });
     }
     /**
+     * Searches for a query using the Firecrawl API.
+     * @param {string} query - The query to search for.
+     * @param {Params | null} params - Additional parameters for the search request.
+     * @returns {Promise<SearchResponse>} The response from the search operation.
+     */
+    search(query_1) {
+        return __awaiter(this, arguments, void 0, function* (query, params = null) {
+            const headers = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${this.apiKey}`,
+            };
+            let jsonData = { query };
+            if (params) {
+                jsonData = Object.assign(Object.assign({}, jsonData), params);
+            }
+            try {
+                const response = yield axios.post('https://api.firecrawl.dev/v0/search', jsonData, { headers });
+                if (response.status === 200) {
+                    const responseData = response.data;
+                    if (responseData.success) {
+                        return responseData;
+                    }
+                    else {
+                        throw new Error(`Failed to search. Error: ${responseData.error}`);
+                    }
+                }
+                else {
+                    this.handleError(response, 'search');
+                }
+            }
+            catch (error) {
+                throw new Error(error.message);
+            }
+            return { success: false, error: 'Internal server error.' };
+        });
+    }
+    /**
      * Initiates a crawl job for a URL using the Firecrawl API.
      * @param {string} url - The URL to crawl.
      * @param {Params | null} params - Additional parameters for the crawl request.
