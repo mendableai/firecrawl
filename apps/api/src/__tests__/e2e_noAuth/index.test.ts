@@ -73,14 +73,25 @@ describe("E2E Tests for API Routes with No Authentication", () => {
       expect(response.statusCode).toBe(200);
     }, 10000); // 10 seconds timeout
 
-    it("should return a timeout error when scraping takes longer than the specified timeout", async () => {
-      const response = await request(TEST_URL)
-        .post("/v0/scrape")
+    it("should return a timeout error when crawl takes longer than the specified timeout", async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
         .set("Content-Type", "application/json")
-        .send({ url: "https://slowwebsite.com", timeout: 1000 });
-      expect(response.statusCode).toBe(408);
-      expect(response.body.error).toContain("Timeout exceeded");
-    }, 2000);
+        .send({ url: "https://firecrawl.dev", timeout: 10 });
+      expect(crawlResponse.statusCode).toBe(200);
+      expect(crawlResponse.body).toHaveProperty("jobId");
+      expect(crawlResponse.body.jobId).toMatch(
+        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
+      );
+      await new Promise((r) => setTimeout(r, 2000));
+
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+      expect(completedResponse.statusCode).toBe(408);
+      expect(completedResponse.body).toHaveProperty("error");
+      expect(completedResponse.body.error).toContain("Timeout exceeded");
+    }, 5000);
+
   });
 
   describe("POST /v0/crawl", () => {

@@ -26,8 +26,6 @@ function getDocumentsWithTimeout(provider: WebScraperDataProvider, timeout: numb
 
 export async function crawlController(req: Request, res: Response) {
   try {
-    const defaultTimeout = this.limit * 20000;
-
     const { success, team_id, error, status } = await authenticateUser(
       req,
       res,
@@ -55,7 +53,7 @@ export async function crawlController(req: Request, res: Response) {
     const mode = req.body.mode ?? "crawl";
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
-    const timeout = req.body.timeout;
+    const timeout = req.body.timeout || req.body.crawlerOptions?.limit * 20000 || 5 * 20000; // default 5 pages
 
     if (mode === "single_urls" && !url.includes(",")) {
       try {
@@ -69,16 +67,27 @@ export async function crawlController(req: Request, res: Response) {
           pageOptions: pageOptions,
         });
 
-        const docs = await Promise.race([
-          getDocumentsWithTimeout(a, timeout),
-          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout exceeded")), timeout))
-        ]);
+        const timeoutPromise = new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({
+              error: "Timeout",
+            });
+          }, timeout);
+        });
+
+        const scrapingPromise = a.getDocuments(false);
+
+        const docs = await Promise.race([scrapingPromise, timeoutPromise]) as Document[];
+        if ('error' in docs && docs.error == 'Timeout') {
+          return res.status(408).json({ error: "Timeout exceeded" })
+        }
+
         return res.json({
           success: true,
           documents: docs,
         });
+
       } catch (error) {
-        console.error(error);
         return res.status(500).json({ error: error.message });
       }
     }
@@ -89,7 +98,7 @@ export async function crawlController(req: Request, res: Response) {
       team_id: team_id,
       pageOptions: pageOptions,
       origin: req.body.origin ?? "api",
-      timeout: timeout ?? defaultTimeout,
+      timeout: timeout,
     });
 
     res.json({ jobId: job.id });

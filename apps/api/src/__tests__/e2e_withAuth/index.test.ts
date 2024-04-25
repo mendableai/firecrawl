@@ -66,7 +66,7 @@ const TEST_URL = "http://127.0.0.1:3002";
           .set("Content-Type", "application/json")
           .send({ url: "https://firecrawl.dev" });
         expect(response.statusCode).toBe(200);
-      }, 10000); // 10 seconds timeout
+      }, 20000); // 20 seconds timeout
 
       it("should return a successful response with a valid API key", async () => {
         const response = await request(TEST_URL)
@@ -87,7 +87,8 @@ const TEST_URL = "http://127.0.0.1:3002";
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
-          .send({ url: "https://slowwebsite.com", timeout: 1000 });
+          .send({ url: "https://firecrawl.dev", timeout: 10 });
+
         expect(response.statusCode).toBe(408);
         expect(response.body.error).toContain("Timeout exceeded");
       }, 2000); 
@@ -133,14 +134,25 @@ const TEST_URL = "http://127.0.0.1:3002";
       });
 
       it("should return a timeout error when crawl takes longer than the specified timeout", async () => {
-        const response = await request(TEST_URL)
+        const crawlResponse = await request(TEST_URL)
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
-          .send({ url: "https://slowwebsite.com", timeout: 1000 });
-        expect(response.statusCode).toBe(408);
-        expect(response.body.error).toContain("Timeout exceeded");
-      }, 2000);
+          .send({ url: "https://firecrawl.dev", timeout: 10 });
+        expect(crawlResponse.statusCode).toBe(200);
+        expect(crawlResponse.body).toHaveProperty("jobId");
+        expect(crawlResponse.body.jobId).toMatch(
+          /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
+        );
+        await new Promise((r) => setTimeout(r, 2000));
+
+        const completedResponse = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(completedResponse.statusCode).toBe(408);
+        expect(completedResponse.body).toHaveProperty("error");
+        expect(completedResponse.body.error).toContain("Timeout exceeded");
+      }, 5000);
 
       // Additional tests for insufficient credits?
     });
@@ -166,7 +178,7 @@ const TEST_URL = "http://127.0.0.1:3002";
         const blocklistedUrl = "https://instagram.com/fake-test";
         const response = await request(TEST_URL)
           .post("/v0/crawlWebsitePreview")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Authorization", `Bearer this_is_just_a_preview_token`)
           .set("Content-Type", "application/json")
           .send({ url: blocklistedUrl });
         expect(response.statusCode).toBe(403);

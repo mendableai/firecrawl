@@ -43,15 +43,16 @@ export async function scrapeHelper(
   const timeoutPromise = new Promise((resolve) => {
     setTimeout(() => {
       resolve({
-        success: false,
         error: "Timeout",
-        returnCode: 408,
       });
     }, timeout);
   });
   
   try {
     const docs = await Promise.race([scrapingPromise, timeoutPromise]) as Document[];
+    if ('error' in docs && docs.error == 'Timeout') {
+      return { success: false, error: "Timeout exceeded", returnCode: 408 };
+    }
     // make sure doc.content is not empty
     const filteredDocs = docs.filter(
       (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
