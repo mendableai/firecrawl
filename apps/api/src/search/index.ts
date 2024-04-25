@@ -28,7 +28,7 @@ export async function search({
   timeout?: number;
 }) : Promise<SearchResult[]> {
   try {
-    if (process.env.SERPER_API_KEY && !tbs) {
+    if (process.env.SERPER_API_KEY ) {
       return await serper_search(query, {num_results, tbs, filter, lang, country, location});
     }
     return await google_search(
