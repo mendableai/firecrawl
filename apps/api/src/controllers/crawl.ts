@@ -7,6 +7,23 @@ import { RateLimiterMode } from "../../src/types";
 import { addWebScraperJob } from "../../src/services/queue-jobs";
 import { isUrlBlocked } from "../../src/scraper/WebScraper/utils/blocklist";
 
+function getDocumentsWithTimeout(provider: WebScraperDataProvider, timeout: number): Promise<any> {
+  return new Promise(async (resolve, reject) => {
+    const timeoutId = setTimeout(() => {
+      reject(new Error("Timeout exceeded"));
+    }, timeout);
+
+    try {
+      const docs = await provider.getDocuments();
+      clearTimeout(timeoutId);
+      resolve(docs);
+    } catch (error) {
+      clearTimeout(timeoutId);
+      reject(error);
+    }
+  });
+}
+
 export async function crawlController(req: Request, res: Response) {
   try {
     const { success, team_id, error, status } = await authenticateUser(
@@ -36,6 +53,7 @@ export async function crawlController(req: Request, res: Response) {
     const mode = req.body.mode ?? "crawl";
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
+    const timeout = req.body.timeout;
 
     if (mode === "single_urls" && !url.includes(",")) {
       try {
@@ -49,14 +67,10 @@ export async function crawlController(req: Request, res: Response) {
           pageOptions: pageOptions,
         });
 
-        const docs = await a.getDocuments(false, (progress) => {
-          job.progress({
-            current: progress.current,
-            total: progress.total,
-            current_step: "SCRAPING",
-            current_url: progress.currentDocumentUrl,
-          });
-        });
+        const docs = await Promise.race([
+          getDocumentsWithTimeout(a, timeout),
+          new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout exceeded")), timeout))
+        ]);
         return res.json({
           success: true,
           documents: docs,
@@ -73,6 +87,7 @@ export async function crawlController(req: Request, res: Response) {
       team_id: team_id,
       pageOptions: pageOptions,
       origin: req.body.origin ?? "api",
+      timeout: timeout, 
     });
 
     res.json({ jobId: job.id });

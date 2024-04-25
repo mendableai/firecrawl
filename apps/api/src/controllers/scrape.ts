@@ -11,7 +11,8 @@ export async function scrapeHelper(
   req: Request,
   team_id: string,
   crawlerOptions: any,
-  pageOptions: any
+  pageOptions: any,
+  timeout: number
 ): Promise<{
   success: boolean;
   error?: string;
@@ -37,33 +38,50 @@ export async function scrapeHelper(
     pageOptions: pageOptions,
   });
 
-  const docs = await a.getDocuments(false);
-  // make sure doc.content is not empty
-  const filteredDocs = docs.filter(
-    (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
-  );
-  if (filteredDocs.length === 0) {
-    return { success: true, error: "No page found", returnCode: 200 };
-  }
+  const scrapingPromise = a.getDocuments(false);
 
-    const { success, credit_usage } = await billTeam(
-      team_id,
-      filteredDocs.length
-    );
-    if (!success) {
-      return {
+  const timeoutPromise = new Promise((resolve) => {
+    setTimeout(() => {
+      resolve({
         success: false,
-        error:
-          "Failed to bill team. Insufficient credits or subscription not found.",
-        returnCode: 402,
-      };
+        error: "Timeout",
+        returnCode: 408,
+      });
+    }, timeout);
+  });
+  
+  try {
+    const docs = await Promise.race([scrapingPromise, timeoutPromise]);
+    // make sure doc.content is not empty
+    const filteredDocs = docs.filter(
+      (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
+    );
+    if (filteredDocs.length === 0) {
+      return { success: true, error: "No page found", returnCode: 200 };
     }
 
-  return {
-    success: true,
-    data: filteredDocs[0],
-    returnCode: 200,
-  };
+      const { success, credit_usage } = await billTeam(
+        team_id,
+        filteredDocs.length
+      );
+      if (!success) {
+        return {
+          success: false,
+          error:
+            "Failed to bill team. Insufficient credits or subscription not found.",
+          returnCode: 402,
+        };
+      }
+
+    return {
+      success: true,
+      data: filteredDocs[0],
+      returnCode: 200,
+    };
+  } catch (error) {
+    console.error(error);
+    return { success: false, error: "Internal server error", returnCode: 500 };
+  }
 }
 
 export async function scrapeController(req: Request, res: Response) {
@@ -80,6 +98,7 @@ export async function scrapeController(req: Request, res: Response) {
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
     const origin = req.body.origin ?? "api";
+    const timeout = req.body.timeout;
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
@@ -96,7 +115,8 @@ export async function scrapeController(req: Request, res: Response) {
       req,
       team_id,
       crawlerOptions,
-      pageOptions
+      pageOptions,
+      timeout
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
