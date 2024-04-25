@@ -9,6 +9,8 @@ export async function search({
   tbs = null,
   filter = null,
   lang = "en",
+  country = "us",
+  location = undefined,
   proxy = null,
   sleep_interval = 0,
   timeout = 5000,
@@ -19,13 +21,15 @@ export async function search({
   tbs?: string;
   filter?: string;
   lang?: string;
+  country?: string;
+  location?: string;
   proxy?: string;
   sleep_interval?: number;
   timeout?: number;
 }) : Promise<SearchResult[]> {
   try {
-    if (process.env.SERPER_API_KEY && !tbs) {
-      return await serper_search(query, num_results);
+    if (process.env.SERPER_API_KEY ) {
+      return await serper_search(query, {num_results, tbs, filter, lang, country, location});
     }
     return await google_search(
       query,
@@ -34,6 +38,7 @@ export async function search({
       tbs,
       filter,
       lang,
+      country,
       proxy,
       sleep_interval,
       timeout

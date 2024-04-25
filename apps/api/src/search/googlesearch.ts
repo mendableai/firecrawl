@@ -17,11 +17,12 @@ function get_useragent(): string {
     return _useragent_list[Math.floor(Math.random() * _useragent_list.length)];
 }
 
-async function _req(term: string, results: number, lang: string, start: number, proxies: any, timeout: number, tbs: string = null, filter: string = null) {
+async function _req(term: string, results: number, lang: string, country: string, start: number, proxies: any, timeout: number, tbs: string = null, filter: string = null) {
     const params = {
         "q": term,
         "num": results,  // Number of results to return
         "hl": lang,
+        "gl": country,
         "start": start,
     };
     if (tbs) {
@@ -50,7 +51,7 @@ async function _req(term: string, results: number, lang: string, start: number, 
 
 
 
-export async function google_search(term: string, advanced = false, num_results = 7, tbs = null, filter = null, lang = "en", proxy = null, sleep_interval = 0, timeout = 5000, ) :Promise<SearchResult[]> {
+export async function google_search(term: string, advanced = false, num_results = 7, tbs = null, filter = null, lang = "en", country = "us", proxy = null, sleep_interval = 0, timeout = 5000, ) :Promise<SearchResult[]> {
     const escaped_term = querystring.escape(term);
 
     let proxies = null;
@@ -70,7 +71,7 @@ export async function google_search(term: string, advanced = false, num_results 
     const maxAttempts = 20; // Define a maximum number of attempts to prevent infinite loop
     while (start < num_results && attempts < maxAttempts) {
         try {
-            const resp = await _req(escaped_term, num_results - start, lang, start, proxies, timeout, tbs, filter);
+            const resp = await _req(escaped_term, num_results - start, lang, country, start, proxies, timeout, tbs, filter);
             const $ = cheerio.load(resp.data);
             const result_block = $("div.g");
             if (result_block.length === 0) {

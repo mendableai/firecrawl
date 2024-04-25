@@ -29,7 +29,16 @@ export async function searchHelper(
   const tbs = searchOptions.tbs ?? null;
   const filter = searchOptions.filter ?? null;
 
-  let res = await search({query: query, advanced: advanced, num_results: searchOptions.limit ?? 7, tbs: tbs, filter: filter});
+  let res = await search({
+    query: query,
+    advanced: advanced,
+    num_results: searchOptions.limit ?? 7,
+    tbs: tbs,
+    filter: filter,
+    lang: searchOptions.lang ?? "en",
+    country: searchOptions.country ?? "us",
+    location: searchOptions.location,
+  });
 
   let justSearch = pageOptions.fetchPageContent === false;
 

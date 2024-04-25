@@ -20,6 +20,9 @@ export type SearchOptions = {
   limit?: number;
   tbs?: string;
   filter?: string;
+  lang?: string;
+  country?: string;
+  location?: string;
 };
 
 export type WebScraperOptions = {

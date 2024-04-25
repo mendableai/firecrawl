@@ -4,10 +4,23 @@ import { SearchResult } from "../../src/lib/entities";
 
 dotenv.config();
 
-export async function serper_search(q, num_results): Promise<SearchResult[]> {
+export async function serper_search(q, options: {
+    tbs?: string;
+    filter?: string;
+    lang?: string;
+    country?: string;
+    location?: string;
+    num_results: number;
+    page?: number;
+}): Promise<SearchResult[]> {
   let data = JSON.stringify({
     q: q,
-    num: num_results,
+    hl: options.lang,
+    gl: options.country,
+    location: options.location,
+    tbs: options.tbs,
+    num: options.num_results,
+    page: options.page ?? 1,
   });
 
   let config = {
