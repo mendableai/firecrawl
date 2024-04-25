@@ -7,8 +7,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "publish":"npm run build && npm publish --access public",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "publish": "npm run build && npm publish --access public",
+    "test": "jest src/**/*.test.ts"
   },
   "repository": {
     "type": "git",
@@ -24,8 +24,11 @@
   },
   "homepage": "https://github.com/mendableai/firecrawl#readme",
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
     "@types/axios": "^0.14.0",
     "@types/node": "^20.12.7",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
     "typescript": "^5.4.5"
   },
   "keywords": [
