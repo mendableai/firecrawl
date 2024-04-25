@@ -51,7 +51,7 @@ export async function scrapeHelper(
   });
   
   try {
-    const docs = await Promise.race([scrapingPromise, timeoutPromise]);
+    const docs = await Promise.race([scrapingPromise, timeoutPromise]) as Document[];
     // make sure doc.content is not empty
     const filteredDocs = docs.filter(
       (doc: { content?: string }) => doc.content && doc.content.trim().length > 0

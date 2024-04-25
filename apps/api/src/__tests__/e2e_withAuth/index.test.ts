@@ -81,6 +81,16 @@ const TEST_URL = "http://127.0.0.1:3002";
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.content).toContain("🔥 FireCrawl");
       }, 30000); // 30 seconds timeout
+
+      it("should return a timeout error when scraping takes longer than the specified timeout", async () => {
+        const response = await request(TEST_URL)
+          .post("/v0/scrape")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send({ url: "https://slowwebsite.com", timeout: 1000 });
+        expect(response.statusCode).toBe(408);
+        expect(response.body.error).toContain("Timeout exceeded");
+      }, 2000); 
     });
 
     describe("POST /v0/crawl", () => {
@@ -122,6 +132,15 @@ const TEST_URL = "http://127.0.0.1:3002";
         );
       });
 
+      it("should return a timeout error when crawl takes longer than the specified timeout", async () => {
+        const response = await request(TEST_URL)
+          .post("/v0/crawl")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send({ url: "https://slowwebsite.com", timeout: 1000 });
+        expect(response.statusCode).toBe(408);
+        expect(response.body.error).toContain("Timeout exceeded");
+      }, 2000);
 
       // Additional tests for insufficient credits?
     });

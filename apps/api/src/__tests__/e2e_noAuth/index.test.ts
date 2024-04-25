@@ -72,6 +72,15 @@ describe("E2E Tests for API Routes with No Authentication", () => {
         .send({ url: "https://firecrawl.dev" });
       expect(response.statusCode).toBe(200);
     }, 10000); // 10 seconds timeout
+
+    it("should return a timeout error when scraping takes longer than the specified timeout", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Content-Type", "application/json")
+        .send({ url: "https://slowwebsite.com", timeout: 1000 });
+      expect(response.statusCode).toBe(408);
+      expect(response.body.error).toContain("Timeout exceeded");
+    }, 2000);
   });
 
   describe("POST /v0/crawl", () => {
@@ -101,6 +110,15 @@ describe("E2E Tests for API Routes with No Authentication", () => {
         /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
       );
     });
+
+    it("should return a timeout error when scraping takes longer than the specified timeout", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Content-Type", "application/json")
+        .send({ url: "https://slowwebsite.com", timeout: 1000 });
+      expect(response.statusCode).toBe(408);
+      expect(response.body.error).toContain("Timeout exceeded");
+    }, 2000);
   });
 
   describe("POST /v0/crawlWebsitePreview", () => {
