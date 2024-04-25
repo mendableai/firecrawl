@@ -26,6 +26,14 @@ export interface ScrapeResponse {
 }
 
 /**
+ * Response interface for searching operations.
+ */
+export interface SearchResponse {
+  success: boolean;
+  data?: any;
+  error?: string;
+}
+/**
  * Response interface for crawling operations.
  */
 export interface CrawlResponse {
@@ -89,6 +97,39 @@ export default class FirecrawlApp {
         }
       } else {
         this.handleError(response, 'scrape URL');
+      }
+    } catch (error: any) {
+      throw new Error(error.message);
+    }
+    return { success: false, error: 'Internal server error.' };
+  }
+
+  /**
+   * Searches for a query using the Firecrawl API.
+   * @param {string} query - The query to search for.
+   * @param {Params | null} params - Additional parameters for the search request.
+   * @returns {Promise<SearchResponse>} The response from the search operation.
+   */
+  async search(query: string, params: Params | null = null): Promise<SearchResponse> {
+    const headers: AxiosRequestHeaders = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${this.apiKey}`,
+    } as AxiosRequestHeaders;
+    let jsonData: Params = { query };
+    if (params) {
+      jsonData = { ...jsonData, ...params };
+    }
+    try {
+      const response: AxiosResponse = await axios.post('https://api.firecrawl.dev/v0/search', jsonData, { headers });
+      if (response.status === 200) {
+        const responseData = response.data;
+        if (responseData.success) {
+          return responseData; 
+        } else {
+          throw new Error(`Failed to search. Error: ${responseData.error}`);
+        }
+      } else {
+        this.handleError(response, 'search');
       }
     } catch (error: any) {
       throw new Error(error.message);

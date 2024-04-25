@@ -20,6 +20,14 @@ export interface ScrapeResponse {
     error?: string;
 }
 /**
+ * Response interface for searching operations.
+ */
+export interface SearchResponse {
+    success: boolean;
+    data?: any;
+    error?: string;
+}
+/**
  * Response interface for crawling operations.
  */
 export interface CrawlResponse {
@@ -55,6 +63,13 @@ export default class FirecrawlApp {
      * @returns {Promise<ScrapeResponse>} The response from the scrape operation.
      */
     scrapeUrl(url: string, params?: Params | null): Promise<ScrapeResponse>;
+    /**
+     * Searches for a query using the Firecrawl API.
+     * @param {string} query - The query to search for.
+     * @param {Params | null} params - Additional parameters for the search request.
+     * @returns {Promise<SearchResponse>} The response from the search operation.
+     */
+    search(query: string, params?: Params | null): Promise<SearchResponse>;
     /**
      * Initiates a crawl job for a URL using the Firecrawl API.
      * @param {string} url - The URL to crawl.
