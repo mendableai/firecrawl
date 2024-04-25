@@ -7,6 +7,9 @@ import { RateLimiterMode } from "../../src/types";
 import { addWebScraperJob } from "../../src/services/queue-jobs";
 import { isUrlBlocked } from "../../src/scraper/WebScraper/utils/blocklist";
 
+
+
+
 export async function crawlController(req: Request, res: Response) {
   try {
     const { success, team_id, error, status } = await authenticateUser(
@@ -32,14 +35,28 @@ export async function crawlController(req: Request, res: Response) {
     if (isUrlBlocked(url)) {
       return res.status(403).json({ error: "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it." });
     }
-    
+    const timeout = req.body.timeout || 10000; // default timeout of 10 seconds
+
     const mode = req.body.mode ?? "crawl";
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
+    let partialResults = []; 
+
+    const timeoutFunction = setTimeout(() => {
+     return  res.status(408).json({ error: "Time Limit exceeded",results :partialResults });
+    }, timeout);
+
+    
+
 
     if (mode === "single_urls" && !url.includes(",")) {
+
+      
       try {
         const a = new WebScraperDataProvider();
+
+  
+  
         await a.setOptions({
           mode: "single_urls",
           urls: [url],
@@ -50,6 +67,13 @@ export async function crawlController(req: Request, res: Response) {
         });
 
         const docs = await a.getDocuments(false, (progress) => {
+          partialResults.push({
+            current: progress.current,
+            total: progress.total,
+            current_url: progress.currentDocumentUrl,
+
+        });
+
           job.progress({
             current: progress.current,
             total: progress.total,
@@ -57,6 +81,9 @@ export async function crawlController(req: Request, res: Response) {
             current_url: progress.currentDocumentUrl,
           });
         });
+
+    clearTimeout(timeoutFunction);
+
         return res.json({
           success: true,
           documents: docs,
@@ -74,9 +101,14 @@ export async function crawlController(req: Request, res: Response) {
       pageOptions: pageOptions,
       origin: req.body.origin ?? "api",
     });
+    clearTimeout(timeoutFunction);
+  
+
 
     res.json({ jobId: job.id });
   } catch (error) {
+    
+
     console.error(error);
     return res.status(500).json({ error: error.message });
   }

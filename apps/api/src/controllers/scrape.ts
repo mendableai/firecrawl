@@ -80,6 +80,11 @@ export async function scrapeController(req: Request, res: Response) {
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
     const origin = req.body.origin ?? "api";
+    const timeout = req.body.timeout ?? 10000 // Default timer for 10 seconds
+    
+    const timeoutFunction = setTimeout(() => {
+      return res.status(408).json({ error: "Time limit exceeded" });
+      }, timeout); 
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
@@ -98,6 +103,8 @@ export async function scrapeController(req: Request, res: Response) {
       crawlerOptions,
       pageOptions
     );
+    clearTimeout(timeoutFunction); // Clearing the timeout operation
+
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
     logJob({
