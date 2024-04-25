@@ -2,6 +2,9 @@ import { SearchResult } from "../../src/lib/entities";
 import { google_search } from "./googlesearch";
 import { serper_search } from "./serper";
 
+
+
+
 export async function search({
   query,
   advanced = false,
