@@ -26,6 +26,8 @@ function getDocumentsWithTimeout(provider: WebScraperDataProvider, timeout: numb
 
 export async function crawlController(req: Request, res: Response) {
   try {
+    const defaultTimeout = this.limit * 20000;
+
     const { success, team_id, error, status } = await authenticateUser(
       req,
       res,
@@ -87,7 +89,7 @@ export async function crawlController(req: Request, res: Response) {
       team_id: team_id,
       pageOptions: pageOptions,
       origin: req.body.origin ?? "api",
-      timeout: timeout, 
+      timeout: timeout ?? defaultTimeout,
     });
 
     res.json({ jobId: job.id });

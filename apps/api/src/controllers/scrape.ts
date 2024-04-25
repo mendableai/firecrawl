@@ -12,7 +12,7 @@ export async function scrapeHelper(
   team_id: string,
   crawlerOptions: any,
   pageOptions: any,
-  timeout: number
+  timeout: number = 20000
 ): Promise<{
   success: boolean;
   error?: string;
