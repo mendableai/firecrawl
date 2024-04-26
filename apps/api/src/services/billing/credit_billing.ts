@@ -38,12 +38,73 @@ export async function supaBillTeam(team_id: string, credits: number) {
   }
 
   let sortedCoupons = coupons.sort((a, b) => b.credits - a.credits);
-
   // using coupon credits:
   if (couponCredits > 0) {
-    // using only coupon credits:
-    if (couponCredits > credits && !subscription) {
-      // remove credits from coupon credits
+    if (!subscription) {
+      // using only coupon credits:
+      if (couponCredits >= credits) {
+        // remove credits from coupon credits
+        let usedCredits = credits;
+        while (usedCredits > 0) {
+          // update coupons
+          if (sortedCoupons[0].credits < usedCredits) {
+            usedCredits = usedCredits - sortedCoupons[0].credits;
+            // update coupon credits
+            await supabase_service
+            .from("coupons")
+            .update({
+              credits: 0
+            })
+            .eq("id", sortedCoupons[0].id);
+            sortedCoupons.shift();
+
+          } else {
+            // update coupon credits
+            await supabase_service
+            .from("coupons")
+            .update({
+              credits: sortedCoupons[0].credits - usedCredits
+            })
+            .eq("id", sortedCoupons[0].id);
+            usedCredits = 0;
+          }
+        }
+
+        return await createCreditUsage({ team_id, credits: 0 });
+
+      // not enough coupon credits and no subscription
+      } else {
+        // update coupon credits
+        const usedCredits = credits - couponCredits;
+        for (let i = 0; i < sortedCoupons.length; i++) {
+          await supabase_service
+            .from("coupons")
+            .update({
+              credits: 0
+            })
+            .eq("id", sortedCoupons[i].id);
+        }
+
+        return await createCreditUsage({ team_id, credits: usedCredits });
+      }
+    }
+    
+    // with subscription
+    // using coupon + subscription credits:
+    if (credits > couponCredits) {
+      // update coupon credits
+      for (let i = 0; i < sortedCoupons.length; i++) {
+        await supabase_service
+          .from("coupons")
+          .update({
+            credits: 0
+          })
+          .eq("id", sortedCoupons[i].id);
+      }
+      const usedCredits = credits - couponCredits;
+      return await createCreditUsage({ team_id, subscription_id: subscription.id, credits: usedCredits });
+
+    } else { // using only coupon credits
       let usedCredits = credits;
       while (usedCredits > 0) {
         // update coupons
@@ -70,27 +131,7 @@ export async function supaBillTeam(team_id: string, credits: number) {
         }
       }
 
-      return await createCreditUsage({ team_id, credits: 0 });
-
-    // @nick ??? HOW TO HANDLE THIS CASE?
-    // not enough coupon credits but no subscription
-    } else if (!subscription) {
-      return await createCreditUsage({ team_id, credits });
-    }
-
-    // using coupon + subscription credits:
-    if (credits > couponCredits) {
-      // update coupon credits
-      for (let i = 0; i < sortedCoupons.length; i++) {
-        await supabase_service
-          .from("coupons")
-          .update({
-            credits: 0
-          })
-          .eq("id", sortedCoupons[i].id);
-      }
-      const usedCredits = credits - couponCredits;
-      return await createCreditUsage({ team_id, subscription_id: subscription.id, credits: usedCredits });
+      return await createCreditUsage({ team_id, subscription_id: subscription.id, credits: 0 });
     }
   }
 
@@ -131,12 +172,41 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     couponCredits = coupons.reduce((total, coupon) => total + coupon.credits, 0);
   }
 
-  if (subscriptionError || (!subscription && couponCredits <= 0)) {
-    return { success: false, message: "No active subscription or coupons found" };
-  }
+  // Free credits, no coupons
+  if (subscriptionError || !subscription) {
+    // If there is no active subscription but there are available coupons
+    if (couponCredits >= credits) {
+      return { success: true, message: "Sufficient credits available" };
+    }
+      
+    const { data: creditUsages, error: creditUsageError } =
+      await supabase_service
+        .from("credit_usage")
+        .select("credits_used")
+        .is("subscription_id", null)
+        .eq("team_id", team_id);
+    // .gte("created_at", subscription.current_period_start)
+    // .lte("created_at", subscription.current_period_end);
 
-  // If there is no active subscription but there are available coupons
-  if (couponCredits >= credits) {
+    if (creditUsageError) {
+      throw new Error(
+        `Failed to retrieve credit usage for subscription_id: ${subscription.id}`
+      );
+    }
+
+    const totalCreditsUsed = creditUsages.reduce(
+      (acc, usage) => acc + usage.credits_used,
+      0
+    );
+
+    console.log("totalCreditsUsed", totalCreditsUsed);
+    // 5. Compare the total credits used with the credits allowed by the plan.
+    if (totalCreditsUsed + credits > FREE_CREDITS) {
+      return {
+        success: false,
+        message: "Insufficient credits, please upgrade!",
+      };
+    }
     return { success: true, message: "Sufficient credits available" };
   }
 
@@ -234,9 +304,6 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
 
   const totalCreditsUsed = creditUsages.reduce((acc, usage) => acc + usage.credits_used, 0);
 
-  // Adjust total credits used by subtracting coupon value
-  // const adjustedCreditsUsed = Math.max(0, totalCreditsUsed - couponCredits);
-
   const { data: price, error: priceError } = await supabase_service
     .from("prices")
     .select("credits")
@@ -247,7 +314,6 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
     throw new Error(`Failed to retrieve price for price_id: ${subscription.price_id}`);
   }
 
-  // Calculate remaining credits.
   const remainingCredits = price.credits + couponCredits - totalCreditsUsed;
 
   return {
