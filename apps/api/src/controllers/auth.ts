@@ -51,9 +51,19 @@ export async function supaAuthenticateUser(
 
   if (
     token === "this_is_just_a_preview_token" &&
-    (mode === RateLimiterMode.Scrape || mode === RateLimiterMode.Preview)
+    (mode === RateLimiterMode.Scrape || mode === RateLimiterMode.Preview || mode === RateLimiterMode.Search)
   ) {
     return { success: true, team_id: "preview" };
+    // check the origin of the request and make sure its from firecrawl.dev
+    // const origin = req.headers.origin;
+    // if (origin && origin.includes("firecrawl.dev")){
+    //   return { success: true, team_id: "preview" };
+    // }
+    // if(process.env.ENV !== "production") {
+    //   return { success: true, team_id: "preview" };
+    // }
+
+    // return { success: false, error: "Unauthorized: Invalid token", status: 401 };
   }
 
   const normalizedApi = parseApi(token);

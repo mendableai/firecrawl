@@ -1,7 +1,7 @@
 import { withAuth } from "../../lib/withAuth";
 import { supabase_service } from "../supabase";
 
-const FREE_CREDITS = 100;
+const FREE_CREDITS = 300;
 
 export async function billTeam(team_id: string, credits: number) {
   return withAuth(supaBillTeam)(team_id, credits);

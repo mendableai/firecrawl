@@ -47,6 +47,15 @@ url = 'https://example.com'
 scraped_data = app.scrape_url(url)
 ```
 
+### Search for a query
+
+Used to search the web, get the most relevant results, scrap each page and return the markdown.
+
+```python
+query = 'what is mendable?'
+search_result = app.search(query)
+```
+
 ### Crawling a Website
 
 To crawl a website, use the `crawl_url` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.

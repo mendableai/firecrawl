@@ -147,7 +147,7 @@ curl -X POST https://api.firecrawl.dev/v0/search \
 }
 ```
 
-Coming soon to the SDKs and Integrations.
+Coming soon to the Langchain and LLama Index integrations.
 
 ## Using Python SDK
 
@@ -178,6 +178,15 @@ To scrape a single URL, use the `scrape_url` method. It takes the URL as a param
 ```python
 url = 'https://example.com'
 scraped_data = app.scrape_url(url)
+```
+
+### Search for a query
+
+Performs a web search, retrieve the top results, extract data from each page, and returns their markdown.
+
+```python
+query = 'what is mendable?'
+search_result = app.search(query)
 ```
 
 ## Contributing
