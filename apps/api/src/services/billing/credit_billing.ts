@@ -40,8 +40,10 @@ export async function supaBillTeam(team_id: string, credits: number) {
   let sortedCoupons = coupons.sort((a, b) => b.credits - a.credits);
   // using coupon credits:
   if (couponCredits > 0) {
+    // if there is no subscription and they have enough coupon credits
     if (!subscription) {
       // using only coupon credits:
+      // if there are enough coupon credits
       if (couponCredits >= credits) {
         // remove credits from coupon credits
         let usedCredits = credits;
