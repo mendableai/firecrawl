@@ -147,7 +147,7 @@ curl -X POST https://api.firecrawl.dev/v0/search \
 }
 ```
 
-Coming soon to the SDKs and Integrations.
+Coming soon to the Langchain and LLama Index integrations.
 
 ## Using Python SDK
 
