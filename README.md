@@ -180,6 +180,15 @@ url = 'https://example.com'
 scraped_data = app.scrape_url(url)
 ```
 
+### Search for a query
+
+Performs a web search, retrieve the top results, extract data from each page, and returns their markdown.
+
+```python
+query = 'what is mendable?'
+search_result = app.search(query)
+```
+
 ## Contributing
 
 We love contributions! Please read our [contributing guide](CONTRIBUTING.md) before submitting a pull request.
