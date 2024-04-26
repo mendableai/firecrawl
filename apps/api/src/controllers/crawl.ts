@@ -67,17 +67,7 @@ export async function crawlController(req: Request, res: Response) {
           pageOptions: pageOptions,
         });
 
-        const timeoutPromise = new Promise((resolve) => {
-          setTimeout(() => {
-            resolve({
-              error: "Timeout",
-            });
-          }, timeout);
-        });
-
-        const scrapingPromise = a.getDocuments(false);
-
-        const docs = await Promise.race([scrapingPromise, timeoutPromise]) as Document[];
+        const docs = await getDocumentsWithTimeout(a, timeout);
         if ('error' in docs && docs.error == 'Timeout') {
           return res.status(408).json({ error: "Timeout exceeded" })
         }
