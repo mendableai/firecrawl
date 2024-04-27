@@ -272,7 +272,7 @@ export class WebCrawler {
       ".woff",
       ".ttf",
       ".woff2",
-      ".webp",
+      ".webp"
     ];
     return fileExtensions.some((ext) => url.endsWith(ext));
   }
