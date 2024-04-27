@@ -267,7 +267,6 @@ export class WebCrawler {
       ".docx",
       ".xlsx",
       ".xml",
-      ".pptx",
       ".avi",
       ".flv",
       ".woff",
