@@ -20,10 +20,15 @@ export async function generateRequestParams(
     headers: { "ScrapingService-Request": "TRUE" },
   };
 
-  const urlKey = new URL(url).hostname;
-  if (urlSpecificParams.hasOwnProperty(urlKey)) {
-    return { ...defaultParams, ...urlSpecificParams[urlKey] };
-  } else {
+  try {
+    const urlKey = new URL(url).hostname;
+    if (urlSpecificParams.hasOwnProperty(urlKey)) {
+      return { ...defaultParams, ...urlSpecificParams[urlKey] };
+    } else {
+      return defaultParams;
+    }
+  } catch (error) {
+    console.error(`Error generating URL key: ${error}`);
     return defaultParams;
   }
 }
