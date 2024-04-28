@@ -8,7 +8,7 @@ dotenv.config();
 const TEST_URL = "http://127.0.0.1:3002";
 
 
-  describe("E2E Tests for API Routes", () => {
+  describe.only("E2E Tests for API Routes", () => {
     beforeAll(() => {
       process.env.USE_DB_AUTHENTICATION = "true";
     });
@@ -250,6 +250,48 @@ const TEST_URL = "http://127.0.0.1:3002";
           "🔥 FireCrawl"
         );
       }, 60000); // 60 seconds
+    });
+
+    describe("POST /v0/scrape with LLM Extraction", () => {
+      it("should extract data using LLM extraction mode", async () => {
+        const response = await request(TEST_URL)
+          .post("/v0/scrape")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send({
+            url: "https://mendable.ai",
+            pageOptions: {
+              onlyMainContent: true
+            },
+            extractorOptions: {
+              extractorMode: "llm-extract",
+              extractor_prompt: "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source",
+              extractorSchema: {
+                type: "object",
+                properties: {
+                  company_mission: {
+                    type: "string"
+                  },
+                  supports_sso: {
+                    type: "boolean"
+                  },
+                  is_open_source: {
+                    type: "boolean"
+                  }
+                },
+                required: ["company_mission", "supports_sso", "is_open_source"]
+              }
+            }
+          });
+  
+        console.log("Response:", response.body);
+  
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty("data");
+        expect(response.body.data).toHaveProperty("company_mission");
+        expect(response.body.data).toHaveProperty("supports_sso");
+        expect(response.body.data).toHaveProperty("is_open_source");
+      });
     });
 
     describe("GET /is-production", () => {

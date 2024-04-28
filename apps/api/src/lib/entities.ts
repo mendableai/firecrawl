@@ -16,6 +16,12 @@ export type PageOptions = {
   
 };
 
+export type ExtractorOptions = {
+  mode: "markdown" | "llm-extraction";
+  extractionPrompt?: string;
+  extractionSchema?: Record<string, any>;
+}
+
 export type SearchOptions = {
   limit?: number;
   tbs?: string;
@@ -38,6 +44,7 @@ export type WebScraperOptions = {
     replaceAllPathsWithAbsolutePaths?: boolean;
   };
   pageOptions?: PageOptions;
+  extractorOptions?: ExtractorOptions;
   concurrentRequests?: number;
 };
 
@@ -50,6 +57,7 @@ export class Document {
   url?: string; // Used only in /search for now
   content: string;
   markdown?: string;
+  llm_extraction?: string;
   createdAt?: Date;
   updatedAt?: Date;
   type?: string;

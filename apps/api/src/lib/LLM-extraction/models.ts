@@ -1,6 +1,8 @@
 import OpenAI from 'openai'
 import { z } from 'zod'
 import { ScraperLoadResult } from './types'
+import { Document, ExtractorOptions } from "../../lib/entities";
+
 // import {
 //   LlamaModel,
 //   LlamaJsonSchemaGrammar,
@@ -8,41 +10,45 @@ import { ScraperLoadResult } from './types'
 //   LlamaChatSession,
 //   GbnfJsonSchema,
 // } from 'node-llama-cpp'
-import { JsonSchema7Type } from 'zod-to-json-schema'
+// import { JsonSchema7Type } from 'zod-to-json-schema'
 
 export type ScraperCompletionResult<T extends z.ZodSchema<any>> = {
-  data: z.infer<T> | null
+  data: any | null
   url: string
 }
 
 const defaultPrompt =
   'You are a satistified web scraper. Extract the contents of the webpage'
 
-function prepareOpenAIPage(
-  page: ScraperLoadResult
+function prepareOpenAIDoc(
+  document: Document
 ): OpenAI.Chat.Completions.ChatCompletionContentPart[] {
-  if (page.mode === 'image') {
-    return [
-      {
-        type: 'image_url',
-        image_url: { url: `data:image/jpeg;base64,${page.content}` },
-      },
-    ]
+
+  // Check if the markdown content exists in the document
+  if (!document.markdown) {
+    throw new Error("Markdown content is missing in the document.");
   }
 
-  return [{ type: 'text', text: page.content }]
+  return [{ type: 'text', text: document.markdown }]
 }
 
-export async function generateOpenAICompletions<T extends z.ZodSchema<any>>(
+export async function generateOpenAICompletions<T>({
+  client,
+  model = 'gpt-3.5-turbo',
+  document,
+  schema, //TODO - add zod dynamic type checking
+  prompt = defaultPrompt,
+  temperature
+}: {
   client: OpenAI,
-  model: string = 'gpt-3.5-turbo',
-  page: ScraperLoadResult,
-  schema: JsonSchema7Type,
-  prompt: string = defaultPrompt,
+  model?: string,
+  document: Document,
+  schema: any, // This should be replaced with a proper Zod schema type when available
+  prompt?: string,
   temperature?: number
-): Promise<ScraperCompletionResult<T>> {
+}): Promise<Document> {
   const openai = client as OpenAI
-  const content = prepareOpenAIPage(page)
+  const content = prepareOpenAIDoc(document)
 
   const completion = await openai.chat.completions.create({
     model,
@@ -68,10 +74,16 @@ export async function generateOpenAICompletions<T extends z.ZodSchema<any>>(
   })
 
   const c = completion.choices[0].message.tool_calls[0].function.arguments
+  
+  // Extract the LLM extraction content from the completion response
+  const llmExtraction = c;
+
+  // Return the document with the LLM extraction content added
   return {
-    data: JSON.parse(c),
-    url: page.url,
-  }
+    ...document,
+    llm_extraction: llmExtraction
+  };
+   
 }
 
 // export async function generateLlamaCompletions<T extends z.ZodSchema<any>>(

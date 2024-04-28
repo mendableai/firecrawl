@@ -1,3 +1,4 @@
+import { ExtractorOptions } from './../lib/entities';
 import { Request, Response } from "express";
 import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
@@ -11,7 +12,8 @@ export async function scrapeHelper(
   req: Request,
   team_id: string,
   crawlerOptions: any,
-  pageOptions: any
+  pageOptions: any,
+  extractorOptions: any
 ): Promise<{
   success: boolean;
   error?: string;
@@ -35,6 +37,7 @@ export async function scrapeHelper(
       ...crawlerOptions,
     },
     pageOptions: pageOptions,
+    extractorOptions: extractorOptions
   });
 
   const docs = await a.getDocuments(false);
@@ -79,6 +82,9 @@ export async function scrapeController(req: Request, res: Response) {
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
+    const extractorOptions = req.body.extractorOptions ?? {
+      mode: "markdown"
+    }
     const origin = req.body.origin ?? "api";
 
     try {
@@ -96,7 +102,8 @@ export async function scrapeController(req: Request, res: Response) {
       req,
       team_id,
       crawlerOptions,
-      pageOptions
+      pageOptions,
+      extractorOptions
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;

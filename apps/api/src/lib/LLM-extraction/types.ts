@@ -3,8 +3,3 @@ export type ScraperLoadOptions = {
     closeOnFinish?: boolean
 }
 
-export type ScraperLoadResult = {
-    url: string
-    content: string
-    mode: ScraperLoadOptions['mode']
-}
