@@ -140,6 +140,8 @@ export async function scrapSingleUrl(
         }
         break;
     }
+
+    //* TODO: add an optional to return markdown or structured/extracted content 
     let cleanedHtml = removeUnwantedElements(text, pageOptions);
     
     return [await parseMarkdown(cleanedHtml), text];

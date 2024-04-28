@@ -86,6 +86,9 @@ dependencies:
   joplin-turndown-plugin-gfm:
     specifier: ^1.0.12
     version: 1.0.12
+  json-schema-to-zod:
+    specifier: ^2.1.0
+    version: 2.1.0
   keyword-extractor:
     specifier: ^0.0.25
     version: 0.0.25
@@ -164,6 +167,12 @@ dependencies:
   xml2js:
     specifier: ^0.6.2
     version: 0.6.2
+  zod:
+    specifier: ^3.23.4
+    version: 3.23.4
+  zod-to-json-schema:
+    specifier: ^3.23.0
+    version: 3.23.0(zod@3.23.4)
 
 devDependencies:
   '@flydotio/dockerfile':
@@ -1200,7 +1209,7 @@ packages:
       redis: 4.6.13
       typesense: 1.7.2(@babel/runtime@7.24.0)
       uuid: 9.0.1
-      zod: 3.22.4
+      zod: 3.23.4
     transitivePeerDependencies:
       - encoding
     dev: false
@@ -1218,8 +1227,8 @@ packages:
       p-queue: 6.6.2
       p-retry: 4.6.2
       uuid: 9.0.1
-      zod: 3.22.4
-      zod-to-json-schema: 3.22.4(zod@3.22.4)
+      zod: 3.23.4
+      zod-to-json-schema: 3.23.0(zod@3.23.4)
     dev: false
 
   /@langchain/openai@0.0.18:
@@ -1229,8 +1238,8 @@ packages:
       '@langchain/core': 0.1.43
       js-tiktoken: 1.0.10
       openai: 4.28.4
-      zod: 3.22.4
-      zod-to-json-schema: 3.22.4(zod@3.22.4)
+      zod: 3.23.4
+      zod-to-json-schema: 3.23.0(zod@3.23.4)
     transitivePeerDependencies:
       - encoding
     dev: false
@@ -3985,6 +3994,11 @@ packages:
   /json-parse-even-better-errors@2.3.1:
     resolution: {integrity: sha512-xyFwyhro/JEof6Ghe2iz2NcXoj2sloNsWr/XsERDK/oiPCfaNhl5ONfp+jQdAZRQQ0IJWNzH9zIZF7li91kh2w==}
 
+  /json-schema-to-zod@2.1.0:
+    resolution: {integrity: sha512-7ishNgYY+AbIKeeHcp5xCOdJbdVwSfDx/4V2ktc16LUusCJJbz2fEKdWUmAxhKIiYzhZ9Fp4E8OsAoM/h9cOLA==}
+    hasBin: true
+    dev: false
+
   /json5@2.2.3:
     resolution: {integrity: sha512-XmOWe7eyHYH14cLdVPoyg+GOH3rYX++KpzrylJwSW98t3Nk+U8XOl8FWKOgwtzdb8lXGf6zYwDUzeHMWfxasyg==}
     engines: {node: '>=6'}
@@ -4209,8 +4223,8 @@ packages:
       redis: 4.6.13
       uuid: 9.0.1
       yaml: 2.4.1
-      zod: 3.22.4
-      zod-to-json-schema: 3.22.4(zod@3.22.4)
+      zod: 3.23.4
+      zod-to-json-schema: 3.23.0(zod@3.23.4)
     transitivePeerDependencies:
       - '@aws-crypto/sha256-js'
       - '@aws-sdk/client-bedrock-agent-runtime'
@@ -5069,7 +5083,7 @@ packages:
       sbd: 1.0.19
       typescript: 5.4.5
       uuid: 9.0.1
-      zod: 3.22.4
+      zod: 3.23.4
     transitivePeerDependencies:
       - debug
     dev: false
@@ -6185,14 +6199,18 @@ packages:
     engines: {node: '>=10'}
     dev: true
 
-  /zod-to-json-schema@3.22.4(zod@3.22.4):
-    resolution: {integrity: sha512-2Ed5dJ+n/O3cU383xSY28cuVi0BCQhF8nYqWU5paEpl7fVdqdAmiLdqLyfblbNdfOFwFfi/mqU4O1pwc60iBhQ==}
+  /zod-to-json-schema@3.23.0(zod@3.23.4):
+    resolution: {integrity: sha512-az0uJ243PxsRIa2x1WmNE/pnuA05gUq/JB8Lwe1EDCCL/Fz9MgjYQ0fPlyc2Tcv6aF2ZA7WM5TWaRZVEFaAIag==}
     peerDependencies:
-      zod: ^3.22.4
+      zod: ^3.23.3
     dependencies:
-      zod: 3.22.4
+      zod: 3.23.4
     dev: false
 
   /zod@3.22.4:
     resolution: {integrity: sha512-iC+8Io04lddc+mVqQ9AZ7OQ2MrUKGN+oIQyq1vemgt46jwCwLfhq7/pwnBnNXXXZb8VTVLKwp9EDkx+ryxIWmg==}
+    dev: false
+
+  /zod@3.23.4:
+    resolution: {integrity: sha512-/AtWOKbBgjzEYYQRNfoGKHObgfAZag6qUJX1VbHo2PRBgS+wfWagEY2mizjfyAPcGesrJOcx/wcl0L9WnVrHFw==}
     dev: false
