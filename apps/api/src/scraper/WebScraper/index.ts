@@ -88,9 +88,17 @@ export class WebScraperDataProvider {
           }));
         }
 
-        let pdfLinks = links.filter(
-          async (link) => await isUrlAPdf({ url: link, fastMode: true })
-        );
+        let pdfLinks = [];
+        let notPdfLinks = [];
+        for (let link of links) {
+          if (await isUrlAPdf({ url: link })) {
+            pdfLinks.push(link);
+          } else {
+            notPdfLinks.push(link);
+          }
+        }
+
+        console.log("crawl", {pdfLinks})
         let pdfDocuments: Document[] = [];
         for (let pdfLink of pdfLinks) {
           const pdfContent = await fetchAndProcessPdf(pdfLink);
@@ -100,11 +108,8 @@ export class WebScraperDataProvider {
             provider: "web-scraper",
           });
         }
-        links = links.filter(
-          async (link) => !(await isUrlAPdf({ url: link, fastMode: true }))
-        );
 
-        let documents = await this.convertUrlsToDocuments(links, inProgress);
+        let documents = await this.convertUrlsToDocuments(notPdfLinks, inProgress);
         documents = await this.getSitemapData(this.urls[0], documents);
 
         if (this.replaceAllPathsWithAbsolutePaths) {
@@ -164,7 +169,7 @@ export class WebScraperDataProvider {
         let pdfDocuments: Document[] = [];
         let nonPdfUrls: string[] = [];
         for (let url of this.urls) {
-          if (await isUrlAPdf({ url: url, fastMode: false })) {
+          if (await isUrlAPdf({ url: url })) {
             const pdfContent = await fetchAndProcessPdf(url);
             pdfDocuments.push({
               content: pdfContent,
@@ -201,9 +206,17 @@ export class WebScraperDataProvider {
       }
       if (this.mode === "sitemap") {
         let links = await getLinksFromSitemap(this.urls[0]);
-        let pdfLinks = links.filter(
-          async (link) => await isUrlAPdf({ url: link, fastMode: true })
-        );
+
+        let pdfLinks = [];
+        let nonPdfLinks = [];
+        for (let link of links) {
+          if (await isUrlAPdf({ url: link })) {
+            pdfLinks.push(link);
+          } else {
+            nonPdfLinks.push(link);
+          }
+        }
+
         let pdfDocuments: Document[] = [];
         for (let pdfLink of pdfLinks) {
           const pdfContent = await fetchAndProcessPdf(pdfLink);
@@ -213,12 +226,9 @@ export class WebScraperDataProvider {
             provider: "web-scraper",
           });
         }
-        links = links.filter(
-          async (link) => !(await isUrlAPdf({ url: link, fastMode: true }))
-        );
 
         let documents = await this.convertUrlsToDocuments(
-          links.slice(0, this.limit),
+          nonPdfLinks.slice(0, this.limit),
           inProgress
         );
 

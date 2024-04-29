@@ -114,10 +114,10 @@ async function processPdf(file: string) {
  */
 export async function isUrlAPdf({
   url,
-  fastMode,
+  fastMode = false,
 }: {
   url: string;
-  fastMode: boolean;
+  fastMode?: boolean;
 }): Promise<boolean> {
   try {
     if (url.endsWith(".pdf")) {
@@ -127,11 +127,11 @@ export async function isUrlAPdf({
     if (fastMode) {
       return false;
     }
-    const response = await fetch(url, { method: "HEAD" });
-    const contentType = response.headers.get("Content-Type");
-    return contentType !== null && contentType.includes("application/pdf");
+    const response = await axios.head(url);
+    const contentType = response.headers['content-type'];
+    return contentType.includes('application/pdf');
   } catch (error) {
-    console.error("Error making HEAD request:", error);
+    // console.error("Error making HEAD request:", error);
     return false;
   }
 }
