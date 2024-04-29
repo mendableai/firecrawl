@@ -1,5 +1,6 @@
 import os
 import requests
+import time
 
 class FirecrawlApp:
     def __init__(self, api_key=None):
@@ -88,11 +89,23 @@ class FirecrawlApp:
             'Authorization': f'Bearer {self.api_key}'
         }
 
-    def _post_request(self, url, data, headers):
-        return requests.post(url, headers=headers, json=data)
+    def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5):
+        for attempt in range(retries):
+            response = requests.post(url, headers=headers, json=data)
+            if response.status_code == 502:
+                time.sleep(backoff_factor * (2 ** attempt))
+            else:
+                return response
+        return response
 
-    def _get_request(self, url, headers):
-        return requests.get(url, headers=headers)
+    def _get_request(self, url, headers, retries=3, backoff_factor=0.5):
+        for attempt in range(retries):
+            response = requests.get(url, headers=headers)
+            if response.status_code == 502:
+                time.sleep(backoff_factor * (2 ** attempt))
+            else:
+                return response
+        return response
 
     def _monitor_job_status(self, job_id, headers, timeout):
         import time
