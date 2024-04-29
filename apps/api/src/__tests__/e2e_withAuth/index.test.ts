@@ -285,6 +285,11 @@ describe("E2E Tests for API Routes", () => {
         });
 
 
+      // Ensure that the job was successfully created before proceeding with LLM extraction
+      expect(response.statusCode).toBe(200);
+
+    
+      
       // Assuming the LLM extraction object is available in the response body under `data.llm_extraction`
       let llmExtraction = response.body.data.llm_extraction;
 

@@ -7,13 +7,14 @@ import { RateLimiterMode } from "../types";
 import { logJob } from "../services/logging/log_job";
 import { Document } from "../lib/entities";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
+import Ajv from 'ajv';
 
 export async function scrapeHelper(
   req: Request,
   team_id: string,
   crawlerOptions: any,
   pageOptions: any,
-  extractorOptions: any
+  extractorOptions: ExtractorOptions
 ): Promise<{
   success: boolean;
   error?: string;
@@ -28,6 +29,7 @@ export async function scrapeHelper(
   if (isUrlBlocked(url)) {
     return { success: false, error: "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.", returnCode: 403 };
   }
+
 
   const a = new WebScraperDataProvider();
   await a.setOptions({

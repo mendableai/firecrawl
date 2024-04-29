@@ -31,7 +31,7 @@ function prepareOpenAIDoc(
   return [{ type: 'text', text: document.markdown }]
 }
 
-export async function generateOpenAICompletions<T>({
+export async function generateOpenAICompletions({
   client,
   model = 'gpt-3.5-turbo',
   document,

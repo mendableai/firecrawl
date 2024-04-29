@@ -57,7 +57,7 @@ export class Document {
   url?: string; // Used only in /search for now
   content: string;
   markdown?: string;
-  llm_extraction?: string;
+  llm_extraction?: Record<string, any>;
   createdAt?: Date;
   updatedAt?: Date;
   type?: string;
