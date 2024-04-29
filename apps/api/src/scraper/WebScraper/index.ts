@@ -8,6 +8,7 @@ import { getImageDescription } from "./utils/imageDescription";
 import { fetchAndProcessPdf } from "./utils/pdfProcessor";
 import { replaceImgPathsWithAbsolutePaths, replacePathsWithAbsolutePaths } from "./utils/replacePaths";
 import OpenAI from 'openai'
+import { generateCompletions } from "../../lib/LLM-extraction";
 
 
 export class WebScraperDataProvider {
@@ -194,20 +195,14 @@ export class WebScraperDataProvider {
         documents = await this.getSitemapData(baseUrl, documents);
         documents = documents.concat(pdfDocuments);
 
-
-     
-
+        console.log("extraction mode ", this.extractorOptions.mode)
         if(this.extractorOptions.mode === "llm-extraction") {
 
-          // const llm = new OpenAI()
-          // generateCompletions(
-          //   client=llm,
-          //   page =, 
-          //   schema= 
-            
-          // )
-            
-
+          const llm = new OpenAI()
+          documents = await generateCompletions(
+            documents,
+            this.extractorOptions
+          )
         }
 
         await this.setCachedDocuments(documents);
