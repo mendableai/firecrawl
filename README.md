@@ -194,4 +194,4 @@ search_result = app.search(query)
 We love contributions! Please read our [contributing guide](CONTRIBUTING.md) before submitting a pull request.
 
 
-*It is the sole responsibility of the end users to scrape, search and crawl websites. Users are advised to adhere to the applicable privacy policies and terms of use of the websites prior to initiating any scraping activities. By default, Firecrawl respects the directives specified in the websites' robots.txt files when crawling. By utilizing Firecrawl, you expressly agree to comply with these conditions.*
+*It is the sole responsibility of the end users to respect websites' policies when scraping, searching and crawling with Firecrawl. Users are advised to adhere to the applicable privacy policies and terms of use of the websites prior to initiating any scraping activities. By default, Firecrawl respects the directives specified in the websites' robots.txt files when crawling. By utilizing Firecrawl, you expressly agree to comply with these conditions.*
