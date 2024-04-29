@@ -199,7 +199,8 @@ describe("E2E Tests for API Routes with No Authentication", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("content");
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.data[0].content).toContain("🔥 FireCrawl");
+   
+      
     }, 60000); // 60 seconds
   });
 

@@ -1,6 +1,5 @@
 import OpenAI from 'openai'
 import { z } from 'zod'
-import { ScraperLoadResult } from './types'
 import { Document, ExtractorOptions } from "../../lib/entities";
 
 // import {
@@ -76,7 +75,8 @@ export async function generateOpenAICompletions<T>({
   const c = completion.choices[0].message.tool_calls[0].function.arguments
   
   // Extract the LLM extraction content from the completion response
-  const llmExtraction = c;
+  const llmExtraction = JSON.parse(c);
+
 
   // Return the document with the LLM extraction content added
   return {

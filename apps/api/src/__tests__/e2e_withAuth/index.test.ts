@@ -289,13 +289,10 @@ describe("E2E Tests for API Routes", () => {
       let llmExtraction = response.body.data.llm_extraction;
 
       
-      // Check if llm_extraction is a string and parse it if necessary
-      if (typeof llmExtraction === 'string') {
-        llmExtraction = JSON.parse(llmExtraction);
-      }
-
-
-      console.log('llm extraction', llmExtraction);
+      // // Check if llm_extraction is a string and parse it if necessary
+      // if (typeof llmExtraction === 'string') {
+      //   llmExtraction = JSON.parse(llmExtraction);
+      // }
 
       // Print the keys of the response.body for debugging purposes
 
