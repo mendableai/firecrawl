@@ -53,7 +53,7 @@ export async function scrapeHelper(
 
 
   let creditsToBeBilled =  filteredDocs.length;
-  const creditsPerLLMExtract = 4;
+  const creditsPerLLMExtract = 5;
 
   if (extractorOptions.mode === "llm-extraction"){
     creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length)
