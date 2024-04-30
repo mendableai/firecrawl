@@ -216,7 +216,6 @@ export async function scrapSingleUrl(
     return {
       content: text,
       markdown: text,
-      html: html,
       metadata: { ...metadata, sourceURL: urlToScrap },
     } as Document;
   } catch (error) {
