@@ -38,6 +38,7 @@ export async function generateCompletions(
                 // Validate the JSON output against the schema using AJV
                 const validate = ajv.compile(schema);
                 if (!validate(completionResult.llm_extraction)) {
+                    //TODO: add Custom Error handling middleware that bubbles this up with proper Error code, etc.
                     throw new Error(`LLM extraction did not match the extraction schema you provided. This could be because of a model hallucination, or an Error on our side. Try adjusting your prompt, and if it doesn't work reach out to support. AJV error: ${validate.errors?.map(err => err.message).join(', ')}`);
                 }
 

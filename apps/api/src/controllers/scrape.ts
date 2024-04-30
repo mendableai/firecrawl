@@ -8,6 +8,7 @@ import { logJob } from "../services/logging/log_job";
 import { Document } from "../lib/entities";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import Ajv from 'ajv';
+import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 
 export async function scrapeHelper(
   req: Request,
@@ -51,9 +52,18 @@ export async function scrapeHelper(
     return { success: true, error: "No page found", returnCode: 200 };
   }
 
+
+  let creditsToBeBilled =  filteredDocs.length;
+  const creditsPerLLMExtract = 4;
+
+  if (extractorOptions.mode === "llm-extraction"){
+    creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length)
+  }
+  // console.log("credits to be billed, ", creditsToBeBilled);
+
   const billingResult = await billTeam(
     team_id,
-    filteredDocs.length
+    creditsToBeBilled
   );
   if (!billingResult.success) {
     return {
@@ -109,6 +119,8 @@ export async function scrapeController(req: Request, res: Response) {
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
+    const numTokens = numTokensFromString(result.data.markdown, "gpt-3.5-turbo")
+
     logJob({
       success: result.success,
       message: result.error,
@@ -120,7 +132,9 @@ export async function scrapeController(req: Request, res: Response) {
       url: req.body.url,
       crawlerOptions: crawlerOptions,
       pageOptions: pageOptions,
-      origin: origin,
+      origin: origin, 
+      extractor_options: extractorOptions,
+      num_tokens: numTokens
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {

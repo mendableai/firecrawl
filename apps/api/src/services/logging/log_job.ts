@@ -8,6 +8,8 @@ export async function logJob(job: FirecrawlJob) {
     if (process.env.ENV !== "production") {
       return;
     }
+
+    // console.log("logg")
     const { data, error } = await supabase_service
       .from("firecrawl_jobs")
       .insert([
@@ -23,6 +25,8 @@ export async function logJob(job: FirecrawlJob) {
           crawler_options: job.crawlerOptions,
           page_options: job.pageOptions,
           origin: job.origin,
+          extractor_options: job.extractor_options,
+          num_tokens: job.num_tokens
         },
       ]);
     if (error) {

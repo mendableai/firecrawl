@@ -40,8 +40,7 @@ export class WebScraperDataProvider {
   ): Promise<Document[]> {
     const totalUrls = urls.length;
     let processedUrls = 0;
-    console.log("Converting urls to documents");
-    console.log("Total urls", urls);
+  
     const results: (Document | null)[] = new Array(urls.length).fill(null);
     for (let i = 0; i < urls.length; i += this.concurrentRequests) {
       const batchUrls = urls.slice(i, i + this.concurrentRequests);
@@ -195,7 +194,6 @@ export class WebScraperDataProvider {
         documents = await this.getSitemapData(baseUrl, documents);
         documents = documents.concat(pdfDocuments);
 
-        console.log("extraction mode ", this.extractorOptions.mode)
         if(this.extractorOptions.mode === "llm-extraction") {
 
           const llm = new OpenAI()

@@ -1,6 +1,7 @@
 import OpenAI from 'openai'
 import { z } from 'zod'
 import { Document, ExtractorOptions } from "../../lib/entities";
+import { numTokensFromString } from './helpers';
 
 // import {
 //   LlamaModel,
@@ -17,7 +18,7 @@ export type ScraperCompletionResult<T extends z.ZodSchema<any>> = {
 }
 
 const defaultPrompt =
-  'You are a satistified web scraper. Extract the contents of the webpage'
+  'You are a professional web scraper. Extract the contents of the webpage'
 
 function prepareOpenAIDoc(
   document: Document
@@ -28,12 +29,12 @@ function prepareOpenAIDoc(
     throw new Error("Markdown content is missing in the document.");
   }
 
-  return [{ type: 'text', text: document.markdown }]
+  return [{ type: 'text', text: document.html}]
 }
 
 export async function generateOpenAICompletions({
   client,
-  model = 'gpt-3.5-turbo',
+  model = 'gpt-4-turbo',
   document,
   schema, //TODO - add zod dynamic type checking
   prompt = defaultPrompt,
@@ -48,6 +49,7 @@ export async function generateOpenAICompletions({
 }): Promise<Document> {
   const openai = client as OpenAI
   const content = prepareOpenAIDoc(document)
+
 
   const completion = await openai.chat.completions.create({
     model,
@@ -76,6 +78,8 @@ export async function generateOpenAICompletions({
   
   // Extract the LLM extraction content from the completion response
   const llmExtraction = JSON.parse(c);
+
+//   console.log("llm extraction: ", llmExtraction);
 
 
   // Return the document with the LLM extraction content added

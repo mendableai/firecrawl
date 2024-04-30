@@ -252,7 +252,7 @@ describe("E2E Tests for API Routes", () => {
     }, 60000); // 60 seconds
   });
 
-  describe.only("POST /v0/scrape with LLM Extraction", () => {
+  describe("POST /v0/scrape with LLM Extraction", () => {
     it("should extract data using LLM extraction mode", async () => {
       const response = await request(TEST_URL)
         .post("/v0/scrape")
@@ -293,16 +293,6 @@ describe("E2E Tests for API Routes", () => {
       // Assuming the LLM extraction object is available in the response body under `data.llm_extraction`
       let llmExtraction = response.body.data.llm_extraction;
 
-      
-      // // Check if llm_extraction is a string and parse it if necessary
-      // if (typeof llmExtraction === 'string') {
-      //   llmExtraction = JSON.parse(llmExtraction);
-      // }
-
-      // Print the keys of the response.body for debugging purposes
-
-
-  
       // Check if the llm_extraction object has the required properties with correct types and values
       expect(llmExtraction).toHaveProperty("company_mission");
       expect(typeof llmExtraction.company_mission).toBe("string");
@@ -314,6 +304,68 @@ describe("E2E Tests for API Routes", () => {
       expect(typeof llmExtraction.is_open_source).toBe("boolean");
     }, 60000); // 60 secs
   });
+
+  describe.only("POST /v0/scrape for Top 100 Companies", () => {
+    it("should extract data for the top 100 companies", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://companiesmarketcap.com/",
+          pageOptions: {
+            onlyMainContent: true
+          },
+          extractorOptions: {
+            mode: "llm-extraction",
+            extractionPrompt: "Extract the name, market cap, price, and today's change for the top 20 companies listed on the page.",
+            extractionSchema: {
+              type: "object",
+              properties: {
+                companies: {
+                  type: "array",
+                  items: {
+                    type: "object",
+                    properties: {
+                      rank: { type: "number" },
+                      name: { type: "string" },
+                      marketCap: { type: "string" },
+                      price: { type: "string" },
+                      todayChange: { type: "string" }
+                    },
+                    required: ["rank", "name", "marketCap", "price", "todayChange"]
+                  }
+                }
+              },
+              required: ["companies"]
+            }
+          }
+        });
+
+
+      // Print the response body to the console for debugging purposes
+      console.log("Response companies:", response.body.data.llm_extraction.companies);
+
+      // Check if the response has the correct structure and data types
+      expect(response.status).toBe(200);
+      expect(Array.isArray(response.body.data.llm_extraction.companies)).toBe(true);
+      expect(response.body.data.llm_extraction.companies.length).toBe(40);
+
+      // Sample check for the first company
+      const firstCompany = response.body.data.llm_extraction.companies[0];
+      expect(firstCompany).toHaveProperty("name");
+      expect(typeof firstCompany.name).toBe("string");
+      expect(firstCompany).toHaveProperty("marketCap");
+      expect(typeof firstCompany.marketCap).toBe("string");
+      expect(firstCompany).toHaveProperty("price");
+      expect(typeof firstCompany.price).toBe("string");
+      expect(firstCompany).toHaveProperty("todayChange");
+      expect(typeof firstCompany.todayChange).toBe("string");
+    }, 120000); // 120 secs
+  });
+
+  
+
 
   describe("GET /is-production", () => {
     it("should return the production status", async () => {

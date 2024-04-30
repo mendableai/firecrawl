@@ -21,7 +21,7 @@ dependencies:
     specifier: ^1.0.2
     version: 1.0.2
   '@dqbd/tiktoken':
-    specifier: ^1.0.7
+    specifier: ^1.0.13
     version: 1.0.13
   '@logtail/node':
     specifier: ^0.4.12
