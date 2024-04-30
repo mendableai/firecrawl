@@ -23,7 +23,6 @@ export interface WebScraperOptions {
   pageOptions: any;
   team_id: string;
   origin?: string;
-  timeout?: number;
 }
 
 export interface FirecrawlJob {

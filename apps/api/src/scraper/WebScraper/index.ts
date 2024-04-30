@@ -30,39 +30,39 @@ export class WebScraperDataProvider {
     throw new Error("Method not implemented.");
   }
 
-  private async convertUrlsToDocuments(
-    urls: string[],
-    inProgress?: (progress: Progress) => void
-  ): Promise<Document[]> {
-    const totalUrls = urls.length;
-    let processedUrls = 0;
-    console.log("Converting urls to documents");
-    console.log("Total urls", urls);
-    const results: (Document | null)[] = new Array(urls.length).fill(null);
-    for (let i = 0; i < urls.length; i += this.concurrentRequests) {
-      const batchUrls = urls.slice(i, i + this.concurrentRequests);
-      await Promise.all(
-        batchUrls.map(async (url, index) => {
-          const result = await scrapSingleUrl(url, true, this.pageOptions);
-          processedUrls++;
-          if (inProgress) {
-            inProgress({
-              current: processedUrls,
-              total: totalUrls,
-              status: "SCRAPING",
-              currentDocumentUrl: url,
-            });
-          }
-          results[i + index] = result;
-        })
-      );
-    }
-    return results.filter((result) => result !== null) as Document[];
-  }
+  // private async convertUrlsToDocuments(
+  //   urls: string[],
+  //   inProgress?: (progress: Progress) => void
+  // ): Promise<Document[]> {
+  //   const totalUrls = urls.length;
+  //   let processedUrls = 0;
+  //   console.log("Converting urls to documents");
+  //   console.log("Total urls", urls);
+  //   const results: (Document | null)[] = new Array(urls.length).fill(null);
+  //   for (let i = 0; i < urls.length; i += this.concurrentRequests) {
+  //     const batchUrls = urls.slice(i, i + this.concurrentRequests);
+  //     await Promise.all(
+  //       batchUrls.map(async (url, index) => {
+  //         const result = await scrapSingleUrl(url, true, this.pageOptions);
+  //         processedUrls++;
+  //         if (inProgress) {
+  //           inProgress({
+  //             current: processedUrls,
+  //             total: totalUrls,
+  //             status: "SCRAPING",
+  //             currentDocumentUrl: url,
+  //           });
+  //         }
+  //         results[i + index] = result;
+  //       })
+  //     );
+  //   }
+  //   return results.filter((result) => result !== null) as Document[];
+  // }
 
   async getDocuments(
     useCaching: boolean = false,
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
   ): Promise<Document[]> {
     
     if (this.urls[0].trim() === "") {
@@ -70,6 +70,9 @@ export class WebScraperDataProvider {
     }
 
     if (!useCaching) {
+      const sitemapData = await fetchSitemapData(this.urls[0]);
+  
+      let urls = [];
       if (this.mode === "crawl") {
         const crawler = new WebCrawler({
           initialUrl: this.urls[0],
@@ -79,163 +82,85 @@ export class WebScraperDataProvider {
           limit: this.limit,
           generateImgAltText: this.generateImgAltText,
         });
-        let links = await crawler.start(inProgress, 5, this.limit);
-        if (this.returnOnlyUrls) {
+        urls = await crawler.start(inProgress, 5, this.limit);
+      } else if (this.mode === "sitemap") {
+        urls = await getLinksFromSitemap(this.urls[0]);
+      } else if (this.mode === "single_urls") {
+        urls = this.urls;
+      }
+  
+      if (this.returnOnlyUrls) {
+        if (inProgress) {
           inProgress({
-            current: links.length,
-            total: links.length,
+            current: urls.length,
+            total: urls.length,
             status: "COMPLETED",
             currentDocumentUrl: this.urls[0],
           });
-          return links.map((url) => ({
-            content: "",
-            markdown: "",
-            metadata: { sourceURL: url },
-          }));
         }
-
-        let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
-        let pdfDocuments: Document[] = [];
-        for (let pdfLink of pdfLinks) {
-          const pdfContent = await fetchAndProcessPdf(pdfLink);
-          pdfDocuments.push({
-            content: pdfContent,
-            metadata: { sourceURL: pdfLink },
-            provider: "web-scraper"
-          });
-        }
-        links = links.filter((link) => !link.endsWith(".pdf"));
-
-        let documents = await this.convertUrlsToDocuments(links, inProgress);
-        documents = await this.getSitemapData(this.urls[0], documents);
-
-        if (this.replaceAllPathsWithAbsolutePaths) {
-          documents = replacePathsWithAbsolutePaths(documents);
-        } else {
-          documents = replaceImgPathsWithAbsolutePaths(documents);
-        }
-
-        if (this.generateImgAltText) {
-          documents = await this.generatesImgAltText(documents);
-        }
-        documents = documents.concat(pdfDocuments);
-
-        // CACHING DOCUMENTS
-        // - parent document
-        const cachedParentDocumentString = await getValue(
-          "web-scraper-cache:" + this.normalizeUrl(this.urls[0])
-        );
-        if (cachedParentDocumentString != null) {
-          let cachedParentDocument = JSON.parse(cachedParentDocumentString);
-          if (
-            !cachedParentDocument.childrenLinks ||
-            cachedParentDocument.childrenLinks.length < links.length - 1
-          ) {
-            cachedParentDocument.childrenLinks = links.filter(
-              (link) => link !== this.urls[0]
-            );
-            await setValue(
-              "web-scraper-cache:" + this.normalizeUrl(this.urls[0]),
-              JSON.stringify(cachedParentDocument),
-              60 * 60 * 24 * 10
-            ); // 10 days
+        return urls.map((url) => ({
+          content: "",
+          markdown: "",
+          metadata: { sourceURL: url },
+        }));
+      }
+  
+      let processedCount = 0;
+      const documentPromises = urls.map(async (url) => {
+        try {
+          let document: Document;
+          if (url.endsWith(".pdf")) {
+            const pdfContent = await fetchAndProcessPdf(url);
+            document = {
+              content: pdfContent,
+              metadata: { sourceURL: url },
+              provider: "web-scraper"
+            };
+          } else {
+            document = await scrapSingleUrl(url, true, this.pageOptions);
+  
+            if (this.replaceAllPathsWithAbsolutePaths) {
+              document = replacePathsWithAbsolutePaths(document);
+            } else {
+              document = replaceImgPathsWithAbsolutePaths(document);
+            }
+  
+            if (this.generateImgAltText) {
+              document = await this.generatesImgAltText(document);
+            }
+  
+            await this.setSitemapData(sitemapData, document);
+            this.setCachedDocument(document);
+            if (document?.childrenLinks) delete document.childrenLinks;
           }
-        } else {
-          let parentDocument = documents.filter(
-            (document) =>
-              this.normalizeUrl(document.metadata.sourceURL) ===
-              this.normalizeUrl(this.urls[0])
-          );
-          await this.setCachedDocuments(parentDocument, links);
+  
+          processedCount++;
+          if (inProgress) {
+            inProgress({
+              current: processedCount,
+              total: urls.length,
+              status: "SCRAPING",
+              currentDocumentUrl: url,
+              partialDocs: [document],
+            });
+          }
+  
+          return document;
+        } catch (error) {
+          console.error("Error processing URL:", url, error);
+          return null; // or handle error as needed
         }
-
-        await this.setCachedDocuments(
-          documents.filter(
-            (document) =>
-              this.normalizeUrl(document.metadata.sourceURL) !==
-              this.normalizeUrl(this.urls[0])
-          ),
-          []
-        );
-        documents = this.removeChildLinks(documents);
-        documents = documents.splice(0, this.limit);
-        return documents;
-      }
-
-      if (this.mode === "single_urls") {
-        let pdfLinks = this.urls.filter((link) => link.endsWith(".pdf"));
-        let pdfDocuments: Document[] = [];
-        for (let pdfLink of pdfLinks) {
-          const pdfContent = await fetchAndProcessPdf(pdfLink);
-          pdfDocuments.push({
-            content: pdfContent,
-            metadata: { sourceURL: pdfLink },
-            provider: "web-scraper"
-          });
+      });
+  
+      const results = await Promise.allSettled(documentPromises);
+      const documents = results.reduce((acc, result) => {
+        if (result.status === 'fulfilled' && result.value) {
+          acc.push(result.value);
         }
-
-        let documents = await this.convertUrlsToDocuments(
-          this.urls.filter((link) => !link.endsWith(".pdf")),
-          inProgress
-        );
-
-        if (this.replaceAllPathsWithAbsolutePaths) {
-          documents = replacePathsWithAbsolutePaths(documents);
-        } else {
-          documents = replaceImgPathsWithAbsolutePaths(documents);
-        }
-
-        if (this.generateImgAltText) {
-          documents = await this.generatesImgAltText(documents);
-        }
-        const baseUrl = new URL(this.urls[0]).origin;
-        documents = await this.getSitemapData(baseUrl, documents);
-        documents = documents.concat(pdfDocuments);
-
-        await this.setCachedDocuments(documents);
-        documents = this.removeChildLinks(documents);
-        documents = documents.splice(0, this.limit);
-        return documents;
-      }
-      if (this.mode === "sitemap") {
-        let links = await getLinksFromSitemap(this.urls[0]);
-        let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
-        let pdfDocuments: Document[] = [];
-        for (let pdfLink of pdfLinks) {
-          const pdfContent = await fetchAndProcessPdf(pdfLink);
-          pdfDocuments.push({
-            content: pdfContent,
-            metadata: { sourceURL: pdfLink },
-            provider: "web-scraper"
-          });
-        }
-        links = links.filter((link) => !link.endsWith(".pdf"));
-
-        let documents = await this.convertUrlsToDocuments(
-          links.slice(0, this.limit),
-          inProgress
-        );
-
-        documents = await this.getSitemapData(this.urls[0], documents);
-
-        if (this.replaceAllPathsWithAbsolutePaths) {
-          documents = replacePathsWithAbsolutePaths(documents);
-        } else {
-          documents = replaceImgPathsWithAbsolutePaths(documents);
-        }
-
-        if (this.generateImgAltText) {
-          documents = await this.generatesImgAltText(documents);
-        }
-        documents = documents.concat(pdfDocuments);
-
-        await this.setCachedDocuments(documents);
-        documents = this.removeChildLinks(documents);
-        documents = documents.splice(0, this.limit);
-        return documents;
-      }
-
-      return [];
+        return acc;
+      }, []);
+  
+      return documents.splice(0, this.limit);
     }
 
     let documents = await this.getCachedDocuments(
@@ -254,14 +179,13 @@ export class WebScraperDataProvider {
               this.normalizeUrl(doc.metadata?.sourceURL)
           )
         ) {
+          if (doc?.childrenLinks) delete doc.childrenLinks;
           documents.push(doc);
         }
       });
     }
     documents = this.filterDocsExcludeInclude(documents);
-    documents = this.removeChildLinks(documents);
-    documents = documents.splice(0, this.limit);
-    return documents;
+    return documents.splice(0, this.limit);
   }
 
   private filterDocsExcludeInclude(documents: Document[]): Document[] {
@@ -299,28 +223,19 @@ export class WebScraperDataProvider {
     return url;
   }
 
-  private removeChildLinks(documents: Document[]): Document[] {
-    for (let document of documents) {
-      if (document?.childrenLinks) delete document.childrenLinks;
-    }
-    return documents;
-  }
-
-  async setCachedDocuments(documents: Document[], childrenLinks?: string[]) {
-    for (const document of documents) {
+  private setCachedDocument(document: Document): Promise<void> {
+    return new Promise((resolve, reject) => {
       if (document.content.trim().length === 0) {
-        continue;
+        resolve();
+        return;
       }
       const normalizedUrl = this.normalizeUrl(document.metadata.sourceURL);
-      await setValue(
+      setValue(
         "web-scraper-cache:" + normalizedUrl,
-        JSON.stringify({
-          ...document,
-          childrenLinks: childrenLinks || [],
-        }),
-        60 * 60 * 24 * 10
-      ); // 10 days
-    }
+        JSON.stringify(document),
+        60 * 60 * 24 * 10 // 10 days
+      ).then(resolve).catch(reject);
+    });
   }
 
   async getCachedDocuments(urls: string[]): Promise<Document[]> {
@@ -391,76 +306,106 @@ export class WebScraperDataProvider {
     });
   }
 
-  private async getSitemapData(baseUrl: string, documents: Document[]) {
-    const sitemapData = await fetchSitemapData(baseUrl);
+  private async setSitemapData(sitemapData: SitemapEntry[], document: Document): Promise<void> {
     if (sitemapData) {
-      for (let i = 0; i < documents.length; i++) {
-        const docInSitemapData = sitemapData.find(
-          (data) =>
-            this.normalizeUrl(data.loc) ===
-            this.normalizeUrl(documents[i].metadata.sourceURL)
-        );
-        if (docInSitemapData) {
-          let sitemapDocData: Partial<SitemapEntry> = {};
-          if (docInSitemapData.changefreq) {
-            sitemapDocData.changefreq = docInSitemapData.changefreq;
-          }
-          if (docInSitemapData.priority) {
-            sitemapDocData.priority = Number(docInSitemapData.priority);
-          }
-          if (docInSitemapData.lastmod) {
-            sitemapDocData.lastmod = docInSitemapData.lastmod;
-          }
-          if (Object.keys(sitemapDocData).length !== 0) {
-            documents[i].metadata.sitemap = sitemapDocData;
-          }
+      const docInSitemapData = sitemapData.find(
+        (data) =>
+          this.normalizeUrl(data.loc) ===
+          this.normalizeUrl(document.metadata.sourceURL)
+      );
+      if (docInSitemapData) {
+        let sitemapDocData: Partial<SitemapEntry> = {};
+        if (docInSitemapData.changefreq) {
+          sitemapDocData.changefreq = docInSitemapData.changefreq;
+        }
+        if (docInSitemapData.priority) {
+          sitemapDocData.priority = Number(docInSitemapData.priority);
+        }
+        if (docInSitemapData.lastmod) {
+          sitemapDocData.lastmod = docInSitemapData.lastmod;
+        }
+        if (Object.keys(sitemapDocData).length > 0) {
+          document.metadata.sitemap = sitemapDocData;
         }
       }
     }
-    return documents;
   }
-  generatesImgAltText = async (documents: Document[]): Promise<Document[]> => {
-    await Promise.all(
-      documents.map(async (document) => {
-        const images = document.content.match(/!\[.*?\]\((.*?)\)/g) || [];
 
-        await Promise.all(
-          images.map(async (image: string) => {
-            let imageUrl = image.match(/\(([^)]+)\)/)[1];
-            let altText = image.match(/\[(.*?)\]/)[1];
+  generatesImgAltText = async (document: Document): Promise<Document> => {
+    const images = document.content.match(/!\[.*?\]\((.*?)\)/g) || [];
 
-            if (
-              !altText &&
-              !imageUrl.startsWith("data:image") &&
-              /\.(png|jpeg|gif|webp)$/.test(imageUrl)
-            ) {
-              const imageIndex = document.content.indexOf(image);
-              const contentLength = document.content.length;
-              let backText = document.content.substring(
-                imageIndex + image.length,
-                Math.min(imageIndex + image.length + 1000, contentLength)
-              );
-              let frontTextStartIndex = Math.max(imageIndex - 1000, 0);
-              let frontText = document.content.substring(
-                frontTextStartIndex,
-                imageIndex
-              );
-              altText = await getImageDescription(
-                imageUrl,
-                backText,
-                frontText
-              , this.generateImgAltTextModel);
-            }
+    images.map(async (image: string) => {
+      let imageUrl = image.match(/\(([^)]+)\)/)[1];
+      let altText = image.match(/\[(.*?)\]/)[1];
 
-            document.content = document.content.replace(
-              image,
-              `![${altText}](${imageUrl})`
-            );
-          })
+      if (
+        !altText &&
+        !imageUrl.startsWith("data:image") &&
+        /\.(png|jpeg|gif|webp)$/.test(imageUrl)
+      ) {
+        const imageIndex = document.content.indexOf(image);
+        const contentLength = document.content.length;
+        let backText = document.content.substring(
+          imageIndex + image.length,
+          Math.min(imageIndex + image.length + 1000, contentLength)
         );
-      })
-    );
+        let frontTextStartIndex = Math.max(imageIndex - 1000, 0);
+        let frontText = document.content.substring(
+          frontTextStartIndex,
+          imageIndex
+        );
+        altText = await getImageDescription(
+          imageUrl,
+          backText,
+          frontText
+        , this.generateImgAltTextModel);
+      }
 
-    return documents;
+      document.content = document.content.replace(
+        image,
+        `![${altText}](${imageUrl})`
+      );
+    })
+
+    return document;
   };
+
+  // old method... does this make sense?
+  // private cacheDocuments = async (urls: string[], documents: Document[]) => {
+  //   // - parent document
+  //   const cachedParentDocumentString = await getValue(
+  //     "web-scraper-cache:" + this.normalizeUrl(urls[0])
+  //   );
+  //   if (cachedParentDocumentString != null) {
+  //     let cachedParentDocument = JSON.parse(cachedParentDocumentString);
+  //     if (
+  //       !cachedParentDocument.childrenLinks ||
+  //       cachedParentDocument.childrenLinks.length < urls.length - 1
+  //     ) {
+  //       cachedParentDocument.childrenLinks = urls.filter(
+  //         (link) => link !== urls[0]
+  //       );
+  //       await setValue(
+  //         "web-scraper-cache:" + this.normalizeUrl(urls[0]),
+  //         JSON.stringify(cachedParentDocument),
+  //         60 * 60 * 24 * 10
+  //       ); // 10 days
+  //     }
+  //   } else {
+  //     let parentDocument = documents.filter(
+  //       (document) =>
+  //         this.normalizeUrl(document.metadata.sourceURL) ===
+  //         this.normalizeUrl(urls[0])
+  //     );
+  //     await this.setCachedDocuments(parentDocument, urls);
+  //   }
+
+  //   await this.setCachedDocuments(
+  //     documents.filter(
+  //       (document) =>
+  //         this.normalizeUrl(document.metadata.sourceURL) !==
+  //         this.normalizeUrl(urls[0])
+  //     ),[]
+  //   );
+  // }
 }

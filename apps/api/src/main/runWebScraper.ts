@@ -13,6 +13,7 @@ export async function startWebScraperPipeline({
   return (await runWebScraper({
     url: job.data.url,
     mode: job.data.mode,
+    start: new Date(),
     crawlerOptions: job.data.crawlerOptions,
     pageOptions: job.data.pageOptions,
     inProgress: (progress) => {
@@ -30,17 +31,21 @@ export async function startWebScraperPipeline({
 export async function runWebScraper({
   url,
   mode,
+  start,
   crawlerOptions,
   pageOptions,
   inProgress,
   onSuccess,
   onError,
   team_id,
+  timeout,
 }: {
   url: string;
   mode: "crawl" | "single_urls" | "sitemap";
+  start: Date,
   crawlerOptions: any;
   pageOptions?: any;
+  timeout?: number;
   inProgress: (progress: any) => void;
   onSuccess: (result: any) => void;
   onError: (error: any) => void;
@@ -67,8 +72,14 @@ export async function runWebScraper({
         pageOptions: pageOptions,
       });
     }
+
     const docs = (await provider.getDocuments(false, (progress: Progress) => {
       inProgress(progress);
+      if (timeout) {
+        if (start.getTime() + timeout > Date.now()) {
+          onSuccess(progress.partialDocs);
+        }
+      }
     })) as Document[];
 
     if (docs.length === 0) {

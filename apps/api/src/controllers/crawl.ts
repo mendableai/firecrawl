@@ -7,23 +7,6 @@ import { RateLimiterMode } from "../../src/types";
 import { addWebScraperJob } from "../../src/services/queue-jobs";
 import { isUrlBlocked } from "../../src/scraper/WebScraper/utils/blocklist";
 
-function getDocumentsWithTimeout(provider: WebScraperDataProvider, timeout: number): Promise<any> {
-  return new Promise(async (resolve, reject) => {
-    const timeoutId = setTimeout(() => {
-      reject(new Error("Timeout exceeded"));
-    }, timeout);
-
-    try {
-      const docs = await provider.getDocuments();
-      clearTimeout(timeoutId);
-      resolve(docs);
-    } catch (error) {
-      clearTimeout(timeoutId);
-      reject(error);
-    }
-  });
-}
-
 export async function crawlController(req: Request, res: Response) {
   try {
     const { success, team_id, error, status } = await authenticateUser(
@@ -67,7 +50,16 @@ export async function crawlController(req: Request, res: Response) {
           pageOptions: pageOptions,
         });
 
-        const docs = await getDocumentsWithTimeout(a, timeout);
+        const scrapingPromise = a.getDocuments(false);
+        const timeoutPromise = new Promise((resolve) => {
+          setTimeout(() => {
+            resolve({
+              error: "Timeout",
+            });
+          }, timeout);
+        });
+
+        const docs = await Promise.race([scrapingPromise, timeoutPromise]) as Document[];
         if ('error' in docs && docs.error == 'Timeout') {
           return res.status(408).json({ error: "Timeout exceeded" })
         }
@@ -88,7 +80,6 @@ export async function crawlController(req: Request, res: Response) {
       team_id: team_id,
       pageOptions: pageOptions,
       origin: req.body.origin ?? "api",
-      timeout: timeout,
     });
 
     res.json({ jobId: job.id });

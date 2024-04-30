@@ -73,19 +73,6 @@ export async function scrapeHelper(
       };
     }
 
-    const { success, credit_usage } = await billTeam(
-      team_id,
-      filteredDocs.length
-    );
-    if (!success) {
-      return {
-        success: false,
-        error:
-          "Failed to bill team. Insufficient credits or subscription not found.",
-        returnCode: 402,
-      };
-    }
-
     return {
       success: true,
       data: filteredDocs[0],
