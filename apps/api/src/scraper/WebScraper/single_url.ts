@@ -4,12 +4,34 @@ import { extractMetadata } from "./utils/metadata";
 import dotenv from "dotenv";
 import { Document, PageOptions } from "../../lib/entities";
 import { parseMarkdown } from "../../lib/html-to-markdown";
-import { parseTablesToMarkdown } from "./utils/parseTable";
 import { excludeNonMainTags } from "./utils/excludeTags";
-// import puppeteer from "puppeteer";
+import { urlSpecificParams } from "./utils/custom/website_params";
 
 dotenv.config();
 
+export async function generateRequestParams(
+  url: string,
+  wait_browser: string = "domcontentloaded",
+  timeout: number = 15000
+): Promise<any> {
+  const defaultParams = {
+    url: url,
+    params: { timeout: timeout, wait_browser: wait_browser },
+    headers: { "ScrapingService-Request": "TRUE" },
+  };
+
+  try {
+    const urlKey = new URL(url).hostname;
+    if (urlSpecificParams.hasOwnProperty(urlKey)) {
+      return { ...defaultParams, ...urlSpecificParams[urlKey] };
+    } else {
+      return defaultParams;
+    }
+  } catch (error) {
+    console.error(`Error generating URL key: ${error}`);
+    return defaultParams;
+  }
+}
 export async function scrapWithCustomFirecrawl(
   url: string,
   options?: any
@@ -25,15 +47,18 @@ export async function scrapWithCustomFirecrawl(
 
 export async function scrapWithScrapingBee(
   url: string,
-  wait_browser: string = "domcontentloaded"
+  wait_browser: string = "domcontentloaded",
+  timeout: number = 15000
 ): Promise<string> {
   try {
     const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY);
-    const response = await client.get({
-      url: url,
-      params: { timeout: 15000, wait_browser: wait_browser },
-      headers: { "ScrapingService-Request": "TRUE" },
-    });
+    const clientParams = await generateRequestParams(
+      url,
+      wait_browser,
+      timeout
+    );
+    
+    const response = await client.get(clientParams);
 
     if (response.status !== 200 && response.status !== 404) {
       console.error(
@@ -112,7 +137,11 @@ export async function scrapSingleUrl(
         break;
       case "scrapingBee":
         if (process.env.SCRAPING_BEE_API_KEY) {
-          text = await scrapWithScrapingBee(url);
+          text = await scrapWithScrapingBee(
+            url,
+            "domcontentloaded",
+            pageOptions.fallback === false ? 7000 : 15000
+          );
         }
         break;
       case "playwright":
@@ -142,6 +171,7 @@ export async function scrapSingleUrl(
         break;
     }
     let cleanedHtml = removeUnwantedElements(text, pageOptions);
+
     return [await parseMarkdown(cleanedHtml), text];
   };
 
@@ -154,6 +184,17 @@ export async function scrapSingleUrl(
     // }
 
     let [text, html] = await attemptScraping(urlToScrap, "scrapingBee");
+    // Basically means that it is using /search endpoint
+    if (pageOptions.fallback === false) {
+      const soup = cheerio.load(html);
+      const metadata = extractMetadata(soup, urlToScrap);
+      return {
+        url: urlToScrap,
+        content: text,
+        markdown: text,
+        metadata: { ...metadata, sourceURL: urlToScrap },
+      } as Document;
+    }
     if (!text || text.length < 100) {
       console.log("Falling back to playwright");
       [text, html] = await attemptScraping(urlToScrap, "playwright");

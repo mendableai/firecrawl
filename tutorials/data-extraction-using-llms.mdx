@@ -1,0 +1,92 @@
+# Extract website data using LLMs
+
+Learn how to use Firecrawl and Groq to extract structured data from a web page in a few lines of code. With Groq fast inference speeds and firecrawl parellization, you can extract data from web pages *super* fast.
+
+## Setup
+
+Install our python dependencies, including groq and firecrawl-py. 
+
+```bash
+pip install groq firecrawl-py
+```
+
+## Getting your Groq and Firecrawl API Keys
+
+To use Groq and Firecrawl, you will need to get your API keys. You can get your Groq API key from [here](https://groq.com) and your Firecrawl API key from [here](https://firecrawl.dev).   
+
+## Load website with Firecrawl
+
+To be able to get all the data from a website page and make sure it is in the cleanest format, we will use [FireCrawl](https://firecrawl.dev). It handles by-passing JS-blocked websites, extracting the main content, and outputting in a LLM-readable format for increased accuracy.
+
+Here is how we will scrape a website url using Firecrawl. We will also set a `pageOptions` for only extracting the main content (`onlyMainContent: True`) of the website page - excluding the navs, footers, etc.
+
+```python
+from firecrawl import FirecrawlApp  # Importing the FireCrawlLoader
+
+url = "https://about.fb.com/news/2024/04/introducing-our-open-mixed-reality-ecosystem/"
+
+firecrawl = FirecrawlApp(
+    api_key="fc-YOUR_FIRECRAWL_API_KEY",
+)
+page_content = firecrawl.scrape_url(url=url,  # Target URL to crawl
+    params={
+        "pageOptions":{
+            "onlyMainContent": True # Ignore navs, footers, etc.
+        }
+    })
+print(page_content)
+```
+
+Perfect, now we have clean data from the website - ready to be fed to the LLM for data extraction.
+
+## Extraction and Generation
+
+Now that we have the website data, let's use Groq to pull out the information we need. We'll use Groq Llama 3 model in JSON mode and pick out certain fields from the page content.
+
+We are using LLama 3 8b model for this example. Feel free to use bigger models for improved results.
+
+```python
+import json
+from groq import Groq
+
+client = Groq(
+    api_key="gsk_YOUR_GROQ_API_KEY",  # Note: Replace 'API_KEY' with your actual Groq API key
+)
+
+# Here we define the fields we want to extract from the page content
+extract = ["summary","date","companies_building_with_quest","title_of_the_article","people_testimonials"]
+
+completion = client.chat.completions.create(
+    model="llama3-8b-8192",
+    messages=[
+        {
+            "role": "system",
+            "content": "You are a legal advisor who extracts information from documents in JSON."
+        },
+        {
+            "role": "user",
+            # Here we pass the page content and the fields we want to extract
+            "content": f"Extract the following information from the provided documentation:\Page content:\n\n{page_content}\n\nInformation to extract: {extract}"
+        }
+    ],
+    temperature=0,
+    max_tokens=1024,
+    top_p=1,
+    stream=False,
+    stop=None,
+    # We set the response format to JSON object
+    response_format={"type": "json_object"}
+)
+
+
+# Pretty print the JSON response
+dataExtracted = json.dumps(str(completion.choices[0].message.content), indent=4)
+
+print(dataExtracted)
+```
+
+## And Voila!
+
+You have now built a data extraction bot using Groq and Firecrawl. You can now use this bot to extract structured data from any website.
+
+If you have any questions or need help, feel free to reach out to us at [Firecrawl](https://firecrawl.dev).

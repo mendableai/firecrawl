@@ -1,6 +1,4 @@
 import axios, { AxiosResponse, AxiosRequestHeaders } from 'axios';
-import dotenv from 'dotenv';
-dotenv.config();
 
 /**
  * Configuration interface for FirecrawlApp.
@@ -25,6 +23,14 @@ export interface ScrapeResponse {
   error?: string;
 }
 
+/**
+ * Response interface for searching operations.
+ */
+export interface SearchResponse {
+  success: boolean;
+  data?: any;
+  error?: string;
+}
 /**
  * Response interface for crawling operations.
  */
@@ -57,7 +63,7 @@ export default class FirecrawlApp {
    * @param {FirecrawlAppConfig} config - Configuration options for the FirecrawlApp instance.
    */
   constructor({ apiKey = null }: FirecrawlAppConfig) {
-    this.apiKey = apiKey || process.env.FIRECRAWL_API_KEY || '';
+    this.apiKey = apiKey || '';
     if (!this.apiKey) {
       throw new Error('No API key provided');
     }
@@ -97,14 +103,47 @@ export default class FirecrawlApp {
   }
 
   /**
+   * Searches for a query using the Firecrawl API.
+   * @param {string} query - The query to search for.
+   * @param {Params | null} params - Additional parameters for the search request.
+   * @returns {Promise<SearchResponse>} The response from the search operation.
+   */
+  async search(query: string, params: Params | null = null): Promise<SearchResponse> {
+    const headers: AxiosRequestHeaders = {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${this.apiKey}`,
+    } as AxiosRequestHeaders;
+    let jsonData: Params = { query };
+    if (params) {
+      jsonData = { ...jsonData, ...params };
+    }
+    try {
+      const response: AxiosResponse = await axios.post('https://api.firecrawl.dev/v0/search', jsonData, { headers });
+      if (response.status === 200) {
+        const responseData = response.data;
+        if (responseData.success) {
+          return responseData; 
+        } else {
+          throw new Error(`Failed to search. Error: ${responseData.error}`);
+        }
+      } else {
+        this.handleError(response, 'search');
+      }
+    } catch (error: any) {
+      throw new Error(error.message);
+    }
+    return { success: false, error: 'Internal server error.' };
+  }
+
+  /**
    * Initiates a crawl job for a URL using the Firecrawl API.
    * @param {string} url - The URL to crawl.
    * @param {Params | null} params - Additional parameters for the crawl request.
    * @param {boolean} waitUntilDone - Whether to wait for the crawl job to complete.
    * @param {number} timeout - Timeout in seconds for job status checks.
-   * @returns {Promise<CrawlResponse>} The response from the crawl operation.
+   * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
    */
-  async crawlUrl(url: string, params: Params | null = null, waitUntilDone: boolean = true, timeout: number = 2): Promise<CrawlResponse> {
+  async crawlUrl(url: string, params: Params | null = null, waitUntilDone: boolean = true, timeout: number = 2): Promise<CrawlResponse | any> {
     const headers = this.prepareHeaders();
     let jsonData: Params = { url };
     if (params) {

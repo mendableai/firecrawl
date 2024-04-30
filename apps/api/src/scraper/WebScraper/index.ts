@@ -4,12 +4,9 @@ import { scrapSingleUrl } from "./single_url";
 import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
 import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
-import { getImageDescription } from "./utils/gptVision";
+import { getImageDescription } from "./utils/imageDescription";
 import { fetchAndProcessPdf, isUrlAPdf } from "./utils/pdfProcessor";
-import {
-  replaceImgPathsWithAbsolutePaths,
-  replacePathsWithAbsolutePaths,
-} from "./utils/replacePaths";
+import { replaceImgPathsWithAbsolutePaths, replacePathsWithAbsolutePaths } from "./utils/replacePaths";
 
 export class WebScraperDataProvider {
   private urls: string[] = [""];
@@ -23,6 +20,7 @@ export class WebScraperDataProvider {
   private generateImgAltText: boolean = false;
   private pageOptions?: PageOptions;
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
+  private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" = "gpt-4-turbo";
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -64,6 +62,7 @@ export class WebScraperDataProvider {
     useCaching: boolean = false,
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
+    
     if (this.urls[0].trim() === "") {
       throw new Error("Url is required");
     }
@@ -80,11 +79,16 @@ export class WebScraperDataProvider {
         });
         let links = await crawler.start(inProgress, 5, this.limit);
         if (this.returnOnlyUrls) {
+          inProgress({
+            current: links.length,
+            total: links.length,
+            status: "COMPLETED",
+            currentDocumentUrl: this.urls[0],
+          });
           return links.map((url) => ({
             content: "",
+            markdown: "",
             metadata: { sourceURL: url },
-            provider: "web",
-            type: "text",
           }));
         }
 
@@ -466,7 +470,7 @@ export class WebScraperDataProvider {
                 imageUrl,
                 backText,
                 frontText
-              );
+              , this.generateImgAltTextModel);
             }
 
             document.content = document.content.replace(
