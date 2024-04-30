@@ -106,7 +106,6 @@ export async function scrapSingleUrl(
   toMarkdown: boolean = true,
   pageOptions: PageOptions = { onlyMainContent: true }
 ): Promise<Document> {
-  console.log(`Scraping URL: ${urlToScrap}`);
   urlToScrap = urlToScrap.trim();
 
   const removeUnwantedElements = (html: string, pageOptions: PageOptions) => {
@@ -170,6 +169,8 @@ export async function scrapSingleUrl(
         }
         break;
     }
+
+    //* TODO: add an optional to return markdown or structured/extracted content 
     let cleanedHtml = removeUnwantedElements(text, pageOptions);
 
     return [await parseMarkdown(cleanedHtml), text];

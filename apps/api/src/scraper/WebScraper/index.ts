@@ -1,4 +1,4 @@
-import { Document, PageOptions, WebScraperOptions } from "../../lib/entities";
+import { Document, ExtractorOptions, PageOptions, WebScraperOptions } from "../../lib/entities";
 import { Progress } from "../../lib/entities";
 import { scrapSingleUrl } from "./single_url";
 import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
@@ -7,6 +7,9 @@ import { getValue, setValue } from "../../services/redis";
 import { getImageDescription } from "./utils/imageDescription";
 import { fetchAndProcessPdf } from "./utils/pdfProcessor";
 import { replaceImgPathsWithAbsolutePaths, replacePathsWithAbsolutePaths } from "./utils/replacePaths";
+import OpenAI from 'openai'
+import { generateCompletions } from "../../lib/LLM-extraction";
+
 
 export class WebScraperDataProvider {
   private urls: string[] = [""];
@@ -19,6 +22,7 @@ export class WebScraperDataProvider {
   private concurrentRequests: number = 20;
   private generateImgAltText: boolean = false;
   private pageOptions?: PageOptions;
+  private extractorOptions?: ExtractorOptions;
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
   private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" = "gpt-4-turbo";
 
@@ -36,8 +40,7 @@ export class WebScraperDataProvider {
   ): Promise<Document[]> {
     const totalUrls = urls.length;
     let processedUrls = 0;
-    console.log("Converting urls to documents");
-    console.log("Total urls", urls);
+  
     const results: (Document | null)[] = new Array(urls.length).fill(null);
     for (let i = 0; i < urls.length; i += this.concurrentRequests) {
       const batchUrls = urls.slice(i, i + this.concurrentRequests);
@@ -191,6 +194,13 @@ export class WebScraperDataProvider {
         const baseUrl = new URL(this.urls[0]).origin;
         documents = await this.getSitemapData(baseUrl, documents);
         documents = documents.concat(pdfDocuments);
+
+        if(this.extractorOptions.mode === "llm-extraction") {
+          documents = await generateCompletions(
+            documents,
+            this.extractorOptions
+          )
+        }
 
         await this.setCachedDocuments(documents);
         documents = this.removeChildLinks(documents);
@@ -377,6 +387,7 @@ export class WebScraperDataProvider {
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
     this.pageOptions = options.pageOptions ?? {onlyMainContent: false};
+    this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
     this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
 
     //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check

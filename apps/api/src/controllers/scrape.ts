@@ -1,3 +1,4 @@
+import { ExtractorOptions } from './../lib/entities';
 import { Request, Response } from "express";
 import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
@@ -6,12 +7,14 @@ import { RateLimiterMode } from "../types";
 import { logJob } from "../services/logging/log_job";
 import { Document } from "../lib/entities";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
+import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 
 export async function scrapeHelper(
   req: Request,
   team_id: string,
   crawlerOptions: any,
-  pageOptions: any
+  pageOptions: any,
+  extractorOptions: ExtractorOptions
 ): Promise<{
   success: boolean;
   error?: string;
@@ -27,6 +30,7 @@ export async function scrapeHelper(
     return { success: false, error: "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.", returnCode: 403 };
   }
 
+
   const a = new WebScraperDataProvider();
   await a.setOptions({
     mode: "single_urls",
@@ -35,6 +39,7 @@ export async function scrapeHelper(
       ...crawlerOptions,
     },
     pageOptions: pageOptions,
+    extractorOptions: extractorOptions
   });
 
   const docs = await a.getDocuments(false);
@@ -46,9 +51,17 @@ export async function scrapeHelper(
     return { success: true, error: "No page found", returnCode: 200 };
   }
 
+
+  let creditsToBeBilled =  filteredDocs.length;
+  const creditsPerLLMExtract = 5;
+
+  if (extractorOptions.mode === "llm-extraction"){
+    creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length)
+  }
+
   const billingResult = await billTeam(
     team_id,
-    filteredDocs.length
+    creditsToBeBilled
   );
   if (!billingResult.success) {
     return {
@@ -79,6 +92,9 @@ export async function scrapeController(req: Request, res: Response) {
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
+    const extractorOptions = req.body.extractorOptions ?? {
+      mode: "markdown"
+    }
     const origin = req.body.origin ?? "api";
 
     try {
@@ -96,10 +112,13 @@ export async function scrapeController(req: Request, res: Response) {
       req,
       team_id,
       crawlerOptions,
-      pageOptions
+      pageOptions,
+      extractorOptions
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
+    const numTokens = (result.data && result.data.markdown) ? numTokensFromString(result.data.markdown, "gpt-3.5-turbo") : 0;
+
     logJob({
       success: result.success,
       message: result.error,
@@ -111,7 +130,9 @@ export async function scrapeController(req: Request, res: Response) {
       url: req.body.url,
       crawlerOptions: crawlerOptions,
       pageOptions: pageOptions,
-      origin: origin,
+      origin: origin, 
+      extractor_options: extractorOptions,
+      num_tokens: numTokens
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {

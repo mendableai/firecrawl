@@ -1,3 +1,5 @@
+import { ExtractorOptions } from "./lib/entities";
+
 export interface CrawlResult {
   source: string;
   content: string;
@@ -37,6 +39,8 @@ export interface FirecrawlJob {
   crawlerOptions?: any;
   pageOptions?: any;
   origin: string;
+  extractor_options?: ExtractorOptions,
+  num_tokens?: number
 }
 
 export enum RateLimiterMode {
