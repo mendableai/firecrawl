@@ -1,3 +1,4 @@
+import { ExtractorOptions } from './../../lib/entities';
 import { supabase_service } from "../supabase";
 import { FirecrawlJob } from "../../types";
 import "dotenv/config";
@@ -9,7 +10,7 @@ export async function logJob(job: FirecrawlJob) {
       return;
     }
 
-    // console.log("logg")
+    
     const { data, error } = await supabase_service
       .from("firecrawl_jobs")
       .insert([
