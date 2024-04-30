@@ -67,6 +67,7 @@ export class WebScraperDataProvider {
     useCaching: boolean = false,
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
+    
     if (this.urls[0].trim() === "") {
       throw new Error("Url is required");
     }
