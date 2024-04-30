@@ -373,33 +373,36 @@
             "type": "boolean"
           },
           "data": {
-            "type": "object",
-            "properties": {
-              "url": {
-                "type": "string"
-              },
-              "markdown": {
-                "type": "string"
-              },
-              "content": {
-                "type": "string"
-              },
-              "metadata": {
-                "type": "object",
-                "properties": {
-                  "title": {
-                    "type": "string"
-                  },
-                  "description": {
-                    "type": "string"
-                  },
-                  "language": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "sourceURL": {
-                    "type": "string",
-                    "format": "uri"
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string"
+                },
+                "markdown": {
+                  "type": "string"
+                },
+                "content": {
+                  "type": "string"
+                },
+                "metadata": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "language": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "sourceURL": {
+                      "type": "string",
+                      "format": "uri"
+                    }
                   }
                 }
               }

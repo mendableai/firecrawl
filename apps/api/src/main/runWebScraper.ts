@@ -89,12 +89,12 @@ export async function runWebScraper({
       : docs.filter((doc) => doc.content.trim().length > 0);
 
 
-    const { success, credit_usage } = await billTeam(
+    const billingResult = await billTeam(
       team_id,
       filteredDocs.length
     );
 
-    if (!success) {
+    if (!billingResult.success) {
       // throw new Error("Failed to bill team, no subscription was found");
       return {
         success: false,

@@ -39,7 +39,6 @@ export async function scrapeHelper(
   });
 
   const scrapingPromise = a.getDocuments(false);
-
   const timeoutPromise = new Promise((resolve) => {
     setTimeout(() => {
       resolve({
@@ -61,18 +60,31 @@ export async function scrapeHelper(
       return { success: true, error: "No page found", returnCode: 200 };
     }
 
-      const { success, credit_usage } = await billTeam(
-        team_id,
-        filteredDocs.length
-      );
-      if (!success) {
-        return {
-          success: false,
-          error:
-            "Failed to bill team. Insufficient credits or subscription not found.",
-          returnCode: 402,
-        };
-      }
+    const billingResult = await billTeam(
+      team_id,
+      filteredDocs.length
+    );
+    if (!billingResult.success) {
+      return {
+        success: false,
+        error:
+          "Failed to bill team. Insufficient credits or subscription not found.",
+        returnCode: 402,
+      };
+    }
+
+    const { success, credit_usage } = await billTeam(
+      team_id,
+      filteredDocs.length
+    );
+    if (!success) {
+      return {
+        success: false,
+        error:
+          "Failed to bill team. Insufficient credits or subscription not found.",
+        returnCode: 402,
+      };
+    }
 
     return {
       success: true,

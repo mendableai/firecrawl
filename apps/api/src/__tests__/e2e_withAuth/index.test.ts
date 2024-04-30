@@ -214,6 +214,8 @@ const TEST_URL = "http://127.0.0.1:3002";
         expect(response.statusCode).toBe(401);
       });
 
+
+      
       it("should return a successful response with a valid API key", async () => {
         const response = await request(TEST_URL)
           .post("/v0/search")

@@ -83,11 +83,11 @@ export async function searchHelper(
     return { success: true, error: "No page found", returnCode: 200 };
   }
 
-  const { success, credit_usage } = await billTeam(
+  const billingResult = await billTeam(
     team_id,
     filteredDocs.length
   );
-  if (!success) {
+  if (!billingResult.success) {
     return {
       success: false,
       error:

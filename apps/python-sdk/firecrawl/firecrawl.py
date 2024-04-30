@@ -1,5 +1,6 @@
 import os
 import requests
+import time
 
 class FirecrawlApp:
     def __init__(self, api_key=None):
@@ -32,6 +33,32 @@ class FirecrawlApp:
             raise Exception(f'Failed to scrape URL. Status code: {response.status_code}. Error: {error_message}')
         else:
             raise Exception(f'Failed to scrape URL. Status code: {response.status_code}')
+        
+    def search(self, query, params=None):
+        headers = {
+            'Content-Type': 'application/json',
+            'Authorization': f'Bearer {self.api_key}'
+        }
+        json_data = {'query': query}
+        if params:
+            json_data.update(params)
+        response = requests.post(
+            'https://api.firecrawl.dev/v0/search',
+            headers=headers,
+            json=json_data
+        )
+        if response.status_code == 200:
+            response = response.json()
+            if response['success'] == True:
+                return response['data']
+            else:
+                raise Exception(f'Failed to search. Error: {response["error"]}')
+            
+        elif response.status_code in [402, 409, 500]:
+            error_message = response.json().get('error', 'Unknown error occurred')
+            raise Exception(f'Failed to search. Status code: {response.status_code}. Error: {error_message}')
+        else:
+            raise Exception(f'Failed to search. Status code: {response.status_code}')
 
     def crawl_url(self, url, params=None, wait_until_done=True, timeout=2):
         headers = self._prepare_headers()
@@ -62,11 +89,23 @@ class FirecrawlApp:
             'Authorization': f'Bearer {self.api_key}'
         }
 
-    def _post_request(self, url, data, headers):
-        return requests.post(url, headers=headers, json=data)
+    def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5):
+        for attempt in range(retries):
+            response = requests.post(url, headers=headers, json=data)
+            if response.status_code == 502:
+                time.sleep(backoff_factor * (2 ** attempt))
+            else:
+                return response
+        return response
 
-    def _get_request(self, url, headers):
-        return requests.get(url, headers=headers)
+    def _get_request(self, url, headers, retries=3, backoff_factor=0.5):
+        for attempt in range(retries):
+            response = requests.get(url, headers=headers)
+            if response.status_code == 502:
+                time.sleep(backoff_factor * (2 ** attempt))
+            else:
+                return response
+        return response
 
     def _monitor_job_status(self, job_id, headers, timeout):
         import time
