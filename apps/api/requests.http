@@ -1,6 +1,6 @@
 ### Crawl Website
 POST http://localhost:3002/v0/scrape HTTP/1.1
-Authorization: Bearer fc-c2dba8f105724bd59d9a66b3f73b2e1c
+Authorization: Bearer 
 content-type: application/json
 
 {
@@ -28,7 +28,7 @@ content-type: application/json
 
 ### search Website
 POST http://localhost:3002/v0/search HTTP/1.1
-Authorization: Bearer fc-c2dba8f105724bd59d9a66b3f73b2e1c
+Authorization: Bearer 
 content-type: application/json
 
 {
