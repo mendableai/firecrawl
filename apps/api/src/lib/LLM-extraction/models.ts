@@ -29,7 +29,7 @@ function prepareOpenAIDoc(
     throw new Error("Markdown content is missing in the document.");
   }
 
-  return [{ type: 'text', text: document.html}]
+  return [{ type: 'text', text: document.markdown}]
 }
 
 export async function generateOpenAICompletions({
