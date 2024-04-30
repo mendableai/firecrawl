@@ -59,7 +59,6 @@ export async function scrapeHelper(
   if (extractorOptions.mode === "llm-extraction"){
     creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length)
   }
-  // console.log("credits to be billed, ", creditsToBeBilled);
 
   const billingResult = await billTeam(
     team_id,
