@@ -61,6 +61,36 @@ describe('E2E Tests for API Routes', () => {
       expect(response.body.data).toHaveProperty('metadata');
       expect(response.body.data.content).toContain('🔥 FireCrawl');
     }, 30000); // 30 seconds timeout
+
+    it('should return a successful response for a valid scrape with PDF file', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://arxiv.org/pdf/astro-ph/9301001.pdf' });
+      await new Promise((r) => setTimeout(r, 6000));
+      
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
+    }, 30000); // 30 seconds
+
+    it('should return a successful response for a valid scrape with PDF file without explicit .pdf extension', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://arxiv.org/pdf/astro-ph/9301001' });
+      await new Promise((r) => setTimeout(r, 6000));
+      
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
+    }, 30000); // 30 seconds
   });
 
   describe('POST /v0/crawl', () => {
@@ -180,7 +210,7 @@ describe('E2E Tests for API Routes', () => {
         .post('/v0/crawl')
         .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
         .set('Content-Type', 'application/json')
-        .send({ url: 'https://arxiv.org/abs/astro-ph/9301001', crawlerOptions: { limit: 5 }});
+        .send({ url: 'https://arxiv.org/abs/astro-ph/9301001', crawlerOptions: { limit: 10, excludes: [ 'list/*', 'login', 'abs/*', 'static/*', 'about/*', 'archive/*' ] }});
       expect(crawlResponse.statusCode).toBe(200);
 
       const response = await request(TEST_URL)
@@ -191,22 +221,25 @@ describe('E2E Tests for API Routes', () => {
         expect(response.body.status).toBe('active');
 
         // wait for 30 seconds
-        await new Promise((r) => setTimeout(r, 60000));
+        await new Promise((r) => setTimeout(r, 30000));
   
         const completedResponse = await request(TEST_URL)
         .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
         .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`);
-        console.log(completedResponse.body.data)
+
         expect(completedResponse.statusCode).toBe(200);
         expect(completedResponse.body).toHaveProperty('status');
         expect(completedResponse.body.status).toBe('completed');
         expect(completedResponse.body).toHaveProperty('data');
         expect(completedResponse.body.data.length).toBeGreaterThan(1);
-        expect(completedResponse.body.data[0]).toHaveProperty('content');
-        expect(completedResponse.body.data[0]).toHaveProperty('markdown');
-        expect(completedResponse.body.data[0]).toHaveProperty('metadata');
-        expect(completedResponse.body.data[0].content).toContain('The Peculiar Balmer Line Profiles of OQ 208');
-    }, 90000); // 60 seconds
+        expect(completedResponse.body.data).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              content: expect.stringContaining('asymmetries might represent, for instance, preferred source orientations to our line of sight.')
+            })
+          ])
+        );
+    }, 60000); // 60 seconds
 
 
   });
