@@ -195,8 +195,6 @@ export class WebScraperDataProvider {
         documents = documents.concat(pdfDocuments);
 
         if(this.extractorOptions.mode === "llm-extraction") {
-
-          const llm = new OpenAI()
           documents = await generateCompletions(
             documents,
             this.extractorOptions

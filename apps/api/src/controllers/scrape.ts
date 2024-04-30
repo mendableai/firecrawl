@@ -7,7 +7,6 @@ import { RateLimiterMode } from "../types";
 import { logJob } from "../services/logging/log_job";
 import { Document } from "../lib/entities";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
-import Ajv from 'ajv';
 import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 
 export async function scrapeHelper(
