@@ -117,7 +117,7 @@ export async function scrapeController(req: Request, res: Response) {
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
-    const numTokens = numTokensFromString(result.data.markdown, "gpt-3.5-turbo")
+    const numTokens = (result.data && result.data.markdown) ? numTokensFromString(result.data.markdown, "gpt-3.5-turbo") : 0;
 
     logJob({
       success: result.success,
