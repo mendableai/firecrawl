@@ -1,10 +1,66 @@
 ### Crawl Website
 POST http://localhost:3002/v0/scrape HTTP/1.1
-Authorization: Bearer 
+Authorization: Bearer fc-c2dba8f105724bd59d9a66b3f73b2e1c
 content-type: application/json
 
 {
-    "url":"https://docs.mendable.ai"
+    "url":"https://mendable.ai",
+    "extractorOptions": {
+        "mode": "llm-extraction",
+        "extractionPrompt": "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source",
+        "extractionSchema": {
+            "type": "object",
+            "properties": {
+                "company_mission": {
+                    "type": "string"
+                },
+                "supports_sso": {
+                    "type": "boolean"
+                },
+                "is_open_source": {
+                    "type": "boolean"
+                }
+            },
+            "required": ["company_mission", "supports_sso", "is_open_source"]
+        }
+    }
+}
+
+### search Website
+POST http://localhost:3002/v0/search HTTP/1.1
+Authorization: Bearer fc-c2dba8f105724bd59d9a66b3f73b2e1c
+content-type: application/json
+
+{
+    "query":"chat with your website",
+    "extractorOptions": {
+        "mode": "llm-extraction",
+        "extractionPrompt": "Based on the information from the search results, find what the company's mission is and whether it supports SSO, and whether it is open source for all the search results, output a list",
+        "extractionSchema": {
+            "type": "object",
+            "properties": {
+                "results": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "company_mission": {
+                                "type": "string"
+                            },
+                            "supports_sso": {
+                                "type": "boolean"
+                            },
+                            "is_open_source": {
+                                "type": "boolean"
+                            }
+                        },
+                        "required": ["company_mission", "supports_sso", "is_open_source"]
+                    }
+                }
+            },
+            "required": ["results"]
+        }
+    }
 }
 
 

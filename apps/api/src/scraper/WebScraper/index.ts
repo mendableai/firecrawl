@@ -7,7 +7,6 @@ import { getValue, setValue } from "../../services/redis";
 import { getImageDescription } from "./utils/imageDescription";
 import { fetchAndProcessPdf } from "./utils/pdfProcessor";
 import { replaceImgPathsWithAbsolutePaths, replacePathsWithAbsolutePaths } from "./utils/replacePaths";
-import OpenAI from 'openai'
 import { generateCompletions } from "../../lib/LLM-extraction";
 
 
@@ -195,10 +194,14 @@ export class WebScraperDataProvider {
         documents = documents.concat(pdfDocuments);
 
         if(this.extractorOptions.mode === "llm-extraction") {
-          documents = await generateCompletions(
-            documents,
+          const {success, error, documents: docs} = await generateCompletions(
+            documents.filter((doc) => doc.markdown && doc.markdown.trim().length > 0),
             this.extractorOptions
           )
+          if(!success) {
+            throw new Error(error)
+          }
+          documents = docs;
         }
 
         await this.setCachedDocuments(documents);

@@ -4,16 +4,18 @@ import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
 import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../types";
 import { logJob } from "../services/logging/log_job";
-import { PageOptions, SearchOptions } from "../lib/entities";
+import { ExtractorOptions, PageOptions, SearchOptions } from "../lib/entities";
 import { search } from "../search";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
+import { numTokensFromString } from "../lib/LLM-extraction/helpers";
 
 export async function searchHelper(
   req: Request,
   team_id: string,
   crawlerOptions: any,
   pageOptions: PageOptions,
-  searchOptions: SearchOptions
+  searchOptions: SearchOptions,
+  extractorOptions: ExtractorOptions
 ): Promise<{
   success: boolean;
   error?: string;
@@ -67,6 +69,7 @@ export async function searchHelper(
       fetchPageContent: pageOptions?.fetchPageContent ?? true,
       fallback: false,
     },
+    extractorOptions: extractorOptions,
   });
 
   const docs = await a.getDocuments(true);
@@ -83,10 +86,7 @@ export async function searchHelper(
     return { success: true, error: "No page found", returnCode: 200 };
   }
 
-  const billingResult = await billTeam(
-    team_id,
-    filteredDocs.length
-  );
+  const billingResult = await billTeam(team_id, filteredDocs.length);
   if (!billingResult.success) {
     return {
       success: false,
@@ -120,6 +120,9 @@ export async function searchController(req: Request, res: Response) {
       fetchPageContent: true,
       fallback: false,
     };
+    const extractorOptions = req.body.extractorOptions ?? {
+      mode: "markdown",
+    };
     const origin = req.body.origin ?? "api";
 
     const searchOptions = req.body.searchOptions ?? { limit: 7 };
@@ -140,10 +143,16 @@ export async function searchController(req: Request, res: Response) {
       team_id,
       crawlerOptions,
       pageOptions,
-      searchOptions
+      searchOptions,
+      extractorOptions
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
+
+    const numTokens = numTokensFromString(
+      result.data.markdown,
+      "gpt-3.5-turbo"
+    );
     logJob({
       success: result.success,
       message: result.error,
@@ -156,6 +165,8 @@ export async function searchController(req: Request, res: Response) {
       crawlerOptions: crawlerOptions,
       pageOptions: pageOptions,
       origin: origin,
+      extractor_options: extractorOptions,
+      num_tokens: numTokens,
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {

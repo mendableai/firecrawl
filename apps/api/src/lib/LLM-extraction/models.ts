@@ -1,5 +1,6 @@
 import OpenAI from "openai";
 import { Document } from "../../lib/entities";
+import { numTokensFromString } from "./helpers";
 
 export type ScraperCompletionResult = {
   data: any | null;
@@ -10,19 +11,45 @@ const defaultPrompt =
   "You are a professional web scraper. Extract the contents of the webpage";
 
 function prepareOpenAIDoc(
+  model: string,
   document: Document
 ): OpenAI.Chat.Completions.ChatCompletionContentPart[] {
   // Check if the markdown content exists in the document
-  if (!document.markdown) {
-    throw new Error("Markdown content is missing in the document.");
+
+  let maxTokens;
+  switch(model) {
+    case 'gpt-3.5-turbo':
+      maxTokens = 3500;
+      break;
+    case 'gpt-4-turbo':
+      maxTokens = 100000;
+      break;
+    default:
+      maxTokens = 3500;
+  }
+
+  const numTokens = numTokensFromString(
+    document.markdown,
+    model
+  );
+
+  if (numTokens > maxTokens) {
+    document.markdown = trimContentIfTooLong(document.markdown, maxTokens);
   }
 
   return [{ type: "text", text: document.markdown }];
 }
 
+function trimContentIfTooLong(content: string, maxLength: number): string {
+  if (content.length > maxLength) {
+    return content.substring(0, maxLength);
+  }
+  return content;
+}
+
 export async function generateOpenAICompletions({
   client,
-  model = "gpt-4-turbo",
+  model = "gpt-3.5-turbo",
   document,
   schema, //TODO - add zod dynamic type checking
   prompt = defaultPrompt,
@@ -36,7 +63,7 @@ export async function generateOpenAICompletions({
   temperature?: number;
 }): Promise<Document> {
   const openai = client as OpenAI;
-  const content = prepareOpenAIDoc(document);
+  const content = prepareOpenAIDoc(model, document);
 
   const completion = await openai.chat.completions.create({
     model,

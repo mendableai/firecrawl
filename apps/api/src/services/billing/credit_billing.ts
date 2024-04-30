@@ -201,7 +201,6 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
       0
     );
 
-    console.log("totalCreditsUsed", totalCreditsUsed);
     // 5. Compare the total credits used with the credits allowed by the plan.
     if (totalCreditsUsed + credits > FREE_CREDITS) {
       return {
