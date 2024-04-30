@@ -34,9 +34,9 @@ export async function generateCompletions(
           if (!validate(completionResult.llm_extraction)) {
             //TODO: add Custom Error handling middleware that bubbles this up with proper Error code, etc.
             throw new Error(
-              `LLM extraction did not match the extraction schema you provided. This could be because of a model hallucination, or an Error on our side. Try adjusting your prompt, and if it doesn't work reach out to support. JSON parsing error(s): ${validate.errors
+              `JSON parsing error(s): ${validate.errors
                 ?.map((err) => err.message)
-                .join(", ")}`
+                .join(", ")}\n\nLLM extraction did not match the extraction schema you provided. This could be because of a model hallucination, or an Error on our side. Try adjusting your prompt, and if it doesn't work reach out to support.`
             );
           }
 

@@ -14,7 +14,9 @@ function prepareOpenAIDoc(
 ): OpenAI.Chat.Completions.ChatCompletionContentPart[] {
   // Check if the markdown content exists in the document
   if (!document.markdown) {
-    throw new Error("Markdown content is missing in the document.");
+    throw new Error(
+      "Markdown content is missing in the document. This is likely due to an error in the scraping process. Please try again or reach out to help@mendable.ai"
+    );
   }
 
   return [{ type: "text", text: document.markdown }];
