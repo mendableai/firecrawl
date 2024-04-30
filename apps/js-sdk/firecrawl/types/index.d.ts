@@ -16,7 +16,7 @@ export interface Params {
  */
 export interface ScrapeResponse {
     success: boolean;
-    data?: any;
+    data?: Document;
     error?: string;
 }
 /**
@@ -24,7 +24,11 @@ export interface ScrapeResponse {
  */
 export interface SearchResponse {
     success: boolean;
-    data?: any;
+    data?: Document[] | {
+        url: string;
+        title: string;
+        description: string;
+    }[];
     error?: string;
 }
 /**
@@ -33,7 +37,7 @@ export interface SearchResponse {
 export interface CrawlResponse {
     success: boolean;
     jobId?: string;
-    data?: any;
+    data?: Document[];
     error?: string;
 }
 /**
@@ -45,6 +49,26 @@ export interface JobStatusResponse {
     jobId?: string;
     data?: any;
     error?: string;
+}
+/**
+ * Return type for scraping, crawling and search operations.
+ */
+export interface Document {
+    id?: string;
+    content: string;
+    markdown?: string;
+    html?: string;
+    llm_extraction?: Record<string, any>;
+    createdAt?: Date;
+    updatedAt?: Date;
+    type?: string;
+    metadata: {
+        sourceURL?: string;
+        [key: string]: any;
+    };
+    childrenLinks?: string[];
+    provider?: string;
+    url?: string;
 }
 /**
  * Main class for interacting with the Firecrawl API.

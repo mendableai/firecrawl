@@ -17,4 +17,7 @@ while (true) {
   await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
 }
 
-console.log(job.data[0].content);
+console.log(job.data);
+
+
+const a  =await app.scrapeUrl('mendable.ai', {crawlerOptions: {excludes: ['blog/*'], limit: 5}});

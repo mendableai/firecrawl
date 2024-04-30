@@ -8,8 +8,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import axios from 'axios';
-import dotenv from 'dotenv';
-dotenv.config();
 /**
  * Main class for interacting with the Firecrawl API.
  */
@@ -19,7 +17,7 @@ export default class FirecrawlApp {
      * @param {FirecrawlAppConfig} config - Configuration options for the FirecrawlApp instance.
      */
     constructor({ apiKey = null }) {
-        this.apiKey = apiKey || process.env.FIRECRAWL_API_KEY || '';
+        this.apiKey = apiKey || '';
         if (!this.apiKey) {
             throw new Error('No API key provided');
         }
