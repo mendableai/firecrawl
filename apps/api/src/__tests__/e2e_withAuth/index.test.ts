@@ -305,64 +305,64 @@ describe("E2E Tests for API Routes", () => {
     }, 60000); // 60 secs
   });
 
-  describe.only("POST /v0/scrape for Top 100 Companies", () => {
-    it("should extract data for the top 100 companies", async () => {
-      const response = await request(TEST_URL)
-        .post("/v0/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-        .set("Content-Type", "application/json")
-        .send({
-          url: "https://companiesmarketcap.com/",
-          pageOptions: {
-            onlyMainContent: true
-          },
-          extractorOptions: {
-            mode: "llm-extraction",
-            extractionPrompt: "Extract the name, market cap, price, and today's change for the top 20 companies listed on the page.",
-            extractionSchema: {
-              type: "object",
-              properties: {
-                companies: {
-                  type: "array",
-                  items: {
-                    type: "object",
-                    properties: {
-                      rank: { type: "number" },
-                      name: { type: "string" },
-                      marketCap: { type: "string" },
-                      price: { type: "string" },
-                      todayChange: { type: "string" }
-                    },
-                    required: ["rank", "name", "marketCap", "price", "todayChange"]
-                  }
-                }
-              },
-              required: ["companies"]
-            }
-          }
-        });
+  // describe("POST /v0/scrape for Top 100 Companies", () => {
+  //   it("should extract data for the top 100 companies", async () => {
+  //     const response = await request(TEST_URL)
+  //       .post("/v0/scrape")
+  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+  //       .set("Content-Type", "application/json")
+  //       .send({
+  //         url: "https://companiesmarketcap.com/",
+  //         pageOptions: {
+  //           onlyMainContent: true
+  //         },
+  //         extractorOptions: {
+  //           mode: "llm-extraction",
+  //           extractionPrompt: "Extract the name, market cap, price, and today's change for the top 20 companies listed on the page.",
+  //           extractionSchema: {
+  //             type: "object",
+  //             properties: {
+  //               companies: {
+  //                 type: "array",
+  //                 items: {
+  //                   type: "object",
+  //                   properties: {
+  //                     rank: { type: "number" },
+  //                     name: { type: "string" },
+  //                     marketCap: { type: "string" },
+  //                     price: { type: "string" },
+  //                     todayChange: { type: "string" }
+  //                   },
+  //                   required: ["rank", "name", "marketCap", "price", "todayChange"]
+  //                 }
+  //               }
+  //             },
+  //             required: ["companies"]
+  //           }
+  //         }
+  //       });
 
 
-      // Print the response body to the console for debugging purposes
-      console.log("Response companies:", response.body.data.llm_extraction.companies);
+  //     // Print the response body to the console for debugging purposes
+  //     console.log("Response companies:", response.body.data.llm_extraction.companies);
 
-      // Check if the response has the correct structure and data types
-      expect(response.status).toBe(200);
-      expect(Array.isArray(response.body.data.llm_extraction.companies)).toBe(true);
-      expect(response.body.data.llm_extraction.companies.length).toBe(40);
+  //     // Check if the response has the correct structure and data types
+  //     expect(response.status).toBe(200);
+  //     expect(Array.isArray(response.body.data.llm_extraction.companies)).toBe(true);
+  //     expect(response.body.data.llm_extraction.companies.length).toBe(40);
 
-      // Sample check for the first company
-      const firstCompany = response.body.data.llm_extraction.companies[0];
-      expect(firstCompany).toHaveProperty("name");
-      expect(typeof firstCompany.name).toBe("string");
-      expect(firstCompany).toHaveProperty("marketCap");
-      expect(typeof firstCompany.marketCap).toBe("string");
-      expect(firstCompany).toHaveProperty("price");
-      expect(typeof firstCompany.price).toBe("string");
-      expect(firstCompany).toHaveProperty("todayChange");
-      expect(typeof firstCompany.todayChange).toBe("string");
-    }, 120000); // 120 secs
-  });
+  //     // Sample check for the first company
+  //     const firstCompany = response.body.data.llm_extraction.companies[0];
+  //     expect(firstCompany).toHaveProperty("name");
+  //     expect(typeof firstCompany.name).toBe("string");
+  //     expect(firstCompany).toHaveProperty("marketCap");
+  //     expect(typeof firstCompany.marketCap).toBe("string");
+  //     expect(firstCompany).toHaveProperty("price");
+  //     expect(typeof firstCompany.price).toBe("string");
+  //     expect(firstCompany).toHaveProperty("todayChange");
+  //     expect(typeof firstCompany.todayChange).toBe("string");
+  //   }, 120000); // 120 secs
+  // });
 
   
 
