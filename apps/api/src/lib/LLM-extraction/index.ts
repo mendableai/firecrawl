@@ -23,6 +23,7 @@ export async function generateCompletions(
       switch (switchVariable) {
         case "openAI":
           const llm = new OpenAI();
+          try{
           const completionResult = await generateOpenAICompletions({
             client: llm,
             document: document,
@@ -41,6 +42,10 @@ export async function generateCompletions(
           }
 
           return completionResult;
+        } catch (error) {
+          console.error(`Error generating completions: ${error}`);
+          throw new Error(`Error generating completions: ${error.message}`);
+        }
         default:
           throw new Error("Invalid client");
       }
