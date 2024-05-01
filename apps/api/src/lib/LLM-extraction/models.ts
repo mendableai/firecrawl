@@ -59,7 +59,7 @@ export async function generateOpenAICompletions({
         },
       },
     ],
-    tool_choice: "auto",
+    tool_choice: { "type": "function", "function": {"name": "extract_content"}},
     temperature,
   });
 
@@ -74,3 +74,4 @@ export async function generateOpenAICompletions({
     llm_extraction: llmExtraction,
   };
 }
+
