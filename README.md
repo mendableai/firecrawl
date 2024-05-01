@@ -147,6 +147,73 @@ curl -X POST https://api.firecrawl.dev/v0/search \
 }
 ```
 
+### Intelligent Extraction (Beta)
+
+Used to extract structured data from scraped pages.
+
+```bash
+curl -X POST https://api.firecrawl.dev/v0/scrape \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer YOUR_API_KEY' \
+    -d '{
+      "url": "https://www.mendable.ai/",
+      "extractorOptions": {
+        "mode": "llm-extraction",
+        "extractionPrompt": "Based on the information on the page, extract the information from the schema. ",
+        "extractionSchema": {
+          "type": "object",
+          "properties": {
+                    "company_mission": {
+                              "type": "string"
+                    },
+                    "supports_sso": {
+                              "type": "boolean"
+                    },
+                    "is_open_source": {
+                              "type": "boolean"
+                    },
+                    "is_in_yc": {
+                              "type": "boolean"
+                    }
+          },
+          "required": [
+                    "company_mission",
+                    "supports_sso",
+                    "is_open_source",
+                    "is_in_yc"
+          ]
+}
+      }
+    }'
+```
+
+```json
+{
+    "success": true,
+    "data": {
+      "content": "Raw Content",
+      "metadata": {
+        "title": "Mendable",
+        "description": "Mendable allows you to easily build AI chat applications. Ingest, customize, then deploy with one line of code anywhere you want. Brought to you by SideGuide",
+        "robots": "follow, index",
+        "ogTitle": "Mendable",
+        "ogDescription": "Mendable allows you to easily build AI chat applications. Ingest, customize, then deploy with one line of code anywhere you want. Brought to you by SideGuide",
+        "ogUrl": "https://mendable.ai/",
+        "ogImage": "https://mendable.ai/mendable_new_og1.png",
+        "ogLocaleAlternate": [],
+        "ogSiteName": "Mendable",
+        "sourceURL": "https://mendable.ai/"
+      },
+      "llm_extraction": {
+        "company_mission": "Train a secure AI on your technical resources that answers customer and employee questions so your team doesn't have to",
+        "supports_sso": true,
+        "is_open_source": false
+      }
+    }
+}
+
+```
+
 Coming soon to the Langchain and LLama Index integrations.
 
 ## Using Python SDK
