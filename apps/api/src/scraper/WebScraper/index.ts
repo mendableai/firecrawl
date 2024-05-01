@@ -113,7 +113,9 @@ export class WebScraperDataProvider {
       let processedDocuments: Document[] = [];
       
       const updateProgress = (document: Document | null, url: string) => {
-        console.log('processedDocuments.length:', processedDocuments.length)
+        if (timeoutReached) {
+          throw new Error("Timeout exceeded");
+        }
         if (document) {
           processedDocuments.push(document);
         }
@@ -132,7 +134,8 @@ export class WebScraperDataProvider {
         if (timeoutTime && new Date().getTime() > timeoutTime) {
           timeoutReached = true;
           updateProgress(null, url);
-          return null;
+          throw new Error("Timeout exceeded");
+          // return null;
         }
 
         try {
@@ -167,16 +170,15 @@ export class WebScraperDataProvider {
         } catch (error) {
           console.error("Error processing URL:", url, error);
           updateProgress(null, url);
-          return null;
+          throw error;
+          // console.error("Error processing URL:", url, error);
+          // updateProgress(null, url);
+          // return null;
         }
       });
   
       await Promise.allSettled(documentPromises);
 
-      if (timeoutReached) {
-        return processedDocuments;
-      }
-    
       return processedDocuments.splice(0, this.limit);
     }
 

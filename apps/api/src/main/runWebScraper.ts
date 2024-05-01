@@ -80,21 +80,31 @@ export async function runWebScraper({
       });
     }
 
-    // for some reason it keeps running even after the timeout...
-    // progress.partialDocs.length keeps getting bigger
-    const timeoutTime = timeout ? start.getTime() + timeout : undefined;
-    const docs = await provider.getDocuments(false, timeoutTime, (progress: Progress) => {
-      inProgress(progress);
-      if (timeout && new Date().getTime() > timeoutTime) {
-        console.log('Timeout exceeded, returning partial results.');
-        console.log('>', progress.partialDocs.length);
-        onSuccess(progress.partialDocs);
-        // throw new Error("Timeout exceeded");
-        return { success: false, message: "Timeout exceeded", docs: progress.partialDocs }
-      } // else {
-      //   inProgress(progress);
-      // }
-    }) as Document[];
+    let docs: Document[] = [];
+
+    try {
+      // for some reason it keeps running even after the timeout...
+      // progress.partialDocs.length keeps getting bigger
+      const timeoutTime = timeout ? start.getTime() + timeout : undefined;
+      console.log({timeoutTime, timeout, start: start.getTime()})
+      docs = await provider.getDocuments(false, timeoutTime, (progress: Progress) => {
+        inProgress(progress);
+        if (timeout && new Date().getTime() > timeoutTime) {
+          console.log('Timeout exceeded, returning partial results.');
+          console.log('>', progress.partialDocs.length);
+          onSuccess(progress.partialDocs);
+          // throw new Error("Timeout exceeded");
+          return { success: false, message: "Timeout exceeded", docs: progress.partialDocs }
+        } // else {
+        //   inProgress(progress);
+        // }
+      }) as Document[];
+    } catch (error) {
+      console.error("Error getting documents", error);
+      return { success: false, message: error.message, docs: [] };
+    }
+
+    console.log('docs.length:', docs.length);
 
     if (docs.length === 0) {
       return {

@@ -138,7 +138,7 @@ const TEST_URL = "http://127.0.0.1:3002";
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
-          .send({ url: "https://news.ycombinator.com", timeout: 12000, crawlerOptions: { limit: 100 } });
+          .send({ url: "https://news.ycombinator.com", timeout: 15000, crawlerOptions: { limit: 100 } });
         expect(crawlResponse.statusCode).toBe(200);
         expect(crawlResponse.body).toHaveProperty("jobId");
         expect(crawlResponse.body.jobId).toMatch(
@@ -149,6 +149,9 @@ const TEST_URL = "http://127.0.0.1:3002";
         const completedResponse = await request(TEST_URL)
           .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+        console.log(completedResponse.body.data.length);
+        
         expect(completedResponse.statusCode).toBe(408);
         expect(completedResponse.body).toHaveProperty("error");
         expect(completedResponse.body.error).toContain("Timeout exceeded");
