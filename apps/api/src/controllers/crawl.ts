@@ -36,7 +36,7 @@ export async function crawlController(req: Request, res: Response) {
     const mode = req.body.mode ?? "crawl";
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
-    const timeout = req.body.timeout || req.body.crawlerOptions?.limit * 20000 || 5 * 20000; // default 5 pages
+    const timeout = req.body.timeout || req.body.crawlerOptions?.limit * 20000 || undefined;
 
     if (mode === "single_urls" && !url.includes(",")) {
       try {
@@ -80,6 +80,7 @@ export async function crawlController(req: Request, res: Response) {
       team_id: team_id,
       pageOptions: pageOptions,
       origin: req.body.origin ?? "api",
+      timeout: timeout,
     });
 
     res.json({ jobId: job.id });

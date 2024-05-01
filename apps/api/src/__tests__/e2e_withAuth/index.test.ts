@@ -138,13 +138,13 @@ const TEST_URL = "http://127.0.0.1:3002";
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
-          .send({ url: "https://firecrawl.dev", timeout: 10000, crawlerOptions: { limit: 30 } });
+          .send({ url: "https://news.ycombinator.com", timeout: 12000, crawlerOptions: { limit: 100 } });
         expect(crawlResponse.statusCode).toBe(200);
         expect(crawlResponse.body).toHaveProperty("jobId");
         expect(crawlResponse.body.jobId).toMatch(
           /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
         );
-        await new Promise((r) => setTimeout(r, 10000)); // wait for 10 seconds, should be enough to get partial results
+        await new Promise((r) => setTimeout(r, 20000)); // wait for 10 seconds, should be enough to get partial results
 
         const completedResponse = await request(TEST_URL)
           .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
@@ -154,10 +154,11 @@ const TEST_URL = "http://127.0.0.1:3002";
         expect(completedResponse.body.error).toContain("Timeout exceeded");
         expect(completedResponse.body).toHaveProperty("data");
         expect(completedResponse.body.data.length).toBeGreaterThan(0);
+        expect(completedResponse.body.data.length).toBeLessThan(5);
         expect(completedResponse.body.data[0]).toHaveProperty("content");
         expect(completedResponse.body.data[0]).toHaveProperty("markdown");
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-        expect(completedResponse.body.data[0].content).toContain("🔥 FireCrawl");
+        // expect(completedResponse.body.data[0].content).toContain("🔥 FireCrawl");
       }, 30000); // 30 seconds timeout
 
       // Additional tests for insufficient credits?

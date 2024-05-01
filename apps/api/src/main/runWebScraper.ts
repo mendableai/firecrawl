@@ -17,15 +17,22 @@ export async function startWebScraperPipeline({
     crawlerOptions: job.data.crawlerOptions,
     pageOptions: job.data.pageOptions,
     inProgress: (progress) => {
-      job.progress(progress);
+      if (!job.isCompleted() && !job.isFailed()) {
+        job.progress(progress);
+      }
     },
     onSuccess: (result) => {
-      job.moveToCompleted(result);
+      if (!job.isCompleted() && !job.isFailed()) {
+        job.moveToCompleted(result);
+      }
     },
     onError: (error) => {
-      job.moveToFailed(error);
+      if (!job.isCompleted() && !job.isFailed()) {
+        job.moveToFailed(error);
+      }
     },
     team_id: job.data.team_id,
+    timeout: job.data.timeout,
   })) as { success: boolean; message: string; docs: Document[] };
 }
 export async function runWebScraper({
@@ -45,11 +52,11 @@ export async function runWebScraper({
   start: Date,
   crawlerOptions: any;
   pageOptions?: any;
-  timeout?: number;
   inProgress: (progress: any) => void;
   onSuccess: (result: any) => void;
   onError: (error: any) => void;
   team_id: string;
+  timeout?: number;
 }): Promise<{
   success: boolean;
   message: string;
@@ -73,14 +80,21 @@ export async function runWebScraper({
       });
     }
 
-    const docs = (await provider.getDocuments(false, (progress: Progress) => {
+    // for some reason it keeps running even after the timeout...
+    // progress.partialDocs.length keeps getting bigger
+    const timeoutTime = timeout ? start.getTime() + timeout : undefined;
+    const docs = await provider.getDocuments(false, timeoutTime, (progress: Progress) => {
       inProgress(progress);
-      if (timeout) {
-        if (start.getTime() + timeout > Date.now()) {
-          onSuccess(progress.partialDocs);
-        }
-      }
-    })) as Document[];
+      if (timeout && new Date().getTime() > timeoutTime) {
+        console.log('Timeout exceeded, returning partial results.');
+        console.log('>', progress.partialDocs.length);
+        onSuccess(progress.partialDocs);
+        // throw new Error("Timeout exceeded");
+        return { success: false, message: "Timeout exceeded", docs: progress.partialDocs }
+      } // else {
+      //   inProgress(progress);
+      // }
+    }) as Document[];
 
     if (docs.length === 0) {
       return {

@@ -62,14 +62,18 @@ export class WebScraperDataProvider {
 
   async getDocuments(
     useCaching: boolean = false,
+    timeoutTime?: number,
     inProgress?: (progress: Progress) => void,
   ): Promise<Document[]> {
+    if (timeoutTime && new Date().getTime() > timeoutTime) {
+      return [];
+    }
     
     if (this.urls[0].trim() === "") {
       throw new Error("Url is required");
     }
 
-    if (!useCaching) {
+    if (true) {//!useCaching) {
       const sitemapData = await fetchSitemapData(this.urls[0]);
   
       let urls = [];
@@ -104,9 +108,33 @@ export class WebScraperDataProvider {
           metadata: { sourceURL: url },
         }));
       }
+
+      let timeoutReached = false;
+      let processedDocuments: Document[] = [];
+      
+      const updateProgress = (document: Document | null, url: string) => {
+        console.log('processedDocuments.length:', processedDocuments.length)
+        if (document) {
+          processedDocuments.push(document);
+        }
+        if (inProgress) {
+          inProgress({
+            current: processedDocuments.length,
+            total: urls.length,
+            status: timeoutReached ? "TIMEOUT" : "SCRAPING",
+            currentDocumentUrl: url,
+            partialDocs: processedDocuments,
+          });
+        }
+      };
   
-      let processedCount = 0;
       const documentPromises = urls.map(async (url) => {
+        if (timeoutTime && new Date().getTime() > timeoutTime) {
+          timeoutReached = true;
+          updateProgress(null, url);
+          return null;
+        }
+
         try {
           let document: Document;
           if (url.endsWith(".pdf")) {
@@ -134,33 +162,22 @@ export class WebScraperDataProvider {
             if (document?.childrenLinks) delete document.childrenLinks;
           }
   
-          processedCount++;
-          if (inProgress) {
-            inProgress({
-              current: processedCount,
-              total: urls.length,
-              status: "SCRAPING",
-              currentDocumentUrl: url,
-              partialDocs: [document],
-            });
-          }
-  
+          updateProgress(document, url);
           return document;
         } catch (error) {
           console.error("Error processing URL:", url, error);
-          return null; // or handle error as needed
+          updateProgress(null, url);
+          return null;
         }
       });
   
-      const results = await Promise.allSettled(documentPromises);
-      const documents = results.reduce((acc, result) => {
-        if (result.status === 'fulfilled' && result.value) {
-          acc.push(result.value);
-        }
-        return acc;
-      }, []);
-  
-      return documents.splice(0, this.limit);
+      await Promise.allSettled(documentPromises);
+
+      if (timeoutReached) {
+        return processedDocuments;
+      }
+    
+      return processedDocuments.splice(0, this.limit);
     }
 
     let documents = await this.getCachedDocuments(
@@ -169,6 +186,7 @@ export class WebScraperDataProvider {
     if (documents.length < this.limit) {
       const newDocuments: Document[] = await this.getDocuments(
         false,
+        timeoutTime,
         inProgress
       );
       newDocuments.forEach((doc) => {
