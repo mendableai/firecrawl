@@ -185,7 +185,7 @@ scraped_data = app.scrape_url(url)
 Performs a web search, retrieve the top results, extract data from each page, and returns their markdown.
 
 ```python
-query = 'what is mendable?'
+query = 'What is Mendable?'
 search_result = app.search(query)
 ```
 
