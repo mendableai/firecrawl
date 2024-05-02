@@ -25,6 +25,8 @@ describe("E2E Tests for API Routes with No Authentication", () => {
     process.env.PLAYWRIGHT_MICROSERVICE_URL = "";
     process.env.LLAMAPARSE_API_KEY = "";
     process.env.TEST_API_KEY = "";
+    process.env.POSTHOG_API_KEY = "";
+    process.env.POSTHOG_HOST = "";
   });
 
   // restore original process.env
