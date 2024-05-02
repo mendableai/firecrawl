@@ -8,7 +8,7 @@ export async function logJob(job: FirecrawlJob) {
   try {
     // Only log jobs in production
     if (process.env.ENV !== "production") {
-      //return;
+      return;
     }
     
     const { data, error } = await supabase_service
