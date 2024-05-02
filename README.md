@@ -207,7 +207,8 @@ curl -X POST https://api.firecrawl.dev/v0/scrape \
       "llm_extraction": {
         "company_mission": "Train a secure AI on your technical resources that answers customer and employee questions so your team doesn't have to",
         "supports_sso": true,
-        "is_open_source": false
+        "is_open_source": false,
+        "is_in_yc": true
       }
     }
 }
