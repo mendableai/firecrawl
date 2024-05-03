@@ -1,6 +1,6 @@
 # 🔥 Firecrawl
 
-Crawl and convert any website into LLM-ready markdown. Build by [Mendable.ai](https://mendable.ai?ref=gfirecrawl)
+Crawl and convert any website into LLM-ready markdown. Built by [Mendable.ai](https://mendable.ai?ref=gfirecrawl) and the firecrawl community.
 
 _This repository is currently in its early stages of development. We are in the process of merging custom modules into this mono repository. The primary objective is to enhance the accuracy of LLM responses by utilizing clean data. It is not ready for full self-host yet - we're working on it_
 
