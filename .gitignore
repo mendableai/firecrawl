@@ -8,3 +8,5 @@ dump.rdb
 apps/js-sdk/node_modules/
 
 apps/api/.env.local
+
+apps/test-suite/node_modules/
