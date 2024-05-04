@@ -7,7 +7,6 @@ import { getValue, setValue } from "../../services/redis";
 import { getImageDescription } from "./utils/imageDescription";
 import { fetchAndProcessPdf } from "./utils/pdfProcessor";
 import { replaceImgPathsWithAbsolutePaths, replacePathsWithAbsolutePaths } from "./utils/replacePaths";
-import OpenAI from 'openai'
 import { generateCompletions } from "../../lib/LLM-extraction";
 
 
@@ -83,6 +82,11 @@ export class WebScraperDataProvider {
     }
   }
 
+  /**
+   * Process documents without cache handling each mode
+   * @param inProgress inProgress
+   * @returns documents
+   */
   private async processDocumentsWithoutCache(inProgress?: (progress: Progress) => void): Promise<Document[]> {
     switch (this.mode) {
       case "crawl":
