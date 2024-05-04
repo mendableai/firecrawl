@@ -7,6 +7,7 @@ export interface Progress {
     [key: string]: any;
   };
   currentDocumentUrl?: string;
+  currentDocument?: Document;
 }
 
 export type PageOptions = {

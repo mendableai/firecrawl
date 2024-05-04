@@ -10,13 +10,15 @@ export async function startWebScraperPipeline({
 }: {
   job: Job<WebScraperOptions>;
 }) {
+  let partialDocs: Document[] = [];
   return (await runWebScraper({
     url: job.data.url,
     mode: job.data.mode,
     crawlerOptions: job.data.crawlerOptions,
     pageOptions: job.data.pageOptions,
     inProgress: (progress) => {
-      job.progress(progress);
+      partialDocs.push(progress.currentDocument);
+      job.progress({...progress, partialDocs: partialDocs});
     },
     onSuccess: (result) => {
       job.moveToCompleted(result);
@@ -69,6 +71,7 @@ export async function runWebScraper({
     }
     const docs = (await provider.getDocuments(false, (progress: Progress) => {
       inProgress(progress);
+      
     })) as Document[];
 
     if (docs.length === 0) {
