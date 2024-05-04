@@ -28,7 +28,7 @@ export async function crawlStatusController(req: Request, res: Response) {
       current_step: current_step,
       total: total,
       data: job.returnvalue,
-      partial_docs: partialDocs ?? [],
+      partial_data: partialDocs ?? [],
     });
   } catch (error) {
     console.error(error);
