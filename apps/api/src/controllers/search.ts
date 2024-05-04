@@ -54,7 +54,6 @@ export async function searchHelper(
 
   // filter out social media links
 
-  console.log("Search results", searchOptions.limit);
 
   const a = new WebScraperDataProvider();
   await a.setOptions({
