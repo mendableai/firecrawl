@@ -7,6 +7,7 @@ import { getValue, setValue } from "../../services/redis";
 import { getImageDescription } from "./utils/imageDescription";
 import { fetchAndProcessPdf } from "./utils/pdfProcessor";
 import { replaceImgPathsWithAbsolutePaths, replacePathsWithAbsolutePaths } from "./utils/replacePaths";
+import { batchProcess } from "../../lib/batch-process";
 
 export class WebScraperDataProvider {
   private urls: string[] = [""];
@@ -109,13 +110,10 @@ export class WebScraperDataProvider {
         }));
       }
 
-      let timeoutReached = false;
       let processedDocuments: Document[] = [];
-      
+      let timeoutReached = false;
+
       const updateProgress = (document: Document | null, url: string) => {
-        if (timeoutReached) {
-          throw new Error("Timeout exceeded");
-        }
         if (document) {
           processedDocuments.push(document);
         }
@@ -129,15 +127,18 @@ export class WebScraperDataProvider {
           });
         }
       };
-  
-      const documentPromises = urls.map(async (url) => {
-        if (timeoutTime && new Date().getTime() > timeoutTime) {
-          timeoutReached = true;
-          updateProgress(null, url);
-          throw new Error("Timeout exceeded");
-          // return null;
-        }
 
+      console.log("Timeout time: ", timeoutTime - new Date().getTime());
+
+      const timeoutPromise = new Promise((_, reject) => {
+        setTimeout(() => {
+          timeoutReached = true; // Mark that timeout has been reached
+          reject(new Error("Timeout exceeded"));
+        }, timeoutTime - new Date().getTime());
+      });
+
+      const documentPromises = urls.map(async (url) => {
+        if (timeoutReached) return; // Early exit from function if timeout has been reached
         try {
           let document: Document;
           if (url.endsWith(".pdf")) {
@@ -149,35 +150,48 @@ export class WebScraperDataProvider {
             };
           } else {
             document = await scrapSingleUrl(url, true, this.pageOptions);
-  
+            if(timeoutReached) 
+            {
+              console.log("Timeout reached, skipping document processing for URL:", url);
+              return;} // Only update progress if timeout hasn't been reached
+        
+
             if (this.replaceAllPathsWithAbsolutePaths) {
               document = replacePathsWithAbsolutePaths(document);
             } else {
               document = replaceImgPathsWithAbsolutePaths(document);
             }
-  
+
             if (this.generateImgAltText) {
               document = await this.generatesImgAltText(document);
             }
-  
+
             await this.setSitemapData(sitemapData, document);
             this.setCachedDocument(document);
             if (document?.childrenLinks) delete document.childrenLinks;
           }
-  
+          
           updateProgress(document, url);
-          return document;
         } catch (error) {
           console.error("Error processing URL:", url, error);
           updateProgress(null, url);
-          throw error;
-          // console.error("Error processing URL:", url, error);
-          // updateProgress(null, url);
-          // return null;
+          if (!timeoutReached) throw error; // Only throw if timeout hasn't been reached
         }
       });
-  
-      await Promise.allSettled(documentPromises);
+
+      try {
+        await Promise.race([
+          batchProcess(urls, 5, async (url, index) => {
+            if (timeoutReached) return;
+            
+          }),
+          timeoutPromise
+        ]);
+      } catch (error) {
+        if (!timeoutReached) { // Only throw if timeout hasn't been reached
+          throw error;
+        }
+      }
 
       return processedDocuments.splice(0, this.limit);
     }

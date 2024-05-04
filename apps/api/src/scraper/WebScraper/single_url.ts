@@ -104,7 +104,7 @@ export async function scrapWithPlaywright(url: string): Promise<string> {
 export async function scrapSingleUrl(
   urlToScrap: string,
   toMarkdown: boolean = true,
-  pageOptions: PageOptions = { onlyMainContent: true }
+  pageOptions: PageOptions = { onlyMainContent: true },
 ): Promise<Document> {
   console.log(`Scraping URL: ${urlToScrap}`);
   urlToScrap = urlToScrap.trim();
