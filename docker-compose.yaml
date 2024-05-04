@@ -1,0 +1,64 @@
+name: firecrawl
+version: '3.9'
+services:
+  redis:
+    image: redis:alpine
+
+  playwright-service:
+    build: apps/playwright-service
+    environment:
+      - PORT=3000
+  
+  api:
+    build: apps/api
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - PLAYWRIGHT_SERVICE_URL=http://playwright-service:3000
+      - USE_DB_AUTHENTICATION=${USE_DB_AUTHENTICATION}
+      - PORT=3002
+      - NUM_WORKERS_PER_QUEUE=${NUM_WORKERS_PER_QUEUE}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - SERPER_API_KEY=${SERPER_API_KEY}
+      - LLAMAPARSE_API_KEY=${LLAMAPARSE_API_KEY}
+      - LOGTAIL_KEY=${LOGTAIL_KEY}
+      - BULL_AUTH_KEY=${BULL_AUTH_KEY}
+      - TEST_API_KEY=${TEST_API_KEY}
+      - POSTHOG_API_KEY=${POSTHOG_API_KEY}
+      - POSTHOG_HOST=${POSTHOG_HOST}
+      - SUPABASE_ANON_TOKEN=${SUPABASE_ANON_TOKEN}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_TOKEN=${SUPABASE_SERVICE_TOKEN}
+      - SCRAPING_BEE_API_KEY=${SCRAPING_BEE_API_KEY}
+      - HOST=0.0.0.0
+    depends_on:
+      - redis
+      - playwright-service
+    ports:
+      - "3002:3002"
+    command: [ "pnpm", "run", "start:production" ]
+
+  worker:
+    build: apps/api
+    environment:
+      - REDIS_URL=redis://redis:6379
+      - PLAYWRIGHT_SERVICE_URL=http://playwright-service:3000
+      - USE_DB_AUTHENTICATION=${USE_DB_AUTHENTICATION}
+      - PORT=3002
+      - NUM_WORKERS_PER_QUEUE=${NUM_WORKERS_PER_QUEUE}
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
+      - SERPER_API_KEY=${SERPER_API_KEY}
+      - LLAMAPARSE_API_KEY=${LLAMAPARSE_API_KEY}
+      - LOGTAIL_KEY=${LOGTAIL_KEY}
+      - BULL_AUTH_KEY=${BULL_AUTH_KEY}
+      - TEST_API_KEY=${TEST_API_KEY}
+      - POSTHOG_API_KEY=${POSTHOG_API_KEY}
+      - POSTHOG_HOST=${POSTHOG_HOST}
+      - SUPABASE_ANON_TOKEN=${SUPABASE_ANON_TOKEN}
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_SERVICE_TOKEN=${SUPABASE_SERVICE_TOKEN}
+      - SCRAPING_BEE_API_KEY=${SCRAPING_BEE_API_KEY}
+    depends_on:
+      - redis
+      - playwright-service
