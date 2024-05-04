@@ -147,7 +147,7 @@ export async function searchController(req: Request, res: Response) {
     logJob({
       success: result.success,
       message: result.error,
-      num_docs: result.data.length,
+      num_docs: result.data ? result.data.length : 0,
       docs: result.data,
       time_taken: timeTakenInSeconds,
       team_id: team_id,

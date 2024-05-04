@@ -54,6 +54,7 @@ export class WebScraperDataProvider {
               total: totalUrls,
               status: "SCRAPING",
               currentDocumentUrl: url,
+              currentDocument: result
             });
           }
           results[i + index] = result;
@@ -114,9 +115,7 @@ export class WebScraperDataProvider {
   }
 
   private async handleSingleUrlsMode(inProgress?: (progress: Progress) => void): Promise<Document[]> {
-    let documents = await this.convertUrlsToDocuments(this.urls, inProgress);
-    documents = await this.applyPathReplacements(documents);
-    documents = await this.applyImgAltText(documents);
+    let documents = await this.processLinks(this.urls, inProgress);
     return documents;
   }
 
@@ -153,6 +152,13 @@ export class WebScraperDataProvider {
     documents = await this.getSitemapData(this.urls[0], documents);
     documents = this.applyPathReplacements(documents);
     documents = await this.applyImgAltText(documents);
+    
+    if(this.extractorOptions.mode === "llm-extraction" && this.mode === "single_urls") {
+      documents = await generateCompletions(
+        documents,
+        this.extractorOptions
+      )
+    }
     return documents.concat(pdfDocuments);
   }
 
@@ -275,7 +281,7 @@ export class WebScraperDataProvider {
         documents.push(cachedDocument);
 
         // get children documents
-        for (const childUrl of cachedDocument.childrenLinks) {
+        for (const childUrl of (cachedDocument.childrenLinks || [])) {
           const normalizedChildUrl = this.normalizeUrl(childUrl);
           const childCachedDocumentString = await getValue(
             "web-scraper-cache:" + normalizedChildUrl
