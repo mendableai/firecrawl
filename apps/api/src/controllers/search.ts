@@ -54,10 +54,12 @@ export async function searchHelper(
 
   // filter out social media links
 
+  console.log("Search results", searchOptions.limit);
+
   const a = new WebScraperDataProvider();
   await a.setOptions({
     mode: "single_urls",
-    urls: res.map((r) => r.url),
+    urls: res.map((r) => r.url).slice(0, searchOptions.limit ?? 7),
     crawlerOptions: {
       ...crawlerOptions,
     },
@@ -69,7 +71,7 @@ export async function searchHelper(
     },
   });
 
-  const docs = await a.getDocuments(true);
+  const docs = await a.getDocuments(false);
   if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
   }
