@@ -103,8 +103,8 @@ export async function scrapWithPlaywright(url: string): Promise<string> {
 
 export async function scrapSingleUrl(
   urlToScrap: string,
-  toMarkdown: boolean = true,
-  pageOptions: PageOptions = { onlyMainContent: true }
+  pageOptions: PageOptions = { onlyMainContent: true },
+  includeHtml: boolean = false
 ): Promise<Document> {
   urlToScrap = urlToScrap.trim();
 
@@ -172,9 +172,7 @@ export async function scrapSingleUrl(
 
     //* TODO: add an optional to return markdown or structured/extracted content 
     let cleanedHtml = removeUnwantedElements(text, pageOptions);
-    if (toMarkdown === false) {
-      return [cleanedHtml, text];
-    }
+    
     return [await parseMarkdown(cleanedHtml), text];
   };
 
@@ -194,7 +192,8 @@ export async function scrapSingleUrl(
       return {
         url: urlToScrap,
         content: text,
-        markdown: pageOptions.toMarkdown === false ? undefined : text,
+        markdown: text,
+        html: includeHtml ? html : undefined,
         metadata: { ...metadata, sourceURL: urlToScrap },
       } as Document;
     }
@@ -217,14 +216,16 @@ export async function scrapSingleUrl(
 
     return {
       content: text,
-      markdown: pageOptions.toMarkdown === false ? undefined : text,
+      markdown: text,
+      html: includeHtml ? html : undefined,
       metadata: { ...metadata, sourceURL: urlToScrap },
     } as Document;
   } catch (error) {
     console.error(`Error: ${error} - Failed to fetch URL: ${urlToScrap}`);
     return {
       content: "",
-      markdown: pageOptions.toMarkdown === false ? undefined : "",
+      markdown: "",
+      html: "",
       metadata: { sourceURL: urlToScrap },
     } as Document;
   }

@@ -19,6 +19,7 @@ export class WebCrawler {
   private robotsTxtUrl: string;
   private robots: any;
   private generateImgAltText: boolean;
+  private includeHtml: boolean;
 
   constructor({
     initialUrl,
@@ -27,6 +28,7 @@ export class WebCrawler {
     maxCrawledLinks,
     limit = 10000,
     generateImgAltText = false,
+    includeHtml = false,
   }: {
     initialUrl: string;
     includes?: string[];
@@ -34,6 +36,7 @@ export class WebCrawler {
     maxCrawledLinks?: number;
     limit?: number;
     generateImgAltText?: boolean;
+    includeHtml?: boolean;
   }) {
     this.initialUrl = initialUrl;
     this.baseUrl = new URL(initialUrl).origin;
@@ -45,6 +48,7 @@ export class WebCrawler {
     // Deprecated, use limit instead
     this.maxCrawledLinks = maxCrawledLinks ?? limit;
     this.generateImgAltText = generateImgAltText ?? false;
+    this.includeHtml = includeHtml ?? false;
   }
 
 

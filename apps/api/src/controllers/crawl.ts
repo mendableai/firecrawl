@@ -35,7 +35,8 @@ export async function crawlController(req: Request, res: Response) {
     
     const mode = req.body.mode ?? "crawl";
     const crawlerOptions = req.body.crawlerOptions ?? {};
-    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false, toMarkdown: true };
+    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
+    const includeHtml = req.body.includeHtml || false;
 
     if (mode === "single_urls" && !url.includes(",")) {
       try {
@@ -47,6 +48,7 @@ export async function crawlController(req: Request, res: Response) {
             returnOnlyUrls: true,
           },
           pageOptions: pageOptions,
+          includeHtml: includeHtml,
         });
 
         const docs = await a.getDocuments(false, (progress) => {
@@ -73,6 +75,7 @@ export async function crawlController(req: Request, res: Response) {
       team_id: team_id,
       pageOptions: pageOptions,
       origin: req.body.origin ?? "api",
+      includeHtml: includeHtml,
     });
 
     res.json({ jobId: job.id });

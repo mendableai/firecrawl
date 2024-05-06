@@ -27,6 +27,7 @@ export async function startWebScraperPipeline({
       job.moveToFailed(error);
     },
     team_id: job.data.team_id,
+    includeHtml: job.data.includeHtml,
   })) as { success: boolean; message: string; docs: Document[] };
 }
 export async function runWebScraper({
@@ -38,6 +39,7 @@ export async function runWebScraper({
   onSuccess,
   onError,
   team_id,
+  includeHtml = false,
 }: {
   url: string;
   mode: "crawl" | "single_urls" | "sitemap";
@@ -47,6 +49,7 @@ export async function runWebScraper({
   onSuccess: (result: any) => void;
   onError: (error: any) => void;
   team_id: string;
+  includeHtml?: boolean;
 }): Promise<{
   success: boolean;
   message: string;
@@ -60,6 +63,7 @@ export async function runWebScraper({
         urls: [url],
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
+        includeHtml: includeHtml,
       });
     } else {
       await provider.setOptions({
@@ -67,6 +71,7 @@ export async function runWebScraper({
         urls: url.split(","),
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
+        includeHtml: includeHtml,
       });
     }
     const docs = (await provider.getDocuments(false, (progress: Progress) => {

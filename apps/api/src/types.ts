@@ -25,6 +25,7 @@ export interface WebScraperOptions {
   pageOptions: any;
   team_id: string;
   origin?: string;
+  includeHtml?: boolean;
 }
 
 export interface FirecrawlJob {
@@ -40,7 +41,8 @@ export interface FirecrawlJob {
   pageOptions?: any;
   origin: string;
   extractor_options?: ExtractorOptions,
-  num_tokens?: number
+  num_tokens?: number,
+  includeHtml?: boolean;
 }
 
 export enum RateLimiterMode {
