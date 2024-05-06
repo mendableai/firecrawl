@@ -12,9 +12,9 @@ export interface Progress {
 
 export type PageOptions = {
   onlyMainContent?: boolean;
+  toMarkdown?: boolean;
   fallback?: boolean;
-  fetchPageContent?: boolean;
-  
+  fetchPageContent?: boolean;  
 };
 
 export type ExtractorOptions = {

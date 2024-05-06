@@ -81,6 +81,21 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty("metadata");
       expect(response.body.data.content).toContain("🔥 FireCrawl");
     }, 30000); // 30 seconds timeout
+
+    it("should return a successful response with a valid API key and toMarkdown set to false", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://firecrawl.dev", pageOptions: { toMarkdown: false } });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("data");
+      expect(response.body.data).toHaveProperty("content");
+      expect(response.body.data).not.toHaveProperty("markdown");
+      expect(response.body.data).toHaveProperty("metadata");
+      expect(response.body.data.content).toContain("FireCrawl");
+      expect(response.body.data.content).toContain("<h1");
+    }, 30000); // 30 seconds timeout
   });
 
   describe("POST /v0/crawl", () => {
@@ -248,6 +263,42 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
       expect(completedResponse.body.data[0].content).toContain(
         "🔥 FireCrawl"
+      );
+    }, 60000); // 60 seconds
+
+    it("should return a successful response for a valid crawl job with toMarkdown set to false option", async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://firecrawl.dev", pageOptions: { toMarkdown: false } });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(response.body.status).toBe("active");
+
+      // wait for 30 seconds
+      await new Promise((r) => setTimeout(r, 30000));
+
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).not.toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0].content).toContain(
+        "FireCrawl"
+      );
+      expect(completedResponse.body.data[0].content).toContain(
+        "<h1"
       );
     }, 60000); // 60 seconds
   });

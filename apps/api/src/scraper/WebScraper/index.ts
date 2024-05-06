@@ -45,7 +45,7 @@ export class WebScraperDataProvider {
       const batchUrls = urls.slice(i, i + this.concurrentRequests);
       await Promise.all(
         batchUrls.map(async (url, index) => {
-          const result = await scrapSingleUrl(url, true, this.pageOptions);
+          const result = await scrapSingleUrl(url, this.pageOptions?.toMarkdown ?? true, this.pageOptions);
           processedUrls++;
           if (inProgress) {
             inProgress({
@@ -323,7 +323,7 @@ export class WebScraperDataProvider {
     this.limit = options.crawlerOptions?.limit ?? 10000;
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
-    this.pageOptions = options.pageOptions ?? {onlyMainContent: false};
+    this.pageOptions = options.pageOptions ?? {onlyMainContent: false, toMarkdown: true};
     this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
     this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
 

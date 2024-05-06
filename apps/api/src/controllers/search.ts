@@ -66,6 +66,7 @@ export async function searchHelper(
       ...pageOptions,
       onlyMainContent: pageOptions?.onlyMainContent ?? true,
       fetchPageContent: pageOptions?.fetchPageContent ?? true,
+      toMarkdown: pageOptions?.toMarkdown ?? true,
       fallback: false,
     },
   });

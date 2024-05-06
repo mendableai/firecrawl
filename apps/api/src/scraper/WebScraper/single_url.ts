@@ -172,7 +172,9 @@ export async function scrapSingleUrl(
 
     //* TODO: add an optional to return markdown or structured/extracted content 
     let cleanedHtml = removeUnwantedElements(text, pageOptions);
-
+    if (toMarkdown === false) {
+      return [cleanedHtml, text];
+    }
     return [await parseMarkdown(cleanedHtml), text];
   };
 
@@ -192,7 +194,7 @@ export async function scrapSingleUrl(
       return {
         url: urlToScrap,
         content: text,
-        markdown: text,
+        markdown: pageOptions.toMarkdown === false ? undefined : text,
         metadata: { ...metadata, sourceURL: urlToScrap },
       } as Document;
     }
@@ -215,14 +217,14 @@ export async function scrapSingleUrl(
 
     return {
       content: text,
-      markdown: text,
+      markdown: pageOptions.toMarkdown === false ? undefined : text,
       metadata: { ...metadata, sourceURL: urlToScrap },
     } as Document;
   } catch (error) {
     console.error(`Error: ${error} - Failed to fetch URL: ${urlToScrap}`);
     return {
       content: "",
-      markdown: "",
+      markdown: pageOptions.toMarkdown === false ? undefined : "",
       metadata: { sourceURL: urlToScrap },
     } as Document;
   }

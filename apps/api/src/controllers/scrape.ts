@@ -1,4 +1,4 @@
-import { ExtractorOptions } from './../lib/entities';
+import { ExtractorOptions, PageOptions } from './../lib/entities';
 import { Request, Response } from "express";
 import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
@@ -13,7 +13,7 @@ export async function scrapeHelper(
   req: Request,
   team_id: string,
   crawlerOptions: any,
-  pageOptions: any,
+  pageOptions: PageOptions,
   extractorOptions: ExtractorOptions
 ): Promise<{
   success: boolean;
@@ -91,7 +91,7 @@ export async function scrapeController(req: Request, res: Response) {
       return res.status(status).json({ error });
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
-    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
+    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false, toMarkdown: true };
     const extractorOptions = req.body.extractorOptions ?? {
       mode: "markdown"
     }
