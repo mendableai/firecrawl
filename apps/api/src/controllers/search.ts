@@ -14,7 +14,6 @@ export async function searchHelper(
   crawlerOptions: any,
   pageOptions: PageOptions,
   searchOptions: SearchOptions,
-  includeHtml: boolean = false
 ): Promise<{
   success: boolean;
   error?: string;
@@ -60,7 +59,6 @@ export async function searchHelper(
   await a.setOptions({
     mode: "single_urls",
     urls: res.map((r) => r.url).slice(0, searchOptions.limit ?? 7),
-    includeHtml,
     crawlerOptions: {
       ...crawlerOptions,
     },
@@ -68,6 +66,7 @@ export async function searchHelper(
       ...pageOptions,
       onlyMainContent: pageOptions?.onlyMainContent ?? true,
       fetchPageContent: pageOptions?.fetchPageContent ?? true,
+      includeHtml: pageOptions?.includeHtml ?? false,
       fallback: false,
     },
   });
@@ -119,6 +118,7 @@ export async function searchController(req: Request, res: Response) {
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? {
+      includeHtml: false,
       onlyMainContent: true,
       fetchPageContent: true,
       fallback: false,
@@ -126,7 +126,6 @@ export async function searchController(req: Request, res: Response) {
     const origin = req.body.origin ?? "api";
 
     const searchOptions = req.body.searchOptions ?? { limit: 7 };
-    const includeHtml = req.body.includeHtml ?? false;
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
@@ -145,7 +144,6 @@ export async function searchController(req: Request, res: Response) {
       crawlerOptions,
       pageOptions,
       searchOptions,
-      includeHtml
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
@@ -161,7 +159,6 @@ export async function searchController(req: Request, res: Response) {
       crawlerOptions: crawlerOptions,
       pageOptions: pageOptions,
       origin: origin,
-      includeHtml,
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {

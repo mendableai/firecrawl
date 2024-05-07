@@ -15,7 +15,6 @@ export async function scrapeHelper(
   crawlerOptions: any,
   pageOptions: PageOptions,
   extractorOptions: ExtractorOptions,
-  includeHtml: boolean = false
 ): Promise<{
   success: boolean;
   error?: string;
@@ -41,7 +40,6 @@ export async function scrapeHelper(
     },
     pageOptions: pageOptions,
     extractorOptions: extractorOptions,
-    includeHtml: includeHtml
   });
 
   const docs = await a.getDocuments(false);
@@ -93,12 +91,11 @@ export async function scrapeController(req: Request, res: Response) {
       return res.status(status).json({ error });
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
-    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
+    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false, includeHtml: false };
     const extractorOptions = req.body.extractorOptions ?? {
       mode: "markdown"
     }
     const origin = req.body.origin ?? "api";
-    const includeHtml = req.body.includeHtml ?? false;
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
@@ -117,7 +114,6 @@ export async function scrapeController(req: Request, res: Response) {
       crawlerOptions,
       pageOptions,
       extractorOptions,
-      includeHtml
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
@@ -137,7 +133,6 @@ export async function scrapeController(req: Request, res: Response) {
       origin: origin, 
       extractor_options: extractorOptions,
       num_tokens: numTokens,
-      includeHtml: includeHtml
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {

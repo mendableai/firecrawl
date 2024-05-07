@@ -12,8 +12,9 @@ export interface Progress {
 
 export type PageOptions = {
   onlyMainContent?: boolean;
+  includeHtml?: boolean;
   fallback?: boolean;
-  fetchPageContent?: boolean;  
+  fetchPageContent?: boolean;
 };
 
 export type ExtractorOptions = {
@@ -46,7 +47,6 @@ export type WebScraperOptions = {
   pageOptions?: PageOptions;
   extractorOptions?: ExtractorOptions;
   concurrentRequests?: number;
-  includeHtml?: boolean;
 };
 
 export interface DocumentUrl {

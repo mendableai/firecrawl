@@ -88,7 +88,7 @@ describe("E2E Tests for API Routes", () => {
         .post("/v0/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://firecrawl.dev", includeHtml: true });
+        .send({ url: "https://firecrawl.dev", pageOptions: { includeHtml: true }});
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("data");
       expect(response.body.data).toHaveProperty("content");
@@ -270,12 +270,12 @@ describe("E2E Tests for API Routes", () => {
       );
     }, 60000); // 60 seconds
 
-    it("should return a successful response for a valid crawl job with toMarkdown set to false option", async () => {
+    it("should return a successful response for a valid crawl job with includeHtml set to true option", async () => {
       const crawlResponse = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://firecrawl.dev", includeHtml: true });
+        .send({ url: "https://firecrawl.dev", pageOptions: { includeHtml: true } });
       expect(crawlResponse.statusCode).toBe(200);
 
       const response = await request(TEST_URL)
