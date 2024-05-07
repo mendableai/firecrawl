@@ -40,6 +40,7 @@ export type WebScraperOptions = {
     includes?: string[];
     excludes?: string[];
     maxCrawledLinks?: number;
+    maxDepth?: number;
     limit?: number;
     generateImgAltText?: boolean;
     replaceAllPathsWithAbsolutePaths?: boolean;

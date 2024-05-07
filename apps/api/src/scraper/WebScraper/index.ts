@@ -16,6 +16,7 @@ export class WebScraperDataProvider {
   private includes: string[];
   private excludes: string[];
   private maxCrawledLinks: number;
+  private maxCrawledDepth: number = 10;
   private returnOnlyUrls: boolean;
   private limit: number = 10000;
   private concurrentRequests: number = 20;
@@ -106,10 +107,11 @@ export class WebScraperDataProvider {
       includes: this.includes,
       excludes: this.excludes,
       maxCrawledLinks: this.maxCrawledLinks,
+      maxCrawledDepth: this.maxCrawledDepth,
       limit: this.limit,
       generateImgAltText: this.generateImgAltText,
     });
-    let links = await crawler.start(inProgress, 5, this.limit);
+    let links = await crawler.start(inProgress, 5, this.limit, this.maxCrawledDepth);
     if (this.returnOnlyUrls) {
       return this.returnOnlyUrlsResponse(links, inProgress);
     }
@@ -198,6 +200,7 @@ export class WebScraperDataProvider {
       documents = this.mergeNewDocuments(documents, newDocuments);
     }
     documents = this.filterDocsExcludeInclude(documents);
+    documents = this.filterDepth(documents);
     documents = this.removeChildLinks(documents);
     return documents.splice(0, this.limit);
   }
@@ -319,6 +322,7 @@ export class WebScraperDataProvider {
     this.includes = options.crawlerOptions?.includes ?? [];
     this.excludes = options.crawlerOptions?.excludes ?? [];
     this.maxCrawledLinks = options.crawlerOptions?.maxCrawledLinks ?? 1000;
+    this.maxCrawledDepth = options.crawlerOptions?.maxDepth ?? 10;
     this.returnOnlyUrls = options.crawlerOptions?.returnOnlyUrls ?? false;
     this.limit = options.crawlerOptions?.limit ?? 10000;
     this.generateImgAltText =
@@ -326,6 +330,8 @@ export class WebScraperDataProvider {
     this.pageOptions = options.pageOptions ?? {onlyMainContent: false};
     this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
     this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
+
+    console.log("maxDepth:", this.maxCrawledDepth, options.crawlerOptions?.maxDepth);
 
     //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
@@ -411,4 +417,12 @@ export class WebScraperDataProvider {
 
     return documents;
   };
+
+  filterDepth(documents: Document[]): Document[] {
+    return documents.filter((document) => {
+      const url = new URL(document.metadata.sourceURL);
+      const path = url.pathname;
+      return path.split("/").length <= this.maxCrawledDepth;
+    });
+  }
 }
