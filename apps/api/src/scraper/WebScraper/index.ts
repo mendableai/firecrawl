@@ -1,4 +1,9 @@
-import { Document, ExtractorOptions, PageOptions, WebScraperOptions } from "../../lib/entities";
+import {
+  Document,
+  ExtractorOptions,
+  PageOptions,
+  WebScraperOptions,
+} from "../../lib/entities";
 import { Progress } from "../../lib/entities";
 import { scrapSingleUrl } from "./single_url";
 import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
@@ -6,11 +11,15 @@ import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
 import { getImageDescription } from "./utils/imageDescription";
 import { fetchAndProcessPdf } from "./utils/pdfProcessor";
-import { replaceImgPathsWithAbsolutePaths, replacePathsWithAbsolutePaths } from "./utils/replacePaths";
+import {
+  replaceImgPathsWithAbsolutePaths,
+  replacePathsWithAbsolutePaths,
+} from "./utils/replacePaths";
 import { generateCompletions } from "../../lib/LLM-extraction";
-
+import { getWebScraperQueue } from "../../../src/services/queue-service";
 
 export class WebScraperDataProvider {
+  private bullJobId: string;
   private urls: string[] = [""];
   private mode: "single_urls" | "sitemap" | "crawl" = "single_urls";
   private includes: string[];
@@ -23,7 +32,8 @@ export class WebScraperDataProvider {
   private pageOptions?: PageOptions;
   private extractorOptions?: ExtractorOptions;
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
-  private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" = "gpt-4-turbo";
+  private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" =
+    "gpt-4-turbo";
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -39,7 +49,7 @@ export class WebScraperDataProvider {
   ): Promise<Document[]> {
     const totalUrls = urls.length;
     let processedUrls = 0;
-  
+
     const results: (Document | null)[] = new Array(urls.length).fill(null);
     for (let i = 0; i < urls.length; i += this.concurrentRequests) {
       const batchUrls = urls.slice(i, i + this.concurrentRequests);
@@ -53,12 +63,26 @@ export class WebScraperDataProvider {
               total: totalUrls,
               status: "SCRAPING",
               currentDocumentUrl: url,
-              currentDocument: result
+              currentDocument: result,
             });
           }
+
           results[i + index] = result;
         })
       );
+      try {
+        if (this.mode === "crawl" && this.bullJobId) {
+          const job = await getWebScraperQueue().getJob(this.bullJobId);
+          const jobStatus = await job.getState();
+          if (jobStatus === "failed") {
+            throw new Error(
+              "Job has failed or has been cancelled by the user. Stopping the job..."
+            );
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
     }
     return results.filter((result) => result !== null) as Document[];
   }
@@ -87,7 +111,9 @@ export class WebScraperDataProvider {
    * @param inProgress inProgress
    * @returns documents
    */
-  private async processDocumentsWithoutCache(inProgress?: (progress: Progress) => void): Promise<Document[]> {
+  private async processDocumentsWithoutCache(
+    inProgress?: (progress: Progress) => void
+  ): Promise<Document[]> {
     switch (this.mode) {
       case "crawl":
         return this.handleCrawlMode(inProgress);
@@ -100,7 +126,9 @@ export class WebScraperDataProvider {
     }
   }
 
-  private async handleCrawlMode(inProgress?: (progress: Progress) => void): Promise<Document[]> {
+  private async handleCrawlMode(
+    inProgress?: (progress: Progress) => void
+  ): Promise<Document[]> {
     const crawler = new WebCrawler({
       initialUrl: this.urls[0],
       includes: this.includes,
@@ -118,12 +146,16 @@ export class WebScraperDataProvider {
     return this.cacheAndFinalizeDocuments(documents, links);
   }
 
-  private async handleSingleUrlsMode(inProgress?: (progress: Progress) => void): Promise<Document[]> {
+  private async handleSingleUrlsMode(
+    inProgress?: (progress: Progress) => void
+  ): Promise<Document[]> {
     let documents = await this.processLinks(this.urls, inProgress);
     return documents;
   }
 
-  private async handleSitemapMode(inProgress?: (progress: Progress) => void): Promise<Document[]> {
+  private async handleSitemapMode(
+    inProgress?: (progress: Progress) => void
+  ): Promise<Document[]> {
     let links = await getLinksFromSitemap(this.urls[0]);
     if (this.returnOnlyUrls) {
       return this.returnOnlyUrlsResponse(links, inProgress);
@@ -133,14 +165,17 @@ export class WebScraperDataProvider {
     return this.cacheAndFinalizeDocuments(documents, links);
   }
 
-  private async returnOnlyUrlsResponse(links: string[], inProgress?: (progress: Progress) => void): Promise<Document[]> {
+  private async returnOnlyUrlsResponse(
+    links: string[],
+    inProgress?: (progress: Progress) => void
+  ): Promise<Document[]> {
     inProgress?.({
       current: links.length,
       total: links.length,
       status: "COMPLETED",
       currentDocumentUrl: this.urls[0],
     });
-    return links.map(url => ({
+    return links.map((url) => ({
       content: "",
       html: this.pageOptions?.includeHtml ? "" : undefined,
       markdown: "",
@@ -148,54 +183,73 @@ export class WebScraperDataProvider {
     }));
   }
 
-  private async processLinks(links: string[], inProgress?: (progress: Progress) => void): Promise<Document[]> {
-    let pdfLinks = links.filter(link => link.endsWith(".pdf"));
+  private async processLinks(
+    links: string[],
+    inProgress?: (progress: Progress) => void
+  ): Promise<Document[]> {
+    let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
     let pdfDocuments = await this.fetchPdfDocuments(pdfLinks);
-    links = links.filter(link => !link.endsWith(".pdf"));
+    links = links.filter((link) => !link.endsWith(".pdf"));
 
     let documents = await this.convertUrlsToDocuments(links, inProgress);
     documents = await this.getSitemapData(this.urls[0], documents);
     documents = this.applyPathReplacements(documents);
     documents = await this.applyImgAltText(documents);
-    
-    if(this.extractorOptions.mode === "llm-extraction" && this.mode === "single_urls") {
-      documents = await generateCompletions(
-        documents,
-        this.extractorOptions
-      )
+
+    if (
+      this.extractorOptions.mode === "llm-extraction" &&
+      this.mode === "single_urls"
+    ) {
+      documents = await generateCompletions(documents, this.extractorOptions);
     }
     return documents.concat(pdfDocuments);
   }
 
   private async fetchPdfDocuments(pdfLinks: string[]): Promise<Document[]> {
-    return Promise.all(pdfLinks.map(async pdfLink => {
-      const pdfContent = await fetchAndProcessPdf(pdfLink);
-      return {
-        content: pdfContent,
-        metadata: { sourceURL: pdfLink },
-        provider: "web-scraper"
-      };
-    }));
+    return Promise.all(
+      pdfLinks.map(async (pdfLink) => {
+        const pdfContent = await fetchAndProcessPdf(pdfLink);
+        return {
+          content: pdfContent,
+          metadata: { sourceURL: pdfLink },
+          provider: "web-scraper",
+        };
+      })
+    );
   }
 
   private applyPathReplacements(documents: Document[]): Document[] {
-    return this.replaceAllPathsWithAbsolutePaths ? replacePathsWithAbsolutePaths(documents) : replaceImgPathsWithAbsolutePaths(documents);
+    return this.replaceAllPathsWithAbsolutePaths
+      ? replacePathsWithAbsolutePaths(documents)
+      : replaceImgPathsWithAbsolutePaths(documents);
   }
 
   private async applyImgAltText(documents: Document[]): Promise<Document[]> {
-    return this.generateImgAltText ? this.generatesImgAltText(documents) : documents;
+    return this.generateImgAltText
+      ? this.generatesImgAltText(documents)
+      : documents;
   }
 
-  private async cacheAndFinalizeDocuments(documents: Document[], links: string[]): Promise<Document[]> {
+  private async cacheAndFinalizeDocuments(
+    documents: Document[],
+    links: string[]
+  ): Promise<Document[]> {
     await this.setCachedDocuments(documents, links);
     documents = this.removeChildLinks(documents);
     return documents.splice(0, this.limit);
   }
 
-  private async processDocumentsWithCache(inProgress?: (progress: Progress) => void): Promise<Document[]> {
-    let documents = await this.getCachedDocuments(this.urls.slice(0, this.limit));
+  private async processDocumentsWithCache(
+    inProgress?: (progress: Progress) => void
+  ): Promise<Document[]> {
+    let documents = await this.getCachedDocuments(
+      this.urls.slice(0, this.limit)
+    );
     if (documents.length < this.limit) {
-      const newDocuments: Document[] = await this.getDocuments(false, inProgress);
+      const newDocuments: Document[] = await this.getDocuments(
+        false,
+        inProgress
+      );
       documents = this.mergeNewDocuments(documents, newDocuments);
     }
     documents = this.filterDocsExcludeInclude(documents);
@@ -203,9 +257,18 @@ export class WebScraperDataProvider {
     return documents.splice(0, this.limit);
   }
 
-  private mergeNewDocuments(existingDocuments: Document[], newDocuments: Document[]): Document[] {
-    newDocuments.forEach(doc => {
-      if (!existingDocuments.some(d => this.normalizeUrl(d.metadata.sourceURL) === this.normalizeUrl(doc.metadata?.sourceURL))) {
+  private mergeNewDocuments(
+    existingDocuments: Document[],
+    newDocuments: Document[]
+  ): Document[] {
+    newDocuments.forEach((doc) => {
+      if (
+        !existingDocuments.some(
+          (d) =>
+            this.normalizeUrl(d.metadata.sourceURL) ===
+            this.normalizeUrl(doc.metadata?.sourceURL)
+        )
+      ) {
         existingDocuments.push(doc);
       }
     });
@@ -286,7 +349,7 @@ export class WebScraperDataProvider {
         documents.push(cachedDocument);
 
         // get children documents
-        for (const childUrl of (cachedDocument.childrenLinks || [])) {
+        for (const childUrl of cachedDocument.childrenLinks || []) {
           const normalizedChildUrl = this.normalizeUrl(childUrl);
           const childCachedDocumentString = await getValue(
             "web-scraper-cache:" + normalizedChildUrl
@@ -314,6 +377,7 @@ export class WebScraperDataProvider {
       throw new Error("Urls are required");
     }
 
+    this.bullJobId = options.bullJobId;
     this.urls = options.urls;
     this.mode = options.mode;
     this.concurrentRequests = options.concurrentRequests ?? 20;
@@ -396,8 +460,9 @@ export class WebScraperDataProvider {
               altText = await getImageDescription(
                 imageUrl,
                 backText,
-                frontText
-              , this.generateImgAltTextModel);
+                frontText,
+                this.generateImgAltTextModel
+              );
             }
 
             document.content = document.content.replace(

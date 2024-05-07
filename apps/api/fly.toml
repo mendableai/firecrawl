@@ -22,6 +22,11 @@ kill_timeout = '5s'
   min_machines_running = 2
   processes = ['app']
 
+[http_service.concurrency]
+  type = "requests"
+  hard_limit = 200
+  soft_limit = 100
+
 [[services]]
   protocol = 'tcp'
   internal_port = 8080
@@ -38,10 +43,14 @@ kill_timeout = '5s'
 
   [services.concurrency]
     type = 'connections'
-    hard_limit = 45
-    soft_limit = 20
+    hard_limit = 75
+    soft_limit = 30
 
 [[vm]]
-  size = 'performance-1x'
+  size = 'performance-4x'
+  processes = ['app']
+
+
+
 
   
