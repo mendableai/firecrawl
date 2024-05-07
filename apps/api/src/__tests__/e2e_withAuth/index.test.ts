@@ -7,7 +7,6 @@ dotenv.config();
 // const TEST_URL = 'http://localhost:3002'
 const TEST_URL = "http://127.0.0.1:3002";
 
-
 describe("E2E Tests for API Routes", () => {
   beforeAll(() => {
     process.env.USE_DB_AUTHENTICATION = "true";
@@ -56,7 +55,9 @@ describe("E2E Tests for API Routes", () => {
         .set("Content-Type", "application/json")
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
+      expect(response.body.error).toContain(
+        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
+      );
     });
 
     it("should return a successful response with a valid preview token", async () => {
@@ -88,7 +89,10 @@ describe("E2E Tests for API Routes", () => {
         .post("/v0/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://firecrawl.dev", pageOptions: { includeHtml: true }});
+        .send({
+          url: "https://firecrawl.dev",
+          pageOptions: { includeHtml: true },
+        });
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("data");
       expect(response.body.data).toHaveProperty("content");
@@ -124,7 +128,9 @@ describe("E2E Tests for API Routes", () => {
         .set("Content-Type", "application/json")
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
+      expect(response.body.error).toContain(
+        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
+      );
     });
 
     it("should return a successful response with a valid API key", async () => {
@@ -140,15 +146,12 @@ describe("E2E Tests for API Routes", () => {
       );
     });
 
-
     // Additional tests for insufficient credits?
   });
 
   describe("POST /v0/crawlWebsitePreview", () => {
     it("should require authorization", async () => {
-      const response = await request(TEST_URL).post(
-        "/v0/crawlWebsitePreview"
-      );
+      const response = await request(TEST_URL).post("/v0/crawlWebsitePreview");
       expect(response.statusCode).toBe(401);
     });
 
@@ -201,8 +204,6 @@ describe("E2E Tests for API Routes", () => {
         .send({ query: "test" });
       expect(response.statusCode).toBe(401);
     });
-
-
 
     it("should return a successful response with a valid API key", async () => {
       const response = await request(TEST_URL)
@@ -265,17 +266,60 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("content");
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.data[0].content).toContain(
-        "🔥 FireCrawl"
-      );
+      expect(completedResponse.body.data[0].content).toContain("🔥 FireCrawl");
     }, 60000); // 60 seconds
+
+    it("should return a successful response with max depth option for a valid crawl job", async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://www.scrapethissite.com",
+          crawlerOptions: { maxDepth: 2 },
+        });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(response.body.status).toBe("active");
+      // wait for 60 seconds
+      await new Promise((r) => setTimeout(r, 60000));
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      const urls = completedResponse.body.data.map(
+        (item: any) => item.metadata?.sourceURL
+      );
+      expect(urls.length).toBeGreaterThan(1);
+
+      // Check if all URLs have a maximum depth of 1
+      urls.forEach((url) => {
+        const depth = new URL(url).pathname.split("/").filter(Boolean).length;
+        expect(depth).toBeLessThanOrEqual(1);
+      });
+    }, 120000);
 
     it("should return a successful response for a valid crawl job with includeHtml set to true option", async () => {
       const crawlResponse = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://firecrawl.dev", pageOptions: { includeHtml: true } });
+        .send({
+          url: "https://firecrawl.dev",
+          pageOptions: { includeHtml: true },
+        });
       expect(crawlResponse.statusCode).toBe(200);
 
       const response = await request(TEST_URL)
@@ -291,25 +335,23 @@ describe("E2E Tests for API Routes", () => {
       const completedResponse = await request(TEST_URL)
         .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
       expect(completedResponse.statusCode).toBe(200);
       expect(completedResponse.body).toHaveProperty("status");
       expect(completedResponse.body.status).toBe("completed");
       expect(completedResponse.body).toHaveProperty("data");
       expect(completedResponse.body.data[0]).toHaveProperty("content");
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+
+      // 120 seconds
       expect(completedResponse.body.data[0]).toHaveProperty("html");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.data[0].content).toContain(
-        "🔥 FireCrawl"
-      );
-      expect(completedResponse.body.data[0].markdown).toContain(
-        "FireCrawl"
-      );
-      expect(completedResponse.body.data[0].html).toContain(
-        "<h1"
-      );
-    }, 60000); // 60 seconds
-  });
+      expect(completedResponse.body.data[0].content).toContain("🔥 FireCrawl");
+      expect(completedResponse.body.data[0].markdown).toContain("FireCrawl");
+      expect(completedResponse.body.data[0].html).toContain("<h1");
+    }, 60000);
+  }); // 60 seconds
 
   it("If someone cancels a crawl job, it should turn into failed status", async () => {
     const crawlResponse = await request(TEST_URL)
@@ -359,35 +401,33 @@ describe("E2E Tests for API Routes", () => {
         .send({
           url: "https://mendable.ai",
           pageOptions: {
-            onlyMainContent: true
+            onlyMainContent: true,
           },
           extractorOptions: {
             mode: "llm-extraction",
-            extractionPrompt: "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source",
+            extractionPrompt:
+              "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source",
             extractionSchema: {
               type: "object",
               properties: {
                 company_mission: {
-                  type: "string"
+                  type: "string",
                 },
                 supports_sso: {
-                  type: "boolean"
+                  type: "boolean",
                 },
                 is_open_source: {
-                  type: "boolean"
-                }
+                  type: "boolean",
+                },
               },
-              required: ["company_mission", "supports_sso", "is_open_source"]
-            }
-          }
+              required: ["company_mission", "supports_sso", "is_open_source"],
+            },
+          },
         });
-
 
       // Ensure that the job was successfully created before proceeding with LLM extraction
       expect(response.statusCode).toBe(200);
 
-    
-      
       // Assuming the LLM extraction object is available in the response body under `data.llm_extraction`
       let llmExtraction = response.body.data.llm_extraction;
 
@@ -440,7 +480,6 @@ describe("E2E Tests for API Routes", () => {
   //         }
   //       });
 
-
   //     // Print the response body to the console for debugging purposes
   //     console.log("Response companies:", response.body.data.llm_extraction.companies);
 
@@ -461,9 +500,6 @@ describe("E2E Tests for API Routes", () => {
   //     expect(typeof firstCompany.todayChange).toBe("string");
   //   }, 120000); // 120 secs
   // });
-
-  
-
 
   describe("GET /is-production", () => {
     it("should return the production status", async () => {
