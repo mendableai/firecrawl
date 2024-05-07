@@ -7,13 +7,14 @@ export interface Progress {
     [key: string]: any;
   };
   currentDocumentUrl?: string;
+  currentDocument?: Document;
 }
 
 export type PageOptions = {
   onlyMainContent?: boolean;
+  includeHtml?: boolean;
   fallback?: boolean;
   fetchPageContent?: boolean;
-  
 };
 
 export type ExtractorOptions = {
@@ -46,6 +47,7 @@ export type WebScraperOptions = {
   pageOptions?: PageOptions;
   extractorOptions?: ExtractorOptions;
   concurrentRequests?: number;
+  bullJobId?: string;
 };
 
 export interface DocumentUrl {

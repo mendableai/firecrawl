@@ -10,13 +10,15 @@ export async function startWebScraperPipeline({
 }: {
   job: Job<WebScraperOptions>;
 }) {
+  let partialDocs: Document[] = [];
   return (await runWebScraper({
     url: job.data.url,
     mode: job.data.mode,
     crawlerOptions: job.data.crawlerOptions,
     pageOptions: job.data.pageOptions,
     inProgress: (progress) => {
-      job.progress(progress);
+      partialDocs.push(progress.currentDocument);
+      job.progress({...progress, partialDocs: partialDocs});
     },
     onSuccess: (result) => {
       job.moveToCompleted(result);
@@ -25,6 +27,7 @@ export async function startWebScraperPipeline({
       job.moveToFailed(error);
     },
     team_id: job.data.team_id,
+    bull_job_id: job.id.toString()
   })) as { success: boolean; message: string; docs: Document[] };
 }
 export async function runWebScraper({
@@ -36,6 +39,7 @@ export async function runWebScraper({
   onSuccess,
   onError,
   team_id,
+  bull_job_id,
 }: {
   url: string;
   mode: "crawl" | "single_urls" | "sitemap";
@@ -45,6 +49,7 @@ export async function runWebScraper({
   onSuccess: (result: any) => void;
   onError: (error: any) => void;
   team_id: string;
+  bull_job_id: string;
 }): Promise<{
   success: boolean;
   message: string;
@@ -58,17 +63,19 @@ export async function runWebScraper({
         urls: [url],
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
+        bullJobId: bull_job_id
       });
     } else {
       await provider.setOptions({
         mode: mode,
         urls: url.split(","),
         crawlerOptions: crawlerOptions,
-        pageOptions: pageOptions,
+        pageOptions: pageOptions
       });
     }
     const docs = (await provider.getDocuments(false, (progress: Progress) => {
       inProgress(progress);
+      
     })) as Document[];
 
     if (docs.length === 0) {

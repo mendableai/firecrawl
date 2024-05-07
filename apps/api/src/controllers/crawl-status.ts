@@ -19,7 +19,7 @@ export async function crawlStatusController(req: Request, res: Response) {
       return res.status(404).json({ error: "Job not found" });
     }
 
-    const { current, current_url, total, current_step } = await job.progress();
+    const { current, current_url, total, current_step, partialDocs } = await job.progress();
     res.json({
       status: await job.getState(),
       // progress: job.progress(),
@@ -28,6 +28,7 @@ export async function crawlStatusController(req: Request, res: Response) {
       current_step: current_step,
       total: total,
       data: job.returnvalue,
+      partial_data: partialDocs ?? [],
     });
   } catch (error) {
     console.error(error);
