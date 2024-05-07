@@ -55,7 +55,7 @@ export class WebScraperDataProvider {
       const batchUrls = urls.slice(i, i + this.concurrentRequests);
       await Promise.all(
         batchUrls.map(async (url, index) => {
-          const result = await scrapSingleUrl(url, true, this.pageOptions);
+          const result = await scrapSingleUrl(url, this.pageOptions);
           processedUrls++;
           if (inProgress) {
             inProgress({
@@ -177,6 +177,7 @@ export class WebScraperDataProvider {
     });
     return links.map((url) => ({
       content: "",
+      html: this.pageOptions?.includeHtml ? "" : undefined,
       markdown: "",
       metadata: { sourceURL: url },
     }));
@@ -387,11 +388,9 @@ export class WebScraperDataProvider {
     this.limit = options.crawlerOptions?.limit ?? 10000;
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
-    this.pageOptions = options.pageOptions ?? { onlyMainContent: false };
-    this.extractorOptions = options.extractorOptions ?? { mode: "markdown" };
-    this.replaceAllPathsWithAbsolutePaths =
-      options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
-
+    this.pageOptions = options.pageOptions ?? { onlyMainContent: false, includeHtml: false };
+    this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
+    this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
     //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
 

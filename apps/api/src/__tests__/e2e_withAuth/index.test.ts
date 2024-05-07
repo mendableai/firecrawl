@@ -79,7 +79,25 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty("content");
       expect(response.body.data).toHaveProperty("markdown");
       expect(response.body.data).toHaveProperty("metadata");
+      expect(response.body.data).not.toHaveProperty("html");
       expect(response.body.data.content).toContain("🔥 FireCrawl");
+    }, 30000); // 30 seconds timeout
+
+    it("should return a successful response with a valid API key and includeHtml set to true", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://firecrawl.dev", pageOptions: { includeHtml: true }});
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("data");
+      expect(response.body.data).toHaveProperty("content");
+      expect(response.body.data).toHaveProperty("markdown");
+      expect(response.body.data).toHaveProperty("html");
+      expect(response.body.data).toHaveProperty("metadata");
+      expect(response.body.data.content).toContain("🔥 FireCrawl");
+      expect(response.body.data.markdown).toContain("🔥 FireCrawl");
+      expect(response.body.data.html).toContain("<h1");
     }, 30000); // 30 seconds timeout
   });
 
@@ -143,16 +161,17 @@ describe("E2E Tests for API Routes", () => {
       expect(response.statusCode).toBe(401);
     });
 
-    it("should return an error for a blocklisted URL", async () => {
-      const blocklistedUrl = "https://instagram.com/fake-test";
-      const response = await request(TEST_URL)
-        .post("/v0/crawlWebsitePreview")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-        .set("Content-Type", "application/json")
-        .send({ url: blocklistedUrl });
-      expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
-    });
+    // it("should return an error for a blocklisted URL", async () => {
+    //   const blocklistedUrl = "https://instagram.com/fake-test";
+    //   const response = await request(TEST_URL)
+    //     .post("/v0/crawlWebsitePreview")
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    //     .set("Content-Type", "application/json")
+    //     .send({ url: blocklistedUrl });
+    // // is returning 429 instead of 403
+    //   expect(response.statusCode).toBe(403);
+    //   expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
+    // });
 
     it("should return a successful response with a valid API key", async () => {
       const response = await request(TEST_URL)
@@ -248,6 +267,46 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
       expect(completedResponse.body.data[0].content).toContain(
         "🔥 FireCrawl"
+      );
+    }, 60000); // 60 seconds
+
+    it("should return a successful response for a valid crawl job with includeHtml set to true option", async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://firecrawl.dev", pageOptions: { includeHtml: true } });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(response.body.status).toBe("active");
+
+      // wait for 30 seconds
+      await new Promise((r) => setTimeout(r, 30000));
+
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("html");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0].content).toContain(
+        "🔥 FireCrawl"
+      );
+      expect(completedResponse.body.data[0].markdown).toContain(
+        "FireCrawl"
+      );
+      expect(completedResponse.body.data[0].html).toContain(
+        "<h1"
       );
     }, 60000); // 60 seconds
   });

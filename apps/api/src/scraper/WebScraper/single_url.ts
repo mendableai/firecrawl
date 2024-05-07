@@ -103,8 +103,7 @@ export async function scrapWithPlaywright(url: string): Promise<string> {
 
 export async function scrapSingleUrl(
   urlToScrap: string,
-  toMarkdown: boolean = true,
-  pageOptions: PageOptions = { onlyMainContent: true }
+  pageOptions: PageOptions = { onlyMainContent: true, includeHtml: false },
 ): Promise<Document> {
   urlToScrap = urlToScrap.trim();
 
@@ -172,7 +171,7 @@ export async function scrapSingleUrl(
 
     //* TODO: add an optional to return markdown or structured/extracted content 
     let cleanedHtml = removeUnwantedElements(text, pageOptions);
-
+    
     return [await parseMarkdown(cleanedHtml), text];
   };
 
@@ -193,6 +192,7 @@ export async function scrapSingleUrl(
         url: urlToScrap,
         content: text,
         markdown: text,
+        html: pageOptions.includeHtml ? html : undefined,
         metadata: { ...metadata, sourceURL: urlToScrap },
       } as Document;
     }
@@ -216,6 +216,7 @@ export async function scrapSingleUrl(
     return {
       content: text,
       markdown: text,
+      html: pageOptions.includeHtml ? html : undefined,
       metadata: { ...metadata, sourceURL: urlToScrap },
     } as Document;
   } catch (error) {
@@ -223,6 +224,7 @@ export async function scrapSingleUrl(
     return {
       content: "",
       markdown: "",
+      html: "",
       metadata: { sourceURL: urlToScrap },
     } as Document;
   }
