@@ -26,7 +26,7 @@ export async function startWebScraperPipeline({
     onError: (error) => {
       job.moveToFailed(error);
     },
-    team_id: job.data.team_id,
+    team_id: job.data.team_id
   })) as { success: boolean; message: string; docs: Document[] };
 }
 export async function runWebScraper({
@@ -59,14 +59,14 @@ export async function runWebScraper({
         mode: mode,
         urls: [url],
         crawlerOptions: crawlerOptions,
-        pageOptions: pageOptions,
+        pageOptions: pageOptions
       });
     } else {
       await provider.setOptions({
         mode: mode,
         urls: url.split(","),
         crawlerOptions: crawlerOptions,
-        pageOptions: pageOptions,
+        pageOptions: pageOptions
       });
     }
     const docs = (await provider.getDocuments(false, (progress: Progress) => {

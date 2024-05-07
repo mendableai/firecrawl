@@ -13,7 +13,7 @@ export async function searchHelper(
   team_id: string,
   crawlerOptions: any,
   pageOptions: PageOptions,
-  searchOptions: SearchOptions
+  searchOptions: SearchOptions,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -66,6 +66,7 @@ export async function searchHelper(
       ...pageOptions,
       onlyMainContent: pageOptions?.onlyMainContent ?? true,
       fetchPageContent: pageOptions?.fetchPageContent ?? true,
+      includeHtml: pageOptions?.includeHtml ?? false,
       fallback: false,
     },
   });
@@ -117,6 +118,7 @@ export async function searchController(req: Request, res: Response) {
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? {
+      includeHtml: false,
       onlyMainContent: true,
       fetchPageContent: true,
       fallback: false,
@@ -141,7 +143,7 @@ export async function searchController(req: Request, res: Response) {
       team_id,
       crawlerOptions,
       pageOptions,
-      searchOptions
+      searchOptions,
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
