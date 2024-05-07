@@ -7,6 +7,8 @@ import { RateLimiterMode } from "../../src/types";
 import { addWebScraperJob } from "../../src/services/queue-jobs";
 import { isUrlBlocked } from "../../src/scraper/WebScraper/utils/blocklist";
 import { logCrawl } from "../../src/services/logging/crawl_log";
+import { validateIdempotencyKey } from "../../src/services/idempotency/validate";
+import { createIdempotencyKey } from "../../src/services/idempotency/create";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -17,6 +19,14 @@ export async function crawlController(req: Request, res: Response) {
     );
     if (!success) {
       return res.status(status).json({ error });
+    }
+
+    if (req.headers["x-idempotency-key"]) {
+      const isIdempotencyValid = await validateIdempotencyKey(req);
+      if (!isIdempotencyValid) {
+        return res.status(409).json({ error: "Idempotency key already used" });
+      }
+      createIdempotencyKey(req);
     }
 
     const { success: creditsCheckSuccess, message: creditsCheckMessage } =
