@@ -40,7 +40,7 @@ export interface FirecrawlJob {
   pageOptions?: any;
   origin: string;
   extractor_options?: ExtractorOptions,
-  num_tokens?: number
+  num_tokens?: number,
 }
 
 export enum RateLimiterMode {

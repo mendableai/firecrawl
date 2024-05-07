@@ -1,4 +1,4 @@
-import { ExtractorOptions } from './../lib/entities';
+import { ExtractorOptions, PageOptions } from './../lib/entities';
 import { Request, Response } from "express";
 import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
@@ -13,8 +13,8 @@ export async function scrapeHelper(
   req: Request,
   team_id: string,
   crawlerOptions: any,
-  pageOptions: any,
-  extractorOptions: ExtractorOptions
+  pageOptions: PageOptions,
+  extractorOptions: ExtractorOptions,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -39,7 +39,7 @@ export async function scrapeHelper(
       ...crawlerOptions,
     },
     pageOptions: pageOptions,
-    extractorOptions: extractorOptions
+    extractorOptions: extractorOptions,
   });
 
   const docs = await a.getDocuments(false);
@@ -91,7 +91,7 @@ export async function scrapeController(req: Request, res: Response) {
       return res.status(status).json({ error });
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
-    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false };
+    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false, includeHtml: false };
     const extractorOptions = req.body.extractorOptions ?? {
       mode: "markdown"
     }
@@ -113,7 +113,7 @@ export async function scrapeController(req: Request, res: Response) {
       team_id,
       crawlerOptions,
       pageOptions,
-      extractorOptions
+      extractorOptions,
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
@@ -132,7 +132,7 @@ export async function scrapeController(req: Request, res: Response) {
       pageOptions: pageOptions,
       origin: origin, 
       extractor_options: extractorOptions,
-      num_tokens: numTokens
+      num_tokens: numTokens,
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {
