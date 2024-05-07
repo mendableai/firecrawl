@@ -80,7 +80,9 @@ export class WebScraperDataProvider {
             );
           }
         }
-      } catch (error) {}
+      } catch (error) {
+        console.error(error);
+      }
     }
     return results.filter((result) => result !== null) as Document[];
   }

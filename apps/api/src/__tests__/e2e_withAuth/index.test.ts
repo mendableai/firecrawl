@@ -280,8 +280,13 @@ describe("E2E Tests for API Routes", () => {
     expect(completedResponse.statusCode).toBe(200);
     expect(completedResponse.body).toHaveProperty("status");
     expect(completedResponse.body.status).toBe("failed");
-
-
+    expect(completedResponse.body).toHaveProperty("data");
+    expect(completedResponse.body.data).toEqual(null);
+    expect(completedResponse.body).toHaveProperty("partial_data");
+    expect(completedResponse.body.partial_data[0]).toHaveProperty("content");
+    expect(completedResponse.body.partial_data[0]).toHaveProperty("markdown");
+    expect(completedResponse.body.partial_data[0]).toHaveProperty("metadata");
+    
   }, 60000); // 60 seconds
 
   
