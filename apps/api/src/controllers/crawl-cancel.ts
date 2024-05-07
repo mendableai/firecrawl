@@ -4,6 +4,7 @@ import { RateLimiterMode } from "../../src/types";
 import { addWebScraperJob } from "../../src/services/queue-jobs";
 import { getWebScraperQueue } from "../../src/services/queue-service";
 import { supabase_service } from "../../src/services/supabase";
+import { billTeam } from "../../src/services/billing/credit_billing";
 
 export async function crawlCancelController(req: Request, res: Response) {
   try {
@@ -21,7 +22,11 @@ export async function crawlCancelController(req: Request, res: Response) {
     }
 
     // check if the job belongs to the team
-    const {data, error: supaError}= await supabase_service.from("bulljobs_teams").select("*").eq("job_id", req.params.jobId).eq("team_id", team_id);
+    const { data, error: supaError } = await supabase_service
+      .from("bulljobs_teams")
+      .select("*")
+      .eq("job_id", req.params.jobId)
+      .eq("team_id", team_id);
     if (supaError) {
       return res.status(500).json({ error: supaError.message });
     }
@@ -29,19 +34,26 @@ export async function crawlCancelController(req: Request, res: Response) {
     if (data.length === 0) {
       return res.status(403).json({ error: "Unauthorized" });
     }
+    const jobState = await job.getState();
+    const { partialDocs } = await job.progress();
 
-    try {
-    await job.moveToFailed(Error("Job cancelled by user"), true);
-        
-    } catch (error) {
-        console.error(error);
-        
+    if (partialDocs && partialDocs.length > 0 && jobState === "active") {
+      console.log("Billing team for partial docs...");
+      // Note: the credits that we will bill them here might be lower than the actual
+      // due to promises that are not yet resolved
+      await billTeam(team_id, partialDocs.length);
     }
 
-    const jobState = await job.getState();
+    try {
+      await job.moveToFailed(Error("Job cancelled by user"), true);
+    } catch (error) {
+      console.error(error);
+    }
+
+    const newJobState = await job.getState();
 
     res.json({
-      status: jobState === "failed" ? "cancelled" : "Cancelling...",
+      status: newJobState === "failed" ? "cancelled" : "Cancelling...",
     });
   } catch (error) {
     console.error(error);
