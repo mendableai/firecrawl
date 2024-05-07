@@ -48,6 +48,7 @@ export type WebScraperOptions = {
   pageOptions?: PageOptions;
   extractorOptions?: ExtractorOptions;
   concurrentRequests?: number;
+  bullJobId?: string;
 };
 
 export interface DocumentUrl {
