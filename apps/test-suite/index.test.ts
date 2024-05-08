@@ -61,13 +61,13 @@ describe("Scraping/Crawling Checkup (E2E)", () => {
                 .send({ url: websiteData.website, pageOptions: { onlyMainContent: true } });
 
               if (scrapedContent.statusCode !== 200) {
-                console.error(`Failed to scrape ${websiteData.website}`);
+                console.error(`Failed to scrape ${websiteData.website} ${scrapedContent.statusCode}`);
                 errorLog.push({
                   website: websiteData.website,
                   prompt: websiteData.prompt,
                   expected_output: websiteData.expected_output,
                   actual_output: "",
-                  error: "Failed to prompt... model error."
+                  error: `Failed to scrape website. ${scrapedContent.statusCode} ${scrapedContent.body.error}`
                 });
                 return null;
               }
@@ -157,7 +157,7 @@ describe("Scraping/Crawling Checkup (E2E)", () => {
                 prompt: websiteData.prompt,
                 expected_output: websiteData.expected_output,
                 actual_output: "",
-                error: "Failed to prompt... model error."
+                error: `Error processing ${websiteData.website}: ${error}`
               });
               return null;
             }
