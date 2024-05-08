@@ -57,7 +57,7 @@ describe("Scraping/Crawling Checkup (E2E)", () => {
                 .post("/v0/scrape")
                 .set("Content-Type", "application/json")
                 .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-                .send({ url: websiteData.website });
+                .send({ url: websiteData.website, pageOptions: { onlyMainContent: true } });
 
               if (scrapedContent.statusCode !== 200) {
                 console.error(`Failed to scrape ${websiteData.website}`);
@@ -138,15 +138,14 @@ describe("Scraping/Crawling Checkup (E2E)", () => {
         batchPromises.push(batchPromise);
       }
 
-      const responses = (await Promise.all(batchPromises)).flat();
-      const validResponses = responses.filter((response) => response !== null);
-      const score = (passedTests / validResponses.length) * 100;
+      (await Promise.all(batchPromises)).flat();
+      const score = (passedTests / websitesData.length) * 100;
       const endTime = new Date().getTime();
       const timeTaken = (endTime - startTime) / 1000;
       console.log(`Score: ${score}%`);
       console.log(`Total tokens: ${totalTokens}`);
 
-      await logErrors(errorLog, timeTaken, totalTokens, score, validResponses.length);
+      await logErrors(errorLog, timeTaken, totalTokens, score, websitesData.length);
       
       if (process.env.ENV === "local" && errorLog.length > 0) {
         if (!fs.existsSync(logsDir)){
