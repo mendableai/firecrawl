@@ -6,6 +6,7 @@ import { Document, PageOptions } from "../../lib/entities";
 import { parseMarkdown } from "../../lib/html-to-markdown";
 import { excludeNonMainTags } from "./utils/excludeTags";
 import { urlSpecificParams } from "./utils/custom/website_params";
+import { chromium } from "playwright-core";
 
 dotenv.config();
 
@@ -21,8 +22,10 @@ export async function generateRequestParams(
   };
 
   try {
-    const urlKey = new URL(url).hostname;
+    let urlKey = new URL(url).hostname;
+    urlKey = urlKey.replace(/^www\./, ''); // Remove 'www.' if present
     if (urlSpecificParams.hasOwnProperty(urlKey)) {
+      console.log(`Using custom params for ${urlKey}`);
       return { ...defaultParams, ...urlSpecificParams[urlKey] };
     } else {
       return defaultParams;
@@ -144,7 +147,16 @@ export async function scrapSingleUrl(
         break;
       case "playwright":
         if (process.env.PLAYWRIGHT_MICROSERVICE_URL) {
+
           text = await scrapWithPlaywright(url);
+          // const browser = await chromium.launch();
+          // const page = await browser.newPage();
+          // await page.goto("https://ycombinator.com/companies");
+          // await page.waitForTimeout(4000); // wait for 12 seconds
+          // text = await page.content();
+          // console.log(text);
+          // await page.close();
+          // await browser.close();
         }
         break;
       case "scrapingBeeLoad":
@@ -183,7 +195,9 @@ export async function scrapSingleUrl(
     //   [text, html] = await attemptScraping(urlToScrap, 'scrapingBeeLoad');
     // }
 
-    let [text, html] = await attemptScraping(urlToScrap, "scrapingBee");
+    let [text, html] = ["", ""];
+
+    [text, html] = await attemptScraping(urlToScrap, "scrapingBee");
     // Basically means that it is using /search endpoint
     if (pageOptions.fallback === false) {
       const soup = cheerio.load(html);

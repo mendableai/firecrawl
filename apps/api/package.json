@@ -81,6 +81,7 @@
     "natural": "^6.3.0",
     "openai": "^4.28.4",
     "pdf-parse": "^1.1.1",
+    "playwright-core": "^1.44.0",
     "pos": "^0.4.2",
     "posthog-node": "^4.0.1",
     "promptable": "^0.0.9",
