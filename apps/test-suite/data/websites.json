@@ -91,7 +91,7 @@
   },
   {
     "website": "https://richmondconfidential.org",
-    "prompt": "does the page contains articles about community college updates?",
+    "prompt": "does the page contains more than 4 articles?",
     "expected_output": "yes"
   },
   {
