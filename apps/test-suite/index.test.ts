@@ -5,6 +5,7 @@ import { numTokensFromString } from "./utils/tokens";
 import OpenAI from "openai";
 import { WebsiteScrapeError } from "./utils/types";
 import { logErrors } from "./utils/log";
+
 const websitesData = require("./data/websites.json");
 import "dotenv/config";
 
@@ -18,13 +19,13 @@ interface WebsiteData {
   expected_output: string;
 }
 
+const TEST_URL = "http://127.0.0.1:3002";
+
+
 describe("Scraping/Crawling Checkup (E2E)", () => {
   beforeAll(() => {
     if (!process.env.TEST_API_KEY) {
       throw new Error("TEST_API_KEY is not set");
-    }
-    if (!process.env.TEST_URL) {
-      throw new Error("TEST_URL is not set");
     }
     if (!process.env.OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY is not set");
@@ -53,7 +54,7 @@ describe("Scraping/Crawling Checkup (E2E)", () => {
         const batchPromise = Promise.all(
           batch.map(async (websiteData: WebsiteData) => {
             try {
-              const scrapedContent = await request(process.env.TEST_URL || "")
+              const scrapedContent = await request(TEST_URL || "")
                 .post("/v0/scrape")
                 .set("Content-Type", "application/json")
                 .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
