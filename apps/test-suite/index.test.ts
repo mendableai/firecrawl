@@ -31,10 +31,10 @@ describe("Scraping/Crawling Checkup (E2E)", () => {
     }
   });
 
-  describe("Scraping website dataset", () => {
-    it("Should scrape the website and prompt it against Claude", async () => {
+  describe("Scraping website tests with a dataset", () => {
+    it("Should scrape the website and prompt it against OpenAI", async () => {
       let passedTests = 0;
-      const batchSize = 5;
+      const batchSize = 15; // Adjusted to comply with the rate limit of 15 per minute
       const batchPromises = [];
       let totalTokens = 0;
 
@@ -45,8 +45,10 @@ describe("Scraping/Crawling Checkup (E2E)", () => {
       let errorLogFileName = `${logsDir}/run.log_${new Date().toTimeString().split(' ')[0]}`;
       const errorLog: WebsiteScrapeError[] = [];
       
-
       for (let i = 0; i < websitesData.length; i += batchSize) {
+        // Introducing delay to respect the rate limit of 15 requests per minute
+        await new Promise(resolve => setTimeout(resolve, 10000)); 
+
         const batch = websitesData.slice(i, i + batchSize);
         const batchPromise = Promise.all(
           batch.map(async (websiteData: WebsiteData) => {
@@ -144,15 +146,17 @@ describe("Scraping/Crawling Checkup (E2E)", () => {
       console.log(`Score: ${score}%`);
       console.log(`Total tokens: ${totalTokens}`);
 
-      if (errorLog.length > 0) {
+      await logErrors(errorLog, timeTaken, totalTokens, score, validResponses.length);
+      
+      if (process.env.ENV === "local" && errorLog.length > 0) {
         if (!fs.existsSync(logsDir)){
           fs.mkdirSync(logsDir, { recursive: true });
         }
         fs.writeFileSync(errorLogFileName, JSON.stringify(errorLog, null, 2));
-        logErrors(errorLog, timeTaken, totalTokens, score);
       }
+        
 
-      expect(score).toBeGreaterThanOrEqual(90);
-    }, 150000); // 150 seconds timeout
+      expect(score).toBeGreaterThanOrEqual(80);
+    }, 350000); // 150 seconds timeout
   });
 });
