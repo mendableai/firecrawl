@@ -1,0 +1,57 @@
+[
+    {
+        "website":"https://www.anthropic.com/claude",
+        "prompt":"Does this website contain pricing information?",
+        "expected_output":"yes"
+    },
+    {
+        "website":"https://mendable.ai/pricing",
+        "prompt":"Does this website contain pricing information?",
+        "expected_output":"yes"
+    },
+    {
+        "website":"https://openai.com/news",
+        "prompt":"Does this website contain a list of research news?",
+        "expected_output":"yes"
+    },
+    {
+        "website":"https://agentops.ai",
+        "prompt":"Does this website contain a code snippets?",
+        "expected_output":"yes"
+    },
+    {
+        "website":"https://ycombinator.com/companies",
+        "prompt":"Does this website contain a list bigger than 5 of ycombinator companies?",
+        "expected_output":"yes"
+    },
+    {
+        "website":"https://firecrawl.dev",
+        "prompt":"Does this website contain a list bigger than 5 of ycombinator companies?",
+        "expected_output":"yes"
+    },
+    {
+        "website":"https://en.wikipedia.org/wiki/T._N._Seshan",
+        "prompt":"Does this website talk about Seshan's career?",
+        "expected_output":"yes"
+    },
+    {
+        "website":"https://mendable.ai/blog",
+        "prompt":"Does this website contain multiple blog articles?",
+        "expected_output":"yes"
+    },
+    {
+        "website":"https://mendable.ai/blog",
+        "prompt":"Does this website contain multiple blog articles?",
+        "expected_output":"yes"
+    },
+    {
+        "website":"https://news.ycombinator.com/",
+        "prompt":"Does this website contain a list of articles in a table markdown format?",
+        "expected_output":"yes"
+    },
+    {
+        "website":"https://www.vellum.ai/llm-leaderboard",
+        "prompt":"Does this website contain a model comparison table?",
+        "expected_output":"yes"
+    }
+]
