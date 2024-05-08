@@ -81,22 +81,35 @@ describe("Scraping/Crawling Checkup (E2E)", () => {
               });
 
               const prompt = `Based on this markdown extracted from a website html page, ${websiteData.prompt} Just say 'yes' or 'no' to the question.\nWebsite markdown: ${scrapedContent.body.data.markdown}\n`;
-
               
-              const msg = await openai.chat.completions.create({
-                model: "gpt-4-turbo",
-                max_tokens: 100,
-                temperature: 0,
-                messages: [
-                  {
-                    role: "user",
-                    content: prompt
-                  },
-                ],
-              });
+              let msg = null;
+              const maxRetries = 3;
+              let attempts = 0;
+              while (!msg && attempts < maxRetries) {
+                try {
+                  msg = await openai.chat.completions.create({
+                    model: "gpt-4-turbo",
+                    max_tokens: 100,
+                    temperature: 0,
+                    messages: [
+                      {
+                        role: "user",
+                        content: prompt
+                      },
+                    ],
+                  });
+                } catch (error) {
+                  console.error(`Attempt ${attempts + 1}: Failed to prompt for ${websiteData.website}, error: ${error}`);
+                  attempts++;
+                  if (attempts < maxRetries) {
+                    console.log(`Retrying... Attempt ${attempts + 1}`);
+                    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds before retrying
+                  }
+                }
+              }
 
               if (!msg) {
-                console.error(`Failed to prompt for ${websiteData.website}`);
+                console.error(`Failed to prompt for ${websiteData.website} after ${maxRetries} attempts`);
                 errorLog.push({
                   website: websiteData.website,
                   prompt: websiteData.prompt,
