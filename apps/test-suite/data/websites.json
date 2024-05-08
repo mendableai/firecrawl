@@ -40,8 +40,13 @@
     "expected_output": "yes"
   },
   {
-    "website": "https://mendable.ai/blog",
-    "prompt": "Does this website contain multiple blog articles?",
+    "website": "https://www.framer.com/pricing",
+    "prompt": "Is there an enterprise pricing option?",
+    "expected_output": "yes"
+  },
+  {
+    "website": "https://fly.io/docs/gpus/gpu-quickstart",
+    "prompt": "Is there a fly deploy command on this page?",
     "expected_output": "yes"
   },
   {
