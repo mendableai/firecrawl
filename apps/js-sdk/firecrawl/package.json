@@ -1,6 +1,6 @@
 {
   "name": "@mendable/firecrawl-js",
-  "version": "0.0.16",
+  "version": "0.0.17",
   "description": "JavaScript SDK for Firecrawl API",
   "main": "build/index.js",
   "types": "types/index.d.ts",
@@ -8,6 +8,7 @@
   "scripts": {
     "build": "tsc",
     "publish": "npm run build && npm publish --access public",
+    "publish-beta": "npm run build && npm publish --access public --tag beta",
     "test": "jest src/**/*.test.ts"
   },
   "repository": {
@@ -17,7 +18,9 @@
   "author": "Mendable.ai",
   "license": "MIT",
   "dependencies": {
-    "axios": "^1.6.8"
+    "axios": "^1.6.8",
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.23.0"
   },
   "bugs": {
     "url": "https://github.com/mendableai/firecrawl/issues"
