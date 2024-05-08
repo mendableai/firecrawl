@@ -1,10 +1,8 @@
-name: Fly Deploy
+name: Test Suite
 on:
   push:
     branches:
       - main
-  # schedule:
-  #   - cron: '0 */4 * * *'
 
 env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -25,6 +23,7 @@ env:
   SUPABASE_SERVICE_TOKEN: ${{ secrets.SUPABASE_SERVICE_TOKEN }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
+
 
 jobs:
   pre-deploy:
@@ -54,19 +53,10 @@ jobs:
         run: npm run workers &
         working-directory: ./apps/api
         id: start_workers
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: ./apps/test-suite
       - name: Run E2E tests
         run: |
-          npm run test:prod
-        working-directory: ./apps/api
-  deploy:
-    name: Deploy app
-    runs-on: ubuntu-latest
-    needs: pre-deploy-test-suite
-    steps:
-      - uses: actions/checkout@v3
-      - name: Change directory
-        run: cd apps/api
-      - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy ./apps/api --remote-only -a firecrawl-scraper-js
-        env:
-          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          npm run test
+        working-directory: ./apps/test-suite
