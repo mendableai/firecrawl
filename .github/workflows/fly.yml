@@ -61,6 +61,7 @@ jobs:
 
   pre-deploy-test-suite:
     name: Test Suite
+    needs: pre-deploy
     runs-on: ubuntu-latest
     services:
       redis:
