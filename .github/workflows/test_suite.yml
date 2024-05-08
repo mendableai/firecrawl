@@ -26,8 +26,9 @@ env:
 
 
 jobs:
-  pre-deploy:
-    name: Pre-deploy checks
+  needs: pre-deploy
+  pre-deploy-test-suite:
+    name: Test Suite
     runs-on: ubuntu-latest
     services:
       redis:
