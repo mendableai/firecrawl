@@ -382,7 +382,7 @@ const schema = z.object({
     .describe("Top 5 stories on Hacker News"),
 });
 
-const scrapeResult = await app.scrapeUrl("https://firecrawl.dev", {
+const scrapeResult = await app.scrapeUrl("https://news.ycombinator.com", {
   extractorOptions: { extractionSchema: schema },
 });
 
