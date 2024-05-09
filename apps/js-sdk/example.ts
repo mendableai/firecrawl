@@ -1,4 +1,4 @@
-import FirecrawlApp from '@mendable/firecrawl-js';
+import FirecrawlApp, { JobStatusResponse } from '@mendable/firecrawl-js';
 import { z } from "zod";
 
 const app = new FirecrawlApp({apiKey: "fc-YOUR_API_KEY"});
@@ -11,13 +11,13 @@ console.log(scrapeResult.data.content)
 const crawlResult = await app.crawlUrl('mendable.ai', {crawlerOptions: {excludes: ['blog/*'], limit: 5}}, false);
 console.log(crawlResult)
 
-const jobId = await crawlResult['jobId'];
+const jobId: string = await crawlResult['jobId'];
 console.log(jobId);
 
-let job;
+let job: JobStatusResponse;
 while (true) {
   job = await app.checkCrawlStatus(jobId);
-  if (job.status == 'completed') {
+  if (job.status === 'completed') {
     break;
   }
   await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
