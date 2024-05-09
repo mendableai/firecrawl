@@ -9,12 +9,7 @@ class FirecrawlApp:
         if self.api_key is None:
             raise ValueError('No API key provided')
     
-    from pydantic import BaseModel
-    from typing import Optional, Dict, Any
-
-    class ScrapeParams(BaseModel):
-        url: str
-        extractorOptions: Optional[Dict[str, Any]] = None
+    
 
     def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
         headers = {
@@ -41,7 +36,6 @@ class FirecrawlApp:
             for key, value in params.items():
                 if key != 'extractorOptions':
                     scrape_params[key] = value
-        print(scrape_params)
         # Make the POST request with the prepared headers and JSON data
         response = requests.post(
             'https://api.firecrawl.dev/v0/scrape',
