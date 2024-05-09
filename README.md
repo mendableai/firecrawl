@@ -379,9 +379,11 @@ const schema = z.object({
     .length(5)
     .describe("Top 5 stories on Hacker News"),
 });
+
 const scrapeResult = await app.scrapeUrl("https://firecrawl.dev", {
   extractorOptions: { extractionSchema: schema },
 });
+
 console.log(scrapeResult.data["llm_extraction"]);
 ```
 
