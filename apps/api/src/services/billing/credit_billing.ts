@@ -212,20 +212,26 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     return { success: true, message: "Sufficient credits available" };
   }
 
-  // Calculate the total credits used by the team within the current billing period
-  const { data: creditUsages, error: creditUsageError } = await supabase_service
-    .from("credit_usage")
-    .select("credits_used")
-    .eq("subscription_id", subscription.id)
-    .gte("created_at", subscription.current_period_start)
-    .lte("created_at", subscription.current_period_end);
+  let totalCreditsUsed = 0;
+  try {
+    const { data: creditUsages, error: creditUsageError } = await supabase_service
+        .rpc("get_credit_usage_2", {
+            sub_id: subscription.id,
+            start_time: subscription.current_period_start,
+            end_time: subscription.current_period_end
+        });
 
-  if (creditUsageError) {
-    throw new Error(`Failed to retrieve credit usage for subscription_id: ${subscription.id}`);
+    if (creditUsageError) {
+      console.error("Error calculating credit usage:", creditUsageError);
+    }
+
+    if (creditUsages && creditUsages.length > 0) {
+        totalCreditsUsed = creditUsages[0].total_credits_used;
+        console.log("Total Credits Used:", totalCreditsUsed);
+    }
+  } catch (error) {
+    console.error("Error calculating credit usage:", error);
   }
-
-  const totalCreditsUsed = creditUsages.reduce((acc, usage) => acc + usage.credits_used, 0);
-
   // Adjust total credits used by subtracting coupon value
   const adjustedCreditsUsed = Math.max(0, totalCreditsUsed - couponCredits);
 
