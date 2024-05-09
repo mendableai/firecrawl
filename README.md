@@ -353,6 +353,8 @@ const status = await app.checkCrawlStatus(jobId);
 console.log(status);
 ```
 
+
+
 ### Extracting structured data from a URL
 
 With LLM extraction, you can easily extract structured data from any URL. We support zod schema to make it easier for you too. Here is how you to use it:
