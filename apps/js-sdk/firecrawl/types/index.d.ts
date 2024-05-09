@@ -1,4 +1,5 @@
-import { AxiosResponse, AxiosRequestHeaders } from 'axios';
+import { AxiosResponse, AxiosRequestHeaders } from "axios";
+import { z } from "zod";
 /**
  * Configuration interface for FirecrawlApp.
  */
@@ -10,6 +11,11 @@ export interface FirecrawlAppConfig {
  */
 export interface Params {
     [key: string]: any;
+    extractorOptions?: {
+        extractionSchema: z.ZodSchema | any;
+        mode?: "llm-extraction";
+        extractionPrompt?: string;
+    };
 }
 /**
  * Response interface for scraping operations.

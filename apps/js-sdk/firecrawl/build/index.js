@@ -7,9 +7,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import axios from 'axios';
-import dotenv from 'dotenv';
-dotenv.config();
+import axios from "axios";
+import { z } from "zod";
+import { zodToJsonSchema } from "zod-to-json-schema";
 /**
  * Main class for interacting with the Firecrawl API.
  */
@@ -19,9 +19,9 @@ export default class FirecrawlApp {
      * @param {FirecrawlAppConfig} config - Configuration options for the FirecrawlApp instance.
      */
     constructor({ apiKey = null }) {
-        this.apiKey = apiKey || process.env.FIRECRAWL_API_KEY || '';
+        this.apiKey = apiKey || "";
         if (!this.apiKey) {
-            throw new Error('No API key provided');
+            throw new Error("No API key provided");
         }
     }
     /**
@@ -32,16 +32,22 @@ export default class FirecrawlApp {
      */
     scrapeUrl(url_1) {
         return __awaiter(this, arguments, void 0, function* (url, params = null) {
+            var _a;
             const headers = {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey}`,
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${this.apiKey}`,
             };
-            let jsonData = { url };
-            if (params) {
-                jsonData = Object.assign(Object.assign({}, jsonData), params);
+            let jsonData = Object.assign({ url }, params);
+            if ((_a = params === null || params === void 0 ? void 0 : params.extractorOptions) === null || _a === void 0 ? void 0 : _a.extractionSchema) {
+                let schema = params.extractorOptions.extractionSchema;
+                // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
+                if (schema instanceof z.ZodSchema) {
+                    schema = zodToJsonSchema(schema);
+                }
+                jsonData = Object.assign(Object.assign({}, jsonData), { extractorOptions: Object.assign(Object.assign({}, params.extractorOptions), { extractionSchema: schema, mode: params.extractorOptions.mode || "llm-extraction" }) });
             }
             try {
-                const response = yield axios.post('https://api.firecrawl.dev/v0/scrape', jsonData, { headers });
+                const response = yield axios.post("https://api.firecrawl.dev/v0/scrape", jsonData, { headers });
                 if (response.status === 200) {
                     const responseData = response.data;
                     if (responseData.success) {
@@ -52,13 +58,13 @@ export default class FirecrawlApp {
                     }
                 }
                 else {
-                    this.handleError(response, 'scrape URL');
+                    this.handleError(response, "scrape URL");
                 }
             }
             catch (error) {
                 throw new Error(error.message);
             }
-            return { success: false, error: 'Internal server error.' };
+            return { success: false, error: "Internal server error." };
         });
     }
     /**
@@ -70,15 +76,15 @@ export default class FirecrawlApp {
     search(query_1) {
         return __awaiter(this, arguments, void 0, function* (query, params = null) {
             const headers = {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${this.apiKey}`,
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${this.apiKey}`,
             };
             let jsonData = { query };
             if (params) {
                 jsonData = Object.assign(Object.assign({}, jsonData), params);
             }
             try {
-                const response = yield axios.post('https://api.firecrawl.dev/v0/search', jsonData, { headers });
+                const response = yield axios.post("https://api.firecrawl.dev/v0/search", jsonData, { headers });
                 if (response.status === 200) {
                     const responseData = response.data;
                     if (responseData.success) {
@@ -89,13 +95,13 @@ export default class FirecrawlApp {
                     }
                 }
                 else {
-                    this.handleError(response, 'search');
+                    this.handleError(response, "search");
                 }
             }
             catch (error) {
                 throw new Error(error.message);
             }
-            return { success: false, error: 'Internal server error.' };
+            return { success: false, error: "Internal server error." };
         });
     }
     /**
@@ -114,7 +120,7 @@ export default class FirecrawlApp {
                 jsonData = Object.assign(Object.assign({}, jsonData), params);
             }
             try {
-                const response = yield this.postRequest('https://api.firecrawl.dev/v0/crawl', jsonData, headers);
+                const response = yield this.postRequest("https://api.firecrawl.dev/v0/crawl", jsonData, headers);
                 if (response.status === 200) {
                     const jobId = response.data.jobId;
                     if (waitUntilDone) {
@@ -125,14 +131,14 @@ export default class FirecrawlApp {
                     }
                 }
                 else {
-                    this.handleError(response, 'start crawl job');
+                    this.handleError(response, "start crawl job");
                 }
             }
             catch (error) {
                 console.log(error);
                 throw new Error(error.message);
             }
-            return { success: false, error: 'Internal server error.' };
+            return { success: false, error: "Internal server error." };
         });
     }
     /**
@@ -149,13 +155,17 @@ export default class FirecrawlApp {
                     return response.data;
                 }
                 else {
-                    this.handleError(response, 'check crawl status');
+                    this.handleError(response, "check crawl status");
                 }
             }
             catch (error) {
                 throw new Error(error.message);
             }
-            return { success: false, status: 'unknown', error: 'Internal server error.' };
+            return {
+                success: false,
+                status: "unknown",
+                error: "Internal server error.",
+            };
         });
     }
     /**
@@ -164,8 +174,8 @@ export default class FirecrawlApp {
      */
     prepareHeaders() {
         return {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
         };
     }
     /**
@@ -200,26 +210,26 @@ export default class FirecrawlApp {
                 const statusResponse = yield this.getRequest(`https://api.firecrawl.dev/v0/crawl/status/${jobId}`, headers);
                 if (statusResponse.status === 200) {
                     const statusData = statusResponse.data;
-                    if (statusData.status === 'completed') {
-                        if ('data' in statusData) {
+                    if (statusData.status === "completed") {
+                        if ("data" in statusData) {
                             return statusData.data;
                         }
                         else {
-                            throw new Error('Crawl job completed but no data was returned');
+                            throw new Error("Crawl job completed but no data was returned");
                         }
                     }
-                    else if (['active', 'paused', 'pending', 'queued'].includes(statusData.status)) {
+                    else if (["active", "paused", "pending", "queued"].includes(statusData.status)) {
                         if (timeout < 2) {
                             timeout = 2;
                         }
-                        yield new Promise(resolve => setTimeout(resolve, timeout * 1000)); // Wait for the specified timeout before checking again
+                        yield new Promise((resolve) => setTimeout(resolve, timeout * 1000)); // Wait for the specified timeout before checking again
                     }
                     else {
                         throw new Error(`Crawl job failed or was stopped. Status: ${statusData.status}`);
                     }
                 }
                 else {
-                    this.handleError(statusResponse, 'check crawl status');
+                    this.handleError(statusResponse, "check crawl status");
                 }
             }
         });
@@ -231,7 +241,7 @@ export default class FirecrawlApp {
      */
     handleError(response, action) {
         if ([402, 409, 500].includes(response.status)) {
-            const errorMessage = response.data.error || 'Unknown error occurred';
+            const errorMessage = response.data.error || "Unknown error occurred";
             throw new Error(`Failed to ${action}. Status code: ${response.status}. Error: ${errorMessage}`);
         }
         else {
