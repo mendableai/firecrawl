@@ -8,6 +8,7 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import axios from "axios";
+import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 /**
  * Main class for interacting with the Firecrawl API.
@@ -38,7 +39,11 @@ export default class FirecrawlApp {
             };
             let jsonData = Object.assign({ url }, params);
             if ((_a = params === null || params === void 0 ? void 0 : params.extractorOptions) === null || _a === void 0 ? void 0 : _a.extractionSchema) {
-                const schema = zodToJsonSchema(params.extractorOptions.extractionSchema);
+                let schema = params.extractorOptions.extractionSchema;
+                // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
+                if (schema instanceof z.ZodSchema) {
+                    schema = zodToJsonSchema(schema);
+                }
                 jsonData = Object.assign(Object.assign({}, jsonData), { extractorOptions: Object.assign(Object.assign({}, params.extractorOptions), { extractionSchema: schema, mode: params.extractorOptions.mode || "llm-extraction" }) });
             }
             try {

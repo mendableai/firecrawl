@@ -91,9 +91,11 @@ export default class FirecrawlApp {
     } as AxiosRequestHeaders;
     let jsonData: Params = { url, ...params };
     if (params?.extractorOptions?.extractionSchema) {
-      const schema = zodToJsonSchema(
-        params.extractorOptions.extractionSchema as z.ZodSchema
-      );
+      let schema = params.extractorOptions.extractionSchema;
+      // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
+      if (schema instanceof z.ZodSchema) {
+        schema = zodToJsonSchema(schema);
+      }
       jsonData = {
         ...jsonData,
         extractorOptions: {

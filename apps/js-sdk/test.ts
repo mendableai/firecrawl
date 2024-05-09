@@ -3,7 +3,7 @@ import { z } from "zod";
 
 async function a() {
   const app = new FirecrawlApp({
-    apiKey: "fc-YOUR_FIRECRAWL_API_KEY",
+    apiKey: "fc-YOUR_API_KEY",
   });
 
   // Define schema to extract contents into
@@ -20,7 +20,7 @@ async function a() {
       .length(5)
       .describe("Top 5 stories on Hacker News"),
   });
-  const scrapeResult = await app.scrapeUrl("https://news.ycombinator.com", {
+  const scrapeResult = await app.scrapeUrl("https://firecrawl.dev", {
     extractorOptions: { extractionSchema: schema },
   });
   console.log(scrapeResult.data["llm_extraction"]);
