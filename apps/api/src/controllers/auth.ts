@@ -38,7 +38,7 @@ export async function supaAuthenticateUser(
       req.socket.remoteAddress) as string;
     const iptoken = incomingIP + token;
     await getRateLimiter(
-      token === "this_is_just_a_preview_token" ? RateLimiterMode.Preview : mode
+      token === "this_is_just_a_preview_token" ? RateLimiterMode.Preview : mode, token
     ).consume(iptoken);
   } catch (rateLimiterRes) {
     console.error(rateLimiterRes);

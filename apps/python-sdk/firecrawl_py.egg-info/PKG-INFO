@@ -1,6 +1,6 @@
 Metadata-Version: 2.1
 Name: firecrawl-py
-Version: 0.0.6
+Version: 0.0.8
 Summary: Python SDK for Firecrawl API
 Home-page: https://github.com/mendableai/firecrawl
 Author: Mendable.ai

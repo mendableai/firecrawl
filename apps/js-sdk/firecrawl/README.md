@@ -77,6 +77,42 @@ To scrape a single URL with error handling, use the `scrapeUrl` method. It takes
   scrapeExample();
 ```
 
+### Extracting structured data from a URL
+
+With LLM extraction, you can easily extract structured data from any URL. We support zod schemas to make it easier for you too. Here is how you to use it:
+
+```js
+import { z } from "zod";
+
+const zodSchema = z.object({
+  top: z
+    .array(
+      z.object({
+        title: z.string(),
+        points: z.number(),
+        by: z.string(),
+        commentsURL: z.string(),
+      })
+    )
+    .length(5)
+    .describe("Top 5 stories on Hacker News"),
+});
+
+let llmExtractionResult = await app.scrapeUrl("https://news.ycombinator.com", {
+  extractorOptions: { extractionSchema: zodSchema },
+});
+
+console.log(llmExtractionResult.data.llm_extraction);
+```
+
+### Search for a query
+
+Used to search the web, get the most relevant results, scrap each page and return the markdown.
+
+```js
+query = 'what is mendable?'
+searchResult = app.search(query)
+```
 
 ### Crawling a Website
 

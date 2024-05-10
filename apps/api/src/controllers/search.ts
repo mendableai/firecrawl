@@ -13,7 +13,7 @@ export async function searchHelper(
   team_id: string,
   crawlerOptions: any,
   pageOptions: PageOptions,
-  searchOptions: SearchOptions
+  searchOptions: SearchOptions,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -54,10 +54,11 @@ export async function searchHelper(
 
   // filter out social media links
 
+
   const a = new WebScraperDataProvider();
   await a.setOptions({
     mode: "single_urls",
-    urls: res.map((r) => r.url),
+    urls: res.map((r) => r.url).slice(0, searchOptions.limit ?? 7),
     crawlerOptions: {
       ...crawlerOptions,
     },
@@ -65,11 +66,12 @@ export async function searchHelper(
       ...pageOptions,
       onlyMainContent: pageOptions?.onlyMainContent ?? true,
       fetchPageContent: pageOptions?.fetchPageContent ?? true,
+      includeHtml: pageOptions?.includeHtml ?? false,
       fallback: false,
     },
   });
 
-  const docs = await a.getDocuments(true);
+  const docs = await a.getDocuments(false);
   if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
   }
@@ -116,6 +118,7 @@ export async function searchController(req: Request, res: Response) {
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? {
+      includeHtml: false,
       onlyMainContent: true,
       fetchPageContent: true,
       fallback: false,
@@ -140,14 +143,14 @@ export async function searchController(req: Request, res: Response) {
       team_id,
       crawlerOptions,
       pageOptions,
-      searchOptions
+      searchOptions,
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
     logJob({
       success: result.success,
       message: result.error,
-      num_docs: result.data.length,
+      num_docs: result.data ? result.data.length : 0,
       docs: result.data,
       time_taken: timeTakenInSeconds,
       team_id: team_id,

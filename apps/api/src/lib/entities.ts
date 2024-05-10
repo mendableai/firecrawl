@@ -7,14 +7,21 @@ export interface Progress {
     [key: string]: any;
   };
   currentDocumentUrl?: string;
+  currentDocument?: Document;
 }
 
 export type PageOptions = {
   onlyMainContent?: boolean;
+  includeHtml?: boolean;
   fallback?: boolean;
   fetchPageContent?: boolean;
-  
 };
+
+export type ExtractorOptions = {
+  mode: "markdown" | "llm-extraction";
+  extractionPrompt?: string;
+  extractionSchema?: Record<string, any>;
+}
 
 export type SearchOptions = {
   limit?: number;
@@ -33,12 +40,15 @@ export type WebScraperOptions = {
     includes?: string[];
     excludes?: string[];
     maxCrawledLinks?: number;
+    maxDepth?: number;
     limit?: number;
     generateImgAltText?: boolean;
     replaceAllPathsWithAbsolutePaths?: boolean;
   };
   pageOptions?: PageOptions;
+  extractorOptions?: ExtractorOptions;
   concurrentRequests?: number;
+  bullJobId?: string;
 };
 
 export interface DocumentUrl {
@@ -50,6 +60,8 @@ export class Document {
   url?: string; // Used only in /search for now
   content: string;
   markdown?: string;
+  html?: string;
+  llm_extraction?: Record<string, any>;
   createdAt?: Date;
   updatedAt?: Date;
   type?: string;

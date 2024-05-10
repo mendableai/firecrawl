@@ -13,6 +13,7 @@ export class WebCrawler {
   private includes: string[];
   private excludes: string[];
   private maxCrawledLinks: number;
+  private maxCrawledDepth: number;
   private visited: Set<string> = new Set();
   private crawledUrls: Set<string> = new Set();
   private limit: number;
@@ -27,6 +28,7 @@ export class WebCrawler {
     maxCrawledLinks,
     limit = 10000,
     generateImgAltText = false,
+    maxCrawledDepth = 10,
   }: {
     initialUrl: string;
     includes?: string[];
@@ -34,6 +36,7 @@ export class WebCrawler {
     maxCrawledLinks?: number;
     limit?: number;
     generateImgAltText?: boolean;
+    maxCrawledDepth?: number;
   }) {
     this.initialUrl = initialUrl;
     this.baseUrl = new URL(initialUrl).origin;
@@ -44,15 +47,22 @@ export class WebCrawler {
     this.robots = robotsParser(this.robotsTxtUrl, "");
     // Deprecated, use limit instead
     this.maxCrawledLinks = maxCrawledLinks ?? limit;
+    this.maxCrawledDepth = maxCrawledDepth ?? 10;
     this.generateImgAltText = generateImgAltText ?? false;
   }
 
 
-  private filterLinks(sitemapLinks: string[], limit: number): string[] {
+  private filterLinks(sitemapLinks: string[], limit: number, maxDepth: number): string[] {
     return sitemapLinks
       .filter((link) => {
         const url = new URL(link);
         const path = url.pathname;
+        const depth = url.pathname.split('/').length - 1;
+
+        // Check if the link exceeds the maximum depth allowed
+        if (depth > maxDepth) {
+          return false;
+        }
 
         // Check if the link should be excluded
         if (this.excludes.length > 0 && this.excludes[0] !== "") {
@@ -87,7 +97,8 @@ export class WebCrawler {
   public async start(
     inProgress?: (progress: Progress) => void,
     concurrencyLimit: number = 5,
-    limit: number = 10000
+    limit: number = 10000,
+    maxDepth: number = 10
   ): Promise<string[]> {
     // Fetch and parse robots.txt
     try {
@@ -99,7 +110,7 @@ export class WebCrawler {
 
     const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
     if (sitemapLinks.length > 0) {
-      const filteredLinks = this.filterLinks(sitemapLinks, limit);
+      const filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
       return filteredLinks;
     }
 
@@ -110,13 +121,13 @@ export class WebCrawler {
     );
     if (
       urls.length === 0 &&
-      this.filterLinks([this.initialUrl], limit).length > 0
+      this.filterLinks([this.initialUrl], limit, this.maxCrawledDepth).length > 0
     ) {
       return [this.initialUrl];
     }
 
     // make sure to run include exclude here again
-    return this.filterLinks(urls, limit);
+    return this.filterLinks(urls, limit, this.maxCrawledDepth);
   }
 
   private async crawlUrls(

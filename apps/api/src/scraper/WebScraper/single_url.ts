@@ -21,7 +21,7 @@ export async function generateRequestParams(
   };
 
   try {
-    const urlKey = new URL(url).hostname;
+    const urlKey = new URL(url).hostname.replace(/^www\./, "");
     if (urlSpecificParams.hasOwnProperty(urlKey)) {
       return { ...defaultParams, ...urlSpecificParams[urlKey] };
     } else {
@@ -57,7 +57,7 @@ export async function scrapWithScrapingBee(
       wait_browser,
       timeout
     );
-    
+
     const response = await client.get(clientParams);
 
     if (response.status !== 200 && response.status !== 404) {
@@ -77,12 +77,15 @@ export async function scrapWithScrapingBee(
 
 export async function scrapWithPlaywright(url: string): Promise<string> {
   try {
+    const reqParams = await generateRequestParams(url);
+    const wait_playwright = reqParams["params"]?.wait ?? 0;
+
     const response = await fetch(process.env.PLAYWRIGHT_MICROSERVICE_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: url }),
+      body: JSON.stringify({ url: url, wait: wait_playwright }),
     });
 
     if (!response.ok) {
@@ -103,10 +106,8 @@ export async function scrapWithPlaywright(url: string): Promise<string> {
 
 export async function scrapSingleUrl(
   urlToScrap: string,
-  toMarkdown: boolean = true,
-  pageOptions: PageOptions = { onlyMainContent: true }
+  pageOptions: PageOptions = { onlyMainContent: true, includeHtml: false }
 ): Promise<Document> {
-  console.log(`Scraping URL: ${urlToScrap}`);
   urlToScrap = urlToScrap.trim();
 
   const removeUnwantedElements = (html: string, pageOptions: PageOptions) => {
@@ -170,58 +171,57 @@ export async function scrapSingleUrl(
         }
         break;
     }
+
+    //* TODO: add an optional to return markdown or structured/extracted content
     let cleanedHtml = removeUnwantedElements(text, pageOptions);
 
     return [await parseMarkdown(cleanedHtml), text];
   };
-
   try {
-    // TODO: comment this out once we're ready to merge firecrawl-scraper into the mono-repo
-    // let [text, html] = await attemptScraping(urlToScrap, 'firecrawl-scraper');
-    // if (!text || text.length < 100) {
-    //   console.log("Falling back to scraping bee load");
-    //   [text, html] = await attemptScraping(urlToScrap, 'scrapingBeeLoad');
-    // }
+    let [text, html] = ["", ""];
+    let urlKey = urlToScrap;
+    try {
+      urlKey = new URL(urlToScrap).hostname.replace(/^www\./, "");
+    } catch (error) {
+      console.error(`Invalid URL key, trying: ${urlToScrap}`);
+    }
+    const defaultScraper = urlSpecificParams[urlKey]?.defaultScraper ?? "";
+    const scrapersInOrder = defaultScraper
+      ? [
+          defaultScraper,
+          "scrapingBee",
+          "playwright",
+          "scrapingBeeLoad",
+          "fetch",
+        ]
+      : ["scrapingBee", "playwright", "scrapingBeeLoad", "fetch"];
 
-    let [text, html] = await attemptScraping(urlToScrap, "scrapingBee");
-    // Basically means that it is using /search endpoint
-    if (pageOptions.fallback === false) {
-      const soup = cheerio.load(html);
-      const metadata = extractMetadata(soup, urlToScrap);
-      return {
-        url: urlToScrap,
-        content: text,
-        markdown: text,
-        metadata: { ...metadata, sourceURL: urlToScrap },
-      } as Document;
-    }
-    if (!text || text.length < 100) {
-      console.log("Falling back to playwright");
-      [text, html] = await attemptScraping(urlToScrap, "playwright");
+    for (const scraper of scrapersInOrder) {
+      [text, html] = await attemptScraping(urlToScrap, scraper);
+      if (text && text.length >= 100) break;
+      console.log(`Falling back to ${scraper}`);
     }
 
-    if (!text || text.length < 100) {
-      console.log("Falling back to scraping bee load");
-      [text, html] = await attemptScraping(urlToScrap, "scrapingBeeLoad");
-    }
-    if (!text || text.length < 100) {
-      console.log("Falling back to fetch");
-      [text, html] = await attemptScraping(urlToScrap, "fetch");
+    if (!text) {
+      throw new Error(`All scraping methods failed for URL: ${urlToScrap}`);
     }
 
     const soup = cheerio.load(html);
     const metadata = extractMetadata(soup, urlToScrap);
-
-    return {
+    const document: Document = {
       content: text,
       markdown: text,
+      html: pageOptions.includeHtml ? html : undefined,
       metadata: { ...metadata, sourceURL: urlToScrap },
-    } as Document;
+    };
+
+    return document;
   } catch (error) {
     console.error(`Error: ${error} - Failed to fetch URL: ${urlToScrap}`);
     return {
       content: "",
       markdown: "",
+      html: "",
       metadata: { sourceURL: urlToScrap },
     } as Document;
   }
