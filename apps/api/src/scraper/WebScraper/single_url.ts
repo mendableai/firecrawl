@@ -78,7 +78,7 @@ export async function scrapWithScrapingBee(
 export async function scrapWithPlaywright(url: string): Promise<string> {
   try {
     const reqParams = await generateRequestParams(url);
-    const wait_playwright = reqParams["params"]["wait"];
+    const wait_playwright = reqParams["params"]?.wait ?? 0;
 
     const response = await fetch(process.env.PLAYWRIGHT_MICROSERVICE_URL, {
       method: "POST",

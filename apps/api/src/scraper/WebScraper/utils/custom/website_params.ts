@@ -44,7 +44,7 @@ export const urlSpecificParams = {
     params: {
         wait_browser: "networkidle2",
         block_resources: false,
-        wait: 5000,
+        wait: 3000,
       },
       headers: {
         "User-Agent":
@@ -64,7 +64,7 @@ export const urlSpecificParams = {
     params: {
         wait_browser: "networkidle2",
         block_resources: false,
-        wait: 5000,
+        wait: 3000,
       },
       headers: {
         "User-Agent":
