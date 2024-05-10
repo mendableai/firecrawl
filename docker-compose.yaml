@@ -4,14 +4,14 @@ services:
   redis:
     image: redis:alpine
     networks:
-      - firecrawl
+      - default
 
   playwright-service:
     build: apps/playwright-service
     environment:
       - PORT=3000
     networks:
-      - firecrawl
+      - default
   
   api:
     build: apps/api
@@ -42,7 +42,7 @@ services:
       - "3002:3002"
     command: [ "pnpm", "run", "start:production" ]
     networks:
-      - firecrawl
+      - default
 
   worker:
     build: apps/api
@@ -71,8 +71,7 @@ services:
       - playwright-service
       - api
     networks:
-      - firecrawl
+      - default
 
 networks:
   default:
-    name: firecrawl
