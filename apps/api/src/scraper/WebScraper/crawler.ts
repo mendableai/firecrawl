@@ -25,7 +25,7 @@ export class WebCrawler {
     initialUrl,
     includes,
     excludes,
-    maxCrawledLinks,
+    maxCrawledLinks = 10000,
     limit = 10000,
     generateImgAltText = false,
     maxCrawledDepth = 10,
@@ -136,7 +136,7 @@ export class WebCrawler {
     inProgress?: (progress: Progress) => void
   ): Promise<string[]> {
     const queue = async.queue(async (task: string, callback) => {
-      if (this.crawledUrls.size >= this.maxCrawledLinks) {
+      if (this.crawledUrls.size >= Math.min(this.maxCrawledLinks, this.limit)) {
         if (callback && typeof callback === "function") {
           callback();
         }
@@ -147,14 +147,14 @@ export class WebCrawler {
       if (inProgress && newUrls.length > 0) {
         inProgress({
           current: this.crawledUrls.size,
-          total: this.maxCrawledLinks,
+          total: Math.min(this.maxCrawledLinks, this.limit),
           status: "SCRAPING",
           currentDocumentUrl: newUrls[newUrls.length - 1],
         });
       } else if (inProgress) {
         inProgress({
           current: this.crawledUrls.size,
-          total: this.maxCrawledLinks,
+          total: Math.min(this.maxCrawledLinks, this.limit),
           status: "SCRAPING",
           currentDocumentUrl: task,
         });
