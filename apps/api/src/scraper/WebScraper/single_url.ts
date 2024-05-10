@@ -202,14 +202,13 @@ export async function scrapSingleUrl(
       console.log(`Falling back to ${scraper}`);
     }
 
-    if (!text || text.length < 100) {
+    if (!text) {
       throw new Error(`All scraping methods failed for URL: ${urlToScrap}`);
     }
 
     const soup = cheerio.load(html);
     const metadata = extractMetadata(soup, urlToScrap);
     const document: Document = {
-      url: urlToScrap,
       content: text,
       markdown: text,
       html: pageOptions.includeHtml ? html : undefined,
