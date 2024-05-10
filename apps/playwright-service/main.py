@@ -8,6 +8,7 @@ app = FastAPI()
 
 class UrlModel(BaseModel):
     url: str
+    wait: int = None
 
 
 browser: Browser = None
@@ -29,7 +30,9 @@ async def shutdown_event():
 async def root(body: UrlModel):
     context = await browser.new_context()
     page = await context.new_page()
-    await page.goto(body.url)
+    await page.goto(body.url, timeout=15000)  # Set max timeout to 15s
+    if body.wait:  # Check if wait parameter is provided in the request body
+        await page.wait_for_timeout(body.wait)  # Convert seconds to milliseconds for playwright
     page_content = await page.content()
     await context.close()
     json_compatible_item_data = {"content": page_content}
