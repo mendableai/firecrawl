@@ -5,7 +5,6 @@ from pydantic import BaseModel
 
 app = FastAPI()
 
-
 class UrlModel(BaseModel):
     url: str
     wait: int = None
