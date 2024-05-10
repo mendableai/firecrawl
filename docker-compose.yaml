@@ -12,10 +12,10 @@ services:
   api:
     build: apps/api
     environment:
-      - REDIS_URL=redis://redis:6379
-      - PLAYWRIGHT_SERVICE_URL=http://playwright-service:3000
+      - REDIS_URL=${REDIS_URL}
+      - PLAYWRIGHT_MICROSERVICE_URL=${PLAYWRIGHT_MICROSERVICE_URL}
       - USE_DB_AUTHENTICATION=${USE_DB_AUTHENTICATION}
-      - PORT=3002
+      - PORT=${PORT}
       - NUM_WORKERS_PER_QUEUE=${NUM_WORKERS_PER_QUEUE}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
@@ -30,7 +30,7 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_TOKEN=${SUPABASE_SERVICE_TOKEN}
       - SCRAPING_BEE_API_KEY=${SCRAPING_BEE_API_KEY}
-      - HOST=0.0.0.0
+      - HOST=${HOST}
     depends_on:
       - redis
       - playwright-service
@@ -41,10 +41,10 @@ services:
   worker:
     build: apps/api
     environment:
-      - REDIS_URL=redis://redis:6379
-      - PLAYWRIGHT_SERVICE_URL=http://playwright-service:3000
+      - REDIS_URL=${REDIS_URL}
+      - PLAYWRIGHT_MICROSERVICE_URL=${PLAYWRIGHT_MICROSERVICE_URL}
       - USE_DB_AUTHENTICATION=${USE_DB_AUTHENTICATION}
-      - PORT=3002
+      - PORT=${PORT}
       - NUM_WORKERS_PER_QUEUE=${NUM_WORKERS_PER_QUEUE}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
       - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
@@ -59,6 +59,8 @@ services:
       - SUPABASE_URL=${SUPABASE_URL}
       - SUPABASE_SERVICE_TOKEN=${SUPABASE_SERVICE_TOKEN}
       - SCRAPING_BEE_API_KEY=${SCRAPING_BEE_API_KEY}
+      - HOST=${HOST}
     depends_on:
       - redis
       - playwright-service
+      - api
