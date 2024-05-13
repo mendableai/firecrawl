@@ -17,8 +17,10 @@ export async function startWebScraperPipeline({
     crawlerOptions: job.data.crawlerOptions,
     pageOptions: job.data.pageOptions,
     inProgress: (progress) => {
-      partialDocs.push(progress.currentDocument);
-      job.progress({...progress, partialDocs: partialDocs});
+      if (progress.currentDocument) {
+        partialDocs.push(progress.currentDocument);
+        job.progress({ ...progress, partialDocs: partialDocs });
+      }
     },
     onSuccess: (result) => {
       job.moveToCompleted(result);
@@ -27,7 +29,7 @@ export async function startWebScraperPipeline({
       job.moveToFailed(error);
     },
     team_id: job.data.team_id,
-    bull_job_id: job.id.toString()
+    bull_job_id: job.id.toString(),
   })) as { success: boolean; message: string; docs: Document[] };
 }
 export async function runWebScraper({
@@ -63,26 +65,25 @@ export async function runWebScraper({
         urls: [url],
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
-        bullJobId: bull_job_id
+        bullJobId: bull_job_id,
       });
     } else {
       await provider.setOptions({
         mode: mode,
         urls: url.split(","),
         crawlerOptions: crawlerOptions,
-        pageOptions: pageOptions
+        pageOptions: pageOptions,
       });
     }
     const docs = (await provider.getDocuments(false, (progress: Progress) => {
       inProgress(progress);
-      
     })) as Document[];
 
     if (docs.length === 0) {
       return {
         success: true,
         message: "No pages found",
-        docs: []
+        docs: [],
       };
     }
 
@@ -95,18 +96,14 @@ export async function runWebScraper({
         })
       : docs.filter((doc) => doc.content.trim().length > 0);
 
-
-    const billingResult = await billTeam(
-      team_id,
-      filteredDocs.length
-    );
+    const billingResult = await billTeam(team_id, filteredDocs.length);
 
     if (!billingResult.success) {
       // throw new Error("Failed to bill team, no subscription was found");
       return {
         success: false,
         message: "Failed to bill team, no subscription was found",
-        docs: []
+        docs: [],
       };
     }
 
