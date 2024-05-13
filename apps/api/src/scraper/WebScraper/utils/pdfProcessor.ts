@@ -106,35 +106,3 @@ async function processPdf(file: string) {
   const data = await pdf(fileContent);
   return data.text;
 }
-/**
- * Check if a url is a pdf
- * @param url The url to check
- * @param fastMode If true, the function will return false if the url is does not end with .pdf
- * @returns A promise that resolves to true if the url is a pdf, false otherwise
- */
-export async function isUrlAPdf({
-  url,
-  fastMode = false,
-}: {
-  url: string;
-  fastMode?: boolean;
-}): Promise<boolean> {
-  try {
-    if (url.endsWith(".pdf")) {
-      return true;
-    }
-    // If fast mode is enabled, we skip the HEAD request and return false
-    if (fastMode) {
-      return false;
-    }
-    const before = Date.now();
-    const response = await axios.head(url);
-    const after = Date.now();
-    console.log(`${after - before}ms - HEAD Request for ${url}`);
-    const contentType = response.headers['content-type'];
-    return contentType.includes('application/pdf');
-  } catch (error) {
-    // console.error("Error making HEAD request:", error);
-    return false;
-  }
-}

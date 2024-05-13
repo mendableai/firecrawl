@@ -67,13 +67,11 @@ export async function scrapWithScrapingBee(
       );
       return "";
     }
-    // Check the content type of the response
+    
     const contentType = response.headers['content-type'];
     if (contentType && contentType.includes('application/pdf')) {
-      // Handle PDF content type
       return fetchAndProcessPdf(url);
     } else {
-      // Assume the content is text and decode it
       const decoder = new TextDecoder();
       const text = decoder.decode(response.data);
       return text;
@@ -104,9 +102,14 @@ export async function scrapWithPlaywright(url: string): Promise<string> {
       return "";
     }
 
-    const data = await response.json();
-    const html = data.content;
-    return html ?? "";
+    const contentType = response.headers['content-type'];
+    if (contentType && contentType.includes('application/pdf')) {
+      return fetchAndProcessPdf(url);
+    } else {
+      const data = await response.json();
+      const html = data.content;
+      return html ?? "";
+    }
   } catch (error) {
     console.error(`Error scraping with Puppeteer: ${error}`);
     return "";
@@ -173,7 +176,13 @@ export async function scrapSingleUrl(
             );
             return "";
           }
-          text = await response.text();
+
+          const contentType = response.headers['content-type'];
+          if (contentType && contentType.includes('application/pdf')) {
+            return fetchAndProcessPdf(url);
+          } else {
+            text = await response.text();
+          }
         } catch (error) {
           console.error(`Error scraping URL: ${error}`);
           return "";
