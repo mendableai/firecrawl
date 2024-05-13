@@ -1,17 +1,12 @@
 name: firecrawl
 version: '3.9'
 services:
-  redis:
-    image: redis:alpine
-    networks:
-      - default
-
   playwright-service:
     build: apps/playwright-service
     environment:
       - PORT=3000
     networks:
-      - default
+      - backend
   
   api:
     build: apps/api
@@ -42,7 +37,7 @@ services:
       - "3002:3002"
     command: [ "pnpm", "run", "start:production" ]
     networks:
-      - default
+      - backend
 
   worker:
     build: apps/api
@@ -71,7 +66,13 @@ services:
       - playwright-service
       - api
     networks:
-      - default
+      - backend
+  redis:
+    image: redis:alpine
+    networks:
+      - backend
+    command: redis-server --bind 0.0.0.0
 
 networks:
-  default:
+  backend:
+    driver: bridge

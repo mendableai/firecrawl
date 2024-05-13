@@ -14,6 +14,11 @@ For running the simplest version of FireCrawl, edit the `USE_DB_AUTHENTICATION` 
 USE_DB_AUTHENTICATION=false
 ```
 
+Update the Redis URL in the .env file to align with the Docker configuration:
+```yml
+REDIS_URL=redis://redis:6379
+```
+
 Once that's complete, you can simply run the following commands to get started:
 ```bash
 docker compose up
