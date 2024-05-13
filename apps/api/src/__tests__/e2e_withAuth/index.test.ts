@@ -176,6 +176,16 @@ describe("E2E Tests for API Routes", () => {
     //   expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
     // });
 
+    it("should return a timeout error when scraping takes longer than the specified timeout", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://firecrawl.dev", timeout: 1000 });
+
+      expect(response.statusCode).toBe(408);
+    }, 3000); 
+
     it("should return a successful response with a valid API key", async () => {
       const response = await request(TEST_URL)
         .post("/v0/crawlWebsitePreview")

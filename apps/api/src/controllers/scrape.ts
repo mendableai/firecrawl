@@ -15,6 +15,7 @@ export async function scrapeHelper(
   crawlerOptions: any,
   pageOptions: PageOptions,
   extractorOptions: ExtractorOptions,
+  timeout: number
 ): Promise<{
   success: boolean;
   error?: string;
@@ -30,7 +31,6 @@ export async function scrapeHelper(
     return { success: false, error: "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.", returnCode: 403 };
   }
 
-
   const a = new WebScraperDataProvider();
   await a.setOptions({
     mode: "single_urls",
@@ -42,7 +42,19 @@ export async function scrapeHelper(
     extractorOptions: extractorOptions,
   });
 
-  const docs = await a.getDocuments(false);
+  const timeoutPromise = new Promise<{ success: boolean; error?: string; returnCode: number }>((_, reject) =>
+    setTimeout(() => reject({ success: false, error: "Request timed out. Increase the timeout by passing `timeout` param to the request.", returnCode: 408 }), timeout)
+  );
+
+  const docsPromise = a.getDocuments(false);
+
+  let docs;
+  try {
+    docs = await Promise.race([docsPromise, timeoutPromise]);
+  } catch (error) {
+    return error;
+  }
+
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(
     (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
@@ -51,12 +63,11 @@ export async function scrapeHelper(
     return { success: true, error: "No page found", returnCode: 200 };
   }
 
-
-  let creditsToBeBilled =  filteredDocs.length;
+  let creditsToBeBilled = filteredDocs.length;
   const creditsPerLLMExtract = 5;
 
-  if (extractorOptions.mode === "llm-extraction"){
-    creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length)
+  if (extractorOptions.mode === "llm-extraction") {
+    creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length);
   }
 
   const billingResult = await billTeam(
@@ -96,6 +107,7 @@ export async function scrapeController(req: Request, res: Response) {
       mode: "markdown"
     }
     const origin = req.body.origin ?? "api";
+    const timeout = req.body.timeout ?? 30000; // Default timeout of 30 seconds
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
@@ -114,6 +126,7 @@ export async function scrapeController(req: Request, res: Response) {
       crawlerOptions,
       pageOptions,
       extractorOptions,
+      timeout
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
