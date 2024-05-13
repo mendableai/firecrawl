@@ -196,7 +196,7 @@ export class WebScraperDataProvider {
     let documents = await this.convertUrlsToDocuments(links, inProgress);
     documents = await this.getSitemapData(this.urls[0], documents);
     documents = this.applyPathReplacements(documents);
-    documents = await this.applyImgAltText(documents);
+    // documents = await this.applyImgAltText(documents);
 
     if (
       this.extractorOptions.mode === "llm-extraction" &&
