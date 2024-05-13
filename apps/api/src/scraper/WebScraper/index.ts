@@ -144,14 +144,23 @@ export class WebScraperDataProvider {
       return this.returnOnlyUrlsResponse(links, inProgress);
     }
 
+    // const [pdfLinks, notPdfLinks] = await this.splitPdfLinks(links);
+    // const pdfDocuments = await this.fetchPdfDocuments(pdfLinks);    
+
     let documents = await this.processLinks(links, inProgress);
+    // documents.push(...pdfDocuments);
     return this.cacheAndFinalizeDocuments(documents, links);
   }
 
   private async handleSingleUrlsMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
-    let documents = await this.processLinks(this.urls, inProgress);
+    const links = this.urls;
+    // const [pdfLinks, notPdfLinks] = await this.splitPdfLinks(links);
+    // const pdfDocuments = await this.fetchPdfDocuments(pdfLinks);
+
+    let documents = await this.processLinks(links, inProgress);
+    // documents.push(...pdfDocuments);
     return documents;
   }
 
@@ -163,7 +172,11 @@ export class WebScraperDataProvider {
       return this.returnOnlyUrlsResponse(links, inProgress);
     }
 
+    // let [pdfLinks, notPdfLinks] = await this.splitPdfLinks(links);
+    // const pdfDocuments = await this.fetchPdfDocuments(pdfLinks);
+
     let documents = await this.processLinks(links, inProgress);
+    // documents.push(...pdfDocuments);
     return this.cacheAndFinalizeDocuments(documents, links);
   }
 
@@ -218,6 +231,19 @@ export class WebScraperDataProvider {
         };
       })
     );
+  }
+
+  private async splitPdfLinks(links: string[]): Promise<[string[], string[]]> {
+    const checks = links.map(async (link) => ({
+      link,
+      isPdf: await isUrlAPdf({ url: link })
+    }));
+  
+    const results = await Promise.all(checks);
+    const pdfLinks = results.filter(result => result.isPdf).map(result => result.link);
+    const notPdfLinks = results.filter(result => !result.isPdf).map(result => result.link);
+  
+    return [pdfLinks, notPdfLinks];
   }
 
   private applyPathReplacements(documents: Document[]): Document[] {

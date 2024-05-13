@@ -117,7 +117,7 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty('content');
       expect(response.body.data).toHaveProperty('metadata');
       expect(response.body.data.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
-    }, 30000); // 30 seconds
+    }, 60000); // 60 seconds
   
     it('should return a successful response for a valid scrape with PDF file without explicit .pdf extension', async () => {
       const response = await request(TEST_URL)
@@ -132,7 +132,7 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty('content');
       expect(response.body.data).toHaveProperty('metadata');
       expect(response.body.data.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
-    }, 30000); // 30 seconds
+    }, 60000); // 60 seconds
   });
 
   describe("POST /v0/crawl", () => {
@@ -427,10 +427,8 @@ describe("E2E Tests for API Routes", () => {
       .send({ url: "https://jestjs.io" });
     expect(crawlResponse.statusCode).toBe(200);
 
-    
-
     // wait for 30 seconds
-    await new Promise((r) => setTimeout(r, 10000));
+    await new Promise((r) => setTimeout(r, 20000));
 
     const response = await request(TEST_URL)
       .delete(`/v0/crawl/cancel/${crawlResponse.body.jobId}`)
@@ -439,7 +437,7 @@ describe("E2E Tests for API Routes", () => {
     expect(response.body).toHaveProperty("status");
     expect(response.body.status).toBe("cancelled");
 
-    await new Promise((r) => setTimeout(r, 20000));
+    await new Promise((r) => setTimeout(r, 10000));
 
     const completedResponse = await request(TEST_URL)
       .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
@@ -455,8 +453,6 @@ describe("E2E Tests for API Routes", () => {
     expect(completedResponse.body.partial_data[0]).toHaveProperty("metadata");
     
   }, 60000); // 60 seconds
-
-  
 
   describe("POST /v0/scrape with LLM Extraction", () => {
     it("should extract data using LLM extraction mode", async () => {

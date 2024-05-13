@@ -77,12 +77,12 @@ export async function processPdfToText(filePath: string): Promise<string> {
           } else {
             // If the status code is not 200, increment the attempt counter and wait
             attempt++;
-            await new Promise((resolve) => setTimeout(resolve, 250)); // Wait for 2 seconds
+            await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 0.5 seconds
           }
         } catch (error) {
-          console.error("Error fetching result:", error);
+          console.error("Error fetching result:", error.data.detail || '');
           attempt++;
-          await new Promise((resolve) => setTimeout(resolve, 250)); // Wait for 2 seconds before retrying
+          await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 0.5 seconds before retrying
           // You may want to handle specific errors differently
         }
       }
@@ -127,7 +127,10 @@ export async function isUrlAPdf({
     if (fastMode) {
       return false;
     }
+    const before = Date.now();
     const response = await axios.head(url);
+    const after = Date.now();
+    console.log(`${after - before}ms - HEAD Request for ${url}`);
     const contentType = response.headers['content-type'];
     return contentType.includes('application/pdf');
   } catch (error) {
