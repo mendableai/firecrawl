@@ -128,7 +128,8 @@
                       },
                       "limit": {
                         "type": "integer",
-                        "description": "Maximum number of pages to crawl"
+                        "description": "Maximum number of pages to crawl",
+                        "default": 10000
                       }
                     }
                   },
