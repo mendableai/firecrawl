@@ -21,28 +21,28 @@ export const redisClient = redis.createClient({
 
 export const previewRateLimiter = new RateLimiterRedis({
   storeClient: redisClient,
-  keyPrefix: "middleware",
+  keyPrefix: "preview",
   points: MAX_REQUESTS_PER_MINUTE_PREVIEW,
   duration: 60, // Duration in seconds
 });
 
 export const serverRateLimiter = new RateLimiterRedis({
   storeClient: redisClient,
-  keyPrefix: "middleware",
+  keyPrefix: "server",
   points: MAX_REQUESTS_PER_MINUTE_ACCOUNT,
   duration: 60, // Duration in seconds
 });
 
 export const crawlStatusRateLimiter = new RateLimiterRedis({
   storeClient: redisClient,
-  keyPrefix: "middleware",
+  keyPrefix: "crawl-status",
   points: MAX_REQUESTS_PER_MINUTE_CRAWL_STATUS,
   duration: 60, // Duration in seconds
 });
 
 export const testSuiteRateLimiter = new RateLimiterRedis({
   storeClient: redisClient,
-  keyPrefix: "middleware",
+  keyPrefix: "test-suite",
   points: 1000,
   duration: 60, // Duration in seconds
 });
@@ -52,21 +52,21 @@ export function crawlRateLimit (plan: string){
   if (plan === "standard"){
     return new RateLimiterRedis({
       storeClient: redisClient,
-      keyPrefix: "middleware",
+      keyPrefix: "crawl-standard",
       points: MAX_CRAWLS_PER_MINUTE_STANDARD,
       duration: 60, // Duration in seconds
     });
   } else if (plan === "scale"){
     return new RateLimiterRedis({
       storeClient: redisClient,
-      keyPrefix: "middleware",
+      keyPrefix: "crawl-scale",
       points: MAX_CRAWLS_PER_MINUTE_SCALE,
       duration: 60, // Duration in seconds
     });
   }
   return new RateLimiterRedis({
     storeClient: redisClient,
-    keyPrefix: "middleware",
+    keyPrefix: "crawl-starter",
     points: MAX_CRAWLS_PER_MINUTE_STARTER,
     duration: 60, // Duration in seconds
   });
@@ -76,21 +76,21 @@ export function scrapeRateLimit (plan: string){
   if (plan === "standard"){
     return new RateLimiterRedis({
       storeClient: redisClient,
-      keyPrefix: "middleware",
+      keyPrefix: "scrape-standard",
       points: MAX_SCRAPES_PER_MINUTE_STANDARD,
       duration: 60, // Duration in seconds
     });
   } else if (plan === "scale"){
     return new RateLimiterRedis({
       storeClient: redisClient,
-      keyPrefix: "middleware",
+      keyPrefix: "scrape-scale",
       points: MAX_SCRAPES_PER_MINUTE_SCALE,
       duration: 60, // Duration in seconds
     });
   }
   return new RateLimiterRedis({
     storeClient: redisClient,
-    keyPrefix: "middleware",
+    keyPrefix: "scrape-starter",
     points: MAX_SCRAPES_PER_MINUTE_STARTER,
     duration: 60, // Duration in seconds
   });
