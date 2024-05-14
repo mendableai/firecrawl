@@ -20,7 +20,6 @@ export class WebCrawler {
   private robotsTxtUrl: string;
   private robots: any;
   private generateImgAltText: boolean;
-  private fastMode: boolean = false;
 
   constructor({
     initialUrl,
@@ -50,7 +49,6 @@ export class WebCrawler {
     this.maxCrawledLinks = maxCrawledLinks ?? limit;
     this.maxCrawledDepth = maxCrawledDepth ?? 10;
     this.generateImgAltText = generateImgAltText ?? false;
-    this.fastMode = false;
   }
 
   private filterLinks(sitemapLinks: string[], limit: number, maxDepth: number): string[] {
@@ -231,8 +229,7 @@ export class WebCrawler {
       });
 
       // Create a new list to return to avoid modifying the visited list
-      const filteredLinks = links.filter((link) => !this.visited.has(link.url));
-      return filteredLinks;
+      return links.filter((link) => !this.visited.has(link.url));
     } catch (error) {
       return [];
     }

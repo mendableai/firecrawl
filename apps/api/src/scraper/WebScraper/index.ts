@@ -48,7 +48,7 @@ export class WebScraperDataProvider {
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
   private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" =
     "gpt-4-turbo";
-  private fastMode: boolean = false;
+  private crawlerMode: string = "default";
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -173,7 +173,7 @@ export class WebScraperDataProvider {
     let fastDocs = []
     let documents = [];
     // check if fast mode is enabled and there is html inside the links
-    if (this.fastMode && links.some((link) => link.html)) {
+    if (this.crawlerMode === "fast" && links.some((link) => link.html)) {
       console.log("Fast mode enabled");
       documents = await this.processLinks(allLinks, inProgress, allHtmls);
 
@@ -438,7 +438,7 @@ export class WebScraperDataProvider {
     this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
     //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
-    this.fastMode = options.crawlerOptions?.fastMode ?? false;
+    this.crawlerMode = options.crawlerOptions?.mode ?? "default";
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {
