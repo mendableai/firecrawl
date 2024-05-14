@@ -240,7 +240,7 @@ export default class FirecrawlApp {
      * @param {string} action - The action being performed when the error occurred.
      */
     handleError(response, action) {
-        if ([402, 409, 500].includes(response.status)) {
+        if ([402, 408, 409, 500].includes(response.status)) {
             const errorMessage = response.data.error || "Unknown error occurred";
             throw new Error(`Failed to ${action}. Status code: ${response.status}. Error: ${errorMessage}`);
         }
