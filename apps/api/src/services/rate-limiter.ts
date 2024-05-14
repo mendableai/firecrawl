@@ -2,17 +2,17 @@ import { RateLimiterRedis } from "rate-limiter-flexible";
 import * as redis from "redis";
 import { RateLimiterMode } from "../../src/types";
 
-const MAX_REQUESTS_PER_MINUTE_PREVIEW = 5;
 const MAX_CRAWLS_PER_MINUTE_STARTER = 2;
 const MAX_CRAWLS_PER_MINUTE_STANDARD = 4;
 const MAX_CRAWLS_PER_MINUTE_SCALE = 20;
 
+const MAX_SCRAPES_PER_MINUTE_STARTER = 10;
+const MAX_SCRAPES_PER_MINUTE_STANDARD = 15;
+const MAX_SCRAPES_PER_MINUTE_SCALE = 30;
+
+const MAX_REQUESTS_PER_MINUTE_PREVIEW = 5;
 const MAX_REQUESTS_PER_MINUTE_ACCOUNT = 20;
-
 const MAX_REQUESTS_PER_MINUTE_CRAWL_STATUS = 120;
-
-
-
 
 export const redisClient = redis.createClient({
   url: process.env.REDIS_URL,
@@ -48,15 +48,15 @@ export const testSuiteRateLimiter = new RateLimiterRedis({
 });
 
 
-export function crawlRateLimit(plan: string){
-  if(plan === "standard"){
+export function crawlRateLimit (plan: string){
+  if (plan === "standard"){
     return new RateLimiterRedis({
       storeClient: redisClient,
       keyPrefix: "middleware",
       points: MAX_CRAWLS_PER_MINUTE_STANDARD,
       duration: 60, // Duration in seconds
     });
-  }else if(plan === "scale"){
+  } else if (plan === "scale"){
     return new RateLimiterRedis({
       storeClient: redisClient,
       keyPrefix: "middleware",
@@ -70,18 +70,38 @@ export function crawlRateLimit(plan: string){
     points: MAX_CRAWLS_PER_MINUTE_STARTER,
     duration: 60, // Duration in seconds
   });
-
 }
 
-
-
+export function scrapeRateLimit (plan: string){
+  if (plan === "standard"){
+    return new RateLimiterRedis({
+      storeClient: redisClient,
+      keyPrefix: "middleware",
+      points: MAX_SCRAPES_PER_MINUTE_STANDARD,
+      duration: 60, // Duration in seconds
+    });
+  } else if (plan === "scale"){
+    return new RateLimiterRedis({
+      storeClient: redisClient,
+      keyPrefix: "middleware",
+      points: MAX_SCRAPES_PER_MINUTE_SCALE,
+      duration: 60, // Duration in seconds
+    });
+  }
+  return new RateLimiterRedis({
+    storeClient: redisClient,
+    keyPrefix: "middleware",
+    points: MAX_SCRAPES_PER_MINUTE_STARTER,
+    duration: 60, // Duration in seconds
+  });
+}
 
 export function getRateLimiter(mode: RateLimiterMode, token: string){
   // Special test suite case. TODO: Change this later.
-  if(token.includes("5089cefa58")){
+  if (token.includes("5089cefa58")){
     return testSuiteRateLimiter;
   }
-  switch(mode) {
+  switch (mode) {
     case RateLimiterMode.Preview:
       return previewRateLimiter;
     case RateLimiterMode.CrawlStatus:
