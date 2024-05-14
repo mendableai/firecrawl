@@ -15,7 +15,7 @@ export class WebCrawler {
   private maxCrawledLinks: number;
   private maxCrawledDepth: number;
   private visited: Set<string> = new Set();
-  private crawledUrls: Set<{ url: string, html: string }> = new Set();
+  private crawledUrls: Map<string, string> = new Map();
   private limit: number;
   private robotsTxtUrl: string;
   private robots: any;
@@ -143,7 +143,7 @@ export class WebCrawler {
         return;
       }
       const newUrls = await this.crawl(task);
-      newUrls.forEach((page) => this.crawledUrls.add(page));
+      newUrls.forEach((page) => this.crawledUrls.set(page.url, page.html));
       if (inProgress && newUrls.length > 0) {
         inProgress({
           current: this.crawledUrls.size,
@@ -175,7 +175,7 @@ export class WebCrawler {
       }
     );
     await queue.drain();
-    return Array.from(this.crawledUrls);
+    return Array.from(this.crawledUrls.entries()).map(([url, html]) => ({ url, html }));
   }
 
   async crawl(url: string): Promise<{url: string, html: string}[]> {
@@ -310,5 +310,3 @@ export class WebCrawler {
     return [];
   }
 }
-
-

@@ -176,9 +176,8 @@ export class WebScraperDataProvider {
     if (this.crawlerMode === "fast" && links.some((link) => link.html)) {
       console.log("Fast mode enabled");
       documents = await this.processLinks(allLinks, inProgress, allHtmls);
-
     }else{
-      documents = await this.convertUrlsToDocuments(allLinks, inProgress, allHtmls);
+      documents = await this.processLinks(allLinks, inProgress);
     }
 
     return this.cacheAndFinalizeDocuments(documents, allLinks);
