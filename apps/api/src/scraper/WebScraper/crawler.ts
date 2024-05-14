@@ -4,7 +4,7 @@ import { URL } from "url";
 import { getLinksFromSitemap } from "./sitemap";
 import async from "async";
 import { Progress } from "../../lib/entities";
-import { scrapWithScrapingBee } from "./single_url";
+import { scrapSingleUrl, scrapWithScrapingBee } from "./single_url";
 import robotsParser from "robots-parser";
 
 export class WebCrawler {
@@ -196,7 +196,8 @@ export class WebCrawler {
       let content;
       // If it is the first link, fetch with scrapingbee
       if (this.visited.size === 1) {
-        content = await scrapWithScrapingBee(url, "load");
+        const page = await scrapSingleUrl(url, {includeHtml: true});
+        content = page.html;
       } else {
         const response = await axios.get(url);
         content = response.data;

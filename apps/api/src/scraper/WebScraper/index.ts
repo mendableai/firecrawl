@@ -140,6 +140,7 @@ export class WebScraperDataProvider {
       generateImgAltText: this.generateImgAltText,
     });
     let links = await crawler.start(inProgress, 5, this.limit, this.maxCrawledDepth);
+
     if (this.returnOnlyUrls) {
       return this.returnOnlyUrlsResponse(links, inProgress);
     }
@@ -162,6 +163,7 @@ export class WebScraperDataProvider {
     if (this.returnOnlyUrls) {
       return this.returnOnlyUrlsResponse(links, inProgress);
     }
+
 
     let documents = await this.processLinks(links, inProgress);
     return this.cacheAndFinalizeDocuments(documents, links);
@@ -237,6 +239,8 @@ export class WebScraperDataProvider {
     links: string[]
   ): Promise<Document[]> {
     await this.setCachedDocuments(documents, links);
+    documents = this.filterDocsExcludeInclude(documents);
+    documents = this.filterDepth(documents);
     documents = this.removeChildLinks(documents);
     return documents.splice(0, this.limit);
   }
