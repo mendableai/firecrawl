@@ -15,7 +15,7 @@ export class WebCrawler {
   private maxCrawledLinks: number;
   private maxCrawledDepth: number;
   private visited: Set<string> = new Set();
-  private crawledUrls: { url: string, html: string }[] = [];
+  private crawledUrls: Set<{ url: string, html: string }> = new Set();
   private limit: number;
   private robotsTxtUrl: string;
   private robots: any;
@@ -136,24 +136,24 @@ export class WebCrawler {
     inProgress?: (progress: Progress) => void
   ): Promise<{ url: string, html: string }[]> {
     const queue = async.queue(async (task: string, callback) => {
-      if (this.crawledUrls.length >= this.maxCrawledLinks) {
+      if (this.crawledUrls.size >= this.maxCrawledLinks) {
         if (callback && typeof callback === "function") {
           callback();
         }
         return;
       }
       const newUrls = await this.crawl(task);
-      newUrls.forEach((page) => this.crawledUrls.push(page));
+      newUrls.forEach((page) => this.crawledUrls.add(page));
       if (inProgress && newUrls.length > 0) {
         inProgress({
-          current: this.crawledUrls.length,
+          current: this.crawledUrls.size,
           total: this.maxCrawledLinks,
           status: "SCRAPING",
           currentDocumentUrl: newUrls[newUrls.length - 1].url,
         });
       } else if (inProgress) {
         inProgress({
-          current: this.crawledUrls.length,
+          current: this.crawledUrls.size,
           total: this.maxCrawledLinks,
           status: "SCRAPING",
           currentDocumentUrl: task,
@@ -175,7 +175,7 @@ export class WebCrawler {
       }
     );
     await queue.drain();
-    return this.crawledUrls;
+    return Array.from(this.crawledUrls);
   }
 
   async crawl(url: string): Promise<{url: string, html: string}[]> {
@@ -310,4 +310,5 @@ export class WebCrawler {
     return [];
   }
 }
+
 
