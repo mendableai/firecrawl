@@ -17,7 +17,20 @@ import {
 } from "./utils/replacePaths";
 import { generateCompletions } from "../../lib/LLM-extraction";
 import { getWebScraperQueue } from "../../../src/services/queue-service";
-
+import { parseMarkdown } from "../../lib/html-to-markdown";
+import cheerio from "cheerio";
+import { excludeNonMainTags } from "./utils/excludeTags";
+const removeUnwantedElements = (html: string, pageOptions: PageOptions) => {
+  const soup = cheerio.load(html);
+  soup("script, style, iframe, noscript, meta, head").remove();
+  if (pageOptions.onlyMainContent) {
+    // remove any other tags that are not in the main content
+    excludeNonMainTags.forEach((tag) => {
+      soup(tag).remove();
+    });
+  }
+  return soup.html();
+};
 export class WebScraperDataProvider {
   private bullJobId: string;
   private urls: string[] = [""];
@@ -35,6 +48,7 @@ export class WebScraperDataProvider {
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
   private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" =
     "gpt-4-turbo";
+  private fastMode: boolean = false;
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -46,7 +60,8 @@ export class WebScraperDataProvider {
 
   private async convertUrlsToDocuments(
     urls: string[],
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
+    allHtmls?: string[]
   ): Promise<Document[]> {
     const totalUrls = urls.length;
     let processedUrls = 0;
@@ -56,7 +71,8 @@ export class WebScraperDataProvider {
       const batchUrls = urls.slice(i, i + this.concurrentRequests);
       await Promise.all(
         batchUrls.map(async (url, index) => {
-          const result = await scrapSingleUrl(url, this.pageOptions);
+          const existingText = allHtmls ? allHtmls[i + index] : "";
+          const result = await scrapSingleUrl(url, this.pageOptions, existingText);
           processedUrls++;
           if (inProgress) {
             inProgress({
@@ -139,13 +155,33 @@ export class WebScraperDataProvider {
       limit: this.limit,
       generateImgAltText: this.generateImgAltText,
     });
+    let start = Date.now();
     let links = await crawler.start(inProgress, 5, this.limit, this.maxCrawledDepth);
+    console.log(links.length)
+    let end = Date.now();
+    console.log("Crawl end in seconds ", (end - start) / 1000);
+    const allLinks = links.map((e) => e.url);
+    const allHtmls = links.map((e)=> e.html);
+    console.log("All links", allLinks.length);
+    console.log("All htmls", allHtmls.length);
+
     if (this.returnOnlyUrls) {
-      return this.returnOnlyUrlsResponse(links, inProgress);
+      return this.returnOnlyUrlsResponse(allLinks , inProgress);
+    }
+    
+
+    let fastDocs = []
+    let documents = [];
+    // check if fast mode is enabled and there is html inside the links
+    if (this.fastMode && links.some((link) => link.html)) {
+      console.log("Fast mode enabled");
+      documents = await this.processLinks(allLinks, inProgress, allHtmls);
+
+    }else{
+      documents = await this.convertUrlsToDocuments(allLinks, inProgress, allHtmls);
     }
 
-    let documents = await this.processLinks(links, inProgress);
-    return this.cacheAndFinalizeDocuments(documents, links);
+    return this.cacheAndFinalizeDocuments(documents, allLinks);
   }
 
   private async handleSingleUrlsMode(
@@ -187,14 +223,17 @@ export class WebScraperDataProvider {
 
   private async processLinks(
     links: string[],
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
+    allHtmls?: string[]
   ): Promise<Document[]> {
     let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
     let pdfDocuments = await this.fetchPdfDocuments(pdfLinks);
     links = links.filter((link) => !link.endsWith(".pdf"));
-
-    let documents = await this.convertUrlsToDocuments(links, inProgress);
+    
+    let documents = await this.convertUrlsToDocuments(links, inProgress, allHtmls);
     documents = await this.getSitemapData(this.urls[0], documents);
+
+
     documents = this.applyPathReplacements(documents);
     // documents = await this.applyImgAltText(documents);
 
@@ -238,6 +277,8 @@ export class WebScraperDataProvider {
   ): Promise<Document[]> {
     await this.setCachedDocuments(documents, links);
     documents = this.removeChildLinks(documents);
+    documents = this.filterDocsExcludeInclude(documents);
+    documents = this.filterDepth(documents);
     return documents.splice(0, this.limit);
   }
 
@@ -397,6 +438,7 @@ export class WebScraperDataProvider {
     this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
     //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
+    this.fastMode = options.crawlerOptions?.fastMode ?? false;
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {

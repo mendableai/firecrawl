@@ -106,7 +106,8 @@ export async function scrapWithPlaywright(url: string): Promise<string> {
 
 export async function scrapSingleUrl(
   urlToScrap: string,
-  pageOptions: PageOptions = { onlyMainContent: true, includeHtml: false }
+  pageOptions: PageOptions = { onlyMainContent: true, includeHtml: false },
+  existingText: string = ""
 ): Promise<Document> {
   urlToScrap = urlToScrap.trim();
 
@@ -197,8 +198,13 @@ export async function scrapSingleUrl(
       : ["scrapingBee", "playwright", "scrapingBeeLoad", "fetch"];
 
     for (const scraper of scrapersInOrder) {
+      // If exists text coming from crawler, use it
+      if (existingText && existingText.trim().length >= 100) {
+        text = existingText;
+        break;
+      }
       [text, html] = await attemptScraping(urlToScrap, scraper);
-      if (text && text.length >= 100) break;
+      if (text && text.trim().length >= 100) break;
       console.log(`Falling back to ${scraper}`);
     }
 

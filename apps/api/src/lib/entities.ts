@@ -44,6 +44,7 @@ export type WebScraperOptions = {
     limit?: number;
     generateImgAltText?: boolean;
     replaceAllPathsWithAbsolutePaths?: boolean;
+    fastMode?: boolean; // have a mode of some sort
   };
   pageOptions?: PageOptions;
   extractorOptions?: ExtractorOptions;
