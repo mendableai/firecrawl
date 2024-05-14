@@ -46,7 +46,8 @@ export async function supaAuthenticateUser(
     normalizedApi = parseApi(token);
 
     const { data, error } = await supabase_service.rpc(
-      'get_key_and_price_id', { api_key: normalizedApi });
+      'get_key_and_price_id_2', { api_key: normalizedApi }
+    );
 
     if (error) {
       console.error('Error fetching key and price_id:', error);
