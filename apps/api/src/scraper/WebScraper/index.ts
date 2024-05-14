@@ -240,7 +240,6 @@ export class WebScraperDataProvider {
   ): Promise<Document[]> {
     await this.setCachedDocuments(documents, links);
     documents = this.filterDocsExcludeInclude(documents);
-    documents = this.filterDepth(documents);
     documents = this.removeChildLinks(documents);
     return documents.splice(0, this.limit);
   }
