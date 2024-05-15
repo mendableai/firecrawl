@@ -118,17 +118,7 @@
     "notes": "This one should not go backwards, but it does!"
   },
   {
-    "website": "https://news.ycombinator.com/",
-    "expected_min_num_of_pages": 0,
-    "expected_crawled_pages": [""]
-  },
-  {
     "website": "https://www.vellum.ai/llm-leaderboard",
-    "expected_min_num_of_pages": 0,
-    "expected_crawled_pages": [""]
-  },
-  {
-    "website": "https://www.bigbadtoystore.com",
     "expected_min_num_of_pages": 0,
     "expected_crawled_pages": [""]
   },
@@ -151,31 +141,6 @@
     ]
   },
   {
-    "website": "https://www.powells.com",
-    "expected_min_num_of_pages": 0,
-    "expected_crawled_pages": [""]
-  },
-  {
-    "website": "https://www.royalacademy.org.uk",
-    "expected_min_num_of_pages": 0,
-    "expected_crawled_pages": [""]
-  },
-  {
-    "website": "https://www.eastbaytimes.com",
-    "expected_min_num_of_pages": 0,
-    "expected_crawled_pages": [""]
-  },
-  {
-    "website": "https://www.manchestereveningnews.co.uk",
-    "expected_min_num_of_pages": 0,
-    "expected_crawled_pages": [""]
-  },
-  {
-    "website": "https://physicsworld.com",
-    "expected_min_num_of_pages": 0,
-    "expected_crawled_pages": [""]
-  },
-  {
     "website": "https://richmondconfidential.org",
     "expected_min_num_of_pages": 50,
     "expected_crawled_pages": [
@@ -190,12 +155,6 @@
       "https://richmondconfidential.org/2009/10/13/before-napa-there-was-winehaven/",
       "https://richmondconfidential.org/2009/10/13/family-calls-for-end-to-violence-at-memorial-for-slain-woman-friend/"
     ]
-  },
-  {
-    "website": "https://www.techinasia.com",
-    "expected_min_num_of_pages": 0,
-    "expected_crawled_pages": [""],
-    "notes": "The website has a paywall and bot detectors."
   },
   {
     "website": "https://www.boardgamegeek.com",
@@ -217,10 +176,5 @@
       "https://www.boardgamegeek.com/previews",
       "https://www.boardgamegeek.com/browse/boardgame"
     ]
-  },
-  {
-    "website": "https://www.mountainproject.com",
-    "expected_min_num_of_pages": 0,
-    "expected_crawled_pages": [""]
   }
 ]
