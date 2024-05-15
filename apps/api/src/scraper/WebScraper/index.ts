@@ -414,7 +414,7 @@ export class WebScraperDataProvider {
     this.pageOptions = options.pageOptions ?? { onlyMainContent: false, includeHtml: false };
     this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
     this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
-    //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
+    //! @nicolas, for some reason this was being injected and breaking everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
     this.crawlerMode = options.crawlerOptions?.mode ?? "default";
 
