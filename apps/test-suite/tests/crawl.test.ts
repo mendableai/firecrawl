@@ -35,8 +35,6 @@ describe("Crawling Checkup (E2E)", () => {
       const errorLog: WebsiteScrapeError[] = [];
       
       for (const websiteData of websitesData) {
-        await new Promise(resolve => setTimeout(resolve, 10000)); 
-
         try {
           const crawlResponse = await request(TEST_URL || "")
             .post("/v0/crawl")
