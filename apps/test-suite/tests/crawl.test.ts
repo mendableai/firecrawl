@@ -40,10 +40,10 @@ describe("Crawling Checkup (E2E)", () => {
             .post("/v0/crawl")
             .set("Content-Type", "application/json")
             .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-            .send({ url: websiteData.website, pageOptions: { onlyMainContent: true }, crawlerOptions: { limit: 100 }});
+            .send({ url: websiteData.website, pageOptions: { onlyMainContent: true }, crawlerOptions: { limit: 100, returnOnlyUrls: true }});
 
           const jobId = crawlResponse.body.jobId;
-          let completedResponse;
+          let completedResponse: any;
           let isFinished = false;
 
           while (!isFinished) {
@@ -58,25 +58,47 @@ describe("Crawling Checkup (E2E)", () => {
             }
           }
 
-          console.log('-------------------')
-          console.log(websiteData.website);
           if(!completedResponse) {
             // fail the test
             console.log('No response');
             continue;
           }
 
-          if (!completedResponse.body.data) {
-            console.log(completedResponse.body.partial_data.length);
-            const urls = completedResponse.body.partial_data.map((page: any) => page.metadata?.sourceURL);
-            console.log(urls);
-          } else {
-            console.log(completedResponse.body.data.length);
-            const urls = completedResponse.body.data.map((page: any) => page.metadata?.sourceURL);
-            console.log(urls);
+          if (!completedResponse.body || completedResponse.body.status !== "completed") {
+            errorLog.push({
+              website: websiteData.website,
+              prompt: 'CRAWL',
+              expected_output: 'SUCCESS',
+              actual_output: 'FAILURE',
+              error: `Crawl job did not complete successfully.`
+            });
+            return null;
           }
 
-          console.log('-------------------')
+          // check how many webpages were crawled successfully
+          // compares with expected_num_of_pages
+          if (completedResponse.body.data.length < websiteData.expected_min_num_of_pages) {
+            errorLog.push({
+              website: websiteData.website,
+              prompt: 'CRAWL',
+              expected_output: `SUCCESS: ${websiteData.expected_min_num_of_pages}`,
+              actual_output: `FAILURE: ${completedResponse.body.data.length}`,
+              error: `Expected at least ${websiteData.expected_min_num_of_pages} webpages, but got ${completedResponse.body.data.length}`
+            });
+            return null;
+          }
+
+          // checks if crawled pages contain expected_crawled_pages
+          if (websiteData.expected_crawled_pages.some(page => !completedResponse.body.data.some((d: { url: string }) => d.url === page))) {
+            errorLog.push({
+              website: websiteData.website,
+              prompt: 'CRAWL',
+              expected_output: `SUCCESS: ${websiteData.expected_crawled_pages}`,
+              actual_output: `FAILURE: ${completedResponse.body.data}`,
+              error: `Expected crawled pages to contain ${websiteData.expected_crawled_pages}, but got ${completedResponse.body.data}`
+            });
+            return null;
+          }
 
           passedTests++;
         } catch (error) {
