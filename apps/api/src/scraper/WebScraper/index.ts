@@ -35,6 +35,7 @@ export class WebScraperDataProvider {
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
   private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" =
     "gpt-4-turbo";
+  private crawlerMode: string = "default";
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -46,7 +47,8 @@ export class WebScraperDataProvider {
 
   private async convertUrlsToDocuments(
     urls: string[],
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
+    allHtmls?: string[]
   ): Promise<Document[]> {
     const totalUrls = urls.length;
     let processedUrls = 0;
@@ -56,7 +58,8 @@ export class WebScraperDataProvider {
       const batchUrls = urls.slice(i, i + this.concurrentRequests);
       await Promise.all(
         batchUrls.map(async (url, index) => {
-          const result = await scrapSingleUrl(url, this.pageOptions);
+          const existingHTML = allHtmls ? allHtmls[i + index] : "";
+          const result = await scrapSingleUrl(url, this.pageOptions, existingHTML);
           processedUrls++;
           if (inProgress) {
             inProgress({
@@ -139,13 +142,26 @@ export class WebScraperDataProvider {
       limit: this.limit,
       generateImgAltText: this.generateImgAltText,
     });
+
     let links = await crawler.start(inProgress, 5, this.limit, this.maxCrawledDepth);
+
+    const allLinks = links.map((e) => e.url);
+    const allHtmls = links.map((e)=> e.html);
+
     if (this.returnOnlyUrls) {
-      return this.returnOnlyUrlsResponse(links, inProgress);
+      return this.returnOnlyUrlsResponse(allLinks , inProgress);
+    }
+    
+    let documents = [];
+    // check if fast mode is enabled and there is html inside the links
+    if (this.crawlerMode === "fast" && links.some((link) => link.html)) {
+      console.log("Fast mode enabled");
+      documents = await this.processLinks(allLinks, inProgress, allHtmls);
+    }else{
+      documents = await this.processLinks(allLinks, inProgress);
     }
 
-    let documents = await this.processLinks(links, inProgress);
-    return this.cacheAndFinalizeDocuments(documents, links);
+    return this.cacheAndFinalizeDocuments(documents, allLinks);
   }
 
   private async handleSingleUrlsMode(
@@ -187,14 +203,17 @@ export class WebScraperDataProvider {
 
   private async processLinks(
     links: string[],
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
+    allHtmls?: string[]
   ): Promise<Document[]> {
     let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
     let pdfDocuments = await this.fetchPdfDocuments(pdfLinks);
     links = links.filter((link) => !link.endsWith(".pdf"));
-
-    let documents = await this.convertUrlsToDocuments(links, inProgress);
+    
+    let documents = await this.convertUrlsToDocuments(links, inProgress, allHtmls);
     documents = await this.getSitemapData(this.urls[0], documents);
+
+
     documents = this.applyPathReplacements(documents);
     // documents = await this.applyImgAltText(documents);
 
@@ -397,6 +416,7 @@ export class WebScraperDataProvider {
     this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
     //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
+    this.crawlerMode = options.crawlerOptions?.mode ?? "default";
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {
