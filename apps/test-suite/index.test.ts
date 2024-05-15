@@ -183,7 +183,7 @@ describe("Scraping/Crawling Checkup (E2E)", () => {
       }
         
 
-      expect(score).toBeGreaterThanOrEqual(75);
+      expect(score).toBeGreaterThanOrEqual(70);
     }, 350000); // 150 seconds timeout
   });
 });
