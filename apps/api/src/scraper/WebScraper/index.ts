@@ -17,20 +17,7 @@ import {
 } from "./utils/replacePaths";
 import { generateCompletions } from "../../lib/LLM-extraction";
 import { getWebScraperQueue } from "../../../src/services/queue-service";
-import { parseMarkdown } from "../../lib/html-to-markdown";
-import cheerio from "cheerio";
-import { excludeNonMainTags } from "./utils/excludeTags";
-const removeUnwantedElements = (html: string, pageOptions: PageOptions) => {
-  const soup = cheerio.load(html);
-  soup("script, style, iframe, noscript, meta, head").remove();
-  if (pageOptions.onlyMainContent) {
-    // remove any other tags that are not in the main content
-    excludeNonMainTags.forEach((tag) => {
-      soup(tag).remove();
-    });
-  }
-  return soup.html();
-};
+
 export class WebScraperDataProvider {
   private bullJobId: string;
   private urls: string[] = [""];
