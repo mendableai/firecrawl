@@ -75,10 +75,10 @@ export async function supaAuthenticateUser(
         rateLimiter = scrapeRateLimit(subscriptionData.plan);
         break;
       case RateLimiterMode.CrawlStatus:
-        rateLimiter = await getRateLimiter(RateLimiterMode.CrawlStatus, token);
+        rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
         break;
       default:
-        rateLimiter = await getRateLimiter(RateLimiterMode.Crawl, token);
+        rateLimiter = getRateLimiter(RateLimiterMode.Crawl, token);
         break;
       // case RateLimiterMode.Search:
       //   rateLimiter = await searchRateLimiter(RateLimiterMode.Search, token);
