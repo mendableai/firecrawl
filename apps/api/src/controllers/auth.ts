@@ -48,6 +48,22 @@ export async function supaAuthenticateUser(
     const { data, error } = await supabase_service.rpc(
       'get_key_and_price_id_2', { api_key: normalizedApi }
     );
+    // get_key_and_price_id_2 rpc definition:
+    // create or replace function get_key_and_price_id_2(api_key uuid)
+    //   returns table(key uuid, team_id uuid, price_id text) as $$
+    //   begin
+    //     if api_key is null then
+    //       return query
+    //       select null::uuid as key, null::uuid as team_id, null::text as price_id;
+    //     end if;
+
+    //     return query
+    //     select ak.key, ak.team_id, s.price_id
+    //     from api_keys ak
+    //     left join subscriptions s on ak.team_id = s.team_id
+    //     where ak.key = api_key;
+    //   end;
+    //   $$ language plpgsql;
 
     if (error) {
       console.error('Error fetching key and price_id:', error);
