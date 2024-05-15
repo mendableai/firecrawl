@@ -4,7 +4,7 @@ import { URL } from "url";
 import { getLinksFromSitemap } from "./sitemap";
 import async from "async";
 import { Progress } from "../../lib/entities";
-import { scrapWithScrapingBee } from "./single_url";
+import { scrapSingleUrl, scrapWithScrapingBee } from "./single_url";
 import robotsParser from "robots-parser";
 
 export class WebCrawler {
@@ -15,7 +15,7 @@ export class WebCrawler {
   private maxCrawledLinks: number;
   private maxCrawledDepth: number;
   private visited: Set<string> = new Set();
-  private crawledUrls: Set<string> = new Set();
+  private crawledUrls: Map<string, string> = new Map();
   private limit: number;
   private robotsTxtUrl: string;
   private robots: any;
@@ -50,7 +50,6 @@ export class WebCrawler {
     this.maxCrawledDepth = maxCrawledDepth ?? 10;
     this.generateImgAltText = generateImgAltText ?? false;
   }
-
 
   private filterLinks(sitemapLinks: string[], limit: number, maxDepth: number): string[] {
     return sitemapLinks
@@ -99,7 +98,7 @@ export class WebCrawler {
     concurrencyLimit: number = 5,
     limit: number = 10000,
     maxDepth: number = 10
-  ): Promise<string[]> {
+  ): Promise<{ url: string, html: string }[]> {
     // Fetch and parse robots.txt
     try {
       const response = await axios.get(this.robotsTxtUrl);
@@ -111,7 +110,7 @@ export class WebCrawler {
     const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
     if (sitemapLinks.length > 0) {
       const filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
-      return filteredLinks;
+      return filteredLinks.map(link => ({ url: link, html: "" }));
     }
 
     const urls = await this.crawlUrls(
@@ -123,18 +122,19 @@ export class WebCrawler {
       urls.length === 0 &&
       this.filterLinks([this.initialUrl], limit, this.maxCrawledDepth).length > 0
     ) {
-      return [this.initialUrl];
+      return [{ url: this.initialUrl, html: "" }];
     }
 
     // make sure to run include exclude here again
-    return this.filterLinks(urls, limit, this.maxCrawledDepth);
+    const filteredUrls = this.filterLinks(urls.map(urlObj => urlObj.url), limit, this.maxCrawledDepth);
+    return filteredUrls.map(url => ({ url, html: urls.find(urlObj => urlObj.url === url)?.html || "" }));
   }
 
   private async crawlUrls(
     urls: string[],
     concurrencyLimit: number,
     inProgress?: (progress: Progress) => void
-  ): Promise<string[]> {
+  ): Promise<{ url: string, html: string }[]> {
     const queue = async.queue(async (task: string, callback) => {
       if (this.crawledUrls.size >= this.maxCrawledLinks) {
         if (callback && typeof callback === "function") {
@@ -143,13 +143,13 @@ export class WebCrawler {
         return;
       }
       const newUrls = await this.crawl(task);
-      newUrls.forEach((url) => this.crawledUrls.add(url));
+      newUrls.forEach((page) => this.crawledUrls.set(page.url, page.html));
       if (inProgress && newUrls.length > 0) {
         inProgress({
           current: this.crawledUrls.size,
           total: this.maxCrawledLinks,
           status: "SCRAPING",
-          currentDocumentUrl: newUrls[newUrls.length - 1],
+          currentDocumentUrl: newUrls[newUrls.length - 1].url,
         });
       } else if (inProgress) {
         inProgress({
@@ -159,7 +159,7 @@ export class WebCrawler {
           currentDocumentUrl: task,
         });
       }
-      await this.crawlUrls(newUrls, concurrencyLimit, inProgress);
+      await this.crawlUrls(newUrls.map((p) => p.url), concurrencyLimit, inProgress);
       if (callback && typeof callback === "function") {
         callback();
       }
@@ -175,10 +175,10 @@ export class WebCrawler {
       }
     );
     await queue.drain();
-    return Array.from(this.crawledUrls);
+    return Array.from(this.crawledUrls.entries()).map(([url, html]) => ({ url, html }));
   }
 
-  async crawl(url: string): Promise<string[]> {
+  async crawl(url: string): Promise<{url: string, html: string}[]> {
     if (this.visited.has(url) || !this.robots.isAllowed(url, "FireCrawlAgent"))
       return [];
     this.visited.add(url);
@@ -193,16 +193,17 @@ export class WebCrawler {
     }
 
     try {
-      let content;
-      // If it is the first link, fetch with scrapingbee
+      let content : string = "";
+      // If it is the first link, fetch with single url
       if (this.visited.size === 1) {
-        content = await scrapWithScrapingBee(url, "load");
+        const page = await scrapSingleUrl(url, {includeHtml: true});
+        content = page.html ?? ""
       } else {
         const response = await axios.get(url);
-        content = response.data;
+        content = response.data ?? "";
       }
       const $ = load(content);
-      let links: string[] = [];
+      let links: {url: string, html: string}[] = [];
 
       $("a").each((_, element) => {
         const href = $(element).attr("href");
@@ -215,7 +216,6 @@ export class WebCrawler {
           const path = url.pathname;
 
           if (
-            // fullUrl.startsWith(this.initialUrl) && // this condition makes it stop crawling back the url
             this.isInternalLink(fullUrl) &&
             this.matchesPattern(fullUrl) &&
             this.noSections(fullUrl) &&
@@ -223,12 +223,13 @@ export class WebCrawler {
             !this.matchesExcludes(path) &&
             this.robots.isAllowed(fullUrl, "FireCrawlAgent")
           ) {
-            links.push(fullUrl);
+            links.push({url: fullUrl, html: content});
           }
         }
       });
 
-      return links.filter((link) => !this.visited.has(link));
+      // Create a new list to return to avoid modifying the visited list
+      return links.filter((link) => !this.visited.has(link.url));
     } catch (error) {
       return [];
     }

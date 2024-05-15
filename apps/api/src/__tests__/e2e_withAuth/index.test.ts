@@ -511,6 +511,107 @@ describe("E2E Tests for API Routes", () => {
   //   }, 120000); // 120 secs
   // });
 
+  describe("POST /v0/crawl with fast mode", () => {
+    it("should complete the crawl under 20 seconds", async () => {
+      const startTime = Date.now();
+
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://flutterbricks.com",
+          crawlerOptions: {
+            mode: "fast"
+          }
+        });
+
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const jobId = crawlResponse.body.jobId;
+      let statusResponse;
+      let isFinished = false;
+
+      while (!isFinished) {
+        statusResponse = await request(TEST_URL)
+          .get(`/v0/crawl/status/${jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+        expect(statusResponse.statusCode).toBe(200);
+        isFinished = statusResponse.body.status === "completed";
+
+        if (!isFinished) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+
+      const endTime = Date.now();
+      const timeElapsed = (endTime - startTime) / 1000; // Convert to seconds
+
+      console.log(`Time elapsed: ${timeElapsed} seconds`);
+
+      expect(statusResponse.body.status).toBe("completed");
+      expect(statusResponse.body).toHaveProperty("data");
+      expect(statusResponse.body.data[0]).toHaveProperty("content");
+      expect(statusResponse.body.data[0]).toHaveProperty("markdown");
+      const results = statusResponse.body.data;
+      // results.forEach((result, i) => {
+      //   console.log(result.metadata.sourceURL);
+      // });
+      expect(results.length).toBeGreaterThanOrEqual(10);
+      expect(results.length).toBeLessThanOrEqual(15);
+      
+    }, 20000);
+
+    // it("should complete the crawl in more than 10 seconds", async () => {
+    //   const startTime = Date.now();
+
+    //   const crawlResponse = await request(TEST_URL)
+    //     .post("/v0/crawl")
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    //     .set("Content-Type", "application/json")
+    //     .send({
+    //       url: "https://flutterbricks.com",
+    //     });
+
+    //   expect(crawlResponse.statusCode).toBe(200);
+
+    //   const jobId = crawlResponse.body.jobId;
+    //   let statusResponse;
+    //   let isFinished = false;
+
+    //   while (!isFinished) {
+    //     statusResponse = await request(TEST_URL)
+    //       .get(`/v0/crawl/status/${jobId}`)
+    //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+    //     expect(statusResponse.statusCode).toBe(200);
+    //     isFinished = statusResponse.body.status === "completed";
+
+    //     if (!isFinished) {
+    //       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+    //     }
+    //   }
+
+    //   const endTime = Date.now();
+    //   const timeElapsed = (endTime - startTime) / 1000; // Convert to seconds
+
+    //   console.log(`Time elapsed: ${timeElapsed} seconds`);
+
+    //   expect(statusResponse.body.status).toBe("completed");
+    //   expect(statusResponse.body).toHaveProperty("data");
+    //   expect(statusResponse.body.data[0]).toHaveProperty("content");
+    //   expect(statusResponse.body.data[0]).toHaveProperty("markdown");
+    //   const results = statusResponse.body.data;
+    //   // results.forEach((result, i) => {
+    //   //   console.log(result.metadata.sourceURL);
+    //   // });
+    //   expect(results.length).toBeGreaterThanOrEqual(10);
+    //   expect(results.length).toBeLessThanOrEqual(15);
+      
+    // }, 50000);// 15 seconds timeout to account for network delays
+  });
+
   describe("GET /is-production", () => {
     it("should return the production status", async () => {
       const response = await request(TEST_URL).get("/is-production");
