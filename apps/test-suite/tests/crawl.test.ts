@@ -49,14 +49,29 @@ describe("Crawling Checkup (E2E)", () => {
               .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
               .send({ url: websiteData.website, pageOptions: { onlyMainContent: true }, crawlerOptions: { limit: 100 }});
 
-              await new Promise(resolve => setTimeout(resolve, 300000)); // wait for 300 seconds
+              const jobId = crawlResponse.body.jobId;
+              let completedResponse;
+              let isFinished = false;
 
-              const completedResponse = await request(TEST_URL)
-              .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-              .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+              while (!isFinished) {
+                completedResponse = await request(TEST_URL)
+                  .get(`/v0/crawl/status/${jobId}`)
+                  .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+                isFinished = completedResponse.body.status === "completed";
+
+                if (!isFinished) {
+                  await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+                }
+              }
 
               console.log('-------------------')
               console.log(websiteData.website);
+              if(!completedResponse) {
+                // fail the test
+                console.log('No response');
+                return null;
+              }
 
               if (!completedResponse.body.data) {
                 console.log(completedResponse.body.partial_data.length);
