@@ -27,7 +27,7 @@
     ]
   },
   {
-    "website": "https://agentops.ai",
+    "website": "https://agentops.ai/blog",
     "expected_min_num_of_pages": 7,
     "expected_crawled_pages": [
       "https://www.agentops.ai/blog/effortless-hr-management-with-saas",

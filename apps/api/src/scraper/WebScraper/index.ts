@@ -130,6 +130,21 @@ export class WebScraperDataProvider {
     }
   }
 
+  private async cleanIrrelevantPath(links: string[]){
+    return links.filter(link => {
+      const normalizedInitialUrl = new URL(this.urls[0]);
+      const normalizedLink = new URL(link);
+
+      // Normalize the hostname to account for www and non-www versions
+      const initialHostname = normalizedInitialUrl.hostname.replace(/^www\./, '');
+      const linkHostname = normalizedLink.hostname.replace(/^www\./, '');
+
+      // Ensure the protocol and hostname match, and the path starts with the initial URL's path
+      return linkHostname === initialHostname &&
+             normalizedLink.pathname.startsWith(normalizedInitialUrl.pathname);
+    });
+  }
+
   private async handleCrawlMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
@@ -149,11 +164,11 @@ export class WebScraperDataProvider {
     let allLinks = links.map((e) => e.url);
     const allHtmls = links.map((e)=> e.html);
 
-    allLinks = allLinks.filter(link => {
-      const normalizedInitialUrl = this.urls[0].endsWith('/') ? this.urls[0] : `${this.urls[0]}/`;
-      const normalizedLink = link.endsWith('/') ? link : `${link}/`;
-      return normalizedLink.startsWith(normalizedInitialUrl);
-    });
+    console.log(">>>>>> all links >>>>", {allLinks})
+    // allLinks = await this.cleanIrrelevantPath(allLinks);
+
+
+    
     console.log('>>>>>??>?>?>?>?.', {allLinks})
 
     if (this.returnOnlyUrls) {
@@ -183,13 +198,7 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
     let links = await getLinksFromSitemap(this.urls[0]);
-    links = links.filter(link => {
-      const normalizedInitialUrl = this.urls[0].endsWith('/') ? this.urls[0] : `${this.urls[0]}/`;
-      const normalizedLink = link.endsWith('/') ? link : `${link}/`;
-      return normalizedLink.startsWith(normalizedInitialUrl);
-    });
-
-    console.log('>>>>>??>?>?>?>?.', {links})
+    links = await this.cleanIrrelevantPath(links);
 
     if (this.returnOnlyUrls) {
       return this.returnOnlyUrlsResponse(links, inProgress);

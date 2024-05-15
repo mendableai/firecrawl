@@ -76,19 +76,28 @@ export class WebCrawler {
 
         // Check if the link matches the include patterns, if any are specified
         if (this.includes.length > 0 && this.includes[0] !== "") {
-          return this.includes.some((includePattern) =>
+          if (!this.includes.some((includePattern) =>
             new RegExp(includePattern).test(path)
-          );
+          )) {
+            return false;
+          }
+        }
+
+        // Normalize the initial URL and the link to account for www and non-www versions
+        const normalizedInitialUrl = new URL(this.initialUrl);
+        const normalizedLink = new URL(link);
+        const initialHostname = normalizedInitialUrl.hostname.replace(/^www\./, '');
+        const linkHostname = normalizedLink.hostname.replace(/^www\./, '');
+
+        // Ensure the protocol and hostname match, and the path starts with the initial URL's path
+        if (linkHostname !== initialHostname || !normalizedLink.pathname.startsWith(normalizedInitialUrl.pathname)) {
+          return false;
         }
 
         const isAllowed = this.robots.isAllowed(link, "FireCrawlAgent") ?? true;
         // Check if the link is disallowed by robots.txt
         if (!isAllowed) {
           console.log(`Link disallowed by robots.txt: ${link}`);
-          return false;
-        }
-
-        if (!this.initialUrl.includes(link)) {
           return false;
         }
 
@@ -109,11 +118,15 @@ export class WebCrawler {
       this.robots = robotsParser(this.robotsTxtUrl, response.data);
     } catch (error) {
       console.error(`Failed to fetch robots.txt from ${this.robotsTxtUrl}`);
+
     }
+
+    console.log("Initial URL: ", this.initialUrl);
 
     const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
     if (sitemapLinks.length > 0) {
       let filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
+      console.log("Filtered links: ", filteredLinks.length);
       return filteredLinks.map(link => ({ url: link, html: "" }));
     }
 
@@ -310,7 +323,21 @@ export class WebCrawler {
       }
     } catch (error) {
       // Error handling for failed sitemap fetch
+      // console.error(`Failed to fetch sitemap from ${sitemapUrl}: ${error}`);
     }
+
+    // If the first one doesn't work, try the base URL
+    const baseUrlSitemap = `${this.baseUrl}/sitemap.xml`;
+    try {
+      const response = await axios.get(baseUrlSitemap);
+      if (response.status === 200) {
+        return await getLinksFromSitemap(baseUrlSitemap);
+      }
+    } catch (error) {
+      // Error handling for failed base URL sitemap fetch
+      console.error(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);
+    }
+
     return [];
   }
 }
