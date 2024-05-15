@@ -1,4 +1,7 @@
 # Self-hosting Firecrawl
+*We're currently working on a more in-depth guide on how to self-host, but in the meantime, here is a simplified version.*
+
+Refer to [CONTRIBUTING.md](https://github.com/mendableai/firecrawl/blob/main/CONTRIBUTING.md) for instructions on how to run it locally.
 
 ## Getting Started
 
