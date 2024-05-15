@@ -102,7 +102,7 @@ describe("Crawling Checkup (E2E)", () => {
           }
 
           // checks if crawled pages not contain expected_not_crawled_pages
-          if (websiteData.expected_not_crawled_pages && websiteData.expected_not_crawled_pages.length > 0 && websiteData.expected_not_crawled_pages.filter(page => completedResponse.body.data.some((d: { url: string }) => d.url === page)).length > 0) {
+          if (websiteData.expected_not_crawled_pages && websiteData.expected_not_crawled_pages.length > 0 && completedResponse.body.data && websiteData.expected_not_crawled_pages.filter(page => completedResponse.body.data.some((d: { url: string }) => d.url === page)).length > 0) {
             errorLog.push({
               website: websiteData.website,
               prompt: 'CRAWL',

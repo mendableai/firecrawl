@@ -133,6 +133,7 @@ export class WebScraperDataProvider {
   private async handleCrawlMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
+    console.log('??? >>>', this.urls[0])
     const crawler = new WebCrawler({
       initialUrl: this.urls[0],
       includes: this.includes,
@@ -148,15 +149,16 @@ export class WebScraperDataProvider {
     let allLinks = links.map((e) => e.url);
     const allHtmls = links.map((e)=> e.html);
 
-    if (this.returnOnlyUrls) {
-      return this.returnOnlyUrlsResponse(allLinks , inProgress);
-    }
-
     allLinks = allLinks.filter(link => {
       const normalizedInitialUrl = this.urls[0].endsWith('/') ? this.urls[0] : `${this.urls[0]}/`;
       const normalizedLink = link.endsWith('/') ? link : `${link}/`;
-      return !normalizedLink.startsWith(normalizedInitialUrl) || normalizedLink !== normalizedInitialUrl;
+      return normalizedLink.startsWith(normalizedInitialUrl);
     });
+    console.log('>>>>>??>?>?>?>?.', {allLinks})
+
+    if (this.returnOnlyUrls) {
+      return this.returnOnlyUrlsResponse(allLinks , inProgress);
+    }
     
     let documents = [];
     // check if fast mode is enabled and there is html inside the links
@@ -184,8 +186,10 @@ export class WebScraperDataProvider {
     links = links.filter(link => {
       const normalizedInitialUrl = this.urls[0].endsWith('/') ? this.urls[0] : `${this.urls[0]}/`;
       const normalizedLink = link.endsWith('/') ? link : `${link}/`;
-      return !normalizedLink.startsWith(normalizedInitialUrl) || normalizedLink !== normalizedInitialUrl;
+      return normalizedLink.startsWith(normalizedInitialUrl);
     });
+
+    console.log('>>>>>??>?>?>?>?.', {links})
 
     if (this.returnOnlyUrls) {
       return this.returnOnlyUrlsResponse(links, inProgress);
