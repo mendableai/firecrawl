@@ -13,6 +13,8 @@ env:
   HOST: ${{ secrets.HOST }}
   LLAMAPARSE_API_KEY: ${{ secrets.LLAMAPARSE_API_KEY }}
   LOGTAIL_KEY: ${{ secrets.LOGTAIL_KEY }}
+  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+  POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
   NUM_WORKERS_PER_QUEUE: ${{ secrets.NUM_WORKERS_PER_QUEUE }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   PLAYWRIGHT_MICROSERVICE_URL: ${{ secrets.PLAYWRIGHT_MICROSERVICE_URL }}
@@ -38,7 +40,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: "20"
       - name: Install pnpm
         run: npm install -g pnpm
       - name: Install dependencies
@@ -54,5 +56,5 @@ jobs:
         id: start_workers
       - name: Run E2E tests
         run: |
-          npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false
+          npm run test:prod
         working-directory: ./apps/api

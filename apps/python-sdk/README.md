@@ -46,6 +46,40 @@ To scrape a single URL, use the `scrape_url` method. It takes the URL as a param
 url = 'https://example.com'
 scraped_data = app.scrape_url(url)
 ```
+### Extracting structured data from a URL
+
+With LLM extraction, you can easily extract structured data from any URL. We support pydantic schemas to make it easier for you too. Here is how you to use it:
+
+```python
+class ArticleSchema(BaseModel):
+    title: str
+    points: int 
+    by: str
+    commentsURL: str
+
+class TopArticlesSchema(BaseModel):
+    top: List[ArticleSchema] = Field(..., max_items=5, description="Top 5 stories")
+
+data = app.scrape_url('https://news.ycombinator.com', {
+    'extractorOptions': {
+        'extractionSchema': TopArticlesSchema.model_json_schema(),
+        'mode': 'llm-extraction'
+    },
+    'pageOptions':{
+        'onlyMainContent': True
+    }
+})
+print(data["llm_extraction"])
+```
+
+### Search for a query
+
+Used to search the web, get the most relevant results, scrap each page and return the markdown.
+
+```python
+query = 'what is mendable?'
+search_result = app.search(query)
+```
 
 ### Crawling a Website
 

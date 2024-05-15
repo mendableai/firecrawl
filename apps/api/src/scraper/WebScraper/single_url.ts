@@ -4,12 +4,34 @@ import { extractMetadata } from "./utils/metadata";
 import dotenv from "dotenv";
 import { Document, PageOptions } from "../../lib/entities";
 import { parseMarkdown } from "../../lib/html-to-markdown";
-import { parseTablesToMarkdown } from "./utils/parseTable";
 import { excludeNonMainTags } from "./utils/excludeTags";
-// import puppeteer from "puppeteer";
+import { urlSpecificParams } from "./utils/custom/website_params";
 
 dotenv.config();
 
+export async function generateRequestParams(
+  url: string,
+  wait_browser: string = "domcontentloaded",
+  timeout: number = 15000
+): Promise<any> {
+  const defaultParams = {
+    url: url,
+    params: { timeout: timeout, wait_browser: wait_browser },
+    headers: { "ScrapingService-Request": "TRUE" },
+  };
+
+  try {
+    const urlKey = new URL(url).hostname.replace(/^www\./, "");
+    if (urlSpecificParams.hasOwnProperty(urlKey)) {
+      return { ...defaultParams, ...urlSpecificParams[urlKey] };
+    } else {
+      return defaultParams;
+    }
+  } catch (error) {
+    console.error(`Error generating URL key: ${error}`);
+    return defaultParams;
+  }
+}
 export async function scrapWithCustomFirecrawl(
   url: string,
   options?: any
@@ -25,15 +47,18 @@ export async function scrapWithCustomFirecrawl(
 
 export async function scrapWithScrapingBee(
   url: string,
-  wait_browser: string = "domcontentloaded"
+  wait_browser: string = "domcontentloaded",
+  timeout: number = 15000
 ): Promise<string> {
   try {
     const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY);
-    const response = await client.get({
-      url: url,
-      params: { timeout: 15000, wait_browser: wait_browser },
-      headers: { "ScrapingService-Request": "TRUE" },
-    });
+    const clientParams = await generateRequestParams(
+      url,
+      wait_browser,
+      timeout
+    );
+
+    const response = await client.get(clientParams);
 
     if (response.status !== 200 && response.status !== 404) {
       console.error(
@@ -52,12 +77,15 @@ export async function scrapWithScrapingBee(
 
 export async function scrapWithPlaywright(url: string): Promise<string> {
   try {
+    const reqParams = await generateRequestParams(url);
+    const wait_playwright = reqParams["params"]?.wait ?? 0;
+
     const response = await fetch(process.env.PLAYWRIGHT_MICROSERVICE_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: url }),
+      body: JSON.stringify({ url: url, wait: wait_playwright }),
     });
 
     if (!response.ok) {
@@ -78,10 +106,8 @@ export async function scrapWithPlaywright(url: string): Promise<string> {
 
 export async function scrapSingleUrl(
   urlToScrap: string,
-  toMarkdown: boolean = true,
-  pageOptions: PageOptions = { onlyMainContent: true }
+  pageOptions: PageOptions = { onlyMainContent: true, includeHtml: false }
 ): Promise<Document> {
-  console.log(`Scraping URL: ${urlToScrap}`);
   urlToScrap = urlToScrap.trim();
 
   const removeUnwantedElements = (html: string, pageOptions: PageOptions) => {
@@ -112,7 +138,11 @@ export async function scrapSingleUrl(
         break;
       case "scrapingBee":
         if (process.env.SCRAPING_BEE_API_KEY) {
-          text = await scrapWithScrapingBee(url);
+          text = await scrapWithScrapingBee(
+            url,
+            "domcontentloaded",
+            pageOptions.fallback === false ? 7000 : 15000
+          );
         }
         break;
       case "playwright":
@@ -141,46 +171,57 @@ export async function scrapSingleUrl(
         }
         break;
     }
+
+    //* TODO: add an optional to return markdown or structured/extracted content
     let cleanedHtml = removeUnwantedElements(text, pageOptions);
+
     return [await parseMarkdown(cleanedHtml), text];
   };
-
   try {
-    // TODO: comment this out once we're ready to merge firecrawl-scraper into the mono-repo
-    // let [text, html] = await attemptScraping(urlToScrap, 'firecrawl-scraper');
-    // if (!text || text.length < 100) {
-    //   console.log("Falling back to scraping bee load");
-    //   [text, html] = await attemptScraping(urlToScrap, 'scrapingBeeLoad');
-    // }
+    let [text, html] = ["", ""];
+    let urlKey = urlToScrap;
+    try {
+      urlKey = new URL(urlToScrap).hostname.replace(/^www\./, "");
+    } catch (error) {
+      console.error(`Invalid URL key, trying: ${urlToScrap}`);
+    }
+    const defaultScraper = urlSpecificParams[urlKey]?.defaultScraper ?? "";
+    const scrapersInOrder = defaultScraper
+      ? [
+          defaultScraper,
+          "scrapingBee",
+          "playwright",
+          "scrapingBeeLoad",
+          "fetch",
+        ]
+      : ["scrapingBee", "playwright", "scrapingBeeLoad", "fetch"];
 
-    let [text, html] = await attemptScraping(urlToScrap, "scrapingBee");
-    if (!text || text.length < 100) {
-      console.log("Falling back to playwright");
-      [text, html] = await attemptScraping(urlToScrap, "playwright");
+    for (const scraper of scrapersInOrder) {
+      [text, html] = await attemptScraping(urlToScrap, scraper);
+      if (text && text.length >= 100) break;
+      console.log(`Falling back to ${scraper}`);
     }
 
-    if (!text || text.length < 100) {
-      console.log("Falling back to scraping bee load");
-      [text, html] = await attemptScraping(urlToScrap, "scrapingBeeLoad");
-    }
-    if (!text || text.length < 100) {
-      console.log("Falling back to fetch");
-      [text, html] = await attemptScraping(urlToScrap, "fetch");
+    if (!text) {
+      throw new Error(`All scraping methods failed for URL: ${urlToScrap}`);
     }
 
     const soup = cheerio.load(html);
     const metadata = extractMetadata(soup, urlToScrap);
-
-    return {
+    const document: Document = {
       content: text,
       markdown: text,
+      html: pageOptions.includeHtml ? html : undefined,
       metadata: { ...metadata, sourceURL: urlToScrap },
-    } as Document;
+    };
+
+    return document;
   } catch (error) {
     console.error(`Error: ${error} - Failed to fetch URL: ${urlToScrap}`);
     return {
       content: "",
       markdown: "",
+      html: "",
       metadata: { sourceURL: urlToScrap },
     } as Document;
   }

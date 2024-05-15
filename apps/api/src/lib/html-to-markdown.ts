@@ -1,6 +1,8 @@
+
 export function parseMarkdown(html: string) {
   var TurndownService = require("turndown");
-  var turndownPluginGfm = require("turndown-plugin-gfm");
+  var turndownPluginGfm = require('joplin-turndown-plugin-gfm')
+
 
   const turndownService = new TurndownService();
   turndownService.addRule("inlineLink", {

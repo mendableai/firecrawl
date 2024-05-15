@@ -1,12 +1,16 @@
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import * as redis from "redis";
+import { RateLimiterMode } from "../../src/types";
 
 const MAX_REQUESTS_PER_MINUTE_PREVIEW = 5;
 const MAX_CRAWLS_PER_MINUTE_STARTER = 2;
 const MAX_CRAWLS_PER_MINUTE_STANDARD = 4;
 const MAX_CRAWLS_PER_MINUTE_SCALE = 20;
 
-const MAX_REQUESTS_PER_MINUTE_ACCOUNT = 40;
+const MAX_REQUESTS_PER_MINUTE_ACCOUNT = 20;
+
+const MAX_REQUESTS_PER_MINUTE_CRAWL_STATUS = 120;
+
 
 
 
@@ -26,6 +30,20 @@ export const serverRateLimiter = new RateLimiterRedis({
   storeClient: redisClient,
   keyPrefix: "middleware",
   points: MAX_REQUESTS_PER_MINUTE_ACCOUNT,
+  duration: 60, // Duration in seconds
+});
+
+export const crawlStatusRateLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "middleware",
+  points: MAX_REQUESTS_PER_MINUTE_CRAWL_STATUS,
+  duration: 60, // Duration in seconds
+});
+
+export const testSuiteRateLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "middleware",
+  points: 1000,
   duration: 60, // Duration in seconds
 });
 
@@ -56,10 +74,19 @@ export function crawlRateLimit(plan: string){
 }
 
 
-export function getRateLimiter(preview: boolean){
-  if(preview){
-    return previewRateLimiter;
-  }else{
-    return serverRateLimiter;
+
+
+export function getRateLimiter(mode: RateLimiterMode, token: string){
+  // Special test suite case. TODO: Change this later.
+  if(token.includes("5089cefa58")){
+    return testSuiteRateLimiter;
+  }
+  switch(mode) {
+    case RateLimiterMode.Preview:
+      return previewRateLimiter;
+    case RateLimiterMode.CrawlStatus:
+      return crawlStatusRateLimiter;
+    default:
+      return serverRateLimiter;
   }
 }

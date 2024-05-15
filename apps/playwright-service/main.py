@@ -1,28 +1,38 @@
-from fastapi import FastAPI, Response
-from playwright.async_api import async_playwright
-import os
+from fastapi import FastAPI
+from playwright.async_api import async_playwright, Browser
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
-app = FastAPI()
 
-from pydantic import BaseModel
+app = FastAPI()
 
 class UrlModel(BaseModel):
     url: str
+    wait: int = None
 
-@app.post("/html")  # Kept as POST to accept body parameters
-async def root(body: UrlModel):  # Using Pydantic model for request body
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
 
-        context = await browser.new_context()
-        page = await context.new_page()
+browser: Browser = None
 
-        await page.goto(body.url)  # Adjusted to use the url from the request body model
-        page_content = await page.content()  # Get the HTML content of the page
 
-        await browser.close()
+@app.on_event("startup")
+async def startup_event():
+    global browser
+    playwright = await async_playwright().start()
+    browser = await playwright.chromium.launch()
 
-        json_compatible_item_data = {"content": page_content}
-        return JSONResponse(content=json_compatible_item_data)
-    
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    await browser.close()
+
+
+@app.post("/html")
+async def root(body: UrlModel):
+    context = await browser.new_context()
+    page = await context.new_page()
+    await page.goto(body.url, timeout=15000)  # Set max timeout to 15s
+    if body.wait:  # Check if wait parameter is provided in the request body
+        await page.wait_for_timeout(body.wait)  # Convert seconds to milliseconds for playwright
+    page_content = await page.content()
+    await context.close()
+    json_compatible_item_data = {"content": page_content}
+    return JSONResponse(content=json_compatible_item_data)

@@ -1,0 +1,78 @@
+# Build an agent that checks your website for contradictions
+
+Learn how to use Firecrawl and Claude to scrape your website's data and look for contradictions and inconsistencies in a few lines of code. When you are shipping fast, data is bound to get stale, with FireCrawl and LLMs you can make sure your public web data is always consistent! We will be using Opus's huge 200k context window and Firecrawl's parellization, making this process accurate and fast.
+
+## Setup
+
+Install our python dependencies, including anthropic and firecrawl-py.
+
+```bash
+pip install firecrawl-py anthropic
+```
+
+## Getting your Claude and Firecrawl API Keys
+
+To use Claude Opus and Firecrawl, you will need to get your API keys. You can get your Anthropic API key from [here](https://www.anthropic.com/) and your Firecrawl API key from [here](https://firecrawl.dev).
+
+## Load website with Firecrawl
+
+To be able to get all the data from our website page put it into an easy to read format for the LLM, we will use [FireCrawl](https://firecrawl.dev). It handles by-passing JS-blocked websites, extracting the main content, and outputting in a LLM-readable format for increased accuracy.
+
+Here is how we will scrape a website url using Firecrawl-py
+
+```python
+from firecrawl import FirecrawlApp
+
+app = FirecrawlApp(api_key="YOUR-KEY")
+
+crawl_result = app.crawl_url('mendable.ai', {'crawlerOptions': {'excludes': ['blog/*','usecases/*']}})
+
+print(crawl_result)
+```
+
+With all of the web data we want scraped and in a clean format, we can move onto the next step.
+
+## Combination and Generation
+
+Now that we have the website data, let's pair up every page and run every combination through Opus for analysis.
+
+```python
+from itertools import combinations
+
+page_combinations = []
+
+for first_page, second_page in combinations(crawl_result, 2):
+    combined_string = "First Page:\n" + first_page['markdown'] + "\n\nSecond Page:\n" + second_page['markdown']
+    page_combinations.append(combined_string)
+
+import anthropic
+
+client = anthropic.Anthropic(
+    # defaults to os.environ.get("ANTHROPIC_API_KEY")
+    api_key="YOUR-KEY",
+)
+
+final_output = []
+
+for page_combination in page_combinations:
+
+    prompt = "Here are two pages from a companies website, your job is to find any contradictions or differences in opinion between the two pages, this could be caused by outdated information or other. If you find any contradictions, list them out and provide a brief explanation of why they are contradictory or differing. Make sure the explanation is specific and concise. It is okay if you don't find any contradictions, just say 'No contradictions found' and nothing else. Here are the pages: " + "\n\n".join(page_combination)
+
+    message = client.messages.create(
+        model="claude-3-opus-20240229",
+        max_tokens=1000,
+        temperature=0.0,
+        system="You are an assistant that helps find contradictions or differences in opinion between pages in a company website and knowledge base. This could be caused by outdated information in the knowledge base.",
+        messages=[
+            {"role": "user", "content": prompt}
+        ]
+    )
+    final_output.append(message.content)
+
+```
+
+## That's about it!
+
+You have now built an agent that looks at your website and spots any inconsistencies it might have.
+
+If you have any questions or need help, feel free to reach out to us at [Firecrawl](https://firecrawl.dev).

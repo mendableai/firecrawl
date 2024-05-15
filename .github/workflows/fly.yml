@@ -13,6 +13,8 @@ env:
   HOST: ${{ secrets.HOST }}
   LLAMAPARSE_API_KEY: ${{ secrets.LLAMAPARSE_API_KEY }}
   LOGTAIL_KEY: ${{ secrets.LOGTAIL_KEY }}
+  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+  POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
   NUM_WORKERS_PER_QUEUE: ${{ secrets.NUM_WORKERS_PER_QUEUE }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   PLAYWRIGHT_MICROSERVICE_URL: ${{ secrets.PLAYWRIGHT_MICROSERVICE_URL }}
@@ -38,7 +40,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: '20'
+          node-version: "20"
       - name: Install pnpm
         run: npm install -g pnpm
       - name: Install dependencies
@@ -54,12 +56,49 @@ jobs:
         id: start_workers
       - name: Run E2E tests
         run: |
-          npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false
+          npm run test:prod
         working-directory: ./apps/api
+
+  pre-deploy-test-suite:
+    name: Test Suite
+    needs: pre-deploy
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      - name: Install pnpm
+        run: npm install -g pnpm
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: ./apps/api
+      - name: Start the application
+        run: npm start &
+        working-directory: ./apps/api
+        id: start_app
+      - name: Start workers
+        run: npm run workers &
+        working-directory: ./apps/api
+        id: start_workers
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: ./apps/test-suite
+      - name: Run E2E tests
+        run: |
+          npm run test
+        working-directory: ./apps/test-suite
+        
   deploy:
     name: Deploy app
     runs-on: ubuntu-latest
-    needs: pre-deploy
+    needs: pre-deploy-test-suite
     steps:
       - uses: actions/checkout@v3
       - name: Change directory
@@ -68,4 +107,3 @@ jobs:
       - run: flyctl deploy ./apps/api --remote-only -a firecrawl-scraper-js
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
-
