@@ -62,6 +62,7 @@ describe("Crawling Checkup (E2E)", () => {
             // fail the test
             console.log('No response');
             continue;
+            // continue;
           }
 
           if (!completedResponse.body || completedResponse.body.status !== "completed") {
@@ -72,7 +73,7 @@ describe("Crawling Checkup (E2E)", () => {
               actual_output: 'FAILURE',
               error: `Crawl job did not complete successfully.`
             });
-            return null;
+            continue;
           }
 
           // check how many webpages were crawled successfully
@@ -85,11 +86,11 @@ describe("Crawling Checkup (E2E)", () => {
               actual_output: `FAILURE: ${completedResponse.body.data.length}`,
               error: `Expected at least ${websiteData.expected_min_num_of_pages} webpages, but got ${completedResponse.body.data.length}`
             });
-            return null;
+            continue;
           }
 
           // checks if crawled pages contain expected_crawled_pages
-          if (websiteData.expected_crawled_pages.some(page => !completedResponse.body.data.some((d: { url: string }) => d.url === page))) {
+          if (websiteData.expected_crawled_pages && websiteData.expected_crawled_pages.length > 0 && websiteData.expected_crawled_pages.some(page => !completedResponse.body.data?.some((d: { url: string }) => d.url === page))) {
             errorLog.push({
               website: websiteData.website,
               prompt: 'CRAWL',
@@ -97,7 +98,19 @@ describe("Crawling Checkup (E2E)", () => {
               actual_output: `FAILURE: ${completedResponse.body.data}`,
               error: `Expected crawled pages to contain ${websiteData.expected_crawled_pages}, but got ${completedResponse.body.data}`
             });
-            return null;
+            continue;
+          }
+
+          // checks if crawled pages not contain expected_not_crawled_pages
+          if (websiteData.expected_not_crawled_pages && websiteData.expected_not_crawled_pages.length > 0 && websiteData.expected_not_crawled_pages.filter(page => completedResponse.body.data.some((d: { url: string }) => d.url === page)).length > 0) {
+            errorLog.push({
+              website: websiteData.website,
+              prompt: 'CRAWL',
+              expected_output: `SUCCESS: ${websiteData.expected_not_crawled_pages}`,
+              actual_output: `FAILURE: ${completedResponse.body.data}`,
+              error: `Expected crawled pages to not contain ${websiteData.expected_not_crawled_pages}, but got ${completedResponse.body.data}`
+            });
+            continue;
           }
 
           passedTests++;
@@ -110,6 +123,7 @@ describe("Crawling Checkup (E2E)", () => {
             actual_output: 'FAILURE',
             error: `Error processing ${websiteData.website}: ${error}`
           });
+          continue;
         }
       }
 

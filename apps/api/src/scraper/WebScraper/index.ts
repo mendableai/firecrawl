@@ -145,12 +145,18 @@ export class WebScraperDataProvider {
 
     let links = await crawler.start(inProgress, 5, this.limit, this.maxCrawledDepth);
 
-    const allLinks = links.map((e) => e.url);
+    let allLinks = links.map((e) => e.url);
     const allHtmls = links.map((e)=> e.html);
 
     if (this.returnOnlyUrls) {
       return this.returnOnlyUrlsResponse(allLinks , inProgress);
     }
+
+    allLinks = allLinks.filter(link => {
+      const normalizedInitialUrl = this.urls[0].endsWith('/') ? this.urls[0] : `${this.urls[0]}/`;
+      const normalizedLink = link.endsWith('/') ? link : `${link}/`;
+      return !normalizedLink.startsWith(normalizedInitialUrl) || normalizedLink !== normalizedInitialUrl;
+    });
     
     let documents = [];
     // check if fast mode is enabled and there is html inside the links
@@ -175,6 +181,12 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
     let links = await getLinksFromSitemap(this.urls[0]);
+    links = links.filter(link => {
+      const normalizedInitialUrl = this.urls[0].endsWith('/') ? this.urls[0] : `${this.urls[0]}/`;
+      const normalizedLink = link.endsWith('/') ? link : `${link}/`;
+      return !normalizedLink.startsWith(normalizedInitialUrl) || normalizedLink !== normalizedInitialUrl;
+    });
+
     if (this.returnOnlyUrls) {
       return this.returnOnlyUrlsResponse(links, inProgress);
     }

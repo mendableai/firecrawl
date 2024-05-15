@@ -88,6 +88,10 @@ export class WebCrawler {
           return false;
         }
 
+        if (!this.initialUrl.includes(link)) {
+          return false;
+        }
+
         return true;
       })
       .slice(0, limit);
@@ -109,7 +113,7 @@ export class WebCrawler {
 
     const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
     if (sitemapLinks.length > 0) {
-      const filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
+      let filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
       return filteredLinks.map(link => ({ url: link, html: "" }));
     }
 

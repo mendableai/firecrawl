@@ -2,7 +2,7 @@
   {
     "website": "https://mendable.ai/pricing",
     "expected_min_num_of_pages": 29,
-    "expected_crawled_pages": [
+    "expected_not_crawled_pages": [
       "https://mendable.ai/",
       "https://mendable.ai/blog",
       "https://mendable.ai/signin",
@@ -34,7 +34,9 @@
       "https://www.agentops.ai/blog/streamlining-hr-with-saas",
       "https://www.agentops.ai/blog/simplify-hr-with-modern-saas-solutions",
       "https://www.agentops.ai/blog/efficient-hr-operations-with-saas",
-      "https://www.agentops.ai/blog/hr-made-simple-with-saas",
+      "https://www.agentops.ai/blog/hr-made-simple-with-saas"
+    ],
+    "expected_not_crawled_pages": [
       "https://www.agentops.ai/about-us",
       "https://www.agentops.ai/contact-us"
     ]
@@ -69,7 +71,7 @@
   {
     "website": "https://en.wikipedia.org/wiki/T._N._Seshan",
     "expected_min_num_of_pages": 100,
-    "expected_crawled_pages": [
+    "expected_not_crawled_pages": [
       "https://en.wikipedia.org/wiki/Wikipedia:Contents",
       "https://en.wikipedia.org/wiki/Wikipedia:Contact_us",
       "https://en.wikipedia.org/wiki/V._S._Ramadevi",
@@ -80,14 +82,9 @@
     ]
   },
   {
-    "website": "https://mendable.ai/blog",
-    "expected_min_num_of_pages": 0,
-    "expected_crawled_pages": [""]
-  },
-  {
     "website": "https://www.framer.com/pricing",
     "expected_min_num_of_pages": 58,
-    "expected_crawled_pages": [
+    "expected_not_crawled_pages": [
       "https://www.framer.com/features/navigation/",
       "https://www.framer.com/contact/",
       "https://www.framer.com/add-ons/",
@@ -101,7 +98,7 @@
   {
     "website": "https://fly.io/docs/gpus/gpu-quickstart",
     "expected_min_num_of_pages": 39,
-    "expected_crawled_pages": [
+    "expected_not_crawled_pages": [
       "https://fly.io/docs/getting-started/",
       "https://fly.io/docs/hands-on/",
       "https://fly.io/docs/about/support/",
@@ -118,8 +115,8 @@
     "expected_crawled_pages": [""]
   },
   {
-    "website": "https://www.instructables.com",
-    "expected_min_num_of_pages": 78,
+    "website": "https://www.instructables.com/circuits",
+    "expected_min_num_of_pages": 12,
     "expected_crawled_pages": [
       "https://www.instructables.com/circuits/",
       "https://www.instructables.com/circuits/apple/projects/",
