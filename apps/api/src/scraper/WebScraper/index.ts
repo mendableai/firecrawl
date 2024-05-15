@@ -155,22 +155,16 @@ export class WebScraperDataProvider {
       limit: this.limit,
       generateImgAltText: this.generateImgAltText,
     });
-    let start = Date.now();
+
     let links = await crawler.start(inProgress, 5, this.limit, this.maxCrawledDepth);
-    console.log(links.length)
-    let end = Date.now();
-    console.log("Crawl end in seconds ", (end - start) / 1000);
+
     const allLinks = links.map((e) => e.url);
     const allHtmls = links.map((e)=> e.html);
-    console.log("All links", allLinks.length);
-    console.log("All htmls", allHtmls.length);
 
     if (this.returnOnlyUrls) {
       return this.returnOnlyUrlsResponse(allLinks , inProgress);
     }
     
-
-    let fastDocs = []
     let documents = [];
     // check if fast mode is enabled and there is html inside the links
     if (this.crawlerMode === "fast" && links.some((link) => link.html)) {
