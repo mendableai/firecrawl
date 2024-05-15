@@ -27,8 +27,6 @@ describe("Crawling Checkup (E2E)", () => {
   describe("Crawling website tests with a dataset", () => {
     it("Should crawl the website and verify the response", async () => {
       let passedTests = 0;
-      const batchSize = 15;
-      const batchPromises = [];
       const startTime = new Date().getTime();
       const date = new Date();
       const logsDir = `logs/${date.getMonth() + 1}-${date.getDate()}-${date.getFullYear()}`;
@@ -36,113 +34,65 @@ describe("Crawling Checkup (E2E)", () => {
       let errorLogFileName = `${logsDir}/run.log_${new Date().toTimeString().split(' ')[0]}`;
       const errorLog: WebsiteScrapeError[] = [];
       
-      for (let i = 0; i < websitesData.length; i += batchSize) {
+      for (const websiteData of websitesData) {
         await new Promise(resolve => setTimeout(resolve, 10000)); 
 
-        const batch = websitesData.slice(i, i + batchSize);
-        const batchPromise = Promise.all(
-          batch.map(async (websiteData: WebsiteData) => {
-            try {
-              const crawlResponse = await request(TEST_URL || "")
-              .post("/v0/crawl")
-              .set("Content-Type", "application/json")
-              .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-              .send({ url: websiteData.website, pageOptions: { onlyMainContent: true }, crawlerOptions: { limit: 100 }});
+        try {
+          const crawlResponse = await request(TEST_URL || "")
+            .post("/v0/crawl")
+            .set("Content-Type", "application/json")
+            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+            .send({ url: websiteData.website, pageOptions: { onlyMainContent: true }, crawlerOptions: { limit: 100 }});
 
-              const jobId = crawlResponse.body.jobId;
-              let completedResponse;
-              let isFinished = false;
+          const jobId = crawlResponse.body.jobId;
+          let completedResponse;
+          let isFinished = false;
 
-              while (!isFinished) {
-                completedResponse = await request(TEST_URL)
-                  .get(`/v0/crawl/status/${jobId}`)
-                  .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          while (!isFinished) {
+            completedResponse = await request(TEST_URL)
+              .get(`/v0/crawl/status/${jobId}`)
+              .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
-                isFinished = completedResponse.body.status === "completed";
+            isFinished = completedResponse.body.status === "completed";
 
-                if (!isFinished) {
-                  await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
-                }
-              }
-
-              console.log('-------------------')
-              console.log(websiteData.website);
-              if(!completedResponse) {
-                // fail the test
-                console.log('No response');
-                return null;
-              }
-
-              if (!completedResponse.body.data) {
-                console.log(completedResponse.body.partial_data.length);
-                const urls = completedResponse.body.partial_data.map((page: any) => page.metadata?.sourceURL);
-                console.log(urls);
-              } else {
-                console.log(completedResponse.body.data.length);
-                const urls = completedResponse.body.data.map((page: any) => page.metadata?.sourceURL);
-                console.log(urls);
-              }
-
-              console.log('-------------------')
-
-              // if (!completedResponse.body || completedResponse.body.status !== "completed") {
-              //   errorLog.push({
-              //     website: websiteData.website,
-              //     prompt: 'CRAWL',
-              //     expected_output: 'SUCCESS',
-              //     actual_output: 'FAILURE',
-              //     error: `Crawl job did not complete successfully.`
-              //   });
-              //   return null;
-              // }
-
-              // // check how many webpages were crawled successfully
-              // // compares with expected_num_of_pages
-              // if (completedResponse.body.data.length < websiteData.expected_min_num_of_pages) {
-              //   errorLog.push({
-              //     website: websiteData.website,
-              //     prompt: 'CRAWL',
-              //     expected_output: `SUCCESS: ${websiteData.expected_min_num_of_pages}`,
-              //     actual_output: `FAILURE: ${completedResponse.body.data.length}`,
-              //     error: `Expected at least ${websiteData.expected_min_num_of_pages} webpages, but got ${completedResponse.body.data.length}`
-              //   });
-              //   return null;
-              // }
-
-              // // checks if crawled pages contain expected_crawled_pages
-              // if (websiteData.expected_crawled_pages.some(page => !completedResponse.body.data.includes(page))) {
-              //   errorLog.push({
-              //     website: websiteData.website,
-              //     prompt: 'CRAWL',
-              //     expected_output: `SUCCESS: ${websiteData.expected_crawled_pages}`,
-              //     actual_output: `FAILURE: ${completedResponse.body.data}`,
-              //     error: `Expected crawled pages to contain ${websiteData.expected_crawled_pages}, but got ${completedResponse.body.data}`
-              //   });
-              //   return null;
-              // }
-
-              passedTests++;
-              return {
-                website: websiteData.website,
-                statusCode: completedResponse.statusCode,
-              };
-            } catch (error) {
-              console.error(`Error processing ${websiteData.website}: ${error}`);
-              errorLog.push({
-                website: websiteData.website,
-                prompt: 'CRAWL',
-                expected_output: 'SUCCESS',
-                actual_output: 'FAILURE',
-                error: `Error processing ${websiteData.website}: ${error}`
-              });
-              return null;
+            if (!isFinished) {
+              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
             }
-          })
-        );
-        batchPromises.push(batchPromise);
+          }
+
+          console.log('-------------------')
+          console.log(websiteData.website);
+          if(!completedResponse) {
+            // fail the test
+            console.log('No response');
+            continue;
+          }
+
+          if (!completedResponse.body.data) {
+            console.log(completedResponse.body.partial_data.length);
+            const urls = completedResponse.body.partial_data.map((page: any) => page.metadata?.sourceURL);
+            console.log(urls);
+          } else {
+            console.log(completedResponse.body.data.length);
+            const urls = completedResponse.body.data.map((page: any) => page.metadata?.sourceURL);
+            console.log(urls);
+          }
+
+          console.log('-------------------')
+
+          passedTests++;
+        } catch (error) {
+          console.error(`Error processing ${websiteData.website}: ${error}`);
+          errorLog.push({
+            website: websiteData.website,
+            prompt: 'CRAWL',
+            expected_output: 'SUCCESS',
+            actual_output: 'FAILURE',
+            error: `Error processing ${websiteData.website}: ${error}`
+          });
+        }
       }
 
-      (await Promise.all(batchPromises)).flat();
       const score = (passedTests / websitesData.length) * 100;
       const endTime = new Date().getTime();
       const timeTaken = (endTime - startTime) / 1000;
