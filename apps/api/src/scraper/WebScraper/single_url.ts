@@ -107,7 +107,7 @@ export async function scrapWithPlaywright(url: string): Promise<string> {
 export async function scrapSingleUrl(
   urlToScrap: string,
   pageOptions: PageOptions = { onlyMainContent: true, includeHtml: false },
-  existingText: string = ""
+  existingHtml: string = ""
 ): Promise<Document> {
   urlToScrap = urlToScrap.trim();
 
@@ -199,8 +199,10 @@ export async function scrapSingleUrl(
 
     for (const scraper of scrapersInOrder) {
       // If exists text coming from crawler, use it
-      if (existingText && existingText.trim().length >= 100) {
-        text = existingText;
+      if (existingHtml && existingHtml.trim().length >= 100) {
+        let cleanedHtml = removeUnwantedElements(existingHtml, pageOptions);
+        text = await parseMarkdown(cleanedHtml);
+        html = existingHtml;
         break;
       }
       [text, html] = await attemptScraping(urlToScrap, scraper);

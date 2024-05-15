@@ -71,8 +71,8 @@ export class WebScraperDataProvider {
       const batchUrls = urls.slice(i, i + this.concurrentRequests);
       await Promise.all(
         batchUrls.map(async (url, index) => {
-          const existingText = allHtmls ? allHtmls[i + index] : "";
-          const result = await scrapSingleUrl(url, this.pageOptions, existingText);
+          const existingHTML = allHtmls ? allHtmls[i + index] : "";
+          const result = await scrapSingleUrl(url, this.pageOptions, existingHTML);
           processedUrls++;
           if (inProgress) {
             inProgress({
