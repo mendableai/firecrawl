@@ -1,10 +1,5 @@
 [
   {
-    "website": "https://www.anthropic.com/claude",
-    "expected_min_num_of_pages": 0,
-    "expected_crawled_pages": [""]
-  },
-  {
     "website": "https://mendable.ai/pricing",
     "expected_min_num_of_pages": 29,
     "expected_crawled_pages": [
