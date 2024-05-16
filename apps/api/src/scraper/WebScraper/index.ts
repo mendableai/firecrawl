@@ -59,7 +59,11 @@ export class WebScraperDataProvider {
       await Promise.all(
         batchUrls.map(async (url, index) => {
           const existingHTML = allHtmls ? allHtmls[i + index] : "";
-          const result = await scrapSingleUrl(url, this.pageOptions, existingHTML);
+          const result = await scrapSingleUrl(
+            url,
+            this.pageOptions,
+            existingHTML
+          );
           processedUrls++;
           if (inProgress) {
             inProgress({
@@ -130,9 +134,30 @@ export class WebScraperDataProvider {
     }
   }
 
+  private async cleanIrrelevantPath(links: string[]) {
+    return links.filter((link) => {
+      const normalizedInitialUrl = new URL(this.urls[0]);
+      const normalizedLink = new URL(link);
+
+      // Normalize the hostname to account for www and non-www versions
+      const initialHostname = normalizedInitialUrl.hostname.replace(
+        /^www\./,
+        ""
+      );
+      const linkHostname = normalizedLink.hostname.replace(/^www\./, "");
+
+      // Ensure the protocol and hostname match, and the path starts with the initial URL's path
+      return (
+        linkHostname === initialHostname &&
+        normalizedLink.pathname.startsWith(normalizedInitialUrl.pathname)
+      );
+    });
+  }
+
   private async handleCrawlMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
+    
     const crawler = new WebCrawler({
       initialUrl: this.urls[0],
       includes: this.includes,
@@ -143,21 +168,25 @@ export class WebScraperDataProvider {
       generateImgAltText: this.generateImgAltText,
     });
 
-    let links = await crawler.start(inProgress, 5, this.limit, this.maxCrawledDepth);
+    let links = await crawler.start(
+      inProgress,
+      5,
+      this.limit,
+      this.maxCrawledDepth
+    );
 
-    const allLinks = links.map((e) => e.url);
-    const allHtmls = links.map((e)=> e.html);
+    let allLinks = links.map((e) => e.url);
+    const allHtmls = links.map((e) => e.html);
 
     if (this.returnOnlyUrls) {
-      return this.returnOnlyUrlsResponse(allLinks , inProgress);
+      return this.returnOnlyUrlsResponse(allLinks, inProgress);
     }
-    
+
     let documents = [];
     // check if fast mode is enabled and there is html inside the links
     if (this.crawlerMode === "fast" && links.some((link) => link.html)) {
-      console.log("Fast mode enabled");
       documents = await this.processLinks(allLinks, inProgress, allHtmls);
-    }else{
+    } else {
       documents = await this.processLinks(allLinks, inProgress);
     }
 
@@ -175,6 +204,8 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
     let links = await getLinksFromSitemap(this.urls[0]);
+    links = await this.cleanIrrelevantPath(links);
+
     if (this.returnOnlyUrls) {
       return this.returnOnlyUrlsResponse(links, inProgress);
     }
@@ -209,10 +240,13 @@ export class WebScraperDataProvider {
     let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
     let pdfDocuments = await this.fetchPdfDocuments(pdfLinks);
     links = links.filter((link) => !link.endsWith(".pdf"));
-    
-    let documents = await this.convertUrlsToDocuments(links, inProgress, allHtmls);
-    documents = await this.getSitemapData(this.urls[0], documents);
 
+    let documents = await this.convertUrlsToDocuments(
+      links,
+      inProgress,
+      allHtmls
+    );
+    documents = await this.getSitemapData(this.urls[0], documents);
 
     documents = this.applyPathReplacements(documents);
     // documents = await this.applyImgAltText(documents);
