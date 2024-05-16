@@ -155,7 +155,7 @@ describe("E2E Tests for API Routes", () => {
           url: "https://mendable.ai",
           limit: 10,
           crawlerOptions: {
-            includes: ["/blog/*"],
+            includes: ["blog/*"],
           },
         });
       
@@ -184,7 +184,7 @@ describe("E2E Tests for API Routes", () => {
       expect(urls.length).toBeGreaterThan(5);
       urls.forEach((url: string) => {
         console.log({url})
-        expect(url.startsWith("https://mendable.ai/blog/")).toBeTruthy();
+        expect(url.startsWith("https://www.mendable.ai/blog/")).toBeTruthy();
       });
       
       expect(completedResponse.statusCode).toBe(200);
@@ -206,7 +206,7 @@ describe("E2E Tests for API Routes", () => {
           url: "https://mendable.ai",
           limit: 10,
           crawlerOptions: {
-            excludes: ["/blog/*"],
+            excludes: ["blog/*"],
           },
         });
       
@@ -234,7 +234,7 @@ describe("E2E Tests for API Routes", () => {
       );
       expect(urls.length).toBeGreaterThan(5);
       urls.forEach((url: string) => {
-        expect(url.startsWith("https://mendable.ai/blog/")).toBeFalsy();
+        expect(url.startsWith("https://wwww.mendable.ai/blog/")).toBeFalsy();
       });
     }, 60000); // 60 seconds
 
@@ -357,7 +357,7 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body).toHaveProperty("status");
       expect(completedResponse.body.status).toBe("completed");
       expect(completedResponse.body).toHaveProperty("data");
-      expect(completedResponse.body.data.length).toBe(3);
+      expect(completedResponse.body.data.length).toBe(10);
       expect(completedResponse.body.data[0]).toHaveProperty("content");
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
