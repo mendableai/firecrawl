@@ -159,21 +159,26 @@ describe("E2E Tests for API Routes", () => {
           },
         });
       
-        const response = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toHaveProperty("status");
-      expect(response.body.status).toBe("active");
+        let response;
+        let isFinished = false;
 
-      // wait for 30 seconds
-      await new Promise((r) => setTimeout(r, 30000));
+        while (!isFinished) {
+          response = await request(TEST_URL)
+            .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
-      const completedResponse = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          expect(response.statusCode).toBe(200);
+          expect(response.body).toHaveProperty("status");
+          isFinished = response.body.status === "completed";
 
-      const urls = completedResponse.body.data.map(
+          if (!isFinished) {
+            await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+          }
+        }
+
+        const completedResponse = response;
+
+        const urls = completedResponse.body.data.map(
         (item: any) => item.metadata?.sourceURL
       );
       expect(urls.length).toBeGreaterThan(5);
@@ -205,19 +210,24 @@ describe("E2E Tests for API Routes", () => {
           },
         });
       
-      const response = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toHaveProperty("status");
-      expect(response.body.status).toBe("active");
+      let isFinished = false;
+      let response;
 
-      // wait for 30 seconds
-      await new Promise((r) => setTimeout(r, 30000));
+      while (!isFinished) {
+        response = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
-      const completedResponse = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty("status");
+        isFinished = response.body.status === "completed";
+
+        if (!isFinished) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+
+      const completedResponse = response;
 
       const urls = completedResponse.body.data.map(
         (item: any) => item.metadata?.sourceURL
@@ -238,19 +248,24 @@ describe("E2E Tests for API Routes", () => {
           limit: 3,
         });
       
-      const response = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toHaveProperty("status");
-      expect(response.body.status).toBe("active");
+      let isFinished = false;
+      let response;
 
-      // wait for 30 seconds
-      await new Promise((r) => setTimeout(r, 30000));
+      while (!isFinished) {
+        response = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
-      const completedResponse = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty("status");
+        isFinished = response.body.status === "completed";
+
+        if (!isFinished) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+
+      const completedResponse = response;
 
       expect(completedResponse.statusCode).toBe(200);
       expect(completedResponse.body).toHaveProperty("status");
@@ -322,8 +337,17 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body).toHaveProperty("status");
       expect(response.body.status).toBe("active");
 
-      // wait for 30 seconds
-      await new Promise((r) => setTimeout(r, 30000));
+      let isCompleted = false;
+      while (!isCompleted) {
+        const statusCheckResponse = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(statusCheckResponse.statusCode).toBe(200);
+        isCompleted = statusCheckResponse.body.status === "completed";
+        if (!isCompleted) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
 
       const completedResponse = await request(TEST_URL)
         .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
@@ -359,8 +383,17 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body).toHaveProperty("status");
       expect(response.body.status).toBe("active");
 
-      // wait for 30 seconds
-      await new Promise((r) => setTimeout(r, 30000));
+      let isCompleted = false;
+      while (!isCompleted) {
+        const statusCheckResponse = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(statusCheckResponse.statusCode).toBe(200);
+        isCompleted = statusCheckResponse.body.status === "completed";
+        if (!isCompleted) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
 
       const completedResponse = await request(TEST_URL)
         .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
@@ -490,20 +523,23 @@ describe("E2E Tests for API Routes", () => {
         .send({ url: "https://firecrawl.dev" });
       expect(crawlResponse.statusCode).toBe(200);
 
-      const response = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toHaveProperty("status");
-      expect(response.body.status).toBe("active");
+      let isCompleted = false;
+      let completedResponse;
 
-      // wait for 30 seconds
-      await new Promise((r) => setTimeout(r, 30000));
+      while (!isCompleted) {
+        const response = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty("status");
 
-      const completedResponse = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-      expect(completedResponse.statusCode).toBe(200);
+        if (response.body.status === "completed") {
+          isCompleted = true;
+          completedResponse = response;
+        } else {
+          await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
+        }
+      }
       expect(completedResponse.body).toHaveProperty("status");
       expect(completedResponse.body.status).toBe("completed");
       expect(completedResponse.body).toHaveProperty("data");
