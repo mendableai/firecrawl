@@ -121,12 +121,10 @@ export class WebCrawler {
 
     }
 
-    console.log("Initial URL: ", this.initialUrl);
 
     const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
     if (sitemapLinks.length > 0) {
       let filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
-      console.log("Filtered links: ", filteredLinks.length);
       return filteredLinks.map(link => ({ url: link, html: "" }));
     }
 
@@ -142,6 +140,7 @@ export class WebCrawler {
       return [{ url: this.initialUrl, html: "" }];
     }
 
+
     // make sure to run include exclude here again
     const filteredUrls = this.filterLinks(urls.map(urlObj => urlObj.url), limit, this.maxCrawledDepth);
     return filteredUrls.map(url => ({ url, html: urls.find(urlObj => urlObj.url === url)?.html || "" }));
@@ -150,8 +149,9 @@ export class WebCrawler {
   private async crawlUrls(
     urls: string[],
     concurrencyLimit: number,
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
   ): Promise<{ url: string, html: string }[]> {
+    console.log("Crawling URLs: ", urls);
     const queue = async.queue(async (task: string, callback) => {
       if (this.crawledUrls.size >= this.maxCrawledLinks) {
         if (callback && typeof callback === "function") {
@@ -160,7 +160,20 @@ export class WebCrawler {
         return;
       }
       const newUrls = await this.crawl(task);
+      // add the initial url if not already added
+      // if (this.visited.size === 1) {
+      //   let normalizedInitial = this.initialUrl;
+      //   if (!normalizedInitial.endsWith("/")) {
+      //     normalizedInitial = normalizedInitial + "/";
+      //   }
+      //   if (!newUrls.some(page => page.url === this.initialUrl)) {
+      //     newUrls.push({ url: this.initialUrl, html: "" });
+      //   }
+      // }
+
+
       newUrls.forEach((page) => this.crawledUrls.set(page.url, page.html));
+      
       if (inProgress && newUrls.length > 0) {
         inProgress({
           current: this.crawledUrls.size,
@@ -196,15 +209,21 @@ export class WebCrawler {
   }
 
   async crawl(url: string): Promise<{url: string, html: string}[]> {
-    if (this.visited.has(url) || !this.robots.isAllowed(url, "FireCrawlAgent"))
+    if (this.visited.has(url) || !this.robots.isAllowed(url, "FireCrawlAgent")){
       return [];
+    }
     this.visited.add(url);
+    
+
     if (!url.startsWith("http")) {
       url = "https://" + url;
+
     }
     if (url.endsWith("/")) {
       url = url.slice(0, -1);
+
     }
+    
     if (this.isFile(url) || this.isSocialMediaOrEmail(url)) {
       return [];
     }
@@ -221,6 +240,13 @@ export class WebCrawler {
       }
       const $ = load(content);
       let links: {url: string, html: string}[] = [];
+
+      // Add the initial URL to the list of links
+      if(this.visited.size === 1)
+      {
+        links.push({url, html: content});
+      }
+
 
       $("a").each((_, element) => {
         const href = $(element).attr("href");
@@ -245,6 +271,9 @@ export class WebCrawler {
         }
       });
 
+      if(this.visited.size === 1){
+        return links;
+      }
       // Create a new list to return to avoid modifying the visited list
       return links.filter((link) => !this.visited.has(link.url));
     } catch (error) {
@@ -312,32 +341,57 @@ export class WebCrawler {
     return socialMediaOrEmail.some((ext) => url.includes(ext));
   }
 
+  // 
   private async tryFetchSitemapLinks(url: string): Promise<string[]> {
+    const normalizeUrl = (url: string) => {
+      url = url.replace(/^https?:\/\//, "").replace(/^www\./, "");
+      if (url.endsWith("/")) {
+        url = url.slice(0, -1);
+      }
+      return url;
+    };
+
     const sitemapUrl = url.endsWith("/sitemap.xml")
       ? url
       : `${url}/sitemap.xml`;
+
+    let sitemapLinks: string[] = [];
+
     try {
       const response = await axios.get(sitemapUrl);
       if (response.status === 200) {
-        return await getLinksFromSitemap(sitemapUrl);
+        sitemapLinks = await getLinksFromSitemap(sitemapUrl);
       }
     } catch (error) {
       // Error handling for failed sitemap fetch
       // console.error(`Failed to fetch sitemap from ${sitemapUrl}: ${error}`);
     }
 
-    // If the first one doesn't work, try the base URL
-    const baseUrlSitemap = `${this.baseUrl}/sitemap.xml`;
-    try {
-      const response = await axios.get(baseUrlSitemap);
-      if (response.status === 200) {
-        return await getLinksFromSitemap(baseUrlSitemap);
+    if (sitemapLinks.length === 0) {
+      // If the first one doesn't work, try the base URL
+      const baseUrlSitemap = `${this.baseUrl}/sitemap.xml`;
+      try {
+        const response = await axios.get(baseUrlSitemap);
+        if (response.status === 200) {
+          sitemapLinks = await getLinksFromSitemap(baseUrlSitemap);
+        }
+      } catch (error) {
+        // Error handling for failed base URL sitemap fetch
+        // console.error(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);
       }
-    } catch (error) {
-      // Error handling for failed base URL sitemap fetch
-      console.error(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);
     }
 
-    return [];
+    // Normalize and check if the URL is present in any of the sitemaps
+    const normalizedUrl = normalizeUrl(url);
+
+    const normalizedSitemapLinks = sitemapLinks.map(link => normalizeUrl(link));
+
+    // has to be greater than 0 to avoid adding the initial URL to the sitemap links, and preventing crawler to crawl
+    if (!normalizedSitemapLinks.includes(normalizedUrl) && sitemapLinks.length > 0) {
+      // do not push the normalized url
+      sitemapLinks.push(url);
+    }
+
+    return sitemapLinks;
   }
 }

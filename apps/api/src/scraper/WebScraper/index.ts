@@ -59,7 +59,11 @@ export class WebScraperDataProvider {
       await Promise.all(
         batchUrls.map(async (url, index) => {
           const existingHTML = allHtmls ? allHtmls[i + index] : "";
-          const result = await scrapSingleUrl(url, this.pageOptions, existingHTML);
+          const result = await scrapSingleUrl(
+            url,
+            this.pageOptions,
+            existingHTML
+          );
           processedUrls++;
           if (inProgress) {
             inProgress({
@@ -130,25 +134,30 @@ export class WebScraperDataProvider {
     }
   }
 
-  private async cleanIrrelevantPath(links: string[]){
-    return links.filter(link => {
+  private async cleanIrrelevantPath(links: string[]) {
+    return links.filter((link) => {
       const normalizedInitialUrl = new URL(this.urls[0]);
       const normalizedLink = new URL(link);
 
       // Normalize the hostname to account for www and non-www versions
-      const initialHostname = normalizedInitialUrl.hostname.replace(/^www\./, '');
-      const linkHostname = normalizedLink.hostname.replace(/^www\./, '');
+      const initialHostname = normalizedInitialUrl.hostname.replace(
+        /^www\./,
+        ""
+      );
+      const linkHostname = normalizedLink.hostname.replace(/^www\./, "");
 
       // Ensure the protocol and hostname match, and the path starts with the initial URL's path
-      return linkHostname === initialHostname &&
-             normalizedLink.pathname.startsWith(normalizedInitialUrl.pathname);
+      return (
+        linkHostname === initialHostname &&
+        normalizedLink.pathname.startsWith(normalizedInitialUrl.pathname)
+      );
     });
   }
 
   private async handleCrawlMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
-    console.log('??? >>>', this.urls[0])
+    console.log("??? >>>", this.urls[0]);
     const crawler = new WebCrawler({
       initialUrl: this.urls[0],
       includes: this.includes,
@@ -159,28 +168,25 @@ export class WebScraperDataProvider {
       generateImgAltText: this.generateImgAltText,
     });
 
-    let links = await crawler.start(inProgress, 5, this.limit, this.maxCrawledDepth);
+    let links = await crawler.start(
+      inProgress,
+      5,
+      this.limit,
+      this.maxCrawledDepth
+    );
 
     let allLinks = links.map((e) => e.url);
-    const allHtmls = links.map((e)=> e.html);
-
-    console.log(">>>>>> all links >>>>", {allLinks})
-    // allLinks = await this.cleanIrrelevantPath(allLinks);
-
-
-    
-    console.log('>>>>>??>?>?>?>?.', {allLinks})
+    const allHtmls = links.map((e) => e.html);
 
     if (this.returnOnlyUrls) {
-      return this.returnOnlyUrlsResponse(allLinks , inProgress);
+      return this.returnOnlyUrlsResponse(allLinks, inProgress);
     }
-    
+
     let documents = [];
     // check if fast mode is enabled and there is html inside the links
     if (this.crawlerMode === "fast" && links.some((link) => link.html)) {
-      console.log("Fast mode enabled");
       documents = await this.processLinks(allLinks, inProgress, allHtmls);
-    }else{
+    } else {
       documents = await this.processLinks(allLinks, inProgress);
     }
 
@@ -234,10 +240,13 @@ export class WebScraperDataProvider {
     let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
     let pdfDocuments = await this.fetchPdfDocuments(pdfLinks);
     links = links.filter((link) => !link.endsWith(".pdf"));
-    
-    let documents = await this.convertUrlsToDocuments(links, inProgress, allHtmls);
-    documents = await this.getSitemapData(this.urls[0], documents);
 
+    let documents = await this.convertUrlsToDocuments(
+      links,
+      inProgress,
+      allHtmls
+    );
+    documents = await this.getSitemapData(this.urls[0], documents);
 
     documents = this.applyPathReplacements(documents);
     // documents = await this.applyImgAltText(documents);
@@ -436,9 +445,13 @@ export class WebScraperDataProvider {
     this.limit = options.crawlerOptions?.limit ?? 10000;
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
-    this.pageOptions = options.pageOptions ?? { onlyMainContent: false, includeHtml: false };
-    this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
-    this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
+    this.pageOptions = options.pageOptions ?? {
+      onlyMainContent: false,
+      includeHtml: false,
+    };
+    this.extractorOptions = options.extractorOptions ?? { mode: "markdown" };
+    this.replaceAllPathsWithAbsolutePaths =
+      options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
     //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
     this.crawlerMode = options.crawlerOptions?.mode ?? "default";

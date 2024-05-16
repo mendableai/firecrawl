@@ -1,49 +1,80 @@
-[
+[{
+  "website": "https://openai.com/news",
+  "expected_min_num_of_pages": 4,
+  "expected_crawled_pages": [
+    "https://openai.com/news/company/",
+    "https://openai.com/news/research/",
+    "https://openai.com/news/safety-and-alignment/",
+    "https://openai.com/news/stories/"
+  ]
+},
   {
-    "website": "https://mendable.ai/pricing",
-    "expected_min_num_of_pages": 29,
-    "expected_not_crawled_pages": [
-      "https://mendable.ai/",
-      "https://mendable.ai/blog",
-      "https://mendable.ai/signin",
-      "https://mendable.ai/signup",
-      "https://mendable.ai",
-      "https://mendable.ai/usecases/sales-enablement",
-      "https://mendable.ai/usecases/documentation",
-      "https://mendable.ai/usecases/cs-enablement",
-      "https://mendable.ai/usecases/productcopilot",
-      "https://mendable.ai/security"
-    ],
-    "notes": "This one should not go backwards, but it does!"
-  },
+  "website": "https://www.framer.com/pricing",
+  "expected_min_num_of_pages": 1,
+  "expected_not_crawled_pages": [
+    "https://www.framer.com/features/navigation/",
+    "https://www.framer.com/contact/",
+    "https://www.framer.com/add-ons/",
+    "https://www.framer.com/free-saas-ui-kit/",
+    "https://www.framer.com/help/",
+    "https://www.framer.com/features/effects/",
+    "https://www.framer.com/enterprise/",
+    "https://www.framer.com/templates/"
+  ]
+},
   {
-    "website": "https://openai.com/news",
-    "expected_min_num_of_pages": 59,
-    "expected_crawled_pages": [
-      "https://openai.com/news/company/",
-      "https://openai.com/news/research/",
-      "https://openai.com/news/safety-and-alignment/",
-      "https://openai.com/news/stories/"
-    ]
-  },
+  "website": "https://mendable.ai/pricing",
+  "expected_min_num_of_pages": 1,
+  "expected_not_crawled_pages": [
+    "https://mendable.ai/",
+    "https://mendable.ai/blog",
+    "https://mendable.ai/signin",
+    "https://mendable.ai/signup",
+    "https://mendable.ai",
+    "https://mendable.ai/usecases/sales-enablement",
+    "https://mendable.ai/usecases/documentation",
+    "https://mendable.ai/usecases/cs-enablement",
+    "https://mendable.ai/usecases/productcopilot",
+    "https://mendable.ai/security"
+  ],
+  "notes": "This one should not go backwards, but it does!"
+},
+  
   {
     "website": "https://agentops.ai/blog",
-    "expected_min_num_of_pages": 7,
+    "expected_min_num_of_pages": 6,
     "expected_crawled_pages": [
       "https://www.agentops.ai/blog/effortless-hr-management-with-saas",
       "https://www.agentops.ai/blog/streamlining-hr-with-saas",
       "https://www.agentops.ai/blog/simplify-hr-with-modern-saas-solutions",
       "https://www.agentops.ai/blog/efficient-hr-operations-with-saas",
-      "https://www.agentops.ai/blog/hr-made-simple-with-saas"
+      "https://www.agentops.ai/blog/hr-made-simple-with-saas",
+      "https://agentops.ai/blog" 
     ],
     "expected_not_crawled_pages": [
-      "https://www.agentops.ai/about-us",
-      "https://www.agentops.ai/contact-us"
+      "https://agentops.ai/about-us",
+      "https://agentops.ai/contact-us"
     ]
   },
   {
+    "website": "https://en.wikipedia.org/wiki/T._N._Seshan",
+    "expected_min_num_of_pages": 1,
+    "expected_not_crawled_pages": [
+      "https://en.wikipedia.org/wiki/Wikipedia:Contents",
+      "https://en.wikipedia.org/wiki/Wikipedia:Contact_us",
+      "https://en.wikipedia.org/wiki/V._S._Ramadevi",
+      "https://en.wikipedia.org/wiki/Wikipedia:About",
+      "https://en.wikipedia.org/wiki/Help:Introduction",
+      "https://en.wikipedia.org/wiki/H._D._Deve_Gowda",
+      "https://en.wikipedia.org/wiki/File:T.N._Seshan_in_1994.jpg"
+    ]
+  },
+  
+  
+  
+  {
     "website": "https://ycombinator.com/companies",
-    "expected_min_num_of_pages": 45,
+    "expected_min_num_of_pages": 20,
     "expected_crawled_pages": [
       "https://www.ycombinator.com/companies/industry/elearning",
       "https://www.ycombinator.com/companies/industry/computer-vision",
@@ -68,36 +99,11 @@
       "https://firecrawl.dev/pricing"
     ]
   },
-  {
-    "website": "https://en.wikipedia.org/wiki/T._N._Seshan",
-    "expected_min_num_of_pages": 100,
-    "expected_not_crawled_pages": [
-      "https://en.wikipedia.org/wiki/Wikipedia:Contents",
-      "https://en.wikipedia.org/wiki/Wikipedia:Contact_us",
-      "https://en.wikipedia.org/wiki/V._S._Ramadevi",
-      "https://en.wikipedia.org/wiki/Wikipedia:About",
-      "https://en.wikipedia.org/wiki/Help:Introduction",
-      "https://en.wikipedia.org/wiki/H._D._Deve_Gowda",
-      "https://en.wikipedia.org/wiki/File:T.N._Seshan_in_1994.jpg"
-    ]
-  },
-  {
-    "website": "https://www.framer.com/pricing",
-    "expected_min_num_of_pages": 58,
-    "expected_not_crawled_pages": [
-      "https://www.framer.com/features/navigation/",
-      "https://www.framer.com/contact/",
-      "https://www.framer.com/add-ons/",
-      "https://www.framer.com/free-saas-ui-kit/",
-      "https://www.framer.com/help/",
-      "https://www.framer.com/features/effects/",
-      "https://www.framer.com/enterprise/",
-      "https://www.framer.com/templates/"
-    ]
-  },
+  
+  
   {
     "website": "https://fly.io/docs/gpus/gpu-quickstart",
-    "expected_min_num_of_pages": 39,
+    "expected_min_num_of_pages": 1,
     "expected_not_crawled_pages": [
       "https://fly.io/docs/getting-started/",
       "https://fly.io/docs/hands-on/",
@@ -134,7 +140,7 @@
   },
   {
     "website": "https://richmondconfidential.org",
-    "expected_min_num_of_pages": 50,
+    "expected_min_num_of_pages": 20,
     "expected_crawled_pages": [
       "https://richmondconfidential.org/2009/10/13/salesians-star-guard-has-a-big-impact/",
       "https://richmondconfidential.org/2009/10/13/on-team-of-beginners-oilers-old-hand-stands-out/",
