@@ -157,7 +157,7 @@ export class WebScraperDataProvider {
   private async handleCrawlMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
-    console.log("??? >>>", this.urls[0]);
+    
     const crawler = new WebCrawler({
       initialUrl: this.urls[0],
       includes: this.includes,
