@@ -17,6 +17,7 @@ import {
 } from "./utils/replacePaths";
 import { generateCompletions } from "../../lib/LLM-extraction";
 import { getWebScraperQueue } from "../../../src/services/queue-service";
+import { fetchAndProcessDocx } from "./utils/docxProcessor";
 
 export class WebScraperDataProvider {
   private bullJobId: string;
@@ -157,7 +158,7 @@ export class WebScraperDataProvider {
   private async handleCrawlMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
-    
+
     const crawler = new WebCrawler({
       initialUrl: this.urls[0],
       includes: this.includes,
@@ -237,9 +238,13 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void,
     allHtmls?: string[]
   ): Promise<Document[]> {
-    let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
-    let pdfDocuments = await this.fetchPdfDocuments(pdfLinks);
-    links = links.filter((link) => !link.endsWith(".pdf"));
+    const pdfLinks = links.filter(link => link.endsWith(".pdf"));
+    const docLinks = links.filter(link => link.endsWith(".doc") || link.endsWith(".docx"));
+
+    const pdfDocuments = await this.fetchPdfDocuments(pdfLinks);
+    const docxDocuments = await this.fetchDocxDocuments(docLinks);
+
+    links = links.filter(link => !pdfLinks.includes(link) && !docLinks.includes(link));
 
     let documents = await this.convertUrlsToDocuments(
       links,
@@ -257,7 +262,7 @@ export class WebScraperDataProvider {
     ) {
       documents = await generateCompletions(documents, this.extractorOptions);
     }
-    return documents.concat(pdfDocuments);
+    return documents.concat(pdfDocuments).concat(docxDocuments);
   }
 
   private async fetchPdfDocuments(pdfLinks: string[]): Promise<Document[]> {
@@ -267,6 +272,18 @@ export class WebScraperDataProvider {
         return {
           content: pdfContent,
           metadata: { sourceURL: pdfLink },
+          provider: "web-scraper",
+        };
+      })
+    );
+  }
+  private async fetchDocxDocuments(docxLinks: string[]): Promise<Document[]> {
+    return Promise.all(
+      docxLinks.map(async (p) => {
+        const docXDocument = await fetchAndProcessDocx(p);
+        return {
+          content: docXDocument,
+          metadata: { sourceURL: p },
           provider: "web-scraper",
         };
       })

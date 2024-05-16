@@ -321,7 +321,7 @@ export class WebCrawler {
       ".mp4",
       ".mp3",
       ".pptx",
-      ".docx",
+      // ".docx",
       ".xlsx",
       ".xml",
     ];
