@@ -242,7 +242,7 @@
                   "query": {
                     "type": "string",
                     "format": "uri",
-                    "description": "The URL to scrape"
+                    "description": "The query to search for"
                   },
                   "pageOptions": {
                     "type": "object",
@@ -354,14 +354,14 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/ScrapeResponse"
+                        "$ref": "#/components/schemas/CrawlStatusResponseObj"
                       },
                       "description": "Data returned from the job (null when it is in progress)"
                     },
                     "partial_data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/ScrapeResponse"
+                        "$ref": "#/components/schemas/CrawlStatusResponseObj"
                       },
                       "description": "Partial documents returned as it is being crawls (streaming). When a page is ready it will append to the parial_data array - so no need to wait for all the website to be crawled."
                     }
@@ -479,6 +479,41 @@
                     "format": "uri"
                   }
                 }
+              }
+            }
+          }
+        }
+      },
+      "CrawlStatusResponseObj": {
+        "type": "object",
+        "properties": {
+          "markdown": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "html": {
+            "type": "string",
+            "nullable": true,
+            "description": "Raw HTML content of the page if `includeHtml`  is true"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "language": {
+                "type": "string",
+                "nullable": true
+              },
+              "sourceURL": {
+                "type": "string",
+                "format": "uri"
               }
             }
           }
