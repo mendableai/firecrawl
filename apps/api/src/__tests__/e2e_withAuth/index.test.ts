@@ -238,14 +238,14 @@ describe("E2E Tests for API Routes", () => {
       });
     }, 60000); // 60 seconds
 
-    it("should return a successful response with a valid API key and valid excludes option", async () => {
+    it("should return a successful response with a valid API key and limit to 3", async () => {
       const crawlResponse = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
           url: "https://mendable.ai",
-          limit: 3,
+          crawlerOptions: { limit: 3 },
         });
       
       let isFinished = false;
@@ -327,7 +327,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Content-Type", "application/json")
         .send({
           url: "https://mendable.ai",
-          limit: 10,
+          crawlerOptions: { onlyMainContent: true, limit: 10 },
         });
       
       const response = await request(TEST_URL)
