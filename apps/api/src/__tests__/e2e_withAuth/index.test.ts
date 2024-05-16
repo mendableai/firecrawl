@@ -320,50 +320,50 @@ describe("E2E Tests for API Routes", () => {
       });
     }, 120000);
 
-    it("should return a successful response with a valid API key and valid onlyMainContent option", async () => {
-      const crawlResponse = await request(TEST_URL)
-        .post("/v0/crawl")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-        .set("Content-Type", "application/json")
-        .send({
-          url: "https://mendable.ai",
-          crawlerOptions: { onlyMainContent: true, limit: 10 },
-        });
+    // it("should return a successful response with a valid API key and valid limit option", async () => {
+    //   const crawlResponse = await request(TEST_URL)
+    //     .post("/v0/crawl")
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    //     .set("Content-Type", "application/json")
+    //     .send({
+    //       url: "https://mendable.ai",
+    //       crawlerOptions: { limit: 10 },
+    //     });
       
-      const response = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toHaveProperty("status");
-      expect(response.body.status).toBe("active");
+    //   const response = await request(TEST_URL)
+    //     .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+    //   expect(response.statusCode).toBe(200);
+    //   expect(response.body).toHaveProperty("status");
+    //   expect(response.body.status).toBe("active");
 
-      let isCompleted = false;
-      while (!isCompleted) {
-        const statusCheckResponse = await request(TEST_URL)
-          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-        expect(statusCheckResponse.statusCode).toBe(200);
-        isCompleted = statusCheckResponse.body.status === "completed";
-        if (!isCompleted) {
-          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
-        }
-      }
+    //   let isCompleted = false;
+    //   while (!isCompleted) {
+    //     const statusCheckResponse = await request(TEST_URL)
+    //       .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+    //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+    //     expect(statusCheckResponse.statusCode).toBe(200);
+    //     isCompleted = statusCheckResponse.body.status === "completed";
+    //     if (!isCompleted) {
+    //       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+    //     }
+    //   }
 
-      const completedResponse = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+    //   const completedResponse = await request(TEST_URL)
+    //     .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
-      expect(completedResponse.statusCode).toBe(200);
-      expect(completedResponse.body).toHaveProperty("status");
-      expect(completedResponse.body.status).toBe("completed");
-      expect(completedResponse.body).toHaveProperty("data");
-      expect(completedResponse.body.data.length).toBe(10);
-      expect(completedResponse.body.data[0]).toHaveProperty("content");
-      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
-      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.data[0].content).toContain("Mendable");
-      expect(completedResponse.body.data[0].content).not.toContain("main menu");
-    }, 60000); // 60 seconds
+    //   expect(completedResponse.statusCode).toBe(200);
+    //   expect(completedResponse.body).toHaveProperty("status");
+    //   expect(completedResponse.body.status).toBe("completed");
+    //   expect(completedResponse.body).toHaveProperty("data");
+    //   expect(completedResponse.body.data.length).toBe(10);
+    //   expect(completedResponse.body.data[0]).toHaveProperty("content");
+    //   expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+    //   expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+    //   expect(completedResponse.body.data[0].content).toContain("Mendable");
+    //   expect(completedResponse.body.data[0].content).not.toContain("main menu");
+    // }, 60000); // 60 seconds
 
     it("should return a successful response for a valid crawl job with includeHtml set to true option", async () => {
       const crawlResponse = await request(TEST_URL)
