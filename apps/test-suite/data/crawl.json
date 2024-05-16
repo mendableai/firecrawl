@@ -1,4 +1,10 @@
-[{
+[
+  {
+    "website": "https://www.vellum.ai/llm-leaderboard",
+    "expected_min_num_of_pages": 1,
+    "expected_crawled_pages": ["https://www.vellum.ai/llm-leaderboard"]
+  },
+  {
   "website": "https://openai.com/news",
   "expected_min_num_of_pages": 4,
   "expected_crawled_pages": [
@@ -70,8 +76,6 @@
     ]
   },
   
-  
-  
   {
     "website": "https://ycombinator.com/companies",
     "expected_min_num_of_pages": 20,
@@ -115,11 +119,7 @@
     ],
     "notes": "This one should not go backwards, but it does!"
   },
-  {
-    "website": "https://www.vellum.ai/llm-leaderboard",
-    "expected_min_num_of_pages": 0,
-    "expected_crawled_pages": [""]
-  },
+  
   {
     "website": "https://www.instructables.com/circuits",
     "expected_min_num_of_pages": 12,

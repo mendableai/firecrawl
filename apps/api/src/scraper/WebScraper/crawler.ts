@@ -151,7 +151,6 @@ export class WebCrawler {
     concurrencyLimit: number,
     inProgress?: (progress: Progress) => void,
   ): Promise<{ url: string, html: string }[]> {
-    console.log("Crawling URLs: ", urls);
     const queue = async.queue(async (task: string, callback) => {
       if (this.crawledUrls.size >= this.maxCrawledLinks) {
         if (callback && typeof callback === "function") {
