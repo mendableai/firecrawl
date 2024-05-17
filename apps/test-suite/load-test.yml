@@ -1,0 +1,60 @@
+config:
+  target: "https://api.firecrawl.dev/v0" # <<< ADD HERE THE URL FOR THE STAGING ENVIRONMENT
+  phases:
+    - duration: 1
+      arrivalRate: 5
+  defaults:
+    headers:
+      Authorization: "Bearer {{ $env.TEST_API_KEY }}"
+scenarios:
+  - name: Scrape a URL
+    flow:
+      - post:
+          url: "/scrape"
+          json:
+            url: "https://www.scrapethissite.com"
+            pageOptions:
+              onlyMainContent: true
+          capture:
+            - json: "$.data.markdown"
+              as: markdown_content
+
+  # - name: Crawl a URL
+  #   flow:
+  #     - post:
+  #         url: "/crawl"
+  #         json:
+  #           url: "https://mendable.ai"
+  #           crawlerOptions:
+  #             includes: []
+  #             excludes: ["blog/*"]
+  #             limit: 100
+  #           pageOptions:
+  #             onlyMainContent: true
+  #         capture:
+  #           - json: "$.jobId"
+  #             as: job_id
+  #     - get:
+  #         url: "/crawl/status/{{ job_id }}"
+  #         capture:
+  #           - json: "$.status"
+  #             as: crawl_status
+  #         until: 
+  #           - condition: "equals"
+  #             value: "completed"
+  #             variable: "crawl_status"
+  #         retry:
+  #           count: 20
+  #           wait: 10
+
+  # - name: Search for a query
+  #   flow:
+  #     - post:
+  #         url: "/search"
+  #         json:
+  #           query: "firecrawl"
+  #           pageOptions:
+  #             fetchPageContent: true
+  #         capture:
+  #           - json: "$.data[0].markdown"
+  #             as: search_markdown_content
