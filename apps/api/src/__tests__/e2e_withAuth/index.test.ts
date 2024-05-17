@@ -518,4 +518,65 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body).toHaveProperty("isProduction");
     });
   });
+
+  describe("Rate Limiter", () => {
+    it("should return 429 when rate limit is exceeded for preview token", async () => {
+      for (let i = 0; i < 5; i++) {
+        const response = await request(TEST_URL)
+          .post("/v0/scrape")
+          .set("Authorization", `Bearer this_is_just_a_preview_token`)
+          .set("Content-Type", "application/json")
+          .send({ url: "https://firecrawl.dev" });
+
+        expect(response.statusCode).toBe(200);
+      }
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer this_is_just_a_preview_token`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://firecrawl.dev" });
+
+      expect(response.statusCode).toBe(429);
+    }, 60000);
+  });
+
+  it("should return 429 when rate limit is exceeded for API key", async () => {
+    for (let i = 0; i < parseInt(process.env.RATE_LIMIT_TEST_API_KEY_SCRAPE); i++) {
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://firecrawl.dev" });
+
+      expect(response.statusCode).toBe(200);
+    }
+
+    const response = await request(TEST_URL)
+      .post("/v0/scrape")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send({ url: "https://firecrawl.dev" });
+
+    expect(response.statusCode).toBe(429);
+  }, 60000);
+
+  it("should return 429 when rate limit is exceeded for API key", async () => {
+    for (let i = 0; i < parseInt(process.env.RATE_LIMIT_TEST_API_KEY_CRAWL); i++) {
+      const response = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://firecrawl.dev" });
+
+      expect(response.statusCode).toBe(200);
+    }
+
+    const response = await request(TEST_URL)
+      .post("/v0/crawl")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send({ url: "https://firecrawl.dev" });
+
+    expect(response.statusCode).toBe(429);
+  }, 60000);
 });

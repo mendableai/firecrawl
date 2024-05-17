@@ -41,8 +41,8 @@ export async function supaAuthenticateUser(
   let normalizedApi: string;
 
   if (token == "this_is_just_a_preview_token") {
-    rateLimiter = await getRateLimiter(RateLimiterMode.Preview, token);
-  } else {    
+    rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
+  } else {
     normalizedApi = parseApi(token);
 
     const { data, error } = await supabase_service.rpc(
@@ -103,7 +103,7 @@ export async function supaAuthenticateUser(
   }
 
   try {
-    rateLimiter.consume(iptoken);
+    await rateLimiter.consume(iptoken);
   } catch (rateLimiterRes) {
     console.error(rateLimiterRes);
     return {
