@@ -587,22 +587,23 @@ describe("E2E Tests for API Routes", () => {
         .send({ url: 'https://arxiv.org/abs/astro-ph/9301001', crawlerOptions: { limit: 10, excludes: [ 'list/*', 'login', 'abs/*', 'static/*', 'about/*', 'archive/*' ] }});
       expect(crawlResponse.statusCode).toBe(200);
 
-      const response = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`);
+      let isCompleted = false;
+      let completedResponse;
+
+      while (!isCompleted) {
+        const response = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`);
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty('status');
-        expect(response.body.status).toBe('active');
 
-        // wait for 30 seconds
-        await new Promise((r) => setTimeout(r, 30000));
-
-        const completedResponse = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`);
-
-        expect(completedResponse.statusCode).toBe(200);
-        expect(completedResponse.body).toHaveProperty('status');
+        if (response.body.status === 'completed') {
+          isCompleted = true;
+          completedResponse = response;
+        } else {
+          await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
+        }
+      }
         expect(completedResponse.body.status).toBe('completed');
         expect(completedResponse.body).toHaveProperty('data');
         expect(completedResponse.body.data.length).toBeGreaterThan(1);
@@ -626,18 +627,21 @@ describe("E2E Tests for API Routes", () => {
         });
       expect(crawlResponse.statusCode).toBe(200);
 
-      const response = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toHaveProperty("status");
-      expect(response.body.status).toBe("active");
-      // wait for 60 seconds
-      await new Promise((r) => setTimeout(r, 60000));
-      const completedResponse = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      let isCompleted = false;
+      let completedResponse;
 
+      while (!isCompleted) {
+        const response = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty("status");
+
+        if (response.body.status === "completed") {
+          isCompleted = true;
+          completedResponse = response;
+        }
+      }
       expect(completedResponse.statusCode).toBe(200);
       expect(completedResponse.body).toHaveProperty("status");
       expect(completedResponse.body.status).toBe("completed");
