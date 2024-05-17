@@ -526,7 +526,7 @@ describe("E2E Tests for API Routes", () => {
           .post("/v0/scrape")
           .set("Authorization", `Bearer this_is_just_a_preview_token`)
           .set("Content-Type", "application/json")
-          .send({ url: "https://firecrawl.dev" });
+          .send({ url: "https://www.scrapethissite.com" });
 
         expect(response.statusCode).toBe(200);
       }
@@ -534,7 +534,7 @@ describe("E2E Tests for API Routes", () => {
         .post("/v0/scrape")
         .set("Authorization", `Bearer this_is_just_a_preview_token`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://firecrawl.dev" });
+        .send({ url: "https://www.scrapethissite.com" });
 
       expect(response.statusCode).toBe(429);
     }, 60000);
@@ -546,7 +546,7 @@ describe("E2E Tests for API Routes", () => {
         .post("/v0/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://firecrawl.dev" });
+        .send({ url: "https://www.scrapethissite.com" });
 
       expect(response.statusCode).toBe(200);
     }
@@ -555,7 +555,7 @@ describe("E2E Tests for API Routes", () => {
       .post("/v0/scrape")
       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
       .set("Content-Type", "application/json")
-      .send({ url: "https://firecrawl.dev" });
+      .send({ url: "https://www.scrapethissite.com" });
 
     expect(response.statusCode).toBe(429);
   }, 60000);
@@ -566,7 +566,7 @@ describe("E2E Tests for API Routes", () => {
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://firecrawl.dev" });
+        .send({ url: "https://www.scrapethissite.com" });
 
       expect(response.statusCode).toBe(200);
     }
@@ -575,7 +575,7 @@ describe("E2E Tests for API Routes", () => {
       .post("/v0/crawl")
       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
       .set("Content-Type", "application/json")
-      .send({ url: "https://firecrawl.dev" });
+      .send({ url: "https://www.scrapethissite.com" });
 
     expect(response.statusCode).toBe(429);
   }, 60000);
