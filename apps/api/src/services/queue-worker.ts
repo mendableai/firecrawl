@@ -26,7 +26,7 @@ getWebScraperQueue().process(
         success: success,
         result: {
           links: docs.map((doc) => {
-            return { content: doc, source: doc.metadata.sourceURL };
+            return { content: doc, source: doc?.metadata?.sourceURL ?? doc?.url ?? "" };
           }),
         },
         project_id: job.data.project_id,

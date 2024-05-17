@@ -109,7 +109,7 @@ export default class FirecrawlApp {
       const response: AxiosResponse = await axios.post(
         "https://api.firecrawl.dev/v0/scrape",
         jsonData,
-        { headers }
+        { headers },
       );
       if (response.status === 200) {
         const responseData = response.data;
@@ -324,7 +324,7 @@ export default class FirecrawlApp {
    * @param {string} action - The action being performed when the error occurred.
    */
   handleError(response: AxiosResponse, action: string): void {
-    if ([402, 409, 500].includes(response.status)) {
+    if ([402, 408, 409, 500].includes(response.status)) {
       const errorMessage: string =
         response.data.error || "Unknown error occurred";
       throw new Error(
