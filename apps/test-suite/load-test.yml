@@ -1,11 +1,11 @@
 config:
-  target: "https://api.firecrawl.dev/v0" # <<< ADD HERE THE URL FOR THE STAGING ENVIRONMENT
+  target: "https://staging-firecrawl-scraper-js.fly.dev/v0"
   phases:
-    - duration: 1
-      arrivalRate: 5
+    - duration: 60
+      arrivalRate: 10
   defaults:
     headers:
-      Authorization: "Bearer {{ $env.TEST_API_KEY }}"
+      Authorization: "Bearer fc-f3f77b6d5e084d2b970f595089cefa58"
 scenarios:
   - name: Scrape a URL
     flow:
