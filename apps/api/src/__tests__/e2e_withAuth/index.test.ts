@@ -103,6 +103,36 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data.markdown).toContain("🔥 FireCrawl");
       expect(response.body.data.html).toContain("<h1");
     }, 30000); // 30 seconds timeout
+    
+   it('should return a successful response for a valid scrape with PDF file', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://arxiv.org/pdf/astro-ph/9301001.pdf' });
+      await new Promise((r) => setTimeout(r, 6000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
+    }, 60000); // 60 seconds
+  
+    it('should return a successful response for a valid scrape with PDF file without explicit .pdf extension', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://arxiv.org/pdf/astro-ph/9301001' });
+      await new Promise((r) => setTimeout(r, 6000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
+    }, 60000); // 60 seconds
   });
 
   describe("POST /v0/crawl", () => {
@@ -548,7 +578,130 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
       expect(completedResponse.body.data[0].content).toContain("🔥 FireCrawl");
     }, 60000); // 60 seconds
-  });
+    
+    it('should return a successful response for a valid crawl job with PDF files without explicit .pdf extension', async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post('/v0/crawl')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://arxiv.org/pdf/astro-ph/9301001', crawlerOptions: { limit: 10, excludes: [ 'list/*', 'login', 'abs/*', 'static/*', 'about/*', 'archive/*' ] }});
+      expect(crawlResponse.statusCode).toBe(200);
+
+      let isCompleted = false;
+      let completedResponse;
+
+      while (!isCompleted) {
+        const response = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty('status');
+
+        if (response.body.status === 'completed') {
+          isCompleted = true;
+          completedResponse = response;
+        } else {
+          await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
+        }
+      }
+        expect(completedResponse.body.status).toBe('completed');
+        expect(completedResponse.body).toHaveProperty('data');
+        expect(completedResponse.body.data.length).toEqual(1);
+        expect(completedResponse.body.data).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              content: expect.stringContaining('asymmetries might represent, for instance, preferred source orientations to our line of sight.')
+            })
+          ])
+        );
+    }, 60000); // 60 seconds
+
+    it("should return a successful response with max depth option for a valid crawl job", async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://www.scrapethissite.com",
+          crawlerOptions: { maxDepth: 2 },
+        });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      let isCompleted = false;
+      let completedResponse;
+
+      while (!isCompleted) {
+        const response = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty("status");
+
+        if (response.body.status === "completed") {
+          isCompleted = true;
+          completedResponse = response;
+        }
+      }
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      const urls = completedResponse.body.data.map(
+        (item: any) => item.metadata?.sourceURL
+      );
+      expect(urls.length).toBeGreaterThan(1);
+
+      // Check if all URLs have a maximum depth of 1
+      urls.forEach((url) => {
+        const depth = new URL(url).pathname.split("/").filter(Boolean).length;
+        expect(depth).toBeLessThanOrEqual(1);
+      });
+    }, 120000);
+
+    it("should return a successful response for a valid crawl job with includeHtml set to true option", async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://firecrawl.dev",
+          pageOptions: { includeHtml: true },
+        });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(response.body.status).toBe("active");
+
+      // wait for 30 seconds
+      await new Promise((r) => setTimeout(r, 30000));
+
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+
+      // 120 seconds
+      expect(completedResponse.body.data[0]).toHaveProperty("html");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0].content).toContain("🔥 FireCrawl");
+      expect(completedResponse.body.data[0].markdown).toContain("FireCrawl");
+      expect(completedResponse.body.data[0].html).toContain("<h1");
+    }, 60000);
+  }); // 60 seconds
 
   it("If someone cancels a crawl job, it should turn into failed status", async () => {
     const crawlResponse = await request(TEST_URL)
@@ -559,7 +712,7 @@ describe("E2E Tests for API Routes", () => {
     expect(crawlResponse.statusCode).toBe(200);
 
     // wait for 30 seconds
-    await new Promise((r) => setTimeout(r, 10000));
+    await new Promise((r) => setTimeout(r, 20000));
 
     const response = await request(TEST_URL)
       .delete(`/v0/crawl/cancel/${crawlResponse.body.jobId}`)
@@ -568,7 +721,7 @@ describe("E2E Tests for API Routes", () => {
     expect(response.body).toHaveProperty("status");
     expect(response.body.status).toBe("cancelled");
 
-    await new Promise((r) => setTimeout(r, 20000));
+    await new Promise((r) => setTimeout(r, 10000));
 
     const completedResponse = await request(TEST_URL)
       .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
@@ -584,8 +737,6 @@ describe("E2E Tests for API Routes", () => {
     expect(completedResponse.body.partial_data[0]).toHaveProperty("metadata");
     
   }, 60000); // 60 seconds
-
-  
 
   describe("POST /v0/scrape with LLM Extraction", () => {
     it("should extract data using LLM extraction mode", async () => {

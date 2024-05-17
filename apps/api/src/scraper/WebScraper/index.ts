@@ -197,7 +197,9 @@ export class WebScraperDataProvider {
   private async handleSingleUrlsMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
-    let documents = await this.processLinks(this.urls, inProgress);
+    const links = this.urls;
+
+    let documents = await this.processLinks(links, inProgress);
     return documents;
   }
 

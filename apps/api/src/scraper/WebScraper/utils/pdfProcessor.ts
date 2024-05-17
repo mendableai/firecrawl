@@ -19,8 +19,8 @@ export async function fetchAndProcessPdf(url: string): Promise<string> {
 async function downloadPdf(url: string): Promise<string> {
   const response = await axios({
     url,
-    method: 'GET',
-    responseType: 'stream',
+    method: "GET",
+    responseType: "stream",
   });
 
   const tempFilePath = path.join(os.tmpdir(), `tempPdf-${Date.now()}.pdf`);
@@ -29,8 +29,8 @@ async function downloadPdf(url: string): Promise<string> {
   response.data.pipe(writer);
 
   return new Promise((resolve, reject) => {
-    writer.on('finish', () => resolve(tempFilePath));
-    writer.on('error', reject);
+    writer.on("finish", () => resolve(tempFilePath));
+    writer.on("error", reject);
   });
 }
 
@@ -77,12 +77,12 @@ export async function processPdfToText(filePath: string): Promise<string> {
           } else {
             // If the status code is not 200, increment the attempt counter and wait
             attempt++;
-            await new Promise((resolve) => setTimeout(resolve, 250)); // Wait for 2 seconds
+            await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 0.5 seconds
           }
         } catch (error) {
-          console.error("Error fetching result:", error);
+          console.error("Error fetching result:", error || '');
           attempt++;
-          await new Promise((resolve) => setTimeout(resolve, 250)); // Wait for 2 seconds before retrying
+          await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 0.5 seconds before retrying
           // You may want to handle specific errors differently
         }
       }
@@ -101,7 +101,7 @@ export async function processPdfToText(filePath: string): Promise<string> {
   return content;
 }
 
-async function processPdf(file: string){
+async function processPdf(file: string) {
   const fileContent = fs.readFileSync(file);
   const data = await pdf(fileContent);
   return data.text;
