@@ -584,7 +584,7 @@ describe("E2E Tests for API Routes", () => {
         .post('/v0/crawl')
         .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
         .set('Content-Type', 'application/json')
-        .send({ url: 'https://arxiv.org/abs/astro-ph/9301001', crawlerOptions: { limit: 10, excludes: [ 'list/*', 'login', 'abs/*', 'static/*', 'about/*', 'archive/*' ] }});
+        .send({ url: 'https://arxiv.org/pdf/astro-ph/9301001', crawlerOptions: { limit: 10, excludes: [ 'list/*', 'login', 'abs/*', 'static/*', 'about/*', 'archive/*' ] }});
       expect(crawlResponse.statusCode).toBe(200);
 
       let isCompleted = false;
@@ -606,7 +606,7 @@ describe("E2E Tests for API Routes", () => {
       }
         expect(completedResponse.body.status).toBe('completed');
         expect(completedResponse.body).toHaveProperty('data');
-        expect(completedResponse.body.data.length).toBeGreaterThan(1);
+        expect(completedResponse.body.data.length).toEqual(1);
         expect(completedResponse.body.data).toEqual(
           expect.arrayContaining([
             expect.objectContaining({

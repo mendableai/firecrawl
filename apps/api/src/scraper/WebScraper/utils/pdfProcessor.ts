@@ -80,7 +80,7 @@ export async function processPdfToText(filePath: string): Promise<string> {
             await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 0.5 seconds
           }
         } catch (error) {
-          console.error("Error fetching result:", error.data.detail || '');
+          console.error("Error fetching result:", error || '');
           attempt++;
           await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 0.5 seconds before retrying
           // You may want to handle specific errors differently
