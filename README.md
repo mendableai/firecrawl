@@ -6,7 +6,7 @@ _This repository is in its early development stages. We are still merging custom
 
 ## What is Firecrawl?
 
-[Firecrawl](https://firecrawl.dev?ref=github) is an API service that takes a URL, crawls it, and converts it into clean markdown. We crawl all accessible subpages and give you clean markdown for each. No sitemap required.
+[Firecrawl](https://firecrawl.dev?ref=github) is an API service that takes a URL, crawls it, and converts it into clean markdown or structured data. We crawl all accessible subpages and give you clean data for each. No sitemap required.
 
 _Pst. hey, you, join our stargazers :)_
 
