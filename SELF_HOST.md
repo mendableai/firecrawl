@@ -27,4 +27,5 @@ Once that's complete, you can simply run the following commands to get started:
 docker compose up
 ```
 
+
 This will run a local instance of Firecrawl which can be accessed at `http://localhost:3002`.
