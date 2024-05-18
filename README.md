@@ -114,7 +114,7 @@ Response:
 
 ### Search (Beta)
 
-Used to search the web, get the most relevant results, scrap each page and return the markdown.
+Used to search the web, get the most relevant results, scrape each page and return the markdown.
 
 ```bash
 curl -X POST https://api.firecrawl.dev/v0/search \
