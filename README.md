@@ -296,7 +296,6 @@ npm install @mendable/firecrawl-js
 1. Get an API key from [firecrawl.dev](https://firecrawl.dev)
 2. Set the API key as an environment variable named `FIRECRAWL_API_KEY` or pass it as a parameter to the `FirecrawlApp` class.
 
-
 ### Scraping a URL
 
 To scrape a single URL with error handling, use the `scrapeUrl` method. It takes the URL as a parameter and returns the scraped data as a dictionary.
