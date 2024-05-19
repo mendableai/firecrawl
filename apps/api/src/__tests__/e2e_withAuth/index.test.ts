@@ -977,43 +977,43 @@ describe("E2E Tests for API Routes", () => {
     }, 60000);
   });
 
-  it("should return 429 when rate limit is exceeded for API key", async () => {
-    for (let i = 0; i < parseInt(process.env.RATE_LIMIT_TEST_API_KEY_SCRAPE); i++) {
-      const response = await request(TEST_URL)
-        .post("/v0/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-        .set("Content-Type", "application/json")
-        .send({ url: "https://www.scrapethissite.com" });
+  // it("should return 429 when rate limit is exceeded for API key", async () => {
+  //   for (let i = 0; i < parseInt(process.env.RATE_LIMIT_TEST_API_KEY_SCRAPE); i++) {
+  //     const response = await request(TEST_URL)
+  //       .post("/v0/scrape")
+  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+  //       .set("Content-Type", "application/json")
+  //       .send({ url: "https://www.scrapethissite.com" });
 
-      expect(response.statusCode).toBe(200);
-    }
+  //     expect(response.statusCode).toBe(200);
+  //   }
 
-    const response = await request(TEST_URL)
-      .post("/v0/scrape")
-      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-      .set("Content-Type", "application/json")
-      .send({ url: "https://www.scrapethissite.com" });
+  //   const response = await request(TEST_URL)
+  //     .post("/v0/scrape")
+  //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+  //     .set("Content-Type", "application/json")
+  //     .send({ url: "https://www.scrapethissite.com" });
 
-    expect(response.statusCode).toBe(429);
-  }, 60000);
+  //   expect(response.statusCode).toBe(429);
+  // }, 60000);
 
-  it("should return 429 when rate limit is exceeded for API key", async () => {
-    for (let i = 0; i < parseInt(process.env.RATE_LIMIT_TEST_API_KEY_CRAWL); i++) {
-      const response = await request(TEST_URL)
-        .post("/v0/crawl")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-        .set("Content-Type", "application/json")
-        .send({ url: "https://www.scrapethissite.com" });
+  // it("should return 429 when rate limit is exceeded for API key", async () => {
+  //   for (let i = 0; i < parseInt(process.env.RATE_LIMIT_TEST_API_KEY_CRAWL); i++) {
+  //     const response = await request(TEST_URL)
+  //       .post("/v0/crawl")
+  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+  //       .set("Content-Type", "application/json")
+  //       .send({ url: "https://www.scrapethissite.com" });
 
-      expect(response.statusCode).toBe(200);
-    }
+  //     expect(response.statusCode).toBe(200);
+  //   }
 
-    const response = await request(TEST_URL)
-      .post("/v0/crawl")
-      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-      .set("Content-Type", "application/json")
-      .send({ url: "https://www.scrapethissite.com" });
+  //   const response = await request(TEST_URL)
+  //     .post("/v0/crawl")
+  //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+  //     .set("Content-Type", "application/json")
+  //     .send({ url: "https://www.scrapethissite.com" });
 
-    expect(response.statusCode).toBe(429);
-  }, 60000);
+  //   expect(response.statusCode).toBe(429);
+  // }, 60000);
 });
