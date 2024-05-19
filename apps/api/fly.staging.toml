@@ -47,8 +47,9 @@ kill_timeout = '5s'
     soft_limit = 30
 
 [[vm]]
-  size = 'performance-4x'
-  processes = ['app']
+  size = 'performance-1x'
+  processes = ['app','worker']
+
 
 
 
