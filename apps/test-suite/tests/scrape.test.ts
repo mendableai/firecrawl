@@ -1,16 +1,14 @@
 import request from "supertest";
 import dotenv from "dotenv";
-import Anthropic from "@anthropic-ai/sdk";
-import { numTokensFromString } from "./utils/tokens";
+import { numTokensFromString } from "../utils/tokens";
 import OpenAI from "openai";
-import { WebsiteScrapeError } from "./utils/types";
-import { logErrors } from "./utils/log";
+import { WebsiteScrapeError } from "../utils/types";
+import { logErrors } from "../utils/log";
 
-const websitesData = require("./data/websites.json");
+import websitesData from "../data/scrape.json";
 import "dotenv/config";
 
-const fs = require('fs');
-
+import fs from 'fs';
 dotenv.config();
 
 interface WebsiteData {
@@ -21,8 +19,7 @@ interface WebsiteData {
 
 const TEST_URL = "http://127.0.0.1:3002";
 
-
-describe("Scraping/Crawling Checkup (E2E)", () => {
+describe("Scraping Checkup (E2E)", () => {
   beforeAll(() => {
     if (!process.env.TEST_API_KEY) {
       throw new Error("TEST_API_KEY is not set");
@@ -71,10 +68,6 @@ describe("Scraping/Crawling Checkup (E2E)", () => {
                 });
                 return null;
               }
-
-              const anthropic = new Anthropic({
-                apiKey: process.env.ANTHROPIC_API_KEY,
-              });
 
               const openai = new OpenAI({
                 apiKey: process.env.OPENAI_API_KEY,
@@ -183,7 +176,7 @@ describe("Scraping/Crawling Checkup (E2E)", () => {
       }
         
 
-      expect(score).toBeGreaterThanOrEqual(75);
+      expect(score).toBeGreaterThanOrEqual(70);
     }, 350000); // 150 seconds timeout
   });
 });

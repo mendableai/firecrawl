@@ -43,7 +43,7 @@ export const crawlStatusRateLimiter = new RateLimiterRedis({
 export const testSuiteRateLimiter = new RateLimiterRedis({
   storeClient: redisClient,
   keyPrefix: "test-suite",
-  points: 1000,
+  points: 10000,
   duration: 60, // Duration in seconds
 });
 
