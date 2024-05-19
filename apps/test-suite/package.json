@@ -4,8 +4,7 @@
   "description": "",
   "scripts": {
     "test:suite": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false",
-    "test:load": "artillery run load-test.yml",
-    "fly:staging": "fly deploy -c fly.staging.toml"
+    "test:load": "artillery run load-test.yml"
   },
   "author": "",
   "license": "ISC",
