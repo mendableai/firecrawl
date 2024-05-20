@@ -5,6 +5,9 @@ import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
+import { initSDK } from '@hyperdx/node-opentelemetry';
+
+initSDK({ consoleCapture: true, additionalInstrumentations: []});
 
 getWebScraperQueue().process(
   Math.floor(Number(process.env.NUM_WORKERS_PER_QUEUE ?? 8)),
