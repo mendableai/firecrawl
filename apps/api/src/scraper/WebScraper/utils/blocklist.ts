@@ -1,6 +1,7 @@
 const socialMediaBlocklist = [
   'facebook.com',
   'twitter.com',
+  'x.com',
   'instagram.com',
   'linkedin.com',
   'pinterest.com',
@@ -14,12 +15,18 @@ const socialMediaBlocklist = [
   'telegram.org',
 ];
 
-const allowedUrls = [
-  'linkedin.com/pulse'
+const allowedKeywords = [
+  'pulse',
+  'privacy',
+  'terms',
+  'policy',
+  'user-agreement',
+  'legal',
+  'help'
 ];
 
 export function isUrlBlocked(url: string): boolean {
-  if (allowedUrls.some(allowedUrl => url.includes(allowedUrl))) {
+  if (allowedKeywords.some(keyword => url.includes(keyword))) {
     return false;
   }
 
