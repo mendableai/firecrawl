@@ -72,6 +72,7 @@ export class Document {
   };
   childrenLinks?: string[];
   provider?: string;
+  warning?: string;
 
   constructor(data: Partial<Document>) {
     if (!data.content) {
