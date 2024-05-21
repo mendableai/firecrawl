@@ -98,7 +98,7 @@ export function scrapeRateLimit (plan: string){
 
 export function getRateLimiter(mode: RateLimiterMode, token: string){
   // Special test suite case. TODO: Change this later.
-  if (token.includes("fa58")){
+  if (token.includes("57017")){
     return testSuiteRateLimiter;
   }
   switch (mode) {
