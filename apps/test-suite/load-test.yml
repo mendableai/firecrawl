@@ -5,7 +5,7 @@ config:
       arrivalRate: 10
   defaults:
     headers:
-      Authorization: "Bearer fc-f3f77b6d5e084d2b970f595089cefa58"
+      Authorization: "Bearer {{ $env.TEST_API_KEY }}"
 scenarios:
   - name: Scrape a URL
     flow:
