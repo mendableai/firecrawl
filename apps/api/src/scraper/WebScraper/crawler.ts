@@ -117,7 +117,7 @@ export class WebCrawler {
       const response = await axios.get(this.robotsTxtUrl);
       this.robots = robotsParser(this.robotsTxtUrl, response.data);
     } catch (error) {
-      console.error(`Failed to fetch robots.txt from ${this.robotsTxtUrl}`);
+      console.log(`Failed to fetch robots.txt from ${this.robotsTxtUrl}`);
 
     }
 
