@@ -1,5 +1,5 @@
 import { parseApi } from "../../src/lib/parseApi";
-import { getRateLimiter, crawlRateLimit, scrapeRateLimit } from "../../src/services/rate-limiter";
+import { getRateLimiter,  } from "../../src/services/rate-limiter";
 import { AuthResponse, RateLimiterMode } from "../../src/types";
 import { supabase_service } from "../../src/services/supabase";
 import { withAuth } from "../../src/lib/withAuth";
@@ -68,7 +68,7 @@ export async function supaAuthenticateUser(
     if (error) {
       console.error('Error fetching key and price_id:', error);
     } else {
-      console.log('Key and Price ID:', data);
+      // console.log('Key and Price ID:', data);
     }
 
     if (error || !data || data.length === 0) {
@@ -79,19 +79,26 @@ export async function supaAuthenticateUser(
       };
     }
     
+    
     subscriptionData = {
       team_id: data[0].team_id,
       plan: getPlanByPriceId(data[0].price_id)
     }
     switch (mode) { 
       case RateLimiterMode.Crawl:
-        rateLimiter = crawlRateLimit(subscriptionData.plan);
+        rateLimiter = getRateLimiter(RateLimiterMode.Crawl, token, subscriptionData.plan);
         break;
       case RateLimiterMode.Scrape:
-        rateLimiter = scrapeRateLimit(subscriptionData.plan);
+        rateLimiter = getRateLimiter(RateLimiterMode.Scrape, token, subscriptionData.plan);
         break;
       case RateLimiterMode.CrawlStatus:
         rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
+        break;
+      case RateLimiterMode.Search:
+        rateLimiter = getRateLimiter(RateLimiterMode.Search, token);
+        break;
+      case RateLimiterMode.Preview:
+        rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
         break;
       default:
         rateLimiter = getRateLimiter(RateLimiterMode.Crawl, token);

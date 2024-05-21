@@ -44,6 +44,7 @@ export type WebScraperOptions = {
     limit?: number;
     generateImgAltText?: boolean;
     replaceAllPathsWithAbsolutePaths?: boolean;
+    mode?: "default" | "fast"; // have a mode of some sort
   };
   pageOptions?: PageOptions;
   extractorOptions?: ExtractorOptions;
@@ -71,6 +72,7 @@ export class Document {
   };
   childrenLinks?: string[];
   provider?: string;
+  warning?: string;
 
   constructor(data: Partial<Document>) {
     if (!data.content) {
