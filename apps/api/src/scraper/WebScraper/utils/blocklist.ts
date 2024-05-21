@@ -22,7 +22,14 @@ const allowedKeywords = [
   'policy',
   'user-agreement',
   'legal',
-  'help'
+  'help',
+  'support',
+  'contact',
+  'about',
+  'careers',
+  'blog',
+  'press',
+  'conditions',
 ];
 
 export function isUrlBlocked(url: string): boolean {
