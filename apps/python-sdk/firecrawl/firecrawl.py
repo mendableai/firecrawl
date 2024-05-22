@@ -255,7 +255,6 @@ class FirecrawlApp:
         Raises:
             Exception: If the job fails or an error occurs during status checks.
         """
-        import time
         while True:
             status_response = self._get_request(f'{self.api_url}/v0/crawl/status/{job_id}', headers)
             if status_response.status_code == 200:
