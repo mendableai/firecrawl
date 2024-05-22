@@ -18,6 +18,7 @@ const baseScrapers = [
   "fetch",
 ] as const;
 
+  
 
 export async function generateRequestParams(
   url: string,
@@ -65,8 +66,17 @@ export async function scrapWithFireEngine(
       return "";
     }
 
-    const contentType = response.headers['content-type'];
-    if (contentType && contentType.includes('application/pdf')) {
+    const contentType = response.headers.get('content-type');
+    if (true) {
+      const googleDriveRegex = /https:\/\/drive\.google\.com\/file\/d\/([a-zA-Z0-9_-]+)/;
+      const match = url.match(googleDriveRegex);
+
+      if (match) {
+        const fileId = match[1];
+        const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+        console.log(downloadUrl);
+        return fetchAndProcessPdf(downloadUrl);
+      }
       return fetchAndProcessPdf(url);
     } else {
       const data = await response.json();

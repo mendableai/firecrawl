@@ -10,6 +10,7 @@ import os from "os";
 dotenv.config();
 
 export async function fetchAndProcessPdf(url: string): Promise<string> {
+  console.log("\n\nFetching and processing PDF:\n\n", url);
   const tempFilePath = await downloadPdf(url);
   const content = await processPdfToText(tempFilePath);
   fs.unlinkSync(tempFilePath); // Clean up the temporary file
