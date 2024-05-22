@@ -324,6 +324,12 @@ export class WebCrawler {
       // ".docx",
       ".xlsx",
       ".xml",
+      ".avi",
+      ".flv",
+      ".woff",
+      ".ttf",
+      ".woff2",
+      ".webp"
     ];
     return fileExtensions.some((ext) => url.endsWith(ext));
   }
