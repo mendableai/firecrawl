@@ -35,7 +35,6 @@ async def root(body: UrlModel):
         wait_until="load",
         timeout=body.wait if body.wait else 15,
     )
-    await page.wait_for_selector("body", state="attached")
     page_content = await page.content()
     await context.close()
     json_compatible_item_data = {"content": page_content}
