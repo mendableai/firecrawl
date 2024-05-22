@@ -117,7 +117,7 @@ class FirecrawlApp:
         )
         if response.status_code == 200:
             response = response.json()
-            if response['success'] == True:
+            if response['success']:
                 return response['data']
             else:
                 raise Exception(f'Failed to search. Error: {response["error"]}')
