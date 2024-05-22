@@ -1,8 +1,16 @@
 config:
   target: "https://staging-firecrawl-scraper-js.fly.dev/v0"
+  http:
+    timeout: 30
   phases:
     - duration: 60
-      arrivalRate: 10
+      arrivalRate: 10  # Initial load
+    - duration: 120
+      arrivalRate: 20  # Increased load
+    - duration: 180
+      arrivalRate: 30  # Peak load
+    - duration: 60
+      arrivalRate: 10  # Cool down
   defaults:
     headers:
       Authorization: "Bearer {{ $env.TEST_API_KEY }}"

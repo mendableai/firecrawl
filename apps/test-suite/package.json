@@ -4,7 +4,7 @@
   "description": "",
   "scripts": {
     "test:suite": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false",
-    "test:load": "artillery run load-test.yml",
+    "test:load": "artillery run --output ./load-test-results/test-1-5/assets/test-run-report.json load-test.yml",
     "test:scrape": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathPattern=tests/scrape.test.ts",
     "test:crawl": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathPattern=tests/crawl.test.ts"
   },
