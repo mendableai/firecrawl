@@ -74,7 +74,7 @@ export async function scrapWithFireEngine(
       return html ?? "";
     }
   } catch (error) {
-    console.error(`Error scraping with Fire Engine: ${error}`);
+    console.error(`[Fire-Engine][c] Error fetching url: ${url} -> ${error}`);
     return "";
   }
 }
@@ -110,7 +110,7 @@ export async function scrapWithScrapingBee(
       return text;
     }
   } catch (error) {
-    console.error(`[ScrapingBee] Error fetching url: ${url} -> ${error}`);
+    console.error(`[ScrapingBee][c] Error fetching url: ${url} -> ${error}`);
     return "";
   }
 }
@@ -144,14 +144,58 @@ export async function scrapWithPlaywright(url: string): Promise<string> {
       return html ?? "";
     }
   } catch (error) {
-    console.error(`Error scraping with Playwright: ${error}`);
+    console.error(`[Playwright][c] Error fetching url: ${url} -> ${error}`);
     return "";
   }
 }
 
+export async function scrapWithFetch(url: string): Promise<string> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.error(
+        `[Fetch] Error fetching url: ${url} with status: ${response.status}`
+      );
+      return "";
+    }
+
+    const contentType = response.headers['content-type'];
+    if (contentType && contentType.includes('application/pdf')) {
+      return fetchAndProcessPdf(url);
+    } else {
+      const text = await response.text();
+      return text;
+    }
+  } catch (error) {
+    console.error(`[Fetch][c] Error fetching url: ${url} -> ${error}`);
+    return "";
+  }
+}
+
+/**
+ * Get the order of scrapers to be used for scraping a URL
+ * If the user doesn't have envs set for a specific scraper, it will be removed from the order.
+ * @param defaultScraper The default scraper to use if the URL does not have a specific scraper order defined
+ * @returns The order of scrapers to be used for scraping a URL
+ */
 function getScrapingFallbackOrder(defaultScraper?: string) {
-  const fireEngineScraper = process.env.FIRE_ENGINE_BETA_URL ? ["fire-engine"] : [];
-  const uniqueScrapers = new Set(defaultScraper ? [defaultScraper, ...fireEngineScraper, ...baseScrapers] : [...fireEngineScraper, ...baseScrapers]);
+  const availableScrapers = baseScrapers.filter(scraper => {
+    switch (scraper) {
+      case "scrapingBee":
+      case "scrapingBeeLoad":
+        return !!process.env.SCRAPING_BEE_API_KEY;
+      case "fire-engine":
+        return !!process.env.FIRE_ENGINE_BETA_URL;
+      case "playwright":
+        return !!process.env.PLAYWRIGHT_MICROSERVICE_URL;
+      default:
+        return true;
+    }
+  });
+
+  const defaultOrder = ["scrapingBee", "fire-engine", "playwright", "scrapingBeeLoad", "fetch"];
+  const filteredDefaultOrder = defaultOrder.filter((scraper: typeof baseScrapers[number]) => availableScrapers.includes(scraper));
+  const uniqueScrapers = new Set(defaultScraper ? [defaultScraper, ...filteredDefaultOrder, ...availableScrapers] : [...filteredDefaultOrder, ...availableScrapers]);
   const scrapersInOrder = Array.from(uniqueScrapers);
   return scrapersInOrder as typeof baseScrapers[number][];
 }
@@ -182,7 +226,9 @@ export async function scrapSingleUrl(
     let text = "";
     switch (method) {
       case "fire-engine":
-        text = await scrapWithFireEngine(url);
+        if (process.env.FIRE_ENGINE_BETA_URL) {
+          text = await scrapWithFireEngine(url);
+        }
         break;
       case "scrapingBee":
         if (process.env.SCRAPING_BEE_API_KEY) {
@@ -204,25 +250,7 @@ export async function scrapSingleUrl(
         }
         break;
       case "fetch":
-        try {
-          const response = await fetch(url);
-          if (!response.ok) {
-            console.error(
-              `Error fetching URL: ${url} with status: ${response.status}`
-            );
-            return "";
-          }
-
-          const contentType = response.headers['content-type'];
-          if (contentType && contentType.includes('application/pdf')) {
-            return fetchAndProcessPdf(url);
-          } else {
-            text = await response.text();
-          }
-        } catch (error) {
-          console.error(`Error scraping URL: ${error}`);
-          return "";
-        }
+        text = await scrapWithFetch(url);
         break;
     }
 
