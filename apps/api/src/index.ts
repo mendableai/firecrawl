@@ -50,7 +50,9 @@ const HOST = process.env.HOST ?? "localhost";
 redisClient.connect();
 
 // HyperDX OpenTelemetry
-initSDK({ consoleCapture: true, additionalInstrumentations: []});
+if(process.env.ENV === 'production') {
+  initSDK({ consoleCapture: true, additionalInstrumentations: []});
+}
 
 
 export function startServer(port = DEFAULT_PORT) {
