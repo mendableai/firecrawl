@@ -18,8 +18,8 @@
   "paths": {
     "/scrape": {
       "post": {
-        "summary": "Scrape a single URL",
-        "operationId": "scrapeSingleUrl",
+        "summary": "Scrape a single URL and optionally extract information using an LLM",
+        "operationId": "scrapeAndExtractFromUrl",
         "tags": ["Scraping"],
         "security": [
           {
@@ -45,8 +45,43 @@
                         "type": "boolean",
                         "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
                         "default": false
+                      },
+                      "includeHtml": {
+                        "type": "boolean",
+                        "description": "Include the raw HTML content of the page. Will output a html key in the response.",
+                        "default": false
                       }
                     }
+                  },
+                  "extractorOptions": {
+                    "type": "object",
+                    "description": "Options for LLM-based extraction of structured information from the page content",
+                    "properties": {
+                      "mode": {
+                        "type": "string",
+                        "enum": ["llm-extraction"],
+                        "description": "The extraction mode to use, currently supports 'llm-extraction'"
+                      },
+                      "extractionPrompt": {
+                        "type": "string",
+                        "description": "A prompt describing what information to extract from the page"
+                      },
+                      "extractionSchema": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "description": "The schema for the data to be extracted",
+                        "required": [
+                          "company_mission",
+                          "supports_sso",
+                          "is_open_source"
+                        ]
+                      }
+                    }
+                  },
+                  "timeout": {
+                    "type": "integer",
+                    "description": "Timeout in milliseconds for the request",
+                    "default": 30000
                   }
                 },
                 "required": ["url"]
@@ -126,9 +161,20 @@
                         "description": "If true, returns only the URLs as a list on the crawl status. Attention: the return response will be a list of URLs inside the data, not a list of documents.",
                         "default": false
                       },
+                      "maxDepth": {
+                        "type": "integer",
+                        "description": "Maximum depth to crawl. Depth 1 is the base URL, depth 2 is the base URL and its direct children, and so on."
+                      },
+                      "mode": {
+                        "type": "string",
+                        "enum": ["default", "fast"],
+                        "description": "The crawling mode to use. Fast mode crawls 4x faster websites without sitemap, but may not be as accurate and shouldn't be used in heavy js-rendered websites.",
+                        "default": "default"
+                      },
                       "limit": {
                         "type": "integer",
-                        "description": "Maximum number of pages to crawl"
+                        "description": "Maximum number of pages to crawl",
+                        "default": 10000
                       }
                     }
                   },
@@ -138,6 +184,11 @@
                       "onlyMainContent": {
                         "type": "boolean",
                         "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
+                        "default": false
+                      },
+                      "includeHtml": {
+                        "type": "boolean",
+                        "description": "Include the raw HTML content of the page. Will output a html key in the response.",
                         "default": false
                       }
                     }
@@ -191,7 +242,7 @@
                   "query": {
                     "type": "string",
                     "format": "uri",
-                    "description": "The URL to scrape"
+                    "description": "The query to search for"
                   },
                   "pageOptions": {
                     "type": "object",
@@ -205,6 +256,11 @@
                         "type": "boolean",
                         "description": "Fetch the content of each page. If false, defaults to a basic fast serp API.",
                         "default": true
+                      },
+                      "includeHtml": {
+                        "type": "boolean",
+                        "description": "Include the raw HTML content of the page. Will output a html key in the response.",
+                        "default": false
                       }
                     }
                   },
@@ -298,9 +354,66 @@
                     "data": {
                       "type": "array",
                       "items": {
-                        "$ref": "#/components/schemas/ScrapeResponse"
+                        "$ref": "#/components/schemas/CrawlStatusResponseObj"
                       },
                       "description": "Data returned from the job (null when it is in progress)"
+                    },
+                    "partial_data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/CrawlStatusResponseObj"
+                      },
+                      "description": "Partial documents returned as it is being crawls (streaming). When a page is ready it will append to the parial_data array - so no need to wait for all the website to be crawled."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required"
+          },
+          "429": {
+            "description": "Too many requests"
+          },
+          "500": {
+            "description": "Server error"
+          }
+        }
+      }
+    },
+    "/crawl/cancel/{jobId}": {
+      "delete": {
+        "tags": ["Crawl"],
+        "summary": "Cancel a crawl job",
+        "operationId": "cancelCrawlJob",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "name": "jobId",
+            "in": "path",
+            "description": "ID of the crawl job",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": {
+                      "type": "string",
+                      "description": "Returns cancelled."
                     }
                   }
                 }
@@ -343,6 +456,11 @@
               "content": {
                 "type": "string"
               },
+              "html": {
+                "type": "string",
+                "nullable": true,
+                "description": "Raw HTML content of the page if `includeHtml`  is true"
+              },
               "metadata": {
                 "type": "object",
                 "properties": {
@@ -361,6 +479,51 @@
                     "format": "uri"
                   }
                 }
+              },
+              "llm_extraction": {
+                "type": "object",
+                "description": "Displayed when using LLM Extraction. Extracted data from the page following the schema defined.",
+                "nullable": true
+              },
+              "warning": {
+                "type": "string",
+                "nullable": true,
+                "description": "Can be displayed when using LLM Extraction. Warning message will let you know any issues with the extraction."
+              }
+            }
+          }
+        }
+      },
+      "CrawlStatusResponseObj": {
+        "type": "object",
+        "properties": {
+          "markdown": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "html": {
+            "type": "string",
+            "nullable": true,
+            "description": "Raw HTML content of the page if `includeHtml`  is true"
+          },
+          "metadata": {
+            "type": "object",
+            "properties": {
+              "title": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "language": {
+                "type": "string",
+                "nullable": true
+              },
+              "sourceURL": {
+                "type": "string",
+                "format": "uri"
               }
             }
           }
