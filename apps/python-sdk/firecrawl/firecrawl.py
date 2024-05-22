@@ -1,3 +1,15 @@
+"""
+FirecrawlApp Module
+
+This module provides a class `FirecrawlApp` for interacting with the Firecrawl API.
+It includes methods to scrape URLs, perform searches, initiate and monitor crawl jobs,
+and check the status of these jobs. The module uses requests for HTTP communication
+and handles retries for certain HTTP status codes.
+
+Classes:
+    - FirecrawlApp: Main class for interacting with the Firecrawl API.
+"""
+
 import os
 from typing import Any, Dict, Optional
 import requests
