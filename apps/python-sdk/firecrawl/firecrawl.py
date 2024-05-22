@@ -30,9 +30,6 @@ class FirecrawlApp:
         if self.api_key is None:
             raise ValueError('No API key provided')
         self.api_url = api_url or os.getenv('FIRECRAWL_API_URL', 'https://api.firecrawl.dev')
-    
-    
-
     def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
         """
         Scrape the specified URL using the Firecrawl API.
@@ -54,7 +51,7 @@ class FirecrawlApp:
         }
         # Prepare the base scrape parameters with the URL
         scrape_params = {'url': url}
-        
+
         # If there are additional params, process them
         if params:
             # Initialize extractorOptions if present
@@ -67,7 +64,7 @@ class FirecrawlApp:
                 extractor_options['mode'] = extractor_options.get('mode', 'llm-extraction')
                 # Update the scrape_params with the processed extractorOptions
                 scrape_params['extractorOptions'] = extractor_options
-            
+
             # Include any other params directly at the top level of scrape_params
             for key, value in params.items():
                 if key != 'extractorOptions':
@@ -89,7 +86,7 @@ class FirecrawlApp:
             raise Exception(f'Failed to scrape URL. Status code: {response.status_code}. Error: {error_message}')
         else:
             raise Exception(f'Failed to scrape URL. Status code: {response.status_code}')
-        
+
     def search(self, query, params=None):
         """
         Perform a search using the Firecrawl API.
@@ -122,7 +119,7 @@ class FirecrawlApp:
                 return response['data']
             else:
                 raise Exception(f'Failed to search. Error: {response["error"]}')
-            
+
         elif response.status_code in [402, 409, 500]:
             error_message = response.json().get('error', 'Unknown error occurred')
             raise Exception(f'Failed to search. Status code: {response.status_code}. Error: {error_message}')
@@ -283,7 +280,7 @@ class FirecrawlApp:
 
         Raises:
             Exception: An exception with a message containing the status code and error details from the response.
-        """    
+        """
         if response.status_code in [402, 408, 409, 500]:
             error_message = response.json().get('error', 'Unknown error occurred')
             raise Exception(f'Failed to {action}. Status code: {response.status_code}. Error: {error_message}')
