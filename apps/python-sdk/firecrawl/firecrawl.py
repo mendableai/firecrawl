@@ -4,11 +4,11 @@ import requests
 import time
 
 class FirecrawlApp:
-    def __init__(self, api_key=None, api_url='https://api.firecrawl.dev'):
+    def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
         self.api_key = api_key or os.getenv('FIRECRAWL_API_KEY')
         if self.api_key is None:
             raise ValueError('No API key provided')
-        self.api_url = api_url or os.getenv('FIRECRAWL_API_URL')
+        self.api_url = api_url or os.getenv('FIRECRAWL_API_URL', 'https://api.firecrawl.dev')
     
     
 
