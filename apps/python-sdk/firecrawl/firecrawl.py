@@ -264,8 +264,7 @@ class FirecrawlApp:
                     else:
                         raise Exception('Crawl job completed but no data was returned')
                 elif status_data['status'] in ['active', 'paused', 'pending', 'queued']:
-                    if timeout < 2:
-                        timeout = 2
+                    timeout=max(timeout,2)
                     time.sleep(timeout)  # Wait for the specified timeout before checking again
                 else:
                     raise Exception(f'Crawl job failed or was stopped. Status: {status_data["status"]}')
