@@ -3,21 +3,17 @@ config:
   http:
     timeout: 30
   phases:
-    # /scrape
-    # - duration: 60
-    #   arrivalRate: 10  # Initial load
-    # - duration: 120
-    #   arrivalRate: 20  # Increased load
-    # - duration: 180
-    #   arrivalRate: 30  # Peak load
-    # - duration: 60
-    #   arrivalRate: 10  # Cool down
-    # /crawl
-    - duration: 10
-      arrivalRate: 1
+    - duration: 60
+      arrivalRate: 1  # Initial load
+    - duration: 120
+      arrivalRate: 2  # Increased load
+    - duration: 180
+      arrivalRate: 3  # Peak load
+    - duration: 60
+      arrivalRate: 1  # Cool down
   defaults:
     headers:
-      Authorization: "Bearer {{ $env.TEST_API_KEY }}"
+      Authorization: "Bearer YOUR_API_KEY"
 scenarios:
   # - name: Scrape a URL
   #   flow:
@@ -36,7 +32,7 @@ scenarios:
       - post:
           url: "/crawl"
           json:
-            url: "https://spider.cloud"
+            url: "https://rsseau.fr"
             crawlerOptions:
               limit: 100
             pageOptions:

@@ -193,7 +193,7 @@ function getScrapingFallbackOrder(defaultScraper?: string) {
     }
   });
 
-  const defaultOrder = ["scrapingBee", "fire-engine", "playwright", "scrapingBeeLoad", "fetch"];
+  const defaultOrder = ["fire-engine", "scrapingBee", "playwright", "scrapingBeeLoad", "fetch"];
   const filteredDefaultOrder = defaultOrder.filter((scraper: typeof baseScrapers[number]) => availableScrapers.includes(scraper));
   const uniqueScrapers = new Set(defaultScraper ? [defaultScraper, ...filteredDefaultOrder, ...availableScrapers] : [...filteredDefaultOrder, ...availableScrapers]);
   const scrapersInOrder = Array.from(uniqueScrapers);
