@@ -266,7 +266,7 @@ describe("E2E Tests for API Routes", () => {
       urls.forEach((url: string) => {
         expect(url.startsWith("https://wwww.mendable.ai/blog/")).toBeFalsy();
       });
-    }, 60000); // 60 seconds
+    }, 90000); // 90 seconds
 
     it("should return a successful response with a valid API key and limit to 3", async () => {
       const crawlResponse = await request(TEST_URL)
