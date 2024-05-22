@@ -479,6 +479,16 @@
                     "format": "uri"
                   }
                 }
+              },
+              "llm_extraction": {
+                "type": "object",
+                "description": "Displayed when using LLM Extraction. Extracted data from the page following the schema defined.",
+                "nullable": true
+              },
+              "warning": {
+                "type": "string",
+                "nullable": true,
+                "description": "Can be displayed when using LLM Extraction. Warning message will let you know any issues with the extraction."
               }
             }
           }
