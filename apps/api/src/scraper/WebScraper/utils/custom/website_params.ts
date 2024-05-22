@@ -63,7 +63,7 @@ export const urlSpecificParams = {
       },
   },
   "ycombinator.com":{
-    defaultScraper: "playwright",
+    defaultScraper: "fire-engine",
     params: {
         wait_browser: "networkidle2",
         block_resources: false,

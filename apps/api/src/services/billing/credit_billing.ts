@@ -227,10 +227,11 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
 
     if (creditUsages && creditUsages.length > 0) {
         totalCreditsUsed = creditUsages[0].total_credits_used;
-        console.log("Total Credits Used:", totalCreditsUsed);
+        // console.log("Total Credits Used:", totalCreditsUsed);
     }
   } catch (error) {
     console.error("Error calculating credit usage:", error);
+    
   }
   // Adjust total credits used by subtracting coupon value
   const adjustedCreditsUsed = Math.max(0, totalCreditsUsed - couponCredits);

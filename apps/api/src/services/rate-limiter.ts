@@ -54,7 +54,7 @@ export const testSuiteRateLimiter = new RateLimiterRedis({
 
 export function getRateLimiter(mode: RateLimiterMode, token: string, plan?: string){
   // Special test suite case. TODO: Change this later.
-  if (token.includes("57017")){
+  if (token.includes("57017") || token.includes("6254cf9")){
     return testSuiteRateLimiter;
   }
   switch (mode) {

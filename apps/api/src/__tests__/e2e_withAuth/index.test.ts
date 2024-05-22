@@ -81,7 +81,7 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty("markdown");
       expect(response.body.data).toHaveProperty("metadata");
       expect(response.body.data).not.toHaveProperty("html");
-      expect(response.body.data.content).toContain("🔥 FireCrawl");
+      expect(response.body.data.content).toContain("🔥 Firecrawl");
     }, 30000); // 30 seconds timeout
 
     it("should return a successful response with a valid API key and includeHtml set to true", async () => {
@@ -99,8 +99,8 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty("markdown");
       expect(response.body.data).toHaveProperty("html");
       expect(response.body.data).toHaveProperty("metadata");
-      expect(response.body.data.content).toContain("🔥 FireCrawl");
-      expect(response.body.data.markdown).toContain("🔥 FireCrawl");
+      expect(response.body.data.content).toContain("🔥 Firecrawl");
+      expect(response.body.data.markdown).toContain("🔥 Firecrawl");
       expect(response.body.data.html).toContain("<h1");
     }, 30000); // 30 seconds timeout
     
@@ -440,8 +440,8 @@ describe("E2E Tests for API Routes", () => {
       // 120 seconds
       expect(completedResponse.body.data[0]).toHaveProperty("html");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.data[0].content).toContain("🔥 FireCrawl");
-      expect(completedResponse.body.data[0].markdown).toContain("FireCrawl");
+      expect(completedResponse.body.data[0].content).toContain("🔥 Firecrawl");
+      expect(completedResponse.body.data[0].markdown).toContain("Firecrawl");
       expect(completedResponse.body.data[0].html).toContain("<h1");
     }, 60000);
   });
@@ -576,7 +576,7 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("content");
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.data[0].content).toContain("🔥 FireCrawl");
+      expect(completedResponse.body.data[0].content).toContain("🔥 Firecrawl");
     }, 60000); // 60 seconds
     
     it('should return a successful response for a valid crawl job with PDF files without explicit .pdf extension', async () => {
@@ -697,8 +697,8 @@ describe("E2E Tests for API Routes", () => {
       // 120 seconds
       expect(completedResponse.body.data[0]).toHaveProperty("html");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.data[0].content).toContain("🔥 FireCrawl");
-      expect(completedResponse.body.data[0].markdown).toContain("FireCrawl");
+      expect(completedResponse.body.data[0].content).toContain("🔥 Firecrawl");
+      expect(completedResponse.body.data[0].markdown).toContain("Firecrawl");
       expect(completedResponse.body.data[0].html).toContain("<h1");
     }, 60000);
   }); // 60 seconds
