@@ -90,16 +90,18 @@ Date: 17:31:33(-0300)
 ### Metrics
 
 ![](./assets/metrics-fire-engine-test-7.png)
-![](./assets/metrics-fire-engine-2-test-7.png)
+![](./assets/metrics-fire-engine-test-7-2.png)
+![](./assets/metrics-test-7.png)
 
 **CPU Utilization:**
 - **Fire-engine mia machines:** Reached 100% after 22 minutes of processing the queue. The sjc machine was not requested during the test.
-- **Worker machines:** Maintained CPU utilization above 71% during the load testing time. Memory utilization was unaffected.
+- **Worker machines:** Maintained CPU utilization above 71% during the load testing time.
 
 **Memory Utilization:**
 - **Fire-engine mia machines:** utilization reached 100% after 22 minutes of processing the queue.
+- **Worker machines:** Maintained Memory utilization above 700MiB during the test.
 
-![](./assets/metrics-test-7.png)
+
 
 ---
 
