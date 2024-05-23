@@ -81,8 +81,8 @@ class FirecrawlApp:
         else:
             raise Exception(f'Failed to search. Status code: {response.status_code}')
 
-    def crawl_url(self, url, params=None, wait_until_done=True, timeout=2):
-        headers = self._prepare_headers()
+    def crawl_url(self, url, params=None, wait_until_done=True, timeout=2, idempotency_key=None):
+        headers = self._prepare_headers(idempotency_key)
         json_data = {'url': url}
         if params:
             json_data.update(params)
@@ -104,10 +104,16 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'check crawl status')
 
-    def _prepare_headers(self):
+    def _prepare_headers(self, idempotency_key=None):
+        if idempotency_key:
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {self.api_key}',
+                'x-idempotency-key': idempotency_key
+            }
         return {
             'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.api_key}'
+            'Authorization': f'Bearer {self.api_key}',
         }
 
     def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5):
