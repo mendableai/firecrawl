@@ -8,8 +8,6 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
     });
 };
 import axios from 'axios';
-import dotenv from 'dotenv';
-dotenv.config();
 /**
  * Main class for interacting with the Firecrawl API.
  */
@@ -19,7 +17,7 @@ export default class FirecrawlApp {
      * @param {FirecrawlAppConfig} config - Configuration options for the FirecrawlApp instance.
      */
     constructor({ apiKey = null }) {
-        this.apiKey = apiKey || process.env.FIRECRAWL_API_KEY || '';
+        this.apiKey = apiKey || '';
         if (!this.apiKey) {
             throw new Error('No API key provided');
         }
@@ -104,11 +102,12 @@ export default class FirecrawlApp {
      * @param {Params | null} params - Additional parameters for the crawl request.
      * @param {boolean} waitUntilDone - Whether to wait for the crawl job to complete.
      * @param {number} timeout - Timeout in seconds for job status checks.
+     * @param {string} idempotencyKey - Optional idempotency key for the request.
      * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
      */
     crawlUrl(url_1) {
-        return __awaiter(this, arguments, void 0, function* (url, params = null, waitUntilDone = true, timeout = 2) {
-            const headers = this.prepareHeaders();
+        return __awaiter(this, arguments, void 0, function* (url, params = null, waitUntilDone = true, timeout = 2, idempotencyKey) {
+            const headers = this.prepareHeaders(idempotencyKey);
             let jsonData = { url };
             if (params) {
                 jsonData = Object.assign(Object.assign({}, jsonData), params);
@@ -162,11 +161,8 @@ export default class FirecrawlApp {
      * Prepares the headers for an API request.
      * @returns {AxiosRequestHeaders} The prepared headers.
      */
-    prepareHeaders() {
-        return {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${this.apiKey}`,
-        };
+    prepareHeaders(idempotencyKey) {
+        return Object.assign({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.apiKey}` }, (idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : {}));
     }
     /**
      * Sends a POST request to the specified URL.

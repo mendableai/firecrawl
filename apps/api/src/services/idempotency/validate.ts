@@ -1,5 +1,6 @@
 import { Request } from "express";
 import { supabase_service } from "../supabase";
+import { validate as isUuid } from 'uuid';
 
 export async function validateIdempotencyKey(
   req: Request,
@@ -8,6 +9,10 @@ export async function validateIdempotencyKey(
   if (!idempotencyKey) {
     // // not returning for missing idempotency key for now
     return true;
+  }
+  if (!isUuid(idempotencyKey)) {
+    console.error("Invalid idempotency key provided in the request headers.");
+    return false;
   }
 
   const { data, error } = await supabase_service

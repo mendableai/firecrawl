@@ -76,9 +76,10 @@ export default class FirecrawlApp {
      * @param {Params | null} params - Additional parameters for the crawl request.
      * @param {boolean} waitUntilDone - Whether to wait for the crawl job to complete.
      * @param {number} timeout - Timeout in seconds for job status checks.
+     * @param {string} idempotencyKey - Optional idempotency key for the request.
      * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
      */
-    crawlUrl(url: string, params?: Params | null, waitUntilDone?: boolean, timeout?: number): Promise<CrawlResponse | any>;
+    crawlUrl(url: string, params?: Params | null, waitUntilDone?: boolean, timeout?: number, idempotencyKey?: string): Promise<CrawlResponse | any>;
     /**
      * Checks the status of a crawl job using the Firecrawl API.
      * @param {string} jobId - The job ID of the crawl operation.
@@ -89,7 +90,7 @@ export default class FirecrawlApp {
      * Prepares the headers for an API request.
      * @returns {AxiosRequestHeaders} The prepared headers.
      */
-    prepareHeaders(): AxiosRequestHeaders;
+    prepareHeaders(idempotencyKey?: string): AxiosRequestHeaders;
     /**
      * Sends a POST request to the specified URL.
      * @param {string} url - The URL to send the request to.

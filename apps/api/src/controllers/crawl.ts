@@ -26,7 +26,12 @@ export async function crawlController(req: Request, res: Response) {
       if (!isIdempotencyValid) {
         return res.status(409).json({ error: "Idempotency key already used" });
       }
-      createIdempotencyKey(req);
+      try {
+        createIdempotencyKey(req);
+      } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: error.message });
+      }
     }
 
     const { success: creditsCheckSuccess, message: creditsCheckMessage } =
