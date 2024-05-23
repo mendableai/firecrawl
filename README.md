@@ -6,7 +6,7 @@ _This repository is in its early development stages. We are still merging custom
 
 ## What is Firecrawl?
 
-[Firecrawl](https://firecrawl.dev?ref=github) is an API service that takes a URL, crawls it, and converts it into clean markdown. We crawl all accessible subpages and give you clean markdown for each. No sitemap required.
+[Firecrawl](https://firecrawl.dev?ref=github) is an API service that takes a URL, crawls it, and converts it into clean markdown or structured data. We crawl all accessible subpages and give you clean data for each. No sitemap required.
 
 _Pst. hey, you, join our stargazers :)_
 
@@ -114,7 +114,7 @@ Response:
 
 ### Search (Beta)
 
-Used to search the web, get the most relevant results, scrap each page and return the markdown.
+Used to search the web, get the most relevant results, scrape each page and return the markdown.
 
 ```bash
 curl -X POST https://api.firecrawl.dev/v0/search \
@@ -215,8 +215,6 @@ curl -X POST https://api.firecrawl.dev/v0/scrape \
 
 ```
 
-Coming soon to the Langchain and LLama Index integrations.
-
 ## Using Python SDK
 
 ### Installing Python SDK
@@ -248,6 +246,32 @@ url = 'https://example.com'
 scraped_data = app.scrape_url(url)
 ```
 
+### Extracting structured data from a URL
+
+With LLM extraction, you can easily extract structured data from any URL. We support pydanti schemas to make it easier for you too. Here is how you to use it:
+
+```python
+class ArticleSchema(BaseModel):
+    title: str
+    points: int 
+    by: str
+    commentsURL: str
+
+class TopArticlesSchema(BaseModel):
+    top: List[ArticleSchema] = Field(..., max_items=5, description="Top 5 stories")
+
+data = app.scrape_url('https://news.ycombinator.com', {
+    'extractorOptions': {
+        'extractionSchema': TopArticlesSchema.model_json_schema(),
+        'mode': 'llm-extraction'
+    },
+    'pageOptions':{
+        'onlyMainContent': True
+    }
+})
+print(data["llm_extraction"])
+```
+
 ### Search for a query
 
 Performs a web search, retrieve the top results, extract data from each page, and returns their markdown.
@@ -256,6 +280,128 @@ Performs a web search, retrieve the top results, extract data from each page, an
 query = 'What is Mendable?'
 search_result = app.search(query)
 ```
+
+## Using the Node SDK
+
+### Installation
+
+To install the Firecrawl Node SDK, you can use npm:
+
+```bash
+npm install @mendable/firecrawl-js
+```
+
+### Usage
+
+1. Get an API key from [firecrawl.dev](https://firecrawl.dev)
+2. Set the API key as an environment variable named `FIRECRAWL_API_KEY` or pass it as a parameter to the `FirecrawlApp` class.
+
+### Scraping a URL
+
+To scrape a single URL with error handling, use the `scrapeUrl` method. It takes the URL as a parameter and returns the scraped data as a dictionary.
+
+```js
+try {
+  const url = 'https://example.com';
+  const scrapedData = await app.scrapeUrl(url);
+  console.log(scrapedData);
+
+} catch (error) {
+  console.error(
+    'Error occurred while scraping:',
+    error.message
+  );
+}
+```
+
+
+### Crawling a Website
+
+To crawl a website with error handling, use the `crawlUrl` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
+
+```js
+const crawlUrl = 'https://example.com';
+const params = {
+  crawlerOptions: {
+    excludes: ['blog/'],
+    includes: [], // leave empty for all pages
+    limit: 1000,
+  },
+  pageOptions: {
+    onlyMainContent: true
+  }
+};
+const waitUntilDone = true;
+const timeout = 5;
+const crawlResult = await app.crawlUrl(
+  crawlUrl,
+  params,
+  waitUntilDone,
+  timeout
+);
+
+```
+
+
+### Checking Crawl Status
+
+To check the status of a crawl job with error handling, use the `checkCrawlStatus` method. It takes the job ID as a parameter and returns the current status of the crawl job.
+
+```js
+const status = await app.checkCrawlStatus(jobId);
+console.log(status);
+```
+
+
+
+### Extracting structured data from a URL
+
+With LLM extraction, you can easily extract structured data from any URL. We support zod schema to make it easier for you too. Here is how you to use it:
+ 
+```js
+import FirecrawlApp from "@mendable/firecrawl-js";
+import { z } from "zod";
+
+const app = new FirecrawlApp({
+  apiKey: "fc-YOUR_API_KEY",
+});
+
+// Define schema to extract contents into
+const schema = z.object({
+  top: z
+    .array(
+      z.object({
+        title: z.string(),
+        points: z.number(),
+        by: z.string(),
+        commentsURL: z.string(),
+      })
+    )
+    .length(5)
+    .describe("Top 5 stories on Hacker News"),
+});
+
+const scrapeResult = await app.scrapeUrl("https://news.ycombinator.com", {
+  extractorOptions: { extractionSchema: schema },
+});
+
+console.log(scrapeResult.data["llm_extraction"]);
+```
+
+### Search for a query
+
+With the `search` method, you can search for a query in a search engine and get the top results along with the page content for each result. The method takes the query as a parameter and returns the search results.
+
+```js
+const query = 'what is mendable?';
+const searchResults = await app.search(query, {
+  pageOptions: {
+    fetchPageContent: true // Fetch the page content for each search result
+  }
+});
+
+```
+
 
 ## Contributing
 
