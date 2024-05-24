@@ -93,7 +93,7 @@ export async function processPdfToText(filePath: string): Promise<string> {
       }
       content = resultResponse.data[resultType];
     } catch (error) {
-      console.error("Error processing document:", filePath, error);
+      console.info("[LlamaIndex] Error processing document - attempting fallback...", filePath, error);
       content = await processPdf(filePath);
     }
   } else {

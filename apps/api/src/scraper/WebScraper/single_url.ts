@@ -72,6 +72,7 @@ export async function scrapWithFireEngine(
       const match = url.match(googleDriveRegex);
 
       if (match) {
+        console.log("matched regex");
         const fileId = match[1];
         const downloadUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
         console.log(downloadUrl);
