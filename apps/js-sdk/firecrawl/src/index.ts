@@ -173,15 +173,17 @@ export default class FirecrawlApp {
    * @param {Params | null} params - Additional parameters for the crawl request.
    * @param {boolean} waitUntilDone - Whether to wait for the crawl job to complete.
    * @param {number} timeout - Timeout in seconds for job status checks.
+   * @param {string} idempotencyKey - Optional idempotency key for the request.
    * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
    */
   async crawlUrl(
     url: string,
     params: Params | null = null,
     waitUntilDone: boolean = true,
-    timeout: number = 2
+    timeout: number = 2,
+    idempotencyKey?: string
   ): Promise<CrawlResponse | any> {
-    const headers = this.prepareHeaders();
+    const headers = this.prepareHeaders(idempotencyKey);
     let jsonData: Params = { url };
     if (params) {
       jsonData = { ...jsonData, ...params };
@@ -240,11 +242,12 @@ export default class FirecrawlApp {
    * Prepares the headers for an API request.
    * @returns {AxiosRequestHeaders} The prepared headers.
    */
-  prepareHeaders(): AxiosRequestHeaders {
+  prepareHeaders(idempotencyKey?: string): AxiosRequestHeaders {
     return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${this.apiKey}`,
-    } as AxiosRequestHeaders;
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${this.apiKey}`,
+      ...(idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : {}),
+    } as AxiosRequestHeaders & { 'x-idempotency-key'?: string };
   }
 
   /**

@@ -1,4 +1,5 @@
-from firecrawl import FirecrawlApp
+import uuid
+from firecrawl.firecrawl import FirecrawlApp
 
 app = FirecrawlApp(api_key="fc-YOUR_API_KEY")
 
@@ -7,7 +8,8 @@ scrape_result = app.scrape_url('firecrawl.dev')
 print(scrape_result['markdown'])
 
 # Crawl a website:
-crawl_result = app.crawl_url('mendable.ai', {'crawlerOptions': {'excludes': ['blog/*']}})
+idempotency_key = str(uuid.uuid4()) # optional idempotency key
+crawl_result = app.crawl_url('mendable.ai', {'crawlerOptions': {'excludes': ['blog/*']}}, True, 2, idempotency_key)
 print(crawl_result)
 
 # LLM Extraction:
