@@ -127,7 +127,7 @@ class FirecrawlApp:
         else:
             raise Exception(f'Failed to search. Status code: {response.status_code}')
 
-    def crawl_url(self, url, params=None, wait_until_done=True, timeout=2):
+    def crawl_url(self, url, params=None, wait_until_done=True, timeout=2, idempotency_key=None):
         """
         Initiate a crawl job for the specified URL using the Firecrawl API.
 
@@ -136,6 +136,7 @@ class FirecrawlApp:
             params (Optional[Dict[str, Any]]): Additional parameters for the crawl request.
             wait_until_done (bool): Whether to wait until the crawl job is completed.
             timeout (int): Timeout between status checks when waiting for job completion.
+            idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
 
         Returns:
             Any: The crawl job ID or the crawl results if waiting until completion.
@@ -143,7 +144,7 @@ class FirecrawlApp:
         Raises:
             Exception: If the crawl job initiation or monitoring fails.
         """
-        headers = self._prepare_headers()
+        headers = self._prepare_headers(idempotency_key)
         json_data = {'url': url}
         if params:
             json_data.update(params)
@@ -177,16 +178,26 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'check crawl status')
 
-    def _prepare_headers(self):
+    def _prepare_headers(self, idempotency_key=None):
         """
         Prepare the headers for API requests.
 
+        Args:
+            idempotency_key (Optional[str]): A unique key to ensure idempotency of requests.
+
         Returns:
-            Dict[str, str]: The headers including content type and authorization.
+            Dict[str, str]: The headers including content type, authorization, and optionally idempotency key.
         """
+        if idempotency_key:
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': f'Bearer {self.api_key}',
+                'x-idempotency-key': idempotency_key
+            }
+
         return {
             'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.api_key}'
+            'Authorization': f'Bearer {self.api_key}',
         }
 
     def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5):

@@ -1,6 +1,7 @@
 import request from "supertest";
 import { app } from "../../index";
 import dotenv from "dotenv";
+import { v4 as uuidv4 } from "uuid";
 
 dotenv.config();
 
@@ -174,6 +175,30 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.jobId).toMatch(
         /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
       );
+    });
+    it('should prevent duplicate requests using the same idempotency key', async () => {
+      const uniqueIdempotencyKey = uuidv4();
+  
+      // First request with the idempotency key
+      const firstResponse = await request(TEST_URL)
+        .post('/v0/crawl')
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .set("x-idempotency-key", uniqueIdempotencyKey)
+        .send({ url: 'https://mendable.ai' });
+  
+        expect(firstResponse.statusCode).toBe(200);
+  
+      // Second request with the same idempotency key
+      const secondResponse = await request(TEST_URL)
+        .post('/v0/crawl')
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .set("x-idempotency-key", uniqueIdempotencyKey)
+        .send({ url: 'https://mendable.ai' });
+  
+      expect(secondResponse.statusCode).toBe(409);
+      expect(secondResponse.body.error).toBe('Idempotency key already used');
     });
 
     it("should return a successful response with a valid API key and valid includes option", async () => {
