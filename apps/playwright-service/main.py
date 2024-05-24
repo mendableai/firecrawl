@@ -2,8 +2,15 @@ from fastapi import FastAPI
 from playwright.async_api import async_playwright, Browser
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel
+from os import environ
+
+PROXY_SERVER = environ.get('PROXY_SERVER', None)
+PROXY_USERNAME = environ.get('PROXY_USERNAME', None)
+PROXY_PASSWORD = environ.get('PROXY_PASSWORD', None)
+BLOCK_MEDIA = environ.get('BLOCK_MEDIA', 'False').upper() == 'TRUE'
 
 app = FastAPI()
+
 
 class UrlModel(BaseModel):
     url: str
@@ -27,7 +34,18 @@ async def shutdown_event():
 
 @app.post("/html")
 async def root(body: UrlModel):
-    context = await browser.new_context()
+    context = None
+    if PROXY_SERVER and PROXY_USERNAME and PROXY_PASSWORD:
+        context = await browser.new_context(proxy={"server": PROXY_SERVER,
+                                                   "username": PROXY_USERNAME,
+                                                   "password": PROXY_PASSWORD})
+    else:
+        context = await browser.new_context()
+
+    if BLOCK_MEDIA:
+        await context.route("**/*.{png,jpg,jpeg,gif,svg,mp3,mp4,avi,flac,ogg,wav,webm}",
+                            handler=lambda route, request: route.abort())
+
     page = await context.new_page()
     await page.goto(body.url, timeout=15000)  # Set max timeout to 15s
     if body.wait:  # Check if wait parameter is provided in the request body
