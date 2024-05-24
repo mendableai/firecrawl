@@ -47,9 +47,15 @@ async def root(body: UrlModel):
                             handler=lambda route, request: route.abort())
 
     page = await context.new_page()
-    await page.goto(body.url, timeout=15000)  # Set max timeout to 15s
-    if body.wait:  # Check if wait parameter is provided in the request body
-        await page.wait_for_timeout(body.wait)  # Convert seconds to milliseconds for playwright
+    await page.goto(
+        body.url,
+        wait_until="load",
+        timeout=body.timeout if body.timeout else 15000,
+    )
+    # Wait != timeout. Wait is the time to wait after the page is loaded - useful in some cases were "load" / "networkidle" is not enough
+    if body.wait:
+        await page.wait_for_timeout(body.wait)
+        
     page_content = await page.content()
     await context.close()
     json_compatible_item_data = {"content": page_content}
