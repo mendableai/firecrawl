@@ -74,7 +74,6 @@ class FirecrawlApp:
             f'{self.api_url}/v0/scrape',
             headers=headers,
             json=scrape_params,
-            timeout=(5,10)
         )
         if response.status_code == 200:
             response = response.json()
@@ -112,8 +111,7 @@ class FirecrawlApp:
         response = requests.post(
             f'{self.api_url}/v0/search',
             headers=headers,
-            json=json_data,
-            timeout=(5,10)
+            json=json_data
         )
         if response.status_code == 200:
             response = response.json()
