@@ -1,11 +1,15 @@
 {
   "name": "@mendable/firecrawl-js",
-  "version": "0.0.9",
+  "version": "0.0.21",
   "description": "JavaScript SDK for Firecrawl API",
   "main": "build/index.js",
+  "types": "types/index.d.ts",
   "type": "module",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc",
+    "publish": "npm run build && npm publish --access public",
+    "publish-beta": "npm run build && npm publish --access public --tag beta",
+    "test": "jest src/**/*.test.ts"
   },
   "repository": {
     "type": "git",
@@ -15,16 +19,19 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^1.6.8",
-    "dotenv": "^16.4.5"
+    "zod": "^3.23.8",
+    "zod-to-json-schema": "^3.23.0"
   },
   "bugs": {
     "url": "https://github.com/mendableai/firecrawl/issues"
   },
   "homepage": "https://github.com/mendableai/firecrawl#readme",
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
     "@types/axios": "^0.14.0",
-    "@types/dotenv": "^8.2.0",
     "@types/node": "^20.12.7",
+    "jest": "^29.7.0",
+    "ts-jest": "^29.1.2",
     "typescript": "^5.4.5"
   },
   "keywords": [

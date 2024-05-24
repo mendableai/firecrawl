@@ -1,21 +1,26 @@
 import { Job } from "bull";
 import { CrawlResult, WebScraperOptions } from "../types";
 import { WebScraperDataProvider } from "../scraper/WebScraper";
-import { Progress } from "../lib/entities";
+import { DocumentUrl, Progress } from "../lib/entities";
 import { billTeam } from "../services/billing/credit_billing";
+import { Document } from "../lib/entities";
 
 export async function startWebScraperPipeline({
   job,
 }: {
   job: Job<WebScraperOptions>;
 }) {
+  let partialDocs: Document[] = [];
   return (await runWebScraper({
     url: job.data.url,
     mode: job.data.mode,
     crawlerOptions: job.data.crawlerOptions,
     pageOptions: job.data.pageOptions,
     inProgress: (progress) => {
-      job.progress(progress);
+      if (progress.currentDocument) {
+        partialDocs.push(progress.currentDocument);
+        job.progress({ ...progress, partialDocs: partialDocs });
+      }
     },
     onSuccess: (result) => {
       job.moveToCompleted(result);
@@ -24,7 +29,8 @@ export async function startWebScraperPipeline({
       job.moveToFailed(error);
     },
     team_id: job.data.team_id,
-  })) as { success: boolean; message: string; docs: CrawlResult[] };
+    bull_job_id: job.id.toString(),
+  })) as { success: boolean; message: string; docs: Document[] };
 }
 export async function runWebScraper({
   url,
@@ -35,6 +41,7 @@ export async function runWebScraper({
   onSuccess,
   onError,
   team_id,
+  bull_job_id,
 }: {
   url: string;
   mode: "crawl" | "single_urls" | "sitemap";
@@ -44,7 +51,12 @@ export async function runWebScraper({
   onSuccess: (result: any) => void;
   onError: (error: any) => void;
   team_id: string;
-}): Promise<{ success: boolean; message: string; docs: CrawlResult[] }> {
+  bull_job_id: string;
+}): Promise<{
+  success: boolean;
+  message: string;
+  docs: Document[] | DocumentUrl[];
+}> {
   try {
     const provider = new WebScraperDataProvider();
     if (mode === "crawl") {
@@ -53,6 +65,7 @@ export async function runWebScraper({
         urls: [url],
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
+        bullJobId: bull_job_id,
       });
     } else {
       await provider.setOptions({
@@ -64,7 +77,7 @@ export async function runWebScraper({
     }
     const docs = (await provider.getDocuments(false, (progress: Progress) => {
       inProgress(progress);
-    })) as CrawlResult[];
+    })) as Document[];
 
     if (docs.length === 0) {
       return {
@@ -75,14 +88,17 @@ export async function runWebScraper({
     }
 
     // remove docs with empty content
-    const filteredDocs = docs.filter((doc) => doc.content.trim().length > 0);
-    onSuccess(filteredDocs);
+    const filteredDocs = crawlerOptions.returnOnlyUrls
+      ? docs.map((doc) => {
+          if (doc.metadata.sourceURL) {
+            return { url: doc.metadata.sourceURL };
+          }
+        })
+      : docs.filter((doc) => doc.content.trim().length > 0);
 
-    const { success, credit_usage } = await billTeam(
-      team_id,
-      filteredDocs.length
-    );
-    if (!success) {
+    const billingResult = await billTeam(team_id, filteredDocs.length);
+
+    if (!billingResult.success) {
       // throw new Error("Failed to bill team, no subscription was found");
       return {
         success: false,
@@ -91,7 +107,11 @@ export async function runWebScraper({
       };
     }
 
-    return { success: true, message: "", docs: filteredDocs as CrawlResult[] };
+    // This is where the returnvalue from the job is set
+    onSuccess(filteredDocs);
+
+    // this return doesn't matter too much for the job completion result
+    return { success: true, message: "", docs: filteredDocs };
   } catch (error) {
     console.error("Error running web scraper", error);
     onError(error);

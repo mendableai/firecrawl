@@ -1,23 +1,42 @@
-import { Document, PageOptions, WebScraperOptions } from "../../lib/entities";
+import {
+  Document,
+  ExtractorOptions,
+  PageOptions,
+  WebScraperOptions,
+} from "../../lib/entities";
 import { Progress } from "../../lib/entities";
 import { scrapSingleUrl } from "./single_url";
 import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
 import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
-import { getImageDescription } from "./utils/gptVision";
-
+import { getImageDescription } from "./utils/imageDescription";
+import { fetchAndProcessPdf } from "./utils/pdfProcessor";
+import {
+  replaceImgPathsWithAbsolutePaths,
+  replacePathsWithAbsolutePaths,
+} from "./utils/replacePaths";
+import { generateCompletions } from "../../lib/LLM-extraction";
+import { getWebScraperQueue } from "../../../src/services/queue-service";
+import { fetchAndProcessDocx } from "./utils/docxProcessor";
 
 export class WebScraperDataProvider {
+  private bullJobId: string;
   private urls: string[] = [""];
   private mode: "single_urls" | "sitemap" | "crawl" = "single_urls";
   private includes: string[];
   private excludes: string[];
   private maxCrawledLinks: number;
+  private maxCrawledDepth: number = 10;
   private returnOnlyUrls: boolean;
   private limit: number = 10000;
   private concurrentRequests: number = 20;
   private generateImgAltText: boolean = false;
   private pageOptions?: PageOptions;
+  private extractorOptions?: ExtractorOptions;
+  private replaceAllPathsWithAbsolutePaths?: boolean = false;
+  private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" =
+    "gpt-4-turbo";
+  private crawlerMode: string = "default";
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -29,18 +48,23 @@ export class WebScraperDataProvider {
 
   private async convertUrlsToDocuments(
     urls: string[],
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
+    allHtmls?: string[]
   ): Promise<Document[]> {
     const totalUrls = urls.length;
     let processedUrls = 0;
-    console.log("Converting urls to documents");
-    console.log("Total urls", urls);
+
     const results: (Document | null)[] = new Array(urls.length).fill(null);
     for (let i = 0; i < urls.length; i += this.concurrentRequests) {
       const batchUrls = urls.slice(i, i + this.concurrentRequests);
       await Promise.all(
         batchUrls.map(async (url, index) => {
-          const result = await scrapSingleUrl(url, true, this.pageOptions);
+          const existingHTML = allHtmls ? allHtmls[i + index] : "";
+          const result = await scrapSingleUrl(
+            url,
+            this.pageOptions,
+            existingHTML
+          );
           processedUrls++;
           if (inProgress) {
             inProgress({
@@ -48,11 +72,26 @@ export class WebScraperDataProvider {
               total: totalUrls,
               status: "SCRAPING",
               currentDocumentUrl: url,
+              currentDocument: result,
             });
           }
+
           results[i + index] = result;
         })
       );
+      try {
+        if (this.mode === "crawl" && this.bullJobId) {
+          const job = await getWebScraperQueue().getJob(this.bullJobId);
+          const jobStatus = await job.getState();
+          if (jobStatus === "failed") {
+            throw new Error(
+              "Job has failed or has been cancelled by the user. Stopping the job..."
+            );
+          }
+        }
+      } catch (error) {
+        console.error(error);
+      }
     }
     return results.filter((result) => result !== null) as Document[];
   }
@@ -61,117 +100,222 @@ export class WebScraperDataProvider {
     useCaching: boolean = false,
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
+    this.validateInitialUrl();
+
+    if (!useCaching) {
+      return this.processDocumentsWithoutCache(inProgress);
+    }
+
+    return this.processDocumentsWithCache(inProgress);
+  }
+
+  private validateInitialUrl(): void {
     if (this.urls[0].trim() === "") {
       throw new Error("Url is required");
     }
+  }
 
-    if (!useCaching) {
-      if (this.mode === "crawl") {
-        const crawler = new WebCrawler({
-          initialUrl: this.urls[0],
-          includes: this.includes,
-          excludes: this.excludes,
-          maxCrawledLinks: this.maxCrawledLinks,
-          limit: this.limit,
-          generateImgAltText: this.generateImgAltText,
-        });
-        const links = await crawler.start(inProgress, 5, this.limit);
-        if (this.returnOnlyUrls) {
-          return links.map((url) => ({
-            content: "",
-            metadata: { sourceURL: url },
-            provider: "web",
-            type: "text",
-          }));
-        }
-        let documents = await this.convertUrlsToDocuments(links, inProgress);
-        documents = await this.getSitemapData(this.urls[0], documents);
-        documents = this.replaceImgPathsWithAbsolutePaths(documents);
-        if (this.generateImgAltText) {
-          documents = await this.generatesImgAltText(documents);
-        }
+  /**
+   * Process documents without cache handling each mode
+   * @param inProgress inProgress
+   * @returns documents
+   */
+  private async processDocumentsWithoutCache(
+    inProgress?: (progress: Progress) => void
+  ): Promise<Document[]> {
+    switch (this.mode) {
+      case "crawl":
+        return this.handleCrawlMode(inProgress);
+      case "single_urls":
+        return this.handleSingleUrlsMode(inProgress);
+      case "sitemap":
+        return this.handleSitemapMode(inProgress);
+      default:
+        return [];
+    }
+  }
 
-        // CACHING DOCUMENTS
-        // - parent document
-        const cachedParentDocumentString = await getValue(
-          "web-scraper-cache:" + this.normalizeUrl(this.urls[0])
-        );
-        if (cachedParentDocumentString != null) {
-          let cachedParentDocument = JSON.parse(cachedParentDocumentString);
-          if (
-            !cachedParentDocument.childrenLinks ||
-            cachedParentDocument.childrenLinks.length < links.length - 1
-          ) {
-            cachedParentDocument.childrenLinks = links.filter(
-              (link) => link !== this.urls[0]
-            );
-            await setValue(
-              "web-scraper-cache:" + this.normalizeUrl(this.urls[0]),
-              JSON.stringify(cachedParentDocument),
-              60 * 60 * 24 * 10
-            ); // 10 days
-          }
-        } else {
-          let parentDocument = documents.filter(
-            (document) =>
-              this.normalizeUrl(document.metadata.sourceURL) ===
-              this.normalizeUrl(this.urls[0])
-          );
-          await this.setCachedDocuments(parentDocument, links);
-        }
+  private async cleanIrrelevantPath(links: string[]) {
+    return links.filter((link) => {
+      const normalizedInitialUrl = new URL(this.urls[0]);
+      const normalizedLink = new URL(link);
 
-        await this.setCachedDocuments(
-          documents.filter(
-            (document) =>
-              this.normalizeUrl(document.metadata.sourceURL) !==
-              this.normalizeUrl(this.urls[0])
-          ),
-          []
-        );
-        documents = this.removeChildLinks(documents);
-        documents = documents.splice(0, this.limit);
-        return documents;
-      }
+      // Normalize the hostname to account for www and non-www versions
+      const initialHostname = normalizedInitialUrl.hostname.replace(
+        /^www\./,
+        ""
+      );
+      const linkHostname = normalizedLink.hostname.replace(/^www\./, "");
 
-      if (this.mode === "single_urls") {
-        let documents = await this.convertUrlsToDocuments(
-          this.urls,
-          inProgress
-        );
-        documents = this.replaceImgPathsWithAbsolutePaths(documents);
-        if (this.generateImgAltText) {
-          documents = await this.generatesImgAltText(documents);
-        }
-        const baseUrl = new URL(this.urls[0]).origin;
-        documents = await this.getSitemapData(baseUrl, documents);
+      // Ensure the protocol and hostname match, and the path starts with the initial URL's path
+      return (
+        linkHostname === initialHostname &&
+        normalizedLink.pathname.startsWith(normalizedInitialUrl.pathname)
+      );
+    });
+  }
 
-        await this.setCachedDocuments(documents);
-        documents = this.removeChildLinks(documents);
-        documents = documents.splice(0, this.limit);
-        return documents;
-      }
-      if (this.mode === "sitemap") {
-        const links = await getLinksFromSitemap(this.urls[0]);
-        let documents = await this.convertUrlsToDocuments(
-          links.slice(0, this.limit),
-          inProgress
-        );
+  private async handleCrawlMode(
+    inProgress?: (progress: Progress) => void
+  ): Promise<Document[]> {
 
-        documents = await this.getSitemapData(this.urls[0], documents);
-        documents = this.replaceImgPathsWithAbsolutePaths(documents);
-        if (this.generateImgAltText) {
-          documents = await this.generatesImgAltText(documents);
-        }
+    const crawler = new WebCrawler({
+      initialUrl: this.urls[0],
+      includes: this.includes,
+      excludes: this.excludes,
+      maxCrawledLinks: this.maxCrawledLinks,
+      maxCrawledDepth: this.maxCrawledDepth,
+      limit: this.limit,
+      generateImgAltText: this.generateImgAltText,
+    });
 
-        await this.setCachedDocuments(documents);
-        documents = this.removeChildLinks(documents);
-        documents = documents.splice(0, this.limit);
-        return documents;
-      }
+    let links = await crawler.start(
+      inProgress,
+      5,
+      this.limit,
+      this.maxCrawledDepth
+    );
 
-      return [];
+    let allLinks = links.map((e) => e.url);
+    const allHtmls = links.map((e) => e.html);
+
+    if (this.returnOnlyUrls) {
+      return this.returnOnlyUrlsResponse(allLinks, inProgress);
     }
 
+    let documents = [];
+    // check if fast mode is enabled and there is html inside the links
+    if (this.crawlerMode === "fast" && links.some((link) => link.html)) {
+      documents = await this.processLinks(allLinks, inProgress, allHtmls);
+    } else {
+      documents = await this.processLinks(allLinks, inProgress);
+    }
+
+    return this.cacheAndFinalizeDocuments(documents, allLinks);
+  }
+
+  private async handleSingleUrlsMode(
+    inProgress?: (progress: Progress) => void
+  ): Promise<Document[]> {
+    const links = this.urls;
+
+    let documents = await this.processLinks(links, inProgress);
+    return documents;
+  }
+
+  private async handleSitemapMode(
+    inProgress?: (progress: Progress) => void
+  ): Promise<Document[]> {
+    let links = await getLinksFromSitemap(this.urls[0]);
+    links = await this.cleanIrrelevantPath(links);
+
+    if (this.returnOnlyUrls) {
+      return this.returnOnlyUrlsResponse(links, inProgress);
+    }
+
+    let documents = await this.processLinks(links, inProgress);
+    return this.cacheAndFinalizeDocuments(documents, links);
+  }
+
+  private async returnOnlyUrlsResponse(
+    links: string[],
+    inProgress?: (progress: Progress) => void
+  ): Promise<Document[]> {
+    inProgress?.({
+      current: links.length,
+      total: links.length,
+      status: "COMPLETED",
+      currentDocumentUrl: this.urls[0],
+    });
+    return links.map((url) => ({
+      content: "",
+      html: this.pageOptions?.includeHtml ? "" : undefined,
+      markdown: "",
+      metadata: { sourceURL: url },
+    }));
+  }
+
+  private async processLinks(
+    links: string[],
+    inProgress?: (progress: Progress) => void,
+    allHtmls?: string[]
+  ): Promise<Document[]> {
+    const pdfLinks = links.filter(link => link.endsWith(".pdf"));
+    const docLinks = links.filter(link => link.endsWith(".doc") || link.endsWith(".docx"));
+
+    const pdfDocuments = await this.fetchPdfDocuments(pdfLinks);
+    const docxDocuments = await this.fetchDocxDocuments(docLinks);
+
+    links = links.filter(link => !pdfLinks.includes(link) && !docLinks.includes(link));
+
+    let documents = await this.convertUrlsToDocuments(
+      links,
+      inProgress,
+      allHtmls
+    );
+    documents = await this.getSitemapData(this.urls[0], documents);
+
+    documents = this.applyPathReplacements(documents);
+    // documents = await this.applyImgAltText(documents);
+
+    if (
+      this.extractorOptions.mode === "llm-extraction" &&
+      this.mode === "single_urls"
+    ) {
+      documents = await generateCompletions(documents, this.extractorOptions);
+    }
+    return documents.concat(pdfDocuments).concat(docxDocuments);
+  }
+
+  private async fetchPdfDocuments(pdfLinks: string[]): Promise<Document[]> {
+    return Promise.all(
+      pdfLinks.map(async (pdfLink) => {
+        const pdfContent = await fetchAndProcessPdf(pdfLink);
+        return {
+          content: pdfContent,
+          metadata: { sourceURL: pdfLink },
+          provider: "web-scraper",
+        };
+      })
+    );
+  }
+  private async fetchDocxDocuments(docxLinks: string[]): Promise<Document[]> {
+    return Promise.all(
+      docxLinks.map(async (p) => {
+        const docXDocument = await fetchAndProcessDocx(p);
+        return {
+          content: docXDocument,
+          metadata: { sourceURL: p },
+          provider: "web-scraper",
+        };
+      })
+    );
+  }
+
+  private applyPathReplacements(documents: Document[]): Document[] {
+    return this.replaceAllPathsWithAbsolutePaths
+      ? replacePathsWithAbsolutePaths(documents)
+      : replaceImgPathsWithAbsolutePaths(documents);
+  }
+
+  private async applyImgAltText(documents: Document[]): Promise<Document[]> {
+    return this.generateImgAltText
+      ? this.generatesImgAltText(documents)
+      : documents;
+  }
+
+  private async cacheAndFinalizeDocuments(
+    documents: Document[],
+    links: string[]
+  ): Promise<Document[]> {
+    await this.setCachedDocuments(documents, links);
+    documents = this.removeChildLinks(documents);
+    return documents.splice(0, this.limit);
+  }
+
+  private async processDocumentsWithCache(
+    inProgress?: (progress: Progress) => void
+  ): Promise<Document[]> {
     let documents = await this.getCachedDocuments(
       this.urls.slice(0, this.limit)
     );
@@ -180,22 +324,30 @@ export class WebScraperDataProvider {
         false,
         inProgress
       );
-      newDocuments.forEach((doc) => {
-        if (
-          !documents.some(
-            (d) =>
-              this.normalizeUrl(d.metadata.sourceURL) ===
-              this.normalizeUrl(doc.metadata?.sourceURL)
-          )
-        ) {
-          documents.push(doc);
-        }
-      });
+      documents = this.mergeNewDocuments(documents, newDocuments);
     }
     documents = this.filterDocsExcludeInclude(documents);
+    documents = this.filterDepth(documents);
     documents = this.removeChildLinks(documents);
-    documents = documents.splice(0, this.limit);
-    return documents;
+    return documents.splice(0, this.limit);
+  }
+
+  private mergeNewDocuments(
+    existingDocuments: Document[],
+    newDocuments: Document[]
+  ): Document[] {
+    newDocuments.forEach((doc) => {
+      if (
+        !existingDocuments.some(
+          (d) =>
+            this.normalizeUrl(d.metadata.sourceURL) ===
+            this.normalizeUrl(doc.metadata?.sourceURL)
+        )
+      ) {
+        existingDocuments.push(doc);
+      }
+    });
+    return existingDocuments;
   }
 
   private filterDocsExcludeInclude(documents: Document[]): Document[] {
@@ -272,7 +424,7 @@ export class WebScraperDataProvider {
         documents.push(cachedDocument);
 
         // get children documents
-        for (const childUrl of cachedDocument.childrenLinks) {
+        for (const childUrl of cachedDocument.childrenLinks || []) {
           const normalizedChildUrl = this.normalizeUrl(childUrl);
           const childCachedDocumentString = await getValue(
             "web-scraper-cache:" + normalizedChildUrl
@@ -300,20 +452,24 @@ export class WebScraperDataProvider {
       throw new Error("Urls are required");
     }
 
+    this.bullJobId = options.bullJobId;
     this.urls = options.urls;
     this.mode = options.mode;
     this.concurrentRequests = options.concurrentRequests ?? 20;
     this.includes = options.crawlerOptions?.includes ?? [];
     this.excludes = options.crawlerOptions?.excludes ?? [];
     this.maxCrawledLinks = options.crawlerOptions?.maxCrawledLinks ?? 1000;
+    this.maxCrawledDepth = options.crawlerOptions?.maxDepth ?? 10;
     this.returnOnlyUrls = options.crawlerOptions?.returnOnlyUrls ?? false;
     this.limit = options.crawlerOptions?.limit ?? 10000;
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
-    this.pageOptions = options.pageOptions ?? {onlyMainContent: false};
-
-    //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
+    this.pageOptions = options.pageOptions ?? { onlyMainContent: false, includeHtml: false };
+    this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
+    this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
+    //! @nicolas, for some reason this was being injected and breaking everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
+    this.crawlerMode = options.crawlerOptions?.mode ?? "default";
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {
@@ -381,7 +537,8 @@ export class WebScraperDataProvider {
               altText = await getImageDescription(
                 imageUrl,
                 backText,
-                frontText
+                frontText,
+                this.generateImgAltTextModel
               );
             }
 
@@ -397,39 +554,11 @@ export class WebScraperDataProvider {
     return documents;
   };
 
-  replaceImgPathsWithAbsolutePaths = (documents: Document[]): Document[] => {
-    try {
-      documents.forEach((document) => {
-        const baseUrl = new URL(document.metadata.sourceURL).origin;
-        const images =
-          document.content.match(
-            /!\[.*?\]\(((?:[^()]+|\((?:[^()]+|\([^()]*\))*\))*)\)/g
-          ) || [];
-
-        images.forEach((image: string) => {
-          let imageUrl = image.match(/\(([^)]+)\)/)[1];
-          let altText = image.match(/\[(.*?)\]/)[1];
-
-          if (!imageUrl.startsWith("data:image")) {
-            if (!imageUrl.startsWith("http")) {
-              if (imageUrl.startsWith("/")) {
-                imageUrl = imageUrl.substring(1);
-              }
-              imageUrl = new URL(imageUrl, baseUrl).toString();
-            }
-          }
-
-          document.content = document.content.replace(
-            image,
-            `![${altText}](${imageUrl})`
-          );
-        });
-      });
-
-      return documents;
-    } catch (error) {
-      console.error("Error replacing img paths with absolute paths", error);
-      return documents;
-    }
-  };
+  filterDepth(documents: Document[]): Document[] {
+    return documents.filter((document) => {
+      const url = new URL(document.metadata.sourceURL);
+      const path = url.pathname;
+      return path.split("/").length <= this.maxCrawledDepth;
+    });
+  }
 }
