@@ -28,11 +28,13 @@ export async function searchHelper(
 
   const tbs = searchOptions.tbs ?? null;
   const filter = searchOptions.filter ?? null;
+  const num_results = searchOptions.limit ?? 7;
+  const num_results_buffer = Math.floor(num_results * 1.5);
 
   let res = await search({
     query: query,
     advanced: advanced,
-    num_results: searchOptions.limit ?? 7,
+    num_results: num_results_buffer,
     tbs: tbs,
     filter: filter,
     lang: searchOptions.lang ?? "en",
@@ -47,6 +49,9 @@ export async function searchHelper(
   }
 
   res = res.filter((r) => !isUrlBlocked(r.url));
+  if (res.length > num_results) {
+    res = res.slice(0, num_results);
+  }
 
   if (res.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
