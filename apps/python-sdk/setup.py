@@ -18,6 +18,7 @@ setup(
     install_requires=[
         "requests",
     ],
+    python_requires='>=3.8',
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Web Environment",
