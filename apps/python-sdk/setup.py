@@ -38,5 +38,12 @@ setup(
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: Text Processing",
         "Topic :: Text Processing :: Indexing",
-    ],
+    ],    
+    keywords="SDK API firecrawl",
+    project_urls={
+        "Documentation": "https://github.com/mendableai/firecrawl/docs",
+        "Source": "https://github.com/mendableai/firecrawl",
+        "Tracker": "https://github.com/mendableai/firecrawl/issues",
+    },
+    license="MIT",
 )
