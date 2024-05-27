@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 API_URL = "http://127.0.0.1:3002";
-ABSOLUTE_FIRECRAWL_PATH = "./apps/python-sdk/firecrawl/firecrawl.py"
+ABSOLUTE_FIRECRAWL_PATH = "firecrawl/firecrawl.py"
 TEST_API_KEY = os.getenv('TEST_API_KEY')
 
 print(f"ABSOLUTE_FIRECRAWL_PATH: {ABSOLUTE_FIRECRAWL_PATH}")
