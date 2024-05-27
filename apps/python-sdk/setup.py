@@ -7,7 +7,7 @@ long_description_content = (this_directory / "README.md").read_text()
 
 setup(
     name="firecrawl-py",
-    version="0.0.9",
+    version="0.0.10",
     url="https://github.com/mendableai/firecrawl",
     author="Mendable.ai",
     author_email="nick@mendable.ai",
