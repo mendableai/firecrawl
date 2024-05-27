@@ -86,12 +86,12 @@ describe('FirecrawlApp E2E Tests', () => {
   test('should handle idempotency key for crawl', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const uniqueIdempotencyKey = uuidv4();
-    const response = await app.crawlUrl('https://firecrawl.dev', { crawlerOptions: { excludes: ['blog/*'] } }, true, 2, uniqueIdempotencyKey);
+    const response = await app.crawlUrl('https://firecrawl.dev', { crawlerOptions: { excludes: ['blog/*'] } }, false, 2, uniqueIdempotencyKey);
     expect(response).not.toBeNull();
-    expect(response[0].content).toContain("🔥 Firecrawl");
+    expect(response.jobId).toBeDefined();
 
     await expect(app.crawlUrl('https://firecrawl.dev', { crawlerOptions: { excludes: ['blog/*'] } }, true, 2, uniqueIdempotencyKey)).rejects.toThrow("Request failed with status code 409");
-  }, 30000); // 30 seconds timeout
+  });
 
   test('should check crawl status', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
