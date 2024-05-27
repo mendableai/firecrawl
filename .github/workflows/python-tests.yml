@@ -25,16 +25,21 @@ env:
   TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
   HYPERDX_API_KEY: ${{ secrets.HYPERDX_API_KEY }}
   HDX_NODE_BETA_MODE: 1
-  
+
 jobs:  
   build:  
     runs-on: ubuntu-latest  
     strategy:  
       matrix:  
-        python-version: ["3.10"]  
+        python-version: ["3.10"]
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
   
     steps:
-      - uses: actions/checkout@v3  
+      - uses: actions/checkout@v3
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
