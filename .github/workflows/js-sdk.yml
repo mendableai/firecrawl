@@ -53,5 +53,5 @@ jobs:
         run: npm run workers &
         working-directory: ./apps/api
       - name: Run E2E tests for JavaScript SDK
-        run: npm run tests
+        run: npm run test
         working-directory: ./apps/js-sdk/firecrawl
