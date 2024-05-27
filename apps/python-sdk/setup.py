@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='firecrawl-py',
-    version='0.0.9',
+    version='0.0.10',
     url='https://github.com/mendableai/firecrawl',
     author='Mendable.ai',
     author_email='nick@mendable.ai',
