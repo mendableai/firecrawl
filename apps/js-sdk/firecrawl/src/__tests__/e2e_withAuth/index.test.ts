@@ -61,7 +61,6 @@ describe('FirecrawlApp E2E Tests', () => {
   test('should return successful response for valid scrape with PDF file without explicit extension', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.scrapeUrl('https://arxiv.org/pdf/astro-ph/9301001');
-    await new Promise(resolve => setTimeout(resolve, 6000)); // wait for 6 seconds
     expect(response).not.toBeNull();
     expect(response.data.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
   }, 30000); // 30 seconds timeout

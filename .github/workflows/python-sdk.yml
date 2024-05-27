@@ -61,12 +61,12 @@ jobs:
         uses: actions/setup-python@v4  
         with:  
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies  
+      - name: Install Python dependencies  
         run: |  
           python -m pip install --upgrade pip  
           pip install -r requirements.txt
         working-directory: ./apps/python-sdk
-      - name: Test with pytest  
+      - name: Run E2E tests for Python SDK  
         run: |  
           pytest firecrawl/__tests__/e2e_withAuth/test.py 
         working-directory: ./apps/python-sdk
