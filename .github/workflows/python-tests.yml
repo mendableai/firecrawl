@@ -13,8 +13,25 @@ jobs:
       matrix:  
         python-version: ["3.10"]  
   
-    steps:  
+    steps:
       - uses: actions/checkout@v3  
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      - name: Install pnpm
+        run: npm install -g pnpm
+      - name: Install dependencies for API
+        run: pnpm install
+        working-directory: ./apps/api
+      - name: Start the application
+        run: npm start &
+        working-directory: ./apps/api
+        id: start_app
+      - name: Start workers
+        run: npm run workers &
+        working-directory: ./apps/api
+        id: start_workers
       - name: Set up Python ${{ matrix.python-version }}  
         uses: actions/setup-python@v4  
         with:  
