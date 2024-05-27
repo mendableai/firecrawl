@@ -23,7 +23,7 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: MIT License",
+        "License :: OSI Approved :: AGPL 3.0 License",
         "Natural Language :: English",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
@@ -42,9 +42,9 @@ setup(
     ],    
     keywords="SDK API firecrawl",
     project_urls={
-        "Documentation": "https://github.com/mendableai/firecrawl/docs",
+        "Documentation": "https://docs.firecrawl.dev",
         "Source": "https://github.com/mendableai/firecrawl",
         "Tracker": "https://github.com/mendableai/firecrawl/issues",
     },
-    license="MIT",
+    license="AGPL 3.0 License",
 )
