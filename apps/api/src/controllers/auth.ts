@@ -130,7 +130,7 @@ export async function supaAuthenticateUser(
     const retryDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
     return {
       success: false,
-      error: `Rate limit exceeded for mode ${rateLimiter.keyPrefix}. Consumed points: ${rateLimiterRes.consumedPoints}, Remaining points: ${rateLimiterRes.remainingPoints}. Please retry after ${secs}s, resets at ${retryDate}`,
+      error: `Rate limit exceeded. Consumed points: ${rateLimiterRes.consumedPoints}, Remaining points: ${rateLimiterRes.remainingPoints}. Please retry after ${secs}s, resets at ${retryDate}`,
       status: 429,
     };
   }
