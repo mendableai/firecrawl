@@ -11,5 +11,6 @@ setup(
     install_requires=[
         'requests',
         'pytest',
+        'python-dotenv',
     ],
 )
