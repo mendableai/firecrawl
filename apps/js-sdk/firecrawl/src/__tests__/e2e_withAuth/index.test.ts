@@ -78,7 +78,7 @@ describe('FirecrawlApp E2E Tests', () => {
 
   test('should return successful response for crawl and wait for completion', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
-    const response = await app.crawlUrl('https://firecrawl.dev', { crawlerOptions: { excludes: ['blog/*'] } }, true);
+    const response = await app.crawlUrl('https://firecrawl.dev', { crawlerOptions: { excludes: ['blog/*'] } }, true, 30);
     expect(response).not.toBeNull();
     expect(response[0].content).toContain("🔥 Firecrawl");
   }, 60000); // 60 seconds timeout
