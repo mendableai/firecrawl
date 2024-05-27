@@ -7,7 +7,7 @@ long_description_content = (this_directory / "README.md").read_text()
 
 setup(
     name="firecrawl-py",
-    version="0.0.10",
+    version="0.0.11",
     url="https://github.com/mendableai/firecrawl",
     author="Mendable.ai",
     author_email="nick@mendable.ai",
@@ -23,7 +23,7 @@ setup(
         "Development Status :: 5 - Production/Stable",
         "Environment :: Web Environment",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: AGPL 3.0 License",
+        "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
         "Natural Language :: English",
         "Operating System :: OS Independent",
         "Programming Language :: Python",
@@ -46,5 +46,5 @@ setup(
         "Source": "https://github.com/mendableai/firecrawl",
         "Tracker": "https://github.com/mendableai/firecrawl/issues",
     },
-    license="AGPL 3.0 License",
+    license="GNU General Public License v3 (GPLv3)",
 )
