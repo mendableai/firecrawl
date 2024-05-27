@@ -1,7 +1,6 @@
 const socialMediaBlocklist = [
   'facebook.com',
   'twitter.com',
-  'x.com',
   'instagram.com',
   'linkedin.com',
   'pinterest.com',
