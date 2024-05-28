@@ -6,6 +6,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
  */
 export interface FirecrawlAppConfig {
   apiKey?: string | null;
+  apiUrl?: string | null;
 }
 
 /**
@@ -63,6 +64,7 @@ export interface JobStatusResponse {
  */
 export default class FirecrawlApp {
   private apiKey: string;
+  private apiUrl: string = "https://api.firecrawl.dev";
 
   /**
    * Initializes a new instance of the FirecrawlApp class.
@@ -107,7 +109,7 @@ export default class FirecrawlApp {
     }
     try {
       const response: AxiosResponse = await axios.post(
-        "https://api.firecrawl.dev/v0/scrape",
+        this.apiUrl + "/v0/scrape",
         jsonData,
         { headers },
       );
@@ -147,7 +149,7 @@ export default class FirecrawlApp {
     }
     try {
       const response: AxiosResponse = await axios.post(
-        "https://api.firecrawl.dev/v0/search",
+        this.apiUrl + "/v0/search",
         jsonData,
         { headers }
       );
@@ -190,7 +192,7 @@ export default class FirecrawlApp {
     }
     try {
       const response: AxiosResponse = await this.postRequest(
-        "https://api.firecrawl.dev/v0/crawl",
+        this.apiUrl + "/v0/crawl",
         jsonData,
         headers
       );
@@ -220,7 +222,7 @@ export default class FirecrawlApp {
     const headers: AxiosRequestHeaders = this.prepareHeaders();
     try {
       const response: AxiosResponse = await this.getRequest(
-        `https://api.firecrawl.dev/v0/crawl/status/${jobId}`,
+        this.apiUrl + `/v0/crawl/status/${jobId}`,
         headers
       );
       if (response.status === 200) {
@@ -292,7 +294,7 @@ export default class FirecrawlApp {
   ): Promise<any> {
     while (true) {
       const statusResponse: AxiosResponse = await this.getRequest(
-        `https://api.firecrawl.dev/v0/crawl/status/${jobId}`,
+        this.apiUrl + `/v0/crawl/status/${jobId}`,
         headers
       );
       if (statusResponse.status === 200) {
