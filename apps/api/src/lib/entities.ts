@@ -15,6 +15,7 @@ export type PageOptions = {
   includeHtml?: boolean;
   fallback?: boolean;
   fetchPageContent?: boolean;
+  waitFor?: number;
 };
 
 export type ExtractorOptions = {
