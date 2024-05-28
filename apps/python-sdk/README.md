@@ -117,6 +117,25 @@ status = app.check_crawl_status(job_id)
 
 The SDK handles errors returned by the Firecrawl API and raises appropriate exceptions. If an error occurs during a request, an exception will be raised with a descriptive error message.
 
+## Running the Tests with Pytest
+
+To ensure the functionality of the Firecrawl Python SDK, we have included end-to-end tests using `pytest`. These tests cover various aspects of the SDK, including URL scraping, web searching, and website crawling.
+
+### Running the Tests
+
+To run the tests, execute the following commands:
+
+Install pytest:
+```bash
+pip install pytest
+```
+
+Run:
+```bash
+pytest firecrawl/__tests__/e2e_withAuth/test.py
+```
+
+
 ## Contributing
 
 Contributions to the Firecrawl Python SDK are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request on the GitHub repository.

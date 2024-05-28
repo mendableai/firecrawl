@@ -16,7 +16,9 @@ setup(
     long_description_content_type="text/markdown",
     packages=find_packages(),
     install_requires=[
-        "requests",
+        'requests',
+        'pytest',
+        'python-dotenv',
     ],
     python_requires='>=3.8',
     classifiers=[
