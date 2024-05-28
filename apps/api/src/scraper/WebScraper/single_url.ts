@@ -44,18 +44,21 @@ export async function generateRequestParams(
 }
 export async function scrapWithFireEngine(
   url: string,
+  waitFor: number = 0,
   options?: any
 ): Promise<string> {
   try {
     const reqParams = await generateRequestParams(url);
-    const wait_playwright = reqParams["params"]?.wait ?? 0;
+    // If the user has passed a wait parameter in the request, use that
+    const waitParam = reqParams["params"]?.wait ?? waitFor;
+    console.log(`[Fire-Engine] Scraping ${url} with wait: ${waitParam}`);
 
     const response = await fetch(process.env.FIRE_ENGINE_BETA_URL+ "/scrape", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: url, wait: wait_playwright }),
+      body: JSON.stringify({ url: url, wait: waitParam }),
     });
 
     if (!response.ok) {
@@ -115,17 +118,18 @@ export async function scrapWithScrapingBee(
   }
 }
 
-export async function scrapWithPlaywright(url: string): Promise<string> {
+export async function scrapWithPlaywright(url: string, waitFor: number = 0): Promise<string> {
   try {
     const reqParams = await generateRequestParams(url);
-    const wait_playwright = reqParams["params"]?.wait ?? 0;
+    // If the user has passed a wait parameter in the request, use that
+    const waitParam = reqParams["params"]?.wait ?? waitFor;
 
     const response = await fetch(process.env.PLAYWRIGHT_MICROSERVICE_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: url, wait: wait_playwright }),
+      body: JSON.stringify({ url: url, wait: waitParam }),
     });
 
     if (!response.ok) {
@@ -178,7 +182,7 @@ export async function scrapWithFetch(url: string): Promise<string> {
  * @param defaultScraper The default scraper to use if the URL does not have a specific scraper order defined
  * @returns The order of scrapers to be used for scraping a URL
  */
-function getScrapingFallbackOrder(defaultScraper?: string) {
+function getScrapingFallbackOrder(defaultScraper?: string, isWaitPresent: boolean = false) {
   const availableScrapers = baseScrapers.filter(scraper => {
     switch (scraper) {
       case "scrapingBee":
@@ -193,16 +197,22 @@ function getScrapingFallbackOrder(defaultScraper?: string) {
     }
   });
 
-  const defaultOrder = ["scrapingBee", "fire-engine", "playwright", "scrapingBeeLoad", "fetch"];
+  let defaultOrder = ["scrapingBee", "fire-engine", "playwright", "scrapingBeeLoad", "fetch"];
+  
+  if (isWaitPresent) {
+    defaultOrder = ["fire-engine", "playwright", ...defaultOrder.filter(scraper => scraper !== "fire-engine" && scraper !== "playwright")];
+  }
+
   const filteredDefaultOrder = defaultOrder.filter((scraper: typeof baseScrapers[number]) => availableScrapers.includes(scraper));
   const uniqueScrapers = new Set(defaultScraper ? [defaultScraper, ...filteredDefaultOrder, ...availableScrapers] : [...filteredDefaultOrder, ...availableScrapers]);
   const scrapersInOrder = Array.from(uniqueScrapers);
+  console.log(`Scrapers in order: ${scrapersInOrder}`);
   return scrapersInOrder as typeof baseScrapers[number][];
 }
 
 export async function scrapSingleUrl(
   urlToScrap: string,
-  pageOptions: PageOptions = { onlyMainContent: true, includeHtml: false },
+  pageOptions: PageOptions = { onlyMainContent: true, includeHtml: false, waitFor: 0},
   existingHtml: string = ""
 ): Promise<Document> {
   urlToScrap = urlToScrap.trim();
@@ -227,7 +237,9 @@ export async function scrapSingleUrl(
     switch (method) {
       case "fire-engine":
         if (process.env.FIRE_ENGINE_BETA_URL) {
-          text = await scrapWithFireEngine(url);
+          console.log(`Scraping ${url} with Fire Engine`);
+          
+          text = await scrapWithFireEngine(url, pageOptions.waitFor);
         }
         break;
       case "scrapingBee":
@@ -241,7 +253,7 @@ export async function scrapSingleUrl(
         break;
       case "playwright":
         if (process.env.PLAYWRIGHT_MICROSERVICE_URL) {
-          text = await scrapWithPlaywright(url);
+          text = await scrapWithPlaywright(url, pageOptions.waitFor);
         }
         break;
       case "scrapingBeeLoad":
@@ -268,7 +280,7 @@ export async function scrapSingleUrl(
       console.error(`Invalid URL key, trying: ${urlToScrap}`);
     }
     const defaultScraper = urlSpecificParams[urlKey]?.defaultScraper ?? "";
-    const scrapersInOrder = getScrapingFallbackOrder(defaultScraper) 
+    const scrapersInOrder = getScrapingFallbackOrder(defaultScraper, pageOptions && pageOptions.waitFor && pageOptions.waitFor > 0) 
 
     for (const scraper of scrapersInOrder) {
       // If exists text coming from crawler, use it
