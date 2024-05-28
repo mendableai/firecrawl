@@ -402,7 +402,6 @@ const searchResults = await app.search(query, {
 
 ```
 
-
 ## Contributing
 
 We love contributions! Please read our [contributing guide](CONTRIBUTING.md) before submitting a pull request.
