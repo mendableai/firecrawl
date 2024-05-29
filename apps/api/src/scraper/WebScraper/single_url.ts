@@ -210,6 +210,14 @@ function getScrapingFallbackOrder(defaultScraper?: string, isWaitPresent: boolea
   return scrapersInOrder as typeof baseScrapers[number][];
 }
 
+async function handleCustomScraping(text: string, url: string): Promise<string | null> {
+  if (text.includes('<meta name="readme-deploy"')) {
+    console.log(`Special use case detected for ${url}, using Fire Engine with wait time 1000ms`);
+    return await scrapWithFireEngine(url, 1000);
+  }
+  return null;
+}
+
 export async function scrapSingleUrl(
   urlToScrap: string,
   pageOptions: PageOptions = { onlyMainContent: true, includeHtml: false, waitFor: 0},
@@ -264,6 +272,12 @@ export async function scrapSingleUrl(
       case "fetch":
         text = await scrapWithFetch(url);
         break;
+    }
+
+    // Check for custom scraping conditions
+    const customScrapedContent = await handleCustomScraping(text, url);
+    if (customScrapedContent) {
+      text = customScrapedContent;
     }
 
     //* TODO: add an optional to return markdown or structured/extracted content
