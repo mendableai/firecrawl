@@ -16,6 +16,7 @@ export type PageOptions = {
   fallback?: boolean;
   fetchPageContent?: boolean;
   waitFor?: number;
+  screenshot?: boolean;
 };
 
 export type ExtractorOptions = {

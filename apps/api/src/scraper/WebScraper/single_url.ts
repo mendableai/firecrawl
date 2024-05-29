@@ -45,12 +45,14 @@ export async function generateRequestParams(
 export async function scrapWithFireEngine(
   url: string,
   waitFor: number = 0,
+  screenshot: boolean = false,
   options?: any
-): Promise<string> {
+): Promise<[string, string]> {
   try {
     const reqParams = await generateRequestParams(url);
     // If the user has passed a wait parameter in the request, use that
     const waitParam = reqParams["params"]?.wait ?? waitFor;
+    const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
     console.log(`[Fire-Engine] Scraping ${url} with wait: ${waitParam}`);
 
     const response = await fetch(process.env.FIRE_ENGINE_BETA_URL+ "/scrape", {
@@ -58,27 +60,28 @@ export async function scrapWithFireEngine(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: url, wait: waitParam }),
+      body: JSON.stringify({ url: url, wait: waitParam, screenshot: screenshotParam }),
     });
 
     if (!response.ok) {
       console.error(
         `[Fire-Engine] Error fetching url: ${url} with status: ${response.status}`
       );
-      return "";
+      return ["", ""];
     }
 
     const contentType = response.headers['content-type'];
     if (contentType && contentType.includes('application/pdf')) {
-      return fetchAndProcessPdf(url);
+      return [await fetchAndProcessPdf(url), ""];
     } else {
       const data = await response.json();
       const html = data.content;
-      return html ?? "";
+      const screenshot = data.screenshot;
+      return [html ?? "", screenshot ?? ""];
     }
   } catch (error) {
     console.error(`[Fire-Engine][c] Error fetching url: ${url} -> ${error}`);
-    return "";
+    return ["", ""];
   }
 }
 
@@ -182,7 +185,7 @@ export async function scrapWithFetch(url: string): Promise<string> {
  * @param defaultScraper The default scraper to use if the URL does not have a specific scraper order defined
  * @returns The order of scrapers to be used for scraping a URL
  */
-function getScrapingFallbackOrder(defaultScraper?: string, isWaitPresent: boolean = false) {
+function getScrapingFallbackOrder(defaultScraper?: string, isWaitPresent: boolean = false, isScreenshotPresent: boolean = false) {
   const availableScrapers = baseScrapers.filter(scraper => {
     switch (scraper) {
       case "scrapingBee":
@@ -199,7 +202,7 @@ function getScrapingFallbackOrder(defaultScraper?: string, isWaitPresent: boolea
 
   let defaultOrder = ["scrapingBee", "fire-engine", "playwright", "scrapingBeeLoad", "fetch"];
   
-  if (isWaitPresent) {
+  if (isWaitPresent || isScreenshotPresent) {
     defaultOrder = ["fire-engine", "playwright", ...defaultOrder.filter(scraper => scraper !== "fire-engine" && scraper !== "playwright")];
   }
 
@@ -210,7 +213,7 @@ function getScrapingFallbackOrder(defaultScraper?: string, isWaitPresent: boolea
   return scrapersInOrder as typeof baseScrapers[number][];
 }
 
-async function handleCustomScraping(text: string, url: string): Promise<string | null> {
+async function handleCustomScraping(text: string, url: string): Promise<[string, string] | null> {
   if (text.includes('<meta name="readme-deploy"')) {
     console.log(`Special use case detected for ${url}, using Fire Engine with wait time 1000ms`);
     return await scrapWithFireEngine(url, 1000);
@@ -220,7 +223,7 @@ async function handleCustomScraping(text: string, url: string): Promise<string |
 
 export async function scrapSingleUrl(
   urlToScrap: string,
-  pageOptions: PageOptions = { onlyMainContent: true, includeHtml: false, waitFor: 0},
+  pageOptions: PageOptions = { onlyMainContent: true, includeHtml: false, waitFor: 0, screenshot: false },
   existingHtml: string = ""
 ): Promise<Document> {
   urlToScrap = urlToScrap.trim();
@@ -242,12 +245,13 @@ export async function scrapSingleUrl(
     method: typeof baseScrapers[number]
   ) => {
     let text = "";
+    let screenshot = "";
     switch (method) {
       case "fire-engine":
         if (process.env.FIRE_ENGINE_BETA_URL) {
           console.log(`Scraping ${url} with Fire Engine`);
           
-          text = await scrapWithFireEngine(url, pageOptions.waitFor);
+          [text, screenshot] = await scrapWithFireEngine(url, pageOptions.waitFor, pageOptions.screenshot);
         }
         break;
       case "scrapingBee":
@@ -277,16 +281,17 @@ export async function scrapSingleUrl(
     // Check for custom scraping conditions
     const customScrapedContent = await handleCustomScraping(text, url);
     if (customScrapedContent) {
-      text = customScrapedContent;
+      text = customScrapedContent[0];
+      screenshot = customScrapedContent[1];
     }
 
     //* TODO: add an optional to return markdown or structured/extracted content
     let cleanedHtml = removeUnwantedElements(text, pageOptions);
 
-    return [await parseMarkdown(cleanedHtml), text];
+    return [await parseMarkdown(cleanedHtml), text, screenshot];
   };
   try {
-    let [text, html] = ["", ""];
+    let [text, html, screenshot] = ["", "", ""];
     let urlKey = urlToScrap;
     try {
       urlKey = new URL(urlToScrap).hostname.replace(/^www\./, "");
@@ -294,7 +299,7 @@ export async function scrapSingleUrl(
       console.error(`Invalid URL key, trying: ${urlToScrap}`);
     }
     const defaultScraper = urlSpecificParams[urlKey]?.defaultScraper ?? "";
-    const scrapersInOrder = getScrapingFallbackOrder(defaultScraper, pageOptions && pageOptions.waitFor && pageOptions.waitFor > 0) 
+    const scrapersInOrder = getScrapingFallbackOrder(defaultScraper, pageOptions && pageOptions.waitFor && pageOptions.waitFor > 0, pageOptions && pageOptions.screenshot && pageOptions.screenshot === true) 
 
     for (const scraper of scrapersInOrder) {
       // If exists text coming from crawler, use it
@@ -304,7 +309,7 @@ export async function scrapSingleUrl(
         html = existingHtml;
         break;
       }
-      [text, html] = await attemptScraping(urlToScrap, scraper);
+      [text, html, screenshot] = await attemptScraping(urlToScrap, scraper);
       if (text && text.trim().length >= 100) break;
       const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;
       if (nextScraperIndex < scrapersInOrder.length) {
@@ -318,12 +323,23 @@ export async function scrapSingleUrl(
 
     const soup = cheerio.load(html);
     const metadata = extractMetadata(soup, urlToScrap);
-    const document: Document = {
-      content: text,
-      markdown: text,
-      html: pageOptions.includeHtml ? html : undefined,
-      metadata: { ...metadata, sourceURL: urlToScrap },
-    };
+
+    let document: Document;
+    if(screenshot && screenshot.length > 0) {
+      document = {
+        content: text,
+        markdown: text,
+        html: pageOptions.includeHtml ? html : undefined,
+        metadata: { ...metadata, screenshot_base64: screenshot, sourceURL: urlToScrap, },
+      }
+    }else{
+      document = {
+        content: text,
+        markdown: text,
+        html: pageOptions.includeHtml ? html : undefined,
+        metadata: { ...metadata, sourceURL: urlToScrap, },
+      }
+    }
 
     return document;
   } catch (error) {
