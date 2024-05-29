@@ -153,7 +153,7 @@ describe("E2E Tests for API Routes", () => {
     //   expect(response.body.data).toHaveProperty("metadata");
     //   expect(response.body.data).not.toHaveProperty("html");
     //   expect(response.body.data.content).toContain("🔥 Firecrawl");
-    //   expect(duration).toBeGreaterThanOrEqual(4000);
+    //   expect(duration).toBeGreaterThanOrEqual(7000);
     // }, 12000); // 12 seconds timeout
   });
 
