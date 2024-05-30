@@ -29,6 +29,7 @@ export async function supaAuthenticateUser(
   team_id?: string;
   error?: string;
   status?: number;
+  plan?: string;
 }> {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -173,7 +174,7 @@ export async function supaAuthenticateUser(
     subscriptionData = data[0];
   }
 
-  return { success: true, team_id: subscriptionData.team_id };
+  return { success: true, team_id: subscriptionData.team_id, plan: subscriptionData.plan ?? ""};
 }
 
 function getPlanByPriceId(price_id: string) {
