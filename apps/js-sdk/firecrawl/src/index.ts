@@ -56,6 +56,7 @@ export interface JobStatusResponse {
   status: string;
   jobId?: string;
   data?: any;
+  partial_data?: any,
   error?: string;
 }
 
@@ -226,7 +227,12 @@ export default class FirecrawlApp {
         headers
       );
       if (response.status === 200) {
-        return response.data;
+        return {
+          success: true,
+          status: response.data.status,
+          data: response.data.data,
+          partial_data: !response.data.data ? response.data.partial_data : undefined,
+        };
       } else {
         this.handleError(response, "check crawl status");
       }
