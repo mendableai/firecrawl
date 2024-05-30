@@ -29,6 +29,7 @@ export async function supaAuthenticateUser(
   team_id?: string;
   error?: string;
   status?: number;
+  plan?: string;
 }> {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -104,12 +105,13 @@ export async function supaAuthenticateUser(
       case RateLimiterMode.Scrape:
         rateLimiter = getRateLimiter(RateLimiterMode.Scrape, token, subscriptionData.plan);
         break;
+      case RateLimiterMode.Search:
+        rateLimiter = getRateLimiter(RateLimiterMode.Search, token, subscriptionData.plan);
+        break;
       case RateLimiterMode.CrawlStatus:
         rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
         break;
-      case RateLimiterMode.Search:
-        rateLimiter = getRateLimiter(RateLimiterMode.Search, token);
-        break;
+      
       case RateLimiterMode.Preview:
         rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
         break;
@@ -172,16 +174,24 @@ export async function supaAuthenticateUser(
     subscriptionData = data[0];
   }
 
-  return { success: true, team_id: subscriptionData.team_id };
+  return { success: true, team_id: subscriptionData.team_id, plan: subscriptionData.plan ?? ""};
 }
 
 function getPlanByPriceId(price_id: string) {
   switch (price_id) {
+    case process.env.STRIPE_PRICE_ID_STARTER:
+      return 'starter';
     case process.env.STRIPE_PRICE_ID_STANDARD:
       return 'standard';
     case process.env.STRIPE_PRICE_ID_SCALE:
       return 'scale';
+    case process.env.STRIPE_PRICE_ID_HOBBY || process.env.STRIPE_PRICE_ID_HOBBY_YEARLY:
+      return 'hobby';
+    case process.env.STRIPE_PRICE_ID_STANDARD_NEW || process.env.STRIPE_PRICE_ID_STANDARD_NEW_YEARLY:
+      return 'standard-new';
+    case process.env.STRIPE_PRICE_ID_GROWTH || process.env.STRIPE_PRICE_ID_GROWTH_YEARLY:
+      return 'growth';
     default:
-      return 'starter';
+      return 'free';
   }
 }

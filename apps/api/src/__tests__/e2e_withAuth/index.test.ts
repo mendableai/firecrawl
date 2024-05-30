@@ -1004,7 +1004,7 @@ describe("E2E Tests for API Routes", () => {
 
   describe("Rate Limiter", () => {
     it("should return 429 when rate limit is exceeded for preview token", async () => {
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 4; i++) {
         const response = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer this_is_just_a_preview_token`)
