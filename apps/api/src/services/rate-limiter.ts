@@ -62,7 +62,7 @@ export function getRateLimiter(mode: RateLimiterMode, token: string, plan?: stri
   if (!rateLimitConfig) return serverRateLimiter;
 
   const planKey = plan ? plan.replace("-", "") : "starter";
-  const points = rateLimitConfig[planKey] || rateLimitConfig.free;
+  const points = rateLimitConfig[planKey] || rateLimitConfig.preview;
 
   return createRateLimiter(`${mode}-${planKey}`, points);
 }

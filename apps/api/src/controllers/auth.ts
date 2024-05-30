@@ -104,12 +104,13 @@ export async function supaAuthenticateUser(
       case RateLimiterMode.Scrape:
         rateLimiter = getRateLimiter(RateLimiterMode.Scrape, token, subscriptionData.plan);
         break;
+      case RateLimiterMode.Search:
+        rateLimiter = getRateLimiter(RateLimiterMode.Search, token, subscriptionData.plan);
+        break;
       case RateLimiterMode.CrawlStatus:
         rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
         break;
-      case RateLimiterMode.Search:
-        rateLimiter = getRateLimiter(RateLimiterMode.Search, token);
-        break;
+      
       case RateLimiterMode.Preview:
         rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
         break;
