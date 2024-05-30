@@ -2,7 +2,7 @@ import * as cheerio from "cheerio";
 import { ScrapingBeeClient } from "scrapingbee";
 import { extractMetadata } from "./utils/metadata";
 import dotenv from "dotenv";
-import { Document, PageOptions } from "../../lib/entities";
+import { Document, PageOptions, FireEngineResponse } from "../../lib/entities";
 import { parseMarkdown } from "../../lib/html-to-markdown";
 import { excludeNonMainTags } from "./utils/excludeTags";
 import { urlSpecificParams } from "./utils/custom/website_params";
@@ -47,7 +47,7 @@ export async function scrapWithFireEngine(
   waitFor: number = 0,
   screenshot: boolean = false,
   options?: any
-): Promise<[string, string]> {
+): Promise<FireEngineResponse> {
   try {
     const reqParams = await generateRequestParams(url);
     // If the user has passed a wait parameter in the request, use that
@@ -67,21 +67,21 @@ export async function scrapWithFireEngine(
       console.error(
         `[Fire-Engine] Error fetching url: ${url} with status: ${response.status}`
       );
-      return ["", ""];
+      return { html: "", screenshot: "" };
     }
 
     const contentType = response.headers['content-type'];
     if (contentType && contentType.includes('application/pdf')) {
-      return [await fetchAndProcessPdf(url), ""];
+      return { html: await fetchAndProcessPdf(url), screenshot: "" };
     } else {
       const data = await response.json();
       const html = data.content;
       const screenshot = data.screenshot;
-      return [html ?? "", screenshot ?? ""];
+      return { html: html ?? "", screenshot: screenshot ?? "" };
     }
   } catch (error) {
     console.error(`[Fire-Engine][c] Error fetching url: ${url} -> ${error}`);
-    return ["", ""];
+    return { html: "", screenshot: "" };
   }
 }
 
@@ -213,7 +213,7 @@ function getScrapingFallbackOrder(defaultScraper?: string, isWaitPresent: boolea
   return scrapersInOrder as typeof baseScrapers[number][];
 }
 
-async function handleCustomScraping(text: string, url: string): Promise<[string, string] | null> {
+async function handleCustomScraping(text: string, url: string): Promise<FireEngineResponse | null> {
   if (text.includes('<meta name="readme-deploy"')) {
     console.log(`Special use case detected for ${url}, using Fire Engine with wait time 1000ms`);
     return await scrapWithFireEngine(url, 1000);
@@ -250,8 +250,9 @@ export async function scrapSingleUrl(
       case "fire-engine":
         if (process.env.FIRE_ENGINE_BETA_URL) {
           console.log(`Scraping ${url} with Fire Engine`);
-          
-          [text, screenshot] = await scrapWithFireEngine(url, pageOptions.waitFor, pageOptions.screenshot);
+          const response = await scrapWithFireEngine(url, pageOptions.waitFor, pageOptions.screenshot);
+          text = response.html;
+          screenshot = response.screenshot;
         }
         break;
       case "scrapingBee":

@@ -107,3 +107,8 @@ export class SearchResult {
       return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description})`;
   }
 }
+
+export interface FireEngineResponse {
+  html: string;
+  screenshot: string;
+}
