@@ -177,11 +177,19 @@ export async function supaAuthenticateUser(
 
 function getPlanByPriceId(price_id: string) {
   switch (price_id) {
+    case process.env.STRIPE_PRICE_ID_STARTER:
+      return 'starter';
     case process.env.STRIPE_PRICE_ID_STANDARD:
       return 'standard';
     case process.env.STRIPE_PRICE_ID_SCALE:
       return 'scale';
+    case process.env.STRIPE_PRICE_ID_HOBBY || process.env.STRIPE_PRICE_ID_HOBBY_YEARLY:
+      return 'hobby';
+    case process.env.STRIPE_PRICE_ID_STANDARD_NEW || process.env.STRIPE_PRICE_ID_STANDARD_NEW_YEARLY:
+      return 'standard-new';
+    case process.env.STRIPE_PRICE_ID_GROWTH || process.env.STRIPE_PRICE_ID_GROWTH_YEARLY:
+      return 'growth';
     default:
-      return 'starter';
+      return 'free';
   }
 }
