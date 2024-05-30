@@ -174,7 +174,7 @@ export default class FirecrawlApp {
    * @param {string} url - The URL to crawl.
    * @param {Params | null} params - Additional parameters for the crawl request.
    * @param {boolean} waitUntilDone - Whether to wait for the crawl job to complete.
-   * @param {number} timeout - Timeout in seconds for job status checks.
+   * @param {number} pollInterval - Time in seconds for job status checks.
    * @param {string} idempotencyKey - Optional idempotency key for the request.
    * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
    */
@@ -182,7 +182,7 @@ export default class FirecrawlApp {
     url: string,
     params: Params | null = null,
     waitUntilDone: boolean = true,
-    timeout: number = 2,
+    pollInterval: number = 2,
     idempotencyKey?: string
   ): Promise<CrawlResponse | any> {
     const headers = this.prepareHeaders(idempotencyKey);
@@ -199,7 +199,7 @@ export default class FirecrawlApp {
       if (response.status === 200) {
         const jobId: string = response.data.jobId;
         if (waitUntilDone) {
-          return this.monitorJobStatus(jobId, headers, timeout);
+          return this.monitorJobStatus(jobId, headers, pollInterval);
         } else {
           return { success: true, jobId };
         }
@@ -290,7 +290,7 @@ export default class FirecrawlApp {
   async monitorJobStatus(
     jobId: string,
     headers: AxiosRequestHeaders,
-    timeout: number
+    checkInterval: number
   ): Promise<any> {
     while (true) {
       const statusResponse: AxiosResponse = await this.getRequest(
@@ -308,10 +308,10 @@ export default class FirecrawlApp {
         } else if (
           ["active", "paused", "pending", "queued"].includes(statusData.status)
         ) {
-          if (timeout < 2) {
-            timeout = 2;
+          if (checkInterval < 2) {
+            checkInterval = 2;
           }
-          await new Promise((resolve) => setTimeout(resolve, timeout * 1000)); // Wait for the specified timeout before checking again
+          await new Promise((resolve) => setTimeout(resolve, checkInterval * 1000)); // Wait for the specified timeout before checking again
         } else {
           throw new Error(
             `Crawl job failed or was stopped. Status: ${statusData.status}`
