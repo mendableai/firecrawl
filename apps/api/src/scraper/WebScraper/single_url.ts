@@ -53,7 +53,7 @@ export async function scrapWithFireEngine(
     // If the user has passed a wait parameter in the request, use that
     const waitParam = reqParams["params"]?.wait ?? waitFor;
     const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
-    console.log(`[Fire-Engine] Scraping ${url} with wait: ${waitParam}`);
+    console.log(`[Fire-Engine] Scraping ${url} with wait: ${waitParam} and screenshot: ${screenshotParam}`);
 
     const response = await fetch(process.env.FIRE_ENGINE_BETA_URL+ "/scrape", {
       method: "POST",
@@ -330,7 +330,7 @@ export async function scrapSingleUrl(
         content: text,
         markdown: text,
         html: pageOptions.includeHtml ? html : undefined,
-        metadata: { ...metadata, screenshot_base64: screenshot, sourceURL: urlToScrap, },
+        metadata: { ...metadata, screenshot: screenshot, sourceURL: urlToScrap, },
       }
     }else{
       document = {
