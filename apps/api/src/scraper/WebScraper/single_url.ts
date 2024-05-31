@@ -130,7 +130,8 @@ export async function scrapWithScrapingBee(
 
 export async function scrapWithPlaywright(
   url: string,
-  waitFor: number = 0
+  waitFor: number = 0,
+  headers?: Record<string, string>
 ): Promise<string> {
   try {
     const reqParams = await generateRequestParams(url);
@@ -142,7 +143,7 @@ export async function scrapWithPlaywright(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: url, wait: waitParam }),
+      body: JSON.stringify({ url: url, wait: waitParam, headers: headers }),
     });
 
     if (!response.ok) {
@@ -315,7 +316,7 @@ export async function scrapSingleUrl(
         break;
       case "playwright":
         if (process.env.PLAYWRIGHT_MICROSERVICE_URL) {
-          text = await scrapWithPlaywright(url, pageOptions.waitFor);
+          text = await scrapWithPlaywright(url, pageOptions.waitFor, pageOptions.headers);
         }
         break;
       case "scrapingBeeLoad":
