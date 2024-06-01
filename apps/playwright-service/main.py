@@ -20,7 +20,7 @@ app = FastAPI()
 class UrlModel(BaseModel):
     """Model representing the URL and associated parameters for the request."""
     url: str
-    wait: int = None
+    wait_after_load: int = 0
     timeout: int = 15000
 
 browser: Browser = None
@@ -67,8 +67,8 @@ async def root(body: UrlModel):
         timeout=body.timeout,
     )
     # Wait != timeout. Wait is the time to wait after the page is loaded - useful in some cases were "load" / "networkidle" is not enough
-    if body.wait:
-        await page.wait_for_timeout(body.wait)
+    if body.wait_after_load > 0:
+        await page.wait_for_timeout(body.wait_after_load)
 
     page_content = await page.content()
     await context.close()
