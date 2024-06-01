@@ -15,6 +15,7 @@ app = FastAPI()
 class UrlModel(BaseModel):
     url: str
     wait: int = None
+    timeout: int = 15000
 
 
 browser: Browser = None
@@ -50,7 +51,7 @@ async def root(body: UrlModel):
     await page.goto(
         body.url,
         wait_until="load",
-        timeout=body.timeout if body.timeout else 15000,
+        timeout=body.timeout,
     )
     # Wait != timeout. Wait is the time to wait after the page is loaded - useful in some cases were "load" / "networkidle" is not enough
     if body.wait:
