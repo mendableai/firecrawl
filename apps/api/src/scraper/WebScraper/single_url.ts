@@ -146,12 +146,18 @@ export async function scrapWithPlaywright(url: string, waitFor: number = 0): Pro
     if (contentType && contentType.includes('application/pdf')) {
       return fetchAndProcessPdf(url);
     } else {
-      const data = await response.json();
-      const html = data.content;
-      return html ?? "";
+      const textData = await response.text();
+      try {
+        const data = JSON.parse(textData);
+        const html = data.content;
+        return html ?? "";
+      } catch (jsonError) {
+        console.error(`[Playwright] Error parsing JSON response for url: ${url} -> ${jsonError}`);
+        return "";
+      }
     }
   } catch (error) {
-    console.error(`[Playwright][c] Error fetching url: ${url} -> ${error}`);
+    console.error(`[Playwright] Error fetching url: ${url} -> ${error}`);
     return "";
   }
 }
