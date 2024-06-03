@@ -17,6 +17,7 @@ export type PageOptions = {
   fetchPageContent?: boolean;
   waitFor?: number;
   screenshot?: boolean;
+  headers?: Record<string, string>;
 };
 
 export type ExtractorOptions = {

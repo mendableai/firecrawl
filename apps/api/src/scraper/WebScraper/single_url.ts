@@ -18,7 +18,6 @@ const baseScrapers = [
   "fetch",
 ] as const;
 
-
 export async function generateRequestParams(
   url: string,
   wait_browser: string = "domcontentloaded",
@@ -46,6 +45,7 @@ export async function scrapWithFireEngine(
   url: string,
   waitFor: number = 0,
   screenshot: boolean = false,
+  headers?: Record<string, string>,
   options?: any
 ): Promise<FireEngineResponse> {
   try {
@@ -53,14 +53,21 @@ export async function scrapWithFireEngine(
     // If the user has passed a wait parameter in the request, use that
     const waitParam = reqParams["params"]?.wait ?? waitFor;
     const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
-    console.log(`[Fire-Engine] Scraping ${url} with wait: ${waitParam} and screenshot: ${screenshotParam}`);
+    console.log(
+      `[Fire-Engine] Scraping ${url} with wait: ${waitParam} and screenshot: ${screenshotParam}`
+    );
 
-    const response = await fetch(process.env.FIRE_ENGINE_BETA_URL+ "/scrape", {
+    const response = await fetch(process.env.FIRE_ENGINE_BETA_URL + "/scrape", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: url, wait: waitParam, screenshot: screenshotParam }),
+      body: JSON.stringify({
+        url: url,
+        wait: waitParam,
+        screenshot: screenshotParam,
+        headers: headers,
+      }),
     });
 
     if (!response.ok) {
@@ -70,8 +77,8 @@ export async function scrapWithFireEngine(
       return { html: "", screenshot: "" };
     }
 
-    const contentType = response.headers['content-type'];
-    if (contentType && contentType.includes('application/pdf')) {
+    const contentType = response.headers["content-type"];
+    if (contentType && contentType.includes("application/pdf")) {
       return { html: await fetchAndProcessPdf(url), screenshot: "" };
     } else {
       const data = await response.json();
@@ -106,9 +113,9 @@ export async function scrapWithScrapingBee(
       );
       return "";
     }
-    
-    const contentType = response.headers['content-type'];
-    if (contentType && contentType.includes('application/pdf')) {
+
+    const contentType = response.headers["content-type"];
+    if (contentType && contentType.includes("application/pdf")) {
       return fetchAndProcessPdf(url);
     } else {
       const decoder = new TextDecoder();
@@ -121,7 +128,11 @@ export async function scrapWithScrapingBee(
   }
 }
 
-export async function scrapWithPlaywright(url: string, waitFor: number = 0): Promise<string> {
+export async function scrapWithPlaywright(
+  url: string,
+  waitFor: number = 0,
+  headers?: Record<string, string>
+): Promise<string> {
   try {
     const reqParams = await generateRequestParams(url);
     // If the user has passed a wait parameter in the request, use that
@@ -132,7 +143,7 @@ export async function scrapWithPlaywright(url: string, waitFor: number = 0): Pro
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: url, wait: waitParam }),
+      body: JSON.stringify({ url: url, wait: waitParam, headers: headers }),
     });
 
     if (!response.ok) {
@@ -142,8 +153,8 @@ export async function scrapWithPlaywright(url: string, waitFor: number = 0): Pro
       return "";
     }
 
-    const contentType = response.headers['content-type'];
-    if (contentType && contentType.includes('application/pdf')) {
+    const contentType = response.headers["content-type"];
+    if (contentType && contentType.includes("application/pdf")) {
       return fetchAndProcessPdf(url);
     } else {
       const data = await response.json();
@@ -166,8 +177,8 @@ export async function scrapWithFetch(url: string): Promise<string> {
       return "";
     }
 
-    const contentType = response.headers['content-type'];
-    if (contentType && contentType.includes('application/pdf')) {
+    const contentType = response.headers["content-type"];
+    if (contentType && contentType.includes("application/pdf")) {
       return fetchAndProcessPdf(url);
     } else {
       const text = await response.text();
@@ -185,8 +196,13 @@ export async function scrapWithFetch(url: string): Promise<string> {
  * @param defaultScraper The default scraper to use if the URL does not have a specific scraper order defined
  * @returns The order of scrapers to be used for scraping a URL
  */
-function getScrapingFallbackOrder(defaultScraper?: string, isWaitPresent: boolean = false, isScreenshotPresent: boolean = false) {
-  const availableScrapers = baseScrapers.filter(scraper => {
+function getScrapingFallbackOrder(
+  defaultScraper?: string,
+  isWaitPresent: boolean = false,
+  isScreenshotPresent: boolean = false,
+  isHeadersPresent: boolean = false
+) {
+  const availableScrapers = baseScrapers.filter((scraper) => {
     switch (scraper) {
       case "scrapingBee":
       case "scrapingBeeLoad":
@@ -200,22 +216,46 @@ function getScrapingFallbackOrder(defaultScraper?: string, isWaitPresent: boolea
     }
   });
 
-  let defaultOrder = ["scrapingBee", "fire-engine", "playwright", "scrapingBeeLoad", "fetch"];
-  
-  if (isWaitPresent || isScreenshotPresent) {
-    defaultOrder = ["fire-engine", "playwright", ...defaultOrder.filter(scraper => scraper !== "fire-engine" && scraper !== "playwright")];
+  let defaultOrder = [
+    "scrapingBee",
+    "fire-engine",
+    "playwright",
+    "scrapingBeeLoad",
+    "fetch",
+  ];
+
+  if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
+    defaultOrder = [
+      "fire-engine",
+      "playwright",
+      ...defaultOrder.filter(
+        (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
+      ),
+    ];
   }
 
-  const filteredDefaultOrder = defaultOrder.filter((scraper: typeof baseScrapers[number]) => availableScrapers.includes(scraper));
-  const uniqueScrapers = new Set(defaultScraper ? [defaultScraper, ...filteredDefaultOrder, ...availableScrapers] : [...filteredDefaultOrder, ...availableScrapers]);
+  const filteredDefaultOrder = defaultOrder.filter(
+    (scraper: (typeof baseScrapers)[number]) =>
+      availableScrapers.includes(scraper)
+  );
+  const uniqueScrapers = new Set(
+    defaultScraper
+      ? [defaultScraper, ...filteredDefaultOrder, ...availableScrapers]
+      : [...filteredDefaultOrder, ...availableScrapers]
+  );
   const scrapersInOrder = Array.from(uniqueScrapers);
   console.log(`Scrapers in order: ${scrapersInOrder}`);
-  return scrapersInOrder as typeof baseScrapers[number][];
+  return scrapersInOrder as (typeof baseScrapers)[number][];
 }
 
-async function handleCustomScraping(text: string, url: string): Promise<FireEngineResponse | null> {
+async function handleCustomScraping(
+  text: string,
+  url: string
+): Promise<FireEngineResponse | null> {
   if (text.includes('<meta name="readme-deploy"')) {
-    console.log(`Special use case detected for ${url}, using Fire Engine with wait time 1000ms`);
+    console.log(
+      `Special use case detected for ${url}, using Fire Engine with wait time 1000ms`
+    );
     return await scrapWithFireEngine(url, 1000);
   }
   return null;
@@ -223,7 +263,13 @@ async function handleCustomScraping(text: string, url: string): Promise<FireEngi
 
 export async function scrapSingleUrl(
   urlToScrap: string,
-  pageOptions: PageOptions = { onlyMainContent: true, includeHtml: false, waitFor: 0, screenshot: false },
+  pageOptions: PageOptions = {
+    onlyMainContent: true,
+    includeHtml: false,
+    waitFor: 0,
+    screenshot: false,
+    headers: {}
+  },
   existingHtml: string = ""
 ): Promise<Document> {
   urlToScrap = urlToScrap.trim();
@@ -242,7 +288,7 @@ export async function scrapSingleUrl(
 
   const attemptScraping = async (
     url: string,
-    method: typeof baseScrapers[number]
+    method: (typeof baseScrapers)[number]
   ) => {
     let text = "";
     let screenshot = "";
@@ -250,7 +296,12 @@ export async function scrapSingleUrl(
       case "fire-engine":
         if (process.env.FIRE_ENGINE_BETA_URL) {
           console.log(`Scraping ${url} with Fire Engine`);
-          const response = await scrapWithFireEngine(url, pageOptions.waitFor, pageOptions.screenshot);
+          const response = await scrapWithFireEngine(
+            url,
+            pageOptions.waitFor,
+            pageOptions.screenshot,
+            pageOptions.headers
+          );
           text = response.html;
           screenshot = response.screenshot;
         }
@@ -266,7 +317,7 @@ export async function scrapSingleUrl(
         break;
       case "playwright":
         if (process.env.PLAYWRIGHT_MICROSERVICE_URL) {
-          text = await scrapWithPlaywright(url, pageOptions.waitFor);
+          text = await scrapWithPlaywright(url, pageOptions.waitFor, pageOptions.headers);
         }
         break;
       case "scrapingBeeLoad":
@@ -300,7 +351,12 @@ export async function scrapSingleUrl(
       console.error(`Invalid URL key, trying: ${urlToScrap}`);
     }
     const defaultScraper = urlSpecificParams[urlKey]?.defaultScraper ?? "";
-    const scrapersInOrder = getScrapingFallbackOrder(defaultScraper, pageOptions && pageOptions.waitFor && pageOptions.waitFor > 0, pageOptions && pageOptions.screenshot && pageOptions.screenshot === true) 
+    const scrapersInOrder = getScrapingFallbackOrder(
+      defaultScraper,
+      pageOptions && pageOptions.waitFor && pageOptions.waitFor > 0,
+      pageOptions && pageOptions.screenshot && pageOptions.screenshot === true,
+      pageOptions && pageOptions.headers && pageOptions.headers !== undefined
+    );
 
     for (const scraper of scrapersInOrder) {
       // If exists text coming from crawler, use it
@@ -326,20 +382,24 @@ export async function scrapSingleUrl(
     const metadata = extractMetadata(soup, urlToScrap);
 
     let document: Document;
-    if(screenshot && screenshot.length > 0) {
+    if (screenshot && screenshot.length > 0) {
       document = {
         content: text,
         markdown: text,
         html: pageOptions.includeHtml ? html : undefined,
-        metadata: { ...metadata, screenshot: screenshot, sourceURL: urlToScrap, },
-      }
-    }else{
+        metadata: {
+          ...metadata,
+          screenshot: screenshot,
+          sourceURL: urlToScrap,
+        },
+      };
+    } else {
       document = {
         content: text,
         markdown: text,
         html: pageOptions.includeHtml ? html : undefined,
-        metadata: { ...metadata, sourceURL: urlToScrap, },
-      }
+        metadata: { ...metadata, sourceURL: urlToScrap },
+      };
     }
 
     return document;
