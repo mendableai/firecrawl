@@ -15,6 +15,9 @@ export type PageOptions = {
   includeHtml?: boolean;
   fallback?: boolean;
   fetchPageContent?: boolean;
+  waitFor?: number;
+  screenshot?: boolean;
+  headers?: Record<string, string>;
 };
 
 export type ExtractorOptions = {
@@ -104,4 +107,9 @@ export class SearchResult {
   toString(): string {
       return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description})`;
   }
+}
+
+export interface FireEngineResponse {
+  html: string;
+  screenshot: string;
 }

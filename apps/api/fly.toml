@@ -27,6 +27,13 @@ kill_timeout = '5s'
   hard_limit = 200
   soft_limit = 100
 
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/"
+
 [[services]]
   protocol = 'tcp'
   internal_port = 8080

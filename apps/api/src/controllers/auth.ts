@@ -1,12 +1,12 @@
 import { parseApi } from "../../src/lib/parseApi";
-import { getRateLimiter,  } from "../../src/services/rate-limiter";
+import { getRateLimiter, } from "../../src/services/rate-limiter";
 import { AuthResponse, RateLimiterMode } from "../../src/types";
 import { supabase_service } from "../../src/services/supabase";
 import { withAuth } from "../../src/lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import { setTraceAttributes } from '@hyperdx/node-opentelemetry';
 
-export async function authenticateUser(req, res, mode?: RateLimiterMode) : Promise<AuthResponse> {
+export async function authenticateUser(req, res, mode?: RateLimiterMode): Promise<AuthResponse> {
   return withAuth(supaAuthenticateUser)(req, res, mode);
 }
 function setTrace(team_id: string, api_key: string) {
@@ -18,7 +18,7 @@ function setTrace(team_id: string, api_key: string) {
   } catch (error) {
     console.error('Error setting trace attributes:', error);
   }
-  
+
 }
 export async function supaAuthenticateUser(
   req,
@@ -29,6 +29,7 @@ export async function supaAuthenticateUser(
   team_id?: string;
   error?: string;
   status?: number;
+  plan?: string;
 }> {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -97,19 +98,20 @@ export async function supaAuthenticateUser(
       team_id: team_id,
       plan: plan
     }
-    switch (mode) { 
+    switch (mode) {
       case RateLimiterMode.Crawl:
         rateLimiter = getRateLimiter(RateLimiterMode.Crawl, token, subscriptionData.plan);
         break;
       case RateLimiterMode.Scrape:
         rateLimiter = getRateLimiter(RateLimiterMode.Scrape, token, subscriptionData.plan);
         break;
+      case RateLimiterMode.Search:
+        rateLimiter = getRateLimiter(RateLimiterMode.Search, token, subscriptionData.plan);
+        break;
       case RateLimiterMode.CrawlStatus:
         rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
         break;
-      case RateLimiterMode.Search:
-        rateLimiter = getRateLimiter(RateLimiterMode.Search, token);
-        break;
+      
       case RateLimiterMode.Preview:
         rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
         break;
@@ -126,9 +128,11 @@ export async function supaAuthenticateUser(
     await rateLimiter.consume(iptoken);
   } catch (rateLimiterRes) {
     console.error(rateLimiterRes);
+    const secs = Math.round(rateLimiterRes.msBeforeNext / 1000) || 1;
+    const retryDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
     return {
       success: false,
-      error: "Rate limit exceeded. Too many requests, try again in 1 minute.",
+      error: `Rate limit exceeded. Consumed points: ${rateLimiterRes.consumedPoints}, Remaining points: ${rateLimiterRes.remainingPoints}. Upgrade your plan at https://firecrawl.dev/pricing for increased rate limits or please retry after ${secs}s, resets at ${retryDate}`,
       status: 429,
     };
   }
@@ -155,9 +159,9 @@ export async function supaAuthenticateUser(
     normalizedApi = parseApi(token);
 
     const { data, error } = await supabase_service
-    .from("api_keys")
-    .select("*")
-    .eq("key", normalizedApi);
+      .from("api_keys")
+      .select("*")
+      .eq("key", normalizedApi);
 
     if (error || !data || data.length === 0) {
       return {
@@ -170,16 +174,24 @@ export async function supaAuthenticateUser(
     subscriptionData = data[0];
   }
 
-  return { success: true, team_id: subscriptionData.team_id };  
+  return { success: true, team_id: subscriptionData.team_id, plan: subscriptionData.plan ?? ""};
 }
 
 function getPlanByPriceId(price_id: string) {
   switch (price_id) {
+    case process.env.STRIPE_PRICE_ID_STARTER:
+      return 'starter';
     case process.env.STRIPE_PRICE_ID_STANDARD:
       return 'standard';
     case process.env.STRIPE_PRICE_ID_SCALE:
       return 'scale';
+    case process.env.STRIPE_PRICE_ID_HOBBY || process.env.STRIPE_PRICE_ID_HOBBY_YEARLY:
+      return 'hobby';
+    case process.env.STRIPE_PRICE_ID_STANDARD_NEW || process.env.STRIPE_PRICE_ID_STANDARD_NEW_YEARLY:
+      return 'standard-new';
+    case process.env.STRIPE_PRICE_ID_GROWTH || process.env.STRIPE_PRICE_ID_GROWTH_YEARLY:
+      return 'growth';
     default:
-      return 'starter';
+      return 'free';
   }
 }
