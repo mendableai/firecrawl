@@ -3,7 +3,9 @@
   "version": "1.0.0",
   "description": "",
   "scripts": {
-    "test": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false"
+    "test": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false",
+    "test:scrape": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathPattern=tests/scrape.test.ts",
+    "test:crawl": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathPattern=tests/crawl.test.ts"
   },
   "author": "",
   "license": "ISC",

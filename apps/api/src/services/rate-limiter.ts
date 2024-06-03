@@ -2,91 +2,68 @@ import { RateLimiterRedis } from "rate-limiter-flexible";
 import * as redis from "redis";
 import { RateLimiterMode } from "../../src/types";
 
-const MAX_REQUESTS_PER_MINUTE_PREVIEW = 5;
-const MAX_CRAWLS_PER_MINUTE_STARTER = 2;
-const MAX_CRAWLS_PER_MINUTE_STANDARD = 4;
-const MAX_CRAWLS_PER_MINUTE_SCALE = 20;
-
-const MAX_REQUESTS_PER_MINUTE_ACCOUNT = 20;
-
-const MAX_REQUESTS_PER_MINUTE_CRAWL_STATUS = 120;
-
-
-
+const RATE_LIMITS = {
+  crawl: {
+    free: 1,
+    starter: 3,
+    standard: 5,
+    scale: 20,
+    hobby: 3,
+    standardNew: 10,
+    growth: 50,
+  },
+  scrape: {
+    free: 5,
+    starter: 20,
+    standardOld: 40,
+    scale: 50,
+    hobby: 10,
+    standardNew: 50,
+    growth: 500,
+  },
+  search: {
+    free: 5,
+    starter: 20,
+    standard: 40,
+    scale: 50,
+    hobby: 10,
+    standardNew: 50,
+    growth: 500,
+  },
+  preview: 5,
+  account: 20,
+  crawlStatus: 150,
+  testSuite: 10000,
+};
 
 export const redisClient = redis.createClient({
   url: process.env.REDIS_URL,
   legacyMode: true,
 });
 
-export const previewRateLimiter = new RateLimiterRedis({
+const createRateLimiter = (keyPrefix, points) => new RateLimiterRedis({
   storeClient: redisClient,
-  keyPrefix: "middleware",
-  points: MAX_REQUESTS_PER_MINUTE_PREVIEW,
+  keyPrefix,
+  points,
   duration: 60, // Duration in seconds
 });
 
-export const serverRateLimiter = new RateLimiterRedis({
-  storeClient: redisClient,
-  keyPrefix: "middleware",
-  points: MAX_REQUESTS_PER_MINUTE_ACCOUNT,
-  duration: 60, // Duration in seconds
-});
+export const previewRateLimiter = createRateLimiter("preview", RATE_LIMITS.preview);
+export const serverRateLimiter = createRateLimiter("server", RATE_LIMITS.account);
+export const crawlStatusRateLimiter = createRateLimiter("crawl-status", RATE_LIMITS.crawlStatus);
+export const testSuiteRateLimiter = createRateLimiter("test-suite", RATE_LIMITS.testSuite);
 
-export const crawlStatusRateLimiter = new RateLimiterRedis({
-  storeClient: redisClient,
-  keyPrefix: "middleware",
-  points: MAX_REQUESTS_PER_MINUTE_CRAWL_STATUS,
-  duration: 60, // Duration in seconds
-});
-
-export const testSuiteRateLimiter = new RateLimiterRedis({
-  storeClient: redisClient,
-  keyPrefix: "middleware",
-  points: 1000,
-  duration: 60, // Duration in seconds
-});
-
-
-export function crawlRateLimit(plan: string){
-  if(plan === "standard"){
-    return new RateLimiterRedis({
-      storeClient: redisClient,
-      keyPrefix: "middleware",
-      points: MAX_CRAWLS_PER_MINUTE_STANDARD,
-      duration: 60, // Duration in seconds
-    });
-  }else if(plan === "scale"){
-    return new RateLimiterRedis({
-      storeClient: redisClient,
-      keyPrefix: "middleware",
-      points: MAX_CRAWLS_PER_MINUTE_SCALE,
-      duration: 60, // Duration in seconds
-    });
-  }
-  return new RateLimiterRedis({
-    storeClient: redisClient,
-    keyPrefix: "middleware",
-    points: MAX_CRAWLS_PER_MINUTE_STARTER,
-    duration: 60, // Duration in seconds
-  });
-
-}
-
-
-
-
-export function getRateLimiter(mode: RateLimiterMode, token: string){
-  // Special test suite case. TODO: Change this later.
-  if(token.includes("5089cefa58")){
+export function getRateLimiter(mode: RateLimiterMode, token: string, plan?: string) {
+  if (token.includes("5089cefa58") || token.includes("6254cf9")) {
     return testSuiteRateLimiter;
   }
-  switch(mode) {
-    case RateLimiterMode.Preview:
-      return previewRateLimiter;
-    case RateLimiterMode.CrawlStatus:
-      return crawlStatusRateLimiter;
-    default:
-      return serverRateLimiter;
-  }
+  
+
+  const rateLimitConfig = RATE_LIMITS[mode];
+  if (!rateLimitConfig) return serverRateLimiter;
+
+  const planKey = plan ? plan.replace("-", "") : "starter";
+  const points = rateLimitConfig[planKey] || rateLimitConfig.preview;
+
+  return createRateLimiter(`${mode}-${planKey}`, points);
 }

@@ -17,6 +17,7 @@ import {
 } from "./utils/replacePaths";
 import { generateCompletions } from "../../lib/LLM-extraction";
 import { getWebScraperQueue } from "../../../src/services/queue-service";
+import { fetchAndProcessDocx } from "./utils/docxProcessor";
 
 export class WebScraperDataProvider {
   private bullJobId: string;
@@ -35,6 +36,7 @@ export class WebScraperDataProvider {
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
   private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" =
     "gpt-4-turbo";
+  private crawlerMode: string = "default";
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -46,7 +48,8 @@ export class WebScraperDataProvider {
 
   private async convertUrlsToDocuments(
     urls: string[],
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
+    allHtmls?: string[]
   ): Promise<Document[]> {
     const totalUrls = urls.length;
     let processedUrls = 0;
@@ -56,7 +59,12 @@ export class WebScraperDataProvider {
       const batchUrls = urls.slice(i, i + this.concurrentRequests);
       await Promise.all(
         batchUrls.map(async (url, index) => {
-          const result = await scrapSingleUrl(url, this.pageOptions);
+          const existingHTML = allHtmls ? allHtmls[i + index] : "";
+          const result = await scrapSingleUrl(
+            url,
+            this.pageOptions,
+            existingHTML
+          );
           processedUrls++;
           if (inProgress) {
             inProgress({
@@ -127,9 +135,30 @@ export class WebScraperDataProvider {
     }
   }
 
+  private async cleanIrrelevantPath(links: string[]) {
+    return links.filter((link) => {
+      const normalizedInitialUrl = new URL(this.urls[0]);
+      const normalizedLink = new URL(link);
+
+      // Normalize the hostname to account for www and non-www versions
+      const initialHostname = normalizedInitialUrl.hostname.replace(
+        /^www\./,
+        ""
+      );
+      const linkHostname = normalizedLink.hostname.replace(/^www\./, "");
+
+      // Ensure the protocol and hostname match, and the path starts with the initial URL's path
+      return (
+        linkHostname === initialHostname &&
+        normalizedLink.pathname.startsWith(normalizedInitialUrl.pathname)
+      );
+    });
+  }
+
   private async handleCrawlMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
+
     const crawler = new WebCrawler({
       initialUrl: this.urls[0],
       includes: this.includes,
@@ -139,20 +168,38 @@ export class WebScraperDataProvider {
       limit: this.limit,
       generateImgAltText: this.generateImgAltText,
     });
-    let links = await crawler.start(inProgress, 5, this.limit, this.maxCrawledDepth);
+
+    let links = await crawler.start(
+      inProgress,
+      5,
+      this.limit,
+      this.maxCrawledDepth
+    );
+
+    let allLinks = links.map((e) => e.url);
+    const allHtmls = links.map((e) => e.html);
 
     if (this.returnOnlyUrls) {
-      return this.returnOnlyUrlsResponse(links, inProgress);
+      return this.returnOnlyUrlsResponse(allLinks, inProgress);
     }
 
-    let documents = await this.processLinks(links, inProgress);
-    return this.cacheAndFinalizeDocuments(documents, links);
+    let documents = [];
+    // check if fast mode is enabled and there is html inside the links
+    if (this.crawlerMode === "fast" && links.some((link) => link.html)) {
+      documents = await this.processLinks(allLinks, inProgress, allHtmls);
+    } else {
+      documents = await this.processLinks(allLinks, inProgress);
+    }
+
+    return this.cacheAndFinalizeDocuments(documents, allLinks);
   }
 
   private async handleSingleUrlsMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
-    let documents = await this.processLinks(this.urls, inProgress);
+    const links = this.urls;
+
+    let documents = await this.processLinks(links, inProgress);
     return documents;
   }
 
@@ -160,6 +207,8 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
     let links = await getLinksFromSitemap(this.urls[0]);
+    links = await this.cleanIrrelevantPath(links);
+
     if (this.returnOnlyUrls) {
       return this.returnOnlyUrlsResponse(links, inProgress);
     }
@@ -189,14 +238,24 @@ export class WebScraperDataProvider {
 
   private async processLinks(
     links: string[],
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
+    allHtmls?: string[]
   ): Promise<Document[]> {
-    let pdfLinks = links.filter((link) => link.endsWith(".pdf"));
-    let pdfDocuments = await this.fetchPdfDocuments(pdfLinks);
-    links = links.filter((link) => !link.endsWith(".pdf"));
+    const pdfLinks = links.filter(link => link.endsWith(".pdf"));
+    const docLinks = links.filter(link => link.endsWith(".doc") || link.endsWith(".docx"));
 
-    let documents = await this.convertUrlsToDocuments(links, inProgress);
+    const pdfDocuments = await this.fetchPdfDocuments(pdfLinks);
+    const docxDocuments = await this.fetchDocxDocuments(docLinks);
+
+    links = links.filter(link => !pdfLinks.includes(link) && !docLinks.includes(link));
+
+    let documents = await this.convertUrlsToDocuments(
+      links,
+      inProgress,
+      allHtmls
+    );
     documents = await this.getSitemapData(this.urls[0], documents);
+
     documents = this.applyPathReplacements(documents);
     // documents = await this.applyImgAltText(documents);
 
@@ -206,7 +265,7 @@ export class WebScraperDataProvider {
     ) {
       documents = await generateCompletions(documents, this.extractorOptions);
     }
-    return documents.concat(pdfDocuments);
+    return documents.concat(pdfDocuments).concat(docxDocuments);
   }
 
   private async fetchPdfDocuments(pdfLinks: string[]): Promise<Document[]> {
@@ -216,6 +275,18 @@ export class WebScraperDataProvider {
         return {
           content: pdfContent,
           metadata: { sourceURL: pdfLink },
+          provider: "web-scraper",
+        };
+      })
+    );
+  }
+  private async fetchDocxDocuments(docxLinks: string[]): Promise<Document[]> {
+    return Promise.all(
+      docxLinks.map(async (p) => {
+        const docXDocument = await fetchAndProcessDocx(p);
+        return {
+          content: docXDocument,
+          metadata: { sourceURL: p },
           provider: "web-scraper",
         };
       })
@@ -397,8 +468,9 @@ export class WebScraperDataProvider {
     this.pageOptions = options.pageOptions ?? { onlyMainContent: false, includeHtml: false };
     this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
     this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
-    //! @nicolas, for some reason this was being injected and breakign everything. Don't have time to find source of the issue so adding this check
+    //! @nicolas, for some reason this was being injected and breaking everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
+    this.crawlerMode = options.crawlerOptions?.mode ?? "default";
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {

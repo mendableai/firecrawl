@@ -34,8 +34,6 @@ export const excludeNonMainTags = [
   "#nav",
   ".breadcrumbs",
   "#breadcrumbs",
-  ".form",
-  "form",
   "#search-form",
   ".search",
   "#search",
@@ -51,10 +49,6 @@ export const excludeNonMainTags = [
   "#tag",
   ".category",
   "#category",
-  ".comment",
-  "#comment",
-  ".reply",
-  "#reply",
-  ".author",
-  "#author",
+  ".cookie",
+  "#cookie"
 ];

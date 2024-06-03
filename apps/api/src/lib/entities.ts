@@ -15,6 +15,9 @@ export type PageOptions = {
   includeHtml?: boolean;
   fallback?: boolean;
   fetchPageContent?: boolean;
+  waitFor?: number;
+  screenshot?: boolean;
+  headers?: Record<string, string>;
 };
 
 export type ExtractorOptions = {
@@ -44,6 +47,7 @@ export type WebScraperOptions = {
     limit?: number;
     generateImgAltText?: boolean;
     replaceAllPathsWithAbsolutePaths?: boolean;
+    mode?: "default" | "fast"; // have a mode of some sort
   };
   pageOptions?: PageOptions;
   extractorOptions?: ExtractorOptions;
@@ -71,6 +75,7 @@ export class Document {
   };
   childrenLinks?: string[];
   provider?: string;
+  warning?: string;
 
   constructor(data: Partial<Document>) {
     if (!data.content) {
@@ -102,4 +107,9 @@ export class SearchResult {
   toString(): string {
       return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description})`;
   }
+}
+
+export interface FireEngineResponse {
+  html: string;
+  screenshot: string;
 }

@@ -1,7 +1,7 @@
 import { withAuth } from "../../lib/withAuth";
 import { supabase_service } from "../supabase";
 
-const FREE_CREDITS = 300;
+const FREE_CREDITS = 500;
 
 export async function billTeam(team_id: string, credits: number) {
   return withAuth(supaBillTeam)(team_id, credits);
@@ -227,10 +227,11 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
 
     if (creditUsages && creditUsages.length > 0) {
         totalCreditsUsed = creditUsages[0].total_credits_used;
-        console.log("Total Credits Used:", totalCreditsUsed);
+        // console.log("Total Credits Used:", totalCreditsUsed);
     }
   } catch (error) {
     console.error("Error calculating credit usage:", error);
+    
   }
   // Adjust total credits used by subtracting coupon value
   const adjustedCreditsUsed = Math.max(0, totalCreditsUsed - couponCredits);

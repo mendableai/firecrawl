@@ -94,6 +94,25 @@ jobs:
         run: |
           npm run test
         working-directory: ./apps/test-suite
+      - name: Set up Python ${{ matrix.python-version }}  
+        uses: actions/setup-python@v4  
+        with:  
+          python-version: ${{ matrix.python-version }}
+      - name: Install Python dependencies  
+        run: |  
+          python -m pip install --upgrade pip  
+          pip install -r requirements.txt
+        working-directory: ./apps/python-sdk
+      - name: Run E2E tests for Python SDK
+        run: |  
+          pytest firecrawl/__tests__/e2e_withAuth/test.py 
+        working-directory: ./apps/python-sdk
+      - name: Install dependencies for JavaScript SDK
+        run: pnpm install
+        working-directory: ./apps/js-sdk/firecrawl
+      - name: Run E2E tests for JavaScript SDK
+        run: npm run test
+        working-directory: ./apps/js-sdk/firecrawl
         
   deploy:
     name: Deploy app
