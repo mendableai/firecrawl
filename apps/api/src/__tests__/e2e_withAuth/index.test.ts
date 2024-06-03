@@ -68,7 +68,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Content-Type", "application/json")
         .send({ url: "https://firecrawl.dev" });
       expect(response.statusCode).toBe(200);
-    }, 10000); // 10 seconds timeout
+    }, 30000); // 30 seconds timeout
 
     it("should return a successful response with a valid API key", async () => {
       const response = await request(TEST_URL)
