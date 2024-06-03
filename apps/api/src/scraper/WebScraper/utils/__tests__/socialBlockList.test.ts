@@ -40,6 +40,7 @@ describe('isUrlBlocked', () => {
       'https://whatsapp.com/press',
       'https://wechat.com/careers',
       'https://telegram.org/conditions',
+      'https://wix.com/careers',
     ];
 
     allowedUrls.forEach(url => {
@@ -54,6 +55,8 @@ describe('isUrlBlocked', () => {
       'https://subdomain.example.com',
       'firecrawl.dev',
       'amazon.com',
+      'wix.com',
+      'https://wix.com'
     ];
 
     nonBlockedUrls.forEach(url => {
