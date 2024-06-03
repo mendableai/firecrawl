@@ -282,8 +282,8 @@ export async function scrapSingleUrl(
     // Check for custom scraping conditions
     const customScrapedContent = await handleCustomScraping(text, url);
     if (customScrapedContent) {
-      text = customScrapedContent[0];
-      screenshot = customScrapedContent[1];
+      text = customScrapedContent.html;
+      screenshot = customScrapedContent.screenshot;
     }
 
     //* TODO: add an optional to return markdown or structured/extracted content
