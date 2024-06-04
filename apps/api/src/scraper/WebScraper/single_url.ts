@@ -143,7 +143,7 @@ export async function scrapWithPlaywright(
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: url, wait: waitParam, headers: headers }),
+      body: JSON.stringify({ url: url, wait_after_load: waitParam, headers: headers }),
     });
 
     if (!response.ok) {
