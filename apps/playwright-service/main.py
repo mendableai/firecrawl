@@ -10,10 +10,10 @@ from fastapi.responses import JSONResponse
 from playwright.async_api import Browser, async_playwright
 from pydantic import BaseModel
 
-PROXY_SERVER = environ.get('PROXY_SERVER', None)
-PROXY_USERNAME = environ.get('PROXY_USERNAME', None)
-PROXY_PASSWORD = environ.get('PROXY_PASSWORD', None)
-BLOCK_MEDIA = environ.get('BLOCK_MEDIA', 'False').upper() == 'TRUE'
+PROXY_SERVER = environ.get("PROXY_SERVER", None)
+PROXY_USERNAME = environ.get("PROXY_USERNAME", None)
+PROXY_PASSWORD = environ.get("PROXY_PASSWORD", None)
+BLOCK_MEDIA = environ.get("BLOCK_MEDIA", "False").upper() == "TRUE"
 
 app = FastAPI()
 
@@ -22,6 +22,7 @@ class UrlModel(BaseModel):
     url: str
     wait_after_load: int = 0
     timeout: int = 15000
+    headers: dict = None
 
 browser: Browser = None
 
@@ -50,17 +51,28 @@ async def root(body: UrlModel):
     """
     context = None
     if PROXY_SERVER and PROXY_USERNAME and PROXY_PASSWORD:
-        context = await browser.new_context(proxy={"server": PROXY_SERVER,
-                                                   "username": PROXY_USERNAME,
-                                                   "password": PROXY_PASSWORD})
+        context = await browser.new_context(
+            proxy={
+                "server": PROXY_SERVER,
+                "username": PROXY_USERNAME,
+                "password": PROXY_PASSWORD,
+            }
+        )
     else:
         context = await browser.new_context()
 
     if BLOCK_MEDIA:
-        await context.route("**/*.{png,jpg,jpeg,gif,svg,mp3,mp4,avi,flac,ogg,wav,webm}",
-                            handler=lambda route, request: route.abort())
+        await context.route(
+            "**/*.{png,jpg,jpeg,gif,svg,mp3,mp4,avi,flac,ogg,wav,webm}",
+            handler=lambda route, request: route.abort(),
+        )
 
     page = await context.new_page()
+
+    # Set headers if provided
+    if body.headers:
+        await page.set_extra_http_headers(body.headers)
+
     await page.goto(
         body.url,
         wait_until="load",
