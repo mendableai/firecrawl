@@ -215,6 +215,7 @@ export class WebScraperDataProvider {
       return this.returnOnlyUrlsResponse(links, inProgress);
     }
 
+
     let documents = await this.processLinks(links, inProgress);
     return this.cacheAndFinalizeDocuments(documents, links);
   }
