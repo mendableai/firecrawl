@@ -24,7 +24,6 @@ env:
   TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
 
 jobs:
-        
   deploy:
     name: Deploy app
     runs-on: ubuntu-latest
