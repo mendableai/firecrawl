@@ -54,7 +54,7 @@ export const crawlStatusRateLimiter = createRateLimiter("crawl-status", RATE_LIM
 export const testSuiteRateLimiter = createRateLimiter("test-suite", RATE_LIMITS.testSuite);
 
 export function getRateLimiter(mode: RateLimiterMode, token: string, plan?: string) {
-  if (token.includes("5089cefa58") || token.includes("6254cf9")) {
+  if (token.includes("a01ccae") || token.includes("6254cf9")) {
     return testSuiteRateLimiter;
   }
   

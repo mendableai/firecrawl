@@ -1,6 +1,7 @@
 import Queue from "bull";
+import { Queue as BullQueue } from "bull";
 
-let webScraperQueue;
+let webScraperQueue: BullQueue;
 
 export function getWebScraperQueue() {
   if (!webScraperQueue) {

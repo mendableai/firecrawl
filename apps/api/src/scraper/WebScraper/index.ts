@@ -84,13 +84,15 @@ export class WebScraperDataProvider {
           const job = await getWebScraperQueue().getJob(this.bullJobId);
           const jobStatus = await job.getState();
           if (jobStatus === "failed") {
-            throw new Error(
+            console.error(
               "Job has failed or has been cancelled by the user. Stopping the job..."
             );
+            return [] as Document[];
           }
         }
       } catch (error) {
         console.error(error);
+        return [] as Document[];
       }
     }
     return results.filter((result) => result !== null) as Document[];
