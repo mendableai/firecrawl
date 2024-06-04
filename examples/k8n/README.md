@@ -13,7 +13,6 @@
             docker push ghcr.io/winkk-dev/firecrawl:latest
          ```
 3. Replace the image in [worker.yaml](worker.yaml), [api.yaml](api.yaml) and [playwright-service.yaml](playwright-service.yaml)
-4. 
 
 ## Install
 ```bash
@@ -31,7 +30,7 @@ kubectl apply -f redis.yaml
 kubectl port-forward svc/api 3002:3002 -n dev
 ```
 
-# Delete Firecrawl on Environment
+# Delete Firecrawl
 ```bash
 kubectl delete -f configmap.yaml
 kubectl delete -f secret.yaml
