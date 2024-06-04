@@ -14,6 +14,7 @@ export async function handleCustomScraping(
     };
   }
 
+  // Check for Vanta security portals
   if (text.includes('<link href="https://static.vanta.com')) {
     console.log(
       `Vanta link detected for ${url}, using Fire Engine with wait time 3000ms`
