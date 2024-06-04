@@ -1,14 +1,24 @@
 """
 checks local verions against published verions.
 
-Usage:
+# Usage:
 
+Unix:
+python .github/scripts/check_version_has_incremented.py js ./apps/js-sdk/firecrawl @mendable/firecrawl-js 
+
+Windows:
 python .github\scripts\check_version_has_incremented.py js .\apps\js-sdk\firecrawl @mendable/firecrawl-js 
+
 Local version: 0.0.22
 Published version: 0.0.21
 true
 
+Unix:
+python .github/scripts/check_version_has_incremented.py python ./apps/python-sdk/firecrawl firecrawl-py 
+
+Windows:
 python .github\scripts\check_version_has_incremented.py python .\apps\python-sdk\firecrawl firecrawl-py             
+
 Local version: 0.0.11
 Published version: 0.0.11
 false
