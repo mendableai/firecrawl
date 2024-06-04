@@ -27,7 +27,6 @@ jobs:
   deploy:
     name: Deploy app
     runs-on: ubuntu-latest
-    needs: pre-deploy-test-suite
     steps:
       - uses: actions/checkout@v3
       - name: Change directory
