@@ -1,7 +1,9 @@
+import { fetchAndProcessPdf } from "../utils/pdfProcessor";
+
 export async function handleCustomScraping(
   text: string,
   url: string
-): Promise<{ scraper: string; url: string; wait_after_load: number } | null> {
+): Promise<{ scraper: string; url: string; wait_after_load?: number } | null> {
   // Check for Readme Docs special case
   if (text.includes('<meta name="readme-deploy"')) {
     console.log(
@@ -28,18 +30,21 @@ export async function handleCustomScraping(
 
   // Check for Google Drive PDF links in the raw HTML
   const googleDrivePdfPattern =
-    /https:\/\/drive\.google\.com\/file\/d\/[^\/]+\/view/;
+    /https:\/\/drive\.google\.com\/file\/d\/([^\/]+)\/view/;
   const googleDrivePdfLink = text.match(googleDrivePdfPattern);
   if (googleDrivePdfLink) {
     console.log(
       `Google Drive PDF link detected for ${url}: ${googleDrivePdfLink[0]}`
     );
+
+    const fileId = googleDrivePdfLink[1];
+    const pdfUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+
     return {
-      scraper: "fire-engine",
-      url: url,
-      wait_after_load: 1000,
+      scraper: "pdf",
+      url: pdfUrl
     };
   }
-
+  
   return null;
 }
