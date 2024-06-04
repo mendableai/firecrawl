@@ -257,12 +257,22 @@ async function handleCustomScraping(
   text: string,
   url: string
 ): Promise<FireEngineResponse | null> {
+  // Check for Readme Docs special case
   if (text.includes('<meta name="readme-deploy"')) {
     console.log(
       `Special use case detected for ${url}, using Fire Engine with wait time 1000ms`
     );
     return await scrapWithFireEngine(url, 1000);
   }
+
+  // Check for Google Drive PDF links in the raw HTML
+  const googleDrivePdfPattern = /https:\/\/drive\.google\.com\/file\/d\/[^\/]+\/view/;
+  const googleDrivePdfLink = text.match(googleDrivePdfPattern);
+  if (googleDrivePdfLink) {
+    console.log(`Google Drive PDF link detected for ${url}: ${googleDrivePdfLink[0]}`);
+    return await scrapWithFireEngine(url, 1000);
+  }
+
   return null;
 }
 
