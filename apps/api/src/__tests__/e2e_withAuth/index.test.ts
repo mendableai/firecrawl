@@ -66,7 +66,7 @@ describe("E2E Tests for API Routes", () => {
         .post("/v0/scrape")
         .set("Authorization", `Bearer this_is_just_a_preview_token`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://firecrawl.dev" });
+        .send({ url: "https://roastmywebsite.ai" });
       expect(response.statusCode).toBe(200);
     }, 30000); // 30 seconds timeout
 
