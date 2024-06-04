@@ -267,7 +267,7 @@ export async function scrapSingleUrl(
     includeHtml: false,
     waitFor: 0,
     screenshot: false,
-    headers: {}
+    headers: undefined
   },
   existingHtml: string = ""
 ): Promise<Document> {
