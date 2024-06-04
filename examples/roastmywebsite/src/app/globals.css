@@ -1,0 +1,10 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+
+
+.fill-tremor-content-emphasis {
+  fill: rgb(113 113 122) !important;
+}
+

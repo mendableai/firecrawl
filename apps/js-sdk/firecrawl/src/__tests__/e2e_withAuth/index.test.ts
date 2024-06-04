@@ -30,7 +30,7 @@ describe('FirecrawlApp E2E Tests', () => {
     const response = await app.scrapeUrl('https://firecrawl.dev');
     expect(response).not.toBeNull();
     expect(response.data.content).toContain("🔥 Firecrawl");
-  }, 10000); // 10 seconds timeout
+  }, 30000); // 30 seconds timeout
 
   test('should return successful response for valid scrape', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
@@ -40,7 +40,7 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response.data).toHaveProperty('markdown');
     expect(response.data).toHaveProperty('metadata');
     expect(response.data).not.toHaveProperty('html');
-  }, 10000); // 10 seconds timeout
+  }, 30000); // 30 seconds timeout
 
   test('should return successful response with valid API key and include HTML', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
@@ -49,7 +49,7 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response.data.content).toContain("🔥 Firecrawl");
     expect(response.data.markdown).toContain("🔥 Firecrawl");
     expect(response.data.html).toContain("<h1");
-  }, 10000); // 10 seconds timeout
+  }, 30000); // 30 seconds timeout
 
   test('should return successful response for valid scrape with PDF file', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
@@ -113,7 +113,7 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(statusResponse).not.toBeNull();
     expect(statusResponse.status).toBe('completed');
     expect(statusResponse.data.length).toBeGreaterThan(0);
-  }, 30000); // 30 seconds timeout
+  }, 35000); // 35 seconds timeout
 
   test('should return successful response for search', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });

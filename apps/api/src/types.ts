@@ -57,6 +57,7 @@ export interface AuthResponse {
   team_id?: string;
   error?: string;
   status?: number;
+  plan?: string;
 }
-
+  
 
