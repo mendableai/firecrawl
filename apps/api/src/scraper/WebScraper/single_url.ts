@@ -337,6 +337,9 @@ export async function scrapSingleUrl(
       switch (customScraperResult.scraper) {
         case "fire-engine":
           customScrapedContent  = await scrapWithFireEngine(customScraperResult.url, customScraperResult.waitAfterLoad, false, customScraperResult.pageOptions)
+          if (screenshot) {
+            customScrapedContent.screenshot = screenshot;
+          }
           break;
         case "pdf":
           customScrapedContent  = { html: await fetchAndProcessPdf(customScraperResult.url), screenshot }
