@@ -77,6 +77,8 @@ export class Document {
   provider?: string;
   warning?: string;
 
+  index?: number;
+
   constructor(data: Partial<Document>) {
     if (!data.content) {
       throw new Error("Missing required fields");
