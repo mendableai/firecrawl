@@ -3,7 +3,7 @@ import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 export async function handleCustomScraping(
   text: string,
   url: string
-): Promise<{ scraper: string; url: string; waitAfterLoad: number, pageOptions?: { scrollXPaths?: string[] } } | null> {
+): Promise<{ scraper: string; url: string; waitAfterLoad?: number, pageOptions?: { scrollXPaths?: string[] } } | null> {
   // Check for Readme Docs special case
   if (text.includes('<meta name="readme-deploy"')) {
     console.log(
