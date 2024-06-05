@@ -3,7 +3,6 @@ import { withAuth } from "../../lib/withAuth";
 import { Resend } from "resend";
 import { NotificationType } from "../../types";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
 
 
 
@@ -43,6 +42,8 @@ async function sendEmailNotification(
   email: string,
   notificationType: NotificationType
 ) {
+const resend = new Resend(process.env.RESEND_API_KEY);
+
   try {
     const { data, error } = await resend.emails.send({
       from: "Firecrawl <firecrawl@getmendableai.com>",
