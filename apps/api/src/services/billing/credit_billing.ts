@@ -208,9 +208,8 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     // check if usage is within 80% of the limit
     const creditLimit = FREE_CREDITS;
     const creditUsagePercentage = (totalCreditsUsed + credits) / creditLimit;
-    console.log("creditUsagePercentage", creditUsagePercentage);
 
-    
+
     if (creditUsagePercentage >= 0.8) {
       await sendNotification(team_id, NotificationType.APPROACHING_LIMIT, new Date().toISOString(), end.toISOString());
     }
@@ -267,7 +266,6 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
   const creditLimit = price.credits;
   const creditUsagePercentage = (adjustedCreditsUsed + credits) / creditLimit;
 
-  console.log("creditUsagePercentage", creditUsagePercentage);
   // Compare the adjusted total credits used with the credits allowed by the plan
   if (adjustedCreditsUsed + credits > price.credits) {
     await sendNotification(team_id, NotificationType.LIMIT_REACHED, subscription.current_period_start, subscription.current_period_end);
