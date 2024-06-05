@@ -3,8 +3,8 @@ on:
   push:
     branches:
       - main
-  # schedule:
-  #   - cron: '0 */4 * * *'
+  schedule:
+    - cron: '0 */2 * * *'
 
 env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}

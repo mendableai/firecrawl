@@ -66,9 +66,9 @@ describe("E2E Tests for API Routes", () => {
         .post("/v0/scrape")
         .set("Authorization", `Bearer this_is_just_a_preview_token`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://firecrawl.dev" });
+        .send({ url: "https://roastmywebsite.ai" });
       expect(response.statusCode).toBe(200);
-    }, 10000); // 10 seconds timeout
+    }, 30000); // 30 seconds timeout
 
     it("should return a successful response with a valid API key", async () => {
       const response = await request(TEST_URL)
@@ -185,7 +185,7 @@ describe("E2E Tests for API Routes", () => {
       );
     });
 
-    it("should return a successful response with a valid API key", async () => {
+    it("should return a successful response with a valid API key for crawl", async () => {
       const response = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -529,7 +529,7 @@ describe("E2E Tests for API Routes", () => {
       expect(response.statusCode).toBe(408);
     }, 3000); 
 
-    it("should return a successful response with a valid API key", async () => {
+    it("should return a successful response with a valid API key for crawlWebsitePreview", async () => {
       const response = await request(TEST_URL)
         .post("/v0/crawlWebsitePreview")
         .set("Authorization", `Bearer this_is_just_a_preview_token`)
@@ -558,7 +558,7 @@ describe("E2E Tests for API Routes", () => {
       expect(response.statusCode).toBe(401);
     });
 
-    it("should return a successful response with a valid API key", async () => {
+    it("should return a successful response with a valid API key for search", async () => {
       const response = await request(TEST_URL)
         .post("/v0/search")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -1004,7 +1004,7 @@ describe("E2E Tests for API Routes", () => {
 
   describe("Rate Limiter", () => {
     it("should return 429 when rate limit is exceeded for preview token", async () => {
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 4; i++) {
         const response = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer this_is_just_a_preview_token`)

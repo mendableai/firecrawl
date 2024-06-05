@@ -29,3 +29,6 @@ docker compose up
 
 
 This will run a local instance of Firecrawl which can be accessed at `http://localhost:3002`.
+
+# Install Firecrawl on a Kubernetes Cluster (Simple Version)
+Read the [examples/k8n/README.md](examples/k8n/README.md) for instructions on how to install Firecrawl on a Kubernetes Cluster.

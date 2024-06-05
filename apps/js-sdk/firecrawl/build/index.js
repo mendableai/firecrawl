@@ -19,6 +19,7 @@ export default class FirecrawlApp {
      * @param {FirecrawlAppConfig} config - Configuration options for the FirecrawlApp instance.
      */
     constructor({ apiKey = null }) {
+        this.apiUrl = "https://api.firecrawl.dev";
         this.apiKey = apiKey || "";
         if (!this.apiKey) {
             throw new Error("No API key provided");
@@ -47,7 +48,7 @@ export default class FirecrawlApp {
                 jsonData = Object.assign(Object.assign({}, jsonData), { extractorOptions: Object.assign(Object.assign({}, params.extractorOptions), { extractionSchema: schema, mode: params.extractorOptions.mode || "llm-extraction" }) });
             }
             try {
-                const response = yield axios.post("https://api.firecrawl.dev/v0/scrape", jsonData, { headers });
+                const response = yield axios.post(this.apiUrl + "/v0/scrape", jsonData, { headers });
                 if (response.status === 200) {
                     const responseData = response.data;
                     if (responseData.success) {
@@ -84,7 +85,7 @@ export default class FirecrawlApp {
                 jsonData = Object.assign(Object.assign({}, jsonData), params);
             }
             try {
-                const response = yield axios.post("https://api.firecrawl.dev/v0/search", jsonData, { headers });
+                const response = yield axios.post(this.apiUrl + "/v0/search", jsonData, { headers });
                 if (response.status === 200) {
                     const responseData = response.data;
                     if (responseData.success) {
@@ -109,23 +110,23 @@ export default class FirecrawlApp {
      * @param {string} url - The URL to crawl.
      * @param {Params | null} params - Additional parameters for the crawl request.
      * @param {boolean} waitUntilDone - Whether to wait for the crawl job to complete.
-     * @param {number} timeout - Timeout in seconds for job status checks.
+     * @param {number} pollInterval - Time in seconds for job status checks.
      * @param {string} idempotencyKey - Optional idempotency key for the request.
      * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
      */
     crawlUrl(url_1) {
-        return __awaiter(this, arguments, void 0, function* (url, params = null, waitUntilDone = true, timeout = 2, idempotencyKey) {
+        return __awaiter(this, arguments, void 0, function* (url, params = null, waitUntilDone = true, pollInterval = 2, idempotencyKey) {
             const headers = this.prepareHeaders(idempotencyKey);
             let jsonData = { url };
             if (params) {
                 jsonData = Object.assign(Object.assign({}, jsonData), params);
             }
             try {
-                const response = yield this.postRequest("https://api.firecrawl.dev/v0/crawl", jsonData, headers);
+                const response = yield this.postRequest(this.apiUrl + "/v0/crawl", jsonData, headers);
                 if (response.status === 200) {
                     const jobId = response.data.jobId;
                     if (waitUntilDone) {
-                        return this.monitorJobStatus(jobId, headers, timeout);
+                        return this.monitorJobStatus(jobId, headers, pollInterval);
                     }
                     else {
                         return { success: true, jobId };
@@ -151,9 +152,14 @@ export default class FirecrawlApp {
         return __awaiter(this, void 0, void 0, function* () {
             const headers = this.prepareHeaders();
             try {
-                const response = yield this.getRequest(`https://api.firecrawl.dev/v0/crawl/status/${jobId}`, headers);
+                const response = yield this.getRequest(this.apiUrl + `/v0/crawl/status/${jobId}`, headers);
                 if (response.status === 200) {
-                    return response.data;
+                    return {
+                        success: true,
+                        status: response.data.status,
+                        data: response.data.data,
+                        partial_data: !response.data.data ? response.data.partial_data : undefined,
+                    };
                 }
                 else {
                     this.handleError(response, "check crawl status");
@@ -202,10 +208,10 @@ export default class FirecrawlApp {
      * @param {number} timeout - Timeout in seconds for job status checks.
      * @returns {Promise<any>} The final job status or data.
      */
-    monitorJobStatus(jobId, headers, timeout) {
+    monitorJobStatus(jobId, headers, checkInterval) {
         return __awaiter(this, void 0, void 0, function* () {
             while (true) {
-                const statusResponse = yield this.getRequest(`https://api.firecrawl.dev/v0/crawl/status/${jobId}`, headers);
+                const statusResponse = yield this.getRequest(this.apiUrl + `/v0/crawl/status/${jobId}`, headers);
                 if (statusResponse.status === 200) {
                     const statusData = statusResponse.data;
                     if (statusData.status === "completed") {
@@ -217,10 +223,10 @@ export default class FirecrawlApp {
                         }
                     }
                     else if (["active", "paused", "pending", "queued"].includes(statusData.status)) {
-                        if (timeout < 2) {
-                            timeout = 2;
+                        if (checkInterval < 2) {
+                            checkInterval = 2;
                         }
-                        yield new Promise((resolve) => setTimeout(resolve, timeout * 1000)); // Wait for the specified timeout before checking again
+                        yield new Promise((resolve) => setTimeout(resolve, checkInterval * 1000)); // Wait for the specified timeout before checking again
                     }
                     else {
                         throw new Error(`Crawl job failed or was stopped. Status: ${statusData.status}`);

@@ -168,3 +168,6 @@ app.get('/serverHealthCheck/notify', async (req, res) => {
 app.get("/is-production", (req, res) => {
   res.send({ isProduction: global.isProduction });
 });
+
+
+// /workers health check, cant act as load balancer, just has to be a pre deploy thing
