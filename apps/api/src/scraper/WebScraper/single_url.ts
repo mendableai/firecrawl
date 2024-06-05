@@ -333,8 +333,13 @@ export async function scrapSingleUrl(
     // Check for custom scraping conditions
     const customScraperResult = await handleCustomScraping(text, url);
 
-    if(customScraperResult){
-      customScrapedContent  = await scrapWithFireEngine(customScraperResult.url, customScraperResult.waitAfterLoad, false, customScraperResult.pageOptions)
+    if (customScraperResult){
+      switch (customScraperResult.scraper) {
+        case "fire-engine":
+          customScrapedContent  = await scrapWithFireEngine(customScraperResult.url, customScraperResult.waitAfterLoad, false, customScraperResult.pageOptions)
+        case "pdf":
+          customScrapedContent  = { html: await fetchAndProcessPdf(customScraperResult.url), screenshot }
+      }
     }
 
     if (customScrapedContent) {
