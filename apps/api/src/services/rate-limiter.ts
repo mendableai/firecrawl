@@ -4,7 +4,7 @@ import { RateLimiterMode } from "../../src/types";
 
 const RATE_LIMITS = {
   crawl: {
-    free: 1,
+    free: 2,
     starter: 3,
     standard: 5,
     scale: 20,
