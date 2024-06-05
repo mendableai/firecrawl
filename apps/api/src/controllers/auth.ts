@@ -1,10 +1,11 @@
 import { parseApi } from "../../src/lib/parseApi";
 import { getRateLimiter, } from "../../src/services/rate-limiter";
-import { AuthResponse, RateLimiterMode } from "../../src/types";
+import { AuthResponse, NotificationType, RateLimiterMode } from "../../src/types";
 import { supabase_service } from "../../src/services/supabase";
 import { withAuth } from "../../src/lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import { setTraceAttributes } from '@hyperdx/node-opentelemetry';
+import { sendNotification } from "../services/notification/email_notification";
 
 export async function authenticateUser(req, res, mode?: RateLimiterMode): Promise<AuthResponse> {
   return withAuth(supaAuthenticateUser)(req, res, mode);
@@ -52,8 +53,11 @@ export async function supaAuthenticateUser(
   let subscriptionData: { team_id: string, plan: string } | null = null;
   let normalizedApi: string;
 
+  let team_id: string;
+
   if (token == "this_is_just_a_preview_token") {
     rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
+    team_id = "preview";
   } else {
     normalizedApi = parseApi(token);
 
@@ -90,7 +94,9 @@ export async function supaAuthenticateUser(
         status: 401,
       };
     }
-    const team_id = data[0].team_id;
+    const internal_team_id = data[0].team_id;
+    team_id = internal_team_id;
+
     const plan = getPlanByPriceId(data[0].price_id);
     // HyperDX Logging
     setTrace(team_id, normalizedApi);
@@ -124,12 +130,20 @@ export async function supaAuthenticateUser(
     }
   }
 
+  const team_endpoint_token = team_id;
+
   try {
-    await rateLimiter.consume(iptoken);
+    await rateLimiter.consume(team_endpoint_token);
   } catch (rateLimiterRes) {
     console.error(rateLimiterRes);
     const secs = Math.round(rateLimiterRes.msBeforeNext / 1000) || 1;
     const retryDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
+
+    // We can only send a rate limit email every 7 days, send notification already has the date in between checking
+    const startDate = new Date();
+    const endDate = new Date();
+    endDate.setDate(endDate.getDate() + 7);
+    await sendNotification(team_id, NotificationType.RATE_LIMIT_REACHED, startDate.toISOString(), endDate.toISOString());
     return {
       success: false,
       error: `Rate limit exceeded. Consumed points: ${rateLimiterRes.consumedPoints}, Remaining points: ${rateLimiterRes.remainingPoints}. Upgrade your plan at https://firecrawl.dev/pricing for increased rate limits or please retry after ${secs}s, resets at ${retryDate}`,

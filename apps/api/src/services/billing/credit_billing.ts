@@ -1,4 +1,6 @@
+import { NotificationType } from "../../types";
 import { withAuth } from "../../lib/withAuth";
+import { sendNotification } from "../notification/email_notification";
 import { supabase_service } from "../supabase";
 
 const FREE_CREDITS = 500;
@@ -187,12 +189,10 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
         .select("credits_used")
         .is("subscription_id", null)
         .eq("team_id", team_id);
-    // .gte("created_at", subscription.current_period_start)
-    // .lte("created_at", subscription.current_period_end);
 
     if (creditUsageError) {
       throw new Error(
-        `Failed to retrieve credit usage for subscription_id: ${subscription.id}`
+        `Failed to retrieve credit usage for team_id: ${team_id}`
       );
     }
 
@@ -202,8 +202,26 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     );
 
     console.log("totalCreditsUsed", totalCreditsUsed);
+
+    const end = new Date();
+      end.setDate(end.getDate() + 30);
+    // check if usage is within 80% of the limit
+    const creditLimit = FREE_CREDITS;
+    const creditUsagePercentage = (totalCreditsUsed + credits) / creditLimit;
+    console.log("creditUsagePercentage", creditUsagePercentage);
+
+    
+    if (creditUsagePercentage >= 0.8) {
+      await sendNotification(team_id, NotificationType.APPROACHING_LIMIT, new Date().toISOString(), end.toISOString());
+    }
+
+
+
     // 5. Compare the total credits used with the credits allowed by the plan.
     if (totalCreditsUsed + credits > FREE_CREDITS) {
+      // Send email notification for insufficient credits
+      
+      await sendNotification(team_id, NotificationType.LIMIT_REACHED, new Date().toISOString(), end.toISOString());
       return {
         success: false,
         message: "Insufficient credits, please upgrade!",
@@ -227,12 +245,11 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
 
     if (creditUsages && creditUsages.length > 0) {
         totalCreditsUsed = creditUsages[0].total_credits_used;
-        // console.log("Total Credits Used:", totalCreditsUsed);
     }
   } catch (error) {
     console.error("Error calculating credit usage:", error);
-    
   }
+
   // Adjust total credits used by subtracting coupon value
   const adjustedCreditsUsed = Math.max(0, totalCreditsUsed - couponCredits);
 
@@ -247,9 +264,17 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     throw new Error(`Failed to retrieve price for price_id: ${subscription.price_id}`);
   }
 
+  const creditLimit = price.credits;
+  const creditUsagePercentage = (adjustedCreditsUsed + credits) / creditLimit;
+
+  console.log("creditUsagePercentage", creditUsagePercentage);
   // Compare the adjusted total credits used with the credits allowed by the plan
   if (adjustedCreditsUsed + credits > price.credits) {
+    await sendNotification(team_id, NotificationType.LIMIT_REACHED, subscription.current_period_start, subscription.current_period_end);
     return { success: false, message: "Insufficient credits, please upgrade!" };
+  } else if (creditUsagePercentage >= 0.8) {
+    // Send email notification for approaching credit limit
+    await sendNotification(team_id, NotificationType.APPROACHING_LIMIT, subscription.current_period_start, subscription.current_period_end);
   }
 
   return { success: true, message: "Sufficient credits available" };
