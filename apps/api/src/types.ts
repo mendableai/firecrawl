@@ -61,3 +61,8 @@ export interface AuthResponse {
 }
   
 
+export enum NotificationType {
+  APPROACHING_LIMIT = "approachingLimit",
+  LIMIT_REACHED = "limitReached",
+  RATE_LIMIT_REACHED = "rateLimitReached",
+}

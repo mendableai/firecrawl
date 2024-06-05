@@ -90,6 +90,7 @@
     "puppeteer": "^22.6.3",
     "rate-limiter-flexible": "^2.4.2",
     "redis": "^4.6.7",
+    "resend": "^3.2.0",
     "robots-parser": "^3.0.1",
     "scrapingbee": "^1.7.4",
     "stripe": "^12.2.0",
