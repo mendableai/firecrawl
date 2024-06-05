@@ -2,11 +2,15 @@ import { supabase_service } from "./supabase";
 
 export const callWebhook = async (teamId: string, data: any) => {
   try {
-  const { data: webhooksData, error } = await supabase_service
-    .from('webhooks')
-    .select('url')
-    .eq('team_id', teamId)
-    .limit(1);
+  const selfHostedUrl = process.env.SELF_HOSTED_WEBHOOK_URL;
+  let webhookUrl = selfHostedUrl;
+
+  if (!selfHostedUrl) {
+    const { data: webhooksData, error } = await supabase_service
+      .from('webhooks')
+      .select('url')
+      .eq('team_id', teamId)
+      .limit(1);
 
   if (error) {
     console.error(`Error fetching webhook URL for team ID: ${teamId}`, error.message);
@@ -16,6 +20,9 @@ export const callWebhook = async (teamId: string, data: any) => {
   if (!webhooksData || webhooksData.length === 0) {
     return null;
   }
+
+  webhookUrl = webhooksData[0].url;
+}
 
   let dataToSend = [];
   if (data.result.links && data.result.links.length !== 0) {
@@ -28,13 +35,14 @@ export const callWebhook = async (teamId: string, data: any) => {
     }
   }
 
-  await fetch(webhooksData[0].url, {
+  await fetch(webhookUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
       success: data.success,
+      project_id: data.project_id,
       data: dataToSend,
       error: data.error || undefined,
     }),
