@@ -46,6 +46,7 @@ export async function scrapWithFireEngine(
   url: string,
   waitFor: number = 0,
   screenshot: boolean = false,
+  pageOptions: { scrollXPaths?: string[] } = {},
   headers?: Record<string, string>,
   options?: any
 ): Promise<FireEngineResponse> {
@@ -68,6 +69,7 @@ export async function scrapWithFireEngine(
         wait: waitParam,
         screenshot: screenshotParam,
         headers: headers,
+        pageOptions: pageOptions
       }),
     });
 
@@ -332,7 +334,7 @@ export async function scrapSingleUrl(
     const customScraperResult = await handleCustomScraping(text, url);
 
     if(customScraperResult){
-      customScrapedContent  = await scrapWithFireEngine(customScraperResult.url, customScraperResult.wait_after_load)
+      customScrapedContent  = await scrapWithFireEngine(customScraperResult.url, customScraperResult.waitAfterLoad, false, customScraperResult.pageOptions)
     }
 
     if (customScrapedContent) {
