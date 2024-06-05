@@ -1,7 +1,7 @@
 export async function handleCustomScraping(
   text: string,
   url: string
-): Promise<{ scraper: string; url: string; wait_after_load: number } | null> {
+): Promise<{ scraper: string; url: string; waitAfterLoad: number, pageOptions?: { scrollXPaths?: string[] } } | null> {
   // Check for Readme Docs special case
   if (text.includes('<meta name="readme-deploy"')) {
     console.log(
@@ -10,7 +10,10 @@ export async function handleCustomScraping(
     return {
       scraper: "fire-engine",
       url: url,
-      wait_after_load: 1000,
+      waitAfterLoad: 1000,
+      pageOptions: {
+        scrollXPaths: ['//*[@id="ReferencePlayground"]/section[3]/div/pre/div/div/div[5]']
+      }
     };
   }
 
@@ -22,7 +25,7 @@ export async function handleCustomScraping(
     return {
       scraper: "fire-engine",
       url: url,
-      wait_after_load: 3000,
+      waitAfterLoad: 3000,
     };
   }
 
@@ -37,7 +40,7 @@ export async function handleCustomScraping(
     return {
       scraper: "fire-engine",
       url: url,
-      wait_after_load: 1000,
+      waitAfterLoad: 1000,
     };
   }
 
