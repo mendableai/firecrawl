@@ -72,7 +72,7 @@ export class WebScraperDataProvider {
               total: totalUrls,
               status: "SCRAPING",
               currentDocumentUrl: url,
-              currentDocument: result,
+              currentDocument: { ...result, index: processedUrls },
             });
           }
 
