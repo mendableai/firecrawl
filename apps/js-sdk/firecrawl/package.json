@@ -1,13 +1,13 @@
 {
   "name": "@mendable/firecrawl-js",
-  "version": "0.0.23",
+  "version": "0.0.25",
   "description": "JavaScript SDK for Firecrawl API",
   "main": "build/index.js",
   "types": "types/index.d.ts",
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "publish": "npm run build && npm publish --access public",
+    "build-and-publish": "npm run build && npm publish --access public",
     "publish-beta": "npm run build && npm publish --access public --tag beta",
     "test": "jest src/__tests__/**/*.test.ts"
   },

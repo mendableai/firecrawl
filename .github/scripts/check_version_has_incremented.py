@@ -1,24 +1,14 @@
 """
-checks local verions against published verions.
+checks local versions against published versions.
 
 # Usage:
 
-Unix:
 python .github/scripts/check_version_has_incremented.py js ./apps/js-sdk/firecrawl @mendable/firecrawl-js 
-
-Windows:
-python .github\scripts\check_version_has_incremented.py js .\apps\js-sdk\firecrawl @mendable/firecrawl-js 
-
 Local version: 0.0.22
 Published version: 0.0.21
 true
 
-Unix:
 python .github/scripts/check_version_has_incremented.py python ./apps/python-sdk/firecrawl firecrawl-py 
-
-Windows:
-python .github\scripts\check_version_has_incremented.py python .\apps\python-sdk\firecrawl firecrawl-py             
-
 Local version: 0.0.11
 Published version: 0.0.11
 false
@@ -88,8 +78,8 @@ if __name__ == "__main__":
         raise ValueError("Invalid package type. Use 'python' or 'js'.")
 
     # Print versions for debugging
-    print(f"Local version: {current_version}")
-    print(f"Published version: {published_version}")
+    # print(f"Local version: {current_version}")
+    # print(f"Published version: {published_version}")
 
     # Compare versions and print result
     if is_version_incremented(current_version, published_version):
