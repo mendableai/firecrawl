@@ -32,6 +32,7 @@ jobs:
         run: |
           VERSION_INCREMENTED=$(python .github/scripts/check_version_has_incremented.py python ./apps/python-sdk/firecrawl firecrawl-py)
           echo "VERSION_INCREMENTED=$VERSION_INCREMENTED" >> $GITHUB_ENV
+          echo "Published Version: ${{ env.VERSION_INCREMENTED }}"
 
       - name: Build the package
         if: env.VERSION_INCREMENTED == 'true'
