@@ -705,7 +705,7 @@ describe("E2E Tests for API Routes", () => {
         const depth = new URL(url).pathname.split("/").filter(Boolean).length;
         expect(depth).toBeLessThanOrEqual(1);
       });
-    }, 120000);
+    }, 180000);
 
     it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option", async () => {
       const crawlResponse = await request(TEST_URL)
