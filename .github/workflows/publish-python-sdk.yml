@@ -38,17 +38,17 @@ jobs:
           echo "Output of VERSION_INCREMENTED: '${{ env.VERSION_INCREMENTED }}'"
   
       - name: Set published version environment variable
-        if: env.VERSION_INCREMENTED == 'true'
+        if: ${{ env.VERSION_INCREMENTED == 'true' }}
         run: |
-            echo "Published Version: ${{ env.VERSION_INCREMENTED }}"
+          echo "Published Version: ${{ env.VERSION_INCREMENTED }}"
 
       - name: Build the package
-        if: env.VERSION_INCREMENTED == 'true'
+        if: ${{ env.VERSION_INCREMENTED == 'true' }}
         run: |
           python -m build
 
       - name: Publish to PyPI
-        if: env.VERSION_INCREMENTED == 'true'
+        if: ${{ env.VERSION_INCREMENTED == 'true' }}
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
