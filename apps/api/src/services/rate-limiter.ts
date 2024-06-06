@@ -37,15 +37,19 @@ const RATE_LIMITS = {
     growth: 500,
   },
   preview: {
+    free: 5,
     default: 5,
   },
   account: {
+    free: 20,
     default: 20,
   },
   crawlStatus: {
+    free: 150,
     default: 150,
   },
   testSuite: {
+    free: 10000,
     default: 10000,
   },
 };
