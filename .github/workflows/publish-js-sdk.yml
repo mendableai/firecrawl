@@ -1,4 +1,4 @@
-name: Publish Package to npm
+name: Publish JavaScript SDK
 
 on:
   pull_request:
@@ -17,7 +17,10 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
-          node-version: "20"
+          node-version: '20'
+          registry-url: 'https://registry.npmjs.org/'
+          scope: '@mendable'
+          always-auth: true
 
       - name: Install pnpm
         run: npm install -g pnpm
@@ -44,5 +47,3 @@ jobs:
         run: |
           npm run publish
         working-directory: ./apps/js-sdk/firecrawl
-
-
