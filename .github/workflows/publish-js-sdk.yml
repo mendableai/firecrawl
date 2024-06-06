@@ -45,5 +45,5 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          npm run publish
+          npm run build-and-publish
         working-directory: ./apps/js-sdk/firecrawl
