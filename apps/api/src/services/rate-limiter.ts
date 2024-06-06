@@ -89,7 +89,6 @@ export function getRateLimiter(
   token: string,
   plan?: string
 ) {
-  console.log(`${mode}-${plan}`);
   if (token.includes("a01ccae") || token.includes("6254cf9")) {
     return testSuiteRateLimiter;
   }
@@ -101,6 +100,5 @@ export function getRateLimiter(
   const points =
     rateLimitConfig[planKey] || rateLimitConfig.default || rateLimitConfig; // 5
 
-  console.log(`${mode}-${planKey}`);
   return createRateLimiter(`${mode}-${planKey}`, points);
 }
