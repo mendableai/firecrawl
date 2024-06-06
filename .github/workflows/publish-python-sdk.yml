@@ -46,6 +46,7 @@ jobs:
         if: ${{ env.VERSION_INCREMENTED == 'true' }}
         run: |
           python -m build
+        working-directory: ./apps/python-sdk
 
       - name: Publish to PyPI
         if: ${{ env.VERSION_INCREMENTED == 'true' }}
