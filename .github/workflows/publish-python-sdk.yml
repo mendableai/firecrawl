@@ -1,7 +1,7 @@
 name: Publish Python SDK
 
 on:
-  pull_request:
+  push:
     branches:
       - main
 
@@ -45,5 +45,4 @@ jobs:
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
           echo "Publishing to PyPI"
-#          twine upload dist/*
 
