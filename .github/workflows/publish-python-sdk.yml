@@ -1,4 +1,4 @@
-name: Publish Python SDK
+name: Publish Python SDK 
 
 on:
   pull_request:
