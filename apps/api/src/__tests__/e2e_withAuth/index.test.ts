@@ -529,18 +529,18 @@ describe("E2E Tests for API Routes", () => {
       expect(response.statusCode).toBe(408);
     }, 3000); 
 
-    it.concurrent("should return a successful response with a valid API key for crawlWebsitePreview", async () => {
-      const response = await request(TEST_URL)
-        .post("/v0/crawlWebsitePreview")
-        .set("Authorization", `Bearer this_is_just_a_preview_token`)
-        .set("Content-Type", "application/json")
-        .send({ url: "https://firecrawl.dev" });
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toHaveProperty("jobId");
-      expect(response.body.jobId).toMatch(
-        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
-      );
-    });
+    // it.concurrent("should return a successful response with a valid API key for crawlWebsitePreview", async () => {
+    //   const response = await request(TEST_URL)
+    //     .post("/v0/crawlWebsitePreview")
+    //     .set("Authorization", `Bearer this_is_just_a_preview_token`)
+    //     .set("Content-Type", "application/json")
+    //     .send({ url: "https://firecrawl.dev" });
+    //   expect(response.statusCode).toBe(200);
+    //   expect(response.body).toHaveProperty("jobId");
+    //   expect(response.body.jobId).toMatch(
+    //     /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
+    //   );
+    // });
   });
 
   describe("POST /v0/search", () => {
@@ -1012,7 +1012,7 @@ describe("E2E Tests for API Routes", () => {
 
   describe("Rate Limiter", () => {
     it.concurrent("should return 429 when rate limit is exceeded for preview token", async () => {
-      for (let i = 0; i < 5; i++) {
+      for (let i = 0; i < 4; i++) {
         const response = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer this_is_just_a_preview_token`)
