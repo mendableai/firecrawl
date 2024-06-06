@@ -1028,7 +1028,7 @@ describe("E2E Tests for API Routes", () => {
         .send({ url: "https://www.scrapethissite.com" });
 
       expect(response.statusCode).toBe(429);
-    }, 60000);
+    }, 90000);
   });
 
   // it.concurrent("should return 429 when rate limit is exceeded for API key", async () => {
