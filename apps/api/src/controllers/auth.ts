@@ -130,7 +130,7 @@ export async function supaAuthenticateUser(
     }
   }
 
-  const team_endpoint_token = team_id;
+  const team_endpoint_token = token === "this_is_just_a_preview_token" ? iptoken : team_id;
 
   try {
     await rateLimiter.consume(team_endpoint_token);

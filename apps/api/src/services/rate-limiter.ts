@@ -67,18 +67,11 @@ const createRateLimiter = (keyPrefix, points) =>
     duration: 60, // Duration in seconds
   });
 
-export const previewRateLimiter = createRateLimiter(
-  "preview",
-  RATE_LIMITS.preview.default
-);
 export const serverRateLimiter = createRateLimiter(
   "server",
   RATE_LIMITS.account.default
 );
-export const crawlStatusRateLimiter = createRateLimiter(
-  "crawl-status",
-  RATE_LIMITS.crawlStatus.default
-);
+
 export const testSuiteRateLimiter = createRateLimiter(
   "test-suite",
   RATE_LIMITS.testSuite.default
