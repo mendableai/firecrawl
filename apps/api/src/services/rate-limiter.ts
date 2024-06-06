@@ -16,7 +16,7 @@ const RATE_LIMITS = {
   scrape: {
     free: 5,
     starter: 20,
-    standard: 40,
+    standard: 50,
     standardOld: 40,
     scale: 50,
     hobby: 10,
@@ -68,5 +68,6 @@ export function getRateLimiter(mode: RateLimiterMode, token: string, plan?: stri
   const planKey = plan ? plan.replace("-", "") : "starter";
   const points = rateLimitConfig[planKey] || rateLimitConfig.preview;
 
+  
   return createRateLimiter(`${mode}-${planKey}`, points);
 }
