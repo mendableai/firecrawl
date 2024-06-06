@@ -69,19 +69,19 @@ const createRateLimiter = (keyPrefix, points) =>
 
 export const previewRateLimiter = createRateLimiter(
   "preview",
-  RATE_LIMITS.preview
+  RATE_LIMITS.preview.default
 );
 export const serverRateLimiter = createRateLimiter(
   "server",
-  RATE_LIMITS.account
+  RATE_LIMITS.account.default
 );
 export const crawlStatusRateLimiter = createRateLimiter(
   "crawl-status",
-  RATE_LIMITS.crawlStatus
+  RATE_LIMITS.crawlStatus.default
 );
 export const testSuiteRateLimiter = createRateLimiter(
   "test-suite",
-  RATE_LIMITS.testSuite
+  RATE_LIMITS.testSuite.default
 );
 
 export function getRateLimiter(
@@ -89,6 +89,7 @@ export function getRateLimiter(
   token: string,
   plan?: string
 ) {
+  console.log(`${mode}-${plan}`);
   if (token.includes("a01ccae") || token.includes("6254cf9")) {
     return testSuiteRateLimiter;
   }
@@ -100,5 +101,6 @@ export function getRateLimiter(
   const points =
     rateLimitConfig[planKey] || rateLimitConfig.default || rateLimitConfig; // 5
 
+  console.log(`${mode}-${planKey}`);
   return createRateLimiter(`${mode}-${planKey}`, points);
 }
