@@ -4,6 +4,7 @@ import { RateLimiterMode } from "../../src/types";
 
 const RATE_LIMITS = {
   crawl: {
+    default: 3,
     free: 2,
     starter: 3,
     standard: 5,
@@ -14,6 +15,7 @@ const RATE_LIMITS = {
     growth: 50,
   },
   scrape: {
+    default: 20,
     free: 5,
     starter: 20,
     standard: 50,
@@ -24,6 +26,7 @@ const RATE_LIMITS = {
     growth: 500,
   },
   search: {
+    default: 20,
     free: 5,
     starter: 20,
     standard: 40,
@@ -33,10 +36,18 @@ const RATE_LIMITS = {
     standardNew: 50,
     growth: 500,
   },
-  preview: 5,
-  account: 20,
-  crawlStatus: 150,
-  testSuite: 10000,
+  preview: {
+    default: 5,
+  },
+  account: {
+    default: 20,
+  },
+  crawlStatus: {
+    default: 150,
+  },
+  testSuite: {
+    default: 10000,
+  },
 };
 
 export const redisClient = redis.createClient({
@@ -44,30 +55,46 @@ export const redisClient = redis.createClient({
   legacyMode: true,
 });
 
-const createRateLimiter = (keyPrefix, points) => new RateLimiterRedis({
-  storeClient: redisClient,
-  keyPrefix,
-  points,
-  duration: 60, // Duration in seconds
-});
+const createRateLimiter = (keyPrefix, points) =>
+  new RateLimiterRedis({
+    storeClient: redisClient,
+    keyPrefix,
+    points,
+    duration: 60, // Duration in seconds
+  });
 
-export const previewRateLimiter = createRateLimiter("preview", RATE_LIMITS.preview);
-export const serverRateLimiter = createRateLimiter("server", RATE_LIMITS.account);
-export const crawlStatusRateLimiter = createRateLimiter("crawl-status", RATE_LIMITS.crawlStatus);
-export const testSuiteRateLimiter = createRateLimiter("test-suite", RATE_LIMITS.testSuite);
+export const previewRateLimiter = createRateLimiter(
+  "preview",
+  RATE_LIMITS.preview
+);
+export const serverRateLimiter = createRateLimiter(
+  "server",
+  RATE_LIMITS.account
+);
+export const crawlStatusRateLimiter = createRateLimiter(
+  "crawl-status",
+  RATE_LIMITS.crawlStatus
+);
+export const testSuiteRateLimiter = createRateLimiter(
+  "test-suite",
+  RATE_LIMITS.testSuite
+);
 
-export function getRateLimiter(mode: RateLimiterMode, token: string, plan?: string) {
+export function getRateLimiter(
+  mode: RateLimiterMode,
+  token: string,
+  plan?: string
+) {
   if (token.includes("a01ccae") || token.includes("6254cf9")) {
     return testSuiteRateLimiter;
   }
-  
 
-  const rateLimitConfig = RATE_LIMITS[mode];
+  const rateLimitConfig = RATE_LIMITS[mode]; // {default : 5}
   if (!rateLimitConfig) return serverRateLimiter;
 
-  const planKey = plan ? plan.replace("-", "") : "starter";
-  const points = rateLimitConfig[planKey] || rateLimitConfig.preview;
+  const planKey = plan ? plan.replace("-", "") : "default"; // "default"
+  const points =
+    rateLimitConfig[planKey] || rateLimitConfig.default || rateLimitConfig; // 5
 
-  
   return createRateLimiter(`${mode}-${planKey}`, points);
 }

@@ -3,9 +3,6 @@ import { withAuth } from "../../lib/withAuth";
 import { Resend } from "resend";
 import { NotificationType } from "../../types";
 
-
-
-
 const emailTemplates: Record<
   NotificationType,
   { subject: string; html: string }
@@ -15,7 +12,8 @@ const emailTemplates: Record<
     html: "Hey there,<br/><p>You are approaching your credit limit for this billing period. Your usage right now is around 80% of your total credit limit. Consider upgrading your plan to avoid hitting the limit. Check out our <a href='https://firecrawl.dev/pricing'>pricing page</a> for more info.</p><br/>Thanks,<br/>Firecrawl Team<br/>",
   },
   [NotificationType.LIMIT_REACHED]: {
-    subject: "Credit Limit Reached! Take action now to resume usage - Firecrawl",
+    subject:
+      "Credit Limit Reached! Take action now to resume usage - Firecrawl",
     html: "Hey there,<br/><p>You have reached your credit limit for this billing period. To resume usage, please upgrade your plan. Check out our <a href='https://firecrawl.dev/pricing'>pricing page</a> for more info.</p><br/>Thanks,<br/>Firecrawl Team<br/>",
   },
   [NotificationType.RATE_LIMIT_REACHED]: {
@@ -42,7 +40,7 @@ async function sendEmailNotification(
   email: string,
   notificationType: NotificationType
 ) {
-const resend = new Resend(process.env.RESEND_API_KEY);
+  const resend = new Resend(process.env.RESEND_API_KEY);
 
   try {
     const { data, error } = await resend.emails.send({
@@ -69,6 +67,9 @@ export async function sendNotificationInternal(
   startDateString: string,
   endDateString: string
 ): Promise<{ success: boolean }> {
+  if (team_id === "preview") {
+    return { success: true };
+  }
   const { data, error } = await supabase_service
     .from("user_notifications")
     .select("*")
