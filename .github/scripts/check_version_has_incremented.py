@@ -78,8 +78,8 @@ if __name__ == "__main__":
         raise ValueError("Invalid package type. Use 'python' or 'js'.")
 
     # Print versions for debugging
-    print(f"Local version: {current_version}")
-    print(f"Published version: {published_version}")
+    # print(f"Local version: {current_version}")
+    # print(f"Published version: {published_version}")
 
     # Compare versions and print result
     if is_version_incremented(current_version, published_version):
