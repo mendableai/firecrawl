@@ -37,15 +37,19 @@ const RATE_LIMITS = {
     growth: 500,
   },
   preview: {
+    free: 5,
     default: 5,
   },
   account: {
+    free: 20,
     default: 20,
   },
   crawlStatus: {
+    free: 150,
     default: 150,
   },
   testSuite: {
+    free: 10000,
     default: 10000,
   },
 };
@@ -65,19 +69,19 @@ const createRateLimiter = (keyPrefix, points) =>
 
 export const previewRateLimiter = createRateLimiter(
   "preview",
-  RATE_LIMITS.preview
+  RATE_LIMITS.preview.default
 );
 export const serverRateLimiter = createRateLimiter(
   "server",
-  RATE_LIMITS.account
+  RATE_LIMITS.account.default
 );
 export const crawlStatusRateLimiter = createRateLimiter(
   "crawl-status",
-  RATE_LIMITS.crawlStatus
+  RATE_LIMITS.crawlStatus.default
 );
 export const testSuiteRateLimiter = createRateLimiter(
   "test-suite",
-  RATE_LIMITS.testSuite
+  RATE_LIMITS.testSuite.default
 );
 
 export function getRateLimiter(
