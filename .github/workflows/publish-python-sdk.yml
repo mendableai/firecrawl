@@ -27,11 +27,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install setuptools wheel twine build requests packaging
 
-          - name: Run version check script
-          id: version_check_script
-          run: |
-            VERSION_INCREMENTED=$(python .github/scripts/check_version_has_incremented.py python ./apps/python-sdk/firecrawl firecrawl-py)
-            echo "VERSION_INCREMENTED=$VERSION_INCREMENTED" >> $GITHUB_ENV
+      - name: Run version check script
+        id: version_check_script
+        run: |
+          VERSION_INCREMENTED=$(python .github/scripts/check_version_has_incremented.py python ./apps/python-sdk/firecrawl firecrawl-py)
+          echo "VERSION_INCREMENTED=$VERSION_INCREMENTED" >> $GITHUB_ENV
   
       - name: Debug output of version check
         run: |
