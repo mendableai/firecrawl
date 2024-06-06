@@ -1,9 +1,6 @@
 name: Publish Python SDK 
 
-on:
-  pull_request:
-    branches:
-      - main
+on: []
 
 env:
   PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}

@@ -1,9 +1,6 @@
 name: Publish JavaScript SDK
 
-on:
-  pull_request:
-    branches:
-      - main
+on: []
 
 env:
   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
