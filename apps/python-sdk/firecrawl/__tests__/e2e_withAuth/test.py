@@ -38,31 +38,31 @@ def test_blocklisted_url():
 
 def test_successful_response_with_valid_preview_token():
     app = FirecrawlApp(api_url=API_URL, api_key="this_is_just_a_preview_token")
-    response = app.scrape_url('https://roastmywebsite.ai')
+    response = app.scrape_url('https://firecrawl.dev')
     assert response is not None
     assert 'content' in response
-    assert "_Roast_" in response['content']
+    assert "🔥 Firecrawl" in response['content']
 
 def test_scrape_url_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
-    response = app.scrape_url('https://roastmywebsite.ai')
+    response = app.scrape_url('https://firecrawl.dev')
     assert response is not None
     assert 'content' in response
     assert 'markdown' in response
     assert 'metadata' in response
     assert 'html' not in response
-    assert "_Roast_" in response['content']
+    assert "🔥 Firecrawl" in response['content']
 
 def test_successful_response_with_valid_api_key_and_include_html():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
-    response = app.scrape_url('https://roastmywebsite.ai', {'pageOptions': {'includeHtml': True}})
+    response = app.scrape_url('https://firecrawl.dev', {'pageOptions': {'includeHtml': True}})
     assert response is not None
     assert 'content' in response
     assert 'markdown' in response
     assert 'html' in response
     assert 'metadata' in response
-    assert "_Roast_" in response['content']
-    assert "_Roast_" in response['markdown']
+    assert "🔥 Firecrawl" in response['content']
+    assert "🔥 Firecrawl" in response['markdown']
     assert "<h1" in response['html']
 
 def test_successful_response_for_valid_scrape_with_pdf_file():
@@ -97,20 +97,20 @@ def test_should_return_error_for_blocklisted_url():
 
 def test_crawl_url_wait_for_completion_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
-    response = app.crawl_url('https://roastmywebsite.ai', {'crawlerOptions': {'excludes': ['blog/*']}}, True)
+    response = app.crawl_url('https://firecrawl.dev', {'crawlerOptions': {'excludes': ['blog/*']}}, True)
     assert response is not None
     assert len(response) > 0
     assert 'content' in response[0]
-    assert "_Roast_" in response[0]['content']
+    assert "🔥 Firecrawl" in response[0]['content']
 
 def test_crawl_url_with_idempotency_key_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
     uniqueIdempotencyKey = str(uuid4())
-    response = app.crawl_url('https://roastmywebsite.ai', {'crawlerOptions': {'excludes': ['blog/*']}}, True, 2, uniqueIdempotencyKey)
+    response = app.crawl_url('https://firecrawl.dev', {'crawlerOptions': {'excludes': ['blog/*']}}, True, 2, uniqueIdempotencyKey)
     assert response is not None
     assert len(response) > 0
     assert 'content' in response[0]
-    assert "_Roast_" in response[0]['content']
+    assert "🔥 Firecrawl" in response[0]['content']
 
     with pytest.raises(Exception) as excinfo:
         app.crawl_url('https://firecrawl.dev', {'crawlerOptions': {'excludes': ['blog/*']}}, True, 2, uniqueIdempotencyKey)

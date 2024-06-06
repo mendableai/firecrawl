@@ -1,7 +1,9 @@
 name: Run JavaScript SDK E2E Tests
   
-on: []
-
+on:
+  pull_request:
+    branches:
+      - main
 env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}
