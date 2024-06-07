@@ -43,8 +43,21 @@ export async function searchHelper(
   });
 
   let justSearch = pageOptions.fetchPageContent === false;
+  
 
   if (justSearch) {
+    const billingResult = await billTeam(
+      team_id,
+      res.length
+    );
+    if (!billingResult.success) {
+      return {
+        success: false,
+        error:
+          "Failed to bill team. Insufficient credits or subscription not found.",
+        returnCode: 402,
+      };
+    }
     return { success: true, data: res, returnCode: 200 };
   }
 
