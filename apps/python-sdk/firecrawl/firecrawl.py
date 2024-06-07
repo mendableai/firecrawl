@@ -115,7 +115,7 @@ class FirecrawlApp:
         )
         if response.status_code == 200:
             response = response.json()
-            
+
             if response['success'] and 'data' in response:
                 return response['data']
             else:
