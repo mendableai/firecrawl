@@ -13,6 +13,7 @@ export interface Progress {
 export type PageOptions = {
   onlyMainContent?: boolean;
   includeHtml?: boolean;
+  noLinks?: boolean;
   fallback?: boolean;
   fetchPageContent?: boolean;
   waitFor?: number;

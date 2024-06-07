@@ -263,6 +263,7 @@ export async function scrapSingleUrl(
   urlToScrap: string,
   pageOptions: PageOptions = {
     onlyMainContent: true,
+    noLinks: false,
     includeHtml: false,
     waitFor: 0,
     screenshot: false,
@@ -355,7 +356,7 @@ export async function scrapSingleUrl(
     //* TODO: add an optional to return markdown or structured/extracted content
     let cleanedHtml = removeUnwantedElements(text, pageOptions);
 
-    return [await parseMarkdown(cleanedHtml), text, screenshot];
+    return [await parseMarkdown(cleanedHtml,pageOptions.noLinks), text, screenshot];
   };
   try {
     let [text, html, screenshot] = ["", "", ""];
