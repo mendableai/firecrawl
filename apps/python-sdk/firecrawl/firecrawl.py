@@ -127,7 +127,7 @@ class FirecrawlApp:
         else:
             raise Exception(f'Failed to search. Status code: {response.status_code}')
 
-    def crawl_url(self, url, params=None, wait_until_done=True, timeout=2, idempotency_key=None):
+    def crawl_url(self, url, params=None, wait_until_done=True, poll_interval=2, idempotency_key=None):
         """
         Initiate a crawl job for the specified URL using the Firecrawl API.
 
@@ -135,7 +135,7 @@ class FirecrawlApp:
             url (str): The URL to crawl.
             params (Optional[Dict[str, Any]]): Additional parameters for the crawl request.
             wait_until_done (bool): Whether to wait until the crawl job is completed.
-            timeout (int): Timeout between status checks when waiting for job completion.
+            poll_interval (int): Time in seconds between status checks when waiting for job completion.
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
 
         Returns:
@@ -152,7 +152,7 @@ class FirecrawlApp:
         if response.status_code == 200:
             job_id = response.json().get('jobId')
             if wait_until_done:
-                return self._monitor_job_status(job_id, headers, timeout)
+                return self._monitor_job_status(job_id, headers, poll_interval)
             else:
                 return {'jobId': job_id}
         else:
@@ -249,14 +249,14 @@ class FirecrawlApp:
                 return response
         return response
 
-    def _monitor_job_status(self, job_id, headers, timeout):
+    def _monitor_job_status(self, job_id, headers, poll_interval):
         """
         Monitor the status of a crawl job until completion.
 
         Args:
             job_id (str): The ID of the crawl job.
             headers (Dict[str, str]): The headers to include in the status check requests.
-            timeout (int): Timeout between status checks.
+            poll_interval (int): Secounds between status checks.
 
         Returns:
             Any: The crawl results if the job is completed successfully.
@@ -274,8 +274,8 @@ class FirecrawlApp:
                     else:
                         raise Exception('Crawl job completed but no data was returned')
                 elif status_data['status'] in ['active', 'paused', 'pending', 'queued', 'waiting']:
-                    timeout=max(timeout,2)
-                    time.sleep(timeout)  # Wait for the specified timeout before checking again
+                    poll_interval=max(poll_interval,2)
+                    time.sleep(poll_interval)  # Wait for the specified interval before checking again
                 else:
                     raise Exception(f'Crawl job failed or was stopped. Status: {status_data["status"]}')
             else:
