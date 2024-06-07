@@ -213,7 +213,7 @@ jobs:
         working-directory: ./apps/python-sdk
 
       - name: Publish to PyPI
-        if: ${{ env.VERSION_INCREMENTED == 'true' }}
+        if: ${{ env.PYTHON_SDK_VERSION_INCREMENTED == 'true' }}
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
