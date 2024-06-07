@@ -65,7 +65,7 @@ export async function scrapeHelper(
   }
 
   let creditsToBeBilled = filteredDocs.length;
-  const creditsPerLLMExtract = plan === "starter" ? 5 : 50;
+  const creditsPerLLMExtract = 50;
 
 
 
