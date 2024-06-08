@@ -83,7 +83,7 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'scrape URL')
 
-    def search(self, query, params=None):
+    def search(self, query: str, params: Optional[Dict[str, Any]] = None) -> Any:
         """
         Perform a search using the Firecrawl API.
 
@@ -117,7 +117,11 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'search')
 
-    def crawl_url(self, url, params=None, wait_until_done=True, poll_interval=2, idempotency_key=None):
+    def crawl_url(self, url: str,
+                  params: Optional[Dict[str, Any]] = None,
+                  wait_until_done: bool = True,
+                  poll_interval: int = 2,
+                  idempotency_key: Optional[str] = None) -> Any:
         """
         Initiate a crawl job for the specified URL using the Firecrawl API.
 
@@ -148,7 +152,7 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'start crawl job')
 
-    def check_crawl_status(self, job_id):
+    def check_crawl_status(self, job_id: str) -> Any:
         """
         Check the status of a crawl job using the Firecrawl API.
 
@@ -168,7 +172,7 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'check crawl status')
 
-    def _prepare_headers(self, idempotency_key=None):
+    def _prepare_headers(self, idempotency_key: Optional[str] = None) -> Dict[str, str]:
         """
         Prepare the headers for API requests.
 
@@ -190,7 +194,11 @@ class FirecrawlApp:
             'Authorization': f'Bearer {self.api_key}',
         }
 
-    def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5):
+    def _post_request(self, url: str,
+                      data: Dict[str, Any],
+                      headers: Dict[str, str],
+                      retries: int = 3,
+                      backoff_factor: float = 0.5) -> requests.Response:
         """
         Make a POST request with retries.
 
@@ -215,7 +223,10 @@ class FirecrawlApp:
                 return response
         return response
 
-    def _get_request(self, url, headers, retries=3, backoff_factor=0.5):
+    def _get_request(self, url: str,
+                     headers: Dict[str, str],
+                     retries: int = 3,
+                     backoff_factor: float = 0.5) -> requests.Response:
         """
         Make a GET request with retries.
 
@@ -239,7 +250,7 @@ class FirecrawlApp:
                 return response
         return response
 
-    def _monitor_job_status(self, job_id, headers, poll_interval):
+    def _monitor_job_status(self, job_id: str, headers: Dict[str, str], poll_interval: int) -> Any:
         """
         Monitor the status of a crawl job until completion.
 
@@ -271,7 +282,7 @@ class FirecrawlApp:
             else:
                 self._handle_error(status_response, 'check crawl status')
 
-    def _handle_error(self, response, action):
+    def _handle_error(self, response: requests.Response, action: str) -> None:
         """
         Handle errors from API responses.
 
@@ -283,7 +294,7 @@ class FirecrawlApp:
             Exception: An exception with a message containing the status code and error details from the response.
         """
         error_message = response.json().get('error', 'No additional error details provided.')
-        
+
         if response.status_code == 402:
             message = f"Payment Required: Failed to {action}. {error_message}"
         elif response.status_code == 408:
@@ -297,4 +308,4 @@ class FirecrawlApp:
 
         # Raise an HTTPError with the custom message and attach the response
         raise requests.exceptions.HTTPError(message, response=response)
-
+    
