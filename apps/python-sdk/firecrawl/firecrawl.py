@@ -45,10 +45,8 @@ class FirecrawlApp:
             Exception: If the scrape request fails.
         """
 
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.api_key}'
-        }
+        headers = self._prepare_headers()
+
         # Prepare the base scrape parameters with the URL
         scrape_params = {'url': url}
 
@@ -101,10 +99,7 @@ class FirecrawlApp:
         Raises:
             Exception: If the search request fails.
         """
-        headers = {
-            'Content-Type': 'application/json',
-            'Authorization': f'Bearer {self.api_key}'
-        }
+        headers = self._prepare_headers()
         json_data = {'query': query}
         if params:
             json_data.update(params)
@@ -297,3 +292,4 @@ class FirecrawlApp:
             raise Exception(f'Failed to {action}. Status code: {response.status_code}. Error: {error_message}')
         else:
             raise Exception(f'Unexpected error occurred while trying to {action}. Status code: {response.status_code}')
+
