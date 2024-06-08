@@ -287,9 +287,20 @@ class FirecrawlApp:
         Raises:
             Exception: An exception with a message containing the status code and error details from the response.
         """
-        if response.status_code in [402, 408, 409, 500]:
-            error_message = response.json().get('error', 'Unknown error occurred')
-            raise Exception(f'Failed to {action}. Status code: {response.status_code}. Error: {error_message}')
+        error_message = response.json().get('error', 'No additional error details provided.')
+        
+        if response.status_code == 402:
+            message = f"Payment Required: Failed to {action}. {error_message}"
+        elif response.status_code == 408:
+            message = f"Request Timeout: Failed to {action} as the request timed out. {error_message}"
+        elif response.status_code == 409:
+            message = f"Conflict: Failed to {action} due to a conflict. {error_message}"
+        elif response.status_code == 500:
+            message = f"Internal Server Error: Failed to {action}. {error_message}"
         else:
-            raise Exception(f'Unexpected error occurred while trying to {action}. Status code: {response.status_code}')
+            message = f"Unexpected error during {action}: Status code {response.status_code}. {error_message}"
+
+        # Raise an HTTPError with the custom message and attach the response
+        raise requests.exceptions.HTTPError(message, response=response)
+
 
