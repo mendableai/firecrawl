@@ -30,6 +30,7 @@ class FirecrawlApp:
         if self.api_key is None:
             raise ValueError('No API key provided')
         self.api_url = api_url or os.getenv('FIRECRAWL_API_URL', 'https://api.firecrawl.dev')
+
     def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
         """
         Scrape the specified URL using the Firecrawl API.
@@ -79,11 +80,8 @@ class FirecrawlApp:
                 return response['data']
             else:
                 raise Exception(f'Failed to scrape URL. Error: {response["error"]}')
-        elif response.status_code in [402, 408, 409, 500]:
-            error_message = response.json().get('error', 'Unknown error occurred')
-            raise Exception(f'Failed to scrape URL. Status code: {response.status_code}. Error: {error_message}')
         else:
-            raise Exception(f'Failed to scrape URL. Status code: {response.status_code}')
+            self._handle_error(response, 'scrape URL')
 
     def search(self, query, params=None):
         """
@@ -116,11 +114,8 @@ class FirecrawlApp:
             else:
                 raise Exception(f'Failed to search. Error: {response["error"]}')
 
-        elif response.status_code in [402, 409, 500]:
-            error_message = response.json().get('error', 'Unknown error occurred')
-            raise Exception(f'Failed to search. Status code: {response.status_code}. Error: {error_message}')
         else:
-            raise Exception(f'Failed to search. Status code: {response.status_code}')
+            self._handle_error(response, 'search')
 
     def crawl_url(self, url, params=None, wait_until_done=True, poll_interval=2, idempotency_key=None):
         """
@@ -302,5 +297,4 @@ class FirecrawlApp:
 
         # Raise an HTTPError with the custom message and attach the response
         raise requests.exceptions.HTTPError(message, response=response)
-
 
