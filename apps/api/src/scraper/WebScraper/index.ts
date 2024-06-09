@@ -468,7 +468,7 @@ export class WebScraperDataProvider {
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
     this.pageOptions = options.pageOptions ?? { onlyMainContent: false, includeHtml: false };
-    this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
+    this.extractorOptions = options.extractorOptions ?? { mode: "markdown" }
     this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
     //! @nicolas, for some reason this was being injected and breaking everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");

@@ -15,7 +15,11 @@ const defaultPrompt =
 function prepareOpenAIDoc(
   document: Document
 ): [OpenAI.Chat.Completions.ChatCompletionContentPart[], number] {
-  let markdown = document.markdown;
+
+  // Print the keys of the document object for debugging purposes
+  console.log("Document keys in gen: ", Object.keys(document));
+
+  let markdown = document.html;
 
 // Check if the markdown content exists in the document
   if (!markdown) {
