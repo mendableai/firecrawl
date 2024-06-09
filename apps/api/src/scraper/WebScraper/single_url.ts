@@ -7,7 +7,7 @@ import { parseMarkdown } from "../../lib/html-to-markdown";
 import { excludeNonMainTags } from "./utils/excludeTags";
 import { urlSpecificParams } from "./utils/custom/website_params";
 import { fetchAndProcessPdf } from "./utils/pdfProcessor";
-import { handleCustomScraping } from "./custom/handleCustomScraping";
+import { identifySpecialScrapingMethod } from "./custom/handleCustomScraping";
 
 dotenv.config();
 
@@ -331,18 +331,18 @@ export async function scrapSingleUrl(
     let customScrapedContent : FireEngineResponse | null = null;
 
     // Check for custom scraping conditions
-    const customScraperResult = await handleCustomScraping(text, url);
+    const specialScrapingMethod = await identifySpecialScrapingMethod(text, url);
 
-    if (customScraperResult){
-      switch (customScraperResult.scraper) {
+    if (specialScrapingMethod){
+      switch (specialScrapingMethod.scraper) {
         case "fire-engine":
-          customScrapedContent  = await scrapWithFireEngine(customScraperResult.url, customScraperResult.waitAfterLoad, false, customScraperResult.pageOptions)
+          customScrapedContent  = await scrapWithFireEngine(specialScrapingMethod.url, specialScrapingMethod.waitAfterLoad, false, specialScrapingMethod.pageOptions)
           if (screenshot) {
             customScrapedContent.screenshot = screenshot;
           }
           break;
         case "pdf":
-          customScrapedContent  = { html: await fetchAndProcessPdf(customScraperResult.url), screenshot }
+          customScrapedContent  = { html: await fetchAndProcessPdf(specialScrapingMethod.url), screenshot }
           break;
       }
     }
