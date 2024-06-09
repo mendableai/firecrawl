@@ -261,6 +261,8 @@ export class WebScraperDataProvider {
     documents = this.applyPathReplacements(documents);
     // documents = await this.applyImgAltText(documents);
 
+    // Log the keys of each document for debugging purposes
+  
     if (
       this.extractorOptions.mode === "llm-extraction" &&
       this.mode === "single_urls"

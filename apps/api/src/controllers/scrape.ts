@@ -111,6 +111,7 @@ export async function scrapeController(req: Request, res: Response) {
     }
     if (extractorOptions.mode === "llm-extraction") {
       pageOptions.onlyMainContent = true;
+      pageOptions.screenshot = true
     }
     const origin = req.body.origin ?? "api";
     const timeout = req.body.timeout ?? 30000; // Default timeout of 30 seconds

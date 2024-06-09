@@ -10,18 +10,21 @@ export type ScraperCompletionResult = {
 const maxTokens = 32000;
 const modifier = 4;
 const defaultPrompt =
-  "You are a professional web scraper. Extract the contents of the webpage";
+  "You are a professional web scraper. Extract the contents of the webpage with a markdown extraction and a screenshot";
 
 function prepareOpenAIDoc(
   document: Document
 ): [OpenAI.Chat.Completions.ChatCompletionContentPart[], number] {
 
   // Print the keys of the document object for debugging purposes
-  console.log("Document keys in gen: ", Object.keys(document));
+  // console.log("Document keys in gen: ", Object.keys(document));
 
-  let markdown = document.html;
+  let markdown = document.markdown;
 
-// Check if the markdown content exists in the document
+  const screenshot: string = document.metadata.screenshot;
+
+
+  // Check if the markdown content exists in the document
   if (!markdown) {
     throw new Error(
       "Markdown content is missing in the document. This is likely due to an error in the scraping process. Please try again or reach out to help@mendable.ai"
@@ -36,7 +39,21 @@ function prepareOpenAIDoc(
     markdown = markdown.slice(0, (maxTokens * modifier));
   }
 
-  return [[{ type: "text", text: markdown }], numTokens];
+  // Construct the content parts array with text and conditionally add image if screenshot is defined
+  const contentParts: OpenAI.Chat.Completions.ChatCompletionContentPart[] = [{ type: "text", text: markdown }];
+  
+  
+  if (screenshot) {
+    contentParts.push({
+      type: "image_url",
+      image_url: {
+        url: screenshot,
+        detail: "auto"
+      }
+    });
+  }
+
+  return [contentParts, numTokens];
 }
 
 export async function generateOpenAICompletions({
@@ -65,6 +82,7 @@ export async function generateOpenAICompletions({
         content: prompt,
       },
       { role: "user", content },
+
     ],
     tools: [
       {
@@ -76,7 +94,7 @@ export async function generateOpenAICompletions({
         },
       },
     ],
-    tool_choice: { "type": "function", "function": {"name": "extract_content"}},
+    tool_choice: { "type": "function", "function": { "name": "extract_content" } },
     temperature,
   });
 

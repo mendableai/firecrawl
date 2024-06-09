@@ -82,7 +82,7 @@
     "moment": "^2.29.4",
     "mongoose": "^8.0.3",
     "natural": "^6.3.0",
-    "openai": "^4.28.4",
+    "openai": "^4.49.1",
     "pdf-parse": "^1.1.1",
     "pos": "^0.4.2",
     "posthog-node": "^4.0.1",

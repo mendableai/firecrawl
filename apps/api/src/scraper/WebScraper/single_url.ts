@@ -253,6 +253,12 @@ function getScrapingFallbackOrder(
       : [...filteredDefaultOrder, ...availableScrapers]
   );
   const scrapersInOrder = Array.from(uniqueScrapers);
+
+  console.log(
+    "Using Scraping Order: ",
+    scrapersInOrder
+  )
+
   return scrapersInOrder as (typeof baseScrapers)[number][];
 }
 
@@ -357,6 +363,7 @@ export async function scrapSingleUrl(
 
     return [await parseMarkdown(cleanedHtml), text, screenshot];
   };
+
   try {
     let [text, html, screenshot] = ["", "", ""];
     let urlKey = urlToScrap;
@@ -397,6 +404,12 @@ export async function scrapSingleUrl(
     const metadata = extractMetadata(soup, urlToScrap);
 
     let document: Document;
+
+
+    // Log the status of the screenshot option from pageOptions
+    console.log(`Screenshot option is set to: ${pageOptions.screenshot}`);
+    console.log(`Has screenshot been set? ${screenshot}`);
+
     if (screenshot && screenshot.length > 0) {
       document = {
         content: text,
