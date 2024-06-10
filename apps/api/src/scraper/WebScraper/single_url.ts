@@ -96,7 +96,11 @@ export async function scrapWithFireEngine(
       return { html: html ?? "", screenshot: screenshot ?? "" };
     }
   } catch (error) {
-    console.error(`[Fire-Engine][c] Error fetching url: ${url} -> ${error}`);
+    if (error.code === 'ECONNABORTED') {
+      console.log(`[Fire-Engine] Request timed out for ${url}`);
+    } else {
+      console.error(`[Fire-Engine][c] Error fetching url: ${url} -> ${error}`);
+    }
     return { html: "", screenshot: "" };
   }
 }
