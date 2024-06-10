@@ -111,7 +111,6 @@ export async function scrapeController(req: Request, res: Response) {
     }
     if (extractorOptions.mode === "llm-extraction") {
       pageOptions.onlyMainContent = true;
-      pageOptions.screenshot = true
     }
     const origin = req.body.origin ?? "api";
     const timeout = req.body.timeout ?? 30000; // Default timeout of 30 seconds
@@ -126,6 +125,7 @@ export async function scrapeController(req: Request, res: Response) {
       console.error(error);
       return res.status(500).json({ error: "Internal server error" });
     }
+
     const startTime = new Date().getTime();
     const result = await scrapeHelper(
       req,
