@@ -3,7 +3,7 @@ import cheerio, { load } from "cheerio";
 import { URL } from "url";
 import { getLinksFromSitemap } from "./sitemap";
 import async from "async";
-import { Progress } from "../../lib/entities";
+import { PageOptions, Progress } from "../../lib/entities";
 import { scrapSingleUrl, scrapWithScrapingBee } from "./single_url";
 import robotsParser from "robots-parser";
 
@@ -108,6 +108,7 @@ export class WebCrawler {
 
   public async start(
     inProgress?: (progress: Progress) => void,
+    pageOptions?: PageOptions,
     concurrencyLimit: number = 5,
     limit: number = 10000,
     maxDepth: number = 10
@@ -130,6 +131,7 @@ export class WebCrawler {
 
     const urls = await this.crawlUrls(
       [this.initialUrl],
+      pageOptions,
       concurrencyLimit,
       inProgress
     );
@@ -148,6 +150,7 @@ export class WebCrawler {
 
   private async crawlUrls(
     urls: string[],
+    pageOptions: PageOptions,
     concurrencyLimit: number,
     inProgress?: (progress: Progress) => void,
   ): Promise<{ url: string, html: string }[]> {
@@ -158,7 +161,7 @@ export class WebCrawler {
         }
         return;
       }
-      const newUrls = await this.crawl(task);
+      const newUrls = await this.crawl(task, pageOptions);
       // add the initial url if not already added
       // if (this.visited.size === 1) {
       //   let normalizedInitial = this.initialUrl;
@@ -188,7 +191,7 @@ export class WebCrawler {
           currentDocumentUrl: task,
         });
       }
-      await this.crawlUrls(newUrls.map((p) => p.url), concurrencyLimit, inProgress);
+      await this.crawlUrls(newUrls.map((p) => p.url), pageOptions, concurrencyLimit, inProgress);
       if (callback && typeof callback === "function") {
         callback();
       }
@@ -207,7 +210,7 @@ export class WebCrawler {
     return Array.from(this.crawledUrls.entries()).map(([url, html]) => ({ url, html }));
   }
 
-  async crawl(url: string): Promise<{url: string, html: string}[]> {
+  async crawl(url: string, pageOptions: PageOptions): Promise<{url: string, html: string}[]> {
     if (this.visited.has(url) || !this.robots.isAllowed(url, "FireCrawlAgent")){
       return [];
     }
@@ -231,7 +234,8 @@ export class WebCrawler {
       let content : string = "";
       // If it is the first link, fetch with single url
       if (this.visited.size === 1) {
-        const page = await scrapSingleUrl(url, {includeHtml: true});
+        console.log(pageOptions)
+        const page = await scrapSingleUrl(url, {...pageOptions, includeHtml: true});
         content = page.html ?? ""
       } else {
         const response = await axios.get(url);

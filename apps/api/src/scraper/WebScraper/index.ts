@@ -173,6 +173,7 @@ export class WebScraperDataProvider {
 
     let links = await crawler.start(
       inProgress,
+      this.pageOptions,
       5,
       this.limit,
       this.maxCrawledDepth
