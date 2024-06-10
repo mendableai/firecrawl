@@ -261,6 +261,8 @@ export class WebScraperDataProvider {
     documents = this.applyPathReplacements(documents);
     // documents = await this.applyImgAltText(documents);
 
+    // Log the keys of each document for debugging purposes
+  
     if (
       this.extractorOptions.mode === "llm-extraction" &&
       this.mode === "single_urls"
@@ -468,7 +470,7 @@ export class WebScraperDataProvider {
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
     this.pageOptions = options.pageOptions ?? { onlyMainContent: false, includeHtml: false };
-    this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
+    this.extractorOptions = options.extractorOptions ?? { mode: "markdown" }
     this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
     //! @nicolas, for some reason this was being injected and breaking everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");

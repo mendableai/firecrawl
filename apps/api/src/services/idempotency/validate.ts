@@ -10,7 +10,7 @@ export async function validateIdempotencyKey(
     // // not returning for missing idempotency key for now
     return true;
   }
-  if (!isUuid(idempotencyKey)) {
+  if (typeof idempotencyKey === 'string' && !isUuid(idempotencyKey)) {
     console.error("Invalid idempotency key provided in the request headers.");
     return false;
   }

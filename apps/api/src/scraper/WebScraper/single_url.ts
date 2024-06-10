@@ -7,7 +7,7 @@ import { parseMarkdown } from "../../lib/html-to-markdown";
 import { excludeNonMainTags } from "./utils/excludeTags";
 import { urlSpecificParams } from "./utils/custom/website_params";
 import { fetchAndProcessPdf } from "./utils/pdfProcessor";
-import { handleCustomScraping } from "./custom/handleCustomScraping";
+import { identifySpecialScrapingMethod } from "./custom/handleCustomScraping";
 
 dotenv.config();
 
@@ -253,6 +253,12 @@ function getScrapingFallbackOrder(
       : [...filteredDefaultOrder, ...availableScrapers]
   );
   const scrapersInOrder = Array.from(uniqueScrapers);
+
+  console.log(
+    "Using Scraping Order: ",
+    scrapersInOrder
+  )
+
   return scrapersInOrder as (typeof baseScrapers)[number][];
 }
 
@@ -331,18 +337,18 @@ export async function scrapSingleUrl(
     let customScrapedContent : FireEngineResponse | null = null;
 
     // Check for custom scraping conditions
-    const customScraperResult = await handleCustomScraping(text, url);
+    const specialScrapingMethod = await identifySpecialScrapingMethod(text, url);
 
-    if (customScraperResult){
-      switch (customScraperResult.scraper) {
+    if (specialScrapingMethod){
+      switch (specialScrapingMethod.scraper) {
         case "fire-engine":
-          customScrapedContent  = await scrapWithFireEngine(customScraperResult.url, customScraperResult.waitAfterLoad, false, customScraperResult.pageOptions)
+          customScrapedContent  = await scrapWithFireEngine(specialScrapingMethod.url, specialScrapingMethod.waitAfterLoad, false, specialScrapingMethod.pageOptions)
           if (screenshot) {
             customScrapedContent.screenshot = screenshot;
           }
           break;
         case "pdf":
-          customScrapedContent  = { html: await fetchAndProcessPdf(customScraperResult.url), screenshot }
+          customScrapedContent  = { html: await fetchAndProcessPdf(specialScrapingMethod.url), screenshot }
           break;
       }
     }
@@ -357,6 +363,7 @@ export async function scrapSingleUrl(
 
     return [await parseMarkdown(cleanedHtml), text, screenshot];
   };
+
   try {
     let [text, html, screenshot] = ["", "", ""];
     let urlKey = urlToScrap;
@@ -397,6 +404,12 @@ export async function scrapSingleUrl(
     const metadata = extractMetadata(soup, urlToScrap);
 
     let document: Document;
+
+
+    // Log the status of the screenshot option from pageOptions
+    console.log(`Screenshot option is set to: ${pageOptions.screenshot}`);
+    console.log(`Has screenshot been set? ${screenshot}`);
+
     if (screenshot && screenshot.length > 0) {
       document = {
         content: text,

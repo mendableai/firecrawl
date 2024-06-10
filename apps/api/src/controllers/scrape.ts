@@ -125,6 +125,7 @@ export async function scrapeController(req: Request, res: Response) {
       console.error(error);
       return res.status(500).json({ error: "Internal server error" });
     }
+
     const startTime = new Date().getTime();
     const result = await scrapeHelper(
       req,

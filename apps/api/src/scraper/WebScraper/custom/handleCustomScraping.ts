@@ -1,6 +1,6 @@
 import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 
-export async function handleCustomScraping(
+export async function identifySpecialScrapingMethod(
   text: string,
   url: string
 ): Promise<{ scraper: string; url: string; waitAfterLoad?: number, pageOptions?: { scrollXPaths?: string[] } } | null> {
