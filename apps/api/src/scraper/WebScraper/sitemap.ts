@@ -12,7 +12,6 @@ export async function getLinksFromSitemap(
       content = response.data;
     } catch (error) {
       console.error(`Request failed for ${sitemapUrl}: ${error}`);
-  console.log(allUrls)
 
       return allUrls;
     }
@@ -36,7 +35,6 @@ export async function getLinksFromSitemap(
   } catch (error) {
     console.error(`Error processing ${sitemapUrl}: ${error}`);
   }
-  console.log(allUrls)
 
   return allUrls;
 }

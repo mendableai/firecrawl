@@ -3,7 +3,7 @@ import cheerio, { load } from "cheerio";
 import { URL } from "url";
 import { getLinksFromSitemap } from "./sitemap";
 import async from "async";
-import { PageOptions, Progress } from "../../lib/entities";
+import { CrawlerOptions, PageOptions, Progress } from "../../lib/entities";
 import { scrapSingleUrl, scrapWithScrapingBee } from "./single_url";
 import robotsParser from "robots-parser";
 
@@ -109,6 +109,7 @@ export class WebCrawler {
   public async start(
     inProgress?: (progress: Progress) => void,
     pageOptions?: PageOptions,
+    crawlerOptions?: CrawlerOptions,
     concurrencyLimit: number = 5,
     limit: number = 10000,
     maxDepth: number = 10
@@ -123,10 +124,12 @@ export class WebCrawler {
     }
 
 
-    const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
-    if (sitemapLinks.length > 0) {
-      let filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
-      return filteredLinks.map(link => ({ url: link, html: "" }));
+    if(!crawlerOptions?.ignoreSitemap){
+      const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
+      if (sitemapLinks.length > 0) {
+        let filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
+        return filteredLinks.map(link => ({ url: link, html: "" }));
+      }
     }
 
     const urls = await this.crawlUrls(
@@ -135,6 +138,7 @@ export class WebCrawler {
       concurrencyLimit,
       inProgress
     );
+    
     if (
       urls.length === 0 &&
       this.filterLinks([this.initialUrl], limit, this.maxCrawledDepth).length > 0
@@ -142,9 +146,9 @@ export class WebCrawler {
       return [{ url: this.initialUrl, html: "" }];
     }
 
-
     // make sure to run include exclude here again
     const filteredUrls = this.filterLinks(urls.map(urlObj => urlObj.url), limit, this.maxCrawledDepth);
+
     return filteredUrls.map(url => ({ url, html: urls.find(urlObj => urlObj.url === url)?.html || "" }));
   }
 
@@ -211,45 +215,40 @@ export class WebCrawler {
   }
 
   async crawl(url: string, pageOptions: PageOptions): Promise<{url: string, html: string}[]> {
-    if (this.visited.has(url) || !this.robots.isAllowed(url, "FireCrawlAgent")){
+    const normalizedUrl = this.normalizeCrawlUrl(url);
+    if (this.visited.has(normalizedUrl) || !this.robots.isAllowed(url, "FireCrawlAgent")) {
       return [];
     }
-    this.visited.add(url);
-    
+    this.visited.add(normalizedUrl);
 
     if (!url.startsWith("http")) {
       url = "https://" + url;
-
     }
     if (url.endsWith("/")) {
       url = url.slice(0, -1);
-
     }
-    
+
     if (this.isFile(url) || this.isSocialMediaOrEmail(url)) {
       return [];
     }
 
     try {
-      let content : string = "";
+      let content: string = "";
       // If it is the first link, fetch with single url
       if (this.visited.size === 1) {
-        console.log(pageOptions)
-        const page = await scrapSingleUrl(url, {...pageOptions, includeHtml: true});
-        content = page.html ?? ""
+        const page = await scrapSingleUrl(url, { ...pageOptions, includeHtml: true });
+        content = page.html ?? "";
       } else {
         const response = await axios.get(url);
         content = response.data ?? "";
       }
       const $ = load(content);
-      let links: {url: string, html: string}[] = [];
+      let links: { url: string, html: string }[] = [];
 
       // Add the initial URL to the list of links
-      if(this.visited.size === 1)
-      {
-        links.push({url, html: content});
+      if (this.visited.size === 1) {
+        links.push({ url, html: content });
       }
-
 
       $("a").each((_, element) => {
         const href = $(element).attr("href");
@@ -258,29 +257,40 @@ export class WebCrawler {
           if (!href.startsWith("http")) {
             fullUrl = new URL(href, this.baseUrl).toString();
           }
-          const url = new URL(fullUrl);
-          const path = url.pathname;
+          const urlObj = new URL(fullUrl);
+          const path = urlObj.pathname;
 
           if (
             this.isInternalLink(fullUrl) &&
             this.matchesPattern(fullUrl) &&
             this.noSections(fullUrl) &&
-            this.matchesIncludes(path) &&
+            // The idea here to comment this out is to allow wider website coverage as we filter this anyway afterwards
+            // this.matchesIncludes(path) &&
             !this.matchesExcludes(path) &&
             this.robots.isAllowed(fullUrl, "FireCrawlAgent")
           ) {
-            links.push({url: fullUrl, html: content});
+            links.push({ url: fullUrl, html: content });
           }
         }
       });
 
-      if(this.visited.size === 1){
+      if (this.visited.size === 1) {
         return links;
       }
       // Create a new list to return to avoid modifying the visited list
-      return links.filter((link) => !this.visited.has(link.url));
+      return links.filter((link) => !this.visited.has(this.normalizeCrawlUrl(link.url)));
     } catch (error) {
       return [];
+    }
+  }
+
+  private normalizeCrawlUrl(url: string): string {
+    try{
+      const urlObj = new URL(url);
+      urlObj.searchParams.sort(); // Sort query parameters to normalize
+      return urlObj.toString();
+    } catch (error) {
+      return url;
     }
   }
 
@@ -392,7 +402,6 @@ export class WebCrawler {
 
     // Normalize and check if the URL is present in any of the sitemaps
     const normalizedUrl = normalizeUrl(url);
-
     const normalizedSitemapLinks = sitemapLinks.map(link => normalizeUrl(link));
 
     // has to be greater than 0 to avoid adding the initial URL to the sitemap links, and preventing crawler to crawl

@@ -31,6 +31,7 @@ export class WebScraperDataProvider {
   private limit: number = 10000;
   private concurrentRequests: number = 20;
   private generateImgAltText: boolean = false;
+  private ignoreSitemap: boolean = false;
   private pageOptions?: PageOptions;
   private extractorOptions?: ExtractorOptions;
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
@@ -38,6 +39,7 @@ export class WebScraperDataProvider {
     "gpt-4-turbo";
   private crawlerMode: string = "default";
 
+  
   authorize(): void {
     throw new Error("Method not implemented.");
   }
@@ -174,6 +176,9 @@ export class WebScraperDataProvider {
     let links = await crawler.start(
       inProgress,
       this.pageOptions,
+      {
+        ignoreSitemap: this.ignoreSitemap,
+      },
       5,
       this.limit,
       this.maxCrawledDepth
@@ -474,6 +479,7 @@ export class WebScraperDataProvider {
     //! @nicolas, for some reason this was being injected and breaking everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
     this.crawlerMode = options.crawlerOptions?.mode ?? "default";
+    this.ignoreSitemap = options.crawlerOptions?.ignoreSitemap ?? false;
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {
