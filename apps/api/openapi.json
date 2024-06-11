@@ -190,6 +190,11 @@
                         "description": "Ignore the website sitemap when crawling",
                         "default": false
                       },
+                      "replaceAllPathsWithAbsolutePaths": {
+                        "type": "boolean",
+                        "description": "Replace all relative paths with absolute paths for images and links",
+                        "default": false
+                      },
                       "limit": {
                         "type": "integer",
                         "description": "Maximum number of pages to crawl",
