@@ -3,13 +3,16 @@ on:
   schedule:
     - cron: '0 0 * * *'
 
+env:
+  BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}
+    
 jobs:
   clean-jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Send GET request to clean jobs
         run: |
-          response=$(curl --write-out '%{http_code}' --silent --output /dev/null https://api.firecrawl.dev/clean-before-24h-complete-jobs)
+          response=$(curl --write-out '%{http_code}' --silent --output /dev/null https://api.firecrawl.dev/admin/${{ secrets.BULL_AUTH_KEY }}/clean-before-24h-complete-jobs)
           if [ "$response" -ne 200 ]; then
             echo "Failed to clean jobs. Response: $response"
             exit 1

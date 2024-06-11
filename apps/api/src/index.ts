@@ -164,7 +164,7 @@ app.get('/serverHealthCheck/notify', async (req, res) => {
   }
 });
 
-app.get('/clean-before-24h-complete-jobs', async (req, res) => {
+app.get(`/admin/${process.env.BULL_AUTH_KEY}/clean-before-24h-complete-jobs`, async (req, res) => {
   try {
     const webScraperQueue = getWebScraperQueue();
     const completedJobs = await webScraperQueue.getJobs(['completed']);
