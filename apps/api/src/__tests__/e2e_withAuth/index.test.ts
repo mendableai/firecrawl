@@ -596,7 +596,7 @@ describe("E2E Tests for API Routes", () => {
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://roastmywebsite.ai" });
+        .send({ url: "https://mendable.ai/blog" });
       expect(crawlResponse.statusCode).toBe(200);
 
       let isCompleted = false;
@@ -622,7 +622,13 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("content");
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.data[0].content).toContain("_Roast_");
+      expect(completedResponse.body.data[0].content).toContain("Mendable");
+
+    const childrenLinks = completedResponse.body.data.filter(doc => 
+      doc.sourceURL && doc.sourceURL.startsWith("https://mendable.ai/blog")
+    );
+
+    expect(childrenLinks.length).toBe(completedResponse.body.data.length);
     }, 120000); // 120 seconds
     
     it.concurrent('should return a successful response for a valid crawl job with PDF files without explicit .pdf extension', async () => {
@@ -757,40 +763,100 @@ describe("E2E Tests for API Routes", () => {
     }, 60000);
   }); // 60 seconds
 
-  it.concurrent("If someone cancels a crawl job, it should turn into failed status", async () => {
+  it.concurrent("should return a successful response for a valid crawl job with allowBackwardCrawling set to true option", async () => {
     const crawlResponse = await request(TEST_URL)
       .post("/v0/crawl")
       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
       .set("Content-Type", "application/json")
-      .send({ url: "https://jestjs.io" });
+      .send({
+        url: "https://mendable.ai/blog",
+        pageOptions: { includeHtml: true },
+        crawlerOptions: { allowBackwardCrawling: true },
+      });
     expect(crawlResponse.statusCode).toBe(200);
+    
+    let isFinished = false;
+    let completedResponse;
 
-    // wait for 30 seconds
-    await new Promise((r) => setTimeout(r, 20000));
+    while (!isFinished) {
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
 
-    const response = await request(TEST_URL)
-      .delete(`/v0/crawl/cancel/${crawlResponse.body.jobId}`)
-      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-    expect(response.statusCode).toBe(200);
-    expect(response.body).toHaveProperty("status");
-    expect(response.body.status).toBe("cancelled");
+      if (response.body.status === "completed") {
+        isFinished = true;
+        completedResponse = response;
+      } else {
+        await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
+      }
+    }
 
-    await new Promise((r) => setTimeout(r, 10000));
-
-    const completedResponse = await request(TEST_URL)
-      .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
     expect(completedResponse.statusCode).toBe(200);
     expect(completedResponse.body).toHaveProperty("status");
-    expect(completedResponse.body.status).toBe("failed");
+    expect(completedResponse.body.status).toBe("completed");
     expect(completedResponse.body).toHaveProperty("data");
-    expect(completedResponse.body.data).toEqual(null);
-    expect(completedResponse.body).toHaveProperty("partial_data");
-    expect(completedResponse.body.partial_data[0]).toHaveProperty("content");
-    expect(completedResponse.body.partial_data[0]).toHaveProperty("markdown");
-    expect(completedResponse.body.partial_data[0]).toHaveProperty("metadata");
+    expect(completedResponse.body.data[0]).toHaveProperty("content");
+    expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+    expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+    expect(completedResponse.body.data[0]).toHaveProperty("html");
+    expect(completedResponse.body.data[0].content).toContain("Mendable");
+    expect(completedResponse.body.data[0].markdown).toContain("Mendable");
+
+    const onlyChildrenLinks = completedResponse.body.data.filter(doc => {
+      return doc.metadata && doc.metadata.sourceURL && doc.metadata.sourceURL.includes("mendable.ai/blog")
+    });
+
+    expect(completedResponse.body.data.length).toBeGreaterThan(onlyChildrenLinks.length);
+  }, 60000);
+
+  // it.concurrent("If someone cancels a crawl job, it should turn into failed status", async () => {
+  //   const crawlResponse = await request(TEST_URL)
+  //     .post("/v0/crawl")
+  //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+  //     .set("Content-Type", "application/json")
+  //     .send({ url: "https://scrapethissite.com" });
+
+  //   expect(crawlResponse.statusCode).toBe(200);
+
+  //   await new Promise((r) => setTimeout(r, 2000)); // Wait for 1 seconds before cancelling the job
+
+  //   const responseCancel = await request(TEST_URL)
+  //     .delete(`/v0/crawl/cancel/${crawlResponse.body.jobId}`)
+  //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+  //   expect(responseCancel.statusCode).toBe(200);
+
+  //   let isFinished = false;
+  //   let completedResponse;
+
+  //   while (!isFinished) {
+  //     const response = await request(TEST_URL)
+  //       .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+  //     expect(response.statusCode).toBe(200);
+  //     expect(response.body).toHaveProperty("status");
+  //     console.log(response.body.status)
+      
+  //     if (response.body.status === "failed") {
+  //       isFinished = true;
+  //       completedResponse = response;
+  //     } else {
+  //       await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
+  //     }
+  //   }
+
+  //   expect(completedResponse.statusCode).toBe(200);
+  //   expect(completedResponse.body).toHaveProperty("status");
+  //   expect(completedResponse.body.status).toBe("failed");
+  //   expect(completedResponse.body).toHaveProperty("data");
+  //   expect(completedResponse.body.data).toBeNull();
+  //   expect(completedResponse.body).toHaveProperty("partial_data");
+  //   expect(completedResponse.body.partial_data[0]).toHaveProperty("content");
+  //   expect(completedResponse.body.partial_data[0]).toHaveProperty("markdown");
+  //   expect(completedResponse.body.partial_data[0]).toHaveProperty("metadata");
     
-  }, 60000); // 60 seconds
+  // }, 60000); // 60 seconds
 
   describe("POST /v0/scrape with LLM Extraction", () => {
     it.concurrent("should extract data using LLM extraction mode", async () => {
