@@ -38,8 +38,8 @@ export class WebScraperDataProvider {
   private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" =
     "gpt-4-turbo";
   private crawlerMode: string = "default";
+  private allowBackwardCrawling: boolean = false;
 
-  
   authorize(): void {
     throw new Error("Method not implemented.");
   }
@@ -171,6 +171,7 @@ export class WebScraperDataProvider {
       maxCrawledDepth: this.maxCrawledDepth,
       limit: this.limit,
       generateImgAltText: this.generateImgAltText,
+      allowBackwardCrawling: this.allowBackwardCrawling,
     });
 
     let links = await crawler.start(
@@ -480,6 +481,7 @@ export class WebScraperDataProvider {
     this.excludes = this.excludes.filter((item) => item !== "");
     this.crawlerMode = options.crawlerOptions?.mode ?? "default";
     this.ignoreSitemap = options.crawlerOptions?.ignoreSitemap ?? false;
+    this.allowBackwardCrawling = options.crawlerOptions?.allowBackwardCrawling ?? false;
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {

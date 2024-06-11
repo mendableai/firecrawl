@@ -20,6 +20,7 @@ export class WebCrawler {
   private robotsTxtUrl: string;
   private robots: any;
   private generateImgAltText: boolean;
+  private allowBackwardCrawling: boolean;
 
   constructor({
     initialUrl,
@@ -29,6 +30,7 @@ export class WebCrawler {
     limit = 10000,
     generateImgAltText = false,
     maxCrawledDepth = 10,
+    allowBackwardCrawling = false
   }: {
     initialUrl: string;
     includes?: string[];
@@ -37,6 +39,7 @@ export class WebCrawler {
     limit?: number;
     generateImgAltText?: boolean;
     maxCrawledDepth?: number;
+    allowBackwardCrawling?: boolean;
   }) {
     this.initialUrl = initialUrl;
     this.baseUrl = new URL(initialUrl).origin;
@@ -49,6 +52,7 @@ export class WebCrawler {
     this.maxCrawledLinks = maxCrawledLinks ?? limit;
     this.maxCrawledDepth = maxCrawledDepth ?? 10;
     this.generateImgAltText = generateImgAltText ?? false;
+    this.allowBackwardCrawling = allowBackwardCrawling ?? false;
   }
 
   private filterLinks(sitemapLinks: string[], limit: number, maxDepth: number): string[] {
@@ -90,8 +94,14 @@ export class WebCrawler {
         const linkHostname = normalizedLink.hostname.replace(/^www\./, '');
 
         // Ensure the protocol and hostname match, and the path starts with the initial URL's path
-        if (linkHostname !== initialHostname || !normalizedLink.pathname.startsWith(normalizedInitialUrl.pathname)) {
+        if (linkHostname !== initialHostname) {
           return false;
+        }
+
+        if (!this.allowBackwardCrawling) {
+          if (!normalizedLink.pathname.startsWith(normalizedInitialUrl.pathname)) {
+            return false;
+          }
         }
 
         const isAllowed = this.robots.isAllowed(link, "FireCrawlAgent") ?? true;
