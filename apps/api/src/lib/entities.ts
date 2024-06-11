@@ -35,20 +35,23 @@ export type SearchOptions = {
   location?: string;
 };
 
+export type CrawlerOptions = {
+  returnOnlyUrls?: boolean;
+  includes?: string[];
+  excludes?: string[];
+  maxCrawledLinks?: number;
+  maxDepth?: number;
+  limit?: number;
+  generateImgAltText?: boolean;
+  replaceAllPathsWithAbsolutePaths?: boolean;
+  ignoreSitemap?: boolean;
+  mode?: "default" | "fast"; // have a mode of some sort
+}
+
 export type WebScraperOptions = {
   urls: string[];
   mode: "single_urls" | "sitemap" | "crawl";
-  crawlerOptions?: {
-    returnOnlyUrls?: boolean;
-    includes?: string[];
-    excludes?: string[];
-    maxCrawledLinks?: number;
-    maxDepth?: number;
-    limit?: number;
-    generateImgAltText?: boolean;
-    replaceAllPathsWithAbsolutePaths?: boolean;
-    mode?: "default" | "fast"; // have a mode of some sort
-  };
+  crawlerOptions?: CrawlerOptions;
   pageOptions?: PageOptions;
   extractorOptions?: ExtractorOptions;
   concurrentRequests?: number;
