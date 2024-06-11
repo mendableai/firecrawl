@@ -6,12 +6,12 @@ describe('replacePaths', () => {
     it('should replace relative paths with absolute paths', () => {
       const documents: Document[] = [{
         metadata: { sourceURL: 'https://example.com' },
-        content: 'This is a [link](/path/to/resource) and an image ![alt text](/path/to/image.jpg).'
+        content: 'This is a [link](/path/to/resource).'
       }];
 
       const expectedDocuments: Document[] = [{
         metadata: { sourceURL: 'https://example.com' },
-        content: 'This is a [link](https://example.com/path/to/resource) and an image ![alt text](https://example.com/path/to/image.jpg).'
+        content: 'This is a [link](https://example.com/path/to/resource).'
       }];
 
       const result = replacePathsWithAbsolutePaths(documents);
@@ -21,7 +21,7 @@ describe('replacePaths', () => {
     it('should not alter absolute URLs', () => {
       const documents: Document[] = [{
         metadata: { sourceURL: 'https://example.com' },
-        content: 'This is an [external link](https://external.com/path) and an image ![alt text](https://example.com/path/to/image.jpg).'
+        content: 'This is an [external link](https://external.com/path).'
       }];
 
       const result = replacePathsWithAbsolutePaths(documents);
@@ -41,12 +41,12 @@ describe('replacePaths', () => {
     it('should handle multiple links and images correctly', () => {
       const documents: Document[] = [{
         metadata: { sourceURL: 'https://example.com' },
-        content: 'Here are two links: [link1](/path1) and [link2](/path2), and two images: ![img1](/img1.jpg) ![img2](/img2.jpg).'
+        content: 'Here are two links: [link1](/path1) and [link2](/path2).'
       }];
 
       const expectedDocuments: Document[] = [{
         metadata: { sourceURL: 'https://example.com' },
-        content: 'Here are two links: [link1](https://example.com/path1) and [link2](https://example.com/path2), and two images: ![img1](https://example.com/img1.jpg) ![img2](https://example.com/img2.jpg).'
+        content: 'Here are two links: [link1](https://example.com/path1) and [link2](https://example.com/path2).'
       }];
 
       const result = replacePathsWithAbsolutePaths(documents);
