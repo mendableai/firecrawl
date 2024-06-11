@@ -8,6 +8,7 @@ import { excludeNonMainTags } from "./utils/excludeTags";
 import { urlSpecificParams } from "./utils/custom/website_params";
 import { fetchAndProcessPdf } from "./utils/pdfProcessor";
 import { handleCustomScraping } from "./custom/handleCustomScraping";
+import axios from "axios";
 
 dotenv.config();
 
@@ -18,6 +19,8 @@ const baseScrapers = [
   "scrapingBeeLoad",
   "fetch",
 ] as const;
+
+const universalTimeout = 15000;
 
 export async function generateRequestParams(
   url: string,
@@ -59,21 +62,24 @@ export async function scrapWithFireEngine(
       `[Fire-Engine] Scraping ${url} with wait: ${waitParam} and screenshot: ${screenshotParam}`
     );
 
-    const response = await fetch(process.env.FIRE_ENGINE_BETA_URL + "/scrape", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
+    const response = await axios.post(
+      process.env.FIRE_ENGINE_BETA_URL + "/scrape",
+      {
         url: url,
         wait: waitParam,
         screenshot: screenshotParam,
         headers: headers,
-        pageOptions: pageOptions
-      }),
-    });
+        pageOptions: pageOptions,
+      },
+      {
+        headers: {
+          "Content-Type": "application/json",
+        },
+        timeout: universalTimeout + waitParam
+      }
+    );
 
-    if (!response.ok) {
+    if (response.status !== 200) {
       console.error(
         `[Fire-Engine] Error fetching url: ${url} with status: ${response.status}`
       );
@@ -84,13 +90,17 @@ export async function scrapWithFireEngine(
     if (contentType && contentType.includes("application/pdf")) {
       return { html: await fetchAndProcessPdf(url), screenshot: "" };
     } else {
-      const data = await response.json();
+      const data = response.data;
       const html = data.content;
       const screenshot = data.screenshot;
       return { html: html ?? "", screenshot: screenshot ?? "" };
     }
   } catch (error) {
-    console.error(`[Fire-Engine][c] Error fetching url: ${url} -> ${error}`);
+    if (error.code === 'ECONNABORTED') {
+      console.log(`[Fire-Engine] Request timed out for ${url}`);
+    } else {
+      console.error(`[Fire-Engine][c] Error fetching url: ${url} -> ${error}`);
+    }
     return { html: "", screenshot: "" };
   }
 }
@@ -98,7 +108,7 @@ export async function scrapWithFireEngine(
 export async function scrapWithScrapingBee(
   url: string,
   wait_browser: string = "domcontentloaded",
-  timeout: number = 15000
+  timeout: number = universalTimeout
 ): Promise<string> {
   try {
     const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY);
@@ -141,15 +151,19 @@ export async function scrapWithPlaywright(
     // If the user has passed a wait parameter in the request, use that
     const waitParam = reqParams["params"]?.wait ?? waitFor;
 
-    const response = await fetch(process.env.PLAYWRIGHT_MICROSERVICE_URL, {
-      method: "POST",
+    const response = await axios.post(process.env.PLAYWRIGHT_MICROSERVICE_URL, {
+      url: url,
+      wait_after_load: waitParam,
+      headers: headers,
+    }, {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ url: url, wait_after_load: waitParam, headers: headers }),
+      timeout: universalTimeout + waitParam, // Add waitParam to timeout to account for the wait time
+      transformResponse: [(data) => data] // Prevent axios from parsing JSON automatically
     });
 
-    if (!response.ok) {
+    if (response.status !== 200) {
       console.error(
         `[Playwright] Error fetching url: ${url} with status: ${response.status}`
       );
@@ -160,7 +174,7 @@ export async function scrapWithPlaywright(
     if (contentType && contentType.includes("application/pdf")) {
       return fetchAndProcessPdf(url);
     } else {
-      const textData = await response.text();
+      const textData = response.data;
       try {
         const data = JSON.parse(textData);
         const html = data.content;
@@ -171,17 +185,28 @@ export async function scrapWithPlaywright(
       }
     }
   } catch (error) {
-    console.error(`[Playwright] Error fetching url: ${url} -> ${error}`);
+    if (error.code === 'ECONNABORTED') {
+      console.log(`[Playwright] Request timed out for ${url}`);
+    } else {
+      console.error(`[Playwright] Error fetching url: ${url} -> ${error}`);
+    }
     return "";
   }
 }
 
 export async function scrapWithFetch(url: string): Promise<string> {
   try {
-    const response = await fetch(url);
-    if (!response.ok) {
+    const response = await axios.get(url, {
+      headers: {
+        "Content-Type": "application/json",
+      },
+      timeout: universalTimeout,
+      transformResponse: [(data) => data] // Prevent axios from parsing JSON automatically
+    });
+
+    if (response.status !== 200) {
       console.error(
-        `[Fetch] Error fetching url: ${url} with status: ${response.status}`
+        `[Axios] Error fetching url: ${url} with status: ${response.status}`
       );
       return "";
     }
@@ -190,11 +215,15 @@ export async function scrapWithFetch(url: string): Promise<string> {
     if (contentType && contentType.includes("application/pdf")) {
       return fetchAndProcessPdf(url);
     } else {
-      const text = await response.text();
+      const text = response.data;
       return text;
     }
   } catch (error) {
-    console.error(`[Fetch][c] Error fetching url: ${url} -> ${error}`);
+    if (error.code === 'ECONNABORTED') {
+      console.log(`[Axios] Request timed out for ${url}`);
+    } else {
+      console.error(`[Axios] Error fetching url: ${url} -> ${error}`);
+    }
     return "";
   }
 }
