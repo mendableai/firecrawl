@@ -280,7 +280,7 @@ export class WebScraperDataProvider {
   private async fetchPdfDocuments(pdfLinks: string[]): Promise<Document[]> {
     return Promise.all(
       pdfLinks.map(async (pdfLink) => {
-        const pdfContent = await fetchAndProcessPdf(pdfLink);
+        const pdfContent = await fetchAndProcessPdf(pdfLink, this.pageOptions.parsePDF);
         return {
           content: pdfContent,
           metadata: { sourceURL: pdfLink },
@@ -475,7 +475,12 @@ export class WebScraperDataProvider {
     this.limit = options.crawlerOptions?.limit ?? 10000;
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
-    this.pageOptions = options.pageOptions ?? { onlyMainContent: false, includeHtml: false, replaceAllPathsWithAbsolutePaths: false };
+    this.pageOptions = options.pageOptions ?? {
+      onlyMainContent: false,
+      includeHtml: false,
+      replaceAllPathsWithAbsolutePaths: false,
+      parsePDF: true
+    };
     this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
     this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? options.pageOptions?.replaceAllPathsWithAbsolutePaths ?? false;
     //! @nicolas, for some reason this was being injected and breaking everything. Don't have time to find source of the issue so adding this check

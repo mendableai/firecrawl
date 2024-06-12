@@ -136,6 +136,21 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
     }, 60000); // 60 seconds
 
+    it.concurrent('should return a successful response for a valid scrape with PDF file and parsePDF set to false', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://arxiv.org/pdf/astro-ph/9301001.pdf', pageOptions: { parsePDF: false } });
+      await new Promise((r) => setTimeout(r, 6000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.content).toContain('/Title(arXiv:astro-ph/9301001v1  7 Jan 1993)>>endobj');
+    }, 60000); // 60 seconds
+
     // TODO: add this test back once we nail the waitFor option to be more deterministic
     // it.concurrent("should return a successful response with a valid API key and waitFor option", async () => {
     //   const startTime = Date.now();
