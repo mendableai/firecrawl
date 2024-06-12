@@ -164,6 +164,27 @@ app.get('/serverHealthCheck/notify', async (req, res) => {
   }
 });
 
+app.get(`/admin/${process.env.BULL_AUTH_KEY}/clean-before-24h-complete-jobs`, async (req, res) => {
+  try {
+    const webScraperQueue = getWebScraperQueue();
+    const completedJobs = await webScraperQueue.getJobs(['completed']);
+    const before24hJobs = completedJobs.filter(job => job.finishedOn < Date.now() - 24 * 60 * 60 * 1000);
+    const jobIds = before24hJobs.map(job => job.id) as string[];
+    let count = 0;
+    for (const jobId of jobIds) {
+      try {
+        await webScraperQueue.removeJobs(jobId);
+        count++;
+      } catch (jobError) {
+        console.error(`Failed to remove job with ID ${jobId}:`, jobError);
+      }
+    }
+    res.status(200).send(`Removed ${count} completed jobs.`);
+  } catch (error) {
+    console.error('Failed to clean last 24h complete jobs:', error);
+    res.status(500).send('Failed to clean jobs');
+  }
+});
 
 app.get("/is-production", (req, res) => {
   res.send({ isProduction: global.isProduction });

@@ -18,6 +18,7 @@ export type PageOptions = {
   waitFor?: number;
   screenshot?: boolean;
   headers?: Record<string, string>;
+  replaceAllPathsWithAbsolutePaths?: boolean;
 };
 
 export type ExtractorOptions = {
