@@ -624,11 +624,11 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
       expect(completedResponse.body.data[0].content).toContain("Mendable");
 
-    const childrenLinks = completedResponse.body.data.filter(doc => 
-      doc.sourceURL && doc.sourceURL.startsWith("https://mendable.ai/blog")
-    );
+      const childrenLinks = completedResponse.body.data.filter(doc => 
+        doc.metadata && doc.metadata.sourceURL && doc.metadata.sourceURL.includes("mendable.ai/blog")
+      );
 
-    expect(childrenLinks.length).toBe(completedResponse.body.data.length);
+      expect(childrenLinks.length).toBe(completedResponse.body.data.length);
     }, 120000); // 120 seconds
     
     it.concurrent('should return a successful response for a valid crawl job with PDF files without explicit .pdf extension', async () => {
@@ -816,35 +816,23 @@ describe("E2E Tests for API Routes", () => {
       .post("/v0/crawl")
       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
       .set("Content-Type", "application/json")
-      .send({ url: "https://scrapethissite.com" });
+      .send({ url: "https://jestjs.io" });
 
     expect(crawlResponse.statusCode).toBe(200);
 
-    await new Promise((r) => setTimeout(r, 2000)); // Wait for 1 seconds before cancelling the job
+    await new Promise((r) => setTimeout(r, 20000));
 
     const responseCancel = await request(TEST_URL)
       .delete(`/v0/crawl/cancel/${crawlResponse.body.jobId}`)
       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
     expect(responseCancel.statusCode).toBe(200);
+    expect(responseCancel.body).toHaveProperty("status");
+    expect(responseCancel.body.status).toBe("cancelled");
 
-    let isFinished = false;
-    let completedResponse;
-
-    while (!isFinished) {
-      const response = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toHaveProperty("status");
-      console.log(response.body.status)
-      
-      if (response.body.status === "failed") {
-        isFinished = true;
-        completedResponse = response;
-      } else {
-        await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
-      }
-    }
+    await new Promise((r) => setTimeout(r, 10000));
+    const completedResponse = await request(TEST_URL)
+      .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
     expect(completedResponse.statusCode).toBe(200);
     expect(completedResponse.body).toHaveProperty("status");
