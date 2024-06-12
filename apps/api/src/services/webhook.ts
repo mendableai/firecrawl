@@ -1,6 +1,6 @@
 import { supabase_service } from "./supabase";
 
-export const callWebhook = async (teamId: string, data: any) => {
+export const callWebhook = async (teamId: string, jobId: string,data: any) => {
   try {
     const selfHostedUrl = process.env.SELF_HOSTED_WEBHOOK_URL;
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
@@ -47,6 +47,7 @@ export const callWebhook = async (teamId: string, data: any) => {
       },
       body: JSON.stringify({
         success: data.success,
+        jobId: jobId,
         data: dataToSend,
         error: data.error || undefined,
       }),
