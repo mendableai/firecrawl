@@ -55,7 +55,7 @@ export async function crawlController(req: Request, res: Response) {
     }
 
     const mode = req.body.mode ?? "crawl";
-    const crawlerOptions = req.body.crawlerOptions ?? {};
+    const crawlerOptions = req.body.crawlerOptions ?? { allowBackwardCrawling: false };
     const pageOptions = req.body.pageOptions ?? { onlyMainContent: false, includeHtml: false };
 
     if (mode === "single_urls" && !url.includes(",")) {
@@ -64,9 +64,7 @@ export async function crawlController(req: Request, res: Response) {
         await a.setOptions({
           mode: "single_urls",
           urls: [url],
-          crawlerOptions: {
-            returnOnlyUrls: true,
-          },
+          crawlerOptions: { ...crawlerOptions, returnOnlyUrls: true },
           pageOptions: pageOptions,
         });
 
@@ -91,7 +89,7 @@ export async function crawlController(req: Request, res: Response) {
     const job = await addWebScraperJob({
       url: url,
       mode: mode ?? "crawl", // fix for single urls not working
-      crawlerOptions: { ...crawlerOptions },
+      crawlerOptions: crawlerOptions,
       team_id: team_id,
       pageOptions: pageOptions,
       origin: req.body.origin ?? "api",

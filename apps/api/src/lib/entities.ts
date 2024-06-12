@@ -47,6 +47,7 @@ export type CrawlerOptions = {
   replaceAllPathsWithAbsolutePaths?: boolean;
   ignoreSitemap?: boolean;
   mode?: "default" | "fast"; // have a mode of some sort
+  allowBackwardCrawling?: boolean;
 }
 
 export type WebScraperOptions = {
