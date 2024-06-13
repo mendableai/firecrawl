@@ -163,12 +163,15 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
 
+    const baseURLDepth = new URL(this.urls[0]).pathname.split('/').length - 1;
+    const adjustedMaxDepth = this.maxCrawledDepth + baseURLDepth;
+    
     const crawler = new WebCrawler({
       initialUrl: this.urls[0],
       includes: this.includes,
       excludes: this.excludes,
       maxCrawledLinks: this.maxCrawledLinks,
-      maxCrawledDepth: this.maxCrawledDepth,
+      maxCrawledDepth: adjustedMaxDepth,
       limit: this.limit,
       generateImgAltText: this.generateImgAltText,
       allowBackwardCrawling: this.allowBackwardCrawling,
