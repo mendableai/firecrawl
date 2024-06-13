@@ -158,7 +158,6 @@ export class WebCrawler {
 
     // make sure to run include exclude here again
     const filteredUrls = this.filterLinks(urls.map(urlObj => urlObj.url), limit, this.maxCrawledDepth);
-
     return filteredUrls.map(url => ({ url, html: urls.find(urlObj => urlObj.url === url)?.html || "" }));
   }
 

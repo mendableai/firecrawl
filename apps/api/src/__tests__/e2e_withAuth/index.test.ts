@@ -390,7 +390,8 @@ describe("E2E Tests for API Routes", () => {
 
       // Check if all URLs have a maximum depth of 1
       urls.forEach((url: string) => {
-        const depth = new URL(url).pathname.split("/").filter(Boolean).length;
+        const pathSplits = new URL(url).pathname.split('/');
+        const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
         expect(depth).toBeLessThanOrEqual(2);
       });
     }, 120000);
@@ -432,7 +433,8 @@ describe("E2E Tests for API Routes", () => {
 
       // Check if all URLs have an absolute maximum depth of 3 after the base URL depth was 2 and the maxDepth was 1
       urls.forEach((url: string) => {
-        const depth = new URL(url).pathname.split("/").filter(Boolean).length;
+        const pathSplits = new URL(url).pathname.split('/');
+        const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
         expect(depth).toBeLessThanOrEqual(3);
       });
     }, 120000);
@@ -749,7 +751,8 @@ describe("E2E Tests for API Routes", () => {
 
       // Check if all URLs have a maximum depth of 1
       urls.forEach((url) => {
-        const depth = new URL(url).pathname.split("/").filter(Boolean).length;
+        const pathSplits = new URL(url).pathname.split('/');
+        const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
         expect(depth).toBeLessThanOrEqual(2);
       });
     }, 180000);
