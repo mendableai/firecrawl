@@ -1,5 +1,4 @@
 import request from "supertest";
-import { app } from "../../index";
 import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
 
@@ -35,7 +34,7 @@ describe("E2E Tests for API Routes", () => {
 
   describe("POST /v0/scrape", () => {
     it.concurrent("should require authorization", async () => {
-      const response = await request(app).post("/v0/scrape");
+      const response = await request(TEST_URL).post("/v0/scrape");
       expect(response.statusCode).toBe(401);
     });
 
