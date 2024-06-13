@@ -163,7 +163,7 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
 
-    const baseURLDepth = new URL(this.urls[0]).pathname.split('/').length - 2;
+    const baseURLDepth = new URL(this.urls[0]).pathname.split('/').length - 1;
     const adjustedMaxDepth = this.maxCrawledDepth + baseURLDepth;
 
     
