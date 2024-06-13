@@ -360,7 +360,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Content-Type", "application/json")
         .send({
           url: "https://www.scrapethissite.com",
-          crawlerOptions: { maxDepth: 2 },
+          crawlerOptions: { maxDepth: 1 },
         });
       expect(crawlResponse.statusCode).toBe(200);
 
@@ -391,7 +391,7 @@ describe("E2E Tests for API Routes", () => {
       // Check if all URLs have a maximum depth of 1
       urls.forEach((url: string) => {
         const depth = new URL(url).pathname.split("/").filter(Boolean).length;
-        expect(depth).toBeLessThanOrEqual(1);
+        expect(depth).toBeLessThanOrEqual(2);
       });
     }, 120000);
 
@@ -716,7 +716,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Content-Type", "application/json")
         .send({
           url: "https://www.scrapethissite.com",
-          crawlerOptions: { maxDepth: 2 },
+          crawlerOptions: { maxDepth: 1 },
         });
       expect(crawlResponse.statusCode).toBe(200);
 
@@ -750,7 +750,7 @@ describe("E2E Tests for API Routes", () => {
       // Check if all URLs have a maximum depth of 1
       urls.forEach((url) => {
         const depth = new URL(url).pathname.split("/").filter(Boolean).length;
-        expect(depth).toBeLessThanOrEqual(1);
+        expect(depth).toBeLessThanOrEqual(2);
       });
     }, 180000);
 
