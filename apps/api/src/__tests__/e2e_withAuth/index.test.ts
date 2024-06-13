@@ -136,6 +136,40 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
     }, 60000); // 60 seconds
 
+    it.concurrent("should return a successful response with a valid API key with removeTags option", async () => {
+      const responseWithoutRemoveTags = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://www.scrapethissite.com/" });
+      expect(responseWithoutRemoveTags.statusCode).toBe(200);
+      expect(responseWithoutRemoveTags.body).toHaveProperty("data");
+      expect(responseWithoutRemoveTags.body.data).toHaveProperty("content");
+      expect(responseWithoutRemoveTags.body.data).toHaveProperty("markdown");
+      expect(responseWithoutRemoveTags.body.data).toHaveProperty("metadata");
+      expect(responseWithoutRemoveTags.body.data).not.toHaveProperty("html");
+      expect(responseWithoutRemoveTags.body.data.content).toContain("Scrape This Site");
+      expect(responseWithoutRemoveTags.body.data.content).toContain("Lessons and Videos"); // #footer
+      expect(responseWithoutRemoveTags.body.data.content).toContain("[Sandbox]("); // .nav
+      expect(responseWithoutRemoveTags.body.data.content).toContain("web scraping"); // strong
+
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://www.scrapethissite.com/", pageOptions: { removeTags: ['.nav', '#footer', 'strong'] } });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("data");
+      expect(response.body.data).toHaveProperty("content");
+      expect(response.body.data).toHaveProperty("markdown");
+      expect(response.body.data).toHaveProperty("metadata");
+      expect(response.body.data).not.toHaveProperty("html");
+      expect(response.body.data.content).toContain("Scrape This Site");
+      expect(response.body.data.content).not.toContain("Lessons and Videos"); // #footer
+      expect(response.body.data.content).not.toContain("[Sandbox]("); // .nav
+      expect(response.body.data.content).not.toContain("web scraping"); // strong
+    }, 30000); // 30 seconds timeout
+
     // TODO: add this test back once we nail the waitFor option to be more deterministic
     // it.concurrent("should return a successful response with a valid API key and waitFor option", async () => {
     //   const startTime = Date.now();
