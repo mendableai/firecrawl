@@ -19,6 +19,7 @@ export type PageOptions = {
   screenshot?: boolean;
   headers?: Record<string, string>;
   replaceAllPathsWithAbsolutePaths?: boolean;
+  removeTags?: string | string[];
 };
 
 export type ExtractorOptions = {
