@@ -430,7 +430,7 @@ describe("E2E Tests for API Routes", () => {
       );
       expect(urls.length).toBeGreaterThan(1);
 
-      // Check if all URLs have a maximum depth of 1
+      // Check if all URLs have an absolute maximum depth of 3 after the base URL depth was 2 and the maxDepth was 1
       urls.forEach((url: string) => {
         const depth = new URL(url).pathname.split("/").filter(Boolean).length;
         expect(depth).toBeLessThanOrEqual(3);
