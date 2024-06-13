@@ -13,7 +13,7 @@ const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
 const { ExpressAdapter } = require("@bull-board/express");
 
-const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
+const numCPUs = process.env.ENV === "local" ? 1 : os.cpus().length;
 console.log(`Number of CPUs: ${numCPUs} available`);
 
 if (cluster.isMaster) {
@@ -217,3 +217,4 @@ if (cluster.isMaster) {
 
   console.log(`Worker ${process.pid} started`);
 }
+

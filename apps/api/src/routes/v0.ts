@@ -7,6 +7,7 @@ import { crawlJobStatusPreviewController } from "../../src/controllers/status";
 import { searchController } from "../../src/controllers/search";
 import { crawlCancelController } from "../../src/controllers/crawl-cancel";
 import { keyAuthController } from "../../src/controllers/keyAuth";
+import { smartCrawlController } from "../../src/controllers/smart-crawl-test";
 
 export const v0Router = express.Router();
 
@@ -22,4 +23,7 @@ v0Router.get("/v0/keyAuth", keyAuthController);
 
 // Search routes
 v0Router.post("/v0/search", searchController);
+
+// Testing routes
+v0Router.post("/v0/smartCrawl", smartCrawlController);
 
