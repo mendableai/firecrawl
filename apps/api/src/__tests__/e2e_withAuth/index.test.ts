@@ -401,7 +401,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
-          url: "https://docs.dify.ai/v/zh-hans",
+          url: "https://www.scrapethissite.com/pages/",
           crawlerOptions: { maxDepth: 1 },
         });
       expect(crawlResponse.statusCode).toBe(200);
@@ -433,7 +433,7 @@ describe("E2E Tests for API Routes", () => {
       // Check if all URLs have a maximum depth of 1
       urls.forEach((url: string) => {
         const depth = new URL(url).pathname.split("/").filter(Boolean).length;
-        expect(depth).toBeLessThanOrEqual(4);
+        expect(depth).toBeLessThanOrEqual(3);
       });
     }, 120000);
 
