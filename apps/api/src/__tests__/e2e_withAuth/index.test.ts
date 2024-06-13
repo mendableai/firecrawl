@@ -395,6 +395,48 @@ describe("E2E Tests for API Routes", () => {
       });
     }, 120000);
 
+    it.concurrent("should return a successful response with relative max depth option for a valid crawl job", async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://docs.dify.ai/v/zh-hans",
+          crawlerOptions: { maxDepth: 1 },
+        });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(response.body.status).toBe("active");
+      // wait for 60 seconds
+      await new Promise((r) => setTimeout(r, 60000));
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      const urls = completedResponse.body.data.map(
+        (item: any) => item.metadata?.sourceURL
+      );
+      expect(urls.length).toBeGreaterThan(1);
+
+      // Check if all URLs have a maximum depth of 1
+      urls.forEach((url: string) => {
+        const depth = new URL(url).pathname.split("/").filter(Boolean).length;
+        expect(depth).toBeLessThanOrEqual(4);
+      });
+    }, 120000);
+
     // it.concurrent("should return a successful response with a valid API key and valid limit option", async () => {
     //   const crawlResponse = await request(TEST_URL)
     //     .post("/v0/crawl")
