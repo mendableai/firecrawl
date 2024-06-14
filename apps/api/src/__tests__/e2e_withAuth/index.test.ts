@@ -618,7 +618,7 @@ describe("E2E Tests for API Routes", () => {
       });
     }, 180000);
 
-    it.concurrent("should return a successful response with relative max depth option for a valid crawl job different depths (0)", async () => {
+    it.concurrent("should return a successful response with relative max depth option for a valid crawl job with maxDepths equals to zero", async () => {
       const crawlResponse = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -671,7 +671,7 @@ describe("E2E Tests for API Routes", () => {
       });
     }, 180000);
 
-    it.concurrent("should return a successful response with relative max depth option for a valid crawl job different depths (2)", async () => {
+    it.concurrent("should return a successful response with relative max depth option for a valid crawl job with maxDepth equals to 2", async () => {
       const crawlResponse = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
