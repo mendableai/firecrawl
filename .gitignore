@@ -14,3 +14,4 @@ apps/test-suite/node_modules/
 
 apps/test-suite/.env
 apps/test-suite/logs
+apps/test-suite/load-test-results/test-run-report.json
