@@ -1,14 +1,27 @@
-name: firecrawl
-version: '3.9'
 services:
-  playwright-service:
-    build: apps/playwright-service
+  browser:
+    image: ghcr.io/browserless/chrome
     environment:
-      - PORT=3000
+      - TOKEN=${BROWSER_TOKEN}
+      - CONCURRENT=8
+    restart: always
+    ports:
+      - 3000:3000
+    networks:
+      - backend
+
+  rendering-service:
+    build: apps/rendering-service
+    environment:
+      - BROWSER_TOKEN=${BROWSER_TOKEN}
+      - BROWSER_ENDPOINT=${BROWSER_ENDPOINT}
+      - PORT=3010
       - PROXY_SERVER=${PROXY_SERVER}
       - PROXY_USERNAME=${PROXY_USERNAME}
       - PROXY_PASSWORD=${PROXY_PASSWORD}
       - BLOCK_MEDIA=${BLOCK_MEDIA}
+    depends_on:
+      - browser
     networks:
       - backend
   
@@ -16,7 +29,7 @@ services:
     build: apps/api
     environment:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - PLAYWRIGHT_MICROSERVICE_URL=${PLAYWRIGHT_MICROSERVICE_URL:-http://playwright-service:3000}
+      - RENDERING_SERVICE_URL=${RENDERING_SERVICE_URL:-http://rendering-service:3010}
       - USE_DB_AUTHENTICATION=${USE_DB_AUTHENTICATION}
       - PORT=${PORT:-3002}
       - NUM_WORKERS_PER_QUEUE=${NUM_WORKERS_PER_QUEUE}
@@ -36,7 +49,7 @@ services:
       - HOST=${HOST:-0.0.0.0}
     depends_on:
       - redis
-      - playwright-service
+      - rendering-service
     ports:
       - "3002:3002"
     command: [ "pnpm", "run", "start:production" ]
@@ -47,7 +60,7 @@ services:
     build: apps/api
     environment:
       - REDIS_URL=${REDIS_URL:-redis://redis:6379}
-      - PLAYWRIGHT_MICROSERVICE_URL=${PLAYWRIGHT_MICROSERVICE_URL:-http://playwright-service:3000}
+      - RENDERING_SERVICE_URL=${RENDERING_SERVICE_URL:-http://rendering-service:3010}
       - USE_DB_AUTHENTICATION=${USE_DB_AUTHENTICATION}
       - PORT=${PORT:-3002}
       - NUM_WORKERS_PER_QUEUE=${NUM_WORKERS_PER_QUEUE}
@@ -67,15 +80,17 @@ services:
       - HOST=${HOST:-0.0.0.0}
     depends_on:
       - redis
-      - playwright-service
+      - rendering-service
       - api
     networks:
       - backend
+
   redis:
     image: redis:alpine
     networks:
       - backend
     command: redis-server --bind 0.0.0.0
+    
 
 networks:
   backend:
