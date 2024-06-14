@@ -105,7 +105,13 @@ export async function scrapeController(req: Request, res: Response) {
       return res.status(status).json({ error });
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
-    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false, includeHtml: false, waitFor: 0, screenshot: false };
+    const pageOptions = req.body.pageOptions ?? {
+      onlyMainContent: false,
+      includeHtml: false,
+      waitFor: 0,
+      screenshot: false,
+      parsePDF: true
+    };
     const extractorOptions = req.body.extractorOptions ?? {
       mode: "markdown"
     }

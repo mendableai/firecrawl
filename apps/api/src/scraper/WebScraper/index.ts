@@ -280,7 +280,7 @@ export class WebScraperDataProvider {
   private async fetchPdfDocuments(pdfLinks: string[]): Promise<Document[]> {
     return Promise.all(
       pdfLinks.map(async (pdfLink) => {
-        const pdfContent = await fetchAndProcessPdf(pdfLink);
+        const pdfContent = await fetchAndProcessPdf(pdfLink, this.pageOptions.parsePDF);
         return {
           content: pdfContent,
           metadata: { sourceURL: pdfLink },
@@ -479,6 +479,7 @@ export class WebScraperDataProvider {
       onlyMainContent: false,
       includeHtml: false,
       replaceAllPathsWithAbsolutePaths: false,
+      parsePDF: true,
       removeTags: []
     };
     this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}

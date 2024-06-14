@@ -49,7 +49,7 @@ export async function scrapWithFireEngine(
   url: string,
   waitFor: number = 0,
   screenshot: boolean = false,
-  pageOptions: { scrollXPaths?: string[] } = {},
+  pageOptions: { scrollXPaths?: string[], parsePDF?: boolean } = { parsePDF: true },
   headers?: Record<string, string>,
   options?: any
 ): Promise<FireEngineResponse> {
@@ -88,7 +88,7 @@ export async function scrapWithFireEngine(
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
-      return { html: await fetchAndProcessPdf(url), screenshot: "" };
+      return { html: await fetchAndProcessPdf(url, pageOptions?.parsePDF), screenshot: "" };
     } else {
       const data = response.data;
       const html = data.content;
@@ -108,7 +108,8 @@ export async function scrapWithFireEngine(
 export async function scrapWithScrapingBee(
   url: string,
   wait_browser: string = "domcontentloaded",
-  timeout: number = universalTimeout
+  timeout: number = universalTimeout,
+  pageOptions: { parsePDF?: boolean } = { parsePDF: true }
 ): Promise<string> {
   try {
     const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY);
@@ -129,7 +130,7 @@ export async function scrapWithScrapingBee(
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
-      return fetchAndProcessPdf(url);
+      return fetchAndProcessPdf(url, pageOptions?.parsePDF);
     } else {
       const decoder = new TextDecoder();
       const text = decoder.decode(response.data);
@@ -144,7 +145,8 @@ export async function scrapWithScrapingBee(
 export async function scrapWithPlaywright(
   url: string,
   waitFor: number = 0,
-  headers?: Record<string, string>
+  headers?: Record<string, string>,
+  pageOptions: { parsePDF?: boolean } = { parsePDF: true }
 ): Promise<string> {
   try {
     const reqParams = await generateRequestParams(url);
@@ -172,7 +174,7 @@ export async function scrapWithPlaywright(
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
-      return fetchAndProcessPdf(url);
+      return fetchAndProcessPdf(url, pageOptions?.parsePDF);
     } else {
       const textData = response.data;
       try {
@@ -194,7 +196,10 @@ export async function scrapWithPlaywright(
   }
 }
 
-export async function scrapWithFetch(url: string): Promise<string> {
+export async function scrapWithFetch(
+  url: string,
+  pageOptions: { parsePDF?: boolean } = { parsePDF: true }
+): Promise<string> {
   try {
     const response = await axios.get(url, {
       headers: {
@@ -213,7 +218,7 @@ export async function scrapWithFetch(url: string): Promise<string> {
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
-      return fetchAndProcessPdf(url);
+      return fetchAndProcessPdf(url, pageOptions?.parsePDF);
     } else {
       const text = response.data;
       return text;
@@ -384,7 +389,7 @@ export async function scrapSingleUrl(
           }
           break;
         case "pdf":
-          customScrapedContent  = { html: await fetchAndProcessPdf(customScraperResult.url), screenshot }
+          customScrapedContent  = { html: await fetchAndProcessPdf(customScraperResult.url, pageOptions?.parsePDF), screenshot }
           break;
       }
     }

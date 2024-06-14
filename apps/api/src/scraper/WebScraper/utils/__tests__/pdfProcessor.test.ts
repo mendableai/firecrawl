@@ -3,7 +3,7 @@ import * as pdfProcessor from '../pdfProcessor';
 describe('PDF Processing Module - Integration Test', () => {
   it('should correctly process a simple PDF file without the LLAMAPARSE_API_KEY', async () => {
     delete process.env.LLAMAPARSE_API_KEY;
-    const pdfContent = await pdfProcessor.fetchAndProcessPdf('https://s3.us-east-1.amazonaws.com/storage.mendable.ai/rafa-testing/test%20%281%29.pdf');
+    const pdfContent = await pdfProcessor.fetchAndProcessPdf('https://s3.us-east-1.amazonaws.com/storage.mendable.ai/rafa-testing/test%20%281%29.pdf', true);
     expect(pdfContent.trim()).toEqual("Dummy PDF file");
   });
 
