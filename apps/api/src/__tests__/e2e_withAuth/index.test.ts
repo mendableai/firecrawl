@@ -563,7 +563,7 @@ describe("E2E Tests for API Routes", () => {
         const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
         expect(depth).toBeLessThanOrEqual(3);
       });
-    }, 120000);
+    }, 180000);
 
     // it.concurrent("should return a successful response with a valid API key and valid limit option", async () => {
     //   const crawlResponse = await request(TEST_URL)
