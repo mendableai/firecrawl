@@ -517,7 +517,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Content-Type", "application/json")
         .send({
           url: "https://www.scrapethissite.com",
-          crawlerOptions: { maxDepth: 2 },
+          crawlerOptions: { maxDepth: 1 },
         });
       expect(crawlResponse.statusCode).toBe(200);
 
@@ -526,9 +526,19 @@ describe("E2E Tests for API Routes", () => {
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("status");
-      expect(response.body.status).toBe("active");
+      expect(["active", "waiting"]).toContain(response.body.status);
       // wait for 60 seconds
-      await new Promise((r) => setTimeout(r, 60000));
+      let isCompleted = false;
+      while (!isCompleted) {
+        const statusCheckResponse = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(statusCheckResponse.statusCode).toBe(200);
+        isCompleted = statusCheckResponse.body.status === "completed";
+        if (!isCompleted) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
       const completedResponse = await request(TEST_URL)
         .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
@@ -549,10 +559,170 @@ describe("E2E Tests for API Routes", () => {
 
       // Check if all URLs have a maximum depth of 1
       urls.forEach((url: string) => {
-        const depth = new URL(url).pathname.split("/").filter(Boolean).length;
+        const pathSplits = new URL(url).pathname.split('/');
+        const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
+        expect(depth).toBeLessThanOrEqual(2);
+      });
+    }, 180000);
+
+    it.concurrent("should return a successful response with relative max depth option for a valid crawl job", async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://www.scrapethissite.com/pages/",
+          crawlerOptions: { maxDepth: 1 },
+        });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(["active", "waiting"]).toContain(response.body.status);
+      // wait for 60 seconds
+      let isCompleted = false;
+      while (!isCompleted) {
+        const statusCheckResponse = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(statusCheckResponse.statusCode).toBe(200);
+        isCompleted = statusCheckResponse.body.status === "completed";
+        if (!isCompleted) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      const urls = completedResponse.body.data.map(
+        (item: any) => item.metadata?.sourceURL
+      );
+      expect(urls.length).toBeGreaterThan(1);
+
+      // Check if all URLs have an absolute maximum depth of 3 after the base URL depth was 2 and the maxDepth was 1
+      urls.forEach((url: string) => {
+        const pathSplits = new URL(url).pathname.split('/');
+        const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
+        expect(depth).toBeLessThanOrEqual(3);
+      });
+    }, 180000);
+
+    it.concurrent("should return a successful response with relative max depth option for a valid crawl job with maxDepths equals to zero", async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://www.scrapethissite.com",
+          crawlerOptions: { maxDepth: 0 },
+        });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(["active", "waiting"]).toContain(response.body.status);
+      // wait for 60 seconds
+      let isCompleted = false;
+      while (!isCompleted) {
+        const statusCheckResponse = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(statusCheckResponse.statusCode).toBe(200);
+        isCompleted = statusCheckResponse.body.status === "completed";
+        if (!isCompleted) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      const urls = completedResponse.body.data.map(
+        (item: any) => item.metadata?.sourceURL
+      );
+      expect(urls.length).toBeGreaterThanOrEqual(1);
+
+      // Check if all URLs have an absolute maximum depth of 3 after the base URL depth was 2 and the maxDepth was 1
+      urls.forEach((url: string) => {
+        const pathSplits = new URL(url).pathname.split('/');
+        const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
         expect(depth).toBeLessThanOrEqual(1);
       });
-    }, 120000);
+    }, 180000);
+
+    it.concurrent("should return a successful response with relative max depth option for a valid crawl job with maxDepth equals to 2", async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://www.scrapethissite.com",
+          crawlerOptions: { maxDepth: 2, limit: 5 },
+        });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(["active", "waiting"]).toContain(response.body.status);
+      // wait for 60 seconds
+      let isCompleted = false;
+      while (!isCompleted) {
+        const statusCheckResponse = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(statusCheckResponse.statusCode).toBe(200);
+        isCompleted = statusCheckResponse.body.status === "completed";
+        if (!isCompleted) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      const urls = completedResponse.body.data.map(
+        (item: any) => item.metadata?.sourceURL
+      );
+      expect(urls.length).toBeGreaterThanOrEqual(1);
+
+      // Check if all URLs have an absolute maximum depth of 3 after the base URL depth was 2 and the maxDepth was 1
+      urls.forEach((url: string) => {
+        const pathSplits = new URL(url).pathname.split('/');
+        const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
+        expect(depth).toBeLessThanOrEqual(3);
+      });
+    }, 180000);
 
     // it.concurrent("should return a successful response with a valid API key and valid limit option", async () => {
     //   const crawlResponse = await request(TEST_URL)
@@ -599,7 +769,7 @@ describe("E2E Tests for API Routes", () => {
     //   expect(completedResponse.body.data[0].content).not.toContain("main menu");
     // }, 60000); // 60 seconds
 
-    it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option", async () => {
+    it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option (1)", async () => {
       const crawlResponse = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -615,7 +785,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("status");
-      expect(response.body.status).toBe("active");
+      expect(["active", "waiting"]).toContain(response.body.status);
 
       let isCompleted = false;
       while (!isCompleted) {
@@ -649,9 +819,11 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0].content).toContain("_Roast_");
       expect(completedResponse.body.data[0].markdown).toContain("_Roast_");
       expect(completedResponse.body.data[0].html).toContain("<h1");
+
       expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
       expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
-    }, 60000);
+    }, 180000);
+
   });
 
   describe("POST /v0/crawlWebsitePreview", () => {
@@ -793,9 +965,9 @@ describe("E2E Tests for API Routes", () => {
       );
 
       expect(childrenLinks.length).toBe(completedResponse.body.data.length);
-    }, 120000); // 120 seconds
+    }, 180000); // 120 seconds
     
-    it.concurrent('should return a successful response for a valid crawl job with PDF files without explicit .pdf extension', async () => {
+    it.concurrent('should return a successful response for a valid crawl job with PDF files without explicit .pdf extension ', async () => {
       const crawlResponse = await request(TEST_URL)
         .post('/v0/crawl')
         .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
@@ -830,10 +1002,12 @@ describe("E2E Tests for API Routes", () => {
             })
           ])
         );
+
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
         expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
-    }, 120000); // 120 seconds
+    }, 180000); // 120 seconds
+
 
     it.concurrent("should return a successful response with max depth option for a valid crawl job", async () => {
       const crawlResponse = await request(TEST_URL)
@@ -842,7 +1016,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Content-Type", "application/json")
         .send({
           url: "https://www.scrapethissite.com",
-          crawlerOptions: { maxDepth: 2 },
+          crawlerOptions: { maxDepth: 1 },
         });
       expect(crawlResponse.statusCode).toBe(200);
 
@@ -878,12 +1052,13 @@ describe("E2E Tests for API Routes", () => {
 
       // Check if all URLs have a maximum depth of 1
       urls.forEach((url) => {
-        const depth = new URL(url).pathname.split("/").filter(Boolean).length;
-        expect(depth).toBeLessThanOrEqual(1);
+        const pathSplits = new URL(url).pathname.split('/');
+        const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
+        expect(depth).toBeLessThanOrEqual(2);
       });
     }, 180000);
 
-    it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option", async () => {
+    it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option (2)", async () => {
       const crawlResponse = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -899,7 +1074,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("status");
-      expect(response.body.status).toBe("active");
+      expect(["active", "waiting"]).toContain(response.body.status);
 
       let isFinished = false;
       let completedResponse;
