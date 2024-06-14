@@ -41,8 +41,8 @@ const RATE_LIMITS = {
     default: 5,
   },
   account: {
-    free: 20,
-    default: 20,
+    free: 100,
+    default: 100,
   },
   crawlStatus: {
     free: 150,
@@ -82,11 +82,13 @@ export function getRateLimiter(
   token: string,
   plan?: string
 ) {
+
   if (token.includes("a01ccae") || token.includes("6254cf9")) {
     return testSuiteRateLimiter;
   }
 
   const rateLimitConfig = RATE_LIMITS[mode]; // {default : 5}
+
   if (!rateLimitConfig) return serverRateLimiter;
 
   const planKey = plan ? plan.replace("-", "") : "default"; // "default"
