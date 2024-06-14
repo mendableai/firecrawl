@@ -49,7 +49,7 @@ export async function scrapWithFireEngine(
   url: string,
   waitFor: number = 0,
   screenshot: boolean = false,
-  pageOptions: { scrollXPaths?: string[] } = {},
+  pageOptions: { scrollXPaths?: string[], parsePDF?: boolean } = { parsePDF: true },
   headers?: Record<string, string>,
   options?: any
 ): Promise<FireEngineResponse> {
@@ -83,17 +83,18 @@ export async function scrapWithFireEngine(
       console.error(
         `[Fire-Engine] Error fetching url: ${url} with status: ${response.status}`
       );
-      return { html: "", screenshot: "" };
+      return { html: "", screenshot: "", pageStatusCode: response.data?.pageStatusCode, pageError: response.data?.pageError };
     }
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
-      return { html: await fetchAndProcessPdf(url), screenshot: "" };
+      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+      return { html: content, screenshot: "", pageStatusCode, pageError };
     } else {
       const data = response.data;
       const html = data.content;
       const screenshot = data.screenshot;
-      return { html: html ?? "", screenshot: screenshot ?? "" };
+      return { html: html ?? "", screenshot: screenshot ?? "", pageStatusCode: data.pageStatusCode, pageError: data.pageError };
     }
   } catch (error) {
     if (error.code === 'ECONNABORTED') {
@@ -108,44 +109,51 @@ export async function scrapWithFireEngine(
 export async function scrapWithScrapingBee(
   url: string,
   wait_browser: string = "domcontentloaded",
-  timeout: number = universalTimeout
-): Promise<string> {
+  timeout: number = universalTimeout,
+  pageOptions: { parsePDF?: boolean } = { parsePDF: true }
+): Promise<{ content: string, pageStatusCode?: number, pageError?: string }> {
   try {
     const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY);
     const clientParams = await generateRequestParams(
       url,
       wait_browser,
-      timeout
+      timeout,
     );
 
-    const response = await client.get(clientParams);
-
-    if (response.status !== 200 && response.status !== 404) {
-      console.error(
-        `[ScrapingBee] Error fetching url: ${url} with status code ${response.status}`
-      );
-      return "";
-    }
+    const response = await client.get({
+      ...clientParams,
+      params: {
+        ...clientParams.params,
+        'transparent_status_code': 'True'
+      }
+    });
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
-      return fetchAndProcessPdf(url);
+      return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+
     } else {
-      const decoder = new TextDecoder();
-      const text = decoder.decode(response.data);
-      return text;
+      let text = "";
+      try {
+        const decoder = new TextDecoder();
+        text = decoder.decode(response.data);
+      } catch (decodeError) {
+        console.error(`[ScrapingBee][c] Error decoding response data for url: ${url} -> ${decodeError}`);
+      }
+      return { content: text, pageStatusCode: response.status, pageError: response.statusText != "OK" ? response.statusText : undefined };
     }
   } catch (error) {
     console.error(`[ScrapingBee][c] Error fetching url: ${url} -> ${error}`);
-    return "";
+    return { content: "", pageStatusCode: error.response.status, pageError: error.response.statusText };
   }
 }
 
 export async function scrapWithPlaywright(
   url: string,
   waitFor: number = 0,
-  headers?: Record<string, string>
-): Promise<string> {
+  headers?: Record<string, string>,
+  pageOptions: { parsePDF?: boolean } = { parsePDF: true }
+): Promise<{ content: string, pageStatusCode?: number, pageError?: string }> {
   try {
     const reqParams = await generateRequestParams(url);
     // If the user has passed a wait parameter in the request, use that
@@ -167,21 +175,21 @@ export async function scrapWithPlaywright(
       console.error(
         `[Playwright] Error fetching url: ${url} with status: ${response.status}`
       );
-      return "";
+      return { content: "", pageStatusCode: response.data?.pageStatusCode, pageError: response.data?.pageError };
     }
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
-      return fetchAndProcessPdf(url);
+      return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
     } else {
       const textData = response.data;
       try {
         const data = JSON.parse(textData);
         const html = data.content;
-        return html ?? "";
+        return { content: html ?? "", pageStatusCode: data.pageStatusCode, pageError: data.pageError };
       } catch (jsonError) {
         console.error(`[Playwright] Error parsing JSON response for url: ${url} -> ${jsonError}`);
-        return "";
+        return { content: "" };
       }
     }
   } catch (error) {
@@ -190,11 +198,14 @@ export async function scrapWithPlaywright(
     } else {
       console.error(`[Playwright] Error fetching url: ${url} -> ${error}`);
     }
-    return "";
+    return { content: "" };
   }
 }
 
-export async function scrapWithFetch(url: string): Promise<string> {
+export async function scrapWithFetch(
+  url: string,
+  pageOptions: { parsePDF?: boolean } = { parsePDF: true }
+): Promise<{ content: string, pageStatusCode?: number, pageError?: string }> {
   try {
     const response = await axios.get(url, {
       headers: {
@@ -208,15 +219,15 @@ export async function scrapWithFetch(url: string): Promise<string> {
       console.error(
         `[Axios] Error fetching url: ${url} with status: ${response.status}`
       );
-      return "";
+      return { content: "", pageStatusCode: response.status, pageError: response.statusText };
     }
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
-      return fetchAndProcessPdf(url);
+      return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
     } else {
       const text = response.data;
-      return text;
+      return { content: text, pageStatusCode: 200 };
     }
   } catch (error) {
     if (error.code === 'ECONNABORTED') {
@@ -224,7 +235,7 @@ export async function scrapWithFetch(url: string): Promise<string> {
     } else {
       console.error(`[Axios] Error fetching url: ${url} -> ${error}`);
     }
-    return "";
+    return { content: "" };
   }
 }
 
@@ -304,6 +315,19 @@ export async function scrapSingleUrl(
   const removeUnwantedElements = (html: string, pageOptions: PageOptions) => {
     const soup = cheerio.load(html);
     soup("script, style, iframe, noscript, meta, head").remove();
+
+    if (pageOptions.removeTags) {
+      if (typeof pageOptions.removeTags === 'string') {
+        pageOptions.removeTags.split(',').forEach((tag) => {
+          soup(tag.trim()).remove();
+        });
+      } else if (Array.isArray(pageOptions.removeTags)) {
+        pageOptions.removeTags.forEach((tag) => {
+          soup(tag).remove();
+        });
+      }
+    }
+    
     if (pageOptions.onlyMainContent) {
       // remove any other tags that are not in the main content
       excludeNonMainTags.forEach((tag) => {
@@ -317,7 +341,7 @@ export async function scrapSingleUrl(
     url: string,
     method: (typeof baseScrapers)[number]
   ) => {
-    let text = "";
+    let scraperResponse: { text: string, screenshot: string, metadata: { pageStatusCode?: number, pageError?: string | null } } = { text: "", screenshot: "", metadata: {} };
     let screenshot = "";
     switch (method) {
       case "fire-engine":
@@ -329,38 +353,52 @@ export async function scrapSingleUrl(
             pageOptions.screenshot,
             pageOptions.headers
           );
-          text = response.html;
-          screenshot = response.screenshot;
+          scraperResponse.text = response.html;
+          scraperResponse.screenshot = response.screenshot;
+          scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
+          scraperResponse.metadata.pageError = response.pageError;
         }
         break;
       case "scrapingBee":
         if (process.env.SCRAPING_BEE_API_KEY) {
-          text = await scrapWithScrapingBee(
+          const response = await scrapWithScrapingBee(
             url,
             "domcontentloaded",
             pageOptions.fallback === false ? 7000 : 15000
           );
+          scraperResponse.text = response.content;
+          scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
+          scraperResponse.metadata.pageError = response.pageError;
         }
         break;
       case "playwright":
         if (process.env.PLAYWRIGHT_MICROSERVICE_URL) {
-          text = await scrapWithPlaywright(url, pageOptions.waitFor, pageOptions.headers);
+          const response = await scrapWithPlaywright(url, pageOptions.waitFor, pageOptions.headers);
+          scraperResponse.text = response.content;
+          scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
+          scraperResponse.metadata.pageError = response.pageError;
         }
         break;
       case "scrapingBeeLoad":
         if (process.env.SCRAPING_BEE_API_KEY) {
-          text = await scrapWithScrapingBee(url, "networkidle2");
+          const response = await scrapWithScrapingBee(url, "networkidle2");
+          scraperResponse.text = response.content;
+          scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
+          scraperResponse.metadata.pageError = response.pageError;
         }
         break;
       case "fetch":
-        text = await scrapWithFetch(url);
+        const response = await scrapWithFetch(url);
+        scraperResponse.text = response.content;
+        scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
+        scraperResponse.metadata.pageError = response.pageError;
         break;
     }
 
     let customScrapedContent : FireEngineResponse | null = null;
 
     // Check for custom scraping conditions
-    const customScraperResult = await handleCustomScraping(text, url);
+    const customScraperResult = await handleCustomScraping(scraperResponse.text, url);
 
     if (customScraperResult){
       switch (customScraperResult.scraper) {
@@ -371,23 +409,30 @@ export async function scrapSingleUrl(
           }
           break;
         case "pdf":
-          customScrapedContent  = { html: await fetchAndProcessPdf(customScraperResult.url), screenshot }
+          const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(customScraperResult.url, pageOptions?.parsePDF);
+          customScrapedContent  = { html: content, screenshot, pageStatusCode, pageError }
           break;
       }
     }
 
     if (customScrapedContent) {
-      text = customScrapedContent.html;
+      scraperResponse.text = customScrapedContent.html;
       screenshot = customScrapedContent.screenshot;
     }
 
     //* TODO: add an optional to return markdown or structured/extracted content
-    let cleanedHtml = removeUnwantedElements(text, pageOptions);
+    let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
 
-    return [await parseMarkdown(cleanedHtml), text, screenshot];
+    return {
+      text: await parseMarkdown(cleanedHtml),
+      html: scraperResponse.text,
+      screenshot: scraperResponse.screenshot,
+      pageStatusCode: scraperResponse.metadata.pageStatusCode,
+      pageError: scraperResponse.metadata.pageError || undefined
+    };
   };
+  let { text, html, screenshot, pageStatusCode, pageError } = { text: "", html: "", screenshot: "", pageStatusCode: 200, pageError: undefined };
   try {
-    let [text, html, screenshot] = ["", "", ""];
     let urlKey = urlToScrap;
     try {
       urlKey = new URL(urlToScrap).hostname.replace(/^www\./, "");
@@ -410,8 +455,21 @@ export async function scrapSingleUrl(
         html = existingHtml;
         break;
       }
-      [text, html, screenshot] = await attemptScraping(urlToScrap, scraper);
+
+      const attempt = await attemptScraping(urlToScrap, scraper);
+      text = attempt.text ?? '';
+      html = attempt.html ?? '';
+      screenshot = attempt.screenshot ?? '';
+      if (attempt.pageStatusCode) {
+        pageStatusCode = attempt.pageStatusCode;
+      }
+      if (attempt.pageError) {
+        pageError = attempt.pageError;
+      }
+      
+      
       if (text && text.trim().length >= 100) break;
+      if (pageStatusCode && pageStatusCode == 404) break;
       const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;
       if (nextScraperIndex < scrapersInOrder.length) {
         console.info(`Falling back to ${scrapersInOrder[nextScraperIndex]}`);
@@ -435,6 +493,8 @@ export async function scrapSingleUrl(
           ...metadata,
           screenshot: screenshot,
           sourceURL: urlToScrap,
+          pageStatusCode: pageStatusCode,
+          pageError: pageError
         },
       };
     } else {
@@ -442,7 +502,12 @@ export async function scrapSingleUrl(
         content: text,
         markdown: text,
         html: pageOptions.includeHtml ? html : undefined,
-        metadata: { ...metadata, sourceURL: urlToScrap },
+        metadata: {
+          ...metadata,
+          sourceURL: urlToScrap,
+          pageStatusCode: pageStatusCode,
+          pageError: pageError
+        },
       };
     }
 
@@ -453,7 +518,11 @@ export async function scrapSingleUrl(
       content: "",
       markdown: "",
       html: "",
-      metadata: { sourceURL: urlToScrap },
+      metadata: {
+        sourceURL: urlToScrap,
+        pageStatusCode: pageStatusCode,
+        pageError: pageError
+      },
     } as Document;
   }
 }

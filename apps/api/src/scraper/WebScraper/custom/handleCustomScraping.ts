@@ -1,5 +1,3 @@
-import { fetchAndProcessPdf } from "../utils/pdfProcessor";
-
 export async function handleCustomScraping(
   text: string,
   url: string

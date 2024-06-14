@@ -83,6 +83,8 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty("metadata");
       expect(response.body.data).not.toHaveProperty("html");
       expect(response.body.data.content).toContain("_Roast_");
+      expect(response.body.data.metadata.pageStatusCode).toBe(200);
+      expect(response.body.data.metadata.pageError).toBeUndefined();
     }, 30000); // 30 seconds timeout
 
     it.concurrent("should return a successful response with a valid API key and includeHtml set to true", async () => {
@@ -103,6 +105,8 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data.content).toContain("_Roast_");
       expect(response.body.data.markdown).toContain("_Roast_");
       expect(response.body.data.html).toContain("<h1");
+      expect(response.body.data.metadata.pageStatusCode).toBe(200);
+      expect(response.body.data.metadata.pageError).toBeUndefined();
     }, 30000); // 30 seconds timeout
     
    it.concurrent('should return a successful response for a valid scrape with PDF file', async () => {
@@ -118,6 +122,8 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty('content');
       expect(response.body.data).toHaveProperty('metadata');
       expect(response.body.data.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
+      expect(response.body.data.metadata.pageStatusCode).toBe(200);
+      expect(response.body.data.metadata.pageError).toBeUndefined();
     }, 60000); // 60 seconds
   
     it.concurrent('should return a successful response for a valid scrape with PDF file without explicit .pdf extension', async () => {
@@ -133,7 +139,58 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty('content');
       expect(response.body.data).toHaveProperty('metadata');
       expect(response.body.data.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
+      expect(response.body.data.metadata.pageStatusCode).toBe(200);
+      expect(response.body.data.metadata.pageError).toBeUndefined();
     }, 60000); // 60 seconds
+
+    it.concurrent('should return a successful response for a valid scrape with PDF file and parsePDF set to false', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://arxiv.org/pdf/astro-ph/9301001.pdf', pageOptions: { parsePDF: false } });
+      await new Promise((r) => setTimeout(r, 6000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.content).toContain('/Title(arXiv:astro-ph/9301001v1  7 Jan 1993)>>endobj');
+    }, 60000); // 60 seconds
+
+    it.concurrent("should return a successful response with a valid API key with removeTags option", async () => {
+      const responseWithoutRemoveTags = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://www.scrapethissite.com/" });
+      expect(responseWithoutRemoveTags.statusCode).toBe(200);
+      expect(responseWithoutRemoveTags.body).toHaveProperty("data");
+      expect(responseWithoutRemoveTags.body.data).toHaveProperty("content");
+      expect(responseWithoutRemoveTags.body.data).toHaveProperty("markdown");
+      expect(responseWithoutRemoveTags.body.data).toHaveProperty("metadata");
+      expect(responseWithoutRemoveTags.body.data).not.toHaveProperty("html");
+      expect(responseWithoutRemoveTags.body.data.content).toContain("Scrape This Site");
+      expect(responseWithoutRemoveTags.body.data.content).toContain("Lessons and Videos"); // #footer
+      expect(responseWithoutRemoveTags.body.data.content).toContain("[Sandbox]("); // .nav
+      expect(responseWithoutRemoveTags.body.data.content).toContain("web scraping"); // strong
+
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://www.scrapethissite.com/", pageOptions: { removeTags: ['.nav', '#footer', 'strong'] } });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("data");
+      expect(response.body.data).toHaveProperty("content");
+      expect(response.body.data).toHaveProperty("markdown");
+      expect(response.body.data).toHaveProperty("metadata");
+      expect(response.body.data).not.toHaveProperty("html");
+      expect(response.body.data.content).toContain("Scrape This Site");
+      expect(response.body.data.content).not.toContain("Lessons and Videos"); // #footer
+      expect(response.body.data.content).not.toContain("[Sandbox]("); // .nav
+      expect(response.body.data.content).not.toContain("web scraping"); // strong
+    }, 30000); // 30 seconds timeout
 
     // TODO: add this test back once we nail the waitFor option to be more deterministic
     // it.concurrent("should return a successful response with a valid API key and waitFor option", async () => {
@@ -155,6 +212,102 @@ describe("E2E Tests for API Routes", () => {
     //   expect(response.body.data.content).toContain("🔥 Firecrawl");
     //   expect(duration).toBeGreaterThanOrEqual(7000);
     // }, 12000); // 12 seconds timeout
+
+    it.concurrent('should return a successful response for a scrape with 400 page', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://httpstat.us/400' });
+      await new Promise((r) => setTimeout(r, 5000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.metadata.pageStatusCode).toBe(400);
+      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("bad request");
+    }, 60000); // 60 seconds
+
+    it.concurrent('should return a successful response for a scrape with 401 page', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://httpstat.us/401' });
+      await new Promise((r) => setTimeout(r, 5000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.metadata.pageStatusCode).toBe(401);
+      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("unauthorized");
+    }, 60000); // 60 seconds
+
+    it.concurrent("should return a successful response for a scrape with 403 page", async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://httpstat.us/403' });
+
+      await new Promise((r) => setTimeout(r, 5000));
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.metadata.pageStatusCode).toBe(403);
+      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("forbidden");
+    }, 60000); // 60 seconds
+
+    it.concurrent('should return a successful response for a scrape with 404 page', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://httpstat.us/404' });
+      await new Promise((r) => setTimeout(r, 5000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.metadata.pageStatusCode).toBe(404);
+      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("not found");
+    }, 60000); // 60 seconds
+
+    it.concurrent('should return a successful response for a scrape with 405 page', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://httpstat.us/405' });
+      await new Promise((r) => setTimeout(r, 5000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.metadata.pageStatusCode).toBe(405);
+      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("method not allowed");
+    }, 60000); // 60 seconds
+
+    it.concurrent('should return a successful response for a scrape with 500 page', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://httpstat.us/500' });
+      await new Promise((r) => setTimeout(r, 5000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.metadata.pageStatusCode).toBe(500);
+      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("internal server error");
+    }, 60000); // 60 seconds
   });
 
   describe("POST /v0/crawl", () => {
@@ -270,6 +423,8 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
       expect(completedResponse.body.data[0].content).toContain("Mendable");
+      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
     }, 60000); // 60 seconds
 
     it.concurrent("should return a successful response with a valid API key and valid excludes option", async () => {
@@ -351,6 +506,8 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
       expect(completedResponse.body.data[0].content).toContain("Mendable");
+      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
     }, 60000); // 60 seconds
   
     it.concurrent("should return a successful response with max depth option for a valid crawl job", async () => {
@@ -393,6 +550,8 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("content");
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
       const urls = completedResponse.body.data.map(
         (item: any) => item.metadata?.sourceURL
       );
@@ -651,6 +810,8 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("content");
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
 
       // 120 seconds
       expect(completedResponse.body.data[0]).toHaveProperty("html");
@@ -658,7 +819,11 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0].content).toContain("_Roast_");
       expect(completedResponse.body.data[0].markdown).toContain("_Roast_");
       expect(completedResponse.body.data[0].html).toContain("<h1");
+
+      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
     }, 180000);
+
   });
 
   describe("POST /v0/crawlWebsitePreview", () => {
@@ -792,6 +957,8 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
       expect(completedResponse.body.data[0].content).toContain("Mendable");
+      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
 
       const childrenLinks = completedResponse.body.data.filter(doc => 
         doc.metadata && doc.metadata.sourceURL && doc.metadata.sourceURL.includes("mendable.ai/blog")
@@ -835,7 +1002,12 @@ describe("E2E Tests for API Routes", () => {
             })
           ])
         );
+
+        expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+        expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+        expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
     }, 180000); // 120 seconds
+
 
     it.concurrent("should return a successful response with max depth option for a valid crawl job", async () => {
       const crawlResponse = await request(TEST_URL)
@@ -870,6 +1042,9 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("content");
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
+
       const urls = completedResponse.body.data.map(
         (item: any) => item.metadata?.sourceURL
       );
@@ -930,6 +1105,8 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0].content).toContain("_Roast_");
       expect(completedResponse.body.data[0].markdown).toContain("_Roast_");
       expect(completedResponse.body.data[0].html).toContain("<h1");
+      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
     }, 60000);
   }); // 60 seconds
 
@@ -973,6 +1150,8 @@ describe("E2E Tests for API Routes", () => {
     expect(completedResponse.body.data[0]).toHaveProperty("html");
     expect(completedResponse.body.data[0].content).toContain("Mendable");
     expect(completedResponse.body.data[0].markdown).toContain("Mendable");
+    expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+    expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
 
     const onlyChildrenLinks = completedResponse.body.data.filter(doc => {
       return doc.metadata && doc.metadata.sourceURL && doc.metadata.sourceURL.includes("mendable.ai/blog")
@@ -1013,7 +1192,8 @@ describe("E2E Tests for API Routes", () => {
     expect(completedResponse.body.partial_data[0]).toHaveProperty("content");
     expect(completedResponse.body.partial_data[0]).toHaveProperty("markdown");
     expect(completedResponse.body.partial_data[0]).toHaveProperty("metadata");
-    
+    expect(completedResponse.body.partial_data[0].metadata.pageStatusCode).toBe(200);
+    expect(completedResponse.body.partial_data[0].metadata.pageError).toBeUndefined();
   }, 60000); // 60 seconds
 
   describe("POST /v0/scrape with LLM Extraction", () => {
@@ -1168,6 +1348,10 @@ describe("E2E Tests for API Routes", () => {
       expect(statusResponse.body).toHaveProperty("data");
       expect(statusResponse.body.data[0]).toHaveProperty("content");
       expect(statusResponse.body.data[0]).toHaveProperty("markdown");
+      expect(statusResponse.body.data[0]).toHaveProperty("metadata");
+      expect(statusResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+      expect(statusResponse.body.data[0].metadata.pageError).toBeUndefined();
+
       const results = statusResponse.body.data;
       // results.forEach((result, i) => {
       //   console.log(result.metadata.sourceURL);

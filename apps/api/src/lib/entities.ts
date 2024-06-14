@@ -19,6 +19,8 @@ export type PageOptions = {
   screenshot?: boolean;
   headers?: Record<string, string>;
   replaceAllPathsWithAbsolutePaths?: boolean;
+  parsePDF?: boolean;
+  removeTags?: string | string[];
 };
 
 export type ExtractorOptions = {
@@ -119,4 +121,7 @@ export class SearchResult {
 export interface FireEngineResponse {
   html: string;
   screenshot: string;
+  pageStatusCode?: number;
+  pageError?: string;
 }
+
