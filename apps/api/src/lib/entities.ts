@@ -121,4 +121,7 @@ export class SearchResult {
 export interface FireEngineResponse {
   html: string;
   screenshot: string;
+  pageStatusCode?: number;
+  pageError?: string;
 }
+

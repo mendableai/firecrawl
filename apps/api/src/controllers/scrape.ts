@@ -61,7 +61,7 @@ export async function scrapeHelper(
     (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
   );
   if (filteredDocs.length === 0) {
-    return { success: true, error: "No page found", returnCode: 200 };
+    return { success: true, error: "No page found", returnCode: 200, data: docs[0] };
   }
 
   let creditsToBeBilled = filteredDocs.length;

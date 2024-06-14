@@ -224,7 +224,7 @@ export class WebCrawler {
     return Array.from(this.crawledUrls.entries()).map(([url, html]) => ({ url, html }));
   }
 
-  async crawl(url: string, pageOptions: PageOptions): Promise<{url: string, html: string}[]> {
+  async crawl(url: string, pageOptions: PageOptions): Promise<{url: string, html: string, pageStatusCode?: number, pageError?: string}[]> {
     const normalizedUrl = this.normalizeCrawlUrl(url);
     if (this.visited.has(normalizedUrl) || !this.robots.isAllowed(url, "FireCrawlAgent")) {
       return [];
@@ -244,20 +244,27 @@ export class WebCrawler {
 
     try {
       let content: string = "";
+      let pageStatusCode: number;
+      let pageError: string | undefined = undefined;
+
       // If it is the first link, fetch with single url
       if (this.visited.size === 1) {
         const page = await scrapSingleUrl(url, { ...pageOptions, includeHtml: true });
         content = page.html ?? "";
+        pageStatusCode = page.metadata?.pageStatusCode;
+        pageError = page.metadata?.pageError || undefined;
       } else {
         const response = await axios.get(url);
         content = response.data ?? "";
+        pageStatusCode = response.status;
+        pageError = response.statusText != "OK" ? response.statusText : undefined;
       }
       const $ = load(content);
-      let links: { url: string, html: string }[] = [];
+      let links: { url: string, html: string, pageStatusCode?: number, pageError?: string }[] = [];
 
       // Add the initial URL to the list of links
       if (this.visited.size === 1) {
-        links.push({ url, html: content });
+        links.push({ url, html: content, pageStatusCode, pageError });
       }
 
       $("a").each((_, element) => {
@@ -279,7 +286,7 @@ export class WebCrawler {
             !this.matchesExcludes(path) &&
             this.robots.isAllowed(fullUrl, "FireCrawlAgent")
           ) {
-            links.push({ url: fullUrl, html: content });
+            links.push({ url: fullUrl, html: content, pageStatusCode, pageError });
           }
         }
       });

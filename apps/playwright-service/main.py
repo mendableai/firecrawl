@@ -9,6 +9,7 @@ from fastapi import FastAPI
 from fastapi.responses import JSONResponse
 from playwright.async_api import Browser, async_playwright
 from pydantic import BaseModel
+from get_error import get_error
 
 PROXY_SERVER = environ.get("PROXY_SERVER", None)
 PROXY_USERNAME = environ.get("PROXY_USERNAME", None)
@@ -73,16 +74,22 @@ async def root(body: UrlModel):
     if body.headers:
         await page.set_extra_http_headers(body.headers)
 
-    await page.goto(
+    response = await page.goto(
         body.url,
         wait_until="load",
         timeout=body.timeout,
     )
+    page_status_code = response.status
+    page_error = get_error(page_status_code)
     # Wait != timeout. Wait is the time to wait after the page is loaded - useful in some cases were "load" / "networkidle" is not enough
     if body.wait_after_load > 0:
         await page.wait_for_timeout(body.wait_after_load)
 
     page_content = await page.content()
     await context.close()
-    json_compatible_item_data = {"content": page_content}
+    json_compatible_item_data = {
+        "content": page_content,
+        "pageStatusCode": page_status_code,
+        "pageError": page_error
+      }
     return JSONResponse(content=json_compatible_item_data)
