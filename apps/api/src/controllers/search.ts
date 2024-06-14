@@ -100,7 +100,7 @@ export async function searchHelper(
   );
 
   if (filteredDocs.length === 0) {
-    return { success: true, error: "No page found", returnCode: 200 };
+    return { success: true, error: "No page found", returnCode: 200, data: docs };
   }
 
   const billingResult = await billTeam(

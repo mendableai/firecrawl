@@ -83,7 +83,7 @@ export async function scrapWithFireEngine(
       console.error(
         `[Fire-Engine] Error fetching url: ${url} with status: ${response.status}`
       );
-      return { html: "", screenshot: "" };
+      return { html: "", screenshot: "", pageStatusCode: response.data?.pageStatusCode, pageError: response.data?.pageError };
     }
 
     const contentType = response.headers["content-type"];
@@ -94,7 +94,7 @@ export async function scrapWithFireEngine(
       const data = response.data;
       const html = data.content;
       const screenshot = data.screenshot;
-      return { html: html ?? "", screenshot: screenshot ?? "", pageStatusCode: data.pageStatusCode, pageError: data.error };
+      return { html: html ?? "", screenshot: screenshot ?? "", pageStatusCode: data.pageStatusCode, pageError: data.pageError };
     }
   } catch (error) {
     if (error.code === 'ECONNABORTED') {
@@ -142,7 +142,7 @@ export async function scrapWithScrapingBee(
     }
   } catch (error) {
     console.error(`[ScrapingBee][c] Error fetching url: ${url} -> ${error}`);
-    return { content: "" };
+    return { content: "", pageStatusCode: error.response.status, pageError: error.response.statusText };
   }
 }
 
@@ -172,7 +172,7 @@ export async function scrapWithPlaywright(
       console.error(
         `[Playwright] Error fetching url: ${url} with status: ${response.status}`
       );
-      return { content: "" };
+      return { content: "", pageStatusCode: response.data?.pageStatusCode, pageError: response.data?.pageError };
     }
 
     const contentType = response.headers["content-type"];
@@ -412,8 +412,8 @@ export async function scrapSingleUrl(
       pageError: scraperResponse.metadata.pageError || undefined
     };
   };
+  let { text, html, screenshot, pageStatusCode, pageError } = { text: "", html: "", screenshot: "", pageStatusCode: 200, pageError: undefined };
   try {
-    let { text, html, screenshot, pageStatusCode, pageError } = { text: "", html: "", screenshot: "", pageStatusCode: 200, pageError: undefined };
     let urlKey = urlToScrap;
     try {
       urlKey = new URL(urlToScrap).hostname.replace(/^www\./, "");
@@ -441,10 +441,16 @@ export async function scrapSingleUrl(
       text = attempt.text ?? '';
       html = attempt.html ?? '';
       screenshot = attempt.screenshot ?? '';
-      pageStatusCode = attempt.pageStatusCode;
-      pageError = attempt.pageError;
+      if (attempt.pageStatusCode) {
+        pageStatusCode = attempt.pageStatusCode;
+      }
+      if (attempt.pageError) {
+        pageError = attempt.pageError;
+      }
+      
       
       if (text && text.trim().length >= 100) break;
+      if (pageStatusCode && pageStatusCode == 404) break;
       const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;
       if (nextScraperIndex < scrapersInOrder.length) {
         console.info(`Falling back to ${scrapersInOrder[nextScraperIndex]}`);
@@ -493,7 +499,11 @@ export async function scrapSingleUrl(
       content: "",
       markdown: "",
       html: "",
-      metadata: { sourceURL: urlToScrap },
+      metadata: {
+        sourceURL: urlToScrap,
+        pageStatusCode: pageStatusCode,
+        pageError: pageError
+      },
     } as Document;
   }
 }

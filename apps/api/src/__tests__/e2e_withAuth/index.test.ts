@@ -164,21 +164,100 @@ describe("E2E Tests for API Routes", () => {
     //   expect(duration).toBeGreaterThanOrEqual(7000);
     // }, 12000); // 12 seconds timeout
 
-    it.concurrent('should return a successful response for a scrape with 404 page', async () => {
+    it.concurrent('should return a successful response for a scrape with 400 page', async () => {
       const response = await request(TEST_URL)
         .post('/v0/scrape')
         .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
         .set('Content-Type', 'application/json')
-        .send({ url: 'https://mendable.ai/alshdiasuhdasd' });
-      await new Promise((r) => setTimeout(r, 6000));
+        .send({ url: 'https://httpstat.us/400' });
+      await new Promise((r) => setTimeout(r, 5000));
 
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty('data');
       expect(response.body.data).toHaveProperty('content');
       expect(response.body.data).toHaveProperty('metadata');
-      expect(response.body.data.content).toContain('Mendable');
+      expect(response.body.data.metadata.pageStatusCode).toBe(400);
+      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("bad request");
+    }, 60000); // 60 seconds
+
+    it.concurrent('should return a successful response for a scrape with 401 page', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://httpstat.us/401' });
+      await new Promise((r) => setTimeout(r, 5000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.metadata.pageStatusCode).toBe(401);
+      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("unauthorized");
+    }, 60000); // 60 seconds
+
+    it.concurrent("should return a successful response for a scrape with 403 page", async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://httpstat.us/403' });
+
+      await new Promise((r) => setTimeout(r, 5000));
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.metadata.pageStatusCode).toBe(403);
+      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("forbidden");
+    }, 60000); // 60 seconds
+
+    it.concurrent('should return a successful response for a scrape with 404 page', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://httpstat.us/404' });
+      await new Promise((r) => setTimeout(r, 5000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
       expect(response.body.data.metadata.pageStatusCode).toBe(404);
-      expect(response.body.data.metadata.pageError).toBe("Not Found");
+      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("not found");
+    }, 60000); // 60 seconds
+
+    it.concurrent('should return a successful response for a scrape with 405 page', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://httpstat.us/405' });
+      await new Promise((r) => setTimeout(r, 5000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.metadata.pageStatusCode).toBe(405);
+      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("method not allowed");
+    }, 60000); // 60 seconds
+
+    it.concurrent('should return a successful response for a scrape with 500 page', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://httpstat.us/500' });
+      await new Promise((r) => setTimeout(r, 5000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.metadata.pageStatusCode).toBe(500);
+      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("internal server error");
     }, 60000); // 60 seconds
   });
 
