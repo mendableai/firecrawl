@@ -479,7 +479,8 @@ export class WebScraperDataProvider {
       onlyMainContent: false,
       includeHtml: false,
       replaceAllPathsWithAbsolutePaths: false,
-      parsePDF: true
+      parsePDF: true,
+      removeTags: []
     };
     this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
     this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? options.pageOptions?.replaceAllPathsWithAbsolutePaths ?? false;

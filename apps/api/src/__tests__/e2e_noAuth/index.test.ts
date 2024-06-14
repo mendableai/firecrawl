@@ -1,5 +1,4 @@
 import request from "supertest";
-import { app } from "../../index";
 import dotenv from "dotenv";
 const fs = require("fs");
 const path = require("path");

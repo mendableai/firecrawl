@@ -309,6 +309,19 @@ export async function scrapSingleUrl(
   const removeUnwantedElements = (html: string, pageOptions: PageOptions) => {
     const soup = cheerio.load(html);
     soup("script, style, iframe, noscript, meta, head").remove();
+
+    if (pageOptions.removeTags) {
+      if (typeof pageOptions.removeTags === 'string') {
+        pageOptions.removeTags.split(',').forEach((tag) => {
+          soup(tag.trim()).remove();
+        });
+      } else if (Array.isArray(pageOptions.removeTags)) {
+        pageOptions.removeTags.forEach((tag) => {
+          soup(tag).remove();
+        });
+      }
+    }
+    
     if (pageOptions.onlyMainContent) {
       // remove any other tags that are not in the main content
       excludeNonMainTags.forEach((tag) => {

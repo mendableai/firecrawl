@@ -55,10 +55,14 @@ export async function crawlController(req: Request, res: Response) {
     }
 
     const mode = req.body.mode ?? "crawl";
-    const crawlerOptions = req.body.crawlerOptions ?? { allowBackwardCrawling: false };
+
+    const crawlerOptions = req.body.crawlerOptions ?? {
+      allowBackwardCrawling: false
+    };
     const pageOptions = req.body.pageOptions ?? {
       onlyMainContent: false,
       includeHtml: false,
+      removeTags: [],
       parsePDF: true
     };
 
