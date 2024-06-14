@@ -57,6 +57,12 @@ export interface AuthResponse {
   team_id?: string;
   error?: string;
   status?: number;
+  plan?: string;
 }
+  
 
-
+export enum NotificationType {
+  APPROACHING_LIMIT = "approachingLimit",
+  LIMIT_REACHED = "limitReached",
+  RATE_LIMIT_REACHED = "rateLimitReached",
+}

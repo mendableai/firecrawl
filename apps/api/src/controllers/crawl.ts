@@ -7,6 +7,8 @@ import { RateLimiterMode } from "../../src/types";
 import { addWebScraperJob } from "../../src/services/queue-jobs";
 import { isUrlBlocked } from "../../src/scraper/WebScraper/utils/blocklist";
 import { logCrawl } from "../../src/services/logging/crawl_log";
+import { validateIdempotencyKey } from "../../src/services/idempotency/validate";
+import { createIdempotencyKey } from "../../src/services/idempotency/create";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -17,6 +19,19 @@ export async function crawlController(req: Request, res: Response) {
     );
     if (!success) {
       return res.status(status).json({ error });
+    }
+
+    if (req.headers["x-idempotency-key"]) {
+      const isIdempotencyValid = await validateIdempotencyKey(req);
+      if (!isIdempotencyValid) {
+        return res.status(409).json({ error: "Idempotency key already used" });
+      }
+      try {
+        createIdempotencyKey(req);
+      } catch (error) {
+        console.error(error);
+        return res.status(500).json({ error: error.message });
+      }
     }
 
     const { success: creditsCheckSuccess, message: creditsCheckMessage } =
@@ -40,8 +55,16 @@ export async function crawlController(req: Request, res: Response) {
     }
 
     const mode = req.body.mode ?? "crawl";
-    const crawlerOptions = req.body.crawlerOptions ?? {};
-    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false, includeHtml: false };
+
+    const crawlerOptions = req.body.crawlerOptions ?? {
+      allowBackwardCrawling: false
+    };
+    const pageOptions = req.body.pageOptions ?? {
+      onlyMainContent: false,
+      includeHtml: false,
+      removeTags: [],
+      parsePDF: true
+    };
 
     if (mode === "single_urls" && !url.includes(",")) {
       try {
@@ -49,9 +72,7 @@ export async function crawlController(req: Request, res: Response) {
         await a.setOptions({
           mode: "single_urls",
           urls: [url],
-          crawlerOptions: {
-            returnOnlyUrls: true,
-          },
+          crawlerOptions: { ...crawlerOptions, returnOnlyUrls: true },
           pageOptions: pageOptions,
         });
 
@@ -76,7 +97,7 @@ export async function crawlController(req: Request, res: Response) {
     const job = await addWebScraperJob({
       url: url,
       mode: mode ?? "crawl", // fix for single urls not working
-      crawlerOptions: { ...crawlerOptions },
+      crawlerOptions: crawlerOptions,
       team_id: team_id,
       pageOptions: pageOptions,
       origin: req.body.origin ?? "api",

@@ -1,0 +1,3 @@
+requests
+pytest
+python-dotenv

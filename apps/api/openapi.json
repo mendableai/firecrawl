@@ -50,6 +50,27 @@
                         "type": "boolean",
                         "description": "Include the raw HTML content of the page. Will output a html key in the response.",
                         "default": false
+                      },
+                      "screenshot": {
+                        "type": "boolean",
+                        "description": "Include a screenshot of the top of the page that you are scraping.",
+                        "default": false
+                      },
+                      "waitFor": {
+                        "type": "integer",
+                        "description": "Wait x amount of milliseconds for the page to load to fetch content",
+                        "default": 0
+                      },
+                      "removeTags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Tags, classes and ids to remove from the page. Use comma separated values. Example: 'script, .ad, #footer'"
+                      },
+                      "headers": {
+                        "type": "object",
+                        "description": "Headers to send with the request. Can be used to send cookies, user-agent, etc."
                       }
                     }
                   },
@@ -171,10 +192,20 @@
                         "description": "The crawling mode to use. Fast mode crawls 4x faster websites without sitemap, but may not be as accurate and shouldn't be used in heavy js-rendered websites.",
                         "default": "default"
                       },
+                      "ignoreSitemap": {
+                        "type": "boolean",
+                        "description": "Ignore the website sitemap when crawling",
+                        "default": false
+                      },
                       "limit": {
                         "type": "integer",
                         "description": "Maximum number of pages to crawl",
                         "default": 10000
+                      },
+                      "allowBackwardCrawling": {
+                        "type": "boolean",
+                        "description": "Allow backward crawling (crawl from the base URL to the previous URLs)",
+                        "default": false
                       }
                     }
                   },
@@ -189,6 +220,27 @@
                       "includeHtml": {
                         "type": "boolean",
                         "description": "Include the raw HTML content of the page. Will output a html key in the response.",
+                        "default": false
+                      },
+                      "screenshot": {
+                        "type": "boolean",
+                        "description": "Include a screenshot of the top of the page that you are scraping.",
+                        "default": false
+                      },
+                      "headers": {
+                        "type": "object",
+                        "description": "Headers to send with the request when scraping. Can be used to send cookies, user-agent, etc."
+                      },
+                      "removeTags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Tags, classes and ids to remove from the page. Use comma separated values. Example: 'script, .ad, #footer'"
+                      },
+                      "replaceAllPathsWithAbsolutePaths": {
+                        "type": "boolean",
+                        "description": "Replace all relative paths with absolute paths for images and links",
                         "default": false
                       }
                     }
@@ -363,7 +415,7 @@
                       "items": {
                         "$ref": "#/components/schemas/CrawlStatusResponseObj"
                       },
-                      "description": "Partial documents returned as it is being crawls (streaming). When a page is ready it will append to the parial_data array - so no need to wait for all the website to be crawled."
+                      "description": "Partial documents returned as it is being crawled (streaming). **This feature is currently in alpha - expect breaking changes** When a page is ready, it will append to the partial_data array, so there is no need to wait for the entire website to be crawled. There is a max of 50 items in the array response. The oldest item (top of the array) will be removed when the new item is added to the array."
                     }
                   }
                 }
@@ -459,7 +511,7 @@
               "html": {
                 "type": "string",
                 "nullable": true,
-                "description": "Raw HTML content of the page if `includeHtml`  is true"
+                "description": "Raw HTML content of the page if `includeHtml` is true"
               },
               "metadata": {
                 "type": "object",
@@ -474,9 +526,126 @@
                     "type": "string",
                     "nullable": true
                   },
+                  "keywords": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "robots": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "ogTitle": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "ogDescription": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "ogUrl": {
+                    "type": "string",
+                    "format": "uri",
+                    "nullable": true
+                  },
+                  "ogImage": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "ogAudio": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "ogDeterminer": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "ogLocale": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "ogLocaleAlternate": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "nullable": true
+                  },
+                  "ogSiteName": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "ogVideo": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "dctermsCreated": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "dcDateCreated": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "dcDate": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "dctermsType": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "dcType": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "dctermsAudience": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "dctermsSubject": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "dcSubject": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "dcDescription": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "dctermsKeywords": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "modifiedTime": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "publishedTime": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "articleTag": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "articleSection": {
+                    "type": "string",
+                    "nullable": true
+                  },
                   "sourceURL": {
                     "type": "string",
                     "format": "uri"
+                  },
+                  "pageStatusCode": {
+                    "type": "integer",
+                    "description": "The status code of the page"
+                  },
+                  "pageError": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "The error message of the page"
                   }
                 }
               },
@@ -508,6 +677,10 @@
             "nullable": true,
             "description": "Raw HTML content of the page if `includeHtml`  is true"
           },
+          "index": {
+            "type": "integer",
+            "description": "The number of the page that was crawled. This is useful for `partial_data` so you know which page the data is from." 
+          },
           "metadata": {
             "type": "object",
             "properties": {
@@ -521,9 +694,126 @@
                 "type": "string",
                 "nullable": true
               },
+              "keywords": {
+                "type": "string",
+                "nullable": true
+              },
+              "robots": {
+                "type": "string",
+                "nullable": true
+              },
+              "ogTitle": {
+                "type": "string",
+                "nullable": true
+              },
+              "ogDescription": {
+                "type": "string",
+                "nullable": true
+              },
+              "ogUrl": {
+                "type": "string",
+                "format": "uri",
+                "nullable": true
+              },
+              "ogImage": {
+                "type": "string",
+                "nullable": true
+              },
+              "ogAudio": {
+                "type": "string",
+                "nullable": true
+              },
+              "ogDeterminer": {
+                "type": "string",
+                "nullable": true
+              },
+              "ogLocale": {
+                "type": "string",
+                "nullable": true
+              },
+              "ogLocaleAlternate": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "nullable": true
+              },
+              "ogSiteName": {
+                "type": "string",
+                "nullable": true
+              },
+              "ogVideo": {
+                "type": "string",
+                "nullable": true
+              },
+              "dctermsCreated": {
+                "type": "string",
+                "nullable": true
+              },
+              "dcDateCreated": {
+                "type": "string",
+                "nullable": true
+              },
+              "dcDate": {
+                "type": "string",
+                "nullable": true
+              },
+              "dctermsType": {
+                "type": "string",
+                "nullable": true
+              },
+              "dcType": {
+                "type": "string",
+                "nullable": true
+              },
+              "dctermsAudience": {
+                "type": "string",
+                "nullable": true
+              },
+              "dctermsSubject": {
+                "type": "string",
+                "nullable": true
+              },
+              "dcSubject": {
+                "type": "string",
+                "nullable": true
+              },
+              "dcDescription": {
+                "type": "string",
+                "nullable": true
+              },
+              "dctermsKeywords": {
+                "type": "string",
+                "nullable": true
+              },
+              "modifiedTime": {
+                "type": "string",
+                "nullable": true
+              },
+              "publishedTime": {
+                "type": "string",
+                "nullable": true
+              },
+              "articleTag": {
+                "type": "string",
+                "nullable": true
+              },
+              "articleSection": {
+                "type": "string",
+                "nullable": true
+              },
               "sourceURL": {
                 "type": "string",
                 "format": "uri"
+              },
+              "pageStatusCode": {
+                "type": "integer",
+                "description": "The status code of the page"
+              },
+              "pageError": {
+                "type": "string",
+                "nullable": true,
+                "description": "The error message of the page"
               }
             }
           }

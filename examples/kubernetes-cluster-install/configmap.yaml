@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: firecrawl-config
+data:
+  NUM_WORKERS_PER_QUEUE: "8"
+  PORT: "3002"
+  HOST: "0.0.0.0"
+  REDIS_URL: "redis://redis:6379"
+  PLAYWRIGHT_MICROSERVICE_URL: "http://playwright-service:3000"
+  USE_DB_AUTHENTICATION: "false"
+  SUPABASE_ANON_TOKEN: ""
+  SUPABASE_URL: ""
+  SUPABASE_SERVICE_TOKEN: ""

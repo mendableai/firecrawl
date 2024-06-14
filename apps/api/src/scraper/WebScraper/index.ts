@@ -31,12 +31,14 @@ export class WebScraperDataProvider {
   private limit: number = 10000;
   private concurrentRequests: number = 20;
   private generateImgAltText: boolean = false;
+  private ignoreSitemap: boolean = false;
   private pageOptions?: PageOptions;
   private extractorOptions?: ExtractorOptions;
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
   private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" =
     "gpt-4-turbo";
   private crawlerMode: string = "default";
+  private allowBackwardCrawling: boolean = false;
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -72,7 +74,7 @@ export class WebScraperDataProvider {
               total: totalUrls,
               status: "SCRAPING",
               currentDocumentUrl: url,
-              currentDocument: result,
+              currentDocument: { ...result, index: processedUrls },
             });
           }
 
@@ -84,13 +86,15 @@ export class WebScraperDataProvider {
           const job = await getWebScraperQueue().getJob(this.bullJobId);
           const jobStatus = await job.getState();
           if (jobStatus === "failed") {
-            throw new Error(
+            console.error(
               "Job has failed or has been cancelled by the user. Stopping the job..."
             );
+            return [] as Document[];
           }
         }
       } catch (error) {
         console.error(error);
+        return [] as Document[];
       }
     }
     return results.filter((result) => result !== null) as Document[];
@@ -159,18 +163,27 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
 
+    const pathSplits = new URL(this.urls[0]).pathname.split('/');
+    const baseURLDepth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
+    const adjustedMaxDepth = this.maxCrawledDepth + baseURLDepth;
+    
     const crawler = new WebCrawler({
       initialUrl: this.urls[0],
       includes: this.includes,
       excludes: this.excludes,
       maxCrawledLinks: this.maxCrawledLinks,
-      maxCrawledDepth: this.maxCrawledDepth,
+      maxCrawledDepth: adjustedMaxDepth,
       limit: this.limit,
       generateImgAltText: this.generateImgAltText,
+      allowBackwardCrawling: this.allowBackwardCrawling,
     });
 
     let links = await crawler.start(
       inProgress,
+      this.pageOptions,
+      {
+        ignoreSitemap: this.ignoreSitemap,
+      },
       5,
       this.limit,
       this.maxCrawledDepth
@@ -213,6 +226,7 @@ export class WebScraperDataProvider {
       return this.returnOnlyUrlsResponse(links, inProgress);
     }
 
+
     let documents = await this.processLinks(links, inProgress);
     return this.cacheAndFinalizeDocuments(documents, links);
   }
@@ -231,7 +245,7 @@ export class WebScraperDataProvider {
       content: "",
       html: this.pageOptions?.includeHtml ? "" : undefined,
       markdown: "",
-      metadata: { sourceURL: url },
+      metadata: { sourceURL: url, pageStatusCode: 200 },
     }));
   }
 
@@ -270,10 +284,10 @@ export class WebScraperDataProvider {
   private async fetchPdfDocuments(pdfLinks: string[]): Promise<Document[]> {
     return Promise.all(
       pdfLinks.map(async (pdfLink) => {
-        const pdfContent = await fetchAndProcessPdf(pdfLink);
+        const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(pdfLink, this.pageOptions.parsePDF);
         return {
-          content: pdfContent,
-          metadata: { sourceURL: pdfLink },
+          content: content,
+          metadata: { sourceURL: pdfLink, pageStatusCode, pageError },
           provider: "web-scraper",
         };
       })
@@ -282,10 +296,10 @@ export class WebScraperDataProvider {
   private async fetchDocxDocuments(docxLinks: string[]): Promise<Document[]> {
     return Promise.all(
       docxLinks.map(async (p) => {
-        const docXDocument = await fetchAndProcessDocx(p);
+        const { content, pageStatusCode, pageError } = await fetchAndProcessDocx(p);
         return {
-          content: docXDocument,
-          metadata: { sourceURL: p },
+          content,
+          metadata: { sourceURL: p, pageStatusCode, pageError },
           provider: "web-scraper",
         };
       })
@@ -293,9 +307,10 @@ export class WebScraperDataProvider {
   }
 
   private applyPathReplacements(documents: Document[]): Document[] {
-    return this.replaceAllPathsWithAbsolutePaths
-      ? replacePathsWithAbsolutePaths(documents)
-      : replaceImgPathsWithAbsolutePaths(documents);
+    if (this.replaceAllPathsWithAbsolutePaths) {
+      documents = replacePathsWithAbsolutePaths(documents);
+    }
+    return replaceImgPathsWithAbsolutePaths(documents);
   }
 
   private async applyImgAltText(documents: Document[]): Promise<Document[]> {
@@ -464,12 +479,20 @@ export class WebScraperDataProvider {
     this.limit = options.crawlerOptions?.limit ?? 10000;
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
-    this.pageOptions = options.pageOptions ?? { onlyMainContent: false, includeHtml: false };
+    this.pageOptions = options.pageOptions ?? {
+      onlyMainContent: false,
+      includeHtml: false,
+      replaceAllPathsWithAbsolutePaths: false,
+      parsePDF: true,
+      removeTags: []
+    };
     this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
-    this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
+    this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? options.pageOptions?.replaceAllPathsWithAbsolutePaths ?? false;
     //! @nicolas, for some reason this was being injected and breaking everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
     this.crawlerMode = options.crawlerOptions?.mode ?? "default";
+    this.ignoreSitemap = options.crawlerOptions?.ignoreSitemap ?? false;
+    this.allowBackwardCrawling = options.crawlerOptions?.allowBackwardCrawling ?? false;
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {

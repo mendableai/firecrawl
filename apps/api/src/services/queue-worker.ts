@@ -38,7 +38,7 @@ getWebScraperQueue().process(
         error: message /* etc... */,
       };
 
-      await callWebhook(job.data.team_id, data);
+      await callWebhook(job.data.team_id, job.id as string, data);
 
       await logJob({
         success: success,
@@ -78,7 +78,7 @@ getWebScraperQueue().process(
         error:
           "Something went wrong... Contact help@mendable.ai or try again." /* etc... */,
       };
-      await callWebhook(job.data.team_id, data);
+      await callWebhook(job.data.team_id, job.id as string, data);
       await logJob({
         success: false,
         message: typeof error === 'string' ? error : (error.message ?? "Something went wrong... Contact help@mendable.ai"),

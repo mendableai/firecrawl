@@ -19,6 +19,9 @@ export async function startWebScraperPipeline({
     inProgress: (progress) => {
       if (progress.currentDocument) {
         partialDocs.push(progress.currentDocument);
+        if (partialDocs.length > 50) {
+          partialDocs = partialDocs.slice(-50);
+        }
         job.progress({ ...progress, partialDocs: partialDocs });
       }
     },

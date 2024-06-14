@@ -12,6 +12,7 @@ export async function getLinksFromSitemap(
       content = response.data;
     } catch (error) {
       console.error(`Request failed for ${sitemapUrl}: ${error}`);
+
       return allUrls;
     }
 

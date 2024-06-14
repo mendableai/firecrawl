@@ -24,8 +24,15 @@ kill_timeout = '5s'
 
 [http_service.concurrency]
   type = "requests"
-  hard_limit = 200
-  soft_limit = 100
+  hard_limit = 100
+  soft_limit = 50
+
+[[http_service.checks]]
+  grace_period = "20s"
+  interval = "30s"
+  method = "GET"
+  timeout = "15s"
+  path = "/"
 
 [[services]]
   protocol = 'tcp'
@@ -43,8 +50,8 @@ kill_timeout = '5s'
 
   [services.concurrency]
     type = 'connections'
-    hard_limit = 75
-    soft_limit = 30
+    hard_limit = 30
+    soft_limit = 12
 
 [[vm]]
   size = 'performance-4x'

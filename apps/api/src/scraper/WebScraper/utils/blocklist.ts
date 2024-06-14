@@ -1,5 +1,6 @@
 const socialMediaBlocklist = [
   'facebook.com',
+  'x.com',
   'twitter.com',
   'instagram.com',
   'linkedin.com',
@@ -14,14 +15,40 @@ const socialMediaBlocklist = [
   'telegram.org',
 ];
 
-const allowedUrls = [
-  'linkedin.com/pulse'
+const allowedKeywords = [
+  'pulse',
+  'privacy',
+  'terms',
+  'policy',
+  'user-agreement',
+  'legal',
+  'help',
+  'support',
+  'contact',
+  'about',
+  'careers',
+  'blog',
+  'press',
+  'conditions',
 ];
 
 export function isUrlBlocked(url: string): boolean {
-  if (allowedUrls.some(allowedUrl => url.includes(allowedUrl))) {
+  // Check if the URL contains any allowed keywords
+  if (allowedKeywords.some(keyword => url.includes(keyword))) {
     return false;
   }
 
-  return socialMediaBlocklist.some(domain => url.includes(domain));
+  try {
+    // Check if the URL matches any domain in the blocklist
+    return socialMediaBlocklist.some(domain => {
+      // Create a regular expression to match the exact domain
+      const domainPattern = new RegExp(`(^|\\.)${domain.replace('.', '\\.')}$`);
+      // Test the hostname of the URL against the pattern
+      return domainPattern.test(new URL(url).hostname);
+    });
+  } catch (e) {
+    // If an error occurs (e.g., invalid URL), return false
+    return false;
+  }
 }
+

@@ -15,7 +15,8 @@ export async function scrapeHelper(
   crawlerOptions: any,
   pageOptions: PageOptions,
   extractorOptions: ExtractorOptions,
-  timeout: number
+  timeout: number,
+  plan?: string
 ): Promise<{
   success: boolean;
   error?: string;
@@ -60,11 +61,13 @@ export async function scrapeHelper(
     (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
   );
   if (filteredDocs.length === 0) {
-    return { success: true, error: "No page found", returnCode: 200 };
+    return { success: true, error: "No page found", returnCode: 200, data: docs[0] };
   }
 
   let creditsToBeBilled = filteredDocs.length;
-  const creditsPerLLMExtract = 5;
+  const creditsPerLLMExtract = 50;
+
+
 
   if (extractorOptions.mode === "llm-extraction") {
     creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length);
@@ -93,7 +96,7 @@ export async function scrapeHelper(
 export async function scrapeController(req: Request, res: Response) {
   try {
     // make sure to authenticate user first, Bearer <token>
-    const { success, team_id, error, status } = await authenticateUser(
+    const { success, team_id, error, status, plan } = await authenticateUser(
       req,
       res,
       RateLimiterMode.Scrape
@@ -102,7 +105,13 @@ export async function scrapeController(req: Request, res: Response) {
       return res.status(status).json({ error });
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
-    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false, includeHtml: false };
+    const pageOptions = req.body.pageOptions ?? {
+      onlyMainContent: false,
+      includeHtml: false,
+      waitFor: 0,
+      screenshot: false,
+      parsePDF: true
+    };
     const extractorOptions = req.body.extractorOptions ?? {
       mode: "markdown"
     }
@@ -129,7 +138,8 @@ export async function scrapeController(req: Request, res: Response) {
       crawlerOptions,
       pageOptions,
       extractorOptions,
-      timeout
+      timeout,
+      plan
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;

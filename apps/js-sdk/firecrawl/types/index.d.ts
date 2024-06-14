@@ -5,6 +5,7 @@ import { z } from "zod";
  */
 export interface FirecrawlAppConfig {
     apiKey?: string | null;
+    apiUrl?: string | null;
 }
 /**
  * Generic parameter interface.
@@ -50,6 +51,7 @@ export interface JobStatusResponse {
     status: string;
     jobId?: string;
     data?: any;
+    partial_data?: any;
     error?: string;
 }
 /**
@@ -57,6 +59,7 @@ export interface JobStatusResponse {
  */
 export default class FirecrawlApp {
     private apiKey;
+    private apiUrl;
     /**
      * Initializes a new instance of the FirecrawlApp class.
      * @param {FirecrawlAppConfig} config - Configuration options for the FirecrawlApp instance.
@@ -81,10 +84,11 @@ export default class FirecrawlApp {
      * @param {string} url - The URL to crawl.
      * @param {Params | null} params - Additional parameters for the crawl request.
      * @param {boolean} waitUntilDone - Whether to wait for the crawl job to complete.
-     * @param {number} timeout - Timeout in seconds for job status checks.
+     * @param {number} pollInterval - Time in seconds for job status checks.
+     * @param {string} idempotencyKey - Optional idempotency key for the request.
      * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
      */
-    crawlUrl(url: string, params?: Params | null, waitUntilDone?: boolean, timeout?: number): Promise<CrawlResponse | any>;
+    crawlUrl(url: string, params?: Params | null, waitUntilDone?: boolean, pollInterval?: number, idempotencyKey?: string): Promise<CrawlResponse | any>;
     /**
      * Checks the status of a crawl job using the Firecrawl API.
      * @param {string} jobId - The job ID of the crawl operation.
@@ -95,7 +99,7 @@ export default class FirecrawlApp {
      * Prepares the headers for an API request.
      * @returns {AxiosRequestHeaders} The prepared headers.
      */
-    prepareHeaders(): AxiosRequestHeaders;
+    prepareHeaders(idempotencyKey?: string): AxiosRequestHeaders;
     /**
      * Sends a POST request to the specified URL.
      * @param {string} url - The URL to send the request to.
@@ -118,7 +122,7 @@ export default class FirecrawlApp {
      * @param {number} timeout - Timeout in seconds for job status checks.
      * @returns {Promise<any>} The final job status or data.
      */
-    monitorJobStatus(jobId: string, headers: AxiosRequestHeaders, timeout: number): Promise<any>;
+    monitorJobStatus(jobId: string, headers: AxiosRequestHeaders, checkInterval: number): Promise<any>;
     /**
      * Handles errors from API responses.
      * @param {AxiosResponse} response - The response from the API.

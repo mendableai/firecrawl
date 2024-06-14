@@ -28,11 +28,13 @@ export async function searchHelper(
 
   const tbs = searchOptions.tbs ?? null;
   const filter = searchOptions.filter ?? null;
+  const num_results = searchOptions.limit ?? 7;
+  const num_results_buffer = Math.floor(num_results * 1.5);
 
   let res = await search({
     query: query,
     advanced: advanced,
-    num_results: searchOptions.limit ?? 7,
+    num_results: num_results_buffer,
     tbs: tbs,
     filter: filter,
     lang: searchOptions.lang ?? "en",
@@ -41,12 +43,28 @@ export async function searchHelper(
   });
 
   let justSearch = pageOptions.fetchPageContent === false;
+  
 
   if (justSearch) {
+    const billingResult = await billTeam(
+      team_id,
+      res.length
+    );
+    if (!billingResult.success) {
+      return {
+        success: false,
+        error:
+          "Failed to bill team. Insufficient credits or subscription not found.",
+        returnCode: 402,
+      };
+    }
     return { success: true, data: res, returnCode: 200 };
   }
 
   res = res.filter((r) => !isUrlBlocked(r.url));
+  if (res.length > num_results) {
+    res = res.slice(0, num_results);
+  }
 
   if (res.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
@@ -67,6 +85,7 @@ export async function searchHelper(
       onlyMainContent: pageOptions?.onlyMainContent ?? true,
       fetchPageContent: pageOptions?.fetchPageContent ?? true,
       includeHtml: pageOptions?.includeHtml ?? false,
+      removeTags: pageOptions?.removeTags ?? [],
       fallback: false,
     },
   });
@@ -82,7 +101,7 @@ export async function searchHelper(
   );
 
   if (filteredDocs.length === 0) {
-    return { success: true, error: "No page found", returnCode: 200 };
+    return { success: true, error: "No page found", returnCode: 200, data: docs };
   }
 
   const billingResult = await billTeam(
@@ -121,6 +140,7 @@ export async function searchController(req: Request, res: Response) {
       includeHtml: false,
       onlyMainContent: true,
       fetchPageContent: true,
+      removeTags: [],
       fallback: false,
     };
     const origin = req.body.origin ?? "api";

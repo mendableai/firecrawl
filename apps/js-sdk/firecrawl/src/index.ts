@@ -6,6 +6,7 @@ import { zodToJsonSchema } from "zod-to-json-schema";
  */
 export interface FirecrawlAppConfig {
   apiKey?: string | null;
+  apiUrl?: string | null;
 }
 
 /**
@@ -55,6 +56,7 @@ export interface JobStatusResponse {
   status: string;
   jobId?: string;
   data?: any;
+  partial_data?: any,
   error?: string;
 }
 
@@ -63,6 +65,7 @@ export interface JobStatusResponse {
  */
 export default class FirecrawlApp {
   private apiKey: string;
+  private apiUrl: string = "https://api.firecrawl.dev";
 
   /**
    * Initializes a new instance of the FirecrawlApp class.
@@ -107,7 +110,7 @@ export default class FirecrawlApp {
     }
     try {
       const response: AxiosResponse = await axios.post(
-        "https://api.firecrawl.dev/v0/scrape",
+        this.apiUrl + "/v0/scrape",
         jsonData,
         { headers },
       );
@@ -147,7 +150,7 @@ export default class FirecrawlApp {
     }
     try {
       const response: AxiosResponse = await axios.post(
-        "https://api.firecrawl.dev/v0/search",
+        this.apiUrl + "/v0/search",
         jsonData,
         { headers }
       );
@@ -172,30 +175,32 @@ export default class FirecrawlApp {
    * @param {string} url - The URL to crawl.
    * @param {Params | null} params - Additional parameters for the crawl request.
    * @param {boolean} waitUntilDone - Whether to wait for the crawl job to complete.
-   * @param {number} timeout - Timeout in seconds for job status checks.
+   * @param {number} pollInterval - Time in seconds for job status checks.
+   * @param {string} idempotencyKey - Optional idempotency key for the request.
    * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
    */
   async crawlUrl(
     url: string,
     params: Params | null = null,
     waitUntilDone: boolean = true,
-    timeout: number = 2
+    pollInterval: number = 2,
+    idempotencyKey?: string
   ): Promise<CrawlResponse | any> {
-    const headers = this.prepareHeaders();
+    const headers = this.prepareHeaders(idempotencyKey);
     let jsonData: Params = { url };
     if (params) {
       jsonData = { ...jsonData, ...params };
     }
     try {
       const response: AxiosResponse = await this.postRequest(
-        "https://api.firecrawl.dev/v0/crawl",
+        this.apiUrl + "/v0/crawl",
         jsonData,
         headers
       );
       if (response.status === 200) {
         const jobId: string = response.data.jobId;
         if (waitUntilDone) {
-          return this.monitorJobStatus(jobId, headers, timeout);
+          return this.monitorJobStatus(jobId, headers, pollInterval);
         } else {
           return { success: true, jobId };
         }
@@ -218,11 +223,16 @@ export default class FirecrawlApp {
     const headers: AxiosRequestHeaders = this.prepareHeaders();
     try {
       const response: AxiosResponse = await this.getRequest(
-        `https://api.firecrawl.dev/v0/crawl/status/${jobId}`,
+        this.apiUrl + `/v0/crawl/status/${jobId}`,
         headers
       );
       if (response.status === 200) {
-        return response.data;
+        return {
+          success: true,
+          status: response.data.status,
+          data: response.data.data,
+          partial_data: !response.data.data ? response.data.partial_data : undefined,
+        };
       } else {
         this.handleError(response, "check crawl status");
       }
@@ -240,11 +250,12 @@ export default class FirecrawlApp {
    * Prepares the headers for an API request.
    * @returns {AxiosRequestHeaders} The prepared headers.
    */
-  prepareHeaders(): AxiosRequestHeaders {
+  prepareHeaders(idempotencyKey?: string): AxiosRequestHeaders {
     return {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${this.apiKey}`,
-    } as AxiosRequestHeaders;
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${this.apiKey}`,
+      ...(idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : {}),
+    } as AxiosRequestHeaders & { 'x-idempotency-key'?: string };
   }
 
   /**
@@ -285,11 +296,11 @@ export default class FirecrawlApp {
   async monitorJobStatus(
     jobId: string,
     headers: AxiosRequestHeaders,
-    timeout: number
+    checkInterval: number
   ): Promise<any> {
     while (true) {
       const statusResponse: AxiosResponse = await this.getRequest(
-        `https://api.firecrawl.dev/v0/crawl/status/${jobId}`,
+        this.apiUrl + `/v0/crawl/status/${jobId}`,
         headers
       );
       if (statusResponse.status === 200) {
@@ -303,10 +314,10 @@ export default class FirecrawlApp {
         } else if (
           ["active", "paused", "pending", "queued"].includes(statusData.status)
         ) {
-          if (timeout < 2) {
-            timeout = 2;
+          if (checkInterval < 2) {
+            checkInterval = 2;
           }
-          await new Promise((resolve) => setTimeout(resolve, timeout * 1000)); // Wait for the specified timeout before checking again
+          await new Promise((resolve) => setTimeout(resolve, checkInterval * 1000)); // Wait for the specified timeout before checking again
         } else {
           throw new Error(
             `Crawl job failed or was stopped. Status: ${statusData.status}`
