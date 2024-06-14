@@ -49,7 +49,7 @@ export async function scrapWithFireEngine(
   url: string,
   waitFor: number = 0,
   screenshot: boolean = false,
-  pageOptions: { scrollXPaths?: string[] } = {},
+  pageOptions: { scrollXPaths?: string[], parsePDF?: boolean } = { parsePDF: true },
   headers?: Record<string, string>,
   options?: any
 ): Promise<FireEngineResponse> {
@@ -88,7 +88,7 @@ export async function scrapWithFireEngine(
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
-      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url);
+      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
       return { html: content, screenshot: "", pageStatusCode, pageError };
     } else {
       const data = response.data;
@@ -109,7 +109,8 @@ export async function scrapWithFireEngine(
 export async function scrapWithScrapingBee(
   url: string,
   wait_browser: string = "domcontentloaded",
-  timeout: number = universalTimeout
+  timeout: number = universalTimeout,
+  pageOptions: { parsePDF?: boolean } = { parsePDF: true }
 ): Promise<{ content: string, pageStatusCode?: number, pageError?: string }> {
   try {
     const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY);
@@ -129,7 +130,8 @@ export async function scrapWithScrapingBee(
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
-      return await fetchAndProcessPdf(url);
+      return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+
     } else {
       let text = "";
       try {
@@ -149,7 +151,8 @@ export async function scrapWithScrapingBee(
 export async function scrapWithPlaywright(
   url: string,
   waitFor: number = 0,
-  headers?: Record<string, string>
+  headers?: Record<string, string>,
+  pageOptions: { parsePDF?: boolean } = { parsePDF: true }
 ): Promise<{ content: string, pageStatusCode?: number, pageError?: string }> {
   try {
     const reqParams = await generateRequestParams(url);
@@ -177,7 +180,7 @@ export async function scrapWithPlaywright(
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
-      return await fetchAndProcessPdf(url);
+      return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
     } else {
       const textData = response.data;
       try {
@@ -199,7 +202,10 @@ export async function scrapWithPlaywright(
   }
 }
 
-export async function scrapWithFetch(url: string): Promise<{ content: string, pageStatusCode?: number, pageError?: string }> {
+export async function scrapWithFetch(
+  url: string,
+  pageOptions: { parsePDF?: boolean } = { parsePDF: true }
+): Promise<{ content: string, pageStatusCode?: number, pageError?: string }> {
   try {
     const response = await axios.get(url, {
       headers: {
@@ -218,7 +224,7 @@ export async function scrapWithFetch(url: string): Promise<{ content: string, pa
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
-      return await fetchAndProcessPdf(url);
+      return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
     } else {
       const text = response.data;
       return { content: text, pageStatusCode: 200 };
@@ -309,6 +315,19 @@ export async function scrapSingleUrl(
   const removeUnwantedElements = (html: string, pageOptions: PageOptions) => {
     const soup = cheerio.load(html);
     soup("script, style, iframe, noscript, meta, head").remove();
+
+    if (pageOptions.removeTags) {
+      if (typeof pageOptions.removeTags === 'string') {
+        pageOptions.removeTags.split(',').forEach((tag) => {
+          soup(tag.trim()).remove();
+        });
+      } else if (Array.isArray(pageOptions.removeTags)) {
+        pageOptions.removeTags.forEach((tag) => {
+          soup(tag).remove();
+        });
+      }
+    }
+    
     if (pageOptions.onlyMainContent) {
       // remove any other tags that are not in the main content
       excludeNonMainTags.forEach((tag) => {
@@ -390,7 +409,7 @@ export async function scrapSingleUrl(
           }
           break;
         case "pdf":
-          const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(customScraperResult.url);
+          const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(customScraperResult.url, pageOptions?.parsePDF);
           customScrapedContent  = { html: content, screenshot, pageStatusCode, pageError }
           break;
       }

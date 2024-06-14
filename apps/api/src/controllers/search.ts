@@ -85,6 +85,7 @@ export async function searchHelper(
       onlyMainContent: pageOptions?.onlyMainContent ?? true,
       fetchPageContent: pageOptions?.fetchPageContent ?? true,
       includeHtml: pageOptions?.includeHtml ?? false,
+      removeTags: pageOptions?.removeTags ?? [],
       fallback: false,
     },
   });
@@ -139,6 +140,7 @@ export async function searchController(req: Request, res: Response) {
       includeHtml: false,
       onlyMainContent: true,
       fetchPageContent: true,
+      removeTags: [],
       fallback: false,
     };
     const origin = req.body.origin ?? "api";

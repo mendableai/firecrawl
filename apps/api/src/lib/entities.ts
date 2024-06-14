@@ -19,6 +19,8 @@ export type PageOptions = {
   screenshot?: boolean;
   headers?: Record<string, string>;
   replaceAllPathsWithAbsolutePaths?: boolean;
+  parsePDF?: boolean;
+  removeTags?: string | string[];
 };
 
 export type ExtractorOptions = {

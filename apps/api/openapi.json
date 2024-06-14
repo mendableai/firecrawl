@@ -61,6 +61,13 @@
                         "description": "Wait x amount of milliseconds for the page to load to fetch content",
                         "default": 0
                       },
+                      "removeTags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Tags, classes and ids to remove from the page. Use comma separated values. Example: 'script, .ad, #footer'"
+                      },
                       "headers": {
                         "type": "object",
                         "description": "Headers to send with the request. Can be used to send cookies, user-agent, etc."
@@ -194,6 +201,11 @@
                         "type": "integer",
                         "description": "Maximum number of pages to crawl",
                         "default": 10000
+                      },
+                      "allowBackwardCrawling": {
+                        "type": "boolean",
+                        "description": "Allow backward crawling (crawl from the base URL to the previous URLs)",
+                        "default": false
                       }
                     }
                   },
@@ -218,6 +230,13 @@
                       "headers": {
                         "type": "object",
                         "description": "Headers to send with the request when scraping. Can be used to send cookies, user-agent, etc."
+                      },
+                      "removeTags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Tags, classes and ids to remove from the page. Use comma separated values. Example: 'script, .ad, #footer'"
                       },
                       "replaceAllPathsWithAbsolutePaths": {
                         "type": "boolean",
