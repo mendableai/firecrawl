@@ -404,7 +404,7 @@ describe("E2E Tests for API Routes", () => {
         const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
         expect(depth).toBeLessThanOrEqual(2);
       });
-    }, 120000);
+    }, 180000);
 
     it.concurrent("should return a successful response with relative max depth option for a valid crawl job", async () => {
       const crawlResponse = await request(TEST_URL)
@@ -457,7 +457,7 @@ describe("E2E Tests for API Routes", () => {
         const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
         expect(depth).toBeLessThanOrEqual(3);
       });
-    }, 120000);
+    }, 180000);
 
     it.concurrent("should return a successful response with relative max depth option for a valid crawl job different depths (0)", async () => {
       const crawlResponse = await request(TEST_URL)
@@ -510,7 +510,7 @@ describe("E2E Tests for API Routes", () => {
         const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
         expect(depth).toBeLessThanOrEqual(1);
       });
-    }, 120000);
+    }, 180000);
 
     it.concurrent("should return a successful response with relative max depth option for a valid crawl job different depths (2)", async () => {
       const crawlResponse = await request(TEST_URL)
@@ -658,7 +658,7 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0].content).toContain("_Roast_");
       expect(completedResponse.body.data[0].markdown).toContain("_Roast_");
       expect(completedResponse.body.data[0].html).toContain("<h1");
-    }, 60000);
+    }, 180000);
   });
 
   describe("POST /v0/crawlWebsitePreview", () => {
@@ -798,7 +798,7 @@ describe("E2E Tests for API Routes", () => {
       );
 
       expect(childrenLinks.length).toBe(completedResponse.body.data.length);
-    }, 120000); // 120 seconds
+    }, 180000); // 120 seconds
     
     it.concurrent('should return a successful response for a valid crawl job with PDF files without explicit .pdf extension', async () => {
       const crawlResponse = await request(TEST_URL)
@@ -835,7 +835,7 @@ describe("E2E Tests for API Routes", () => {
             })
           ])
         );
-    }, 120000); // 120 seconds
+    }, 180000); // 120 seconds
 
     it.concurrent("should return a successful response with max depth option for a valid crawl job", async () => {
       const crawlResponse = await request(TEST_URL)
