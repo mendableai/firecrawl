@@ -769,7 +769,7 @@ describe("E2E Tests for API Routes", () => {
     //   expect(completedResponse.body.data[0].content).not.toContain("main menu");
     // }, 60000); // 60 seconds
 
-    it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option (1)", async () => {
+    it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option", async () => {
       const crawlResponse = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
