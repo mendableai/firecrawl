@@ -519,7 +519,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Content-Type", "application/json")
         .send({
           url: "https://www.scrapethissite.com",
-          crawlerOptions: { maxDepth: 2 },
+          crawlerOptions: { maxDepth: 2, limit: 5 },
         });
       expect(crawlResponse.statusCode).toBe(200);
 
