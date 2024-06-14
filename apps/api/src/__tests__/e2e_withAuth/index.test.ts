@@ -619,13 +619,14 @@ describe("E2E Tests for API Routes", () => {
     }, 180000);
 
     it.concurrent("should return a successful response with relative max depth option for a valid crawl job with maxDepths equals to zero", async () => {
+      
       const crawlResponse = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
-          url: "https://www.scrapethissite.com",
-          crawlerOptions: { maxDepth: 0 },
+          url: "https://www.mendable.ai",
+          crawlerOptions: { maxDepth: 2 },
         });
       expect(crawlResponse.statusCode).toBe(200);
 
@@ -650,6 +651,70 @@ describe("E2E Tests for API Routes", () => {
       const completedResponse = await request(TEST_URL)
         .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+        const testurls = completedResponse.body.data.map(
+          (item: any) => item.metadata?.sourceURL
+        );
+        console.log(testurls)
+
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      const urls = completedResponse.body.data.map(
+        (item: any) => item.metadata?.sourceURL
+      );
+      expect(urls.length).toBeGreaterThanOrEqual(1);
+
+      // Check if all URLs have an absolute maximum depth of 3 after the base URL depth was 2 and the maxDepth was 1
+      urls.forEach((url: string) => {
+        const pathSplits = new URL(url).pathname.split('/');
+        const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
+        expect(depth).toBeLessThanOrEqual(1);
+      });
+    }, 180000);
+
+    it.concurrent("should return a successful response with relative max depth option for a valid crawl job with maxDepths equals to zero", async () => {
+      
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://www.scrapethissite.com",
+          crawlerOptions: { maxDepth: 2 },
+        });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(["active", "waiting"]).toContain(response.body.status);
+      // wait for 60 seconds
+      let isCompleted = false;
+      while (!isCompleted) {
+        const statusCheckResponse = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(statusCheckResponse.statusCode).toBe(200);
+        isCompleted = statusCheckResponse.body.status === "completed";
+        if (!isCompleted) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+        const testurls = completedResponse.body.data.map(
+          (item: any) => item.metadata?.sourceURL
+        );
+        console.log(testurls)
 
       expect(completedResponse.statusCode).toBe(200);
       expect(completedResponse.body).toHaveProperty("status");

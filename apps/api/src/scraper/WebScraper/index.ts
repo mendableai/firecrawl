@@ -164,9 +164,9 @@ export class WebScraperDataProvider {
   ): Promise<Document[]> {
 
     const pathSplits = new URL(this.urls[0]).pathname.split('/');
-    const baseURLDepth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
+    const baseURLDepth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0) -1;
     const adjustedMaxDepth = this.maxCrawledDepth + baseURLDepth;
-    
+  
     const crawler = new WebCrawler({
       initialUrl: this.urls[0],
       includes: this.includes,

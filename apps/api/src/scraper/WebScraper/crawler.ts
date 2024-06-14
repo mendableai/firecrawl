@@ -60,8 +60,11 @@ export class WebCrawler {
       .filter((link) => {
         const url = new URL(link);
         const path = url.pathname;
-        const depth = url.pathname.split('/').length - 1;
+        
+        const pathSplits = new URL(url).pathname.split('/');
+        const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0) -1;
 
+        
         // Check if the link exceeds the maximum depth allowed
         if (depth > maxDepth) {
           return false;
@@ -136,8 +139,10 @@ export class WebCrawler {
 
     if(!crawlerOptions?.ignoreSitemap){
       const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
+    
       if (sitemapLinks.length > 0) {
         let filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
+       
         return filteredLinks.map(link => ({ url: link, html: "" }));
       }
     }
@@ -148,6 +153,7 @@ export class WebCrawler {
       concurrencyLimit,
       inProgress
     );
+   
     
     if (
       urls.length === 0 &&
