@@ -800,7 +800,7 @@ describe("E2E Tests for API Routes", () => {
       expect(childrenLinks.length).toBe(completedResponse.body.data.length);
     }, 180000); // 120 seconds
     
-    it.concurrent('should return a successful response for a valid crawl job with PDF files without explicit .pdf extension', async () => {
+    it.concurrent('should return a successful response for a valid crawl job with PDF files without explicit .pdf extension ', async () => {
       const crawlResponse = await request(TEST_URL)
         .post('/v0/crawl')
         .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
