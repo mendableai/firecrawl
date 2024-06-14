@@ -72,10 +72,12 @@ export const serverRateLimiter = createRateLimiter(
   RATE_LIMITS.account.default
 );
 
-export const testSuiteRateLimiter = createRateLimiter(
-  "test-suite",
-  RATE_LIMITS.testSuite.default
-);
+export const testSuiteRateLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "test-suite",
+  points: 10000,
+  duration: 60, // Duration in seconds
+});
 
 export function getRateLimiter(
   mode: RateLimiterMode,

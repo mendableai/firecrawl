@@ -17,7 +17,8 @@
     "worker:production": "node dist/src/services/queue-worker.js",
     "mongo-docker": "docker run -d -p 2717:27017 -v ./mongo-data:/data/db --name mongodb mongo:latest",
     "mongo-docker-console": "docker exec -it mongodb mongosh",
-    "run-example": "npx ts-node src/example.ts"
+    "run-example": "npx ts-node src/example.ts",
+    "deploy:fly:staging": "fly deploy -c fly.staging.toml"
   },
   "author": "",
   "license": "ISC",

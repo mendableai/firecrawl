@@ -677,7 +677,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
-          url: "https://www.scrapethissite.com",
+          url: "proxyway.com",
           crawlerOptions: { maxDepth: 2, limit: 5 },
         });
       expect(crawlResponse.statusCode).toBe(200);
@@ -769,7 +769,7 @@ describe("E2E Tests for API Routes", () => {
     //   expect(completedResponse.body.data[0].content).not.toContain("main menu");
     // }, 60000); // 60 seconds
 
-    it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option (1)", async () => {
+    it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option", async () => {
       const crawlResponse = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -813,7 +813,7 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
       expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
 
-      // 120 seconds
+      // 120 seconds  
       expect(completedResponse.body.data[0]).toHaveProperty("html");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
       expect(completedResponse.body.data[0].content).toContain("_Roast_");
