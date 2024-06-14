@@ -478,7 +478,7 @@ describe("E2E Tests for API Routes", () => {
       urls.forEach((url: string) => {
         const pathSplits = new URL(url).pathname.split('/');
         const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
-        expect(depth).toBeLessThanOrEqual(0);
+        expect(depth).toBeLessThanOrEqual(1);
       });
     }, 120000);
 
