@@ -1,17 +1,19 @@
 import { supabase_service } from "./supabase";
 
-export const callWebhook = async (teamId: string, data: any) => {
+export const callWebhook = async (teamId: string, jobId: string,data: any) => {
   try {
     const selfHostedUrl = process.env.SELF_HOSTED_WEBHOOK_URL;
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
     let webhookUrl = selfHostedUrl;
 
-    if (!selfHostedUrl) {
+    // Only fetch the webhook URL from the database if the self-hosted webhook URL is not set
+    // and the USE_DB_AUTHENTICATION environment variable is set to true
+    if (!selfHostedUrl && useDbAuthentication) {
       const { data: webhooksData, error } = await supabase_service
         .from("webhooks")
         .select("url")
         .eq("team_id", teamId)
         .limit(1);
-
       if (error) {
         console.error(
           `Error fetching webhook URL for team ID: ${teamId}`,
@@ -45,6 +47,7 @@ export const callWebhook = async (teamId: string, data: any) => {
       },
       body: JSON.stringify({
         success: data.success,
+        jobId: jobId,
         data: dataToSend,
         error: data.error || undefined,
       }),

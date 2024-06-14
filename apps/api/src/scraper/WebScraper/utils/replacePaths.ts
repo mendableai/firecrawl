@@ -10,7 +10,8 @@ export const replacePathsWithAbsolutePaths = (documents: Document[]): Document[]
         ) || [];
 
       paths.forEach((path: string) => {
-        const isImage = path.startsWith("!");
+        try {
+          const isImage = path.startsWith("!");
         let matchedUrl = path.match(/\(([^)]+)\)/) || path.match(/href="([^"]+)"/);
         let url = matchedUrl[1];
 
@@ -22,18 +23,18 @@ export const replacePathsWithAbsolutePaths = (documents: Document[]): Document[]
         }
 
         const markdownLinkOrImageText = path.match(/(!?\[.*?\])/)[0];
-        if (isImage) {
+        // Image is handled afterwards
+        if (!isImage) {
           document.content = document.content.replace(
             path,
             `${markdownLinkOrImageText}(${url})`
           );
-        } else {
-          document.content = document.content.replace(
-            path,
-            `${markdownLinkOrImageText}(${url})`
-          );
+          }
+        } catch (error) {
+          
         }
       });
+      document.markdown = document.content;
     });
 
     return documents;
@@ -60,8 +61,10 @@ export const replaceImgPathsWithAbsolutePaths = (documents: Document[]): Documen
           if (!imageUrl.startsWith("http")) {
             if (imageUrl.startsWith("/")) {
               imageUrl = imageUrl.substring(1);
+              imageUrl = new URL(imageUrl, baseUrl).toString();
+            } else {
+              imageUrl = new URL(imageUrl, document.metadata.sourceURL).toString();
             }
-            imageUrl = new URL(imageUrl, baseUrl).toString();
           }
         }
 
@@ -70,6 +73,7 @@ export const replaceImgPathsWithAbsolutePaths = (documents: Document[]): Documen
           `![${altText}](${imageUrl})`
         );
       });
+      document.markdown = document.content;
     });
 
     return documents;

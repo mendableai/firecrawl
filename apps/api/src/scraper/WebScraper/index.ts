@@ -31,12 +31,14 @@ export class WebScraperDataProvider {
   private limit: number = 10000;
   private concurrentRequests: number = 20;
   private generateImgAltText: boolean = false;
+  private ignoreSitemap: boolean = false;
   private pageOptions?: PageOptions;
   private extractorOptions?: ExtractorOptions;
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
   private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" =
     "gpt-4-turbo";
   private crawlerMode: string = "default";
+  private allowBackwardCrawling: boolean = false;
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -169,10 +171,15 @@ export class WebScraperDataProvider {
       maxCrawledDepth: this.maxCrawledDepth,
       limit: this.limit,
       generateImgAltText: this.generateImgAltText,
+      allowBackwardCrawling: this.allowBackwardCrawling,
     });
 
     let links = await crawler.start(
       inProgress,
+      this.pageOptions,
+      {
+        ignoreSitemap: this.ignoreSitemap,
+      },
       5,
       this.limit,
       this.maxCrawledDepth
@@ -296,9 +303,10 @@ export class WebScraperDataProvider {
   }
 
   private applyPathReplacements(documents: Document[]): Document[] {
-    return this.replaceAllPathsWithAbsolutePaths
-      ? replacePathsWithAbsolutePaths(documents)
-      : replaceImgPathsWithAbsolutePaths(documents);
+    if (this.replaceAllPathsWithAbsolutePaths) {
+      documents = replacePathsWithAbsolutePaths(documents);
+    }
+    return replaceImgPathsWithAbsolutePaths(documents);
   }
 
   private async applyImgAltText(documents: Document[]): Promise<Document[]> {
@@ -467,12 +475,19 @@ export class WebScraperDataProvider {
     this.limit = options.crawlerOptions?.limit ?? 10000;
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
-    this.pageOptions = options.pageOptions ?? { onlyMainContent: false, includeHtml: false };
+    this.pageOptions = options.pageOptions ?? {
+      onlyMainContent: false,
+      includeHtml: false,
+      replaceAllPathsWithAbsolutePaths: false,
+      removeTags: []
+    };
     this.extractorOptions = options.extractorOptions ?? {mode: "markdown"}
-    this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? false;
+    this.replaceAllPathsWithAbsolutePaths = options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ?? options.pageOptions?.replaceAllPathsWithAbsolutePaths ?? false;
     //! @nicolas, for some reason this was being injected and breaking everything. Don't have time to find source of the issue so adding this check
     this.excludes = this.excludes.filter((item) => item !== "");
     this.crawlerMode = options.crawlerOptions?.mode ?? "default";
+    this.ignoreSitemap = options.crawlerOptions?.ignoreSitemap ?? false;
+    this.allowBackwardCrawling = options.crawlerOptions?.allowBackwardCrawling ?? false;
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {

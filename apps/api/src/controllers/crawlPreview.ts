@@ -26,7 +26,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
 
     const mode = req.body.mode ?? "crawl";
     const crawlerOptions = req.body.crawlerOptions ?? {};
-    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false, includeHtml: false };
+    const pageOptions = req.body.pageOptions ?? { onlyMainContent: false, includeHtml: false, removeTags: [] };
 
     const job = await addWebScraperJob({
       url: url,

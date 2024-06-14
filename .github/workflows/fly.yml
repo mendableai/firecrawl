@@ -183,6 +183,7 @@ jobs:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
 
   build-and-publish-python-sdk:
+    name: Build and publish Python SDK
     runs-on: ubuntu-latest
     needs: deploy
 
@@ -213,7 +214,7 @@ jobs:
         working-directory: ./apps/python-sdk
 
       - name: Publish to PyPI
-        if: ${{ env.VERSION_INCREMENTED == 'true' }}
+        if: ${{ env.PYTHON_SDK_VERSION_INCREMENTED == 'true' }}
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
@@ -222,6 +223,7 @@ jobs:
         working-directory: ./apps/python-sdk
 
   build-and-publish-js-sdk:
+    name: Build and publish JavaScript SDK
     runs-on: ubuntu-latest
     needs: deploy
 

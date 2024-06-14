@@ -9,13 +9,14 @@ and handles retries for certain HTTP status codes.
 Classes:
     - FirecrawlApp: Main class for interacting with the Firecrawl API.
 """
-
+import logging
 import os
 import time
 from typing import Any, Dict, Optional
 
 import requests
 
+logger : logging.Logger = logging.getLogger("firecrawl")
 
 class FirecrawlApp:
     """
@@ -28,8 +29,14 @@ class FirecrawlApp:
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
         self.api_key = api_key or os.getenv('FIRECRAWL_API_KEY')
         if self.api_key is None:
+            logger.warning("No API key provided")
             raise ValueError('No API key provided')
+        else:
+            logger.debug("Initialized FirecrawlApp with API key: %s", self.api_key)
+
         self.api_url = api_url or os.getenv('FIRECRAWL_API_URL', 'https://api.firecrawl.dev')
+        if self.api_url != 'https://api.firecrawl.dev':
+            logger.debug("Initialized FirecrawlApp with API URL: %s", self.api_url)
 
     def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
         """

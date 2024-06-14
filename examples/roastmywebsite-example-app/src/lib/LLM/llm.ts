@@ -1,4 +1,4 @@
-import OpenAI from "openai";
+import OpenAI from "openai/index.mjs";
 import { encoding_for_model } from "@dqbd/tiktoken";
 
 /**
