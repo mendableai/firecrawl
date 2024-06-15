@@ -45,7 +45,7 @@ export interface FirecrawlJob {
 
 export enum RateLimiterMode {
   Crawl = "crawl",
-  CrawlStatus = "crawl-status",
+  CrawlStatus = "crawlStatus",
   Scrape = "scrape",
   Preview = "preview",
   Search = "search",
