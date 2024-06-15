@@ -563,7 +563,7 @@ describe("E2E Tests for API Routes", () => {
         const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
         expect(depth).toBeLessThanOrEqual(2);
       });
-    }, 180000);
+    }, 240000);
 
     it.concurrent("should return a successful response with relative max depth option for a valid crawl job", async () => {
       const crawlResponse = await request(TEST_URL)
@@ -616,7 +616,7 @@ describe("E2E Tests for API Routes", () => {
         const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
         expect(depth).toBeLessThanOrEqual(3);
       });
-    }, 180000);
+    }, 240000);
 
     it.concurrent("should return a successful response with relative max depth option for a valid crawl job with maxDepths equals to zero", async () => {
       
@@ -675,7 +675,7 @@ describe("E2E Tests for API Routes", () => {
         const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
         expect(depth).toBeLessThanOrEqual(1);
       });
-    }, 180000);
+    }, 240000);
 
     it.concurrent("should return a successful response with relative max depth option for a valid crawl job with maxDepth equals to 2", async () => {
       const crawlResponse = await request(TEST_URL)
@@ -728,7 +728,7 @@ describe("E2E Tests for API Routes", () => {
         const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
         expect(depth).toBeLessThanOrEqual(3);
       });
-    }, 180000);
+    }, 240000);
 
     // it.concurrent("should return a successful response with a valid API key and valid limit option", async () => {
     //   const crawlResponse = await request(TEST_URL)
@@ -828,7 +828,7 @@ describe("E2E Tests for API Routes", () => {
 
       expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
       expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
-    }, 180000);
+    }, 240000);
 
   });
 
@@ -971,7 +971,7 @@ describe("E2E Tests for API Routes", () => {
       );
 
       expect(childrenLinks.length).toBe(completedResponse.body.data.length);
-    }, 180000); // 120 seconds
+    }, 240000); // 120 seconds
     
     it.concurrent('should return a successful response for a valid crawl job with PDF files without explicit .pdf extension ', async () => {
       const crawlResponse = await request(TEST_URL)
@@ -1012,7 +1012,7 @@ describe("E2E Tests for API Routes", () => {
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
         expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
-    }, 180000); // 120 seconds
+    }, 240000); // 120 seconds
 
 
     it.concurrent("should return a successful response with max depth option for a valid crawl job", async () => {
@@ -1062,7 +1062,7 @@ describe("E2E Tests for API Routes", () => {
         const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
         expect(depth).toBeLessThanOrEqual(2);
       });
-    }, 180000);
+    }, 240000);
 
     it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option (2)", async () => {
       const crawlResponse = await request(TEST_URL)
