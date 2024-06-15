@@ -6,6 +6,7 @@ import async from "async";
 import { CrawlerOptions, PageOptions, Progress } from "../../lib/entities";
 import { scrapSingleUrl, scrapWithScrapingBee } from "./single_url";
 import robotsParser from "robots-parser";
+import { getURLDepth } from "./utils/maxDepthUtils";
 
 export class WebCrawler {
   private initialUrl: string;
@@ -60,8 +61,10 @@ export class WebCrawler {
       .filter((link) => {
         const url = new URL(link);
         const path = url.pathname;
-        const depth = url.pathname.split('/').length - 1;
+        
+        const depth = getURLDepth(url.toString());
 
+        
         // Check if the link exceeds the maximum depth allowed
         if (depth > maxDepth) {
           return false;
@@ -136,8 +139,10 @@ export class WebCrawler {
 
     if(!crawlerOptions?.ignoreSitemap){
       const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
+    
       if (sitemapLinks.length > 0) {
         let filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
+       
         return filteredLinks.map(link => ({ url: link, html: "" }));
       }
     }
@@ -148,6 +153,7 @@ export class WebCrawler {
       concurrencyLimit,
       inProgress
     );
+   
     
     if (
       urls.length === 0 &&
