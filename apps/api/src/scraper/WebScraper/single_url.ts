@@ -292,6 +292,7 @@ function getScrapingFallbackOrder(
       ? [defaultScraper, ...filteredDefaultOrder, ...availableScrapers]
       : [...filteredDefaultOrder, ...availableScrapers]
   );
+
   const scrapersInOrder = Array.from(uniqueScrapers);
   return scrapersInOrder as (typeof baseScrapers)[number][];
 }

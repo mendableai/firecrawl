@@ -16,6 +16,22 @@ npx playwright install
 npm run test
 ```
 
+## Running Load Tests with Artillery
+
+To run load tests using Artillery, follow these steps:
+
+1. Install Artillery globally if you haven't already:
+
+```bash
+npm install -g artillery
+```
+
+2. Run the load test:
+
+```bash
+artillery run load-test.yml
+```
+
 ## Test Results
 
 The tests are designed to cover various aspects of the system, including:
