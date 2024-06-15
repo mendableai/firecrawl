@@ -1,0 +1,163 @@
+// crawler.test.ts
+import { WebCrawler } from '../crawler';
+import axios from 'axios';
+import robotsParser from 'robots-parser';
+import { getAdjustedMaxDepth } from '../utils/maxDepthUtils';
+
+jest.mock('axios');
+jest.mock('robots-parser');
+
+describe('WebCrawler maxDepth and filterLinks', () => {
+  let crawler: WebCrawler;
+  const mockAxios = axios as jest.Mocked<typeof axios>;
+  const mockRobotsParser = robotsParser as jest.MockedFunction<typeof robotsParser>;
+
+  let maxCrawledDepth: number;
+
+  beforeEach(() => {
+    // Setup default mocks
+    mockAxios.get.mockImplementation((url) => {
+      if (url.includes('robots.txt')) {
+        return Promise.resolve({ data: 'User-agent: *\nAllow: /' });
+      } else if (url.includes('sitemap.xml')) {
+        return Promise.resolve({ data: 'sitemap content' }); // You would normally parse this to URLs
+      }
+      return Promise.resolve({ data: '<html></html>' });
+    });
+
+    mockRobotsParser.mockReturnValue({
+      isAllowed: jest.fn().mockReturnValue(true),
+      isDisallowed: jest.fn().mockReturnValue(false),
+      getMatchingLineNumber: jest.fn().mockReturnValue(0),
+      getCrawlDelay: jest.fn().mockReturnValue(0),
+      getSitemaps: jest.fn().mockReturnValue([]),
+      getPreferredHost: jest.fn().mockReturnValue('example.com')
+    });
+  });
+
+  it('should filter out links that exceed maxDepth param of 2 based on enterURL depth of 0 ', async () => {
+    const initialUrl = 'http://example.com'; // Set initial URL for this test
+    const enteredMaxCrawledDepth = 2;
+    maxCrawledDepth = getAdjustedMaxDepth(initialUrl, enteredMaxCrawledDepth);
+
+
+    crawler = new WebCrawler({
+      initialUrl: initialUrl,
+      includes: [],
+      excludes: [],
+      limit: 100,
+      maxCrawledDepth: maxCrawledDepth, // Set maxDepth for testing
+    });
+
+    // Mock sitemap fetching function to return controlled links
+    crawler['tryFetchSitemapLinks'] = jest.fn().mockResolvedValue([
+      initialUrl, // depth 0
+      initialUrl + '/page1', // depth 1
+      initialUrl + '/page1/page2', // depth 2
+      initialUrl + '/page1/page2/page3' // depth 3, should be filtered out
+    ]);
+
+    const results = await crawler.start(undefined, undefined, undefined, undefined, undefined, maxCrawledDepth);
+    expect(results).toEqual([
+      { url: initialUrl, html: '' },
+      { url: initialUrl + '/page1', html: '' },
+      { url: initialUrl + '/page1/page2', html: '' }
+    ]);
+
+
+    // Ensure that the link with depth 3 is not included
+    expect(results.some(r => r.url === initialUrl + '/page1/page2/page3')).toBe(false);
+  });
+
+  it('should filter out links that exceed maxDepth param of 0 based on enterURL depth of 0 ', async () => {
+    const initialUrl = 'http://example.com'; // Set initial URL for this test
+    const enteredMaxCrawledDepth = 0;
+    maxCrawledDepth = getAdjustedMaxDepth(initialUrl, enteredMaxCrawledDepth);
+    console.log(maxCrawledDepth);
+
+    crawler = new WebCrawler({
+      initialUrl: initialUrl,
+      includes: [],
+      excludes: [],
+      limit: 100,
+      maxCrawledDepth: maxCrawledDepth, // Set maxDepth for testing
+    });
+
+    // Mock sitemap fetching function to return controlled links
+    crawler['tryFetchSitemapLinks'] = jest.fn().mockResolvedValue([
+      initialUrl, // depth 0
+      initialUrl + '/page1', // depth 1
+      initialUrl + '/page1/page2', // depth 2
+      initialUrl + '/page1/page2/page3' // depth 3, should be filtered out
+    ]);
+
+    const results = await crawler.start(undefined, undefined, undefined, undefined, undefined, maxCrawledDepth);
+    expect(results).toEqual([
+      { url: initialUrl, html: '' },
+    ]);  
+  });
+
+  it('should filter out links that exceed maxDepth param of 1 based on enterURL depth of 1 ', async () => {
+    const initialUrl = 'http://example.com/page1'; // Set initial URL for this test
+    const enteredMaxCrawledDepth = 1;
+    maxCrawledDepth = getAdjustedMaxDepth(initialUrl, enteredMaxCrawledDepth);
+    console.log(maxCrawledDepth);
+
+    crawler = new WebCrawler({
+      initialUrl: initialUrl,
+      includes: [],
+      excludes: [],
+      limit: 100,
+      maxCrawledDepth: maxCrawledDepth, // Set maxDepth for testing
+    });
+
+    // Mock sitemap fetching function to return controlled links
+    crawler['tryFetchSitemapLinks'] = jest.fn().mockResolvedValue([
+      initialUrl, // depth 0
+      initialUrl + '/page2', // depth 1
+      initialUrl + '/page2/page3', // depth 2
+      initialUrl + '/page2/page3/page4' // depth 3, should be filtered out
+    ]);
+
+    const results = await crawler.start(undefined, undefined, undefined, undefined, undefined, maxCrawledDepth);
+    expect(results).toEqual([
+      { url: initialUrl, html: '' },
+      { url: initialUrl + '/page2', html: '' }
+    ]);
+  });
+
+  it('should filter out links that exceed maxDepth param of 1 based on enterURL depth of 2 ', async () => {
+    const initialUrl = 'http://example.com/page1'; // Set initial URL for this test
+    const enteredMaxCrawledDepth = 2;
+    maxCrawledDepth = getAdjustedMaxDepth(initialUrl, enteredMaxCrawledDepth);
+    console.log(maxCrawledDepth);
+
+    crawler = new WebCrawler({
+      initialUrl: initialUrl,
+      includes: [],
+      excludes: [],
+      limit: 100,
+      maxCrawledDepth: maxCrawledDepth, // Set maxDepth for testing
+    });
+
+    // Mock sitemap fetching function to return controlled links
+    crawler['tryFetchSitemapLinks'] = jest.fn().mockResolvedValue([
+      initialUrl, // depth 0
+      initialUrl + '/page2', // depth 1
+      initialUrl + '/page2/page3', // depth 2
+      initialUrl + '/page2/page3/page4' // depth 3, should be filtered out
+    ]);
+
+    const results = await crawler.start(undefined, undefined, undefined, undefined, undefined, maxCrawledDepth);
+    expect(results).toEqual([
+      { url: initialUrl, html: '' },
+      { url: initialUrl + '/page2', html: '' },
+      { url: initialUrl + '/page2/page3', html: '' }
+    ]);   
+  });
+
+
+
+  // Add more tests to cover other scenarios, such as checking includes and excludes
+});
+

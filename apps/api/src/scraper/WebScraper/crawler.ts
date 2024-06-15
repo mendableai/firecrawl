@@ -6,6 +6,7 @@ import async from "async";
 import { CrawlerOptions, PageOptions, Progress } from "../../lib/entities";
 import { scrapSingleUrl, scrapWithScrapingBee } from "./single_url";
 import robotsParser from "robots-parser";
+import { getURLDepth } from "./utils/maxDepthUtils";
 
 export class WebCrawler {
   private initialUrl: string;
@@ -61,8 +62,7 @@ export class WebCrawler {
         const url = new URL(link);
         const path = url.pathname;
         
-        const pathSplits = new URL(url).pathname.split('/');
-        const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0) -1;
+        const depth = getURLDepth(url.toString());
 
         
         // Check if the link exceeds the maximum depth allowed

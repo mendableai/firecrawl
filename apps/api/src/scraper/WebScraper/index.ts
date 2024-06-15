@@ -18,6 +18,7 @@ import {
 import { generateCompletions } from "../../lib/LLM-extraction";
 import { getWebScraperQueue } from "../../../src/services/queue-service";
 import { fetchAndProcessDocx } from "./utils/docxProcessor";
+import { getAdjustedMaxDepth, getURLDepth } from "./utils/maxDepthUtils";
 
 export class WebScraperDataProvider {
   private bullJobId: string;
@@ -163,16 +164,12 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
 
-    const pathSplits = new URL(this.urls[0]).pathname.split('/');
-    const baseURLDepth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0) -1;
-    const adjustedMaxDepth = this.maxCrawledDepth + baseURLDepth;
-  
     const crawler = new WebCrawler({
       initialUrl: this.urls[0],
       includes: this.includes,
       excludes: this.excludes,
       maxCrawledLinks: this.maxCrawledLinks,
-      maxCrawledDepth: adjustedMaxDepth,
+      maxCrawledDepth: getAdjustedMaxDepth(this.urls[0], this.maxCrawledDepth),
       limit: this.limit,
       generateImgAltText: this.generateImgAltText,
       allowBackwardCrawling: this.allowBackwardCrawling,
@@ -580,8 +577,7 @@ export class WebScraperDataProvider {
   filterDepth(documents: Document[]): Document[] {
     return documents.filter((document) => {
       const url = new URL(document.metadata.sourceURL);
-      const path = url.pathname;
-      return path.split("/").length <= this.maxCrawledDepth;
+      return getURLDepth(url.toString()) <= this.maxCrawledDepth;
     });
   }
 }
