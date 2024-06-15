@@ -73,7 +73,7 @@ describe('WebCrawler maxDepth and filterLinks', () => {
     const initialUrl = 'http://example.com'; // Set initial URL for this test
     const enteredMaxCrawledDepth = 0;
     maxCrawledDepth = getAdjustedMaxDepth(initialUrl, enteredMaxCrawledDepth);
-    console.log(maxCrawledDepth);
+   
 
     crawler = new WebCrawler({
       initialUrl: initialUrl,
@@ -101,7 +101,7 @@ describe('WebCrawler maxDepth and filterLinks', () => {
     const initialUrl = 'http://example.com/page1'; // Set initial URL for this test
     const enteredMaxCrawledDepth = 1;
     maxCrawledDepth = getAdjustedMaxDepth(initialUrl, enteredMaxCrawledDepth);
-    console.log(maxCrawledDepth);
+  
 
     crawler = new WebCrawler({
       initialUrl: initialUrl,
@@ -130,7 +130,7 @@ describe('WebCrawler maxDepth and filterLinks', () => {
     const initialUrl = 'http://example.com/page1'; // Set initial URL for this test
     const enteredMaxCrawledDepth = 2;
     maxCrawledDepth = getAdjustedMaxDepth(initialUrl, enteredMaxCrawledDepth);
-    console.log(maxCrawledDepth);
+ 
 
     crawler = new WebCrawler({
       initialUrl: initialUrl,

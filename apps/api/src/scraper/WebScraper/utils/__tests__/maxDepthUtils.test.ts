@@ -22,15 +22,25 @@ describe('Testing getURLDepth and getAdjustedMaxDepth', () => {
 
   });
 
-  it('Adjusted maxDepth should return 1 for scrapethissite.com', () => {
+  it('Adjusted maxDepth should return 1 for scrapethissite.com and max depth param of 1', () => {
     const enteredURL = "https://scrapethissite.com"
     expect(getAdjustedMaxDepth(enteredURL, 1)).toBe(1);
 
   });
+  it('Adjusted maxDepth should return 0 for scrapethissite.com and max depth param of 0', () => {
+    const enteredURL = "https://scrapethissite.com"
+    expect(getAdjustedMaxDepth(enteredURL, 0)).toBe(0);
 
-  it('Adjusted maxDepth should return 5 for scrapethissite.com/pages/articles', () => {
+  });
+
+  it('Adjusted maxDepth should return 0 for mendable.ai and max depth param of 0', () => {
+    const enteredURL = "https://mendable.ai"
+    expect(getAdjustedMaxDepth(enteredURL, 0)).toBe(0);
+  });
+
+  it('Adjusted maxDepth should return 4 for scrapethissite.com/pages/articles and max depth param of 2', () => {
     const enteredURL = "https://scrapethissite.com/pages/articles"
-    expect(getAdjustedMaxDepth(enteredURL, 2)).toBe(5);
+    expect(getAdjustedMaxDepth(enteredURL, 2)).toBe(4);
   });
 
   

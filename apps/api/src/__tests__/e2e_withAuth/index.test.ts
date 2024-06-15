@@ -655,7 +655,7 @@ describe("E2E Tests for API Routes", () => {
         const testurls = completedResponse.body.data.map(
           (item: any) => item.metadata?.sourceURL
         );
-        console.log(testurls)
+        //console.log(testurls)
 
       expect(completedResponse.statusCode).toBe(200);
       expect(completedResponse.body).toHaveProperty("status");
