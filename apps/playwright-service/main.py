@@ -102,5 +102,4 @@ async def root(body: UrlModel):
       }
     logger.debug("Returning response : %s", json_compatible_item_data)
 
-    return JSONResponse(content=json_compatible_item_data)
 
