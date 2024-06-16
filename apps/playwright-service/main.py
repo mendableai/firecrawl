@@ -2,7 +2,8 @@
 This module provides a FastAPI application that uses Playwright to fetch and return
 the HTML content of a specified URL. It supports optional proxy settings and media blocking.
 """
-
+import logsetup
+import logging
 from os import environ
 
 from fastapi import FastAPI
@@ -16,8 +17,9 @@ PROXY_USERNAME = environ.get("PROXY_USERNAME", None)
 PROXY_PASSWORD = environ.get("PROXY_PASSWORD", None)
 BLOCK_MEDIA = environ.get("BLOCK_MEDIA", "False").upper() == "TRUE"
 
-app = FastAPI()
+logger : logging.Logger = logging.getLogger("playwright-service")
 
+app = FastAPI()
 class UrlModel(BaseModel):
     """Model representing the URL and associated parameters for the request."""
     url: str
@@ -50,8 +52,10 @@ async def root(body: UrlModel):
     Returns:
         JSONResponse: The HTML content of the page.
     """
+    logger.debug("Received request to fetch HTML content from URL: %s", body.url)
     context = None
     if PROXY_SERVER and PROXY_USERNAME and PROXY_PASSWORD:
+        logger.debug("Context created with proxy settings")
         context = await browser.new_context(
             proxy={
                 "server": PROXY_SERVER,
@@ -60,12 +64,16 @@ async def root(body: UrlModel):
             }
         )
     else:
+        logger.debug("Context created without proxy settings")
         context = await browser.new_context()
 
     if BLOCK_MEDIA:
         await context.route(
             "**/*.{png,jpg,jpeg,gif,svg,mp3,mp4,avi,flac,ogg,wav,webm}",
-            handler=lambda route, request: route.abort(),
+                handler=lambda route, request: (
+                    logger.debug(f"Blocking resource: {request.url}"),
+                    route.abort()
+                ),
         )
 
     page = await context.new_page()
@@ -92,4 +100,7 @@ async def root(body: UrlModel):
         "pageStatusCode": page_status_code,
         "pageError": page_error
       }
+    logger.debug("Returning response : %s", json_compatible_item_data)
+
     return JSONResponse(content=json_compatible_item_data)
+
