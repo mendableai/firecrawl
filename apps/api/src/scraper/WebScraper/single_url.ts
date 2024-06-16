@@ -347,7 +347,7 @@ export async function scrapSingleUrl(
     switch (method) {
       case "fire-engine":
         if (process.env.FIRE_ENGINE_BETA_URL) {
-          console.log(`Scraping ${url} with Fire Engine`);
+          debugLog(`Scraping with Fire Engine : ${url}`);
           const response = await scrapWithFireEngine(
             url,
             pageOptions.waitFor,
@@ -362,6 +362,7 @@ export async function scrapSingleUrl(
         break;
       case "scrapingBee":
         if (process.env.SCRAPING_BEE_API_KEY) {
+          debugLog(`Scraping with Scraping Bee : ${url}`);
           const response = await scrapWithScrapingBee(
             url,
             "domcontentloaded",
@@ -374,6 +375,7 @@ export async function scrapSingleUrl(
         break;
       case "playwright":
         if (process.env.PLAYWRIGHT_MICROSERVICE_URL) {
+          debugLog(`Scraping with Playwright : ${url}`);
           const response = await scrapWithPlaywright(url, pageOptions.waitFor, pageOptions.headers);
           scraperResponse.text = response.content;
           scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
@@ -382,6 +384,7 @@ export async function scrapSingleUrl(
         break;
       case "scrapingBeeLoad":
         if (process.env.SCRAPING_BEE_API_KEY) {
+          debugLog(`Scraping with Scraping Bee Load : ${url}`);
           const response = await scrapWithScrapingBee(url, "networkidle2");
           scraperResponse.text = response.content;
           scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
@@ -389,6 +392,7 @@ export async function scrapSingleUrl(
         }
         break;
       case "fetch":
+        debugLog(`Scraping with Fetch : ${url}`);
         const response = await scrapWithFetch(url);
         scraperResponse.text = response.content;
         scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
@@ -525,5 +529,15 @@ export async function scrapSingleUrl(
         pageError: pageError
       },
     } as Document;
+  }
+}
+
+/**
+ * Logs a message if FIRECRAWL_LOGGING_LEVEL is set to DEBUG.
+ * @param message The message to log.
+ */
+export async function debugLog(message: string): Promise<void> {
+  if (process.env.FIRECRAWL_LOGGING_LEVEL === 'DEBUG') {
+    console.debug(message);
   }
 }
