@@ -76,6 +76,7 @@ class FirecrawlApp:
                 if key != 'extractorOptions':
                     scrape_params[key] = value
         # Make the POST request with the prepared headers and JSON data
+        logger.debug("Scraping URL: %s", url)
         response = requests.post(
             f'{self.api_url}/v0/scrape',
             headers=headers,
@@ -108,6 +109,7 @@ class FirecrawlApp:
         json_data = {'query': query}
         if params:
             json_data.update(params)
+        logger.debug("Searching for query: %s", query)
         response = requests.post(
             f'{self.api_url}/v0/search',
             headers=headers,
@@ -149,6 +151,7 @@ class FirecrawlApp:
         json_data = {'url': url}
         if params:
             json_data.update(params)
+        logger.debug("Crawling URL: %s", url)
         response = self._post_request(f'{self.api_url}/v0/crawl', json_data, headers)
         if response.status_code == 200:
             job_id = response.json().get('jobId')
@@ -173,6 +176,7 @@ class FirecrawlApp:
             Exception: If the status check request fails.
         """
         headers = self._prepare_headers()
+        logger.debug("Checking status of crawl job: %s", job_id)
         response = self._get_request(f'{self.api_url}/v0/crawl/status/{job_id}', headers)
         if response.status_code == 200:
             return response.json()
@@ -225,6 +229,7 @@ class FirecrawlApp:
         for attempt in range(retries):
             response = requests.post(url, headers=headers, json=data)
             if response.status_code == 502:
+                logger.debug("Request failed with status code 502. Retrying in %f seconds...", backoff_factor * (2 ** attempt))
                 time.sleep(backoff_factor * (2 ** attempt))
             else:
                 return response
@@ -252,6 +257,7 @@ class FirecrawlApp:
         for attempt in range(retries):
             response = requests.get(url, headers=headers)
             if response.status_code == 502:
+                logger.debug("Request failed with status code 502. Retrying in %f seconds...", backoff_factor * (2 ** attempt))
                 time.sleep(backoff_factor * (2 ** attempt))
             else:
                 return response
@@ -282,6 +288,7 @@ class FirecrawlApp:
                     else:
                         raise Exception('Crawl job completed but no data was returned')
                 elif status_data['status'] in ['active', 'paused', 'pending', 'queued', 'waiting']:
+                    logger.debug("Crawl job is %s. Waiting for %d seconds...", status_data['status'], poll_interval)
                     poll_interval=max(poll_interval,2)
                     time.sleep(poll_interval)  # Wait for the specified interval before checking again
                 else:
