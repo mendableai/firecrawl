@@ -6,6 +6,7 @@ import async from "async";
 import { CrawlerOptions, PageOptions, Progress } from "../../lib/entities";
 import { scrapSingleUrl, scrapWithScrapingBee } from "./single_url";
 import robotsParser from "robots-parser";
+import { getURLDepth } from "./utils/maxDepthUtils";
 
 export class WebCrawler {
   private initialUrl: string;
@@ -60,8 +61,10 @@ export class WebCrawler {
       .filter((link) => {
         const url = new URL(link);
         const path = url.pathname;
-        const depth = url.pathname.split('/').length - 1;
+        
+        const depth = getURLDepth(url.toString());
 
+        
         // Check if the link exceeds the maximum depth allowed
         if (depth > maxDepth) {
           return false;
@@ -136,8 +139,10 @@ export class WebCrawler {
 
     if(!crawlerOptions?.ignoreSitemap){
       const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
+    
       if (sitemapLinks.length > 0) {
         let filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
+       
         return filteredLinks.map(link => ({ url: link, html: "" }));
       }
     }
@@ -148,6 +153,7 @@ export class WebCrawler {
       concurrencyLimit,
       inProgress
     );
+   
     
     if (
       urls.length === 0 &&
@@ -224,11 +230,10 @@ export class WebCrawler {
   }
 
   async crawl(url: string, pageOptions: PageOptions): Promise<{url: string, html: string, pageStatusCode?: number, pageError?: string}[]> {
-    const normalizedUrl = this.normalizeCrawlUrl(url);
-    if (this.visited.has(normalizedUrl) || !this.robots.isAllowed(url, "FireCrawlAgent")) {
+    if (this.visited.has(url) || !this.robots.isAllowed(url, "FireCrawlAgent")) {
       return [];
     }
-    this.visited.add(normalizedUrl);
+    this.visited.add(url);
 
     if (!url.startsWith("http")) {
       url = "https://" + url;
@@ -276,15 +281,16 @@ export class WebCrawler {
           const urlObj = new URL(fullUrl);
           const path = urlObj.pathname;
 
+
           if (
             this.isInternalLink(fullUrl) &&
-            this.matchesPattern(fullUrl) &&
             this.noSections(fullUrl) &&
             // The idea here to comment this out is to allow wider website coverage as we filter this anyway afterwards
             // this.matchesIncludes(path) &&
             !this.matchesExcludes(path) &&
-            this.robots.isAllowed(fullUrl, "FireCrawlAgent")
+            this.isRobotsAllowed(fullUrl)
           ) {
+
             links.push({ url: fullUrl, html: content, pageStatusCode, pageError });
           }
         }
@@ -294,12 +300,15 @@ export class WebCrawler {
         return links;
       }
       // Create a new list to return to avoid modifying the visited list
-      return links.filter((link) => !this.visited.has(this.normalizeCrawlUrl(link.url)));
+      return links.filter((link) => !this.visited.has(link.url));
     } catch (error) {
       return [];
     }
   }
 
+  private isRobotsAllowed(url: string): boolean {
+    return (this.robots ? (this.robots.isAllowed(url, "FireCrawlAgent") ?? true) : true)
+  }
   private normalizeCrawlUrl(url: string): string {
     try{
       const urlObj = new URL(url);
@@ -326,12 +335,10 @@ export class WebCrawler {
 
   private isInternalLink(link: string): boolean {
     const urlObj = new URL(link, this.baseUrl);
-    const domainWithoutProtocol = this.baseUrl.replace(/^https?:\/\//, "");
-    return urlObj.hostname === domainWithoutProtocol;
-  }
-
-  private matchesPattern(link: string): boolean {
-    return true; // Placeholder for future pattern matching implementation
+    const baseDomain = this.baseUrl.replace(/^https?:\/\//, "").replace(/^www\./, "").trim();
+    const linkDomain = urlObj.hostname.replace(/^www\./, "").trim();
+    
+    return linkDomain === baseDomain;
   }
 
   private isFile(url: string): boolean {
