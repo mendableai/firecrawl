@@ -7,7 +7,7 @@ import { getAdjustedMaxDepth } from '../utils/maxDepthUtils';
 jest.mock('axios');
 jest.mock('robots-parser');
 
-describe('WebCrawler maxDepth and filterLinks', () => {
+describe('WebCrawler', () => {
   let crawler: WebCrawler;
   const mockAxios = axios as jest.Mocked<typeof axios>;
   const mockRobotsParser = robotsParser as jest.MockedFunction<typeof robotsParser>;
@@ -156,8 +156,37 @@ describe('WebCrawler maxDepth and filterLinks', () => {
     ]);   
   });
 
-
-
-  // Add more tests to cover other scenarios, such as checking includes and excludes
+  it('should handle allowBackwardCrawling option correctly', async () => {
+    const initialUrl = 'https://mendable.ai/blog';
+  
+    // Setup the crawler with the specific test case options
+    const crawler = new WebCrawler({
+      initialUrl: initialUrl,
+      includes: [],
+      excludes: [],
+      limit: 100,
+      maxCrawledDepth: 3, // Example depth
+      allowBackwardCrawling: true
+    });
+  
+    // Mock the sitemap fetching function to simulate backward crawling
+    crawler['tryFetchSitemapLinks'] = jest.fn().mockResolvedValue([
+      initialUrl,
+      'https://mendable.ai', // backward link
+      initialUrl + '/page1',
+      initialUrl + '/page1/page2'
+    ]);
+  
+    const results = await crawler.start();
+    expect(results).toEqual([
+      { url: initialUrl, html: '' },
+      { url: 'https://mendable.ai', html: '' }, // Expect the backward link to be included
+      { url: initialUrl + '/page1', html: '' },
+      { url: initialUrl + '/page1/page2', html: '' }
+    ]);
+  
+    // Check that the backward link is included if allowBackwardCrawling is true
+    expect(results.some(r => r.url === 'https://mendable.ai')).toBe(true);
+  });
 });
 

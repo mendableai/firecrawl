@@ -1,7 +1,10 @@
 import request from "supertest";
 import dotenv from "dotenv";
+import { v4 as uuidv4 } from "uuid";
 
 dotenv.config();
+
+// const TEST_URL = 'http://localhost:3002'
 const TEST_URL = "http://127.0.0.1:3002";
 
 describe("E2E Tests for API Routes", () => {
@@ -12,12 +15,20 @@ describe("E2E Tests for API Routes", () => {
   afterAll(() => {
     delete process.env.USE_DB_AUTHENTICATION;
   });
+  describe("GET /", () => {
+    it.concurrent("should return Hello, world! message", async () => {
+      const response = await request(TEST_URL).get("/");
 
-  describe("GET /is-production", () => {
-    it.concurrent("should return the production status", async () => {
-      const response = await request(TEST_URL).get("/is-production");
       expect(response.statusCode).toBe(200);
-      expect(response.body).toHaveProperty("isProduction");
+      expect(response.text).toContain("SCRAPERS-JS: Hello, world! Fly.io");
+    });
+  });
+
+  describe("GET /test", () => {
+    it.concurrent("should return Hello, world! message", async () => {
+      const response = await request(TEST_URL).get("/test");
+      expect(response.statusCode).toBe(200);
+      expect(response.text).toContain("Hello, world!");
     });
   });
 
@@ -35,6 +46,29 @@ describe("E2E Tests for API Routes", () => {
         .send({ url: "https://firecrawl.dev" });
       expect(response.statusCode).toBe(401);
     });
+
+    it.concurrent("should return an error for a blocklisted URL", async () => {
+      const blocklistedUrl = "https://facebook.com/fake-test";
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: blocklistedUrl });
+      expect(response.statusCode).toBe(403);
+      expect(response.body.error).toContain(
+        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
+      );
+    });
+
+    // tested on rate limit test
+    // it.concurrent("should return a successful response with a valid preview token", async () => {
+    //   const response = await request(TEST_URL)
+    //     .post("/v0/scrape")
+    //     .set("Authorization", `Bearer this_is_just_a_preview_token`)
+    //     .set("Content-Type", "application/json")
+    //     .send({ url: "https://roastmywebsite.ai" });
+    //   expect(response.statusCode).toBe(200);
+    // }, 30000); // 30 seconds timeout
 
     it.concurrent("should return a successful response with a valid API key", async () => {
       const response = await request(TEST_URL)
@@ -109,6 +143,21 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data.metadata.pageError).toBeUndefined();
     }, 60000); // 60 seconds
 
+    it.concurrent('should return a successful response for a valid scrape with PDF file and parsePDF set to false', async () => {
+      const response = await request(TEST_URL)
+        .post('/v0/scrape')
+        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+        .set('Content-Type', 'application/json')
+        .send({ url: 'https://arxiv.org/pdf/astro-ph/9301001.pdf', pageOptions: { parsePDF: false } });
+      await new Promise((r) => setTimeout(r, 6000));
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty('data');
+      expect(response.body.data).toHaveProperty('content');
+      expect(response.body.data).toHaveProperty('metadata');
+      expect(response.body.data.content).toContain('/Title(arXiv:astro-ph/9301001v1  7 Jan 1993)>>endobj');
+    }, 60000); // 60 seconds
+
     it.concurrent("should return a successful response with a valid API key with removeTags option", async () => {
       const responseWithoutRemoveTags = await request(TEST_URL)
         .post("/v0/scrape")
@@ -142,6 +191,27 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data.content).not.toContain("[Sandbox]("); // .nav
       expect(response.body.data.content).not.toContain("web scraping"); // strong
     }, 30000); // 30 seconds timeout
+
+    // TODO: add this test back once we nail the waitFor option to be more deterministic
+    // it.concurrent("should return a successful response with a valid API key and waitFor option", async () => {
+    //   const startTime = Date.now();
+    //   const response = await request(TEST_URL)
+    //     .post("/v0/scrape")
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    //     .set("Content-Type", "application/json")
+    //     .send({ url: "https://firecrawl.dev", pageOptions: { waitFor: 7000 } });
+    //   const endTime = Date.now();
+    //   const duration = endTime - startTime;
+
+    //   expect(response.statusCode).toBe(200);
+    //   expect(response.body).toHaveProperty("data");
+    //   expect(response.body.data).toHaveProperty("content");
+    //   expect(response.body.data).toHaveProperty("markdown");
+    //   expect(response.body.data).toHaveProperty("metadata");
+    //   expect(response.body.data).not.toHaveProperty("html");
+    //   expect(response.body.data.content).toContain("🔥 Firecrawl");
+    //   expect(duration).toBeGreaterThanOrEqual(7000);
+    // }, 12000); // 12 seconds timeout
 
     it.concurrent('should return a successful response for a scrape with 400 page', async () => {
       const response = await request(TEST_URL)
@@ -255,6 +325,19 @@ describe("E2E Tests for API Routes", () => {
       expect(response.statusCode).toBe(401);
     });
 
+    it.concurrent("should return an error for a blocklisted URL", async () => {
+      const blocklistedUrl = "https://twitter.com/fake-test";
+      const response = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: blocklistedUrl });
+      expect(response.statusCode).toBe(403);
+      expect(response.body.error).toContain(
+        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
+      );
+    });
+
     it.concurrent("should return a successful response with a valid API key for crawl", async () => {
       const response = await request(TEST_URL)
         .post("/v0/crawl")
@@ -267,7 +350,31 @@ describe("E2E Tests for API Routes", () => {
         /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
       );
     });
-    
+    it.concurrent('should prevent duplicate requests using the same idempotency key', async () => {
+      const uniqueIdempotencyKey = uuidv4();
+  
+      // First request with the idempotency key
+      const firstResponse = await request(TEST_URL)
+        .post('/v0/crawl')
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .set("x-idempotency-key", uniqueIdempotencyKey)
+        .send({ url: 'https://mendable.ai' });
+  
+        expect(firstResponse.statusCode).toBe(200);
+  
+      // Second request with the same idempotency key
+      const secondResponse = await request(TEST_URL)
+        .post('/v0/crawl')
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .set("x-idempotency-key", uniqueIdempotencyKey)
+        .send({ url: 'https://mendable.ai' });
+  
+      expect(secondResponse.statusCode).toBe(409);
+      expect(secondResponse.body.error).toBe('Idempotency key already used');
+    });
+
     it.concurrent("should return a successful response with a valid API key and valid includes option", async () => {
       const crawlResponse = await request(TEST_URL)
         .post("/v0/crawl")
@@ -457,6 +564,223 @@ describe("E2E Tests for API Routes", () => {
         expect(depth).toBeLessThanOrEqual(2);
       });
     }, 180000);
+
+    it.concurrent("should return a successful response with relative max depth option for a valid crawl job", async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://www.scrapethissite.com/pages/",
+          crawlerOptions: { maxDepth: 1 },
+        });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(["active", "waiting"]).toContain(response.body.status);
+      // wait for 60 seconds
+      let isCompleted = false;
+      while (!isCompleted) {
+        const statusCheckResponse = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(statusCheckResponse.statusCode).toBe(200);
+        isCompleted = statusCheckResponse.body.status === "completed";
+        if (!isCompleted) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      const urls = completedResponse.body.data.map(
+        (item: any) => item.metadata?.sourceURL
+      );
+      expect(urls.length).toBeGreaterThan(1);
+
+      // Check if all URLs have an absolute maximum depth of 3 after the base URL depth was 2 and the maxDepth was 1
+      urls.forEach((url: string) => {
+        const pathSplits = new URL(url).pathname.split('/');
+        const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
+        expect(depth).toBeLessThanOrEqual(3);
+      });
+    }, 180000);
+
+    it.concurrent("should return a successful response with relative max depth option for a valid crawl job with maxDepths equals to zero", async () => {
+      
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://www.mendable.ai",
+          crawlerOptions: { maxDepth: 0 },
+        });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(["active", "waiting"]).toContain(response.body.status);
+      // wait for 60 seconds
+      let isCompleted = false;
+      while (!isCompleted) {
+        const statusCheckResponse = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(statusCheckResponse.statusCode).toBe(200);
+        isCompleted = statusCheckResponse.body.status === "completed";
+        if (!isCompleted) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+        const testurls = completedResponse.body.data.map(
+          (item: any) => item.metadata?.sourceURL
+        );
+        //console.log(testurls)
+
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      const urls = completedResponse.body.data.map(
+        (item: any) => item.metadata?.sourceURL
+      );
+      expect(urls.length).toBeGreaterThanOrEqual(1);
+
+      // Check if all URLs have an absolute maximum depth of 3 after the base URL depth was 2 and the maxDepth was 1
+      urls.forEach((url: string) => {
+        const pathSplits = new URL(url).pathname.split('/');
+        const depth = pathSplits.length - (pathSplits[0].length === 0 && pathSplits[pathSplits.length - 1].length === 0 ? 1 : 0);
+        expect(depth).toBeLessThanOrEqual(1);
+      });
+    }, 180000);
+
+
+
+    
+
+    // it.concurrent("should return a successful response with a valid API key and valid limit option", async () => {
+    //   const crawlResponse = await request(TEST_URL)
+    //     .post("/v0/crawl")
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    //     .set("Content-Type", "application/json")
+    //     .send({
+    //       url: "https://mendable.ai",
+    //       crawlerOptions: { limit: 10 },
+    //     });
+      
+    //   const response = await request(TEST_URL)
+    //     .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+    //   expect(response.statusCode).toBe(200);
+    //   expect(response.body).toHaveProperty("status");
+    //   expect(response.body.status).toBe("active");
+
+    //   let isCompleted = false;
+    //   while (!isCompleted) {
+    //     const statusCheckResponse = await request(TEST_URL)
+    //       .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+    //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+    //     expect(statusCheckResponse.statusCode).toBe(200);
+    //     isCompleted = statusCheckResponse.body.status === "completed";
+    //     if (!isCompleted) {
+    //       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+    //     }
+    //   }
+
+    //   const completedResponse = await request(TEST_URL)
+    //     .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+    //   expect(completedResponse.statusCode).toBe(200);
+    //   expect(completedResponse.body).toHaveProperty("status");
+    //   expect(completedResponse.body.status).toBe("completed");
+    //   expect(completedResponse.body).toHaveProperty("data");
+    //   expect(completedResponse.body.data.length).toBe(10);
+    //   expect(completedResponse.body.data[0]).toHaveProperty("content");
+    //   expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+    //   expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+    //   expect(completedResponse.body.data[0].content).toContain("Mendable");
+    //   expect(completedResponse.body.data[0].content).not.toContain("main menu");
+    // }, 60000); // 60 seconds
+
+    it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option", async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://roastmywebsite.ai",
+          pageOptions: { includeHtml: true },
+        });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(["active", "waiting"]).toContain(response.body.status);
+
+      let isCompleted = false;
+      while (!isCompleted) {
+        const statusCheckResponse = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(statusCheckResponse.statusCode).toBe(200);
+        isCompleted = statusCheckResponse.body.status === "completed";
+        if (!isCompleted) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
+
+      // 120 seconds  
+      expect(completedResponse.body.data[0]).toHaveProperty("html");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0].content).toContain("_Roast_");
+      expect(completedResponse.body.data[0].markdown).toContain("_Roast_");
+      expect(completedResponse.body.data[0].html).toContain("<h1");
+
+      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
+    }, 180000);
+
   });
 
   describe("POST /v0/crawlWebsitePreview", () => {
@@ -474,6 +798,18 @@ describe("E2E Tests for API Routes", () => {
       expect(response.statusCode).toBe(401);
     });
 
+    // it.concurrent("should return an error for a blocklisted URL", async () => {
+    //   const blocklistedUrl = "https://instagram.com/fake-test";
+    //   const response = await request(TEST_URL)
+    //     .post("/v0/crawlWebsitePreview")
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    //     .set("Content-Type", "application/json")
+    //     .send({ url: blocklistedUrl });
+    // // is returning 429 instead of 403
+    //   expect(response.statusCode).toBe(403);
+    //   expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
+    // });
+
     it.concurrent("should return a timeout error when scraping takes longer than the specified timeout", async () => {
       const response = await request(TEST_URL)
         .post("/v0/scrape")
@@ -483,6 +819,19 @@ describe("E2E Tests for API Routes", () => {
 
       expect(response.statusCode).toBe(408);
     }, 3000); 
+
+    // it.concurrent("should return a successful response with a valid API key for crawlWebsitePreview", async () => {
+    //   const response = await request(TEST_URL)
+    //     .post("/v0/crawlWebsitePreview")
+    //     .set("Authorization", `Bearer this_is_just_a_preview_token`)
+    //     .set("Content-Type", "application/json")
+    //     .send({ url: "https://firecrawl.dev" });
+    //   expect(response.statusCode).toBe(200);
+    //   expect(response.body).toHaveProperty("jobId");
+    //   expect(response.body.jobId).toMatch(
+    //     /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
+    //   );
+    // });
   });
 
   describe("POST /v0/search", () => {
@@ -616,42 +965,145 @@ describe("E2E Tests for API Routes", () => {
         expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
     }, 180000); // 120 seconds
 
-    it.concurrent("If someone cancels a crawl job, it should turn into failed status", async () => {
+
+
+    it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option (2)", async () => {
       const crawlResponse = await request(TEST_URL)
         .post("/v0/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://jestjs.io" });
-
+        .send({
+          url: "https://roastmywebsite.ai",
+          pageOptions: { includeHtml: true },
+        });
       expect(crawlResponse.statusCode).toBe(200);
 
-      await new Promise((r) => setTimeout(r, 20000));
-
-      const responseCancel = await request(TEST_URL)
-        .delete(`/v0/crawl/cancel/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-      expect(responseCancel.statusCode).toBe(200);
-      expect(responseCancel.body).toHaveProperty("status");
-      expect(responseCancel.body.status).toBe("cancelled");
-
-      await new Promise((r) => setTimeout(r, 10000));
-      const completedResponse = await request(TEST_URL)
+      const response = await request(TEST_URL)
         .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(["active", "waiting"]).toContain(response.body.status);
+
+      let isFinished = false;
+      let completedResponse;
+
+      while (!isFinished) {
+        const response = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty("status");
+
+        if (response.body.status === "completed") {
+          isFinished = true;
+          completedResponse = response;
+        } else {
+          await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
+        }
+      }
 
       expect(completedResponse.statusCode).toBe(200);
       expect(completedResponse.body).toHaveProperty("status");
-      expect(completedResponse.body.status).toBe("failed");
+      expect(completedResponse.body.status).toBe("completed");
       expect(completedResponse.body).toHaveProperty("data");
-      expect(completedResponse.body.data).toBeNull();
-      expect(completedResponse.body).toHaveProperty("partial_data");
-      expect(completedResponse.body.partial_data[0]).toHaveProperty("content");
-      expect(completedResponse.body.partial_data[0]).toHaveProperty("markdown");
-      expect(completedResponse.body.partial_data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.partial_data[0].metadata.pageStatusCode).toBe(200);
-      expect(completedResponse.body.partial_data[0].metadata.pageError).toBeUndefined();
-    }, 60000); // 60 seconds
-  });
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0]).toHaveProperty("html");
+      expect(completedResponse.body.data[0].content).toContain("_Roast_");
+      expect(completedResponse.body.data[0].markdown).toContain("_Roast_");
+      expect(completedResponse.body.data[0].html).toContain("<h1");
+      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
+    }, 60000);
+  }); // 60 seconds
+
+  it.concurrent("should return a successful response for a valid crawl job with allowBackwardCrawling set to true option", async () => {
+    const crawlResponse = await request(TEST_URL)
+      .post("/v0/crawl")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send({
+        url: "https://mendable.ai/blog",
+        pageOptions: { includeHtml: true },
+        crawlerOptions: { allowBackwardCrawling: true },
+      });
+    expect(crawlResponse.statusCode).toBe(200);
+    
+    let isFinished = false;
+    let completedResponse;
+
+    while (!isFinished) {
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+
+      if (response.body.status === "completed") {
+        isFinished = true;
+        completedResponse = response;
+      } else {
+        await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
+      }
+    }
+
+    expect(completedResponse.statusCode).toBe(200);
+    expect(completedResponse.body).toHaveProperty("status");
+    expect(completedResponse.body.status).toBe("completed");
+    expect(completedResponse.body).toHaveProperty("data");
+    expect(completedResponse.body.data[0]).toHaveProperty("content");
+    expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+    expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+    expect(completedResponse.body.data[0]).toHaveProperty("html");
+    expect(completedResponse.body.data[0].content).toContain("Mendable");
+    expect(completedResponse.body.data[0].markdown).toContain("Mendable");
+    expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+    expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
+
+    const onlyChildrenLinks = completedResponse.body.data.filter(doc => {
+      return doc.metadata && doc.metadata.sourceURL && doc.metadata.sourceURL.includes("mendable.ai/blog")
+    });
+
+    expect(completedResponse.body.data.length).toBeGreaterThan(onlyChildrenLinks.length);
+  }, 60000);
+
+  it.concurrent("If someone cancels a crawl job, it should turn into failed status", async () => {
+    const crawlResponse = await request(TEST_URL)
+      .post("/v0/crawl")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send({ url: "https://jestjs.io" });
+
+    expect(crawlResponse.statusCode).toBe(200);
+
+    await new Promise((r) => setTimeout(r, 20000));
+
+    const responseCancel = await request(TEST_URL)
+      .delete(`/v0/crawl/cancel/${crawlResponse.body.jobId}`)
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+    expect(responseCancel.statusCode).toBe(200);
+    expect(responseCancel.body).toHaveProperty("status");
+    expect(responseCancel.body.status).toBe("cancelled");
+
+    await new Promise((r) => setTimeout(r, 10000));
+    const completedResponse = await request(TEST_URL)
+      .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+    expect(completedResponse.statusCode).toBe(200);
+    expect(completedResponse.body).toHaveProperty("status");
+    expect(completedResponse.body.status).toBe("failed");
+    expect(completedResponse.body).toHaveProperty("data");
+    expect(completedResponse.body.data).toBeNull();
+    expect(completedResponse.body).toHaveProperty("partial_data");
+    expect(completedResponse.body.partial_data[0]).toHaveProperty("content");
+    expect(completedResponse.body.partial_data[0]).toHaveProperty("markdown");
+    expect(completedResponse.body.partial_data[0]).toHaveProperty("metadata");
+    expect(completedResponse.body.partial_data[0].metadata.pageStatusCode).toBe(200);
+    expect(completedResponse.body.partial_data[0].metadata.pageError).toBeUndefined();
+  }, 60000); // 60 seconds
 
   describe("POST /v0/scrape with LLM Extraction", () => {
     it.concurrent("should extract data using LLM extraction mode", async () => {
@@ -703,6 +1155,64 @@ describe("E2E Tests for API Routes", () => {
       expect(typeof llmExtraction.is_open_source).toBe("boolean");
     }, 60000); // 60 secs
   });
+
+  // describe("POST /v0/scrape for Top 100 Companies", () => {
+  //   it.concurrent("should extract data for the top 100 companies", async () => {
+  //     const response = await request(TEST_URL)
+  //       .post("/v0/scrape")
+  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+  //       .set("Content-Type", "application/json")
+  //       .send({
+  //         url: "https://companiesmarketcap.com/",
+  //         pageOptions: {
+  //           onlyMainContent: true
+  //         },
+  //         extractorOptions: {
+  //           mode: "llm-extraction",
+  //           extractionPrompt: "Extract the name, market cap, price, and today's change for the top 20 companies listed on the page.",
+  //           extractionSchema: {
+  //             type: "object",
+  //             properties: {
+  //               companies: {
+  //                 type: "array",
+  //                 items: {
+  //                   type: "object",
+  //                   properties: {
+  //                     rank: { type: "number" },
+  //                     name: { type: "string" },
+  //                     marketCap: { type: "string" },
+  //                     price: { type: "string" },
+  //                     todayChange: { type: "string" }
+  //                   },
+  //                   required: ["rank", "name", "marketCap", "price", "todayChange"]
+  //                 }
+  //               }
+  //             },
+  //             required: ["companies"]
+  //           }
+  //         }
+  //       });
+
+  //     // Print the response body to the console for debugging purposes
+  //     console.log("Response companies:", response.body.data.llm_extraction.companies);
+
+  //     // Check if the response has the correct structure and data types
+  //     expect(response.status).toBe(200);
+  //     expect(Array.isArray(response.body.data.llm_extraction.companies)).toBe(true);
+  //     expect(response.body.data.llm_extraction.companies.length).toBe(40);
+
+  //     // Sample check for the first company
+  //     const firstCompany = response.body.data.llm_extraction.companies[0];
+  //     expect(firstCompany).toHaveProperty("name");
+  //     expect(typeof firstCompany.name).toBe("string");
+  //     expect(firstCompany).toHaveProperty("marketCap");
+  //     expect(typeof firstCompany.marketCap).toBe("string");
+  //     expect(firstCompany).toHaveProperty("price");
+  //     expect(typeof firstCompany.price).toBe("string");
+  //     expect(firstCompany).toHaveProperty("todayChange");
+  //     expect(typeof firstCompany.todayChange).toBe("string");
+  //   }, 120000); // 120 secs
+  // });
 
   describe("POST /v0/crawl with fast mode", () => {
     it.concurrent("should complete the crawl under 20 seconds", async () => {
@@ -759,5 +1269,122 @@ describe("E2E Tests for API Routes", () => {
       expect(results.length).toBeLessThanOrEqual(15);
       
     }, 20000);
+
+    // it.concurrent("should complete the crawl in more than 10 seconds", async () => {
+    //   const startTime = Date.now();
+
+    //   const crawlResponse = await request(TEST_URL)
+    //     .post("/v0/crawl")
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    //     .set("Content-Type", "application/json")
+    //     .send({
+    //       url: "https://flutterbricks.com",
+    //     });
+
+    //   expect(crawlResponse.statusCode).toBe(200);
+
+    //   const jobId = crawlResponse.body.jobId;
+    //   let statusResponse;
+    //   let isFinished = false;
+
+    //   while (!isFinished) {
+    //     statusResponse = await request(TEST_URL)
+    //       .get(`/v0/crawl/status/${jobId}`)
+    //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+    //     expect(statusResponse.statusCode).toBe(200);
+    //     isFinished = statusResponse.body.status === "completed";
+
+    //     if (!isFinished) {
+    //       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+    //     }
+    //   }
+
+    //   const endTime = Date.now();
+    //   const timeElapsed = (endTime - startTime) / 1000; // Convert to seconds
+
+    //   console.log(`Time elapsed: ${timeElapsed} seconds`);
+
+    //   expect(statusResponse.body.status).toBe("completed");
+    //   expect(statusResponse.body).toHaveProperty("data");
+    //   expect(statusResponse.body.data[0]).toHaveProperty("content");
+    //   expect(statusResponse.body.data[0]).toHaveProperty("markdown");
+    //   const results = statusResponse.body.data;
+    //   // results.forEach((result, i) => {
+    //   //   console.log(result.metadata.sourceURL);
+    //   // });
+    //   expect(results.length).toBeGreaterThanOrEqual(10);
+    //   expect(results.length).toBeLessThanOrEqual(15);
+      
+    // }, 50000);// 15 seconds timeout to account for network delays
   });
+
+  describe("GET /is-production", () => {
+    it.concurrent("should return the production status", async () => {
+      const response = await request(TEST_URL).get("/is-production");
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("isProduction");
+    });
+  });
+
+  describe("Rate Limiter", () => {
+    it.concurrent("should return 429 when rate limit is exceeded for preview token", async () => {
+      for (let i = 0; i < 5; i++) {
+        const response = await request(TEST_URL)
+          .post("/v0/scrape")
+          .set("Authorization", `Bearer this_is_just_a_preview_token`)
+          .set("Content-Type", "application/json")
+          .send({ url: "https://www.scrapethissite.com" });
+
+        expect(response.statusCode).toBe(200);
+      }
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer this_is_just_a_preview_token`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://www.scrapethissite.com" });
+
+      expect(response.statusCode).toBe(429);
+    }, 90000);
+  });
+
+  // it.concurrent("should return 429 when rate limit is exceeded for API key", async () => {
+  //   for (let i = 0; i < parseInt(process.env.RATE_LIMIT_TEST_API_KEY_SCRAPE); i++) {
+  //     const response = await request(TEST_URL)
+  //       .post("/v0/scrape")
+  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+  //       .set("Content-Type", "application/json")
+  //       .send({ url: "https://www.scrapethissite.com" });
+
+  //     expect(response.statusCode).toBe(200);
+  //   }
+
+  //   const response = await request(TEST_URL)
+  //     .post("/v0/scrape")
+  //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+  //     .set("Content-Type", "application/json")
+  //     .send({ url: "https://www.scrapethissite.com" });
+
+  //   expect(response.statusCode).toBe(429);
+  // }, 60000);
+
+  // it.concurrent("should return 429 when rate limit is exceeded for API key", async () => {
+  //   for (let i = 0; i < parseInt(process.env.RATE_LIMIT_TEST_API_KEY_CRAWL); i++) {
+  //     const response = await request(TEST_URL)
+  //       .post("/v0/crawl")
+  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+  //       .set("Content-Type", "application/json")
+  //       .send({ url: "https://www.scrapethissite.com" });
+
+  //     expect(response.statusCode).toBe(200);
+  //   }
+
+  //   const response = await request(TEST_URL)
+  //     .post("/v0/crawl")
+  //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+  //     .set("Content-Type", "application/json")
+  //     .send({ url: "https://www.scrapethissite.com" });
+
+  //   expect(response.statusCode).toBe(429);
+  // }, 60000);
 });
