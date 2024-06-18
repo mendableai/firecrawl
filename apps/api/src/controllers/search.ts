@@ -91,6 +91,7 @@ export async function searchHelper(
   });
 
   const docs = await a.getDocuments(false);
+  
   if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
   }
