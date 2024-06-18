@@ -64,7 +64,7 @@ export default class FirecrawlApp {
      * Initializes a new instance of the FirecrawlApp class.
      * @param {FirecrawlAppConfig} config - Configuration options for the FirecrawlApp instance.
      */
-    constructor({ apiKey }: FirecrawlAppConfig);
+    constructor({ apiKey, apiUrl }: FirecrawlAppConfig);
     /**
      * Scrapes a URL using the Firecrawl API.
      * @param {string} url - The URL to scrape.
