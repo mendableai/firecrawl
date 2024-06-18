@@ -401,7 +401,7 @@ export async function scrapSingleUrl(
 
     return {
       text: await parseMarkdown(cleanedHtml),
-      html: scraperResponse.text,
+      html: cleanedHtml,
       screenshot: scraperResponse.screenshot,
       pageStatusCode: scraperResponse.metadata.pageStatusCode,
       pageError: scraperResponse.metadata.pageError || undefined
@@ -428,7 +428,7 @@ export async function scrapSingleUrl(
       if (existingHtml && existingHtml.trim().length >= 100) {
         let cleanedHtml = removeUnwantedElements(existingHtml, pageOptions);
         text = await parseMarkdown(cleanedHtml);
-        html = existingHtml;
+        html = cleanedHtml;
         break;
       }
 
