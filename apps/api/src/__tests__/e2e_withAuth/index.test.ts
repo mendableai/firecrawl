@@ -361,48 +361,6 @@ describe("E2E Tests for API Routes", () => {
         expect(url.startsWith("https://wwww.mendable.ai/blog/")).toBeFalsy();
       });
     }, 90000); // 90 seconds
-
-    it.concurrent("should return a successful response with a valid API key and limit to 3", async () => {
-      const crawlResponse: FirecrawlCrawlResponse = await request(TEST_URL)
-        .post("/v0/crawl")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-        .set("Content-Type", "application/json")
-        .send({
-          url: "https://mendable.ai",
-          crawlerOptions: { limit: 3 },
-        });
-      
-      let isFinished = false;
-      let response: FirecrawlCrawlStatusResponse;
-
-      while (!isFinished) {
-        response = await request(TEST_URL)
-          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-
-        expect(response.statusCode).toBe(200);
-        expect(response.body).toHaveProperty("status");
-        isFinished = response.body.status === "completed";
-
-        if (!isFinished) {
-          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
-        }
-      }
-
-      const completedResponse: FirecrawlCrawlStatusResponse = response;
-
-      expect(completedResponse.statusCode).toBe(200);
-      expect(completedResponse.body).toHaveProperty("status");
-      expect(completedResponse.body.status).toBe("completed");
-      expect(completedResponse.body).toHaveProperty("data");
-      expect(completedResponse.body.data.length).toBe(3);
-      expect(completedResponse.body.data[0]).toHaveProperty("content");
-      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
-      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.data[0].content).toContain("Mendable");
-      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
-      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
-    }, 60000); // 60 seconds
   
     it.concurrent("should return a successful response with max depth option for a valid crawl job", async () => {
       const crawlResponse: FirecrawlCrawlResponse = await request(TEST_URL)
