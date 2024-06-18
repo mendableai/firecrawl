@@ -10,6 +10,102 @@ export interface FirecrawlAppConfig {
 }
 
 /**
+ * Metadata for a Firecrawl document.
+ */
+export interface FirecrawlDocumentMetadata {
+  title?: string;
+  description?: string;
+  language?: string;
+  keywords?: string;
+  robots?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogUrl?: string;
+  ogImage?: string;
+  ogAudio?: string;
+  ogDeterminer?: string;
+  ogLocale?: string;
+  ogLocaleAlternate?: string[];
+  ogSiteName?: string;
+  ogVideo?: string;
+  dctermsCreated?: string;
+  dcDateCreated?: string;
+  dcDate?: string;
+  dctermsType?: string;
+  dcType?: string;
+  dctermsAudience?: string;
+  dctermsSubject?: string;
+  dcSubject?: string;
+  dcDescription?: string;
+  dctermsKeywords?: string;
+  modifiedTime?: string;
+  publishedTime?: string;
+  articleTag?: string;
+  articleSection?: string;
+  sourceURL?: string;
+  pageStatusCode?: number;
+  pageError?: string;
+  [key: string]: any;
+}
+
+/**
+ * Document interface for Firecrawl.
+ */
+export interface FirecrawlDocument {
+  id?: string;
+  url?: string;
+  content: string;
+  markdown?: string;
+  html?: string;
+  llm_extraction?: Record<string, any>;
+  createdAt?: Date;
+  updatedAt?: Date;
+  type?: string;
+  metadata: FirecrawlDocumentMetadata;
+  childrenLinks?: string[];
+  provider?: string;
+  warning?: string;
+
+  index?: number;
+}
+
+/**
+ * Response interface for scraping operations.
+ */
+export interface ScrapeResponse {
+  success: boolean;
+  data?: FirecrawlDocument;
+  error?: string;
+}
+/**
+ * Response interface for searching operations.
+ */
+export interface SearchResponse {
+  success: boolean;
+  data?: FirecrawlDocument[];
+  error?: string;
+}
+/**
+ * Response interface for crawling operations.
+ */
+export interface CrawlResponse {
+  success: boolean;
+  jobId?: string;
+  data?: FirecrawlDocument[];
+  error?: string;
+}
+/**
+ * Response interface for job status checks.
+ */
+export interface JobStatusResponse {
+  success: boolean;
+  status: string;
+  jobId?: string;
+  data?: FirecrawlDocument[];
+  partial_data?: FirecrawlDocument[];
+  error?: string;
+}
+/**
  * Generic parameter interface.
  */
 export interface Params {
@@ -20,59 +116,20 @@ export interface Params {
     extractionPrompt?: string;
   };
 }
-
-/**
- * Response interface for scraping operations.
- */
-export interface ScrapeResponse {
-  success: boolean;
-  data?: any;
-  error?: string;
-}
-
-/**
- * Response interface for searching operations.
- */
-export interface SearchResponse {
-  success: boolean;
-  data?: any;
-  error?: string;
-}
-/**
- * Response interface for crawling operations.
- */
-export interface CrawlResponse {
-  success: boolean;
-  jobId?: string;
-  data?: any;
-  error?: string;
-}
-
-/**
- * Response interface for job status checks.
- */
-export interface JobStatusResponse {
-  success: boolean;
-  status: string;
-  jobId?: string;
-  data?: any;
-  partial_data?: any,
-  error?: string;
-}
-
 /**
  * Main class for interacting with the Firecrawl API.
  */
 export default class FirecrawlApp {
   private apiKey: string;
-  private apiUrl: string = "https://api.firecrawl.dev";
+  private apiUrl: string;
 
   /**
    * Initializes a new instance of the FirecrawlApp class.
    * @param {FirecrawlAppConfig} config - Configuration options for the FirecrawlApp instance.
    */
-  constructor({ apiKey = null }: FirecrawlAppConfig) {
+  constructor({ apiKey = null, apiUrl = null }: FirecrawlAppConfig) {
     this.apiKey = apiKey || "";
+    this.apiUrl = apiUrl || "https://api.firecrawl.dev";
     if (!this.apiKey) {
       throw new Error("No API key provided");
     }
@@ -112,7 +169,7 @@ export default class FirecrawlApp {
       const response: AxiosResponse = await axios.post(
         this.apiUrl + "/v0/scrape",
         jsonData,
-        { headers },
+        { headers }
       );
       if (response.status === 200) {
         const responseData = response.data;
@@ -231,7 +288,9 @@ export default class FirecrawlApp {
           success: true,
           status: response.data.status,
           data: response.data.data,
-          partial_data: !response.data.data ? response.data.partial_data : undefined,
+          partial_data: !response.data.data
+            ? response.data.partial_data
+            : undefined,
         };
       } else {
         this.handleError(response, "check crawl status");
@@ -252,10 +311,10 @@ export default class FirecrawlApp {
    */
   prepareHeaders(idempotencyKey?: string): AxiosRequestHeaders {
     return {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${this.apiKey}`,
-      ...(idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : {}),
-    } as AxiosRequestHeaders & { 'x-idempotency-key'?: string };
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this.apiKey}`,
+      ...(idempotencyKey ? { "x-idempotency-key": idempotencyKey } : {}),
+    } as AxiosRequestHeaders & { "x-idempotency-key"?: string };
   }
 
   /**
@@ -317,7 +376,9 @@ export default class FirecrawlApp {
           if (checkInterval < 2) {
             checkInterval = 2;
           }
-          await new Promise((resolve) => setTimeout(resolve, checkInterval * 1000)); // Wait for the specified timeout before checking again
+          await new Promise((resolve) =>
+            setTimeout(resolve, checkInterval * 1000)
+          ); // Wait for the specified timeout before checking again
         } else {
           throw new Error(
             `Crawl job failed or was stopped. Status: ${statusData.status}`

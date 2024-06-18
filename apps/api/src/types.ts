@@ -1,4 +1,4 @@
-import { ExtractorOptions } from "./lib/entities";
+import { ExtractorOptions, Document } from "./lib/entities";
 
 export interface CrawlResult {
   source: string;
@@ -41,6 +41,34 @@ export interface FirecrawlJob {
   origin: string;
   extractor_options?: ExtractorOptions,
   num_tokens?: number,
+}
+
+export interface FirecrawlScrapeResponse {
+  statusCode: number;
+  body: {
+    status: string;
+    data: Document;
+  };
+  error?: string;
+}
+
+export interface FirecrawlCrawlResponse {
+  statusCode: number;
+  body: {
+    status: string;
+    jobId: string;
+    
+  };
+  error?: string;
+}
+
+export interface FirecrawlCrawlStatusResponse {
+  statusCode: number;
+  body: {
+    status: string;
+    data: Document[];    
+  };
+  error?: string;
 }
 
 export enum RateLimiterMode {

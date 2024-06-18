@@ -93,7 +93,7 @@ jobs:
         working-directory: ./apps/test-suite
       - name: Run E2E tests
         run: |
-          npm run test
+          npm run test:suite
         working-directory: ./apps/test-suite
 
   python-sdk-tests:

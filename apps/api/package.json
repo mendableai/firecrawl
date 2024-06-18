@@ -12,7 +12,7 @@
     "build": "tsc",
     "test": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='src/__tests__/e2e_noAuth/*'",
     "test:local-no-auth": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='src/__tests__/e2e_withAuth/*'",
-    "test:prod": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='src/__tests__/e2e_noAuth/*'",
+    "test:prod": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='(src/__tests__/e2e_noAuth|src/__tests__/e2e_full_withAuth)'",
     "workers": "nodemon --exec ts-node src/services/queue-worker.ts",
     "worker:production": "node dist/src/services/queue-worker.js",
     "mongo-docker": "docker run -d -p 2717:27017 -v ./mongo-data:/data/db --name mongodb mongo:latest",
