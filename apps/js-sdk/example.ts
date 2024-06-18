@@ -1,11 +1,14 @@
-import FirecrawlApp, { JobStatusResponse } from '@mendable/firecrawl-js';
+import FirecrawlApp, { JobStatusResponse } from './firecrawl/src/index' //'@mendable/firecrawl-js';
 import { z } from "zod";
 
 const app = new FirecrawlApp({apiKey: "fc-YOUR_API_KEY"});
 
 // Scrape a website:
 const scrapeResult = await app.scrapeUrl('firecrawl.dev');
-console.log(scrapeResult.data.content)
+
+if (scrapeResult.data) {
+  console.log(scrapeResult.data.content)
+}
 
 // Crawl a website:
 const crawlResult = await app.crawlUrl('mendable.ai', {crawlerOptions: {excludes: ['blog/*'], limit: 5}}, false);
@@ -23,12 +26,13 @@ while (true) {
   await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
 }
 
-console.log(job.data[0].content);
+if (job.data) {
+  console.log(job.data[0].content);
+}
 
 // Search for a query:
 const query = 'what is mendable?'
 const searchResult = await app.search(query)
-console.log(searchResult)
 
 // LLM Extraction:
 //  Define schema to extract contents into using zod schema
@@ -50,7 +54,9 @@ let llmExtractionResult = await app.scrapeUrl("https://news.ycombinator.com", {
   extractorOptions: { extractionSchema: zodSchema },
 });
 
-console.log(llmExtractionResult.data.llm_extraction);
+if (llmExtractionResult.data) {
+  console.log(llmExtractionResult.data.llm_extraction);
+}
 
 // Define schema to extract contents into using json schema
 const jsonSchema = {
@@ -80,4 +86,7 @@ llmExtractionResult = await app.scrapeUrl("https://news.ycombinator.com", {
   extractorOptions: { extractionSchema: jsonSchema },
 });
 
-console.log(llmExtractionResult.data.llm_extraction);
+if (llmExtractionResult.data) {
+  console.log(llmExtractionResult.data.llm_extraction);
+}
+
