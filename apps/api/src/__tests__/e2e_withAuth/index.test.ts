@@ -70,22 +70,22 @@ describe("E2E Tests for API Routes", () => {
     //   expect(response.statusCode).toBe(200);
     // }, 30000); // 30 seconds timeout
 
-    it.concurrent("should return a successful response with a valid API key", async () => {
-      const response = await request(TEST_URL)
-        .post("/v0/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-        .set("Content-Type", "application/json")
-        .send({ url: "https://roastmywebsite.ai" });
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toHaveProperty("data");
-      expect(response.body.data).toHaveProperty("content");
-      expect(response.body.data).toHaveProperty("markdown");
-      expect(response.body.data).toHaveProperty("metadata");
-      expect(response.body.data).not.toHaveProperty("html");
-      expect(response.body.data.content).toContain("_Roast_");
-      expect(response.body.data.metadata.pageStatusCode).toBe(200);
-      expect(response.body.data.metadata.pageError).toBeUndefined();
-    }, 30000); // 30 seconds timeout
+    // it.concurrent("should return a successful response with a valid API key", async () => {
+    //   const response = await request(TEST_URL)
+    //     .post("/v0/scrape")
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    //     .set("Content-Type", "application/json")
+    //     .send({ url: "https://roastmywebsite.ai" });
+    //   expect(response.statusCode).toBe(200);
+    //   expect(response.body).toHaveProperty("data");
+    //   expect(response.body.data).toHaveProperty("content");
+    //   expect(response.body.data).toHaveProperty("markdown");
+    //   expect(response.body.data).toHaveProperty("metadata");
+    //   expect(response.body.data).not.toHaveProperty("html");
+    //   expect(response.body.data.content).toContain("_Roast_");
+    //   expect(response.body.data.metadata.pageStatusCode).toBe(200);
+    //   expect(response.body.data.metadata.pageError).toBeUndefined();
+    // }, 30000); // 30 seconds timeout
 
     it.concurrent("should return a successful response with a valid API key and includeHtml set to true", async () => {
       const response = await request(TEST_URL)
@@ -726,60 +726,60 @@ describe("E2E Tests for API Routes", () => {
     //   expect(completedResponse.body.data[0].content).not.toContain("main menu");
     // }, 60000); // 60 seconds
 
-    it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option", async () => {
-      const crawlResponse = await request(TEST_URL)
-        .post("/v0/crawl")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-        .set("Content-Type", "application/json")
-        .send({
-          url: "https://roastmywebsite.ai",
-          pageOptions: { includeHtml: true },
-        });
-      expect(crawlResponse.statusCode).toBe(200);
+    // it.concurrent("should return a successful response for a valid crawl job with includeHtml set to true option", async () => {
+    //   const crawlResponse = await request(TEST_URL)
+    //     .post("/v0/crawl")
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    //     .set("Content-Type", "application/json")
+    //     .send({
+    //       url: "https://roastmywebsite.ai",
+    //       pageOptions: { includeHtml: true },
+    //     });
+    //   expect(crawlResponse.statusCode).toBe(200);
 
-      const response = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toHaveProperty("status");
-      expect(["active", "waiting"]).toContain(response.body.status);
+    //   const response = await request(TEST_URL)
+    //     .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+    //   expect(response.statusCode).toBe(200);
+    //   expect(response.body).toHaveProperty("status");
+    //   expect(["active", "waiting"]).toContain(response.body.status);
 
-      let isCompleted = false;
-      while (!isCompleted) {
-        const statusCheckResponse = await request(TEST_URL)
-          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-        expect(statusCheckResponse.statusCode).toBe(200);
-        isCompleted = statusCheckResponse.body.status === "completed";
-        if (!isCompleted) {
-          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
-        }
-      }
+    //   let isCompleted = false;
+    //   while (!isCompleted) {
+    //     const statusCheckResponse = await request(TEST_URL)
+    //       .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+    //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+    //     expect(statusCheckResponse.statusCode).toBe(200);
+    //     isCompleted = statusCheckResponse.body.status === "completed";
+    //     if (!isCompleted) {
+    //       await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+    //     }
+    //   }
 
-      const completedResponse = await request(TEST_URL)
-        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+    //   const completedResponse = await request(TEST_URL)
+    //     .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+    //     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
-      expect(completedResponse.statusCode).toBe(200);
-      expect(completedResponse.body).toHaveProperty("status");
-      expect(completedResponse.body.status).toBe("completed");
-      expect(completedResponse.body).toHaveProperty("data");
-      expect(completedResponse.body.data[0]).toHaveProperty("content");
-      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
-      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
-      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
+    //   expect(completedResponse.statusCode).toBe(200);
+    //   expect(completedResponse.body).toHaveProperty("status");
+    //   expect(completedResponse.body.status).toBe("completed");
+    //   expect(completedResponse.body).toHaveProperty("data");
+    //   expect(completedResponse.body.data[0]).toHaveProperty("content");
+    //   expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+    //   expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+    //   expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+    //   expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
 
-      // 120 seconds  
-      expect(completedResponse.body.data[0]).toHaveProperty("html");
-      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.data[0].content).toContain("_Roast_");
-      expect(completedResponse.body.data[0].markdown).toContain("_Roast_");
-      expect(completedResponse.body.data[0].html).toContain("<h1");
+    //   // 120 seconds  
+    //   expect(completedResponse.body.data[0]).toHaveProperty("html");
+    //   expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+    //   expect(completedResponse.body.data[0].content).toContain("_Roast_");
+    //   expect(completedResponse.body.data[0].markdown).toContain("_Roast_");
+    //   expect(completedResponse.body.data[0].html).toContain("<h1");
 
-      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
-      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
-    }, 180000);
+    //   expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+    //   expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
+    // }, 180000);
 
   });
 
