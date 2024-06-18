@@ -54,6 +54,7 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data.metadata.pageError).toBeUndefined();
     }, 30000); // 30 seconds timeout
 
+
     it.concurrent("should return a successful response with a valid API key and includeHtml set to true", async () => {
       const response: FirecrawlScrapeResponse = await request(TEST_URL)
         .post("/v0/scrape")
