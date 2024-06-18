@@ -15,22 +15,34 @@ export const removeUnwantedElements = (html: string, pageOptions: PageOptions) =
       pageOptions.removeTags.forEach((tag) => {
         let elementsToRemove: Cheerio<AnyNode>;
         if (tag.startsWith("*") && tag.endsWith("*")) {
-          const regexPattern = new RegExp(`\\b${tag.slice(1, -1)}\\b`);
-          elementsToRemove = soup('*').filter((index, element) => {
-            const classNames = soup(element).attr('class');
-            return classNames && classNames.split(/\s+/).some(className => regexPattern.test(className));
+          let classMatch = false;
+
+          const regexPattern = new RegExp(tag.slice(1, -1), 'i');
+          elementsToRemove = soup('*').filter((i, element) => {
+            if (element.type === 'tag') {
+              const attributes = element.attribs;
+              const tagNameMatches = regexPattern.test(element.name);
+              const attributesMatch = Object.keys(attributes).some(attr => 
+                regexPattern.test(`${attr}="${attributes[attr]}"`)
+              );
+              if (tag.startsWith('*.')) {
+                classMatch = Object.keys(attributes).some(attr => 
+                  regexPattern.test(`class="${attributes[attr]}"`)
+                );
+              }
+              return tagNameMatches || attributesMatch || classMatch;
+            }
+            return false;
           });
         } else {
           elementsToRemove = soup(tag);
         }
-  
         elementsToRemove.remove();
       });
     }
   }
   
   if (pageOptions.onlyMainContent) {
-    // remove any other tags that are not in the main content
     excludeNonMainTags.forEach((tag) => {
       const elementsToRemove = soup(tag);
       elementsToRemove.remove();
