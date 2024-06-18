@@ -316,15 +316,26 @@ export async function scrapSingleUrl(
   const removeUnwantedElements = (html: string, pageOptions: PageOptions) => {
     const soup = cheerio.load(html);
     soup("script, style, iframe, noscript, meta, head").remove();
-
+    
     if (pageOptions.removeTags) {
       if (typeof pageOptions.removeTags === 'string') {
-        pageOptions.removeTags.split(',').forEach((tag) => {
-          soup(tag.trim()).remove();
-        });
-      } else if (Array.isArray(pageOptions.removeTags)) {
+        pageOptions.removeTags = [pageOptions.removeTags];
+      }
+    
+      if (Array.isArray(pageOptions.removeTags)) {
         pageOptions.removeTags.forEach((tag) => {
-          soup(tag).remove();
+          let elementsToRemove;
+          if (tag.startsWith("*") && tag.endsWith("*")) {
+            const regexPattern = new RegExp(`\\b${tag.slice(1, -1)}\\b`);
+            elementsToRemove = soup('*').filter((index, element) => {
+              const classNames = soup(element).attr('class');
+              return classNames && classNames.split(/\s+/).some(className => regexPattern.test(className));
+            });
+          } else {
+            elementsToRemove = soup(tag);
+          }
+    
+          elementsToRemove.remove();
         });
       }
     }
@@ -332,11 +343,13 @@ export async function scrapSingleUrl(
     if (pageOptions.onlyMainContent) {
       // remove any other tags that are not in the main content
       excludeNonMainTags.forEach((tag) => {
-        soup(tag).remove();
+        const elementsToRemove = soup(tag);
+        elementsToRemove.remove();
       });
     }
-    return soup.html();
-  };
+    const cleanedHtml = soup.html();
+    return cleanedHtml;
+};
 
   const attemptScraping = async (
     url: string,
