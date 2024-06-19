@@ -28,10 +28,6 @@
   "exclude": [
     "node_modules",
     "dist",
-    "docs"
-  ],
-  ".": {
-    "import": "./build/index.js",
-    "require": "./dist-cjs/index.js"
-  }
+    "docs",
+  ]
 }
