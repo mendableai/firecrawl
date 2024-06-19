@@ -32,8 +32,12 @@ export async function logJob(job: FirecrawlJob) {
       ]);
 
       if (process.env.POSTHOG_API_KEY) {
-        posthog.capture({
-          distinctId: job.team_id === "preview" ? null : job.team_id,
+
+        let phLog = {
+          distinctId: "from-api", //* To identify this on the group level, setting distinctid to a static string per posthog docs: https://posthog.com/docs/product-analytics/group-analytics#advanced-server-side-only-capturing-group-events-without-a-user
+          ...(job.team_id !== "preview" && {
+            groups: { team: job.team_id }
+          }), //* Identifying event on this team
           event: "job-logged",
           properties: {
             success: job.success,
@@ -49,7 +53,8 @@ export async function logJob(job: FirecrawlJob) {
             extractor_options: job.extractor_options,
             num_tokens: job.num_tokens
           },
-        });
+        }
+        posthog.capture(phLog);
       }
     if (error) {
       console.error("Error logging job:\n", error);
