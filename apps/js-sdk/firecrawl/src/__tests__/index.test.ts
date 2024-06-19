@@ -1,6 +1,6 @@
 import { describe, test, expect, jest } from '@jest/globals';
 import axios from 'axios';
-import FirecrawlApp from '../index';
+import FirecrawlApp from '../index.js';
 
 import { readFile } from 'fs/promises';
 import { join } from 'path';

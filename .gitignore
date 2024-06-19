@@ -15,3 +15,9 @@ apps/test-suite/node_modules/
 apps/test-suite/.env
 apps/test-suite/logs
 apps/test-suite/load-test-results/test-run-report.json
+
+apps/js-sdk/node_modules/
+apps/js-sdk/dist/
+apps/js-sdk/dist-cjs/
+dist-cjs/
+build/
