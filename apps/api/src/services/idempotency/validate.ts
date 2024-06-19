@@ -10,10 +10,12 @@ export async function validateIdempotencyKey(
     // // not returning for missing idempotency key for now
     return true;
   }
-  if (!isUuid(idempotencyKey)) {
-    console.error("Invalid idempotency key provided in the request headers.");
-    return false;
-  }
+   // Ensure idempotencyKey is treated as a string
+   const key = Array.isArray(idempotencyKey) ? idempotencyKey[0] : idempotencyKey;
+   if (!isUuid(key)) {
+     console.error("Invalid idempotency key provided in the request headers.");
+     return false;
+   }
 
   const { data, error } = await supabase_service
     .from("idempotency_keys")
