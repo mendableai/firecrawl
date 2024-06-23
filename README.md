@@ -248,7 +248,7 @@ scraped_data = app.scrape_url(url)
 
 ### Extracting structured data from a URL
 
-With LLM extraction, you can easily extract structured data from any URL. We support pydanti schemas to make it easier for you too. Here is how you to use it:
+With LLM extraction, you can easily extract structured data from any URL. We support pydantic schemas to make it easier for you too. Here is how you to use it:
 
 ```python
 class ArticleSchema(BaseModel):
