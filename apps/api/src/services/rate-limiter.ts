@@ -12,6 +12,7 @@ const RATE_LIMITS = {
     scale: 20,
     hobby: 3,
     standardNew: 10,
+    standardnew: 10,
     growth: 50,
   },
   scrape: {
@@ -23,6 +24,7 @@ const RATE_LIMITS = {
     scale: 50,
     hobby: 10,
     standardNew: 50,
+    standardnew: 50,
     growth: 500,
   },
   search: {
@@ -34,6 +36,7 @@ const RATE_LIMITS = {
     scale: 50,
     hobby: 10,
     standardNew: 50,
+    standardnew: 50,
     growth: 500,
   },
   preview: {

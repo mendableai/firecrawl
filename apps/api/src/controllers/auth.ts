@@ -202,7 +202,7 @@ function getPlanByPriceId(price_id: string) {
     case process.env.STRIPE_PRICE_ID_HOBBY || process.env.STRIPE_PRICE_ID_HOBBY_YEARLY:
       return 'hobby';
     case process.env.STRIPE_PRICE_ID_STANDARD_NEW || process.env.STRIPE_PRICE_ID_STANDARD_NEW_YEARLY:
-      return 'standard-new';
+      return 'standardnew';
     case process.env.STRIPE_PRICE_ID_GROWTH || process.env.STRIPE_PRICE_ID_GROWTH_YEARLY:
       return 'growth';
     default:
