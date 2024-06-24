@@ -418,7 +418,7 @@ export class WebCrawler {
 
     const normalizedUrl = normalizeUrl(url);
     const normalizedSitemapLinks = sitemapLinks.map(link => normalizeUrl(link));
-
+    // has to be greater than 0 to avoid adding the initial URL to the sitemap links, and preventing crawler to crawl
     if (!normalizedSitemapLinks.includes(normalizedUrl) && sitemapLinks.length > 0) {
       sitemapLinks.push(url);
     }
