@@ -52,8 +52,6 @@ async function _req(term: string, results: number, lang: string, country: string
 
 
 export async function google_search(term: string, advanced = false, num_results = 7, tbs = null, filter = null, lang = "en", country = "us", proxy = null, sleep_interval = 0, timeout = 5000, ) :Promise<SearchResult[]> {
-    const escaped_term = querystring.escape(term);
-
     let proxies = null;
     if (proxy) {
         if (proxy.startsWith("https")) {
@@ -71,7 +69,7 @@ export async function google_search(term: string, advanced = false, num_results 
     const maxAttempts = 20; // Define a maximum number of attempts to prevent infinite loop
     while (start < num_results && attempts < maxAttempts) {
         try {
-            const resp = await _req(escaped_term, num_results - start, lang, country, start, proxies, timeout, tbs, filter);
+            const resp = await _req(term, num_results - start, lang, country, start, proxies, timeout, tbs, filter);
             const $ = cheerio.load(resp.data);
             const result_block = $("div.g");
             if (result_block.length === 0) {
