@@ -113,13 +113,25 @@ export async function scrapWithScrapingBee(
   pageOptions: { parsePDF?: boolean } = { parsePDF: true }
 ): Promise<{ content: string, pageStatusCode?: number, pageError?: string }> {
   try {
+    console.log("13. scrapWithScrapingBee - 1")
     const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY);
+    console.log("13. scrapWithScrapingBee - 2")
     const clientParams = await generateRequestParams(
       url,
       wait_browser,
       timeout,
     );
-
+    console.log({ url,
+      wait_browser,
+      timeout })
+    console.log({
+      ...clientParams,
+      params: {
+        ...clientParams.params,
+        'transparent_status_code': 'True'
+      }
+    })
+    console.log("13. scrapWithScrapingBee - 3")
     const response = await client.get({
       ...clientParams,
       params: {
@@ -127,7 +139,7 @@ export async function scrapWithScrapingBee(
         'transparent_status_code': 'True'
       }
     });
-
+    console.log("13. scrapWithScrapingBee - 4")
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
       return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
@@ -140,6 +152,7 @@ export async function scrapWithScrapingBee(
       } catch (decodeError) {
         console.error(`[ScrapingBee][c] Error decoding response data for url: ${url} -> ${decodeError}`);
       }
+      console.log("13. scrapWithScrapingBee - 5 - returning ok")
       return { content: text, pageStatusCode: response.status, pageError: response.statusText != "OK" ? response.statusText : undefined };
     }
   } catch (error) {
@@ -396,8 +409,13 @@ export async function scrapSingleUrl(
       screenshot = customScrapedContent.screenshot;
     }
 
+    console.log(
+      'chegou aqui'
+    )
+
     //* TODO: add an optional to return markdown or structured/extracted content
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
+    console.log('cleanedHtml')
 
     return {
       text: await parseMarkdown(cleanedHtml),
@@ -432,7 +450,9 @@ export async function scrapSingleUrl(
         break;
       }
 
+      console.log('attemptScraping - 1')
       const attempt = await attemptScraping(urlToScrap, scraper);
+      console.log('attemptScraping - 2 - return ok')
       text = attempt.text ?? '';
       html = attempt.html ?? '';
       screenshot = attempt.screenshot ?? '';
@@ -451,6 +471,7 @@ export async function scrapSingleUrl(
         console.info(`Falling back to ${scrapersInOrder[nextScraperIndex]}`);
       }
     }
+    console.log('ok... here we are...')
 
     if (!text) {
       throw new Error(`All scraping methods failed for URL: ${urlToScrap}`);
@@ -487,6 +508,7 @@ export async function scrapSingleUrl(
       };
     }
 
+    console.log('returning document...')
     return document;
   } catch (error) {
     console.error(`Error: ${error} - Failed to fetch URL: ${urlToScrap}`);

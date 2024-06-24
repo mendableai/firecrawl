@@ -66,6 +66,7 @@ export async function crawlController(req: Request, res: Response) {
       parsePDF: true
     };
 
+    console.log('1. here OK!')
     if (mode === "single_urls" && !url.includes(",")) {
       try {
         const a = new WebScraperDataProvider();
@@ -84,6 +85,7 @@ export async function crawlController(req: Request, res: Response) {
             current_url: progress.currentDocumentUrl,
           });
         });
+        console.log('crawlController - return res.json...')
         return res.json({
           success: true,
           documents: docs,

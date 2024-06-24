@@ -129,24 +129,31 @@ export class WebCrawler {
   ): Promise<{ url: string, html: string }[]> {
     // Fetch and parse robots.txt
     try {
-      const response = await axios.get(this.robotsTxtUrl);
+      console.log('3.1 here OK')
+      console.log('this.robotsTxtUrl:', this.robotsTxtUrl)
+      const response = await axios.get(this.robotsTxtUrl, { timeout: 3000 });
+      console.log('????', {response})
+      console.log('3.2 here OK')
       this.robots = robotsParser(this.robotsTxtUrl, response.data);
     } catch (error) {
       console.log(`Failed to fetch robots.txt from ${this.robotsTxtUrl}`);
 
     }
 
-
+    console.log('4. here OK!')
     if(!crawlerOptions?.ignoreSitemap){
+      console.log('4.1')
       const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
-    
+      console.log('4.2')
       if (sitemapLinks.length > 0) {
+        console.log('4.3')
         let filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
-       
+        console.log('4.4')
         return filteredLinks.map(link => ({ url: link, html: "" }));
       }
     }
 
+    console.log('5. here OK!')
     const urls = await this.crawlUrls(
       [this.initialUrl],
       pageOptions,
@@ -154,7 +161,7 @@ export class WebCrawler {
       inProgress
     );
    
-    
+    console.log('6. here OK!')
     if (
       urls.length === 0 &&
       this.filterLinks([this.initialUrl], limit, this.maxCrawledDepth).length > 0
@@ -164,6 +171,7 @@ export class WebCrawler {
 
     // make sure to run include exclude here again
     const filteredUrls = this.filterLinks(urls.map(urlObj => urlObj.url), limit, this.maxCrawledDepth);
+    console.log('7. here OK!')
     return filteredUrls.map(url => ({ url, html: urls.find(urlObj => urlObj.url === url)?.html || "" }));
   }
 
@@ -180,6 +188,7 @@ export class WebCrawler {
         }
         return;
       }
+      console.log('crawlUrls - crawl')
       const newUrls = await this.crawl(task, pageOptions);
       // add the initial url if not already added
       // if (this.visited.size === 1) {
@@ -192,7 +201,7 @@ export class WebCrawler {
       //   }
       // }
 
-
+      console.log('---??---')
       newUrls.forEach((page) => this.crawledUrls.set(page.url, page.html));
       
       if (inProgress && newUrls.length > 0) {
@@ -210,12 +219,14 @@ export class WebCrawler {
           currentDocumentUrl: task,
         });
       }
+      console.log('----???----')
       await this.crawlUrls(newUrls.map((p) => p.url), pageOptions, concurrencyLimit, inProgress);
       if (callback && typeof callback === "function") {
         callback();
       }
     }, concurrencyLimit);
 
+    console.log('crawlUrls - queue.push')
     queue.push(
       urls.filter(
         (url) =>
@@ -225,7 +236,9 @@ export class WebCrawler {
         if (err) console.error(err);
       }
     );
+    console.log('crawlUrls - queue.drain')
     await queue.drain();
+    console.log('crawlUrls - return')
     return Array.from(this.crawledUrls.entries()).map(([url, html]) => ({ url, html }));
   }
 
@@ -253,16 +266,22 @@ export class WebCrawler {
 
       // If it is the first link, fetch with single url
       if (this.visited.size === 1) {
+        console.log('crawl scrapSingleUrl...')
         const page = await scrapSingleUrl(url, { ...pageOptions, includeHtml: true });
+        console.log('got a page! lets continue...')
         content = page.html ?? "";
         pageStatusCode = page.metadata?.pageStatusCode;
         pageError = page.metadata?.pageError || undefined;
       } else {
-        const response = await axios.get(url);
+        // console.log('crawl - else')
+        const response = await axios.get(url, { timeout: 3000 });
+        console.log('crawl - else - response ok')
         content = response.data ?? "";
         pageStatusCode = response.status;
         pageError = response.statusText != "OK" ? response.statusText : undefined;
       }
+
+      console.log('crawl... keep going')
       const $ = load(content);
       let links: { url: string, html: string, pageStatusCode?: number, pageError?: string }[] = [];
 
@@ -271,14 +290,17 @@ export class WebCrawler {
         links.push({ url, html: content, pageStatusCode, pageError });
       }
 
+      console.log('crawl... keep going 2')
       $("a").each((_, element) => {
         const href = $(element).attr("href");
         if (href) {
+          console.log('href:', href)
           let fullUrl = href;
           if (!href.startsWith("http")) {
             fullUrl = new URL(href, this.baseUrl).toString();
           }
           const urlObj = new URL(fullUrl);
+          console.log('urlObj:', urlObj)
           const path = urlObj.pathname;
 
 
@@ -295,10 +317,13 @@ export class WebCrawler {
           }
         }
       });
+      console.log('crawl... keep going 3')
 
       if (this.visited.size === 1) {
         return links;
       }
+
+      console.log('returning crawl...')
       // Create a new list to return to avoid modifying the visited list
       return links.filter((link) => !this.visited.has(link.url));
     } catch (error) {
@@ -385,6 +410,7 @@ export class WebCrawler {
 
   // 
   private async tryFetchSitemapLinks(url: string): Promise<string[]> {
+    console.log("4.1.1 - Normalizing URL");
     const normalizeUrl = (url: string) => {
       url = url.replace(/^https?:\/\//, "").replace(/^www\./, "");
       if (url.endsWith("/")) {
@@ -393,46 +419,48 @@ export class WebCrawler {
       return url;
     };
 
+    console.log("4.1.2 - Constructing sitemap URL");
     const sitemapUrl = url.endsWith("/sitemap.xml")
       ? url
       : `${url}/sitemap.xml`;
 
     let sitemapLinks: string[] = [];
 
+    console.log("4.1.3 - Fetching sitemap from constructed URL");
     try {
-      const response = await axios.get(sitemapUrl);
+      const response = await axios.get(sitemapUrl, { timeout: 3000 });
       if (response.status === 200) {
+        console.log("4.1.4 - Extracting links from sitemap");
         sitemapLinks = await getLinksFromSitemap(sitemapUrl);
       }
     } catch (error) {
-      // Error handling for failed sitemap fetch
-      // console.error(`Failed to fetch sitemap from ${sitemapUrl}: ${error}`);
+      console.error(`Failed to fetch sitemap from ${sitemapUrl}: ${error}`);
     }
 
     if (sitemapLinks.length === 0) {
-      // If the first one doesn't work, try the base URL
+      console.log("4.1.5 - Trying base URL sitemap as fallback");
       const baseUrlSitemap = `${this.baseUrl}/sitemap.xml`;
       try {
-        const response = await axios.get(baseUrlSitemap);
+        const response = await axios.get(baseUrlSitemap, { timeout: 3000 });
         if (response.status === 200) {
+          console.log("4.1.6 - Extracting links from base URL sitemap");
           sitemapLinks = await getLinksFromSitemap(baseUrlSitemap);
         }
       } catch (error) {
-        // Error handling for failed base URL sitemap fetch
-        // console.error(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);
+        console.error(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);
       }
     }
 
-    // Normalize and check if the URL is present in any of the sitemaps
+    console.log("4.1.7 - Normalizing sitemap links");
     const normalizedUrl = normalizeUrl(url);
     const normalizedSitemapLinks = sitemapLinks.map(link => normalizeUrl(link));
 
-    // has to be greater than 0 to avoid adding the initial URL to the sitemap links, and preventing crawler to crawl
+    console.log("4.1.8 - Checking if normalized URL is already included");
     if (!normalizedSitemapLinks.includes(normalizedUrl) && sitemapLinks.length > 0) {
-      // do not push the normalized url
+      console.log("4.1.9 - Adding initial URL to sitemap links");
       sitemapLinks.push(url);
     }
-
+    console.log("4.1.10 - Returning sitemap links");
     return sitemapLinks;
   }
 }

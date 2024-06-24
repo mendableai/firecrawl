@@ -1,10 +1,10 @@
 ### Crawl Website
 POST http://localhost:3002/v0/scrape HTTP/1.1
-Authorization: Bearer 
+Authorization: Bearer fc-
 content-type: application/json
 
 {
-    "url":"https://docs.mendable.ai"
+    "url":"new.abb.com/sustainability/foundation"
 }
 
 
@@ -14,15 +14,23 @@ GET http://localhost:3002/v0/jobs/active HTTP/1.1
 
 ### Scrape Website
 POST http://localhost:3002/v0/crawl HTTP/1.1
-Authorization: Bearer 
+Authorization: Bearer fc-
 content-type: application/json
 
 {
-    "url":"https://www.mendable.ai",
-    "crawlerOptions": {
-        "returnOnlyUrls": true
-    }
+  "url": "new.abb.com/sustainability/foundation"
 }
+
+## "reoveTags": [],
+  # "mode": "crawl",
+  # "crawlerOptions": {
+  #     "allowBackwardCrawling": false
+  # },
+  # "pageOptions": {
+  #   "onlyMainContent": false,
+  #   "includeHtml": false,
+  #   "parsePDF": true
+  # }
 
 
 
