@@ -1,6 +1,5 @@
 
 export function parseMarkdown(html: string) {
-  console.log('parseMarkdown - start!')
   var TurndownService = require("turndown");
   var turndownPluginGfm = require('joplin-turndown-plugin-gfm')
 
@@ -51,6 +50,5 @@ export function parseMarkdown(html: string) {
     /\[Skip to Content\]\(#[^\)]*\)/gi,
     ""
   );
-  console.log('parseMarkdown - return')
   return markdownContent;
 }

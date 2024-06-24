@@ -78,11 +78,9 @@ export async function runWebScraper({
         pageOptions: pageOptions,
       });
     }
-    console.log('runWebScraper - getDocuments')
     const docs = (await provider.getDocuments(false, (progress: Progress) => {
       inProgress(progress);
     })) as Document[];
-    console.log('runWebScraper - getDocuments - done - docs.length:', docs.length)
 
     if (docs.length === 0) {
       return {

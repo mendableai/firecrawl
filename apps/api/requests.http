@@ -1,10 +1,10 @@
 ### Crawl Website
 POST http://localhost:3002/v0/scrape HTTP/1.1
-Authorization: Bearer fc-
+Authorization: Bearer fc
 content-type: application/json
 
 {
-    "url":"new.abb.com/sustainability/foundation"
+    "url":"firecrawl.dev"
 }
 
 
@@ -18,7 +18,7 @@ Authorization: Bearer fc-
 content-type: application/json
 
 {
-  "url": "new.abb.com/sustainability/foundation"
+  "url": "firecrawl.dev"
 }
 
 ## "reoveTags": [],

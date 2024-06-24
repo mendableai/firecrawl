@@ -63,13 +63,11 @@ export class WebScraperDataProvider {
       await Promise.all(
         batchUrls.map(async (url, index) => {
           const existingHTML = allHtmls ? allHtmls[i + index] : "";
-          console.log('convertUrlsToDocuments - scrapSingleUrl')
           const result = await scrapSingleUrl(
             url,
             this.pageOptions,
             existingHTML
           );
-          console.log('convertUrlsToDocuments - result ok')
           processedUrls++;
           if (inProgress) {
             inProgress({
@@ -100,7 +98,6 @@ export class WebScraperDataProvider {
         return [] as Document[];
       }
     }
-    console.log('returning results from convertUrlsToDocuments...')
     return results.filter((result) => result !== null) as Document[];
   }
 
@@ -109,7 +106,6 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
     this.validateInitialUrl();
-    console.log('2. here OK!')
     if (!useCaching) {
       return this.processDocumentsWithoutCache(inProgress);
     }
@@ -178,7 +174,6 @@ export class WebScraperDataProvider {
       allowBackwardCrawling: this.allowBackwardCrawling,
     });
 
-    console.log('3. here OK!')
     let links = await crawler.start(
       inProgress,
       this.pageOptions,
@@ -190,28 +185,21 @@ export class WebScraperDataProvider {
       this.maxCrawledDepth
     );
 
-    console.log("8 - Mapping URLs from links");
     let allLinks = links.map((e) => e.url);
-    console.log("9 - Mapping HTML content from links");
     const allHtmls = links.map((e) => e.html);
 
-    console.log("10 - Checking if only URLs should be returned");
     if (this.returnOnlyUrls) {
       return this.returnOnlyUrlsResponse(allLinks, inProgress);
     }
 
     let documents = [];
-    console.log("11 - Checking if crawler is in fast mode and HTML content is present");
     // check if fast mode is enabled and there is html inside the links
     if (this.crawlerMode === "fast" && links.some((link) => link.html)) {
-      console.log("12 - Processing links with HTML content in fast mode");
       documents = await this.processLinks(allLinks, inProgress, allHtmls);
     } else {
-      console.log("13 - Processing links in normal mode");
       documents = await this.processLinks(allLinks, inProgress);
     }
 
-    console.log("14 - Caching and finalizing documents");
     return this.cacheAndFinalizeDocuments(documents, allLinks);
   }
 
@@ -270,22 +258,14 @@ export class WebScraperDataProvider {
 
     links = links.filter(link => !pdfLinks.includes(link) && !docLinks.includes(link));
 
-    console.log('processLinks - convertUrlsToDocuments...')
     let documents = await this.convertUrlsToDocuments(
       links,
       inProgress,
       allHtmls
     );
-    console.log('processLinks - convertUrlsToDocuments - done')
 
-    console.log('processLinks - getSitemapData...')
     documents = await this.getSitemapData(this.urls[0], documents);
-    console.log('processLinks - getSitemapData - done')
-
-    console.log('processLinks - applyPathReplacements...')
     documents = this.applyPathReplacements(documents);
-    console.log('processLinks - applyPathReplacements - done')
-
     // documents = await this.applyImgAltText(documents);
 
     if (
@@ -294,7 +274,6 @@ export class WebScraperDataProvider {
     ) {
       documents = await generateCompletions(documents, this.extractorOptions);
     }
-    console.log('processLinks - returning...')
     return documents.concat(pdfDocuments).concat(docxDocuments);
   }
 
@@ -340,11 +319,8 @@ export class WebScraperDataProvider {
     documents: Document[],
     links: string[]
   ): Promise<Document[]> {
-    console.log('cacheAndFinalizeDocuments - 1')
     await this.setCachedDocuments(documents, links);
-    console.log('cacheAndFinalizeDocuments - 2')
     documents = this.removeChildLinks(documents);
-    console.log('cacheAndFinalizeDocuments - 3')
     return documents.splice(0, this.limit);
   }
 
