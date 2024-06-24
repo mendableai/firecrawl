@@ -7,6 +7,7 @@ import { CrawlerOptions, PageOptions, Progress } from "../../lib/entities";
 import { scrapSingleUrl, scrapWithScrapingBee } from "./single_url";
 import robotsParser from "robots-parser";
 import { getURLDepth } from "./utils/maxDepthUtils";
+import { axiosTimeout } from "../../../src/lib/timeout";
 
 export class WebCrawler {
   private initialUrl: string;
@@ -129,20 +130,16 @@ export class WebCrawler {
   ): Promise<{ url: string, html: string }[]> {
     // Fetch and parse robots.txt
     try {
-      const response = await axios.get(this.robotsTxtUrl);
+      const response = await axios.get(this.robotsTxtUrl, { timeout: axiosTimeout });
       this.robots = robotsParser(this.robotsTxtUrl, response.data);
     } catch (error) {
       console.log(`Failed to fetch robots.txt from ${this.robotsTxtUrl}`);
-
     }
-
 
     if(!crawlerOptions?.ignoreSitemap){
       const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
-    
       if (sitemapLinks.length > 0) {
         let filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
-       
         return filteredLinks.map(link => ({ url: link, html: "" }));
       }
     }
@@ -154,7 +151,6 @@ export class WebCrawler {
       inProgress
     );
    
-    
     if (
       urls.length === 0 &&
       this.filterLinks([this.initialUrl], limit, this.maxCrawledDepth).length > 0
@@ -191,7 +187,6 @@ export class WebCrawler {
       //     newUrls.push({ url: this.initialUrl, html: "" });
       //   }
       // }
-
 
       newUrls.forEach((page) => this.crawledUrls.set(page.url, page.html));
       
@@ -258,11 +253,12 @@ export class WebCrawler {
         pageStatusCode = page.metadata?.pageStatusCode;
         pageError = page.metadata?.pageError || undefined;
       } else {
-        const response = await axios.get(url);
+        const response = await axios.get(url, { timeout: axiosTimeout });
         content = response.data ?? "";
         pageStatusCode = response.status;
         pageError = response.statusText != "OK" ? response.statusText : undefined;
       }
+
       const $ = load(content);
       let links: { url: string, html: string, pageStatusCode?: number, pageError?: string }[] = [];
 
@@ -290,15 +286,15 @@ export class WebCrawler {
             !this.matchesExcludes(path) &&
             this.isRobotsAllowed(fullUrl)
           ) {
-
             links.push({ url: fullUrl, html: content, pageStatusCode, pageError });
           }
         }
       });
-
+      
       if (this.visited.size === 1) {
         return links;
       }
+
       // Create a new list to return to avoid modifying the visited list
       return links.filter((link) => !this.visited.has(link.url));
     } catch (error) {
@@ -400,39 +396,32 @@ export class WebCrawler {
     let sitemapLinks: string[] = [];
 
     try {
-      const response = await axios.get(sitemapUrl);
+      const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
       if (response.status === 200) {
         sitemapLinks = await getLinksFromSitemap(sitemapUrl);
       }
     } catch (error) {
-      // Error handling for failed sitemap fetch
-      // console.error(`Failed to fetch sitemap from ${sitemapUrl}: ${error}`);
+      console.error(`Failed to fetch sitemap from ${sitemapUrl}: ${error}`);
     }
 
     if (sitemapLinks.length === 0) {
-      // If the first one doesn't work, try the base URL
       const baseUrlSitemap = `${this.baseUrl}/sitemap.xml`;
       try {
-        const response = await axios.get(baseUrlSitemap);
+        const response = await axios.get(baseUrlSitemap, { timeout: axiosTimeout });
         if (response.status === 200) {
           sitemapLinks = await getLinksFromSitemap(baseUrlSitemap);
         }
       } catch (error) {
-        // Error handling for failed base URL sitemap fetch
-        // console.error(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);
+        console.error(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);
       }
     }
 
-    // Normalize and check if the URL is present in any of the sitemaps
     const normalizedUrl = normalizeUrl(url);
     const normalizedSitemapLinks = sitemapLinks.map(link => normalizeUrl(link));
-
     // has to be greater than 0 to avoid adding the initial URL to the sitemap links, and preventing crawler to crawl
     if (!normalizedSitemapLinks.includes(normalizedUrl) && sitemapLinks.length > 0) {
-      // do not push the normalized url
       sitemapLinks.push(url);
     }
-
     return sitemapLinks;
   }
 }

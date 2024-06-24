@@ -119,7 +119,6 @@ export async function scrapWithScrapingBee(
       wait_browser,
       timeout,
     );
-
     const response = await client.get({
       ...clientParams,
       params: {
@@ -127,7 +126,6 @@ export async function scrapWithScrapingBee(
         'transparent_status_code': 'True'
       }
     });
-
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
       return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
@@ -398,7 +396,6 @@ export async function scrapSingleUrl(
 
     //* TODO: add an optional to return markdown or structured/extracted content
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
-
     return {
       text: await parseMarkdown(cleanedHtml),
       html: cleanedHtml,

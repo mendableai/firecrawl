@@ -106,7 +106,6 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
     this.validateInitialUrl();
-
     if (!useCaching) {
       return this.processDocumentsWithoutCache(inProgress);
     }
@@ -264,8 +263,8 @@ export class WebScraperDataProvider {
       inProgress,
       allHtmls
     );
-    documents = await this.getSitemapData(this.urls[0], documents);
 
+    documents = await this.getSitemapData(this.urls[0], documents);
     documents = this.applyPathReplacements(documents);
     // documents = await this.applyImgAltText(documents);
 

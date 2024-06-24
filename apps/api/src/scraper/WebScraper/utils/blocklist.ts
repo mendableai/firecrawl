@@ -43,6 +43,10 @@ export function isUrlBlocked(url: string): boolean {
   }
 
   try {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    
     const urlObj = new URL(url);
     const hostname = urlObj.hostname.toLowerCase();
 

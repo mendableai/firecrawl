@@ -50,6 +50,5 @@ export function parseMarkdown(html: string) {
     /\[Skip to Content\]\(#[^\)]*\)/gi,
     ""
   );
-
   return markdownContent;
 }

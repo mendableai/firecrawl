@@ -14,6 +14,7 @@ if(process.env.ENV === 'production') {
 getWebScraperQueue().process(
   Math.floor(Number(process.env.NUM_WORKERS_PER_QUEUE ?? 8)),
   async function (job, done) {
+
     try {
       job.progress({
         current: 1,
@@ -22,7 +23,6 @@ getWebScraperQueue().process(
         current_url: "",
       });
       const start = Date.now();
-
       const { success, message, docs } = await startWebScraperPipeline({ job });
       const end = Date.now();
       const timeTakenInSeconds = (end - start) / 1000;
