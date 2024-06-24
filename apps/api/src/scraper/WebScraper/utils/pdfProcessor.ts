@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import pdf from "pdf-parse";
 import path from "path";
 import os from "os";
+import { axiosTimeout } from "../../../lib/timeout";
 
 dotenv.config();
 
@@ -71,7 +72,7 @@ export async function processPdfToText(filePath: string, parsePDF: boolean): Pro
 
       while (attempt < maxAttempts && !resultAvailable) {
         try {
-          resultResponse = await axios.get(resultUrl, { headers, timeout: 6000 });
+          resultResponse = await axios.get(resultUrl, { headers, timeout: (axiosTimeout * 2) });
           if (resultResponse.status === 200) {
             resultAvailable = true; // Exit condition met
           } else {

@@ -7,6 +7,7 @@ import { CrawlerOptions, PageOptions, Progress } from "../../lib/entities";
 import { scrapSingleUrl, scrapWithScrapingBee } from "./single_url";
 import robotsParser from "robots-parser";
 import { getURLDepth } from "./utils/maxDepthUtils";
+import { axiosTimeout } from "../../../src/lib/timeout";
 
 export class WebCrawler {
   private initialUrl: string;
@@ -131,7 +132,7 @@ export class WebCrawler {
     try {
       console.log('3.1 here OK')
       console.log('this.robotsTxtUrl:', this.robotsTxtUrl)
-      const response = await axios.get(this.robotsTxtUrl, { timeout: 3000 });
+      const response = await axios.get(this.robotsTxtUrl, { timeout: axiosTimeout });
       console.log('????', {response})
       console.log('3.2 here OK')
       this.robots = robotsParser(this.robotsTxtUrl, response.data);
@@ -274,7 +275,7 @@ export class WebCrawler {
         pageError = page.metadata?.pageError || undefined;
       } else {
         // console.log('crawl - else')
-        const response = await axios.get(url, { timeout: 3000 });
+        const response = await axios.get(url, { timeout: axiosTimeout });
         console.log('crawl - else - response ok')
         content = response.data ?? "";
         pageStatusCode = response.status;
@@ -312,6 +313,7 @@ export class WebCrawler {
             !this.matchesExcludes(path) &&
             this.isRobotsAllowed(fullUrl)
           ) {
+            console.log(fullUrl)
 
             links.push({ url: fullUrl, html: content, pageStatusCode, pageError });
           }
@@ -428,7 +430,7 @@ export class WebCrawler {
 
     console.log("4.1.3 - Fetching sitemap from constructed URL");
     try {
-      const response = await axios.get(sitemapUrl, { timeout: 3000 });
+      const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
       if (response.status === 200) {
         console.log("4.1.4 - Extracting links from sitemap");
         sitemapLinks = await getLinksFromSitemap(sitemapUrl);
@@ -441,7 +443,7 @@ export class WebCrawler {
       console.log("4.1.5 - Trying base URL sitemap as fallback");
       const baseUrlSitemap = `${this.baseUrl}/sitemap.xml`;
       try {
-        const response = await axios.get(baseUrlSitemap, { timeout: 3000 });
+        const response = await axios.get(baseUrlSitemap, { timeout: axiosTimeout });
         if (response.status === 200) {
           console.log("4.1.6 - Extracting links from base URL sitemap");
           sitemapLinks = await getLinksFromSitemap(baseUrlSitemap);

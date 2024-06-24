@@ -1,4 +1,5 @@
 import axios from "axios";
+import { axiosTimeout } from "../../lib/timeout";
 import { parseStringPromise } from "xml2js";
 
 export async function getLinksFromSitemap(
@@ -8,7 +9,7 @@ export async function getLinksFromSitemap(
   try {
     let content: string;
     try {
-      const response = await axios.get(sitemapUrl, { timeout: 3000 });
+      const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
       content = response.data;
     } catch (error) {
       console.error(`Request failed for ${sitemapUrl}: ${error}`);
@@ -42,7 +43,7 @@ export async function getLinksFromSitemap(
 export const fetchSitemapData = async (url: string): Promise<SitemapEntry[] | null> => {
   const sitemapUrl = url.endsWith("/sitemap.xml") ? url : `${url}/sitemap.xml`;
   try {
-    const response = await axios.get(sitemapUrl, { timeout: 3000 });
+    const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
     if (response.status === 200) {
       const xml = response.data;
       const parsedXml = await parseStringPromise(xml);
