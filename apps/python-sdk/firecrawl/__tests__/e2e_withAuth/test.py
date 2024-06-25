@@ -27,14 +27,14 @@ def test_scrape_url_invalid_api_key():
     invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key")
     with pytest.raises(Exception) as excinfo:
         invalid_app.scrape_url('https://firecrawl.dev')
-    assert "Failed to scrape URL. Status code: 401" in str(excinfo.value)
+    assert "Unexpected error during scrape URL: Status code 401. Unauthorized: Invalid token" in str(excinfo.value)
 
 def test_blocklisted_url():
     blocklisted_url = "https://facebook.com/fake-test"
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
     with pytest.raises(Exception) as excinfo:
         app.scrape_url(blocklisted_url)
-    assert "Failed to scrape URL. Status code: 403" in str(excinfo.value)
+    assert "Unexpected error during scrape URL: Status code 403. Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it." in str(excinfo.value)
 
 def test_successful_response_with_valid_preview_token():
     app = FirecrawlApp(api_url=API_URL, api_key="this_is_just_a_preview_token")
@@ -86,14 +86,14 @@ def test_crawl_url_invalid_api_key():
     invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key")
     with pytest.raises(Exception) as excinfo:
         invalid_app.crawl_url('https://firecrawl.dev')
-    assert "Unexpected error occurred while trying to start crawl job. Status code: 401" in str(excinfo.value)
+    assert "Unexpected error during start crawl job: Status code 401. Unauthorized: Invalid token" in str(excinfo.value)
 
 def test_should_return_error_for_blocklisted_url():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
     blocklisted_url = "https://twitter.com/fake-test"
     with pytest.raises(Exception) as excinfo:
         app.crawl_url(blocklisted_url)
-    assert "Unexpected error occurred while trying to start crawl job. Status code: 403" in str(excinfo.value)
+    assert "Unexpected error during start crawl job: Status code 403. Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it." in str(excinfo.value)
 
 def test_crawl_url_wait_for_completion_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
@@ -114,7 +114,7 @@ def test_crawl_url_with_idempotency_key_e2e():
 
     with pytest.raises(Exception) as excinfo:
         app.crawl_url('https://firecrawl.dev', {'crawlerOptions': {'excludes': ['blog/*']}}, True, 2, uniqueIdempotencyKey)
-    assert "Failed to start crawl job. Status code: 409. Error: Idempotency key already used" in str(excinfo.value) 
+    assert "Conflict: Failed to start crawl job due to a conflict. Idempotency key already used" in str(excinfo.value) 
 
 def test_check_crawl_status_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
@@ -141,7 +141,7 @@ def test_search_invalid_api_key():
     invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key")
     with pytest.raises(Exception) as excinfo:
         invalid_app.search("test query")
-    assert "Failed to search. Status code: 401" in str(excinfo.value)
+    assert "Unexpected error during search: Status code 401. Unauthorized: Invalid token" in str(excinfo.value)
 
 def test_llm_extraction():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)

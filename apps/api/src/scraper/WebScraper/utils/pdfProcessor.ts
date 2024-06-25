@@ -6,17 +6,18 @@ import dotenv from "dotenv";
 import pdf from "pdf-parse";
 import path from "path";
 import os from "os";
+import { axiosTimeout } from "../../../lib/timeout";
 
 dotenv.config();
 
-export async function fetchAndProcessPdf(url: string): Promise<string> {
-  const tempFilePath = await downloadPdf(url);
-  const content = await processPdfToText(tempFilePath);
+export async function fetchAndProcessPdf(url: string, parsePDF: boolean): Promise<{ content: string, pageStatusCode?: number, pageError?: string }> {
+  const { tempFilePath, pageStatusCode, pageError } = await downloadPdf(url);
+  const content = await processPdfToText(tempFilePath, parsePDF);
   fs.unlinkSync(tempFilePath); // Clean up the temporary file
-  return content;
+  return { content, pageStatusCode, pageError };
 }
 
-async function downloadPdf(url: string): Promise<string> {
+async function downloadPdf(url: string): Promise<{ tempFilePath: string, pageStatusCode?: number, pageError?: string }> {
   const response = await axios({
     url,
     method: "GET",
@@ -29,15 +30,15 @@ async function downloadPdf(url: string): Promise<string> {
   response.data.pipe(writer);
 
   return new Promise((resolve, reject) => {
-    writer.on("finish", () => resolve(tempFilePath));
+    writer.on("finish", () => resolve({ tempFilePath, pageStatusCode: response.status, pageError: response.statusText != "OK" ? response.statusText : undefined }));
     writer.on("error", reject);
   });
 }
 
-export async function processPdfToText(filePath: string): Promise<string> {
+export async function processPdfToText(filePath: string, parsePDF: boolean): Promise<string> {
   let content = "";
 
-  if (process.env.LLAMAPARSE_API_KEY) {
+  if (process.env.LLAMAPARSE_API_KEY && parsePDF) {
     const apiKey = process.env.LLAMAPARSE_API_KEY;
     const headers = {
       Authorization: `Bearer ${apiKey}`,
@@ -71,7 +72,7 @@ export async function processPdfToText(filePath: string): Promise<string> {
 
       while (attempt < maxAttempts && !resultAvailable) {
         try {
-          resultResponse = await axios.get(resultUrl, { headers });
+          resultResponse = await axios.get(resultUrl, { headers, timeout: (axiosTimeout * 2) });
           if (resultResponse.status === 200) {
             resultAvailable = true; // Exit condition met
           } else {
@@ -95,8 +96,10 @@ export async function processPdfToText(filePath: string): Promise<string> {
       console.error("Error processing pdf document w/ LlamaIndex(2)");
       content = await processPdf(filePath);
     }
-  } else {
+  } else if (parsePDF) {
     content = await processPdf(filePath);
+  } else {
+    content = fs.readFileSync(filePath, "utf-8");
   }
   return content;
 }

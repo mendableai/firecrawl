@@ -12,6 +12,7 @@ const RATE_LIMITS = {
     scale: 20,
     hobby: 3,
     standardNew: 10,
+    standardnew: 10,
     growth: 50,
   },
   scrape: {
@@ -23,6 +24,7 @@ const RATE_LIMITS = {
     scale: 50,
     hobby: 10,
     standardNew: 50,
+    standardnew: 50,
     growth: 500,
   },
   search: {
@@ -34,6 +36,7 @@ const RATE_LIMITS = {
     scale: 50,
     hobby: 10,
     standardNew: 50,
+    standardnew: 50,
     growth: 500,
   },
   preview: {
@@ -41,8 +44,8 @@ const RATE_LIMITS = {
     default: 5,
   },
   account: {
-    free: 20,
-    default: 20,
+    free: 100,
+    default: 100,
   },
   crawlStatus: {
     free: 150,
@@ -72,21 +75,25 @@ export const serverRateLimiter = createRateLimiter(
   RATE_LIMITS.account.default
 );
 
-export const testSuiteRateLimiter = createRateLimiter(
-  "test-suite",
-  RATE_LIMITS.testSuite.default
-);
+export const testSuiteRateLimiter = new RateLimiterRedis({
+  storeClient: redisClient,
+  keyPrefix: "test-suite",
+  points: 10000,
+  duration: 60, // Duration in seconds
+});
 
 export function getRateLimiter(
   mode: RateLimiterMode,
   token: string,
   plan?: string
 ) {
+
   if (token.includes("a01ccae") || token.includes("6254cf9")) {
     return testSuiteRateLimiter;
   }
 
   const rateLimitConfig = RATE_LIMITS[mode]; // {default : 5}
+
   if (!rateLimitConfig) return serverRateLimiter;
 
   const planKey = plan ? plan.replace("-", "") : "default"; // "default"

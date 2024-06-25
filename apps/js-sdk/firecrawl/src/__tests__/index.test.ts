@@ -43,6 +43,6 @@ describe('the firecrawl JS SDK', () => {
       expect.objectContaining({ headers: expect.objectContaining({'Authorization': `Bearer ${apiKey}`}) }),
     )
     expect(scrapedData.success).toBe(true);
-    expect(scrapedData.data.metadata.title).toEqual('Mendable');
+    expect(scrapedData?.data?.metadata.title).toEqual('Mendable');
   });
 })

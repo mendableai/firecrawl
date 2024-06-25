@@ -176,6 +176,11 @@ async function checkStatusExample(jobId) {
 checkStatusExample('your_job_id_here');
 ```
 
+## Running Locally
+To use the SDK when running Firecrawl locally, you can change the initial Firecrawl app instance to:
+```js
+const app = new FirecrawlApp({ apiKey: "YOUR_API_KEY", apiUrl: "http://localhost:3002" });
+```
 
 ## Error Handling
 

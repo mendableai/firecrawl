@@ -1,0 +1,453 @@
+[
+  {
+    "title": "2br Victorian House with Breathtaking views",
+    "price_per_night": 356,
+    "location": "Potrero Hill",
+    "rating": 4.98,
+    "reviews": 184
+  },
+  {
+    "title": "543c - convenient cozy private bedroom for 1 person",
+    "price_per_night": 52,
+    "location": "Inner Richmond",
+    "rating": 4.72,
+    "reviews": 68
+  },
+  {
+    "title": "Clean Bright Airy Private Apt in the Heart of SF",
+    "price_per_night": 269,
+    "location": "Marina District",
+    "rating": 4.95,
+    "reviews": 239
+  },
+  {
+    "title": "Garden Suite by Golden Gate Park, Private Bathrm",
+    "price_per_night": 79,
+    "location": "Outer Richmond",
+    "rating": 4.82,
+    "reviews": 1113
+  },
+  {
+    "title": "#2 private bathroom next to The Ritz- Carlton",
+    "price_per_night": 98,
+    "location": "Union Square",
+    "rating": 4.96,
+    "reviews": 494
+  },
+  {
+    "title": "Central, cozy one-bedroom condo in San Francisco",
+    "price_per_night": 262,
+    "location": "San Francisco",
+    "rating": 4.98,
+    "reviews": 46
+  },
+  {
+    "title": "Large Light Filled Quiet Artist built 2BR Apt",
+    "price_per_night": 273,
+    "location": "Mission District",
+    "rating": 4.99,
+    "reviews": 132
+  },
+  {
+    "title": "Oceanside Getaway",
+    "price_per_night": 160,
+    "location": "Outer Sunset",
+    "rating": 4.93,
+    "reviews": 559
+  },
+  {
+    "title": "Perfect getaway near Japantown",
+    "price_per_night": 159,
+    "location": "Japantown",
+    "rating": 4.92,
+    "reviews": 515
+  },
+  {
+    "title": "Style & Comfort-Private Suite near UCSF and GGPark",
+    "price_per_night": 155,
+    "location": "Inner Sunset",
+    "rating": 4.98,
+    "reviews": 439
+  },
+  {
+    "title": "Central quiet Victorian Flat",
+    "price_per_night": 224,
+    "location": "San Francisco",
+    "rating": 5,
+    "reviews": 15
+  },
+  {
+    "title": "Palm Trees private room near Ocean Beach Zoo GGPK",
+    "price_per_night": 76,
+    "location": "San Francisco",
+    "rating": 4.95,
+    "reviews": 200
+  },
+  {
+    "title": "Spacious 1BR in the Mission w/ huge living room",
+    "price_per_night": 195,
+    "location": "San Francisco",
+    "rating": 5,
+    "reviews": 7
+  },
+  {
+    "title": "Modern Hilltop Studio - Private Entry and Garden",
+    "price_per_night": 230,
+    "location": "San Francisco",
+    "rating": 4.94,
+    "reviews": 196
+  },
+  {
+    "title": "Bright Modern Private Soma Studio Street Entrance",
+    "price_per_night": 125,
+    "location": "San Francisco",
+    "rating": 4.9,
+    "reviews": 214
+  },
+  {
+    "title": "Castro private room & bath VIEW (no cleaning fee)",
+    "price_per_night": 112,
+    "location": "San Francisco",
+    "rating": 4.94,
+    "reviews": 440
+  },
+  {
+    "title": "Nob Hill Studio",
+    "price_per_night": 148,
+    "location": "San Francisco",
+    "rating": 5,
+    "reviews": 42
+  },
+  {
+    "title": "Spacious and Sunny Noe Valley Gem!",
+    "price_per_night": 115,
+    "location": "San Francisco",
+    "rating": 5,
+    "reviews": 68
+  },
+  {
+    "title": "SF Ocean Beach In-law Suite",
+    "price_per_night": 162,
+    "location": "San Francisco",
+    "rating": 4.91,
+    "reviews": 646
+  },
+  {
+    "title": "Comfortable, cozy, private studio - Bernal Heights",
+    "price_per_night": 145,
+    "location": "San Francisco",
+    "rating": 4.9,
+    "reviews": 866
+  },
+  {
+    "title": "Casa Pinudo Queen Bed Room & City-View Roofdeck",
+    "price_per_night": 100,
+    "location": "San Francisco",
+    "rating": 4.87,
+    "reviews": 47
+  },
+  {
+    "title": "Bright bedroom in Victorian home",
+    "price_per_night": 114,
+    "location": "San Francisco",
+    "rating": 4.95,
+    "reviews": 183
+  },
+  {
+    "title": "#1 SF 24th ave& kirkham st Master king room",
+    "price_per_night": 104,
+    "location": "San Francisco",
+    "rating": 4.95,
+    "reviews": 59
+  },
+  {
+    "title": "Cheerful 1 bedroom",
+    "price_per_night": 137,
+    "location": "San Francisco",
+    "rating": 4.79,
+    "reviews": 111
+  },
+  {
+    "title": "Luxury Studio Near SFO, SFSU ,BART, Walk to shops!",
+    "price_per_night": 116,
+    "location": "San Francisco",
+    "rating": 4.96,
+    "reviews": 139
+  },
+  {
+    "title": "#4 SF Sunset 24th ave&kirkham st Deluxe king room",
+    "price_per_night": 104,
+    "location": "San Francisco",
+    "rating": 4.96,
+    "reviews": 74
+  },
+  {
+    "title": "Modern room & loft, private entrance",
+    "price_per_night": 78,
+    "location": "San Bruno",
+    "rating": 4.88,
+    "reviews": 868
+  },
+  {
+    "title": "1 Queen bedded room w/full bath",
+    "price_per_night": 117,
+    "location": "San Francisco",
+    "rating": 4.93,
+    "reviews": 120
+  },
+  {
+    "title": "Charming Noe Valley Garden Oasis",
+    "price_per_night": 249,
+    "location": "San Francisco",
+    "rating": 4.89,
+    "reviews": 199
+  },
+  {
+    "title": "Beautiful Garden Studio in heart of Nopa",
+    "price_per_night": 343,
+    "location": "San Francisco",
+    "rating": 4.76,
+    "reviews": 259
+  },
+  {
+    "title": "#4 SF Sunset 24th ave&kirkham st Deluxe king room",
+    "price_per_night": 175,
+    "location": "San Francisco",
+    "rating": 4.96,
+    "reviews": 74
+  },
+  {
+    "title": "Noteworthy Large Private Bedroom - Best Location",
+    "price_per_night": 159,
+    "location": "San Francisco",
+    "rating": 4.86,
+    "reviews": 63
+  },
+  {
+    "title": "Primary Suite Golden Gate Bridge view Private Deck",
+    "price_per_night": 317,
+    "location": "San Francisco",
+    "rating": 4.93,
+    "reviews": 445
+  },
+  {
+    "title": "Private Room: Escape to the Mission",
+    "price_per_night": 186,
+    "location": "San Francisco",
+    "rating": 4.72,
+    "reviews": 501
+  },
+  {
+    "title": "#1 SF 24th ave& kirkham st Master king room",
+    "price_per_night": 176,
+    "location": "San Francisco",
+    "rating": 4.95,
+    "reviews": 59
+  },
+  {
+    "title": "Private Suite",
+    "price_per_night": 154,
+    "location": "San Francisco",
+    "rating": 4.91,
+    "reviews": 77
+  },
+  {
+    "title": "501 Post road, San Francisco 94102",
+    "price_per_night": 267,
+    "location": "San Francisco"
+  },
+  {
+    "title": "Most Desired Vacation Spot in San Francisco.",
+    "price_per_night": 650,
+    "location": "San Francisco",
+    "rating": 5,
+    "reviews": 78
+  },
+  {
+    "title": "The House Protects The Dreamer - 2BR/1BA Victorian",
+    "price_per_night": 376,
+    "location": "San Francisco",
+    "rating": 4.92,
+    "reviews": 179
+  },
+  {
+    "title": "Private Junior Room in Artist's Flat",
+    "price_per_night": 130,
+    "location": "San Francisco",
+    "rating": 4.7,
+    "reviews": 165
+  },
+  {
+    "title": "Serenity by the Park , Your Golden Gate Getaway",
+    "price_per_night": 238,
+    "location": "San Francisco",
+    "rating": 4.86,
+    "reviews": 21
+  },
+  {
+    "title": "Golden Getaway • Spacious Private Room 15m to SFO",
+    "price_per_night": 113,
+    "location": "San Francisco",
+    "rating": 4.91,
+    "reviews": 169
+  },
+  {
+    "title": "Modern studio next to beach, G.G Park & transport",
+    "price_per_night": 300,
+    "location": "San Francisco",
+    "rating": 4.87,
+    "reviews": 318
+  },
+  {
+    "title": "Affordable Cozy Private Room near San Francisco",
+    "price_per_night": 88,
+    "location": "San Francisco"
+  },
+  {
+    "title": "Affordable Room w/ Great View in San Francisco",
+    "price_per_night": 134,
+    "location": "San Francisco",
+    "rating": 4.79,
+    "reviews": 121
+  },
+  {
+    "title": "Nob Hill Studio",
+    "price_per_night": 250,
+    "location": "San Francisco",
+    "rating": 5,
+    "reviews": 42
+  },
+  {
+    "title": "Cozy Sunset suite",
+    "price_per_night": 120,
+    "location": "San Francisco",
+    "rating": 4.66,
+    "reviews": 98
+  },
+  {
+    "title": "Stay with Dongmei",
+    "price_per_night": 48,
+    "location": "San Francisco",
+    "rating": 4.76,
+    "reviews": 343
+  },
+  {
+    "title": "Mediterranean style private studio",
+    "price_per_night": 139,
+    "location": "San Francisco",
+    "rating": 4.93,
+    "reviews": 489
+  },
+  {
+    "title": "Cozy Garden Unit with All Amenities",
+    "price_per_night": 122,
+    "location": "San Francisco",
+    "rating": 4.95,
+    "reviews": 446
+  },
+  {
+    "title": "Private Sunset Getaway",
+    "price_per_night": 88,
+    "location": "San Francisco",
+    "rating": 4.85,
+    "reviews": 26
+  },
+  {
+    "title": "Pacifica studio- ocean view from deck",
+    "price_per_night": 91,
+    "location": "Pacifica",
+    "rating": 4.76,
+    "reviews": 352
+  },
+  {
+    "title": "Sweet Suite w/ EV charger & Parking, 5 min to SFSU",
+    "price_per_night": 167,
+    "location": "San Francisco",
+    "rating": 4.96,
+    "reviews": 141
+  },
+  {
+    "title": "Light-Filled Hillside Studio Apartment",
+    "price_per_night": 128,
+    "location": "San Francisco",
+    "rating": 4.79,
+    "reviews": 148
+  },
+  {
+    "title": "Stay with Benoîte",
+    "price_per_night": 72,
+    "location": "San Francisco",
+    "rating": 4.87,
+    "reviews": 131
+  },
+  {
+    "title": "Serene King Suite with Jacuzzi & Fireplace",
+    "price_per_night": 225,
+    "location": "San Francisco",
+    "rating": 4.89,
+    "reviews": 18
+  },
+  {
+    "title": "Stay with Ryan",
+    "price_per_night": 225,
+    "location": "San Francisco",
+    "rating": 4.89,
+    "reviews": 18
+  },
+  {
+    "title": "Perfectly located Castro",
+    "price_per_night": 99,
+    "location": "San Francisco",
+    "rating": 4.93,
+    "reviews": 488
+  },
+  {
+    "title": "Sweet garden suite with free parking",
+    "price_per_night": 169,
+    "location": "San Francisco",
+    "rating": 4.99,
+    "reviews": 226
+  },
+  {
+    "title": "Bright+Modern Brand New Guest House-Great Location",
+    "price_per_night": 118,
+    "location": "South San Francisco",
+    "rating": 5,
+    "reviews": 37
+  },
+  {
+    "title": "Garden studio - Presidio, Baker Beach",
+    "price_per_night": 194,
+    "location": "San Francisco",
+    "rating": 4.91,
+    "reviews": 68
+  },
+  {
+    "title": "Single Small private 1br 1ba no clean fee!",
+    "price_per_night": 106,
+    "location": "San Francisco",
+    "rating": 4.78,
+    "reviews": 310
+  },
+  {
+    "title": "Private Cozy room 3",
+    "price_per_night": 53,
+    "location": "San Francisco",
+    "rating": 4.86,
+    "reviews": 332
+  },
+  {
+    "title": "Central Mission Potrero 1BED-1BATH",
+    "price_per_night": 164,
+    "location": "San Francisco",
+    "rating": 4.81,
+    "reviews": 324
+  },
+  {
+    "title": "Cozy Remodeled Suite in Oceanview With Parking",
+    "price_per_night": 151,
+    "location": "San Francisco",
+    "rating": 4.95,
+    "reviews": 310
+  }
+]

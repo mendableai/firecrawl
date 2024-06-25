@@ -29,6 +29,9 @@ interface Metadata {
   publishedTime?: string;
   articleTag?: string;
   articleSection?: string;
+  sourceURL?: string;
+  pageStatusCode?: number;
+  pageError?: string;
 }
 
 export function extractMetadata(soup: CheerioAPI, url: string): Metadata {
@@ -61,6 +64,9 @@ export function extractMetadata(soup: CheerioAPI, url: string): Metadata {
   let publishedTime: string | null = null;
   let articleTag: string | null = null;
   let articleSection: string | null = null;
+  let sourceURL: string | null = null;
+  let pageStatusCode: number | null = null;
+  let pageError: string | null = null;
 
   try {
     title = soup("title").text() || null;
@@ -132,5 +138,8 @@ export function extractMetadata(soup: CheerioAPI, url: string): Metadata {
     ...(publishedTime ? { publishedTime } : {}),
     ...(articleTag ? { articleTag } : {}),
     ...(articleSection ? { articleSection } : {}),
+    ...(sourceURL ? { sourceURL } : {}),
+    ...(pageStatusCode ? { pageStatusCode } : {}),
+    ...(pageError ? { pageError } : {}),
   };
 }

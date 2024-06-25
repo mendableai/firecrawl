@@ -2,6 +2,7 @@ import FirecrawlApp from '../../index';
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
 
+
 dotenv.config();
 
 const TEST_API_KEY = process.env.TEST_API_KEY;
@@ -29,14 +30,14 @@ describe('FirecrawlApp E2E Tests', () => {
     const app = new FirecrawlApp({ apiKey: "this_is_just_a_preview_token", apiUrl: API_URL });
     const response = await app.scrapeUrl('https://roastmywebsite.ai');
     expect(response).not.toBeNull();
-    expect(response.data.content).toContain("_Roast_");
+    expect(response.data?.content).toContain("_Roast_");
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should return successful response for valid scrape', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.scrapeUrl('https://roastmywebsite.ai');
     expect(response).not.toBeNull();
-    expect(response.data.content).toContain("_Roast_");
+    expect(response.data?.content).toContain("_Roast_");
     expect(response.data).toHaveProperty('markdown');
     expect(response.data).toHaveProperty('metadata');
     expect(response.data).not.toHaveProperty('html');
@@ -46,23 +47,23 @@ describe('FirecrawlApp E2E Tests', () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.scrapeUrl('https://roastmywebsite.ai', { pageOptions: { includeHtml: true } });
     expect(response).not.toBeNull();
-    expect(response.data.content).toContain("_Roast_");
-    expect(response.data.markdown).toContain("_Roast_");
-    expect(response.data.html).toContain("<h1");
+    expect(response.data?.content).toContain("_Roast_");
+    expect(response.data?.markdown).toContain("_Roast_");
+    expect(response.data?.html).toContain("<h1");
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should return successful response for valid scrape with PDF file', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.scrapeUrl('https://arxiv.org/pdf/astro-ph/9301001.pdf');
     expect(response).not.toBeNull();
-    expect(response.data.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
+    expect(response.data?.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should return successful response for valid scrape with PDF file without explicit extension', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.scrapeUrl('https://arxiv.org/pdf/astro-ph/9301001');
     expect(response).not.toBeNull();
-    expect(response.data.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
+    expect(response.data?.content).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should throw error for invalid API key on crawl', async () => {
@@ -112,15 +113,15 @@ describe('FirecrawlApp E2E Tests', () => {
 
     expect(statusResponse).not.toBeNull();
     expect(statusResponse.status).toBe('completed');
-    expect(statusResponse.data.length).toBeGreaterThan(0);
+    expect(statusResponse?.data?.length).toBeGreaterThan(0);
   }, 35000); // 35 seconds timeout
 
   test.concurrent('should return successful response for search', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.search("test query");
     expect(response).not.toBeNull();
-    expect(response.data[0].content).toBeDefined();
-    expect(response.data.length).toBeGreaterThan(2);
+    expect(response?.data?.[0]?.content).toBeDefined();
+    expect(response?.data?.length).toBeGreaterThan(2);
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should throw error for invalid API key on search', async () => {
@@ -146,10 +147,10 @@ describe('FirecrawlApp E2E Tests', () => {
       }
     });
     expect(response).not.toBeNull();
-    expect(response.data.llm_extraction).toBeDefined();
-    const llmExtraction = response.data.llm_extraction;
-    expect(llmExtraction.company_mission).toBeDefined();
-    expect(typeof llmExtraction.supports_sso).toBe('boolean');
-    expect(typeof llmExtraction.is_open_source).toBe('boolean');
+    expect(response.data?.llm_extraction).toBeDefined();
+    const llmExtraction = response.data?.llm_extraction;
+    expect(llmExtraction?.company_mission).toBeDefined();
+    expect(typeof llmExtraction?.supports_sso).toBe('boolean');
+    expect(typeof llmExtraction?.is_open_source).toBe('boolean');
   }, 30000); // 30 seconds timeout
 });

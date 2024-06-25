@@ -85,11 +85,13 @@ export async function searchHelper(
       onlyMainContent: pageOptions?.onlyMainContent ?? true,
       fetchPageContent: pageOptions?.fetchPageContent ?? true,
       includeHtml: pageOptions?.includeHtml ?? false,
+      removeTags: pageOptions?.removeTags ?? [],
       fallback: false,
     },
   });
 
   const docs = await a.getDocuments(false);
+  
   if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
   }
@@ -100,7 +102,7 @@ export async function searchHelper(
   );
 
   if (filteredDocs.length === 0) {
-    return { success: true, error: "No page found", returnCode: 200 };
+    return { success: true, error: "No page found", returnCode: 200, data: docs };
   }
 
   const billingResult = await billTeam(
@@ -139,6 +141,7 @@ export async function searchController(req: Request, res: Response) {
       includeHtml: false,
       onlyMainContent: true,
       fetchPageContent: true,
+      removeTags: [],
       fallback: false,
     };
     const origin = req.body.origin ?? "api";

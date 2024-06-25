@@ -4,7 +4,7 @@ export async function attemptScrapWithRequests(
   urlToScrap: string
 ): Promise<string | null> {
   try {
-    const response = await axios.get(urlToScrap);
+    const response = await axios.get(urlToScrap, { timeout: 15000 });
 
     if (!response.data) {
       console.log("Failed normal requests as well");
