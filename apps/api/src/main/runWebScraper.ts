@@ -1,5 +1,5 @@
 import { Job } from "bull";
-import { CrawlResult, WebScraperOptions } from "../types";
+import { CrawlResult, WebScraperOptions, RunWebScraperParams, RunWebScraperResult } from "../types";
 import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { DocumentUrl, Progress } from "../lib/entities";
 import { billTeam } from "../services/billing/credit_billing";
@@ -45,21 +45,7 @@ export async function runWebScraper({
   onError,
   team_id,
   bull_job_id,
-}: {
-  url: string;
-  mode: "crawl" | "single_urls" | "sitemap";
-  crawlerOptions: any;
-  pageOptions?: any;
-  inProgress: (progress: any) => void;
-  onSuccess: (result: any) => void;
-  onError: (error: any) => void;
-  team_id: string;
-  bull_job_id: string;
-}): Promise<{
-  success: boolean;
-  message: string;
-  docs: Document[] | DocumentUrl[];
-}> {
+}: RunWebScraperParams): Promise<RunWebScraperResult> {
   try {
     const provider = new WebScraperDataProvider();
     if (mode === "crawl") {
