@@ -10,6 +10,7 @@ import { z } from "zod";
 import axios from "axios";
 import { FireEngineResponse } from "../lib/entities";
 import { numTokensFromString } from "../lib/LLM-extraction/helpers";
+import { HumanMessage } from "@langchain/core/messages";
 
 export async function generateRequestParams(
   url: string,
@@ -24,6 +25,16 @@ export async function generateRequestParams(
   return defaultParams;
 }
 
+export async function chatRequest(prompt:string): Promise<string>{
+  const llm = new ChatOpenAI({
+    model: "gpt-4o",
+    temperature: 0,
+  });
+  const result = await llm.invoke([
+    new HumanMessage(prompt)
+  ]);
+  return result.content.toString();
+}
 export async function scrapWithFireEngine(
   url: string,
   waitFor: number = 0,
@@ -149,7 +160,11 @@ export async function smartCrawlController(req: Request, res: Response) {
       const cleanedHtml = removeUnwantedElements(response.html);
       const truncatedHtml = await truncateContentToFit(cleanedHtml, 128000);
       console.log(`[Fire-Engine] Truncated html: ${truncatedHtml.length}`);
-      return truncatedHtml;
+
+      const result = await chatRequest("Based on the full html of the page, give me only the thml that can help achieve my task.\nTask: " + objective + "\nFull html: " + truncatedHtml+"\nHTML of interest:");
+      console.log(result)
+      console.log(`[Fire-Engine] Result w/ LLM truncation: ${result.length}`);
+      return result.trim();
     },
   });
 
