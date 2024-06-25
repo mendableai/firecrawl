@@ -7,7 +7,7 @@ export function getWebScraperQueue() {
   if (!webScraperQueue) {
     webScraperQueue = new Queue("web-scraper", process.env.REDIS_URL, {
       settings: {
-        lockDuration: 4 * 60 * 60 * 1000, // 4 hours in milliseconds,
+        lockDuration: 2 * 60 * 60 * 1000, // 2 hours in milliseconds,
         lockRenewTime: 30 * 60 * 1000, // 30 minutes in milliseconds
       },
     });

@@ -314,7 +314,7 @@ export async function scrapSingleUrl(
   const attemptScraping = async (
     url: string,
     method: (typeof baseScrapers)[number]
-  ) => {
+  )  => {
     let scraperResponse: { text: string, screenshot: string, metadata: { pageStatusCode?: number, pageError?: string | null } } = { text: "", screenshot: "", metadata: {} };
     let screenshot = "";
     switch (method) {
@@ -399,12 +399,14 @@ export async function scrapSingleUrl(
     return {
       text: await parseMarkdown(cleanedHtml),
       html: cleanedHtml,
+      rawHtml: scraperResponse.text,
       screenshot: scraperResponse.screenshot,
       pageStatusCode: scraperResponse.metadata.pageStatusCode,
       pageError: scraperResponse.metadata.pageError || undefined
     };
   };
-  let { text, html, screenshot, pageStatusCode, pageError } = { text: "", html: "", screenshot: "", pageStatusCode: 200, pageError: undefined };
+
+  let { text, html, rawHtml, screenshot, pageStatusCode, pageError } = { text: "", html: "", rawHtml: "", screenshot: "", pageStatusCode: 200, pageError: undefined };
   try {
     let urlKey = urlToScrap;
     try {
@@ -432,6 +434,7 @@ export async function scrapSingleUrl(
       const attempt = await attemptScraping(urlToScrap, scraper);
       text = attempt.text ?? '';
       html = attempt.html ?? '';
+      rawHtml = attempt.rawHtml ?? '';
       screenshot = attempt.screenshot ?? '';
       if (attempt.pageStatusCode) {
         pageStatusCode = attempt.pageStatusCode;
@@ -453,7 +456,7 @@ export async function scrapSingleUrl(
       throw new Error(`All scraping methods failed for URL: ${urlToScrap}`);
     }
 
-    const soup = cheerio.load(html);
+    const soup = cheerio.load(rawHtml);
     const metadata = extractMetadata(soup, urlToScrap);
 
     let document: Document;
