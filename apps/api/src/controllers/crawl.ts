@@ -9,6 +9,7 @@ import { isUrlBlocked } from "../../src/scraper/WebScraper/utils/blocklist";
 import { logCrawl } from "../../src/services/logging/crawl_log";
 import { validateIdempotencyKey } from "../../src/services/idempotency/validate";
 import { createIdempotencyKey } from "../../src/services/idempotency/create";
+import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../src/lib/default-values";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -56,15 +57,8 @@ export async function crawlController(req: Request, res: Response) {
 
     const mode = req.body.mode ?? "crawl";
 
-    const crawlerOptions = req.body.crawlerOptions ?? {
-      allowBackwardCrawling: false
-    };
-    const pageOptions = req.body.pageOptions ?? {
-      onlyMainContent: false,
-      includeHtml: false,
-      removeTags: [],
-      parsePDF: true
-    };
+    const crawlerOptions = { ...defaultCrawlerOptions, ...req.body.crawlerOptions };
+    const pageOptions = { ...defaultCrawlPageOptions, ...req.body.pageOptions };
 
     if (mode === "single_urls" && !url.includes(",")) {
       try {
@@ -100,7 +94,7 @@ export async function crawlController(req: Request, res: Response) {
       crawlerOptions: crawlerOptions,
       team_id: team_id,
       pageOptions: pageOptions,
-      origin: req.body.origin ?? "api",
+      origin: req.body.origin ?? defaultOrigin,
     });
 
     await logCrawl(job.id.toString(), team_id);
