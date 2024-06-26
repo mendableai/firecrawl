@@ -4,6 +4,7 @@ import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { DocumentUrl, Progress } from "../lib/entities";
 import { billTeam } from "../services/billing/credit_billing";
 import { Document } from "../lib/entities";
+import { supabase_service } from "../services/supabase";
 
 export async function startWebScraperPipeline({
   job,
@@ -26,7 +27,7 @@ export async function startWebScraperPipeline({
       }
     },
     onSuccess: (result) => {
-      job.moveToCompleted(result);
+      saveJob(job, result);
     },
     onError: (error) => {
       job.moveToFailed(error);
@@ -107,3 +108,17 @@ export async function runWebScraper({
     return { success: false, message: error.message, docs: [] };
   }
 }
+
+const saveJob = async (job: Job, result: any) => {
+  if (process.env.USE_DB_AUTHENTICATION) {
+    const { data, error } = await supabase_service
+      .from("firecrawl_jobs")
+      .update({ docs: result })
+      .eq("job_id", job.id);
+
+    job.moveToCompleted(null); // returnvalue
+  } else {
+    job.moveToCompleted(result); // returnvalue
+  }
+}
+

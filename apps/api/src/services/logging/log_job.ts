@@ -7,14 +7,15 @@ import "dotenv/config";
 export async function logJob(job: FirecrawlJob) {
   try {
     // Only log jobs in production
-    if (process.env.ENV !== "production") {
-      return;
-    }
-    
+    // if (process.env.ENV !== "production") {
+    //   return;
+    // }
+
     const { data, error } = await supabase_service
       .from("firecrawl_jobs")
       .insert([
         {
+          job_id: job.job_id ? job.job_id : null,
           success: job.success,
           message: job.message,
           num_docs: job.num_docs,
