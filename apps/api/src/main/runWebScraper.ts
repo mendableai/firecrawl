@@ -110,15 +110,20 @@ export async function runWebScraper({
 }
 
 const saveJob = async (job: Job, result: any) => {
-  if (process.env.USE_DB_AUTHENTICATION) {
-    const { data, error } = await supabase_service
-      .from("firecrawl_jobs")
-      .update({ docs: result })
-      .eq("job_id", job.id);
+  try {
+    if (process.env.USE_DB_AUTHENTICATION) {
+      const { data, error } = await supabase_service
+        .from("firecrawl_jobs")
+        .update({ docs: result })
+        .eq("job_id", job.id);
 
-    job.moveToCompleted(null); // returnvalue
-  } else {
-    job.moveToCompleted(result); // returnvalue
+      if (error) throw new Error(error.message);
+      await job.moveToCompleted(null);
+    } else {
+      await job.moveToCompleted(result);
+    }
+  } catch (error) {
+    console.error("Failed to update job status:", error);
   }
 }
 

@@ -8,7 +8,6 @@ export const supabaseGetJobById = async (jobId: string) => {
     .single();
 
   if (error) {
-    console.error('Error while fetching supabase for job:', jobId, 'error:', error);
     return null;
   }
 

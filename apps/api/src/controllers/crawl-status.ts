@@ -40,7 +40,7 @@ export async function crawlStatusController(req: Request, res: Response) {
       current_url,
       current_step,
       total,
-      data,
+      data: data ? data : null,
       partial_data: jobStatus == 'completed' ? [] : partialDocs,
     });
   } catch (error) {

@@ -6,10 +6,9 @@ import "dotenv/config";
 
 export async function logJob(job: FirecrawlJob) {
   try {
-    // Only log jobs in production
-    // if (process.env.ENV !== "production") {
-    //   return;
-    // }
+    if (!process.env.USE_DB_AUTHENTICATION) {
+      return;
+    }
 
     const { data, error } = await supabase_service
       .from("firecrawl_jobs")
