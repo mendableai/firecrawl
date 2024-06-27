@@ -144,4 +144,32 @@ describe('removeUnwantedElements', () => {
     expect(result).not.toContain('<aside>');
     expect(result).not.toContain('<footer>');
   });
+  it('should include specified tags with class', () => {
+    const html = `<div><main class="main-content">Main Content</main><aside class="remove">Remove</aside><footer class="footer-content">Footer Content</footer></div>`;
+    const options: PageOptions = { onlyIncludeTags: ['.main-content', '.footer-content'] };
+    const result = removeUnwantedElements(html, options);
+    expect(result).toContain('<main class="main-content">Main Content</main>');
+    expect(result).toContain('<footer class="footer-content">Footer Content</footer>');
+    expect(result).not.toContain('<aside class="remove">');
+  });
+
+  it('should include specified tags with id', () => {
+    const html = `<div><main id="main-content">Main Content</main><aside id="remove">Remove</aside><footer id="footer-content">Footer Content</footer></div>`;
+    const options: PageOptions = { onlyIncludeTags: ['#main-content', '#footer-content'] };
+    const result = removeUnwantedElements(html, options);
+    expect(result).toContain('<main id="main-content">Main Content</main>');
+    expect(result).toContain('<footer id="footer-content">Footer Content</footer>');
+    expect(result).not.toContain('<aside id="remove">');
+  });
+
+  it('should include specified tags with mixed class and id', () => {
+    const html = `<div><main class="main-content">Main Content</main><aside id="remove">Remove</aside><footer id="footer-content">Footer Content</footer></div>`;
+    const options: PageOptions = { onlyIncludeTags: ['.main-content', '#footer-content'] };
+    const result = removeUnwantedElements(html, options);
+    expect(result).toContain('<main class="main-content">Main Content</main>');
+    expect(result).toContain('<footer id="footer-content">Footer Content</footer>');
+    expect(result).not.toContain('<aside id="remove">');
+  });
+
+
 });
