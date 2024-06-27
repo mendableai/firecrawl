@@ -68,9 +68,21 @@
                         },
                         "description": "Tags, classes and ids to remove from the page. Use comma separated values. Example: 'script, .ad, #footer'"
                       },
+                      "onlyIncludeTags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Only include tags, classes and ids from the page in the final output. Use comma separated values. Example: 'script, .ad, #footer'"
+                      },
                       "headers": {
                         "type": "object",
                         "description": "Headers to send with the request. Can be used to send cookies, user-agent, etc."
+                      },
+                      "replaceAllPathsWithAbsolutePaths": {
+                        "type": "boolean",
+                        "description": "Replace all relative paths with absolute paths for images and links",
+                        "default": false
                       }
                     }
                   },
@@ -184,7 +196,7 @@
                       },
                       "maxDepth": {
                         "type": "integer",
-                        "description": "Maximum depth to crawl. Depth 1 is the base URL, depth 2 is the base URL and its direct children, and so on."
+                        "description": "Maximum depth to crawl relative to the entered URL. A maxDepth of 0 scrapes only the entered URL. A maxDepth of 1 scrapes the entered URL and all pages one level deep. A maxDepth of 2 scrapes the entered URL and all pages up to two levels deep. Higher values follow the same pattern."
                       },
                       "mode": {
                         "type": "string",
@@ -511,7 +523,7 @@
               "html": {
                 "type": "string",
                 "nullable": true,
-                "description": "Raw HTML content of the page if `includeHtml` is true"
+                "description": "Raw HTML content of the page if `includeHtml`  is true"
               },
               "metadata": {
                 "type": "object",
@@ -526,127 +538,14 @@
                     "type": "string",
                     "nullable": true
                   },
-                  "keywords": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "robots": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "ogTitle": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "ogDescription": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "ogUrl": {
-                    "type": "string",
-                    "format": "uri",
-                    "nullable": true
-                  },
-                  "ogImage": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "ogAudio": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "ogDeterminer": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "ogLocale": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "ogLocaleAlternate": {
-                    "type": "array",
-                    "items": {
-                      "type": "string"
-                    },
-                    "nullable": true
-                  },
-                  "ogSiteName": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "ogVideo": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "dctermsCreated": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "dcDateCreated": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "dcDate": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "dctermsType": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "dcType": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "dctermsAudience": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "dctermsSubject": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "dcSubject": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "dcDescription": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "dctermsKeywords": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "modifiedTime": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "publishedTime": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "articleTag": {
-                    "type": "string",
-                    "nullable": true
-                  },
-                  "articleSection": {
-                    "type": "string",
-                    "nullable": true
-                  },
                   "sourceURL": {
                     "type": "string",
                     "format": "uri"
                   },
-                  "pageStatusCode": {
-                    "type": "integer",
-                    "description": "The status code of the page"
-                  },
-                  "pageError": {
-                    "type": "string",
-                    "nullable": true,
-                    "description": "The error message of the page"
+                  "<any other metadata> ": {
+                    "type": "string"
                   }
+                  
                 }
               },
               "llm_extraction": {
@@ -694,126 +593,9 @@
                 "type": "string",
                 "nullable": true
               },
-              "keywords": {
-                "type": "string",
-                "nullable": true
-              },
-              "robots": {
-                "type": "string",
-                "nullable": true
-              },
-              "ogTitle": {
-                "type": "string",
-                "nullable": true
-              },
-              "ogDescription": {
-                "type": "string",
-                "nullable": true
-              },
-              "ogUrl": {
-                "type": "string",
-                "format": "uri",
-                "nullable": true
-              },
-              "ogImage": {
-                "type": "string",
-                "nullable": true
-              },
-              "ogAudio": {
-                "type": "string",
-                "nullable": true
-              },
-              "ogDeterminer": {
-                "type": "string",
-                "nullable": true
-              },
-              "ogLocale": {
-                "type": "string",
-                "nullable": true
-              },
-              "ogLocaleAlternate": {
-                "type": "array",
-                "items": {
-                  "type": "string"
-                },
-                "nullable": true
-              },
-              "ogSiteName": {
-                "type": "string",
-                "nullable": true
-              },
-              "ogVideo": {
-                "type": "string",
-                "nullable": true
-              },
-              "dctermsCreated": {
-                "type": "string",
-                "nullable": true
-              },
-              "dcDateCreated": {
-                "type": "string",
-                "nullable": true
-              },
-              "dcDate": {
-                "type": "string",
-                "nullable": true
-              },
-              "dctermsType": {
-                "type": "string",
-                "nullable": true
-              },
-              "dcType": {
-                "type": "string",
-                "nullable": true
-              },
-              "dctermsAudience": {
-                "type": "string",
-                "nullable": true
-              },
-              "dctermsSubject": {
-                "type": "string",
-                "nullable": true
-              },
-              "dcSubject": {
-                "type": "string",
-                "nullable": true
-              },
-              "dcDescription": {
-                "type": "string",
-                "nullable": true
-              },
-              "dctermsKeywords": {
-                "type": "string",
-                "nullable": true
-              },
-              "modifiedTime": {
-                "type": "string",
-                "nullable": true
-              },
-              "publishedTime": {
-                "type": "string",
-                "nullable": true
-              },
-              "articleTag": {
-                "type": "string",
-                "nullable": true
-              },
-              "articleSection": {
-                "type": "string",
-                "nullable": true
-              },
               "sourceURL": {
                 "type": "string",
                 "format": "uri"
-              },
-              "pageStatusCode": {
-                "type": "integer",
-                "description": "The status code of the page"
-              },
-              "pageError": {
-                "type": "string",
-                "nullable": true,
-                "description": "The error message of the page"
               }
             }
           }
