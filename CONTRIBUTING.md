@@ -12,7 +12,7 @@ First, start by installing dependencies
 2. pnpm [instructions](https://pnpm.io/installation)
 3. redis [instructions](https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/)
 
-Set environment variables in a .env in the /apps/api/ directoryyou can copy over the template in .env.example.
+Set environment variables in a .env in the /apps/api/ directory you can copy over the template in .env.example.
 
 To start, we wont set up authentication, or any optional sub services (pdf parsing, JS blocking support, AI features )
 
