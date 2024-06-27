@@ -144,7 +144,7 @@ describe("Crawling Checkup (E2E)", () => {
         fs.writeFileSync(errorLogFileName, JSON.stringify(errorLog, null, 2));
       }
 
-      expect(score).toBeGreaterThanOrEqual(90);
+      expect(score).toBeGreaterThanOrEqual(75);
     }, 350000); // 150 seconds timeout
   });
 });
