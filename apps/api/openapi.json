@@ -544,6 +544,15 @@
                   },
                   "<any other metadata> ": {
                     "type": "string"
+                  },
+                  "pageStatusCode": {
+                    "type": "integer",
+                    "description": "The status code of the page"
+                  },
+                  "pageError": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "The error message of the page"
                   }
                   
                 }
@@ -596,6 +605,18 @@
               "sourceURL": {
                 "type": "string",
                 "format": "uri"
+              },
+              "<any other metadata> ": {
+                "type": "string"
+              },
+              "pageStatusCode": {
+                "type": "integer",
+                "description": "The status code of the page"
+              },
+              "pageError": {
+                "type": "string",
+                "nullable": true,
+                "description": "The error message of the page"
               }
             }
           }
