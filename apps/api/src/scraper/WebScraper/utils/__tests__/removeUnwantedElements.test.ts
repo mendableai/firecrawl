@@ -129,11 +129,11 @@ describe('removeUnwantedElements', () => {
     expect(result).not.toContain('<aside>');
   });
 
-  it('should handle no specified tags', () => {
-    const html = `<div><main>Main Content</main><aside>Remove</aside><footer>Footer Content</footer></div>`;
+  it('should not handle no specified tags, return full content', () => {
+    const html = `<html><body><div><main>Main Content</main><aside>Remove</aside><footer>Footer Content</footer></div></body></html>`;
     const options: PageOptions = { onlyIncludeTags: [] };
     const result = removeUnwantedElements(html, options);
-    expect(result).toBe('');
+    expect(result).toBe(html);
   });
 
   it('should handle specified tags as a string', () => {
