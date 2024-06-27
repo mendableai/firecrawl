@@ -4,6 +4,21 @@ import { excludeNonMainTags } from "./excludeTags";
 
 export const removeUnwantedElements = (html: string, pageOptions: PageOptions) => {
   const soup = cheerio.load(html);
+
+  if (pageOptions.onlyIncludeTags) {
+    if (typeof pageOptions.onlyIncludeTags === 'string') {
+      pageOptions.onlyIncludeTags = [pageOptions.onlyIncludeTags];
+    }
+    // Create a new root element to hold the tags to keep
+    const newRoot = cheerio.load('<div></div>')('div');
+    pageOptions.onlyIncludeTags.forEach(tag => {
+      soup(tag).each((index, element) => {
+        newRoot.append(soup(element).clone());
+      });
+    });
+    return newRoot.html();
+  }
+
   soup("script, style, iframe, noscript, meta, head").remove();
   
   if (pageOptions.removeTags) {

@@ -100,4 +100,48 @@ describe('removeUnwantedElements', () => {
     expect(result).not.toContain('id="remove-this"');
     expect(result).toContain('class="keep"');
   });
+
+  it('should only include specified tags', () => {
+    const html = `<div><main>Main Content</main><aside>Remove</aside><footer>Footer Content</footer></div>`;
+    const options: PageOptions = { onlyIncludeTags: ['main', 'footer'] };
+    const result = removeUnwantedElements(html, options);
+    expect(result).toContain('<main>Main Content</main>');
+    expect(result).toContain('<footer>Footer Content</footer>');
+    expect(result).not.toContain('<aside>');
+  });
+
+  it('should handle multiple specified tags', () => {
+    const html = `<div><header>Header Content</header><main>Main Content</main><aside>Remove</aside><footer>Footer Content</footer></div>`;
+    const options: PageOptions = { onlyIncludeTags: ['header', 'main', 'footer'] };
+    const result = removeUnwantedElements(html, options);
+    expect(result).toContain('<header>Header Content</header>');
+    expect(result).toContain('<main>Main Content</main>');
+    expect(result).toContain('<footer>Footer Content</footer>');
+    expect(result).not.toContain('<aside>');
+  });
+
+  it('should handle nested specified tags', () => {
+    const html = `<div><main><section>Main Section</section></main><aside>Remove</aside><footer>Footer Content</footer></div>`;
+    const options: PageOptions = { onlyIncludeTags: ['main', 'footer'] };
+    const result = removeUnwantedElements(html, options);
+    expect(result).toContain('<main><section>Main Section</section></main>');
+    expect(result).toContain('<footer>Footer Content</footer>');
+    expect(result).not.toContain('<aside>');
+  });
+
+  it('should handle no specified tags', () => {
+    const html = `<div><main>Main Content</main><aside>Remove</aside><footer>Footer Content</footer></div>`;
+    const options: PageOptions = { onlyIncludeTags: [] };
+    const result = removeUnwantedElements(html, options);
+    expect(result).toBe('');
+  });
+
+  it('should handle specified tags as a string', () => {
+    const html = `<div><main>Main Content</main><aside>Remove</aside><footer>Footer Content</footer></div>`;
+    const options: PageOptions = { onlyIncludeTags: 'main' };
+    const result = removeUnwantedElements(html, options);
+    expect(result).toContain('<main>Main Content</main>');
+    expect(result).not.toContain('<aside>');
+    expect(result).not.toContain('<footer>');
+  });
 });
