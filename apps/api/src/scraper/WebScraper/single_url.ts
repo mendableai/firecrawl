@@ -46,12 +46,8 @@ export async function generateRequestParams(
   }
 }
 export async function scrapWithFireEngine(
-  url: string,
-  waitFor: number = 0,
-  screenshot: boolean = false,
-  pageOptions: { scrollXPaths?: string[], parsePDF?: boolean } = { parsePDF: true },
-  headers?: Record<string, string>,
-  options?: any
+  { url, waitFor = 0, screenshot = false, pageOptions = { parsePDF: true }, headers, options }: 
+  { url: string, waitFor?: number, screenshot?: boolean, pageOptions?: { scrollXPaths?: string[], parsePDF?: boolean }, headers?: Record<string, string>, options?: any }
 ): Promise<FireEngineResponse> {
   try {
     const reqParams = await generateRequestParams(url);
@@ -321,11 +317,13 @@ export async function scrapSingleUrl(
       case "fire-engine":
         if (process.env.FIRE_ENGINE_BETA_URL) {
           console.log(`Scraping ${url} with Fire Engine`);
-          const response = await scrapWithFireEngine(
+          const response = await scrapWithFireEngine({
             url,
-            pageOptions.waitFor,
-            pageOptions.screenshot,
-            pageOptions.headers
+            waitFor: pageOptions.waitFor,
+            screenshot: pageOptions.screenshot,
+            pageOptions: pageOptions,
+            headers: pageOptions.headers
+          }
           );
           scraperResponse.text = response.html;
           scraperResponse.screenshot = response.screenshot;
@@ -377,7 +375,7 @@ export async function scrapSingleUrl(
     if (customScraperResult){
       switch (customScraperResult.scraper) {
         case "fire-engine":
-          customScrapedContent  = await scrapWithFireEngine(customScraperResult.url, customScraperResult.waitAfterLoad, false, customScraperResult.pageOptions)
+          customScrapedContent  = await scrapWithFireEngine({url: customScraperResult.url, waitFor: customScraperResult.waitAfterLoad, screenshot: false, pageOptions: customScraperResult.pageOptions})
           if (screenshot) {
             customScrapedContent.screenshot = screenshot;
           }
