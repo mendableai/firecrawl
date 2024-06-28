@@ -13,6 +13,7 @@ export interface Progress {
 export type PageOptions = {
   onlyMainContent?: boolean;
   includeHtml?: boolean;
+  rawHtml?: boolean;
   fallback?: boolean;
   fetchPageContent?: boolean;
   waitFor?: number;
@@ -25,7 +26,7 @@ export type PageOptions = {
 };
 
 export type ExtractorOptions = {
-  mode: "markdown" | "llm-extraction";
+  mode: "markdown" | "llm-extraction" | "llm-extraction-from-markdown" | "llm-extraction-from-raw-html";
   extractionPrompt?: string;
   extractionSchema?: Record<string, any>;
 }
@@ -73,6 +74,7 @@ export class Document {
   content: string;
   markdown?: string;
   html?: string;
+  rawHtml?: string;
   llm_extraction?: Record<string, any>;
   createdAt?: Date;
   updatedAt?: Date;

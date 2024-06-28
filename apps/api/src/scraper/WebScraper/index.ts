@@ -66,6 +66,7 @@ export class WebScraperDataProvider {
           const result = await scrapSingleUrl(
             url,
             this.pageOptions,
+            this.extractorOptions,
             existingHTML
           );
           processedUrls++;
@@ -269,10 +270,16 @@ export class WebScraperDataProvider {
     // documents = await this.applyImgAltText(documents);
 
     if (
-      this.extractorOptions.mode === "llm-extraction" &&
+      (this.extractorOptions.mode === "llm-extraction" || this.extractorOptions.mode === "llm-extraction-from-markdown") &&
       this.mode === "single_urls"
     ) {
-      documents = await generateCompletions(documents, this.extractorOptions);
+      documents = await generateCompletions(documents, this.extractorOptions, "markdown");
+    }
+    if (
+      (this.extractorOptions.mode === "llm-extraction-from-raw-html") &&
+      this.mode === "single_urls"
+    ) {
+      documents = await generateCompletions(documents, this.extractorOptions, "raw-html");
     }
     return documents.concat(pdfDocuments).concat(docxDocuments);
   }
