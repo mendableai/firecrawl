@@ -66,7 +66,7 @@ export async function scrapeHelper(
   }
 
   // Remove rawHtml if pageOptions.rawHtml is false
-  if (!pageOptions.rawHtml) {
+  if (!pageOptions.includeRawHtml) {
     filteredDocs.forEach(doc => {
       delete doc.rawHtml;
     });

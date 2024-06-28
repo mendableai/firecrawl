@@ -303,7 +303,7 @@ export async function scrapSingleUrl(
   pageOptions: PageOptions = {
     onlyMainContent: true,
     includeHtml: false,
-    rawHtml: false,
+    includeRawHtml: false,
     waitFor: 0,
     screenshot: false,
     headers: undefined
@@ -469,7 +469,7 @@ export async function scrapSingleUrl(
         content: text,
         markdown: text,
         html: pageOptions.includeHtml ? html : undefined,
-        rawHtml: pageOptions.rawHtml || extractorOptions.mode === "llm-extraction-from-raw-html" ? rawHtml : undefined,
+        rawHtml: pageOptions.includeRawHtml || extractorOptions.mode === "llm-extraction-from-raw-html" ? rawHtml : undefined,
         metadata: {
           ...metadata,
           screenshot: screenshot,
@@ -483,7 +483,7 @@ export async function scrapSingleUrl(
         content: text,
         markdown: text,
         html: pageOptions.includeHtml ? html : undefined,
-        rawHtml: pageOptions.rawHtml || extractorOptions.mode === "llm-extraction-from-raw-html" ? rawHtml : undefined,
+        rawHtml: pageOptions.includeRawHtml || extractorOptions.mode === "llm-extraction-from-raw-html" ? rawHtml : undefined,
         metadata: {
           ...metadata,
           sourceURL: urlToScrap,
