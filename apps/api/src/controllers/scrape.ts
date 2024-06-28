@@ -8,6 +8,7 @@ import { logJob } from "../services/logging/log_job";
 import { Document } from "../lib/entities";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from '../lib/LLM-extraction/helpers';
+import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../lib/default-values';
 
 export async function scrapeHelper(
   req: Request,
@@ -105,21 +106,13 @@ export async function scrapeController(req: Request, res: Response) {
       return res.status(status).json({ error });
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
-    const pageOptions = req.body.pageOptions ?? {
-      onlyMainContent: false,
-      includeHtml: false,
-      waitFor: 0,
-      screenshot: false,
-      parsePDF: true
-    };
-    const extractorOptions = req.body.extractorOptions ?? {
-      mode: "markdown"
-    }
+    const pageOptions = { ...defaultPageOptions, ...req.body.pageOptions };
+    const extractorOptions = { ...defaultExtractorOptions, ...req.body.extractorOptions };
     if (extractorOptions.mode === "llm-extraction") {
       pageOptions.onlyMainContent = true;
     }
-    const origin = req.body.origin ?? "api";
-    const timeout = req.body.timeout ?? 30000; // Default timeout of 30 seconds
+    const origin = req.body.origin ?? defaultOrigin;
+    const timeout = req.body.timeout ?? defaultTimeout;
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =

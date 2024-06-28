@@ -21,6 +21,7 @@ export type PageOptions = {
   replaceAllPathsWithAbsolutePaths?: boolean;
   parsePDF?: boolean;
   removeTags?: string | string[];
+  onlyIncludeTags?: string | string[];
 };
 
 export type ExtractorOptions = {

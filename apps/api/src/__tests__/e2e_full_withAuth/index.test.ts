@@ -83,8 +83,31 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty("metadata");
       expect(response.body.data).not.toHaveProperty("html");
       expect(response.body.data.content).toContain("_Roast_");
-      expect(response.body.data.metadata.pageStatusCode).toBe(200);
+      expect(response.body.data.metadata).toHaveProperty("title");
+      expect(response.body.data.metadata).toHaveProperty("description");
+      expect(response.body.data.metadata).toHaveProperty("keywords");
+      expect(response.body.data.metadata).toHaveProperty("robots");
+      expect(response.body.data.metadata).toHaveProperty("ogTitle");
+      expect(response.body.data.metadata).toHaveProperty("ogDescription");
+      expect(response.body.data.metadata).toHaveProperty("ogUrl");
+      expect(response.body.data.metadata).toHaveProperty("ogImage");
+      expect(response.body.data.metadata).toHaveProperty("ogLocaleAlternate");
+      expect(response.body.data.metadata).toHaveProperty("ogSiteName");
+      expect(response.body.data.metadata).toHaveProperty("sourceURL");
+      expect(response.body.data.metadata).toHaveProperty("pageStatusCode");
       expect(response.body.data.metadata.pageError).toBeUndefined();
+      expect(response.body.data.metadata.title).toBe("Roast My Website");
+      expect(response.body.data.metadata.description).toBe("Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️");
+      expect(response.body.data.metadata.keywords).toBe("Roast My Website,Roast,Website,GitHub,Firecrawl");
+      expect(response.body.data.metadata.robots).toBe("follow, index");
+      expect(response.body.data.metadata.ogTitle).toBe("Roast My Website");
+      expect(response.body.data.metadata.ogDescription).toBe("Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️");
+      expect(response.body.data.metadata.ogUrl).toBe("https://www.roastmywebsite.ai");
+      expect(response.body.data.metadata.ogImage).toBe("https://www.roastmywebsite.ai/og.png");
+      expect(response.body.data.metadata.ogLocaleAlternate).toStrictEqual([]);
+      expect(response.body.data.metadata.ogSiteName).toBe("Roast My Website");
+      expect(response.body.data.metadata.sourceURL).toBe("https://roastmywebsite.ai");
+      expect(response.body.data.metadata.pageStatusCode).toBe(200);
     }, 30000); // 30 seconds timeout
 
     it.concurrent("should return a successful response with a valid API key and includeHtml set to true", async () => {

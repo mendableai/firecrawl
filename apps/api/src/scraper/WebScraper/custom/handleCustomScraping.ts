@@ -32,7 +32,7 @@ export async function handleCustomScraping(
   // Check for Google Drive PDF links in the raw HTML
   const googleDrivePdfPattern =
     /https:\/\/drive\.google\.com\/file\/d\/([^\/]+)\/view/;
-  const googleDrivePdfLink = text.match(googleDrivePdfPattern);
+  const googleDrivePdfLink = url.match(googleDrivePdfPattern);
   if (googleDrivePdfLink) {
     console.log(
       `Google Drive PDF link detected for ${url}: ${googleDrivePdfLink[0]}`
