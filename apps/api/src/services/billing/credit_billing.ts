@@ -8,6 +8,26 @@ const FREE_CREDITS = 500;
 export async function billTeam(team_id: string, credits: number) {
   return withAuth(supaBillTeam)(team_id, credits);
 }
+// Initialize Stripe with your API key
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+
+async function trackUsage(customer_id: string, quantity: number): Promise<void> {
+  try {
+    await stripe.billing.meterEvents.create({
+      event_name: 'credits',
+      payload: {
+        value: quantity.toString(),
+        stripe_customer_id: customer_id,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating usage record:', error);
+    // throw new Error('Error creating usage record');
+  }
+}
+
+
 export async function supaBillTeam(team_id: string, credits: number) {
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
@@ -151,6 +171,19 @@ export async function supaBillTeam(team_id: string, credits: number) {
   // not using coupon credits
   if (!subscription) {
     return await createCreditUsage({ team_id, credits });
+  }
+
+  if(subscription.is_usage){
+    // console.log('subscription', subscription);
+    const { data: customer } = await supabase_service
+      .from("customers")
+      .select("*")
+      .eq("id", subscription.user_id)
+      .single();
+  
+    if (customer) {
+      await trackUsage(customer.stripe_customer_id, credits);
+    }
   }
 
   return await createCreditUsage({

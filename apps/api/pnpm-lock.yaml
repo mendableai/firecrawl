@@ -156,8 +156,8 @@ dependencies:
     specifier: ^1.7.4
     version: 1.7.4
   stripe:
-    specifier: ^12.2.0
-    version: 12.18.0
+    specifier: ^15.11.0
+    version: 15.11.0
   turndown:
     specifier: ^7.1.3
     version: 7.2.0
@@ -7483,8 +7483,8 @@ packages:
     engines: {node: '>=8'}
     dev: true
 
-  /stripe@12.18.0:
-    resolution: {integrity: sha512-cYjgBM2SY/dTm8Lr6eMyyONaHTZHA/QjHxFUIW5WH8FevSRIGAVtXEmBkUXF1fsqe7QvvRgQSGSJZmjDacegGg==}
+  /stripe@15.11.0:
+    resolution: {integrity: sha512-qmZF0PN1jRVpiQrXL8eTb9Jy/6S+aUlcDquKBFT2h3PkaD7RZ444FIojVXUg67FK2zFIUNXgMv02c7csdL5qHg==}
     engines: {node: '>=12.*'}
     dependencies:
       '@types/node': 20.14.1
