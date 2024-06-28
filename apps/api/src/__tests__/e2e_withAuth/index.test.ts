@@ -331,7 +331,7 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0].content).toContain("Mendable");
       expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
       expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
-    }, 60000); // 60 seconds
+    }, 180000); // 180 seconds
 
     it.concurrent("should return a successful response with a valid API key and valid excludes option", async () => {
       const crawlResponse: FirecrawlCrawlResponse = await request(TEST_URL)

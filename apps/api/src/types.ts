@@ -48,6 +48,7 @@ export interface RunWebScraperResult {
 }
 
 export interface FirecrawlJob {
+  job_id?: string;
   success: boolean;
   message: string;
   num_docs: number;
