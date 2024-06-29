@@ -1222,7 +1222,7 @@ describe("E2E Tests for API Routes", () => {
       expect(typeof llmExtraction.is_open_source).toBe("boolean");
     }, 60000); // 60 secs
 
-    it.concurrent("should extract data using LLM extraction mode with raw html", async () => {
+    it.concurrent("should extract data using LLM extraction mode with RawHtml", async () => {
       const response = await request(TEST_URL)
         .post("/v0/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
