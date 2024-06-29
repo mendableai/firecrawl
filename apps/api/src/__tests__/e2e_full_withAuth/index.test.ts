@@ -131,6 +131,50 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data.metadata.pageStatusCode).toBe(200);
       expect(response.body.data.metadata.pageError).toBeUndefined();
     }, 30000); // 30 seconds timeout
+
+    it.concurrent("should return a successful response with a valid API key and includeRawHtml set to true", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://roastmywebsite.ai",
+          pageOptions: { includeHtml: true },
+        });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("data");
+      expect(response.body.data).toHaveProperty("content");
+      expect(response.body.data).toHaveProperty("markdown");
+      expect(response.body.data).toHaveProperty("rawHtml");
+      expect(response.body.data).toHaveProperty("metadata");
+      expect(response.body.data.content).toContain("_Roast_");
+      expect(response.body.data.markdown).toContain("_Roast_");
+      expect(response.body.data.html).toContain("<h1");
+      expect(response.body.data.metadata.pageStatusCode).toBe(200);
+      expect(response.body.data.metadata.pageError).toBeUndefined();
+    }, 30000); // 30 seconds timeout
+
+    it.concurrent("should return a successful response with a valid API key and includeRawHtml set to true", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://roastmywebsite.ai",
+          pageOptions: { includeRawHtml: true },
+        });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("data");
+      expect(response.body.data).toHaveProperty("content");
+      expect(response.body.data).toHaveProperty("markdown");
+      expect(response.body.data).toHaveProperty("rawHtml");
+      expect(response.body.data).toHaveProperty("metadata");
+      expect(response.body.data.content).toContain("_Roast_");
+      expect(response.body.data.markdown).toContain("_Roast_");
+      expect(response.body.data.html).toContain("<h1");
+      expect(response.body.data.metadata.pageStatusCode).toBe(200);
+      expect(response.body.data.metadata.pageError).toBeUndefined();
+    }, 30000); // 30 seconds timeout
     
    it.concurrent('should return a successful response for a valid scrape with PDF file', async () => {
       const response = await request(TEST_URL)
@@ -1141,6 +1185,53 @@ describe("E2E Tests for API Routes", () => {
           },
           extractorOptions: {
             mode: "llm-extraction",
+            extractionPrompt:
+              "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source",
+            extractionSchema: {
+              type: "object",
+              properties: {
+                company_mission: {
+                  type: "string",
+                },
+                supports_sso: {
+                  type: "boolean",
+                },
+                is_open_source: {
+                  type: "boolean",
+                },
+              },
+              required: ["company_mission", "supports_sso", "is_open_source"],
+            },
+          },
+        });
+
+      // Ensure that the job was successfully created before proceeding with LLM extraction
+      expect(response.statusCode).toBe(200);
+
+      // Assuming the LLM extraction object is available in the response body under `data.llm_extraction`
+      let llmExtraction = response.body.data.llm_extraction;
+
+      // Check if the llm_extraction object has the required properties with correct types and values
+      expect(llmExtraction).toHaveProperty("company_mission");
+      expect(typeof llmExtraction.company_mission).toBe("string");
+      expect(llmExtraction).toHaveProperty("supports_sso");
+      expect(llmExtraction.supports_sso).toBe(true);
+      expect(typeof llmExtraction.supports_sso).toBe("boolean");
+      expect(llmExtraction).toHaveProperty("is_open_source");
+      expect(llmExtraction.is_open_source).toBe(false);
+      expect(typeof llmExtraction.is_open_source).toBe("boolean");
+    }, 60000); // 60 secs
+
+    it.concurrent("should extract data using LLM extraction mode with raw html", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://mendable.ai",
+    
+          extractorOptions: {
+            mode: "llm-extraction-from-raw-html",
             extractionPrompt:
               "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source",
             extractionSchema: {
