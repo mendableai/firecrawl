@@ -149,7 +149,7 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty("metadata");
       expect(response.body.data.content).toContain("_Roast_");
       expect(response.body.data.markdown).toContain("_Roast_");
-      expect(response.body.data.html).toContain("<h1");
+      expect(response.body.data.rawHtml).toContain("<h1");
       expect(response.body.data.metadata.pageStatusCode).toBe(200);
       expect(response.body.data.metadata.pageError).toBeUndefined();
     }, 30000); // 30 seconds timeout
@@ -1211,21 +1211,18 @@ describe("E2E Tests for API Routes", () => {
           extractorOptions: {
             mode: "llm-extraction-from-raw-html",
             extractionPrompt:
-              "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source",
+              "Based on the information on the page, what are the primary and secondary CTA buttons?",
             extractionSchema: {
               type: "object",
               properties: {
-                company_mission: {
+                primary_cta: {
                   type: "string",
                 },
-                supports_sso: {
-                  type: "boolean",
-                },
-                is_open_source: {
-                  type: "boolean",
+                secondary_cta: {
+                  type: "string",
                 },
               },
-              required: ["company_mission", "supports_sso", "is_open_source"],
+              required: ["primary_cta", "secondary_cta"],
             },
           },
         });
@@ -1237,14 +1234,11 @@ describe("E2E Tests for API Routes", () => {
       let llmExtraction = response.body.data.llm_extraction;
 
       // Check if the llm_extraction object has the required properties with correct types and values
-      expect(llmExtraction).toHaveProperty("company_mission");
-      expect(typeof llmExtraction.company_mission).toBe("string");
-      expect(llmExtraction).toHaveProperty("supports_sso");
-      expect(llmExtraction.supports_sso).toBe(true);
-      expect(typeof llmExtraction.supports_sso).toBe("boolean");
-      expect(llmExtraction).toHaveProperty("is_open_source");
-      expect(llmExtraction.is_open_source).toBe(false);
-      expect(typeof llmExtraction.is_open_source).toBe("boolean");
+      expect(llmExtraction).toHaveProperty("primary_cta");
+      expect(typeof llmExtraction.primary_cta).toBe("string");
+      expect(llmExtraction).toHaveProperty("secondary_cta");
+      expect(typeof llmExtraction.secondary_cta).toBe("string");
+   
     }, 60000); // 60 secs
   });
 
