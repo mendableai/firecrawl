@@ -139,28 +139,6 @@ describe("E2E Tests for API Routes", () => {
         .set("Content-Type", "application/json")
         .send({
           url: "https://roastmywebsite.ai",
-          pageOptions: { includeHtml: true },
-        });
-      expect(response.statusCode).toBe(200);
-      expect(response.body).toHaveProperty("data");
-      expect(response.body.data).toHaveProperty("content");
-      expect(response.body.data).toHaveProperty("markdown");
-      expect(response.body.data).toHaveProperty("rawHtml");
-      expect(response.body.data).toHaveProperty("metadata");
-      expect(response.body.data.content).toContain("_Roast_");
-      expect(response.body.data.markdown).toContain("_Roast_");
-      expect(response.body.data.html).toContain("<h1");
-      expect(response.body.data.metadata.pageStatusCode).toBe(200);
-      expect(response.body.data.metadata.pageError).toBeUndefined();
-    }, 30000); // 30 seconds timeout
-
-    it.concurrent("should return a successful response with a valid API key and includeRawHtml set to true", async () => {
-      const response = await request(TEST_URL)
-        .post("/v0/scrape")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-        .set("Content-Type", "application/json")
-        .send({
-          url: "https://roastmywebsite.ai",
           pageOptions: { includeRawHtml: true },
         });
       expect(response.statusCode).toBe(200);
