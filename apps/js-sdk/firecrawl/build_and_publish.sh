@@ -4,7 +4,7 @@ function build_and_publish {
     PACKAGE_NAME=$1
 
     # Replace placeholder with the package name in package.json
-    sed -i '' "s/\"name\": \"PLACEHOLDER_NAME\"/\"name\": \"$PACKAGE_NAME\"/" package.json
+    jq --arg name "$PACKAGE_NAME" '.name = $name' package.json > temp.json && mv temp.json package.json
 
     # Debug: show modified state
     echo "Modified package.json for $PACKAGE_NAME:"
@@ -20,7 +20,7 @@ function build_and_publish {
     fi
 
     # Revert the changes to the original placeholder in package.json
-    sed -i '' "s/\"name\": \"$PACKAGE_NAME\"/\"name\": \"PLACEHOLDER_NAME\"/" package.json
+    jq '.name = "PLACEHOLDER_NAME"' package.json > temp.json && mv temp.json package.json
 
     # Debug: show reverted state
     echo "Reverted package.json to placeholder:"
