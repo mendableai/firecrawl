@@ -443,8 +443,10 @@ export async function scrapSingleUrl(
       if (attempt.pageStatusCode) {
         pageStatusCode = attempt.pageStatusCode;
       }
-      if (attempt.pageError) {
+      if (attempt.pageError && attempt.pageStatusCode != 200) {
         pageError = attempt.pageError;
+      } else {
+        pageError = undefined;
       }
       
       
