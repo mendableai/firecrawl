@@ -2,7 +2,7 @@ import * as cheerio from "cheerio";
 import { ScrapingBeeClient } from "scrapingbee";
 import { extractMetadata } from "./utils/metadata";
 import dotenv from "dotenv";
-import { Document, PageOptions, FireEngineResponse } from "../../lib/entities";
+import { Document, PageOptions, FireEngineResponse, ExtractorOptions } from "../../lib/entities";
 import { parseMarkdown } from "../../lib/html-to-markdown";
 import { urlSpecificParams } from "./utils/custom/website_params";
 import { fetchAndProcessPdf } from "./utils/pdfProcessor";
@@ -348,9 +348,13 @@ export async function scrapSingleUrl(
   pageOptions: PageOptions = {
     onlyMainContent: true,
     includeHtml: false,
+    includeRawHtml: false,
     waitFor: 0,
     screenshot: false,
     headers: undefined,
+  },
+  extractorOptions: ExtractorOptions = {
+    mode: "llm-extraction-from-markdown"
   },
   existingHtml: string = ""
 ): Promise<Document> {
@@ -517,8 +521,10 @@ export async function scrapSingleUrl(
       if (attempt.pageStatusCode) {
         pageStatusCode = attempt.pageStatusCode;
       }
-      if (attempt.pageError) {
+      if (attempt.pageError && attempt.pageStatusCode != 200) {
         pageError = attempt.pageError;
+      } else {
+        pageError = undefined;
       }
 
       if (text && text.trim().length >= 100) break;
@@ -542,6 +548,7 @@ export async function scrapSingleUrl(
         content: text,
         markdown: text,
         html: pageOptions.includeHtml ? html : undefined,
+        rawHtml: pageOptions.includeRawHtml || extractorOptions.mode === "llm-extraction-from-raw-html" ? rawHtml : undefined,
         metadata: {
           ...metadata,
           screenshot: screenshot,
@@ -555,6 +562,7 @@ export async function scrapSingleUrl(
         content: text,
         markdown: text,
         html: pageOptions.includeHtml ? html : undefined,
+        rawHtml: pageOptions.includeRawHtml || extractorOptions.mode === "llm-extraction-from-raw-html" ? rawHtml : undefined,
         metadata: {
           ...metadata,
           sourceURL: urlToScrap,

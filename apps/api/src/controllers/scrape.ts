@@ -58,11 +58,19 @@ export async function scrapeHelper(
   }
 
   // make sure doc.content is not empty
-  const filteredDocs = docs.filter(
+  let filteredDocs = docs.filter(
     (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
   );
   if (filteredDocs.length === 0) {
     return { success: true, error: "No page found", returnCode: 200, data: docs[0] };
+  }
+
+ 
+  // Remove rawHtml if pageOptions.rawHtml is false and extractorOptions.mode is llm-extraction-from-raw-html
+  if (!pageOptions.includeRawHtml && extractorOptions.mode == "llm-extraction-from-raw-html") {
+    filteredDocs.forEach(doc => {
+      delete doc.rawHtml;
+    });
   }
 
   let creditsToBeBilled = filteredDocs.length;
@@ -70,7 +78,7 @@ export async function scrapeHelper(
 
 
 
-  if (extractorOptions.mode === "llm-extraction") {
+  if (extractorOptions.mode === "llm-extraction" || extractorOptions.mode === "llm-extraction-from-raw-html" || extractorOptions.mode === "llm-extraction-from-markdown") {
     creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length);
   }
 
