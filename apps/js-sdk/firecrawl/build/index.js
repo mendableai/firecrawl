@@ -31,9 +31,9 @@ export default class FirecrawlApp {
      * @param {Params | null} params - Additional parameters for the scrape request.
      * @returns {Promise<ScrapeResponse>} The response from the scrape operation.
      */
-    scrapeUrl(url_1) {
-        return __awaiter(this, arguments, void 0, function* (url, params = null) {
-            var _a;
+    scrapeUrl(url, params = null) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function* () {
             const headers = {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${this.apiKey}`,
@@ -74,8 +74,8 @@ export default class FirecrawlApp {
      * @param {Params | null} params - Additional parameters for the search request.
      * @returns {Promise<SearchResponse>} The response from the search operation.
      */
-    search(query_1) {
-        return __awaiter(this, arguments, void 0, function* (query, params = null) {
+    search(query, params = null) {
+        return __awaiter(this, void 0, void 0, function* () {
             const headers = {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${this.apiKey}`,
@@ -114,8 +114,8 @@ export default class FirecrawlApp {
      * @param {string} idempotencyKey - Optional idempotency key for the request.
      * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
      */
-    crawlUrl(url_1) {
-        return __awaiter(this, arguments, void 0, function* (url, params = null, waitUntilDone = true, pollInterval = 2, idempotencyKey) {
+    crawlUrl(url, params = null, waitUntilDone = true, pollInterval = 2, idempotencyKey) {
+        return __awaiter(this, void 0, void 0, function* () {
             const headers = this.prepareHeaders(idempotencyKey);
             let jsonData = { url };
             if (params) {
@@ -158,7 +158,9 @@ export default class FirecrawlApp {
                         success: true,
                         status: response.data.status,
                         data: response.data.data,
-                        partial_data: !response.data.data ? response.data.partial_data : undefined,
+                        partial_data: !response.data.data
+                            ? response.data.partial_data
+                            : undefined,
                     };
                 }
                 else {
@@ -180,7 +182,7 @@ export default class FirecrawlApp {
      * @returns {AxiosRequestHeaders} The prepared headers.
      */
     prepareHeaders(idempotencyKey) {
-        return Object.assign({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.apiKey}` }, (idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : {}));
+        return Object.assign({ "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` }, (idempotencyKey ? { "x-idempotency-key": idempotencyKey } : {}));
     }
     /**
      * Sends a POST request to the specified URL.

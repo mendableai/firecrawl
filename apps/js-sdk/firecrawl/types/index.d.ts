@@ -73,16 +73,16 @@ export interface ScrapeResponse {
     error?: string;
 }
 /**
-* Response interface for searching operations.
-*/
+ * Response interface for searching operations.
+ */
 export interface SearchResponse {
     success: boolean;
     data?: FirecrawlDocument[];
     error?: string;
 }
 /**
-* Response interface for crawling operations.
-*/
+ * Response interface for crawling operations.
+ */
 export interface CrawlResponse {
     success: boolean;
     jobId?: string;
@@ -90,8 +90,8 @@ export interface CrawlResponse {
     error?: string;
 }
 /**
-* Response interface for job status checks.
-*/
+ * Response interface for job status checks.
+ */
 export interface JobStatusResponse {
     success: boolean;
     status: string;
@@ -101,8 +101,8 @@ export interface JobStatusResponse {
     error?: string;
 }
 /**
-  * Generic parameter interface.
-  */
+ * Generic parameter interface.
+ */
 export interface Params {
     [key: string]: any;
     extractorOptions?: {
