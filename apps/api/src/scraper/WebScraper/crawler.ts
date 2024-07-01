@@ -283,24 +283,22 @@ export class WebCrawler {
           const path = urlObj.pathname;
 
 
-          if(this.isInternalLink(fullUrl)){ // INTERNAL LINKS
+          if (this.isInternalLink(fullUrl)) { // INTERNAL LINKS
             if (this.isInternalLink(fullUrl) &&
               this.noSections(fullUrl) &&
-              // The idea here to comment this out is to allow wider website coverage as we filter this anyway afterwards
-              // this.matchesIncludes(path) &&
               !this.matchesExcludes(path) &&
               this.isRobotsAllowed(fullUrl)
             ) {
               links.push({ url: fullUrl, html: content, pageStatusCode, pageError });
             }
-          }else{ // EXTERNAL LINKS
-            if(
-              this.isInternalLink(url) && //its avoid to add links from external pages on the queue
+          } else { // EXTERNAL LINKS
+            if (
+              this.isInternalLink(url) &&
               this.allowExternalContentLinks &&
               !this.isSocialMediaOrEmail(fullUrl) &&
               !this.matchesExcludes(fullUrl, true) &&
               !this.isExternalMainPage(fullUrl)
-            ){
+            ) {
               links.push({ url: fullUrl, html: content, pageStatusCode, pageError });
             }
           }
