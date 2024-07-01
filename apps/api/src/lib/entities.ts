@@ -52,6 +52,7 @@ export type CrawlerOptions = {
   ignoreSitemap?: boolean;
   mode?: "default" | "fast"; // have a mode of some sort
   allowBackwardCrawling?: boolean;
+  allowExternalContentLinks?: boolean;
 }
 
 export type WebScraperOptions = {
