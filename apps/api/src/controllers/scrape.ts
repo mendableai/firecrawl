@@ -65,8 +65,9 @@ export async function scrapeHelper(
     return { success: true, error: "No page found", returnCode: 200, data: docs[0] };
   }
 
-  // Remove rawHtml if pageOptions.rawHtml is false
-  if (!pageOptions.includeRawHtml) {
+ 
+  // Remove rawHtml if pageOptions.rawHtml is false and extractorOptions.mode is llm-extraction-from-raw-html
+  if (!pageOptions.includeRawHtml && extractorOptions.mode == "llm-extraction-from-raw-html") {
     filteredDocs.forEach(doc => {
       delete doc.rawHtml;
     });
