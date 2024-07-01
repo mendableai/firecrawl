@@ -1,3 +1,0 @@
-requests
-pytest
-python-dotenv
