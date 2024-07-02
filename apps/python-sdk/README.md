@@ -142,4 +142,4 @@ Contributions to the Firecrawl Python SDK are welcome! If you find any issues or
 
 ## License
 
-The Firecrawl Python SDK is open-source and released under the [MIT License](https://opensource.org/licenses/MIT).
+The Firecrawl Python SDK is open-source and released under the [AGPL License](https://www.gnu.org/licenses/agpl-3.0.en.html).
