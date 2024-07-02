@@ -92,8 +92,8 @@
                     "properties": {
                       "mode": {
                         "type": "string",
-                        "enum": ["llm-extraction"],
-                        "description": "The extraction mode to use, currently supports 'llm-extraction'"
+                        "enum": ["llm-extraction", "llm-extraction-from-raw-html"],
+                        "description": "The extraction mode to use. llm-extraction: Extracts information from the cleaned and parsed content. llm-extraction-from-raw-html: Extracts information directly from the raw HTML."
                       },
                       "extractionPrompt": {
                         "type": "string",
