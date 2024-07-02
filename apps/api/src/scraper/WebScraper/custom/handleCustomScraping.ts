@@ -29,22 +29,23 @@ export async function handleCustomScraping(
     };
   }
 
-  // Check for Google Drive PDF links in the raw HTML
-  const googleDrivePdfPattern =
-    /https:\/\/drive\.google\.com\/file\/d\/([^\/]+)\/view/;
-  const googleDrivePdfLink = url.match(googleDrivePdfPattern);
-  if (googleDrivePdfLink) {
-    console.log(
-      `Google Drive PDF link detected for ${url}: ${googleDrivePdfLink[0]}`
-    );
+  // Check for Google Drive PDF links in meta tags
+  const googleDriveMetaPattern = /<meta itemprop="url" content="(https:\/\/drive\.google\.com\/file\/d\/[^"]+)"/;
+  const googleDriveMetaMatch = text.match(googleDriveMetaPattern);
+  if (googleDriveMetaMatch) {
+    const url = googleDriveMetaMatch[1];
+    console.log(`Google Drive PDF link detected: ${url}`);
 
-    const fileId = googleDrivePdfLink[1];
-    const pdfUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+    const fileIdMatch = url.match(/https:\/\/drive\.google\.com\/file\/d\/([^\/]+)\/view/);
+    if (fileIdMatch) {
+      const fileId = fileIdMatch[1];
+      const pdfUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
 
-    return {
-      scraper: "pdf",
-      url: pdfUrl
-    };
+      return {
+        scraper: "pdf",
+        url: pdfUrl
+      };
+    }
   }
   
   return null;
