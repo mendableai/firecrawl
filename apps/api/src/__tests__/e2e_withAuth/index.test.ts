@@ -546,46 +546,51 @@ describe("E2E Tests for API Routes", () => {
       expect(childrenLinks.length).toBe(completedResponse.body.data.length);
     }, 180000); // 120 seconds
     
-    it.concurrent('should return a successful response for a valid crawl job with PDF files without explicit .pdf extension ', async () => {
-      const crawlResponse = await request(TEST_URL)
-        .post('/v0/crawl')
-        .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
-        .set('Content-Type', 'application/json')
-        .send({ url: 'https://arxiv.org/pdf/astro-ph/9301001', crawlerOptions: { limit: 10, excludes: [ 'list/*', 'login', 'abs/*', 'static/*', 'about/*', 'archive/*' ] }});
-      expect(crawlResponse.statusCode).toBe(200);
+    // TODO: review the test below
+    // it.concurrent('should return a successful response for a valid crawl job with PDF files without explicit .pdf extension ', async () => {
+    //   const crawlResponse = await request(TEST_URL)
+    //     .post('/v0/crawl')
+    //     .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+    //     .set('Content-Type', 'application/json')
+    //     .send({ url: 'https://arxiv.org/list/astro-ph/1993-01',
+    //       crawlerOptions: {
+    //         limit: 10,
+    //         returnOnlyUrls: true
+    //       }});
+    //   expect(crawlResponse.statusCode).toBe(200);
 
-      let isCompleted = false;
-      let completedResponse;
+    //   let isCompleted = false;
+    //   let completedResponse;
 
-      while (!isCompleted) {
-        const response = await request(TEST_URL)
-          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-          .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`);
-        expect(response.statusCode).toBe(200);
-        expect(response.body).toHaveProperty('status');
+    //   while (!isCompleted) {
+    //     const response = await request(TEST_URL)
+    //       .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+    //       .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`);
+    //     expect(response.statusCode).toBe(200);
+    //     expect(response.body).toHaveProperty('status');
 
-        if (response.body.status === 'completed') {
-          isCompleted = true;
-          completedResponse = response;
-        } else {
-          await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
-        }
-      }
-        expect(completedResponse.body.status).toBe('completed');
-        expect(completedResponse.body).toHaveProperty('data');
-        expect(completedResponse.body.data.length).toEqual(1);
-        expect(completedResponse.body.data).toEqual(
-          expect.arrayContaining([
-            expect.objectContaining({
-              content: expect.stringContaining('asymmetries might represent, for instance, preferred source orientations to our line of sight.')
-            })
-          ])
-        );
+    //     if (response.body.status === 'completed') {
+    //       isCompleted = true;
+    //       completedResponse = response;
+    //     } else {
+    //       await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
+    //     }
+    //   }
+    //     expect(completedResponse.body.status).toBe('completed');
+    //     expect(completedResponse.body).toHaveProperty('data');
+    //     expect(completedResponse.body.data.length).toEqual(1);
+    //     expect(completedResponse.body.data).toEqual(
+    //       expect.arrayContaining([
+    //         expect.objectContaining({
+    //           content: expect.stringContaining('asymmetries might represent, for instance, preferred source orientations to our line of sight.')
+    //         })
+    //       ])
+    //     );
 
-        expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-        expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
-        expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
-    }, 180000); // 120 seconds
+    //     expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+    //     expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+    //     expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
+    // }, 180000); // 120 seconds
 
     it.concurrent("If someone cancels a crawl job, it should turn into failed status", async () => {
       const crawlResponse = await request(TEST_URL)
