@@ -518,12 +518,13 @@ export async function scrapSingleUrl(
       html = attempt.html ?? "";
       rawHtml = attempt.rawHtml ?? "";
       screenshot = attempt.screenshot ?? "";
+      
       if (attempt.pageStatusCode) {
         pageStatusCode = attempt.pageStatusCode;
       }
-      if (attempt.pageError && attempt.pageStatusCode != 200) {
+      if (attempt.pageError && attempt.pageStatusCode >= 400) {
         pageError = attempt.pageError;
-      } else {
+      } else if (attempt.pageStatusCode < 400) {
         pageError = undefined;
       }
 
