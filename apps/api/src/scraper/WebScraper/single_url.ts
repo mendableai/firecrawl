@@ -45,6 +45,8 @@ export async function generateRequestParams(
     return defaultParams;
   }
 }
+import { logScrape } from "../../services/logging/scrape_log";
+
 export async function scrapWithFireEngine({
   url,
   waitFor = 0,
@@ -60,9 +62,21 @@ export async function scrapWithFireEngine({
   headers?: Record<string, string>;
   options?: any;
 }): Promise<FireEngineResponse> {
+
+  const logParams = {
+    url,
+    scraper: "fire-engine",
+    success: false,
+    response_code: null,
+    time_taken_seconds: null,
+    error_message: "",
+    html: "",
+    startTime: Date.now(),
+  };
+
+
   try {
     const reqParams = await generateRequestParams(url);
-    // If the user has passed a wait parameter in the request, use that
     const waitParam = reqParams["params"]?.wait ?? waitFor;
     const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
     console.log(
@@ -90,6 +104,8 @@ export async function scrapWithFireEngine({
       console.error(
         `[Fire-Engine] Error fetching url: ${url} with status: ${response.status}`
       );
+      logParams.error_message = response.data?.pageError;
+      logParams.response_code = response.data?.pageStatusCode;
       return {
         html: "",
         screenshot: "",
@@ -104,14 +120,20 @@ export async function scrapWithFireEngine({
         url,
         pageOptions?.parsePDF
       );
+      logParams.success = true;
+      logParams.html = content;
+      logParams.response_code = pageStatusCode;
+      logParams.error_message = pageError;
       return { html: content, screenshot: "", pageStatusCode, pageError };
     } else {
       const data = response.data;
-      const html = data.content;
-      const screenshot = data.screenshot;
+      logParams.success = true;
+      logParams.html = data.content ?? "";
+      logParams.response_code = data.pageStatusCode;
+      logParams.error_message = data.pageError;
       return {
-        html: html ?? "",
-        screenshot: screenshot ?? "",
+        html: data.content ?? "",
+        screenshot: data.screenshot ?? "",
         pageStatusCode: data.pageStatusCode,
         pageError: data.pageError,
       };
@@ -119,10 +141,24 @@ export async function scrapWithFireEngine({
   } catch (error) {
     if (error.code === "ECONNABORTED") {
       console.log(`[Fire-Engine] Request timed out for ${url}`);
+      logParams.error_message = "Request timed out";
     } else {
       console.error(`[Fire-Engine][c] Error fetching url: ${url} -> ${error}`);
+      logParams.error_message = error.message;
     }
     return { html: "", screenshot: "" };
+  } finally {
+    const endTime = Date.now();
+    const time_taken_seconds = (endTime - logParams.startTime) / 1000;
+    await logScrape({
+      url: logParams.url,
+      scraper: logParams.scraper,
+      success: logParams.success,
+      response_code: logParams.response_code,
+      time_taken_seconds,
+      error_message: logParams.error_message,
+      html: logParams.html,
+    });
   }
 }
 
@@ -132,6 +168,16 @@ export async function scrapWithScrapingBee(
   timeout: number = universalTimeout,
   pageOptions: { parsePDF?: boolean } = { parsePDF: true }
 ): Promise<{ content: string; pageStatusCode?: number; pageError?: string }> {
+  const logParams = {
+    url,
+    scraper: wait_browser === "networkidle2" ? "scrapingBeeLoad" : "scrapingBee",
+    success: false,
+    response_code: null,
+    time_taken_seconds: null,
+    error_message: "",
+    html: "",
+    startTime: Date.now(),
+  };
   try {
     const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY);
     const clientParams = await generateRequestParams(
@@ -148,17 +194,22 @@ export async function scrapWithScrapingBee(
     });
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
+      logParams.success = true;
       return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
     } else {
       let text = "";
       try {
         const decoder = new TextDecoder();
         text = decoder.decode(response.data);
+        logParams.success = true;
       } catch (decodeError) {
         console.error(
           `[ScrapingBee][c] Error decoding response data for url: ${url} -> ${decodeError}`
         );
+        logParams.error_message = decodeError.message;
       }
+      logParams.response_code = response.status;
+      logParams.html = text;
       return {
         content: text,
         pageStatusCode: response.status,
@@ -168,11 +219,17 @@ export async function scrapWithScrapingBee(
     }
   } catch (error) {
     console.error(`[ScrapingBee][c] Error fetching url: ${url} -> ${error}`);
+    logParams.error_message = error.message;
+    logParams.response_code = error.response?.status;
     return {
       content: "",
-      pageStatusCode: error.response.status,
-      pageError: error.response.statusText,
+      pageStatusCode: error.response?.status,
+      pageError: error.response?.statusText,
     };
+  } finally {
+    const endTime = Date.now();
+    logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;
+    await logScrape(logParams);
   }
 }
 
@@ -182,6 +239,18 @@ export async function scrapWithPlaywright(
   headers?: Record<string, string>,
   pageOptions: { parsePDF?: boolean } = { parsePDF: true }
 ): Promise<{ content: string; pageStatusCode?: number; pageError?: string }> {
+  const logParams = {
+    url,
+    scraper: "playwright",
+    success: false,
+    response_code: null,
+    time_taken_seconds: null,
+    error_message: "",
+    html: "",
+    startTime: Date.now(),
+  };
+
+
   try {
     const reqParams = await generateRequestParams(url);
     // If the user has passed a wait parameter in the request, use that
@@ -207,6 +276,8 @@ export async function scrapWithPlaywright(
       console.error(
         `[Playwright] Error fetching url: ${url} with status: ${response.status}`
       );
+      logParams.error_message = response.data?.pageError;
+      logParams.response_code = response.data?.pageStatusCode;
       return {
         content: "",
         pageStatusCode: response.data?.pageStatusCode,
@@ -216,18 +287,24 @@ export async function scrapWithPlaywright(
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
+      logParams.success = true;
       return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
     } else {
       const textData = response.data;
       try {
         const data = JSON.parse(textData);
         const html = data.content;
+        logParams.success = true;
+        logParams.html = html;
+        logParams.response_code = data.pageStatusCode;
+        logParams.error_message = data.pageError;
         return {
           content: html ?? "",
           pageStatusCode: data.pageStatusCode,
           pageError: data.pageError,
         };
       } catch (jsonError) {
+        logParams.error_message = jsonError.message;
         console.error(
           `[Playwright] Error parsing JSON response for url: ${url} -> ${jsonError}`
         );
@@ -236,11 +313,17 @@ export async function scrapWithPlaywright(
     }
   } catch (error) {
     if (error.code === "ECONNABORTED") {
+      logParams.error_message = "Request timed out";
       console.log(`[Playwright] Request timed out for ${url}`);
     } else {
+      logParams.error_message = error.message;
       console.error(`[Playwright] Error fetching url: ${url} -> ${error}`);
     }
     return { content: "" };
+  } finally {
+    const endTime = Date.now();
+    logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;
+    await logScrape(logParams);
   }
 }
 
@@ -248,6 +331,18 @@ export async function scrapWithFetch(
   url: string,
   pageOptions: { parsePDF?: boolean } = { parsePDF: true }
 ): Promise<{ content: string; pageStatusCode?: number; pageError?: string }> {
+  const logParams = {
+    url,
+    scraper: "fetch",
+    success: false,
+    response_code: null,
+    time_taken_seconds: null,
+    error_message: "",
+    html: "",
+    startTime: Date.now(),
+  };
+
+
   try {
     const response = await axios.get(url, {
       headers: {
@@ -261,6 +356,8 @@ export async function scrapWithFetch(
       console.error(
         `[Axios] Error fetching url: ${url} with status: ${response.status}`
       );
+      logParams.error_message = response.statusText;
+      logParams.response_code = response.status;
       return {
         content: "",
         pageStatusCode: response.status,
@@ -270,18 +367,28 @@ export async function scrapWithFetch(
 
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
+      logParams.success = true;
       return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
     } else {
       const text = response.data;
-      return { content: text, pageStatusCode: 200 };
+      const result = { content: text, pageStatusCode: 200 };
+      logParams.success = true;
+      logParams.html = text;
+      return result;
     }
   } catch (error) {
     if (error.code === "ECONNABORTED") {
+      logParams.error_message = "Request timed out";
       console.log(`[Axios] Request timed out for ${url}`);
     } else {
+      logParams.error_message = error.message;
       console.error(`[Axios] Error fetching url: ${url} -> ${error}`);
     }
     return { content: "" };
+  } finally {
+    const endTime = Date.now();
+    logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;
+    await logScrape(logParams);
   }
 }
 

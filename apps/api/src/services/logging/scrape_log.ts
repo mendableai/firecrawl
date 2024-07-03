@@ -1,0 +1,37 @@
+import "dotenv/config";
+import { ScrapeLog } from "../../types";
+import { supabase_service } from "../supabase";
+
+export async function logScrape(scrapeLog: ScrapeLog) {
+  try {
+    // Only log jobs in production
+    // if (process.env.ENV !== "production") {
+    //   return;
+    // }
+
+    const { data, error } = await supabase_service
+      .from("scrape_logs")
+      .insert([
+        {
+          url: scrapeLog.url,
+          scraper: scrapeLog.scraper,
+          success: scrapeLog.success,
+          response_code: scrapeLog.response_code,
+          time_taken_seconds: scrapeLog.time_taken_seconds,
+          proxy: scrapeLog.proxy,
+          retried: scrapeLog.retried,
+          error_message: scrapeLog.error_message,
+          date_added: new Date().toISOString(),
+          html: scrapeLog.html,
+          ipv4_support: scrapeLog.ipv4_support,
+          ipv6_support: scrapeLog.ipv6_support,
+        },
+      ]);
+
+    if (error) {
+      console.error("Error logging proxy:\n", error);
+    }
+  } catch (error) {
+    console.error("Error logging proxy:\n", error);
+  }
+}
