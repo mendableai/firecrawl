@@ -1,0 +1,32 @@
+# Usage:
+# To use this file you have to run the docker-compose command with adding this file too on the list
+#
+# $ docker-compose -f ./docker-compose.yaml -f ./docker-compose-dev-override.yaml up --build
+#
+# So that all updates here are going to be added to the main docker-compose file.
+
+version: '3.9'
+
+x-common-service: &common-service
+    env_file:
+      - apps/api/.env
+    volumes:
+      - ./apps/api:/app
+    environment:
+    - USE_DB_AUTHENTICATION=${USE_DB_AUTHENTICATION:-false}
+    - BULL_AUTH_KEY=${BULL_AUTH_KEY:-@}
+
+services:
+  playwright-service:
+    ports:
+      - "3000:3000"
+      - "3003:3003"
+      - "8800:8800"
+
+  api:
+    <<: *common-service
+    command: [ "pnpm", "run", "start:local" ]
+
+  worker:
+    <<: *common-service
+    command: [ "pnpm", "run", "workers" ]
