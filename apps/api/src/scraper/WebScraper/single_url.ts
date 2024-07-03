@@ -290,7 +290,7 @@ export async function scrapSingleUrl(
       }
       if (attempt.pageError && attempt.pageStatusCode >= 400) {
         pageError = attempt.pageError;
-      } else if (attempt.pageStatusCode < 400) {
+      } else if (attempt && attempt.pageStatusCode && attempt.pageStatusCode < 400) {
         pageError = undefined;
       }
 
