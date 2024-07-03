@@ -13,7 +13,7 @@ If you're contributing, note that the process is similar to other open source re
 
 **./apps/api/.env:**
 
-```toml
+```txt
 NUM_WORKERS_PER_QUEUE=8
 PORT=3002
 HOST=0.0.0.0
@@ -51,7 +51,7 @@ To start, we won't set up authentication, or any optional sub services (pdf pars
 
 **.env**:
 
-```toml
+```txt
 # ===== Required ENVS ======
 NUM_WORKERS_PER_QUEUE=8
 PORT=3002
