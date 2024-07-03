@@ -46,6 +46,8 @@ export async function scrapWithScrapingBee(
       if (contentType && contentType.includes("application/pdf")) {
         logParams.success = true;
         const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+        logParams.response_code = pageStatusCode;
+        logParams.error_message = pageError;
         return { content, pageStatusCode, pageError };
       } else {
         let text = "";
@@ -62,12 +64,11 @@ export async function scrapWithScrapingBee(
         logParams.response_code = response.status;
         logParams.html = text;
         logParams.success = response.status >= 200 && response.status < 300 || response.status === 404;
-        logParams.error_message = response.statusText != "OK" ? response.statusText : undefined;
+        logParams.error_message = response.statusText !== "OK" ? response.statusText : undefined;
         return {
           content: text,
           pageStatusCode: response.status,
-          pageError:
-            response.statusText != "OK" ? response.statusText : undefined,
+          pageError: response.statusText !== "OK" ? response.statusText : undefined,
         };
       }
     } catch (error) {

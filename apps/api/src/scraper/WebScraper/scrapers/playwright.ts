@@ -66,7 +66,10 @@ export async function scrapWithPlaywright(
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
       logParams.success = true;
-      return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+      logParams.response_code = pageStatusCode;
+      logParams.error_message = pageError;
+      return { content, pageStatusCode, pageError };
     } else {
       const textData = response.data;
       try {
@@ -86,7 +89,7 @@ export async function scrapWithPlaywright(
         console.error(
           `[Playwright] Error parsing JSON response for url: ${url} -> ${jsonError}`
         );
-        return { content: "" };
+        return { content: "", pageStatusCode: null, pageError: logParams.error_message };
       }
     }
   } catch (error) {
@@ -97,7 +100,7 @@ export async function scrapWithPlaywright(
       logParams.error_message = error.message || error;
       console.error(`[Playwright] Error fetching url: ${url} -> ${error}`);
     }
-    return { content: "" };
+    return { content: "", pageStatusCode: null, pageError: logParams.error_message };
   } finally {
     const endTime = Date.now();
     logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;

@@ -87,7 +87,8 @@ export async function scrapWithFireEngine({
         pageOptions?.parsePDF
       );
       logParams.success = true;
-      // We shouldnt care about the pdf logging here I believe
+      logParams.response_code = pageStatusCode;
+      logParams.error_message = pageError;
       return { html: content, screenshot: "", pageStatusCode, pageError };
     } else {
       const data = response.data;
@@ -112,18 +113,12 @@ export async function scrapWithFireEngine({
       console.error(`[Fire-Engine][c] Error fetching url: ${url} -> ${error}`);
       logParams.error_message = error.message || error;
     }
-    return { html: "", screenshot: "" };
+    return { html: "", screenshot: "", pageStatusCode: null, pageError: logParams.error_message };
   } finally {
     const endTime = Date.now();
-    const time_taken_seconds = (endTime - logParams.startTime) / 1000;
-    await logScrape({
-      url: logParams.url,
-      scraper: logParams.scraper,
-      success: logParams.success,
-      response_code: logParams.response_code,
-      time_taken_seconds,
-      error_message: logParams.error_message,
-      html: logParams.html,
-    });
+    logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;
+    await logScrape(logParams);
   }
 }
+
+

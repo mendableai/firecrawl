@@ -3,7 +3,6 @@ import { logScrape } from "../../../services/logging/scrape_log";
 import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 import { universalTimeout } from "../global";
 
-
 /**
  * Scrapes a URL with Axios
  * @param url The URL to scrape
@@ -50,15 +49,16 @@ export async function scrapWithFetch(
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
       logParams.success = true;
-      return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+      logParams.response_code = pageStatusCode;
+      logParams.error_message = pageError;
+      return { content, pageStatusCode, pageError };
     } else {
       const text = response.data;
-      const result = { content: text, pageStatusCode: 200 };
       logParams.success = true;
       logParams.html = text;
-      logParams.response_code = 200;
-      logParams.error_message = null;
-      return result;
+      logParams.response_code = response.status;
+      return { content: text, pageStatusCode: response.status, pageError: null };
     }
   } catch (error) {
     if (error.code === "ECONNABORTED") {
@@ -68,7 +68,7 @@ export async function scrapWithFetch(
       logParams.error_message = error.message || error;
       console.error(`[Axios] Error fetching url: ${url} -> ${error}`);
     }
-    return { content: "" };
+    return { content: "", pageStatusCode: null, pageError: logParams.error_message };
   } finally {
     const endTime = Date.now();
     logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;
