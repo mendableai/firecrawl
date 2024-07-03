@@ -117,7 +117,7 @@ export async function scrapWithFireEngine({
   } finally {
     const endTime = Date.now();
     logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;
-    await logScrape(logParams);
+    await logScrape(logParams, pageOptions);
   }
 }
 
