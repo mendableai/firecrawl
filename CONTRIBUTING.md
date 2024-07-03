@@ -1,6 +1,7 @@
 # CONTRIBUTORS GUIDE:
 
 Welcome to [Firecrawl](https://firecrawl.dev) 🔥!
+
 Here are some instructions on how to get the project locally, so you can run it on your own (and contribute).
 
 If you're contributing, note that the process is similar to other open source repos i.e. (fork firecrawl, make changes, run tests, PR). If you have any questions, and would like help getting on board, reach out to **hello@mendable.ai** for more or submit an issue!
@@ -10,28 +11,27 @@ If you're contributing, note that the process is similar to other open source re
 ### WITH DOCKER
 
 - Copy the default `.env.example` to `.env` or use this defaults params only :
+    **./apps/api/.env:**
 
-**./apps/api/.env:**
+    ```txt
+    NUM_WORKERS_PER_QUEUE=8
+    PORT=3002
+    HOST=0.0.0.0
+    REDIS_URL=redis://localhost:6379
 
-```txt
-NUM_WORKERS_PER_QUEUE=8
-PORT=3002
-HOST=0.0.0.0
-REDIS_URL=redis://localhost:6379
+    ## To turn on DB authentication, you need to set up supabase.
+    USE_DB_AUTHENTICATION=false
+    BULL_AUTH_KEY=@
 
-## To turn on DB authentication, you need to set up supabase.
-USE_DB_AUTHENTICATION=false
-BULL_AUTH_KEY=@
-
-## for prod or local
-ENV="local" # or production if you're on prod
-```
+    ## for prod or local
+    ENV="local" # or production if you're on prod
+    ```
 
 - Run with docker compose :
-```bash
-$ docker compose -f ./docker-compose.yaml -f ./docker-compose-dev-override.yaml up --build
-```
-Note that `docker-compose-dev-override.yaml` which contains all 'dev' params you need to have the stack started, up and running.
+    ```bash
+    $ docker compose -f ./docker-compose.yaml -f ./docker-compose-dev-override.yaml up --build
+    ```
+    Note that `docker-compose-dev-override.yaml` which contains all 'dev' params you need to have the stack started, up and running.
 
 And VOILA, you're all done.
 
