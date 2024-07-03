@@ -4,6 +4,14 @@ import { generateRequestParams } from "../single_url";
 import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 import { universalTimeout } from "../global";
 
+/**
+ * Scrapes a URL with Playwright
+ * @param url The URL to scrape
+ * @param waitFor The time to wait for the page to load
+ * @param headers The headers to send with the request
+ * @param pageOptions The options for the page
+ * @returns The scraped content
+ */
 export async function scrapWithPlaywright(
   url: string,
   waitFor: number = 0,

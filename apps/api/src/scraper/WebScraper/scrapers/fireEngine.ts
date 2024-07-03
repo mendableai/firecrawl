@@ -5,6 +5,16 @@ import { generateRequestParams } from "../single_url";
 import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 import { universalTimeout } from "../global";
 
+/**
+ * Scrapes a URL with Fire-Engine
+ * @param url The URL to scrape
+ * @param waitFor The time to wait for the page to load
+ * @param screenshot Whether to take a screenshot
+ * @param pageOptions The options for the page
+ * @param headers The headers to send with the request
+ * @param options The options for the request
+ * @returns The scraped content
+ */
 export async function scrapWithFireEngine({
   url,
   waitFor = 0,

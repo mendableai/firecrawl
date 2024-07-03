@@ -4,7 +4,14 @@ import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 import { universalTimeout } from "../global";
 import { ScrapingBeeClient } from "scrapingbee";
 
-
+/**
+ * Scrapes a URL with ScrapingBee
+ * @param url The URL to scrape
+ * @param wait_browser The browser event to wait for
+ * @param timeout The timeout for the scrape
+ * @param pageOptions The options for the page
+ * @returns The scraped content
+ */
 export async function scrapWithScrapingBee(
     url: string,
     wait_browser: string = "domcontentloaded",

@@ -3,6 +3,13 @@ import { logScrape } from "../../../services/logging/scrape_log";
 import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 import { universalTimeout } from "../global";
 
+
+/**
+ * Scrapes a URL with Axios
+ * @param url The URL to scrape
+ * @param pageOptions The options for the page
+ * @returns The scraped content
+ */
 export async function scrapWithFetch(
   url: string,
   pageOptions: { parsePDF?: boolean } = { parsePDF: true }
