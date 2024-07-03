@@ -121,13 +121,11 @@ export async function scrapWithFireEngine({
         pageOptions?.parsePDF
       );
       logParams.success = true;
-      logParams.html = content;
-      logParams.response_code = pageStatusCode;
-      logParams.error_message = pageError;
+      // We shouldnt care about the pdf logging here I believe
       return { html: content, screenshot: "", pageStatusCode, pageError };
     } else {
       const data = response.data;
-      logParams.success = true;
+      logParams.success = data.pageStatusCode >= 200 && data.pageStatusCode < 300 || data.pageStatusCode === 404;
       logParams.html = data.content ?? "";
       logParams.response_code = data.pageStatusCode;
       logParams.error_message = data.pageError;
@@ -144,7 +142,7 @@ export async function scrapWithFireEngine({
       logParams.error_message = "Request timed out";
     } else {
       console.error(`[Fire-Engine][c] Error fetching url: ${url} -> ${error}`);
-      logParams.error_message = error.message;
+      logParams.error_message = error.message || error;
     }
     return { html: "", screenshot: "" };
   } finally {
@@ -195,7 +193,8 @@ export async function scrapWithScrapingBee(
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
       logParams.success = true;
-      return await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+      return { content, pageStatusCode, pageError };
     } else {
       let text = "";
       try {
@@ -206,10 +205,12 @@ export async function scrapWithScrapingBee(
         console.error(
           `[ScrapingBee][c] Error decoding response data for url: ${url} -> ${decodeError}`
         );
-        logParams.error_message = decodeError.message;
+        logParams.error_message = decodeError.message || decodeError;
       }
       logParams.response_code = response.status;
       logParams.html = text;
+      logParams.success = response.status >= 200 && response.status < 300 || response.status === 404;
+      logParams.error_message = response.statusText != "OK" ? response.statusText : undefined;
       return {
         content: text,
         pageStatusCode: response.status,
@@ -219,7 +220,7 @@ export async function scrapWithScrapingBee(
     }
   } catch (error) {
     console.error(`[ScrapingBee][c] Error fetching url: ${url} -> ${error}`);
-    logParams.error_message = error.message;
+    logParams.error_message = error.message || error;
     logParams.response_code = error.response?.status;
     return {
       content: "",
@@ -304,7 +305,7 @@ export async function scrapWithPlaywright(
           pageError: data.pageError,
         };
       } catch (jsonError) {
-        logParams.error_message = jsonError.message;
+        logParams.error_message = jsonError.message || jsonError;
         console.error(
           `[Playwright] Error parsing JSON response for url: ${url} -> ${jsonError}`
         );
@@ -316,7 +317,7 @@ export async function scrapWithPlaywright(
       logParams.error_message = "Request timed out";
       console.log(`[Playwright] Request timed out for ${url}`);
     } else {
-      logParams.error_message = error.message;
+      logParams.error_message = error.message || error;
       console.error(`[Playwright] Error fetching url: ${url} -> ${error}`);
     }
     return { content: "" };
@@ -374,6 +375,8 @@ export async function scrapWithFetch(
       const result = { content: text, pageStatusCode: 200 };
       logParams.success = true;
       logParams.html = text;
+      logParams.response_code = 200;
+      logParams.error_message = null;
       return result;
     }
   } catch (error) {
@@ -381,7 +384,7 @@ export async function scrapWithFetch(
       logParams.error_message = "Request timed out";
       console.log(`[Axios] Request timed out for ${url}`);
     } else {
-      logParams.error_message = error.message;
+      logParams.error_message = error.message || error;
       console.error(`[Axios] Error fetching url: ${url} -> ${error}`);
     }
     return { content: "" };
