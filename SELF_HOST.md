@@ -1,5 +1,3 @@
-Self-hosting Firecrawl
-
 ## Self-hosting Firecrawl
 
 _We're currently working on a more in-depth guide on how to self-host, but in the meantime, here is a simplified version._
