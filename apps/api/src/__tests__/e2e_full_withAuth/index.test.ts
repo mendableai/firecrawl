@@ -131,6 +131,28 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data.metadata.pageStatusCode).toBe(200);
       expect(response.body.data.metadata.pageError).toBeUndefined();
     }, 30000); // 30 seconds timeout
+
+    it.concurrent("should return a successful response with a valid API key and includeRawHtml set to true", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://roastmywebsite.ai",
+          pageOptions: { includeRawHtml: true },
+        });
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("data");
+      expect(response.body.data).toHaveProperty("content");
+      expect(response.body.data).toHaveProperty("markdown");
+      expect(response.body.data).toHaveProperty("rawHtml");
+      expect(response.body.data).toHaveProperty("metadata");
+      expect(response.body.data.content).toContain("_Roast_");
+      expect(response.body.data.markdown).toContain("_Roast_");
+      expect(response.body.data.rawHtml).toContain("<h1");
+      expect(response.body.data.metadata.pageStatusCode).toBe(200);
+      expect(response.body.data.metadata.pageError).toBeUndefined();
+    }, 30000); // 30 seconds timeout
     
    it.concurrent('should return a successful response for a valid scrape with PDF file', async () => {
       const response = await request(TEST_URL)
@@ -804,6 +826,46 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
     }, 180000);
 
+  it.concurrent("should crawl external content links when allowed", async () => {
+    const crawlInitResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send({
+        url: "https://mendable.ai",
+        crawlerOptions: {
+          allowExternalContentLinks: true,
+          ignoreSitemap: true,
+          returnOnlyUrls: true,
+          limit: 50
+        }
+      });
+
+      expect(crawlInitResponse.statusCode).toBe(200);
+      expect(crawlInitResponse.body).toHaveProperty("jobId");
+
+      let crawlStatus: string;
+      let crawlData = [];
+      while (crawlStatus !== "completed") {
+        const statusResponse = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlInitResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        crawlStatus = statusResponse.body.status;
+        if (statusResponse.body.data) {
+          crawlData = statusResponse.body.data;
+        }
+        if (crawlStatus !== "completed") {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+      console.log(crawlData)
+      expect(crawlData.length).toBeGreaterThan(0);
+      expect(crawlData).toEqual(expect.arrayContaining([
+        expect.objectContaining({ url: expect.stringContaining("https://firecrawl.dev/?ref=mendable+banner") }),
+        expect.objectContaining({ url: expect.stringContaining("https://mendable.ai/pricing") }),
+        expect.objectContaining({ url: expect.stringContaining("https://x.com/CalebPeffer") })
+      ]));
+    }, 180000); // 3 minutes timeout
   });
 
   describe("POST /v0/crawlWebsitePreview", () => {
@@ -1176,6 +1238,47 @@ describe("E2E Tests for API Routes", () => {
       expect(llmExtraction).toHaveProperty("is_open_source");
       expect(llmExtraction.is_open_source).toBe(false);
       expect(typeof llmExtraction.is_open_source).toBe("boolean");
+    }, 60000); // 60 secs
+
+    it.concurrent("should extract data using LLM extraction mode with RawHtml", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://mendable.ai",
+    
+          extractorOptions: {
+            mode: "llm-extraction-from-raw-html",
+            extractionPrompt:
+              "Based on the information on the page, what are the primary and secondary CTA buttons?",
+            extractionSchema: {
+              type: "object",
+              properties: {
+                primary_cta: {
+                  type: "string",
+                },
+                secondary_cta: {
+                  type: "string",
+                },
+              },
+              required: ["primary_cta", "secondary_cta"],
+            },
+          },
+        });
+
+      // Ensure that the job was successfully created before proceeding with LLM extraction
+      expect(response.statusCode).toBe(200);
+
+      // Assuming the LLM extraction object is available in the response body under `data.llm_extraction`
+      let llmExtraction = response.body.data.llm_extraction;
+
+      // Check if the llm_extraction object has the required properties with correct types and values
+      expect(llmExtraction).toHaveProperty("primary_cta");
+      expect(typeof llmExtraction.primary_cta).toBe("string");
+      expect(llmExtraction).toHaveProperty("secondary_cta");
+      expect(typeof llmExtraction.secondary_cta).toBe("string");
+   
     }, 60000); // 60 secs
   });
 

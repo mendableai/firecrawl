@@ -107,7 +107,7 @@ export interface Params {
     [key: string]: any;
     extractorOptions?: {
         extractionSchema: z.ZodSchema | any;
-        mode?: "llm-extraction";
+        mode?: "llm-extraction" | "llm-extraction-from-raw-html";
         extractionPrompt?: string;
     };
 }

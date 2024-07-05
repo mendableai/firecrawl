@@ -13,6 +13,7 @@ export interface Progress {
 export type PageOptions = {
   onlyMainContent?: boolean;
   includeHtml?: boolean;
+  includeRawHtml?: boolean;
   fallback?: boolean;
   fetchPageContent?: boolean;
   waitFor?: number;
@@ -21,10 +22,11 @@ export type PageOptions = {
   replaceAllPathsWithAbsolutePaths?: boolean;
   parsePDF?: boolean;
   removeTags?: string | string[];
+  onlyIncludeTags?: string | string[];
 };
 
 export type ExtractorOptions = {
-  mode: "markdown" | "llm-extraction";
+  mode: "markdown" | "llm-extraction" | "llm-extraction-from-markdown" | "llm-extraction-from-raw-html";
   extractionPrompt?: string;
   extractionSchema?: Record<string, any>;
 }
@@ -50,6 +52,7 @@ export type CrawlerOptions = {
   ignoreSitemap?: boolean;
   mode?: "default" | "fast"; // have a mode of some sort
   allowBackwardCrawling?: boolean;
+  allowExternalContentLinks?: boolean;
 }
 
 export type WebScraperOptions = {
@@ -72,6 +75,7 @@ export class Document {
   content: string;
   markdown?: string;
   html?: string;
+  rawHtml?: string;
   llm_extraction?: Record<string, any>;
   createdAt?: Date;
   updatedAt?: Date;

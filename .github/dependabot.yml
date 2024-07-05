@@ -1,0 +1,57 @@
+version: 2
+updates:
+  # playwright-service
+  - package-ecosystem: "pip"
+    directory: "/apps/playwright-service"
+    schedule:
+      interval: "weekly"
+    groups:
+      prod-deps:
+        dependency-type: "production"
+      dev-deps:
+        dependency-type: "development"
+    commit-message:
+      prefix: "apps/playwright-service"
+      include: "scope"
+
+  # python-sdk
+  - package-ecosystem: "pip"
+    directory: "/apps/python-sdk"
+    schedule:
+      interval: "weekly"
+    groups:
+      prod-deps:
+        dependency-type: "production"
+      dev-deps:
+        dependency-type: "development"
+    commit-message:
+      prefix: "apps/python-sdk"
+      include: "scope"
+
+  # api
+  - package-ecosystem: "npm"
+    directory: "/apps/api"
+    schedule:
+      interval: "weekly"
+    groups:
+      prod-deps:
+        dependency-type: "production"
+      dev-deps:
+        dependency-type: "development"
+    commit-message:
+      prefix: "apps/api"
+      include: "scope"
+
+  # test-suite
+  - package-ecosystem: "npm"
+    directory: "/apps/test-suite"
+    schedule:
+      interval: "weekly"
+    groups:
+      prod-deps:
+        dependency-type: "production"
+      dev-deps:
+        dependency-type: "development"
+    commit-message:
+      prefix: "apps/test-suite"
+      include: "scope"

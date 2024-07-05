@@ -40,6 +40,7 @@ export class WebScraperDataProvider {
     "gpt-4-turbo";
   private crawlerMode: string = "default";
   private allowBackwardCrawling: boolean = false;
+  private allowExternalContentLinks: boolean = false;
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -66,6 +67,7 @@ export class WebScraperDataProvider {
           const result = await scrapSingleUrl(
             url,
             this.pageOptions,
+            this.extractorOptions,
             existingHTML
           );
           processedUrls++;
@@ -172,6 +174,7 @@ export class WebScraperDataProvider {
       limit: this.limit,
       generateImgAltText: this.generateImgAltText,
       allowBackwardCrawling: this.allowBackwardCrawling,
+      allowExternalContentLinks: this.allowExternalContentLinks,
     });
 
     let links = await crawler.start(
@@ -269,10 +272,16 @@ export class WebScraperDataProvider {
     // documents = await this.applyImgAltText(documents);
 
     if (
-      this.extractorOptions.mode === "llm-extraction" &&
+      (this.extractorOptions.mode === "llm-extraction" || this.extractorOptions.mode === "llm-extraction-from-markdown") &&
       this.mode === "single_urls"
     ) {
-      documents = await generateCompletions(documents, this.extractorOptions);
+      documents = await generateCompletions(documents, this.extractorOptions, "markdown");
+    }
+    if (
+      (this.extractorOptions.mode === "llm-extraction-from-raw-html") &&
+      this.mode === "single_urls"
+    ) {
+      documents = await generateCompletions(documents, this.extractorOptions, "raw-html");
     }
     return documents.concat(pdfDocuments).concat(docxDocuments);
   }
@@ -489,6 +498,7 @@ export class WebScraperDataProvider {
     this.crawlerMode = options.crawlerOptions?.mode ?? "default";
     this.ignoreSitemap = options.crawlerOptions?.ignoreSitemap ?? false;
     this.allowBackwardCrawling = options.crawlerOptions?.allowBackwardCrawling ?? false;
+    this.allowExternalContentLinks = options.crawlerOptions?.allowExternalContentLinks ?? false;
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {
