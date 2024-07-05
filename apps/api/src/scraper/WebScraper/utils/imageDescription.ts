@@ -48,7 +48,7 @@ export async function getImageDescription(
           ]
         });
 
-        return response.content[0].text;
+        return response[0].content.text;
       }
       default: {
         if (!process.env.OPENAI_API_KEY) {
