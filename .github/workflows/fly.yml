@@ -207,19 +207,13 @@ jobs:
           PYTHON_SDK_VERSION_INCREMENTED=$(python .github/scripts/check_version_has_incremented.py python ./apps/python-sdk/firecrawl firecrawl-py)
           echo "PYTHON_SDK_VERSION_INCREMENTED=$PYTHON_SDK_VERSION_INCREMENTED" >> $GITHUB_ENV
 
-      - name: Build the package
-        if: ${{ env.PYTHON_SDK_VERSION_INCREMENTED == 'true' }}
-        run: |
-          python -m build
-        working-directory: ./apps/python-sdk
-
-      - name: Publish to PyPI
+      - name: Build and Publish to PyPI
         if: ${{ env.PYTHON_SDK_VERSION_INCREMENTED == 'true' }}
         env:
           TWINE_USERNAME: ${{ secrets.PYPI_USERNAME }}
           TWINE_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
         run: |
-          twine upload dist/*
+          bash ./build_and_publish.sh
         working-directory: ./apps/python-sdk
 
   build-and-publish-js-sdk:
@@ -260,6 +254,6 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          npm run build-and-publish
+          bash ./build_and_publish.sh
         working-directory: ./apps/js-sdk/firecrawl
       

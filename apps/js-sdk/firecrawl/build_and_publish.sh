@@ -19,6 +19,9 @@ function build_and_publish {
         exit 1
     fi
 
+    # Wait for a moment to ensure npm publish has processed
+    sleep 10
+
     # Revert the changes to the original placeholder in package.json
     jq '.name = "PLACEHOLDER_NAME"' package.json > temp.json && mv temp.json package.json
 
