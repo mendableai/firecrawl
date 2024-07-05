@@ -114,3 +114,18 @@ export enum NotificationType {
   LIMIT_REACHED = "limitReached",
   RATE_LIMIT_REACHED = "rateLimitReached",
 }
+
+export type ScrapeLog = {
+  url: string;
+  scraper: string;
+  success?: boolean;
+  response_code?: number;
+  time_taken_seconds?: number;
+  proxy?: string;
+  retried?: boolean;
+  error_message?: string;
+  date_added?: string; // ISO 8601 format
+  html?: string;
+  ipv4_support?: boolean | null;
+  ipv6_support?: boolean | null;
+};
