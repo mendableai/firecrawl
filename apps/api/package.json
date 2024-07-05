@@ -90,7 +90,7 @@
     "posthog-node": "^4.0.1",
     "promptable": "^0.0.10",
     "puppeteer": "^22.12.1",
-    "rate-limiter-flexible": "^5.0.3",
+    "rate-limiter-flexible": "2.4.2",
     "redis": "^4.6.7",
     "resend": "^3.4.0",
     "robots-parser": "^3.0.1",
