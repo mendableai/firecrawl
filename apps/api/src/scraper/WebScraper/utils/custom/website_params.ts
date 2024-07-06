@@ -189,4 +189,7 @@ export const urlSpecificParams = {
       },
     },
   },
+  "ir.veeva.com":{
+    defaultScraper: "fire-engine",
+  },
 };
