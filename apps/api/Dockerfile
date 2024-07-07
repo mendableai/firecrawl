@@ -1,11 +1,9 @@
 FROM node:20-slim AS base
-
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-
 LABEL fly_launch_runtime="Node.js"
-
 RUN corepack enable
+
 WORKDIR /app
 
 # Install dependencies only
