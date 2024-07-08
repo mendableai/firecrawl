@@ -27,6 +27,7 @@ We provide an easy to use API with our hosted version. You can find the playgrou
 - [x] [Crew.ai Integration](https://docs.crewai.com/)
 - [x] [Flowise AI Integration](https://docs.flowiseai.com/integrations/langchain/document-loaders/firecrawl)
 - [x] [PraisonAI Integration](https://docs.praison.ai/firecrawl/)
+- [x] [Zapier Integration](https://zapier.com/apps/firecrawl/integrations)
 - [ ] Want an SDK or Integration? Let us know by opening an issue.
 
 To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/CONTRIBUTING.md).
