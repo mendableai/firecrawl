@@ -20,8 +20,13 @@ We provide an easy to use API with our hosted version. You can find the playgrou
 - [x] [Python SDK](https://github.com/mendableai/firecrawl/tree/main/apps/python-sdk)
 - [x] [Node SDK](https://github.com/mendableai/firecrawl/tree/main/apps/js-sdk)
 - [x] [Langchain Integration 🦜🔗](https://python.langchain.com/docs/integrations/document_loaders/firecrawl/)
-- [x] [Llama Index Integration 🦙](https://docs.llamaindex.ai/en/latest/examples/data_connectors/WebPageDemo/#using-firecrawl-reader)
 - [x] [Langchain JS Integration 🦜🔗](https://js.langchain.com/docs/integrations/document_loaders/web_loaders/firecrawl)
+- [x] [Llama Index Integration 🦙](https://docs.llamaindex.ai/en/latest/examples/data_connectors/WebPageDemo/#using-firecrawl-reader)
+- [x] [Dify Integration](https://dify.ai/blog/dify-ai-blog-integrated-with-firecrawl)
+- [x] [Langflow Integration](https://docs.langflow.org/)
+- [x] [Crew.ai Integration](https://docs.crewai.com/)
+- [x] [Flowise AI Integration](https://docs.flowiseai.com/integrations/langchain/document-loaders/firecrawl)
+- [x] [PraisonAI Integration](https://docs.praison.ai/firecrawl/)
 - [ ] Want an SDK or Integration? Let us know by opening an issue.
 
 To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/CONTRIBUTING.md).
