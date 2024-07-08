@@ -44,7 +44,7 @@ async function sendEmailNotification(
 
   try {
     const { data, error } = await resend.emails.send({
-      from: "Firecrawl <firecrawl@getmendableai.com>",
+      from: "Firecrawl <hello@tryfirecrawl.com>",
       to: [email],
       reply_to: "hello@firecrawl.com",
       subject: emailTemplates[notificationType].subject,
