@@ -21,7 +21,7 @@ We provide an easy to use API with our hosted version. You can find the playgrou
 - [x] [Node SDK](https://github.com/mendableai/firecrawl/tree/main/apps/js-sdk)
 - [x] [Langchain Integration 🦜🔗](https://python.langchain.com/docs/integrations/document_loaders/firecrawl/)
 - [x] [Llama Index Integration 🦙](https://docs.llamaindex.ai/en/latest/examples/data_connectors/WebPageDemo/#using-firecrawl-reader)
-- [X] [Langchain JS Integration 🦜🔗](https://js.langchain.com/docs/integrations/document_loaders/web_loaders/firecrawl)
+- [x] [Langchain JS Integration 🦜🔗](https://js.langchain.com/docs/integrations/document_loaders/web_loaders/firecrawl)
 - [ ] Want an SDK or Integration? Let us know by opening an issue.
 
 To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/CONTRIBUTING.md).
@@ -189,30 +189,29 @@ curl -X POST https://api.firecrawl.dev/v0/scrape \
 
 ```json
 {
-    "success": true,
-    "data": {
-      "content": "Raw Content",
-      "metadata": {
-        "title": "Mendable",
-        "description": "Mendable allows you to easily build AI chat applications. Ingest, customize, then deploy with one line of code anywhere you want. Brought to you by SideGuide",
-        "robots": "follow, index",
-        "ogTitle": "Mendable",
-        "ogDescription": "Mendable allows you to easily build AI chat applications. Ingest, customize, then deploy with one line of code anywhere you want. Brought to you by SideGuide",
-        "ogUrl": "https://mendable.ai/",
-        "ogImage": "https://mendable.ai/mendable_new_og1.png",
-        "ogLocaleAlternate": [],
-        "ogSiteName": "Mendable",
-        "sourceURL": "https://mendable.ai/"
-      },
-      "llm_extraction": {
-        "company_mission": "Train a secure AI on your technical resources that answers customer and employee questions so your team doesn't have to",
-        "supports_sso": true,
-        "is_open_source": false,
-        "is_in_yc": true
-      }
+  "success": true,
+  "data": {
+    "content": "Raw Content",
+    "metadata": {
+      "title": "Mendable",
+      "description": "Mendable allows you to easily build AI chat applications. Ingest, customize, then deploy with one line of code anywhere you want. Brought to you by SideGuide",
+      "robots": "follow, index",
+      "ogTitle": "Mendable",
+      "ogDescription": "Mendable allows you to easily build AI chat applications. Ingest, customize, then deploy with one line of code anywhere you want. Brought to you by SideGuide",
+      "ogUrl": "https://mendable.ai/",
+      "ogImage": "https://mendable.ai/mendable_new_og1.png",
+      "ogLocaleAlternate": [],
+      "ogSiteName": "Mendable",
+      "sourceURL": "https://mendable.ai/"
+    },
+    "llm_extraction": {
+      "company_mission": "Train a secure AI on your technical resources that answers customer and employee questions so your team doesn't have to",
+      "supports_sso": true,
+      "is_open_source": false,
+      "is_in_yc": true
     }
+  }
 }
-
 ```
 
 ## Using Python SDK
@@ -253,7 +252,7 @@ With LLM extraction, you can easily extract structured data from any URL. We sup
 ```python
 class ArticleSchema(BaseModel):
     title: str
-    points: int 
+    points: int
     by: str
     commentsURL: str
 
@@ -302,34 +301,29 @@ To scrape a single URL with error handling, use the `scrapeUrl` method. It takes
 
 ```js
 try {
-  const url = 'https://example.com';
+  const url = "https://example.com";
   const scrapedData = await app.scrapeUrl(url);
   console.log(scrapedData);
-
 } catch (error) {
-  console.error(
-    'Error occurred while scraping:',
-    error.message
-  );
+  console.error("Error occurred while scraping:", error.message);
 }
 ```
-
 
 ### Crawling a Website
 
 To crawl a website with error handling, use the `crawlUrl` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
 
 ```js
-const crawlUrl = 'https://example.com';
+const crawlUrl = "https://example.com";
 const params = {
   crawlerOptions: {
-    excludes: ['blog/'],
+    excludes: ["blog/"],
     includes: [], // leave empty for all pages
     limit: 1000,
   },
   pageOptions: {
-    onlyMainContent: true
-  }
+    onlyMainContent: true,
+  },
 };
 const waitUntilDone = true;
 const timeout = 5;
@@ -339,9 +333,7 @@ const crawlResult = await app.crawlUrl(
   waitUntilDone,
   timeout
 );
-
 ```
-
 
 ### Checking Crawl Status
 
@@ -352,12 +344,10 @@ const status = await app.checkCrawlStatus(jobId);
 console.log(status);
 ```
 
-
-
 ### Extracting structured data from a URL
 
 With LLM extraction, you can easily extract structured data from any URL. We support zod schema to make it easier for you too. Here is how you to use it:
- 
+
 ```js
 import FirecrawlApp from "@mendable/firecrawl-js";
 import { z } from "zod";
@@ -393,17 +383,28 @@ console.log(scrapeResult.data["llm_extraction"]);
 With the `search` method, you can search for a query in a search engine and get the top results along with the page content for each result. The method takes the query as a parameter and returns the search results.
 
 ```js
-const query = 'what is mendable?';
+const query = "what is mendable?";
 const searchResults = await app.search(query, {
   pageOptions: {
-    fetchPageContent: true // Fetch the page content for each search result
-  }
+    fetchPageContent: true, // Fetch the page content for each search result
+  },
 });
-
 ```
 
 ## Contributing
 
 We love contributions! Please read our [contributing guide](CONTRIBUTING.md) before submitting a pull request.
 
-*It is the sole responsibility of the end users to respect websites' policies when scraping, searching and crawling with Firecrawl. Users are advised to adhere to the applicable privacy policies and terms of use of the websites prior to initiating any scraping activities. By default, Firecrawl respects the directives specified in the websites' robots.txt files when crawling. By utilizing Firecrawl, you expressly agree to comply with these conditions.*
+_It is the sole responsibility of the end users to respect websites' policies when scraping, searching and crawling with Firecrawl. Users are advised to adhere to the applicable privacy policies and terms of use of the websites prior to initiating any scraping activities. By default, Firecrawl respects the directives specified in the websites' robots.txt files when crawling. By utilizing Firecrawl, you expressly agree to comply with these conditions._
+
+## License Disclaimer
+
+This project is primarily licensed under the GNU Affero General Public License v3.0 (AGPL-3.0), as specified in the LICENSE file in the root directory of this repository. However, certain components of this project, specifically the SDKs located in the `/apps/js-sdk` and `/apps/python-sdk` directories, are licensed under the MIT License.
+
+Please note:
+
+- The AGPL-3.0 license applies to all parts of the project unless otherwise specified.
+- The SDKs in `/apps/js-sdk` and `/apps/python-sdk` are licensed under the MIT License. Refer to the LICENSE files in these specific directories for details.
+- When using or contributing to this project, ensure you comply with the appropriate license terms for the specific component you are working with.
+
+For more details on the licensing of specific components, please refer to the LICENSE files in the respective directories or contact the project maintainers.
