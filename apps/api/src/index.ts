@@ -26,10 +26,27 @@ if (cluster.isMaster) {
   }
 
   cluster.on("exit", (worker, code, signal) => {
-    console.log(`Worker ${worker.process.pid} exited`);
-    console.log("Starting a new worker");
-    cluster.fork();
+    if (code !== null) {
+      console.log(`Worker ${worker.process.pid} exited`);
+      console.log("Starting a new worker");
+      cluster.fork();
+    }
   });
+
+  const onExit = () => {
+    console.log("Shutting down gracefully...");
+
+    if (cluster.workers) {
+      for (const worker of Object.keys(cluster.workers || {})) {
+        cluster.workers[worker].process.kill();
+      }
+    }
+
+    process.exit();
+  };
+
+  process.on("SIGINT", onExit);
+  process.on("SIGTERM", onExit);
 } else {
   const app = express();
 
