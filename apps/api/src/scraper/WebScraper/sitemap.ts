@@ -1,16 +1,29 @@
 import axios from "axios";
 import { axiosTimeout } from "../../lib/timeout";
 import { parseStringPromise } from "xml2js";
+import { scrapWithFireEngine } from "./scrapers/fireEngine";
 
 export async function getLinksFromSitemap(
-  sitemapUrl: string,
-  allUrls: string[] = []
+  {
+    sitemapUrl,
+    allUrls = [],
+    mode = 'axios'
+  }: {
+    sitemapUrl: string,
+    allUrls?: string[],
+    mode?: 'axios' | 'fire-engine'
+  }
 ): Promise<string[]> {
   try {
     let content: string;
     try {
-      const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
-      content = response.data;
+      if (mode === 'axios') {
+        const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
+        content = response.data;
+      } else if (mode === 'fire-engine') {
+        const response = await scrapWithFireEngine({ url: sitemapUrl });
+        content = response.html;
+      }
     } catch (error) {
       console.error(`Request failed for ${sitemapUrl}: ${error}`);
 
@@ -23,7 +36,7 @@ export async function getLinksFromSitemap(
     if (root && root.sitemap) {
       for (const sitemap of root.sitemap) {
         if (sitemap.loc && sitemap.loc.length > 0) {
-          await getLinksFromSitemap(sitemap.loc[0], allUrls);
+          await getLinksFromSitemap({ sitemapUrl: sitemap.loc[0], allUrls, mode });
         }
       }
     } else if (root && root.url) {

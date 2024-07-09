@@ -8,6 +8,7 @@ import { scrapSingleUrl } from "./single_url";
 import robotsParser from "robots-parser";
 import { getURLDepth } from "./utils/maxDepthUtils";
 import { axiosTimeout } from "../../../src/lib/timeout";
+import { scrapWithFireEngine } from "./scrapers/fireEngine";
 
 export class WebCrawler {
   private initialUrl: string;
@@ -448,10 +449,14 @@ export class WebCrawler {
     try {
       const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
       if (response.status === 200) {
-        sitemapLinks = await getLinksFromSitemap(sitemapUrl);
+        sitemapLinks = await getLinksFromSitemap({ sitemapUrl });
       }
-    } catch (error) {
-      console.error(`Failed to fetch sitemap from ${sitemapUrl}: ${error}`);
+    } catch (error) { 
+      console.error(`Failed to fetch sitemap with axios from ${sitemapUrl}: ${error}`);
+      const response = await getLinksFromSitemap({ sitemapUrl, mode: 'fire-engine' });
+      if (response) {
+        sitemapLinks = response;
+      }
     }
 
     if (sitemapLinks.length === 0) {
@@ -459,10 +464,11 @@ export class WebCrawler {
       try {
         const response = await axios.get(baseUrlSitemap, { timeout: axiosTimeout });
         if (response.status === 200) {
-          sitemapLinks = await getLinksFromSitemap(baseUrlSitemap);
+          sitemapLinks = await getLinksFromSitemap({ sitemapUrl: baseUrlSitemap });
         }
       } catch (error) {
         console.error(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);
+        sitemapLinks = await getLinksFromSitemap({ sitemapUrl: baseUrlSitemap, mode: 'fire-engine' });
       }
     }
 
