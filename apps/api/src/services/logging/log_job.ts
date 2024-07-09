@@ -38,6 +38,7 @@ export async function logJob(job: FirecrawlJob) {
           origin: job.origin,
           extractor_options: job.extractor_options,
           num_tokens: job.num_tokens,
+          retry: !!job.retry,
         },
       ]);
 
@@ -61,6 +62,7 @@ export async function logJob(job: FirecrawlJob) {
           origin: job.origin,
           extractor_options: job.extractor_options,
           num_tokens: job.num_tokens,
+          retry: job.retry,
         },
       };
       posthog.capture(phLog);
