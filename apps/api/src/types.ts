@@ -62,6 +62,7 @@ export interface FirecrawlJob {
   origin: string;
   extractor_options?: ExtractorOptions,
   num_tokens?: number,
+  retry?: boolean,
 }
 
 export interface FirecrawlScrapeResponse {
