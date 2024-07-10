@@ -3,7 +3,7 @@
 # See https://fly.io/docs/reference/configuration/ for information about how to use this file.
 #
 
-app = 'staging-firecrawl-scraper-js'
+app = 'firecrawl-scraper-js'
 primary_region = 'mia'
 kill_signal = 'SIGINT'
 kill_timeout = '5s'
@@ -17,7 +17,7 @@ kill_timeout = '5s'
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = true
+  auto_stop_machines = false
   auto_start_machines = true
   min_machines_running = 2
   processes = ['app']
@@ -28,17 +28,16 @@ kill_timeout = '5s'
   soft_limit = 50
 
 [[http_service.checks]]
-  grace_period = "10s"
+  grace_period = "20s"
   interval = "30s"
   method = "GET"
-  timeout = "5s"
+  timeout = "15s"
   path = "/"
-
 
 [[services]]
   protocol = 'tcp'
   internal_port = 8080
-  processes = ['worker']
+  processes = ['app']
 
 [[services.ports]]
     port = 80
@@ -51,13 +50,12 @@ kill_timeout = '5s'
 
   [services.concurrency]
     type = 'connections'
-    hard_limit = 25
-    soft_limit = 20
+    hard_limit = 30
+    soft_limit = 12
 
 [[vm]]
-  size = 'performance-1x'
-  processes = ['app','worker']
-
+  size = 'performance-4x'
+  processes = ['app']
 
 
 

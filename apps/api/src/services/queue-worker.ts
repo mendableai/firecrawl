@@ -5,11 +5,11 @@ import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
-import { initSDK } from '@hyperdx/node-opentelemetry';
+// import { initSDK } from '@hyperdx/node-opentelemetry';
 
-if(process.env.ENV === 'production') {
-  initSDK({ consoleCapture: true, additionalInstrumentations: []});
-}
+// if(process.env.ENV === 'production') {
+//   initSDK({ consoleCapture: true, additionalInstrumentations: []});
+// }
 
 getWebScraperQueue().process(
   Math.floor(Number(process.env.NUM_WORKERS_PER_QUEUE ?? 8)),

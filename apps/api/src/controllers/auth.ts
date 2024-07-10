@@ -4,23 +4,23 @@ import { AuthResponse, NotificationType, RateLimiterMode } from "../../src/types
 import { supabase_service } from "../../src/services/supabase";
 import { withAuth } from "../../src/lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
-import { setTraceAttributes } from '@hyperdx/node-opentelemetry';
+// import { setTraceAttributes } from '@hyperdx/node-opentelemetry';
 import { sendNotification } from "../services/notification/email_notification";
 
 export async function authenticateUser(req, res, mode?: RateLimiterMode): Promise<AuthResponse> {
   return withAuth(supaAuthenticateUser)(req, res, mode);
 }
-function setTrace(team_id: string, api_key: string) {
-  try {
-    setTraceAttributes({
-      team_id,
-      api_key
-    });
-  } catch (error) {
-    console.error('Error setting trace attributes:', error);
-  }
+// function setTrace(team_id: string, api_key: string) {
+//   try {
+//     setTraceAttributes({
+//       team_id,
+//       api_key
+//     });
+//   } catch (error) {
+//     console.error('Error setting trace attributes:', error);
+//   }
 
-}
+// }
 export async function supaAuthenticateUser(
   req,
   res,
@@ -99,7 +99,7 @@ export async function supaAuthenticateUser(
 
     const plan = getPlanByPriceId(data[0].price_id);
     // HyperDX Logging
-    setTrace(team_id, normalizedApi);
+    // setTrace(team_id, normalizedApi);
     subscriptionData = {
       team_id: team_id,
       plan: plan
