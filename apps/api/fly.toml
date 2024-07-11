@@ -6,7 +6,7 @@
 app = 'staging-firecrawl-scraper-js'
 primary_region = 'mia'
 kill_signal = 'SIGINT'
-kill_timeout = '5s'
+kill_timeout = '30s'
 
 [build]
 
