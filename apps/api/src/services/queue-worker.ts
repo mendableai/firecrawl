@@ -5,19 +5,20 @@ import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
-// import { initSDK } from '@hyperdx/node-opentelemetry';
+import { initSDK } from '@hyperdx/node-opentelemetry';
 
-// if(process.env.ENV === 'production') {
-//   initSDK({ consoleCapture: true, additionalInstrumentations: []});
-// }
+if(process.env.ENV === 'production') {
+  initSDK({
+    consoleCapture: true,
+    additionalInstrumentations: [],
+  });
+}
 
 const wsq = getWebScraperQueue();
-const myJobs = [];
 
 wsq.process(
   Math.floor(Number(process.env.NUM_WORKERS_PER_QUEUE ?? 8)),
   async function (job, done) {
-    myJobs.push(job.id);
     try {
       job.progress({
         current: 1,
@@ -59,6 +60,10 @@ wsq.process(
       });
       done(null, data);
     } catch (error) {
+      if (await getWebScraperQueue().isPaused(false)) {
+        return;
+      }
+
       if (error instanceof CustomError) {
         // Here we handle the error, then save the failed job
         console.error(error.message); // or any other error handling
@@ -99,36 +104,5 @@ wsq.process(
       });
       done(null, data);
     }
-    myJobs.splice(myJobs.indexOf(job.id), 1);
   }
 );
-
-let shuttingDown = false;
-
-process.on("SIGINT", async () => {
-  if (shuttingDown) return;
-  shuttingDown = true;
-
-  console.log("Gracefully shutting down...");
-
-  await wsq.pause(true, true);
-  
-  if (myJobs.length > 0) {
-    const jobs = await Promise.all(myJobs.map(x => wsq.getJob(x)));
-    console.log("Removing", jobs.length, "jobs...");
-    await Promise.all(jobs.map(async x => {
-      await x.moveToFailed({ message: "interrupted" });
-      await x.remove();
-    }));
-    console.log("Re-adding", jobs.length, "jobs...");
-    await wsq.addBulk(jobs.map(x => ({
-      data: x.data,
-      opts: {
-        jobId: x.id,
-      },
-    })));
-    console.log("Done!");
-  }
-
-  process.exit(0);
-});

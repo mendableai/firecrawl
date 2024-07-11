@@ -115,6 +115,44 @@ if (cluster.isMaster) {
     }
   });
 
+  app.post(`/admin/${process.env.BULL_AUTH_KEY}/shutdown`, async (req, res) => {
+    try {
+      const wsq = getWebScraperQueue();
+
+      console.log("Gracefully shutting down...");
+
+      await wsq.pause(false, true);
+
+      const jobs = await wsq.getActive();
+      
+      if (jobs.length > 0) {
+        console.log("Removing", jobs.length, "jobs...");
+
+        await Promise.all(jobs.map(async x => {
+          await wsq.client.del(await x.lockKey());
+          await x.takeLock();
+          await x.moveToFailed({ message: "interrupted" });
+          await x.remove();
+        }));
+
+        console.log("Re-adding", jobs.length, "jobs...");
+        await wsq.addBulk(jobs.map(x => ({
+          data: x.data,
+          opts: {
+            jobId: x.id,
+          },
+        })));
+
+        console.log("Done!");
+
+        res.json({ ok: true });
+      }
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get(`/serverHealthCheck`, async (req, res) => {
     try {
       const webScraperQueue = getWebScraperQueue();
@@ -235,4 +273,11 @@ if (cluster.isMaster) {
   });
 
   console.log(`Worker ${process.pid} started`);
+
+  (async () => {
+    const wsq = getWebScraperQueue();
+    if (await wsq.isPaused(false)) {
+      await wsq.resume(false);
+    }
+  })();
 }
