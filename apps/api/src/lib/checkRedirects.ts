@@ -5,7 +5,7 @@ export const checksRedirect = async (initialUrl: string) => {
     const checkRedirect = await fetch(initialUrl, { redirect: 'follow', signal: controller.signal });
     clearTimeout(timeoutId);
   
-    if (checkRedirect.url !== initialUrl) {
+    if (checkRedirect.url && checkRedirect.url !== initialUrl) {
       console.log(`Initial URL was redirected from ${initialUrl} to ${checkRedirect.url}`);
       return checkRedirect.url;
     }
