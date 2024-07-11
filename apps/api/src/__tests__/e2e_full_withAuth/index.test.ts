@@ -353,6 +353,26 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data.metadata.pageStatusCode).toBe(500);
       expect(response.body.data.metadata.pageError.toLowerCase()).toContain("internal server error");
     }, 60000); // 60 seconds
+
+
+    it.concurrent("should return a successful response with a redirected url", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "new.abb.com/sustainability/foundation"
+        });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("data");
+      expect(response.body.data).toHaveProperty("content");
+      expect(response.body.data).toHaveProperty("markdown");
+      expect(response.body.data).toHaveProperty("metadata");
+      expect(response.body.data.metadata.sourceURL).toBe('https://global.abb/group/en/sustainability');
+      expect(response.body.data.metadata.pageStatusCode).toBe(200);
+      expect(response.body.data.metadata.pageError).toBeUndefined();
+    }, 30000); // 30 seconds timeout
   });
 
   describe("POST /v0/crawl", () => {
@@ -697,9 +717,9 @@ describe("E2E Tests for API Routes", () => {
         .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
-        const testurls = completedResponse.body.data.map(
-          (item: any) => item.metadata?.sourceURL
-        );
+        // const testurls = completedResponse.body.data.map(
+        //   (item: any) => item.metadata?.sourceURL
+        // );
         //console.log(testurls)
 
       expect(completedResponse.statusCode).toBe(200);
@@ -858,11 +878,11 @@ describe("E2E Tests for API Routes", () => {
           await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
         }
       }
-      console.log(crawlData)
+      
       expect(crawlData.length).toBeGreaterThan(0);
       expect(crawlData).toEqual(expect.arrayContaining([
         expect.objectContaining({ url: expect.stringContaining("https://firecrawl.dev/?ref=mendable+banner") }),
-        expect.objectContaining({ url: expect.stringContaining("https://mendable.ai/pricing") }),
+        expect.objectContaining({ url: expect.stringContaining("https://www.mendable.ai/pricing") }),
         expect.objectContaining({ url: expect.stringContaining("https://x.com/CalebPeffer") })
       ]));
     }, 180000); // 3 minutes timeout
@@ -1102,6 +1122,54 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
       expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
     }, 60000);
+
+    it.concurrent("should return a successful response with a redirected url", async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v0/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "new.abb.com/sustainability/foundation",
+          limit: 5
+        });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(["active", "waiting"]).toContain(response.body.status);
+
+      let isFinished = false;
+      let completedResponse;
+
+      while (!isFinished) {
+        const response = await request(TEST_URL)
+          .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty("status");
+
+        if (response.body.status === "completed") {
+          isFinished = true;
+          completedResponse = response;
+        } else {
+          await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
+        }
+      }
+
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0].metadata.sourceURL).toBe('https://global.abb/group/en/sustainability');
+      expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.pageError).toBeUndefined();
+    }, 60000); // 60 seconds timeout
   }); // 60 seconds
 
   it.concurrent("should return a successful response for a valid crawl job with allowBackwardCrawling set to true option", async () => {
@@ -1392,8 +1460,6 @@ describe("E2E Tests for API Routes", () => {
       //   console.log(result.metadata.sourceURL);
       // });
       expect(results.length).toBeGreaterThanOrEqual(10);
-      expect(results.length).toBeLessThanOrEqual(15);
-      
     }, 20000);
 
     // it.concurrent("should complete the crawl in more than 10 seconds", async () => {

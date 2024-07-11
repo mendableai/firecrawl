@@ -19,6 +19,7 @@ import { generateCompletions } from "../../lib/LLM-extraction";
 import { getWebScraperQueue } from "../../../src/services/queue-service";
 import { fetchAndProcessDocx } from "./utils/docxProcessor";
 import { getAdjustedMaxDepth, getURLDepth } from "./utils/maxDepthUtils";
+import { checksRedirect } from "../../lib/checkRedirects";
 
 export class WebScraperDataProvider {
   private bullJobId: string;
@@ -209,7 +210,9 @@ export class WebScraperDataProvider {
   private async handleSingleUrlsMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
-    const links = this.urls;
+    const links = await Promise.all(
+      this.urls.map(link => checksRedirect(link))
+    );
 
     let documents = await this.processLinks(links, inProgress);
     return documents;
@@ -218,6 +221,7 @@ export class WebScraperDataProvider {
   private async handleSitemapMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
+    this.urls[0] = await checksRedirect(this.urls[0]);
     let links = await getLinksFromSitemap(this.urls[0]);
     links = await this.cleanIrrelevantPath(links);
 
