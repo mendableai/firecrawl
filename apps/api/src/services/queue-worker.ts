@@ -103,7 +103,12 @@ wsq.process(
   }
 );
 
+let shuttingDown = false;
+
 process.on("SIGINT", async () => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+
   console.log("Gracefully shutting down...");
 
   await wsq.pause(true, true);
@@ -112,8 +117,6 @@ process.on("SIGINT", async () => {
     const jobs = await Promise.all(myJobs.map(x => wsq.getJob(x)));
     console.log("Removing", jobs.length, "jobs...");
     await Promise.all(jobs.map(async x => {
-      // await wsq.client.del(await x.lockKey());
-      // await x.takeLock();
       await x.moveToFailed({ message: "interrupted" });
       await x.remove();
     }));
