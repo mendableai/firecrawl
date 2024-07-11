@@ -5,7 +5,7 @@ import "dotenv/config";
 import { getWebScraperQueue } from "./services/queue-service";
 import { redisClient } from "./services/rate-limiter";
 import { v0Router } from "./routes/v0";
-// import { initSDK } from "@hyperdx/node-opentelemetry";
+import { initSDK } from "@hyperdx/node-opentelemetry";
 import cluster from "cluster";
 import os from "os";
 import { Job } from "bull";
@@ -72,9 +72,9 @@ if (cluster.isMaster) {
   redisClient.connect();
 
   // HyperDX OpenTelemetry
-  // if (process.env.ENV === "production") {
-  //   initSDK({ consoleCapture: true, additionalInstrumentations: [] });
-  // }
+  if (process.env.ENV === "production") {
+    initSDK({ consoleCapture: true, additionalInstrumentations: [] });
+  }
 
   function startServer(port = DEFAULT_PORT) {
     const server = app.listen(Number(port), HOST, () => {
