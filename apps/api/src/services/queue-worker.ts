@@ -11,10 +11,13 @@ import { logJob } from "./logging/log_job";
 //   initSDK({ consoleCapture: true, additionalInstrumentations: []});
 // }
 
-getWebScraperQueue().process(
+const wsq = getWebScraperQueue();
+const myJobs = [];
+
+wsq.process(
   Math.floor(Number(process.env.NUM_WORKERS_PER_QUEUE ?? 8)),
   async function (job, done) {
-
+    myJobs.push(job.id);
     try {
       job.progress({
         current: 1,
@@ -96,5 +99,33 @@ getWebScraperQueue().process(
       });
       done(null, data);
     }
+    myJobs.splice(myJobs.indexOf(job.id), 1);
   }
 );
+
+process.on("SIGINT", async () => {
+  console.log("Gracefully shutting down...");
+
+  await wsq.pause(true, true);
+  
+  if (myJobs.length > 0) {
+    const jobs = await Promise.all(myJobs.map(x => wsq.getJob(x)));
+    console.log("Removing", jobs.length, "jobs...");
+    await Promise.all(jobs.map(async x => {
+      // await wsq.client.del(await x.lockKey());
+      // await x.takeLock();
+      await x.moveToFailed({ message: "interrupted" });
+      await x.remove();
+    }));
+    console.log("Re-adding", jobs.length, "jobs...");
+    await wsq.addBulk(jobs.map(x => ({
+      data: x.data,
+      opts: {
+        jobId: x.id,
+      },
+    })));
+    console.log("Done!");
+  }
+
+  process.exit(0);
+});
