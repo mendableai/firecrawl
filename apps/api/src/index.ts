@@ -99,6 +99,7 @@ if (cluster.isMaster) {
   app.get(`/admin/${process.env.BULL_AUTH_KEY}/queues`, async (req, res) => {
     try {
       const webScraperQueue = getWebScraperQueue();
+
       const [webScraperActive] = await Promise.all([
         webScraperQueue.getActiveCount(),
       ]);
@@ -151,6 +152,11 @@ if (cluster.isMaster) {
       console.error(error);
       return res.status(500).json({ error: error.message });
     }
+  });
+
+  app.post(`/admin/${process.env.BULL_AUTH_KEY}/unpause`, async (req, res) => {
+    await getWebScraperQueue().resume(true);
+    res.json({ ok: true });
   });
 
   app.get(`/serverHealthCheck`, async (req, res) => {
@@ -273,11 +279,4 @@ if (cluster.isMaster) {
   });
 
   console.log(`Worker ${process.pid} started`);
-
-  (async () => {
-    const wsq = getWebScraperQueue();
-    if (await wsq.isPaused(false)) {
-      await wsq.resume(false);
-    }
-  })();
 }
