@@ -155,7 +155,7 @@ if (cluster.isMaster) {
   });
 
   app.post(`/admin/${process.env.BULL_AUTH_KEY}/unpause`, async (req, res) => {
-    await getWebScraperQueue().resume(true);
+    await getWebScraperQueue().resume(false);
     res.json({ ok: true });
   });
 
