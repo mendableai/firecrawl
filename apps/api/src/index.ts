@@ -118,16 +118,25 @@ if (cluster.isMaster) {
 
   app.post(`/admin/${process.env.BULL_AUTH_KEY}/shutdown`, async (req, res) => {
     try {
+      console.log("Gracefully shutting down...");
+      await getWebScraperQueue().pause(false, true);
+      res.json({ ok: true });
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post(`/admin/${process.env.BULL_AUTH_KEY}/unpause`, async (req, res) => {
+    try {
       const wsq = getWebScraperQueue();
 
-      console.log("Gracefully shutting down...");
-
-      await wsq.pause(false, true);
-
       const jobs = await wsq.getActive();
-      
+        
+      console.log("Requeueing", jobs.length, "jobs...");
+
       if (jobs.length > 0) {
-        console.log("Removing", jobs.length, "jobs...");
+        console.log("  Removing", jobs.length, "jobs...");
 
         await Promise.all(jobs.map(async x => {
           await wsq.client.del(await x.lockKey());
@@ -136,7 +145,7 @@ if (cluster.isMaster) {
           await x.remove();
         }));
 
-        console.log("Re-adding", jobs.length, "jobs...");
+        console.log("  Re-adding", jobs.length, "jobs...");
         await wsq.addBulk(jobs.map(x => ({
           data: x.data,
           opts: {
@@ -144,19 +153,15 @@ if (cluster.isMaster) {
           },
         })));
 
-        console.log("Done!");
-
-        res.json({ ok: true });
+        console.log("  Done!");
       }
+      
+      await getWebScraperQueue().resume(false);
+      res.json({ ok: true });
     } catch (error) {
       console.error(error);
       return res.status(500).json({ error: error.message });
     }
-  });
-
-  app.post(`/admin/${process.env.BULL_AUTH_KEY}/unpause`, async (req, res) => {
-    await getWebScraperQueue().resume(false);
-    res.json({ ok: true });
   });
 
   app.get(`/serverHealthCheck`, async (req, res) => {
