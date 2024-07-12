@@ -141,10 +141,14 @@ if (cluster.isMaster) {
         console.log("  Removing", jobs.length, "jobs...");
 
         await Promise.all(jobs.map(async x => {
-          await wsq.client.del(await x.lockKey());
-          await x.takeLock();
-          await x.moveToFailed({ message: "interrupted" });
-          await x.remove();
+          try {
+            await wsq.client.del(await x.lockKey());
+            await x.takeLock();
+            await x.moveToFailed({ message: "interrupted" });
+            await x.remove();
+          } catch (e) {
+            console.warn("Failed to remove job", x.id, e);
+          }
         }));
 
         console.log("  Re-adding", jobs.length, "jobs...");
