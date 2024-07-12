@@ -8,8 +8,17 @@ To install the Firecrawl Rust SDK, add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-firecrawl_rs = "0.1"
+firecrawl_rs = "^0.1"
+tokio = { version = "^1", features = ["full"] }
+serde = { version = "^1.0", features = ["derive"] }
+serde_json = "^1.0"
+uuid = { version = "^1.10", features = ["v4"] }
+
+[build-dependencies]
+tokio = { version = "1", features = ["full"] }
 ```
+
+To add it in your codebase.
 
 ## Usage
 
@@ -37,6 +46,7 @@ async fn main() {
 To scrape a single URL, use the `scrape_url` method. It takes the URL as a parameter and returns the scraped data as a `serde_json::Value`.
 
 ```rust
+// Example scrape code...
 let scrape_result = app.scrape_url("https://example.com", None).await;
 match scrape_result {
     Ok(data) => println!("Scrape Result:\n{}", data["markdown"]),
@@ -82,6 +92,7 @@ let llm_extraction_params = json!({
     }
 });
 
+// Example scrape code...
 let llm_extraction_result = app
     .scrape_url("https://news.ycombinator.com", Some(llm_extraction_params))
     .await;
@@ -119,6 +130,8 @@ let crawl_params = json!({
         "excludes": ["blog/*"]
     }
 });
+
+// Example crawl code...
 let crawl_result = app
     .crawl_url("https://example.com", Some(crawl_params), true, 2, idempotency_key)
     .await;
@@ -154,16 +167,9 @@ To ensure the functionality of the Firecrawl Rust SDK, we have included end-to-e
 ### Running the Tests
 
 To run the tests, execute the following commands:
-
-Install the test dependencies:
 ```bash
-cargo install --dev
-```
-
-Run:
-```bash
-export $(xargs < ./tests/.env)
-cargo test --test e2e_with_auth
+$ export $(xargs < ./tests/.env)
+$ cargo test --test e2e_with_auth
 ```
 
 ## Contributing

@@ -21,10 +21,7 @@ serde_json = "^1.0"
 log = "^0.4"
 thiserror = "^1.0"
 uuid = { version = "^1.10", features = ["v4"] }
-
-[dependencies.tokio]
-version = "1"
-features = ["full"]
+tokio = { version = "^1", features = ["full"] }
 
 [dev-dependencies]
 clippy = "^0.0.302"
