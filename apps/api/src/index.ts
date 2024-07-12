@@ -10,7 +10,7 @@ import cluster from "cluster";
 import os from "os";
 import { Job } from "bull";
 import { sendSlackWebhook } from "./services/alerts/slack";
-import { initAlerts } from "./services/alerts";
+import { checkAlerts } from "./services/alerts";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -35,9 +35,9 @@ if (cluster.isMaster) {
     }
   });
 
-  initAlerts();
 } else {
   const app = express();
+
 
   global.isProduction = process.env.IS_PRODUCTION === "true";
 
@@ -245,6 +245,19 @@ if (cluster.isMaster) {
       checkWaitingJobs();
     }
   });
+
+  app.get(
+    `/admin/${process.env.BULL_AUTH_KEY}/check-queues`,
+    async (req, res) => {
+      try {
+        await checkAlerts();
+        return res.status(200).send("Alerts initialized");
+      } catch (error) {
+        console.error("Failed to initialize alerts:", error);
+        return res.status(500).send("Failed to initialize alerts");
+      }
+    }
+  );
 
   app.get(
     `/admin/${process.env.BULL_AUTH_KEY}/clean-before-24h-complete-jobs`,

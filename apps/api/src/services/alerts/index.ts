@@ -1,7 +1,7 @@
 import { getWebScraperQueue } from "../queue-service";
 import { sendSlackWebhook } from "./slack";
 
-export function initAlerts() {
+export async function checkAlerts() {
   try {
     if (
       process.env.SLACK_WEBHOOK_URL &&
@@ -51,7 +51,8 @@ export function initAlerts() {
         await checkWaitingQueue();
       };
 
-      setInterval(checkAll, 5 * 60 * 1000); // Run every 5 minutes
+      await checkAll();
+      // setInterval(checkAll, 10000); // Run every 
     }
   } catch (error) {
     console.error("Failed to initialize alerts:", error);
