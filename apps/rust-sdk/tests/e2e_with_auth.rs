@@ -154,14 +154,14 @@ async fn test_crawl_url_with_idempotency_key_e2e() {
             "excludes": ["blog/*"]
         }
     });
-    let result = app.crawl_url("https://roastmywebsite.ai", Some(params), true, 2, Some(unique_idempotency_key.clone())).await.unwrap();
+    let result = app.crawl_url("https://roastmywebsite.ai", Some(params.clone()), true, 2, Some(unique_idempotency_key.clone())).await.unwrap();
 
     let result_as_str = result.as_object().unwrap();
     assert!(result_as_str.len() > 0);
     // assert!(result[0].contains_key("content"));
     // assert!(result[0]["content"].as_str().unwrap().contains("_Roast_"));
 
-    let conflict_result = app.crawl_url("https://firecrawl.dev", Some(params), true, 2, Some(unique_idempotency_key)).await;
+    let conflict_result = app.crawl_url("https://firecrawl.dev", Some(params.clone()), true, 2, Some(unique_idempotency_key)).await;
     assert_matches!(conflict_result, Err(e) if e.to_string() == "Conflict: Failed to start crawl job due to a conflict. Idempotency key already used");
 }
 
@@ -191,11 +191,13 @@ async fn test_check_crawl_status_e2e() {
 async fn test_search_e2e() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("TEST_API_KEY").unwrap();
+    let api_key = env::var("API_KEY").unwrap();
     let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
-    let result = app.search("test query").await.unwrap();
-    assert!(result.as_object().unwrap().len() > 2);
-    //assert!(result.as_object().unwrap()[0].contains_key("content"));
+
+    let result = app.search("test query", None).await.unwrap();
+    assert!(result.is_array());
+    assert!(!result.as_array().unwrap().is_empty());
+    assert!(result[0].get("content").is_some());
 }
 
 #[tokio::test]
@@ -203,7 +205,7 @@ async fn test_search_invalid_api_key() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
     let app = FirecrawlApp::new(Some("invalid_api_key".to_string()), Some(api_url)).unwrap();
-    let result = app.search("test query").await;
+    let result = app.search("test query", None).await;
     assert_matches!(result, Err(e) if e.to_string() == "Unexpected error during search: Status code 401. Unauthorized: Invalid token");
 }
 
