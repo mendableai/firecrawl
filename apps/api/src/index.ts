@@ -9,6 +9,8 @@ import { initSDK } from "@hyperdx/node-opentelemetry";
 import cluster from "cluster";
 import os from "os";
 import { Job } from "bull";
+import { sendSlackWebhook } from "./services/alerts/slack";
+import { initAlerts } from "./services/alerts";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -32,6 +34,8 @@ if (cluster.isMaster) {
       cluster.fork();
     }
   });
+
+  initAlerts();
 } else {
   const app = express();
 
@@ -290,6 +294,7 @@ if (cluster.isMaster) {
   });
 
 
+  
 
   console.log(`Worker ${process.pid} started`);
 }
