@@ -31,6 +31,3 @@ COPY --from=build /app /app
 # Start the server by default, this can be overwritten at runtime
 EXPOSE 8080
 ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
-CMD [ "pnpm", "run", "start:production" ]
-CMD [ "pnpm", "run", "worker:production" ]
-

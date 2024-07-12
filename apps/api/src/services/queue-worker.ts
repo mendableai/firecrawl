@@ -8,13 +8,17 @@ import { logJob } from "./logging/log_job";
 import { initSDK } from '@hyperdx/node-opentelemetry';
 
 if(process.env.ENV === 'production') {
-  initSDK({ consoleCapture: true, additionalInstrumentations: []});
+  initSDK({
+    consoleCapture: true,
+    additionalInstrumentations: [],
+  });
 }
 
-getWebScraperQueue().process(
+const wsq = getWebScraperQueue();
+
+wsq.process(
   Math.floor(Number(process.env.NUM_WORKERS_PER_QUEUE ?? 8)),
   async function (job, done) {
-
     try {
       job.progress({
         current: 1,
@@ -41,6 +45,7 @@ getWebScraperQueue().process(
       await callWebhook(job.data.team_id, job.id as string, data);
 
       await logJob({
+        job_id: job.id as string,
         success: success,
         message: message,
         num_docs: docs.length,
@@ -55,6 +60,10 @@ getWebScraperQueue().process(
       });
       done(null, data);
     } catch (error) {
+      if (await getWebScraperQueue().isPaused(false)) {
+        return;
+      }
+
       if (error instanceof CustomError) {
         // Here we handle the error, then save the failed job
         console.error(error.message); // or any other error handling
@@ -80,6 +89,7 @@ getWebScraperQueue().process(
       };
       await callWebhook(job.data.team_id, job.id as string, data);
       await logJob({
+        job_id: job.id as string,
         success: false,
         message: typeof error === 'string' ? error : (error.message ?? "Something went wrong... Contact help@mendable.ai"),
         num_docs: 0,

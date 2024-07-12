@@ -222,7 +222,7 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
     this.urls[0] = await checksRedirect(this.urls[0]);
-    let links = await getLinksFromSitemap(this.urls[0]);
+    let links = await getLinksFromSitemap({ sitemapUrl: this.urls[0] })
     links = await this.cleanIrrelevantPath(links);
 
     if (this.returnOnlyUrls) {

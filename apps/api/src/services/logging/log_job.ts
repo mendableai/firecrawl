@@ -6,8 +6,7 @@ import "dotenv/config";
 
 export async function logJob(job: FirecrawlJob) {
   try {
-    // Only log jobs in production
-    if (process.env.ENV !== "production") {
+    if (!process.env.USE_DB_AUTHENTICATION) {
       return;
     }
 
@@ -25,6 +24,7 @@ export async function logJob(job: FirecrawlJob) {
       .from("firecrawl_jobs")
       .insert([
         {
+          job_id: job.job_id ? job.job_id : null,
           success: job.success,
           message: job.message,
           num_docs: job.num_docs,
@@ -38,6 +38,7 @@ export async function logJob(job: FirecrawlJob) {
           origin: job.origin,
           extractor_options: job.extractor_options,
           num_tokens: job.num_tokens,
+          retry: !!job.retry,
         },
       ]);
 
@@ -61,6 +62,7 @@ export async function logJob(job: FirecrawlJob) {
           origin: job.origin,
           extractor_options: job.extractor_options,
           num_tokens: job.num_tokens,
+          retry: job.retry,
         },
       };
       posthog.capture(phLog);
