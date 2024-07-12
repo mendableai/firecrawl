@@ -1,10 +1,10 @@
+use assert_matches::assert_matches;
+use dotenv::dotenv;
 use firecrawl_rs::FirecrawlApp;
 use serde_json::json;
-use dotenv::dotenv;
 use std::env;
-use tokio::time::sleep;
 use std::time::Duration;
-use assert_matches::assert_matches;
+use tokio::time::sleep;
 
 #[tokio::test]
 async fn test_no_api_key() {
@@ -32,8 +32,15 @@ async fn test_blocklisted_url() {
 async fn test_successful_response_with_valid_preview_token() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
-    let app = FirecrawlApp::new(Some("this_is_just_a_preview_token".to_string()), Some(api_url)).unwrap();
-    let result = app.scrape_url("https://roastmywebsite.ai", None).await.unwrap();
+    let app = FirecrawlApp::new(
+        Some("this_is_just_a_preview_token".to_string()),
+        Some(api_url),
+    )
+    .unwrap();
+    let result = app
+        .scrape_url("https://roastmywebsite.ai", None)
+        .await
+        .unwrap();
     assert!(result.as_object().unwrap().contains_key("content"));
     assert!(result["content"].as_str().unwrap().contains("_Roast_"));
 }
@@ -44,7 +51,10 @@ async fn test_scrape_url_e2e() {
     let api_url = env::var("API_URL").unwrap();
     let api_key = env::var("TEST_API_KEY").unwrap();
     let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
-    let result = app.scrape_url("https://roastmywebsite.ai", None).await.unwrap();
+    let result = app
+        .scrape_url("https://roastmywebsite.ai", None)
+        .await
+        .unwrap();
     assert!(result.as_object().unwrap().contains_key("content"));
     assert!(result.as_object().unwrap().contains_key("markdown"));
     assert!(result.as_object().unwrap().contains_key("metadata"));
@@ -63,7 +73,10 @@ async fn test_successful_response_with_valid_api_key_and_include_html() {
             "includeHtml": true
         }
     });
-    let result = app.scrape_url("https://roastmywebsite.ai", Some(params)).await.unwrap();
+    let result = app
+        .scrape_url("https://roastmywebsite.ai", Some(params))
+        .await
+        .unwrap();
     assert!(result.as_object().unwrap().contains_key("content"));
     assert!(result.as_object().unwrap().contains_key("markdown"));
     assert!(result.as_object().unwrap().contains_key("html"));
@@ -79,10 +92,16 @@ async fn test_successful_response_for_valid_scrape_with_pdf_file() {
     let api_url = env::var("API_URL").unwrap();
     let api_key = env::var("TEST_API_KEY").unwrap();
     let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
-    let result = app.scrape_url("https://arxiv.org/pdf/astro-ph/9301001.pdf", None).await.unwrap();
+    let result = app
+        .scrape_url("https://arxiv.org/pdf/astro-ph/9301001.pdf", None)
+        .await
+        .unwrap();
     assert!(result.as_object().unwrap().contains_key("content"));
     assert!(result.as_object().unwrap().contains_key("metadata"));
-    assert!(result["content"].as_str().unwrap().contains("We present spectrophotometric observations of the Broad Line Radio Galaxy"));
+    assert!(result["content"]
+        .as_str()
+        .unwrap()
+        .contains("We present spectrophotometric observations of the Broad Line Radio Galaxy"));
 }
 
 #[tokio::test]
@@ -91,11 +110,17 @@ async fn test_successful_response_for_valid_scrape_with_pdf_file_without_explici
     let api_url = env::var("API_URL").unwrap();
     let api_key = env::var("TEST_API_KEY").unwrap();
     let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
-    let result = app.scrape_url("https://arxiv.org/pdf/astro-ph/9301001", None).await.unwrap();
+    let result = app
+        .scrape_url("https://arxiv.org/pdf/astro-ph/9301001", None)
+        .await
+        .unwrap();
     sleep(Duration::from_secs(6)).await; // wait for 6 seconds
     assert!(result.as_object().unwrap().contains_key("content"));
     assert!(result.as_object().unwrap().contains_key("metadata"));
-    assert!(result["content"].as_str().unwrap().contains("We present spectrophotometric observations of the Broad Line Radio Galaxy"));
+    assert!(result["content"]
+        .as_str()
+        .unwrap()
+        .contains("We present spectrophotometric observations of the Broad Line Radio Galaxy"));
 }
 
 #[tokio::test]
@@ -134,10 +159,16 @@ async fn test_llm_extraction() {
             }
         }
     });
-    let result = app.scrape_url("https://mendable.ai", Some(params)).await.unwrap();
+    let result = app
+        .scrape_url("https://mendable.ai", Some(params))
+        .await
+        .unwrap();
     assert!(result.as_object().unwrap().contains_key("llm_extraction"));
     let llm_extraction = &result["llm_extraction"];
-    assert!(llm_extraction.as_object().unwrap().contains_key("company_mission"));
+    assert!(llm_extraction
+        .as_object()
+        .unwrap()
+        .contains_key("company_mission"));
     assert!(llm_extraction["supports_sso"].is_boolean());
     assert!(llm_extraction["is_open_source"].is_boolean());
 }

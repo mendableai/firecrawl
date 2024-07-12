@@ -25,7 +25,13 @@ async fn main() {
         }
     });
     let crawl_result = app
-        .crawl_url("https://mendable.ai", Some(crawl_params), true, 2, idempotency_key)
+        .crawl_url(
+            "https://mendable.ai",
+            Some(crawl_params),
+            true,
+            2,
+            idempotency_key,
+        )
         .await;
     match crawl_result {
         Ok(data) => println!("Crawl Result:\n{}", data),
