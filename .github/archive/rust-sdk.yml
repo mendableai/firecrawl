@@ -37,32 +37,25 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v3
-
       - name: Install pnpm
         run: npm install -g pnpm
-
       - name: Install dependencies for API
         run: pnpm install
         working-directory: ./apps/api
-
       - name: Start the application
         run: npm start &
         working-directory: ./apps/api
         id: start_app
-
       - name: Start workers
         run: npm run workers &
         working-directory: ./apps/api
         id: start_workers
-
       - name: Set up Rust
         uses: actions/setup-rust@v1
         with:
           rust-version: stable
-
-      - name: Install rust dev dependencies
+      - name: Try the lib build
         working-directory: ./apps/rust-sdk
         run: cargo build
-
       - name: Run E2E tests for Rust SDK
         run: cargo test --test e2e_with_auth

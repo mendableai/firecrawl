@@ -168,11 +168,46 @@ jobs:
       - name: Run E2E tests for JavaScript SDK
         run: npm run test
         working-directory: ./apps/js-sdk/firecrawl
-        
+
+  rust-sdk-tests:
+    name: Rust SDK Tests
+    needs: pre-deploy-e2e-tests
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install pnpm
+        run: npm install -g pnpm
+      - name: Install dependencies for API
+        run: pnpm install
+        working-directory: ./apps/api
+      - name: Start the application
+        run: npm start &
+        working-directory: ./apps/api
+        id: start_app
+      - name: Start workers
+        run: npm run workers &
+        working-directory: ./apps/api
+        id: start_workers
+      - name: Set up Rust
+        uses: actions/setup-rust@v1
+        with:
+          rust-version: stable
+      - name: Try the lib build
+        working-directory: ./apps/rust-sdk
+        run: cargo build
+      - name: Run E2E tests for Rust SDK
+        run: cargo test --test e2e_with_auth
+
   deploy:
     name: Deploy app
     runs-on: ubuntu-latest
-    needs: [pre-deploy-test-suite, python-sdk-tests, js-sdk-tests]
+    needs: [pre-deploy-test-suite, python-sdk-tests, js-sdk-tests, rust-sdk-tests]
     steps:
       - uses: actions/checkout@v3
       - name: Change directory
@@ -248,7 +283,7 @@ jobs:
       - name: Install dependencies for JavaScript SDK
         run: pnpm install
         working-directory: ./apps/js-sdk/firecrawl
-        
+
       - name: Run version check script
         id: version_check_script
         run: |
@@ -262,4 +297,4 @@ jobs:
         run: |
           npm run build-and-publish
         working-directory: ./apps/js-sdk/firecrawl
-      
+
