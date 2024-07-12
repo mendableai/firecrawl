@@ -210,10 +210,7 @@ export class WebScraperDataProvider {
   private async handleSingleUrlsMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
-    const links = await Promise.all(
-      this.urls.map(link => checksRedirect(link))
-    );
-
+    const links = this.urls;
     let documents = await this.processLinks(links, inProgress);
     return documents;
   }
@@ -221,7 +218,6 @@ export class WebScraperDataProvider {
   private async handleSitemapMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
-    this.urls[0] = await checksRedirect(this.urls[0]);
     let links = await getLinksFromSitemap({ sitemapUrl: this.urls[0] })
     links = await this.cleanIrrelevantPath(links);
 
