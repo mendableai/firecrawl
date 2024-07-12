@@ -35,7 +35,9 @@ export async function checkAlerts() {
       const checkWaitingQueue = async () => {
         const webScraperQueue = getWebScraperQueue();
         const waitingJobs = await webScraperQueue.getWaitingCount();
-        if (waitingJobs > Number(process.env.ALERT_NUM_WAITING_JOBS)) {
+        const paused = await webScraperQueue.getPausedCount();
+
+        if (waitingJobs !== paused && waitingJobs > Number(process.env.ALERT_NUM_WAITING_JOBS)) {
           console.warn(
             `Alert: Number of waiting jobs is over ${process.env.ALERT_NUM_WAITING_JOBS}. Current waiting jobs: ${waitingJobs}.`
           );
