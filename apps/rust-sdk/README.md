@@ -162,6 +162,7 @@ cargo install --dev
 
 Run:
 ```bash
+export $(xargs < ./tests/.env)
 cargo test --test e2e_with_auth
 ```
 

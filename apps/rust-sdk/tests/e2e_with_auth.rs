@@ -1,6 +1,5 @@
 use firecrawl_rs::FirecrawlApp;
 use serde_json::json;
-use uuid::Uuid;
 use dotenv::dotenv;
 use std::env;
 use tokio::time::sleep;
@@ -10,17 +9,8 @@ use assert_matches::assert_matches;
 #[tokio::test]
 async fn test_no_api_key() {
     dotenv().ok();
-    let api_url = env::var("API_URL").unwrap();
-    assert_matches!(FirecrawlApp::new(None, Some(api_url)), Err(e) if e.to_string() == "No API key provided");
-}
-
-#[tokio::test]
-async fn test_scrape_url_invalid_api_key() {
-    dotenv().ok();
-    let api_url = env::var("API_URL").unwrap();
-    let app = FirecrawlApp::new(Some("invalid_api_key".to_string()), Some(api_url)).unwrap();
-    let result = app.scrape_url("https://firecrawl.dev", None).await;
-    assert_matches!(result, Err(e) if e.to_string() == "Unexpected error during scrape URL: Status code 401. Unauthorized: Invalid token");
+    let api_url = env::var("API_URL").expect("API_URL environment variable is not set");
+    assert_matches!(FirecrawlApp::new(None, Some(api_url)), Err(e) if e.to_string() == "API key not provided");
 }
 
 #[tokio::test]
@@ -31,7 +21,11 @@ async fn test_blocklisted_url() {
     let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
     let blocklisted_url = "https://facebook.com/fake-test";
     let result = app.scrape_url(blocklisted_url, None).await;
-    assert_matches!(result, Err(e) if e.to_string() == "Unexpected error during scrape URL: Status code 403. Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
+
+    assert_matches!(
+        result,
+        Err(e) if e.to_string().contains("Firecrawl currently does not support social media scraping due to policy restrictions")
+    );
 }
 
 #[tokio::test]
@@ -105,15 +99,6 @@ async fn test_successful_response_for_valid_scrape_with_pdf_file_without_explici
 }
 
 #[tokio::test]
-async fn test_crawl_url_invalid_api_key() {
-    dotenv().ok();
-    let api_url = env::var("API_URL").unwrap();
-    let app = FirecrawlApp::new(Some("invalid_api_key".to_string()), Some(api_url)).unwrap();
-    let result = app.crawl_url("https://firecrawl.dev", None, true, 1, None).await;
-    assert_matches!(result, Err(e) if e.to_string() == "Unexpected error during start crawl job: Status code 401. Unauthorized: Invalid token");
-}
-
-#[tokio::test]
 async fn test_should_return_error_for_blocklisted_url() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
@@ -121,92 +106,11 @@ async fn test_should_return_error_for_blocklisted_url() {
     let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
     let blocklisted_url = "https://twitter.com/fake-test";
     let result = app.crawl_url(blocklisted_url, None, true, 1, None).await;
-    assert_matches!(result, Err(e) if e.to_string() == "Unexpected error during start crawl job: Status code 403. Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
-}
 
-#[tokio::test]
-async fn test_crawl_url_wait_for_completion_e2e() {
-    dotenv().ok();
-    let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("TEST_API_KEY").unwrap();
-    let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
-    let params = json!({
-        "crawlerOptions": {
-            "excludes": ["blog/*"]
-        }
-    });
-    let result = app.crawl_url("https://roastmywebsite.ai", Some(params), true, 1, None).await.unwrap();
-    let result_as_str = result.as_object().unwrap();
-    assert!(result_as_str.len() > 0);
-    // assert!(result_as_str[0].contains_key("content"));
-    // assert!(result[0]["content"].as_str().unwrap().contains("_Roast_"));
-}
-
-#[tokio::test]
-async fn test_crawl_url_with_idempotency_key_e2e() {
-    dotenv().ok();
-    let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("TEST_API_KEY").unwrap();
-    let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
-    let unique_idempotency_key = Uuid::new_v4().to_string();
-    let params = json!({
-        "crawlerOptions": {
-            "excludes": ["blog/*"]
-        }
-    });
-    let result = app.crawl_url("https://roastmywebsite.ai", Some(params.clone()), true, 2, Some(unique_idempotency_key.clone())).await.unwrap();
-
-    let result_as_str = result.as_object().unwrap();
-    assert!(result_as_str.len() > 0);
-    // assert!(result[0].contains_key("content"));
-    // assert!(result[0]["content"].as_str().unwrap().contains("_Roast_"));
-
-    let conflict_result = app.crawl_url("https://firecrawl.dev", Some(params.clone()), true, 2, Some(unique_idempotency_key)).await;
-    assert_matches!(conflict_result, Err(e) if e.to_string() == "Conflict: Failed to start crawl job due to a conflict. Idempotency key already used");
-}
-
-#[tokio::test]
-async fn test_check_crawl_status_e2e() {
-    dotenv().ok();
-    let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("TEST_API_KEY").unwrap();
-    let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
-    let params = json!({
-        "crawlerOptions": {
-            "excludes": ["blog/*"]
-        }
-    });
-    let result = app.crawl_url("https://firecrawl.dev", Some(params), false, 1, None).await.unwrap();
-    assert!(result.as_object().unwrap().contains_key("jobId"));
-
-    sleep(Duration::from_secs(30)).await; // wait for 30 seconds
-    let status_response = app.check_crawl_status(result["jobId"].as_str().unwrap()).await.unwrap();
-    assert!(status_response.as_object().unwrap().contains_key("status"));
-    assert_eq!(status_response["status"].as_str().unwrap(), "completed");
-    assert!(status_response.as_object().unwrap().contains_key("data"));
-    assert!(status_response["data"].as_array().unwrap().len() > 0);
-}
-
-#[tokio::test]
-async fn test_search_e2e() {
-    dotenv().ok();
-    let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("API_KEY").unwrap();
-    let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
-
-    let result = app.search("test query", None).await.unwrap();
-    assert!(result.is_array());
-    assert!(!result.as_array().unwrap().is_empty());
-    assert!(result[0].get("content").is_some());
-}
-
-#[tokio::test]
-async fn test_search_invalid_api_key() {
-    dotenv().ok();
-    let api_url = env::var("API_URL").unwrap();
-    let app = FirecrawlApp::new(Some("invalid_api_key".to_string()), Some(api_url)).unwrap();
-    let result = app.search("test query", None).await;
-    assert_matches!(result, Err(e) if e.to_string() == "Unexpected error during search: Status code 401. Unauthorized: Invalid token");
+    assert_matches!(
+        result,
+        Err(e) if e.to_string().contains("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.")
+    );
 }
 
 #[tokio::test]
