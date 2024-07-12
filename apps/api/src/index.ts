@@ -26,9 +26,11 @@ if (cluster.isMaster) {
   }
 
   cluster.on("exit", (worker, code, signal) => {
-    console.log(`Worker ${worker.process.pid} exited`);
-    console.log("Starting a new worker");
-    cluster.fork();
+    if (code !== null) {
+      console.log(`Worker ${worker.process.pid} exited`);
+      console.log("Starting a new worker");
+      cluster.fork();
+    }
   });
 } else {
   const app = express();
@@ -97,6 +99,7 @@ if (cluster.isMaster) {
   app.get(`/admin/${process.env.BULL_AUTH_KEY}/queues`, async (req, res) => {
     try {
       const webScraperQueue = getWebScraperQueue();
+
       const [webScraperActive] = await Promise.all([
         webScraperQueue.getActiveCount(),
       ]);
@@ -111,6 +114,49 @@ if (cluster.isMaster) {
       console.error(error);
       return res.status(500).json({ error: error.message });
     }
+  });
+
+  app.post(`/admin/${process.env.BULL_AUTH_KEY}/shutdown`, async (req, res) => {
+    try {
+      const wsq = getWebScraperQueue();
+
+      console.log("Gracefully shutting down...");
+
+      await wsq.pause(false, true);
+
+      const jobs = await wsq.getActive();
+      
+      if (jobs.length > 0) {
+        console.log("Removing", jobs.length, "jobs...");
+
+        await Promise.all(jobs.map(async x => {
+          await wsq.client.del(await x.lockKey());
+          await x.takeLock();
+          await x.moveToFailed({ message: "interrupted" });
+          await x.remove();
+        }));
+
+        console.log("Re-adding", jobs.length, "jobs...");
+        await wsq.addBulk(jobs.map(x => ({
+          data: x.data,
+          opts: {
+            jobId: x.id,
+          },
+        })));
+
+        console.log("Done!");
+
+        res.json({ ok: true });
+      }
+    } catch (error) {
+      console.error(error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post(`/admin/${process.env.BULL_AUTH_KEY}/unpause`, async (req, res) => {
+    await getWebScraperQueue().resume(false);
+    res.json({ ok: true });
   });
 
   app.get(`/serverHealthCheck`, async (req, res) => {
