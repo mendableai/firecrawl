@@ -211,6 +211,7 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
     const links = this.urls;
+    
     let documents = await this.processLinks(links, inProgress);
     return documents;
   }
@@ -218,7 +219,7 @@ export class WebScraperDataProvider {
   private async handleSitemapMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
-    let links = await getLinksFromSitemap({ sitemapUrl: this.urls[0] })
+    let links = await getLinksFromSitemap({ sitemapUrl: this.urls[0] });
     links = await this.cleanIrrelevantPath(links);
 
     if (this.returnOnlyUrls) {
