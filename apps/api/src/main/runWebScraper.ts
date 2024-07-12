@@ -1,5 +1,10 @@
 import { Job } from "bull";
-import { CrawlResult, WebScraperOptions, RunWebScraperParams, RunWebScraperResult } from "../types";
+import {
+  CrawlResult,
+  WebScraperOptions,
+  RunWebScraperParams,
+  RunWebScraperResult,
+} from "../types";
 import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { DocumentUrl, Progress } from "../lib/entities";
 import { billTeam } from "../services/billing/credit_billing";
@@ -118,12 +123,19 @@ const saveJob = async (job: Job, result: any) => {
         .eq("job_id", job.id);
 
       if (error) throw new Error(error.message);
-      await job.moveToCompleted(null);
+      try {
+        await job.moveToCompleted(null);
+      } catch (error) {
+        // I think the job won't exist here anymore
+      }
     } else {
-      await job.moveToCompleted(result);
+      try {
+        await job.moveToCompleted(result);
+      } catch (error) {
+        // I think the job won't exist here anymore
+      }
     }
   } catch (error) {
     console.error("Failed to update job status:", error);
   }
-}
-
+};
