@@ -118,7 +118,7 @@ if (cluster.isMaster) {
 
   app.post(`/admin/${process.env.BULL_AUTH_KEY}/shutdown`, async (req, res) => {
 
-    return res.status(200).json({ ok: true });
+    // return res.status(200).json({ ok: true });
     try {
       console.log("Gracefully shutting down...");
       await getWebScraperQueue().pause(false, true);
