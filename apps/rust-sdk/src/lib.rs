@@ -36,7 +36,7 @@ pub enum FirecrawlError {
     CrawlJobFailed(String),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct FirecrawlApp {
     api_key: String,
     api_url: String,
