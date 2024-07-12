@@ -61,7 +61,7 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data.metadata.ogImage).toBe("https://www.roastmywebsite.ai/og.png");
       expect(response.body.data.metadata.ogLocaleAlternate).toStrictEqual([]);
       expect(response.body.data.metadata.ogSiteName).toBe("Roast My Website");
-      expect(response.body.data.metadata.sourceURL).toBe("https://www.roastmywebsite.ai/");
+      expect(response.body.data.metadata.sourceURL).toBe("https://roastmywebsite.ai");
       expect(response.body.data.metadata.pageStatusCode).toBe(200);
     }, 30000); // 30 seconds timeout
 
