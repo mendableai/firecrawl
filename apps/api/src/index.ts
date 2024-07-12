@@ -117,6 +117,8 @@ if (cluster.isMaster) {
   });
 
   app.post(`/admin/${process.env.BULL_AUTH_KEY}/shutdown`, async (req, res) => {
+
+    return res.status(200).json({ ok: true });
     try {
       console.log("Gracefully shutting down...");
       await getWebScraperQueue().pause(false, true);
@@ -282,6 +284,8 @@ if (cluster.isMaster) {
   app.get("/is-production", (req, res) => {
     res.send({ isProduction: global.isProduction });
   });
+
+
 
   console.log(`Worker ${process.pid} started`);
 }
