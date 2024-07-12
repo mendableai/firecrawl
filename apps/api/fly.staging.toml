@@ -6,13 +6,16 @@
 app = 'staging-firecrawl-scraper-js'
 primary_region = 'mia'
 kill_signal = 'SIGINT'
-kill_timeout = '5s'
+kill_timeout = '30s'
+
+[deploy]
+  release_command = 'node dist/src/trigger-shutdown.js https://staging-firecrawl-scraper-js.fly.dev'
 
 [build]
 
 [processes]
-  app = 'npm run start:production'
-  worker = 'npm run worker:production'
+  app = 'node dist/src/index.js'
+  worker = 'node dist/src/services/queue-worker.js'
 
 [http_service]
   internal_port = 8080

@@ -96,8 +96,8 @@ describe("Crawling Checkup (E2E)", () => {
               website: websiteData.website,
               prompt: 'CRAWL',
               expected_output: `SUCCESS: ${websiteData.expected_crawled_pages}`,
-              actual_output: `FAILURE: ${completedResponse.body.data}`,
-              error: `Expected crawled pages to contain ${websiteData.expected_crawled_pages}, but got ${completedResponse.body.data}`
+              actual_output: `FAILURE: ${completedResponse.body.data.map((d: { url: string }) => d.url)}`,
+              error: `Expected crawled pages to contain ${websiteData.expected_crawled_pages}, but got ${completedResponse.body.data.map((d: { url: string }) => d.url)}`
             });
             console.log('Error: ', errorLog);
             continue;
@@ -109,8 +109,8 @@ describe("Crawling Checkup (E2E)", () => {
               website: websiteData.website,
               prompt: 'CRAWL',
               expected_output: `SUCCESS: ${websiteData.expected_not_crawled_pages}`,
-              actual_output: `FAILURE: ${completedResponse.body.data}`,
-              error: `Expected crawled pages to not contain ${websiteData.expected_not_crawled_pages}, but got ${completedResponse.body.data}`
+              actual_output: `FAILURE: ${completedResponse.body.data.map((d: { url: string }) => d.url)}`,
+              error: `Expected crawled pages to not contain ${websiteData.expected_not_crawled_pages}, but got ${completedResponse.body.data.map((d: { url: string }) => d.url)}`
             });
             console.log('Error: ', errorLog);
             continue;

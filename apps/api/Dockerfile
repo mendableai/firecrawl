@@ -31,5 +31,6 @@ COPY --from=build /app/dist ./dist
 
 # Expose port and set default command
 EXPOSE 8080
+
 CMD ["pnpm", "run", "start:production"]
 CMD ["pnpm", "run", "worker:production"]

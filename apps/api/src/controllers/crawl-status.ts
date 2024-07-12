@@ -3,6 +3,7 @@ import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../../src/types";
 import { addWebScraperJob } from "../../src/services/queue-jobs";
 import { getWebScraperQueue } from "../../src/services/queue-service";
+import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
 
 export async function crawlStatusController(req: Request, res: Response) {
   try {
@@ -20,15 +21,27 @@ export async function crawlStatusController(req: Request, res: Response) {
     }
 
     const { current, current_url, total, current_step, partialDocs } = await job.progress();
+
+    let data = job.returnvalue;
+    if (process.env.USE_DB_AUTHENTICATION === "true") {
+      const supabaseData = await supabaseGetJobById(req.params.jobId);
+
+      if (supabaseData) {
+        data = supabaseData.docs;
+      }
+    }
+
+    const jobStatus = await job.getState();
+
     res.json({
-      status: await job.getState(),
+      status: jobStatus,
       // progress: job.progress(),
-      current: current,
-      current_url: current_url,
-      current_step: current_step,
-      total: total,
-      data: job.returnvalue,
-      partial_data: partialDocs ?? [],
+      current,
+      current_url,
+      current_step,
+      total,
+      data: data ? data : null,
+      partial_data: jobStatus == 'completed' ? [] : partialDocs,
     });
   } catch (error) {
     console.error(error);

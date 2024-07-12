@@ -15,7 +15,6 @@ pip install firecrawl-py
 1. Get an API key from [firecrawl.dev](https://firecrawl.dev)
 2. Set the API key as an environment variable named `FIRECRAWL_API_KEY` or pass it as a parameter to the `FirecrawlApp` class.
 
-
 Here's an example of how to use the SDK:
 
 ```python
@@ -46,6 +45,7 @@ To scrape a single URL, use the `scrape_url` method. It takes the URL as a param
 url = 'https://example.com'
 scraped_data = app.scrape_url(url)
 ```
+
 ### Extracting structured data from a URL
 
 With LLM extraction, you can easily extract structured data from any URL. We support pydantic schemas to make it easier for you too. Here is how you to use it:
@@ -53,7 +53,7 @@ With LLM extraction, you can easily extract structured data from any URL. We sup
 ```python
 class ArticleSchema(BaseModel):
     title: str
-    points: int 
+    points: int
     by: str
     commentsURL: str
 
@@ -126,15 +126,16 @@ To ensure the functionality of the Firecrawl Python SDK, we have included end-to
 To run the tests, execute the following commands:
 
 Install pytest:
+
 ```bash
 pip install pytest
 ```
 
 Run:
+
 ```bash
 pytest firecrawl/__tests__/e2e_withAuth/test.py
 ```
-
 
 ## Contributing
 
@@ -142,4 +143,10 @@ Contributions to the Firecrawl Python SDK are welcome! If you find any issues or
 
 ## License
 
-The Firecrawl Python SDK is open-source and released under the [AGPL License](https://www.gnu.org/licenses/agpl-3.0.en.html).
+The Firecrawl Python SDK is licensed under the MIT License. This means you are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the SDK, subject to the following conditions:
+
+- The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Please note that while this SDK is MIT licensed, it is part of a larger project which may be under different licensing terms. Always refer to the license information in the root directory of the main project for overall licensing details.

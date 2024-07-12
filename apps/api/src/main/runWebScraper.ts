@@ -1,9 +1,15 @@
 import { Job } from "bull";
-import { CrawlResult, WebScraperOptions, RunWebScraperParams, RunWebScraperResult } from "../types";
+import {
+  CrawlResult,
+  WebScraperOptions,
+  RunWebScraperParams,
+  RunWebScraperResult,
+} from "../types";
 import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { DocumentUrl, Progress } from "../lib/entities";
 import { billTeam } from "../services/billing/credit_billing";
 import { Document } from "../lib/entities";
+import { supabase_service } from "../services/supabase";
 
 export async function startWebScraperPipeline({
   job,
@@ -26,7 +32,7 @@ export async function startWebScraperPipeline({
       }
     },
     onSuccess: (result) => {
-      job.moveToCompleted(result);
+      saveJob(job, result);
     },
     onError: (error) => {
       job.moveToFailed(error);
@@ -107,3 +113,29 @@ export async function runWebScraper({
     return { success: false, message: error.message, docs: [] };
   }
 }
+
+const saveJob = async (job: Job, result: any) => {
+  try {
+    if (process.env.USE_DB_AUTHENTICATION === "true") {
+      const { data, error } = await supabase_service
+        .from("firecrawl_jobs")
+        .update({ docs: result })
+        .eq("job_id", job.id);
+
+      if (error) throw new Error(error.message);
+      try {
+        await job.moveToCompleted(null);
+      } catch (error) {
+        // I think the job won't exist here anymore
+      }
+    } else {
+      try {
+        await job.moveToCompleted(result);
+      } catch (error) {
+        // I think the job won't exist here anymore
+      }
+    }
+  } catch (error) {
+    console.error("Failed to update job status:", error);
+  }
+};
