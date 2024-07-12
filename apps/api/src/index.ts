@@ -117,6 +117,8 @@ if (cluster.isMaster) {
   });
 
   app.post(`/admin/${process.env.BULL_AUTH_KEY}/shutdown`, async (req, res) => {
+
+    return res.status(200).json({ ok: true });
     try {
       const wsq = getWebScraperQueue();
 
@@ -155,6 +157,8 @@ if (cluster.isMaster) {
   });
 
   app.post(`/admin/${process.env.BULL_AUTH_KEY}/unpause`, async (req, res) => {
+    return res.status(200).json({ ok: true });
+
     await getWebScraperQueue().resume(false);
     res.json({ ok: true });
   });
@@ -277,6 +281,8 @@ if (cluster.isMaster) {
   app.get("/is-production", (req, res) => {
     res.send({ isProduction: global.isProduction });
   });
+
+
 
   console.log(`Worker ${process.pid} started`);
 }
