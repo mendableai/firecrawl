@@ -8,7 +8,6 @@ import { scrapSingleUrl } from "./single_url";
 import robotsParser from "robots-parser";
 import { getURLDepth } from "./utils/maxDepthUtils";
 import { axiosTimeout } from "../../../src/lib/timeout";
-import { scrapWithFireEngine } from "./scrapers/fireEngine";
 
 export class WebCrawler {
   private initialUrl: string;

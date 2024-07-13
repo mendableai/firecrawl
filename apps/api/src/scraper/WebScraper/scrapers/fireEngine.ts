@@ -1,5 +1,5 @@
 import axios from "axios";
-import { FireEngineResponse } from "../../../lib/entities";
+import { FireEngineOptions, FireEngineResponse } from "../../../lib/entities";
 import { logScrape } from "../../../services/logging/scrape_log";
 import { generateRequestParams } from "../single_url";
 import { fetchAndProcessPdf } from "../utils/pdfProcessor";
@@ -20,6 +20,7 @@ export async function scrapWithFireEngine({
   waitFor = 0,
   screenshot = false,
   pageOptions = { parsePDF: true },
+  fireEngineOptions = {},
   headers,
   options,
 }: {
@@ -27,6 +28,7 @@ export async function scrapWithFireEngine({
   waitFor?: number;
   screenshot?: boolean;
   pageOptions?: { scrollXPaths?: string[]; parsePDF?: boolean };
+  fireEngineOptions?: FireEngineOptions;
   headers?: Record<string, string>;
   options?: any;
 }): Promise<FireEngineResponse> {
@@ -57,6 +59,7 @@ export async function scrapWithFireEngine({
         screenshot: screenshotParam,
         headers: headers,
         pageOptions: pageOptions,
+        ...fireEngineOptions,
       },
       {
         headers: {
