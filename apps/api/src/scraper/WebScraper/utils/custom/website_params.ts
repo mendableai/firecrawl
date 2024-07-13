@@ -192,4 +192,14 @@ export const urlSpecificParams = {
   "ir.veeva.com":{
     defaultScraper: "fire-engine",
   },
+  "eonhealth.com":{
+    defaultScraper: "fire-engine",
+    params:{
+      fireEngineOptions:{
+        mobileProxy: true,
+        method: "get",
+        engine: "request",
+      },
+    },
+  },
 };
