@@ -129,3 +129,11 @@ export interface FireEngineResponse {
   pageError?: string;
 }
 
+
+export interface FireEngineOptions{
+  mobileProxy?: boolean;
+  method?: string;
+  engine?: string;
+  blockMedia?: boolean;
+  blockAds?: boolean;
+}

@@ -21,7 +21,7 @@ export async function getLinksFromSitemap(
         const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
         content = response.data;
       } else if (mode === 'fire-engine') {
-        const response = await scrapWithFireEngine({ url: sitemapUrl });
+        const response = await scrapWithFireEngine({ url: sitemapUrl, fireEngineOptions: { engine: "request", method: "get", mobileProxy: true } });
         content = response.html;
       }
     } catch (error) {

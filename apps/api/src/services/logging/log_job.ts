@@ -6,7 +6,7 @@ import "dotenv/config";
 
 export async function logJob(job: FirecrawlJob) {
   try {
-    if (!process.env.USE_DB_AUTHENTICATION) {
+    if (process.env.USE_DB_AUTHENTICATION === "false") {
       return;
     }
 

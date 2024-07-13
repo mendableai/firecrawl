@@ -11,7 +11,7 @@ export async function crawlJobStatusPreviewController(req: Request, res: Respons
 
     const { current, current_url, total, current_step, partialDocs } = await job.progress();
     let data = job.returnvalue;
-    if (process.env.USE_DB_AUTHENTICATION) {
+    if (process.env.USE_DB_AUTHENTICATION === "true") {
       const supabaseData = await supabaseGetJobById(req.params.jobId);
 
       if (supabaseData) {

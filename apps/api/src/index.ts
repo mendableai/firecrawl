@@ -9,6 +9,8 @@ import { initSDK } from "@hyperdx/node-opentelemetry";
 import cluster from "cluster";
 import os from "os";
 import { Job } from "bull";
+import { sendSlackWebhook } from "./services/alerts/slack";
+import { checkAlerts } from "./services/alerts";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -32,8 +34,10 @@ if (cluster.isMaster) {
       cluster.fork();
     }
   });
+
 } else {
   const app = express();
+
 
   global.isProduction = process.env.IS_PRODUCTION === "true";
 
@@ -243,6 +247,19 @@ if (cluster.isMaster) {
   });
 
   app.get(
+    `/admin/${process.env.BULL_AUTH_KEY}/check-queues`,
+    async (req, res) => {
+      try {
+        await checkAlerts();
+        return res.status(200).send("Alerts initialized");
+      } catch (error) {
+        console.error("Failed to initialize alerts:", error);
+        return res.status(500).send("Failed to initialize alerts");
+      }
+    }
+  );
+
+  app.get(
     `/admin/${process.env.BULL_AUTH_KEY}/clean-before-24h-complete-jobs`,
     async (req, res) => {
       try {
@@ -290,6 +307,7 @@ if (cluster.isMaster) {
   });
 
 
+  
 
   console.log(`Worker ${process.pid} started`);
 }

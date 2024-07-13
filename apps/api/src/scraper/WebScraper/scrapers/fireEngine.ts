@@ -1,5 +1,5 @@
 import axios from "axios";
-import { FireEngineResponse } from "../../../lib/entities";
+import { FireEngineOptions, FireEngineResponse } from "../../../lib/entities";
 import { logScrape } from "../../../services/logging/scrape_log";
 import { generateRequestParams } from "../single_url";
 import { fetchAndProcessPdf } from "../utils/pdfProcessor";
@@ -20,6 +20,7 @@ export async function scrapWithFireEngine({
   waitFor = 0,
   screenshot = false,
   pageOptions = { parsePDF: true },
+  fireEngineOptions = {},
   headers,
   options,
 }: {
@@ -27,6 +28,7 @@ export async function scrapWithFireEngine({
   waitFor?: number;
   screenshot?: boolean;
   pageOptions?: { scrollXPaths?: string[]; parsePDF?: boolean };
+  fireEngineOptions?: FireEngineOptions;
   headers?: Record<string, string>;
   options?: any;
 }): Promise<FireEngineResponse> {
@@ -45,18 +47,25 @@ export async function scrapWithFireEngine({
     const reqParams = await generateRequestParams(url);
     const waitParam = reqParams["params"]?.wait ?? waitFor;
     const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
+    const fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
+
+    let endpoint = fireEngineOptionsParam.method === "get" ? "/request" : "/scrape";
+
     console.log(
-      `[Fire-Engine] Scraping ${url} with wait: ${waitParam} and screenshot: ${screenshotParam}`
+      `[Fire-Engine] Scraping ${url} with wait: ${waitParam} and screenshot: ${screenshotParam} and method: ${fireEngineOptionsParam?.method ?? "null"}`
     );
 
+    console.log(fireEngineOptionsParam)
+
     const response = await axios.post(
-      process.env.FIRE_ENGINE_BETA_URL + "/scrape",
+      process.env.FIRE_ENGINE_BETA_URL + endpoint,
       {
         url: url,
         wait: waitParam,
         screenshot: screenshotParam,
         headers: headers,
         pageOptions: pageOptions,
+        ...fireEngineOptionsParam,
       },
       {
         headers: {
@@ -70,8 +79,14 @@ export async function scrapWithFireEngine({
       console.error(
         `[Fire-Engine] Error fetching url: ${url} with status: ${response.status}`
       );
+      
       logParams.error_message = response.data?.pageError;
       logParams.response_code = response.data?.pageStatusCode;
+
+      if(response.data && response.data?.pageStatusCode !== 200) {
+        console.error(`[Fire-Engine] Error fetching url: ${url} with status: ${response.status}`);
+      }
+
       return {
         html: "",
         screenshot: "",
