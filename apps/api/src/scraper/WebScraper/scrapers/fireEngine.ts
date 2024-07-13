@@ -47,13 +47,18 @@ export async function scrapWithFireEngine({
     const reqParams = await generateRequestParams(url);
     const waitParam = reqParams["params"]?.wait ?? waitFor;
     const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
-    const fireEngineOptionsParam = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
+    const fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
+
+    let endpoint = fireEngineOptionsParam.method === "get" ? "/request" : "/scrape";
+
     console.log(
-      `[Fire-Engine] Scraping ${url} with wait: ${waitParam} and screenshot: ${screenshotParam}`
+      `[Fire-Engine] Scraping ${url} with wait: ${waitParam} and screenshot: ${screenshotParam} and method: ${fireEngineOptionsParam?.method ?? "null"}`
     );
 
+    console.log(fireEngineOptionsParam)
+
     const response = await axios.post(
-      process.env.FIRE_ENGINE_BETA_URL + "/scrape",
+      process.env.FIRE_ENGINE_BETA_URL + endpoint,
       {
         url: url,
         wait: waitParam,
@@ -74,6 +79,7 @@ export async function scrapWithFireEngine({
       console.error(
         `[Fire-Engine] Error fetching url: ${url} with status: ${response.status}`
       );
+      
       logParams.error_message = response.data?.pageError;
       logParams.response_code = response.data?.pageStatusCode;
 
