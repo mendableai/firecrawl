@@ -72,6 +72,11 @@ export async function scrapWithFireEngine({
       );
       logParams.error_message = response.data?.pageError;
       logParams.response_code = response.data?.pageStatusCode;
+
+      if(response.data && response.data?.pageStatusCode !== 200) {
+        console.error(`[Fire-Engine] Error fetching url: ${url} with status: ${response.status}`);
+      }
+
       return {
         html: "",
         screenshot: "",
