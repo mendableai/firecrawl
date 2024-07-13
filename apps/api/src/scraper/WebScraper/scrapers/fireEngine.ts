@@ -47,6 +47,7 @@ export async function scrapWithFireEngine({
     const reqParams = await generateRequestParams(url);
     const waitParam = reqParams["params"]?.wait ?? waitFor;
     const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
+    const fireEngineOptionsParam = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
     console.log(
       `[Fire-Engine] Scraping ${url} with wait: ${waitParam} and screenshot: ${screenshotParam}`
     );
@@ -59,7 +60,7 @@ export async function scrapWithFireEngine({
         screenshot: screenshotParam,
         headers: headers,
         pageOptions: pageOptions,
-        ...fireEngineOptions,
+        ...fireEngineOptionsParam,
       },
       {
         headers: {
