@@ -31,6 +31,7 @@ export async function scrapWithFireEngine({
   fireEngineOptions?: FireEngineOptions;
   headers?: Record<string, string>;
   options?: any;
+  engine?: 'playwright' | 'chrome-cdp' | 'tlsclient';
 }): Promise<FireEngineResponse> {
   const logParams = {
     url,
@@ -49,7 +50,14 @@ export async function scrapWithFireEngine({
     const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
     const fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
 
-    let endpoint = fireEngineOptionsParam.method === "get" ? "/request" : "/scrape";
+
+    let endpoint = "/scrape";
+
+    if(options?.endpoint === "request") {
+      endpoint = "/request";
+    }
+
+    let engine = fireEngineOptions?.engine ?? options?.engine ?? "playwright"; // do we want fireEngineOptions as first choice?
 
     console.log(
       `[Fire-Engine] Scraping ${url} with wait: ${waitParam} and screenshot: ${screenshotParam} and method: ${fireEngineOptionsParam?.method ?? "null"}`
@@ -65,6 +73,7 @@ export async function scrapWithFireEngine({
         screenshot: screenshotParam,
         headers: headers,
         pageOptions: pageOptions,
+        engine: engine,
         ...fireEngineOptionsParam,
       },
       {
