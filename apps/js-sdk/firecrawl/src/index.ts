@@ -100,6 +100,10 @@ export interface CrawlResponse {
 export interface JobStatusResponse {
   success: boolean;
   status: string;
+  current?: number;
+  current_url?: string;
+  current_step?: string;
+  total?: number;
   jobId?: string;
   data?: FirecrawlDocument[];
   partial_data?: FirecrawlDocument[];
@@ -287,6 +291,10 @@ export default class FirecrawlApp {
         return {
           success: true,
           status: response.data.status,
+          current: response.data.current,
+          current_url: response.data.current_url,
+          current_step: response.data.current_step,
+          total: response.data.total,
           data: response.data.data,
           partial_data: !response.data.data
             ? response.data.partial_data
@@ -301,6 +309,10 @@ export default class FirecrawlApp {
     return {
       success: false,
       status: "unknown",
+      current: 0,
+      current_url: "",
+      current_step: "",
+      total: 0,
       error: "Internal server error.",
     };
   }

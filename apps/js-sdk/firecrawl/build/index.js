@@ -157,8 +157,14 @@ export default class FirecrawlApp {
                     return {
                         success: true,
                         status: response.data.status,
+                        current: response.data.current,
+                        current_url: response.data.current_url,
+                        current_step: response.data.current_step,
+                        total: response.data.total,
                         data: response.data.data,
-                        partial_data: !response.data.data ? response.data.partial_data : undefined,
+                        partial_data: !response.data.data
+                            ? response.data.partial_data
+                            : undefined,
                     };
                 }
                 else {
@@ -171,6 +177,10 @@ export default class FirecrawlApp {
             return {
                 success: false,
                 status: "unknown",
+                current: 0,
+                current_url: "",
+                current_step: "",
+                total: 0,
                 error: "Internal server error.",
             };
         });
@@ -180,7 +190,7 @@ export default class FirecrawlApp {
      * @returns {AxiosRequestHeaders} The prepared headers.
      */
     prepareHeaders(idempotencyKey) {
-        return Object.assign({ 'Content-Type': 'application/json', 'Authorization': `Bearer ${this.apiKey}` }, (idempotencyKey ? { 'x-idempotency-key': idempotencyKey } : {}));
+        return Object.assign({ "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` }, (idempotencyKey ? { "x-idempotency-key": idempotencyKey } : {}));
     }
     /**
      * Sends a POST request to the specified URL.
