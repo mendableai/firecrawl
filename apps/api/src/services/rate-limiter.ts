@@ -58,7 +58,7 @@ const RATE_LIMITS = {
 };
 
 export const redisClient = redis.createClient({
-  url: process.env.REDIS_URL,
+  url: process.env.REDIS_RATE_LIMIT_URL,
   legacyMode: true,
 });
 
