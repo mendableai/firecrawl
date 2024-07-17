@@ -22,3 +22,17 @@ describe('scrapSingleUrl', () => {
   }, 10000);
 });
 
+
+it('should return a list of links on the mendable.ai page', async () => {
+  const url = 'https://mendable.ai';
+  const pageOptions: PageOptions = { includeHtml: true };
+
+  const result = await scrapSingleUrl(url, pageOptions);
+
+  // Check if the result contains a list of links
+  expect(result.linksOnPage).toBeDefined();
+  expect(Array.isArray(result.linksOnPage)).toBe(true);
+  expect(result.linksOnPage.length).toBeGreaterThan(0);
+}, 10000);
+
+
