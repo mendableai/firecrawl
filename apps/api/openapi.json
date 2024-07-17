@@ -47,7 +47,12 @@
                       },
                       "includeHtml": {
                         "type": "boolean",
-                        "description": "Include the raw HTML content of the page. Will output a html key in the response.",
+                        "description": "Include the HTML version of the content on page. Will output a html key in the response.",
+                        "default": false
+                      },
+                      "includeRawHtml": {
+                        "type": "boolean",
+                        "description": "Include the raw HTML content of the page. Will output a rawHtml key in the response.",
                         "default": false
                       },
                       "onlyIncludeTags": {
@@ -235,7 +240,12 @@
                       },
                       "includeHtml": {
                         "type": "boolean",
-                        "description": "Include the raw HTML content of the page. Will output a html key in the response.",
+                        "description": "Include the HTML version of the content on page. Will output a html key in the response.",
+                        "default": false
+                      },
+                      "includeRawHtml": {
+                        "type": "boolean",
+                        "description": "Include the raw HTML content of the page. Will output a rawHtml key in the response.",
                         "default": false
                       },
                       "onlyIncludeTags": {
@@ -340,7 +350,12 @@
                       },
                       "includeHtml": {
                         "type": "boolean",
-                        "description": "Include the raw HTML content of the page. Will output a html key in the response.",
+                        "description": "Include the HTML version of the content on page. Will output a html key in the response.",
+                        "default": false
+                      },
+                      "includeRawHtml": {
+                        "type": "boolean",
+                        "description": "Include the raw HTML content of the page. Will output a rawHtml key in the response.",
                         "default": false
                       }
                     }
@@ -420,14 +435,6 @@
                       "type": "integer",
                       "description": "Current page number"
                     },
-                    "current_url": {
-                      "type": "string",
-                      "description": "Current URL being scraped"
-                    },
-                    "current_step": {
-                      "type": "string",
-                      "description": "Current step in the process"
-                    },
                     "total": {
                       "type": "integer",
                       "description": "Total number of pages"
@@ -444,7 +451,7 @@
                       "items": {
                         "$ref": "#/components/schemas/CrawlStatusResponseObj"
                       },
-                      "description": "Partial documents returned as it is being crawled (streaming). **This feature is currently in alpha - expect breaking changes** When a page is ready, it will append to the partial_data array, so there is no need to wait for the entire website to be crawled. There is a max of 50 items in the array response. The oldest item (top of the array) will be removed when the new item is added to the array."
+                      "description": "Partial documents returned as it is being crawled (streaming). **This feature is currently in alpha - expect breaking changes** When a page is ready, it will append to the partial_data array, so there is no need to wait for the entire website to be crawled. When the crawl is done, partial_data will become empty and the result will be available in `data`. There is a max of 50 items in the array response. The oldest item (top of the array) will be removed when the new item is added to the array."
                     }
                   }
                 }
@@ -540,7 +547,12 @@
               "html": {
                 "type": "string",
                 "nullable": true,
-                "description": "Raw HTML content of the page if `includeHtml`  is true"
+                "description": "HTML version of the content on page if `includeHtml`  is true"
+              },
+              "rawHtml": {
+                "type": "string",
+                "nullable": true,
+                "description": "Raw HTML content of the page if `includeRawHtml`  is true"
               },
               "metadata": {
                 "type": "object",
@@ -600,7 +612,12 @@
           "html": {
             "type": "string",
             "nullable": true,
-            "description": "Raw HTML content of the page if `includeHtml`  is true"
+            "description": "HTML version of the content on page if `includeHtml`  is true"
+          },
+          "rawHtml": {
+            "type": "string",
+            "nullable": true,
+            "description": "Raw HTML content of the page if `includeRawHtml`  is true"
           },
           "index": {
             "type": "integer",
