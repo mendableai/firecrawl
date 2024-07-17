@@ -89,7 +89,8 @@ export class Document {
   warning?: string;
 
   index?: number;
-
+  linksOnPage?: string[]; // Add this new field as a separate property
+  
   constructor(data: Partial<Document>) {
     if (!data.content) {
       throw new Error("Missing required fields");
@@ -102,6 +103,7 @@ export class Document {
     this.markdown = data.markdown || "";
     this.childrenLinks = data.childrenLinks || undefined;
     this.provider = data.provider || undefined;
+    this.linksOnPage = data.linksOnPage; // Assign linksOnPage if provided
   }
 }
 
