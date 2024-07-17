@@ -33,5 +33,5 @@ it('should return a list of links on the mendable.ai page', async () => {
   expect(result.linksOnPage).toBeDefined();
   expect(Array.isArray(result.linksOnPage)).toBe(true);
   expect(result.linksOnPage.length).toBeGreaterThan(0);
-  expect(result.linksOnPage).toContain('https://www.mendable.ai/blog')
+  expect(result.linksOnPage).toContain('https://mendable.ai/blog')
 }, 10000);
