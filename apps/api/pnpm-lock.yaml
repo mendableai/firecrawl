@@ -90,7 +90,7 @@ importers:
         specifier: ^1.1.5
         version: 1.1.5
       ioredis:
-        specifier: ^5.3.2
+        specifier: ^5.4.1
         version: 5.4.1
       joplin-turndown-plugin-gfm:
         specifier: ^1.0.12
@@ -146,9 +146,6 @@ importers:
       rate-limiter-flexible:
         specifier: 2.4.2
         version: 2.4.2
-      redis:
-        specifier: ^4.6.7
-        version: 4.6.14
       resend:
         specifier: ^3.4.0
         version: 3.4.0
