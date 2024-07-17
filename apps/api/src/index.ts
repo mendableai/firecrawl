@@ -45,7 +45,6 @@ if (cluster.isMaster) {
 
   app.use(cors()); // Add this line to enable CORS
 
-  const queueRedis = new Redis(process.env.REDIS_URL);
 
   const serverAdapter = new ExpressAdapter();
   serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
@@ -318,6 +317,8 @@ if (cluster.isMaster) {
     `/admin/${process.env.BULL_AUTH_KEY}/redis-health`,
     async (req, res) => {
       try {
+  const queueRedis = new Redis(process.env.REDIS_URL);
+
         const testKey = "test";
         const testValue = "test";
 
