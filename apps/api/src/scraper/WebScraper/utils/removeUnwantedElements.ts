@@ -8,7 +8,11 @@ export const removeUnwantedElements = (
 ) => {
   const soup = cheerio.load(html);
 
-  if (pageOptions.onlyIncludeTags) {
+  if (
+    pageOptions.onlyIncludeTags &&
+    pageOptions.onlyIncludeTags.length > 0 &&
+    pageOptions.onlyIncludeTags[0] !== ''
+  ) {
     if (typeof pageOptions.onlyIncludeTags === "string") {
       pageOptions.onlyIncludeTags = [pageOptions.onlyIncludeTags];
     }
@@ -26,7 +30,11 @@ export const removeUnwantedElements = (
 
   soup("script, style, iframe, noscript, meta, head").remove();
 
-  if (pageOptions.removeTags) {
+  if (
+    pageOptions.removeTags &&
+    pageOptions.removeTags.length > 0 &&
+    pageOptions.removeTags[0] !== ''
+  ) {
     if (typeof pageOptions.removeTags === "string") {
       pageOptions.removeTags = [pageOptions.removeTags];
     }
