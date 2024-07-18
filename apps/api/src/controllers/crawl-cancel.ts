@@ -60,7 +60,7 @@ export async function crawlCancelController(req: Request, res: Response) {
     const newJobState = await job.getState();
 
     res.json({
-      status: newJobState === "failed" ? "cancelled" : "Cancelling...",
+      status: "cancelled"
     });
   } catch (error) {
     console.error(error);
