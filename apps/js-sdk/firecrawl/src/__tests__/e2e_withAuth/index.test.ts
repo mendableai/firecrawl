@@ -1,7 +1,7 @@
 import FirecrawlApp from '../../index';
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
-
+import { describe, test, expect } from '@jest/globals';
 
 dotenv.config();
 
@@ -9,7 +9,7 @@ const TEST_API_KEY = process.env.TEST_API_KEY;
 const API_URL = "http://127.0.0.1:3002";
 
 describe('FirecrawlApp E2E Tests', () => {
-  test.concurrent('should throw error for no API key', () => {
+  test.concurrent('should throw error for no API key', async () => {
     expect(() => {
       new FirecrawlApp({ apiKey: null, apiUrl: API_URL });
     }).toThrow("No API key provided");
@@ -107,12 +107,16 @@ describe('FirecrawlApp E2E Tests', () => {
     while (statusResponse.status === 'active' && checks < maxChecks) {
       await new Promise(resolve => setTimeout(resolve, 1000));
       expect(statusResponse.partial_data).not.toBeNull();
+      expect(statusResponse.current).toBeGreaterThanOrEqual(1);
       statusResponse = await app.checkCrawlStatus(response.jobId);
       checks++;
     }
 
     expect(statusResponse).not.toBeNull();
+    expect(statusResponse.success).toBe(true);
     expect(statusResponse.status).toBe('completed');
+    expect(statusResponse.total).toEqual(statusResponse.current);
+    expect(statusResponse.current_step).not.toBeNull();
     expect(statusResponse?.data?.length).toBeGreaterThan(0);
   }, 35000); // 35 seconds timeout
 

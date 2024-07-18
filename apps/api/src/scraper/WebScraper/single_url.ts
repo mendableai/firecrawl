@@ -16,6 +16,7 @@ import { scrapWithFetch } from "./scrapers/fetch";
 import { scrapWithFireEngine } from "./scrapers/fireEngine";
 import { scrapWithPlaywright } from "./scrapers/playwright";
 import { scrapWithScrapingBee } from "./scrapers/scrapingBee";
+import { extractLinks } from "./utils/utils";
 
 dotenv.config();
 
@@ -112,6 +113,8 @@ function getScrapingFallbackOrder(
   const scrapersInOrder = Array.from(uniqueScrapers);
   return scrapersInOrder as (typeof baseScrapers)[number][];
 }
+
+
 
 export async function scrapSingleUrl(
   urlToScrap: string,
@@ -247,7 +250,6 @@ export async function scrapSingleUrl(
       scraperResponse.text = customScrapedContent.html;
       screenshot = customScrapedContent.screenshot;
     }
-
     //* TODO: add an optional to return markdown or structured/extracted content
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
     return {
@@ -322,6 +324,10 @@ export async function scrapSingleUrl(
     const soup = cheerio.load(rawHtml);
     const metadata = extractMetadata(soup, urlToScrap);
 
+    let linksOnPage: string[] | undefined;
+
+    linksOnPage = extractLinks(rawHtml, urlToScrap);
+
     let document: Document;
     if (screenshot && screenshot.length > 0) {
       document = {
@@ -330,9 +336,10 @@ export async function scrapSingleUrl(
         html: pageOptions.includeHtml ? html : undefined,
         rawHtml:
           pageOptions.includeRawHtml ||
-          extractorOptions.mode === "llm-extraction-from-raw-html"
+            extractorOptions.mode === "llm-extraction-from-raw-html"
             ? rawHtml
             : undefined,
+        linksOnPage,
         metadata: {
           ...metadata,
           screenshot: screenshot,
@@ -348,7 +355,7 @@ export async function scrapSingleUrl(
         html: pageOptions.includeHtml ? html : undefined,
         rawHtml:
           pageOptions.includeRawHtml ||
-          extractorOptions.mode === "llm-extraction-from-raw-html"
+            extractorOptions.mode === "llm-extraction-from-raw-html"
             ? rawHtml
             : undefined,
         metadata: {
@@ -357,6 +364,7 @@ export async function scrapSingleUrl(
           pageStatusCode: pageStatusCode,
           pageError: pageError,
         },
+        linksOnPage,
       };
     }
 
@@ -367,6 +375,7 @@ export async function scrapSingleUrl(
       content: "",
       markdown: "",
       html: "",
+      linksOnPage: [],
       metadata: {
         sourceURL: urlToScrap,
         pageStatusCode: pageStatusCode,

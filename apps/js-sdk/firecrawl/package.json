@@ -1,6 +1,6 @@
 {
   "name": "@mendable/firecrawl-js",
-  "version": "0.0.28",
+  "version": "0.0.29",
   "description": "JavaScript SDK for Firecrawl API",
   "main": "build/index.js",
   "types": "types/index.d.ts",
@@ -9,7 +9,7 @@
     "build": "tsc",
     "build-and-publish": "npm run build && npm publish --access public",
     "publish-beta": "npm run build && npm publish --access public --tag beta",
-    "test": "jest src/__tests__/**/*.test.ts"
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest --verbose src/__tests__/**/*.test.ts"
   },
   "repository": {
     "type": "git",
@@ -37,7 +37,7 @@
     "@types/node": "^20.12.12",
     "@types/uuid": "^9.0.8",
     "jest": "^29.7.0",
-    "ts-jest": "^29.1.2",
+    "ts-jest": "^29.2.2",
     "typescript": "^5.4.5"
   },
   "keywords": [
