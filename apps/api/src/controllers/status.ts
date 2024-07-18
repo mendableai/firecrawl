@@ -19,7 +19,10 @@ export async function crawlJobStatusPreviewController(req: Request, res: Respons
       }
     }
 
-    const jobStatus = await job.getState();
+    let jobStatus = await job.getState();
+    if (jobStatus === 'waiting' || jobStatus === 'stuck') {
+      jobStatus = 'active';
+    }
 
     res.json({
       status: jobStatus,

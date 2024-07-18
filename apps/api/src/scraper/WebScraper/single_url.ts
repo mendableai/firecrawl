@@ -22,6 +22,7 @@ dotenv.config();
 
 const baseScrapers = [
   "fire-engine",
+  "fire-engine;chrome-cdp",
   "scrapingBee",
   "playwright",
   "scrapingBeeLoad",
@@ -71,6 +72,8 @@ function getScrapingFallbackOrder(
         return !!process.env.SCRAPING_BEE_API_KEY;
       case "fire-engine":
         return !!process.env.FIRE_ENGINE_BETA_URL;
+      case "fire-engine;chrome-cdp":
+        return !!process.env.FIRE_ENGINE_BETA_URL;  
       case "playwright":
         return !!process.env.PLAYWRIGHT_MICROSERVICE_URL;
       default:
@@ -81,6 +84,7 @@ function getScrapingFallbackOrder(
   let defaultOrder = [
     "scrapingBee",
     "fire-engine",
+    "fire-engine;chrome-cdp",
     "playwright",
     "scrapingBeeLoad",
     "fetch",
@@ -139,8 +143,16 @@ export async function scrapSingleUrl(
       metadata: { pageStatusCode?: number; pageError?: string | null };
     } = { text: "", screenshot: "", metadata: {} };
     let screenshot = "";
+
     switch (method) {
       case "fire-engine":
+      case "fire-engine;chrome-cdp":  
+
+        let engine: "playwright" | "chrome-cdp" | "tlsclient" = "playwright";
+        if(method === "fire-engine;chrome-cdp"){
+          engine = "chrome-cdp";
+        }
+
         if (process.env.FIRE_ENGINE_BETA_URL) {
           console.log(`Scraping ${url} with Fire Engine`);
           const response = await scrapWithFireEngine({
@@ -149,6 +161,9 @@ export async function scrapSingleUrl(
             screenshot: pageOptions.screenshot,
             pageOptions: pageOptions,
             headers: pageOptions.headers,
+            fireEngineOptions: {
+              engine: engine,
+            }
           });
           scraperResponse.text = response.html;
           scraperResponse.screenshot = response.screenshot;
