@@ -8,9 +8,6 @@ primary_region = 'mia'
 kill_signal = 'SIGINT'
 kill_timeout = '30s'
 
-[deploy]
-  release_command = 'node dist/src/trigger-shutdown.js https://api.firecrawl.dev'
-
 [build]
 
 [processes]

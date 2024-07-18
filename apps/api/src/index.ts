@@ -119,63 +119,6 @@ if (cluster.isMaster) {
     }
   });
 
-  app.post(`/admin/${process.env.BULL_AUTH_KEY}/shutdown`, async (req, res) => {
-    // return res.status(200).json({ ok: true });
-    try {
-      console.log("Gracefully shutting down...");
-      await getWebScraperQueue().pause(false, true);
-      res.json({ ok: true });
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: error.message });
-    }
-  });
-
-  app.post(`/admin/${process.env.BULL_AUTH_KEY}/unpause`, async (req, res) => {
-    try {
-      const wsq = getWebScraperQueue();
-
-      const jobs = await wsq.getActive();
-
-      console.log("Requeueing", jobs.length, "jobs...");
-
-      if (jobs.length > 0) {
-        console.log("  Removing", jobs.length, "jobs...");
-
-        await Promise.all(
-          jobs.map(async (x) => {
-            try {
-              await wsq.client.del(await x.lockKey());
-              await x.takeLock();
-              await x.moveToFailed({ message: "interrupted" });
-              await x.remove();
-            } catch (e) {
-              console.warn("Failed to remove job", x.id, e);
-            }
-          })
-        );
-
-        console.log("  Re-adding", jobs.length, "jobs...");
-        await wsq.addBulk(
-          jobs.map((x) => ({
-            data: x.data,
-            opts: {
-              jobId: x.id,
-            },
-          }))
-        );
-
-        console.log("  Done!");
-      }
-
-      await getWebScraperQueue().resume(false);
-      res.json({ ok: true });
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: error.message });
-    }
-  });
-
   app.get(`/serverHealthCheck`, async (req, res) => {
     try {
       const webScraperQueue = getWebScraperQueue();
