@@ -31,7 +31,6 @@ export async function scrapWithFireEngine({
   fireEngineOptions?: FireEngineOptions;
   headers?: Record<string, string>;
   options?: any;
-  engine?: 'playwright' | 'chrome-cdp' | 'tlsclient';
 }): Promise<FireEngineResponse> {
   const logParams = {
     url,
@@ -47,6 +46,7 @@ export async function scrapWithFireEngine({
   try {
     const reqParams = await generateRequestParams(url);
     const waitParam = reqParams["params"]?.wait ?? waitFor;
+    const engineParam = reqParams["params"]?.engine ?? fireEngineOptions?.engine  ?? "playwright";
     const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
     const fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
 
@@ -57,13 +57,13 @@ export async function scrapWithFireEngine({
       endpoint = "/request";
     }
 
-    let engine = fireEngineOptions?.engine ?? options?.engine ?? "playwright"; // do we want fireEngineOptions as first choice?
+    let engine = engineParam; // do we want fireEngineOptions as first choice?
 
     console.log(
-      `[Fire-Engine] Scraping ${url} with wait: ${waitParam} and screenshot: ${screenshotParam} and method: ${fireEngineOptionsParam?.method ?? "null"}`
+      `[Fire-Engine][${engine}] Scraping ${url} with wait: ${waitParam} and screenshot: ${screenshotParam} and method: ${fireEngineOptionsParam?.method ?? "null"}`
     );
 
-    console.log(fireEngineOptionsParam)
+    // console.log(fireEngineOptionsParam)
 
     const response = await axios.post(
       process.env.FIRE_ENGINE_BETA_URL + endpoint,
@@ -73,7 +73,6 @@ export async function scrapWithFireEngine({
         screenshot: screenshotParam,
         headers: headers,
         pageOptions: pageOptions,
-        engine: engine,
         ...fireEngineOptionsParam,
       },
       {
@@ -86,14 +85,14 @@ export async function scrapWithFireEngine({
 
     if (response.status !== 200) {
       console.error(
-        `[Fire-Engine] Error fetching url: ${url} with status: ${response.status}`
+        `[Fire-Engine][${engine}] Error fetching url: ${url} with status: ${response.status}`
       );
       
       logParams.error_message = response.data?.pageError;
       logParams.response_code = response.data?.pageStatusCode;
 
       if(response.data && response.data?.pageStatusCode !== 200) {
-        console.error(`[Fire-Engine] Error fetching url: ${url} with status: ${response.status}`);
+        console.error(`[Fire-Engine][${engine}] Error fetching url: ${url} with status: ${response.status}`);
       }
 
       return {

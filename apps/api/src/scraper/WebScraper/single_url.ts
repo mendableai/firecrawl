@@ -161,7 +161,9 @@ export async function scrapSingleUrl(
             screenshot: pageOptions.screenshot,
             pageOptions: pageOptions,
             headers: pageOptions.headers,
-            engine: engine,
+            fireEngineOptions: {
+              engine: engine,
+            }
           });
           scraperResponse.text = response.html;
           scraperResponse.screenshot = response.screenshot;
