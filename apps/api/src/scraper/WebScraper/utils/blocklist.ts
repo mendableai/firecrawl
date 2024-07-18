@@ -59,7 +59,7 @@ export function isUrlBlocked(url: string): boolean {
     return isBlocked;
   } catch (e) {
     // If an error occurs (e.g., invalid URL), return false
-    console.error(`Error processing URL: ${url}`, e);
+    console.error(`Error parsing the following URL: ${url}`);
     return false;
   }
 }
