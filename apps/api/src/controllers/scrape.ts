@@ -116,11 +116,14 @@ export async function scrapeController(req: Request, res: Response) {
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = { ...defaultPageOptions, ...req.body.pageOptions };
     const extractorOptions = { ...defaultExtractorOptions, ...req.body.extractorOptions };
+    const origin = req.body.origin ?? defaultOrigin;
+    let timeout = req.body.timeout ?? defaultTimeout;
+
     if (extractorOptions.mode === "llm-extraction") {
       pageOptions.onlyMainContent = true;
+      timeout = req.body.timeout ?? 90000;
     }
-    const origin = req.body.origin ?? defaultOrigin;
-    const timeout = req.body.timeout ?? defaultTimeout;
+    
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
