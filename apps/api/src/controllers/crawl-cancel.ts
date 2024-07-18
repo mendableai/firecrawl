@@ -50,6 +50,8 @@ export async function crawlCancelController(req: Request, res: Response) {
     }
 
     try {
+      await getWebScraperQueue().client.del(job.lockKey());
+      await job.takeLock();
       await job.moveToFailed(Error("Job cancelled by user"), true);
     } catch (error) {
       console.error(error);
