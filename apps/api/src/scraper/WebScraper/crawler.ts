@@ -393,6 +393,7 @@ export class WebCrawler {
       ".js",
       ".ico",
       ".svg",
+      ".tiff",
       // ".pdf", 
       ".zip",
       ".exe",
