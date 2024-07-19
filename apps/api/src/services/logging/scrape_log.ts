@@ -32,7 +32,7 @@ export async function logScrape(
         retried: scrapeLog.retried,
         error_message: scrapeLog.error_message,
         date_added: new Date().toISOString(),
-        html: scrapeLog.html,
+        html: "Removed to save db space",
         ipv4_support: scrapeLog.ipv4_support,
         ipv6_support: scrapeLog.ipv6_support,
       },
