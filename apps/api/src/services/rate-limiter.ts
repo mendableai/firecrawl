@@ -71,7 +71,7 @@ export function disconnectRateLimitRedisClient() {
 
 // singleton
 export class RateLimiter {
-  private static instance: RateLimiterRedis | null = null;
+  private static instances: { [key: string]: RateLimiterRedis } = {};
 
   private constructor() {}
 
@@ -79,15 +79,15 @@ export class RateLimiter {
     if (!redisRateLimitClient.status || redisRateLimitClient.status !== 'ready') {
       throw new Error('Redis client not connected');
     }
-    if (!RateLimiter.instance) {
-      RateLimiter.instance = new RateLimiterRedis({
+    if (!RateLimiter.instances[keyPrefix]) {
+      RateLimiter.instances[keyPrefix] = new RateLimiterRedis({
         storeClient: redisRateLimitClient,
         keyPrefix,
         points,
         duration: 60,
       });
     }
-    return RateLimiter.instance;
+    return RateLimiter.instances[keyPrefix];
   }
 }
 
