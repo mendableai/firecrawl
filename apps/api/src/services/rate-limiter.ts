@@ -57,47 +57,103 @@ const RATE_LIMITS = {
   },
 };
 
-export const redisRateLimitClient = new Redis(
+const redisRateLimitClient = new Redis(
   process.env.REDIS_RATE_LIMIT_URL
 )
 
-const createRateLimiter = (keyPrefix, points) =>
-  new RateLimiterRedis({
-    storeClient: redisRateLimitClient,
-    keyPrefix,
-    points,
-    duration: 60, // Duration in seconds
-  });
+export async function connectRateLimitRedisClient() {
+  return await redisRateLimitClient.connect();
+}
 
-export const serverRateLimiter = createRateLimiter(
-  "server",
-  RATE_LIMITS.account.default
-);
+export function disconnectRateLimitRedisClient() {
+  return redisRateLimitClient.disconnect();
+}
 
-export const testSuiteRateLimiter = new RateLimiterRedis({
-  storeClient: redisRateLimitClient,
-  keyPrefix: "test-suite",
-  points: 10000,
-  duration: 60, // Duration in seconds
-});
+// singleton
+export class RateLimiter {
+  private static instance: RateLimiterRedis | null = null;
+
+  private constructor() {}
+
+  public static getInstance(keyPrefix: string, points: number): RateLimiterRedis {
+    if (!redisRateLimitClient.status || redisRateLimitClient.status !== 'ready') {
+      throw new Error('Redis client not connected');
+    }
+    if (!RateLimiter.instance) {
+      RateLimiter.instance = new RateLimiterRedis({
+        storeClient: redisRateLimitClient,
+        keyPrefix,
+        points,
+        duration: 60,
+      });
+    }
+    return RateLimiter.instance;
+  }
+}
+
+// singleton
+export class TestSuiteRateLimiter {
+  private static instance: RateLimiterRedis | null = null;
+
+  private constructor() {}
+
+  public static getInstance(): RateLimiterRedis {
+    if (!redisRateLimitClient.status || redisRateLimitClient.status !== 'ready') {
+      throw new Error('Redis client not connected');
+    }
+    if (!TestSuiteRateLimiter.instance) {
+      TestSuiteRateLimiter.instance = new RateLimiterRedis({
+        storeClient: redisRateLimitClient,
+        keyPrefix: "test-suite",
+        points: 10000,
+        duration: 60, // Duration in seconds
+      });
+    }
+    return TestSuiteRateLimiter.instance;
+  }
+}
+
+// singleton
+export class ServerRateLimiter {
+  private static instance: RateLimiterRedis | null = null;
+
+  private constructor() {}
+
+  public static getRedisClient(): Redis {
+    return redisRateLimitClient;
+  }
+
+  public static getInstance(): RateLimiterRedis {
+    if (!redisRateLimitClient.status || redisRateLimitClient.status !== 'ready') {
+      throw new Error('Redis client not connected');
+    }
+    if (!ServerRateLimiter.instance) {
+      ServerRateLimiter.instance = new RateLimiterRedis({
+        storeClient: redisRateLimitClient,
+        keyPrefix: "server",
+        points: 5,
+        duration: 60, // Duration in seconds
+      });
+    }
+    return ServerRateLimiter.instance;
+  }
+}
 
 export function getRateLimiter(
   mode: RateLimiterMode,
   token: string,
   plan?: string
-) {
-
+): RateLimiterRedis {
   if (token.includes("a01ccae") || token.includes("6254cf9")) {
-    return testSuiteRateLimiter;
+    return TestSuiteRateLimiter.getInstance();
   }
 
   const rateLimitConfig = RATE_LIMITS[mode]; // {default : 5}
-
-  if (!rateLimitConfig) return serverRateLimiter;
+  if (!rateLimitConfig) return ServerRateLimiter.getInstance();
 
   const planKey = plan ? plan.replace("-", "") : "default"; // "default"
   const points =
     rateLimitConfig[planKey] || rateLimitConfig.default || rateLimitConfig; // 5
 
-  return createRateLimiter(`${mode}-${planKey}`, points);
+  return RateLimiter.getInstance(`${mode}-${planKey}`, points);
 }

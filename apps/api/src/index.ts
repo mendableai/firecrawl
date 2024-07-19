@@ -11,7 +11,8 @@ import { Job } from "bull";
 import { sendSlackWebhook } from "./services/alerts/slack";
 import { checkAlerts } from "./services/alerts";
 import Redis from "ioredis";
-import { redisRateLimitClient } from "./services/rate-limiter";
+import { RateLimiter, connectRateLimitRedisClient, disconnectRateLimitRedisClient } from "./services/rate-limiter";
+// import { redisRateLimitClient } from "./services/rate-limiter";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -277,14 +278,34 @@ if (cluster.isMaster) {
         }
 
         // Test redisRateLimitClient
-        let redisRateLimitHealth;
+        // let redisRateLimitHealth;
+        // try {
+        //   await redisRateLimitClient.set(testKey, testValue);
+        //   redisRateLimitHealth = await redisRateLimitClient.get(testKey);
+        //   await redisRateLimitClient.del(testKey);
+        // } catch (error) {
+        //   console.error("redisRateLimitClient health check failed:", error);
+        //   redisRateLimitHealth = null;
+        // }
+
+        // Test redisRateLimitClient using the singleton pattern
+        let redisRateLimitHealth: string;
         try {
-          await redisRateLimitClient.set(testKey, testValue);
-          redisRateLimitHealth = await redisRateLimitClient.get(testKey);
-          await redisRateLimitClient.del(testKey);
+          // Ensure the Redis client is connected
+          await connectRateLimitRedisClient();
+
+          // Use the RateLimiter instance to perform the health check
+          const rateLimiter = RateLimiter.getInstance("health-check", 1);
+          await rateLimiter.consume("health-check-key");
+          redisRateLimitHealth = "healthy";
+          
+          await rateLimiter.block("health-check-key", -1);
         } catch (error) {
           console.error("redisRateLimitClient health check failed:", error);
-          redisRateLimitHealth = null;
+          redisRateLimitHealth = "unhealthy";
+        } finally {
+          // Disconnect the Redis client
+          disconnectRateLimitRedisClient();
         }
 
         const healthStatus = {

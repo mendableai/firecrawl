@@ -1,5 +1,7 @@
-import Redis from "ioredis";
-import { redisRateLimitClient } from "./rate-limiter";
+// import Redis from "ioredis";
+import { ServerRateLimiter, } from "./rate-limiter";
+
+const redisRateLimitClient = ServerRateLimiter.getRedisClient();
 
 // Listen to 'error' events to the Redis connection
 redisRateLimitClient.on("error", (error) => {
