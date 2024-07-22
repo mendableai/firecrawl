@@ -54,10 +54,10 @@ export async function getLinksFromSitemap(
   return allUrls;
 }
 
-export const fetchSitemapData = async (url: string): Promise<SitemapEntry[] | null> => {
+export const fetchSitemapData = async (url: string, timeout?: number): Promise<SitemapEntry[] | null> => {
   const sitemapUrl = url.endsWith("/sitemap.xml") ? url : `${url}/sitemap.xml`;
   try {
-    const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
+    const response = await axios.get(sitemapUrl, { timeout: timeout || axiosTimeout });
     if (response.status === 200) {
       const xml = response.data;
       const parsedXml = await parseStringPromise(xml);

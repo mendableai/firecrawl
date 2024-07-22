@@ -73,28 +73,6 @@ export async function scrapeHelper(
     });
   }
 
-  let creditsToBeBilled = filteredDocs.length;
-  const creditsPerLLMExtract = 50;
-
-
-
-  if (extractorOptions.mode === "llm-extraction" || extractorOptions.mode === "llm-extraction-from-raw-html" || extractorOptions.mode === "llm-extraction-from-markdown") {
-    creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length);
-  }
-
-  const billingResult = await billTeam(
-    team_id,
-    creditsToBeBilled
-  );
-  if (!billingResult.success) {
-    return {
-      success: false,
-      error:
-        "Failed to bill team. Insufficient credits or subscription not found.",
-      returnCode: 402,
-    };
-  }
-
   return {
     success: true,
     data: filteredDocs[0],
@@ -104,6 +82,7 @@ export async function scrapeHelper(
 
 export async function scrapeController(req: Request, res: Response) {
   try {
+    let earlyReturn = false;
     // make sure to authenticate user first, Bearer <token>
     const { success, team_id, error, status, plan } = await authenticateUser(
       req,
@@ -113,28 +92,41 @@ export async function scrapeController(req: Request, res: Response) {
     if (!success) {
       return res.status(status).json({ error });
     }
+
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = { ...defaultPageOptions, ...req.body.pageOptions };
     const extractorOptions = { ...defaultExtractorOptions, ...req.body.extractorOptions };
     const origin = req.body.origin ?? defaultOrigin;
     let timeout = req.body.timeout ?? defaultTimeout;
 
-    if (extractorOptions.mode === "llm-extraction") {
+    if (extractorOptions.mode.includes("llm-extraction")) {
       pageOptions.onlyMainContent = true;
       timeout = req.body.timeout ?? 90000;
     }
-    
 
-    try {
-      const { success: creditsCheckSuccess, message: creditsCheckMessage } =
-        await checkTeamCredits(team_id, 1);
-      if (!creditsCheckSuccess) {
-        return res.status(402).json({ error: "Insufficient credits" });
+    const checkCredits = async () => {
+      try {
+        const { success: creditsCheckSuccess, message: creditsCheckMessage } = await checkTeamCredits(team_id, 1);
+        if (!creditsCheckSuccess) {
+          earlyReturn = true;
+          return res.status(402).json({ error: "Insufficient credits" });
+        }
+      } catch (error) {
+        console.error(error);
+        earlyReturn = true;
+        return res.status(402).json({ error: "Error checking team credits. Please contact hello@firecrawl.com for help." });
       }
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: "Internal server error" });
+    };
+
+
+    // Async check saves 500ms in average case
+    // Don't async check in llm extraction mode as it could be expensive
+    if (extractorOptions.mode.includes("llm-extraction")) {
+      await checkCredits();
+    } else {
+      checkCredits();
     }
+
     const startTime = new Date().getTime();
     const result = await scrapeHelper(
       req,
@@ -148,6 +140,33 @@ export async function scrapeController(req: Request, res: Response) {
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
     const numTokens = (result.data && result.data.markdown) ? numTokensFromString(result.data.markdown, "gpt-3.5-turbo") : 0;
+
+    if (result.success) {
+      let creditsToBeBilled = 1; // Assuming 1 credit per document
+      const creditsPerLLMExtract = 50;
+
+      if (extractorOptions.mode.includes("llm-extraction")) {
+        creditsToBeBilled += creditsPerLLMExtract;
+      }
+
+      let startTimeBilling = new Date().getTime();
+
+      if (earlyReturn) {
+        // Don't bill if we're early returning
+        return;
+      }
+      const billingResult = await billTeam(
+        team_id,
+        creditsToBeBilled
+      );
+      if (!billingResult.success) {
+        return res.status(402).json({
+          success: false,
+          error: "Failed to bill team. Insufficient credits or subscription not found.",
+        });
+      }
+      console.log("Billed team in", new Date().getTime() - startTimeBilling, "ms");
+    }
 
     logJob({
       success: result.success,
@@ -164,6 +183,9 @@ export async function scrapeController(req: Request, res: Response) {
       extractor_options: extractorOptions,
       num_tokens: numTokens,
     });
+
+    
+    
     return res.status(result.returnCode).json(result);
   } catch (error) {
     console.error(error);
