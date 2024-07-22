@@ -146,6 +146,7 @@ export async function scrapeController(req: Request, res: Response) {
       const creditsPerLLMExtract = 50;
 
       if (extractorOptions.mode.includes("llm-extraction")) {
+        // creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length);
         creditsToBeBilled += creditsPerLLMExtract;
       }
 
