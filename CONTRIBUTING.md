@@ -24,6 +24,7 @@ NUM_WORKERS_PER_QUEUE=8
 PORT=3002
 HOST=0.0.0.0
 REDIS_URL=redis://localhost:6379
+REDIS_RATE_LIMIT_URL=redis://localhost:6379
 
 ## To turn on DB authentication, you need to set up supabase.
 USE_DB_AUTHENTICATION=false
