@@ -278,7 +278,7 @@ export class WebScraperDataProvider {
     ]);
 
     if (this.mode === "single_urls" && documents.length > 0) {
-      documents[0].metadata.sitemap = sitemapData;
+      documents[0].metadata.sitemap = sitemapData ?? undefined;
     } else {
       documents = await this.getSitemapData(this.urls[0], documents);
     }
