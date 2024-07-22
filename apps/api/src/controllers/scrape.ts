@@ -166,7 +166,6 @@ export async function scrapeController(req: Request, res: Response) {
           error: "Failed to bill team. Insufficient credits or subscription not found.",
         });
       }
-      console.log("Billed team in", new Date().getTime() - startTimeBilling, "ms");
     }
 
     logJob({
