@@ -355,7 +355,7 @@ export class WebScraperDataProvider {
     documents: Document[],
     links: string[]
   ): Promise<Document[]> {
-    await this.setCachedDocuments(documents, links);
+    // await this.setCachedDocuments(documents, links);
     documents = this.removeChildLinks(documents);
     return documents.splice(0, this.limit);
   }
@@ -451,7 +451,7 @@ export class WebScraperDataProvider {
           ...document,
           childrenLinks: childrenLinks || [],
         }),
-        60 * 60 * 24 * 10
+        60 * 60
       ); // 10 days
     }
   }
