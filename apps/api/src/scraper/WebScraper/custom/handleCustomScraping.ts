@@ -1,10 +1,12 @@
+import { Logger } from "../../../lib/logger";
+
 export async function handleCustomScraping(
   text: string,
   url: string
 ): Promise<{ scraper: string; url: string; waitAfterLoad?: number, pageOptions?: { scrollXPaths?: string[] } } | null> {
   // Check for Readme Docs special case
   if (text.includes('<meta name="readme-deploy"')) {
-    console.log(
+    Logger.debug(
       `Special use case detected for ${url}, using Fire Engine with wait time 1000ms`
     );
     return {
@@ -19,7 +21,7 @@ export async function handleCustomScraping(
 
   // Check for Vanta security portals
   if (text.includes('<link href="https://static.vanta.com')) {
-    console.log(
+    Logger.debug(
       `Vanta link detected for ${url}, using Fire Engine with wait time 3000ms`
     );
     return {
@@ -34,7 +36,7 @@ export async function handleCustomScraping(
   const googleDriveMetaMatch = text.match(googleDriveMetaPattern);
   if (googleDriveMetaMatch) {
     const url = googleDriveMetaMatch[1];
-    console.log(`Google Drive PDF link detected: ${url}`);
+    Logger.debug(`Google Drive PDF link detected: ${url}`);
 
     const fileIdMatch = url.match(/https:\/\/drive\.google\.com\/file\/d\/([^\/]+)\/view/);
     if (fileIdMatch) {

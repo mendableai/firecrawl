@@ -2,6 +2,7 @@ import { NotificationType } from "../../types";
 import { withAuth } from "../../lib/withAuth";
 import { sendNotification } from "../notification/email_notification";
 import { supabase_service } from "../supabase";
+import { Logger } from "../../lib/logger";
 
 const FREE_CREDITS = 500;
 
@@ -12,7 +13,7 @@ export async function supaBillTeam(team_id: string, credits: number) {
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
   }
-  console.log(`Billing team ${team_id} for ${credits} credits`);
+  Logger.info(`Billing team ${team_id} for ${credits} credits`);
   //   When the API is used, you can log the credit usage in the credit_usage table:
   // team_id: The ID of the team using the API.
   // subscription_id: The ID of the team's active subscription.
@@ -218,7 +219,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
       0
     );
 
-    console.log("totalCreditsUsed", totalCreditsUsed);
+    Logger.info(`totalCreditsUsed: ${totalCreditsUsed}`);
 
     const end = new Date();
     end.setDate(end.getDate() + 30);

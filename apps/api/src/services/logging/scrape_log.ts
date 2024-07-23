@@ -2,6 +2,7 @@ import "dotenv/config";
 import { ScrapeLog } from "../../types";
 import { supabase_service } from "../supabase";
 import { PageOptions } from "../../lib/entities";
+import { Logger } from "../../lib/logger";
 
 export async function logScrape(
   scrapeLog: ScrapeLog,
@@ -39,9 +40,9 @@ export async function logScrape(
     ]);
 
     if (error) {
-      console.error("Error logging proxy:\n", error);
+      Logger.error(`Error logging proxy:\n${error}`);
     }
   } catch (error) {
-    console.error("Error logging proxy:\n", error);
+    Logger.error(`Error logging proxy:\n${error}`);
   }
 }
