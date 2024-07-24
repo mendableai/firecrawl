@@ -25,6 +25,7 @@ export interface WebScraperOptions {
   mode: Mode;
   crawlerOptions: any;
   pageOptions: any;
+  extractorOptions?: any;
   team_id: string;
   origin?: string;
 }

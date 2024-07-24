@@ -7,11 +7,12 @@ import { WebScraperOptions } from "../types";
 
 export async function addWebScraperJob(
   webScraperOptions: WebScraperOptions,
-  options: any = {}
+  options: any = {},
+  jobId: string = uuidv4(),
 ): Promise<Job> {
   return await getWebScraperQueue().add(webScraperOptions, {
     ...options,
-    jobId: uuidv4(),
+    jobId,
   });
 }
 

@@ -42,7 +42,9 @@ async function processJob(job: Job, done) {
       error: message /* etc... */,
     };
 
-    await callWebhook(job.data.team_id, job.id as string, data);
+    if (job.data.mode === "crawl") {
+      await callWebhook(job.data.team_id, job.id as string, data);
+    }
 
     await logJob({
       job_id: job.id as string,
@@ -52,7 +54,7 @@ async function processJob(job: Job, done) {
       docs: docs,
       time_taken: timeTakenInSeconds,
       team_id: job.data.team_id,
-      mode: "crawl",
+      mode: job.data.mode,
       url: job.data.url,
       crawlerOptions: job.data.crawlerOptions,
       pageOptions: job.data.pageOptions,
@@ -90,7 +92,9 @@ async function processJob(job: Job, done) {
       error:
         "Something went wrong... Contact help@mendable.ai or try again." /* etc... */,
     };
-    await callWebhook(job.data.team_id, job.id as string, data);
+    if (job.data.mode === "crawl") {
+      await callWebhook(job.data.team_id, job.id as string, data);
+    }
     await logJob({
       job_id: job.id as string,
       success: false,

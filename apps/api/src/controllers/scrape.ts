@@ -9,6 +9,8 @@ import { Document } from "../lib/entities";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../lib/default-values';
+import { addWebScraperJob } from '../services/queue-jobs';
+import { getWebScraperQueue } from '../services/queue-service';
 
 export async function scrapeHelper(
   req: Request,
@@ -33,49 +35,74 @@ export async function scrapeHelper(
     return { success: false, error: "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.", returnCode: 403 };
   }
 
-  const a = new WebScraperDataProvider();
-  await a.setOptions({
+  // const a = new WebScraperDataProvider();
+  // await a.setOptions({
+  //   mode: "single_urls",
+  //   urls: [url],
+  //   crawlerOptions: {
+  //     ...crawlerOptions,
+  //   },
+  //   pageOptions: pageOptions,
+  //   extractorOptions: extractorOptions,
+  // });
+
+  const job = await addWebScraperJob({
+    url,
     mode: "single_urls",
-    urls: [url],
-    crawlerOptions: {
-      ...crawlerOptions,
-    },
-    pageOptions: pageOptions,
-    extractorOptions: extractorOptions,
+    crawlerOptions,
+    team_id,
+    pageOptions,
+    extractorOptions,
+    origin: req.body.origin ?? defaultOrigin,
   });
+
+  const wsq = getWebScraperQueue();
+
+  let promiseResolve;
+
+  const docsPromise = new Promise((resolve) => {
+    promiseResolve = resolve;
+  });
+
+  const listener = (j: string) => {
+    console.log("JOB COMPLETED", j, "vs", job.id);
+    if (j === job.id) {
+      promiseResolve(j);
+      wsq.removeListener("global:completed", listener);
+    }
+  }
+
+  wsq.on("global:completed", listener);
 
   const timeoutPromise = new Promise<{ success: boolean; error?: string; returnCode: number }>((_, reject) =>
     setTimeout(() => reject({ success: false, error: "Request timed out. Increase the timeout by passing `timeout` param to the request.", returnCode: 408 }), timeout)
   );
 
-  const docsPromise = a.getDocuments(false);
-
-  let docs;
+  let j;
   try {
-    docs = await Promise.race([docsPromise, timeoutPromise]);
+    j = await Promise.race([docsPromise, timeoutPromise]);
   } catch (error) {
+    wsq.removeListener("global:completed", listener);
     return error;
   }
 
+  const jobNew = (await wsq.getJob(j));
+  const doc = jobNew.progress().currentDocument;
+  delete doc.index;
+
   // make sure doc.content is not empty
-  let filteredDocs = docs.filter(
-    (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
-  );
-  if (filteredDocs.length === 0) {
-    return { success: true, error: "No page found", returnCode: 200, data: docs[0] };
+  if (!doc) {
+    return { success: true, error: "No page found", returnCode: 200, data: doc };
   }
 
- 
   // Remove rawHtml if pageOptions.rawHtml is false and extractorOptions.mode is llm-extraction-from-raw-html
   if (!pageOptions.includeRawHtml && extractorOptions.mode == "llm-extraction-from-raw-html") {
-    filteredDocs.forEach(doc => {
-      delete doc.rawHtml;
-    });
+    delete doc.rawHtml;
   }
 
   return {
     success: true,
-    data: filteredDocs[0],
+    data: doc,
     returnCode: 200,
   };
 }
