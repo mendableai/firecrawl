@@ -15,11 +15,12 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight } from "lucide-react";
 
-// Hardcoded values (not recommended for production)
+//! Hardcoded values (not recommended for production)
+//! Highly recommended to move all Firecrawl API calls to the backend (e.g. Next.js API route)
 const FIRECRAWL_API_URL = "https://api.firecrawl.dev"; // Replace with your actual API URL whether it is local or using Firecrawl Cloud
-const FIRECRAWL_API_KEY = ""; // Replace with your actual API key
+const FIRECRAWL_API_KEY = "fc-YOUR_API_KEY"; // Replace with your actual API key
 
 interface FormData {
   url: string;
@@ -100,7 +101,8 @@ export default function FirecrawlComponent() {
   const [elapsedTime, setElapsedTime] = useState<number>(0);
   const [showCrawlStatus, setShowCrawlStatus] = useState<boolean>(false);
   const [isScraping, setIsScraping] = useState<boolean>(false);
-  const [showAllUrls, setShowAllUrls] = useState<boolean>(false);
+  const [currentPage, setCurrentPage] = useState<number>(1);
+  const urlsPerPage = 10;
 
   useEffect(() => {
     let timer: NodeJS.Timeout;
@@ -289,6 +291,7 @@ export default function FirecrawlComponent() {
         const data: ScrapeResult = await response.json();
         newScrapeResults[url] = data;
         setCrawlStatus((prev) => ({ ...prev, current: index + 1 }));
+        setScrapeResults({ ...scrapeResults, ...newScrapeResults });
       } catch (error) {
         console.error(`Error scraping ${url}:`, error);
         newScrapeResults[url] = {
@@ -312,22 +315,35 @@ export default function FirecrawlComponent() {
       }
     }
 
-    setScrapeResults(newScrapeResults);
     setLoading(false);
     setIsScraping(false);
   };
 
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
+  };
+
+  const paginatedUrls = crawledUrls.slice(
+    (currentPage - 1) * urlsPerPage,
+    currentPage * urlsPerPage
+  );
+
   return (
     <div className="max-w-2xl mx-auto p-4">
       <Card>
-        <CardHeader className="flex items-center justify-between">
-          <CardTitle className="flex items-center space-x-2">
-            <span>Extract web content with Firecrawl 🔥</span>
+        <CardHeader className="flex items-start justify-between mb-0 pb-4">
+          <CardTitle className="flex items-center justify-between w-full space-x-2">
+            <span className="text-base">Extract web content</span>
+            <a
+              href="https://www.firecrawl.dev"
+              className="text-xs text-gray-500 font-normal px-3 py-1 bg-zinc-100 rounded-xl hover:bg-zinc-200 transition-colors"
+            >
+              Powered by Firecrawl 🔥
+            </a>
           </CardTitle>
           <div className="text-sm text-gray-500 w-11/12 items-center">
-            Use this component to quickly build your own UI for Firecrawl. Plug
-            in your API key and the component will handle the rest. Learn more
-            on the{" "}
+            Use this component to quickly give your users the ability to connect
+            their AI apps to web data with Firecrawl. Learn more on the{" "}
             <a
               href="https://docs.firecrawl.dev/"
               className="text-sm text-blue-500"
@@ -347,7 +363,36 @@ export default function FirecrawlComponent() {
                 onChange={handleChange}
               />
               <Button type="submit" variant="default" disabled={loading}>
-                {loading ? "Running..." : "Run"}
+                {loading ? (
+                  <div
+                    role="status"
+                    className="flex items-center justify-between space-x-2"
+                  >
+                    <svg
+                      className="animate-spin  h-4 w-4 text-white"
+                      xmlns="http://www.w3.org/2000/svg"
+                      fill="none"
+                      viewBox="0 0 24 24"
+                    >
+                      <circle
+                        className="opacity-25"
+                        cx="12"
+                        cy="12"
+                        r="10"
+                        stroke="currentColor"
+                        strokeWidth="4"
+                      ></circle>
+                      <path
+                        className="opacity-75"
+                        fill="currentColor"
+                        d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                      ></path>
+                    </svg>
+                    <span className="sr-only">Loading...</span>
+                  </div>
+                ) : (
+                  "Run"
+                )}
               </Button>
             </div>
             <Collapsible
@@ -361,7 +406,7 @@ export default function FirecrawlComponent() {
                   <ChevronDown className="h-4 w-4 opacity-50" />
                 </Button>
               </CollapsibleTrigger>
-              <CollapsibleContent className="space-y-4 mt-4">
+              <CollapsibleContent className="space-y-4 mt-4 px-2">
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="crawlSubPages"
@@ -484,8 +529,8 @@ export default function FirecrawlComponent() {
                         className="text-sm cursor-pointer"
                       >
                         {selectedUrls.length === crawledUrls.length
-                          ? "Unselect All"
-                          : "Select All"}
+                          ? `Unselect All (${selectedUrls.length})`
+                          : `Select All (${selectedUrls.length})`}
                       </label>
                     </>
                   )}
@@ -503,41 +548,57 @@ export default function FirecrawlComponent() {
             !isScraping && (
               <>
                 <ul className="pl-2">
-                  {(showAllUrls ? crawledUrls : crawledUrls.slice(0, 10)).map(
-                    (url, index) => (
-                      <li key={index} className="flex items-center space-x-2">
-                        <Checkbox
-                          checked={selectedUrls.includes(url)}
-                          onCheckedChange={() =>
-                            setSelectedUrls((prev) =>
-                              prev.includes(url)
-                                ? prev.filter((u) => u !== url)
-                                : [...prev, url]
-                            )
-                          }
-                        />
-                        <span>{url}</span>
-                      </li>
-                    )
-                  )}
-                </ul>
-                {crawledUrls.length > 10 && (
-                  <div className="flex justify-center mt-2">
-                    <Button
-                      variant="link"
-                      onClick={() => setShowAllUrls(!showAllUrls)}
+                  {paginatedUrls.map((url, index) => (
+                    <li
+                      key={index}
+                      className="flex items-center space-x-2 my-2 text-sm"
                     >
-                      {showAllUrls ? "Show Less" : "Show All"}
-                    </Button>
-                  </div>
-                )}
+                      <Checkbox
+                        checked={selectedUrls.includes(url)}
+                        onCheckedChange={() =>
+                          setSelectedUrls((prev) =>
+                            prev.includes(url)
+                              ? prev.filter((u) => u !== url)
+                              : [...prev, url]
+                          )
+                        }
+                      />
+                      <span className="flex items-center max-w-lg">
+                        {url.length > 70 ? `${url.slice(0, 70)}...` : url}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                <div className="flex items-center justify-between mt-4">
+                  <Button
+                    variant="outline"
+                    className="px-2"
+                    onClick={() => handlePageChange(currentPage - 1)}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-5 w-5" />
+                  </Button>
+                  <span className="text-sm text-gray-500">
+                    Page {currentPage} of{" "}
+                    {Math.ceil(crawledUrls.length / urlsPerPage)}
+                  </span>
+                  <Button
+                    variant="outline"
+                    className="px-2"
+                    onClick={() => handlePageChange(currentPage + 1)}
+                    disabled={currentPage * urlsPerPage >= crawledUrls.length}
+                  >
+                    <ChevronRight className="h-5 w-5 " />
+                  </Button>
+                </div>
               </>
             )}
         </CardContent>
-        <CardFooter className="flex justify-center">
+        <CardFooter className="w-full flex justify-center">
           {crawledUrls.length > 0 && !scrapingSelectedLoading && (
             <Button
               variant="default"
+              className="w-full"
               onClick={handleScrapeSelected}
               disabled={loading || selectedUrls.length === 0}
             >
@@ -549,17 +610,24 @@ export default function FirecrawlComponent() {
 
       {Object.keys(scrapeResults).length > 0 && (
         <div className="mt-4">
-          <h2 className="text-2xl font-bold mb-4">Scrape Results</h2>
-          <div className="grid grid-cols-2 gap-4">
+          <h2 className="text-base font-bold ">Scrape Results</h2>
+          <p className="text-sm text-gray-500">
+            You can do whatever you want with the scrape results. Here is a
+            basic showcase of the markdown.
+          </p>
+          <div className="flex flex-col gap-4 mt-4 w-full">
             {Object.entries(scrapeResults).map(([url, result]) => (
-              <Card key={url} className="overflow-hidden">
-                <CardContent>
-                  <div className="max-h-60 overflow-y-auto">
-                    <div className="text-base font-bold py-2">
-                      {url
-                        .replace(/^(https?:\/\/)?(www\.)?/, "")
-                        .replace(/\/$/, "")}
-                    </div>
+              <Card key={url} className="relative p-4 w-full">
+                <CardTitle className="text-sm font-normal flex flex-col">
+                  <span>{result.data.metadata.title}</span>
+                  <span className="text-xs text-gray-500">
+                    {url
+                      .replace(/^(https?:\/\/)?(www\.)?/, "")
+                      .replace(/\/$/, "")}
+                  </span>
+                </CardTitle>
+                <CardContent className="relative px-0 pt-2 !text-xs w-full">
+                  <div className=" overflow-y-auto bg-zinc-100 rounded-md p-2 w-full">
                     {result.success ? (
                       <>
                         <pre className="text-xs whitespace-pre-wrap">
@@ -567,27 +635,17 @@ export default function FirecrawlComponent() {
                         </pre>
                       </>
                     ) : (
-                      <p className="text-red-500">Failed to scrape this URL</p>
+                      <>
+                        <p className="text-red-500">
+                          Failed to scrape this URL
+                        </p>
+                        <p className="text-zinc-500 font-mono">
+                          {result.toString()}
+                        </p>
+                      </>
                     )}
                   </div>
                 </CardContent>
-                <CardFooter className="flex justify-center">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={(event) => {
-                      navigator.clipboard.writeText(result.data.markdown);
-                      const button = event.currentTarget as HTMLButtonElement;
-                      const originalText = button.textContent;
-                      button.textContent = "Copied!";
-                      setTimeout(() => {
-                        button.textContent = originalText;
-                      }, 2000);
-                    }}
-                  >
-                    Copy Markdown
-                  </Button>
-                </CardFooter>
               </Card>
             ))}
           </div>
