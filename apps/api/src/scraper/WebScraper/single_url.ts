@@ -150,6 +150,8 @@ export async function scrapSingleUrl(
     const timer = Date.now();
     const logInsertPromise = ScrapeEvents.insert(jobId, {
       type: "scrape",
+      url,
+      worker: process.env.FLY_MACHINE_ID,
       method,
       result: null,
     });
@@ -267,6 +269,7 @@ export async function scrapSingleUrl(
 
     const insertedLogId = await logInsertPromise;
     ScrapeEvents.updateScrapeResult(insertedLogId, {
+      response_size: scraperResponse.text.length,
       success: !scraperResponse.metadata.pageError && !!text,
       error: scraperResponse.metadata.pageError,
       response_code: scraperResponse.metadata.pageStatusCode,

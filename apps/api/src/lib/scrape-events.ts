@@ -9,10 +9,13 @@ export type ScrapeErrorEvent = {
 
 export type ScrapeScrapeEvent = {
   type: "scrape",
+  url: string,
+  worker?: string,
   method: (typeof baseScrapers)[number],
   result: null | {
     success: boolean,
     response_code?: number,
+    response_size?: number,
     error?: string | object,
     // proxy?: string,
     time_taken: number,
