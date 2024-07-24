@@ -1,11 +1,11 @@
-import logo from './logo.svg';
+
 import './App.css';
 
 import React, { useState } from 'react';
 
 // Hardcoded values (not recommended for production)
 const FIRECRAWL_API_URL = 'http://localhost:3002'; // Replace with actual URL
-const FIRECRAWL_API_KEY = 'fc-fa95acf54c0e496fbe6b403745f246ab'; // Replace with your actual API key
+const FIRECRAWL_API_KEY = ''; // Replace with your actual API key
 
 function App() {
   const [formData, setFormData] = useState({
@@ -37,6 +37,7 @@ function App() {
     );
   };
 
+  // Move this server to not expose the API key
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
