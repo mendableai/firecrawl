@@ -1,3 +1,4 @@
+import { Job, JobId } from "bull";
 import type { baseScrapers } from "../scraper/WebScraper/single_url";
 import { supabase_service as supabase } from "../services/supabase";
 
@@ -24,7 +25,7 @@ export type ScrapeScrapeEvent = {
 
 export type ScrapeQueueEvent = {
   type: "queue",
-  event: "created" | "started" | "interrupted" | "finished",
+  event: "waiting" | "active" | "completed" | "paused" | "resumed" | "removed",
   worker?: string,
 }
 
@@ -57,5 +58,13 @@ export class ScrapeEvents {
         result,
       }
     }).eq("id", logId);
+  }
+
+  static async logJobEvent(job: Job | JobId, event: ScrapeQueueEvent["event"]) {
+    await this.insert(((job as any).id ? (job as any).id : job) as string, {
+      type: "queue",
+      event,
+      worker: process.env.FLY_MACHINE_ID,
+    });
   }
 }
