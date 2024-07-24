@@ -627,11 +627,11 @@ export default function FirecrawlComponent() {
                   </span>
                 </CardTitle>
                 <CardContent className="relative px-0 pt-2 !text-xs w-full">
-                  <div className=" overflow-y-auto bg-zinc-100 rounded-md p-2 w-full">
+                  <div className=" overflow-y-auto h-32 bg-zinc-100 rounded-md p-2 w-full">
                     {result.success ? (
                       <>
                         <pre className="text-xs whitespace-pre-wrap">
-                          {result.data.markdown.trim().slice(0, 200)}...
+                          {result.data.markdown.trim()}
                         </pre>
                       </>
                     ) : (
