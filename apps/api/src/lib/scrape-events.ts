@@ -13,7 +13,7 @@ export type ScrapeScrapeEvent = {
   result: null | {
     success: boolean,
     response_code?: number,
-    error?: string,
+    error?: string | object,
     // proxy?: string,
     time_taken: number,
   },
@@ -31,13 +31,13 @@ export class ScrapeEvents {
   static async insert(jobId: string, content: ScrapeEvent) {
     if (jobId === "TEST") return null;
     
-    if (process.env.USE_DB_AUTH) {
+    if (process.env.USE_DB_AUTHENTICATION) {
       const result = await supabase.from("scrape_events").insert({
         job_id: jobId,
         type: content.type,
         content: content,
         // created_at
-      }).single();
+      }).select().single();
       return (result.data as any).id;
     }
 
