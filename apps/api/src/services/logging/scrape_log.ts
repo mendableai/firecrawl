@@ -7,6 +7,10 @@ export async function logScrape(
   scrapeLog: ScrapeLog,
   pageOptions?: PageOptions
 ) {
+  if (process.env.USE_DB_AUTHENTICATION === "false") {
+    return;
+  }
+  
   try {
     // Only log jobs in production
     // if (process.env.ENV !== "production") {
