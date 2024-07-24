@@ -267,7 +267,7 @@ export async function scrapSingleUrl(
 
     const insertedLogId = await logInsertPromise;
     ScrapeEvents.updateScrapeResult(insertedLogId, {
-      success: !!scraperResponse.metadata.pageError && !!text,
+      success: !scraperResponse.metadata.pageError && !!text,
       error: scraperResponse.metadata.pageError,
       response_code: scraperResponse.metadata.pageStatusCode,
       time_taken: Date.now() - timer,
