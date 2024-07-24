@@ -25,7 +25,7 @@ export type ScrapeScrapeEvent = {
 
 export type ScrapeQueueEvent = {
   type: "queue",
-  event: "waiting" | "active" | "completed" | "paused" | "resumed" | "removed",
+  event: "waiting" | "active" | "completed" | "paused" | "resumed" | "removed" | "failed",
   worker?: string,
 }
 
