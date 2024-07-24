@@ -30,6 +30,26 @@ spec:
         envFrom:
         - configMapRef:
             name: playwright-service-config
+      - livenessProbe:
+          httpGet:
+            path: /health/liveness
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        name: playwright-service-container
+      - readinessProbe:
+          httpGet:
+            path: /health/readiness
+            port: 3000
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        name: playwright-service-container
 ---
 apiVersion: v1
 kind: Service

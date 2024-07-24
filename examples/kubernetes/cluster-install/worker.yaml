@@ -23,3 +23,23 @@ spec:
             name: firecrawl-config
         #- secretRef:
         #    name: firecrawl-secret
+      - livenessProbe:
+          httpGet:
+            path: /v0/health/liveness
+            port: 3002
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        name: worker-container
+      - readinessProbe:
+          httpGet:
+            path: /v0/health/readiness
+            port: 3002
+          initialDelaySeconds: 30
+          periodSeconds: 30
+          timeoutSeconds: 5
+          successThreshold: 1
+          failureThreshold: 3
+        name: worker-container
