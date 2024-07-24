@@ -17,14 +17,15 @@ spec:
       containers:
       - name: api
         image: ghcr.io/winkk-dev/firecrawl:latest
+        imagePullPolicy: Always
         args:  [ "pnpm", "run", "start:production" ]
         ports:
         - containerPort: 3002
         envFrom:
         - configMapRef:
             name: firecrawl-config
-        - secretRef:
-            name: firecrawl-secret
+        #- secretRef:
+        #    name: firecrawl-secret
 ---
 apiVersion: v1
 kind: Service

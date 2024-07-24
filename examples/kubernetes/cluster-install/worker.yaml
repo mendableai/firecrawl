@@ -17,8 +17,9 @@ spec:
       containers:
       - name: worker
         image: ghcr.io/winkk-dev/firecrawl:latest
+        imagePullPolicy: Always
         envFrom:
         - configMapRef:
             name: firecrawl-config
-        - secretRef:
-            name: firecrawl-secret
+        #- secretRef:
+        #    name: firecrawl-secret

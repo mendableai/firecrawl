@@ -1,3 +1,10 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: playwright-service-config
+data:
+  PORT: "3000"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -17,11 +24,12 @@ spec:
       containers:
       - name: playwright-service
         image: ghcr.io/winkk-dev/firecrawl-playwright:latest
+        imagePullPolicy: Always
         ports:
         - containerPort: 3000
         envFrom:
         - configMapRef:
-            name: firecrawl-config
+            name: playwright-service-config
 ---
 apiVersion: v1
 kind: Service
