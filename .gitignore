@@ -18,3 +18,4 @@ apps/test-suite/load-test-results/test-run-report.json
 
 apps/playwright-service-ts/node_modules/
 apps/playwright-service-ts/package-lock.json
+
