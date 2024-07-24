@@ -11,6 +11,7 @@ import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../lib/default-values';
 import { addWebScraperJob } from '../services/queue-jobs';
 import { getWebScraperQueue } from '../services/queue-service';
+import { supabase_service } from '../services/supabase';
 
 export async function scrapeHelper(
   req: Request,
@@ -64,10 +65,10 @@ export async function scrapeHelper(
     promiseResolve = resolve;
   });
 
-  const listener = (j: string) => {
-    console.log("JOB COMPLETED", j, "vs", job.id);
+  const listener = (j: string, res: any) => {
+    console.log("JOB COMPLETED", j, "vs", job.id, res);
     if (j === job.id) {
-      promiseResolve(j);
+      promiseResolve([j, res]);
       wsq.removeListener("global:completed", listener);
     }
   }
@@ -86,14 +87,22 @@ export async function scrapeHelper(
     return error;
   }
 
-  const jobNew = (await wsq.getJob(j));
-  const doc = jobNew.progress().currentDocument;
-  delete doc.index;
+  let j1 = typeof j[1] === "string" ? JSON.parse(j[1]) : j[1];
 
-  // make sure doc.content is not empty
+  const doc = j1 !== null ? j1.result.links[0].content : (await supabase_service
+    .from("firecrawl_jobs")
+    .select("docs")
+    .eq("job_id", job.id as string)).data[0]?.docs[0];
+
   if (!doc) {
     return { success: true, error: "No page found", returnCode: 200, data: doc };
   }
+
+  delete doc.index;
+  delete doc.provider;
+
+  // make sure doc.content is not empty
+  
 
   // Remove rawHtml if pageOptions.rawHtml is false and extractorOptions.mode is llm-extraction-from-raw-html
   if (!pageOptions.includeRawHtml && extractorOptions.mode == "llm-extraction-from-raw-html") {
