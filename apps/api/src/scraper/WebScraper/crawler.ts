@@ -64,15 +64,7 @@ export class WebCrawler {
   private filterLinks(sitemapLinks: string[], limit: number, maxDepth: number): string[] {
     return sitemapLinks
       .filter((link) => {
-        
-        // if link is not a complete url, add the base url
-        link = link.trim();
-        const isCompleteUrl = new RegExp('^(?:[a-z+]+:)?//', 'i');
-        if (!isCompleteUrl.test(link)){
-          link = this.baseUrl + link;
-        }
-
-        const url = new URL(link);
+        const url = new URL(link.trim(), this.baseUrl);
         const path = url.pathname;
         
         const depth = getURLDepth(url.toString());
