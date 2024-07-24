@@ -18,10 +18,11 @@ import { scrapWithPlaywright } from "./scrapers/playwright";
 import { scrapWithScrapingBee } from "./scrapers/scrapingBee";
 import { extractLinks } from "./utils/utils";
 import { Logger } from "../../lib/logger";
+import { ScrapeEvents } from "../../lib/scrape-events";
 
 dotenv.config();
 
-const baseScrapers = [
+export const baseScrapers = [
   "fire-engine",
   "fire-engine;chrome-cdp",
   "scrapingBee",
@@ -118,6 +119,7 @@ function getScrapingFallbackOrder(
 
 
 export async function scrapSingleUrl(
+  jobId: string,
   urlToScrap: string,
   pageOptions: PageOptions = {
     onlyMainContent: true,
@@ -144,6 +146,13 @@ export async function scrapSingleUrl(
       metadata: { pageStatusCode?: number; pageError?: string | null };
     } = { text: "", screenshot: "", metadata: {} };
     let screenshot = "";
+
+    const timer = Date.now();
+    const logInsertPromise = ScrapeEvents.insert(jobId, {
+      type: "scrape",
+      method,
+      result: null,
+    });
 
     switch (method) {
       case "fire-engine":
@@ -254,8 +263,18 @@ export async function scrapSingleUrl(
     }
     //* TODO: add an optional to return markdown or structured/extracted content
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
+    const text = await parseMarkdown(cleanedHtml);
+
+    const insertedLogId = await logInsertPromise;
+    ScrapeEvents.updateScrapeResult(insertedLogId, {
+      success: !!scraperResponse.metadata.pageError && !!text,
+      error: scraperResponse.metadata.pageError,
+      response_code: scraperResponse.metadata.pageStatusCode,
+      time_taken: Date.now() - timer,
+    });
+
     return {
-      text: await parseMarkdown(cleanedHtml),
+      text,
       html: cleanedHtml,
       rawHtml: scraperResponse.text,
       screenshot: scraperResponse.screenshot,
@@ -379,6 +398,11 @@ export async function scrapSingleUrl(
     return document;
   } catch (error) {
     Logger.debug(`⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrap}`);
+    ScrapeEvents.insert(jobId, {
+      type: "error",
+      message: typeof error === "string" ? error : typeof error.message === "string" ? error.message : JSON.stringify(error),
+      stack: error.stack,
+    });
     return {
       content: "",
       markdown: "",

@@ -60,6 +60,7 @@ export async function runWebScraper({
     const provider = new WebScraperDataProvider();
     if (mode === "crawl") {
       await provider.setOptions({
+        jobId: bull_job_id,
         mode: mode,
         urls: [url],
         crawlerOptions: crawlerOptions,
@@ -68,6 +69,7 @@ export async function runWebScraper({
       });
     } else {
       await provider.setOptions({
+        jobId: bull_job_id,
         mode: mode,
         urls: url.split(","),
         crawlerOptions: crawlerOptions,

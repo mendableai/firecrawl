@@ -9,6 +9,7 @@ import { Document } from "../lib/entities";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../lib/default-values';
+import { v4 as uuidv4 } from "uuid";
 
 export async function scrapeHelper(
   req: Request,
@@ -35,6 +36,7 @@ export async function scrapeHelper(
 
   const a = new WebScraperDataProvider();
   await a.setOptions({
+    jobId: uuidv4(),
     mode: "single_urls",
     urls: [url],
     crawlerOptions: {

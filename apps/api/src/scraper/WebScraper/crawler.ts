@@ -11,6 +11,7 @@ import { axiosTimeout } from "../../../src/lib/timeout";
 import { Logger } from "../../../src/lib/logger";
 
 export class WebCrawler {
+  private jobId: string;
   private initialUrl: string;
   private baseUrl: string;
   private includes: string[];
@@ -27,6 +28,7 @@ export class WebCrawler {
   private allowExternalContentLinks: boolean;
 
   constructor({
+    jobId,
     initialUrl,
     includes,
     excludes,
@@ -37,6 +39,7 @@ export class WebCrawler {
     allowBackwardCrawling = false,
     allowExternalContentLinks = false
   }: {
+    jobId: string;
     initialUrl: string;
     includes?: string[];
     excludes?: string[];
@@ -47,6 +50,7 @@ export class WebCrawler {
     allowBackwardCrawling?: boolean;
     allowExternalContentLinks?: boolean;
   }) {
+    this.jobId = jobId;
     this.initialUrl = initialUrl;
     this.baseUrl = new URL(initialUrl).origin;
     this.includes = includes ?? [];
@@ -261,7 +265,7 @@ export class WebCrawler {
 
       // If it is the first link, fetch with single url
       if (this.visited.size === 1) {
-        const page = await scrapSingleUrl(url, { ...pageOptions, includeHtml: true });
+        const page = await scrapSingleUrl(this.jobId, url, { ...pageOptions, includeHtml: true });
         content = page.html ?? "";
         pageStatusCode = page.metadata?.pageStatusCode;
         pageError = page.metadata?.pageError || undefined;

@@ -56,6 +56,7 @@ export type CrawlerOptions = {
 }
 
 export type WebScraperOptions = {
+  jobId: string;
   urls: string[];
   mode: "single_urls" | "sitemap" | "crawl";
   crawlerOptions?: CrawlerOptions;
