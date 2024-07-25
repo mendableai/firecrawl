@@ -15,8 +15,8 @@ describe('scrapSingleUrl', () => {
     const pageOptionsWithHtml: PageOptions = { includeHtml: true };
     const pageOptionsWithoutHtml: PageOptions = { includeHtml: false };
 
-    const resultWithHtml = await scrapSingleUrl(url, pageOptionsWithHtml);
-    const resultWithoutHtml = await scrapSingleUrl(url, pageOptionsWithoutHtml);
+    const resultWithHtml = await scrapSingleUrl("TEST", url, pageOptionsWithHtml);
+    const resultWithoutHtml = await scrapSingleUrl("TEST", url, pageOptionsWithoutHtml);
 
     expect(resultWithHtml.html).toBeDefined();
     expect(resultWithoutHtml.html).toBeUndefined();
@@ -27,7 +27,7 @@ it('should return a list of links on the mendable.ai page', async () => {
   const url = 'https://mendable.ai';
   const pageOptions: PageOptions = { includeHtml: true };
 
-  const result = await scrapSingleUrl(url, pageOptions);
+  const result = await scrapSingleUrl("TEST", url, pageOptions);
 
   // Check if the result contains a list of links
   expect(result.linksOnPage).toBeDefined();

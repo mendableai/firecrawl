@@ -9,9 +9,11 @@ import { Document } from "../lib/entities";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../lib/default-values';
+import { v4 as uuidv4 } from "uuid";
 import { Logger } from '../lib/logger';
 
 export async function scrapeHelper(
+  jobId: string,
   req: Request,
   team_id: string,
   crawlerOptions: any,
@@ -36,6 +38,7 @@ export async function scrapeHelper(
 
   const a = new WebScraperDataProvider();
   await a.setOptions({
+    jobId,
     mode: "single_urls",
     urls: [url],
     crawlerOptions: {
@@ -128,8 +131,11 @@ export async function scrapeController(req: Request, res: Response) {
       checkCredits();
     }
 
+    const jobId = uuidv4();
+
     const startTime = new Date().getTime();
     const result = await scrapeHelper(
+      jobId,
       req,
       team_id,
       crawlerOptions,
@@ -170,6 +176,7 @@ export async function scrapeController(req: Request, res: Response) {
     }
 
     logJob({
+      job_id: jobId,
       success: result.success,
       message: result.error,
       num_docs: 1,

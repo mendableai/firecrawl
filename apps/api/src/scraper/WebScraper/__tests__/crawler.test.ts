@@ -42,6 +42,7 @@ describe('WebCrawler', () => {
 
 
     crawler = new WebCrawler({
+      jobId: "TEST",
       initialUrl: initialUrl,
       includes: [],
       excludes: [],
@@ -76,6 +77,7 @@ describe('WebCrawler', () => {
    
 
     crawler = new WebCrawler({
+      jobId: "TEST",
       initialUrl: initialUrl,
       includes: [],
       excludes: [],
@@ -104,6 +106,7 @@ describe('WebCrawler', () => {
   
 
     crawler = new WebCrawler({
+      jobId: "TEST",
       initialUrl: initialUrl,
       includes: [],
       excludes: [],
@@ -133,6 +136,7 @@ describe('WebCrawler', () => {
  
 
     crawler = new WebCrawler({
+      jobId: "TEST",
       initialUrl: initialUrl,
       includes: [],
       excludes: [],
@@ -161,6 +165,7 @@ describe('WebCrawler', () => {
   
     // Setup the crawler with the specific test case options
     const crawler = new WebCrawler({
+      jobId: "TEST",
       initialUrl: initialUrl,
       includes: [],
       excludes: [],
@@ -194,6 +199,7 @@ describe('WebCrawler', () => {
     const limit = 2;  // Set a limit for the number of links
 
     crawler = new WebCrawler({
+      jobId: "TEST",
       initialUrl: initialUrl,
       includes: [],
       excludes: [],

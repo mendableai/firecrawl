@@ -8,6 +8,7 @@ import { logJob } from "./logging/log_job";
 import { initSDK } from '@hyperdx/node-opentelemetry';
 import { Job } from "bull";
 import { Logger } from "../lib/logger";
+import { ScrapeEvents } from "../lib/scrape-events";
 
 if (process.env.ENV === 'production') {
   initSDK({
@@ -20,6 +21,7 @@ const wsq = getWebScraperQueue();
 
 async function processJob(job: Job, done) {
   Logger.debug(`🐂 Worker taking job ${job.id}`);
+
   try {
     job.progress({
       current: 1,
@@ -114,3 +116,10 @@ wsq.process(
   Math.floor(Number(process.env.NUM_WORKERS_PER_QUEUE ?? 8)),
   processJob
 );
+
+wsq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
+wsq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
+wsq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
+wsq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
+wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
+wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));

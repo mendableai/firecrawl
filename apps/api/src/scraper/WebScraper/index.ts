@@ -22,6 +22,7 @@ import { getAdjustedMaxDepth, getURLDepth } from "./utils/maxDepthUtils";
 import { Logger } from "../../lib/logger";
 
 export class WebScraperDataProvider {
+  private jobId: string;
   private bullJobId: string;
   private urls: string[] = [""];
   private mode: "single_urls" | "sitemap" | "crawl" = "single_urls";
@@ -66,6 +67,7 @@ export class WebScraperDataProvider {
         batchUrls.map(async (url, index) => {
           const existingHTML = allHtmls ? allHtmls[i + index] : "";
           const result = await scrapSingleUrl(
+            this.jobId,
             url,
             this.pageOptions,
             this.extractorOptions,
@@ -166,6 +168,7 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
     const crawler = new WebCrawler({
+      jobId: this.jobId,
       initialUrl: this.urls[0],
       includes: this.includes,
       excludes: this.excludes,
@@ -500,6 +503,7 @@ export class WebScraperDataProvider {
       throw new Error("Urls are required");
     }
 
+    this.jobId = options.jobId;
     this.bullJobId = options.bullJobId;
     this.urls = options.urls;
     this.mode = options.mode;
