@@ -1,3 +1,4 @@
+import { Logger } from "../../../src/lib/logger";
 import { getWebScraperQueue } from "../queue-service";
 import { sendSlackWebhook } from "./slack";
 
@@ -9,13 +10,13 @@ export async function checkAlerts() {
       process.env.ALERT_NUM_ACTIVE_JOBS &&
       process.env.ALERT_NUM_WAITING_JOBS
     ) {
-      console.info("Initializing alerts");
+      Logger.info("Initializing alerts");
       const checkActiveJobs = async () => {
         try {
           const webScraperQueue = getWebScraperQueue();
           const activeJobs = await webScraperQueue.getActiveCount();
           if (activeJobs > Number(process.env.ALERT_NUM_ACTIVE_JOBS)) {
-            console.warn(
+            Logger.warn(
               `Alert: Number of active jobs is over ${process.env.ALERT_NUM_ACTIVE_JOBS}. Current active jobs: ${activeJobs}.`
             );
             sendSlackWebhook(
@@ -23,12 +24,12 @@ export async function checkAlerts() {
               true
             );
           } else {
-            console.info(
+            Logger.info(
               `Number of active jobs is under ${process.env.ALERT_NUM_ACTIVE_JOBS}. Current active jobs: ${activeJobs}`
             );
           }
         } catch (error) {
-          console.error("Failed to check active jobs:", error);
+          Logger.error(`Failed to check active jobs: ${error}`);
         }
       };
 
@@ -38,7 +39,7 @@ export async function checkAlerts() {
         const paused = await webScraperQueue.getPausedCount();
 
         if (waitingJobs !== paused && waitingJobs > Number(process.env.ALERT_NUM_WAITING_JOBS)) {
-          console.warn(
+          Logger.warn(
             `Alert: Number of waiting jobs is over ${process.env.ALERT_NUM_WAITING_JOBS}. Current waiting jobs: ${waitingJobs}.`
           );
           sendSlackWebhook(
@@ -57,6 +58,6 @@ export async function checkAlerts() {
       // setInterval(checkAll, 10000); // Run every 
     }
   } catch (error) {
-    console.error("Failed to initialize alerts:", error);
+    Logger.error(`Failed to initialize alerts: ${error}`);
   }
 }

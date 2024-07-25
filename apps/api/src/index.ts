@@ -83,9 +83,9 @@ if (cluster.isMaster) {
   function startServer(port = DEFAULT_PORT) {
     const server = app.listen(Number(port), HOST, () => {
       Logger.info(`Worker ${process.pid} listening on port ${port}`);
-      // Logger.info(
-      //   `For the UI, open: http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`
-      // );
+      Logger.info(
+        `For the Queue UI, open: http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`
+      );
     });
     return server;
   }

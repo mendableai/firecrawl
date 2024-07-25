@@ -2,6 +2,7 @@ import { supabase_service } from "../supabase";
 import { withAuth } from "../../lib/withAuth";
 import { Resend } from "resend";
 import { NotificationType } from "../../types";
+import { Logger } from "../../../src/lib/logger";
 
 const emailTemplates: Record<
   NotificationType,
@@ -52,11 +53,11 @@ async function sendEmailNotification(
     });
 
     if (error) {
-      console.error("Error sending email: ", error);
+      Logger.debug(`Error sending email: ${error}`);
       return { success: false };
     }
   } catch (error) {
-    console.error("Error sending email (2): ", error);
+    Logger.debug(`Error sending email (2): ${error}`);
     return { success: false };
   }
 }
@@ -79,7 +80,7 @@ export async function sendNotificationInternal(
     .lte("sent_date", endDateString);
 
   if (error) {
-    console.error("Error fetching notifications: ", error);
+    Logger.debug(`Error fetching notifications: ${error}`);
     return { success: false };
   }
 
@@ -93,7 +94,7 @@ export async function sendNotificationInternal(
       .eq("team_id", team_id);
 
     if (emailsError) {
-      console.error("Error fetching emails: ", emailsError);
+      Logger.debug(`Error fetching emails: ${emailsError}`);
       return { success: false };
     }
 
@@ -112,7 +113,7 @@ export async function sendNotificationInternal(
       ]);
 
     if (insertError) {
-      console.error("Error inserting notification record: ", insertError);
+      Logger.debug(`Error inserting notification record: ${insertError}`);
       return { success: false };
     }
 

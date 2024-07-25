@@ -7,6 +7,7 @@ import { logJob } from "../services/logging/log_job";
 import { PageOptions, SearchOptions } from "../lib/entities";
 import { search } from "../search";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
+import { Logger } from "../lib/logger";
 
 export async function searchHelper(
   req: Request,
@@ -155,7 +156,7 @@ export async function searchController(req: Request, res: Response) {
         return res.status(402).json({ error: "Insufficient credits" });
       }
     } catch (error) {
-      console.error(error);
+      Logger.error(error);
       return res.status(500).json({ error: "Internal server error" });
     }
     const startTime = new Date().getTime();
@@ -183,7 +184,7 @@ export async function searchController(req: Request, res: Response) {
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {
-    console.error(error);
+    Logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

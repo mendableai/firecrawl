@@ -263,14 +263,14 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
       });
 
     if (creditUsageError) {
-      console.error("Error calculating credit usage:", creditUsageError);
+      Logger.error(`Error calculating credit usage: ${creditUsageError}`);
     }
 
     if (creditUsages && creditUsages.length > 0) {
       totalCreditsUsed = creditUsages[0].total_credits_used;
     }
   } catch (error) {
-    console.error("Error calculating credit usage:", error);
+    Logger.error(`Error calculating credit usage: ${error}`);
   }
 
   // Adjust total credits used by subtracting coupon value
