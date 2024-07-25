@@ -1,5 +1,6 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
+import { Logger } from "../../../lib/logger";
 
 
 export async function attemptScrapWithRequests(
@@ -9,13 +10,13 @@ export async function attemptScrapWithRequests(
     const response = await axios.get(urlToScrap, { timeout: 15000 });
 
     if (!response.data) {
-      console.log("Failed normal requests as well");
+      Logger.debug("Failed normal requests as well");
       return null;
     }
 
     return response.data;
   } catch (error) {
-    console.error(`Error in attemptScrapWithRequests: ${error}`);
+    Logger.debug(`Error in attemptScrapWithRequests: ${error}`);
     return null;
   }
 }

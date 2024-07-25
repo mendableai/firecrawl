@@ -7,8 +7,10 @@ import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
 import { initSDK } from '@hyperdx/node-opentelemetry';
 import { Job } from "bull";
+import { Logger } from "../lib/logger";
+import { ScrapeEvents } from "../lib/scrape-events";
 
-if(process.env.ENV === 'production') {
+if (process.env.ENV === 'production') {
   initSDK({
     consoleCapture: true,
     additionalInstrumentations: [],
@@ -18,7 +20,8 @@ if(process.env.ENV === 'production') {
 const wsq = getWebScraperQueue();
 
 async function processJob(job: Job, done) {
-  console.log("taking job", job.id);
+  Logger.debug(`🐂 Worker taking job ${job.id}`);
+
   try {
     job.progress({
       current: 1,
@@ -58,18 +61,18 @@ async function processJob(job: Job, done) {
       pageOptions: job.data.pageOptions,
       origin: job.data.origin,
     });
-    console.log("job done", job.id);
+    Logger.debug(`🐂 Job done ${job.id}`);
     done(null, data);
   } catch (error) {
-    console.log("job errored", job.id, error);
+    Logger.error(`🐂 Job errored ${job.id} - ${error}`);
     if (await getWebScraperQueue().isPaused(false)) {
-      console.log("queue is paused, ignoring");
+      Logger.debug("🐂Queue is paused, ignoring");
       return;
     }
 
     if (error instanceof CustomError) {
       // Here we handle the error, then save the failed job
-      console.error(error.message); // or any other error handling
+      Logger.error(error.message); // or any other error handling
 
       logtail.error("Custom error while ingesting", {
         job_id: job.id,
@@ -77,7 +80,7 @@ async function processJob(job: Job, done) {
         dataIngestionJob: error.dataIngestionJob,
       });
     }
-    console.log(error);
+    Logger.error(error);
 
     logtail.error("Overall error ingesting", {
       job_id: job.id,
@@ -113,3 +116,10 @@ wsq.process(
   Math.floor(Number(process.env.NUM_WORKERS_PER_QUEUE ?? 8)),
   processJob
 );
+
+wsq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
+wsq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
+wsq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
+wsq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
+wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
+wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));

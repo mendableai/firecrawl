@@ -1,4 +1,5 @@
 import { supabase_service } from "../supabase";
+import { Logger } from "../../../src/lib/logger";
 import "dotenv/config";
 
 export async function logCrawl(job_id: string, team_id: string) {
@@ -13,7 +14,7 @@ export async function logCrawl(job_id: string, team_id: string) {
         },
       ]);
     } catch (error) {
-      console.error("Error logging crawl job:\n", error);
+      Logger.error(`Error logging crawl job to supabase:\n${error}`);
     }
   }
 }
