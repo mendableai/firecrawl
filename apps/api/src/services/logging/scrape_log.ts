@@ -8,6 +8,10 @@ export async function logScrape(
   scrapeLog: ScrapeLog,
   pageOptions?: PageOptions
 ) {
+  if (process.env.USE_DB_AUTHENTICATION === "false") {
+    Logger.debug("Skipping logging scrape to Supabase");
+    return;
+  }
   try {
     // Only log jobs in production
     // if (process.env.ENV !== "production") {

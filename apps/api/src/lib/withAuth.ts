@@ -1,4 +1,5 @@
 import { AuthResponse } from "../../src/types";
+import { Logger } from "./logger";
 
 let warningCount = 0;
 
@@ -8,7 +9,7 @@ export function withAuth<T extends AuthResponse, U extends any[]>(
   return async function (...args: U): Promise<T> {
     if (process.env.USE_DB_AUTHENTICATION === "false") {
       if (warningCount < 5) {
-        console.warn("WARNING - You're bypassing authentication");
+        Logger.warn("You're bypassing authentication");
         warningCount++;
       }
       return { success: true } as T;
@@ -16,7 +17,7 @@ export function withAuth<T extends AuthResponse, U extends any[]>(
       try {
         return await originalFunction(...args);
       } catch (error) {
-        console.error("Error in withAuth function: ", error);
+        Logger.error(`Error in withAuth function: ${error}`);
         return { success: false, error: error.message } as T;
       }
     }

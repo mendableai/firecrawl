@@ -8,6 +8,7 @@ import { PageOptions, SearchOptions } from "../lib/entities";
 import { search } from "../search";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
+import { Logger } from "../lib/logger";
 
 export async function searchHelper(
   jobId: string,
@@ -160,7 +161,7 @@ export async function searchController(req: Request, res: Response) {
         return res.status(402).json({ error: "Insufficient credits" });
       }
     } catch (error) {
-      console.error(error);
+      Logger.error(error);
       return res.status(500).json({ error: "Internal server error" });
     }
     const startTime = new Date().getTime();
@@ -190,7 +191,7 @@ export async function searchController(req: Request, res: Response) {
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {
-    console.error(error);
+    Logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

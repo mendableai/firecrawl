@@ -1,4 +1,5 @@
 import axios from "axios";
+import { Logger } from "../../../src/lib/logger";
 
 export async function sendSlackWebhook(
   message: string,
@@ -16,8 +17,8 @@ export async function sendSlackWebhook(
         "Content-Type": "application/json",
       },
     });
-    console.log("Webhook sent successfully:", response.data);
+    Logger.log("Webhook sent successfully:", response.data);
   } catch (error) {
-    console.error("Error sending webhook:", error);
+    Logger.debug(`Error sending webhook: ${error}`);
   }
 }

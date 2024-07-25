@@ -10,6 +10,7 @@ import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import 
 import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../lib/default-values';
 import { v4 as uuidv4 } from "uuid";
+import { Logger } from '../lib/logger';
 
 export async function scrapeHelper(
   jobId: string,
@@ -115,7 +116,7 @@ export async function scrapeController(req: Request, res: Response) {
           return res.status(402).json({ error: "Insufficient credits" });
         }
       } catch (error) {
-        console.error(error);
+        Logger.error(error);
         earlyReturn = true;
         return res.status(402).json({ error: "Error checking team credits. Please contact hello@firecrawl.com for help." });
       }
@@ -195,7 +196,7 @@ export async function scrapeController(req: Request, res: Response) {
     
     return res.status(result.returnCode).json(result);
   } catch (error) {
-    console.error(error);
+    Logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

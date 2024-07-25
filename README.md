@@ -405,12 +405,12 @@ _It is the sole responsibility of the end users to respect websites' policies wh
 
 ## License Disclaimer
 
-This project is primarily licensed under the GNU Affero General Public License v3.0 (AGPL-3.0), as specified in the LICENSE file in the root directory of this repository. However, certain components of this project, specifically the SDKs located in the `/apps/js-sdk` and `/apps/python-sdk` directories, are licensed under the MIT License.
+This project is primarily licensed under the GNU Affero General Public License v3.0 (AGPL-3.0), as specified in the LICENSE file in the root directory of this repository. However, certain components of this project are licensed under the MIT License. Refer to the LICENSE files in these specific directories for details.
 
 Please note:
 
 - The AGPL-3.0 license applies to all parts of the project unless otherwise specified.
-- The SDKs in `/apps/js-sdk` and `/apps/python-sdk` are licensed under the MIT License. Refer to the LICENSE files in these specific directories for details.
+- The SDKs and some UI components are licensed under the MIT License. Refer to the LICENSE files in these specific directories for details.
 - When using or contributing to this project, ensure you comply with the appropriate license terms for the specific component you are working with.
 
 For more details on the licensing of specific components, please refer to the LICENSE files in the respective directories or contact the project maintainers.
