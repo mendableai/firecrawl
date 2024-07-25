@@ -1,6 +1,7 @@
 import { Job, JobId } from "bull";
 import type { baseScrapers } from "../scraper/WebScraper/single_url";
 import { supabase_service as supabase } from "../services/supabase";
+import { Logger } from "./logger";
 
 export type ScrapeErrorEvent = {
   type: "error",
@@ -36,13 +37,18 @@ export class ScrapeEvents {
     if (jobId === "TEST") return null;
     
     if (process.env.USE_DB_AUTHENTICATION) {
-      const result = await supabase.from("scrape_events").insert({
-        job_id: jobId,
-        type: content.type,
-        content: content,
-        // created_at
-      }).select().single();
-      return (result.data as any).id;
+      try {
+        const result = await supabase.from("scrape_events").insert({
+          job_id: jobId,
+          type: content.type,
+          content: content,
+          // created_at
+        }).select().single();
+        return (result.data as any).id;
+      } catch (error) {
+        Logger.error(`Error inserting scrape event: ${error}`);
+        return null;
+      }
     }
 
     return null;
@@ -51,20 +57,28 @@ export class ScrapeEvents {
   static async updateScrapeResult(logId: number | null, result: ScrapeScrapeEvent["result"]) {
     if (logId === null) return;
 
-    const previousLog = (await supabase.from("scrape_events").select().eq("id", logId).single()).data as any;
-    await supabase.from("scrape_events").update({
-      content: {
-        ...previousLog.content,
-        result,
-      }
-    }).eq("id", logId);
+    try {
+      const previousLog = (await supabase.from("scrape_events").select().eq("id", logId).single()).data as any;
+      await supabase.from("scrape_events").update({
+        content: {
+          ...previousLog.content,
+          result,
+        }
+      }).eq("id", logId);
+    } catch (error) {
+      Logger.error(`Error updating scrape result: ${error}`);
+    }
   }
 
   static async logJobEvent(job: Job | JobId, event: ScrapeQueueEvent["event"]) {
-    await this.insert(((job as any).id ? (job as any).id : job) as string, {
-      type: "queue",
-      event,
-      worker: process.env.FLY_MACHINE_ID,
-    });
+    try {
+      await this.insert(((job as any).id ? (job as any).id : job) as string, {
+        type: "queue",
+        event,
+        worker: process.env.FLY_MACHINE_ID,
+      });
+    } catch (error) {
+      Logger.error(`Error logging job event: ${error}`);
+    }
   }
 }
