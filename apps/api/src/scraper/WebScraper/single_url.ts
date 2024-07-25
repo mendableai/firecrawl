@@ -26,10 +26,10 @@ export const baseScrapers = [
   "fire-engine",
   "fire-engine;chrome-cdp",
   "scrapingBee",
-  "playwright",
+  process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
   "scrapingBeeLoad",
   "fetch",
-] as const;
+].filter(Boolean);
 
 export async function generateRequestParams(
   url: string,
@@ -95,11 +95,11 @@ function getScrapingFallbackOrder(
   if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
     defaultOrder = [
       "fire-engine",
-      "playwright",
+      process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
       ...defaultOrder.filter(
         (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
       ),
-    ];
+    ].filter(Boolean);
   }
 
   const filteredDefaultOrder = defaultOrder.filter(
