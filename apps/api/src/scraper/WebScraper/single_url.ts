@@ -87,10 +87,10 @@ function getScrapingFallbackOrder(
     "scrapingBee",
     "fire-engine",
     "fire-engine;chrome-cdp",
-    "playwright",
+    process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
     "scrapingBeeLoad",
     "fetch",
-  ];
+  ].filter(Boolean);
 
   if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
     defaultOrder = [
