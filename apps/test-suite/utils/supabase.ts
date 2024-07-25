@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import "dotenv/config";
+
 // SupabaseService class initializes the Supabase client conditionally based on environment variables.
 class SupabaseService {
   private client: SupabaseClient | null = null;
