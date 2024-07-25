@@ -19,6 +19,7 @@ import { generateCompletions } from "../../lib/LLM-extraction";
 import { getWebScraperQueue } from "../../../src/services/queue-service";
 import { fetchAndProcessDocx } from "./utils/docxProcessor";
 import { getAdjustedMaxDepth, getURLDepth } from "./utils/maxDepthUtils";
+import { Logger } from "../../lib/logger";
 
 export class WebScraperDataProvider {
   private bullJobId: string;
@@ -89,14 +90,14 @@ export class WebScraperDataProvider {
           const job = await getWebScraperQueue().getJob(this.bullJobId);
           const jobStatus = await job.getState();
           if (jobStatus === "failed") {
-            console.error(
+            Logger.info(
               "Job has failed or has been cancelled by the user. Stopping the job..."
             );
             return [] as Document[];
           }
         }
       } catch (error) {
-        console.error(error);
+        Logger.error(error.message);
         return [] as Document[];
       }
     }
@@ -270,7 +271,7 @@ export class WebScraperDataProvider {
       this.mode === "single_urls" && links.length > 0
         ? this.getSitemapDataForSingleUrl(this.urls[0], links[0], 1500).catch(
             (error) => {
-              console.error("Failed to fetch sitemap data:", error);
+              Logger.debug(`Failed to fetch sitemap data: ${error}`);
               return null;
             }
           )
@@ -460,7 +461,7 @@ export class WebScraperDataProvider {
     let documents: Document[] = [];
     for (const url of urls) {
       const normalizedUrl = this.normalizeUrl(url);
-      console.log(
+      Logger.debug(
         "Getting cached document for web-scraper-cache:" + normalizedUrl
       );
       const cachedDocumentString = await getValue(

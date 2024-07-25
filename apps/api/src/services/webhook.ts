@@ -1,3 +1,4 @@
+import { Logger } from "../../src/lib/logger";
 import { supabase_service } from "./supabase";
 
 export const callWebhook = async (teamId: string, jobId: string,data: any) => {
@@ -15,10 +16,7 @@ export const callWebhook = async (teamId: string, jobId: string,data: any) => {
         .eq("team_id", teamId)
         .limit(1);
       if (error) {
-        console.error(
-          `Error fetching webhook URL for team ID: ${teamId}`,
-          error.message
-        );
+        Logger.error(`Error fetching webhook URL for team ID: ${teamId}, error: ${error.message}`);
         return null;
       }
 
@@ -53,9 +51,6 @@ export const callWebhook = async (teamId: string, jobId: string,data: any) => {
       }),
     });
   } catch (error) {
-    console.error(
-      `Error sending webhook for team ID: ${teamId}`,
-      error.message
-    );
+    Logger.debug(`Error sending webhook for team ID: ${teamId}, error: ${error.message}`);
   }
 };

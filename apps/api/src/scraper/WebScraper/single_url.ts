@@ -17,6 +17,7 @@ import { scrapWithFireEngine } from "./scrapers/fireEngine";
 import { scrapWithPlaywright } from "./scrapers/playwright";
 import { scrapWithScrapingBee } from "./scrapers/scrapingBee";
 import { extractLinks } from "./utils/utils";
+import { Logger } from "../../lib/logger";
 
 dotenv.config();
 
@@ -48,7 +49,7 @@ export async function generateRequestParams(
       return defaultParams;
     }
   } catch (error) {
-    console.error(`Error generating URL key: ${error}`);
+    Logger.error(`Error generating URL key: ${error}`);
     return defaultParams;
   }
 }
@@ -154,7 +155,6 @@ export async function scrapSingleUrl(
         }
 
         if (process.env.FIRE_ENGINE_BETA_URL) {
-          console.log(`Scraping ${url} with Fire Engine`);
           const response = await scrapWithFireEngine({
             url,
             waitFor: pageOptions.waitFor,
@@ -277,7 +277,7 @@ export async function scrapSingleUrl(
     try {
       urlKey = new URL(urlToScrap).hostname.replace(/^www\./, "");
     } catch (error) {
-      console.error(`Invalid URL key, trying: ${urlToScrap}`);
+      Logger.error(`Invalid URL key, trying: ${urlToScrap}`);
     }
     const defaultScraper = urlSpecificParams[urlKey]?.defaultScraper ?? "";
     const scrapersInOrder = getScrapingFallbackOrder(
@@ -311,12 +311,18 @@ export async function scrapSingleUrl(
         pageError = undefined;
       }
 
-      if (text && text.trim().length >= 100) break;
-      if (pageStatusCode && pageStatusCode == 404) break;
-      const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;
-      if (nextScraperIndex < scrapersInOrder.length) {
-        console.info(`Falling back to ${scrapersInOrder[nextScraperIndex]}`);
+      if (text && text.trim().length >= 100) {
+        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100, breaking`);
+        break;
       }
+      if (pageStatusCode && pageStatusCode == 404) {
+        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code 404, breaking`);
+        break;
+      }
+      // const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;
+      // if (nextScraperIndex < scrapersInOrder.length) {
+      //   Logger.debug(`⛏️ ${scraper} Failed to fetch URL: ${urlToScrap} with status: ${pageStatusCode}, error: ${pageError} | Falling back to ${scrapersInOrder[nextScraperIndex]}`);
+      // }
     }
 
     if (!text) {
@@ -372,7 +378,7 @@ export async function scrapSingleUrl(
 
     return document;
   } catch (error) {
-    console.error(`Error: ${error} - Failed to fetch URL: ${urlToScrap}`);
+    Logger.debug(`⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrap}`);
     return {
       content: "",
       markdown: "",
