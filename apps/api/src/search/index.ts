@@ -1,3 +1,4 @@
+import { Logger } from "../../src/lib/logger";
 import { SearchResult } from "../../src/lib/entities";
 import { google_search } from "./googlesearch";
 import { serper_search } from "./serper";
@@ -47,7 +48,7 @@ export async function search({
       timeout
     );
   } catch (error) {
-    console.error("Error in search function: ", error);
+    Logger.error(`Error in search function: ${error}`);
     return []
   }
   // if process.env.SERPER_API_KEY is set, use serper

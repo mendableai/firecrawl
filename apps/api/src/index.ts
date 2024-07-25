@@ -13,16 +13,17 @@ import { checkAlerts } from "./services/alerts";
 import Redis from "ioredis";
 import { RateLimiter, connectRateLimitRedisClient, disconnectRateLimitRedisClient } from "./services/rate-limiter";
 // import { redisRateLimitClient } from "./services/rate-limiter";
+import { Logger } from "./lib/logger";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
 const { ExpressAdapter } = require("@bull-board/express");
 
 const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
-console.log(`Number of CPUs: ${numCPUs} available`);
+Logger.info(`Number of CPUs: ${numCPUs} available`);
 
 if (cluster.isMaster) {
-  console.log(`Master ${process.pid} is running`);
+  Logger.info(`Master ${process.pid} is running`);
 
   // Fork workers.
   for (let i = 0; i < numCPUs; i++) {
@@ -31,8 +32,8 @@ if (cluster.isMaster) {
 
   cluster.on("exit", (worker, code, signal) => {
     if (code !== null) {
-      console.log(`Worker ${worker.process.pid} exited`);
-      console.log("Starting a new worker");
+      Logger.info(`Worker ${worker.process.pid} exited`);
+      Logger.info("Starting a new worker");
       cluster.fork();
     }
   });
@@ -82,14 +83,9 @@ if (cluster.isMaster) {
 
   function startServer(port = DEFAULT_PORT) {
     const server = app.listen(Number(port), HOST, () => {
-      console.log(`Worker ${process.pid} listening on port ${port}`);
-      console.log(
-        `For the UI, open http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`
-      );
-      console.log("");
-      console.log("1. Make sure Redis is running on port 6379 by default");
-      console.log(
-        "2. If you want to run nango, make sure you do port forwarding in 3002 using ngrok http 3002 "
+      Logger.info(`Worker ${process.pid} listening on port ${port}`);
+      Logger.info(
+        `For the Queue UI, open: http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`
       );
     });
     return server;
@@ -115,7 +111,7 @@ if (cluster.isMaster) {
         noActiveJobs,
       });
     } catch (error) {
-      console.error(error);
+      Logger.error(error);
       return res.status(500).json({ error: error.message });
     }
   });
@@ -133,7 +129,7 @@ if (cluster.isMaster) {
         waitingJobs,
       });
     } catch (error) {
-      console.error(error);
+      Logger.error(error);
       return res.status(500).json({ error: error.message });
     }
   });
@@ -178,13 +174,13 @@ if (cluster.isMaster) {
                 });
 
                 if (!response.ok) {
-                  console.error("Failed to send Slack notification");
+                  Logger.error("Failed to send Slack notification");
                 }
               }
             }, timeout);
           }
         } catch (error) {
-          console.error(error);
+          Logger.debug(error);
         }
       };
 
@@ -199,7 +195,7 @@ if (cluster.isMaster) {
         await checkAlerts();
         return res.status(200).send("Alerts initialized");
       } catch (error) {
-        console.error("Failed to initialize alerts:", error);
+        Logger.debug(`Failed to initialize alerts: ${error}`);
         return res.status(500).send("Failed to initialize alerts");
       }
     }
@@ -208,6 +204,7 @@ if (cluster.isMaster) {
   app.get(
     `/admin/${process.env.BULL_AUTH_KEY}/clean-before-24h-complete-jobs`,
     async (req, res) => {
+      Logger.info("🐂 Cleaning jobs older than 24h");
       try {
         const webScraperQueue = getWebScraperQueue();
         const batchSize = 10;
@@ -242,12 +239,12 @@ if (cluster.isMaster) {
             await job.remove();
             count++;
           } catch (jobError) {
-            console.error(`Failed to remove job with ID ${job.id}:`, jobError);
+            Logger.error(`🐂 Failed to remove job with ID ${job.id}: ${jobError}` );
           }
         }
         return res.status(200).send(`Removed ${count} completed jobs.`);
       } catch (error) {
-        console.error("Failed to clean last 24h complete jobs:", error);
+        Logger.error(`🐂 Failed to clean last 24h complete jobs: ${error}`);
         return res.status(500).send("Failed to clean jobs");
       }
     }
@@ -273,7 +270,7 @@ if (cluster.isMaster) {
           queueRedisHealth = await queueRedis.get(testKey);
           await queueRedis.del(testKey);
         } catch (error) {
-          console.error("queueRedis health check failed:", error);
+          Logger.error(`queueRedis health check failed: ${error}`);
           queueRedisHealth = null;
         }
 
@@ -301,7 +298,7 @@ if (cluster.isMaster) {
           
           await rateLimiter.block("health-check-key", -1);
         } catch (error) {
-          console.error("redisRateLimitClient health check failed:", error);
+          Logger.error(`redisRateLimitClient health check failed: ${error}`);
           redisRateLimitHealth = "unhealthy";
         } finally {
           // Disconnect the Redis client
@@ -318,12 +315,12 @@ if (cluster.isMaster) {
           healthStatus.queueRedis === "healthy" &&
           healthStatus.redisRateLimitClient === "healthy"
         ) {
-          console.log("Both Redis instances are healthy");
+          Logger.info("Both Redis instances are healthy");
           return res
             .status(200)
             .json({ status: "healthy", details: healthStatus });
         } else {
-          console.log("Redis instances health check:", healthStatus);
+          Logger.info(`Redis instances health check: ${JSON.stringify(healthStatus)}`);
           await sendSlackWebhook(
             `[REDIS DOWN] Redis instances health check: ${JSON.stringify(
               healthStatus
@@ -335,7 +332,7 @@ if (cluster.isMaster) {
             .json({ status: "unhealthy", details: healthStatus });
         }
       } catch (error) {
-        console.error("Redis health check failed:", error);
+        Logger.error(`Redis health check failed: ${error}`);
         await sendSlackWebhook(
           `[REDIS DOWN] Redis instances health check: ${error.message}`,
           true
@@ -347,5 +344,5 @@ if (cluster.isMaster) {
     }
   );
 
-  console.log(`Worker ${process.pid} started`);
+  Logger.info(`Worker ${process.pid} started`);
 }

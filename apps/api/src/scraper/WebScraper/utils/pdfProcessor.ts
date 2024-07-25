@@ -7,6 +7,7 @@ import pdf from "pdf-parse";
 import path from "path";
 import os from "os";
 import { axiosTimeout } from "../../../lib/timeout";
+import { Logger } from "../../../lib/logger";
 
 dotenv.config();
 
@@ -39,6 +40,7 @@ export async function processPdfToText(filePath: string, parsePDF: boolean): Pro
   let content = "";
 
   if (process.env.LLAMAPARSE_API_KEY && parsePDF) {
+    Logger.debug("Processing pdf document w/ LlamaIndex");
     const apiKey = process.env.LLAMAPARSE_API_KEY;
     const headers = {
       Authorization: `Bearer ${apiKey}`,
@@ -81,7 +83,7 @@ export async function processPdfToText(filePath: string, parsePDF: boolean): Pro
             await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 0.5 seconds
           }
         } catch (error) {
-          console.error("Error fetching result w/ LlamaIndex");
+          Logger.debug("Error fetching result w/ LlamaIndex");
           attempt++;
           await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 0.5 seconds before retrying
           // You may want to handle specific errors differently
@@ -93,7 +95,7 @@ export async function processPdfToText(filePath: string, parsePDF: boolean): Pro
       }
       content = resultResponse.data[resultType];
     } catch (error) {
-      console.error("Error processing pdf document w/ LlamaIndex(2)");
+      Logger.debug("Error processing pdf document w/ LlamaIndex(2)");
       content = await processPdf(filePath);
     }
   } else if (parsePDF) {

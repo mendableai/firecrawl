@@ -1,5 +1,6 @@
 import { PostHog } from 'posthog-node';
 import "dotenv/config";
+import { Logger } from '../../src/lib/logger';
 
 export default function PostHogClient() {
   const posthogClient = new PostHog(process.env.POSTHOG_API_KEY, {
@@ -19,7 +20,7 @@ class MockPostHog {
 export const posthog = process.env.POSTHOG_API_KEY
   ? PostHogClient()
   : (() => {
-      console.warn(
+      Logger.warn(
         "POSTHOG_API_KEY is not provided - your events will not be logged. Using MockPostHog as a fallback. See posthog.ts for more."
       );
       return new MockPostHog();

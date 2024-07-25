@@ -1,4 +1,5 @@
 // import Redis from "ioredis";
+import { Logger } from "../lib/logger";
 import { ServerRateLimiter, } from "./rate-limiter";
 
 const redisRateLimitClient = ServerRateLimiter.getRedisClient();
@@ -7,10 +8,10 @@ const redisRateLimitClient = ServerRateLimiter.getRedisClient();
 redisRateLimitClient.on("error", (error) => {
   try {
     if (error.message === "ECONNRESET") {
-      console.log("Connection to Redis Session Store timed out.");
+      Logger.error("Connection to Redis Session Rate Limit Store timed out.");
     } else if (error.message === "ECONNREFUSED") {
-      console.log("Connection to Redis Session Store refused!");
-    } else console.log(error);
+      Logger.error("Connection to Redis Session Rate Limit Store refused!");
+    } else Logger.error(error);
   } catch (error) {}
 });
 
@@ -18,15 +19,15 @@ redisRateLimitClient.on("error", (error) => {
 redisRateLimitClient.on("reconnecting", (err) => {
   try {
     if (redisRateLimitClient.status === "reconnecting")
-      console.log("Reconnecting to Redis Session Store...");
-    else console.log("Error reconnecting to Redis Session Store.");
+      Logger.info("Reconnecting to Redis Session Rate Limit Store...");
+    else Logger.error("Error reconnecting to Redis Session Rate Limit Store.");
   } catch (error) {}
 });
 
 // Listen to the 'connect' event to Redis
 redisRateLimitClient.on("connect", (err) => {
   try {
-    if (!err) console.log("Connected to Redis Session Store!");
+    if (!err) Logger.info("Connected to Redis Session Rate Limit Store!");
   } catch (error) {}
 });
 

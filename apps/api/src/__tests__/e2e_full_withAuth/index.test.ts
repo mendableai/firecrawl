@@ -858,7 +858,6 @@ describe("E2E Tests for API Routes", () => {
           await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
         }
       }
-      console.log(crawlData)
       expect(crawlData.length).toBeGreaterThan(0);
       expect(crawlData).toEqual(expect.arrayContaining([
         expect.objectContaining({ url: expect.stringContaining("https://firecrawl.dev/?ref=mendable+banner") }),

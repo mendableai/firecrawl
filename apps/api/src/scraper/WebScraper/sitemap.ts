@@ -3,6 +3,7 @@ import { axiosTimeout } from "../../lib/timeout";
 import { parseStringPromise } from "xml2js";
 import { scrapWithFireEngine } from "./scrapers/fireEngine";
 import { WebCrawler } from "./crawler";
+import { Logger } from "../../lib/logger";
 
 export async function getLinksFromSitemap(
   {
@@ -26,7 +27,7 @@ export async function getLinksFromSitemap(
         content = response.html;
       }
     } catch (error) {
-      console.error(`Request failed for ${sitemapUrl}: ${error}`);
+      Logger.error(`Request failed for ${sitemapUrl}: ${error.message}`);
 
       return allUrls;
     }
@@ -48,16 +49,16 @@ export async function getLinksFromSitemap(
       }
     }
   } catch (error) {
-    console.error(`Error processing ${sitemapUrl}: ${error}`);
+    Logger.debug(`Error processing sitemapUrl: ${sitemapUrl} | Error: ${error.message}`);
   }
 
   return allUrls;
 }
 
-export const fetchSitemapData = async (url: string): Promise<SitemapEntry[] | null> => {
+export const fetchSitemapData = async (url: string, timeout?: number): Promise<SitemapEntry[] | null> => {
   const sitemapUrl = url.endsWith("/sitemap.xml") ? url : `${url}/sitemap.xml`;
   try {
-    const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
+    const response = await axios.get(sitemapUrl, { timeout: timeout || axiosTimeout });
     if (response.status === 200) {
       const xml = response.data;
       const parsedXml = await parseStringPromise(xml);
