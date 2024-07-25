@@ -22,7 +22,7 @@ export const urlSpecificParams = {
     },
   },
   "support.greenpay.me":{
-    defaultScraper: "playwright",
+    defaultScraper: "fire-engine",
     params: {
         wait_browser: "networkidle2",
         block_resources: false,
@@ -43,7 +43,7 @@ export const urlSpecificParams = {
       },
   },
   "docs.pdw.co":{
-    defaultScraper: "playwright",
+    defaultScraper: "fire-engine",
     params: {
         wait_browser: "networkidle2",
         block_resources: false,
@@ -83,7 +83,7 @@ export const urlSpecificParams = {
       },
   },
   "developers.notion.com":{
-    defaultScraper: "playwright",
+    defaultScraper: "fire-engine",
     params: {
         wait_browser: "networkidle2",
         block_resources: false,
@@ -103,7 +103,7 @@ export const urlSpecificParams = {
       },
   },
   "docs2.hubitat.com":{
-    defaultScraper: "playwright",
+    defaultScraper: "fire-engine",
     params: {
         wait_browser: "networkidle2",
         block_resources: false,
@@ -153,7 +153,7 @@ export const urlSpecificParams = {
     },
   },
   "help.salesforce.com":{
-    defaultScraper: "playwright",
+    defaultScraper: "fire-engine",
     params: {
         wait_browser: "networkidle2",
         block_resources: false,
@@ -202,5 +202,14 @@ export const urlSpecificParams = {
         engine: "request",
       },
     },
+  },
+  "notion.com":{
+    defaultScraper: "fire-engine",
+    params: {
+        wait_browser: "networkidle2",
+        block_resources: false,
+        wait: 2000,
+        engine: "playwright",
+      }
   },
 };
