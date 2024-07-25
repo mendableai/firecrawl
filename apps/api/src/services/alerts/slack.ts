@@ -19,6 +19,6 @@ export async function sendSlackWebhook(
     });
     Logger.log("Webhook sent successfully:", response.data);
   } catch (error) {
-    Logger.error(`Error sending webhook: ${error}`);
+    Logger.debug(`Error sending webhook: ${error}`);
   }
 }

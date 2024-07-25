@@ -51,6 +51,6 @@ export const callWebhook = async (teamId: string, jobId: string,data: any) => {
       }),
     });
   } catch (error) {
-    Logger.error(`Error sending webhook for team ID: ${teamId}, error: ${error.message}`);
+    Logger.debug(`Error sending webhook for team ID: ${teamId}, error: ${error.message}`);
   }
 };
