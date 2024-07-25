@@ -8,22 +8,22 @@ import {
 
 export const adminRouter = express.Router();
 
-adminRouter.post(
+adminRouter.get(
   `/admin/${process.env.BULL_AUTH_KEY}/redis-health`,
   redisHealthController
 );
 
-adminRouter.post(
+adminRouter.get(
   `/admin/${process.env.BULL_AUTH_KEY}/clean-before-24h-complete-jobs`,
   cleanBefore24hCompleteJobsController
 );
 
-adminRouter.post(
+adminRouter.get(
   `/admin/${process.env.BULL_AUTH_KEY}/check-queues`,
   checkQueuesController
 );
 
-adminRouter.post(
+adminRouter.get(
   `/admin/${process.env.BULL_AUTH_KEY}/queues`,
   queuesController
 );
