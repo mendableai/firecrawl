@@ -7,8 +7,8 @@ import { crawlJobStatusPreviewController } from "../../src/controllers/status";
 import { searchController } from "../../src/controllers/search";
 import { crawlCancelController } from "../../src/controllers/crawl-cancel";
 import { keyAuthController } from "../../src/controllers/keyAuth";
-import {livenessController} from "../controllers/liveness";
-import {readinessController} from "../controllers/readiness";
+import { livenessController } from "../controllers/liveness";
+import { readinessController } from "../controllers/readiness";
 
 export const v0Router = express.Router();
 
