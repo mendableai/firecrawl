@@ -71,13 +71,16 @@ export async function sendNotificationInternal(
   if (team_id === "preview") {
     return { success: true };
   }
+
+  const fifteenDaysAgo = new Date();
+  fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
+
   const { data, error } = await supabase_service
     .from("user_notifications")
     .select("*")
     .eq("team_id", team_id)
     .eq("notification_type", notificationType)
-    .gte("sent_date", startDateString)
-    .lte("sent_date", endDateString);
+    .gte("sent_date", fifteenDaysAgo.toISOString());
 
   if (error) {
     Logger.debug(`Error fetching notifications: ${error}`);
@@ -85,8 +88,28 @@ export async function sendNotificationInternal(
   }
 
   if (data.length !== 0) {
+    // Logger.debug(`Notification already sent for team_id: ${team_id} and notificationType: ${notificationType} in the last 15 days`);
+    return { success: false };
+  }
+
+  const { data: recentData, error: recentError } = await supabase_service
+    .from("user_notifications")
+    .select("*")
+    .eq("team_id", team_id)
+    .eq("notification_type", notificationType)
+    .gte("sent_date", startDateString)
+    .lte("sent_date", endDateString);
+
+  if (recentError) {
+    Logger.debug(`Error fetching recent notifications: ${recentError}`);
+    return { success: false };
+  }
+
+  if (recentData.length !== 0) {
+    // Logger.debug(`Notification already sent for team_id: ${team_id} and notificationType: ${notificationType} within the specified date range`);
     return { success: false };
   } else {
+    console.log(`Sending notification for team_id: ${team_id} and notificationType: ${notificationType}`);
     // get the emails from the user with the team_id
     const { data: emails, error: emailsError } = await supabase_service
       .from("users")
