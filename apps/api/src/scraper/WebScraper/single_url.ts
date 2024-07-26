@@ -19,6 +19,7 @@ import { scrapWithScrapingBee } from "./scrapers/scrapingBee";
 import { extractLinks } from "./utils/utils";
 import { Logger } from "../../lib/logger";
 import { ScrapeEvents } from "../../lib/scrape-events";
+import { clientSideError } from "../../strings";
 
 dotenv.config();
 
@@ -311,7 +312,7 @@ export async function scrapSingleUrl(
 
     for (const scraper of scrapersInOrder) {
       // If exists text coming from crawler, use it
-      if (existingHtml && existingHtml.trim().length >= 100) {
+      if (existingHtml && existingHtml.trim().length >= 100 && !existingHtml.includes(clientSideError)) {
         let cleanedHtml = removeUnwantedElements(existingHtml, pageOptions);
         text = await parseMarkdown(cleanedHtml);
         html = cleanedHtml;
