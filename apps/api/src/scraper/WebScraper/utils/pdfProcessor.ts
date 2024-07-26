@@ -12,10 +12,15 @@ import { Logger } from "../../../lib/logger";
 dotenv.config();
 
 export async function fetchAndProcessPdf(url: string, parsePDF: boolean): Promise<{ content: string, pageStatusCode?: number, pageError?: string }> {
-  const { tempFilePath, pageStatusCode, pageError } = await downloadPdf(url);
-  const content = await processPdfToText(tempFilePath, parsePDF);
-  fs.unlinkSync(tempFilePath); // Clean up the temporary file
-  return { content, pageStatusCode, pageError };
+  try {
+    const { tempFilePath, pageStatusCode, pageError } = await downloadPdf(url);
+    const content = await processPdfToText(tempFilePath, parsePDF);
+    fs.unlinkSync(tempFilePath); // Clean up the temporary file
+    return { content, pageStatusCode, pageError };
+  } catch (error) {
+    Logger.error(`Failed to fetch and process PDF: ${error.message}`);
+    return { content: "", pageStatusCode: 500, pageError: error.message };
+  }
 }
 
 async function downloadPdf(url: string): Promise<{ tempFilePath: string, pageStatusCode?: number, pageError?: string }> {
