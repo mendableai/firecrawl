@@ -139,4 +139,5 @@ export interface FireEngineOptions{
   engine?: string;
   blockMedia?: boolean;
   blockAds?: boolean;
+  disableJsDom?: boolean;
 }

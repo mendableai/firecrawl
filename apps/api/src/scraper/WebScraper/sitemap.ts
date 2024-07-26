@@ -23,7 +23,7 @@ export async function getLinksFromSitemap(
         const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
         content = response.data;
       } else if (mode === 'fire-engine') {
-        const response = await scrapWithFireEngine({ url: sitemapUrl, fireEngineOptions: { method: "get", mobileProxy: true },options:{endpoint:"request"} });
+        const response = await scrapWithFireEngine({ url: sitemapUrl, fireEngineOptions: { engine:"tlsclient", disableJsDom: true, mobileProxy: true } });
         content = response.html;
       }
     } catch (error) {
