@@ -26,6 +26,7 @@
   "license": "ISC",
   "devDependencies": {
     "@flydotio/dockerfile": "^0.4.10",
+    "@jest/globals": "^29.7.0",
     "@tsconfig/recommended": "^1.0.3",
     "@types/body-parser": "^1.19.2",
     "@types/bull": "^4.10.0",

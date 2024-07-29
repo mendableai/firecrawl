@@ -192,6 +192,9 @@ importers:
       '@flydotio/dockerfile':
         specifier: ^0.4.10
         version: 0.4.11
+      '@jest/globals':
+        specifier: ^29.7.0
+        version: 29.7.0
       '@tsconfig/recommended':
         specifier: ^1.0.3
         version: 1.0.6
