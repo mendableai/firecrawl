@@ -48,7 +48,7 @@ function prepareOpenAIDoc(
 
 export async function generateOpenAICompletions({
   client,
-  model = "gpt-4o",
+  model = process.env.MODEL_NAME || "gpt-4o",
   document,
   schema, //TODO - add zod dynamic type checking
   prompt = defaultPrompt,
