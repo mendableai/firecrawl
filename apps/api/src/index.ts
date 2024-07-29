@@ -10,6 +10,9 @@ import os from "os";
 import { Logger } from "./lib/logger";
 import { adminRouter } from "./routes/admin";
 import { ScrapeEvents } from "./lib/scrape-events";
+import http from 'node:http';
+import https from 'node:https';
+import CacheableLookup  from 'cacheable-lookup';
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -17,6 +20,14 @@ const { ExpressAdapter } = require("@bull-board/express");
 
 const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
 Logger.info(`Number of CPUs: ${numCPUs} available`);
+
+const cacheable = new CacheableLookup({
+  // this is important to avoid querying local hostnames see https://github.com/szmarczak/cacheable-lookup readme
+  lookup:false
+});
+
+cacheable.install(http.globalAgent);
+cacheable.install(https.globalAgent)
 
 if (cluster.isMaster) {
   Logger.info(`Master ${process.pid} is running`);

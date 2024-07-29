@@ -88,7 +88,15 @@ export async function supaAuthenticateUser(
       // console.log('Key and Price ID:', data);
     }
 
-    if (error || !data || data.length === 0) {
+    if(error) {
+      return {
+        success: false,
+        error: "Unauthorized: Invalid token or server error.",
+        status: 500,
+      };
+    }
+
+    if (!data || data.length === 0) {
       return {
         success: false,
         error: "Unauthorized: Invalid token",
@@ -178,7 +186,16 @@ export async function supaAuthenticateUser(
       .select("*")
       .eq("key", normalizedApi);
 
-    if (error || !data || data.length === 0) {
+    if (error) {
+      Logger.warn(`Error fetching api key: ${error.message}`);
+      return {
+        success: false,
+        error: "Unauthorized: Invalid token or server error.",
+        status: 500,
+      };
+    }
+
+    if (!data || data.length === 0) {
       return {
         success: false,
         error: "Unauthorized: Invalid token",
