@@ -53,7 +53,7 @@
     "@bull-board/express": "^5.20.5",
     "@devil7softwares/pos": "^1.0.2",
     "@dqbd/tiktoken": "^1.0.13",
-    "@hyperdx/node-opentelemetry": "^0.8.0",
+    "@hyperdx/node-opentelemetry": "^0.8.1",
     "@logtail/node": "^0.4.12",
     "@nangohq/node": "^0.40.8",
     "@sentry/node": "^8.13.0",
