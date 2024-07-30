@@ -6,7 +6,7 @@ Welcome to [Firecrawl](https://firecrawl.dev) 🔥! Here are some instructions o
 
 If you're contributing, note that the process is similar to other open-source repos, i.e., fork Firecrawl, make changes, run tests, PR.
 
-If you have any questions or would like help getting on board, reach out to hello@mendable.ai for more information or submit an issue!
+If you have any questions or would like help getting on board, join our Discord community [here](https://discord.gg/gSmWdAkdwd) for more information or submit an issue on Github [here](https://github.com/mendableai/firecrawl/issues/new/choose)!
 
 ## Why?
 
