@@ -92,8 +92,6 @@ export async function scrapeHelper(
 
   // let j1 = typeof j[1] === "string" ? JSON.parse(j[1]) : j[1];
 
-  console.log("JOB RESULT", jobResult);
-
   const doc = jobResult !== null ? jobResult[0] : (await supabase_service
     .from("firecrawl_jobs")
     .select("docs")

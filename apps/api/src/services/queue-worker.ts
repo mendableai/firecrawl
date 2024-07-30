@@ -117,8 +117,6 @@ async function processJob(job: Job, token: string) {
   Logger.debug(`🐂 Worker taking job ${job.id}`);
 
   try {
-    console.log("🐂 Updating progress");
-    console.log({ job });
     job.updateProgress({
       current: 1,
       total: 100,
