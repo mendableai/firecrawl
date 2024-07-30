@@ -13,12 +13,14 @@ import { ScrapeEvents } from "./lib/scrape-events";
 import http from 'node:http';
 import https from 'node:https';
 import CacheableLookup  from 'cacheable-lookup';
+import { supabase_service } from "./services/supabase";
+import { parseApi } from "./lib/parseApi";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
 const { ExpressAdapter } = require("@bull-board/express");
 
-const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
+const numCPUs = process.env.ENV === "local" ? 1 : os.cpus().length;
 Logger.info(`Number of CPUs: ${numCPUs} available`);
 
 const cacheable = new CacheableLookup({
@@ -183,9 +185,103 @@ if (cluster.isMaster) {
 
 const wsq = getWebScraperQueue();
 
-wsq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
-wsq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
-wsq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
-wsq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
-wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
-wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
+// wsq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
+// wsq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
+// wsq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
+// wsq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
+// wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
+// wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
+
+
+// async function fetchStagingFirecrawl(url, times) {
+//   const firecrawlUrl = 'http://127.0.0.1:3002/v0/scrape';
+//   let totalTime = 0;
+//   const maxConcurrentRequests = 100;
+//   // wait 10 seconds
+//   await new Promise(resolve => setTimeout(resolve, 5000));
+
+//   const fetchRequest = async (index) => {
+//     const startTime = Date.now();
+//     try {
+//       const response = await fetch(firecrawlUrl, {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//           "Authorization": "Bearer fc-"
+//         },
+//         body: JSON.stringify({ url })
+//       });
+//       const endTime = Date.now();
+//       const duration = endTime - startTime;
+//       totalTime += duration;
+
+//       if (!response.ok) {
+//         Logger.error(`Fetch attempt ${index + 1} failed with status: ${response.status} and took ${duration} ms`);
+//         // print error
+//       } else {
+//         Logger.info(`Fetch attempt ${index + 1} succeeded and took ${duration} ms`);
+//       }
+//     } catch (error) {
+//       const endTime = Date.now();
+//       const duration = endTime - startTime;
+//       totalTime += duration;
+//       Logger.error(`Fetch attempt ${index + 1} encountered an error: ${error.message} and took ${duration} ms`);
+//     }
+//   };
+
+//   // run fetch request promise all
+//   await Promise.all(Array.from({ length: times }, (_, index) => fetchRequest(index)));
+
+//   const averageTime = totalTime / times;
+//   Logger.info(`Average time for ${times} requests: ${averageTime.toFixed(2)} ms`);
+
+// }
+// const urlToFetch = 'https://example.com'; // Replace with the actual URL
+// // fetchStagingFirecrawl(urlToFetch, 100);
+
+// let totalRpcTime = 0;
+
+// const rpcRequest = async (index) => {
+//   const startTime = Date.now();
+//   try {
+//     // const { data, error } = await supabase_service.rpc(
+//     //   'get_key_and_price_id_2', { api_key: normalizedApi }
+//     // );
+//     // const normalizedApi = parseApi("fc-")
+//     // const { data, error } = await supabase_service.rpc('get_key_and_price_id_2', { api_key: normalizedApi });
+//     const start = Date.now();
+
+//     const delay = 10000;
+//     while (Date.now() - start < delay) {
+//       // await new Promise(resolve => setTimeout(resolve, 1000));
+//     }
+
+
+
+//     const endTime = Date.now();
+//     const duration = endTime - startTime;
+//     totalRpcTime += duration;
+
+//     Logger.info(`RPC attempt ${index + 1} succeeded and took ${duration} ms`);
+//   } catch (error) {
+//     const endTime = Date.now();
+//     const duration = endTime - startTime;
+//     totalRpcTime += duration;
+//     Logger.error(`RPC attempt ${index + 1} encountered an error: ${error.message} and took ${duration} ms`);
+//   }
+// };
+
+// const rpcInBatches = async () => {
+//   for (let i = 0; i < 200; i += 100) {
+//     const batch = [];
+//     for (let j = 0; j < 100 && i + j < 200; j++) {
+//       batch.push(rpcRequest(i + j));
+//     }
+//     await Promise.all(batch);
+//   }
+// };
+
+// rpcInBatches();
+
+  // const averageRpcTime = totalRpcTime / 100;
+  // Logger.info(`Average time for 100 RPC requests: ${averageRpcTime.toFixed(2)} ms`);
