@@ -81,7 +81,6 @@ export async function scrapWithFireEngine({
         timeout: universalTimeout + waitParam,
       }
     );
-    console.log(response.data?.pageStatusCode);
 
     if (response.status !== 200) {
       Logger.debug(
