@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 
-import { Job } from "bull";
+import { Job } from "bullmq";
 import { Logger } from "../../lib/logger";
 import { getWebScraperQueue } from "../../services/queue-service";
 import { checkAlerts } from "../../services/alerts";

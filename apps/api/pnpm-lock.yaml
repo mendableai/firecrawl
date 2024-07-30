@@ -56,9 +56,9 @@ importers:
       bottleneck:
         specifier: ^2.19.5
         version: 2.19.5
-      bull:
-        specifier: ^4.15.0
-        version: 4.15.0
+      bullmq:
+        specifier: ^5.11.0
+        version: 5.11.0
       cacheable-lookup:
         specifier: ^6.1.0
         version: 6.1.0
@@ -161,6 +161,9 @@ importers:
       stripe:
         specifier: ^16.1.0
         version: 16.1.0
+      systeminformation:
+        specifier: ^5.22.11
+        version: 5.22.11
       turndown:
         specifier: ^7.1.3
         version: 7.2.0
@@ -201,9 +204,6 @@ importers:
       '@types/body-parser':
         specifier: ^1.19.2
         version: 1.19.5
-      '@types/bull':
-        specifier: ^4.10.0
-        version: 4.10.0
       '@types/cors':
         specifier: ^2.8.13
         version: 2.8.17
@@ -1535,10 +1535,6 @@ packages:
   '@types/body-parser@1.19.5':
     resolution: {integrity: sha512-fB3Zu92ucau0iQ0JMCFQE7b/dv8Ot07NI3KaZIkIUNXq82k4eBAqUaneXfleGY9JWskeS9y+u0nXMyspcuQrCg==}
 
-  '@types/bull@4.10.0':
-    resolution: {integrity: sha512-RkYW8K2H3J76HT6twmHYbzJ0GtLDDotpLP9ah9gtiA7zfF6peBH1l5fEiK0oeIZ3/642M7Jcb9sPmor8Vf4w6g==}
-    deprecated: This is a stub types definition. bull provides its own type definitions, so you do not need this installed.
-
   '@types/bunyan@1.8.9':
     resolution: {integrity: sha512-ZqS9JGpBxVOvsawzmVt30sP++gSQMTejCkIAQ3VdadOcRE8izTyW66hufvwLeH+YEGP6Js2AW7Gz+RMyvrEbmw==}
 
@@ -1935,9 +1931,8 @@ packages:
   buffer@6.0.3:
     resolution: {integrity: sha512-FTiCpNxtwiZZHEZbcbTIcZjERVICn9yq/pDFkTl95/AxzD1naBctN7YO68riM/gLSDY7sdrMby8hofADYuuqOA==}
 
-  bull@4.15.0:
-    resolution: {integrity: sha512-nOEAfUXwUXtFbRPQP3bWCwpQ/NAerAu2Nym/ucv5C1E+Qh2x6RGdKKsYIfZam4mYncayTynTUN/HLhRgGi2N8w==}
-    engines: {node: '>=12'}
+  bullmq@5.11.0:
+    resolution: {integrity: sha512-qVzyWGZqie3VHaYEgRXhId/j8ebfmj6MExEJyUByMsUJA5pVciVle3hKLer5fyMwtQ8lTMP7GwhXV/NZ+HzlRA==}
 
   bytes@3.1.2:
     resolution: {integrity: sha512-/Nf7TyzTx6S3yRJObOAV7956r8cr2+Oj8AC5dt8wSP3BQAoeX58NoHyCU8P8zGkNXStjTSi6fzO6F0pBdcYbEg==}
@@ -2558,10 +2553,6 @@ packages:
   get-package-type@0.1.0:
     resolution: {integrity: sha512-pjzuKtY64GYfWizNAJ0fr9VqttZkNiK2iS430LtIHzjBEr6bX8Am2zm4sW4Ro5wjWW5cAlRL1qAMTcXbjNAO2Q==}
     engines: {node: '>=8.0.0'}
-
-  get-port@5.1.1:
-    resolution: {integrity: sha512-g/Q1aTSDOxFpchXC4i8ZWvxA1lnPqx/JHqcpIw0/LX9T8x/GBbi6YnlN5nhaKIFkT8oFsscUKgDJYxfwfS6QsQ==}
-    engines: {node: '>=8'}
 
   get-stream@5.2.0:
     resolution: {integrity: sha512-nBF+F1rAZVCu/p7rjzgA+Yb4lfYXrpl7a6VmJrU8wF9I1CKvP/QwPNZHnOlwbTkY6dvtFIzFMSyQXbLoTQPRpA==}
@@ -3533,6 +3524,9 @@ packages:
     resolution: {integrity: sha512-dBpDMdxv9Irdq66304OLfEmQ9tbNRFnFTuZiLo+bD+r332bBmMJ8GBLXklIXXgxd3+v9+KUnZaUR5PJMa75Gsg==}
     engines: {node: '>= 0.4.0'}
 
+  node-abort-controller@3.1.1:
+    resolution: {integrity: sha512-AGK2yQKIjRuqnc6VkX2Xj5d+QW8xZ87pa1UK6yA6ouUyuxfHuMP6umE5QK7UmTeOAymo+Zx1Fxiuw9rVx8taHQ==}
+
   node-domexception@1.0.0:
     resolution: {integrity: sha512-/jKZoMpw0F8GRwl4/eLROPA3cfcXtLApP0QzLmUT/HuPCZWyB7IY9ZrMeKw2O/nFIqPQB3PVM9aYm0F312AXDQ==}
     engines: {node: '>=10.5.0'}
@@ -4258,6 +4252,12 @@ packages:
     resolution: {integrity: sha512-SzRP5LQ6Ts2G5NyAa/jg16s8e3R7rfdFjizy1zeoecYWw+nGL+YA1xZvW/+iJmidBGSdLkuvdwTYEyJEb+EiUw==}
     engines: {node: '>=0.2.6'}
 
+  systeminformation@5.22.11:
+    resolution: {integrity: sha512-aLws5yi4KCHTb0BVvbodQY5bY8eW4asMRDTxTW46hqw9lGjACX6TlLdJrkdoHYRB0qs+MekqEq1zG7WDnWE8Ug==}
+    engines: {node: '>=8.0.0'}
+    os: [darwin, linux, win32, freebsd, openbsd, netbsd, sunos, android]
+    hasBin: true
+
   tar-fs@3.0.5:
     resolution: {integrity: sha512-JOgGAmZyMgbqpLwct7ZV8VzkEB6pxXFBVErLtb+XCOqzc6w1xiWKI9GVd6bwk68EX7eJ4DWmfXVmq8K2ziZTGg==}
 
@@ -4448,10 +4448,6 @@ packages:
 
   uuid@10.0.0:
     resolution: {integrity: sha512-8XkAphELsDnEGrDxUOHB3RGvXz6TeuYSGEZBOjtTtPm2lwhGBjLgOzLHB63IUWfBpNucQjND6d3AOudO+H3RWQ==}
-    hasBin: true
-
-  uuid@8.3.2:
-    resolution: {integrity: sha512-+NYs2QeMWy+GWFOEm9xnn6HCDp0l7QBD7ml8zLUmJ+93Q5NF0NocErnwkTkXVFNiX3/fpC6afS8Dhb/gz7R7eg==}
     hasBin: true
 
   uuid@9.0.1:
@@ -6437,12 +6433,6 @@ snapshots:
       '@types/connect': 3.4.38
       '@types/node': 20.14.1
 
-  '@types/bull@4.10.0':
-    dependencies:
-      bull: 4.15.0
-    transitivePeerDependencies:
-      - supports-color
-
   '@types/bunyan@1.8.9':
     dependencies:
       '@types/node': 20.14.1
@@ -6913,15 +6903,15 @@ snapshots:
       base64-js: 1.5.1
       ieee754: 1.2.1
 
-  bull@4.15.0:
+  bullmq@5.11.0:
     dependencies:
       cron-parser: 4.9.0
-      get-port: 5.1.1
       ioredis: 5.4.1
-      lodash: 4.17.21
       msgpackr: 1.10.2
+      node-abort-controller: 3.1.1
       semver: 7.6.2
-      uuid: 8.3.2
+      tslib: 2.6.3
+      uuid: 9.0.1
     transitivePeerDependencies:
       - supports-color
 
@@ -7521,8 +7511,6 @@ snapshots:
       hasown: 2.0.2
 
   get-package-type@0.1.0: {}
-
-  get-port@5.1.1: {}
 
   get-stream@5.2.0:
     dependencies:
@@ -8605,6 +8593,8 @@ snapshots:
 
   netmask@2.0.2: {}
 
+  node-abort-controller@3.1.1: {}
+
   node-domexception@1.0.0: {}
 
   node-ensure@0.0.0: {}
@@ -9417,6 +9407,8 @@ snapshots:
 
   sylvester@0.0.12: {}
 
+  systeminformation@5.22.11: {}
+
   tar-fs@3.0.5:
     dependencies:
       pump: 3.0.0
@@ -9588,8 +9580,6 @@ snapshots:
   utils-merge@1.0.1: {}
 
   uuid@10.0.0: {}
-
-  uuid@8.3.2: {}
 
   uuid@9.0.1: {}
 

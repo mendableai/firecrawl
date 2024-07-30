@@ -10,7 +10,24 @@ export async function crawlJobStatusPreviewController(req: Request, res: Respons
       return res.status(404).json({ error: "Job not found" });
     }
 
-    const { current, current_url, total, current_step, partialDocs } = await job.progress();
+    let progress = job.progress;
+    if(typeof progress !== 'object') {
+      progress = {
+        current: 0,
+        current_url: '',
+        total: 0,
+        current_step: '',
+        partialDocs: []
+      }
+    }
+    const { 
+      current = 0, 
+      current_url = '', 
+      total = 0, 
+      current_step = '', 
+      partialDocs = [] 
+    } = progress as { current: number, current_url: string, total: number, current_step: string, partialDocs: any[] };
+
     let data = job.returnvalue;
     if (process.env.USE_DB_AUTHENTICATION === "true") {
       const supabaseData = await supabaseGetJobById(req.params.jobId);
@@ -21,7 +38,7 @@ export async function crawlJobStatusPreviewController(req: Request, res: Respons
     }
 
     let jobStatus = await job.getState();
-    if (jobStatus === 'waiting' || jobStatus === 'stuck') {
+    if (jobStatus === 'waiting' || jobStatus === 'delayed' || jobStatus === 'waiting-children' || jobStatus === 'unknown' || jobStatus === 'prioritized') {
       jobStatus = 'active';
     }
 

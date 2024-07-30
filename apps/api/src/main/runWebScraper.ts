@@ -1,4 +1,4 @@
-import { Job } from "bull";
+import { Job } from "bullmq";
 import {
   CrawlResult,
   WebScraperOptions,
@@ -15,8 +15,10 @@ import { ScrapeEvents } from "../lib/scrape-events";
 
 export async function startWebScraperPipeline({
   job,
+  token,
 }: {
   job: Job<WebScraperOptions>;
+  token: string;
 }) {
   let partialDocs: Document[] = [];
   return (await runWebScraper({
@@ -31,17 +33,17 @@ export async function startWebScraperPipeline({
         if (partialDocs.length > 50) {
           partialDocs = partialDocs.slice(-50);
         }
-        job.progress({ ...progress, partialDocs: partialDocs });
+        job.updateProgress({ ...progress, partialDocs: partialDocs });
       }
     },
     onSuccess: (result) => {
       Logger.debug(`🐂 Job completed ${job.id}`);
-      saveJob(job, result);
+      saveJob(job, result, token);
     },
     onError: (error) => {
       Logger.error(`🐂 Job failed ${job.id}`);
       ScrapeEvents.logJobEvent(job, "failed");
-      job.moveToFailed(error);
+      job.moveToFailed(error, token, false);
     },
     team_id: job.data.team_id,
     bull_job_id: job.id.toString(),
@@ -121,7 +123,7 @@ export async function runWebScraper({
   }
 }
 
-const saveJob = async (job: Job, result: any) => {
+const saveJob = async (job: Job, result: any, token: string) => {
   try {
     if (process.env.USE_DB_AUTHENTICATION === "true") {
       const { data, error } = await supabase_service
@@ -131,13 +133,13 @@ const saveJob = async (job: Job, result: any) => {
 
       if (error) throw new Error(error.message);
       try {
-        await job.moveToCompleted(null);
+        await job.moveToCompleted(null, token, false);
       } catch (error) {
         // I think the job won't exist here anymore
       }
     } else {
       try {
-        await job.moveToCompleted(result);
+        await job.moveToCompleted(result, token, false);
       } catch (error) {
         // I think the job won't exist here anymore
       }

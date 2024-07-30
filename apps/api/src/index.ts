@@ -181,11 +181,11 @@ if (cluster.isMaster) {
   Logger.info(`Worker ${process.pid} started`);
 }
 
-const wsq = getWebScraperQueue();
+// const wsq = getWebScraperQueue();
 
-wsq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
-wsq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
-wsq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
-wsq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
-wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
-wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
+// wsq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
+// wsq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
+// wsq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
+// wsq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
+// wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
+// wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));

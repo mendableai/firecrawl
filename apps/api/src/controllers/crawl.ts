@@ -74,7 +74,7 @@ export async function crawlController(req: Request, res: Response) {
         });
 
         const docs = await a.getDocuments(false, (progress) => {
-          job.progress({
+          job.updateProgress({
             current: progress.current,
             total: progress.total,
             current_step: "SCRAPING",

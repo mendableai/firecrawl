@@ -76,7 +76,7 @@ export async function scrapeHelper(
     }
   }
 
-  wsq.on("global:completed", listener);
+  // wsq.on("global:completed", listener);
 
   const timeoutPromise = new Promise<{ success: boolean; error?: string; returnCode: number }>((_, reject) =>
     setTimeout(() => reject({ success: false, error: "Request timed out. Increase the timeout by passing `timeout` param to the request.", returnCode: 408 }), timeout)

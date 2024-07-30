@@ -41,7 +41,15 @@ export async function crawlCancelController(req: Request, res: Response) {
     }
 
     const jobState = await job.getState();
-    const { partialDocs } = await job.progress();
+    let progress = job.progress;
+    if(typeof progress !== 'object') {
+      progress = {
+        partialDocs: []
+      }
+    }
+    const { 
+      partialDocs = [] 
+    } = progress as { partialDocs: any[] };
 
     if (partialDocs && partialDocs.length > 0 && jobState === "active") {
       Logger.info("Billing team for partial docs...");
@@ -51,10 +59,11 @@ export async function crawlCancelController(req: Request, res: Response) {
     }
 
     try {
-      await getWebScraperQueue().client.del(job.lockKey());
-      await job.takeLock();
-      await job.discard();
-      await job.moveToFailed(Error("Job cancelled by user"), true);
+      // TODO: FIX THIS by doing as a flag on the data?
+      // await getWebScraperQueue().client.del(job.lockKey());
+      // await job.takeLock();
+      // await job.discard();
+      // await job.moveToFailed(Error("Job cancelled by user"), true);
     } catch (error) {
       Logger.error(error);
     }

@@ -1,4 +1,4 @@
-import { Job, Queue } from "bull";
+import { Job, Queue } from "bullmq";
 import {
   getWebScraperQueue,
 } from "./queue-service";
@@ -10,7 +10,7 @@ export async function addWebScraperJob(
   options: any = {},
   jobId: string = uuidv4(),
 ): Promise<Job> {
-  return await getWebScraperQueue().add(webScraperOptions, {
+  return await getWebScraperQueue().add(jobId, webScraperOptions, {
     ...options,
     jobId,
   });
