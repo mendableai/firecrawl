@@ -222,4 +222,14 @@ export const urlSpecificParams = {
       },
     },
   },
+  "developer.apple.com":{
+    defaultScraper: "fire-engine",
+    params:{
+      engine: "playwright",
+      wait: 2000,
+      fireEngineOptions: {
+        blockMedia: false,
+      }
+    },
+  },
 };
