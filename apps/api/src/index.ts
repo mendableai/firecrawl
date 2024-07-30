@@ -18,7 +18,7 @@ const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
 const { ExpressAdapter } = require("@bull-board/express");
 
-const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
+const numCPUs = process.env.ENV === "local" ? 1 : os.cpus().length;
 Logger.info(`Number of CPUs: ${numCPUs} available`);
 
 const cacheable = new CacheableLookup({
@@ -189,3 +189,59 @@ wsq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
 wsq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
 wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
 wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
+
+
+
+// async function fetchStagingFirecrawl(url, times) {
+//   const firecrawlUrl = 'http://localhost:3002/v0/scrape';
+//   let totalTime = 0;
+//   const maxConcurrentRequests = 100;
+
+//   const fetchRequest = async (index) => {
+//     const startTime = Date.now();
+//     try {
+//       const response = await fetch(firecrawlUrl, {
+//         method: "POST",
+//         headers: {
+//           "Content-Type": "application/json",
+//           "Authorization": "Bearer fc-"
+//         },
+//         body: JSON.stringify({ url })
+//       });
+//       const endTime = Date.now();
+//       const duration = endTime - startTime;
+//       totalTime += duration;
+
+//       if (!response.ok) {
+//         Logger.error(`Fetch attempt ${index + 1} failed with status: ${response.status} and took ${duration} ms`);
+//       } else {
+//         Logger.info(`Fetch attempt ${index + 1} succeeded and took ${duration} ms`);
+//       }
+//     } catch (error) {
+//       const endTime = Date.now();
+//       const duration = endTime - startTime;
+//       totalTime += duration;
+//       Logger.error(`Fetch attempt ${index + 1} encountered an error: ${error.message} and took ${duration} ms`);
+//     }
+//   };
+
+//   const fetchInBatches = async () => {
+//     for (let i = 0; i < times; i += maxConcurrentRequests) {
+//       const batch = [];
+//       for (let j = 0; j < maxConcurrentRequests && i + j < times; j++) {
+//         batch.push(fetchRequest(i + j));
+//       }
+//       await Promise.all(batch);
+//     }
+//   };
+
+//   await fetchInBatches();
+
+//   const averageTime = totalTime / times;
+//   Logger.info(`Average time for ${times} requests: ${averageTime.toFixed(2)} ms`);
+// }
+
+// const urlToFetch = 'https://example.com'; // Replace with the actual URL
+// // fetchStagingFirecrawl(urlToFetch, 500);
+
+

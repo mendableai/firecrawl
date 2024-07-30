@@ -66,6 +66,7 @@ export class WebScraperDataProvider {
       await Promise.all(
         batchUrls.map(async (url, index) => {
           const existingHTML = allHtmls ? allHtmls[i + index] : "";
+          let startTime = Date.now();
           const result = await scrapSingleUrl(
             this.jobId,
             url,
@@ -73,6 +74,8 @@ export class WebScraperDataProvider {
             this.extractorOptions,
             existingHTML
           );
+          let endTime = Date.now();
+          Logger.error(`Time taken to scrape single URL: ${endTime - startTime} ms`);
           processedUrls++;
           if (inProgress) {
             inProgress({
@@ -260,6 +263,8 @@ export class WebScraperDataProvider {
       (link) => link.endsWith(".doc") || link.endsWith(".docx")
     );
 
+    console.log("pdfLinks", pdfLinks);
+    console.log("docLinks", docLinks);
     const [pdfDocuments, docxDocuments] = await Promise.all([
       this.fetchPdfDocuments(pdfLinks),
       this.fetchDocxDocuments(docLinks),
@@ -268,21 +273,20 @@ export class WebScraperDataProvider {
     links = links.filter(
       (link) => !pdfLinks.includes(link) && !docLinks.includes(link)
     );
+    const startTime = Date.now();
 
-    let [documents, sitemapData] = await Promise.all([
+    let [documents] = await Promise.all([
       this.convertUrlsToDocuments(links, inProgress, allHtmls),
-      this.mode === "single_urls" && links.length > 0
-        ? this.getSitemapDataForSingleUrl(this.urls[0], links[0], 1500).catch(
-            (error) => {
-              Logger.debug(`Failed to fetch sitemap data: ${error}`);
-              return null;
-            }
-          )
-        : Promise.resolve(null),
     ]);
 
+
+    const endTime = Date.now();
+    const duration = endTime - startTime;
+    Logger.error(`Time taken to convert URLs to documents: ${duration} ms`);
+
     if (this.mode === "single_urls" && documents.length > 0) {
-      documents[0].metadata.sitemap = sitemapData ?? undefined;
+      // documents[0].metadata.sitemap = sitemapData ?? undefined;
+      
     } else {
       documents = await this.getSitemapData(this.urls[0], documents);
     }

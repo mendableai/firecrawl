@@ -71,6 +71,7 @@ export async function scrapWithFetch(
   } finally {
     const endTime = Date.now();
     logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;
+    Logger.warn(`Time taken to scrape with Fetch: ${logParams.time_taken_seconds} seconds`);
     await logScrape(logParams);
   }
 }

@@ -84,6 +84,7 @@ export async function scrapWithScrapingBee(
     } finally {
       const endTime = Date.now();
       logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;
+      Logger.warn(`Time taken to scrape with ScrapingBee: ${logParams.time_taken_seconds} seconds`);
       await logScrape(logParams);
     }
   }

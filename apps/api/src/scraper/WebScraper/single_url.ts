@@ -25,11 +25,7 @@ dotenv.config();
 
 export const baseScrapers = [
   "fire-engine",
-  "fire-engine;chrome-cdp",
-  "scrapingBee",
-  process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
-  "scrapingBeeLoad",
-  "fetch",
+  
 ].filter(Boolean);
 
 export async function generateRequestParams(
@@ -85,12 +81,12 @@ function getScrapingFallbackOrder(
   });
 
   let defaultOrder = [
-    "scrapingBee",
+    // "scrapingBee",
     "fire-engine",
-    "fire-engine;chrome-cdp",
-    process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
-    "scrapingBeeLoad",
-    "fetch",
+    // "fire-engine;chrome-cdp",
+    // process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
+    // "scrapingBeeLoad",
+    // "fetch",
   ].filter(Boolean);
 
   if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
@@ -157,6 +153,10 @@ export async function scrapSingleUrl(
       result: null,
     });
 
+    Logger.warn(`Scraping with ${method}`);
+
+    let startScrapeTime = Date.now();
+
     switch (method) {
       case "fire-engine":
       case "fire-engine;chrome-cdp":  
@@ -222,14 +222,19 @@ export async function scrapSingleUrl(
         scraperResponse.metadata.pageError = response.pageError;
         break;
     }
+    let endScrapeTime = Date.now();
+    Logger.warn(`Time taken to scrape with ${method}: ${endScrapeTime - startScrapeTime} ms`);
 
     let customScrapedContent: FireEngineResponse | null = null;
 
+    let startTime3 = Date.now();
     // Check for custom scraping conditions
     const customScraperResult = await handleCustomScraping(
       scraperResponse.text,
       url
     );
+    let endTime3 = Date.now();
+    Logger.warn(`Time taken to handle custom scraping: ${endTime3 - startTime3} ms`);
 
     if (customScraperResult) {
       switch (customScraperResult.scraper) {
@@ -265,8 +270,14 @@ export async function scrapSingleUrl(
       screenshot = customScrapedContent.screenshot;
     }
     //* TODO: add an optional to return markdown or structured/extracted content
+    let startTime = Date.now();
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
+    let endTime = Date.now();
+    Logger.warn(`Time taken to remove unwanted elements: ${endTime - startTime} ms`);
+    let startTime2 = Date.now();
     const text = await parseMarkdown(cleanedHtml);
+    let endTime2 = Date.now();
+    Logger.warn(`Time taken to convert markdown: ${endTime2 - startTime2} ms`);
 
     const insertedLogId = await logInsertPromise;
     ScrapeEvents.updateScrapeResult(insertedLogId, {
@@ -313,13 +324,21 @@ export async function scrapSingleUrl(
     for (const scraper of scrapersInOrder) {
       // If exists text coming from crawler, use it
       if (existingHtml && existingHtml.trim().length >= 100 && !existingHtml.includes(clientSideError)) {
+        let startTime1 = Date.now();
         let cleanedHtml = removeUnwantedElements(existingHtml, pageOptions);
+        let endTime1 = Date.now();
+        Logger.warn(`Time taken to remove unwanted elements: ${endTime1 - startTime1} ms`);
+        let startTime = Date.now();
         text = await parseMarkdown(cleanedHtml);
+        let endTime = Date.now();
+        Logger.warn(`Time taken to convert markdown: ${endTime - startTime} ms`);
         html = cleanedHtml;
         break;
       }
 
+      let startTime = Date.now();
       const attempt = await attemptScraping(urlToScrap, scraper);
+      let endTime = Date.now();
       text = attempt.text ?? "";
       html = attempt.html ?? "";
       rawHtml = attempt.rawHtml ?? "";
@@ -352,12 +371,21 @@ export async function scrapSingleUrl(
       throw new Error(`All scraping methods failed for URL: ${urlToScrap}`);
     }
 
+    let startTime11 = Date.now();
     const soup = cheerio.load(rawHtml);
+    let endTime11 = Date.now();
+    Logger.warn(`Time taken to load HTML: ${endTime11 - startTime11} ms`);
+    let startTime12 = Date.now();
     const metadata = extractMetadata(soup, urlToScrap);
+    let endTime12 = Date.now();
+    Logger.warn(`Time taken to extract metadata: ${endTime12 - startTime12} ms`);
 
     let linksOnPage: string[] | undefined;
 
+    let startTime2 = Date.now();
     linksOnPage = extractLinks(rawHtml, urlToScrap);
+    let endTime2 = Date.now();
+    Logger.warn(`Time taken to extract links: ${endTime2 - startTime2} ms`);
 
     let document: Document;
     if (screenshot && screenshot.length > 0) {
