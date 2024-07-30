@@ -6,6 +6,7 @@ import { Logger } from "../../lib/logger";
 import { getValue, setValue } from "../redis";
 import Redlock from "redlock";
 import Client from "ioredis";
+
 const FREE_CREDITS = 500;
 
 const redlock = new Redlock(
@@ -19,10 +20,10 @@ const redlock = new Redlock(
 
     // The max number of times Redlock will attempt to lock a resource
     // before erroring.
-    retryCount: 10,
+    retryCount: 5,
 
     // the time in ms between attempts
-    retryDelay: 200, // time in ms
+    retryDelay: 100, // time in ms
 
     // the max time in ms randomly added to retries
     // to improve performance under high contention
