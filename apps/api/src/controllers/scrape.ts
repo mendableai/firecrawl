@@ -150,7 +150,7 @@ export async function scrapeController(req: Request, res: Response) {
       } catch (error) {
         console.error(error);
         earlyReturn = true;
-        return res.status(402).json({ error: "Error checking team credits. Please contact hello@firecrawl.com for help." });
+        return res.status(500).json({ error: "Error checking team credits. Please contact hello@firecrawl.com for help." });
       }
     };
 
