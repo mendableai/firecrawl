@@ -36,9 +36,9 @@ export async function startWebScraperPipeline({
         job.updateProgress({ ...progress, partialDocs: partialDocs });
       }
     },
-    onSuccess: (result) => {
+    onSuccess: (result, mode) => {
       Logger.debug(`🐂 Job completed ${job.id}`);
-      saveJob(job, result, token);
+      saveJob(job, result, token, mode);
     },
     onError: (error) => {
       Logger.error(`🐂 Job failed ${job.id}`);
@@ -113,7 +113,7 @@ export async function runWebScraper({
     }
 
     // This is where the returnvalue from the job is set
-    onSuccess(filteredDocs);
+    onSuccess(filteredDocs, mode);
 
     // this return doesn't matter too much for the job completion result
     return { success: true, message: "", docs: filteredDocs };
@@ -123,7 +123,7 @@ export async function runWebScraper({
   }
 }
 
-const saveJob = async (job: Job, result: any, token: string) => {
+const saveJob = async (job: Job, result: any, token: string, mode: string) => {
   try {
     if (process.env.USE_DB_AUTHENTICATION === "true") {
       const { data, error } = await supabase_service
@@ -133,7 +133,11 @@ const saveJob = async (job: Job, result: any, token: string) => {
 
       if (error) throw new Error(error.message);
       try {
-        await job.moveToCompleted(null, token, false);
+        if (mode === "crawl") {
+          await job.moveToCompleted(null, token, false);
+        } else {
+          await job.moveToCompleted(result, token, false);
+        }
       } catch (error) {
         // I think the job won't exist here anymore
       }

@@ -1,19 +1,25 @@
 import { CustomError } from "../lib/custom-error";
-import { getWebScraperQueue, redisConnection, webScraperQueueName } from "./queue-service";
+import {
+  getWebScraperQueue,
+  getScrapeQueue,
+  redisConnection,
+  webScraperQueueName,
+  scrapeQueueName,
+} from "./queue-service";
 import "dotenv/config";
 import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
-import { initSDK } from '@hyperdx/node-opentelemetry';
-import { Job } from "bullmq";
+import { initSDK } from "@hyperdx/node-opentelemetry";
+import { Job, tryCatch } from "bullmq";
 import { Logger } from "../lib/logger";
 import { ScrapeEvents } from "../lib/scrape-events";
 import { Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
 import { v4 as uuidv4 } from "uuid";
 
-if (process.env.ENV === 'production') {
+if (process.env.ENV === "production") {
   initSDK({
     consoleCapture: true,
     additionalInstrumentations: [],
@@ -35,21 +41,23 @@ const connectionMonitorInterval =
   Number(process.env.CONNECTION_MONITOR_INTERVAL) || 10;
 const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 const wsq = getWebScraperQueue();
+const sq = getScrapeQueue();
 
 const processJobInternal = async (token: string, job: Job) => {
-
   const extendLockInterval = setInterval(async () => {
     await job.extendLock(token, jobLockExtensionTime);
   }, jobLockExtendInterval);
 
   try {
     const result = await processJob(job, token);
-
-    // await resultQueue.add('resultJob', result,{jobId: job.id});
-    console.log("🐂 Job completed", result);
-    console.log({token})
-    console.log(await job.getState())
-    // await job.moveToCompleted(result, token, false); //3rd arg fetchNext
+    const jobState = await job.getState();
+    if(jobState !== "completed" && jobState !== "failed"){
+      try{
+        await job.moveToCompleted(result.docs, token, false); //3rd arg fetchNext
+      }catch(e){
+        // console.log("Job already completed, error:", e);
+      }
+    }
   } catch (error) {
     console.log("Job failed, error:", error);
 
@@ -66,12 +74,8 @@ process.on("SIGINT", () => {
   isShuttingDown = true;
 });
 
-
-const workerFun = async () => {
-  // const bullQueueName = queueNames[engine];
-  // const resultQueue = messageQueues[engine];
-
-  const worker = new Worker(webScraperQueueName, null, {
+const workerFun = async (queueName: string, processJobInternal: (token: string, job: Job) => Promise<void>) => {
+  const worker = new Worker(queueName, null, {
     connection: redisConnection,
     lockDuration: 1 * 60 * 1000, // 1 minute
     // lockRenewTime: 15 * 1000, // 15 seconds
@@ -81,8 +85,6 @@ const workerFun = async () => {
 
   worker.startStalledCheckTimer();
 
-  let contextManager;
-
   const monitor = await systemMonitor;
 
   while (true) {
@@ -91,10 +93,7 @@ const workerFun = async () => {
       break;
     }
     const token = uuidv4();
-    // console.time("acceptConnectionDelay");
     const canAcceptConnection = await monitor.acceptConnection();
-    // console.timeEnd("acceptConnectionDelay");
-    // console.log("canAcceptConnection", canAcceptConnection);
     if (!canAcceptConnection) {
       console.log("Cant accept connection");
       await sleep(cantAcceptConnectionInterval); // more sleep
@@ -102,9 +101,8 @@ const workerFun = async () => {
     }
 
     const job = await worker.getNextJob(token);
-    // console.log("job", job);
     if (job) {
-      processJobInternal(token, job);
+      await processJobInternal(token, job);
       await sleep(gotJobInterval);
     } else {
       await sleep(connectionMonitorInterval);
@@ -112,14 +110,15 @@ const workerFun = async () => {
   }
 };
 
-workerFun();
+workerFun(webScraperQueueName, processJobInternal);
+workerFun(scrapeQueueName, processJobInternal);
 
 async function processJob(job: Job, token: string) {
   Logger.debug(`🐂 Worker taking job ${job.id}`);
 
   try {
     console.log("🐂 Updating progress");
-    console.log({job})
+    console.log({ job });
     job.updateProgress({
       current: 1,
       total: 100,
@@ -127,7 +126,10 @@ async function processJob(job: Job, token: string) {
       current_url: "",
     });
     const start = Date.now();
-    const { success, message, docs } = await startWebScraperPipeline({ job, token });
+    const { success, message, docs } = await startWebScraperPipeline({
+      job,
+      token,
+    });
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
@@ -135,11 +137,15 @@ async function processJob(job: Job, token: string) {
       success: success,
       result: {
         links: docs.map((doc) => {
-          return { content: doc, source: doc?.metadata?.sourceURL ?? doc?.url ?? "" };
+          return {
+            content: doc,
+            source: doc?.metadata?.sourceURL ?? doc?.url ?? "",
+          };
         }),
       },
       project_id: job.data.project_id,
       error: message /* etc... */,
+      docs: docs,
     };
 
     if (job.data.mode === "crawl") {
@@ -189,6 +195,7 @@ async function processJob(job: Job, token: string) {
 
     const data = {
       success: false,
+      docs: [],
       project_id: job.data.project_id,
       error:
         "Something went wrong... Contact help@mendable.ai or try again." /* etc... */,
@@ -199,7 +206,10 @@ async function processJob(job: Job, token: string) {
     await logJob({
       job_id: job.id as string,
       success: false,
-      message: typeof error === 'string' ? error : (error.message ?? "Something went wrong... Contact help@mendable.ai"),
+      message:
+        typeof error === "string"
+          ? error
+          : error.message ?? "Something went wrong... Contact help@mendable.ai",
       num_docs: 0,
       docs: [],
       time_taken: 0,

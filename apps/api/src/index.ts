@@ -2,7 +2,7 @@ import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import "dotenv/config";
-import { getWebScraperQueue } from "./services/queue-service";
+import { getScrapeQueue, getWebScraperQueue } from "./services/queue-service";
 import { v0Router } from "./routes/v0";
 import { initSDK } from "@hyperdx/node-opentelemetry";
 import cluster from "cluster";
@@ -58,7 +58,7 @@ if (cluster.isMaster) {
   serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
 
   const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
-    queues: [new BullAdapter(getWebScraperQueue())],
+    queues: [new BullAdapter(getWebScraperQueue()), new BullAdapter(getScrapeQueue())],
     serverAdapter: serverAdapter,
   });
 

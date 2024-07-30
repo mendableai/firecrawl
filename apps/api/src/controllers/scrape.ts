@@ -9,8 +9,8 @@ import { Document } from "../lib/entities";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../lib/default-values';
-import { addWebScraperJob } from '../services/queue-jobs';
-import { getWebScraperQueue } from '../services/queue-service';
+import { addScrapeJob, addWebScraperJob } from '../services/queue-jobs';
+import { getScrapeQueue, getWebScraperQueue, scrapeQueueEvents } from '../services/queue-service';
 import { supabase_service } from '../services/supabase';
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from '../lib/logger';
@@ -50,7 +50,7 @@ export async function scrapeHelper(
   //   extractorOptions: extractorOptions,
   // });
 
-  const job = await addWebScraperJob({
+  const job = await addScrapeJob({
     url,
     mode: "single_urls",
     crawlerOptions,
@@ -60,39 +60,41 @@ export async function scrapeHelper(
     origin: req.body.origin ?? defaultOrigin,
   });
 
-  const wsq = getWebScraperQueue();
 
-  let promiseResolve;
+  // const docsPromise = new Promise((resolve) => {
+  //   promiseResolve = resolve; 
+  // });
 
-  const docsPromise = new Promise((resolve) => {
-    promiseResolve = resolve;
-  });
+  // const listener = (j: string, res: any) => {
+  //   console.log("JOB COMPLETED", j, "vs", job.id, res);
+  //   if (j === job.id) {
+  //     promiseResolve([j, res]);
+  //     sq.removeListener("global:completed", listener);
+  //   }
+  // }
+  const jobResult = await job.waitUntilFinished(scrapeQueueEvents, 60 * 1000);//60 seconds timeout
 
-  const listener = (j: string, res: any) => {
-    console.log("JOB COMPLETED", j, "vs", job.id, res);
-    if (j === job.id) {
-      promiseResolve([j, res]);
-      wsq.removeListener("global:completed", listener);
-    }
-  }
 
   // wsq.on("global:completed", listener);
 
-  const timeoutPromise = new Promise<{ success: boolean; error?: string; returnCode: number }>((_, reject) =>
-    setTimeout(() => reject({ success: false, error: "Request timed out. Increase the timeout by passing `timeout` param to the request.", returnCode: 408 }), timeout)
-  );
+  // const timeoutPromise = new Promise<{ success: boolean; error?: string; returnCode: number }>((_, reject) =>
+  //   setTimeout(() => reject({ success: false, error: "Request timed out. Increase the timeout by passing `timeout` param to the request.", returnCode: 408 }), timeout)
+  // );
 
-  let j;
-  try {
-    j = await Promise.race([docsPromise, timeoutPromise]);
-  } catch (error) {
-    wsq.removeListener("global:completed", listener);
-    return error;
-  }
+  // let j;
+  // try {
+  //   j = await Promise.race([jobResult, timeoutPromise]);
+  // } catch (error) {
+  //   // sq.removeListener("global:completed", listener);
+  //   return error;
+  // }
+  // console.log("JOB RESULT", j[1]);
 
-  let j1 = typeof j[1] === "string" ? JSON.parse(j[1]) : j[1];
+  // let j1 = typeof j[1] === "string" ? JSON.parse(j[1]) : j[1];
 
-  const doc = j1 !== null ? j1.result.links[0].content : (await supabase_service
+  console.log("JOB RESULT", jobResult);
+
+  const doc = jobResult !== null ? jobResult[0] : (await supabase_service
     .from("firecrawl_jobs")
     .select("docs")
     .eq("job_id", job.id as string)).data[0]?.docs[0];
