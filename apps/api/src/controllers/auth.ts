@@ -197,7 +197,6 @@ export async function supaAuthenticateUser(
 
   return { success: true, team_id: subscriptionData.team_id, plan: subscriptionData.plan ?? ""};
 }
-
 function getPlanByPriceId(price_id: string) {
   switch (price_id) {
     case process.env.STRIPE_PRICE_ID_STARTER:
@@ -206,11 +205,14 @@ function getPlanByPriceId(price_id: string) {
       return 'standard';
     case process.env.STRIPE_PRICE_ID_SCALE:
       return 'scale';
-    case process.env.STRIPE_PRICE_ID_HOBBY || process.env.STRIPE_PRICE_ID_HOBBY_YEARLY:
+    case process.env.STRIPE_PRICE_ID_HOBBY:
+    case process.env.STRIPE_PRICE_ID_HOBBY_YEARLY:
       return 'hobby';
-    case process.env.STRIPE_PRICE_ID_STANDARD_NEW || process.env.STRIPE_PRICE_ID_STANDARD_NEW_YEARLY:
+    case process.env.STRIPE_PRICE_ID_STANDARD_NEW:
+    case process.env.STRIPE_PRICE_ID_STANDARD_NEW_YEARLY:
       return 'standardnew';
-    case process.env.STRIPE_PRICE_ID_GROWTH || process.env.STRIPE_PRICE_ID_GROWTH_YEARLY:
+    case process.env.STRIPE_PRICE_ID_GROWTH:
+    case process.env.STRIPE_PRICE_ID_GROWTH_YEARLY:
       return 'growth';
     default:
       return 'free';
