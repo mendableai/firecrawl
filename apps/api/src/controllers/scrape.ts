@@ -118,18 +118,12 @@ export async function scrapeController(req: Request, res: Response) {
       } catch (error) {
         Logger.error(error);
         earlyReturn = true;
-        return res.status(402).json({ error: "Error checking team credits. Please contact hello@firecrawl.com for help." });
+        return res.status(500).json({ error: "Error checking team credits. Please contact hello@firecrawl.com for help." });
       }
     };
 
 
-    // Async check saves 500ms in average case
-    // Don't async check in llm extraction mode as it could be expensive
-    if (extractorOptions.mode.includes("llm-extraction")) {
-      await checkCredits();
-    } else {
-      checkCredits();
-    }
+    await checkCredits();
 
     const jobId = uuidv4();
 
