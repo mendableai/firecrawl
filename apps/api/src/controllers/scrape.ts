@@ -12,8 +12,11 @@ import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOri
 import { addWebScraperJob } from '../services/queue-jobs';
 import { getWebScraperQueue } from '../services/queue-service';
 import { supabase_service } from '../services/supabase';
+import { v4 as uuidv4 } from "uuid";
+import { Logger } from '../lib/logger';
 
 export async function scrapeHelper(
+  jobId: string,
   req: Request,
   team_id: string,
   crawlerOptions: any,
@@ -148,7 +151,7 @@ export async function scrapeController(req: Request, res: Response) {
           return res.status(402).json({ error: "Insufficient credits" });
         }
       } catch (error) {
-        console.error(error);
+        Logger.error(error);
         earlyReturn = true;
         return res.status(500).json({ error: "Error checking team credits. Please contact hello@firecrawl.com for help." });
       }
@@ -163,8 +166,11 @@ export async function scrapeController(req: Request, res: Response) {
       checkCredits();
     }
 
+    const jobId = uuidv4();
+
     const startTime = new Date().getTime();
     const result = await scrapeHelper(
+      jobId,
       req,
       team_id,
       crawlerOptions,
@@ -205,6 +211,7 @@ export async function scrapeController(req: Request, res: Response) {
     }
 
     logJob({
+      job_id: jobId,
       success: result.success,
       message: result.error,
       num_docs: 1,
@@ -224,7 +231,7 @@ export async function scrapeController(req: Request, res: Response) {
     
     return res.status(result.returnCode).json(result);
   } catch (error) {
-    console.error(error);
+    Logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

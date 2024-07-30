@@ -4,15 +4,15 @@
 #
 
 app = 'firecrawl-scraper-js'
-primary_region = 'mia'
+primary_region = 'iad'
 kill_signal = 'SIGINT'
 kill_timeout = '30s'
 
 [build]
 
 [processes]
-  app = 'node --max-old-space-size=4096 dist/src/index.js'
-  worker = 'node --max-old-space-size=4096 dist/src/services/queue-worker.js'
+  app = 'node --max-old-space-size=8192 dist/src/index.js'
+  worker = 'node --max-old-space-size=8192 dist/src/services/queue-worker.js'
 
 [http_service]
   internal_port = 8080
@@ -24,8 +24,8 @@ kill_timeout = '30s'
 
 [http_service.concurrency]
   type = "requests"
-  hard_limit = 100
-  soft_limit = 50
+  hard_limit = 200
+  soft_limit = 75
 
 [[http_service.checks]]
   grace_period = "20s"

@@ -10,6 +10,8 @@ import { logCrawl } from "../../src/services/logging/crawl_log";
 import { validateIdempotencyKey } from "../../src/services/idempotency/validate";
 import { createIdempotencyKey } from "../../src/services/idempotency/create";
 import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../src/lib/default-values";
+import { v4 as uuidv4 } from "uuid";
+import { Logger } from "../../src/lib/logger";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -30,7 +32,7 @@ export async function crawlController(req: Request, res: Response) {
       try {
         createIdempotencyKey(req);
       } catch (error) {
-        console.error(error);
+        Logger.error(error);
         return res.status(500).json({ error: error.message });
       }
     }
@@ -60,10 +62,11 @@ export async function crawlController(req: Request, res: Response) {
     const crawlerOptions = { ...defaultCrawlerOptions, ...req.body.crawlerOptions };
     const pageOptions = { ...defaultCrawlPageOptions, ...req.body.pageOptions };
 
-    if (mode === "single_urls" && !url.includes(",")) {
+    if (mode === "single_urls" && !url.includes(",")) { // NOTE: do we need this?
       try {
         const a = new WebScraperDataProvider();
         await a.setOptions({
+          jobId: uuidv4(),
           mode: "single_urls",
           urls: [url],
           crawlerOptions: { ...crawlerOptions, returnOnlyUrls: true },
@@ -83,7 +86,7 @@ export async function crawlController(req: Request, res: Response) {
           documents: docs,
         });
       } catch (error) {
-        console.error(error);
+        Logger.error(error);
         return res.status(500).json({ error: error.message });
       }
     }
@@ -101,7 +104,7 @@ export async function crawlController(req: Request, res: Response) {
 
     res.json({ jobId: job.id });
   } catch (error) {
-    console.error(error);
+    Logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

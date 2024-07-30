@@ -4,6 +4,7 @@ import { RateLimiterMode } from "../../src/types";
 import { addWebScraperJob } from "../../src/services/queue-jobs";
 import { getWebScraperQueue } from "../../src/services/queue-service";
 import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
+import { Logger } from "../../src/lib/logger";
 
 export async function crawlStatusController(req: Request, res: Response) {
   try {
@@ -44,7 +45,7 @@ export async function crawlStatusController(req: Request, res: Response) {
       partial_data: jobStatus == 'completed' ? [] : partialDocs,
     });
   } catch (error) {
-    console.error(error);
+    Logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

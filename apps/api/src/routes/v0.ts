@@ -7,6 +7,8 @@ import { crawlJobStatusPreviewController } from "../../src/controllers/status";
 import { searchController } from "../../src/controllers/search";
 import { crawlCancelController } from "../../src/controllers/crawl-cancel";
 import { keyAuthController } from "../../src/controllers/keyAuth";
+import { livenessController } from "../controllers/liveness";
+import { readinessController } from "../controllers/readiness";
 
 export const v0Router = express.Router();
 
@@ -23,3 +25,6 @@ v0Router.get("/v0/keyAuth", keyAuthController);
 // Search routes
 v0Router.post("/v0/search", searchController);
 
+// Health/Probe routes
+v0Router.get("/v0/health/liveness", livenessController);
+v0Router.get("/v0/health/readiness", readinessController);

@@ -7,8 +7,11 @@ import { logJob } from "../services/logging/log_job";
 import { PageOptions, SearchOptions } from "../lib/entities";
 import { search } from "../search";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
+import { v4 as uuidv4 } from "uuid";
+import { Logger } from "../lib/logger";
 
 export async function searchHelper(
+  jobId: string,
   req: Request,
   team_id: string,
   crawlerOptions: any,
@@ -75,6 +78,7 @@ export async function searchHelper(
 
   const a = new WebScraperDataProvider();
   await a.setOptions({
+    jobId,
     mode: "single_urls",
     urls: res.map((r) => r.url).slice(0, searchOptions.limit ?? 7),
     crawlerOptions: {
@@ -148,6 +152,8 @@ export async function searchController(req: Request, res: Response) {
 
     const searchOptions = req.body.searchOptions ?? { limit: 7 };
 
+    const jobId = uuidv4();
+
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
         await checkTeamCredits(team_id, 1);
@@ -155,11 +161,12 @@ export async function searchController(req: Request, res: Response) {
         return res.status(402).json({ error: "Insufficient credits" });
       }
     } catch (error) {
-      console.error(error);
+      Logger.error(error);
       return res.status(500).json({ error: "Internal server error" });
     }
     const startTime = new Date().getTime();
     const result = await searchHelper(
+      jobId,
       req,
       team_id,
       crawlerOptions,
@@ -169,6 +176,7 @@ export async function searchController(req: Request, res: Response) {
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
     logJob({
+      job_id: jobId,
       success: result.success,
       message: result.error,
       num_docs: result.data ? result.data.length : 0,
@@ -183,7 +191,7 @@ export async function searchController(req: Request, res: Response) {
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {
-    console.error(error);
+    Logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

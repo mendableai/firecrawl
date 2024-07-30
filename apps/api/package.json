@@ -26,6 +26,7 @@
   "license": "ISC",
   "devDependencies": {
     "@flydotio/dockerfile": "^0.4.10",
+    "@jest/globals": "^29.7.0",
     "@tsconfig/recommended": "^1.0.3",
     "@types/body-parser": "^1.19.2",
     "@types/bull": "^4.10.0",
@@ -63,6 +64,7 @@
     "axios": "^1.3.4",
     "bottleneck": "^2.19.5",
     "bull": "^4.15.0",
+    "cacheable-lookup": "^6.1.0",
     "cheerio": "^1.0.0-rc.12",
     "cohere": "^1.1.1",
     "cors": "^2.8.5",

@@ -56,6 +56,7 @@ export type CrawlerOptions = {
 }
 
 export type WebScraperOptions = {
+  jobId: string;
   urls: string[];
   mode: "single_urls" | "sitemap" | "crawl";
   crawlerOptions?: CrawlerOptions;
@@ -138,4 +139,5 @@ export interface FireEngineOptions{
   engine?: string;
   blockMedia?: boolean;
   blockAds?: boolean;
+  disableJsDom?: boolean;
 }

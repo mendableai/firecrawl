@@ -3,6 +3,7 @@ import { axiosTimeout } from "../../lib/timeout";
 import { parseStringPromise } from "xml2js";
 import { scrapWithFireEngine } from "./scrapers/fireEngine";
 import { WebCrawler } from "./crawler";
+import { Logger } from "../../lib/logger";
 
 export async function getLinksFromSitemap(
   {
@@ -22,11 +23,11 @@ export async function getLinksFromSitemap(
         const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
         content = response.data;
       } else if (mode === 'fire-engine') {
-        const response = await scrapWithFireEngine({ url: sitemapUrl, fireEngineOptions: { method: "get", mobileProxy: true },options:{endpoint:"request"} });
+        const response = await scrapWithFireEngine({ url: sitemapUrl, fireEngineOptions: { engine:"tlsclient", disableJsDom: true, mobileProxy: true } });
         content = response.html;
       }
     } catch (error) {
-      console.error(`Request failed for ${sitemapUrl}: ${error}`);
+      Logger.error(`Request failed for ${sitemapUrl}: ${error.message}`);
 
       return allUrls;
     }
@@ -48,7 +49,7 @@ export async function getLinksFromSitemap(
       }
     }
   } catch (error) {
-    console.error(`Error processing ${sitemapUrl}: ${error}`);
+    Logger.debug(`Error processing sitemapUrl: ${sitemapUrl} | Error: ${error.message}`);
   }
 
   return allUrls;
