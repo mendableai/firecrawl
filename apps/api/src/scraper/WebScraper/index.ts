@@ -44,6 +44,7 @@ export class WebScraperDataProvider {
   private crawlerMode: string = "default";
   private allowBackwardCrawling: boolean = false;
   private allowExternalContentLinks: boolean = false;
+  private timeout: number = 30000;
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -72,7 +73,8 @@ export class WebScraperDataProvider {
             url,
             this.pageOptions,
             this.extractorOptions,
-            existingHTML
+            existingHTML,
+            this.timeout
           );
           processedUrls++;
           if (inProgress) {
@@ -328,7 +330,8 @@ export class WebScraperDataProvider {
 
         const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(
           pdfLink,
-          this.pageOptions.parsePDF
+          this.pageOptions.parsePDF,
+          this.timeout
         );
 
         const insertedLogId = await logInsertPromise;
@@ -575,6 +578,7 @@ export class WebScraperDataProvider {
       options.crawlerOptions?.allowBackwardCrawling ?? false;
     this.allowExternalContentLinks =
       options.crawlerOptions?.allowExternalContentLinks ?? false;
+    this.timeout = options.timeout ?? 30000;
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {

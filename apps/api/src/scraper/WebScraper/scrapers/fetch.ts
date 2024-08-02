@@ -12,7 +12,8 @@ import { Logger } from "../../../lib/logger";
  */
 export async function scrapWithFetch(
   url: string,
-  pageOptions: { parsePDF?: boolean } = { parsePDF: true }
+  pageOptions: { parsePDF?: boolean } = { parsePDF: true },
+  timeout: number = 30000
 ): Promise<{ content: string; pageStatusCode?: number; pageError?: string }> {
   const logParams = {
     url,
@@ -48,7 +49,7 @@ export async function scrapWithFetch(
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
       logParams.success = true;
-      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF, timeout);
       logParams.response_code = pageStatusCode;
       logParams.error_message = pageError;
       return { content, pageStatusCode, pageError };

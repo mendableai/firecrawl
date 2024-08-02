@@ -16,7 +16,7 @@ import { Logger } from "../../../lib/logger";
 export async function scrapWithScrapingBee(
     url: string,
     wait_browser: string = "domcontentloaded",
-    timeout: number = universalTimeout,
+    timeout: number = 30000,
     pageOptions: { parsePDF?: boolean } = { parsePDF: true }
   ): Promise<{ content: string; pageStatusCode?: number; pageError?: string }> {
     const logParams = {
@@ -46,7 +46,7 @@ export async function scrapWithScrapingBee(
       const contentType = response.headers["content-type"];
       if (contentType && contentType.includes("application/pdf")) {
         logParams.success = true;
-        const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+        const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF, timeout);
         logParams.response_code = pageStatusCode;
         logParams.error_message = pageError;
         return { content, pageStatusCode, pageError };

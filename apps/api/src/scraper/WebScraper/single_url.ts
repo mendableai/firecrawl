@@ -133,13 +133,15 @@ export async function scrapSingleUrl(
   extractorOptions: ExtractorOptions = {
     mode: "llm-extraction-from-markdown",
   },
-  existingHtml: string = ""
+  existingHtml: string = "",
+  timeout: number = 30000
 ): Promise<Document> {
   urlToScrap = urlToScrap.trim();
 
   const attemptScraping = async (
     url: string,
-    method: (typeof baseScrapers)[number]
+    method: (typeof baseScrapers)[number],
+    timeout: number = 30000
   ) => {
     let scraperResponse: {
       text: string;
@@ -175,7 +177,8 @@ export async function scrapSingleUrl(
             headers: pageOptions.headers,
             fireEngineOptions: {
               engine: engine,
-            }
+            },
+            timeout
           });
           scraperResponse.text = response.html;
           scraperResponse.screenshot = response.screenshot;
@@ -188,7 +191,8 @@ export async function scrapSingleUrl(
           const response = await scrapWithScrapingBee(
             url,
             "domcontentloaded",
-            pageOptions.fallback === false ? 7000 : 15000
+            timeout,
+            // pageOptions.fallback === false ? 7000 : 15000,
           );
           scraperResponse.text = response.content;
           scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
@@ -200,7 +204,8 @@ export async function scrapSingleUrl(
           const response = await scrapWithPlaywright(
             url,
             pageOptions.waitFor,
-            pageOptions.headers
+            pageOptions.headers,
+            timeout
           );
           scraperResponse.text = response.content;
           scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
@@ -209,14 +214,14 @@ export async function scrapSingleUrl(
         break;
       case "scrapingBeeLoad":
         if (process.env.SCRAPING_BEE_API_KEY) {
-          const response = await scrapWithScrapingBee(url, "networkidle2");
+          const response = await scrapWithScrapingBee(url, "networkidle2", timeout);
           scraperResponse.text = response.content;
           scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
           scraperResponse.metadata.pageError = response.pageError;
         }
         break;
       case "fetch":
-        const response = await scrapWithFetch(url);
+        const response = await scrapWithFetch(url, pageOptions, timeout);
         scraperResponse.text = response.content;
         scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
         scraperResponse.metadata.pageError = response.pageError;
@@ -239,6 +244,7 @@ export async function scrapSingleUrl(
             waitFor: customScraperResult.waitAfterLoad,
             screenshot: false,
             pageOptions: customScraperResult.pageOptions,
+            timeout
           });
           if (screenshot) {
             customScrapedContent.screenshot = screenshot;
@@ -248,7 +254,8 @@ export async function scrapSingleUrl(
           const { content, pageStatusCode, pageError } =
             await fetchAndProcessPdf(
               customScraperResult.url,
-              pageOptions?.parsePDF
+              pageOptions?.parsePDF,
+              timeout
             );
           customScrapedContent = {
             html: content,
@@ -319,7 +326,7 @@ export async function scrapSingleUrl(
         break;
       }
 
-      const attempt = await attemptScraping(urlToScrap, scraper);
+      const attempt = await attemptScraping(urlToScrap, scraper, timeout);
       text = attempt.text ?? "";
       html = attempt.html ?? "";
       rawHtml = attempt.rawHtml ?? "";

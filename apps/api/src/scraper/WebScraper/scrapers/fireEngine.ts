@@ -24,6 +24,7 @@ export async function scrapWithFireEngine({
   fireEngineOptions = {},
   headers,
   options,
+  timeout = 30000
 }: {
   url: string;
   waitFor?: number;
@@ -32,6 +33,7 @@ export async function scrapWithFireEngine({
   fireEngineOptions?: FireEngineOptions;
   headers?: Record<string, string>;
   options?: any;
+  timeout?: number;
 }): Promise<FireEngineResponse> {
   const logParams = {
     url,
@@ -106,7 +108,8 @@ export async function scrapWithFireEngine({
     if (contentType && contentType.includes("application/pdf")) {
       const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(
         url,
-        pageOptions?.parsePDF
+        pageOptions?.parsePDF,
+        timeout
       );
       logParams.success = true;
       logParams.response_code = pageStatusCode;

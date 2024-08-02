@@ -46,6 +46,7 @@ export async function scrapeHelper(
     },
     pageOptions: pageOptions,
     extractorOptions: extractorOptions,
+    timeout: timeout,
   });
 
   const timeoutPromise = new Promise<{ success: boolean; error?: string; returnCode: number }>((_, reject) =>

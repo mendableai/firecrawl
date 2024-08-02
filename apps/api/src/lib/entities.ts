@@ -64,6 +64,7 @@ export type WebScraperOptions = {
   extractorOptions?: ExtractorOptions;
   concurrentRequests?: number;
   bullJobId?: string;
+  timeout?: number;
 };
 
 export interface DocumentUrl {

@@ -81,6 +81,7 @@
     "keyword-extractor": "^0.0.28",
     "langchain": "^0.2.8",
     "languagedetect": "^2.0.0",
+    "llamaindex": "^0.5.13",
     "logsnag": "^1.0.0",
     "luxon": "^3.4.3",
     "md5": "^2.3.0",
