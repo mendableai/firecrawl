@@ -47,7 +47,7 @@ export async function scrapWithFireEngine({
   try {
     const reqParams = await generateRequestParams(url);
     const waitParam = reqParams["params"]?.wait ?? waitFor;
-    const engineParam = reqParams["params"]?.engine ?? fireEngineOptions?.engine  ?? "playwright";
+    const engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "playwright";
     const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
     const fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
 
@@ -63,6 +63,7 @@ export async function scrapWithFireEngine({
     Logger.info(
       `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { wait: ${waitParam}, screenshot: ${screenshotParam}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
     );
+
 
     const response = await axios.post(
       process.env.FIRE_ENGINE_BETA_URL + endpoint,
