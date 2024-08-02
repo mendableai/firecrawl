@@ -20,6 +20,7 @@ import { getWebScraperQueue } from "../../../src/services/queue-service";
 import { fetchAndProcessDocx } from "./utils/docxProcessor";
 import { getAdjustedMaxDepth, getURLDepth } from "./utils/maxDepthUtils";
 import { Logger } from "../../lib/logger";
+import { ScrapeEvents } from "../../lib/scrape-events";
 
 export class WebScraperDataProvider {
   private jobId: string;
@@ -316,10 +317,28 @@ export class WebScraperDataProvider {
   private async fetchPdfDocuments(pdfLinks: string[]): Promise<Document[]> {
     return Promise.all(
       pdfLinks.map(async (pdfLink) => {
+        const timer = Date.now();
+        const logInsertPromise = ScrapeEvents.insert(this.jobId, {
+          type: "scrape",
+          url: pdfLink,
+          worker: process.env.FLY_MACHINE_ID,
+          method: "pdf-scrape",
+          result: null,
+        });
+
         const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(
           pdfLink,
           this.pageOptions.parsePDF
         );
+
+        const insertedLogId = await logInsertPromise;
+        ScrapeEvents.updateScrapeResult(insertedLogId, {
+          response_size: content.length,
+          success: !(pageStatusCode && pageStatusCode >= 400) && !!content && (content.trim().length >= 100),
+          error: pageError,
+          response_code: pageStatusCode,
+          time_taken: Date.now() - timer,
+        });
         return {
           content: content,
           metadata: { sourceURL: pdfLink, pageStatusCode, pageError },
@@ -330,12 +349,32 @@ export class WebScraperDataProvider {
   }
   private async fetchDocxDocuments(docxLinks: string[]): Promise<Document[]> {
     return Promise.all(
-      docxLinks.map(async (p) => {
-        const { content, pageStatusCode, pageError } =
-          await fetchAndProcessDocx(p);
+      docxLinks.map(async (docxLink) => {
+        const timer = Date.now();
+        const logInsertPromise = ScrapeEvents.insert(this.jobId, {
+          type: "scrape",
+          url: docxLink,
+          worker: process.env.FLY_MACHINE_ID,
+          method: "docx-scrape",
+          result: null,
+        });
+
+        const { content, pageStatusCode, pageError } = await fetchAndProcessDocx(
+          docxLink
+        );
+
+        const insertedLogId = await logInsertPromise;
+        ScrapeEvents.updateScrapeResult(insertedLogId, {
+          response_size: content.length,
+          success: !(pageStatusCode && pageStatusCode >= 400) && !!content && (content.trim().length >= 100),
+          error: pageError,
+          response_code: pageStatusCode,
+          time_taken: Date.now() - timer,
+        });
+
         return {
           content,
-          metadata: { sourceURL: p, pageStatusCode, pageError },
+          metadata: { sourceURL: docxLink, pageStatusCode, pageError },
           provider: "web-scraper",
         };
       })
