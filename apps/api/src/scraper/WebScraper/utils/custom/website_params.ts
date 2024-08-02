@@ -236,8 +236,6 @@ export const urlSpecificParams = {
     defaultScraper: "fire-engine",
     params:{
       fireEngineOptions:{
-        mobileProxy: true,
-        method: "get",
         engine: "chrome-cdp",
       },
     },
