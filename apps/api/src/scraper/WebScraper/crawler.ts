@@ -476,7 +476,7 @@ export class WebCrawler {
       try {
         const response = await axios.get(baseUrlSitemap, { timeout: axiosTimeout });
         if (response.status === 200) {
-          sitemapLinks = await getLinksFromSitemap({ sitemapUrl: baseUrlSitemap });
+          sitemapLinks = await getLinksFromSitemap({ sitemapUrl: baseUrlSitemap, mode: 'fire-engine' });
         }
       } catch (error) {
         Logger.debug(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);
