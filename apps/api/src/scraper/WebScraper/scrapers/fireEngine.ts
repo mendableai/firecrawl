@@ -11,6 +11,7 @@ import { Logger } from "../../../lib/logger";
  * @param url The URL to scrape
  * @param waitFor The time to wait for the page to load
  * @param screenshot Whether to take a screenshot
+ * @param fullPageScreenshot Whether to take a full page screenshot
  * @param pageOptions The options for the page
  * @param headers The headers to send with the request
  * @param options The options for the request
@@ -20,6 +21,7 @@ export async function scrapWithFireEngine({
   url,
   waitFor = 0,
   screenshot = false,
+  fullPageScreenshot = false,
   pageOptions = { parsePDF: true },
   fireEngineOptions = {},
   headers,
@@ -28,6 +30,7 @@ export async function scrapWithFireEngine({
   url: string;
   waitFor?: number;
   screenshot?: boolean;
+  fullPageScreenshot?: boolean;
   pageOptions?: { scrollXPaths?: string[]; parsePDF?: boolean };
   fireEngineOptions?: FireEngineOptions;
   headers?: Record<string, string>;
@@ -71,6 +74,7 @@ export async function scrapWithFireEngine({
         url: url,
         wait: waitParam,
         screenshot: screenshotParam,
+        fullPageScreenshot: fullPageScreenshot,
         headers: headers,
         pageOptions: pageOptions,
         ...fireEngineOptionsParam,

@@ -128,6 +128,7 @@ export async function scrapSingleUrl(
     includeRawHtml: false,
     waitFor: 0,
     screenshot: false,
+    fullPageScreenshot: false,
     headers: undefined,
   },
   extractorOptions: ExtractorOptions = {
@@ -171,6 +172,7 @@ export async function scrapSingleUrl(
             url,
             waitFor: pageOptions.waitFor,
             screenshot: pageOptions.screenshot,
+            fullPageScreenshot: pageOptions.fullPageScreenshot,
             pageOptions: pageOptions,
             headers: pageOptions.headers,
             fireEngineOptions: {

@@ -84,6 +84,11 @@
                         "description": "Include a screenshot of the top of the page that you are scraping.",
                         "default": false
                       },
+                      "fullPageScreenshot": {
+                        "type": "boolean",
+                        "description": "Include a full page screenshot of the page that you are scraping.",
+                        "default": false
+                      },
                       "waitFor": {
                         "type": "integer",
                         "description": "Wait x amount of milliseconds for the page to load to fetch content",
@@ -315,6 +320,11 @@
                       "screenshot": {
                         "type": "boolean",
                         "description": "Include a screenshot of the top of the page that you are scraping.",
+                        "default": false
+                      },
+                      "fullPageScreenshot": {
+                        "type": "boolean",
+                        "description": "Include a full page screenshot of the page that you are scraping.",
                         "default": false
                       },
                       "waitFor": {
