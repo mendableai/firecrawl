@@ -19,7 +19,6 @@ export async function fetchAndProcessPdf(url: string, parsePDF: boolean, timeout
     const { tempFilePath, pageStatusCode, pageError } = await downloadPdf(url, timeout);
     Logger.debug(`Downloaded PDF to ${tempFilePath}`);
     const remainingTime = timeout - (Date.now() - startTime);
-    console.log({remainingTime})
     if (remainingTime <= 0) {
       return { content: "", pageStatusCode: 408, pageError: "Request Timeout" }
     }
