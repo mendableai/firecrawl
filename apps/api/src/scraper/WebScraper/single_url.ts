@@ -317,7 +317,12 @@ export async function scrapSingleUrl(
       pageOptions && pageOptions.headers && pageOptions.headers !== undefined
     );
 
+    let remainingTime = timeout;
     for (const scraper of scrapersInOrder) {
+      if (remainingTime <= 0) {
+        Logger.debug(`⛏️ ${scraper}: Timeout reached, breaking`);
+        break;
+      }
       // If exists text coming from crawler, use it
       if (existingHtml && existingHtml.trim().length >= 100 && !existingHtml.includes(clientSideError)) {
         let cleanedHtml = removeUnwantedElements(existingHtml, pageOptions);
@@ -326,7 +331,9 @@ export async function scrapSingleUrl(
         break;
       }
 
-      const attempt = await attemptScraping(urlToScrap, scraper, timeout);
+      const startTime = new Date();
+      const attempt = await attemptScraping(urlToScrap, scraper, remainingTime);
+      remainingTime = remainingTime - (new Date().getTime() - startTime.getTime());
       text = attempt.text ?? "";
       html = attempt.html ?? "";
       rawHtml = attempt.rawHtml ?? "";
