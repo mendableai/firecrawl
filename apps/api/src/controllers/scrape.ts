@@ -47,7 +47,20 @@ export async function scrapeHelper(
     origin: req.body.origin ?? defaultOrigin,
   });
 
-  const doc = (await job.waitUntilFinished(scrapeQueueEvents, 60 * 1000))[0]; //60 seconds timeout
+  let doc;
+  try {
+    doc = (await job.waitUntilFinished(scrapeQueueEvents, timeout))[0]; //60 seconds timeout
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith("Job wait")) {
+      return {
+        success: false,
+        error: "Request timed out",
+        returnCode: 409,
+      }
+    } else {
+      throw e;
+    }
+  }
 
   if (!doc) {
     console.error("!!! PANIC DOC IS", doc, job);
