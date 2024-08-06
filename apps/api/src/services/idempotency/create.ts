@@ -1,5 +1,6 @@
 import { Request } from "express";
 import { supabase_service } from "../supabase";
+import { Logger } from "../../../src/lib/logger";
 
 export async function createIdempotencyKey(
   req: Request,
@@ -14,7 +15,7 @@ export async function createIdempotencyKey(
     .insert({ key: idempotencyKey });
 
   if (error) {
-    console.error("Failed to create idempotency key:", error);
+    Logger.error(`Failed to create idempotency key: ${error}`);
     throw error;
   }
 

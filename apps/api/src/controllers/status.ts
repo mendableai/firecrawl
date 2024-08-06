@@ -1,6 +1,7 @@
 import { Request, Response } from "express";
 import { getWebScraperQueue } from "../../src/services/queue-service";
 import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
+import { Logger } from "../../src/lib/logger";
 
 export async function crawlJobStatusPreviewController(req: Request, res: Response) {
   try {
@@ -19,7 +20,10 @@ export async function crawlJobStatusPreviewController(req: Request, res: Respons
       }
     }
 
-    const jobStatus = await job.getState();
+    let jobStatus = await job.getState();
+    if (jobStatus === 'waiting' || jobStatus === 'stuck') {
+      jobStatus = 'active';
+    }
 
     res.json({
       status: jobStatus,
@@ -32,7 +36,7 @@ export async function crawlJobStatusPreviewController(req: Request, res: Respons
       partial_data: jobStatus == 'completed' ? [] : partialDocs,
     });
   } catch (error) {
-    console.error(error);
+    Logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

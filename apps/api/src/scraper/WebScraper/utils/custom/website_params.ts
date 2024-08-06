@@ -22,7 +22,7 @@ export const urlSpecificParams = {
     },
   },
   "support.greenpay.me":{
-    defaultScraper: "playwright",
+    defaultScraper: "fire-engine",
     params: {
         wait_browser: "networkidle2",
         block_resources: false,
@@ -43,7 +43,7 @@ export const urlSpecificParams = {
       },
   },
   "docs.pdw.co":{
-    defaultScraper: "playwright",
+    defaultScraper: "fire-engine",
     params: {
         wait_browser: "networkidle2",
         block_resources: false,
@@ -83,7 +83,7 @@ export const urlSpecificParams = {
       },
   },
   "developers.notion.com":{
-    defaultScraper: "playwright",
+    defaultScraper: "fire-engine",
     params: {
         wait_browser: "networkidle2",
         block_resources: false,
@@ -103,7 +103,7 @@ export const urlSpecificParams = {
       },
   },
   "docs2.hubitat.com":{
-    defaultScraper: "playwright",
+    defaultScraper: "fire-engine",
     params: {
         wait_browser: "networkidle2",
         block_resources: false,
@@ -153,7 +153,7 @@ export const urlSpecificParams = {
     },
   },
   "help.salesforce.com":{
-    defaultScraper: "playwright",
+    defaultScraper: "fire-engine",
     params: {
         wait_browser: "networkidle2",
         block_resources: false,
@@ -175,6 +175,7 @@ export const urlSpecificParams = {
   "firecrawl.dev":{
     defaultScraper: "fire-engine",
     params: {
+      engine: "playwright",
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
@@ -199,6 +200,43 @@ export const urlSpecificParams = {
         mobileProxy: true,
         method: "get",
         engine: "request",
+      },
+    },
+  },
+  "notion.com":{
+    defaultScraper: "fire-engine",
+    params: {
+        wait_browser: "networkidle2",
+        block_resources: false,
+        wait: 2000,
+        engine: "playwright",
+      }
+  },
+  "mendable.ai":{
+    defaultScraper: "fire-engine",
+    params:{
+      fireEngineOptions:{
+        mobileProxy: true,
+        method: "get",
+        engine: "chrome-cdp",
+      },
+    },
+  },
+  "developer.apple.com":{
+    defaultScraper: "fire-engine",
+    params:{
+      engine: "playwright",
+      wait: 2000,
+      fireEngineOptions: {
+        blockMedia: false,
+      }
+    },
+  },
+  "amazon.com":{
+    defaultScraper: "fire-engine",
+    params:{
+      fireEngineOptions:{
+        engine: "chrome-cdp",
       },
     },
   },

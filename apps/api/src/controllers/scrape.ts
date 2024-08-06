@@ -9,8 +9,11 @@ import { Document } from "../lib/entities";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../lib/default-values';
+import { v4 as uuidv4 } from "uuid";
+import { Logger } from '../lib/logger';
 
 export async function scrapeHelper(
+  jobId: string,
   req: Request,
   team_id: string,
   crawlerOptions: any,
@@ -35,6 +38,7 @@ export async function scrapeHelper(
 
   const a = new WebScraperDataProvider();
   await a.setOptions({
+    jobId,
     mode: "single_urls",
     urls: [url],
     crawlerOptions: {
@@ -73,28 +77,6 @@ export async function scrapeHelper(
     });
   }
 
-  let creditsToBeBilled = filteredDocs.length;
-  const creditsPerLLMExtract = 50;
-
-
-
-  if (extractorOptions.mode === "llm-extraction" || extractorOptions.mode === "llm-extraction-from-raw-html" || extractorOptions.mode === "llm-extraction-from-markdown") {
-    creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length);
-  }
-
-  const billingResult = await billTeam(
-    team_id,
-    creditsToBeBilled
-  );
-  if (!billingResult.success) {
-    return {
-      success: false,
-      error:
-        "Failed to bill team. Insufficient credits or subscription not found.",
-      returnCode: 402,
-    };
-  }
-
   return {
     success: true,
     data: filteredDocs[0],
@@ -104,6 +86,7 @@ export async function scrapeHelper(
 
 export async function scrapeController(req: Request, res: Response) {
   try {
+    let earlyReturn = false;
     // make sure to authenticate user first, Bearer <token>
     const { success, team_id, error, status, plan } = await authenticateUser(
       req,
@@ -113,30 +96,40 @@ export async function scrapeController(req: Request, res: Response) {
     if (!success) {
       return res.status(status).json({ error });
     }
+
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = { ...defaultPageOptions, ...req.body.pageOptions };
     const extractorOptions = { ...defaultExtractorOptions, ...req.body.extractorOptions };
     const origin = req.body.origin ?? defaultOrigin;
     let timeout = req.body.timeout ?? defaultTimeout;
 
-    if (extractorOptions.mode === "llm-extraction") {
+    if (extractorOptions.mode.includes("llm-extraction")) {
       pageOptions.onlyMainContent = true;
       timeout = req.body.timeout ?? 90000;
     }
-    
 
-    try {
-      const { success: creditsCheckSuccess, message: creditsCheckMessage } =
-        await checkTeamCredits(team_id, 1);
-      if (!creditsCheckSuccess) {
-        return res.status(402).json({ error: "Insufficient credits" });
+    const checkCredits = async () => {
+      try {
+        const { success: creditsCheckSuccess, message: creditsCheckMessage } = await checkTeamCredits(team_id, 1);
+        if (!creditsCheckSuccess) {
+          earlyReturn = true;
+          return res.status(402).json({ error: "Insufficient credits" });
+        }
+      } catch (error) {
+        Logger.error(error);
+        earlyReturn = true;
+        return res.status(500).json({ error: "Error checking team credits. Please contact hello@firecrawl.com for help." });
       }
-    } catch (error) {
-      console.error(error);
-      return res.status(500).json({ error: "Internal server error" });
-    }
+    };
+
+
+    await checkCredits();
+
+    const jobId = uuidv4();
+
     const startTime = new Date().getTime();
     const result = await scrapeHelper(
+      jobId,
       req,
       team_id,
       crawlerOptions,
@@ -149,7 +142,35 @@ export async function scrapeController(req: Request, res: Response) {
     const timeTakenInSeconds = (endTime - startTime) / 1000;
     const numTokens = (result.data && result.data.markdown) ? numTokensFromString(result.data.markdown, "gpt-3.5-turbo") : 0;
 
+    if (result.success) {
+      let creditsToBeBilled = 1; // Assuming 1 credit per document
+      const creditsPerLLMExtract = 50;
+
+      if (extractorOptions.mode.includes("llm-extraction")) {
+        // creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length);
+        creditsToBeBilled += creditsPerLLMExtract;
+      }
+
+      let startTimeBilling = new Date().getTime();
+
+      if (earlyReturn) {
+        // Don't bill if we're early returning
+        return;
+      }
+      const billingResult = await billTeam(
+        team_id,
+        creditsToBeBilled
+      );
+      if (!billingResult.success) {
+        return res.status(402).json({
+          success: false,
+          error: "Failed to bill team. Insufficient credits or subscription not found.",
+        });
+      }
+    }
+
     logJob({
+      job_id: jobId,
       success: result.success,
       message: result.error,
       num_docs: 1,
@@ -164,9 +185,12 @@ export async function scrapeController(req: Request, res: Response) {
       extractor_options: extractorOptions,
       num_tokens: numTokens,
     });
+
+    
+    
     return res.status(result.returnCode).json(result);
   } catch (error) {
-    console.error(error);
+    Logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

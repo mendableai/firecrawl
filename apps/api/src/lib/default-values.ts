@@ -1,12 +1,13 @@
 export const defaultOrigin = "api";
 
-export const defaultTimeout = 30000; // 30 seconds
+export const defaultTimeout = 45000; // 45 seconds
 
 export const defaultPageOptions = {
   onlyMainContent: false,
   includeHtml: false,
   waitFor: 0,
   screenshot: false,
+  fullPageScreenshot: false,
   parsePDF: true
 };
 

@@ -6,6 +6,7 @@ import { withAuth } from "../../src/lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import { setTraceAttributes } from '@hyperdx/node-opentelemetry';
 import { sendNotification } from "../services/notification/email_notification";
+import { Logger } from "../lib/logger";
 
 export async function authenticateUser(req, res, mode?: RateLimiterMode): Promise<AuthResponse> {
   return withAuth(supaAuthenticateUser)(req, res, mode);
@@ -17,7 +18,7 @@ function setTrace(team_id: string, api_key: string) {
       api_key
     });
   } catch (error) {
-    console.error('Error setting trace attributes:', error);
+    Logger.error(`Error setting trace attributes: ${error.message}`);
   }
 
 }
@@ -82,12 +83,15 @@ export async function supaAuthenticateUser(
     //   $$ language plpgsql;
 
     if (error) {
-      console.error('Error fetching key and price_id:', error);
+      Logger.warn(`Error fetching key and price_id: ${error.message}`);
     } else {
       // console.log('Key and Price ID:', data);
     }
 
+    
+
     if (error || !data || data.length === 0) {
+      Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
       return {
         success: false,
         error: "Unauthorized: Invalid token",
@@ -135,7 +139,7 @@ export async function supaAuthenticateUser(
   try {
     await rateLimiter.consume(team_endpoint_token);
   } catch (rateLimiterRes) {
-    console.error(rateLimiterRes);
+    Logger.error(`Rate limit exceeded: ${rateLimiterRes}`);
     const secs = Math.round(rateLimiterRes.msBeforeNext / 1000) || 1;
     const retryDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
 
@@ -177,7 +181,10 @@ export async function supaAuthenticateUser(
       .select("*")
       .eq("key", normalizedApi);
 
+    
+
     if (error || !data || data.length === 0) {
+      Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
       return {
         success: false,
         error: "Unauthorized: Invalid token",
@@ -190,7 +197,6 @@ export async function supaAuthenticateUser(
 
   return { success: true, team_id: subscriptionData.team_id, plan: subscriptionData.plan ?? ""};
 }
-
 function getPlanByPriceId(price_id: string) {
   switch (price_id) {
     case process.env.STRIPE_PRICE_ID_STARTER:
@@ -199,11 +205,14 @@ function getPlanByPriceId(price_id: string) {
       return 'standard';
     case process.env.STRIPE_PRICE_ID_SCALE:
       return 'scale';
-    case process.env.STRIPE_PRICE_ID_HOBBY || process.env.STRIPE_PRICE_ID_HOBBY_YEARLY:
+    case process.env.STRIPE_PRICE_ID_HOBBY:
+    case process.env.STRIPE_PRICE_ID_HOBBY_YEARLY:
       return 'hobby';
-    case process.env.STRIPE_PRICE_ID_STANDARD_NEW || process.env.STRIPE_PRICE_ID_STANDARD_NEW_YEARLY:
+    case process.env.STRIPE_PRICE_ID_STANDARD_NEW:
+    case process.env.STRIPE_PRICE_ID_STANDARD_NEW_YEARLY:
       return 'standardnew';
-    case process.env.STRIPE_PRICE_ID_GROWTH || process.env.STRIPE_PRICE_ID_GROWTH_YEARLY:
+    case process.env.STRIPE_PRICE_ID_GROWTH:
+    case process.env.STRIPE_PRICE_ID_GROWTH_YEARLY:
       return 'growth';
     default:
       return 'free';

@@ -1,7 +1,7 @@
 name: Fly Deploy Direct
 on:
   schedule:
-    - cron: '0 */2 * * *'
+    - cron: '0 */6 * * *'
 
 env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -30,7 +30,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only -a firecrawl-scraper-js && curl -X POST https://api.firecrawl.dev/admin/$BULL_AUTH_KEY/unpause
+      - run: flyctl deploy --remote-only -a firecrawl-scraper-js
         working-directory: ./apps/api
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}

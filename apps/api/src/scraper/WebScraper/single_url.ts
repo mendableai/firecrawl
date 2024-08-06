@@ -17,16 +17,20 @@ import { scrapWithFireEngine } from "./scrapers/fireEngine";
 import { scrapWithPlaywright } from "./scrapers/playwright";
 import { scrapWithScrapingBee } from "./scrapers/scrapingBee";
 import { extractLinks } from "./utils/utils";
+import { Logger } from "../../lib/logger";
+import { ScrapeEvents } from "../../lib/scrape-events";
+import { clientSideError } from "../../strings";
 
 dotenv.config();
 
-const baseScrapers = [
+export const baseScrapers = [
   "fire-engine",
+  "fire-engine;chrome-cdp",
   "scrapingBee",
-  "playwright",
+  process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
   "scrapingBeeLoad",
   "fetch",
-] as const;
+].filter(Boolean);
 
 export async function generateRequestParams(
   url: string,
@@ -47,7 +51,7 @@ export async function generateRequestParams(
       return defaultParams;
     }
   } catch (error) {
-    console.error(`Error generating URL key: ${error}`);
+    Logger.error(`Error generating URL key: ${error}`);
     return defaultParams;
   }
 }
@@ -71,6 +75,8 @@ function getScrapingFallbackOrder(
         return !!process.env.SCRAPING_BEE_API_KEY;
       case "fire-engine":
         return !!process.env.FIRE_ENGINE_BETA_URL;
+      case "fire-engine;chrome-cdp":
+        return !!process.env.FIRE_ENGINE_BETA_URL;  
       case "playwright":
         return !!process.env.PLAYWRIGHT_MICROSERVICE_URL;
       default:
@@ -79,21 +85,22 @@ function getScrapingFallbackOrder(
   });
 
   let defaultOrder = [
+    !process.env.USE_DB_AUTHENTICATION ? undefined : "fire-engine",
+    !process.env.USE_DB_AUTHENTICATION ? undefined : "fire-engine;chrome-cdp",
     "scrapingBee",
-    "fire-engine",
-    "playwright",
+    process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
     "scrapingBeeLoad",
     "fetch",
-  ];
+  ].filter(Boolean);
 
   if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
     defaultOrder = [
       "fire-engine",
-      "playwright",
+      process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
       ...defaultOrder.filter(
         (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
       ),
-    ];
+    ].filter(Boolean);
   }
 
   const filteredDefaultOrder = defaultOrder.filter(
@@ -113,6 +120,7 @@ function getScrapingFallbackOrder(
 
 
 export async function scrapSingleUrl(
+  jobId: string,
   urlToScrap: string,
   pageOptions: PageOptions = {
     onlyMainContent: true,
@@ -120,6 +128,7 @@ export async function scrapSingleUrl(
     includeRawHtml: false,
     waitFor: 0,
     screenshot: false,
+    fullPageScreenshot: false,
     headers: undefined,
   },
   extractorOptions: ExtractorOptions = {
@@ -139,16 +148,36 @@ export async function scrapSingleUrl(
       metadata: { pageStatusCode?: number; pageError?: string | null };
     } = { text: "", screenshot: "", metadata: {} };
     let screenshot = "";
+
+    const timer = Date.now();
+    const logInsertPromise = ScrapeEvents.insert(jobId, {
+      type: "scrape",
+      url,
+      worker: process.env.FLY_MACHINE_ID,
+      method,
+      result: null,
+    });
+
     switch (method) {
       case "fire-engine":
+      case "fire-engine;chrome-cdp":  
+
+        let engine: "playwright" | "chrome-cdp" | "tlsclient" = "playwright";
+        if(method === "fire-engine;chrome-cdp"){
+          engine = "chrome-cdp";
+        }
+
         if (process.env.FIRE_ENGINE_BETA_URL) {
-          console.log(`Scraping ${url} with Fire Engine`);
           const response = await scrapWithFireEngine({
             url,
             waitFor: pageOptions.waitFor,
             screenshot: pageOptions.screenshot,
+            fullPageScreenshot: pageOptions.fullPageScreenshot,
             pageOptions: pageOptions,
             headers: pageOptions.headers,
+            fireEngineOptions: {
+              engine: engine,
+            }
           });
           scraperResponse.text = response.html;
           scraperResponse.screenshot = response.screenshot;
@@ -239,8 +268,19 @@ export async function scrapSingleUrl(
     }
     //* TODO: add an optional to return markdown or structured/extracted content
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
+    const text = await parseMarkdown(cleanedHtml);
+
+    const insertedLogId = await logInsertPromise;
+    ScrapeEvents.updateScrapeResult(insertedLogId, {
+      response_size: scraperResponse.text.length,
+      success: !(scraperResponse.metadata.pageStatusCode && scraperResponse.metadata.pageStatusCode >= 400) && !!text && (text.trim().length >= 100),
+      error: scraperResponse.metadata.pageError,
+      response_code: scraperResponse.metadata.pageStatusCode,
+      time_taken: Date.now() - timer,
+    });
+
     return {
-      text: await parseMarkdown(cleanedHtml),
+      text,
       html: cleanedHtml,
       rawHtml: scraperResponse.text,
       screenshot: scraperResponse.screenshot,
@@ -262,19 +302,19 @@ export async function scrapSingleUrl(
     try {
       urlKey = new URL(urlToScrap).hostname.replace(/^www\./, "");
     } catch (error) {
-      console.error(`Invalid URL key, trying: ${urlToScrap}`);
+      Logger.error(`Invalid URL key, trying: ${urlToScrap}`);
     }
     const defaultScraper = urlSpecificParams[urlKey]?.defaultScraper ?? "";
     const scrapersInOrder = getScrapingFallbackOrder(
       defaultScraper,
       pageOptions && pageOptions.waitFor && pageOptions.waitFor > 0,
-      pageOptions && pageOptions.screenshot && pageOptions.screenshot === true,
+      pageOptions && (pageOptions.screenshot || pageOptions.fullPageScreenshot) && (pageOptions.screenshot === true || pageOptions.fullPageScreenshot === true),
       pageOptions && pageOptions.headers && pageOptions.headers !== undefined
     );
 
     for (const scraper of scrapersInOrder) {
       // If exists text coming from crawler, use it
-      if (existingHtml && existingHtml.trim().length >= 100) {
+      if (existingHtml && existingHtml.trim().length >= 100 && !existingHtml.includes(clientSideError)) {
         let cleanedHtml = removeUnwantedElements(existingHtml, pageOptions);
         text = await parseMarkdown(cleanedHtml);
         html = cleanedHtml;
@@ -296,12 +336,18 @@ export async function scrapSingleUrl(
         pageError = undefined;
       }
 
-      if (text && text.trim().length >= 100) break;
-      if (pageStatusCode && pageStatusCode == 404) break;
-      const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;
-      if (nextScraperIndex < scrapersInOrder.length) {
-        console.info(`Falling back to ${scrapersInOrder[nextScraperIndex]}`);
+      if (text && text.trim().length >= 100) {
+        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100, breaking`);
+        break;
       }
+      if (pageStatusCode && pageStatusCode == 404) {
+        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code 404, breaking`);
+        break;
+      }
+      // const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;
+      // if (nextScraperIndex < scrapersInOrder.length) {
+      //   Logger.debug(`⛏️ ${scraper} Failed to fetch URL: ${urlToScrap} with status: ${pageStatusCode}, error: ${pageError} | Falling back to ${scrapersInOrder[nextScraperIndex]}`);
+      // }
     }
 
     if (!text) {
@@ -357,7 +403,12 @@ export async function scrapSingleUrl(
 
     return document;
   } catch (error) {
-    console.error(`Error: ${error} - Failed to fetch URL: ${urlToScrap}`);
+    Logger.debug(`⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrap}`);
+    ScrapeEvents.insert(jobId, {
+      type: "error",
+      message: typeof error === "string" ? error : typeof error.message === "string" ? error.message : JSON.stringify(error),
+      stack: error.stack,
+    });
     return {
       content: "",
       markdown: "",

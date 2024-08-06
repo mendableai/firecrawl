@@ -2,6 +2,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import * as querystring from 'querystring';
 import { SearchResult } from '../../src/lib/entities';
+import { Logger } from '../../src/lib/logger';
 
 const _useragent_list = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0',
@@ -96,7 +97,7 @@ export async function google_search(term: string, advanced = false, num_results 
             await new Promise(resolve => setTimeout(resolve, sleep_interval * 1000));
         } catch (error) {
             if (error.message === 'Too many requests') {
-                console.warn('Too many requests, breaking the loop');
+                Logger.warn('Too many requests, breaking the loop');
                 break;
             }
             throw error;
@@ -107,7 +108,7 @@ export async function google_search(term: string, advanced = false, num_results 
         }
     }
     if (attempts >= maxAttempts) {
-        console.warn('Max attempts reached, breaking the loop');
+      Logger.warn('Max attempts reached, breaking the loop');
     }
     return results
 }
