@@ -35,6 +35,7 @@ export interface RunWebScraperParams {
   mode: Mode;
   crawlerOptions: any;
   pageOptions?: any;
+  extractorOptions?: any;
   inProgress: (progress: any) => void;
   onSuccess: (result: any, mode: string) => void;
   onError: (error: Error) => void;

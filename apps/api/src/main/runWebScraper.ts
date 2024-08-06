@@ -26,6 +26,7 @@ export async function startWebScraperPipeline({
     url: job.data.url,
     mode: job.data.mode,
     crawlerOptions: job.data.crawlerOptions,
+    extractorOptions: job.data.extractorOptions,
     pageOptions: job.data.pageOptions,
     inProgress: (progress) => {
       Logger.debug(`🐂 Job in progress ${job.id}`);
@@ -55,6 +56,7 @@ export async function runWebScraper({
   mode,
   crawlerOptions,
   pageOptions,
+  extractorOptions,
   inProgress,
   onSuccess,
   onError,
@@ -68,6 +70,7 @@ export async function runWebScraper({
         jobId: bull_job_id,
         mode: mode,
         urls: [url],
+        extractorOptions,
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
         bullJobId: bull_job_id,
@@ -77,6 +80,7 @@ export async function runWebScraper({
         jobId: bull_job_id,
         mode: mode,
         urls: url.split(","),
+        extractorOptions,
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
       });
