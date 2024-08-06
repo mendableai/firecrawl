@@ -134,7 +134,7 @@ export async function scrapeController(req: Request, res: Response) {
     const numTokens = (result.data && result.data.markdown) ? numTokensFromString(result.data.markdown, "gpt-3.5-turbo") : 0;
 
     if (result.success) {
-      let creditsToBeBilled = 1; // Assuming 1 credit per document
+      let creditsToBeBilled = 0; // billing for doc done on queue end
       const creditsPerLLMExtract = 50;
 
       if (extractorOptions.mode.includes("llm-extraction")) {
