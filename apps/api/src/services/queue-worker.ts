@@ -102,7 +102,7 @@ const workerFun = async (queueName: string, processJobInternal: (token: string, 
 
     const job = await worker.getNextJob(token);
     if (job) {
-      await processJobInternal(token, job);
+      processJobInternal(token, job);
       await sleep(gotJobInterval);
     } else {
       await sleep(connectionMonitorInterval);
