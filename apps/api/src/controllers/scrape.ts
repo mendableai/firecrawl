@@ -1,6 +1,5 @@
 import { ExtractorOptions, PageOptions } from './../lib/entities';
 import { Request, Response } from "express";
-import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
 import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../types";
@@ -9,9 +8,8 @@ import { Document } from "../lib/entities";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../lib/default-values';
-import { addScrapeJob, addWebScraperJob } from '../services/queue-jobs';
-import { getScrapeQueue, getWebScraperQueue, scrapeQueueEvents } from '../services/queue-service';
-import { supabase_service } from '../services/supabase';
+import { addScrapeJob } from '../services/queue-jobs';
+import { scrapeQueueEvents } from '../services/queue-service';
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from '../lib/logger';
 
@@ -39,17 +37,6 @@ export async function scrapeHelper(
     return { success: false, error: "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.", returnCode: 403 };
   }
 
-  // const a = new WebScraperDataProvider();
-  // await a.setOptions({
-  //   mode: "single_urls",
-  //   urls: [url],
-  //   crawlerOptions: {
-  //     ...crawlerOptions,
-  //   },
-  //   pageOptions: pageOptions,
-  //   extractorOptions: extractorOptions,
-  // });
-
   const job = await addScrapeJob({
     url,
     mode: "single_urls",
@@ -60,52 +47,15 @@ export async function scrapeHelper(
     origin: req.body.origin ?? defaultOrigin,
   });
 
-
-  // const docsPromise = new Promise((resolve) => {
-  //   promiseResolve = resolve; 
-  // });
-
-  // const listener = (j: string, res: any) => {
-  //   console.log("JOB COMPLETED", j, "vs", job.id, res);
-  //   if (j === job.id) {
-  //     promiseResolve([j, res]);
-  //     sq.removeListener("global:completed", listener);
-  //   }
-  // }
-  const jobResult = await job.waitUntilFinished(scrapeQueueEvents, 60 * 1000);//60 seconds timeout
-
-
-  // wsq.on("global:completed", listener);
-
-  // const timeoutPromise = new Promise<{ success: boolean; error?: string; returnCode: number }>((_, reject) =>
-  //   setTimeout(() => reject({ success: false, error: "Request timed out. Increase the timeout by passing `timeout` param to the request.", returnCode: 408 }), timeout)
-  // );
-
-  // let j;
-  // try {
-  //   j = await Promise.race([jobResult, timeoutPromise]);
-  // } catch (error) {
-  //   // sq.removeListener("global:completed", listener);
-  //   return error;
-  // }
-  // console.log("JOB RESULT", j[1]);
-
-  // let j1 = typeof j[1] === "string" ? JSON.parse(j[1]) : j[1];
-
-  const doc = jobResult !== null ? jobResult[0] : (await supabase_service
-    .from("firecrawl_jobs")
-    .select("docs")
-    .eq("job_id", job.id as string)).data[0]?.docs[0];
+  const doc = (await job.waitUntilFinished(scrapeQueueEvents, 60 * 1000))[0]; //60 seconds timeout
 
   if (!doc) {
+    console.error("!!! PANIC DOC IS", doc, job);
     return { success: true, error: "No page found", returnCode: 200, data: doc };
   }
 
   delete doc.index;
   delete doc.provider;
-
-  // make sure doc.content is not empty
-  
 
   // Remove rawHtml if pageOptions.rawHtml is false and extractorOptions.mode is llm-extraction-from-raw-html
   if (!pageOptions.includeRawHtml && extractorOptions.mode == "llm-extraction-from-raw-html") {

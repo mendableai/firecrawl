@@ -21,6 +21,14 @@ export async function crawlStatusController(req: Request, res: Response) {
       return res.status(404).json({ error: "Job not found" });
     }
 
+    const isCancelled = await (await getWebScraperQueue().client).exists("cancelled:" + req.params.jobId);
+
+    if (isCancelled) {
+      return res.json({
+        status: "cancelled",
+      });
+    }
+
     let progress = job.progress;
     if(typeof progress !== 'object') {
       progress = {

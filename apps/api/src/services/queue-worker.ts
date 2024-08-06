@@ -12,7 +12,7 @@ import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
 import { initSDK } from "@hyperdx/node-opentelemetry";
-import { Job, tryCatch } from "bullmq";
+import { Job, QueueEvents, tryCatch } from "bullmq";
 import { Logger } from "../lib/logger";
 import { ScrapeEvents } from "../lib/scrape-events";
 import { Worker } from "bullmq";
@@ -131,10 +131,18 @@ async function processJob(job: Job, token: string) {
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
+    const isCancelled = await (await getWebScraperQueue().client).exists("cancelled:" + job.id);
+
+    if (isCancelled) {
+      await job.discard();
+      await job.moveToFailed(Error("Job cancelled by user"), job.token);
+      await job.discard();
+    }
+
     const data = {
-      success: success,
+      success,
       result: {
-        links: docs.map((doc) => {
+        links: isCancelled ? [] : docs.map((doc) => {
           return {
             content: doc,
             source: doc?.metadata?.sourceURL ?? doc?.url ?? "",
@@ -142,20 +150,20 @@ async function processJob(job: Job, token: string) {
         }),
       },
       project_id: job.data.project_id,
-      error: message /* etc... */,
-      docs: docs,
+      error: isCancelled ? "Job cancelled by user" : message /* etc... */,
+      docs: isCancelled ? [] : docs,
     };
 
-    if (job.data.mode === "crawl") {
+    if (job.data.mode === "crawl" && !isCancelled) {
       await callWebhook(job.data.team_id, job.id as string, data);
     }
 
     await logJob({
       job_id: job.id as string,
-      success: success,
-      message: message,
-      num_docs: docs.length,
-      docs: docs,
+      success: success && !isCancelled,
+      message: isCancelled ? "Job cancelled by user" : message,
+      num_docs: isCancelled ? 0 : docs.length,
+      docs: isCancelled ? [] : docs,
       time_taken: timeTakenInSeconds,
       team_id: job.data.team_id,
       mode: job.data.mode,
@@ -165,7 +173,6 @@ async function processJob(job: Job, token: string) {
       origin: job.data.origin,
     });
     Logger.debug(`🐂 Job done ${job.id}`);
-    // done(null, data);
     return data;
   } catch (error) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);

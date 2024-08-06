@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../../src/types";
-import { addWebScraperJob } from "../../src/services/queue-jobs";
 import { getWebScraperQueue } from "../../src/services/queue-service";
 import { supabase_service } from "../../src/services/supabase";
 import { billTeam } from "../../src/services/billing/credit_billing";
@@ -59,16 +58,11 @@ export async function crawlCancelController(req: Request, res: Response) {
     }
 
     try {
-      // TODO: FIX THIS by doing as a flag on the data?
-      // await getWebScraperQueue().client.del(job.lockKey());
-      // await job.takeLock();
-      // await job.discard();
-      // await job.moveToFailed(Error("Job cancelled by user"), true);
+      await (await getWebScraperQueue().client).set("cancelled:" + job.id, "true", "EX", 60 * 60);
+      await job.discard();
     } catch (error) {
       Logger.error(error);
     }
-
-    const newJobState = await job.getState();
 
     res.json({
       status: "cancelled"
