@@ -164,7 +164,7 @@ export class WebCrawler {
       concurrencyLimit,
       inProgress
     );
-   
+    
     if (
       urls.length === 0 &&
       this.filterLinks([this.initialUrl], limit, this.maxCrawledDepth).length > 0
@@ -420,9 +420,10 @@ export class WebCrawler {
       ".woff",
       ".ttf",
       ".woff2",
-      ".webp"
+      ".webp",
+      ".inc"
     ];
-    return fileExtensions.some((ext) => url.endsWith(ext));
+    return fileExtensions.some((ext) => url.toLowerCase().endsWith(ext));
   }
 
   private isSocialMediaOrEmail(url: string): boolean {
@@ -475,7 +476,7 @@ export class WebCrawler {
       try {
         const response = await axios.get(baseUrlSitemap, { timeout: axiosTimeout });
         if (response.status === 200) {
-          sitemapLinks = await getLinksFromSitemap({ sitemapUrl: baseUrlSitemap });
+          sitemapLinks = await getLinksFromSitemap({ sitemapUrl: baseUrlSitemap, mode: 'fire-engine' });
         }
       } catch (error) {
         Logger.debug(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);

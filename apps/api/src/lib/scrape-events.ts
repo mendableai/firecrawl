@@ -46,7 +46,7 @@ export class ScrapeEvents {
         }).select().single();
         return (result.data as any).id;
       } catch (error) {
-        Logger.error(`Error inserting scrape event: ${error}`);
+        // Logger.error(`Error inserting scrape event: ${error}`);
         return null;
       }
     }
