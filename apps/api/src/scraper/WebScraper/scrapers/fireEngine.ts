@@ -52,6 +52,7 @@ export async function scrapWithFireEngine({
     const waitParam = reqParams["params"]?.wait ?? waitFor;
     const engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "playwright";
     const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
+    const fullPageScreenshotParam = reqParams["params"]?.fullPageScreenshot ?? fullPageScreenshot;
     const fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
 
 
@@ -64,7 +65,7 @@ export async function scrapWithFireEngine({
     let engine = engineParam; // do we want fireEngineOptions as first choice?
 
     Logger.info(
-      `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { wait: ${waitParam}, screenshot: ${screenshotParam}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
+      `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { wait: ${waitParam}, screenshot: ${screenshotParam}, fullPageScreenshot: ${fullPageScreenshot}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
     );
 
 
@@ -74,7 +75,7 @@ export async function scrapWithFireEngine({
         url: url,
         wait: waitParam,
         screenshot: screenshotParam,
-        fullPageScreenshot: fullPageScreenshot,
+        fullPageScreenshot: fullPageScreenshotParam,
         headers: headers,
         pageOptions: pageOptions,
         ...fireEngineOptionsParam,
