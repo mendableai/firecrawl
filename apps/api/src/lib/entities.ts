@@ -42,8 +42,8 @@ export type SearchOptions = {
 
 export type CrawlerOptions = {
   returnOnlyUrls?: boolean;
-  includes?: string[];
-  excludes?: string[];
+  includes?: string | string[];
+  excludes?: string | string[];
   maxCrawledLinks?: number;
   maxDepth?: number;
   limit?: number;
