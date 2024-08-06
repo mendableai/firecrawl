@@ -1,6 +1,6 @@
 {
   "name": "@mendable/firecrawl-js",
-  "version": "0.0.29",
+  "version": "0.0.34",
   "description": "JavaScript SDK for Firecrawl API",
   "main": "build/index.js",
   "types": "types/index.d.ts",
