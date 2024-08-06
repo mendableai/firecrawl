@@ -55,7 +55,7 @@ export async function scrapeHelper(
       return {
         success: false,
         error: "Request timed out",
-        returnCode: 409,
+        returnCode: 408,
       }
     } else {
       throw e;
