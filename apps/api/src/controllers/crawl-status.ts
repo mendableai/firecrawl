@@ -23,14 +23,6 @@ export async function crawlStatusController(req: Request, res: Response) {
 
     const isCancelled = await (await getWebScraperQueue().client).exists("cancelled:" + req.params.jobId);
 
-    if (isCancelled) {
-      return res.json({
-        status: "failed",
-        data: null,
-        partial_data: [],
-      });
-    }
-
     let progress = job.progress;
     if(typeof progress !== 'object') {
       progress = {
@@ -61,14 +53,14 @@ export async function crawlStatusController(req: Request, res: Response) {
     const jobStatus = await job.getState();
 
     res.json({
-      status: jobStatus,
+      status: isCancelled ? "failed" : jobStatus,
       // progress: job.progress(),
       current,
       current_url,
       current_step,
       total,
-      data: data ? data : null,
-      partial_data: jobStatus == 'completed' ? [] : partialDocs,
+      data: data && !isCancelled ? data : null,
+      partial_data: jobStatus == 'completed' && !isCancelled ? [] : partialDocs,
     });
   } catch (error) {
     Logger.error(error);
