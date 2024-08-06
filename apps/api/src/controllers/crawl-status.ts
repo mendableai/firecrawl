@@ -25,7 +25,9 @@ export async function crawlStatusController(req: Request, res: Response) {
 
     if (isCancelled) {
       return res.json({
-        status: "cancelled",
+        status: "failed",
+        docs: null,
+        partialDocs: [],
       });
     }
 
