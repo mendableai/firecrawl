@@ -18,6 +18,7 @@ export type PageOptions = {
   fetchPageContent?: boolean;
   waitFor?: number;
   screenshot?: boolean;
+  fullPageScreenshot?: boolean;
   headers?: Record<string, string>;
   replaceAllPathsWithAbsolutePaths?: boolean;
   parsePDF?: boolean;
