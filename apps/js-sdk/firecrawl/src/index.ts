@@ -7,12 +7,52 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 export interface FirecrawlAppConfig {
   apiKey?: string | null;
   apiUrl?: string | null;
+  version?: "v0" | "v1";
 }
 
 /**
  * Metadata for a Firecrawl document.
  */
 export interface FirecrawlDocumentMetadata {
+  title?: string;
+  description?: string;
+  language?: string;
+  keywords?: string;
+  robots?: string;
+  ogTitle?: string;
+  ogDescription?: string;
+  ogUrl?: string;
+  ogImage?: string;
+  ogAudio?: string;
+  ogDeterminer?: string;
+  ogLocale?: string;
+  ogLocaleAlternate?: string[];
+  ogSiteName?: string;
+  ogVideo?: string;
+  dctermsCreated?: string;
+  dcDateCreated?: string;
+  dcDate?: string;
+  dctermsType?: string;
+  dcType?: string;
+  dctermsAudience?: string;
+  dctermsSubject?: string;
+  dcSubject?: string;
+  dcDescription?: string;
+  dctermsKeywords?: string;
+  modifiedTime?: string;
+  publishedTime?: string;
+  articleTag?: string;
+  articleSection?: string;
+  sourceURL?: string;
+  statusCode?: number;
+  error?: string;
+  [key: string]: any;
+}
+
+/**
+ * Metadata for a Firecrawl document on v0.
+ */
+export interface FirecrawlDocumentMetadataV0 {
   title?: string;
   description?: string;
   language?: string;
@@ -52,6 +92,19 @@ export interface FirecrawlDocumentMetadata {
  * Document interface for Firecrawl.
  */
 export interface FirecrawlDocument {
+  url?: string;
+  content: string;
+  markdown?: string;
+  html?: string;
+  rawHtml?: string;
+  linksOnPage?: string[];
+  metadata: FirecrawlDocumentMetadata;
+}
+
+/**
+ * Document interface for Firecrawl on v0.
+ */
+export interface FirecrawlDocumentV0 {
   id?: string;
   url?: string;
   content: string;
@@ -61,11 +114,10 @@ export interface FirecrawlDocument {
   createdAt?: Date;
   updatedAt?: Date;
   type?: string;
-  metadata: FirecrawlDocumentMetadata;
+  metadata: FirecrawlDocumentMetadataV0;
   childrenLinks?: string[];
   provider?: string;
   warning?: string;
-
   index?: number;
 }
 
@@ -74,17 +126,29 @@ export interface FirecrawlDocument {
  */
 export interface ScrapeResponse {
   success: boolean;
+  warning?: string;
   data?: FirecrawlDocument;
   error?: string;
 }
+
+/**
+ * Response interface for scraping operations on v0.
+ */
+export interface ScrapeResponseV0 {
+  success: boolean;
+  data?: FirecrawlDocumentV0;
+  error?: string;
+}
+
 /**
  * Response interface for searching operations.
  */
-export interface SearchResponse {
+export interface SearchResponseV0 {
   success: boolean;
   data?: FirecrawlDocument[];
   error?: string;
 }
+
 /**
  * Response interface for crawling operations.
  */
@@ -94,21 +158,46 @@ export interface CrawlResponse {
   data?: FirecrawlDocument[];
   error?: string;
 }
+
+/**
+ * Response interface for crawling operations on v0.
+ */
+export interface CrawlResponseV0 {
+  success: boolean;
+  jobId?: string;
+  data?: FirecrawlDocument[];
+  error?: string;
+}
+
 /**
  * Response interface for job status checks.
  */
 export interface JobStatusResponse {
+  success: boolean;
+  totalCount: number;
+  creditsUsed: number;
+  expiresAt: Date;
+  status: "scraping" | "completed" | "failed";
+  next: string;
+  data?: FirecrawlDocument[];
+  error?: string;
+}
+
+/**
+ * Response interface for job status checks on v0.
+ */
+export interface JobStatusResponseV0 {
   success: boolean;
   status: string;
   current?: number;
   current_url?: string;
   current_step?: string;
   total?: number;
-  jobId?: string;
-  data?: FirecrawlDocument[];
-  partial_data?: FirecrawlDocument[];
+  data?: FirecrawlDocumentV0[];
+  partial_data?: FirecrawlDocumentV0[];
   error?: string;
 }
+
 /**
  * Generic parameter interface.
  */
@@ -126,14 +215,16 @@ export interface Params {
 export default class FirecrawlApp {
   private apiKey: string;
   private apiUrl: string;
+  private version: "v0" | "v1";
 
   /**
    * Initializes a new instance of the FirecrawlApp class.
    * @param {FirecrawlAppConfig} config - Configuration options for the FirecrawlApp instance.
    */
-  constructor({ apiKey = null, apiUrl = null }: FirecrawlAppConfig) {
+  constructor({ apiKey = null, apiUrl = null, version = "v1" }: FirecrawlAppConfig) {
     this.apiKey = apiKey || "";
     this.apiUrl = apiUrl || "https://api.firecrawl.dev";
+    this.version = version;
     if (!this.apiKey) {
       throw new Error("No API key provided");
     }
@@ -143,12 +234,17 @@ export default class FirecrawlApp {
    * Scrapes a URL using the Firecrawl API.
    * @param {string} url - The URL to scrape.
    * @param {Params | null} params - Additional parameters for the scrape request.
-   * @returns {Promise<ScrapeResponse>} The response from the scrape operation.
+   * @returns {Promise<ScrapeResponse | ScrapeResponseV0>} The response from the scrape operation.
    */
   async scrapeUrl(
     url: string,
-    params: Params | null = null
-  ): Promise<ScrapeResponse> {
+    params: Params | null = null,
+    version: "v0" | "v1" = "v1"
+  ): Promise<ScrapeResponse | ScrapeResponseV0> {
+    if (version) {
+      this.version = version;
+    }
+
     const headers: AxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this.apiKey}`,
@@ -171,7 +267,7 @@ export default class FirecrawlApp {
     }
     try {
       const response: AxiosResponse = await axios.post(
-        this.apiUrl + "/v0/scrape",
+        this.apiUrl + `/${this.version}/scrape`,
         jsonData,
         { headers }
       );
@@ -200,7 +296,11 @@ export default class FirecrawlApp {
   async search(
     query: string,
     params: Params | null = null
-  ): Promise<SearchResponse> {
+  ): Promise<SearchResponseV0> {
+    if (this.version === "v1") {
+      throw new Error("Search is not supported in v1");
+    }
+
     const headers: AxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this.apiKey}`,
@@ -245,8 +345,13 @@ export default class FirecrawlApp {
     params: Params | null = null,
     waitUntilDone: boolean = true,
     pollInterval: number = 2,
-    idempotencyKey?: string
-  ): Promise<CrawlResponse | any> {
+    idempotencyKey?: string,
+    version: "v0" | "v1" = "v1"
+  ): Promise<CrawlResponse | CrawlResponseV0 | JobStatusResponse | JobStatusResponseV0> {
+    if (version) {
+      this.version = version;
+    }
+
     const headers = this.prepareHeaders(idempotencyKey);
     let jsonData: Params = { url };
     if (params) {
@@ -254,7 +359,7 @@ export default class FirecrawlApp {
     }
     try {
       const response: AxiosResponse = await this.postRequest(
-        this.apiUrl + "/v0/crawl",
+        this.apiUrl + `/${this.version}/crawl`,
         jsonData,
         headers
       );
@@ -278,13 +383,15 @@ export default class FirecrawlApp {
   /**
    * Checks the status of a crawl job using the Firecrawl API.
    * @param {string} jobId - The job ID of the crawl operation.
-   * @returns {Promise<JobStatusResponse>} The response containing the job status.
+   * @returns {Promise<JobStatusResponse | JobStatusResponseV0>} The response containing the job status.
    */
-  async checkCrawlStatus(jobId: string): Promise<JobStatusResponse> {
+  async checkCrawlStatus(jobId: string): Promise<JobStatusResponse | JobStatusResponseV0> {
     const headers: AxiosRequestHeaders = this.prepareHeaders();
     try {
       const response: AxiosResponse = await this.getRequest(
-        this.apiUrl + `/v0/crawl/status/${jobId}`,
+        this.version == 'v1' ?
+          this.apiUrl + `/${this.version}/crawl/${jobId}` :
+          this.apiUrl + `/${this.version}/crawl/status/${jobId}`,
         headers
       );
       if (response.status === 200) {
