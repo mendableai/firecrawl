@@ -5,6 +5,7 @@ import {
   cleanBefore24hCompleteJobsController,
   queuesController,
 } from "../controllers/admin/queue";
+import { dataDeletionJob } from "../controllers/admin/data_deletion";
 
 export const adminRouter = express.Router();
 
@@ -23,7 +24,9 @@ adminRouter.get(
   checkQueuesController
 );
 
+adminRouter.get(`/admin/${process.env.BULL_AUTH_KEY}/queues`, queuesController);
+
 adminRouter.get(
-  `/admin/${process.env.BULL_AUTH_KEY}/queues`,
-  queuesController
+  `/admin/${process.env.BULL_AUTH_KEY}/data-deletion`,
+  dataDeletionJob
 );

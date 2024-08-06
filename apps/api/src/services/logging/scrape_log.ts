@@ -40,6 +40,7 @@ export async function logScrape(
         html: "Removed to save db space",
         ipv4_support: scrapeLog.ipv4_support,
         ipv6_support: scrapeLog.ipv6_support,
+        team_id: scrapeLog.team_id,
       },
     ]);
 
