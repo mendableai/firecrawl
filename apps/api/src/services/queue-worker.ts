@@ -22,11 +22,6 @@ const wsq = getWebScraperQueue();
 async function processJob(job: Job, done) {
   Logger.info(`🐂 Worker taking job ${job.id}`);
 
-  const lockInterval = setInterval(() => {
-    Logger.info(`🐂 Renewing lock for ${job.id}`);
-    job.extendLock(60000);
-  }, 15000);
-
   try {
     job.progress({
       current: 1,
@@ -67,8 +62,7 @@ async function processJob(job: Job, done) {
       origin: job.data.origin,
     });
     Logger.info(`🐂 Job done ${job.id}`);
-    clearInterval(lockInterval);
-    done(null, null);
+    done(null, data);
   } catch (error) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);
     if (await getWebScraperQueue().isPaused(false)) {
@@ -114,9 +108,8 @@ async function processJob(job: Job, done) {
       pageOptions: job.data.pageOptions,
       origin: job.data.origin,
     });
-    clearInterval(lockInterval);
     done(null, data);
-  }  
+  }
 }
 
 wsq.process(
