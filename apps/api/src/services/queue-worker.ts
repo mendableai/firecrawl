@@ -45,6 +45,7 @@ const sq = getScrapeQueue();
 
 const processJobInternal = async (token: string, job: Job) => {
   const extendLockInterval = setInterval(async () => {
+    Logger.info(`🐂 Worker extending lock on job ${job.id}`);
     await job.extendLock(token, jobLockExtensionTime);
   }, jobLockExtendInterval);
 
