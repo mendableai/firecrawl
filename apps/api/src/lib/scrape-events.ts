@@ -59,6 +59,12 @@ export class ScrapeEvents {
 
     try {
       const previousLog = (await supabase.from("scrape_events").select().eq("id", logId).single()).data as any;
+
+      if (!previousLog) {
+        Logger.warn("Previous log not found.");
+        return;
+      }
+
       await supabase.from("scrape_events").update({
         content: {
           ...previousLog.content,
