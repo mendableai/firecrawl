@@ -68,7 +68,7 @@ async function processJob(job: Job, done) {
     });
     Logger.info(`🐂 Job done ${job.id}`);
     clearInterval(lockInterval);
-    done(null, data);
+    done(null, null);
   } catch (error) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);
     if (await getWebScraperQueue().isPaused(false)) {
