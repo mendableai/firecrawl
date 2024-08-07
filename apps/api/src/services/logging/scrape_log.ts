@@ -44,9 +44,9 @@ export async function logScrape(
     ]);
 
     if (error) {
-      Logger.error(`Error logging proxy:\n${error}`);
+      Logger.error(`Error logging proxy:\n${JSON.stringify(error)}`);
     }
   } catch (error) {
-    Logger.error(`Error logging proxy:\n${error}`);
+    Logger.error(`Error logging proxy:\n${JSON.stringify(error)}`);
   }
 }
