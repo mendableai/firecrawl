@@ -1,3 +1,4 @@
+"use strict";
 var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
     function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
     return new (P || (P = Promise))(function (resolve, reject) {
@@ -7,13 +8,17 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
         step((generator = generator.apply(thisArg, _arguments || [])).next());
     });
 };
-import axios from "axios";
-import { z } from "zod";
-import { zodToJsonSchema } from "zod-to-json-schema";
+var __importDefault = (this && this.__importDefault) || function (mod) {
+    return (mod && mod.__esModule) ? mod : { "default": mod };
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+const axios_1 = __importDefault(require("axios"));
+const zod_1 = require("zod");
+const zod_to_json_schema_1 = require("zod-to-json-schema");
 /**
  * Main class for interacting with the Firecrawl API.
  */
-export default class FirecrawlApp {
+class FirecrawlApp {
     /**
      * Initializes a new instance of the FirecrawlApp class.
      * @param {FirecrawlAppConfig} config - Configuration options for the FirecrawlApp instance.
@@ -31,9 +36,9 @@ export default class FirecrawlApp {
      * @param {Params | null} params - Additional parameters for the scrape request.
      * @returns {Promise<ScrapeResponse>} The response from the scrape operation.
      */
-    scrapeUrl(url_1) {
-        return __awaiter(this, arguments, void 0, function* (url, params = null) {
-            var _a;
+    scrapeUrl(url, params = null) {
+        var _a;
+        return __awaiter(this, void 0, void 0, function* () {
             const headers = {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${this.apiKey}`,
@@ -42,13 +47,13 @@ export default class FirecrawlApp {
             if ((_a = params === null || params === void 0 ? void 0 : params.extractorOptions) === null || _a === void 0 ? void 0 : _a.extractionSchema) {
                 let schema = params.extractorOptions.extractionSchema;
                 // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
-                if (schema instanceof z.ZodSchema) {
-                    schema = zodToJsonSchema(schema);
+                if (schema instanceof zod_1.z.ZodSchema) {
+                    schema = (0, zod_to_json_schema_1.zodToJsonSchema)(schema);
                 }
                 jsonData = Object.assign(Object.assign({}, jsonData), { extractorOptions: Object.assign(Object.assign({}, params.extractorOptions), { extractionSchema: schema, mode: params.extractorOptions.mode || "llm-extraction" }) });
             }
             try {
-                const response = yield axios.post(this.apiUrl + "/v0/scrape", jsonData, { headers });
+                const response = yield axios_1.default.post(this.apiUrl + "/v0/scrape", jsonData, { headers });
                 if (response.status === 200) {
                     const responseData = response.data;
                     if (responseData.success) {
@@ -74,8 +79,8 @@ export default class FirecrawlApp {
      * @param {Params | null} params - Additional parameters for the search request.
      * @returns {Promise<SearchResponse>} The response from the search operation.
      */
-    search(query_1) {
-        return __awaiter(this, arguments, void 0, function* (query, params = null) {
+    search(query, params = null) {
+        return __awaiter(this, void 0, void 0, function* () {
             const headers = {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${this.apiKey}`,
@@ -85,7 +90,7 @@ export default class FirecrawlApp {
                 jsonData = Object.assign(Object.assign({}, jsonData), params);
             }
             try {
-                const response = yield axios.post(this.apiUrl + "/v0/search", jsonData, { headers });
+                const response = yield axios_1.default.post(this.apiUrl + "/v0/search", jsonData, { headers });
                 if (response.status === 200) {
                     const responseData = response.data;
                     if (responseData.success) {
@@ -114,8 +119,8 @@ export default class FirecrawlApp {
      * @param {string} idempotencyKey - Optional idempotency key for the request.
      * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
      */
-    crawlUrl(url_1) {
-        return __awaiter(this, arguments, void 0, function* (url, params = null, waitUntilDone = true, pollInterval = 2, idempotencyKey) {
+    crawlUrl(url, params = null, waitUntilDone = true, pollInterval = 2, idempotencyKey) {
+        return __awaiter(this, void 0, void 0, function* () {
             const headers = this.prepareHeaders(idempotencyKey);
             let jsonData = { url };
             if (params) {
@@ -200,7 +205,7 @@ export default class FirecrawlApp {
      * @returns {Promise<AxiosResponse>} The response from the POST request.
      */
     postRequest(url, data, headers) {
-        return axios.post(url, data, { headers });
+        return axios_1.default.post(url, data, { headers });
     }
     /**
      * Sends a GET request to the specified URL.
@@ -209,7 +214,7 @@ export default class FirecrawlApp {
      * @returns {Promise<AxiosResponse>} The response from the GET request.
      */
     getRequest(url, headers) {
-        return axios.get(url, { headers });
+        return axios_1.default.get(url, { headers });
     }
     /**
      * Monitors the status of a crawl job until completion or failure.
@@ -263,3 +268,4 @@ export default class FirecrawlApp {
         }
     }
 }
+exports.default = FirecrawlApp;

@@ -11,6 +11,7 @@ import { Logger } from "../../../lib/logger";
  * @param url The URL to scrape
  * @param waitFor The time to wait for the page to load
  * @param screenshot Whether to take a screenshot
+ * @param fullPageScreenshot Whether to take a full page screenshot
  * @param pageOptions The options for the page
  * @param headers The headers to send with the request
  * @param options The options for the request
@@ -20,6 +21,7 @@ export async function scrapWithFireEngine({
   url,
   waitFor = 0,
   screenshot = false,
+  fullPageScreenshot = false,
   pageOptions = { parsePDF: true },
   fireEngineOptions = {},
   headers,
@@ -28,6 +30,7 @@ export async function scrapWithFireEngine({
   url: string;
   waitFor?: number;
   screenshot?: boolean;
+  fullPageScreenshot?: boolean;
   pageOptions?: { scrollXPaths?: string[]; parsePDF?: boolean };
   fireEngineOptions?: FireEngineOptions;
   headers?: Record<string, string>;
@@ -47,8 +50,9 @@ export async function scrapWithFireEngine({
   try {
     const reqParams = await generateRequestParams(url);
     const waitParam = reqParams["params"]?.wait ?? waitFor;
-    const engineParam = reqParams["params"]?.engine ?? fireEngineOptions?.engine  ?? "playwright";
+    const engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "playwright";
     const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
+    const fullPageScreenshotParam = reqParams["params"]?.fullPageScreenshot ?? fullPageScreenshot;
     const fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
 
 
@@ -61,8 +65,9 @@ export async function scrapWithFireEngine({
     let engine = engineParam; // do we want fireEngineOptions as first choice?
 
     Logger.info(
-      `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { wait: ${waitParam}, screenshot: ${screenshotParam}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
+      `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { wait: ${waitParam}, screenshot: ${screenshotParam}, fullPageScreenshot: ${fullPageScreenshot}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
     );
+
 
     const response = await axios.post(
       process.env.FIRE_ENGINE_BETA_URL + endpoint,
@@ -70,6 +75,7 @@ export async function scrapWithFireEngine({
         url: url,
         wait: waitParam,
         screenshot: screenshotParam,
+        fullPageScreenshot: fullPageScreenshotParam,
         headers: headers,
         pageOptions: pageOptions,
         ...fireEngineOptionsParam,

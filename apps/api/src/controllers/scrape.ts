@@ -121,13 +121,7 @@ export async function scrapeController(req: Request, res: Response) {
     };
 
 
-    // Async check saves 500ms in average case
-    // Don't async check in llm extraction mode as it could be expensive
-    if (extractorOptions.mode.includes("llm-extraction")) {
-      await checkCredits();
-    } else {
-      checkCredits();
-    }
+    await checkCredits();
 
     const jobId = uuidv4();
 

@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import Redis from "ioredis";
 import { Logger } from "../../lib/logger";
-import { sendSlackWebhook } from "../../services/alerts/slack";
 import { redisRateLimitClient } from "../../services/rate-limiter";
 
 export async function redisHealthController(req: Request, res: Response) {
@@ -63,22 +62,22 @@ export async function redisHealthController(req: Request, res: Response) {
       Logger.info(
         `Redis instances health check: ${JSON.stringify(healthStatus)}`
       );
-      await sendSlackWebhook(
-        `[REDIS DOWN] Redis instances health check: ${JSON.stringify(
-          healthStatus
-        )}`,
-        true
-      );
+      // await sendSlackWebhook(
+      //   `[REDIS DOWN] Redis instances health check: ${JSON.stringify(
+      //     healthStatus
+      //   )}`,
+      //   true
+      // );
       return res
         .status(500)
         .json({ status: "unhealthy", details: healthStatus });
     }
   } catch (error) {
     Logger.error(`Redis health check failed: ${error}`);
-    await sendSlackWebhook(
-      `[REDIS DOWN] Redis instances health check: ${error.message}`,
-      true
-    );
+    // await sendSlackWebhook(
+    //   `[REDIS DOWN] Redis instances health check: ${error.message}`,
+    //   true
+    // );
     return res
       .status(500)
       .json({ status: "unhealthy", message: error.message });

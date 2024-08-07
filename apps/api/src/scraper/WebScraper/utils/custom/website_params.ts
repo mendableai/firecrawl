@@ -232,4 +232,12 @@ export const urlSpecificParams = {
       }
     },
   },
+  "amazon.com":{
+    defaultScraper: "fire-engine",
+    params:{
+      fireEngineOptions:{
+        engine: "chrome-cdp",
+      },
+    },
+  },
 };

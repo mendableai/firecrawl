@@ -114,7 +114,7 @@ workerFun(webScraperQueueName, processJobInternal);
 workerFun(scrapeQueueName, processJobInternal);
 
 async function processJob(job: Job, token: string) {
-  Logger.debug(`🐂 Worker taking job ${job.id}`);
+  Logger.info(`🐂 Worker taking job ${job.id}`);
 
   try {
     job.updateProgress({
@@ -172,7 +172,7 @@ async function processJob(job: Job, token: string) {
       pageOptions: job.data.pageOptions,
       origin: job.data.origin,
     });
-    Logger.debug(`🐂 Job done ${job.id}`);
+    Logger.info(`🐂 Job done ${job.id}`);
     return data;
   } catch (error) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);

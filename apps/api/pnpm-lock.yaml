@@ -149,6 +149,9 @@ importers:
       rate-limiter-flexible:
         specifier: 2.4.2
         version: 2.4.2
+      redlock:
+        specifier: 5.0.0-beta.2
+        version: 5.0.0-beta.2
       resend:
         specifier: ^3.4.0
         version: 3.4.0
@@ -3949,6 +3952,10 @@ packages:
 
   redis@4.6.14:
     resolution: {integrity: sha512-GrNg/e33HtsQwNXL7kJT+iNFPSwE1IPmd7wzV3j4f2z0EYxZfZE7FVTmUysgAtqQQtg5NXF5SNLR9OdO/UHOfw==}
+
+  redlock@5.0.0-beta.2:
+    resolution: {integrity: sha512-2RDWXg5jgRptDrB1w9O/JgSZC0j7y4SlaXnor93H/UJm/QyDiFgBKNtrh0TI6oCXqYSaSoXxFh6Sd3VtYfhRXw==}
+    engines: {node: '>=12'}
 
   regenerator-runtime@0.14.1:
     resolution: {integrity: sha512-dYnhHh0nJoMfnkZs6GmmhFknAGRrLznOu5nc9ML+EJxGvrx6H7teuevqVqCuPcPK//3eDrrjQhehXVx9cnkGdw==}
@@ -9097,6 +9104,10 @@ snapshots:
       '@redis/json': 1.0.6(@redis/client@1.5.16)
       '@redis/search': 1.1.6(@redis/client@1.5.16)
       '@redis/time-series': 1.0.5(@redis/client@1.5.16)
+
+  redlock@5.0.0-beta.2:
+    dependencies:
+      node-abort-controller: 3.1.1
 
   regenerator-runtime@0.14.1: {}
 

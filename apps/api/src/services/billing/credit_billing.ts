@@ -3,9 +3,38 @@ import { withAuth } from "../../lib/withAuth";
 import { sendNotification } from "../notification/email_notification";
 import { supabase_service } from "../supabase";
 import { Logger } from "../../lib/logger";
+import { getValue, setValue } from "../redis";
+import Redlock from "redlock";
+import Client from "ioredis";
 
 const FREE_CREDITS = 500;
 
+const redlock = new Redlock(
+  // You should have one client for each independent redis node
+  // or cluster.
+  [new Client(process.env.REDIS_RATE_LIMIT_URL)],
+  {
+    // The expected clock drift; for more details see:
+    // http://redis.io/topics/distlock
+    driftFactor: 0.01, // multiplied by lock ttl to determine drift time
+
+    // The max number of times Redlock will attempt to lock a resource
+    // before erroring.
+    retryCount: 5,
+
+    // the time in ms between attempts
+    retryDelay: 100, // time in ms
+
+    // the max time in ms randomly added to retries
+    // to improve performance under high contention
+    // see https://www.awsarchitectureblog.com/2015/03/backoff.html
+    retryJitter: 200, // time in ms
+
+    // The minimum remaining time on a lock before an extension is automatically
+    // attempted with the `using` API.
+    automaticExtensionThreshold: 500, // time in ms
+  }
+);
 export async function billTeam(team_id: string, credits: number) {
   return withAuth(supaBillTeam)(team_id, credits);
 }
@@ -254,23 +283,41 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
   }
 
   let totalCreditsUsed = 0;
+  const cacheKey = `credit_usage_${subscription.id}_${subscription.current_period_start}_${subscription.current_period_end}_lc`;
+  const redLockKey = `lock_${cacheKey}`;
+  const lockTTL = 10000; // 10 seconds
+
   try {
-    const { data: creditUsages, error: creditUsageError } =
-      await supabase_service.rpc("get_credit_usage_2", {
-        sub_id: subscription.id,
-        start_time: subscription.current_period_start,
-        end_time: subscription.current_period_end,
-      });
+    const lock = await redlock.acquire([redLockKey], lockTTL);
 
-    if (creditUsageError) {
-      Logger.error(`Error calculating credit usage: ${creditUsageError}`);
-    }
+    try {
+      const cachedCreditUsage = await getValue(cacheKey);
 
-    if (creditUsages && creditUsages.length > 0) {
-      totalCreditsUsed = creditUsages[0].total_credits_used;
+      if (cachedCreditUsage) {
+        totalCreditsUsed = parseInt(cachedCreditUsage);
+      } else {
+        const { data: creditUsages, error: creditUsageError } =
+          await supabase_service.rpc("get_credit_usage_2", {
+            sub_id: subscription.id,
+            start_time: subscription.current_period_start,
+            end_time: subscription.current_period_end,
+          });
+
+        if (creditUsageError) {
+          Logger.error(`Error calculating credit usage: ${creditUsageError}`);
+        }
+
+        if (creditUsages && creditUsages.length > 0) {
+          totalCreditsUsed = creditUsages[0].total_credits_used;
+          await setValue(cacheKey, totalCreditsUsed.toString(), 1800); // Cache for 30 minutes
+          // Logger.info(`Cache set for credit usage: ${totalCreditsUsed}`);
+        }
+      }
+    } finally {
+      await lock.release();
     }
   } catch (error) {
-    Logger.error(`Error calculating credit usage: ${error}`);
+    Logger.error(`Error acquiring lock or calculating credit usage: ${error}`);
   }
 
   // Adjust total credits used by subtracting coupon value
