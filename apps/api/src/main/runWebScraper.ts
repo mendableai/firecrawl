@@ -104,7 +104,7 @@ export async function runWebScraper({
             return { url: doc.metadata.sourceURL };
           }
         })
-      : docs.filter((doc) => doc.content.trim().length > 0);
+      : docs;
     
     const isCancelled = await (await getWebScraperQueue().client).exists("cancelled:" + bull_job_id);
 
