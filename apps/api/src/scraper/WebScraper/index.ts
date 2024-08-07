@@ -94,7 +94,7 @@ export class WebScraperDataProvider {
           const jobStatus = await job.getState();
           if (jobStatus === "failed") {
             Logger.info(
-              "Job has failed or has been cancelled by the user. Stopping the job..."
+              "Job " + job.id + " has failed or has been cancelled by the user. Stopping the job..."
             );
             return [] as Document[];
           }
