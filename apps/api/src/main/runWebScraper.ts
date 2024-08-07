@@ -141,21 +141,21 @@ const saveJob = async (job: Job, result: any, token: string, mode: string) => {
         .eq("job_id", job.id);
 
       if (error) throw new Error(error.message);
-      try {
-        if (mode === "crawl") {
-          await job.moveToCompleted(null, token, false);
-        } else {
-          await job.moveToCompleted(result, token, false);
-        }
-      } catch (error) {
-        // I think the job won't exist here anymore
-      }
-    } else {
-      try {
-        await job.moveToCompleted(result, token, false);
-      } catch (error) {
-        // I think the job won't exist here anymore
-      }
+      // try {
+      //   if (mode === "crawl") {
+      //     await job.moveToCompleted(null, token, false);
+      //   } else {
+      //     await job.moveToCompleted(result, token, false);
+      //   }
+      // } catch (error) {
+      //   // I think the job won't exist here anymore
+      // }
+    // } else {
+    //   try {
+    //     await job.moveToCompleted(result, token, false);
+    //   } catch (error) {
+    //     // I think the job won't exist here anymore
+    //   }
     }
     ScrapeEvents.logJobEvent(job, "completed");
   } catch (error) {

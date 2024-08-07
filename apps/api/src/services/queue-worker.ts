@@ -51,7 +51,7 @@ const processJobInternal = async (token: string, job: Job) => {
   try {
     const result = await processJob(job, token);
     const jobState = await job.getState();
-    if(jobState !== "completed" && jobState !== "failed"){
+    if (jobState !== "completed" && jobState !== "failed") {
       try{
         await job.moveToCompleted(result.docs, token, false); //3rd arg fetchNext
       }catch(e){
