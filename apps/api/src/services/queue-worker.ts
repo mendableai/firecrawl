@@ -33,7 +33,7 @@ const workerStalledCheckInterval =
 const jobLockExtendInterval =
   Number(process.env.JOB_LOCK_EXTEND_INTERVAL) || 15000;
 const jobLockExtensionTime =
-  Number(process.env.JOB_LOCK_EXTENSION_TIME) || 15000;
+  Number(process.env.JOB_LOCK_EXTENSION_TIME) || 60000;
 
 const cantAcceptConnectionInterval =
   Number(process.env.CANT_ACCEPT_CONNECTION_INTERVAL) || 2000;
@@ -52,6 +52,7 @@ const processJobInternal = async (token: string, job: Job) => {
   try {
     const result = await processJob(job, token);
     const jobState = await job.getState();
+    console.log("done", job, jobState, result);
     if (jobState !== "completed" && jobState !== "failed") {
       await job.moveToCompleted(result.docs, token, false);
     }
