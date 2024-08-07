@@ -93,11 +93,11 @@ export interface FirecrawlDocumentMetadataV0 {
  */
 export interface FirecrawlDocument {
   url?: string;
-  content: string;
   markdown?: string;
   html?: string;
   rawHtml?: string;
-  linksOnPage?: string[];
+  links?: string[];
+  screenshot?: string;
   metadata: FirecrawlDocumentMetadata;
 }
 
