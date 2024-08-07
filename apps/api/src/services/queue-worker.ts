@@ -20,10 +20,10 @@ if (process.env.ENV === 'production') {
 const wsq = getWebScraperQueue();
 
 async function processJob(job: Job, done) {
-  Logger.debug(`🐂 Worker taking job ${job.id}`);
+  Logger.info(`🐂 Worker taking job ${job.id}`);
 
   const lockInterval = setInterval(() => {
-    Logger.debug(`🐂 Renewing lock for ${job.id}`);
+    Logger.info(`🐂 Renewing lock for ${job.id}`);
     job.extendLock(60000);
   }, 15000);
 
@@ -66,7 +66,7 @@ async function processJob(job: Job, done) {
       pageOptions: job.data.pageOptions,
       origin: job.data.origin,
     });
-    Logger.debug(`🐂 Job done ${job.id}`);
+    Logger.info(`🐂 Job done ${job.id}`);
     clearInterval(lockInterval);
     done(null, data);
   } catch (error) {
