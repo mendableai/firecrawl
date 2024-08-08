@@ -36,12 +36,13 @@ export async function scrapeController(req: Request, res: Response) {
   //   headers: {
   //     "x-key": "test"
   //   },
-  //   formats: ["markdown", "html", "rawHtml", "content", "linksOnPage", "screenshot", "fullPageScreenshot"],
+  //   formats: ["markdown", "html", "rawHtml", "content", "links", "screenshot"],
   //   includeTags: ["test"],
   //   excludeTags: ["test"],
   //   onlyMainContent: false,
   //   timeout: 30000,
   //   waitFor: number
+  //   screenshotMode: "desktop" | "full-desktop" | "mobile" | "full-mobile";
   // }
 
   try {

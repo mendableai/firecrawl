@@ -26,7 +26,7 @@ export async function crawlController(req: Request, res: Response) {
   //     limit: number
   //     allowBackwardLinks: boolean >> TODO: CHANGE THIS NAME???
   //     allowExternalLinks: boolean
-  //     ignoreSitemap: number
+  //     ignoreSitemap: boolean
   //   }
   //   scrapeOptions: Exclude<Scrape, "url">
   // }
