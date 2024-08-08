@@ -19,24 +19,22 @@ import requests
 logger : logging.Logger = logging.getLogger("firecrawl")
 
 class FirecrawlApp:
-    """
-    Initialize the FirecrawlApp instance.
+    def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None, version: str = 'v1') -> None:
+      """
+      Initialize the FirecrawlApp instance with API key, API URL, and version.
 
-    Args:
-        api_key (Optional[str]): API key for authenticating with the Firecrawl API.
-        api_url (Optional[str]): Base URL for the Firecrawl API.
-    """
-    def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
-        self.api_key = api_key or os.getenv('FIRECRAWL_API_KEY')
-        if self.api_key is None:
-            logger.warning("No API key provided")
-            raise ValueError('No API key provided')
-        else:
-            logger.debug("Initialized FirecrawlApp with API key: %s", self.api_key)
-
-        self.api_url = api_url or os.getenv('FIRECRAWL_API_URL', 'https://api.firecrawl.dev')
-        if self.api_url != 'https://api.firecrawl.dev':
-            logger.debug("Initialized FirecrawlApp with API URL: %s", self.api_url)
+      Args:
+          api_key (Optional[str]): API key for authenticating with the Firecrawl API.
+          api_url (Optional[str]): Base URL for the Firecrawl API.
+          version (str): API version, either 'v0' or 'v1'.
+      """
+      self.api_key = api_key or os.getenv('FIRECRAWL_API_KEY')
+      self.api_url = api_url or os.getenv('FIRECRAWL_API_URL', 'https://api.firecrawl.dev')
+      self.version = version
+      if self.api_key is None:
+          logger.warning("No API key provided")
+          raise ValueError('No API key provided')
+      logger.debug(f"Initialized FirecrawlApp with API key: {self.api_key} and version: {self.version}")
 
     def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
         """
@@ -75,9 +73,11 @@ class FirecrawlApp:
             for key, value in params.items():
                 if key != 'extractorOptions':
                     scrape_params[key] = value
+
+        endpoint = f'/{self.version}/scrape'
         # Make the POST request with the prepared headers and JSON data
         response = requests.post(
-            f'{self.api_url}/v0/scrape',
+            f'{self.api_url}{endpoint}',
             headers=headers,
             json=scrape_params,
         )
@@ -104,6 +104,9 @@ class FirecrawlApp:
         Raises:
             Exception: If the search request fails.
         """
+        if self.version == 'v1':
+            raise NotImplementedError("Search is not supported in v1")
+        
         headers = self._prepare_headers()
         json_data = {'query': query}
         if params:
@@ -145,11 +148,12 @@ class FirecrawlApp:
         Raises:
             Exception: If the crawl job initiation or monitoring fails.
         """
+        endpoint = f'/{self.version}/crawl'
         headers = self._prepare_headers(idempotency_key)
         json_data = {'url': url}
         if params:
             json_data.update(params)
-        response = self._post_request(f'{self.api_url}/v0/crawl', json_data, headers)
+        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
         if response.status_code == 200:
             job_id = response.json().get('jobId')
             if wait_until_done:
@@ -172,12 +176,43 @@ class FirecrawlApp:
         Raises:
             Exception: If the status check request fails.
         """
+        endpoint = f'/{self.version}/crawl/status/{job_id}'
         headers = self._prepare_headers()
-        response = self._get_request(f'{self.api_url}/v0/crawl/status/{job_id}', headers)
+        response = self._get_request(f'{self.api_url}{endpoint}', headers)
         if response.status_code == 200:
             return response.json()
         else:
             self._handle_error(response, 'check crawl status')
+
+    def map_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
+        """
+        Perform a map search using the Firecrawl API.
+        """
+        if self.version == 'v0':
+            raise NotImplementedError("Map is not supported in v0")
+        
+        endpoint = f'/{self.version}/map'
+        headers = self._prepare_headers()
+
+        # Prepare the base scrape parameters with the URL
+        json_data = {'url': url}
+        if params:
+            json_data.update(params)
+        
+        # Make the POST request with the prepared headers and JSON data
+        response = requests.post(
+            f'{self.api_url}{endpoint}',
+            headers=headers,
+            json=json_data,
+        )
+        if response.status_code == 200:
+            response = response.json()
+            if response['success'] and 'data' in response:
+                return response['data']
+            else:
+                raise Exception(f'Failed to map URL. Error: {response["error"]}')
+        else:
+            self._handle_error(response, 'map')
 
     def _prepare_headers(self, idempotency_key: Optional[str] = None) -> Dict[str, str]:
         """
