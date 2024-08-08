@@ -36,17 +36,9 @@ export const supabase_service: SupabaseClient = new Proxy(
   new SupabaseService(),
   {
     get: function (target, prop, receiver) {
-      if (process.env.USE_DB_AUTHENTICATION === "false") {
-        Logger.debug(
-          "Attempted to access Supabase client when it's not configured."
-        );
-      }
       const client = target.getClient();
       // If the Supabase client is not initialized, intercept property access to provide meaningful error feedback.
       if (client === null) {
-        Logger.error(
-          "Attempted to access Supabase client when it's not configured."
-        );
         return () => {
           throw new Error("Supabase client is not configured.");
         };
