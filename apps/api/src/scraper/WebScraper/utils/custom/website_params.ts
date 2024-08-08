@@ -240,4 +240,12 @@ export const urlSpecificParams = {
       },
     },
   },
+  "digikey.com":{
+    defaultScraper: "fire-engine",
+    params:{
+      fireEngineOptions:{
+        engine: "tlsclient",
+      },
+    },
+  }
 };
