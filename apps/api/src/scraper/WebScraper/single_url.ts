@@ -23,11 +23,13 @@ import { clientSideError } from "../../strings";
 
 dotenv.config();
 
+const useDatabaseAuth = process.env.USE_DB_AUTHENTICATION === "true";
+
 export const baseScrapers = [
   "fire-engine",
   "fire-engine;chrome-cdp",
   "scrapingBee",
-  process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
+  useDatabaseAuth ? undefined : "playwright",
   "scrapingBeeLoad",
   "fetch",
 ].filter(Boolean);
@@ -85,10 +87,10 @@ function getScrapingFallbackOrder(
   });
 
   let defaultOrder = [
-    !process.env.USE_DB_AUTHENTICATION ? undefined : "fire-engine",
-    !process.env.USE_DB_AUTHENTICATION ? undefined : "fire-engine;chrome-cdp",
+    !useDatabaseAuth ? undefined : "fire-engine",
+    !useDatabaseAuth ? undefined : "fire-engine;chrome-cdp",
     "scrapingBee",
-    process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
+    useDatabaseAuth ? undefined : "playwright",
     "scrapingBeeLoad",
     "fetch",
   ].filter(Boolean);
@@ -96,7 +98,7 @@ function getScrapingFallbackOrder(
   if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
     defaultOrder = [
       "fire-engine",
-      process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
+      useDatabaseAuth ? undefined : "playwright",
       ...defaultOrder.filter(
         (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
       ),
