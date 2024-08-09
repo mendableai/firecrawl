@@ -51,9 +51,9 @@ const processJobInternal = async (token: string, job: Job) => {
 
   try {
     const result = await processJob(job, token);
-    const jobState = await job.getState();
-    if (jobState !== "completed" && jobState !== "failed") {
+    try{
       await job.moveToCompleted(result.docs, token, false);
+    }catch(e){
     }
   } catch (error) {
     console.log("Job failed, error:", error);

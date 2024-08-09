@@ -35,7 +35,7 @@ export async function startWebScraperPipeline({
         if (partialDocs.length > 50) {
           partialDocs = partialDocs.slice(-50);
         }
-        job.updateProgress({ ...progress, partialDocs: partialDocs });
+        // job.updateProgress({ ...progress, partialDocs: partialDocs });
       }
     },
     onSuccess: (result, mode) => {
