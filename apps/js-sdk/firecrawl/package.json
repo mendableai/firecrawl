@@ -6,8 +6,14 @@
   "types": "types/index.d.ts",
   "type": "module",
   "exports": {
-    "require": "./build/cjs/index.js",
-    "import": "./build/esm/index.js"
+    "require": {
+      "types": "./types/index.d.ts",
+      "default": "./build/cjs/index.js"
+    },
+    "import": {
+      "types": "./types/index.d.ts",
+      "default": "./build/esm/index.js"
+    }
   },
   "scripts": {
     "build": "tsc --module commonjs --moduleResolution node10 --outDir build/cjs/ && echo '{\"type\": \"commonjs\"}' > build/cjs/package.json && npx tsc --module NodeNext --moduleResolution NodeNext --outDir build/esm/ && echo '{\"type\": \"module\"}' > build/esm/package.json",
