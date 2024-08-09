@@ -131,13 +131,13 @@ const saveJob = async (job: Job, result: any) => {
 
       if (error) throw new Error(error.message);
       try {
-        await job.moveToCompleted(null);
+        await job.moveToCompleted(null, false, false);
       } catch (error) {
         // I think the job won't exist here anymore
       }
     } else {
       try {
-        await job.moveToCompleted(result);
+        await job.moveToCompleted(result, false, false);
       } catch (error) {
         // I think the job won't exist here anymore
       }

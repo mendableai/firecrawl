@@ -27,8 +27,8 @@ export class WebScraperDataProvider {
   private bullJobId: string;
   private urls: string[] = [""];
   private mode: "single_urls" | "sitemap" | "crawl" = "single_urls";
-  private includes: string[];
-  private excludes: string[];
+  private includes: string | string[];
+  private excludes: string | string[];
   private maxCrawledLinks: number;
   private maxCrawledDepth: number = 10;
   private returnOnlyUrls: boolean;
@@ -171,8 +171,8 @@ export class WebScraperDataProvider {
     const crawler = new WebCrawler({
       jobId: this.jobId,
       initialUrl: this.urls[0],
-      includes: this.includes,
-      excludes: this.excludes,
+      includes: Array.isArray(this.includes) ? this.includes : this.includes.split(','),
+      excludes: Array.isArray(this.excludes) ? this.excludes : this.excludes.split(','),
       maxCrawledLinks: this.maxCrawledLinks,
       maxCrawledDepth: getAdjustedMaxDepth(this.urls[0], this.maxCrawledDepth),
       limit: this.limit,
@@ -445,6 +445,10 @@ export class WebScraperDataProvider {
       const url = new URL(document.metadata.sourceURL);
       const path = url.pathname;
 
+      if (!Array.isArray(this.excludes)) {
+        this.excludes = this.excludes.split(',');
+      }
+
       if (this.excludes.length > 0 && this.excludes[0] !== "") {
         // Check if the link should be excluded
         if (
@@ -454,6 +458,10 @@ export class WebScraperDataProvider {
         ) {
           return false;
         }
+      }
+
+      if (!Array.isArray(this.includes)) {
+        this.includes = this.includes.split(',');
       }
 
       if (this.includes.length > 0 && this.includes[0] !== "") {
@@ -567,8 +575,15 @@ export class WebScraperDataProvider {
       options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ??
       options.pageOptions?.replaceAllPathsWithAbsolutePaths ??
       false;
-    //! @nicolas, for some reason this was being injected and breaking everything. Don't have time to find source of the issue so adding this check
-    this.excludes = this.excludes.filter((item) => item !== "");
+
+    if (typeof options.crawlerOptions?.excludes === 'string') {
+      this.excludes = options.crawlerOptions?.excludes.split(',').filter((item) => item.trim() !== "");
+    }
+
+    if (typeof options.crawlerOptions?.includes === 'string') {
+      this.includes = options.crawlerOptions?.includes.split(',').filter((item) => item.trim() !== "");
+    }
+
     this.crawlerMode = options.crawlerOptions?.mode ?? "default";
     this.ignoreSitemap = options.crawlerOptions?.ignoreSitemap ?? false;
     this.allowBackwardCrawling =
