@@ -201,7 +201,7 @@ jobs:
         run: go mod tidy
         working-directory: ./apps/go-sdk
       - name: Run tests for Go SDK
-        run: go test -v ./...
+        run: go test -v ./... -timeout 180s
         working-directory: ./apps/go-sdk/firecrawl
 
   deploy:

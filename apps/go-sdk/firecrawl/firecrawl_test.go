@@ -16,7 +16,7 @@ var API_URL string
 var TEST_API_KEY string
 
 func init() {
-	err := godotenv.Load()
+	err := godotenv.Load("../.env")
 	if err != nil {
 		log.Fatalf("Error loading .env file: %v", err)
 	}

@@ -195,7 +195,7 @@ func NewFirecrawlApp(apiKey, apiURL string) (*FirecrawlApp, error) {
 	}
 
 	client := &http.Client{
-		Timeout: 30 * time.Second,
+		Timeout: 60 * time.Second,
 	}
 
 	return &FirecrawlApp{
@@ -502,6 +502,7 @@ func (app *FirecrawlApp) makeRequest(method, url string, data map[string]any, he
 //   - []*FirecrawlDocument: The crawl result if the job is completed.
 //   - error: An error if the crawl status check request fails.
 func (app *FirecrawlApp) monitorJobStatus(jobID string, headers map[string]string, pollInterval int) ([]*FirecrawlDocument, error) {
+	attempts := 0
 	for {
 		resp, err := app.makeRequest(
 			http.MethodGet,
@@ -531,7 +532,10 @@ func (app *FirecrawlApp) monitorJobStatus(jobID string, headers map[string]strin
 			if statusData.Data != nil {
 				return statusData.Data, nil
 			}
-			return nil, fmt.Errorf("crawl job completed but no data was returned")
+			attempts++
+			if attempts > 3 {
+				return nil, fmt.Errorf("crawl job completed but no data was returned")
+			}
 		} else if status == "active" || status == "paused" || status == "pending" || status == "queued" || status == "waiting" {
 			pollInterval = max(pollInterval, 2)
 			time.Sleep(time.Duration(pollInterval) * time.Second)

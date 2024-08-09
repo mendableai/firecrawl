@@ -33,7 +33,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to crawl URL: %v", err)
 	}
-	fmt.Println(crawlResult)
+	jsonCrawlResult, err := json.MarshalIndent(crawlResult, "", "  ")
+	if err != nil {
+		log.Fatalf("Failed to marshal crawl result: %v", err)
+	}
+	fmt.Println(string(jsonCrawlResult))
 
 	// LLM Extraction using JSON schema
 	jsonSchema := map[string]any{
