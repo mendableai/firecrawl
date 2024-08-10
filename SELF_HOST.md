@@ -160,7 +160,7 @@ Errors related to connecting to Redis, such as timeouts or "Connection refused".
 
 **Solution:**
 - Ensure that the Redis service is up and running in your Docker environment.
-- Verify that the REDIS_URL and REDIS_RATE_LIMIT_URL in your .env file point to the correct Redis instance.
+- Verify that the REDIS_URL and REDIS_RATE_LIMIT_URL in your .env file point to the correct Redis instance, ensure that it points to the same URL in the `docker-compose.yaml` file (`redis://redis:6379`)
 - Check network settings and firewall rules that may block the connection to the Redis port.
 
 ### API endpoint does not respond
