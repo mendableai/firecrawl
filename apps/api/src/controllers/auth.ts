@@ -37,6 +37,42 @@ function setTrace(team_id: string, api_key: string) {
     Logger.error(`Error setting trace attributes: ${error.message}`);
   }
 }
+
+async function getKeyAndPriceId(normalizedApi: string): Promise<{
+  success: boolean;
+  teamId?: string;
+  priceId?: string;
+  error?: string;
+  status?: number;
+}> {
+  const { data, error } = await supabase_service.rpc("get_key_and_price_id_2", {
+    api_key: normalizedApi,
+  });
+  if (error) {
+    Logger.error(`RPC ERROR (get_key_and_price_id_2): ${error.message}`);
+    return {
+      success: false,
+      error:
+        "The server seems overloaded. Please contact hello@firecrawl.com if you aren't sending too many requests at once.",
+      status: 500,
+    };
+  }
+  if (!data || data.length === 0) {
+    Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
+    // TODO: change this error code ?
+    return {
+      success: false,
+      error: "Unauthorized: Invalid token",
+      status: 401,
+    };
+  } else {
+    return {
+      success: true,
+      teamId: data[0].team_id,
+      priceId: data[0].price_id,
+    };
+  }
+}
 export async function supaAuthenticateUser(
   req,
   res,
@@ -71,7 +107,7 @@ export async function supaAuthenticateUser(
 
   let cacheKey = "";
   let redLockKey = "";
-  const lockTTL = 5000; // 5 seconds
+  const lockTTL = 15000; // 10 seconds
   let teamId: string | null = null;
   let priceId: string | null = null;
 
@@ -87,56 +123,60 @@ export async function supaAuthenticateUser(
         status: 401,
       };
     }
+
     cacheKey = `api_key:${normalizedApi}`;
-    redLockKey = `redlock:${cacheKey}`;
 
     try {
-      const lock = await redlock.acquire([redLockKey], lockTTL);
-
-      try {
-        const teamIdPriceId = await getValue(cacheKey);
-        if (teamIdPriceId) {
-          const { team_id, price_id } = JSON.parse(teamIdPriceId);
-          teamId = team_id;
-          priceId = price_id;
-        } else {
-          const { data, error } = await supabase_service.rpc(
-            "get_key_and_price_id_2",
-            { api_key: normalizedApi }
-          );
-          if (error) {
-            Logger.error(
-              `RPC ERROR (get_key_and_price_id_2): ${error.message}`
-            );
-            return {
-              success: false,
-              error:
-                "The server seems overloaded. Please contact hello@firecrawl.com if you aren't sending too many requests at once.",
-              status: 500,
-            };
-          }
-          if (!data || data.length === 0) {
-            Logger.warn(
-              `Error fetching api key: ${error.message} or data is empty`
-            );
-            // TODO: change this error code ?
-            return {
-              success: false,
-              error: "Unauthorized: Invalid token",
-              status: 401,
-            };
-          } else {
-            teamId = data[0].team_id;
-            priceId = data[0].price_id;
-          }
+      const teamIdPriceId = await getValue(cacheKey);
+      if (teamIdPriceId) {
+        const { team_id, price_id } = JSON.parse(teamIdPriceId);
+        teamId = team_id;
+        priceId = price_id;
+      } else {
+        const {
+          success,
+          teamId: tId,
+          priceId: pId,
+          error,
+          status,
+        } = await getKeyAndPriceId(normalizedApi);
+        if (!success) {
+          return { success, error, status };
         }
-      } catch (error) {
-        Logger.error(`Error with auth function: ${error.message}`);
-      } finally {
-        await lock.release();
+        teamId = tId;
+        priceId = pId;
+        await setValue(
+          cacheKey,
+          JSON.stringify({ team_id: teamId, price_id: priceId }),
+          10
+        );
       }
     } catch (error) {
-      Logger.error(`Error acquiring the rate limiter lock: ${error}`);
+      Logger.error(`Error with auth function: ${error.message}`);
+      // const {
+      //   success,
+      //   teamId: tId,
+      //   priceId: pId,
+      //   error: e,
+      //   status,
+      // } = await getKeyAndPriceId(normalizedApi);
+      // if (!success) {
+      //   return { success, error: e, status };
+      // }
+      // teamId = tId;
+      // priceId = pId;
+      // const {
+      //   success,
+      //   teamId: tId,
+      //   priceId: pId,
+      //   error: e,
+      //   status,
+      // } = await getKeyAndPriceId(normalizedApi);
+      // if (!success) {
+      //   return { success, error: e, status };
+      // }
+      // teamId = tId;
+      // priceId = pId;
     }
 
     // get_key_and_price_id_2 rpc definition:
@@ -217,12 +257,12 @@ export async function supaAuthenticateUser(
     endDate.setDate(endDate.getDate() + 7);
 
     // await sendNotification(team_id, NotificationType.RATE_LIMIT_REACHED, startDate.toISOString(), endDate.toISOString());
-    // TODO: cache 429 for a few minuts
+    // Cache longer for 429s
     if (teamId && priceId && mode !== RateLimiterMode.Preview) {
       await setValue(
         cacheKey,
         JSON.stringify({ team_id: teamId, price_id: priceId }),
-        60 * 5
+        60 // 10 seconds, cache for everything
       );
     }
 
