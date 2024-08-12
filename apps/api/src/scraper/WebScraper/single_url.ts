@@ -93,14 +93,14 @@ function getScrapingFallbackOrder(
     useFireEngine ? "fire-engine;chrome-cdp" : undefined,
     useScrapingBee ? "scrapingBee" : undefined,
     useScrapingBee ? "scrapingBeeLoad" : undefined,
-    useDatabaseAuth ? undefined : "playwright",
+    useFireEngine ? undefined : "playwright",
     "fetch",
   ].filter(Boolean);
 
   if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
     defaultOrder = [
       "fire-engine",
-      useDatabaseAuth ? undefined : "playwright",
+      useFireEngine ? undefined : "playwright",
       ...defaultOrder.filter(
         (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
       ),
