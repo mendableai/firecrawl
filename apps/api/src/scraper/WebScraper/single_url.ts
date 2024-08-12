@@ -23,7 +23,6 @@ import { clientSideError } from "../../strings";
 
 dotenv.config();
 
-const useDatabaseAuth = process.env.USE_DB_AUTHENTICATION === "true";
 const useScrapingBee = process.env.SCRAPING_BEE_API_KEY !== '' && process.env.SCRAPING_BEE_API_KEY !== undefined;
 const useFireEngine = process.env.FIRE_ENGINE_BETA_URL !== '' && process.env.FIRE_ENGINE_BETA_URL !== undefined;
 
@@ -31,7 +30,7 @@ export const baseScrapers = [
   useFireEngine ? "fire-engine" : undefined,
   useFireEngine ? "fire-engine;chrome-cdp" : undefined,
   useScrapingBee ? "scrapingBee" : undefined,
-  useDatabaseAuth ? undefined : "playwright",
+  useFireEngine ? undefined : "playwright",
   useScrapingBee ? "scrapingBeeLoad" : undefined,
   "fetch",
 ].filter(Boolean);
