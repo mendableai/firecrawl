@@ -8,7 +8,8 @@ export async function logScrape(
   scrapeLog: ScrapeLog,
   pageOptions?: PageOptions
 ) {
-  if (process.env.USE_DB_AUTHENTICATION === "false") {
+  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+  if (!useDbAuthentication) {
     Logger.debug("Skipping logging scrape to Supabase");
     return;
   }

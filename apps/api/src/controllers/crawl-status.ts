@@ -24,7 +24,8 @@ export async function crawlStatusController(req: Request, res: Response) {
     const { current, current_url, total, current_step, partialDocs } = await job.progress();
 
     let data = job.returnvalue;
-    if (process.env.USE_DB_AUTHENTICATION === "true") {
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+    if (useDbAuthentication) {
       const supabaseData = await supabaseGetJobById(req.params.jobId);
 
       if (supabaseData) {
