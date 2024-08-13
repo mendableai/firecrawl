@@ -42,6 +42,7 @@ To start, we wont set up authentication, or any optional sub services (pdf parsi
 ```
 # ===== Required ENVS ======
 NUM_WORKERS_PER_QUEUE=8
+EXPOSE_PORT=8080
 PORT=3002
 HOST=0.0.0.0
 REDIS_URL=redis://redis:6379
@@ -100,14 +101,14 @@ POSTHOG_HOST= # set if you'd like to send posthog events like job logs
 
 This will run a local instance of Firecrawl which can be accessed at `http://localhost:3002`.
 
-You should be able to see the Bull Queue Manager UI on `http://localhost:3002/admin/@/queues`.
+You should be able to see the Bull Queue Manager UI on `http://localhost:8080/admin/@/queues`.
 
 5. *(Optional)* Test the API
 
 If you’d like to test the crawl endpoint, you can run this:
 
   ```bash
-  curl -X POST http://localhost:3002/v0/crawl \
+  curl -X POST http://localhost:8080/v0/crawl \
       -H 'Content-Type: application/json' \
       -d '{
         "url": "https://mendable.ai"

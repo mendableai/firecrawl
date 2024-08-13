@@ -11,6 +11,7 @@ x-common-service: &common-service
     - PLAYWRIGHT_MICROSERVICE_URL=${PLAYWRIGHT_MICROSERVICE_URL:-http://playwright-service:3000}
     - USE_DB_AUTHENTICATION=${USE_DB_AUTHENTICATION}
     - PORT=${PORT:-3002}
+    - EXPOSE_PORT=${EXPOSE_PORT:-8181}
     - NUM_WORKERS_PER_QUEUE=${NUM_WORKERS_PER_QUEUE}
     - OPENAI_API_KEY=${OPENAI_API_KEY}
     - OPENAI_BASE_URL=${OPENAI_BASE_URL}
@@ -51,7 +52,7 @@ services:
       - redis
       - playwright-service
     ports:
-      - "3002:3002"
+      - "${EXPOSE_PORT}:3002"
     command: [ "pnpm", "run", "start:production" ]
 
   worker:
