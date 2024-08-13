@@ -30,6 +30,15 @@ export async function addCrawlJob(id: string, job_id: string) {
     await redisConnection.expire("crawl:" + id + ":jobs", 24 * 60 * 60, "NX");
 }
 
+export async function addCrawlJobDone(id: string, job_id: string) {
+    await redisConnection.sadd("crawl:" + id + ":jobs_done", job_id);
+    await redisConnection.expire("crawl:" + id + ":jobs_done", 24 * 60 * 60, "NX");
+}
+
+export async function isCrawlFinished(id: string) {
+    return (await redisConnection.scard("crawl:" + id + ":jobs_done")) === (await redisConnection.scard("crawl:" + id + ":jobs"));
+}
+
 export async function getCrawlJobs(id: string): Promise<string[]> {
     return await redisConnection.smembers("crawl:" + id + ":jobs");
 }

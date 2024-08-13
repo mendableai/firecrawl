@@ -18,7 +18,7 @@ import systemMonitor from "./system-monitor";
 import { v4 as uuidv4 } from "uuid";
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import { getAdjustedMaxDepth } from "../scraper/WebScraper/utils/maxDepthUtils";
-import { addCrawlJob, crawlToCrawler, getCrawl, lockURL } from "../lib/crawl-redis";
+import { addCrawlJob, addCrawlJobDone, crawlToCrawler, getCrawl, isCrawlFinished, lockURL } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
 import { addScrapeJob } from "./queue-jobs";
 
@@ -168,6 +168,8 @@ async function processJob(job: Job, token: string) {
     });
 
     if (job.data.crawl_id) {
+      await addCrawlJobDone(job.data.crawl_id, job.id);
+
       if (!job.data.sitemapped) {
         const sc = await getCrawl(job.data.crawl_id) as StoredCrawl;
 
@@ -197,6 +199,10 @@ async function processJob(job: Job, token: string) {
             }
           }
         }
+      }
+
+      if (await isCrawlFinished(job.data.crawl_id)) {
+        await callWebhook(job.data.team_id, job.id as string, data);
       }
     }
 
@@ -229,8 +235,8 @@ async function processJob(job: Job, token: string) {
       error:
         "Something went wrong... Contact help@mendable.ai or try again." /* etc... */,
     };
-    if (job.data.mode === "crawl") {
-      await callWebhook(job.data.team_id, job.id as string, data);
+    if (job.data.mode === "crawl" || job.data.crawl_id) {
+      await callWebhook(job.data.team_id, job.data.crawl_id ?? job.id as string, data);
     }
     await logJob({
       job_id: job.id as string,
