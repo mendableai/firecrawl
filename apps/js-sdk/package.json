@@ -15,6 +15,7 @@
     "axios": "^1.6.8",
     "ts-node": "^10.9.2",
     "typescript": "^5.4.5",
+    "uuid": "^10.0.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

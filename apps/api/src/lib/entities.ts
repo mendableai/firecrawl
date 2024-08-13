@@ -18,6 +18,7 @@ export type PageOptions = {
   fetchPageContent?: boolean;
   waitFor?: number;
   screenshot?: boolean;
+  fullPageScreenshot?: boolean;
   headers?: Record<string, string>;
   replaceAllPathsWithAbsolutePaths?: boolean;
   parsePDF?: boolean;
@@ -42,8 +43,8 @@ export type SearchOptions = {
 
 export type CrawlerOptions = {
   returnOnlyUrls?: boolean;
-  includes?: string[];
-  excludes?: string[];
+  includes?: string | string[];
+  excludes?: string | string[];
   maxCrawledLinks?: number;
   maxDepth?: number;
   limit?: number;

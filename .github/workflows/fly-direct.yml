@@ -1,7 +1,7 @@
 name: Fly Deploy Direct
 on:
   schedule:
-    - cron: '0 */6 * * *'
+    - cron: '0 */2 * * *'
 
 env:
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
