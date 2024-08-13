@@ -7,7 +7,7 @@ The Firecrawl Go SDK is a library that allows you to easily scrape and crawl web
 To install the Firecrawl Go SDK, you can
 
 ```bash
-go get github.com/mendableai/firecrawl/go-sdk/firecrawl
+go get github.com/mendableai/firecrawl
 ```
 
 ## Usage
@@ -23,7 +23,7 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/mendableai/firecrawl/go-sdk/firecrawl"
+	"github.com/mendableai/firecrawl/firecrawl"
 )
 
 func main() {

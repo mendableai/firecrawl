@@ -6,7 +6,7 @@ import (
 	"log"
 
 	"github.com/google/uuid"
-	"github.com/mendableai/firecrawl/go-sdk/firecrawl"
+	"github.com/mendableai/firecrawl/firecrawl"
 )
 
 func main() {
