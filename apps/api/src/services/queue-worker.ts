@@ -179,8 +179,6 @@ async function processJob(job: Job, token: string) {
           
           for (const link of links) {
             if (await lockURL(job.data.crawl_id, sc, link)) {
-              console.log("Locked", link + "!");
-
               const newJob = await addScrapeJob({
                 url: link,
                 mode: "single_urls",
