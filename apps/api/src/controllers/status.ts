@@ -1,56 +1,38 @@
 import { Request, Response } from "express";
-import { getWebScraperQueue } from "../../src/services/queue-service";
-import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
 import { Logger } from "../../src/lib/logger";
+import { getCrawl, getCrawlJobs } from "../../src/lib/crawl-redis";
+import { getScrapeQueue } from "../../src/services/queue-service";
 
 export async function crawlJobStatusPreviewController(req: Request, res: Response) {
   try {
-    const job = await getWebScraperQueue().getJob(req.params.jobId);
-    if (!job) {
+    const sc = await getCrawl(req.params.jobId);
+    if (!sc) {
       return res.status(404).json({ error: "Job not found" });
     }
 
-    let progress = job.progress;
-    if(typeof progress !== 'object') {
-      progress = {
-        current: 0,
-        current_url: '',
-        total: 0,
-        current_step: '',
-        partialDocs: []
-      }
-    }
-    const { 
-      current = 0, 
-      current_url = '', 
-      total = 0, 
-      current_step = '', 
-      partialDocs = [] 
-    } = progress as { current: number, current_url: string, total: number, current_step: string, partialDocs: any[] };
+    const jobIDs = await getCrawlJobs(req.params.jobId);
 
-    let data = job.returnvalue;
-    if (process.env.USE_DB_AUTHENTICATION === "true") {
-      const supabaseData = await supabaseGetJobById(req.params.jobId);
+    // let data = job.returnvalue;
+    // if (process.env.USE_DB_AUTHENTICATION === "true") {
+    //   const supabaseData = await supabaseGetJobById(req.params.jobId);
 
-      if (supabaseData) {
-        data = supabaseData.docs;
-      }
-    }
+    //   if (supabaseData) {
+    //     data = supabaseData.docs;
+    //   }
+    // }
 
-    let jobStatus = await job.getState();
-    if (jobStatus === 'waiting' || jobStatus === 'delayed' || jobStatus === 'waiting-children' || jobStatus === 'unknown' || jobStatus === 'prioritized') {
-      jobStatus = 'active';
-    }
+    const jobs = await Promise.all(jobIDs.map(x => getScrapeQueue().getJob(x)));
+    const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
+    const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "active";
+
+    const data = jobs.map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
 
     res.json({
       status: jobStatus,
-      // progress: job.progress(),
-      current,
-      current_url,
-      current_step,
-      total,
-      data: data ? data : null,
-      partial_data: jobStatus == 'completed' ? [] : partialDocs,
+      current: jobStatuses.filter(x => x === "completed" || x === "failed").length,
+      total: jobs.length,
+      data: jobStatus === "completed" ? data : null,
+      partial_data: jobStatus === "completed" ? [] : data.filter(x => x !== null),
     });
   } catch (error) {
     Logger.error(error);

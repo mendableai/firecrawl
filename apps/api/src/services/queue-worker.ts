@@ -1,9 +1,7 @@
 import { CustomError } from "../lib/custom-error";
 import {
-  getWebScraperQueue,
   getScrapeQueue,
   redisConnection,
-  webScraperQueueName,
   scrapeQueueName,
 } from "./queue-service";
 import "dotenv/config";
@@ -110,7 +108,6 @@ const workerFun = async (queueName: string, processJobInternal: (token: string, 
   }
 };
 
-workerFun(webScraperQueueName, processJobInternal);
 workerFun(scrapeQueueName, processJobInternal);
 
 async function processJob(job: Job, token: string) {
@@ -205,10 +202,6 @@ async function processJob(job: Job, token: string) {
     return data;
   } catch (error) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);
-    if (await getWebScraperQueue().isPaused()) {
-      Logger.debug("🐂Queue is paused, ignoring");
-      return;
-    }
 
     if (error instanceof CustomError) {
       // Here we handle the error, then save the failed job

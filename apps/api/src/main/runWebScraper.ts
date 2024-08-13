@@ -12,7 +12,7 @@ import { Document } from "../lib/entities";
 import { supabase_service } from "../services/supabase";
 import { Logger } from "../lib/logger";
 import { ScrapeEvents } from "../lib/scrape-events";
-import { getWebScraperQueue } from "../services/queue-service";
+import { getScrapeQueue } from "../services/queue-service";
 
 export async function startWebScraperPipeline({
   job,
@@ -106,19 +106,15 @@ export async function runWebScraper({
         })
       : docs;
     
-    const isCancelled = await (await getWebScraperQueue().client).exists("cancelled:" + bull_job_id);
+    const billingResult = await billTeam(team_id, filteredDocs.length);
 
-    if (!isCancelled) {
-      const billingResult = await billTeam(team_id, filteredDocs.length);
-
-      if (!billingResult.success) {
-        // throw new Error("Failed to bill team, no subscription was found");
-        return {
-          success: false,
-          message: "Failed to bill team, no subscription was found",
-          docs: [],
-        };
-      }
+    if (!billingResult.success) {
+      // throw new Error("Failed to bill team, no subscription was found");
+      return {
+        success: false,
+        message: "Failed to bill team, no subscription was found",
+        docs: [],
+      };
     }
 
     // This is where the returnvalue from the job is set

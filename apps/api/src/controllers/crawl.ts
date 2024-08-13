@@ -1,10 +1,8 @@
 import { Request, Response } from "express";
-import { WebScraperDataProvider } from "../../src/scraper/WebScraper";
-import { billTeam } from "../../src/services/billing/credit_billing";
 import { checkTeamCredits } from "../../src/services/billing/credit_billing";
 import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../../src/types";
-import { addScrapeJob, addWebScraperJob } from "../../src/services/queue-jobs";
+import { addScrapeJob } from "../../src/services/queue-jobs";
 import { isUrlBlocked } from "../../src/scraper/WebScraper/utils/blocklist";
 import { logCrawl } from "../../src/services/logging/crawl_log";
 import { validateIdempotencyKey } from "../../src/services/idempotency/validate";
