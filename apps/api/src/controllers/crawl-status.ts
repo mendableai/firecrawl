@@ -28,7 +28,7 @@ export async function crawlStatusController(req: Request, res: Response) {
 
     const jobIDs = await getCrawlJobs(req.params.jobId);
 
-    const jobs = await Promise.all(jobIDs.map(async x => {
+    const jobs = (await Promise.all(jobIDs.map(async x => {
       const job = await getScrapeQueue().getJob(x);
       
       if (process.env.USE_DB_AUTHENTICATION === "true") {
@@ -40,7 +40,7 @@ export async function crawlStatusController(req: Request, res: Response) {
       }
 
       return job;
-    }));
+    }))).sort((a, b) => a.timestamp - b.timestamp);
     const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
     const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "active";
 
