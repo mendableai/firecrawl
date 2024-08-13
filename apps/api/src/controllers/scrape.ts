@@ -62,6 +62,8 @@ export async function scrapeHelper(
     }
   }
 
+  await job.remove();
+
   if (!doc) {
     console.error("!!! PANIC DOC IS", doc, job);
     return { success: true, error: "No page found", returnCode: 200, data: doc };
