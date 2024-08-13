@@ -11,6 +11,7 @@ export async function addScrapeJob(
   return await getScrapeQueue().add(jobId, webScraperOptions, {
     ...options,
     jobId,
+    priority: webScraperOptions.crawl_id ? 2 : 1,
   });
 }
 
