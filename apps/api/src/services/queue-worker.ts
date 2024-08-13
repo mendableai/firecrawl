@@ -53,7 +53,11 @@ const processJobInternal = async (token: string, job: Job) => {
   try {
     const result = await processJob(job, token);
     try{
-      await job.moveToCompleted(result.docs, token, false);
+      if (job.data.crawl_id && process.env.USE_DB_AUTHENTICATION === "true") {
+        await job.moveToCompleted(null, token, false);
+      } else {
+        await job.moveToCompleted(result.docs, token, false);
+      }
     }catch(e){
     }
   } catch (error) {
