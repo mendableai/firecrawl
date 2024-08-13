@@ -1,4 +1,4 @@
-module github.com/mendableai/firecrawl/go-sdk
+module github.com/mendableai/firecrawl/apps/go-sdk
 
 go 1.22.5
 
