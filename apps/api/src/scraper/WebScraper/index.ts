@@ -168,11 +168,29 @@ export class WebScraperDataProvider {
   private async handleCrawlMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
+    let includes: string[];
+    if (Array.isArray(this.includes)) {
+      if (this.includes[0] != "") {
+        includes = this.includes;
+      }
+    } else {
+      includes = this.includes.split(',');
+    }
+
+    let excludes: string[];
+    if (Array.isArray(this.excludes)) {
+      if (this.excludes[0] != "") {
+        excludes = this.excludes;
+      }
+    } else {
+      excludes = this.excludes.split(',');
+    }
+
     const crawler = new WebCrawler({
       jobId: this.jobId,
       initialUrl: this.urls[0],
-      includes: Array.isArray(this.includes) ? this.includes : this.includes.split(','),
-      excludes: Array.isArray(this.excludes) ? this.excludes : this.excludes.split(','),
+      includes,
+      excludes,
       maxCrawledLinks: this.maxCrawledLinks,
       maxCrawledDepth: getAdjustedMaxDepth(this.urls[0], this.maxCrawledDepth),
       limit: this.limit,

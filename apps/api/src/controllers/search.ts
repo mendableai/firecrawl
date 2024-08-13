@@ -80,7 +80,7 @@ export async function searchHelper(
   await a.setOptions({
     jobId,
     mode: "single_urls",
-    urls: res.map((r) => r.url).slice(0, searchOptions.limit ?? 7),
+    urls: res.map((r) => r.url).slice(0, Math.min(searchOptions.limit ?? 5, 5)),
     crawlerOptions: {
       ...crawlerOptions,
     },
@@ -150,7 +150,8 @@ export async function searchController(req: Request, res: Response) {
     };
     const origin = req.body.origin ?? "api";
 
-    const searchOptions = req.body.searchOptions ?? { limit: 7 };
+    const searchOptions = req.body.searchOptions ?? { limit: 5 };
+    
 
     const jobId = uuidv4();
 

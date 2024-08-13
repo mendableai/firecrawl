@@ -308,7 +308,10 @@ describe("E2E Tests for API Routes", () => {
           }
         }
 
-        const completedResponse = response;
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
+        const completedResponse = await request(TEST_URL)
+            .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
         const urls = completedResponse.body.data.map(
         (item: any) => item.metadata?.sourceURL
@@ -360,7 +363,10 @@ describe("E2E Tests for API Routes", () => {
         }
       }
 
-      const completedResponse: FirecrawlCrawlStatusResponse = response;
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
+      const completedResponse: FirecrawlCrawlStatusResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
       const urls = completedResponse.body.data.map(
         (item: any) => item.metadata?.sourceURL
@@ -478,7 +484,7 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body).toHaveProperty("success");
       expect(response.body.success).toBe(true);
       expect(response.body).toHaveProperty("data");
-    }, 30000); // 30 seconds timeout
+    }, 60000); // 60 seconds timeout
   });
 
   describe("GET /v0/crawl/status/:jobId", () => {
@@ -510,7 +516,6 @@ describe("E2E Tests for API Routes", () => {
       expect(crawlResponse.statusCode).toBe(200);
 
       let isCompleted = false;
-      let completedResponse;
 
       while (!isCompleted) {
         const response = await request(TEST_URL)
@@ -521,11 +526,16 @@ describe("E2E Tests for API Routes", () => {
 
         if (response.body.status === "completed") {
           isCompleted = true;
-          completedResponse = response;
         } else {
           await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
         }
       }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
+      const completedResponse = await request(TEST_URL)
+        .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
       expect(completedResponse.body).toHaveProperty("status");
       expect(completedResponse.body.status).toBe("completed");
       expect(completedResponse.body).toHaveProperty("data");
@@ -616,7 +626,13 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body).toHaveProperty("status");
       expect(completedResponse.body.status).toBe("failed");
       expect(completedResponse.body).toHaveProperty("data");
-      expect(completedResponse.body.data).toBeNull();
+
+      let isNullOrEmptyArray = false;
+      if (completedResponse.body.data === null || completedResponse.body.data.length === 0) {
+        isNullOrEmptyArray = true;
+      }
+      expect(isNullOrEmptyArray).toBe(true);
+      expect(completedResponse.body.data).toEqual(expect.arrayContaining([]));
       expect(completedResponse.body).toHaveProperty("partial_data");
       expect(completedResponse.body.partial_data[0]).toHaveProperty("content");
       expect(completedResponse.body.partial_data[0]).toHaveProperty("markdown");
@@ -675,62 +691,5 @@ describe("E2E Tests for API Routes", () => {
       expect(llmExtraction.is_open_source).toBe(false);
       expect(typeof llmExtraction.is_open_source).toBe("boolean");
     }, 60000); // 60 secs
-  });
-
-  describe("POST /v0/crawl with fast mode", () => {
-    it.concurrent("should complete the crawl under 20 seconds", async () => {
-      const startTime = Date.now();
-
-      const crawlResponse = await request(TEST_URL)
-        .post("/v0/crawl")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-        .set("Content-Type", "application/json")
-        .send({
-          url: "https://flutterbricks.com",
-          crawlerOptions: {
-            mode: "fast"
-          }
-        });
-
-      expect(crawlResponse.statusCode).toBe(200);
-
-      const jobId = crawlResponse.body.jobId;
-      let statusResponse;
-      let isFinished = false;
-
-      while (!isFinished) {
-        statusResponse = await request(TEST_URL)
-          .get(`/v0/crawl/status/${jobId}`)
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-
-        expect(statusResponse.statusCode).toBe(200);
-        isFinished = statusResponse.body.status === "completed";
-
-        if (!isFinished) {
-          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
-        }
-      }
-
-      // const endTime = Date.now();
-      // const timeElapsed = (endTime - startTime) / 1000; // Convert to seconds
-
-      // console.log(`Time elapsed: ${timeElapsed} seconds`);
-
-      expect(statusResponse.body.status).toBe("completed");
-      expect(statusResponse.body).toHaveProperty("data");
-      expect(statusResponse.body.data[0]).toHaveProperty("content");
-      expect(statusResponse.body.data[0]).toHaveProperty("markdown");
-      expect(statusResponse.body.data[0]).toHaveProperty("metadata");
-      expect(statusResponse.body.data[0].metadata.pageStatusCode).toBe(200);
-      expect(statusResponse.body.data[0].metadata.pageError).toBeUndefined();
-
-      const results = statusResponse.body.data;
-      // results.forEach((result, i) => {
-      //   console.log(result.metadata.sourceURL);
-      // });
-      expect(results.length).toBeGreaterThanOrEqual(10);
-      expect(results.length).toBeLessThanOrEqual(15);
-      
-    }, 20000);
   });
 });

@@ -36,9 +36,9 @@ class FirecrawlApp {
      * @param {Params | null} params - Additional parameters for the scrape request.
      * @returns {Promise<ScrapeResponse>} The response from the scrape operation.
      */
-    scrapeUrl(url, params = null) {
-        var _a;
-        return __awaiter(this, void 0, void 0, function* () {
+    scrapeUrl(url_1) {
+        return __awaiter(this, arguments, void 0, function* (url, params = null) {
+            var _a;
             const headers = {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${this.apiKey}`,
@@ -79,8 +79,8 @@ class FirecrawlApp {
      * @param {Params | null} params - Additional parameters for the search request.
      * @returns {Promise<SearchResponse>} The response from the search operation.
      */
-    search(query, params = null) {
-        return __awaiter(this, void 0, void 0, function* () {
+    search(query_1) {
+        return __awaiter(this, arguments, void 0, function* (query, params = null) {
             const headers = {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${this.apiKey}`,
@@ -119,8 +119,8 @@ class FirecrawlApp {
      * @param {string} idempotencyKey - Optional idempotency key for the request.
      * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
      */
-    crawlUrl(url, params = null, waitUntilDone = true, pollInterval = 2, idempotencyKey) {
-        return __awaiter(this, void 0, void 0, function* () {
+    crawlUrl(url_1) {
+        return __awaiter(this, arguments, void 0, function* (url, params = null, waitUntilDone = true, pollInterval = 2, idempotencyKey) {
             const headers = this.prepareHeaders(idempotencyKey);
             let jsonData = { url };
             if (params) {
