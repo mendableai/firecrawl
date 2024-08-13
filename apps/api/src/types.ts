@@ -28,6 +28,8 @@ export interface WebScraperOptions {
   extractorOptions?: any;
   team_id: string;
   origin?: string;
+  crawl_id?: string;
+  sitemapped?: boolean;
 }
 
 export interface RunWebScraperParams {
@@ -65,6 +67,7 @@ export interface FirecrawlJob {
   extractor_options?: ExtractorOptions,
   num_tokens?: number,
   retry?: boolean,
+  crawl_id?: string;
 }
 
 export interface FirecrawlScrapeResponse {

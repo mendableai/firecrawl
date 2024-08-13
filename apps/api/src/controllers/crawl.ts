@@ -4,7 +4,7 @@ import { billTeam } from "../../src/services/billing/credit_billing";
 import { checkTeamCredits } from "../../src/services/billing/credit_billing";
 import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../../src/types";
-import { addWebScraperJob } from "../../src/services/queue-jobs";
+import { addScrapeJob, addWebScraperJob } from "../../src/services/queue-jobs";
 import { isUrlBlocked } from "../../src/scraper/WebScraper/utils/blocklist";
 import { logCrawl } from "../../src/services/logging/crawl_log";
 import { validateIdempotencyKey } from "../../src/services/idempotency/validate";
@@ -12,6 +12,7 @@ import { createIdempotencyKey } from "../../src/services/idempotency/create";
 import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../src/lib/default-values";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../src/lib/logger";
+import { addCrawlJob, crawlToCrawler, lockURL, saveCrawl, StoredCrawl } from "../../src/lib/crawl-redis";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -62,47 +63,89 @@ export async function crawlController(req: Request, res: Response) {
     const crawlerOptions = { ...defaultCrawlerOptions, ...req.body.crawlerOptions };
     const pageOptions = { ...defaultCrawlPageOptions, ...req.body.pageOptions };
 
-    if (mode === "single_urls" && !url.includes(",")) { // NOTE: do we need this?
-      try {
-        const a = new WebScraperDataProvider();
-        await a.setOptions({
-          jobId: uuidv4(),
-          mode: "single_urls",
-          urls: [url],
-          crawlerOptions: { ...crawlerOptions, returnOnlyUrls: true },
-          pageOptions: pageOptions,
-        });
+    // if (mode === "single_urls" && !url.includes(",")) { // NOTE: do we need this?
+    //   try {
+    //     const a = new WebScraperDataProvider();
+    //     await a.setOptions({
+    //       jobId: uuidv4(),
+    //       mode: "single_urls",
+    //       urls: [url],
+    //       crawlerOptions: { ...crawlerOptions, returnOnlyUrls: true },
+    //       pageOptions: pageOptions,
+    //     });
 
-        const docs = await a.getDocuments(false, (progress) => {
-          job.updateProgress({
-            current: progress.current,
-            total: progress.total,
-            current_step: "SCRAPING",
-            current_url: progress.currentDocumentUrl,
-          });
+    //     const docs = await a.getDocuments(false, (progress) => {
+    //       job.updateProgress({
+    //         current: progress.current,
+    //         total: progress.total,
+    //         current_step: "SCRAPING",
+    //         current_url: progress.currentDocumentUrl,
+    //       });
+    //     });
+    //     return res.json({
+    //       success: true,
+    //       documents: docs,
+    //     });
+    //   } catch (error) {
+    //     Logger.error(error);
+    //     return res.status(500).json({ error: error.message });
+    //   }
+    // }
+
+    const id = uuidv4();
+
+    await logCrawl(id, team_id);
+
+    let robots;
+
+    try {
+      robots = await this.getRobotsTxt();
+    } catch (_) {}
+
+    const sc: StoredCrawl = {
+      originUrl: url,
+      crawlerOptions,
+      pageOptions,
+      team_id,
+      robots,
+    };
+
+    await saveCrawl(id, sc);
+
+    const crawler = crawlToCrawler(id, sc);
+
+    const sitemap = sc.crawlerOptions?.ignoreSitemap ? null : await crawler.tryGetSitemap();
+
+    if (sitemap !== null) {
+      for (const url of sitemap.map(x => x.url)) {
+        await lockURL(id, sc, url);
+        const job = await addScrapeJob({
+          url,
+          mode: "single_urls",
+          crawlerOptions: crawlerOptions,
+          team_id: team_id,
+          pageOptions: pageOptions,
+          origin: req.body.origin ?? defaultOrigin,
+          crawl_id: id,
+          sitemapped: true,
         });
-        return res.json({
-          success: true,
-          documents: docs,
-        });
-      } catch (error) {
-        Logger.error(error);
-        return res.status(500).json({ error: error.message });
+        await addCrawlJob(id, job.id);
       }
+    } else {
+      await lockURL(id, sc, url);
+      const job = await addScrapeJob({
+        url,
+        mode: "single_urls",
+        crawlerOptions: crawlerOptions,
+        team_id: team_id,
+        pageOptions: pageOptions,
+        origin: req.body.origin ?? defaultOrigin,
+        crawl_id: id,
+      });
+      await addCrawlJob(id, job.id);
     }
 
-    const job = await addWebScraperJob({
-      url: url,
-      mode: mode ?? "crawl", // fix for single urls not working
-      crawlerOptions: crawlerOptions,
-      team_id: team_id,
-      pageOptions: pageOptions,
-      origin: req.body.origin ?? defaultOrigin,
-    });
-
-    await logCrawl(job.id.toString(), team_id);
-
-    res.json({ jobId: job.id });
+    res.json({ jobId: id });
   } catch (error) {
     Logger.error(error);
     return res.status(500).json({ error: error.message });

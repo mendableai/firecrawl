@@ -18,6 +18,11 @@ import { ScrapeEvents } from "../lib/scrape-events";
 import { Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
 import { v4 as uuidv4 } from "uuid";
+import { WebCrawler } from "../scraper/WebScraper/crawler";
+import { getAdjustedMaxDepth } from "../scraper/WebScraper/utils/maxDepthUtils";
+import { addCrawlJob, crawlToCrawler, getCrawl, lockURL } from "../lib/crawl-redis";
+import { StoredCrawl } from "../lib/crawl-redis";
+import { addScrapeJob } from "./queue-jobs";
 
 if (process.env.ENV === "production") {
   initSDK({
@@ -40,8 +45,6 @@ const cantAcceptConnectionInterval =
 const connectionMonitorInterval =
   Number(process.env.CONNECTION_MONITOR_INTERVAL) || 10;
 const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
-const wsq = getWebScraperQueue();
-const sq = getScrapeQueue();
 
 const processJobInternal = async (token: string, job: Job) => {
   const extendLockInterval = setInterval(async () => {
@@ -128,18 +131,10 @@ async function processJob(job: Job, token: string) {
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
-    const isCancelled = await (await getWebScraperQueue().client).exists("cancelled:" + job.id);
-
-    if (isCancelled) {
-      await job.discard();
-      await job.moveToFailed(Error("Job cancelled by user"), job.token);
-      await job.discard();
-    }
-
     const data = {
       success,
       result: {
-        links: isCancelled ? [] : docs.map((doc) => {
+        links: docs.map((doc) => {
           return {
             content: doc,
             source: doc?.metadata?.sourceURL ?? doc?.url ?? "",
@@ -147,20 +142,20 @@ async function processJob(job: Job, token: string) {
         }),
       },
       project_id: job.data.project_id,
-      error: isCancelled ? "Job cancelled by user" : message /* etc... */,
-      docs: isCancelled ? [] : docs,
+      error: message /* etc... */,
+      docs,
     };
 
-    if (job.data.mode === "crawl" && !isCancelled) {
+    if (job.data.mode === "crawl") {
       await callWebhook(job.data.team_id, job.id as string, data);
     }
 
     await logJob({
       job_id: job.id as string,
-      success: success && !isCancelled,
-      message: isCancelled ? "Job cancelled by user" : message,
-      num_docs: isCancelled ? 0 : docs.length,
-      docs: isCancelled ? [] : docs,
+      success: success,
+      message: message,
+      num_docs: docs.length,
+      docs: docs,
       time_taken: timeTakenInSeconds,
       team_id: job.data.team_id,
       mode: job.data.mode,
@@ -168,7 +163,44 @@ async function processJob(job: Job, token: string) {
       crawlerOptions: job.data.crawlerOptions,
       pageOptions: job.data.pageOptions,
       origin: job.data.origin,
+      crawl_id: job.data.crawl_id,
     });
+
+    if (job.data.crawl_id) {
+      if (!job.data.sitemapped) {
+        const sc = await getCrawl(job.data.crawl_id) as StoredCrawl;
+
+        if (!sc.cancelled) {
+          const crawler = crawlToCrawler(job.data.crawl_id, sc);
+
+          const links = crawler.filterLinks((data.docs[0].linksOnPage as string[])
+            .map(href => crawler.filterURL(href, sc.originUrl))
+            .filter(x => x !== null),
+            Infinity,
+            sc.crawlerOptions?.maxDepth ?? 10
+          )
+          
+          for (const link of links) {
+            if (await lockURL(job.data.crawl_id, sc, link)) {
+              console.log("Locked", link + "!");
+
+              const newJob = await addScrapeJob({
+                url: link,
+                mode: "single_urls",
+                crawlerOptions: sc.crawlerOptions,
+                team_id: sc.team_id,
+                pageOptions: sc.pageOptions,
+                origin: job.data.origin,
+                crawl_id: job.data.crawl_id,
+              });
+
+              await addCrawlJob(job.data.crawl_id, newJob.id);
+            }
+          }
+        }
+      }
+    }
+
     Logger.info(`🐂 Job done ${job.id}`);
     return data;
   } catch (error) {
@@ -216,11 +248,12 @@ async function processJob(job: Job, token: string) {
       docs: [],
       time_taken: 0,
       team_id: job.data.team_id,
-      mode: "crawl",
+      mode: job.data.mode,
       url: job.data.url,
       crawlerOptions: job.data.crawlerOptions,
       pageOptions: job.data.pageOptions,
       origin: job.data.origin,
+      crawl_id: job.data.crawl_id,
     });
     // done(null, data);
     return data;

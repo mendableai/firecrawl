@@ -1,10 +1,9 @@
 import { Request, Response } from "express";
 import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../../src/types";
-import { getWebScraperQueue } from "../../src/services/queue-service";
 import { supabase_service } from "../../src/services/supabase";
-import { billTeam } from "../../src/services/billing/credit_billing";
 import { Logger } from "../../src/lib/logger";
+import { getCrawl, saveCrawl } from "../../src/lib/crawl-redis";
 
 export async function crawlCancelController(req: Request, res: Response) {
   try {
@@ -18,8 +17,9 @@ export async function crawlCancelController(req: Request, res: Response) {
     if (!success) {
       return res.status(status).json({ error });
     }
-    const job = await getWebScraperQueue().getJob(req.params.jobId);
-    if (!job) {
+
+    const sc = await getCrawl(req.params.jobId);
+    if (!sc) {
       return res.status(404).json({ error: "Job not found" });
     }
 
@@ -39,27 +39,9 @@ export async function crawlCancelController(req: Request, res: Response) {
       }
     }
 
-    const jobState = await job.getState();
-    let progress = job.progress;
-    if(typeof progress !== 'object') {
-      progress = {
-        partialDocs: []
-      }
-    }
-    const { 
-      partialDocs = [] 
-    } = progress as { partialDocs: any[] };
-
-    if (partialDocs && partialDocs.length > 0 && jobState === "active") {
-      Logger.info("Billing team for partial docs...");
-      // Note: the credits that we will bill them here might be lower than the actual
-      // due to promises that are not yet resolved
-      await billTeam(team_id, partialDocs.length);
-    }
-
     try {
-      await (await getWebScraperQueue().client).set("cancelled:" + job.id, "true", "EX", 60 * 60);
-      await job.discard();
+      sc.cancelled = true;
+      await saveCrawl(req.params.jobId, sc);
     } catch (error) {
       Logger.error(error);
     }
