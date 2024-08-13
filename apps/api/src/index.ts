@@ -13,6 +13,7 @@ import { ScrapeEvents } from "./lib/scrape-events";
 import http from 'node:http';
 import https from 'node:https';
 import CacheableLookup  from 'cacheable-lookup';
+import { v1Router } from "./routes/v1";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -78,6 +79,7 @@ if (cluster.isMaster) {
 
   // register router
   app.use(v0Router);
+  app.use(v1Router);
   app.use(adminRouter);
 
   const DEFAULT_PORT = process.env.PORT ?? 3002;
