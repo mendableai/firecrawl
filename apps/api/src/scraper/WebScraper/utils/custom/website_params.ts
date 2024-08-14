@@ -235,7 +235,7 @@ export const urlSpecificParams = {
       },
     },
   },
-  "www.zoopla.co.uk":{
+  "zoopla.co.uk":{
     defaultScraper: "fire-engine",
     params:{
       fireEngineOptions:{
