@@ -6,11 +6,11 @@ import (
 	"log"
 
 	"github.com/google/uuid"
-	"github.com/mendableai/firecrawl/firecrawl"
+	"github.com/mendableai/firecrawl-go"
 )
 
 func main() {
-	app, err := firecrawl.NewFirecrawlApp("fc-YOUR-API-KEY", "http://localhost:3002")
+	app, err := firecrawl.NewFirecrawlApp("fc-YOUR_API_KEY", "https://api.firecrawl.dev")
 	if err != nil {
 		log.Fatalf("Failed to create FirecrawlApp: %v", err)
 	}
