@@ -175,7 +175,7 @@ async function processJob(job: Job, token: string) {
           const crawler = crawlToCrawler(job.data.crawl_id, sc);
 
           const links = crawler.filterLinks((data.docs[0].linksOnPage as string[])
-            .map(href => crawler.filterURL(href, sc.originUrl))
+            .map(href => crawler.filterURL(href.trim(), sc.originUrl))
             .filter(x => x !== null),
             Infinity,
             sc.crawlerOptions?.maxDepth ?? 10
@@ -228,12 +228,12 @@ async function processJob(job: Job, token: string) {
         const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
         const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "active";
     
-        const docs = jobs.map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
+        const fullDocs = jobs.map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
 
         const data = {
           success: jobStatus !== "failed",
           result: {
-            links: docs.map((doc) => {
+            links: fullDocs.map((doc) => {
               return {
                 content: doc,
                 source: doc?.metadata?.sourceURL ?? doc?.url ?? "",
@@ -242,7 +242,7 @@ async function processJob(job: Job, token: string) {
           },
           project_id: job.data.project_id,
           error: message /* etc... */,
-          docs,
+          docs: fullDocs,
         };
 
         await callWebhook(job.data.team_id, job.id as string, data);
@@ -265,6 +265,9 @@ async function processJob(job: Job, token: string) {
       });
     }
     Logger.error(error);
+    if (error.stack) {
+      Logger.error(error.stack);
+    }
 
     logtail.error("Overall error ingesting", {
       job_id: job.id,
