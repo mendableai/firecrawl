@@ -139,6 +139,8 @@ export async function crawlController(req: Request, res: Response) {
         pageOptions: pageOptions,
         origin: req.body.origin ?? defaultOrigin,
         crawl_id: id,
+      }, {
+        priority: 1, // prioritize request 0 of crawl jobs same as scrape jobs
       });
       await addCrawlJob(id, job.id);
     }
