@@ -3,6 +3,7 @@ import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../../src/types";
 import { addWebScraperJob } from "../../src/services/queue-jobs";
 import { isUrlBlocked } from "../../src/scraper/WebScraper/utils/blocklist";
+import { Logger } from "../../src/lib/logger";
 
 export async function crawlPreviewController(req: Request, res: Response) {
   try {
@@ -39,7 +40,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
 
     res.json({ jobId: job.id });
   } catch (error) {
-    console.error(error);
+    Logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

@@ -1,8 +1,9 @@
+import { Logger } from "../../src/lib/logger";
 import { supabase_service } from "./supabase";
 
 export const callWebhook = async (teamId: string, jobId: string,data: any) => {
   try {
-    const selfHostedUrl = process.env.SELF_HOSTED_WEBHOOK_URL;
+    const selfHostedUrl = process.env.SELF_HOSTED_WEBHOOK_URL?.replace("{{JOB_ID}}", jobId);
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
     let webhookUrl = selfHostedUrl;
 
@@ -15,10 +16,7 @@ export const callWebhook = async (teamId: string, jobId: string,data: any) => {
         .eq("team_id", teamId)
         .limit(1);
       if (error) {
-        console.error(
-          `Error fetching webhook URL for team ID: ${teamId}`,
-          error.message
-        );
+        Logger.error(`Error fetching webhook URL for team ID: ${teamId}, error: ${error.message}`);
         return null;
       }
 
@@ -53,9 +51,6 @@ export const callWebhook = async (teamId: string, jobId: string,data: any) => {
       }),
     });
   } catch (error) {
-    console.error(
-      `Error sending webhook for team ID: ${teamId}`,
-      error.message
-    );
+    Logger.debug(`Error sending webhook for team ID: ${teamId}, error: ${error.message}`);
   }
 };

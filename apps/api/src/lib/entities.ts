@@ -18,6 +18,7 @@ export type PageOptions = {
   fetchPageContent?: boolean;
   waitFor?: number;
   screenshot?: boolean;
+  fullPageScreenshot?: boolean;
   headers?: Record<string, string>;
   replaceAllPathsWithAbsolutePaths?: boolean;
   parsePDF?: boolean;
@@ -42,8 +43,8 @@ export type SearchOptions = {
 
 export type CrawlerOptions = {
   returnOnlyUrls?: boolean;
-  includes?: string[];
-  excludes?: string[];
+  includes?: string | string[];
+  excludes?: string | string[];
   maxCrawledLinks?: number;
   maxDepth?: number;
   limit?: number;
@@ -56,6 +57,7 @@ export type CrawlerOptions = {
 }
 
 export type WebScraperOptions = {
+  jobId: string;
   urls: string[];
   mode: "single_urls" | "sitemap" | "crawl";
   crawlerOptions?: CrawlerOptions;
@@ -89,7 +91,8 @@ export class Document {
   warning?: string;
 
   index?: number;
-
+  linksOnPage?: string[]; // Add this new field as a separate property
+  
   constructor(data: Partial<Document>) {
     if (!data.content) {
       throw new Error("Missing required fields");
@@ -102,6 +105,7 @@ export class Document {
     this.markdown = data.markdown || "";
     this.childrenLinks = data.childrenLinks || undefined;
     this.provider = data.provider || undefined;
+    this.linksOnPage = data.linksOnPage; // Assign linksOnPage if provided
   }
 }
 
@@ -129,3 +133,12 @@ export interface FireEngineResponse {
   pageError?: string;
 }
 
+
+export interface FireEngineOptions{
+  mobileProxy?: boolean;
+  method?: string;
+  engine?: string;
+  blockMedia?: boolean;
+  blockAds?: boolean;
+  disableJsDom?: boolean;
+}

@@ -3,6 +3,7 @@ import { logScrape } from "../../../services/logging/scrape_log";
 import { generateRequestParams } from "../single_url";
 import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 import { universalTimeout } from "../global";
+import { Logger } from "../../../lib/logger";
 
 /**
  * Scrapes a URL with Playwright
@@ -51,8 +52,8 @@ export async function scrapWithPlaywright(
     );
 
     if (response.status !== 200) {
-      console.error(
-        `[Playwright] Error fetching url: ${url} with status: ${response.status}`
+      Logger.debug(
+        `⛏️ Playwright: Failed to fetch url: ${url} | status: ${response.status}, error: ${response.data?.pageError}`
       );
       logParams.error_message = response.data?.pageError;
       logParams.response_code = response.data?.pageStatusCode;
@@ -86,8 +87,8 @@ export async function scrapWithPlaywright(
         };
       } catch (jsonError) {
         logParams.error_message = jsonError.message || jsonError;
-        console.error(
-          `[Playwright] Error parsing JSON response for url: ${url} -> ${jsonError}`
+        Logger.debug(
+          `⛏️ Playwright: Error parsing JSON response for url: ${url} | Error: ${jsonError}`
         );
         return { content: "", pageStatusCode: null, pageError: logParams.error_message };
       }
@@ -95,10 +96,10 @@ export async function scrapWithPlaywright(
   } catch (error) {
     if (error.code === "ECONNABORTED") {
       logParams.error_message = "Request timed out";
-      console.log(`[Playwright] Request timed out for ${url}`);
+      Logger.debug(`⛏️ Playwright: Request timed out for ${url}`);
     } else {
       logParams.error_message = error.message || error;
-      console.error(`[Playwright] Error fetching url: ${url} -> ${error}`);
+      Logger.debug(`⛏️ Playwright: Failed to fetch url: ${url} | Error: ${error}`);
     }
     return { content: "", pageStatusCode: null, pageError: logParams.error_message };
   } finally {

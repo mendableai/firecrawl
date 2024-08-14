@@ -2,8 +2,13 @@ import { NotificationType } from "../../types";
 import { withAuth } from "../../lib/withAuth";
 import { sendNotification } from "../notification/email_notification";
 import { supabase_service } from "../supabase";
+import { Logger } from "../../lib/logger";
+import { getValue, setValue } from "../redis";
+import { redlock } from "../redlock";
+
 
 const FREE_CREDITS = 500;
+
 
 export async function billTeam(team_id: string, credits: number) {
   return withAuth(supaBillTeam)(team_id, credits);
@@ -12,27 +17,27 @@ export async function supaBillTeam(team_id: string, credits: number) {
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
   }
-  console.log(`Billing team ${team_id} for ${credits} credits`);
+  Logger.info(`Billing team ${team_id} for ${credits} credits`);
   //   When the API is used, you can log the credit usage in the credit_usage table:
   // team_id: The ID of the team using the API.
   // subscription_id: The ID of the team's active subscription.
   // credits_used: The number of credits consumed by the API call.
   // created_at: The timestamp of the API usage.
 
-  // 1. get the subscription
-  const { data: subscription } = await supabase_service
-    .from("subscriptions")
-    .select("*")
-    .eq("team_id", team_id)
-    .eq("status", "active")
-    .single();
-
-  // 2. Check for available coupons
-  const { data: coupons } = await supabase_service
-    .from("coupons")
-    .select("id, credits")
-    .eq("team_id", team_id)
-    .eq("status", "active");
+  // 1. get the subscription and check for available coupons concurrently
+  const [{ data: subscription }, { data: coupons }] = await Promise.all([
+    supabase_service
+      .from("subscriptions")
+      .select("*")
+      .eq("team_id", team_id)
+      .eq("status", "active")
+      .single(),
+    supabase_service
+      .from("coupons")
+      .select("id, credits")
+      .eq("team_id", team_id)
+      .eq("status", "active"),
+  ]);
 
   let couponCredits = 0;
   if (coupons && coupons.length > 0) {
@@ -169,21 +174,21 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     return { success: true, message: "Preview team, no credits used" };
   }
 
-  // Retrieve the team's active subscription
-  const { data: subscription, error: subscriptionError } =
-    await supabase_service
-      .from("subscriptions")
-      .select("id, price_id, current_period_start, current_period_end")
-      .eq("team_id", team_id)
-      .eq("status", "active")
-      .single();
-
-  // Check for available coupons
-  const { data: coupons } = await supabase_service
-    .from("coupons")
-    .select("credits")
-    .eq("team_id", team_id)
-    .eq("status", "active");
+  // Retrieve the team's active subscription and check for available coupons concurrently
+  const [{ data: subscription, error: subscriptionError }, { data: coupons }] =
+    await Promise.all([
+      supabase_service
+        .from("subscriptions")
+        .select("id, price_id, current_period_start, current_period_end")
+        .eq("team_id", team_id)
+        .eq("status", "active")
+        .single(),
+      supabase_service
+        .from("coupons")
+        .select("credits")
+        .eq("team_id", team_id)
+        .eq("status", "active"),
+    ]);
 
   let couponCredits = 0;
   if (coupons && coupons.length > 0) {
@@ -218,7 +223,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
       0
     );
 
-    console.log("totalCreditsUsed", totalCreditsUsed);
+    Logger.info(`totalCreditsUsed: ${totalCreditsUsed}`);
 
     const end = new Date();
     end.setDate(end.getDate() + 30);
@@ -238,7 +243,6 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     // 5. Compare the total credits used with the credits allowed by the plan.
     if (totalCreditsUsed + credits > FREE_CREDITS) {
       // Send email notification for insufficient credits
-
       await sendNotification(
         team_id,
         NotificationType.LIMIT_REACHED,
@@ -254,28 +258,45 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
   }
 
   let totalCreditsUsed = 0;
+  const cacheKey = `credit_usage_${subscription.id}_${subscription.current_period_start}_${subscription.current_period_end}_lc`;
+  const redLockKey = `lock_${cacheKey}`;
+  const lockTTL = 10000; // 10 seconds
+
   try {
-    const { data: creditUsages, error: creditUsageError } =
-      await supabase_service.rpc("get_credit_usage_2", {
-        sub_id: subscription.id,
-        start_time: subscription.current_period_start,
-        end_time: subscription.current_period_end,
-      });
+    const lock = await redlock.acquire([redLockKey], lockTTL);
 
-    if (creditUsageError) {
-      console.error("Error calculating credit usage:", creditUsageError);
-    }
+    try {
+      const cachedCreditUsage = await getValue(cacheKey);
 
-    if (creditUsages && creditUsages.length > 0) {
-      totalCreditsUsed = creditUsages[0].total_credits_used;
+      if (cachedCreditUsage) {
+        totalCreditsUsed = parseInt(cachedCreditUsage);
+      } else {
+        const { data: creditUsages, error: creditUsageError } =
+          await supabase_service.rpc("get_credit_usage_2", {
+            sub_id: subscription.id,
+            start_time: subscription.current_period_start,
+            end_time: subscription.current_period_end,
+          });
+
+        if (creditUsageError) {
+          Logger.error(`Error calculating credit usage: ${creditUsageError}`);
+        }
+
+        if (creditUsages && creditUsages.length > 0) {
+          totalCreditsUsed = creditUsages[0].total_credits_used;
+          await setValue(cacheKey, totalCreditsUsed.toString(), 1800); // Cache for 30 minutes
+          // Logger.info(`Cache set for credit usage: ${totalCreditsUsed}`);
+        }
+      }
+    } finally {
+      await lock.release();
     }
   } catch (error) {
-    console.error("Error calculating credit usage:", error);
+    Logger.error(`Error acquiring lock or calculating credit usage: ${error}`);
   }
 
   // Adjust total credits used by subtracting coupon value
   const adjustedCreditsUsed = Math.max(0, totalCreditsUsed - couponCredits);
-
   // Get the price details
   const { data: price, error: priceError } = await supabase_service
     .from("prices")

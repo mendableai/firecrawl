@@ -4,6 +4,7 @@ async function example() {
   const example = new WebScraperDataProvider();
 
   await example.setOptions({
+    jobId: "TEST",
     mode: "crawl",
     urls: ["https://mendable.ai"],
     crawlerOptions: {},

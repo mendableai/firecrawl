@@ -41,32 +41,19 @@
                   "pageOptions": {
                     "type": "object",
                     "properties": {
-                      "onlyMainContent": {
-                        "type": "boolean",
-                        "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
-                        "default": false
+                      "headers": {
+                        "type": "object",
+                        "description": "Headers to send with the request. Can be used to send cookies, user-agent, etc."
                       },
                       "includeHtml": {
                         "type": "boolean",
-                        "description": "Include the raw HTML content of the page. Will output a html key in the response.",
+                        "description": "Include the HTML version of the content on page. Will output a html key in the response.",
                         "default": false
                       },
-                      "screenshot": {
+                      "includeRawHtml": {
                         "type": "boolean",
-                        "description": "Include a screenshot of the top of the page that you are scraping.",
+                        "description": "Include the raw HTML content of the page. Will output a rawHtml key in the response.",
                         "default": false
-                      },
-                      "waitFor": {
-                        "type": "integer",
-                        "description": "Wait x amount of milliseconds for the page to load to fetch content",
-                        "default": 0
-                      },
-                      "removeTags": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        },
-                        "description": "Tags, classes and ids to remove from the page. Use comma separated values. Example: 'script, .ad, #footer'"
                       },
                       "onlyIncludeTags": {
                         "type": "array",
@@ -75,34 +62,58 @@
                         },
                         "description": "Only include tags, classes and ids from the page in the final output. Use comma separated values. Example: 'script, .ad, #footer'"
                       },
-                      "headers": {
-                        "type": "object",
-                        "description": "Headers to send with the request. Can be used to send cookies, user-agent, etc."
+                      "onlyMainContent": {
+                        "type": "boolean",
+                        "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
+                        "default": false
+                      },
+                      "removeTags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Tags, classes and ids to remove from the page. Use comma separated values. Example: 'script, .ad, #footer'"
                       },
                       "replaceAllPathsWithAbsolutePaths": {
                         "type": "boolean",
                         "description": "Replace all relative paths with absolute paths for images and links",
                         "default": false
+                      },
+                      "screenshot": {
+                        "type": "boolean",
+                        "description": "Include a screenshot of the top of the page that you are scraping.",
+                        "default": false
+                      },
+                      "fullPageScreenshot": {
+                        "type": "boolean",
+                        "description": "Include a full page screenshot of the page that you are scraping.",
+                        "default": false
+                      },
+                      "waitFor": {
+                        "type": "integer",
+                        "description": "Wait x amount of milliseconds for the page to load to fetch content",
+                        "default": 0
                       }
                     }
                   },
                   "extractorOptions": {
                     "type": "object",
-                    "description": "Options for LLM-based extraction of structured information from the page content",
+                    "description": "Options for extraction of structured information from the page content. Note: LLM-based extraction is not performed by default and only occurs when explicitly configured. The 'markdown' mode simply returns the scraped markdown and is the default mode for scraping.",
+                    "default": {},
                     "properties": {
                       "mode": {
                         "type": "string",
-                        "enum": ["llm-extraction", "llm-extraction-from-raw-html"],
-                        "description": "The extraction mode to use. llm-extraction: Extracts information from the cleaned and parsed content. llm-extraction-from-raw-html: Extracts information directly from the raw HTML."
+                        "enum": ["markdown", "llm-extraction", "llm-extraction-from-raw-html", "llm-extraction-from-markdown"],
+                        "description": "The extraction mode to use. 'markdown': Returns the scraped markdown content, does not perform LLM extraction. 'llm-extraction': Extracts information from the cleaned and parsed content using LLM. 'llm-extraction-from-raw-html': Extracts information directly from the raw HTML using LLM. 'llm-extraction-from-markdown': Extracts information from the markdown content using LLM."
                       },
                       "extractionPrompt": {
                         "type": "string",
-                        "description": "A prompt describing what information to extract from the page"
+                        "description": "A prompt describing what information to extract from the page, applicable for LLM extraction modes."
                       },
                       "extractionSchema": {
                         "type": "object",
                         "additionalProperties": true,
-                        "description": "The schema for the data to be extracted",
+                        "description": "The schema for the data to be extracted, required only for LLM extraction modes.",
                         "required": [
                           "company_mission",
                           "supports_sso",
@@ -134,13 +145,52 @@
             }
           },
           "402": {
-            "description": "Payment required"
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Payment required to access this resource."
+                    }
+                  }
+                }
+              }
+            }
           },
           "429": {
-            "description": "Too many requests"
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Request rate limit exceeded. Please wait and try again later."
+                    }
+                  }
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -216,7 +266,12 @@
                       },
                       "allowBackwardCrawling": {
                         "type": "boolean",
-                        "description": "Allow backward crawling (crawl from the base URL to the previous URLs)",
+                        "description": "Enables the crawler to navigate from a specific URL to previously linked pages. For instance, from 'example.com/product/123' back to 'example.com/product'",
+                        "default": false
+                      },
+                      "allowExternalContentLinks": {
+                        "type": "boolean",
+                        "description": "Allows the crawler to follow links to external websites.",
                         "default": false
                       }
                     }
@@ -224,24 +279,31 @@
                   "pageOptions": {
                     "type": "object",
                     "properties": {
+                      "headers": {
+                        "type": "object",
+                        "description": "Headers to send with the request. Can be used to send cookies, user-agent, etc."
+                      },
+                      "includeHtml": {
+                        "type": "boolean",
+                        "description": "Include the HTML version of the content on page. Will output a html key in the response.",
+                        "default": false
+                      },
+                      "includeRawHtml": {
+                        "type": "boolean",
+                        "description": "Include the raw HTML content of the page. Will output a rawHtml key in the response.",
+                        "default": false
+                      },
+                      "onlyIncludeTags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Only include tags, classes and ids from the page in the final output. Use comma separated values. Example: 'script, .ad, #footer'"
+                      },
                       "onlyMainContent": {
                         "type": "boolean",
                         "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
                         "default": false
-                      },
-                      "includeHtml": {
-                        "type": "boolean",
-                        "description": "Include the raw HTML content of the page. Will output a html key in the response.",
-                        "default": false
-                      },
-                      "screenshot": {
-                        "type": "boolean",
-                        "description": "Include a screenshot of the top of the page that you are scraping.",
-                        "default": false
-                      },
-                      "headers": {
-                        "type": "object",
-                        "description": "Headers to send with the request when scraping. Can be used to send cookies, user-agent, etc."
                       },
                       "removeTags": {
                         "type": "array",
@@ -254,6 +316,21 @@
                         "type": "boolean",
                         "description": "Replace all relative paths with absolute paths for images and links",
                         "default": false
+                      },
+                      "screenshot": {
+                        "type": "boolean",
+                        "description": "Include a screenshot of the top of the page that you are scraping.",
+                        "default": false
+                      },
+                      "fullPageScreenshot": {
+                        "type": "boolean",
+                        "description": "Include a full page screenshot of the page that you are scraping.",
+                        "default": false
+                      },
+                      "waitFor": {
+                        "type": "integer",
+                        "description": "Wait x amount of milliseconds for the page to load to fetch content",
+                        "default": 0
                       }
                     }
                   }
@@ -275,13 +352,52 @@
             }
           },
           "402": {
-            "description": "Payment required"
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Payment required to access this resource."
+                    }
+                  }
+                }
+              }
+            }
           },
           "429": {
-            "description": "Too many requests"
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Request rate limit exceeded. Please wait and try again later."
+                    }
+                  }
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -323,7 +439,12 @@
                       },
                       "includeHtml": {
                         "type": "boolean",
-                        "description": "Include the raw HTML content of the page. Will output a html key in the response.",
+                        "description": "Include the HTML version of the content on page. Will output a html key in the response.",
+                        "default": false
+                      },
+                      "includeRawHtml": {
+                        "type": "boolean",
+                        "description": "Include the raw HTML content of the page. Will output a rawHtml key in the response.",
                         "default": false
                       }
                     }
@@ -355,13 +476,52 @@
             }
           },
           "402": {
-            "description": "Payment required"
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Payment required to access this resource."
+                    }
+                  }
+                }
+              }
+            }
           },
           "429": {
-            "description": "Too many requests"
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Request rate limit exceeded. Please wait and try again later."
+                    }
+                  }
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -403,14 +563,6 @@
                       "type": "integer",
                       "description": "Current page number"
                     },
-                    "current_url": {
-                      "type": "string",
-                      "description": "Current URL being scraped"
-                    },
-                    "current_step": {
-                      "type": "string",
-                      "description": "Current step in the process"
-                    },
                     "total": {
                       "type": "integer",
                       "description": "Total number of pages"
@@ -427,7 +579,7 @@
                       "items": {
                         "$ref": "#/components/schemas/CrawlStatusResponseObj"
                       },
-                      "description": "Partial documents returned as it is being crawled (streaming). **This feature is currently in alpha - expect breaking changes** When a page is ready, it will append to the partial_data array, so there is no need to wait for the entire website to be crawled. There is a max of 50 items in the array response. The oldest item (top of the array) will be removed when the new item is added to the array."
+                      "description": "Partial documents returned as it is being crawled (streaming). **This feature is currently in alpha - expect breaking changes** When a page is ready, it will append to the partial_data array, so there is no need to wait for the entire website to be crawled. When the crawl is done, partial_data will become empty and the result will be available in `data`. There is a max of 50 items in the array response. The oldest item (top of the array) will be removed when the new item is added to the array."
                     }
                   }
                 }
@@ -435,13 +587,52 @@
             }
           },
           "402": {
-            "description": "Payment required"
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Payment required to access this resource."
+                    }
+                  }
+                }
+              }
+            }
           },
           "429": {
-            "description": "Too many requests"
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Request rate limit exceeded. Please wait and try again later."
+                    }
+                  }
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -485,13 +676,52 @@
             }
           },
           "402": {
-            "description": "Payment required"
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Payment required to access this resource."
+                    }
+                  }
+                }
+              }
+            }
           },
           "429": {
-            "description": "Too many requests"
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Request rate limit exceeded. Please wait and try again later."
+                    }
+                  }
+                }
+              }
+            }
           },
           "500": {
-            "description": "Server error"
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }
@@ -523,7 +753,12 @@
               "html": {
                 "type": "string",
                 "nullable": true,
-                "description": "Raw HTML content of the page if `includeHtml`  is true"
+                "description": "HTML version of the content on page if `includeHtml`  is true"
+              },
+              "rawHtml": {
+                "type": "string",
+                "nullable": true,
+                "description": "Raw HTML content of the page if `includeRawHtml`  is true"
               },
               "metadata": {
                 "type": "object",
@@ -583,7 +818,12 @@
           "html": {
             "type": "string",
             "nullable": true,
-            "description": "Raw HTML content of the page if `includeHtml`  is true"
+            "description": "HTML version of the content on page if `includeHtml`  is true"
+          },
+          "rawHtml": {
+            "type": "string",
+            "nullable": true,
+            "description": "Raw HTML content of the page if `includeRawHtml`  is true"
           },
           "index": {
             "type": "integer",

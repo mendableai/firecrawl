@@ -1,9 +1,17 @@
 import { Job } from "bull";
-import { CrawlResult, WebScraperOptions, RunWebScraperParams, RunWebScraperResult } from "../types";
+import {
+  CrawlResult,
+  WebScraperOptions,
+  RunWebScraperParams,
+  RunWebScraperResult,
+} from "../types";
 import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { DocumentUrl, Progress } from "../lib/entities";
 import { billTeam } from "../services/billing/credit_billing";
 import { Document } from "../lib/entities";
+import { supabase_service } from "../services/supabase";
+import { Logger } from "../lib/logger";
+import { ScrapeEvents } from "../lib/scrape-events";
 
 export async function startWebScraperPipeline({
   job,
@@ -17,6 +25,7 @@ export async function startWebScraperPipeline({
     crawlerOptions: job.data.crawlerOptions,
     pageOptions: job.data.pageOptions,
     inProgress: (progress) => {
+      Logger.debug(`🐂 Job in progress ${job.id}`);
       if (progress.currentDocument) {
         partialDocs.push(progress.currentDocument);
         if (partialDocs.length > 50) {
@@ -26,9 +35,12 @@ export async function startWebScraperPipeline({
       }
     },
     onSuccess: (result) => {
-      job.moveToCompleted(result);
+      Logger.debug(`🐂 Job completed ${job.id}`);
+      saveJob(job, result);
     },
     onError: (error) => {
+      Logger.error(`🐂 Job failed ${job.id}`);
+      ScrapeEvents.logJobEvent(job, "failed");
       job.moveToFailed(error);
     },
     team_id: job.data.team_id,
@@ -50,6 +62,7 @@ export async function runWebScraper({
     const provider = new WebScraperDataProvider();
     if (mode === "crawl") {
       await provider.setOptions({
+        jobId: bull_job_id,
         mode: mode,
         urls: [url],
         crawlerOptions: crawlerOptions,
@@ -58,6 +71,7 @@ export async function runWebScraper({
       });
     } else {
       await provider.setOptions({
+        jobId: bull_job_id,
         mode: mode,
         urls: url.split(","),
         crawlerOptions: crawlerOptions,
@@ -102,8 +116,34 @@ export async function runWebScraper({
     // this return doesn't matter too much for the job completion result
     return { success: true, message: "", docs: filteredDocs };
   } catch (error) {
-    console.error("Error running web scraper", error);
     onError(error);
     return { success: false, message: error.message, docs: [] };
   }
 }
+
+const saveJob = async (job: Job, result: any) => {
+  try {
+    if (process.env.USE_DB_AUTHENTICATION === "true") {
+      const { data, error } = await supabase_service
+        .from("firecrawl_jobs")
+        .update({ docs: result })
+        .eq("job_id", job.id);
+
+      if (error) throw new Error(error.message);
+      try {
+        await job.moveToCompleted(null, false, false);
+      } catch (error) {
+        // I think the job won't exist here anymore
+      }
+    } else {
+      try {
+        await job.moveToCompleted(result, false, false);
+      } catch (error) {
+        // I think the job won't exist here anymore
+      }
+    }
+    ScrapeEvents.logJobEvent(job, "completed");
+  } catch (error) {
+    Logger.error(`🐂 Failed to update job status: ${error}`);
+  }
+};

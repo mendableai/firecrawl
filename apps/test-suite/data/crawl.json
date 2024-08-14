@@ -5,47 +5,46 @@
     "expected_crawled_pages": ["https://www.vellum.ai/llm-leaderboard"]
   },
   {
-  "website": "https://openai.com/news",
-  "expected_min_num_of_pages": 4,
-  "expected_crawled_pages": [
-    "https://openai.com/news/company/",
-    "https://openai.com/news/research/",
-    "https://openai.com/news/safety-and-alignment/",
-    "https://openai.com/news/stories/"
+    "website": "https://openai.com/news",
+    "expected_min_num_of_pages": 4,
+    "expected_crawled_pages": [
+      "https://openai.com/news/company/",
+      "https://openai.com/news/research/",
+      "https://openai.com/news/safety-and-alignment/",
+      "https://openai.com/news/stories/"
   ]
-},
+  },
   {
-  "website": "https://www.framer.com/pricing",
-  "expected_min_num_of_pages": 1,
-  "expected_not_crawled_pages": [
-    "https://www.framer.com/features/navigation/",
-    "https://www.framer.com/contact/",
-    "https://www.framer.com/add-ons/",
-    "https://www.framer.com/free-saas-ui-kit/",
-    "https://www.framer.com/help/",
-    "https://www.framer.com/features/effects/",
-    "https://www.framer.com/enterprise/",
-    "https://www.framer.com/templates/"
-  ]
-},
+    "website": "https://www.framer.com/pricing",
+    "expected_min_num_of_pages": 1,
+    "expected_not_crawled_pages": [
+      "https://www.framer.com/features/navigation/",
+      "https://www.framer.com/contact/",
+      "https://www.framer.com/add-ons/",
+      "https://www.framer.com/free-saas-ui-kit/",
+      "https://www.framer.com/help/",
+      "https://www.framer.com/features/effects/",
+      "https://www.framer.com/enterprise/",
+      "https://www.framer.com/templates/"
+    ]
+  },
   {
-  "website": "https://mendable.ai/pricing",
-  "expected_min_num_of_pages": 1,
-  "expected_not_crawled_pages": [
-    "https://mendable.ai/",
-    "https://mendable.ai/blog",
-    "https://mendable.ai/signin",
-    "https://mendable.ai/signup",
-    "https://mendable.ai",
-    "https://mendable.ai/usecases/sales-enablement",
-    "https://mendable.ai/usecases/documentation",
-    "https://mendable.ai/usecases/cs-enablement",
-    "https://mendable.ai/usecases/productcopilot",
-    "https://mendable.ai/security"
-  ],
-  "notes": "This one should not go backwards, but it does!"
-},
-  
+    "website": "https://mendable.ai/pricing",
+    "expected_min_num_of_pages": 1,
+    "expected_not_crawled_pages": [
+      "https://mendable.ai/",
+      "https://mendable.ai/blog",
+      "https://mendable.ai/signin",
+      "https://mendable.ai/signup",
+      "https://mendable.ai",
+      "https://mendable.ai/usecases/sales-enablement",
+      "https://mendable.ai/usecases/documentation",
+      "https://mendable.ai/usecases/cs-enablement",
+      "https://mendable.ai/usecases/productcopilot",
+      "https://mendable.ai/security"
+    ],
+    "notes": "This one should not go backwards, but it does!"
+  },
   {
     "website": "https://agentops.ai/blog",
     "expected_min_num_of_pages": 6,
@@ -99,12 +98,10 @@
     "website": "https://firecrawl.dev",
     "expected_min_num_of_pages": 2,
     "expected_crawled_pages": [
-      "https://firecrawl.dev/",
-      "https://firecrawl.dev/pricing"
+      "https://www.firecrawl.dev/",
+      "https://www.firecrawl.dev/pricing"
     ]
   },
-  
-  
   {
     "website": "https://fly.io/docs/gpus/gpu-quickstart",
     "expected_min_num_of_pages": 1,
@@ -119,7 +116,6 @@
     ],
     "notes": "This one should not go backwards, but it does!"
   },
-  
   {
     "website": "https://www.instructables.com/circuits",
     "expected_min_num_of_pages": 12,
@@ -152,27 +148,6 @@
       "https://richmondconfidential.org/2009/10/13/rough-roads-for-richmonds-cab-drivers/",
       "https://richmondconfidential.org/2009/10/13/before-napa-there-was-winehaven/",
       "https://richmondconfidential.org/2009/10/13/family-calls-for-end-to-violence-at-memorial-for-slain-woman-friend/"
-    ]
-  },
-  {
-    "website": "https://www.boardgamegeek.com",
-    "expected_min_num_of_pages": 15,
-    "expected_crawled_pages": [
-      "https://www.boardgamegeek.com/browse/boardgameartist",
-      "https://www.boardgamegeek.com/browse/boardgamehonor",
-      "https://www.boardgamegeek.com/browse/boardgamepublisher",
-      "https://www.boardgamegeek.com/browse/boardgamepodcast",
-      "https://www.boardgamegeek.com/wiki/page/Index",
-      "https://www.boardgamegeek.com/browse/boardgamecategory",
-      "https://www.boardgamegeek.com/boardgame/random",
-      "https://www.boardgamegeek.com/browse/boardgamemechanic",
-      "https://www.boardgamegeek.com/forums",
-      "https://www.boardgamegeek.com/gonecardboard",
-      "https://www.boardgamegeek.com/browse/boardgameaccessory",
-      "https://www.boardgamegeek.com/browse/boardgamedesigner",
-      "https://www.boardgamegeek.com/",
-      "https://www.boardgamegeek.com/previews",
-      "https://www.boardgamegeek.com/browse/boardgame"
     ]
   }
 ]

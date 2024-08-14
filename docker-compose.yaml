@@ -1,5 +1,4 @@
 name: firecrawl
-version: '3.9'
 
 x-common-service: &common-service
   build: apps/api
@@ -7,11 +6,14 @@ x-common-service: &common-service
     - backend
   environment:
     - REDIS_URL=${REDIS_URL:-redis://redis:6379}
+    - REDIS_RATE_LIMIT_URL=${REDIS_URL:-redis://redis:6379}
     - PLAYWRIGHT_MICROSERVICE_URL=${PLAYWRIGHT_MICROSERVICE_URL:-http://playwright-service:3000}
     - USE_DB_AUTHENTICATION=${USE_DB_AUTHENTICATION}
     - PORT=${PORT:-3002}
     - NUM_WORKERS_PER_QUEUE=${NUM_WORKERS_PER_QUEUE}
     - OPENAI_API_KEY=${OPENAI_API_KEY}
+    - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+    - MODEL_NAME=${MODEL_NAME:-gpt-4o}
     - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
     - SERPER_API_KEY=${SERPER_API_KEY}
     - LLAMAPARSE_API_KEY=${LLAMAPARSE_API_KEY}
@@ -25,6 +27,10 @@ x-common-service: &common-service
     - SUPABASE_SERVICE_TOKEN=${SUPABASE_SERVICE_TOKEN}
     - SCRAPING_BEE_API_KEY=${SCRAPING_BEE_API_KEY}
     - HOST=${HOST:-0.0.0.0}
+    - SELF_HOSTED_WEBHOOK_URL=${SELF_HOSTED_WEBHOOK_URL}
+    - LOGGING_LEVEL=${LOGGING_LEVEL}
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
 
 services:
   playwright-service:
@@ -53,6 +59,7 @@ services:
       - redis
       - playwright-service
       - api
+    command: [ "pnpm", "run", "workers" ]
 
   redis:
     image: redis:alpine

@@ -29,9 +29,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - name: Change directory
-        run: cd apps/api
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy ./apps/api --remote-only -a firecrawl-scraper-js
+      - run: flyctl deploy --remote-only -a firecrawl-scraper-js
+        working-directory: ./apps/api
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}

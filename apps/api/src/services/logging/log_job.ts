@@ -3,11 +3,11 @@ import { supabase_service } from "../supabase";
 import { FirecrawlJob } from "../../types";
 import { posthog } from "../posthog";
 import "dotenv/config";
+import { Logger } from "../../lib/logger";
 
 export async function logJob(job: FirecrawlJob) {
   try {
-    // Only log jobs in production
-    if (process.env.ENV !== "production") {
+    if (process.env.USE_DB_AUTHENTICATION === "false") {
       return;
     }
 
@@ -25,6 +25,7 @@ export async function logJob(job: FirecrawlJob) {
       .from("firecrawl_jobs")
       .insert([
         {
+          job_id: job.job_id ? job.job_id : null,
           success: job.success,
           message: job.message,
           num_docs: job.num_docs,
@@ -38,6 +39,7 @@ export async function logJob(job: FirecrawlJob) {
           origin: job.origin,
           extractor_options: job.extractor_options,
           num_tokens: job.num_tokens,
+          retry: !!job.retry,
         },
       ]);
 
@@ -61,14 +63,15 @@ export async function logJob(job: FirecrawlJob) {
           origin: job.origin,
           extractor_options: job.extractor_options,
           num_tokens: job.num_tokens,
+          retry: job.retry,
         },
       };
       posthog.capture(phLog);
     }
     if (error) {
-      console.error("Error logging job:\n", error);
+      Logger.error(`Error logging job: ${error.message}`);
     }
   } catch (error) {
-    console.error("Error logging job:\n", error);
+    Logger.error(`Error logging job: ${error.message}`);
   }
 }

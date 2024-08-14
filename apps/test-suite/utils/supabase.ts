@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import "dotenv/config";
+
 // SupabaseService class initializes the Supabase client conditionally based on environment variables.
 class SupabaseService {
   private client: SupabaseClient | null = null;
@@ -11,12 +12,12 @@ class SupabaseService {
     if (process.env.USE_DB_AUTHENTICATION === "false") {
       // Warn the user that Authentication is disabled by setting the client to null
       console.warn(
-        "\x1b[33mAuthentication is disabled. Supabase client will not be initialized.\x1b[0m"
+        "Authentication is disabled. Supabase client will not be initialized."
       );
       this.client = null;
     } else if (!supabaseUrl || !supabaseServiceToken) {
       console.error(
-        "\x1b[31mSupabase environment variables aren't configured correctly. Supabase client will not be initialized. Fix ENV configuration or disable DB authentication with USE_DB_AUTHENTICATION env variable\x1b[0m"
+        "Supabase environment variables aren't configured correctly. Supabase client will not be initialized. Fix ENV configuration or disable DB authentication with USE_DB_AUTHENTICATION env variable"
       );
     } else {
       this.client = createClient(supabaseUrl, supabaseServiceToken);
@@ -35,6 +36,11 @@ export const supabase_service: SupabaseClient = new Proxy(
   new SupabaseService(),
   {
     get: function (target, prop, receiver) {
+      if (process.env.USE_DB_AUTHENTICATION === "false") {
+        console.debug(
+          "Attempted to access Supabase client when it's not configured."
+        );
+      }
       const client = target.getClient();
       // If the Supabase client is not initialized, intercept property access to provide meaningful error feedback.
       if (client === null) {
