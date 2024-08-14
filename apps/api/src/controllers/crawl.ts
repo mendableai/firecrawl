@@ -10,7 +10,8 @@ import { createIdempotencyKey } from "../../src/services/idempotency/create";
 import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../src/lib/default-values";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../src/lib/logger";
-import { addCrawlJob, crawlToCrawler, lockURL, saveCrawl, StoredCrawl } from "../../src/lib/crawl-redis";
+import { addCrawlJob, addCrawlJobs, crawlToCrawler, lockURL, lockURLs, saveCrawl, StoredCrawl } from "../../src/lib/crawl-redis";
+import { getScrapeQueue } from "../../src/services/queue-service";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -115,20 +116,31 @@ export async function crawlController(req: Request, res: Response) {
     const sitemap = sc.crawlerOptions?.ignoreSitemap ? null : await crawler.tryGetSitemap();
 
     if (sitemap !== null) {
-      for (const url of sitemap.map(x => x.url)) {
-        await lockURL(id, sc, url);
-        const job = await addScrapeJob({
-          url,
-          mode: "single_urls",
-          crawlerOptions: crawlerOptions,
-          team_id: team_id,
-          pageOptions: pageOptions,
-          origin: req.body.origin ?? defaultOrigin,
-          crawl_id: id,
-          sitemapped: true,
-        });
-        await addCrawlJob(id, job.id);
-      }
+      const jobs = sitemap.map(x => {
+        const url = x.url;
+        const uuid = uuidv4();
+        return {
+          name: uuid,
+          data: {
+            url,
+            mode: "single_urls",
+            crawlerOptions: crawlerOptions,
+            team_id: team_id,
+            pageOptions: pageOptions,
+            origin: req.body.origin ?? defaultOrigin,
+            crawl_id: id,
+            sitemapped: true,
+          },
+          opts: {
+            jobId: uuid,
+            priority: 2,
+          }
+        };
+      })
+
+      await lockURLs(id, jobs.map(x => x.data.url));
+      await addCrawlJobs(id, jobs.map(x => x.opts.jobId));
+      await getScrapeQueue().addBulk(jobs);
     } else {
       await lockURL(id, sc, url);
       const job = await addScrapeJob({

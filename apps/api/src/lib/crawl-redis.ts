@@ -30,6 +30,11 @@ export async function addCrawlJob(id: string, job_id: string) {
     await redisConnection.expire("crawl:" + id + ":jobs", 24 * 60 * 60, "NX");
 }
 
+export async function addCrawlJobs(id: string, job_ids: string[]) {
+    await redisConnection.sadd("crawl:" + id + ":jobs", ...job_ids);
+    await redisConnection.expire("crawl:" + id + ":jobs", 24 * 60 * 60, "NX");
+}
+
 export async function addCrawlJobDone(id: string, job_id: string) {
     await redisConnection.sadd("crawl:" + id + ":jobs_done", job_id);
     await redisConnection.expire("crawl:" + id + ":jobs_done", 24 * 60 * 60, "NX");
@@ -50,6 +55,13 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
         }
     }
     const res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0
+    await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
+    return res;
+}
+
+/// NOTE: does not check limit. only use if limit is checked beforehand e.g. with sitemap
+export async function lockURLs(id: string, urls: string[]): Promise<boolean> {
+    const res = (await redisConnection.sadd("crawl:" + id + ":visited", ...urls)) !== 0
     await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
     return res;
 }
