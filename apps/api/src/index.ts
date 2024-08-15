@@ -2,7 +2,7 @@ import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import "dotenv/config";
-import { getWebScraperQueue } from "./services/queue-service";
+import { getScrapeQueue } from "./services/queue-service";
 import { v0Router } from "./routes/v0";
 import { initSDK } from "@hyperdx/node-opentelemetry";
 import cluster from "cluster";
@@ -58,7 +58,7 @@ if (cluster.isMaster) {
   serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
 
   const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
-    queues: [new BullAdapter(getWebScraperQueue())],
+    queues: [new BullAdapter(getScrapeQueue())],
     serverAdapter: serverAdapter,
   });
 
@@ -104,9 +104,9 @@ if (cluster.isMaster) {
 
   app.get(`/serverHealthCheck`, async (req, res) => {
     try {
-      const webScraperQueue = getWebScraperQueue();
+      const scrapeQueue = getScrapeQueue();
       const [waitingJobs] = await Promise.all([
-        webScraperQueue.getWaitingCount(),
+        scrapeQueue.getWaitingCount(),
       ]);
 
       const noWaitingJobs = waitingJobs === 0;
@@ -126,9 +126,9 @@ if (cluster.isMaster) {
       const timeout = 60000; // 1 minute // The timeout value for the check in milliseconds
 
       const getWaitingJobsCount = async () => {
-        const webScraperQueue = getWebScraperQueue();
+        const scrapeQueue = getScrapeQueue();
         const [waitingJobsCount] = await Promise.all([
-          webScraperQueue.getWaitingCount(),
+          scrapeQueue.getWaitingCount(),
         ]);
 
         return waitingJobsCount;
@@ -181,13 +181,12 @@ if (cluster.isMaster) {
   Logger.info(`Worker ${process.pid} started`);
 }
 
-const wsq = getWebScraperQueue();
+// const sq = getScrapeQueue();
 
-wsq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
-wsq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
-wsq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
-wsq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
-wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
-wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
-
+// sq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
+// sq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
+// sq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
+// sq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
+// sq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
+// sq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
 

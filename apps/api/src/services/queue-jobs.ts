@@ -1,17 +1,17 @@
-import { Job, Queue } from "bull";
-import {
-  getWebScraperQueue,
-} from "./queue-service";
+import { Job, Queue } from "bullmq";
+import { getScrapeQueue } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
 import { WebScraperOptions } from "../types";
 
-export async function addWebScraperJob(
+export async function addScrapeJob(
   webScraperOptions: WebScraperOptions,
-  options: any = {}
+  options: any = {},
+  jobId: string = uuidv4(),
 ): Promise<Job> {
-  return await getWebScraperQueue().add(webScraperOptions, {
+  return await getScrapeQueue().add(jobId, webScraperOptions, {
+    priority: webScraperOptions.crawl_id ? 20 : 10,
     ...options,
-    jobId: uuidv4(),
+    jobId,
   });
 }
 

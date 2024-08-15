@@ -26,6 +26,7 @@ export async function scrapWithFireEngine({
   fireEngineOptions = {},
   headers,
   options,
+  priority,
 }: {
   url: string;
   waitFor?: number;
@@ -35,6 +36,7 @@ export async function scrapWithFireEngine({
   fireEngineOptions?: FireEngineOptions;
   headers?: Record<string, string>;
   options?: any;
+  priority?: number;
 }): Promise<FireEngineResponse> {
   const logParams = {
     url,
@@ -78,6 +80,7 @@ export async function scrapWithFireEngine({
         fullPageScreenshot: fullPageScreenshotParam,
         headers: headers,
         pageOptions: pageOptions,
+        priority,
         ...fireEngineOptionsParam,
       },
       {

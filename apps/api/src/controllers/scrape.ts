@@ -1,6 +1,5 @@
 import { ExtractorOptions, PageOptions } from './../lib/entities';
 import { Request, Response } from "express";
-import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
 import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../types";
@@ -9,6 +8,8 @@ import { Document } from "../lib/entities";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../lib/default-values';
+import { addScrapeJob } from '../services/queue-jobs';
+import { scrapeQueueEvents } from '../services/queue-service';
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from '../lib/logger';
 
@@ -36,50 +37,49 @@ export async function scrapeHelper(
     return { success: false, error: "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.", returnCode: 403 };
   }
 
-  const a = new WebScraperDataProvider();
-  await a.setOptions({
-    jobId,
+  const job = await addScrapeJob({
+    url,
     mode: "single_urls",
-    urls: [url],
-    crawlerOptions: {
-      ...crawlerOptions,
-    },
-    pageOptions: pageOptions,
-    extractorOptions: extractorOptions,
-  });
+    crawlerOptions,
+    team_id,
+    pageOptions,
+    extractorOptions,
+    origin: req.body.origin ?? defaultOrigin,
+  }, {}, jobId);
 
-  const timeoutPromise = new Promise<{ success: boolean; error?: string; returnCode: number }>((_, reject) =>
-    setTimeout(() => reject({ success: false, error: "Request timed out. Increase the timeout by passing `timeout` param to the request.", returnCode: 408 }), timeout)
-  );
-
-  const docsPromise = a.getDocuments(false);
-
-  let docs;
+  let doc;
   try {
-    docs = await Promise.race([docsPromise, timeoutPromise]);
-  } catch (error) {
-    return error;
+    doc = (await job.waitUntilFinished(scrapeQueueEvents, timeout))[0]; //60 seconds timeout
+  } catch (e) {
+    if (e instanceof Error && e.message.startsWith("Job wait")) {
+      return {
+        success: false,
+        error: "Request timed out",
+        returnCode: 408,
+      }
+    } else {
+      throw e;
+    }
   }
 
-  // make sure doc.content is not empty
-  let filteredDocs = docs.filter(
-    (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
-  );
-  if (filteredDocs.length === 0) {
-    return { success: true, error: "No page found", returnCode: 200, data: docs[0] };
+  await job.remove();
+
+  if (!doc) {
+    console.error("!!! PANIC DOC IS", doc, job);
+    return { success: true, error: "No page found", returnCode: 200, data: doc };
   }
 
- 
+  delete doc.index;
+  delete doc.provider;
+
   // Remove rawHtml if pageOptions.rawHtml is false and extractorOptions.mode is llm-extraction-from-raw-html
   if (!pageOptions.includeRawHtml && extractorOptions.mode == "llm-extraction-from-raw-html") {
-    filteredDocs.forEach(doc => {
-      delete doc.rawHtml;
-    });
+    delete doc.rawHtml;
   }
 
   return {
     success: true,
-    data: filteredDocs[0],
+    data: doc,
     returnCode: 200,
   };
 }
@@ -143,7 +143,7 @@ export async function scrapeController(req: Request, res: Response) {
     const numTokens = (result.data && result.data.markdown) ? numTokensFromString(result.data.markdown, "gpt-3.5-turbo") : 0;
 
     if (result.success) {
-      let creditsToBeBilled = 1; // Assuming 1 credit per document
+      let creditsToBeBilled = 0; // billing for doc done on queue end
       const creditsPerLLMExtract = 50;
 
       if (extractorOptions.mode.includes("llm-extraction")) {

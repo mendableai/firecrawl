@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { AxiosError } from "axios";
 import cheerio, { load } from "cheerio";
 import { URL } from "url";
 import { getLinksFromSitemap } from "./sitemap";
@@ -22,7 +22,7 @@ export class WebCrawler {
   private crawledUrls: Map<string, string> = new Map();
   private limit: number;
   private robotsTxtUrl: string;
-  private robots: any;
+  public robots: any;
   private generateImgAltText: boolean;
   private allowBackwardCrawling: boolean;
   private allowExternalContentLinks: boolean;
@@ -66,7 +66,7 @@ export class WebCrawler {
     this.allowExternalContentLinks = allowExternalContentLinks ?? false;
   }
 
-  private filterLinks(sitemapLinks: string[], limit: number, maxDepth: number): string[] {
+  public filterLinks(sitemapLinks: string[], limit: number, maxDepth: number): string[] {
     return sitemapLinks
       .filter((link) => {
         const url = new URL(link.trim(), this.baseUrl);
@@ -130,6 +130,25 @@ export class WebCrawler {
       .slice(0, limit);
   }
 
+  public async getRobotsTxt(): Promise<string> {
+    const response = await axios.get(this.robotsTxtUrl, { timeout: axiosTimeout });
+    return response.data;
+  }
+
+  public importRobotsTxt(txt: string) {
+    this.robots = robotsParser(this.robotsTxtUrl, txt);
+  }
+
+  public async tryGetSitemap(): Promise<{ url: string; html: string; }[] | null> {
+    Logger.debug(`Fetching sitemap links from ${this.initialUrl}`);
+    const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
+    if (sitemapLinks.length > 0) {
+      let filteredLinks = this.filterLinks(sitemapLinks, this.limit, this.maxCrawledDepth);
+      return filteredLinks.map(link => ({ url: link, html: "" }));
+    }
+    return null;
+  }
+
   public async start(
     inProgress?: (progress: Progress) => void,
     pageOptions?: PageOptions,
@@ -142,19 +161,17 @@ export class WebCrawler {
     Logger.debug(`Crawler starting with ${this.initialUrl}`);
     // Fetch and parse robots.txt
     try {
-      const response = await axios.get(this.robotsTxtUrl, { timeout: axiosTimeout });
-      this.robots = robotsParser(this.robotsTxtUrl, response.data);
+      const txt = await this.getRobotsTxt();
+      this.importRobotsTxt(txt);
       Logger.debug(`Crawler robots.txt fetched with ${this.robotsTxtUrl}`);
     } catch (error) {
       Logger.debug(`Failed to fetch robots.txt from ${this.robotsTxtUrl}`);
     }
 
     if (!crawlerOptions?.ignoreSitemap){
-      Logger.debug(`Fetching sitemap links from ${this.initialUrl}`);
-      const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
-      if (sitemapLinks.length > 0) {
-        let filteredLinks = this.filterLinks(sitemapLinks, limit, maxDepth);
-        return filteredLinks.map(link => ({ url: link, html: "" }));
+      const sm = await this.tryGetSitemap();
+      if (sm !== null) {
+        return sm;
       }
     }
 
@@ -241,6 +258,37 @@ export class WebCrawler {
     return Array.from(this.crawledUrls.entries()).map(([url, html]) => ({ url, html }));
   }
 
+  public filterURL(href: string, url: string): string | null {
+    let fullUrl = href;
+    if (!href.startsWith("http")) {
+      fullUrl = new URL(href, this.baseUrl).toString();
+    }
+    const urlObj = new URL(fullUrl);
+    const path = urlObj.pathname;
+
+    if (this.isInternalLink(fullUrl)) { // INTERNAL LINKS
+      if (this.isInternalLink(fullUrl) &&
+        this.noSections(fullUrl) &&
+        !this.matchesExcludes(path) &&
+        this.isRobotsAllowed(fullUrl)
+      ) {
+        return fullUrl;
+      }
+    } else { // EXTERNAL LINKS
+      if (
+        this.isInternalLink(url) &&
+        this.allowExternalContentLinks &&
+        !this.isSocialMediaOrEmail(fullUrl) &&
+        !this.matchesExcludes(fullUrl, true) &&
+        !this.isExternalMainPage(fullUrl)
+      ) {
+        return fullUrl;
+      }
+    }
+
+    return null;
+  }
+
   async crawl(url: string, pageOptions: PageOptions): Promise<{url: string, html: string, pageStatusCode?: number, pageError?: string}[]> {
     if (this.visited.has(url) || !this.robots.isAllowed(url, "FireCrawlAgent")) {
       return [];
@@ -287,31 +335,9 @@ export class WebCrawler {
       $("a").each((_, element) => {
         const href = $(element).attr("href");
         if (href) {
-          let fullUrl = href;
-          if (!href.startsWith("http")) {
-            fullUrl = new URL(href, this.baseUrl).toString();
-          }
-          const urlObj = new URL(fullUrl);
-          const path = urlObj.pathname;
-
-          if (this.isInternalLink(fullUrl)) { // INTERNAL LINKS
-            if (this.isInternalLink(fullUrl) &&
-              this.noSections(fullUrl) &&
-              !this.matchesExcludes(path) &&
-              this.isRobotsAllowed(fullUrl)
-            ) {
-              links.push({ url: fullUrl, html: content, pageStatusCode, pageError });
-            }
-          } else { // EXTERNAL LINKS
-            if (
-              this.isInternalLink(url) &&
-              this.allowExternalContentLinks &&
-              !this.isSocialMediaOrEmail(fullUrl) &&
-              !this.matchesExcludes(fullUrl, true) &&
-              !this.isExternalMainPage(fullUrl)
-            ) {
-              links.push({ url: fullUrl, html: content, pageStatusCode, pageError });
-            }
+          const u = this.filterURL(href, url);
+          if (u !== null) {
+            links.push({ url: u, html: content, pageStatusCode, pageError });
           }
         }
       });
@@ -465,9 +491,13 @@ export class WebCrawler {
       }
     } catch (error) { 
       Logger.debug(`Failed to fetch sitemap with axios from ${sitemapUrl}: ${error}`);
-      const response = await getLinksFromSitemap({ sitemapUrl, mode: 'fire-engine' });
-      if (response) {
-        sitemapLinks = response;
+      if (error instanceof AxiosError && error.response?.status === 404) {
+        // ignore 404
+      } else {
+        const response = await getLinksFromSitemap({ sitemapUrl, mode: 'fire-engine' });
+        if (response) {
+          sitemapLinks = response;
+        }
       }
     }
 
@@ -480,7 +510,11 @@ export class WebCrawler {
         }
       } catch (error) {
         Logger.debug(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);
-        sitemapLinks = await getLinksFromSitemap({ sitemapUrl: baseUrlSitemap, mode: 'fire-engine' });
+        if (error instanceof AxiosError && error.response?.status === 404) {
+          // ignore 404
+        } else {
+          sitemapLinks = await getLinksFromSitemap({ sitemapUrl: baseUrlSitemap, mode: 'fire-engine' });
+        }
       }
     }
 

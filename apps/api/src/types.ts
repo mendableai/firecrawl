@@ -25,8 +25,11 @@ export interface WebScraperOptions {
   mode: Mode;
   crawlerOptions: any;
   pageOptions: any;
+  extractorOptions?: any;
   team_id: string;
   origin?: string;
+  crawl_id?: string;
+  sitemapped?: boolean;
 }
 
 export interface RunWebScraperParams {
@@ -34,11 +37,13 @@ export interface RunWebScraperParams {
   mode: Mode;
   crawlerOptions: any;
   pageOptions?: any;
+  extractorOptions?: any;
   inProgress: (progress: any) => void;
-  onSuccess: (result: any) => void;
+  onSuccess: (result: any, mode: string) => void;
   onError: (error: Error) => void;
   team_id: string;
   bull_job_id: string;
+  priority?: number;
 }
 
 export interface RunWebScraperResult {
@@ -63,6 +68,7 @@ export interface FirecrawlJob {
   extractor_options?: ExtractorOptions,
   num_tokens?: number,
   retry?: boolean,
+  crawl_id?: string;
 }
 
 export interface FirecrawlScrapeResponse {

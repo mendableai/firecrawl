@@ -134,7 +134,8 @@ export async function scrapSingleUrl(
   extractorOptions: ExtractorOptions = {
     mode: "llm-extraction-from-markdown",
   },
-  existingHtml: string = ""
+  existingHtml: string = "",
+  priority?: number,
 ): Promise<Document> {
   urlToScrap = urlToScrap.trim();
 
@@ -177,7 +178,8 @@ export async function scrapSingleUrl(
             headers: pageOptions.headers,
             fireEngineOptions: {
               engine: engine,
-            }
+            },
+            priority,
           });
           scraperResponse.text = response.html;
           scraperResponse.screenshot = response.screenshot;
@@ -340,7 +342,7 @@ export async function scrapSingleUrl(
         Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100, breaking`);
         break;
       }
-      if (pageStatusCode && pageStatusCode == 404) {
+      if (pageStatusCode && (pageStatusCode == 404 || pageStatusCode == 500)) {
         Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code 404, breaking`);
         break;
       }

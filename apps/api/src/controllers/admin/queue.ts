@@ -1,8 +1,8 @@
 import { Request, Response } from "express";
 
-import { Job } from "bull";
+import { Job } from "bullmq";
 import { Logger } from "../../lib/logger";
-import { getWebScraperQueue } from "../../services/queue-service";
+import { getScrapeQueue } from "../../services/queue-service";
 import { checkAlerts } from "../../services/alerts";
 
 export async function cleanBefore24hCompleteJobsController(
@@ -11,13 +11,13 @@ export async function cleanBefore24hCompleteJobsController(
 ) {
   Logger.info("🐂 Cleaning jobs older than 24h");
   try {
-    const webScraperQueue = getWebScraperQueue();
+    const scrapeQueue = getScrapeQueue();
     const batchSize = 10;
     const numberOfBatches = 9; // Adjust based on your needs
     const completedJobsPromises: Promise<Job[]>[] = [];
     for (let i = 0; i < numberOfBatches; i++) {
       completedJobsPromises.push(
-        webScraperQueue.getJobs(
+        scrapeQueue.getJobs(
           ["completed"],
           i * batchSize,
           i * batchSize + batchSize,
@@ -68,10 +68,10 @@ export async function checkQueuesController(req: Request, res: Response) {
   // Use this as a "health check" that way we dont destroy the server
 export async function queuesController(req: Request, res: Response) {
     try {
-      const webScraperQueue = getWebScraperQueue();
+      const scrapeQueue = getScrapeQueue();
 
       const [webScraperActive] = await Promise.all([
-        webScraperQueue.getActiveCount(),
+        scrapeQueue.getActiveCount(),
       ]);
 
       const noActiveJobs = webScraperActive === 0;

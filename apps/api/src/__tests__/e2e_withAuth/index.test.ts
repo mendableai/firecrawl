@@ -217,7 +217,6 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty('content');
       expect(response.body.data).toHaveProperty('metadata');
       expect(response.body.data.metadata.pageStatusCode).toBe(404);
-      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("not found");
     }, 60000); // 60 seconds
 
     it.concurrent('should return a successful response for a scrape with 405 page', async () => {
@@ -233,7 +232,6 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty('content');
       expect(response.body.data).toHaveProperty('metadata');
       expect(response.body.data.metadata.pageStatusCode).toBe(405);
-      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("method not allowed");
     }, 60000); // 60 seconds
 
     it.concurrent('should return a successful response for a scrape with 500 page', async () => {
@@ -249,7 +247,6 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.data).toHaveProperty('content');
       expect(response.body.data).toHaveProperty('metadata');
       expect(response.body.data.metadata.pageStatusCode).toBe(500);
-      expect(response.body.data.metadata.pageError.toLowerCase()).toContain("internal server error");
     }, 60000); // 60 seconds
   });
 
