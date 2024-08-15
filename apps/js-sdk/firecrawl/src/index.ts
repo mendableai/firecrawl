@@ -369,6 +369,7 @@ export default class FirecrawlApp {
     headers: AxiosRequestHeaders,
     checkInterval: number
   ): Promise<any> {
+    let attempts = 3; // wait for up to 3 seconds for the job to save the content on db
     while (true) {
       const statusResponse: AxiosResponse = await this.getRequest(
         this.apiUrl + `/v0/crawl/status/${jobId}`,
@@ -379,6 +380,11 @@ export default class FirecrawlApp {
         if (statusData.status === "completed") {
           if ("data" in statusData) {
             return statusData.data;
+          } else if (attempts > 0) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, 1000)
+            );
+            attempts--;
           } else {
             throw new Error("Crawl job completed but no data was returned");
           }

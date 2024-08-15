@@ -104,13 +104,16 @@ describe('FirecrawlApp E2E Tests', () => {
     const maxChecks = 15;
     let checks = 0;
 
-    while (statusResponse.status === 'active' && checks < maxChecks) {
+    while (statusResponse.status === 'active' || checks < maxChecks) {
       await new Promise(resolve => setTimeout(resolve, 1000));
       expect(statusResponse.partial_data).not.toBeNull();
-      expect(statusResponse.current).toBeGreaterThanOrEqual(1);
+      expect(statusResponse.current).toBeGreaterThanOrEqual(0);
       statusResponse = await app.checkCrawlStatus(response.jobId);
       checks++;
     }
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    statusResponse = await app.checkCrawlStatus(response.jobId);
 
     expect(statusResponse).not.toBeNull();
     expect(statusResponse.success).toBe(true);

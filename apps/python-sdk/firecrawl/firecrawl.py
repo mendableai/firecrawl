@@ -272,6 +272,7 @@ class FirecrawlApp:
         Raises:
             Exception: If the job fails or an error occurs during status checks.
         """
+        attempts = 3 # wait for up to 3 seconds for the job to save the content on db
         while True:
             status_response = self._get_request(f'{self.api_url}/v0/crawl/status/{job_id}', headers)
             if status_response.status_code == 200:
@@ -279,6 +280,9 @@ class FirecrawlApp:
                 if status_data['status'] == 'completed':
                     if 'data' in status_data:
                         return status_data['data']
+                    elif attempts > 0:
+                        time.sleep(1)
+                        attempts -= 1
                     else:
                         raise Exception('Crawl job completed but no data was returned')
                 elif status_data['status'] in ['active', 'paused', 'pending', 'queued', 'waiting']:
