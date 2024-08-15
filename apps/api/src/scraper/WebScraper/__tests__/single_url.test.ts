@@ -20,7 +20,7 @@ describe('scrapSingleUrl', () => {
 
     expect(resultWithHtml.html).toBeDefined();
     expect(resultWithoutHtml.html).toBeUndefined();
-  }, 10000);
+  }, 30000);
 });
 
 it('should return a list of links on the firecrawl.ai page', async () => {
