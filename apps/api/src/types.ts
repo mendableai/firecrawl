@@ -43,6 +43,7 @@ export interface RunWebScraperParams {
   onError: (error: Error) => void;
   team_id: string;
   bull_job_id: string;
+  priority?: number;
 }
 
 export interface RunWebScraperResult {

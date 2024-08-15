@@ -49,6 +49,7 @@ export async function startWebScraperPipeline({
     },
     team_id: job.data.team_id,
     bull_job_id: job.id.toString(),
+    priority: job.opts.priority,
   })) as { success: boolean; message: string; docs: Document[] };
 }
 export async function runWebScraper({
@@ -62,6 +63,7 @@ export async function runWebScraper({
   onError,
   team_id,
   bull_job_id,
+  priority,
 }: RunWebScraperParams): Promise<RunWebScraperResult> {
   try {
     const provider = new WebScraperDataProvider();
@@ -74,6 +76,7 @@ export async function runWebScraper({
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
         bullJobId: bull_job_id,
+        priority,
       });
     } else {
       await provider.setOptions({
@@ -83,6 +86,7 @@ export async function runWebScraper({
         extractorOptions,
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
+        priority,
       });
     }
     const docs = (await provider.getDocuments(false, (progress: Progress) => {
