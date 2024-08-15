@@ -9,6 +9,7 @@ import { search } from "../search";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../lib/logger";
+import { getScrapeQueue, scrapeQueueEvents } from "../services/queue-service";
 
 export async function searchHelper(
   jobId: string,
@@ -75,26 +76,28 @@ export async function searchHelper(
 
   // filter out social media links
 
+  const jobDatas = res.map(x => {
+    const url = x.url;
+    const uuid = uuidv4();
+    return {
+      name: uuid,
+      data: {
+        url,
+        mode: "single_urls",
+        crawlerOptions: crawlerOptions,
+        team_id: team_id,
+        pageOptions: pageOptions,
+      },
+      opts: {
+        jobId: uuid,
+        priority: 10,
+      }
+    };
+  })
+  
+  const jobs = await getScrapeQueue().addBulk(jobDatas);
 
-  const a = new WebScraperDataProvider();
-  await a.setOptions({
-    jobId,
-    mode: "single_urls",
-    urls: res.map((r) => r.url).slice(0, Math.min(searchOptions.limit ?? 5, 5)),
-    crawlerOptions: {
-      ...crawlerOptions,
-    },
-    pageOptions: {
-      ...pageOptions,
-      onlyMainContent: pageOptions?.onlyMainContent ?? true,
-      fetchPageContent: pageOptions?.fetchPageContent ?? true,
-      includeHtml: pageOptions?.includeHtml ?? false,
-      removeTags: pageOptions?.removeTags ?? [],
-      fallback: false,
-    },
-  });
-
-  const docs = await a.getDocuments(false);
+  const docs = (await Promise.all(jobs.map(x => x.waitUntilFinished(scrapeQueueEvents, 60000)))).map(x => x[0]);
   
   if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
@@ -107,19 +110,6 @@ export async function searchHelper(
 
   if (filteredDocs.length === 0) {
     return { success: true, error: "No page found", returnCode: 200, data: docs };
-  }
-
-  const billingResult = await billTeam(
-    team_id,
-    filteredDocs.length
-  );
-  if (!billingResult.success) {
-    return {
-      success: false,
-      error:
-        "Failed to bill team. Insufficient credits or subscription not found.",
-      returnCode: 402,
-    };
   }
 
   return {
