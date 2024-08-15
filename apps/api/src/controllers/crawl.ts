@@ -12,6 +12,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../src/lib/logger";
 import { addCrawlJob, addCrawlJobs, crawlToCrawler, lockURL, lockURLs, saveCrawl, StoredCrawl } from "../../src/lib/crawl-redis";
 import { getScrapeQueue } from "../../src/services/queue-service";
+import { checkAndUpdateURL } from "../../src/lib/validateUrl";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -43,9 +44,16 @@ export async function crawlController(req: Request, res: Response) {
       return res.status(402).json({ error: "Insufficient credits" });
     }
 
-    const url = req.body.url;
+    let url = req.body.url;
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
+    }
+    try {
+      url = checkAndUpdateURL(url).url;
+    } catch (e) {
+      return res
+        .status(e instanceof Error && e.message === "Invalid URL" ? 400 : 500)
+        .json({ error: e.message ?? e });
     }
 
     if (isUrlBlocked(url)) {
