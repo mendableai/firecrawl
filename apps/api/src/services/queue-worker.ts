@@ -149,23 +149,23 @@ async function processJob(job: Job, token: string) {
       await callWebhook(job.data.team_id, job.id as string, data);
     }
 
-    await logJob({
-      job_id: job.id as string,
-      success: success,
-      message: message,
-      num_docs: docs.length,
-      docs: docs,
-      time_taken: timeTakenInSeconds,
-      team_id: job.data.team_id,
-      mode: job.data.mode,
-      url: job.data.url,
-      crawlerOptions: job.data.crawlerOptions,
-      pageOptions: job.data.pageOptions,
-      origin: job.data.origin,
-      crawl_id: job.data.crawl_id,
-    });
-
     if (job.data.crawl_id) {
+      await logJob({
+        job_id: job.id as string,
+        success: success,
+        message: message,
+        num_docs: docs.length,
+        docs: docs,
+        time_taken: timeTakenInSeconds,
+        team_id: job.data.team_id,
+        mode: job.data.mode,
+        url: job.data.url,
+        crawlerOptions: job.data.crawlerOptions,
+        pageOptions: job.data.pageOptions,
+        origin: job.data.origin,
+        crawl_id: job.data.crawl_id,
+      });
+
       await addCrawlJobDone(job.data.crawl_id, job.id);
 
       const sc = await getCrawl(job.data.crawl_id) as StoredCrawl;
@@ -301,26 +301,26 @@ async function processJob(job: Job, token: string) {
       await callWebhook(job.data.team_id, job.data.crawl_id ?? job.id as string, data);
     }
     
-    await logJob({
-      job_id: job.id as string,
-      success: false,
-      message:
-        typeof error === "string"
-          ? error
-          : error.message ?? "Something went wrong... Contact help@mendable.ai",
-      num_docs: 0,
-      docs: [],
-      time_taken: 0,
-      team_id: job.data.team_id,
-      mode: job.data.mode,
-      url: job.data.url,
-      crawlerOptions: job.data.crawlerOptions,
-      pageOptions: job.data.pageOptions,
-      origin: job.data.origin,
-      crawl_id: job.data.crawl_id,
-    });
-
     if (job.data.crawl_id) {
+      await logJob({
+        job_id: job.id as string,
+        success: false,
+        message:
+          typeof error === "string"
+            ? error
+            : error.message ?? "Something went wrong... Contact help@mendable.ai",
+        num_docs: 0,
+        docs: [],
+        time_taken: 0,
+        team_id: job.data.team_id,
+        mode: job.data.mode,
+        url: job.data.url,
+        crawlerOptions: job.data.crawlerOptions,
+        pageOptions: job.data.pageOptions,
+        origin: job.data.origin,
+        crawl_id: job.data.crawl_id,
+      });
+
       const sc = await getCrawl(job.data.crawl_id);
 
       await logJob({
