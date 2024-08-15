@@ -1,5 +1,5 @@
 
-import { AuthResponse, RateLimiterMode } from "../types";
+import { AuthResponse, RateLimiterMode } from "../../types";
 
 import { Request, Response } from "express";
 import { authenticateUser } from "./auth";

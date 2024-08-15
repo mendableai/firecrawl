@@ -1,19 +1,12 @@
-// import { ExtractorOptions, PageOptions } from './../../lib/entities';
 import { Request, Response } from "express";
-// import { WebScraperDataProvider } from "../../scraper/WebScraper";
-// import { billTeam, checkTeamCredits } from "../../services/billing/credit_billing";
 import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../../types";
-// import { logJob } from "../../services/logging/log_job";
-// import { Document } from "../../lib/entities";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
-// import { numTokensFromString } from '../../lib/LLM-extraction/helpers';
-// import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../../../src/lib/default-values';
-// import { v4 as uuidv4 } from "uuid";
 import { Logger } from '../../lib/logger';
 import { checkAndUpdateURL } from '../../lib/validateUrl';
+import { ScrapeRequest, ScrapeResponse } from "./types";
 
-export async function scrapeController(req: Request, res: Response) {
+export async function scrapeController(req: Request<{}, ScrapeResponse, ScrapeRequest>, res: Response<ScrapeResponse>) {
   let url = req.body.url;
   if (!url) {
     return { success: false, error: "Url is required", returnCode: 400 };
@@ -24,7 +17,7 @@ export async function scrapeController(req: Request, res: Response) {
   }
 
   try {
-    url = checkAndUpdateURL(url);
+    url = checkAndUpdateURL(url).url;
   } catch (error) {
     return { success: false, error: "Invalid URL", returnCode: 400 };
   }
@@ -53,20 +46,19 @@ export async function scrapeController(req: Request, res: Response) {
       RateLimiterMode.Scrape
     );
     if (!success) {
-      return res.status(status).json({ error });
+      return res.status(status).json({ success: false, error });
     }
 
     // check credits
 
-    const result = {
+    const result: ScrapeResponse = {
       success: true,
       warning: "test",
       data: {
         markdown: "test",
-        content: "test",
         html: "test",
         rawHtml: "test",
-        linksOnPage: ["test1", "test2"],
+        links: ["test1", "test2"],
         screenshot: "test",
         metadata: {
           title: "test",
@@ -174,7 +166,7 @@ export async function scrapeController(req: Request, res: Response) {
     // return res.status(result.returnCode).json(result);
   } catch (error) {
     Logger.error(error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 }
 

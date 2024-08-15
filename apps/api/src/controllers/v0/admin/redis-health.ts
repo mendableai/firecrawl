@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import Redis from "ioredis";
-import { Logger } from "../../lib/logger";
-import { redisRateLimitClient } from "../../services/rate-limiter";
+import { Logger } from "../../../lib/logger";
+import { redisRateLimitClient } from "../../../services/rate-limiter";
 
 export async function redisHealthController(req: Request, res: Response) {
   const retryOperation = async (operation, retries = 3) => {

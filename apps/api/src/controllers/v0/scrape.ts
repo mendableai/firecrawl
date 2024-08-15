@@ -1,17 +1,17 @@
-import { ExtractorOptions, PageOptions } from './../lib/entities';
+import { ExtractorOptions, PageOptions } from './../../lib/entities';
 import { Request, Response } from "express";
-import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
+import { billTeam, checkTeamCredits } from "../../services/billing/credit_billing";
 import { authenticateUser } from "./auth";
-import { RateLimiterMode } from "../types";
-import { logJob } from "../services/logging/log_job";
-import { Document } from "../lib/entities";
-import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
-import { numTokensFromString } from '../lib/LLM-extraction/helpers';
-import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../lib/default-values';
-import { addScrapeJob } from '../services/queue-jobs';
-import { scrapeQueueEvents } from '../services/queue-service';
+import { RateLimiterMode } from "../../types";
+import { logJob } from "../../services/logging/log_job";
+import { Document } from "../../lib/entities";
+import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
+import { numTokensFromString } from '../../lib/LLM-extraction/helpers';
+import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../../lib/default-values';
+import { addScrapeJob } from '../../services/queue-jobs';
+import { scrapeQueueEvents } from '../../services/queue-service';
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from '../lib/logger';
+import { Logger } from '../../lib/logger';
 
 export async function scrapeHelper(
   jobId: string,

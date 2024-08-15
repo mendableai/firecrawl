@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 
 import { Job } from "bullmq";
-import { Logger } from "../../lib/logger";
-import { getScrapeQueue } from "../../services/queue-service";
-import { checkAlerts } from "../../services/alerts";
+import { Logger } from "../../../lib/logger";
+import { getScrapeQueue } from "../../../services/queue-service";
+import { checkAlerts } from "../../../services/alerts";
 
 export async function cleanBefore24hCompleteJobsController(
   req: Request,

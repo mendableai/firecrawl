@@ -1,12 +1,12 @@
 import { Request, Response } from "express";
 import { authenticateUser } from "./auth";
-import { RateLimiterMode } from "../../src/types";
-import { isUrlBlocked } from "../../src/scraper/WebScraper/utils/blocklist";
+import { RateLimiterMode } from "../../../src/types";
+import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "../../src/lib/logger";
-import { addCrawlJob, crawlToCrawler, lockURL, saveCrawl, StoredCrawl } from "../../src/lib/crawl-redis";
-import { addScrapeJob } from "../../src/services/queue-jobs";
-import { checkAndUpdateURL } from "../../src/lib/validateUrl";
+import { Logger } from "../../../src/lib/logger";
+import { addCrawlJob, crawlToCrawler, lockURL, saveCrawl, StoredCrawl } from "../../../src/lib/crawl-redis";
+import { addScrapeJob } from "../../../src/services/queue-jobs";
+import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 
 export async function crawlPreviewController(req: Request, res: Response) {
   try {

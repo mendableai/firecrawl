@@ -1,26 +1,32 @@
 import { Request, Response } from "express";
-import { Logger } from "../../src/lib/logger";
-import { getCrawl, getCrawlJobs } from "../../src/lib/crawl-redis";
-import { getScrapeQueue } from "../../src/services/queue-service";
-import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
+import { authenticateUser } from "./auth";
+import { RateLimiterMode } from "../../../src/types";
+import { getScrapeQueue } from "../../../src/services/queue-service";
+import { Logger } from "../../../src/lib/logger";
+import { getCrawl, getCrawlJobs } from "../../../src/lib/crawl-redis";
+import { supabaseGetJobById } from "../../../src/lib/supabase-jobs";
 
-export async function crawlJobStatusPreviewController(req: Request, res: Response) {
+export async function crawlStatusController(req: Request, res: Response) {
   try {
+    const { success, team_id, error, status } = await authenticateUser(
+      req,
+      res,
+      RateLimiterMode.CrawlStatus
+    );
+    if (!success) {
+      return res.status(status).json({ error });
+    }
+
     const sc = await getCrawl(req.params.jobId);
     if (!sc) {
       return res.status(404).json({ error: "Job not found" });
     }
 
+    if (sc.team_id !== team_id) {
+      return res.status(403).json({ error: "Forbidden" });
+    }
+
     const jobIDs = await getCrawlJobs(req.params.jobId);
-
-    // let data = job.returnvalue;
-    // if (process.env.USE_DB_AUTHENTICATION === "true") {
-    //   const supabaseData = await supabaseGetJobById(req.params.jobId);
-
-    //   if (supabaseData) {
-    //     data = supabaseData.docs;
-    //   }
-    // }
 
     const jobs = (await Promise.all(jobIDs.map(async x => {
       const job = await getScrapeQueue().getJob(x);

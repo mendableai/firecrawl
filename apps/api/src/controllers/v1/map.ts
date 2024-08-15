@@ -1,28 +1,18 @@
 import { Request, Response } from "express";
-import { WebScraperDataProvider } from "../../../src/scraper/WebScraper";
-import { billTeam } from "../../../src/services/billing/credit_billing";
-import { checkTeamCredits } from "../../../src/services/billing/credit_billing";
 import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../../../src/types";
-import { addWebScraperJob } from "../../../src/services/queue-jobs";
 import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
-import { logCrawl } from "../../../src/services/logging/crawl_log";
-import { validateIdempotencyKey } from "../../../src/services/idempotency/validate";
-import { createIdempotencyKey } from "../../../src/services/idempotency/create";
-import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../../src/lib/default-values";
-import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../../src/lib/logger";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
+import { MapRequest, MapResponse } from "./types";
 
-export async function mapController(req: Request, res: Response) {
+export async function mapController(req: Request<{}, MapResponse, MapRequest>, res: Response<MapResponse>) {
   // expected req.body
 
   // req.body = {
   //   url: string
-  //   ignoreSitemap: true??
-  //   other crawler options?
+  //   crawlerOptions: 
   // }
-
 
   try {
     const { success, team_id, error, status } = await authenticateUser(
@@ -31,7 +21,7 @@ export async function mapController(req: Request, res: Response) {
       RateLimiterMode.Crawl
     );
     if (!success) {
-      return res.status(status).json({ error });
+      return res.status(status).json({ success: false, error });
     }
 
     // if (req.headers["x-idempotency-key"]) {
@@ -55,25 +45,26 @@ export async function mapController(req: Request, res: Response) {
 
     let url = req.body.url;
     if (!url) {
-      return res.status(400).json({ error: "Url is required" });
+      return res.status(400).json({ success: false, error: "Url is required" });
     }
 
     if (isUrlBlocked(url)) {
       return res
         .status(403)
         .json({
+          success: false,
           error:
             "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
         });
     }
 
     try {
-      url = checkAndUpdateURL(url);
+      url = checkAndUpdateURL(url).url;
     } catch (error) {
-      return res.status(400).json({ error: 'Invalid Url' });
+      return res.status(400).json({ success: false, error: 'Invalid Url' });
     }
 
-    return res.status(200).json({ urls: [ "test1", "test2" ] });
+    return res.status(200).json({ success: true, links: [ "test1", "test2" ] });
 
     // const mode = req.body.mode ?? "crawl";
 
@@ -123,6 +114,6 @@ export async function mapController(req: Request, res: Response) {
     // res.json({ jobId: job.id });
   } catch (error) {
     Logger.error(error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ success: false, error: error.message });
   }
 }

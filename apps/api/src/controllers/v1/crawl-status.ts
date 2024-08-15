@@ -1,9 +1,6 @@
 import { Request, Response } from "express";
 import { authenticateUser } from "./auth";
 import { RateLimiterMode } from "../../../src/types";
-import { addWebScraperJob } from "../../../src/services/queue-jobs";
-import { getWebScraperQueue } from "../../../src/services/queue-service";
-import { supabaseGetJobById } from "../../../src/lib/supabase-jobs";
 import { Logger } from "../../../src/lib/logger";
 import { v4 as uuidv4 } from "uuid";
 

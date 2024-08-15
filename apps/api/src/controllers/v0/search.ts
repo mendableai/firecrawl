@@ -1,15 +1,15 @@
 import { Request, Response } from "express";
-import { WebScraperDataProvider } from "../scraper/WebScraper";
-import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
+import { WebScraperDataProvider } from "../../scraper/WebScraper";
+import { billTeam, checkTeamCredits } from "../../services/billing/credit_billing";
 import { authenticateUser } from "./auth";
-import { RateLimiterMode } from "../types";
-import { logJob } from "../services/logging/log_job";
-import { PageOptions, SearchOptions } from "../lib/entities";
-import { search } from "../search";
-import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
+import { RateLimiterMode } from "../../types";
+import { logJob } from "../../services/logging/log_job";
+import { PageOptions, SearchOptions } from "../../lib/entities";
+import { search } from "../../search";
+import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "../lib/logger";
-import { getScrapeQueue, scrapeQueueEvents } from "../services/queue-service";
+import { Logger } from "../../lib/logger";
+import { getScrapeQueue, scrapeQueueEvents } from "../../services/queue-service";
 
 export async function searchHelper(
   jobId: string,

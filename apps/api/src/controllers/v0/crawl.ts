@@ -1,18 +1,18 @@
 import { Request, Response } from "express";
-import { checkTeamCredits } from "../../src/services/billing/credit_billing";
+import { checkTeamCredits } from "../../../src/services/billing/credit_billing";
 import { authenticateUser } from "./auth";
-import { RateLimiterMode } from "../../src/types";
-import { addScrapeJob } from "../../src/services/queue-jobs";
-import { isUrlBlocked } from "../../src/scraper/WebScraper/utils/blocklist";
-import { logCrawl } from "../../src/services/logging/crawl_log";
-import { validateIdempotencyKey } from "../../src/services/idempotency/validate";
-import { createIdempotencyKey } from "../../src/services/idempotency/create";
-import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../src/lib/default-values";
+import { RateLimiterMode } from "../../../src/types";
+import { addScrapeJob } from "../../../src/services/queue-jobs";
+import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
+import { logCrawl } from "../../../src/services/logging/crawl_log";
+import { validateIdempotencyKey } from "../../../src/services/idempotency/validate";
+import { createIdempotencyKey } from "../../../src/services/idempotency/create";
+import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../../src/lib/default-values";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "../../src/lib/logger";
-import { addCrawlJob, addCrawlJobs, crawlToCrawler, lockURL, lockURLs, saveCrawl, StoredCrawl } from "../../src/lib/crawl-redis";
-import { getScrapeQueue } from "../../src/services/queue-service";
-import { checkAndUpdateURL } from "../../src/lib/validateUrl";
+import { Logger } from "../../../src/lib/logger";
+import { addCrawlJob, addCrawlJobs, crawlToCrawler, lockURL, lockURLs, saveCrawl, StoredCrawl } from "../../../src/lib/crawl-redis";
+import { getScrapeQueue } from "../../../src/services/queue-service";
+import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 
 export async function crawlController(req: Request, res: Response) {
   try {

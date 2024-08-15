@@ -1,19 +1,19 @@
-import { parseApi } from "../../src/lib/parseApi";
-import { getRateLimiter } from "../../src/services/rate-limiter";
+import { parseApi } from "../../../src/lib/parseApi";
+import { getRateLimiter } from "../../../src/services/rate-limiter";
 import {
   AuthResponse,
   NotificationType,
   RateLimiterMode,
-} from "../../src/types";
-import { supabase_service } from "../../src/services/supabase";
-import { withAuth } from "../../src/lib/withAuth";
+} from "../../../src/types";
+import { supabase_service } from "../../../src/services/supabase";
+import { withAuth } from "../../../src/lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import { setTraceAttributes } from "@hyperdx/node-opentelemetry";
-import { sendNotification } from "../services/notification/email_notification";
-import { Logger } from "../lib/logger";
-import { redlock } from "../../src/services/redlock";
-import { getValue } from "../../src/services/redis";
-import { setValue } from "../../src/services/redis";
+import { sendNotification } from "../../services/notification/email_notification";
+import { Logger } from "../../lib/logger";
+import { redlock } from "../../../src/services/redlock";
+import { getValue } from "../../../src/services/redis";
+import { setValue } from "../../../src/services/redis";
 import { validate } from "uuid";
 
 function normalizedApiIsUuid(potentialUuid: string): boolean {

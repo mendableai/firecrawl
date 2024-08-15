@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
 import { authenticateUser } from "./auth";
-import { RateLimiterMode } from "../../src/types";
-import { supabase_service } from "../../src/services/supabase";
-import { Logger } from "../../src/lib/logger";
-import { getCrawl, saveCrawl } from "../../src/lib/crawl-redis";
+import { RateLimiterMode } from "../../../src/types";
+import { supabase_service } from "../../../src/services/supabase";
+import { Logger } from "../../../src/lib/logger";
+import { getCrawl, saveCrawl } from "../../../src/lib/crawl-redis";
 
 export async function crawlCancelController(req: Request, res: Response) {
   try {
