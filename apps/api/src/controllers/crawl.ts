@@ -95,24 +95,21 @@ export async function crawlController(req: Request, res: Response) {
 
     await logCrawl(id, team_id);
 
-    let robots;
-
-    try {
-      robots = await this.getRobotsTxt();
-    } catch (_) {}
-
     const sc: StoredCrawl = {
       originUrl: url,
       crawlerOptions,
       pageOptions,
       team_id,
-      robots,
       createdAt: Date.now(),
     };
 
-    await saveCrawl(id, sc);
-
     const crawler = crawlToCrawler(id, sc);
+
+    try {
+      sc.robots = await crawler.getRobotsTxt();
+    } catch (_) {}
+
+    await saveCrawl(id, sc);
 
     const sitemap = sc.crawlerOptions?.ignoreSitemap ? null : await crawler.tryGetSitemap();
 
