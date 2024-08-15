@@ -8,7 +8,7 @@ To install the Firecrawl Rust SDK, add the following to your `Cargo.toml`:
 
 ```toml
 [dependencies]
-firecrawl_rs = "^0.1"
+firecrawl = "^0.1"
 tokio = { version = "^1", features = ["full"] }
 serde = { version = "^1.0", features = ["derive"] }
 serde_json = "^1.0"
@@ -28,7 +28,7 @@ To add it in your codebase.
 Here's an example of how to use the SDK in [example.rs](./examples/example.rs):
 All below example can start with :
 ```rust
-use firecrawl_rs::FirecrawlApp;
+use firecrawl::FirecrawlApp;
 
 #[tokio::main]
 async fn main() {

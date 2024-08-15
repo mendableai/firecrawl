@@ -1,6 +1,6 @@
 use assert_matches::assert_matches;
 use dotenv::dotenv;
-use firecrawl_rs::FirecrawlApp;
+use firecrawl::FirecrawlApp;
 use serde_json::json;
 use std::env;
 use std::time::Duration;

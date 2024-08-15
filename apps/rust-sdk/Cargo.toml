@@ -1,7 +1,7 @@
 [package]
-name = "firecrawl_rs"
+name = "firecrawl"
 author="Mendable.ai"
-version = "0.1.1"
+version = "0.1.0"
 edition = "2021"
 license = "GPL-2.0-or-later"
 homepage = "https://www.firecrawl.dev/"
@@ -11,7 +11,7 @@ authors = ["sanix-darker <sanixdk@gmail.com>"]
 
 [lib]
 path = "src/lib.rs"
-name = "firecrawl_rs"
+name = "firecrawl"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 [dependencies]

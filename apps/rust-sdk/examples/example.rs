@@ -1,4 +1,4 @@
-use firecrawl_rs::FirecrawlApp;
+use firecrawl::FirecrawlApp;
 use serde_json::json;
 use uuid::Uuid;
 
