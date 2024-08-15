@@ -106,7 +106,7 @@
     "uuid": "^10.0.0",
     "wordpos": "^2.1.0",
     "xml2js": "^0.6.2",
-    "zod": "^3.23.4",
+    "zod": "^3.23.8",
     "zod-to-json-schema": "^3.23.1"
   },
   "nodemonConfig": {

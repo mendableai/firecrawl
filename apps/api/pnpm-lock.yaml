@@ -189,7 +189,7 @@ importers:
         specifier: ^0.6.2
         version: 0.6.2
       zod:
-        specifier: ^3.23.4
+        specifier: ^3.23.8
         version: 3.23.8
       zod-to-json-schema:
         specifier: ^3.23.1
