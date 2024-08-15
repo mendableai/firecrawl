@@ -45,7 +45,7 @@ export async function scrapeHelper(
     pageOptions,
     extractorOptions,
     origin: req.body.origin ?? defaultOrigin,
-  });
+  }, {}, jobId);
 
   let doc;
   try {
