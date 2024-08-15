@@ -26,6 +26,7 @@ env:
   PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
 
 jobs:
   pre-deploy-e2e-tests:
