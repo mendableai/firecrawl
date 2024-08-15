@@ -44,6 +44,7 @@ export class WebScraperDataProvider {
   private crawlerMode: string = "default";
   private allowBackwardCrawling: boolean = false;
   private allowExternalContentLinks: boolean = false;
+  private priority?: number;
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -72,7 +73,8 @@ export class WebScraperDataProvider {
             url,
             this.pageOptions,
             this.extractorOptions,
-            existingHTML
+            existingHTML,
+            this.priority,
           );
           processedUrls++;
           if (inProgress) {
@@ -593,6 +595,7 @@ export class WebScraperDataProvider {
       options.crawlerOptions?.allowBackwardCrawling ?? false;
     this.allowExternalContentLinks =
       options.crawlerOptions?.allowExternalContentLinks ?? false;
+    this.priority = options.priority;
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {

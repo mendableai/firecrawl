@@ -10,17 +10,15 @@ import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
 import { initSDK } from "@hyperdx/node-opentelemetry";
-import { Job, QueueEvents, tryCatch } from "bullmq";
+import { Job } from "bullmq";
 import { Logger } from "../lib/logger";
-import { ScrapeEvents } from "../lib/scrape-events";
 import { Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
 import { v4 as uuidv4 } from "uuid";
-import { WebCrawler } from "../scraper/WebScraper/crawler";
-import { getAdjustedMaxDepth } from "../scraper/WebScraper/utils/maxDepthUtils";
-import { addCrawlJob, addCrawlJobDone, crawlToCrawler, getCrawl, isCrawlFinished, lockURL } from "../lib/crawl-redis";
+import { addCrawlJob, addCrawlJobDone, crawlToCrawler, getCrawl, getCrawlJobs, isCrawlFinished, lockURL } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
 import { addScrapeJob } from "./queue-jobs";
+import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
 
 if (process.env.ENV === "production") {
   initSDK({
@@ -151,33 +149,33 @@ async function processJob(job: Job, token: string) {
       await callWebhook(job.data.team_id, job.id as string, data);
     }
 
-    await logJob({
-      job_id: job.id as string,
-      success: success,
-      message: message,
-      num_docs: docs.length,
-      docs: docs,
-      time_taken: timeTakenInSeconds,
-      team_id: job.data.team_id,
-      mode: job.data.mode,
-      url: job.data.url,
-      crawlerOptions: job.data.crawlerOptions,
-      pageOptions: job.data.pageOptions,
-      origin: job.data.origin,
-      crawl_id: job.data.crawl_id,
-    });
-
     if (job.data.crawl_id) {
+      await logJob({
+        job_id: job.id as string,
+        success: success,
+        message: message,
+        num_docs: docs.length,
+        docs: docs,
+        time_taken: timeTakenInSeconds,
+        team_id: job.data.team_id,
+        mode: job.data.mode,
+        url: job.data.url,
+        crawlerOptions: job.data.crawlerOptions,
+        pageOptions: job.data.pageOptions,
+        origin: job.data.origin,
+        crawl_id: job.data.crawl_id,
+      });
+
       await addCrawlJobDone(job.data.crawl_id, job.id);
 
-      if (!job.data.sitemapped) {
-        const sc = await getCrawl(job.data.crawl_id) as StoredCrawl;
+      const sc = await getCrawl(job.data.crawl_id) as StoredCrawl;
 
+      if (!job.data.sitemapped) {
         if (!sc.cancelled) {
           const crawler = crawlToCrawler(job.data.crawl_id, sc);
 
           const links = crawler.filterLinks((data.docs[0].linksOnPage as string[])
-            .map(href => crawler.filterURL(href, sc.originUrl))
+            .map(href => crawler.filterURL(href.trim(), sc.originUrl))
             .filter(x => x !== null),
             Infinity,
             sc.crawlerOptions?.maxDepth ?? 10
@@ -202,6 +200,66 @@ async function processJob(job: Job, token: string) {
       }
 
       if (await isCrawlFinished(job.data.crawl_id)) {
+        const jobIDs = await getCrawlJobs(job.data.crawl_id);
+
+        const jobs = (await Promise.all(jobIDs.map(async x => {
+          if (x === job.id) {
+            return {
+              async getState() {
+                return "completed"
+              },
+              timestamp: Date.now(),
+              returnvalue: docs,
+            }
+          }
+
+          const j = await getScrapeQueue().getJob(x);
+          
+          if (process.env.USE_DB_AUTHENTICATION === "true") {
+            const supabaseData = await supabaseGetJobById(j.id);
+    
+            if (supabaseData) {
+              j.returnvalue = supabaseData.docs;
+            }
+          }
+    
+          return j;
+        }))).sort((a, b) => a.timestamp - b.timestamp);
+        const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
+        const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "active";
+    
+        const fullDocs = jobs.map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
+
+        await logJob({
+          job_id: job.data.crawl_id,
+          success: jobStatus === "completed",
+          message: message,
+          num_docs: fullDocs.length,
+          docs: [],
+          time_taken: (Date.now() - sc.createdAt) / 1000,
+          team_id: job.data.team_id,
+          mode: "crawl",
+          url: sc.originUrl,
+          crawlerOptions: sc.crawlerOptions,
+          pageOptions: sc.pageOptions,
+          origin: job.data.origin,
+        });
+
+        const data = {
+          success: jobStatus !== "failed",
+          result: {
+            links: fullDocs.map((doc) => {
+              return {
+                content: doc,
+                source: doc?.metadata?.sourceURL ?? doc?.url ?? "",
+              };
+            }),
+          },
+          project_id: job.data.project_id,
+          error: message /* etc... */,
+          docs: fullDocs,
+        };
+
         await callWebhook(job.data.team_id, job.id as string, data);
       }
     }
@@ -222,6 +280,9 @@ async function processJob(job: Job, token: string) {
       });
     }
     Logger.error(error);
+    if (error.stack) {
+      Logger.error(error.stack);
+    }
 
     logtail.error("Overall error ingesting", {
       job_id: job.id,
@@ -235,27 +296,51 @@ async function processJob(job: Job, token: string) {
       error:
         "Something went wrong... Contact help@mendable.ai or try again." /* etc... */,
     };
+    
     if (job.data.mode === "crawl" || job.data.crawl_id) {
       await callWebhook(job.data.team_id, job.data.crawl_id ?? job.id as string, data);
     }
-    await logJob({
-      job_id: job.id as string,
-      success: false,
-      message:
-        typeof error === "string"
-          ? error
-          : error.message ?? "Something went wrong... Contact help@mendable.ai",
-      num_docs: 0,
-      docs: [],
-      time_taken: 0,
-      team_id: job.data.team_id,
-      mode: job.data.mode,
-      url: job.data.url,
-      crawlerOptions: job.data.crawlerOptions,
-      pageOptions: job.data.pageOptions,
-      origin: job.data.origin,
-      crawl_id: job.data.crawl_id,
-    });
+    
+    if (job.data.crawl_id) {
+      await logJob({
+        job_id: job.id as string,
+        success: false,
+        message:
+          typeof error === "string"
+            ? error
+            : error.message ?? "Something went wrong... Contact help@mendable.ai",
+        num_docs: 0,
+        docs: [],
+        time_taken: 0,
+        team_id: job.data.team_id,
+        mode: job.data.mode,
+        url: job.data.url,
+        crawlerOptions: job.data.crawlerOptions,
+        pageOptions: job.data.pageOptions,
+        origin: job.data.origin,
+        crawl_id: job.data.crawl_id,
+      });
+
+      const sc = await getCrawl(job.data.crawl_id);
+
+      await logJob({
+        job_id: job.data.crawl_id,
+        success: false,
+        message:
+          typeof error === "string"
+            ? error
+            : error.message ?? "Something went wrong... Contact help@mendable.ai",
+        num_docs: 0,
+        docs: [],
+        time_taken: 0,
+        team_id: job.data.team_id,
+        mode: "crawl",
+        url: sc ? sc.originUrl : job.data.url,
+        crawlerOptions: sc ? sc.crawlerOptions : job.data.crawlerOptions,
+        pageOptions: sc ? sc.pageOptions : job.data.pageOptions,
+        origin: job.data.origin,
+      });
+    }
     // done(null, data);
     return data;
   }

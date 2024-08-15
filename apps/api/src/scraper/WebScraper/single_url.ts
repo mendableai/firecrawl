@@ -134,7 +134,8 @@ export async function scrapSingleUrl(
   extractorOptions: ExtractorOptions = {
     mode: "llm-extraction-from-markdown",
   },
-  existingHtml: string = ""
+  existingHtml: string = "",
+  priority?: number,
 ): Promise<Document> {
   urlToScrap = urlToScrap.trim();
 
@@ -177,7 +178,8 @@ export async function scrapSingleUrl(
             headers: pageOptions.headers,
             fireEngineOptions: {
               engine: engine,
-            }
+            },
+            priority,
           });
           scraperResponse.text = response.html;
           scraperResponse.screenshot = response.screenshot;

@@ -9,9 +9,9 @@ export async function addScrapeJob(
   jobId: string = uuidv4(),
 ): Promise<Job> {
   return await getScrapeQueue().add(jobId, webScraperOptions, {
+    priority: webScraperOptions.crawl_id ? 20 : 10,
     ...options,
     jobId,
-    priority: webScraperOptions.crawl_id ? 2 : 1,
   });
 }
 

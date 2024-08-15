@@ -10,7 +10,9 @@ import { createIdempotencyKey } from "../../src/services/idempotency/create";
 import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../src/lib/default-values";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../src/lib/logger";
-import { addCrawlJob, crawlToCrawler, lockURL, saveCrawl, StoredCrawl } from "../../src/lib/crawl-redis";
+import { addCrawlJob, addCrawlJobs, crawlToCrawler, lockURL, lockURLs, saveCrawl, StoredCrawl } from "../../src/lib/crawl-redis";
+import { getScrapeQueue } from "../../src/services/queue-service";
+import { checkAndUpdateURL } from "../../src/lib/validateUrl";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -42,9 +44,16 @@ export async function crawlController(req: Request, res: Response) {
       return res.status(402).json({ error: "Insufficient credits" });
     }
 
-    const url = req.body.url;
+    let url = req.body.url;
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
+    }
+    try {
+      url = checkAndUpdateURL(url).url;
+    } catch (e) {
+      return res
+        .status(e instanceof Error && e.message === "Invalid URL" ? 400 : 500)
+        .json({ error: e.message ?? e });
     }
 
     if (isUrlBlocked(url)) {
@@ -94,41 +103,50 @@ export async function crawlController(req: Request, res: Response) {
 
     await logCrawl(id, team_id);
 
-    let robots;
-
-    try {
-      robots = await this.getRobotsTxt();
-    } catch (_) {}
-
     const sc: StoredCrawl = {
       originUrl: url,
       crawlerOptions,
       pageOptions,
       team_id,
-      robots,
+      createdAt: Date.now(),
     };
 
-    await saveCrawl(id, sc);
-
     const crawler = crawlToCrawler(id, sc);
+
+    try {
+      sc.robots = await crawler.getRobotsTxt();
+    } catch (_) {}
+
+    await saveCrawl(id, sc);
 
     const sitemap = sc.crawlerOptions?.ignoreSitemap ? null : await crawler.tryGetSitemap();
 
     if (sitemap !== null) {
-      for (const url of sitemap.map(x => x.url)) {
-        await lockURL(id, sc, url);
-        const job = await addScrapeJob({
-          url,
-          mode: "single_urls",
-          crawlerOptions: crawlerOptions,
-          team_id: team_id,
-          pageOptions: pageOptions,
-          origin: req.body.origin ?? defaultOrigin,
-          crawl_id: id,
-          sitemapped: true,
-        });
-        await addCrawlJob(id, job.id);
-      }
+      const jobs = sitemap.map(x => {
+        const url = x.url;
+        const uuid = uuidv4();
+        return {
+          name: uuid,
+          data: {
+            url,
+            mode: "single_urls",
+            crawlerOptions: crawlerOptions,
+            team_id: team_id,
+            pageOptions: pageOptions,
+            origin: req.body.origin ?? defaultOrigin,
+            crawl_id: id,
+            sitemapped: true,
+          },
+          opts: {
+            jobId: uuid,
+            priority: 20,
+          }
+        };
+      })
+
+      await lockURLs(id, jobs.map(x => x.data.url));
+      await addCrawlJobs(id, jobs.map(x => x.opts.jobId));
+      await getScrapeQueue().addBulk(jobs);
     } else {
       await lockURL(id, sc, url);
       const job = await addScrapeJob({
@@ -139,6 +157,8 @@ export async function crawlController(req: Request, res: Response) {
         pageOptions: pageOptions,
         origin: req.body.origin ?? defaultOrigin,
         crawl_id: id,
+      }, {
+        priority: 15, // prioritize request 0 of crawl jobs same as scrape jobs
       });
       await addCrawlJob(id, job.id);
     }

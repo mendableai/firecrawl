@@ -24,7 +24,7 @@ describe('scrapSingleUrl', () => {
 });
 
 it('should return a list of links on the firecrawl.ai page', async () => {
-  const url = 'https://example.com';
+  const url = 'https://flutterbricks.com';
   const pageOptions: PageOptions = { includeHtml: true };
 
   const result = await scrapSingleUrl("TEST", url, pageOptions);
@@ -33,5 +33,5 @@ it('should return a list of links on the firecrawl.ai page', async () => {
   expect(result.linksOnPage).toBeDefined();
   expect(Array.isArray(result.linksOnPage)).toBe(true);
   expect(result.linksOnPage.length).toBeGreaterThan(0);
-  expect(result.linksOnPage).toContain('https://www.iana.org/domains/example')
+  expect(result.linksOnPage).toContain('https://flutterbricks.com/features')
 }, 10000);

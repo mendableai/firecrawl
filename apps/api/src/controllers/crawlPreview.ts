@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../src/lib/logger";
 import { addCrawlJob, crawlToCrawler, lockURL, saveCrawl, StoredCrawl } from "../../src/lib/crawl-redis";
 import { addScrapeJob } from "../../src/services/queue-jobs";
+import { checkAndUpdateURL } from "../../src/lib/validateUrl";
 
 export async function crawlPreviewController(req: Request, res: Response) {
   try {
@@ -21,9 +22,16 @@ export async function crawlPreviewController(req: Request, res: Response) {
       return res.status(status).json({ error });
     }
 
-    const url = req.body.url;
+    let url = req.body.url;
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
+    }
+    try {
+      url = checkAndUpdateURL(url).url;
+    } catch (e) {
+      return res
+        .status(e instanceof Error && e.message === "Invalid URL" ? 400 : 500)
+        .json({ error: e.message ?? e });
     }
 
     if (isUrlBlocked(url)) {
@@ -81,6 +89,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
       pageOptions,
       team_id,
       robots,
+      createdAt: Date.now(),
     };
 
     await saveCrawl(id, sc);
