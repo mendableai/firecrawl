@@ -230,6 +230,21 @@ async function processJob(job: Job, token: string) {
     
         const fullDocs = jobs.map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
 
+        await logJob({
+          job_id: job.data.crawl_id,
+          success: jobStatus === "completed",
+          message: message,
+          num_docs: fullDocs.length,
+          docs: [],
+          time_taken: (Date.now() - sc.createdAt) / 1000,
+          team_id: job.data.team_id,
+          mode: "crawl",
+          url: sc.originUrl,
+          crawlerOptions: sc.crawlerOptions,
+          pageOptions: sc.pageOptions,
+          origin: job.data.origin,
+        });
+
         const data = {
           success: jobStatus !== "failed",
           result: {
@@ -281,9 +296,11 @@ async function processJob(job: Job, token: string) {
       error:
         "Something went wrong... Contact help@mendable.ai or try again." /* etc... */,
     };
+    
     if (job.data.mode === "crawl" || job.data.crawl_id) {
       await callWebhook(job.data.team_id, job.data.crawl_id ?? job.id as string, data);
     }
+    
     await logJob({
       job_id: job.id as string,
       success: false,
@@ -302,6 +319,28 @@ async function processJob(job: Job, token: string) {
       origin: job.data.origin,
       crawl_id: job.data.crawl_id,
     });
+
+    if (job.data.crawl_id) {
+      const sc = await getCrawl(job.data.crawl_id);
+
+      await logJob({
+        job_id: job.data.crawl_id,
+        success: false,
+        message:
+          typeof error === "string"
+            ? error
+            : error.message ?? "Something went wrong... Contact help@mendable.ai",
+        num_docs: 0,
+        docs: [],
+        time_taken: 0,
+        team_id: job.data.team_id,
+        mode: "crawl",
+        url: sc ? sc.originUrl : job.data.url,
+        crawlerOptions: sc ? sc.crawlerOptions : job.data.crawlerOptions,
+        pageOptions: sc ? sc.pageOptions : job.data.pageOptions,
+        origin: job.data.origin,
+      });
+    }
     // done(null, data);
     return data;
   }

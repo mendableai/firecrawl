@@ -107,6 +107,7 @@ export async function crawlController(req: Request, res: Response) {
       pageOptions,
       team_id,
       robots,
+      createdAt: Date.now(),
     };
 
     await saveCrawl(id, sc);

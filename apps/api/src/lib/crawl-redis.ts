@@ -8,6 +8,7 @@ export type StoredCrawl = {
     team_id: string;
     robots?: string;
     cancelled?: boolean;
+    createdAt: number;
 };
 
 export async function saveCrawl(id: string, crawl: StoredCrawl) {
