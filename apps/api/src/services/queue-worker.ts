@@ -233,7 +233,7 @@ async function processJob(job: Job, token: string) {
         await logJob({
           job_id: job.data.crawl_id,
           success: jobStatus === "completed",
-          message: message,
+          message: sc.cancelled ? "Cancelled" : message,
           num_docs: fullDocs.length,
           docs: [],
           time_taken: (Date.now() - sc.createdAt) / 1000,
