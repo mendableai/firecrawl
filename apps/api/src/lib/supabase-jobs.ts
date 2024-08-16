@@ -17,3 +17,21 @@ export const supabaseGetJobById = async (jobId: string) => {
 
   return data;
 }
+
+export const supabaseGetJobsById = async (jobIds: string[]) => {
+  const { data, error } = await supabase_service
+    .from('firecrawl_jobs')
+    .select('*')
+    .in('job_id', jobIds);
+
+  if (error) {
+    return [];
+  }
+
+  if (!data) {
+    return [];
+  }
+
+  return data;
+}
+
