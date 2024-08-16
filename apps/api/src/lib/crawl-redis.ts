@@ -63,6 +63,10 @@ export async function isCrawlFinished(id: string) {
     return (await redisConnection.scard("crawl:" + id + ":jobs_done")) === (await redisConnection.scard("crawl:" + id + ":jobs"));
 }
 
+export async function isCrawlFinishedLocked(id: string) {
+    return (await redisConnection.exists("crawl:" + id + ":finish"));
+}
+
 export async function finishCrawl(id: string) {
     if (await isCrawlFinished(id)) {
         const set = await redisConnection.setnx("crawl:" + id + ":finish", "yes");

@@ -4,7 +4,24 @@ import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobs
 import { getScrapeQueue } from "../../services/queue-service";
 import { supabaseGetJobById, supabaseGetJobsById } from "../../lib/supabase-jobs";
 
-async function getJobs(ids: string[]) {
+export async function getJob(id: string) {
+  const job = await getScrapeQueue().getJob(id);
+  if (!job) return job;
+  
+  if (process.env.USE_DB_AUTHENTICATION === "true") {
+    const supabaseData = await supabaseGetJobById(id);
+
+    if (supabaseData) {
+      job.returnvalue = supabaseData.docs;
+    }
+  }
+
+  job.returnvalue = Array.isArray(job.returnvalue) ? job.returnvalue[0] : job.returnvalue;
+
+  return job;
+}
+
+export async function getJobs(ids: string[]) {
   const jobs = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x);
   
   if (process.env.USE_DB_AUTHENTICATION === "true") {
