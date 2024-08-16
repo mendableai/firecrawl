@@ -5,7 +5,7 @@ import { FirecrawlCrawlResponse, FirecrawlCrawlStatusResponse, FirecrawlScrapeRe
 dotenv.config();
 const TEST_URL = "http://127.0.0.1:3002";
 
-describe("E2E Tests for API Routes", () => {
+describe("E2E Tests for v0 API Routes", () => {
   beforeAll(() => {
     process.env.USE_DB_AUTHENTICATION = "true";
   });

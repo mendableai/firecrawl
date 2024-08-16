@@ -153,6 +153,12 @@ export type ScrapeResponse = ErrorResponse | {
   data: Document;
 };
 
+export interface ScrapeResponseRequestTest {
+  statusCode: number;
+  body: ScrapeResponse;
+  error?: string;
+}
+
 export type CrawlResponse = ErrorResponse | {
   success: true;
   id: string;
