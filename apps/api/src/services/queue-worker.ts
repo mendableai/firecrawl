@@ -15,7 +15,7 @@ import { Logger } from "../lib/logger";
 import { Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
 import { v4 as uuidv4 } from "uuid";
-import { addCrawlJob, addCrawlJobDone, crawlToCrawler, getCrawl, getCrawlJobs, isCrawlFinished, lockURL } from "../lib/crawl-redis";
+import { addCrawlJob, addCrawlJobDone, crawlToCrawler, finishCrawl, getCrawl, getCrawlJobs, lockURL } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
 import { addScrapeJob } from "./queue-jobs";
 import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
@@ -174,7 +174,7 @@ async function processJob(job: Job, token: string) {
         if (!sc.cancelled) {
           const crawler = crawlToCrawler(job.data.crawl_id, sc);
 
-          const links = crawler.filterLinks((data.docs[0].linksOnPage as string[])
+          const links = crawler.filterLinks((data.docs[0].linksOnPage ?? [])
             .map(href => crawler.filterURL(href.trim(), sc.originUrl))
             .filter(x => x !== null),
             Infinity,
@@ -199,7 +199,7 @@ async function processJob(job: Job, token: string) {
         }
       }
 
-      if (await isCrawlFinished(job.data.crawl_id)) {
+      if (await finishCrawl(job.data.crawl_id)) {
         const jobIDs = await getCrawlJobs(job.data.crawl_id);
 
         const jobs = (await Promise.all(jobIDs.map(async x => {
@@ -226,14 +226,14 @@ async function processJob(job: Job, token: string) {
           return j;
         }))).sort((a, b) => a.timestamp - b.timestamp);
         const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
-        const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "active";
+        const jobStatus = sc.cancelled || jobStatuses.some(x => x === "failed") ? "failed" : "completed";
     
         const fullDocs = jobs.map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
 
         await logJob({
           job_id: job.data.crawl_id,
           success: jobStatus === "completed",
-          message: message,
+          message: sc.cancelled ? "Cancelled" : message,
           num_docs: fullDocs.length,
           docs: [],
           time_taken: (Date.now() - sc.createdAt) / 1000,
@@ -260,7 +260,7 @@ async function processJob(job: Job, token: string) {
           docs: fullDocs,
         };
 
-        await callWebhook(job.data.team_id, job.id as string, data);
+        await callWebhook(job.data.team_id, job.data.crawl_id, data);
       }
     }
 
