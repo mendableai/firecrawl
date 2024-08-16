@@ -13,6 +13,8 @@ import { validateIdempotencyKey } from "../services/idempotency/validate";
 import { ZodError } from "zod";
 import { checkTeamCredits } from "../services/billing/credit_billing";
 import { v4 as uuidv4 } from "uuid";
+import expressWs from "express-ws";
+import { crawlStatusWSController } from "../controllers/v1/crawl-status-ws";
 // import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
 // import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
 // import { searchController } from "../../src/controllers/v1/search";
@@ -33,7 +35,7 @@ function checkCreditsMiddleware(minimum: number): (req: RequestWithAuth, res: Re
     };
 }
 
-function authMiddleware(rateLimiterMode: RateLimiterMode): (req: RequestWithMaybeAuth, res: Response, next: NextFunction) => void {
+export function authMiddleware(rateLimiterMode: RateLimiterMode): (req: RequestWithMaybeAuth, res: Response, next: NextFunction) => void {
     return (req, res, next) => {
         (async () => {
             const { success, team_id, error, status, plan } = await authenticateUser(
@@ -74,6 +76,8 @@ function wrap(controller: (req: Request, res: Response) => Promise<any>): (req: 
     }
 }
 
+expressWs(express());
+
 export const v1Router = express.Router();
 
 v1Router.post(
@@ -102,6 +106,11 @@ v1Router.get(
     "/crawl/:jobId",
     authMiddleware(RateLimiterMode.CrawlStatus),
     wrap(crawlStatusController)
+);
+
+v1Router.ws(
+    "/crawl/:jobId",
+    crawlStatusWSController
 );
 
 // v1Router.post("/crawlWebsitePreview", crawlPreviewController);

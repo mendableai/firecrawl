@@ -14,6 +14,8 @@ import http from 'node:http';
 import https from 'node:https';
 import CacheableLookup  from 'cacheable-lookup';
 import { v1Router } from "./routes/v1";
+import expressWs from "express-ws";
+import { crawlStatusWSController } from "./controllers/v1/crawl-status-ws";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -46,7 +48,8 @@ if (cluster.isMaster) {
     }
   });
 } else {
-  const app = express();
+  const ws = expressWs(express());
+  const app = ws.app;
 
   global.isProduction = process.env.IS_PRODUCTION === "true";
 
