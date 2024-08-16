@@ -260,7 +260,7 @@ async function processJob(job: Job, token: string) {
           docs: fullDocs,
         };
 
-        await callWebhook(job.data.team_id, job.id as string, data);
+        await callWebhook(job.data.team_id, job.data.crawl_id, data);
       }
     }
 
