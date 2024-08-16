@@ -53,8 +53,10 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
       used++;
     }
 
-    doneJobs.splice(doneJobs.length - 1, 1);
-    used--;
+    if (used < doneJobsOrder.length) {
+      doneJobs.splice(doneJobs.length - 1, 1);
+      used--;
+    }
   } else {
     doneJobs = (await Promise.all(doneJobsOrder.map(async x => await getJob(x))));
   }
