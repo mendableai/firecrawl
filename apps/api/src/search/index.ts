@@ -1,7 +1,8 @@
 import { Logger } from "../../src/lib/logger";
 import { SearchResult } from "../../src/lib/entities";
 import { googleSearch } from "./googlesearch";
-import { fireEngineSearch } from "./fireEngine";
+import { fireEngineMap } from "./fireEngine";
+import { serper_search } from "./serper";
 
 export async function search({
   query,
@@ -27,10 +28,18 @@ export async function search({
   proxy?: string;
   sleep_interval?: number;
   timeout?: number;
-}) : Promise<SearchResult[]> {
+}): Promise<SearchResult[]> {
   try {
-    if (process.env.FIRE_ENGINE_BETA_URL) {
-      return await fireEngineSearch(query, {numResults: num_results, tbs, filter, lang, country, location});
+    
+    if (process.env.SERPER_API_KEY) {
+      return await serper_search(query, {
+        num_results,
+        tbs,
+        filter,
+        lang,
+        country,
+        location,
+      });
     }
     return await googleSearch(
       query,
@@ -46,6 +55,6 @@ export async function search({
     );
   } catch (error) {
     Logger.error(`Error in search function: ${error}`);
-    return []
+    return [];
   }
 }

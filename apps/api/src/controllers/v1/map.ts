@@ -1,16 +1,29 @@
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { legacyCrawlerOptions, mapRequestSchema, RequestWithAuth } from "./types";
+import {
+  legacyCrawlerOptions,
+  mapRequestSchema,
+  RequestWithAuth,
+} from "./types";
 import { crawlToCrawler, StoredCrawl } from "../../lib/crawl-redis";
-import { MapResponse , MapRequest } from "./types";
+import { MapResponse, MapRequest } from "./types";
 import { Logger } from "../../lib/logger";
 import { configDotenv } from "dotenv";
 import { search } from "../../search";
-import { checkAndUpdateURL } from "../../lib/validateUrl";
+import {
+  checkAndUpdateURL,
+  checkAndUpdateURLForMap,
+  isSameDomain,
+  isSameSubdomain,
+} from "../../lib/validateUrl";
+import { fireEngineMap } from "../../search/fireEngine";
 
 configDotenv();
 
-export async function mapController(req: RequestWithAuth<{}, MapResponse, MapRequest>, res: Response<MapResponse>) {
+export async function mapController(
+  req: RequestWithAuth<{}, MapResponse, MapRequest>,
+  res: Response<MapResponse>
+) {
   req.body = mapRequestSchema.parse(req.body);
 
   const id = uuidv4();
@@ -28,30 +41,42 @@ export async function mapController(req: RequestWithAuth<{}, MapResponse, MapReq
 
   const crawler = crawlToCrawler(id, sc);
 
-  const sitemap = sc.crawlerOptions.ignoreSitemap ? null : await crawler.tryGetSitemap();
+  const sitemap = sc.crawlerOptions.ignoreSitemap
+    ? null
+    : await crawler.tryGetSitemap();
 
   if (sitemap !== null) {
-    sitemap.map(x => { links.push(x.url); });
+    sitemap.map((x) => {
+      links.push(x.url);
+    });
   }
 
-  const searchResults = await search({
-    query: `site:${req.body.url}`,
-    advanced: false,
-    num_results: 50,
-    lang: "en",
-    country: "us",
-    location: "United States",
-  })
+  const mapResults = await fireEngineMap(req.body.url, {
+    numResults: 50,
+  });
 
-  if (searchResults.length > 0) {
-    searchResults.map(x => { links.push(x.url); });
+  if (mapResults.length > 0) {
+    mapResults.map((x) => {
+      links.push(x.url);
+    });
   }
 
-  links = links.map(x => checkAndUpdateURL(x).url);
+  links = links.map((x) => checkAndUpdateURLForMap(x).url);
+
+  // allows for subdomains to be included
+  links = links.filter((x) => isSameDomain(x, req.body.url));
+
+  // if includeSubdomains is false, filter out subdomains
+  if (!req.body.includeSubdomains) {
+    links = links.filter((x) => isSameSubdomain(x, req.body.url));
+  }
+
+  // remove duplicates that could be due to http/https or www
+
   links = [...new Set(links)];
 
   return res.status(200).json({
     success: true,
-    links
+    links,
   });
 }

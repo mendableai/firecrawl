@@ -34,7 +34,7 @@ export const scrapeOptions = z.object({
 export type ScrapeOptions = z.infer<typeof scrapeOptions>;
 
 export const scrapeRequestSchema = scrapeOptions.extend({
-  url,
+url: z.string().url(),  
   origin: z.string().optional().default("api"),
 });
 
@@ -91,7 +91,9 @@ export type CrawlRequest = z.infer<typeof crawlRequestSchema>;
 
 export const mapRequestSchema = crawlerOptions.extend({
   url,
-  origin: z.string().optional().default("api")
+  origin: z.string().optional().default("api"),
+  includeSubdomains: z.boolean().default(false),
+  searchEngine: z.string().optional(),
 });
 
 // export type MapRequest = {
