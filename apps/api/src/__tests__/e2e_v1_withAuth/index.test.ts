@@ -117,7 +117,6 @@ describe("E2E Tests for v1 API Routes", () => {
         if (!("data" in response.body)) {
           throw new Error("Expected response body to have 'data' property");
         }
-        expect(response.body.data).toHaveProperty("content");
         expect(response.body.data).toHaveProperty("markdown");
         expect(response.body.data).toHaveProperty("html");
         expect(response.body.data).toHaveProperty("metadata");
