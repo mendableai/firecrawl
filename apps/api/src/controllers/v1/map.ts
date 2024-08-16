@@ -55,12 +55,10 @@ export async function mapController(
   let mapUrl = req.body.search
     ? `"${req.body.search}" site:${req.body.url}`
     : `site:${req.body.url}`;
-  console.log(mapUrl);
   // www. seems to exclude subdomains in some cases
   const mapResults = await fireEngineMap(mapUrl, {
     numResults: 50,
   });
-  console.log(mapResults);
 
   if (mapResults.length > 0) {
     mapResults.map((x) => {
