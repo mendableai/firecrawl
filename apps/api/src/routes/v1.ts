@@ -77,14 +77,14 @@ function wrap(controller: (req: Request, res: Response) => Promise<any>): (req: 
 export const v1Router = express.Router();
 
 v1Router.post(
-    "/v1/scrape",
+    "/scrape",
     authMiddleware(RateLimiterMode.Scrape),
     checkCreditsMiddleware(1),
     wrap(scrapeController)
 );
 
 v1Router.post(
-    "/v1/crawl",
+    "/crawl",
     authMiddleware(RateLimiterMode.Crawl),
     idempotencyMiddleware,
     checkCreditsMiddleware(1),
@@ -92,31 +92,31 @@ v1Router.post(
 );
 
 v1Router.post(
-    "/v1/map",
+    "/map",
     authMiddleware(RateLimiterMode.Crawl),
     checkCreditsMiddleware(1),
     wrap(mapController)
 );
 
 v1Router.get(
-    "/v1/crawl/:jobId",
+    "/crawl/:jobId",
     authMiddleware(RateLimiterMode.CrawlStatus),
     wrap(crawlStatusController)
 );
 
-// v1Router.post("/v1/crawlWebsitePreview", crawlPreviewController);
-// v1Router.delete("/v1/crawl/:jobId", crawlCancelController);
-// v1Router.get("/v1/checkJobStatus/:jobId", crawlJobStatusPreviewController);
+// v1Router.post("/crawlWebsitePreview", crawlPreviewController);
+// v1Router.delete("/crawl/:jobId", crawlCancelController);
+// v1Router.get("/checkJobStatus/:jobId", crawlJobStatusPreviewController);
 
 // // Auth route for key based authentication
-// v1Router.get("/v1/keyAuth", keyAuthController);
+// v1Router.get("/keyAuth", keyAuthController);
 
 // // Search routes
-// v0Router.post("/v1/search", searchController);
+// v0Router.post("/search", searchController);
 
 // Health/Probe routes
-// v1Router.get("/v1/health/liveness", livenessController);
-// v1Router.get("/v1/health/readiness", readinessController);
+// v1Router.get("/health/liveness", livenessController);
+// v1Router.get("/health/readiness", readinessController);
 
 v1Router.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: Response<ErrorResponse>, next: NextFunction) => {
     if (err instanceof ZodError) {

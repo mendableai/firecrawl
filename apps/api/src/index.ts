@@ -79,7 +79,7 @@ if (cluster.isMaster) {
 
   // register router
   app.use(v0Router);
-  app.use(v1Router);
+  app.use("/v1", v1Router);
   app.use(adminRouter);
 
   const DEFAULT_PORT = process.env.PORT ?? 3002;
