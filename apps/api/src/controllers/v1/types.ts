@@ -32,7 +32,10 @@ export const scrapeOptions = z.object({
 
 export type ScrapeOptions = z.infer<typeof scrapeOptions>;
 
-export const scrapeRequestSchema = scrapeOptions.extend({ url });
+export const scrapeRequestSchema = scrapeOptions.extend({
+  url,
+  origin: z.string().optional().default("api"),
+});
 
 // export type ScrapeRequest = {
 //   url: string;
@@ -71,6 +74,7 @@ export type CrawlerOptions = z.infer<typeof crawlerOptions>;
 
 export const crawlRequestSchema = z.object({
   url,
+  origin: z.string().optional().default("api"),
   crawlerOptions: crawlerOptions.default({}),
   scrapeOptions: scrapeOptions.omit({ timeout: true }).default({}),
 });
@@ -83,7 +87,10 @@ export const crawlRequestSchema = z.object({
 
 export type CrawlRequest = z.infer<typeof crawlRequestSchema>;
 
-export const mapRequestSchema = crawlerOptions.extend({ url });
+export const mapRequestSchema = crawlerOptions.extend({
+  url,
+  origin: z.string().optional().default("api")
+});
 
 // export type MapRequest = {
 //   url: string;
