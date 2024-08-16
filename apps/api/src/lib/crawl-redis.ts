@@ -28,8 +28,9 @@ export async function getCrawl(id: string): Promise<StoredCrawl | null> {
 
 export async function getCrawlExpiry(id: string): Promise<Date> {
     const d = new Date();
-    const ttl = await redisConnection.ttl(id);
-    d.setSeconds(d.getSeconds() + ttl);
+    const ttl = await redisConnection.pttl("crawl:" + id);
+    d.setMilliseconds(d.getMilliseconds() + ttl);
+    d.setMilliseconds(0);
     return d;
 }
 
