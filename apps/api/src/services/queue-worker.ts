@@ -174,7 +174,7 @@ async function processJob(job: Job, token: string) {
         if (!sc.cancelled) {
           const crawler = crawlToCrawler(job.data.crawl_id, sc);
 
-          const links = crawler.filterLinks((data.docs[0].linksOnPage as string[])
+          const links = crawler.filterLinks((data.docs[0].linksOnPage ?? [])
             .map(href => crawler.filterURL(href.trim(), sc.originUrl))
             .filter(x => x !== null),
             Infinity,
