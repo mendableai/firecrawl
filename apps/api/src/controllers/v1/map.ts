@@ -4,7 +4,7 @@ import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import { MapRequest, mapRequestSchema, MapResponse, RequestWithAuth } from "./types";
 import { checkTeamCredits } from "../../services/billing/credit_billing";
 
-export async function mapController(req: RequestWithAuth<MapResponse, MapRequest>, res: Response<MapResponse>) {
+export async function mapController(req: RequestWithAuth<{}, MapResponse, MapRequest>, res: Response<MapResponse>) {
   req.body = mapRequestSchema.parse(req.body);
   console.log(req.body);
   // expected req.body

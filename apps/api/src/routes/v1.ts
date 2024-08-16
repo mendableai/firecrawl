@@ -60,12 +60,7 @@ function idempotencyMiddleware(req: Request, res: Response, next: NextFunction) 
             if (!isIdempotencyValid) {
                 return res.status(409).json({ success: false, error: "Idempotency key already used" });
             }
-            // try {
             createIdempotencyKey(req);
-            // } catch (error) {
-            //     Logger.error(error);
-            //     return res.status(500).json({ success: false, error: error.message });
-            // }
         }
         next();
     })()
@@ -128,7 +123,18 @@ v1Router.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: Res
         res.status(400).json({ success: false, error: "Bad Request", details: err.errors });
     } else {
         const id = uuidv4();
-        Logger.error("Error occurred in request! (" + req.path + ") -- ID " + id  + " -- " + JSON.stringify(err));
+        let verbose = JSON.stringify(err);
+        if (verbose === "{}") {
+            if (err instanceof Error) {
+                verbose = JSON.stringify({
+                    message: err.message,
+                    name: err.name,
+                    stack: err.stack,
+                });
+            }
+        }
+
+        Logger.error("Error occurred in request! (" + req.path + ") -- ID " + id  + " -- " + verbose);
         res.status(500).json({ success: false, error: "An unexpected error occurred. Please contact hello@firecrawl.com for help. Your exception ID is " + id + "" });
     }
 });

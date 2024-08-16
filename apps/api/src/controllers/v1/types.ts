@@ -171,16 +171,29 @@ export type MapResponse = ErrorResponse | {
   links: string[];
 }
 
+export type CrawlStatusParams = {
+  jobId: string;
+}
+
+export type CrawlStatusResponse = ErrorResponse | {
+  status: "scraping" | "completed" | "failed" | "cancelled",
+  totalCount: number;
+  creditsUsed: number;
+  expiresAt: string;
+  next?: string;
+  data: Document[];
+}
+
 type AuthObject = {
   team_id: string;
   plan: string;
 }
 
-export interface RequestWithMaybeAuth<ReqBody = undefined, ResBody = undefined> extends Request<{}, ReqBody, ResBody> {
+export interface RequestWithMaybeAuth<ReqParams = {}, ReqBody = undefined, ResBody = undefined> extends Request<ReqParams, ReqBody, ResBody> {
   auth?: AuthObject;
 }
 
-export interface RequestWithAuth<ReqBody = undefined, ResBody = undefined> extends Request<{}, ReqBody, ResBody> {
+export interface RequestWithAuth<ReqParams = {}, ReqBody = undefined, ResBody = undefined> extends Request<ReqParams, ReqBody, ResBody> {
   auth: AuthObject;
 }
 
@@ -210,4 +223,21 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
     parsePDF: x.parsePDF
   };
+}
+
+export function legacyDocumentConverter(doc: any): Document {
+  return {
+    markdown: doc.markdown,
+    links: doc.linksOnPage,
+    rawHtml: doc.rawHtml,
+    html: doc.html,
+    screenshot: doc.screenshot ?? doc.fullPageScreenshot,
+    metadata: {
+      ...doc.metadata,
+      pageError: undefined,
+      pageStatusCode: undefined,
+      error: doc.metadata.pageError,
+      statusCode: doc.metadata.pageStatusCode,
+    },
+  }
 }

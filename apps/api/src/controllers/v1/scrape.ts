@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Logger } from '../../lib/logger';
-import { Document, legacyScrapeOptions, RequestWithAuth, ScrapeRequest, scrapeRequestSchema, ScrapeResponse } from "./types";
+import { Document, legacyDocumentConverter, legacyScrapeOptions, RequestWithAuth, ScrapeRequest, scrapeRequestSchema, ScrapeResponse } from "./types";
 import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from 'uuid';
 import { numTokensFromString } from "../../lib/LLM-extraction/helpers";
@@ -8,7 +8,7 @@ import { addScrapeJob } from "../../services/queue-jobs";
 import { scrapeQueueEvents } from '../../services/queue-service';
 import { logJob } from "../../services/logging/log_job";
 
-export async function scrapeController(req: RequestWithAuth<ScrapeResponse, ScrapeRequest>, res: Response<ScrapeResponse>) {
+export async function scrapeController(req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>, res: Response<ScrapeResponse>) {
   req.body = scrapeRequestSchema.parse(req.body);  
   let earlyReturn = false;
 
@@ -101,20 +101,6 @@ export async function scrapeController(req: RequestWithAuth<ScrapeResponse, Scra
 
   return res.status(200).json({
     success: true,
-    data: {
-      markdown: doc.markdown,
-      links: doc.linksOnPage,
-      rawHtml: doc.rawHtml,
-      html: doc.html,
-      screenshot: doc.screenshot,
-      fullPageScreenshot: doc.fullPageScreenshot,
-      metadata: {
-        ...doc.metadata,
-        pageError: undefined,
-        pageStatusCode: undefined,
-        error: doc.metadata.pageError,
-        statusCode: doc.metadata.pageStatusCode,
-      },
-    } as Document
+    data: legacyDocumentConverter(doc),
   });
 }

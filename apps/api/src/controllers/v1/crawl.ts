@@ -7,7 +7,7 @@ import { getScrapeQueue } from "../../services/queue-service";
 import { addScrapeJob } from "../../services/queue-jobs";
 import { Logger } from "../../lib/logger";
 
-export async function crawlController(req: RequestWithAuth<CrawlResponse, CrawlRequest>, res: Response<CrawlResponse>) {
+export async function crawlController(req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>, res: Response<CrawlResponse>) {
   req.body = crawlRequestSchema.parse(req.body);
   
   const id = uuidv4();
