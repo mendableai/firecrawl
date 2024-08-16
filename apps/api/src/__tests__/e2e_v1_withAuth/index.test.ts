@@ -112,6 +112,7 @@ describe("E2E Tests for v1 API Routes", () => {
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
           .send(scrapeRequest);
+        
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("data");
         if (!("data" in response.body)) {
@@ -127,5 +128,95 @@ describe("E2E Tests for v1 API Routes", () => {
       },
       30000
     );
+    it.concurrent('should return a successful response for a valid scrape with PDF file', async () => {
+        const scrapeRequest: ScrapeRequest = {
+          url: "https://arxiv.org/pdf/astro-ph/9301001.pdf"
+        //   formats: ["markdown", "html"],
+        };
+        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+          .post('/v1/scrape')
+          .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+          .set('Content-Type', 'application/json')
+          .send(scrapeRequest);
+        await new Promise((r) => setTimeout(r, 6000));
+  
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty('data');
+        if (!("data" in response.body)) {
+          throw new Error("Expected response body to have 'data' property");
+        }
+        expect(response.body.data).toHaveProperty('metadata');
+        expect(response.body.data.markdown).toContain('Broad Line Radio Galaxy');
+        expect(response.body.data.metadata.statusCode).toBe(200);
+        expect(response.body.data.metadata.error).toBeUndefined();
+      }, 60000);
+
+      it.concurrent('should return a successful response for a valid scrape with PDF file without explicit .pdf extension', async () => {
+        const scrapeRequest: ScrapeRequest = {
+          url: "https://arxiv.org/pdf/astro-ph/9301001"
+        };
+        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+          .post('/v1/scrape')
+          .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+          .set('Content-Type', 'application/json')
+          .send(scrapeRequest);
+        await new Promise((r) => setTimeout(r, 6000));
+  
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty('data');
+        if (!("data" in response.body)) {
+          throw new Error("Expected response body to have 'data' property");
+        }
+        expect(response.body.data).toHaveProperty('markdown');
+        expect(response.body.data).toHaveProperty('metadata');
+        expect(response.body.data.markdown).toContain('Broad Line Radio Galaxy');
+        expect(response.body.data.metadata.statusCode).toBe(200);
+        expect(response.body.data.metadata.error).toBeUndefined();
+      }, 60000);
+
+      it.concurrent("should return a successful response with a valid API key with removeTags option", async () => {
+        const scrapeRequest: ScrapeRequest = {
+          url: "https://www.scrapethissite.com/",
+          onlyMainContent: false // default is true
+        };
+        const responseWithoutRemoveTags: ScrapeResponseRequestTest = await request(TEST_URL)
+          .post("/v1/scrape")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send(scrapeRequest);
+        expect(responseWithoutRemoveTags.statusCode).toBe(200);
+        expect(responseWithoutRemoveTags.body).toHaveProperty("data");
+
+        if (!("data" in responseWithoutRemoveTags.body)) {
+          throw new Error("Expected response body to have 'data' property");
+        }
+        expect(responseWithoutRemoveTags.body.data).toHaveProperty("markdown");
+        expect(responseWithoutRemoveTags.body.data).toHaveProperty("metadata");
+        expect(responseWithoutRemoveTags.body.data).not.toHaveProperty("html");
+        expect(responseWithoutRemoveTags.body.data.markdown).toContain("[FAQ](/faq/)"); // .nav
+        expect(responseWithoutRemoveTags.body.data.markdown).toContain("Hartley Brody 2023"); // #footer
+  
+        const scrapeRequestWithRemoveTags: ScrapeRequest = {
+            url: "https://www.scrapethissite.com/",
+            excludeTags: ['.nav', '#footer', 'strong'],
+            onlyMainContent: false // default is true
+        };
+        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+          .post("/v1/scrape")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send(scrapeRequestWithRemoveTags);
+
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty("data");
+        if (!("data" in response.body)) {
+          throw new Error("Expected response body to have 'data' property");
+        }
+        expect(response.body.data).toHaveProperty("markdown");
+        expect(response.body.data).toHaveProperty("metadata");
+        expect(response.body.data).not.toHaveProperty("html");
+        expect(response.body.data.markdown).not.toContain("Hartley Brody 2023");
+        expect(response.body.data.markdown).not.toContain("[FAQ](/faq/)"); // 
+      }, 30000);
   });
 });

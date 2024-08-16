@@ -346,6 +346,7 @@ export class WebScraperDataProvider {
         });
         return {
           content: content,
+          markdown: content,
           metadata: { sourceURL: pdfLink, pageStatusCode, pageError },
           provider: "web-scraper",
         };

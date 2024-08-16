@@ -28,6 +28,7 @@ export const scrapeOptions = z.object({
   onlyMainContent: z.boolean().default(true),
   timeout: z.number().int().positive().finite().safe().default(30000), // default?
   waitFor: z.number().int().nonnegative().finite().safe().default(0),
+  parsePDF: z.boolean().default(true),
 });
 
 export type ScrapeOptions = z.infer<typeof scrapeOptions>;
@@ -207,5 +208,6 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     includeLinks: x.formats.includes("links"),
     screenshot: x.formats.includes("screenshot"),
     fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
+    parsePDF: x.parsePDF
   };
 }
