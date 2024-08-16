@@ -28,12 +28,6 @@ export async function mapController(req: RequestWithAuth<{}, MapResponse, MapReq
 
   const crawler = crawlToCrawler(id, sc);
 
-  try {
-    sc.robots = await crawler.getRobotsTxt();
-  } catch (e) {
-    Logger.debug(`[Crawl] Failed to get robots.txt (this is probably fine!): ${JSON.stringify(e)}`);
-  }
-
   const sitemap = sc.crawlerOptions.ignoreSitemap ? null : await crawler.tryGetSitemap();
 
   if (sitemap !== null) {
