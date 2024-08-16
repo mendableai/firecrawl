@@ -3,22 +3,46 @@ import { z } from "zod";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { PageOptions } from "../../lib/entities";
 
-export type Format = "markdown" | "html" | "rawHtml" | "links" | "screenshot" | "screenshot@fullPage";
+export type Format =
+  | "markdown"
+  | "html"
+  | "rawHtml"
+  | "links"
+  | "screenshot"
+  | "screenshot@fullPage";
 
-const url = z.preprocess(x => {
-  if (typeof x === "string" && !/^([^.:]+:\/\/)/.test(x)) {
-    if (x.startsWith("://")) {
-      return "http" + x;
+const url = z.preprocess(
+  (x) => {
+    if (typeof x === "string" && !/^([^.:]+:\/\/)/.test(x)) {
+      if (x.startsWith("://")) {
+        return "http" + x;
+      } else {
+        return "http://" + x;
+      }
     } else {
-      return "http://" + x;
+      return x;
     }
-  } else {
-    return x;
-  }
-}, z.string().url().regex(/^https?:\/\//, "URL uses unsupported protocol").refine(x => !isUrlBlocked(x), "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."));
+  },
+  z
+    .string()
+    .url()
+    .regex(/^https?:\/\//, "URL uses unsupported protocol")
+    .refine(
+      (x) => !isUrlBlocked(x),
+      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
+    )
+);
 
 export const scrapeOptions = z.object({
-  formats: z.enum(["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage"])
+  formats: z
+    .enum([
+      "markdown",
+      "html",
+      "rawHtml",
+      "links",
+      "screenshot",
+      "screenshot@fullPage",
+    ])
     .array()
     .optional()
     .default(["markdown"]),
@@ -34,7 +58,7 @@ export const scrapeOptions = z.object({
 export type ScrapeOptions = z.infer<typeof scrapeOptions>;
 
 export const scrapeRequestSchema = scrapeOptions.extend({
-url: z.string().url(),  
+  url,
   origin: z.string().optional().default("api"),
 });
 
@@ -90,10 +114,10 @@ export const crawlRequestSchema = z.object({
 export type CrawlRequest = z.infer<typeof crawlRequestSchema>;
 
 export const mapRequestSchema = crawlerOptions.extend({
-  url,
+  url: z.string().url(),
   origin: z.string().optional().default("api"),
   includeSubdomains: z.boolean().default(false),
-  searchEngine: z.string().optional(),
+  search: z.string().optional(),
 });
 
 // export type MapRequest = {
@@ -104,11 +128,11 @@ export const mapRequestSchema = crawlerOptions.extend({
 export type MapRequest = z.infer<typeof mapRequestSchema>;
 
 export type Document = {
-  markdown?: string,
-  html?: string,
-  rawHtml?: string,
-  links?: string[],
-  screenshot?: string,
+  markdown?: string;
+  html?: string;
+  rawHtml?: string;
+  links?: string[];
+  screenshot?: string;
   metadata: {
     title?: string;
     description?: string;
@@ -142,8 +166,8 @@ export type Document = {
     sourceURL?: string;
     statusCode?: number;
     error?: string;
-  },
-}
+  };
+};
 
 export type ErrorResponse = {
   success: false;
@@ -151,11 +175,13 @@ export type ErrorResponse = {
   details?: any;
 };
 
-export type ScrapeResponse = ErrorResponse | {
-  success: true;
-  warning?: string;
-  data: Document;
-};
+export type ScrapeResponse =
+  | ErrorResponse
+  | {
+      success: true;
+      warning?: string;
+      data: Document;
+    };
 
 export interface ScrapeResponseRequestTest {
   statusCode: number;
@@ -163,40 +189,54 @@ export interface ScrapeResponseRequestTest {
   error?: string;
 }
 
-export type CrawlResponse = ErrorResponse | {
-  success: true;
-  id: string;
-  url: string;
-}
+export type CrawlResponse =
+  | ErrorResponse
+  | {
+      success: true;
+      id: string;
+      url: string;
+    };
 
-export type MapResponse = ErrorResponse | {
-  success: true;
-  links: string[];
-}
+export type MapResponse =
+  | ErrorResponse
+  | {
+      success: true;
+      links: string[];
+    };
 
 export type CrawlStatusParams = {
   jobId: string;
-}
+};
 
-export type CrawlStatusResponse = ErrorResponse | {
-  status: "scraping" | "completed" | "failed" | "cancelled",
-  totalCount: number;
-  creditsUsed: number;
-  expiresAt: string;
-  next?: string;
-  data: Document[];
-}
+export type CrawlStatusResponse =
+  | ErrorResponse
+  | {
+      status: "scraping" | "completed" | "failed" | "cancelled";
+      totalCount: number;
+      creditsUsed: number;
+      expiresAt: string;
+      next?: string;
+      data: Document[];
+    };
 
 type AuthObject = {
   team_id: string;
   plan: string;
-}
+};
 
-export interface RequestWithMaybeAuth<ReqParams = {}, ReqBody = undefined, ResBody = undefined> extends Request<ReqParams, ReqBody, ResBody> {
+export interface RequestWithMaybeAuth<
+  ReqParams = {},
+  ReqBody = undefined,
+  ResBody = undefined
+> extends Request<ReqParams, ReqBody, ResBody> {
   auth?: AuthObject;
 }
 
-export interface RequestWithAuth<ReqParams = {}, ReqBody = undefined, ResBody = undefined> extends Request<ReqParams, ReqBody, ResBody> {
+export interface RequestWithAuth<
+  ReqParams = {},
+  ReqBody = undefined,
+  ResBody = undefined
+> extends Request<ReqParams, ReqBody, ResBody> {
   auth: AuthObject;
 }
 
@@ -225,7 +265,7 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     includeLinks: x.formats.includes("links"),
     screenshot: x.formats.includes("screenshot"),
     fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
-    parsePDF: x.parsePDF
+    parsePDF: x.parsePDF,
   };
 }
 
@@ -243,5 +283,5 @@ export function legacyDocumentConverter(doc: any): Document {
       error: doc.metadata.pageError,
       statusCode: doc.metadata.pageStatusCode,
     },
-  }
+  };
 }

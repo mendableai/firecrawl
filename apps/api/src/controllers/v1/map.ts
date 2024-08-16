@@ -41,9 +41,10 @@ export async function mapController(
 
   const crawler = crawlToCrawler(id, sc);
 
-  const sitemap = sc.crawlerOptions.ignoreSitemap
-    ? null
-    : await crawler.tryGetSitemap();
+  const sitemap =
+    sc.crawlerOptions.ignoreSitemap || req.body.search
+      ? null
+      : await crawler.tryGetSitemap();
 
   if (sitemap !== null) {
     sitemap.map((x) => {
@@ -51,13 +52,23 @@ export async function mapController(
     });
   }
 
-  const mapResults = await fireEngineMap(`site:${req.body.url}`, {
+  let mapUrl = req.body.search
+    ? `"${req.body.search}" site:${req.body.url}`
+    : `site:${req.body.url}`;
+  console.log(mapUrl);
+  // www. seems to exclude subdomains in some cases
+  const mapResults = await fireEngineMap(mapUrl, {
     numResults: 50,
   });
+  console.log(mapResults);
 
   if (mapResults.length > 0) {
     mapResults.map((x) => {
-      links.push(x.url);
+      if (req.body.search) {
+        links.unshift(x.url);
+      } else {
+        links.push(x.url);
+      }
     });
   }
 
