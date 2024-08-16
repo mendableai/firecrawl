@@ -5,7 +5,6 @@ import { getScrapeQueue } from "../../services/queue-service";
 import { supabaseGetJobById } from "../../lib/supabase-jobs";
 
 async function getJob(id: string) {
-  console.log("getting job", id);
   const job = await getScrapeQueue().getJob(id);
   if (!job) return job;
   
