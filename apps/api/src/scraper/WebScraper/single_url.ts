@@ -130,6 +130,7 @@ export async function scrapSingleUrl(
     screenshot: false,
     fullPageScreenshot: false,
     headers: undefined,
+    includeLinks: true
   },
   extractorOptions: ExtractorOptions = {
     mode: "llm-extraction-from-markdown",
@@ -361,7 +362,9 @@ export async function scrapSingleUrl(
 
     let linksOnPage: string[] | undefined;
 
-    linksOnPage = extractLinks(rawHtml, urlToScrap);
+    if (pageOptions.includeLinks) {
+      linksOnPage = extractLinks(rawHtml, urlToScrap);
+    }
 
     let document: Document;
     if (screenshot && screenshot.length > 0) {
@@ -374,7 +377,7 @@ export async function scrapSingleUrl(
             extractorOptions.mode === "llm-extraction-from-raw-html"
             ? rawHtml
             : undefined,
-        linksOnPage,
+        linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
         metadata: {
           ...metadata,
           screenshot: screenshot,
@@ -399,7 +402,7 @@ export async function scrapSingleUrl(
           pageStatusCode: pageStatusCode,
           pageError: pageError,
         },
-        linksOnPage,
+        linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
       };
     }
 
@@ -415,7 +418,7 @@ export async function scrapSingleUrl(
       content: "",
       markdown: "",
       html: "",
-      linksOnPage: [],
+      linksOnPage: pageOptions.includeLinks ? [] : undefined,
       metadata: {
         sourceURL: urlToScrap,
         pageStatusCode: pageStatusCode,

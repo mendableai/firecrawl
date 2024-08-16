@@ -24,6 +24,7 @@ export type PageOptions = {
   parsePDF?: boolean;
   removeTags?: string | string[];
   onlyIncludeTags?: string | string[];
+  includeLinks?: boolean;
 };
 
 export type ExtractorOptions = {

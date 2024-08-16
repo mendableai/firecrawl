@@ -114,6 +114,7 @@ export interface AuthResponse {
   error?: string;
   status?: number;
   plan?: string;
+  api_key?: string;
 }
   
 

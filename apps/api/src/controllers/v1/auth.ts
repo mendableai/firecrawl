@@ -26,13 +26,7 @@ export async function supaAuthenticateUser(
   req,
   res,
   mode?: RateLimiterMode
-): Promise<{
-  success: boolean;
-  team_id?: string;
-  error?: string;
-  status?: number;
-  plan?: string;
-}> {
+): Promise<AuthResponse> {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
     return { success: false, error: "Unauthorized", status: 401 };
@@ -106,7 +100,7 @@ export async function supaAuthenticateUser(
     setTrace(team_id, normalizedApi);
     subscriptionData = {
       team_id: team_id,
-      plan: plan
+      plan: plan,
     }
     switch (mode) {
       case RateLimiterMode.Crawl:
@@ -195,7 +189,12 @@ export async function supaAuthenticateUser(
     subscriptionData = data[0];
   }
 
-  return { success: true, team_id: subscriptionData.team_id, plan: subscriptionData.plan ?? ""};
+  return {
+    success: true,
+    team_id: subscriptionData.team_id,
+    plan: subscriptionData.plan ?? "",
+    api_key: normalizedApi
+  };
 }
 function getPlanByPriceId(price_id: string) {
   switch (price_id) {
