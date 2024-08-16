@@ -293,7 +293,10 @@ export class WebScraperDataProvider {
       documents = await this.getSitemapData(this.urls[0], documents);
     }
 
-    documents = this.applyPathReplacements(documents);
+    if (this.pageOptions.includeMarkdown) {
+      documents = this.applyPathReplacements(documents);
+    }
+    
     // documents = await this.applyImgAltText(documents);
     if (
       (this.extractorOptions.mode === "llm-extraction" ||

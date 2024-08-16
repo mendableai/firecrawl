@@ -14,12 +14,12 @@ export async function fireEngineSearch(q: string, options: {
     page?: number;
 }): Promise<SearchResult[]> {
   let data = JSON.stringify({
-    q: q,
+    query: q,
     lang: options.lang,
     country: options.country,
     location: options.location,
     tbs: options.tbs,
-    num: options.numResults,
+    numResults: options.numResults,
     page: options.page ?? 1,
   });
 
@@ -36,7 +36,7 @@ export async function fireEngineSearch(q: string, options: {
     data: data,
   };
   const response = await axios(config);
-  if (response && response.data) {
+  if (response && response) {
     return response.data
   } else {
     return [];

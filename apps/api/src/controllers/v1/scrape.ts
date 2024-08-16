@@ -9,13 +9,12 @@ import { scrapeQueueEvents } from '../../services/queue-service';
 import { logJob } from "../../services/logging/log_job";
 
 export async function scrapeController(req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>, res: Response<ScrapeResponse>) {
-  req.body = scrapeRequestSchema.parse(req.body);  
+  req.body = scrapeRequestSchema.parse(req.body);
   let earlyReturn = false;
 
   const origin = req.body.origin;
   const timeout = req.body.timeout;
   const pageOptions = legacyScrapeOptions(req.body);
-
   const jobId = uuidv4();
 
   const startTime = new Date().getTime();
