@@ -73,6 +73,7 @@ export async function crawlController(req: RequestWithAuth<{}, CrawlResponse, Cr
       pageOptions: pageOptions,
       origin: "api",
       crawl_id: id,
+      webhook: req.body.webhook,
     }, {
       priority: 15,
     });

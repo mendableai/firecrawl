@@ -30,6 +30,7 @@ export interface WebScraperOptions {
   origin?: string;
   crawl_id?: string;
   sitemapped?: boolean;
+  webhook?: string;
 }
 
 export interface RunWebScraperParams {

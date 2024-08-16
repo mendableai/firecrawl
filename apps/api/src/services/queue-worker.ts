@@ -152,7 +152,7 @@ async function processJob(job: Job, token: string) {
     };
 
     if (job.data.mode === "crawl") {
-      await callWebhook(job.data.team_id, job.id as string, data);
+      await callWebhook(job.data.team_id, job.id as string, data, job.data.webhook);
     }
 
     if (job.data.crawl_id) {

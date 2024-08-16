@@ -78,6 +78,7 @@ export const crawlRequestSchema = z.object({
   origin: z.string().optional().default("api"),
   crawlerOptions: crawlerOptions.default({}),
   scrapeOptions: scrapeOptions.omit({ timeout: true }).default({}),
+  webhook: z.string().url().optional(),
 });
 
 // export type CrawlRequest = {
