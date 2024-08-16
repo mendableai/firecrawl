@@ -51,7 +51,7 @@ export async function mapController(
     });
   }
 
-  const mapResults = await fireEngineMap(req.body.url, {
+  const mapResults = await fireEngineMap(`site:${req.body.url}`, {
     numResults: 50,
   });
 
