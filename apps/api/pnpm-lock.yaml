@@ -27,8 +27,8 @@ importers:
         specifier: ^1.0.13
         version: 1.0.15
       '@hyperdx/node-opentelemetry':
-        specifier: ^0.8.0
-        version: 0.8.0
+        specifier: ^0.8.1
+        version: 0.8.1
       '@logtail/node':
         specifier: ^0.4.12
         version: 0.4.21
@@ -499,8 +499,8 @@ packages:
     peerDependencies:
       '@opentelemetry/api': ^1.3.0
 
-  '@hyperdx/node-opentelemetry@0.8.0':
-    resolution: {integrity: sha512-2z1jQqg2czctHOgo17WETUJOX2BJJ2jqg50R/z4o4ADRCS7Ynp4n3eVMLtsJHypQeDdrInUDE0VtVoXN5b+6hw==}
+  '@hyperdx/node-opentelemetry@0.8.1':
+    resolution: {integrity: sha512-wNw0yQf54j/9KXVWeEOu8G6C5FT5EFlrz4dcmscTkwCvo6fQOLRZa/NbGcqugt0LSFMc0/6/Q5RDWVqDpEn0LQ==}
     hasBin: true
 
   '@ioredis/commands@1.2.0':
@@ -4938,7 +4938,7 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@hyperdx/node-opentelemetry@0.8.0':
+  '@hyperdx/node-opentelemetry@0.8.1':
     dependencies:
       '@hyperdx/instrumentation-exception': 0.1.0(@opentelemetry/api@1.9.0)
       '@hyperdx/instrumentation-sentry-node': 0.1.0(@opentelemetry/api@1.9.0)
@@ -4963,6 +4963,7 @@ snapshots:
       lodash.isobject: 3.0.2
       lodash.isplainobject: 4.0.6
       lodash.isstring: 4.0.1
+      node-fetch: 2.7.0
       open: 8.4.2
       ora: 5.4.1
       pino-abstract-transport: 1.2.0
