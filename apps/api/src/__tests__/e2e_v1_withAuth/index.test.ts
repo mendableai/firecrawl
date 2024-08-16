@@ -328,6 +328,15 @@ describe("E2E Tests for v1 API Routes", () => {
         expect(response.body.data.metadata.statusCode).toBe(500);
       }, 60000);
 
+      it.concurrent("should return a timeout error when scraping takes longer than the specified timeout", async () => {
+        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+          .post("/v1/scrape")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send({ url: "https://firecrawl.dev", timeout: 1000 });
+  
+        expect(response.statusCode).toBe(408);
+      }, 3000); 
 
   });
 });
