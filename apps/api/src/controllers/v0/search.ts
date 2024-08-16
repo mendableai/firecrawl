@@ -142,7 +142,6 @@ export async function searchController(req: Request, res: Response) {
 
     const searchOptions = req.body.searchOptions ?? { limit: 5 };
     
-
     const jobId = uuidv4();
 
     try {

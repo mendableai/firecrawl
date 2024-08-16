@@ -1,10 +1,7 @@
 import { Logger } from "../../src/lib/logger";
 import { SearchResult } from "../../src/lib/entities";
-import { google_search } from "./googlesearch";
-import { serper_search } from "./serper";
-
-
-
+import { googleSearch } from "./googlesearch";
+import { fireEngineSearch } from "./fireEngine";
 
 export async function search({
   query,
@@ -32,10 +29,10 @@ export async function search({
   timeout?: number;
 }) : Promise<SearchResult[]> {
   try {
-    if (process.env.SERPER_API_KEY ) {
-      return await serper_search(query, {num_results, tbs, filter, lang, country, location});
+    if (process.env.FIRE_ENGINE_BETA_URL) {
+      return await fireEngineSearch(query, {numResults: num_results, tbs, filter, lang, country, location});
     }
-    return await google_search(
+    return await googleSearch(
       query,
       advanced,
       num_results,
@@ -51,5 +48,4 @@ export async function search({
     Logger.error(`Error in search function: ${error}`);
     return []
   }
-  // if process.env.SERPER_API_KEY is set, use serper
 }

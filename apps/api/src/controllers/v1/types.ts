@@ -212,6 +212,7 @@ export function legacyCrawlerOptions(x: CrawlerOptions) {
 
 export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
   return {
+    includeMarkdown: x.formats.includes("markdown"),
     includeHtml: x.formats.includes("html"),
     includeRawHtml: x.formats.includes("rawHtml"),
     onlyIncludeTags: x.includeTags,

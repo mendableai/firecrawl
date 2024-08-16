@@ -52,7 +52,7 @@ async function _req(term: string, results: number, lang: string, country: string
 
 
 
-export async function google_search(term: string, advanced = false, num_results = 7, tbs = null, filter = null, lang = "en", country = "us", proxy = null, sleep_interval = 0, timeout = 5000, ) :Promise<SearchResult[]> {
+export async function googleSearch(term: string, advanced = false, num_results = 7, tbs = null, filter = null, lang = "en", country = "us", proxy = null, sleep_interval = 0, timeout = 5000, ) :Promise<SearchResult[]> {
     let proxies = null;
     if (proxy) {
         if (proxy.startsWith("https")) {

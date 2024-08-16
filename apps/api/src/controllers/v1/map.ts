@@ -1,66 +1,63 @@
-import { Request, Response } from "express";
-import { Logger } from "../../../src/lib/logger";
-import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
-import { MapRequest, mapRequestSchema, MapResponse, RequestWithAuth } from "./types";
-import { checkTeamCredits } from "../../services/billing/credit_billing";
+import { Response } from "express";
+import { v4 as uuidv4 } from "uuid";
+import { legacyCrawlerOptions, mapRequestSchema, RequestWithAuth } from "./types";
+import { crawlToCrawler, StoredCrawl } from "../../lib/crawl-redis";
+import { MapResponse , MapRequest } from "./types";
+import { Logger } from "../../lib/logger";
+import { configDotenv } from "dotenv";
+import { search } from "../../search";
+import { checkAndUpdateURL } from "../../lib/validateUrl";
+
+configDotenv();
 
 export async function mapController(req: RequestWithAuth<{}, MapResponse, MapRequest>, res: Response<MapResponse>) {
   req.body = mapRequestSchema.parse(req.body);
-  console.log(req.body);
-  // expected req.body
 
-  // req.body = {
-  //   url: string
-  //   crawlerOptions: 
-  // }
+  const id = uuidv4();
+  let links: string[] = [req.body.url];
 
+  const crawlerOptions = legacyCrawlerOptions(req.body);
 
-  return res.status(200).json({ success: true, links: [ "test1", "test2" ] });
+  const sc: StoredCrawl = {
+    originUrl: req.body.url,
+    crawlerOptions,
+    pageOptions: {},
+    team_id: req.auth.team_id,
+    createdAt: Date.now(),
+  };
 
-  // const mode = req.body.mode ?? "crawl";
+  const crawler = crawlToCrawler(id, sc);
 
-  // const crawlerOptions = { ...defaultCrawlerOptions, ...req.body.crawlerOptions };
-  // const pageOptions = { ...defaultCrawlPageOptions, ...req.body.pageOptions };
+  try {
+    sc.robots = await crawler.getRobotsTxt();
+  } catch (e) {
+    Logger.debug(`[Crawl] Failed to get robots.txt (this is probably fine!): ${JSON.stringify(e)}`);
+  }
 
-  // if (mode === "single_urls" && !url.includes(",")) { // NOTE: do we need this?
-  //   try {
-  //     const a = new WebScraperDataProvider();
-  //     await a.setOptions({
-  //       jobId: uuidv4(),
-  //       mode: "single_urls",
-  //       urls: [url],
-  //       crawlerOptions: { ...crawlerOptions, returnOnlyUrls: true },
-  //       pageOptions: pageOptions,
-  //     });
+  const sitemap = sc.crawlerOptions.ignoreSitemap ? null : await crawler.tryGetSitemap();
 
-  //     const docs = await a.getDocuments(false, (progress) => {
-  //       job.progress({
-  //         current: progress.current,
-  //         total: progress.total,
-  //         current_step: "SCRAPING",
-  //         current_url: progress.currentDocumentUrl,
-  //       });
-  //     });
-  //     return res.json({
-  //       success: true,
-  //       documents: docs,
-  //     });
-  //   } catch (error) {
-  //     Logger.error(error);
-  //     return res.status(500).json({ error: error.message });
-  //   }
-  // }
+  if (sitemap !== null) {
+    sitemap.map(x => { links.push(x.url); });
+  }
 
-  // const job = await addWebScraperJob({
-  //   url: url,
-  //   mode: mode ?? "crawl", // fix for single urls not working
-  //   crawlerOptions: crawlerOptions,
-  //   team_id: team_id,
-  //   pageOptions: pageOptions,
-  //   origin: req.body.origin ?? defaultOrigin,
-  // });
+  const searchResults = await search({
+    query: `site:${req.body.url}`,
+    advanced: false,
+    num_results: 50,
+    lang: "en",
+    country: "us",
+    location: "United States",
+  })
 
-  // await logCrawl(job.id.toString(), team_id);
+  if (searchResults.length > 0) {
+    searchResults.map(x => { links.push(x.url); });
+  }
 
-  // res.json({ jobId: job.id });
+  links = links.map(x => checkAndUpdateURL(x).url);
+  links = [...new Set(links)];
+
+  return res.status(200).json({
+    success: true,
+    links
+  });
 }

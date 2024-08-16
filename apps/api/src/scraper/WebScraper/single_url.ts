@@ -123,6 +123,7 @@ export async function scrapSingleUrl(
   jobId: string,
   urlToScrap: string,
   pageOptions: PageOptions = {
+    includeMarkdown: true,
     onlyMainContent: true,
     includeHtml: false,
     includeRawHtml: false,
@@ -370,7 +371,7 @@ export async function scrapSingleUrl(
     if (screenshot && screenshot.length > 0) {
       document = {
         content: text,
-        markdown: text,
+        markdown: pageOptions.includeMarkdown ? text : undefined,
         html: pageOptions.includeHtml ? html : undefined,
         rawHtml:
           pageOptions.includeRawHtml ||
@@ -389,7 +390,7 @@ export async function scrapSingleUrl(
     } else {
       document = {
         content: text,
-        markdown: text,
+        markdown: pageOptions.includeMarkdown ? text : undefined,
         html: pageOptions.includeHtml ? html : undefined,
         rawHtml:
           pageOptions.includeRawHtml ||
@@ -416,7 +417,7 @@ export async function scrapSingleUrl(
     });
     return {
       content: "",
-      markdown: "",
+      markdown: pageOptions.includeMarkdown ? "" : undefined,
       html: "",
       linksOnPage: pageOptions.includeLinks ? [] : undefined,
       metadata: {

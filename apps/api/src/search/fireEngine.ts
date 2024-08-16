@@ -4,42 +4,41 @@ import { SearchResult } from "../../src/lib/entities";
 
 dotenv.config();
 
-export async function serper_search(q, options: {
+export async function fireEngineSearch(q: string, options: {
     tbs?: string;
     filter?: string;
     lang?: string;
     country?: string;
     location?: string;
-    num_results: number;
+    numResults: number;
     page?: number;
 }): Promise<SearchResult[]> {
   let data = JSON.stringify({
     q: q,
-    hl: options.lang,
-    gl: options.country,
+    lang: options.lang,
+    country: options.country,
     location: options.location,
     tbs: options.tbs,
-    num: options.num_results,
+    num: options.numResults,
     page: options.page ?? 1,
   });
 
+  if (!process.env.FIRE_ENGINE_BETA_URL) {
+    return [];
+  }
+
   let config = {
     method: "POST",
-    url: "https://google.serper.dev/search",
+    url: `${process.env.FIRE_ENGINE_BETA_URL}/search`,
     headers: {
-      "X-API-KEY": process.env.SERPER_API_KEY,
       "Content-Type": "application/json",
     },
     data: data,
   };
   const response = await axios(config);
-  if (response && response.data && Array.isArray(response.data.organic)) {
-    return response.data.organic.map((a) => ({
-      url: a.link,
-      title: a.title,
-      description: a.snippet,
-    }));
-  }else{
+  if (response && response.data) {
+    return response.data
+  } else {
     return [];
   }
 }
