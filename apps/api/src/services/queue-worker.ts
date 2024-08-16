@@ -15,7 +15,7 @@ import { Logger } from "../lib/logger";
 import { Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
 import { v4 as uuidv4 } from "uuid";
-import { addCrawlJob, addCrawlJobDone, crawlToCrawler, finishCrawl, getCrawl, getCrawlJobs, isCrawlFinished, lockURL } from "../lib/crawl-redis";
+import { addCrawlJob, addCrawlJobDone, crawlToCrawler, finishCrawl, getCrawl, getCrawlJobs, lockURL } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
 import { addScrapeJob } from "./queue-jobs";
 import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
@@ -226,7 +226,7 @@ async function processJob(job: Job, token: string) {
           return j;
         }))).sort((a, b) => a.timestamp - b.timestamp);
         const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
-        const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "active";
+        const jobStatus = sc.cancelled || jobStatuses.some(x => x === "failed") ? "failed" : "completed";
     
         const fullDocs = jobs.map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
 
