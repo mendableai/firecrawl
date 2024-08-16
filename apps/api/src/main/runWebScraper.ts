@@ -27,7 +27,12 @@ export async function startWebScraperPipeline({
     mode: job.data.mode,
     crawlerOptions: job.data.crawlerOptions,
     extractorOptions: job.data.extractorOptions,
-    pageOptions: job.data.pageOptions,
+    pageOptions: {
+      ...job.data.pageOptions,
+      ...(job.data.crawl_id ? ({
+        includeRawHtml: true,
+      }): {}),
+    },
     inProgress: (progress) => {
       Logger.debug(`🐂 Job in progress ${job.id}`);
       if (progress.currentDocument) {

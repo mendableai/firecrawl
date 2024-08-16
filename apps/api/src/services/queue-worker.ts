@@ -130,6 +130,12 @@ async function processJob(job: Job, token: string) {
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
+    const rawHtml = docs[0].rawHtml;
+
+    if (job.data.crawl_id && (!job.data.pageOptions || !job.data.pageOptions.includeRawHtml)) {
+      delete docs[0].rawHtml;
+    }
+
     const data = {
       success,
       result: {
@@ -174,9 +180,8 @@ async function processJob(job: Job, token: string) {
         if (!sc.cancelled) {
           const crawler = crawlToCrawler(job.data.crawl_id, sc);
 
-          const links = crawler.filterLinks((data.docs[0].linksOnPage ?? [])
-            .map(href => crawler.filterURL(href.trim(), sc.originUrl))
-            .filter(x => x !== null),
+          const links = crawler.filterLinks(
+            crawler.extractLinksFromHTML(rawHtml ?? "", sc.originUrl),
             Infinity,
             sc.crawlerOptions?.maxDepth ?? 10
           )

@@ -2,23 +2,27 @@ import { Response } from "express";
 import { CrawlStatusParams, CrawlStatusResponse, ErrorResponse, legacyDocumentConverter, RequestWithAuth } from "./types";
 import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
-import { supabaseGetJobById } from "../../lib/supabase-jobs";
+import { supabaseGetJobById, supabaseGetJobsById } from "../../lib/supabase-jobs";
 
-async function getJob(id: string) {
-  const job = await getScrapeQueue().getJob(id);
-  if (!job) return job;
+async function getJobs(ids: string[]) {
+  const jobs = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x);
   
   if (process.env.USE_DB_AUTHENTICATION === "true") {
-    const supabaseData = await supabaseGetJobById(id);
+    const supabaseData = await supabaseGetJobsById(ids);
 
-    if (supabaseData) {
-      job.returnvalue = supabaseData.docs;
-    }
+    supabaseData.forEach(x => {
+      const job = jobs.find(y => y.id === x.job_id);
+      if (job) {
+        job.returnvalue = x.docs;
+      }
+    })
   }
 
-  job.returnvalue = Array.isArray(job.returnvalue) ? job.returnvalue[0] : job.returnvalue;
+  jobs.forEach(job => {
+    job.returnvalue = Array.isArray(job.returnvalue) ? job.returnvalue[0] : job.returnvalue;
+  });
 
-  return job;
+  return jobs;
 }
 
 export async function crawlStatusController(req: RequestWithAuth<CrawlStatusParams, undefined, CrawlStatusResponse>, res: Response<CrawlStatusResponse>) {
@@ -43,22 +47,30 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
   let doneJobs = [];
 
   if (end === undefined) { // determine 10 megabyte limit
-    let bytes = 0, used = 0;
-    
-    while (bytes < 10485760 && used < doneJobsOrder.length) {
-      const job = await getJob(doneJobsOrder[used]);
+    let bytes = 0;
+    const bytesLimit = 10485760; // 10 MiB in bytes
+    const factor = 100; // chunking for faster retrieval
 
-      doneJobs.push(job);
-      bytes += JSON.stringify(legacyDocumentConverter(job.returnvalue)).length;
-      used++;
+    for (let i = 0; i < doneJobsOrder.length && bytes < bytesLimit; i += factor) {
+      // get current chunk and retrieve jobs
+      const currentIDs = doneJobsOrder.slice(i, i+factor);
+      const jobs = await getJobs(currentIDs);
+
+      // iterate through jobs and add them one them one to the byte counter
+      // both loops will break once we cross the byte counter
+      for (let ii = 0; ii < jobs.length && bytes < bytesLimit; ii++) {
+        const job = jobs[ii];
+        doneJobs.push(job);
+        bytes += JSON.stringify(legacyDocumentConverter(job.returnvalue)).length;
+      }
     }
 
-    if (used < doneJobsOrder.length) {
+    // if we ran over the bytes limit, remove the last document
+    if (bytes > bytesLimit) {
       doneJobs.splice(doneJobs.length - 1, 1);
-      used--;
     }
   } else {
-    doneJobs = (await Promise.all(doneJobsOrder.map(async x => await getJob(x))));
+    doneJobs = await getJobs(doneJobsOrder);
   }
 
   const data = doneJobs.map(x => x.returnvalue);
