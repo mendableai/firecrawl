@@ -3,6 +3,7 @@ import { Logger } from "../../src/lib/logger";
 import { getCrawl, getCrawlJobs } from "../../src/lib/crawl-redis";
 import { getScrapeQueue } from "../../src/services/queue-service";
 import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
+import { getJobs } from "./crawl-status";
 
 export async function crawlJobStatusPreviewController(req: Request, res: Response) {
   try {
@@ -22,19 +23,7 @@ export async function crawlJobStatusPreviewController(req: Request, res: Respons
     //   }
     // }
 
-    const jobs = (await Promise.all(jobIDs.map(async x => {
-      const job = await getScrapeQueue().getJob(x);
-      
-      if (process.env.USE_DB_AUTHENTICATION === "true") {
-        const supabaseData = await supabaseGetJobById(job.id);
-
-        if (supabaseData) {
-          job.returnvalue = supabaseData.docs;
-        }
-      }
-
-      return job;
-    }))).sort((a, b) => a.timestamp - b.timestamp);
+    const jobs = (await getJobs(jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
     const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
     const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "active";
 

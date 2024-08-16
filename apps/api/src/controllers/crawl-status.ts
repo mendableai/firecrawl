@@ -6,7 +6,7 @@ import { Logger } from "../../src/lib/logger";
 import { getCrawl, getCrawlJobs } from "../../src/lib/crawl-redis";
 import { supabaseGetJobsById } from "../../src/lib/supabase-jobs";
 
-async function getJobs(ids: string[]) {
+export async function getJobs(ids: string[]) {
   const jobs = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x);
   
   if (process.env.USE_DB_AUTHENTICATION === "true") {
