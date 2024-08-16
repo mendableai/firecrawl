@@ -336,7 +336,69 @@ describe("E2E Tests for v1 API Routes", () => {
           .send({ url: "https://firecrawl.dev", timeout: 1000 });
   
         expect(response.statusCode).toBe(408);
-      }, 3000); 
+      }, 3000);
+
+      it.concurrent(
+        "should return a successful response with a valid API key and includeHtml set to true",
+        async () => {
+          const scrapeRequest: ScrapeRequest = {
+            url: "https://roastmywebsite.ai",
+            formats: ["html","rawHtml"],
+          };
+  
+          const response: ScrapeResponseRequestTest = await request(TEST_URL)
+            .post("/v1/scrape")
+            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+            .set("Content-Type", "application/json")
+            .send(scrapeRequest);
+          
+          expect(response.statusCode).toBe(200);
+          expect(response.body).toHaveProperty("data");
+          if (!("data" in response.body)) {
+            throw new Error("Expected response body to have 'data' property");
+          }
+          expect(response.body.data).not.toHaveProperty("markdown");
+          expect(response.body.data).toHaveProperty("html");
+          expect(response.body.data).toHaveProperty("rawHtml");
+          expect(response.body.data).toHaveProperty("metadata");
+          expect(response.body.data.html).toContain("<h1");
+          expect(response.body.data.rawHtml).toContain("<html");
+          expect(response.body.data.metadata.statusCode).toBe(200);
+          expect(response.body.data.metadata.error).toBeUndefined();
+        },
+        30000
+      );
+
+      it.concurrent(
+        "should return a successful response with waitFor",
+        async () => {
+          const scrapeRequest: ScrapeRequest = {
+            url: "https://ycombinator.com/companies",
+            formats: ["markdown"],
+            waitFor: 5000
+          };
+  
+          const response: ScrapeResponseRequestTest = await request(TEST_URL)
+            .post("/v1/scrape")
+            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+            .set("Content-Type", "application/json")
+            .send(scrapeRequest);
+          
+          expect(response.statusCode).toBe(200);
+          expect(response.body).toHaveProperty("data");
+          if (!("data" in response.body)) {
+            throw new Error("Expected response body to have 'data' property");
+          }
+          expect(response.body.data).toHaveProperty("markdown");
+          expect(response.body.data).not.toHaveProperty("html");
+          expect(response.body.data).not.toHaveProperty("rawHtml");
+          expect(response.body.data).toHaveProperty("metadata");
+          expect(response.body.data.markdown).toContain("PagerDuty");
+          expect(response.body.data.metadata.statusCode).toBe(200);
+          expect(response.body.data.metadata.error).toBeUndefined();
+        },
+        30000
+      );
 
   });
 });
