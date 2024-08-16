@@ -15,7 +15,7 @@ import { Logger } from "../lib/logger";
 import { Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
 import { v4 as uuidv4 } from "uuid";
-import { addCrawlJob, addCrawlJobDone, crawlToCrawler, getCrawl, getCrawlJobs, isCrawlFinished, lockURL } from "../lib/crawl-redis";
+import { addCrawlJob, addCrawlJobDone, crawlToCrawler, finishCrawl, getCrawl, getCrawlJobs, isCrawlFinished, lockURL } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
 import { addScrapeJob } from "./queue-jobs";
 import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
@@ -199,7 +199,7 @@ async function processJob(job: Job, token: string) {
         }
       }
 
-      if (await isCrawlFinished(job.data.crawl_id)) {
+      if (await finishCrawl(job.data.crawl_id)) {
         const jobIDs = await getCrawlJobs(job.data.crawl_id);
 
         const jobs = (await Promise.all(jobIDs.map(async x => {

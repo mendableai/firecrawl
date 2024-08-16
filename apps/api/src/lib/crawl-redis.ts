@@ -45,6 +45,16 @@ export async function isCrawlFinished(id: string) {
     return (await redisConnection.scard("crawl:" + id + ":jobs_done")) === (await redisConnection.scard("crawl:" + id + ":jobs"));
 }
 
+export async function finishCrawl(id: string) {
+    if (await isCrawlFinished(id)) {
+        const set = await redisConnection.setnx("crawl:" + id + ":finish", "yes");
+        if (set === 1) {
+            await redisConnection.expire("crawl:" + id + ":finish", 24 * 60 * 60);
+        }
+        return set === 1
+    }
+}
+
 export async function getCrawlJobs(id: string): Promise<string[]> {
     return await redisConnection.smembers("crawl:" + id + ":jobs");
 }
