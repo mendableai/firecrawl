@@ -7,11 +7,8 @@ import {
 } from "./types";
 import { crawlToCrawler, StoredCrawl } from "../../lib/crawl-redis";
 import { MapResponse, MapRequest } from "./types";
-import { Logger } from "../../lib/logger";
 import { configDotenv } from "dotenv";
-import { search } from "../../search";
 import {
-  checkAndUpdateURL,
   checkAndUpdateURLForMap,
   isSameDomain,
   isSameSubdomain,
