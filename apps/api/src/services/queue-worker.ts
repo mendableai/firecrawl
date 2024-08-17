@@ -115,6 +115,20 @@ workerFun(scrapeQueueName, processJobInternal);
 async function processJob(job: Job, token: string) {
   Logger.info(`🐂 Worker taking job ${job.id}`);
 
+  // Check if the job URL is researchhub and block it immediately
+  // TODO: remove this once solve the root issue
+  if (job.data.url && job.data.url.includes("researchhub.com")) {
+    Logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
+    const data = {
+      success: false,
+      docs: [],
+      project_id: job.data.project_id,
+      error: "URL is blocked: researchhub.com",
+    };
+    await job.moveToCompleted(data.docs, token, false);
+    return data;
+  }
+
   try {
     job.updateProgress({
       current: 1,

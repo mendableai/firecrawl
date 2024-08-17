@@ -49,7 +49,7 @@ export async function checkAlerts() {
       };
 
       const checkAll = async () => {
-        // await checkActiveJobs();
+        await checkActiveJobs();
         await checkWaitingQueue();
       };
 
