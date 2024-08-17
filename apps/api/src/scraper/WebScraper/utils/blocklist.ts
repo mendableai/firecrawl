@@ -15,6 +15,7 @@ const socialMediaBlocklist = [
   'whatsapp.com',
   'wechat.com',
   'telegram.org',
+  'researchhub.com'
 ];
 
 const allowedKeywords = [

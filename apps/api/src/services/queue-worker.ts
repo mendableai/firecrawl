@@ -173,9 +173,14 @@ async function processJob(job: Job, token: string) {
       if (!job.data.sitemapped) {
         if (!sc.cancelled) {
           const crawler = crawlToCrawler(job.data.crawl_id, sc);
-
-          const links = crawler.filterLinks((data.docs[0].linksOnPage ?? [])
-            .map(href => crawler.filterURL(href.trim(), sc.originUrl))
+          let linksOnPage = [];
+          try{
+            linksOnPage = data.docs[0]?.linksOnPage ?? [];
+          }catch(e){
+            linksOnPage = []
+          }
+          const links = crawler.filterLinks(
+            linksOnPage.map(href => crawler.filterURL(href.trim(), sc.originUrl))
             .filter(x => x !== null),
             Infinity,
             sc.crawlerOptions?.maxDepth ?? 10
