@@ -78,7 +78,6 @@ export async function mapController(
   }
 
   // remove duplicates that could be due to http/https or www
-
   links = [...new Set(links)];
 
   return res.status(200).json({
