@@ -117,13 +117,13 @@ async function processJob(job: Job, token: string) {
 
   // Check if the job URL is researchhub and block it immediately
   // TODO: remove this once solve the root issue
-  if (job.data.url && job.data.url.includes("researchhub.com")) {
+  if (job.data.url && (job.data.url.includes("researchhub.com") || job.data.url.includes("ebay.com"))) {
     Logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
     const data = {
       success: false,
       docs: [],
       project_id: job.data.project_id,
-      error: "URL is blocked: researchhub.com",
+      error: "URL is blocked. Please contact hello@firecrawl.com if you believe this is an error.",
     };
     await job.moveToCompleted(data.docs, token, false);
     return data;
@@ -137,6 +137,7 @@ async function processJob(job: Job, token: string) {
       current_url: "",
     });
     const start = Date.now();
+    
     const { success, message, docs } = await startWebScraperPipeline({
       job,
       token,
