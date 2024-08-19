@@ -22,21 +22,23 @@ export async function scrapWithFireEngine({
   waitFor = 0,
   screenshot = false,
   fullPageScreenshot = false,
-  pageOptions = { parsePDF: true },
+  pageOptions = { parsePDF: true, atsv: false, useFastMode: false, disableJsDom: false },
   fireEngineOptions = {},
   headers,
   options,
   priority,
+  teamId,
 }: {
   url: string;
   waitFor?: number;
   screenshot?: boolean;
   fullPageScreenshot?: boolean;
-  pageOptions?: { scrollXPaths?: string[]; parsePDF?: boolean };
+  pageOptions?: { scrollXPaths?: string[]; parsePDF?: boolean, atsv?: boolean, useFastMode?: boolean, disableJsDom?: boolean };
   fireEngineOptions?: FireEngineOptions;
   headers?: Record<string, string>;
   options?: any;
   priority?: number;
+  teamId?: string;
 }): Promise<FireEngineResponse> {
   const logParams = {
     url,
@@ -51,11 +53,11 @@ export async function scrapWithFireEngine({
 
   try {
     const reqParams = await generateRequestParams(url);
-    const waitParam = reqParams["params"]?.wait ?? waitFor;
-    const engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "playwright";
-    const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
-    const fullPageScreenshotParam = reqParams["params"]?.fullPageScreenshot ?? fullPageScreenshot;
-    const fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
+    let waitParam = reqParams["params"]?.wait ?? waitFor;
+    let engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "playwright";
+    let screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
+    let fullPageScreenshotParam = reqParams["params"]?.fullPageScreenshot ?? fullPageScreenshot;
+    let fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
 
 
     let endpoint = "/scrape";
@@ -70,6 +72,20 @@ export async function scrapWithFireEngine({
       `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { wait: ${waitParam}, screenshot: ${screenshotParam}, fullPageScreenshot: ${fullPageScreenshot}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
     );
 
+    if (pageOptions?.useFastMode) {
+      console.log('using tlsclient')
+      fireEngineOptionsParam.engine = "tlsclient";
+      engine = "tlsclient";
+    }
+
+    // atsv is only available for beta customers
+    const betaCustomersString = process.env.BETA_CUSTOMERS;
+    const betaCustomers = betaCustomersString ? betaCustomersString.split(",") : [];
+    if (pageOptions?.atsv && betaCustomers.includes(teamId)) {
+      fireEngineOptionsParam.atsv = true;
+    } else {
+      pageOptions.atsv = false;
+    }
 
     const response = await axios.post(
       process.env.FIRE_ENGINE_BETA_URL + endpoint,
@@ -80,7 +96,9 @@ export async function scrapWithFireEngine({
         fullPageScreenshot: fullPageScreenshotParam,
         headers: headers,
         pageOptions: pageOptions,
+        disableJsDom: pageOptions?.disableJsDom ?? false,
         priority,
+        engine,
         ...fireEngineOptionsParam,
       },
       {

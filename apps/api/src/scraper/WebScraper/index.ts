@@ -45,6 +45,7 @@ export class WebScraperDataProvider {
   private allowBackwardCrawling: boolean = false;
   private allowExternalContentLinks: boolean = false;
   private priority?: number;
+  private teamId?: string;
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -596,6 +597,7 @@ export class WebScraperDataProvider {
     this.allowExternalContentLinks =
       options.crawlerOptions?.allowExternalContentLinks ?? false;
     this.priority = options.priority;
+    this.teamId = options.teamId ?? null;
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {
