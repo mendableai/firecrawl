@@ -38,8 +38,14 @@ export async function crawlController(req: Request, res: Response) {
       }
     }
 
+    const crawlerOptions = { ...defaultCrawlerOptions, ...req.body.crawlerOptions };
+    const pageOptions = { ...defaultCrawlPageOptions, ...req.body.pageOptions };
+
+
+    const limitCheck = crawlerOptions?.limit ?? 1;
     const { success: creditsCheckSuccess, message: creditsCheckMessage } =
-      await checkTeamCredits(team_id, 1);
+      await checkTeamCredits(team_id, limitCheck);
+
     if (!creditsCheckSuccess) {
       return res.status(402).json({ error: "Insufficient credits" });
     }
@@ -67,8 +73,6 @@ export async function crawlController(req: Request, res: Response) {
 
     const mode = req.body.mode ?? "crawl";
 
-    const crawlerOptions = { ...defaultCrawlerOptions, ...req.body.crawlerOptions };
-    const pageOptions = { ...defaultCrawlPageOptions, ...req.body.pageOptions };
 
     // if (mode === "single_urls" && !url.includes(",")) { // NOTE: do we need this?
     //   try {
