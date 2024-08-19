@@ -36,6 +36,7 @@ describe("E2E Tests for v1 API Routes", () => {
       expect(response.statusCode).toBe(401);
     });
 
+    it.concurrent("should throw error for blocklisted URL", async () => {
       const scrapeRequest: ScrapeRequest = {
         url: "https://facebook.com/fake-test",
       };
