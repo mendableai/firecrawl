@@ -40,10 +40,11 @@ export async function logJob(job: FirecrawlJob) {
           extractor_options: job.extractor_options,
           num_tokens: job.num_tokens,
           retry: !!job.retry,
+          crawl_id: job.crawl_id,
         },
       ]);
 
-    if (process.env.POSTHOG_API_KEY) {
+    if (process.env.POSTHOG_API_KEY && !job.crawl_id) {
       let phLog = {
         distinctId: "from-api", //* To identify this on the group level, setting distinctid to a static string per posthog docs: https://posthog.com/docs/product-analytics/group-analytics#advanced-server-side-only-capturing-group-events-without-a-user
         ...(job.team_id !== "preview" && {

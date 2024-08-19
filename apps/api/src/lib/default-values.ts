@@ -7,6 +7,7 @@ export const defaultPageOptions = {
   includeHtml: false,
   waitFor: 0,
   screenshot: false,
+  fullPageScreenshot: false,
   parsePDF: true
 };
 

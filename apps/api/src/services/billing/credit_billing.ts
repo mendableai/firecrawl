@@ -3,8 +3,12 @@ import { withAuth } from "../../lib/withAuth";
 import { sendNotification } from "../notification/email_notification";
 import { supabase_service } from "../supabase";
 import { Logger } from "../../lib/logger";
+import { getValue, setValue } from "../redis";
+import { redlock } from "../redlock";
+
 
 const FREE_CREDITS = 500;
+
 
 export async function billTeam(team_id: string, credits: number) {
   return withAuth(supaBillTeam)(team_id, credits);
@@ -254,23 +258,41 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
   }
 
   let totalCreditsUsed = 0;
+  const cacheKey = `credit_usage_${subscription.id}_${subscription.current_period_start}_${subscription.current_period_end}_lc`;
+  const redLockKey = `lock_${cacheKey}`;
+  const lockTTL = 10000; // 10 seconds
+
   try {
-    const { data: creditUsages, error: creditUsageError } =
-      await supabase_service.rpc("get_credit_usage_2", {
-        sub_id: subscription.id,
-        start_time: subscription.current_period_start,
-        end_time: subscription.current_period_end,
-      });
+    const lock = await redlock.acquire([redLockKey], lockTTL);
 
-    if (creditUsageError) {
-      Logger.error(`Error calculating credit usage: ${creditUsageError}`);
-    }
+    try {
+      const cachedCreditUsage = await getValue(cacheKey);
 
-    if (creditUsages && creditUsages.length > 0) {
-      totalCreditsUsed = creditUsages[0].total_credits_used;
+      if (cachedCreditUsage) {
+        totalCreditsUsed = parseInt(cachedCreditUsage);
+      } else {
+        const { data: creditUsages, error: creditUsageError } =
+          await supabase_service.rpc("get_credit_usage_2", {
+            sub_id: subscription.id,
+            start_time: subscription.current_period_start,
+            end_time: subscription.current_period_end,
+          });
+
+        if (creditUsageError) {
+          Logger.error(`Error calculating credit usage: ${creditUsageError}`);
+        }
+
+        if (creditUsages && creditUsages.length > 0) {
+          totalCreditsUsed = creditUsages[0].total_credits_used;
+          await setValue(cacheKey, totalCreditsUsed.toString(), 1800); // Cache for 30 minutes
+          // Logger.info(`Cache set for credit usage: ${totalCreditsUsed}`);
+        }
+      }
+    } finally {
+      await lock.release();
     }
   } catch (error) {
-    Logger.error(`Error calculating credit usage: ${error}`);
+    Logger.error(`Error acquiring lock or calculating credit usage: ${error}`);
   }
 
   // Adjust total credits used by subtracting coupon value

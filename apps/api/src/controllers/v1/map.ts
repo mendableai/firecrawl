@@ -1,128 +1,87 @@
-import { Request, Response } from "express";
-import { WebScraperDataProvider } from "../../../src/scraper/WebScraper";
-import { billTeam } from "../../../src/services/billing/credit_billing";
-import { checkTeamCredits } from "../../../src/services/billing/credit_billing";
-import { authenticateUser } from "./auth";
-import { RateLimiterMode } from "../../../src/types";
-import { addWebScraperJob } from "../../../src/services/queue-jobs";
-import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
-import { logCrawl } from "../../../src/services/logging/crawl_log";
-import { validateIdempotencyKey } from "../../../src/services/idempotency/validate";
-import { createIdempotencyKey } from "../../../src/services/idempotency/create";
-import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../../src/lib/default-values";
+import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "../../../src/lib/logger";
-import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
+import {
+  legacyCrawlerOptions,
+  mapRequestSchema,
+  RequestWithAuth,
+} from "./types";
+import { crawlToCrawler, StoredCrawl } from "../../lib/crawl-redis";
+import { MapResponse, MapRequest } from "./types";
+import { configDotenv } from "dotenv";
+import {
+  checkAndUpdateURLForMap,
+  isSameDomain,
+  isSameSubdomain,
+} from "../../lib/validateUrl";
+import { fireEngineMap } from "../../search/fireEngine";
 
-export async function mapController(req: Request, res: Response) {
-  // expected req.body
+configDotenv();
 
-  // req.body = {
-  //   url: string
-  //   ignoreSitemap: true??
-  //   other crawler options?
-  // }
+export async function mapController(
+  req: RequestWithAuth<{}, MapResponse, MapRequest>,
+  res: Response<MapResponse>
+) {
+  req.body = mapRequestSchema.parse(req.body);
 
+  const id = uuidv4();
+  let links: string[] = [req.body.url];
 
-  try {
-    const { success, team_id, error, status } = await authenticateUser(
-      req,
-      res,
-      RateLimiterMode.Crawl
-    );
-    if (!success) {
-      return res.status(status).json({ error });
-    }
+  const crawlerOptions = legacyCrawlerOptions(req.body);
 
-    // if (req.headers["x-idempotency-key"]) {
-    //   const isIdempotencyValid = await validateIdempotencyKey(req);
-    //   if (!isIdempotencyValid) {
-    //     return res.status(409).json({ error: "Idempotency key already used" });
-    //   }
-    //   try {
-    //     createIdempotencyKey(req);
-    //   } catch (error) {
-    //     Logger.error(error);
-    //     return res.status(500).json({ error: error.message });
-    //   }
-    // }
+  const sc: StoredCrawl = {
+    originUrl: req.body.url,
+    crawlerOptions,
+    pageOptions: {},
+    team_id: req.auth.team_id,
+    createdAt: Date.now(),
+  };
 
-    // const { success: creditsCheckSuccess, message: creditsCheckMessage } =
-    //   await checkTeamCredits(team_id, 1);
-    // if (!creditsCheckSuccess) {
-    //   return res.status(402).json({ error: "Insufficient credits" });
-    // }
+  const crawler = crawlToCrawler(id, sc);
 
-    let url = req.body.url;
-    if (!url) {
-      return res.status(400).json({ error: "Url is required" });
-    }
+  const sitemap =
+    sc.crawlerOptions.ignoreSitemap || req.body.search
+      ? null
+      : await crawler.tryGetSitemap();
 
-    if (isUrlBlocked(url)) {
-      return res
-        .status(403)
-        .json({
-          error:
-            "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-        });
-    }
-
-    try {
-      url = checkAndUpdateURL(url);
-    } catch (error) {
-      return res.status(400).json({ error: 'Invalid Url' });
-    }
-
-    return res.status(200).json({ urls: [ "test1", "test2" ] });
-
-    // const mode = req.body.mode ?? "crawl";
-
-    // const crawlerOptions = { ...defaultCrawlerOptions, ...req.body.crawlerOptions };
-    // const pageOptions = { ...defaultCrawlPageOptions, ...req.body.pageOptions };
-
-    // if (mode === "single_urls" && !url.includes(",")) { // NOTE: do we need this?
-    //   try {
-    //     const a = new WebScraperDataProvider();
-    //     await a.setOptions({
-    //       jobId: uuidv4(),
-    //       mode: "single_urls",
-    //       urls: [url],
-    //       crawlerOptions: { ...crawlerOptions, returnOnlyUrls: true },
-    //       pageOptions: pageOptions,
-    //     });
-
-    //     const docs = await a.getDocuments(false, (progress) => {
-    //       job.progress({
-    //         current: progress.current,
-    //         total: progress.total,
-    //         current_step: "SCRAPING",
-    //         current_url: progress.currentDocumentUrl,
-    //       });
-    //     });
-    //     return res.json({
-    //       success: true,
-    //       documents: docs,
-    //     });
-    //   } catch (error) {
-    //     Logger.error(error);
-    //     return res.status(500).json({ error: error.message });
-    //   }
-    // }
-
-    // const job = await addWebScraperJob({
-    //   url: url,
-    //   mode: mode ?? "crawl", // fix for single urls not working
-    //   crawlerOptions: crawlerOptions,
-    //   team_id: team_id,
-    //   pageOptions: pageOptions,
-    //   origin: req.body.origin ?? defaultOrigin,
-    // });
-
-    // await logCrawl(job.id.toString(), team_id);
-
-    // res.json({ jobId: job.id });
-  } catch (error) {
-    Logger.error(error);
-    return res.status(500).json({ error: error.message });
+  if (sitemap !== null) {
+    sitemap.map((x) => {
+      links.push(x.url);
+    });
   }
+
+  let mapUrl = req.body.search
+    ? `"${req.body.search}" site:${req.body.url}`
+    : `site:${req.body.url}`;
+  // www. seems to exclude subdomains in some cases
+  const mapResults = await fireEngineMap(mapUrl, {
+    numResults: 50,
+  });
+
+  if (mapResults.length > 0) {
+    mapResults.map((x) => {
+      if (req.body.search) {
+        links.unshift(x.url);
+      } else {
+        links.push(x.url);
+      }
+    });
+  }
+
+  links = links.map((x) => checkAndUpdateURLForMap(x).url);
+
+  // allows for subdomains to be included
+  links = links.filter((x) => isSameDomain(x, req.body.url));
+
+  // if includeSubdomains is false, filter out subdomains
+  if (!req.body.includeSubdomains) {
+    links = links.filter((x) => isSameSubdomain(x, req.body.url));
+  }
+
+  // remove duplicates that could be due to http/https or www
+  links = [...new Set(links)];
+
+  return res.status(200).json({
+    success: true,
+    links,
+  });
 }
