@@ -1,4 +1,4 @@
-import FirecrawlApp, { CrawlResponse, JobStatusResponse, ScrapeResponse } from '../../../index';
+import FirecrawlApp, { CrawlParams, CrawlResponse, CrawlStatusResponse, ScrapeParams, ScrapeResponse } from '../../../index';
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
 import { describe, test, expect } from '@jest/globals';
@@ -80,8 +80,10 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response.data?.metadata).toHaveProperty("ogLocaleAlternate");
     expect(response.data?.metadata).toHaveProperty("ogSiteName");
     expect(response.data?.metadata).toHaveProperty("sourceURL");
-    expect(response.data?.metadata).toHaveProperty("pageStatusCode");
-    expect(response.data?.metadata.pageError).toBeUndefined();
+    expect(response.data?.metadata).not.toHaveProperty("pageStatusCode");
+    expect(response.data?.metadata).toHaveProperty("statusCode");
+    expect(response.data?.metadata).not.toHaveProperty("pageError");
+    expect(response.data?.metadata.error).toBeUndefined();
     expect(response.data?.metadata.title).toBe("Roast My Website");
     expect(response.data?.metadata.description).toBe("Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️");
     expect(response.data?.metadata.keywords).toBe("Roast My Website,Roast,Website,GitHub,Firecrawl");
@@ -123,9 +125,8 @@ describe('FirecrawlApp E2E Tests', () => {
 
   test.concurrent('should return successful response for crawl and wait for completion', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
-    const response = await app.crawlUrl('https://roastmywebsite.ai', {}, true, 30) as JobStatusResponse;
+    const response = await app.crawlUrl('https://roastmywebsite.ai', {}, true, 30) as CrawlStatusResponse;
     expect(response).not.toBeNull();
-
     expect(response).toHaveProperty("totalCount");
     expect(response.totalCount).toBeGreaterThan(0);
     expect(response).toHaveProperty("creditsUsed");
@@ -176,7 +177,7 @@ describe('FirecrawlApp E2E Tests', () => {
         timeout: 30000,
         waitFor: 1000
       }
-    }, true, 30) as JobStatusResponse;
+    } as CrawlParams, true, 30) as CrawlStatusResponse;
     expect(response).not.toBeNull();
     expect(response).toHaveProperty("totalCount");
     expect(response.totalCount).toBeGreaterThan(0);
@@ -223,7 +224,7 @@ describe('FirecrawlApp E2E Tests', () => {
 
   test.concurrent('should check crawl status', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
-    const response: any = await app.crawlUrl('https://roastmywebsite.ai', { crawlerOptions: { excludes: ['blog/*'] } }, false) as JobStatusResponse;
+    const response: any = await app.crawlUrl('https://roastmywebsite.ai', { crawlerOptions: { excludes: ['blog/*'] } }, false) as CrawlStatusResponse;
     expect(response).not.toBeNull();
     expect(response.jobId).toBeDefined();
 

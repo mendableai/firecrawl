@@ -167,7 +167,15 @@ export interface ScrapeResponseV0 {
  */
 export interface CrawlParams {
   scrapeOptions?: ScrapeParams;
-  crawlerOptions?: MapParams;
+  crawlerOptions?: {
+    includePaths?: string[]
+    excludePaths?: string[]
+    maxDepth?: number
+    limit?: number
+    allowBackwardLinks?: boolean
+    allowExternalLinks?: boolean
+    ignoreSitemap?: boolean
+  };
 }
 
 /**
