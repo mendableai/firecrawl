@@ -136,6 +136,7 @@ export async function scrapSingleUrl(
   },
   existingHtml: string = "",
   priority?: number,
+  teamId?: string
 ): Promise<Document> {
   urlToScrap = urlToScrap.trim();
 
@@ -164,7 +165,7 @@ export async function scrapSingleUrl(
       case "fire-engine;chrome-cdp":  
 
         let engine: "playwright" | "chrome-cdp" | "tlsclient" = "playwright";
-        if(method === "fire-engine;chrome-cdp"){
+        if (method === "fire-engine;chrome-cdp") {
           engine = "chrome-cdp";
         }
 
@@ -178,8 +179,10 @@ export async function scrapSingleUrl(
             headers: pageOptions.headers,
             fireEngineOptions: {
               engine: engine,
+              atsv: pageOptions.atsv,
             },
             priority,
+            teamId,
           });
           scraperResponse.text = response.html;
           scraperResponse.screenshot = response.screenshot;
