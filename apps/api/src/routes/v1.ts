@@ -15,6 +15,7 @@ import { checkTeamCredits } from "../services/billing/credit_billing";
 import { v4 as uuidv4 } from "uuid";
 import expressWs from "express-ws";
 import { crawlStatusWSController } from "../controllers/v1/crawl-status-ws";
+import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 // import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
 // import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
 // import { searchController } from "../../src/controllers/v1/search";
@@ -69,6 +70,13 @@ function idempotencyMiddleware(req: Request, res: Response, next: NextFunction) 
         .catch(err => next(err));
 }
 
+function blocklistMiddleware(req: Request, res: Response, next: NextFunction) {
+    if (isUrlBlocked(req.body.url)) {
+        return res.status(403).json({ success: false, error: "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." });
+    }
+    next();
+}
+
 function wrap(controller: (req: Request, res: Response) => Promise<any>): (req: Request, res: Response, next: NextFunction) => any {
     return (req, res, next) => {
         controller(req, res)
@@ -82,6 +90,7 @@ export const v1Router = express.Router();
 
 v1Router.post(
     "/scrape",
+    blocklistMiddleware,
     authMiddleware(RateLimiterMode.Scrape),
     checkCreditsMiddleware(1),
     wrap(scrapeController)
@@ -89,6 +98,7 @@ v1Router.post(
 
 v1Router.post(
     "/crawl",
+    blocklistMiddleware,
     authMiddleware(RateLimiterMode.Crawl),
     idempotencyMiddleware,
     checkCreditsMiddleware(1),
@@ -97,6 +107,7 @@ v1Router.post(
 
 v1Router.post(
     "/map",
+    blocklistMiddleware,
     authMiddleware(RateLimiterMode.Crawl),
     checkCreditsMiddleware(1),
     wrap(mapController)
