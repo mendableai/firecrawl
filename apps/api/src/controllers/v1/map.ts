@@ -14,6 +14,7 @@ import {
   isSameSubdomain,
 } from "../../lib/validateUrl";
 import { fireEngineMap } from "../../search/fireEngine";
+import { billTeam } from "../../services/billing/credit_billing";
 
 configDotenv();
 
@@ -83,6 +84,8 @@ export async function mapController(
 
   // remove duplicates that could be due to http/https or www
   links = [...new Set(links)];
+
+  await billTeam(req.auth.team_id, 1);
 
   return res.status(200).json({
     success: true,
