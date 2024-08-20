@@ -36,6 +36,21 @@ describe("E2E Tests for v1 API Routes", () => {
       expect(response.statusCode).toBe(401);
     });
 
+    it.concurrent("should throw error for blocklisted URL", async () => {
+      const scrapeRequest: ScrapeRequest = {
+        url: "https://facebook.com/fake-test",
+      };
+
+      const response = await request(TEST_URL)
+        .post("/v1/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send(scrapeRequest);
+
+      expect(response.statusCode).toBe(403);
+      expect(response.body.error).toBe("URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions.");
+    });
+
     it.concurrent(
       "should return an error response with an invalid API key",
       async () => {
