@@ -136,29 +136,27 @@ export async function scrapWithFireEngine({
       return { html: "", screenshot: "", pageStatusCode: null, pageError: "" };
     }
 
-    if (checkStatusResponse.status !== 200 || checkStatusResponse.data.error) {
+    if (response.status !== 200) {
       Logger.debug(
-        `⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${checkStatusResponse.status}`
+        `⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${response.status}`
       );
       
-      logParams.error_message = checkStatusResponse.data?.pageError ?? checkStatusResponse.data?.error;
-      logParams.response_code = checkStatusResponse.data?.pageStatusCode;
+      logParams.error_message = response.data?.pageError;
+      logParams.response_code = response.data?.pageStatusCode;
 
-      if(checkStatusResponse.data && checkStatusResponse.data?.pageStatusCode !== 200) {
+      if(response.data && response.data?.pageStatusCode !== 200) {
         Logger.debug(`⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${response.status}`);
       }
-
-      const pageStatusCode = checkStatusResponse.data?.pageStatusCode ? checkStatusResponse.data?.pageStatusCode : checkStatusResponse.data?.error && checkStatusResponse.data?.error.includes("Dns resolution error for hostname") ? 404 : undefined;
 
       return {
         html: "",
         screenshot: "",
-        pageStatusCode,
-        pageError: checkStatusResponse.data?.pageError ?? checkStatusResponse.data?.error,
+        pageStatusCode: response.data?.pageStatusCode,
+        pageError: response.data?.pageError,
       };
     }
 
-    const contentType = checkStatusResponse.headers["content-type"];
+    const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
       const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(
         url,
@@ -169,18 +167,18 @@ export async function scrapWithFireEngine({
       logParams.error_message = pageError;
       return { html: content, screenshot: "", pageStatusCode, pageError };
     } else {
-      const data = checkStatusResponse.data;
+      const data = response.data;
       logParams.success =
         (data.pageStatusCode >= 200 && data.pageStatusCode < 300) ||
         data.pageStatusCode === 404;
       logParams.html = data.content ?? "";
       logParams.response_code = data.pageStatusCode;
-      logParams.error_message = data.pageError ?? data.error;
+      logParams.error_message = data.pageError;
       return {
         html: data.content ?? "",
         screenshot: data.screenshot ?? "",
         pageStatusCode: data.pageStatusCode,
-        pageError: data.pageError ?? data.error,
+        pageError: data.pageError,
       };
     }
   } catch (error) {
