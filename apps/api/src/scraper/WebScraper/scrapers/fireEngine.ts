@@ -86,7 +86,12 @@ export async function scrapWithFireEngine({
       pageOptions.atsv = false;
     }
 
-    const response = await axios.post(
+    const axiosInstance = axios.create({
+      headers: { "Content-Type": "application/json" }
+    });
+
+    const startTime = Date.now();
+    const response = await axiosInstance.post(
       process.env.FIRE_ENGINE_BETA_URL + endpoint,
       {
         url: url,
@@ -98,15 +103,30 @@ export async function scrapWithFireEngine({
         disableJsDom: pageOptions?.disableJsDom ?? false,
         priority,
         engine,
+        instantReturn: true,
         ...fireEngineOptionsParam,
       },
       {
         headers: {
           "Content-Type": "application/json",
-        },
-        timeout: universalTimeout + waitParam,
+        }
       }
     );
+
+    let checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${response.data.jobId}`);
+    while (checkStatusResponse.data.processing && Date.now() - startTime < universalTimeout + waitParam) {
+      await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
+      checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${response.data.jobId}`);
+    }
+
+    if (checkStatusResponse.data.processing) {
+      axiosInstance.delete(
+        process.env.FIRE_ENGINE_BETA_URL + `/scrape/${response.data.jobId}`,
+      );
+      Logger.debug(`⛏️ Fire-Engine (${engine}): Request timed out for ${url}`);
+      logParams.error_message = "Request timed out";
+      return { html: "", screenshot: "", pageStatusCode: null, pageError: "" };
+    }
 
     if (response.status !== 200) {
       Logger.debug(
