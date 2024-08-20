@@ -340,8 +340,8 @@ export async function scrapSingleUrl(
         pageError = undefined;
       }
 
-      if (text && text.trim().length >= 100) {
-        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100, breaking`);
+      if ((text && text.trim().length >= 100) || (typeof screenshot === "string" && screenshot.length > 0)) {
+        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100 or screenshot, breaking`);
         break;
       }
       if (pageStatusCode && (pageStatusCode == 404 || pageStatusCode == 500)) {
