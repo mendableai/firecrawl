@@ -91,7 +91,7 @@ export async function scrapWithFireEngine({
     });
 
     const startTime = Date.now();
-    const response = await axiosInstance.post(
+    const _response = await axiosInstance.post(
       process.env.FIRE_ENGINE_BETA_URL + endpoint,
       {
         url: url,
@@ -113,20 +113,20 @@ export async function scrapWithFireEngine({
       }
     );
 
-    let checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${response.data.jobId}`);
+    let checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
     while (checkStatusResponse.data.processing && Date.now() - startTime < universalTimeout + waitParam) {
       await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
-      checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${response.data.jobId}`);
+      checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
     }
 
     if (checkStatusResponse.data.processing) {
-      Logger.debug(`⛏️ Fire-Engine (${engine}): deleting request - jobId: ${response.data.jobId}`);
+      Logger.debug(`⛏️ Fire-Engine (${engine}): deleting request - jobId: ${_response.data.jobId}`);
       try {
         axiosInstance.delete(
-          process.env.FIRE_ENGINE_BETA_URL + `/scrape/${response.data.jobId}`,
+          process.env.FIRE_ENGINE_BETA_URL + `/scrape/${_response.data.jobId}`,
         );
       } catch (error) {
-        Logger.debug(`⛏️ Fire-Engine (${engine}): Failed to delete request - jobId: ${response.data.jobId} | error: ${error}`);
+        Logger.debug(`⛏️ Fire-Engine (${engine}): Failed to delete request - jobId: ${_response.data.jobId} | error: ${error}`);
         logParams.error_message = "Failed to delete request";
         return { html: "", screenshot: "", pageStatusCode: null, pageError: "" };
       }
@@ -145,7 +145,7 @@ export async function scrapWithFireEngine({
       logParams.response_code = checkStatusResponse.data?.pageStatusCode;
 
       if(checkStatusResponse.data && checkStatusResponse.data?.pageStatusCode !== 200) {
-        Logger.debug(`⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${response.status}`);
+        Logger.debug(`⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${checkStatusResponse.data?.pageStatusCode}`);
       }
 
       const pageStatusCode = checkStatusResponse.data?.pageStatusCode ? checkStatusResponse.data?.pageStatusCode : checkStatusResponse.data?.error && checkStatusResponse.data?.error.includes("Dns resolution error for hostname") ? 404 : undefined;
@@ -158,7 +158,7 @@ export async function scrapWithFireEngine({
       };
     }
 
-    const contentType = checkStatusResponse.headers["content-type"];
+    const contentType = checkStatusResponse.data.responseHeaders["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
       const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(
         url,
@@ -170,6 +170,7 @@ export async function scrapWithFireEngine({
       return { html: content, screenshot: "", pageStatusCode, pageError };
     } else {
       const data = checkStatusResponse.data;
+      
       logParams.success =
         (data.pageStatusCode >= 200 && data.pageStatusCode < 300) ||
         data.pageStatusCode === 404;
