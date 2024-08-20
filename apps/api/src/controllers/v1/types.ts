@@ -33,6 +33,8 @@ const url = z.preprocess(
     )
 );
 
+const strictMessage = "Unrecognized key in body -- please review the v1 API documentation for request body changes";
+
 export const scrapeOptions = z.object({
   formats: z
     .enum([
@@ -53,14 +55,14 @@ export const scrapeOptions = z.object({
   timeout: z.number().int().positive().finite().safe().default(30000), // default?
   waitFor: z.number().int().nonnegative().finite().safe().default(0),
   parsePDF: z.boolean().default(true),
-});
+}).strict(strictMessage);
 
 export type ScrapeOptions = z.infer<typeof scrapeOptions>;
 
 export const scrapeRequestSchema = scrapeOptions.extend({
   url,
   origin: z.string().optional().default("api"),
-});
+}).strict(strictMessage);
 
 // export type ScrapeRequest = {
 //   url: string;
@@ -83,7 +85,7 @@ const crawlerOptions = z.object({
   allowBackwardLinks: z.boolean().default(false), // >> TODO: CHANGE THIS NAME???
   allowExternalLinks: z.boolean().default(false),
   ignoreSitemap: z.boolean().default(true),
-});
+}).strict(strictMessage);
 
 // export type CrawlerOptions = {
 //   includePaths?: string[];
@@ -97,13 +99,12 @@ const crawlerOptions = z.object({
 
 export type CrawlerOptions = z.infer<typeof crawlerOptions>;
 
-export const crawlRequestSchema = z.object({
+export const crawlRequestSchema = crawlerOptions.extend({
   url,
   origin: z.string().optional().default("api"),
-  crawlerOptions: crawlerOptions.default({}),
   scrapeOptions: scrapeOptions.omit({ timeout: true }).default({}),
   webhook: z.string().url().optional(),
-});
+}).strict(strictMessage);
 
 // export type CrawlRequest = {
 //   url: string;
@@ -119,7 +120,7 @@ export const mapRequestSchema = crawlerOptions.extend({
   includeSubdomains: z.boolean().default(true),
   search: z.string().optional(),
   ignoreSitemap: z.boolean().default(false),
-});
+}).strict(strictMessage);
 
 // export type MapRequest = {
 //   url: string;
