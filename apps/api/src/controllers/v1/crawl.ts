@@ -35,7 +35,7 @@ export async function crawlController(
   const { remainingCredits } = req.account;
 
   // TODO: Get rid of crawlerOptions
-  const crawlerOptions = legacyCrawlerOptions(req.body.crawlerOptions);
+  const crawlerOptions = legacyCrawlerOptions(req.body);
   const pageOptions = legacyScrapeOptions(req.body.scrapeOptions);
 
   crawlerOptions.limit = Math.min(remainingCredits, crawlerOptions.limit);
