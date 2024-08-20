@@ -449,4 +449,64 @@ describe("E2E Tests for v1 API Routes", () => {
       
 
   });
+
+describe("POST /v1/map", () => {
+  it.concurrent("should require authorization", async () => {
+    const response: ScrapeResponseRequestTest = await request(TEST_URL).post(
+      "/v1/map"
+    );
+    expect(response.statusCode).toBe(401);
+  });
+
+  it.concurrent("should return an error response with an invalid API key", async () => {
+    const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      .post("/v1/map")
+      .set("Authorization", `Bearer invalid-api-key`)
+      .set("Content-Type", "application/json")
+      .send({ url: "https://firecrawl.dev" });
+    expect(response.statusCode).toBe(401);
+  });
+
+  it.concurrent("should return a successful response with a valid API key", async () => {
+    const mapRequest = {
+      url: "https://roastmywebsite.ai",
+      includeSubdomains: true,
+      search: "test",
+    };
+
+    const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      .post("/v1/map")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send(mapRequest);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty("success", true);
+    expect(response.body).toHaveProperty("links");
+    if (!("links" in response.body)) {
+      throw new Error("Expected response body to have 'links' property");
+    }
+    const links = response.body.links as unknown[];
+    expect(Array.isArray(links)).toBe(true);
+    expect(links.length).toBeGreaterThan(0);
+  });
+
+  it.concurrent("should return an error for invalid URL", async () => {
+    const mapRequest = {
+      url: "invalid-url",
+      includeSubdomains: true,
+      search: "test",
+    };
+
+    const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      .post("/v1/map")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send(mapRequest);
+
+    expect(response.statusCode).toBe(400);
+    expect(response.body).toHaveProperty("success", false);
+    expect(response.body).toHaveProperty("error");
+  });
+});
 });

@@ -71,7 +71,7 @@ function idempotencyMiddleware(req: Request, res: Response, next: NextFunction) 
 }
 
 function blocklistMiddleware(req: Request, res: Response, next: NextFunction) {
-    if (isUrlBlocked(req.body.url)) {
+    if (req.body.url && isUrlBlocked(req.body.url)) {
         return res.status(403).json({ success: false, error: "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." });
     }
     next();
@@ -108,7 +108,7 @@ v1Router.post(
 v1Router.post(
     "/map",
     blocklistMiddleware,
-    authMiddleware(RateLimiterMode.Crawl),
+    authMiddleware(RateLimiterMode.Map),
     checkCreditsMiddleware(1),
     wrap(mapController)
 );
