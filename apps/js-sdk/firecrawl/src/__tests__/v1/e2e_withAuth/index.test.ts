@@ -95,7 +95,7 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response.data?.metadata.ogLocaleAlternate).toStrictEqual([]);
     expect(response.data?.metadata.ogSiteName).toBe("Roast My Website");
     expect(response.data?.metadata.sourceURL).toBe("https://roastmywebsite.ai");
-    expect(response.data?.metadata.pageStatusCode).toBe(200);
+    expect(response.data?.metadata.statusCode).toBe(200);
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should return successful response for valid scrape with PDF file', async () => {
