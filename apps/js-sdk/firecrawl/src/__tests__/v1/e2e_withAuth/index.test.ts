@@ -157,22 +157,19 @@ describe('FirecrawlApp E2E Tests', () => {
   test.concurrent('should return successful response for crawl with options and wait for completion', async () => {    
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.crawlUrl('https://roastmywebsite.ai', {
-      crawlerOptions: {
-        excludePaths: ['blog/*'],
-        includePaths: ['/'],
-        maxDepth: 2,
-        ignoreSitemap: true,
-        limit: 10,
-        allowBackwardLinks: true,
-        allowExternalLinks: true,
-      },
-      pageOptions: {
+      excludePaths: ['blog/*'],
+      includePaths: ['/'],
+      maxDepth: 2,
+      ignoreSitemap: true,
+      limit: 10,
+      allowBackwardLinks: true,
+      allowExternalLinks: true,
+      scrapeOptions: {
         formats: ['markdown', 'html', 'rawHtml', 'screenshot', 'links'],
         headers: { "x-key": "test" },
         includeTags: ['h1'],
         excludeTags: ['h2'],
         onlyMainContent: true,
-        timeout: 30000,
         waitFor: 1000
       }
     } as CrawlParams, true, 30) as CrawlStatusResponse;
