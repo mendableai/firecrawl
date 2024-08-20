@@ -73,7 +73,6 @@ export async function scrapWithFireEngine({
     );
 
     if (pageOptions?.useFastMode) {
-      console.log('using tlsclient')
       fireEngineOptionsParam.engine = "tlsclient";
       engine = "tlsclient";
     }

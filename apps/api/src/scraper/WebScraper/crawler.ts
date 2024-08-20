@@ -69,7 +69,13 @@ export class WebCrawler {
   public filterLinks(sitemapLinks: string[], limit: number, maxDepth: number): string[] {
     return sitemapLinks
       .filter((link) => {
-        const url = new URL(link.trim(), this.baseUrl);
+        let url: URL;
+        try {
+          url = new URL(link.trim(), this.baseUrl);
+        } catch (error) {
+          Logger.debug(`Error processing link: ${link} | Error: ${error.message}`);
+          return false;
+        }
         const path = url.pathname;
         
         const depth = getURLDepth(url.toString());
