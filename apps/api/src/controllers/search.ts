@@ -103,6 +103,8 @@ export async function searchHelper(
     return { success: true, error: "No search results found", returnCode: 200 };
   }
 
+  await Promise.all(jobs.map(x => x.remove()));
+
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(
     (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
