@@ -115,6 +115,9 @@ export async function supaAuthenticateUser(
       case RateLimiterMode.CrawlStatus:
         rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
         break;
+      case RateLimiterMode.Map:
+        rateLimiter = getRateLimiter(RateLimiterMode.Map, token);
+        break;
       
       case RateLimiterMode.Preview:
         rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
@@ -151,7 +154,7 @@ export async function supaAuthenticateUser(
 
   if (
     token === "this_is_just_a_preview_token" &&
-    (mode === RateLimiterMode.Scrape || mode === RateLimiterMode.Preview || mode === RateLimiterMode.Search)
+    (mode === RateLimiterMode.Scrape || mode === RateLimiterMode.Preview || mode === RateLimiterMode.Search || mode === RateLimiterMode.Map)
   ) {
     return { success: true, team_id: "preview" };
     // check the origin of the request and make sure its from firecrawl.dev

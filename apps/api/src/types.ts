@@ -106,6 +106,7 @@ export enum RateLimiterMode {
   Scrape = "scrape",
   Preview = "preview",
   Search = "search",
+  Map = "map",
 
 }
 
