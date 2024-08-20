@@ -32,9 +32,14 @@ export async function crawlController(
 
   await logCrawl(id, req.auth.team_id);
 
+  const { remainingCredits } = req.account;
+
+  // TODO: Get rid of crawlerOptions
   const crawlerOptions = legacyCrawlerOptions(req.body.crawlerOptions);
   const pageOptions = legacyScrapeOptions(req.body.scrapeOptions);
 
+  crawlerOptions.limit = Math.min(remainingCredits, crawlerOptions.limit);
+  
   const sc: StoredCrawl = {
     originUrl: req.body.url,
     crawlerOptions,

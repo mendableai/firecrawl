@@ -100,9 +100,10 @@ export type CrawlerOptions = z.infer<typeof crawlerOptions>;
 export const crawlRequestSchema = z.object({
   url,
   origin: z.string().optional().default("api"),
-  crawlerOptions: crawlerOptions.default({}),
+  crawlerOptions: crawlerOptions.default({}), // TODO: Get rid of this
   scrapeOptions: scrapeOptions.omit({ timeout: true }).default({}),
   webhook: z.string().url().optional(),
+  limit: z.number().default(10000), //
 });
 
 // export type CrawlRequest = {
@@ -225,20 +226,26 @@ type AuthObject = {
   plan: string;
 };
 
+type Account = {
+  remainingCredits: number;
+};
+
 export interface RequestWithMaybeAuth<
   ReqParams = {},
   ReqBody = undefined,
   ResBody = undefined
 > extends Request<ReqParams, ReqBody, ResBody> {
   auth?: AuthObject;
+  account?: Account;
 }
 
 export interface RequestWithAuth<
   ReqParams = {},
   ReqBody = undefined,
-  ResBody = undefined
+  ResBody = undefined,
 > extends Request<ReqParams, ReqBody, ResBody> {
   auth: AuthObject;
+  account?: Account;
 }
 
 export function legacyCrawlerOptions(x: CrawlerOptions) {

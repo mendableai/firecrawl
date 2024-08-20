@@ -24,12 +24,17 @@ import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 // import { livenessController } from "../controllers/v1/liveness";
 // import { readinessController } from "../controllers/v1/readiness";
 
-function checkCreditsMiddleware(minimum: number): (req: RequestWithAuth, res: Response, next: NextFunction) => void {
+function checkCreditsMiddleware(minimum?: number): (req: RequestWithAuth, res: Response, next: NextFunction) => void {
     return (req, res, next) => {
         (async () => {
-            if (!(await checkTeamCredits(req.auth.team_id, minimum)).success) {
+            if (!minimum && req.body) {
+                minimum = (req.body as any)?.limit ?? 1;
+            }
+            const { success, message, remainingCredits } = await checkTeamCredits(req.auth.team_id, minimum);
+            if (!success) {
                 return res.status(402).json({ success: false, error: "Insufficient credits" });
             }
+            req.account = { remainingCredits }
             next();
         })()
             .catch(err => next(err));
@@ -101,7 +106,7 @@ v1Router.post(
     blocklistMiddleware,
     authMiddleware(RateLimiterMode.Crawl),
     idempotencyMiddleware,
-    checkCreditsMiddleware(1),
+    checkCreditsMiddleware(),
     wrap(crawlController)
 );
 
