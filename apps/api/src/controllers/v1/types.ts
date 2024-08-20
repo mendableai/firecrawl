@@ -279,6 +279,16 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
 }
 
 export function legacyDocumentConverter(doc: any): Document {
+  if (doc.metadata.screenshot) {
+    doc.screenshot = doc.metadata.screenshot;
+    delete doc.metadata.screenshot;
+  }
+
+  if (doc.metadata.fullPageScreenshot) {
+    doc.fullPageScreenshot = doc.metadata.fullPageScreenshot;
+    delete doc.metadata.fullPageScreenshot;
+  }
+
   return {
     markdown: doc.markdown,
     links: doc.linksOnPage,
