@@ -64,6 +64,7 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response.data?.markdown).toContain("_Roast_");
     expect(response.data?.html).toContain("<h1");
     expect(response.data?.rawHtml).toContain("<h1");
+    expect(response.data?.screenshot).not.toBeUndefined();
     expect(response.data?.screenshot).not.toBeNull();
     expect(response.data?.links).not.toBeNull();
     expect(response.data?.links?.length).toBeGreaterThan(0);
