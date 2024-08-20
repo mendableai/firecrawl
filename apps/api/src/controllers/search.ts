@@ -90,7 +90,7 @@ export async function searchHelper(
       },
       opts: {
         jobId: uuid,
-        priority: 10,
+        priority: 20,
       }
     };
   })
