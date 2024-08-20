@@ -214,7 +214,7 @@ export interface CrawlParamsV0 {
  * Defines the structure of the response received after initiating a crawl.
  */
 export interface CrawlResponse {
-  jobId?: string;
+  id?: string;
   url?: string;
   success: boolean;
   error?: string;
@@ -281,7 +281,7 @@ export interface MapParams {
  */
 export interface MapResponse {
   success: boolean;
-  data?: string[];
+  links?: string[];
   error?: string;
 }
 
@@ -458,36 +458,53 @@ export default class FirecrawlApp {
         headers
       );
       if (response.status === 200) {
-        const jobId: string = this.version == 'v0' ? response.data.jobId : response.data.id;
+        const id: string = this.version == 'v0' ? response.data.jobId : response.data.id;
         let checkUrl: string | undefined = undefined;
         if (waitUntilDone) {
           if (this.version == 'v1') { checkUrl = response.data.url }
-          return this.monitorJobStatus(jobId, headers, pollInterval, checkUrl);
+          return this.monitorJobStatus(id, headers, pollInterval, checkUrl);
         } else {
-          return { success: true, jobId };
+          if (this.version == 'v0') {
+            return {
+              success: true,
+              jobId: id
+            } as CrawlResponseV0;
+          } else {
+            return {
+              success: true,
+              id: id
+            } as CrawlResponse;
+          }
         }
       } else {
         this.handleError(response, "start crawl job");
       }
     } catch (error: any) {
-      console.log(error);
-      throw new Error(error.message);
+      if (error.response.data.error) {
+        throw new Error(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`);
+      } else {
+        throw new Error(error.message);
+      }
     }
     return { success: false, error: "Internal server error." };
   }
 
   /**
    * Checks the status of a crawl job using the Firecrawl API.
-   * @param jobId - The job ID of the crawl operation.
+   * @param id - The ID of the crawl operation.
    * @returns The response containing the job status.
    */
-  async checkCrawlStatus(jobId: string): Promise<CrawlStatusResponse | CrawlStatusResponseV0> {
+  async checkCrawlStatus(id?: string): Promise<CrawlStatusResponse | CrawlStatusResponseV0> {
+    if (!id) {
+      throw new Error("No crawl ID provided");
+    }
+
     const headers: AxiosRequestHeaders = this.prepareHeaders();
     try {
       const response: AxiosResponse = await this.getRequest(
         this.version == 'v1' ?
-          this.apiUrl + `/${this.version}/crawl/${jobId}` :
-          this.apiUrl + `/${this.version}/crawl/status/${jobId}`,
+          this.apiUrl + `/${this.version}/crawl/${id}` :
+          this.apiUrl + `/${this.version}/crawl/status/${id}`,
         headers
       );
       if (response.status === 200) {
@@ -508,8 +525,12 @@ export default class FirecrawlApp {
           return {
             success: true,
             status: response.data.status,
+            totalCount: response.data.totalCount,
+            creditsUsed: response.data.creditsUsed,
+            expiresAt: new Date(response.data.expiresAt),
+            next: response.data.next,
             data: response.data.data,
-            error: response.data.error,
+            error: response.data.error
           } as CrawlStatusResponse;
         }
       } else {
@@ -537,7 +558,7 @@ export default class FirecrawlApp {
     }
   }
 
-  async map(url: string, params?: MapParams): Promise<MapResponse> {
+  async mapUrl(url: string, params?: MapParams): Promise<MapResponse> {
     if (this.version == 'v0') {
       throw new Error("Map is not supported in v0");
     }
@@ -604,23 +625,23 @@ export default class FirecrawlApp {
 
   /**
    * Monitors the status of a crawl job until completion or failure.
-   * @param jobId - The job ID of the crawl operation.
+   * @param id - The ID of the crawl operation.
    * @param headers - The headers for the request.
    * @param checkInterval - Interval in seconds for job status checks.
    * @returns The final job status or data.
    */
   async monitorJobStatus(
-    jobId: string,
+    id: string,
     headers: AxiosRequestHeaders,
     checkInterval: number,
     checkUrl?: string
-  ): Promise<any> {
+  ): Promise<CrawlStatusResponse | CrawlStatusResponseV0> {
     let apiUrl: string = '';
     while (true) {
       if (this.version == 'v1') {
-        apiUrl = checkUrl ?? this.apiUrl + `/v1/crawl/${jobId}`;
+        apiUrl = checkUrl ?? this.apiUrl + `/v1/crawl/${id}`;
       } else if (this.version == 'v0') {
-        apiUrl = checkUrl ?? this.apiUrl + `/v0/crawl/status/${jobId}`;
+        apiUrl = checkUrl ?? this.apiUrl + `/v0/crawl/status/${id}`;
       }
       const statusResponse: AxiosResponse = await this.getRequest(
         apiUrl,

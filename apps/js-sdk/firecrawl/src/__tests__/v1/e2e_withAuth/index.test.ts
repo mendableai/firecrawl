@@ -1,4 +1,4 @@
-import FirecrawlApp, { CrawlParams, CrawlResponse, CrawlStatusResponse, ScrapeParams, ScrapeResponse } from '../../../index';
+import FirecrawlApp, { CrawlParams, CrawlResponse, CrawlStatusResponse, MapResponse, ScrapeParams, ScrapeResponse } from '../../../index';
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
 import { describe, test, expect } from '@jest/globals';
@@ -66,6 +66,7 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response.data?.rawHtml).toContain("<h1");
     expect(response.data?.screenshot).not.toBeUndefined();
     expect(response.data?.screenshot).not.toBeNull();
+    expect(response.data?.screenshot).toContain("https://");
     expect(response.data?.links).not.toBeNull();
     expect(response.data?.links?.length).toBeGreaterThan(0);
     expect(response.data?.links?.[0]).toContain("https://");
@@ -121,7 +122,7 @@ describe('FirecrawlApp E2E Tests', () => {
   test.concurrent('should throw error for blocklisted URL on crawl', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const blocklistedUrl = "https://twitter.com/fake-test";
-    await expect(app.crawlUrl(blocklistedUrl)).rejects.toThrow("Request failed with status code 403");
+    await expect(app.crawlUrl(blocklistedUrl)).rejects.toThrow("URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions.");
   });
 
   test.concurrent('should return successful response for crawl and wait for completion', async () => {
@@ -145,14 +146,13 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response.data?.[0]).not.toHaveProperty("rawHtml");
     expect(response.data?.[0]).not.toHaveProperty("screenshot");
     expect(response.data?.[0]).not.toHaveProperty("links");
-
     expect(response.data?.[0]).toHaveProperty("metadata");
     expect(response.data?.[0].metadata).toHaveProperty("title");
     expect(response.data?.[0].metadata).toHaveProperty("description");
     expect(response.data?.[0].metadata).toHaveProperty("language");
     expect(response.data?.[0].metadata).toHaveProperty("sourceURL");
     expect(response.data?.[0].metadata).toHaveProperty("statusCode");
-    expect(response.data?.[0].metadata).toHaveProperty("error");
+    expect(response.data?.[0].metadata).not.toHaveProperty("error");
   }, 60000); // 60 seconds timeout
 
   test.concurrent('should return successful response for crawl with options and wait for completion', async () => {    
@@ -203,7 +203,7 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response.data?.[0].metadata).toHaveProperty("language");
     expect(response.data?.[0].metadata).toHaveProperty("sourceURL");
     expect(response.data?.[0].metadata).toHaveProperty("statusCode");
-    expect(response.data?.[0].metadata).toHaveProperty("error");
+    expect(response.data?.[0].metadata).not.toHaveProperty("error");
   }, 60000); // 60 seconds timeout
 
   test.concurrent('should handle idempotency key for crawl', async () => {
@@ -211,23 +211,23 @@ describe('FirecrawlApp E2E Tests', () => {
     const uniqueIdempotencyKey = uuidv4();
     const response = await app.crawlUrl('https://roastmywebsite.ai', {}, false, 2, uniqueIdempotencyKey) as CrawlResponse;
     expect(response).not.toBeNull();
-    expect(response.jobId).toBeDefined();
+    expect(response.id).toBeDefined();
 
     await expect(app.crawlUrl('https://roastmywebsite.ai', {}, true, 2, uniqueIdempotencyKey)).rejects.toThrow("Request failed with status code 409");
   });
 
   test.concurrent('should check crawl status', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
-    const response: any = await app.crawlUrl('https://roastmywebsite.ai', { crawlerOptions: { excludes: ['blog/*'] } }, false) as CrawlStatusResponse;
+    const response = await app.crawlUrl('https://firecrawl.dev', { scrapeOptions: { formats: ['markdown', 'html', 'rawHtml', 'screenshot', 'links']}} as CrawlParams, false) as CrawlResponse;
     expect(response).not.toBeNull();
-    expect(response.jobId).toBeDefined();
+    expect(response.id).toBeDefined();
 
-    let statusResponse: any = await app.checkCrawlStatus(response.jobId);
+    let statusResponse: any = await app.checkCrawlStatus(response.id) as CrawlStatusResponse;
     const maxChecks = 15;
     let checks = 0;
 
     while (statusResponse.status === 'scraping' && checks < maxChecks) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 5000));
       expect(statusResponse).not.toHaveProperty("partial_data"); // v0
       expect(statusResponse).not.toHaveProperty("current"); // v0
       expect(statusResponse).toHaveProperty("data");
@@ -238,44 +238,70 @@ describe('FirecrawlApp E2E Tests', () => {
       expect(statusResponse).toHaveProperty("next");
       expect(statusResponse.totalCount).toBeGreaterThan(0);
       expect(statusResponse.creditsUsed).toBeGreaterThan(0);
-      expect(statusResponse.expiresAt).toBeGreaterThan(Date.now());
+      expect(statusResponse.expiresAt.getTime()).toBeGreaterThan(Date.now());
       expect(statusResponse.status).toBe("scraping");
       expect(statusResponse.next).toContain("/v1/crawl/");
-      statusResponse = await app.checkCrawlStatus(response.jobId) as CrawlResponse;
+      statusResponse = await app.checkCrawlStatus(response.id) as CrawlStatusResponse;
       checks++;
     }
 
+    expect(statusResponse).not.toBeNull();
+    expect(statusResponse).toHaveProperty("totalCount");
+    expect(statusResponse.totalCount).toBeGreaterThan(0);
+    expect(statusResponse).toHaveProperty("creditsUsed");
+    expect(statusResponse.creditsUsed).toBeGreaterThan(0);
+    expect(statusResponse).toHaveProperty("expiresAt");
+    expect(statusResponse.expiresAt.getTime()).toBeGreaterThan(Date.now());
+    expect(statusResponse).toHaveProperty("status");
+    expect(statusResponse.status).toBe("completed");
+    expect(statusResponse.data?.length).toBeGreaterThan(0);
+    expect(statusResponse.data?.[0]).toHaveProperty("markdown");
+    expect(statusResponse.data?.[0].markdown?.length).toBeGreaterThan(10);
+    expect(statusResponse.data?.[0]).not.toHaveProperty('content'); // v0
+    expect(statusResponse.data?.[0]).toHaveProperty("html");
+    expect(statusResponse.data?.[0].html).toContain("<div");
+    expect(statusResponse.data?.[0]).toHaveProperty("rawHtml");
+    expect(statusResponse.data?.[0].rawHtml).toContain("<div");
+    expect(statusResponse.data?.[0]).toHaveProperty("screenshot");
+    expect(statusResponse.data?.[0].screenshot).toContain("https://");
+    expect(statusResponse.data?.[0]).toHaveProperty("links");
+    expect(statusResponse.data?.[0].links).not.toBeNull();
+    expect(statusResponse.data?.[0].links?.length).toBeGreaterThan(0);
+    expect(statusResponse.data?.[0]).toHaveProperty("metadata");
+    expect(statusResponse.data?.[0].metadata).toHaveProperty("title");
+    expect(statusResponse.data?.[0].metadata).toHaveProperty("description");
+    expect(statusResponse.data?.[0].metadata).toHaveProperty("language");
+    expect(statusResponse.data?.[0].metadata).toHaveProperty("sourceURL");
+    expect(statusResponse.data?.[0].metadata).toHaveProperty("statusCode");
+    expect(statusResponse.data?.[0].metadata).not.toHaveProperty("error");
+  }, 60000); // 60 seconds timeout
+
+  test.concurrent('should throw error for invalid API key on map', async () => {
+    const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
+    await expect(invalidApp.mapUrl('https://roastmywebsite.ai')).rejects.toThrow("Request failed with status code 401");
+  });
+
+  test.concurrent('should throw error for blocklisted URL on map', async () => {
+    const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
+    const blocklistedUrl = "https://facebook.com/fake-test";
+    await expect(app.mapUrl(blocklistedUrl)).rejects.toThrow("Request failed with status code 403");
+  });
+
+  test.concurrent('should return successful response with valid preview token', async () => {
+    const app = new FirecrawlApp({ apiKey: "this_is_just_a_preview_token", apiUrl: API_URL });
+    const response = await app.mapUrl('https://roastmywebsite.ai') as MapResponse;
     expect(response).not.toBeNull();
-    expect(response).toHaveProperty("totalCount");
-    expect(response.totalCount).toBeGreaterThan(0);
-    expect(response).toHaveProperty("creditsUsed");
-    expect(response.creditsUsed).toBeGreaterThan(0);
-    expect(response).toHaveProperty("expiresAt");
-    expect(response.expiresAt).toBeGreaterThan(Date.now());
-    expect(response).toHaveProperty("status");
-    expect(response.status).toBe("completed");
-    expect(response).toHaveProperty("next");
-    expect(response.next).toContain("/v1/crawl/");
-    expect(response.data?.length).toBeGreaterThan(0);
-    expect(response.data?.[0]).toHaveProperty("markdown");
-    expect(response.data?.[0].markdown).toContain("_Roast_");
-    expect(response.data?.[0]).not.toHaveProperty('content'); // v0
-    expect(response.data?.[0].markdown).toContain("_Roast_");
-    expect(response.data?.[0]).toHaveProperty("html");
-    expect(response.data?.[0].html).toContain("<h1");
-    expect(response.data?.[0]).toHaveProperty("rawHtml");
-    expect(response.data?.[0].rawHtml).toContain("<h1");
-    expect(response.data?.[0]).toHaveProperty("screenshot");
-    expect(response.data?.[0].screenshot).toContain("https://");
-    expect(response.data?.[0]).toHaveProperty("links");
-    expect(response.data?.[0].links).not.toBeNull();
-    expect(response.data?.[0].links?.length).toBeGreaterThan(0);
-    expect(response.data?.[0]).toHaveProperty("metadata");
-    expect(response.data?.[0].metadata).toHaveProperty("title");
-    expect(response.data?.[0].metadata).toHaveProperty("description");
-    expect(response.data?.[0].metadata).toHaveProperty("language");
-    expect(response.data?.[0].metadata).toHaveProperty("sourceURL");
-    expect(response.data?.[0].metadata).toHaveProperty("statusCode");
-    expect(response.data?.[0].metadata).toHaveProperty("error");
-  }, 35000); // 35 seconds timeout
+    expect(response.links?.length).toBeGreaterThan(0);
+  }, 30000); // 30 seconds timeout
+
+  test.concurrent('should return successful response for valid map', async () => {
+    const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
+    const response = await app.mapUrl('https://roastmywebsite.ai') as MapResponse;
+    expect(response).not.toBeNull();
+    
+    expect(response.links?.length).toBeGreaterThan(0);
+    expect(response.links?.[0]).toContain("https://");
+    const filteredLinks = response.links?.filter((link: string) => link.includes("roastmywebsite.ai"));
+    expect(filteredLinks?.length).toBeGreaterThan(0);
+  }, 30000); // 30 seconds timeout
 });
