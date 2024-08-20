@@ -458,9 +458,11 @@ export default class FirecrawlApp {
         headers
       );
       if (response.status === 200) {
-        const jobId: string = response.data.jobId;
+        const jobId: string = this.version == 'v0' ? response.data.jobId : response.data.id;
+        let checkUrl: string | undefined = undefined;
         if (waitUntilDone) {
-          return this.monitorJobStatus(jobId, headers, pollInterval);
+          if (this.version == 'v1') { checkUrl = response.data.url }
+          return this.monitorJobStatus(jobId, headers, pollInterval, checkUrl);
         } else {
           return { success: true, jobId };
         }
@@ -610,23 +612,30 @@ export default class FirecrawlApp {
   async monitorJobStatus(
     jobId: string,
     headers: AxiosRequestHeaders,
-    checkInterval: number
+    checkInterval: number,
+    checkUrl?: string
   ): Promise<any> {
+    let apiUrl: string = '';
     while (true) {
+      if (this.version == 'v1') {
+        apiUrl = checkUrl ?? this.apiUrl + `/v1/crawl/${jobId}`;
+      } else if (this.version == 'v0') {
+        apiUrl = checkUrl ?? this.apiUrl + `/v0/crawl/status/${jobId}`;
+      }
       const statusResponse: AxiosResponse = await this.getRequest(
-        this.apiUrl + `/v0/crawl/status/${jobId}`,
+        apiUrl,
         headers
       );
       if (statusResponse.status === 200) {
         const statusData = statusResponse.data;
         if (statusData.status === "completed") {
           if ("data" in statusData) {
-            return statusData.data;
+            return this.version == 'v0' ? statusData.data : statusData;
           } else {
             throw new Error("Crawl job completed but no data was returned");
           }
         } else if (
-          ["active", "paused", "pending", "queued"].includes(statusData.status)
+          ["active", "paused", "pending", "queued", "scraping"].includes(statusData.status)
         ) {
           if (checkInterval < 2) {
             checkInterval = 2;

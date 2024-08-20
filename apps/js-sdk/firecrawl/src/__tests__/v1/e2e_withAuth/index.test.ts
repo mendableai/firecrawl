@@ -132,16 +132,14 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response).toHaveProperty("creditsUsed");
     expect(response.creditsUsed).toBeGreaterThan(0);
     expect(response).toHaveProperty("expiresAt");
-    expect(response.expiresAt).toBeGreaterThan(Date.now());
+    expect(new Date(response.expiresAt).getTime()).toBeGreaterThan(Date.now());
     expect(response).toHaveProperty("status");
     expect(response.status).toBe("completed");
-    expect(response).toHaveProperty("next");
-    expect(response.next).toBeDefined();
+    expect(response).not.toHaveProperty("next"); // wait until done
     expect(response.data?.length).toBeGreaterThan(0);
     expect(response.data?.[0]).toHaveProperty("markdown");
     expect(response.data?.[0].markdown).toContain("_Roast_");
     expect(response.data?.[0]).not.toHaveProperty('content'); // v0
-    expect(response.data?.[0].markdown).toContain("_Roast_");
     expect(response.data?.[0]).not.toHaveProperty("html");
     expect(response.data?.[0]).not.toHaveProperty("rawHtml");
     expect(response.data?.[0]).not.toHaveProperty("screenshot");
@@ -156,7 +154,7 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response.data?.[0].metadata).toHaveProperty("error");
   }, 60000); // 60 seconds timeout
 
-  test.concurrent('should return successful response for crawl and wait for completion', async () => {    
+  test.concurrent('should return successful response for crawl with options and wait for completion', async () => {    
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.crawlUrl('https://roastmywebsite.ai', {
       crawlerOptions: {
@@ -184,16 +182,14 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response).toHaveProperty("creditsUsed");
     expect(response.creditsUsed).toBeGreaterThan(0);
     expect(response).toHaveProperty("expiresAt");
-    expect(response.expiresAt).toBeGreaterThan(Date.now());
+    expect(new Date(response.expiresAt).getTime()).toBeGreaterThan(Date.now());
     expect(response).toHaveProperty("status");
     expect(response.status).toBe("completed");
-    expect(response).toHaveProperty("next");
-    expect(response.next).toContain("/v1/crawl/");
+    expect(response).not.toHaveProperty("next");
     expect(response.data?.length).toBeGreaterThan(0);
     expect(response.data?.[0]).toHaveProperty("markdown");
     expect(response.data?.[0].markdown).toContain("_Roast_");
     expect(response.data?.[0]).not.toHaveProperty('content'); // v0
-    expect(response.data?.[0].markdown).toContain("_Roast_");
     expect(response.data?.[0]).toHaveProperty("html");
     expect(response.data?.[0].html).toContain("<h1");
     expect(response.data?.[0]).toHaveProperty("rawHtml");
