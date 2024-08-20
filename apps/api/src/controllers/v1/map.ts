@@ -48,8 +48,10 @@ export async function mapController(
     });
   }
 
+  let urlWithoutWww = req.body.url.replace("www.", "");
+  
   let mapUrl = req.body.search
-    ? `"${req.body.search}" site:${req.body.url}`
+    ? `"${req.body.search}" site:${urlWithoutWww}`
     : `site:${req.body.url}`;
   // www. seems to exclude subdomains in some cases
   const mapResults = await fireEngineMap(mapUrl, {

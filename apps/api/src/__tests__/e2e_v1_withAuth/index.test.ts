@@ -513,6 +513,81 @@ describe("POST /v1/map", () => {
     expect(links[0]).toContain("usemotion.com/pricing");
   });
 
+  it.concurrent("should return a successful response with a valid API key and search and allowSubdomains", async () => {
+    const mapRequest = {
+      url: "https://firecrawl.dev",
+      search: "docs",
+      includeSubdomains: true
+    };
+
+    const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      .post("/v1/map")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send(mapRequest);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty("success", true);
+    expect(response.body).toHaveProperty("links");
+    if (!("links" in response.body)) {
+      throw new Error("Expected response body to have 'links' property");
+    }
+    const links = response.body.links as unknown[];
+    expect(Array.isArray(links)).toBe(true);
+    expect(links.length).toBeGreaterThan(0);
+    expect(links[0]).toContain("docs.firecrawl.dev");
+  });
+
+  it.concurrent("should return a successful response with a valid API key and search and allowSubdomains and www", async () => {
+    const mapRequest = {
+      url: "https://www.firecrawl.dev",
+      search: "docs",
+      includeSubdomains: true
+    };
+
+    const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      .post("/v1/map")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send(mapRequest);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty("success", true);
+    expect(response.body).toHaveProperty("links");
+    if (!("links" in response.body)) {
+      throw new Error("Expected response body to have 'links' property");
+    }
+    const links = response.body.links as unknown[];
+    expect(Array.isArray(links)).toBe(true);
+    expect(links.length).toBeGreaterThan(0);
+    expect(links[0]).toContain("docs.firecrawl.dev");
+  }, 10000)
+
+  it.concurrent("should return a successful response with a valid API key and search and not allowSubdomains and www", async () => {
+    const mapRequest = {
+      url: "https://www.firecrawl.dev",
+      search: "docs",
+      includeSubdomains: false
+    };
+
+    const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      .post("/v1/map")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send(mapRequest);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty("success", true);
+    expect(response.body).toHaveProperty("links");
+    if (!("links" in response.body)) {
+      throw new Error("Expected response body to have 'links' property");
+    }
+    const links = response.body.links as unknown[];
+    expect(Array.isArray(links)).toBe(true);
+    expect(links.length).toBeGreaterThan(0);
+    expect(links[0]).not.toContain("docs.firecrawl.dev");
+  })
+
   it.concurrent("should return an error for invalid URL", async () => {
     const mapRequest = {
       url: "invalid-url",

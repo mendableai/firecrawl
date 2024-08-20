@@ -116,7 +116,7 @@ export type CrawlRequest = z.infer<typeof crawlRequestSchema>;
 export const mapRequestSchema = crawlerOptions.extend({
   url: z.string().url(),
   origin: z.string().optional().default("api"),
-  includeSubdomains: z.boolean().default(false),
+  includeSubdomains: z.boolean().default(true),
   search: z.string().optional(),
   ignoreSitemap: z.boolean().default(false),
 });
