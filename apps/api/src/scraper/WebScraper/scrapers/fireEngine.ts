@@ -120,9 +120,17 @@ export async function scrapWithFireEngine({
     }
 
     if (checkStatusResponse.data.processing) {
-      axiosInstance.delete(
-        process.env.FIRE_ENGINE_BETA_URL + `/scrape/${response.data.jobId}`,
-      );
+      Logger.debug(`⛏️ Fire-Engine (${engine}): deleting request - jobId: ${response.data.jobId}`);
+      try {
+        axiosInstance.delete(
+          process.env.FIRE_ENGINE_BETA_URL + `/scrape/${response.data.jobId}`,
+        );
+      } catch (error) {
+        Logger.debug(`⛏️ Fire-Engine (${engine}): Failed to delete request - jobId: ${response.data.jobId} | error: ${error}`);
+        logParams.error_message = "Failed to delete request";
+        return { html: "", screenshot: "", pageStatusCode: null, pageError: "" };
+      }
+      
       Logger.debug(`⛏️ Fire-Engine (${engine}): Request timed out for ${url}`);
       logParams.error_message = "Request timed out";
       return { html: "", screenshot: "", pageStatusCode: null, pageError: "" };
