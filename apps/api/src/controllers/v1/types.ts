@@ -118,6 +118,7 @@ export const mapRequestSchema = crawlerOptions.extend({
   origin: z.string().optional().default("api"),
   includeSubdomains: z.boolean().default(false),
   search: z.string().optional(),
+  ignoreSitemap: z.boolean().default(false),
 });
 
 // export type MapRequest = {

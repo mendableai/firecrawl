@@ -469,9 +469,7 @@ describe("POST /v1/map", () => {
 
   it.concurrent("should return a successful response with a valid API key", async () => {
     const mapRequest = {
-      url: "https://roastmywebsite.ai",
-      includeSubdomains: true,
-      search: "test",
+      url: "https://roastmywebsite.ai"
     };
 
     const response: ScrapeResponseRequestTest = await request(TEST_URL)
@@ -489,6 +487,30 @@ describe("POST /v1/map", () => {
     const links = response.body.links as unknown[];
     expect(Array.isArray(links)).toBe(true);
     expect(links.length).toBeGreaterThan(0);
+  });
+
+  it.concurrent("should return a successful response with a valid API key and search", async () => {
+    const mapRequest = {
+      url: "https://usemotion.com",
+      search: "pricing"
+    };
+
+    const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      .post("/v1/map")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send(mapRequest);
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty("success", true);
+    expect(response.body).toHaveProperty("links");
+    if (!("links" in response.body)) {
+      throw new Error("Expected response body to have 'links' property");
+    }
+    const links = response.body.links as unknown[];
+    expect(Array.isArray(links)).toBe(true);
+    expect(links.length).toBeGreaterThan(0);
+    expect(links[0]).toContain("usemotion.com/pricing");
   });
 
   it.concurrent("should return an error for invalid URL", async () => {

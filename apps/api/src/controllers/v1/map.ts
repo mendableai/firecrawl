@@ -26,11 +26,10 @@ export async function mapController(
   const id = uuidv4();
   let links: string[] = [req.body.url];
 
-  const crawlerOptions = legacyCrawlerOptions(req.body);
 
   const sc: StoredCrawl = {
     originUrl: req.body.url,
-    crawlerOptions,
+    crawlerOptions: legacyCrawlerOptions(req.body),
     pageOptions: {},
     team_id: req.auth.team_id,
     createdAt: Date.now(),
@@ -39,7 +38,7 @@ export async function mapController(
   const crawler = crawlToCrawler(id, sc);
 
   const sitemap =
-    sc.crawlerOptions.ignoreSitemap || req.body.search
+    req.body.ignoreSitemap
       ? null
       : await crawler.tryGetSitemap();
 
@@ -58,16 +57,19 @@ export async function mapController(
   });
 
   if (mapResults.length > 0) {
-    mapResults.map((x) => {
-      if (req.body.search) {
-        links.unshift(x.url);
-      } else {
+    if (req.body.search) {
+      // Ensure all map results are first, maintaining their order
+      links = [mapResults[0].url, ...mapResults.slice(1).map(x => x.url), ...links];
+    } else {
+      mapResults.map((x) => {
         links.push(x.url);
-      }
-    });
+      });
+    }
   }
 
-  links = links.map((x) => checkAndUpdateURLForMap(x).url);
+  links = links.map((x) => checkAndUpdateURLForMap(x).url.trim());
+
+
 
   // allows for subdomains to be included
   links = links.filter((x) => isSameDomain(x, req.body.url));
