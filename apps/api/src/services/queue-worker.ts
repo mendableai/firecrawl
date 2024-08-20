@@ -1,10 +1,10 @@
+import "dotenv/config";
 import { CustomError } from "../lib/custom-error";
 import {
   getScrapeQueue,
   redisConnection,
   scrapeQueueName,
 } from "./queue-service";
-import "dotenv/config";
 import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
