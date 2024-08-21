@@ -11,7 +11,7 @@ if (process.env.SENTRY_DSN) {
       nodeProfilingIntegration(),
     ],
     tracesSampleRate: 1.0,
-    profilesSampleRate: 0.25,
+    profilesSampleRate: 0.045,
     serverName: process.env.FLY_MACHINE_ID,
   });
 }
