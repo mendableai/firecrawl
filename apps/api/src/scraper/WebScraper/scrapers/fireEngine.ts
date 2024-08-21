@@ -158,7 +158,8 @@ export async function scrapWithFireEngine({
       };
     }
 
-    const contentType = checkStatusResponse.data.responseHeaders["content-type"];
+    const contentType = checkStatusResponse.data.responseHeaders?.["content-type"];
+
     if (contentType && contentType.includes("application/pdf")) {
       const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(
         url,
