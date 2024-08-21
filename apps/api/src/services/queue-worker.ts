@@ -1,23 +1,24 @@
+import "dotenv/config";
 import { CustomError } from "../lib/custom-error";
 import {
-  getWebScraperQueue,
   getScrapeQueue,
   redisConnection,
-  webScraperQueueName,
   scrapeQueueName,
 } from "./queue-service";
-import "dotenv/config";
 import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
 import { initSDK } from "@hyperdx/node-opentelemetry";
-import { Job, QueueEvents, tryCatch } from "bullmq";
+import { Job } from "bullmq";
 import { Logger } from "../lib/logger";
-import { ScrapeEvents } from "../lib/scrape-events";
 import { Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
 import { v4 as uuidv4 } from "uuid";
+import { addCrawlJob, addCrawlJobDone, crawlToCrawler, finishCrawl, getCrawl, getCrawlJobs, lockURL } from "../lib/crawl-redis";
+import { StoredCrawl } from "../lib/crawl-redis";
+import { addScrapeJob } from "./queue-jobs";
+import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
 
 if (process.env.ENV === "production") {
   initSDK({
@@ -33,30 +34,29 @@ const workerStalledCheckInterval =
 const jobLockExtendInterval =
   Number(process.env.JOB_LOCK_EXTEND_INTERVAL) || 15000;
 const jobLockExtensionTime =
-  Number(process.env.JOB_LOCK_EXTENSION_TIME) || 15000;
+  Number(process.env.JOB_LOCK_EXTENSION_TIME) || 60000;
 
 const cantAcceptConnectionInterval =
   Number(process.env.CANT_ACCEPT_CONNECTION_INTERVAL) || 2000;
 const connectionMonitorInterval =
   Number(process.env.CONNECTION_MONITOR_INTERVAL) || 10;
 const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
-const wsq = getWebScraperQueue();
-const sq = getScrapeQueue();
 
 const processJobInternal = async (token: string, job: Job) => {
   const extendLockInterval = setInterval(async () => {
+    Logger.info(`🐂 Worker extending lock on job ${job.id}`);
     await job.extendLock(token, jobLockExtensionTime);
   }, jobLockExtendInterval);
 
   try {
     const result = await processJob(job, token);
-    const jobState = await job.getState();
-    if(jobState !== "completed" && jobState !== "failed"){
-      try{
-        await job.moveToCompleted(result.docs, token, false); //3rd arg fetchNext
-      }catch(e){
-        // console.log("Job already completed, error:", e);
+    try{
+      if (job.data.crawl_id && process.env.USE_DB_AUTHENTICATION === "true") {
+        await job.moveToCompleted(null, token, false);
+      } else {
+        await job.moveToCompleted(result.docs, token, false);
       }
+    }catch(e){
     }
   } catch (error) {
     console.log("Job failed, error:", error);
@@ -110,11 +110,10 @@ const workerFun = async (queueName: string, processJobInternal: (token: string, 
   }
 };
 
-workerFun(webScraperQueueName, processJobInternal);
 workerFun(scrapeQueueName, processJobInternal);
 
 async function processJob(job: Job, token: string) {
-  Logger.debug(`🐂 Worker taking job ${job.id}`);
+  Logger.info(`🐂 Worker taking job ${job.id}`);
 
   try {
     job.updateProgress({
@@ -131,18 +130,16 @@ async function processJob(job: Job, token: string) {
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
-    const isCancelled = await (await getWebScraperQueue().client).exists("cancelled:" + job.id);
+    const rawHtml = docs[0].rawHtml;
 
-    if (isCancelled) {
-      await job.discard();
-      await job.moveToFailed(Error("Job cancelled by user"), job.token);
-      await job.discard();
+    if (job.data.crawl_id && (!job.data.pageOptions || !job.data.pageOptions.includeRawHtml)) {
+      delete docs[0].rawHtml;
     }
 
     const data = {
       success,
       result: {
-        links: isCancelled ? [] : docs.map((doc) => {
+        links: docs.map((doc) => {
           return {
             content: doc,
             source: doc?.metadata?.sourceURL ?? doc?.url ?? "",
@@ -150,36 +147,132 @@ async function processJob(job: Job, token: string) {
         }),
       },
       project_id: job.data.project_id,
-      error: isCancelled ? "Job cancelled by user" : message /* etc... */,
-      docs: isCancelled ? [] : docs,
+      error: message /* etc... */,
+      docs,
     };
 
-    if (job.data.mode === "crawl" && !isCancelled) {
-      await callWebhook(job.data.team_id, job.id as string, data);
+    if (job.data.mode === "crawl") {
+      await callWebhook(job.data.team_id, job.id as string, data, job.data.webhook);
     }
 
-    await logJob({
-      job_id: job.id as string,
-      success: success && !isCancelled,
-      message: isCancelled ? "Job cancelled by user" : message,
-      num_docs: isCancelled ? 0 : docs.length,
-      docs: isCancelled ? [] : docs,
-      time_taken: timeTakenInSeconds,
-      team_id: job.data.team_id,
-      mode: job.data.mode,
-      url: job.data.url,
-      crawlerOptions: job.data.crawlerOptions,
-      pageOptions: job.data.pageOptions,
-      origin: job.data.origin,
-    });
-    Logger.debug(`🐂 Job done ${job.id}`);
+    if (job.data.crawl_id) {
+      await logJob({
+        job_id: job.id as string,
+        success: success,
+        message: message,
+        num_docs: docs.length,
+        docs: docs,
+        time_taken: timeTakenInSeconds,
+        team_id: job.data.team_id,
+        mode: job.data.mode,
+        url: job.data.url,
+        crawlerOptions: job.data.crawlerOptions,
+        pageOptions: job.data.pageOptions,
+        origin: job.data.origin,
+        crawl_id: job.data.crawl_id,
+      });
+
+      await addCrawlJobDone(job.data.crawl_id, job.id);
+
+      const sc = await getCrawl(job.data.crawl_id) as StoredCrawl;
+
+      if (!job.data.sitemapped) {
+        if (!sc.cancelled) {
+          const crawler = crawlToCrawler(job.data.crawl_id, sc);
+
+          const links = crawler.filterLinks(
+            crawler.extractLinksFromHTML(rawHtml ?? "", sc.originUrl),
+            Infinity,
+            sc.crawlerOptions?.maxDepth ?? 10
+          )
+          
+          for (const link of links) {
+            if (await lockURL(job.data.crawl_id, sc, link)) {
+              const newJob = await addScrapeJob({
+                url: link,
+                mode: "single_urls",
+                crawlerOptions: sc.crawlerOptions,
+                team_id: sc.team_id,
+                pageOptions: sc.pageOptions,
+                origin: job.data.origin,
+                crawl_id: job.data.crawl_id,
+              });
+
+              await addCrawlJob(job.data.crawl_id, newJob.id);
+            }
+          }
+        }
+      }
+
+      if (await finishCrawl(job.data.crawl_id)) {
+        const jobIDs = await getCrawlJobs(job.data.crawl_id);
+
+        const jobs = (await Promise.all(jobIDs.map(async x => {
+          if (x === job.id) {
+            return {
+              async getState() {
+                return "completed"
+              },
+              timestamp: Date.now(),
+              returnvalue: docs,
+            }
+          }
+
+          const j = await getScrapeQueue().getJob(x);
+          
+          if (process.env.USE_DB_AUTHENTICATION === "true") {
+            const supabaseData = await supabaseGetJobById(j.id);
+    
+            if (supabaseData) {
+              j.returnvalue = supabaseData.docs;
+            }
+          }
+    
+          return j;
+        }))).sort((a, b) => a.timestamp - b.timestamp);
+        const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
+        const jobStatus = sc.cancelled || jobStatuses.some(x => x === "failed") ? "failed" : "completed";
+    
+        const fullDocs = jobs.map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
+
+        await logJob({
+          job_id: job.data.crawl_id,
+          success: jobStatus === "completed",
+          message: sc.cancelled ? "Cancelled" : message,
+          num_docs: fullDocs.length,
+          docs: [],
+          time_taken: (Date.now() - sc.createdAt) / 1000,
+          team_id: job.data.team_id,
+          mode: "crawl",
+          url: sc.originUrl,
+          crawlerOptions: sc.crawlerOptions,
+          pageOptions: sc.pageOptions,
+          origin: job.data.origin,
+        });
+
+        const data = {
+          success: jobStatus !== "failed",
+          result: {
+            links: fullDocs.map((doc) => {
+              return {
+                content: doc,
+                source: doc?.metadata?.sourceURL ?? doc?.url ?? "",
+              };
+            }),
+          },
+          project_id: job.data.project_id,
+          error: message /* etc... */,
+          docs: fullDocs,
+        };
+
+        await callWebhook(job.data.team_id, job.data.crawl_id, data);
+      }
+    }
+
+    Logger.info(`🐂 Job done ${job.id}`);
     return data;
   } catch (error) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);
-    if (await getWebScraperQueue().isPaused()) {
-      Logger.debug("🐂Queue is paused, ignoring");
-      return;
-    }
 
     if (error instanceof CustomError) {
       // Here we handle the error, then save the failed job
@@ -192,6 +285,9 @@ async function processJob(job: Job, token: string) {
       });
     }
     Logger.error(error);
+    if (error.stack) {
+      Logger.error(error.stack);
+    }
 
     logtail.error("Overall error ingesting", {
       job_id: job.id,
@@ -205,26 +301,51 @@ async function processJob(job: Job, token: string) {
       error:
         "Something went wrong... Contact help@mendable.ai or try again." /* etc... */,
     };
-    if (job.data.mode === "crawl") {
-      await callWebhook(job.data.team_id, job.id as string, data);
+    
+    if (job.data.mode === "crawl" || job.data.crawl_id) {
+      await callWebhook(job.data.team_id, job.data.crawl_id ?? job.id as string, data);
     }
-    await logJob({
-      job_id: job.id as string,
-      success: false,
-      message:
-        typeof error === "string"
-          ? error
-          : error.message ?? "Something went wrong... Contact help@mendable.ai",
-      num_docs: 0,
-      docs: [],
-      time_taken: 0,
-      team_id: job.data.team_id,
-      mode: "crawl",
-      url: job.data.url,
-      crawlerOptions: job.data.crawlerOptions,
-      pageOptions: job.data.pageOptions,
-      origin: job.data.origin,
-    });
+    
+    if (job.data.crawl_id) {
+      await logJob({
+        job_id: job.id as string,
+        success: false,
+        message:
+          typeof error === "string"
+            ? error
+            : error.message ?? "Something went wrong... Contact help@mendable.ai",
+        num_docs: 0,
+        docs: [],
+        time_taken: 0,
+        team_id: job.data.team_id,
+        mode: job.data.mode,
+        url: job.data.url,
+        crawlerOptions: job.data.crawlerOptions,
+        pageOptions: job.data.pageOptions,
+        origin: job.data.origin,
+        crawl_id: job.data.crawl_id,
+      });
+
+      const sc = await getCrawl(job.data.crawl_id);
+
+      await logJob({
+        job_id: job.data.crawl_id,
+        success: false,
+        message:
+          typeof error === "string"
+            ? error
+            : error.message ?? "Something went wrong... Contact help@mendable.ai",
+        num_docs: 0,
+        docs: [],
+        time_taken: 0,
+        team_id: job.data.team_id,
+        mode: "crawl",
+        url: sc ? sc.originUrl : job.data.url,
+        crawlerOptions: sc ? sc.crawlerOptions : job.data.crawlerOptions,
+        pageOptions: sc ? sc.pageOptions : job.data.pageOptions,
+        origin: job.data.origin,
+      });
+    }
     // done(null, data);
     return data;
   }

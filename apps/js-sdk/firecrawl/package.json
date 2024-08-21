@@ -1,12 +1,22 @@
 {
   "name": "@mendable/firecrawl-js",
-  "version": "0.0.29",
+  "version": "0.0.36",
   "description": "JavaScript SDK for Firecrawl API",
-  "main": "build/index.js",
+  "main": "build/cjs/index.js",
   "types": "types/index.d.ts",
   "type": "module",
+  "exports": {
+    "require": {
+      "types": "./types/index.d.ts",
+      "default": "./build/cjs/index.js"
+    },
+    "import": {
+      "types": "./types/index.d.ts",
+      "default": "./build/esm/index.js"
+    }
+  },
   "scripts": {
-    "build": "tsc",
+    "build": "tsc --module commonjs --moduleResolution node10 --outDir build/cjs/ && echo '{\"type\": \"commonjs\"}' > build/cjs/package.json && npx tsc --module NodeNext --moduleResolution NodeNext --outDir build/esm/ && echo '{\"type\": \"module\"}' > build/esm/package.json",
     "build-and-publish": "npm run build && npm publish --access public",
     "publish-beta": "npm run build && npm publish --access public --tag beta",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --verbose src/__tests__/**/*.test.ts"

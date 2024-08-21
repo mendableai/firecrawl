@@ -73,16 +73,16 @@ export interface ScrapeResponse {
     error?: string;
 }
 /**
-* Response interface for searching operations.
-*/
+ * Response interface for searching operations.
+ */
 export interface SearchResponse {
     success: boolean;
     data?: FirecrawlDocument[];
     error?: string;
 }
 /**
-* Response interface for crawling operations.
-*/
+ * Response interface for crawling operations.
+ */
 export interface CrawlResponse {
     success: boolean;
     jobId?: string;
@@ -90,24 +90,28 @@ export interface CrawlResponse {
     error?: string;
 }
 /**
-* Response interface for job status checks.
-*/
+ * Response interface for job status checks.
+ */
 export interface JobStatusResponse {
     success: boolean;
     status: string;
+    current?: number;
+    current_url?: string;
+    current_step?: string;
+    total?: number;
     jobId?: string;
     data?: FirecrawlDocument[];
     partial_data?: FirecrawlDocument[];
     error?: string;
 }
 /**
-  * Generic parameter interface.
-  */
+ * Generic parameter interface.
+ */
 export interface Params {
     [key: string]: any;
     extractorOptions?: {
         extractionSchema: z.ZodSchema | any;
-        mode?: "llm-extraction" | "llm-extraction-from-raw-html";
+        mode?: "llm-extraction";
         extractionPrompt?: string;
     };
 }

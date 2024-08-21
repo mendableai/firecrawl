@@ -16,18 +16,19 @@ import {
   replacePathsWithAbsolutePaths,
 } from "./utils/replacePaths";
 import { generateCompletions } from "../../lib/LLM-extraction";
-import { getWebScraperQueue } from "../../../src/services/queue-service";
+import { getScrapeQueue } from "../../../src/services/queue-service";
 import { fetchAndProcessDocx } from "./utils/docxProcessor";
 import { getAdjustedMaxDepth, getURLDepth } from "./utils/maxDepthUtils";
 import { Logger } from "../../lib/logger";
+import { ScrapeEvents } from "../../lib/scrape-events";
 
 export class WebScraperDataProvider {
   private jobId: string;
   private bullJobId: string;
   private urls: string[] = [""];
   private mode: "single_urls" | "sitemap" | "crawl" = "single_urls";
-  private includes: string[];
-  private excludes: string[];
+  private includes: string | string[];
+  private excludes: string | string[];
   private maxCrawledLinks: number;
   private maxCrawledDepth: number = 10;
   private returnOnlyUrls: boolean;
@@ -43,6 +44,7 @@ export class WebScraperDataProvider {
   private crawlerMode: string = "default";
   private allowBackwardCrawling: boolean = false;
   private allowExternalContentLinks: boolean = false;
+  private priority?: number;
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -71,7 +73,8 @@ export class WebScraperDataProvider {
             url,
             this.pageOptions,
             this.extractorOptions,
-            existingHTML
+            existingHTML,
+            this.priority,
           );
           processedUrls++;
           if (inProgress) {
@@ -87,21 +90,6 @@ export class WebScraperDataProvider {
           results[i + index] = result;
         })
       );
-      try {
-        if (this.mode === "crawl" && this.bullJobId) {
-          const job = await getWebScraperQueue().getJob(this.bullJobId);
-          const jobStatus = await job.getState();
-          if (jobStatus === "failed") {
-            Logger.info(
-              "Job has failed or has been cancelled by the user. Stopping the job..."
-            );
-            return [] as Document[];
-          }
-        }
-      } catch (error) {
-        Logger.error(error.message);
-        return [] as Document[];
-      }
     }
     return results.filter((result) => result !== null) as Document[];
   }
@@ -167,11 +155,29 @@ export class WebScraperDataProvider {
   private async handleCrawlMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
+    let includes: string[];
+    if (Array.isArray(this.includes)) {
+      if (this.includes[0] != "") {
+        includes = this.includes;
+      }
+    } else {
+      includes = this.includes.split(',');
+    }
+
+    let excludes: string[];
+    if (Array.isArray(this.excludes)) {
+      if (this.excludes[0] != "") {
+        excludes = this.excludes;
+      }
+    } else {
+      excludes = this.excludes.split(',');
+    }
+
     const crawler = new WebCrawler({
       jobId: this.jobId,
       initialUrl: this.urls[0],
-      includes: this.includes,
-      excludes: this.excludes,
+      includes,
+      excludes,
       maxCrawledLinks: this.maxCrawledLinks,
       maxCrawledDepth: getAdjustedMaxDepth(this.urls[0], this.maxCrawledDepth),
       limit: this.limit,
@@ -287,7 +293,10 @@ export class WebScraperDataProvider {
       documents = await this.getSitemapData(this.urls[0], documents);
     }
 
-    documents = this.applyPathReplacements(documents);
+    if (this.pageOptions.includeMarkdown) {
+      documents = this.applyPathReplacements(documents);
+    }
+    
     // documents = await this.applyImgAltText(documents);
     if (
       (this.extractorOptions.mode === "llm-extraction" ||
@@ -316,12 +325,31 @@ export class WebScraperDataProvider {
   private async fetchPdfDocuments(pdfLinks: string[]): Promise<Document[]> {
     return Promise.all(
       pdfLinks.map(async (pdfLink) => {
+        const timer = Date.now();
+        const logInsertPromise = ScrapeEvents.insert(this.jobId, {
+          type: "scrape",
+          url: pdfLink,
+          worker: process.env.FLY_MACHINE_ID,
+          method: "pdf-scrape",
+          result: null,
+        });
+
         const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(
           pdfLink,
           this.pageOptions.parsePDF
         );
+
+        const insertedLogId = await logInsertPromise;
+        ScrapeEvents.updateScrapeResult(insertedLogId, {
+          response_size: content.length,
+          success: !(pageStatusCode && pageStatusCode >= 400) && !!content && (content.trim().length >= 100),
+          error: pageError,
+          response_code: pageStatusCode,
+          time_taken: Date.now() - timer,
+        });
         return {
           content: content,
+          markdown: content,
           metadata: { sourceURL: pdfLink, pageStatusCode, pageError },
           provider: "web-scraper",
         };
@@ -330,12 +358,32 @@ export class WebScraperDataProvider {
   }
   private async fetchDocxDocuments(docxLinks: string[]): Promise<Document[]> {
     return Promise.all(
-      docxLinks.map(async (p) => {
-        const { content, pageStatusCode, pageError } =
-          await fetchAndProcessDocx(p);
+      docxLinks.map(async (docxLink) => {
+        const timer = Date.now();
+        const logInsertPromise = ScrapeEvents.insert(this.jobId, {
+          type: "scrape",
+          url: docxLink,
+          worker: process.env.FLY_MACHINE_ID,
+          method: "docx-scrape",
+          result: null,
+        });
+
+        const { content, pageStatusCode, pageError } = await fetchAndProcessDocx(
+          docxLink
+        );
+
+        const insertedLogId = await logInsertPromise;
+        ScrapeEvents.updateScrapeResult(insertedLogId, {
+          response_size: content.length,
+          success: !(pageStatusCode && pageStatusCode >= 400) && !!content && (content.trim().length >= 100),
+          error: pageError,
+          response_code: pageStatusCode,
+          time_taken: Date.now() - timer,
+        });
+
         return {
           content,
-          metadata: { sourceURL: p, pageStatusCode, pageError },
+          metadata: { sourceURL: docxLink, pageStatusCode, pageError },
           provider: "web-scraper",
         };
       })
@@ -406,6 +454,10 @@ export class WebScraperDataProvider {
       const url = new URL(document.metadata.sourceURL);
       const path = url.pathname;
 
+      if (!Array.isArray(this.excludes)) {
+        this.excludes = this.excludes.split(',');
+      }
+
       if (this.excludes.length > 0 && this.excludes[0] !== "") {
         // Check if the link should be excluded
         if (
@@ -415,6 +467,10 @@ export class WebScraperDataProvider {
         ) {
           return false;
         }
+      }
+
+      if (!Array.isArray(this.includes)) {
+        this.includes = this.includes.split(',');
       }
 
       if (this.includes.length > 0 && this.includes[0] !== "") {
@@ -528,14 +584,22 @@ export class WebScraperDataProvider {
       options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ??
       options.pageOptions?.replaceAllPathsWithAbsolutePaths ??
       false;
-    //! @nicolas, for some reason this was being injected and breaking everything. Don't have time to find source of the issue so adding this check
-    this.excludes = this.excludes.filter((item) => item !== "");
+
+    if (typeof options.crawlerOptions?.excludes === 'string') {
+      this.excludes = options.crawlerOptions?.excludes.split(',').filter((item) => item.trim() !== "");
+    }
+
+    if (typeof options.crawlerOptions?.includes === 'string') {
+      this.includes = options.crawlerOptions?.includes.split(',').filter((item) => item.trim() !== "");
+    }
+
     this.crawlerMode = options.crawlerOptions?.mode ?? "default";
     this.ignoreSitemap = options.crawlerOptions?.ignoreSitemap ?? false;
     this.allowBackwardCrawling =
       options.crawlerOptions?.allowBackwardCrawling ?? false;
     this.allowExternalContentLinks =
       options.crawlerOptions?.allowExternalContentLinks ?? false;
+    this.priority = options.priority;
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {

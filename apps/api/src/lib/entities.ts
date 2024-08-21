@@ -11,6 +11,7 @@ export interface Progress {
 }
 
 export type PageOptions = {
+  includeMarkdown?: boolean;
   onlyMainContent?: boolean;
   includeHtml?: boolean;
   includeRawHtml?: boolean;
@@ -18,11 +19,13 @@ export type PageOptions = {
   fetchPageContent?: boolean;
   waitFor?: number;
   screenshot?: boolean;
+  fullPageScreenshot?: boolean;
   headers?: Record<string, string>;
   replaceAllPathsWithAbsolutePaths?: boolean;
   parsePDF?: boolean;
   removeTags?: string | string[];
   onlyIncludeTags?: string | string[];
+  includeLinks?: boolean;
 };
 
 export type ExtractorOptions = {
@@ -42,8 +45,8 @@ export type SearchOptions = {
 
 export type CrawlerOptions = {
   returnOnlyUrls?: boolean;
-  includes?: string[];
-  excludes?: string[];
+  includes?: string | string[];
+  excludes?: string | string[];
   maxCrawledLinks?: number;
   maxDepth?: number;
   limit?: number;
@@ -64,6 +67,7 @@ export type WebScraperOptions = {
   extractorOptions?: ExtractorOptions;
   concurrentRequests?: number;
   bullJobId?: string;
+  priority?: number;
 };
 
 export interface DocumentUrl {

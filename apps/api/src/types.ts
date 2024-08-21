@@ -28,6 +28,9 @@ export interface WebScraperOptions {
   extractorOptions?: any;
   team_id: string;
   origin?: string;
+  crawl_id?: string;
+  sitemapped?: boolean;
+  webhook?: string;
 }
 
 export interface RunWebScraperParams {
@@ -41,6 +44,7 @@ export interface RunWebScraperParams {
   onError: (error: Error) => void;
   team_id: string;
   bull_job_id: string;
+  priority?: number;
 }
 
 export interface RunWebScraperResult {
@@ -65,6 +69,7 @@ export interface FirecrawlJob {
   extractor_options?: ExtractorOptions,
   num_tokens?: number,
   retry?: boolean,
+  crawl_id?: string;
 }
 
 export interface FirecrawlScrapeResponse {
@@ -101,6 +106,7 @@ export enum RateLimiterMode {
   Scrape = "scrape",
   Preview = "preview",
   Search = "search",
+  Map = "map",
 
 }
 
@@ -110,6 +116,7 @@ export interface AuthResponse {
   error?: string;
   status?: number;
   plan?: string;
+  api_key?: string;
 }
   
 

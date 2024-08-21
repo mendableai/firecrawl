@@ -123,17 +123,21 @@ export async function scrapSingleUrl(
   jobId: string,
   urlToScrap: string,
   pageOptions: PageOptions = {
+    includeMarkdown: true,
     onlyMainContent: true,
     includeHtml: false,
     includeRawHtml: false,
     waitFor: 0,
     screenshot: false,
+    fullPageScreenshot: false,
     headers: undefined,
+    includeLinks: true
   },
   extractorOptions: ExtractorOptions = {
     mode: "llm-extraction-from-markdown",
   },
-  existingHtml: string = ""
+  existingHtml: string = "",
+  priority?: number,
 ): Promise<Document> {
   urlToScrap = urlToScrap.trim();
 
@@ -171,11 +175,13 @@ export async function scrapSingleUrl(
             url,
             waitFor: pageOptions.waitFor,
             screenshot: pageOptions.screenshot,
+            fullPageScreenshot: pageOptions.fullPageScreenshot,
             pageOptions: pageOptions,
             headers: pageOptions.headers,
             fireEngineOptions: {
               engine: engine,
-            }
+            },
+            priority,
           });
           scraperResponse.text = response.html;
           scraperResponse.screenshot = response.screenshot;
@@ -306,7 +312,7 @@ export async function scrapSingleUrl(
     const scrapersInOrder = getScrapingFallbackOrder(
       defaultScraper,
       pageOptions && pageOptions.waitFor && pageOptions.waitFor > 0,
-      pageOptions && pageOptions.screenshot && pageOptions.screenshot === true,
+      pageOptions && (pageOptions.screenshot || pageOptions.fullPageScreenshot) && (pageOptions.screenshot === true || pageOptions.fullPageScreenshot === true),
       pageOptions && pageOptions.headers && pageOptions.headers !== undefined
     );
 
@@ -334,8 +340,8 @@ export async function scrapSingleUrl(
         pageError = undefined;
       }
 
-      if (text && text.trim().length >= 100) {
-        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100, breaking`);
+      if ((text && text.trim().length >= 100) || (typeof screenshot === "string" && screenshot.length > 0)) {
+        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100 or screenshot, breaking`);
         break;
       }
       if (pageStatusCode && (pageStatusCode == 404 || pageStatusCode == 500)) {
@@ -357,20 +363,22 @@ export async function scrapSingleUrl(
 
     let linksOnPage: string[] | undefined;
 
-    linksOnPage = extractLinks(rawHtml, urlToScrap);
+    if (pageOptions.includeLinks) {
+      linksOnPage = extractLinks(rawHtml, urlToScrap);
+    }
 
     let document: Document;
     if (screenshot && screenshot.length > 0) {
       document = {
         content: text,
-        markdown: text,
+        markdown: pageOptions.includeMarkdown ? text : undefined,
         html: pageOptions.includeHtml ? html : undefined,
         rawHtml:
           pageOptions.includeRawHtml ||
             extractorOptions.mode === "llm-extraction-from-raw-html"
             ? rawHtml
             : undefined,
-        linksOnPage,
+        linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
         metadata: {
           ...metadata,
           screenshot: screenshot,
@@ -382,7 +390,7 @@ export async function scrapSingleUrl(
     } else {
       document = {
         content: text,
-        markdown: text,
+        markdown: pageOptions.includeMarkdown ? text : undefined,
         html: pageOptions.includeHtml ? html : undefined,
         rawHtml:
           pageOptions.includeRawHtml ||
@@ -395,7 +403,7 @@ export async function scrapSingleUrl(
           pageStatusCode: pageStatusCode,
           pageError: pageError,
         },
-        linksOnPage,
+        linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
       };
     }
 
@@ -409,9 +417,9 @@ export async function scrapSingleUrl(
     });
     return {
       content: "",
-      markdown: "",
+      markdown: pageOptions.includeMarkdown ? "" : undefined,
       html: "",
-      linksOnPage: [],
+      linksOnPage: pageOptions.includeLinks ? [] : undefined,
       metadata: {
         sourceURL: urlToScrap,
         pageStatusCode: pageStatusCode,
