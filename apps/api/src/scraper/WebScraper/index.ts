@@ -76,6 +76,7 @@ export class WebScraperDataProvider {
             this.extractorOptions,
             existingHTML,
             this.priority,
+            this.teamId,
           );
           processedUrls++;
           if (inProgress) {

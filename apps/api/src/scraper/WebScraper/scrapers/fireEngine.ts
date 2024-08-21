@@ -80,6 +80,7 @@ export async function scrapWithFireEngine({
     // atsv is only available for beta customers
     const betaCustomersString = process.env.BETA_CUSTOMERS;
     const betaCustomers = betaCustomersString ? betaCustomersString.split(",") : [];
+
     if (pageOptions?.atsv && betaCustomers.includes(teamId)) {
       fireEngineOptionsParam.atsv = true;
     } else {

@@ -87,6 +87,7 @@ export async function runWebScraper({
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
         priority,
+        teamId: team_id
       });
     }
     const docs = (await provider.getDocuments(false, (progress: Progress) => {
