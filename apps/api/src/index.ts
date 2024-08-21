@@ -1,7 +1,6 @@
-// Sentry
 import "dotenv/config";
 import "./services/sentry"
-
+import * as Sentry from "@sentry/node";
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
@@ -182,6 +181,8 @@ if (cluster.isMaster) {
   app.get("/is-production", (req, res) => {
     res.send({ isProduction: global.isProduction });
   });
+
+  Sentry.setupExpressErrorHandler(app);
 
   Logger.info(`Worker ${process.pid} started`);
 }

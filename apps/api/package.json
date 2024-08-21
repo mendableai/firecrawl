@@ -57,7 +57,7 @@
     "@logtail/node": "^0.4.12",
     "@nangohq/node": "^0.40.8",
     "@sentry/cli": "^2.33.1",
-    "@sentry/node": "^8.13.0",
+    "@sentry/node": "^8.26.0",
     "@sentry/profiling-node": "^8.26.0",
     "@supabase/supabase-js": "^2.44.2",
     "ajv": "^8.16.0",

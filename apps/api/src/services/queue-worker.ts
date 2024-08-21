@@ -1,10 +1,12 @@
+import "dotenv/config";
+import "./services/sentry"
+import * as Sentry from "@sentry/node";
 import { CustomError } from "../lib/custom-error";
 import {
   getScrapeQueue,
   redisConnection,
   scrapeQueueName,
 } from "./queue-service";
-import "dotenv/config";
 import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
@@ -102,7 +104,12 @@ const workerFun = async (queueName: string, processJobInternal: (token: string, 
 
     const job = await worker.getNextJob(token);
     if (job) {
-      processJobInternal(token, job);
+      Sentry.startSpan({
+        name: "Job " + job.id,
+        parentSpan: null,
+      }, async () => {
+        await processJobInternal(token, job);
+      });
       await sleep(gotJobInterval);
     } else {
       await sleep(connectionMonitorInterval);
@@ -288,6 +295,12 @@ async function processJob(job: Job, token: string) {
     return data;
   } catch (error) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);
+
+    Sentry.captureException(error, {
+      data: {
+        job: job.id
+      },
+    })
 
     if (error instanceof CustomError) {
       // Here we handle the error, then save the failed job
