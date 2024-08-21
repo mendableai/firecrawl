@@ -1,10 +1,12 @@
+import "dotenv/config";
+import "./sentry"
+import * as Sentry from "@sentry/node";
 import { CustomError } from "../lib/custom-error";
 import {
   getScrapeQueue,
   redisConnection,
   scrapeQueueName,
 } from "./queue-service";
-import "dotenv/config";
 import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
@@ -102,7 +104,16 @@ const workerFun = async (queueName: string, processJobInternal: (token: string, 
 
     const job = await worker.getNextJob(token);
     if (job) {
-      processJobInternal(token, job);
+      Sentry.startSpan({
+        name: "Scrape job",
+        op: "bullmq.job",
+        attributes: {
+          job: job.id,
+          worker: process.env.FLY_MACHINE_ID ?? worker.id,
+        },
+      }, async () => {
+        await processJobInternal(token, job);
+      });
       await sleep(gotJobInterval);
     } else {
       await sleep(connectionMonitorInterval);
@@ -117,7 +128,7 @@ async function processJob(job: Job, token: string) {
 
   // Check if the job URL is researchhub and block it immediately
   // TODO: remove this once solve the root issue
-  if (job.data.url && (job.data.url.includes("researchhub.com") || job.data.url.includes("ebay.com") || job.data.url.includes("youtube.com") || job.data.url.includes("microsoft.com"))) {
+  if (job.data.url && (job.data.url.includes("researchhub.com") || job.data.url.includes("ebay.com") || job.data.url.includes("youtube.com") || job.data.url.includes("microsoft.com") )) {
     Logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
     const data = {
       success: false,
@@ -288,6 +299,12 @@ async function processJob(job: Job, token: string) {
     return data;
   } catch (error) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);
+
+    Sentry.captureException(error, {
+      data: {
+        job: job.id
+      },
+    })
 
     if (error instanceof CustomError) {
       // Here we handle the error, then save the failed job

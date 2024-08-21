@@ -1,7 +1,9 @@
+import "dotenv/config";
+import "./services/sentry"
+import * as Sentry from "@sentry/node";
 import express from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
-import "dotenv/config";
 import { getScrapeQueue } from "./services/queue-service";
 import { v0Router } from "./routes/v0";
 import { initSDK } from "@hyperdx/node-opentelemetry";
@@ -13,6 +15,8 @@ import { ScrapeEvents } from "./lib/scrape-events";
 import http from 'node:http';
 import https from 'node:https';
 import CacheableLookup  from 'cacheable-lookup';
+
+
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -178,6 +182,8 @@ if (cluster.isMaster) {
     res.send({ isProduction: global.isProduction });
   });
 
+  Sentry.setupExpressErrorHandler(app);
+
   Logger.info(`Worker ${process.pid} started`);
 }
 
@@ -189,4 +195,6 @@ if (cluster.isMaster) {
 // sq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
 // sq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
 // sq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
+
+
 
