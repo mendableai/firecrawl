@@ -1,5 +1,5 @@
 import "dotenv/config";
-import "./services/sentry"
+import "./sentry"
 import * as Sentry from "@sentry/node";
 import { CustomError } from "../lib/custom-error";
 import {
@@ -105,8 +105,11 @@ const workerFun = async (queueName: string, processJobInternal: (token: string, 
     const job = await worker.getNextJob(token);
     if (job) {
       Sentry.startSpan({
-        name: "Job " + job.id,
-        parentSpan: null,
+        name: "Scrape job",
+        op: "bullmq.job",
+        attributes: {
+          job: job.id,
+        },
       }, async () => {
         await processJobInternal(token, job);
       });
