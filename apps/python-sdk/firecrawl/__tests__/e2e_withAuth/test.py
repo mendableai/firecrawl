@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_URL = "http://127.0.0.1:3002";
+API_URL = "http://127.0.0.1:3002"
 ABSOLUTE_FIRECRAWL_PATH = "firecrawl/firecrawl.py"
 TEST_API_KEY = os.getenv('TEST_API_KEY')
 
@@ -46,6 +46,8 @@ def test_successful_response_with_valid_preview_token():
 def test_scrape_url_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
     response = app.scrape_url('https://roastmywebsite.ai')
+    print(response)
+
     assert response is not None
     assert 'content' in response
     assert 'markdown' in response
@@ -145,7 +147,7 @@ def test_search_invalid_api_key():
 
 def test_llm_extraction():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
-    response = app.scrape_url("https://mendable.ai", {
+    response = app.scrape_url("https://firecrawl.dev", {
         'extractorOptions': {
             'mode': 'llm-extraction',
             'extractionPrompt': "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source",

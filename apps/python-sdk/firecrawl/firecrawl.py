@@ -155,20 +155,30 @@ class FirecrawlApp:
             json_data.update(params)
         response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
         if response.status_code == 200:
-            job_id = response.json().get('jobId')
-            if wait_until_done:
-                return self._monitor_job_status(job_id, headers, poll_interval)
+            if self.version == 'v0':
+                id = response.json().get('jobId')
             else:
-                return {'jobId': job_id}
+                id = response.json().get('id')
+
+            if wait_until_done:
+                check_url = None
+                if self.version == 'v1':
+                    check_url = response.json().get('url')
+                return self._monitor_job_status(id, headers, poll_interval, check_url)
+            else:
+                if self.version == 'v0':
+                    return {'jobId': id}
+                else:
+                    return {'id': id}
         else:
             self._handle_error(response, 'start crawl job')
 
-    def check_crawl_status(self, job_id: str) -> Any:
+    def check_crawl_status(self, id: str) -> Any:
         """
         Check the status of a crawl job using the Firecrawl API.
 
         Args:
-            job_id (str): The ID of the crawl job.
+            id (str): The ID of the crawl job.
 
         Returns:
             Any: The status of the crawl job.
@@ -176,11 +186,38 @@ class FirecrawlApp:
         Raises:
             Exception: If the status check request fails.
         """
-        endpoint = f'/{self.version}/crawl/status/{job_id}'
+
+        if self.version == 'v0':
+            endpoint = f'/{self.version}/crawl/status/{id}'
+        else:
+            endpoint = f'/{self.version}/crawl/{id}'
+
         headers = self._prepare_headers()
         response = self._get_request(f'{self.api_url}{endpoint}', headers)
         if response.status_code == 200:
-            return response.json()
+            data = response.json()
+            if self.version == 'v0':
+                return {
+                    'success': True,
+                    'status': data.get('status'),
+                    'current': data.get('current'),
+                    'current_url': data.get('current_url'),
+                    'current_step': data.get('current_step'),
+                    'total': data.get('total'),
+                    'data': data.get('data'),
+                    'partial_data': data.get('partial_data') if not data.get('data') else None,
+                }
+            elif self.version == 'v1':
+                return {
+                    'success': True,
+                    'status': data.get('status'),
+                    'totalCount': data.get('totalCount'),
+                    'creditsUsed': data.get('creditsUsed'),
+                    'expiresAt': data.get('expiresAt'),
+                    'next': data.get('next'),
+                    'data': data.get('data'),
+                    'error': data.get('error')
+                }
         else:
             self._handle_error(response, 'check crawl status')
 
@@ -292,15 +329,15 @@ class FirecrawlApp:
                 return response
         return response
 
-    def _monitor_job_status(self, job_id: str, headers: Dict[str, str], poll_interval: int) -> Any:
+    def _monitor_job_status(self, id: str, headers: Dict[str, str], poll_interval: int, check_url: Optional[str] = None) -> Any:
         """
         Monitor the status of a crawl job until completion.
 
         Args:
-            job_id (str): The ID of the crawl job.
+            id (str): The ID of the crawl job.
             headers (Dict[str, str]): The headers to include in the status check requests.
             poll_interval (int): Secounds between status checks.
-
+            check_url (Optional[str]): The URL to check for the crawl job.
         Returns:
             Any: The crawl results if the job is completed successfully.
 
@@ -308,15 +345,30 @@ class FirecrawlApp:
             Exception: If the job fails or an error occurs during status checks.
         """
         while True:
-            status_response = self._get_request(f'{self.api_url}/v0/crawl/status/{job_id}', headers)
+            api_url = ''
+            if (self.version == 'v0'):
+                if check_url:
+                    api_url = check_url
+                else:
+                    api_url = f'{self.api_url}/v0/crawl/status/{id}'
+            else:
+                if check_url:
+                    api_url = check_url
+                else:
+                    api_url = f'{self.api_url}/v1/crawl/{id}'
+
+            status_response = self._get_request(api_url, headers)
             if status_response.status_code == 200:
                 status_data = status_response.json()
                 if status_data['status'] == 'completed':
                     if 'data' in status_data:
-                        return status_data['data']
+                        if self.version == 'v0':
+                            return status_data['data']
+                        else:
+                            return status_data
                     else:
                         raise Exception('Crawl job completed but no data was returned')
-                elif status_data['status'] in ['active', 'paused', 'pending', 'queued', 'waiting']:
+                elif status_data['status'] in ['active', 'paused', 'pending', 'queued', 'waiting', 'scraping']:
                     poll_interval=max(poll_interval,2)
                     time.sleep(poll_interval)  # Wait for the specified interval before checking again
                 else:
