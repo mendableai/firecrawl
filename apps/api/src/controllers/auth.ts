@@ -152,7 +152,7 @@ export async function supaAuthenticateUser(
         );
       }
     } catch (error) {
-      Logger.error(`Error with auth function: ${error.message}`);
+      Logger.error(`Error with auth function: ${error}`);
       // const {
       //   success,
       //   teamId: tId,

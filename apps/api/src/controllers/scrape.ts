@@ -108,22 +108,18 @@ export async function scrapeController(req: Request, res: Response) {
       timeout = req.body.timeout ?? 90000;
     }
 
-    const checkCredits = async () => {
-      try {
-        const { success: creditsCheckSuccess, message: creditsCheckMessage } = await checkTeamCredits(team_id, 1);
-        if (!creditsCheckSuccess) {
-          earlyReturn = true;
-          return res.status(402).json({ error: "Insufficient credits" });
-        }
-      } catch (error) {
-        Logger.error(error);
+    // checkCredits
+    try {
+      const { success: creditsCheckSuccess, message: creditsCheckMessage } = await checkTeamCredits(team_id, 1);
+      if (!creditsCheckSuccess) {
         earlyReturn = true;
-        return res.status(500).json({ error: "Error checking team credits. Please contact hello@firecrawl.com for help." });
+        return res.status(402).json({ error: "Insufficient credits" });
       }
-    };
-
-
-    await checkCredits();
+    } catch (error) {
+      Logger.error(error);
+      earlyReturn = true;
+      return res.status(500).json({ error: "Error checking team credits. Please contact hello@firecrawl.com for help." });
+    }
 
     const jobId = uuidv4();
 

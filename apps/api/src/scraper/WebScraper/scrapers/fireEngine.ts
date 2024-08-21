@@ -123,9 +123,9 @@ export async function scrapWithFireEngine({
     if (checkStatusResponse.data.processing) {
       try {
         Logger.debug(`⛏️ Fire-Engine (${engine}): deleting request - jobId: ${_response.data.jobId}`);
-        // axiosInstance.delete(
-        //   process.env.FIRE_ENGINE_BETA_URL + `/scrape/${_response.data.jobId}`,
-        // );
+        axiosInstance.delete(
+          process.env.FIRE_ENGINE_BETA_URL + `/scrape/${_response.data.jobId}`,
+        );
       } catch (error) {
         Logger.debug(`⛏️ Fire-Engine (${engine}): Failed to delete request - jobId: ${_response.data.jobId} | error: ${error}`);
         logParams.error_message = "Failed to delete request";
