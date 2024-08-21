@@ -121,8 +121,8 @@ export async function scrapWithFireEngine({
     }
 
     if (checkStatusResponse.data.processing) {
-      Logger.debug(`⛏️ Fire-Engine (${engine}): deleting request - jobId: ${_response.data.jobId}`);
       try {
+        Logger.debug(`⛏️ Fire-Engine (${engine}): deleting request - jobId: ${_response.data.jobId}`);
         // axiosInstance.delete(
         //   process.env.FIRE_ENGINE_BETA_URL + `/scrape/${_response.data.jobId}`,
         // );
