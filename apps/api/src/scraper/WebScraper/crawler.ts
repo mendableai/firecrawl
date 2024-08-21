@@ -267,9 +267,18 @@ export class WebCrawler {
   public filterURL(href: string, url: string): string | null {
     let fullUrl = href;
     if (!href.startsWith("http")) {
-      fullUrl = new URL(href, this.baseUrl).toString();
+      try {
+        fullUrl = new URL(href, this.baseUrl).toString();
+      } catch (_) {
+        return null;
+      }
     }
-    const urlObj = new URL(fullUrl);
+    let urlObj;
+    try {
+      urlObj = new URL(fullUrl);
+    } catch (_) {
+      return null;
+    }
     const path = urlObj.pathname;
 
     if (this.isInternalLink(fullUrl)) { // INTERNAL LINKS
