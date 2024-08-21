@@ -2,7 +2,7 @@ import { ExtractorOptions, PageOptions } from './../lib/entities';
 import { Request, Response } from "express";
 import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
 import { authenticateUser } from "./auth";
-import { RateLimiterMode } from "../types";
+import { PlanType, RateLimiterMode } from "../types";
 import { logJob } from "../services/logging/log_job";
 import { Document } from "../lib/entities";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
@@ -12,6 +12,7 @@ import { addScrapeJob } from '../services/queue-jobs';
 import { scrapeQueueEvents } from '../services/queue-service';
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from '../lib/logger';
+import { getJobPriority } from '../lib/job-priority';
 
 export async function scrapeHelper(
   jobId: string,
@@ -21,7 +22,7 @@ export async function scrapeHelper(
   pageOptions: PageOptions,
   extractorOptions: ExtractorOptions,
   timeout: number,
-  plan?: string
+  plan?: PlanType
 ): Promise<{
   success: boolean;
   error?: string;
@@ -37,6 +38,8 @@ export async function scrapeHelper(
     return { success: false, error: "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.", returnCode: 403 };
   }
 
+  const jobPriority = await getJobPriority({plan, team_id})
+
   const job = await addScrapeJob({
     url,
     mode: "single_urls",
@@ -45,7 +48,7 @@ export async function scrapeHelper(
     pageOptions,
     extractorOptions,
     origin: req.body.origin ?? defaultOrigin,
-  }, {}, jobId);
+  }, {}, jobId, jobPriority);
 
   let doc;
   try {

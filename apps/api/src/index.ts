@@ -187,6 +187,33 @@ if (cluster.isMaster) {
   Logger.info(`Worker ${process.pid} started`);
 }
 
+
+
+async function sendScrapeRequests() {
+  await new Promise(resolve => setTimeout(resolve, 5000));
+  const url = 'http://127.0.0.1:3002/v0/scrape';
+  const headers = {
+    'Authorization': 'Bearer fc-365b09a44b8844d08e0dc98f13e49bca',
+    'Content-Type': 'application/json'
+  };
+  const body = JSON.stringify({
+    url: 'https://roastmywebsite.ai'
+  });
+
+  const requests = Array.from({ length: 20 }, (_, i) => 
+    fetch(url, {
+      method: 'POST',
+      headers: headers,
+      body: body
+    }).catch(error => {
+      Logger.error(`Request ${i + 1} encountered an error: ${error.message}`);
+    })
+  );
+
+  await Promise.all(requests);
+}
+
+sendScrapeRequests();
 // const sq = getScrapeQueue();
 
 // sq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));

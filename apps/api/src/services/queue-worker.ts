@@ -21,6 +21,7 @@ import { addCrawlJob, addCrawlJobDone, crawlToCrawler, finishCrawl, getCrawl, ge
 import { StoredCrawl } from "../lib/crawl-redis";
 import { addScrapeJob } from "./queue-jobs";
 import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
+import { addJobPriority, deleteJobPriority } from "../../src/lib/job-priority";
 
 if (process.env.ENV === "production") {
   initSDK({
@@ -50,6 +51,7 @@ const processJobInternal = async (token: string, job: Job) => {
     await job.extendLock(token, jobLockExtensionTime);
   }, jobLockExtendInterval);
 
+  await addJobPriority(job.data.team_id, job.id );
   try {
     const result = await processJob(job, token);
     try{
@@ -62,9 +64,9 @@ const processJobInternal = async (token: string, job: Job) => {
     }
   } catch (error) {
     console.log("Job failed, error:", error);
-
     await job.moveToFailed(error, token, false);
   } finally {
+    await deleteJobPriority(job.data.team_id, job.id );
     clearInterval(extendLockInterval);
   }
 };

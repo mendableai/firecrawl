@@ -7,9 +7,10 @@ export async function addScrapeJob(
   webScraperOptions: WebScraperOptions,
   options: any = {},
   jobId: string = uuidv4(),
+  jobPriority: number = 10
 ): Promise<Job> {
   return await getScrapeQueue().add(jobId, webScraperOptions, {
-    priority: webScraperOptions.crawl_id ? 20 : 10,
+    priority: webScraperOptions.crawl_id ? 20 : jobPriority,
     ...options,
     jobId,
   });
