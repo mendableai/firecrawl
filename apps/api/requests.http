@@ -1,96 +1,15 @@
-### fc-a12ee91b42d243f5990a2c821be0a978
-### fc-e7e08faf6b864bd9b9b70c693a01ccae
 ### Crawl Website
-POST http://localhost:3002/v1/crawl HTTP/1.1
-Authorization: Bearer fc-e7e08faf6b864bd9b9b70c693a01ccae
+POST http://localhost:3002/v0/scrape HTTP/1.1
+Authorization: Bearer fc
 content-type: application/json
 
 {
-  "url": "https://roastmywebsite.ai",
-  "excludePaths": ["blog/*"],
-  "includePaths": ["/"],
-  "maxDepth": 2,
-  "ignoreSitemap": true,
-  "limit": 10,
-  "allowBackwardLinks": true,
-  "allowExternalLinks": true,
-  "scrapeOptions": {
-    "formats": ["markdown", "html", "rawHtml", "screenshot", "links"],
-    "headers": { "x-key": "test" },
-    "includeTags": ["h1"],
-    "excludeTags": ["h2"],
-    "onlyMainContent": true,
-    "waitFor": 1000
-  }
+    "url":"firecrawl.dev"
 }
 
-### 
-POST http://localhost:3002/v1/scrape HTTP/1.1
-Authorization: Bearer fc-e7e08faf6b864bd9b9b70c693a01ccae
-content-type: application/json
-
-{
-  "url": "https://roastmywebsite.ai",
-  "formats": ["markdown", "html", "rawHtml", "screenshot", "links"],
-  "headers": { "x-key": "test" },
-  "includeTags": ["h1"],
-  "excludeTags": ["h2"],
-  "onlyMainContent": true
-}
-
-###
-POST https://firescraper.fly.dev/scrape HTTP/1.1
-Authorization: Bearer fc-e7e08faf6b864bd9b9b70c693a01ccae
-content-type: application/json
-
-{
-  "url": "https://ajskhdioauhsdoas.com",
-  "instantReturn": true
-}
-
-
-### 
-POST https://api.firecrawl.dev/v0/crawl HTTP/1.1
-Authorization: Bearer fc-e7e08faf6b864bd9b9b70c693a01ccae
-content-type: application/json
-
-{
-  "url": "https://pytorch.org/docs/stable",
-  "crawlerOptions": {
-    "limit": 100,
-    "returnOnlyUrls": true,
-    "ignoreSitemap": true,
-    "allowBackwardCrawling": true
-  }
-}
-
-###
-GET http://localhost:3002/v1/crawl/eff7095b-97b6-4944-b6da-7e7551396a38 HTTP/1.1
-Authorization: Bearer fc-e7e08faf6b864bd9b9b70c693a01ccae
-
-### 1644d4b6-7fbd-4ce5-b55d-46b3c5e92526
-### ef3714c7-e095-416d-a4b0-69611af0b00f
-
-### 
-
-
-POST http://localhost:3002/v0/crawl HTTP/1.1
-Authorization: Bearer fc-e7e08faf6b864bd9b9b70c693a01ccae
-content-type: application/json
-
-{
-  "url": "https://docs.usepylon.com/getting-started/introduction",
-  "crawlerOptions": {
-    "limit": 100
-  }
-}
 
 ### Check Job Status
-GET http://localhost:3002/v0/crawl/status/645ff228-4a83-4504-8b1f-8879ca56fe19 HTTP/1.1
-Authorization: Bearer fc-e7e08faf6b864bd9b9b70c693a01ccae
-
-### Check Job Status
-GET https://api.firecrawl.dev/v0/jobs/active HTTP/1.1
+GET http://localhost:3002/v0/jobs/active HTTP/1.1
 
 
 ### Scrape Website
@@ -121,35 +40,28 @@ content-type: application/json
 
 
 ### Scrape Website
-POST http://localhost:3002/v0/crawl HTTP/1.1
-# Authorization: Bearer fc-***
+POST http://localhost:3002/v0/scrape HTTP/1.1
+Authorization: Bearer 
 content-type: application/json
 
 {
-  "url":"example.com"
+    "url":"https://mendable.ai"
 }
 
 
-# 5bc71216-e1ac-4bb1-9d9f-59785a92bb02
-### Check Job Status
-GET http://localhost:3002/v0/crawl/status/478fec7c-ae43-4fb7-912d-c006e17e7024 HTTP/1.1
-Authorization: Bearer fc-e7e08faf6b864bd9b9b70c693a01ccae
 
-###
-DELETE https://api.firecrawl.dev/v0/crawl/cancel/b749f45e-c1c9-4140-b596-87eaa0457b0b HTTP/1.1
-Authorization: Bearer fc-e7e08faf6b864bd9b9b70c693a01ccae
+### Check Job Status
+GET http://localhost:3002/v0/crawl/status/a6053912-d602-4709-841f-3d2cb46fea0a HTTP/1.1
+Authorization: Bearer 
 
 ### Get Job Result
 
-POST http://localhost:3002/v0/crawl HTTP/1.1
-Authorization: Bearer fc-e7e08faf6b864bd9b9b70c693a01ccae
+POST https://api.firecrawl.dev/v0/crawl HTTP/1.1
+Authorization: Bearer 
 content-type: application/json
 
 {
-    "url":"https://mendable.ai",
-    "crawlerOptions": {
-        "ignoreSitemap": true
-    }
+    "url":"https://mendable.ai"
 }
 
 ### Check Job Status
