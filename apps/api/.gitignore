@@ -6,3 +6,6 @@ dump.rdb
 /mongo-data
 
 /.next/
+
+# Sentry Config File
+.sentryclirc

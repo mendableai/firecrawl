@@ -117,7 +117,7 @@ async function processJob(job: Job, token: string) {
 
   // Check if the job URL is researchhub and block it immediately
   // TODO: remove this once solve the root issue
-  if (job.data.url && (job.data.url.includes("researchhub.com") || job.data.url.includes("ebay.com") || job.data.url.includes("youtube.com") || job.data.url.includes("microsoft.com"))) {
+  if (job.data.url && (job.data.url.includes("researchhub.com") || job.data.url.includes("ebay.com") || job.data.url.includes("youtube.com") || job.data.url.includes("microsoft.com") )) {
     Logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
     const data = {
       success: false,
