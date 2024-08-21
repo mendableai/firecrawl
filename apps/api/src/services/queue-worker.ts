@@ -109,6 +109,7 @@ const workerFun = async (queueName: string, processJobInternal: (token: string, 
         op: "bullmq.job",
         attributes: {
           job: job.id,
+          worker: process.env.FLY_MACHINE_ID ?? worker.id,
         },
       }, async () => {
         await processJobInternal(token, job);
