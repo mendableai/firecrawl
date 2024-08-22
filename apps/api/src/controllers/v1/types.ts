@@ -116,7 +116,7 @@ export const crawlRequestSchema = crawlerOptions.extend({
 export type CrawlRequest = z.infer<typeof crawlRequestSchema>;
 
 export const mapRequestSchema = crawlerOptions.extend({
-  url: z.string().url(),
+  url,
   origin: z.string().optional().default("api"),
   includeSubdomains: z.boolean().default(true),
   search: z.string().optional(),
@@ -279,14 +279,16 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
 }
 
 export function legacyDocumentConverter(doc: any): Document {
-  if (doc.metadata.screenshot) {
-    doc.screenshot = doc.metadata.screenshot;
-    delete doc.metadata.screenshot;
-  }
+  if (doc.metadata) {
+    if (doc.metadata.screenshot) {
+      doc.screenshot = doc.metadata.screenshot;
+      delete doc.metadata.screenshot;
+    }
 
-  if (doc.metadata.fullPageScreenshot) {
-    doc.fullPageScreenshot = doc.metadata.fullPageScreenshot;
-    delete doc.metadata.fullPageScreenshot;
+    if (doc.metadata.fullPageScreenshot) {
+      doc.fullPageScreenshot = doc.metadata.fullPageScreenshot;
+      delete doc.metadata.fullPageScreenshot;
+    }
   }
 
   return {
