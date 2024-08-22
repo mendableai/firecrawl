@@ -296,6 +296,12 @@ export class WebScraperDataProvider {
     if (this.pageOptions.includeMarkdown) {
       documents = this.applyPathReplacements(documents);
     }
+
+    if (!this.pageOptions.includeHtml) {
+      for (let document of documents) {
+        delete document.html;
+      }
+    }
     
     // documents = await this.applyImgAltText(documents);
     if (
@@ -572,12 +578,19 @@ export class WebScraperDataProvider {
     this.limit = options.crawlerOptions?.limit ?? 10000;
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
-    this.pageOptions = options.pageOptions ?? {
-      onlyMainContent: false,
-      includeHtml: true,
-      replaceAllPathsWithAbsolutePaths: false,
-      parsePDF: true,
-      removeTags: [],
+    this.pageOptions = {
+      onlyMainContent: options.pageOptions?.onlyMainContent ?? false,
+      includeHtml: options.pageOptions?.includeHtml ?? false,
+      replaceAllPathsWithAbsolutePaths: options.pageOptions?.replaceAllPathsWithAbsolutePaths ?? false,
+      parsePDF: options.pageOptions?.parsePDF ?? true,
+      removeTags: options.pageOptions?.removeTags ?? [],
+      includeMarkdown: options.pageOptions?.includeMarkdown ?? true,
+      includeRawHtml: options.pageOptions?.includeRawHtml ?? false,
+      waitFor: options.pageOptions?.waitFor ?? undefined,
+      headers: options.pageOptions?.headers ?? undefined,
+      includeLinks: options.pageOptions?.includeLinks ?? true,
+      fullPageScreenshot: options.pageOptions?.fullPageScreenshot ?? false,
+      screenshot: options.pageOptions?.screenshot ?? false,
     };
     this.extractorOptions = options.extractorOptions ?? { mode: "markdown" };
     this.replaceAllPathsWithAbsolutePaths =

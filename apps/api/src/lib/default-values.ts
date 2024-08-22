@@ -4,7 +4,7 @@ export const defaultTimeout = 45000; // 45 seconds
 
 export const defaultPageOptions = {
   onlyMainContent: false,
-  includeHtml: true,
+  includeHtml: false,
   waitFor: 0,
   screenshot: false,
   fullPageScreenshot: false,
@@ -17,7 +17,7 @@ export const defaultCrawlerOptions = {
 
 export const defaultCrawlPageOptions = {
   onlyMainContent: false,
-  includeHtml: true,
+  includeHtml: false,
   removeTags: [],
   parsePDF: true
 }

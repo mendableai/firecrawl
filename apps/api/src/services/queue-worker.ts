@@ -130,10 +130,12 @@ async function processJob(job: Job, token: string) {
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
-    const rawHtml = docs[0].rawHtml;
+    const rawHtml = docs[0] ? docs[0].rawHtml : "";
 
     if (job.data.crawl_id && (!job.data.pageOptions || !job.data.pageOptions.includeRawHtml)) {
-      delete docs[0].rawHtml;
+      if (docs[0] && docs[0].rawHtml) {
+        delete docs[0].rawHtml;
+      }
     }
 
     const data = {

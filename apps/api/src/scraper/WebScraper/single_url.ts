@@ -122,23 +122,36 @@ function getScrapingFallbackOrder(
 export async function scrapSingleUrl(
   jobId: string,
   urlToScrap: string,
-  pageOptions: PageOptions = {
-    includeMarkdown: true,
-    onlyMainContent: true,
-    includeHtml: true,
-    includeRawHtml: false,
-    waitFor: 0,
-    screenshot: false,
-    fullPageScreenshot: false,
-    headers: undefined,
-    includeLinks: true
-  },
-  extractorOptions: ExtractorOptions = {
-    mode: "llm-extraction-from-markdown",
-  },
-  existingHtml: string = "",
+  pageOptions: PageOptions,
+  extractorOptions?: ExtractorOptions,
+  existingHtml?: string,
   priority?: number,
 ): Promise<Document> {
+  pageOptions = {
+    includeMarkdown: pageOptions.includeMarkdown ?? true,
+    onlyMainContent: pageOptions.onlyMainContent ?? false,
+    includeHtml: pageOptions.includeHtml ?? false,
+    includeRawHtml: pageOptions.includeRawHtml ?? false,
+    waitFor: pageOptions.waitFor ?? undefined,
+    screenshot: pageOptions.screenshot ?? false,
+    fullPageScreenshot: pageOptions.fullPageScreenshot ?? false,
+    headers: pageOptions.headers ?? undefined,
+    includeLinks: pageOptions.includeLinks ?? true,
+    replaceAllPathsWithAbsolutePaths: pageOptions.replaceAllPathsWithAbsolutePaths ?? false,
+    parsePDF: pageOptions.parsePDF ?? true,
+    removeTags: pageOptions.removeTags ?? [],
+  }
+
+  if (extractorOptions) {
+    extractorOptions = {
+      mode: extractorOptions.mode ?? "llm-extraction-from-markdown",
+    }
+  }
+
+  if (!existingHtml) {
+    existingHtml = "";
+  }
+
   urlToScrap = urlToScrap.trim();
 
   const attemptScraping = async (

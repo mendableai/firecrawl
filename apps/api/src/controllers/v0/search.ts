@@ -132,11 +132,11 @@ export async function searchController(req: Request, res: Response) {
     }
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? {
-      includeHtml: true,
-      onlyMainContent: true,
-      fetchPageContent: true,
-      removeTags: [],
-      fallback: false,
+      includeHtml: req.body.pageOptions?.includeHtml ?? false,
+      onlyMainContent: req.body.pageOptions?.onlyMainContent ?? false,
+      fetchPageContent: req.body.pageOptions?.fetchPageContent ?? true,
+      removeTags: req.body.pageOptions?.removeTags ?? [],
+      fallback: req.body.pageOptions?.fallback ?? false,
     };
     const origin = req.body.origin ?? "api";
 
