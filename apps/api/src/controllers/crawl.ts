@@ -163,7 +163,7 @@ export async function crawlController(req: Request, res: Response) {
       ? null
       : await crawler.tryGetSitemap();
 
-    if (sitemap !== null) {
+    if (sitemap !== null && sitemap.length > 0) {
       const jobs = sitemap.map((x) => {
         const url = x.url;
         const uuid = uuidv4();
