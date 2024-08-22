@@ -218,13 +218,14 @@ async function processJob(job: Job, token: string) {
           for (const link of links) {
             if (await lockURL(job.data.crawl_id, sc, link)) {
               
+              // This seems to work really welel
               const jobPriority = await getJobPriority({plan:sc.plan as PlanType, team_id: sc.team_id, basePriority: job.data.crawl_id ? 20 : 10})
               const jobId = uuidv4();
 
-              console.log("plan: ",  sc.plan);
-              console.log("team_id: ", sc.team_id)
-              console.log("base priority: ", job.data.crawl_id ? 20 : 10)
-              console.log("job priority: " , jobPriority, "\n\n\n")
+              // console.log("plan: ",  sc.plan);
+              // console.log("team_id: ", sc.team_id)
+              // console.log("base priority: ", job.data.crawl_id ? 20 : 10)
+              // console.log("job priority: " , jobPriority, "\n\n\n")
 
               const newJob = await addScrapeJob({
                 url: link,

@@ -144,6 +144,15 @@ export async function crawlController(req: Request, res: Response) {
       : await crawler.tryGetSitemap();
 
     if (sitemap !== null) {
+      
+      let jobPriority = 20;
+      // If it is over 1000, we need to get the job priority,
+      // otherwise we can use the default priority of 20
+      if(sitemap.length > 1000){
+        // set base to 21
+        jobPriority = await getJobPriority({plan, team_id, basePriority: 21})
+      }
+
       const jobs = sitemap.map((x) => {
         const url = x.url;
         const uuid = uuidv4();
@@ -161,7 +170,7 @@ export async function crawlController(req: Request, res: Response) {
           },
           opts: {
             jobId: uuid,
-            priority: 20,
+            priority: jobPriority,
           },
         };
       });
