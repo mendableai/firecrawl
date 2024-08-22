@@ -119,6 +119,7 @@ if (cluster.isMaster) {
         waitingJobs,
       });
     } catch (error) {
+      Sentry.captureException(error);
       Logger.error(error);
       return res.status(500).json({ error: error.message });
     }
@@ -170,6 +171,7 @@ if (cluster.isMaster) {
             }, timeout);
           }
         } catch (error) {
+          Sentry.captureException(error);
           Logger.debug(error);
         }
       };
