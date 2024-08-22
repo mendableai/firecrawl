@@ -108,7 +108,7 @@ export async function searchHelper(
 
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(
-    (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
+    (doc: { content?: string }) => doc && doc.content && doc.content.trim().length > 0
   );
 
   if (filteredDocs.length === 0) {
