@@ -53,8 +53,8 @@ export class WebCrawler {
     this.jobId = jobId;
     this.initialUrl = initialUrl;
     this.baseUrl = new URL(initialUrl).origin;
-    this.includes = includes ?? [];
-    this.excludes = excludes ?? [];
+    this.includes = Array.isArray(includes) ? includes : [];
+    this.excludes = Array.isArray(excludes) ? excludes : [];
     this.limit = limit;
     this.robotsTxtUrl = `${this.baseUrl}/robots.txt`;
     this.robots = robotsParser(this.robotsTxtUrl, "");
