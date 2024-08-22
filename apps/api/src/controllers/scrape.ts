@@ -49,18 +49,28 @@ export async function scrapeHelper(
   }, {}, jobId);
 
   let doc;
-  try {
-    doc = (await job.waitUntilFinished(scrapeQueueEvents, timeout))[0]; //60 seconds timeout
-  } catch (e) {
-    if (e instanceof Error && e.message.startsWith("Job wait")) {
-      return {
-        success: false,
-        error: "Request timed out",
-        returnCode: 408,
+
+  const err = await Sentry.startSpanManual({ name: "Wait for job to finish", op: "bullmq.wait", attributes: { job: jobId } }, async (span) => {
+    try {
+      doc = (await job.waitUntilFinished(scrapeQueueEvents, timeout))[0]
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("Job wait")) {
+        span.setAttribute("timedOut", true).end();
+        return {
+          success: false,
+          error: "Request timed out",
+          returnCode: 408,
+        }
+      } else {
+        throw e;
       }
-    } else {
-      throw e;
     }
+    span.setAttribute("result", JSON.stringify(doc)).end();
+    return null;
+  });
+
+  if (err !== null) {
+    return err;
   }
 
   await job.remove();
