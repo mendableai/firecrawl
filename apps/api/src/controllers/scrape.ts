@@ -63,7 +63,6 @@ export async function scrapeHelper(
             resolve((await getScrapeQueue().getJob(job.id)).returnvalue);
           }
         }, 1000);
-        job.waitUntilFinished(scrapeQueueEvents, timeout)
       }))[0]
     } catch (e) {
       if (e instanceof Error && e.message.startsWith("Job wait")) {
