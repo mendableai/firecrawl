@@ -72,6 +72,9 @@ export async function crawlController(req: Request, res: Response) {
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
     }
+    if (typeof url !== "string") {
+      return res.status(400).json({ error: "URL must be a string" });
+    }
     try {
       url = checkAndUpdateURL(url).url;
     } catch (e) {
@@ -86,8 +89,6 @@ export async function crawlController(req: Request, res: Response) {
           "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
       });
     }
-
-    const mode = req.body.mode ?? "crawl";
 
     // if (mode === "single_urls" && !url.includes(",")) { // NOTE: do we need this?
     //   try {
