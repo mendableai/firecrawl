@@ -37,4 +37,4 @@ export function getScrapeQueue() {
 
 import { QueueEvents } from 'bullmq';
 
-export const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection });
+export const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection.duplicate() });
