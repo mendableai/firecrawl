@@ -10,8 +10,8 @@ async function addScrapeJobRaw(
   jobId: string,
 ): Promise<Job> {
   return await getScrapeQueue().add(jobId, webScraperOptions, {
-    priority: webScraperOptions.crawl_id ? 20 : 10,
     ...options,
+    priority: webScraperOptions.crawl_id ? 20 : 10,
     jobId,
   });
 }

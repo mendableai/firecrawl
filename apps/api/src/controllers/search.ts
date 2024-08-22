@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../lib/logger";
 import { getScrapeQueue, scrapeQueueEvents } from "../services/queue-service";
 import * as Sentry from "@sentry/node";
+import { addScrapeJob } from "../services/queue-jobs";
 
 export async function searchHelper(
   jobId: string,
@@ -95,8 +96,17 @@ export async function searchHelper(
       }
     };
   })
-  
-  const jobs = await getScrapeQueue().addBulk(jobDatas);
+
+  let jobs = [];
+  if (Sentry.isInitialized()) {
+    for (const job of jobDatas) {
+      // add with sentry instrumentation
+      jobs.push(await addScrapeJob(job.data as any, {}, job.opts.jobId));
+    }
+  } else {
+    jobs = await getScrapeQueue().addBulk(jobDatas);
+    await getScrapeQueue().addBulk(jobs);
+  }
 
   const docs = (await Promise.all(jobs.map(x => x.waitUntilFinished(scrapeQueueEvents, 60000)))).map(x => x[0]);
   
