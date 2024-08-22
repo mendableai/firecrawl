@@ -4,6 +4,7 @@ import { RateLimiterMode } from "../../src/types";
 import { supabase_service } from "../../src/services/supabase";
 import { Logger } from "../../src/lib/logger";
 import { getCrawl, saveCrawl } from "../../src/lib/crawl-redis";
+import * as Sentry from "@sentry/node";
 
 export async function crawlCancelController(req: Request, res: Response) {
   try {
@@ -50,6 +51,7 @@ export async function crawlCancelController(req: Request, res: Response) {
       status: "cancelled"
     });
   } catch (error) {
+    Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });
   }

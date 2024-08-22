@@ -11,6 +11,7 @@ import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../lib/logger";
 import { getScrapeQueue, scrapeQueueEvents } from "../services/queue-service";
 import { getJobPriority } from "../lib/job-priority";
+import * as Sentry from "@sentry/node";
 
 export async function searchHelper(
   jobId: string,
@@ -158,6 +159,7 @@ export async function searchController(req: Request, res: Response) {
         return res.status(402).json({ error: "Insufficient credits" });
       }
     } catch (error) {
+      Sentry.captureException(error);
       Logger.error(error);
       return res.status(500).json({ error: "Internal server error" });
     }
@@ -189,6 +191,7 @@ export async function searchController(req: Request, res: Response) {
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {
+    Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });
   }

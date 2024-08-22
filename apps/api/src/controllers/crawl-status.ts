@@ -5,6 +5,7 @@ import { getScrapeQueue } from "../../src/services/queue-service";
 import { Logger } from "../../src/lib/logger";
 import { getCrawl, getCrawlJobs } from "../../src/lib/crawl-redis";
 import { supabaseGetJobsById } from "../../src/lib/supabase-jobs";
+import * as Sentry from "@sentry/node";
 
 export async function getJobs(ids: string[]) {
   const jobs = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x);
@@ -63,6 +64,7 @@ export async function crawlStatusController(req: Request, res: Response) {
       partial_data: jobStatus === "completed" ? [] : data.filter(x => x !== null),
     });
   } catch (error) {
+    Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });
   }
