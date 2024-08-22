@@ -108,7 +108,12 @@ export class WebCrawler {
 
         // Normalize the initial URL and the link to account for www and non-www versions
         const normalizedInitialUrl = new URL(this.initialUrl);
-        const normalizedLink = new URL(link);
+        let normalizedLink;
+        try {
+          normalizedLink = new URL(link);
+        } catch (_) {
+          return false;
+        }
         const initialHostname = normalizedInitialUrl.hostname.replace(/^www\./, '');
         const linkHostname = normalizedLink.hostname.replace(/^www\./, '');
 
