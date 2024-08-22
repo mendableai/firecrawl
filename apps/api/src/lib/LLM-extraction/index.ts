@@ -46,7 +46,7 @@ export async function generateCompletions(
           return completionResult;
         } catch (error) {
           Logger.error(`Error generating completions: ${error}`);
-          throw new Error(`Error generating completions: ${error.message}`);
+          throw error;
         }
         default:
           throw new Error("Invalid client");
