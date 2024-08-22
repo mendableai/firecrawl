@@ -1,0 +1,27 @@
+app = 'firecrawl-dragonfly'
+primary_region = 'iad'
+
+[experimental]
+  cmd = ['dragonfly','--logtostderr', '--cluster_mode=emulated', '--lock_on_hashtags', "--bind","::"]
+[build]
+  image = 'ghcr.io/dragonflydb/dragonfly'
+
+[[mounts]]
+  source = 'firecrawl_dragonfly'
+  destination = '/data'
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 6379
+
+  [[services.tcp_checks]]
+    interval = '10s'
+    timeout = '2s'
+
+[[vm]]
+  size = 'performance-4x'
+  memory = '32gb'
+
+[[metrics]]
+  port = 9091
+  path = '/metrics'
