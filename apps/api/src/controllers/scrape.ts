@@ -50,12 +50,12 @@ export async function scrapeHelper(
 
   let doc;
 
-  const err = await Sentry.startSpanManual({ name: "Wait for job to finish", op: "bullmq.wait", attributes: { job: jobId } }, async (span) => {
+  const err = await Sentry.startSpan({ name: "Wait for job to finish", op: "bullmq.wait", attributes: { job: jobId } }, async (span) => {
     try {
       doc = (await job.waitUntilFinished(scrapeQueueEvents, timeout))[0]
     } catch (e) {
       if (e instanceof Error && e.message.startsWith("Job wait")) {
-        span.setAttribute("timedOut", true).end();
+        span.setAttribute("timedOut", true);
         return {
           success: false,
           error: "Request timed out",
@@ -65,7 +65,7 @@ export async function scrapeHelper(
         throw e;
       }
     }
-    span.setAttribute("result", JSON.stringify(doc)).end();
+    span.setAttribute("result", JSON.stringify(doc));
     return null;
   });
 

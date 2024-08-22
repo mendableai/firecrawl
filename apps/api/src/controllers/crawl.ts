@@ -194,7 +194,14 @@ export async function crawlController(req: Request, res: Response) {
         id,
         jobs.map((x) => x.opts.jobId)
       );
-      await getScrapeQueue().addBulk(jobs);
+      if (Sentry.isInitialized()) {
+        for (const job of jobs) {
+          // add with sentry instrumentation
+          await addScrapeJob(job.data as any, {}, job.opts.jobId);
+        }
+      } else {
+        await getScrapeQueue().addBulk(jobs);
+      }
     } else {
       await lockURL(id, sc, url);
       const job = await addScrapeJob(

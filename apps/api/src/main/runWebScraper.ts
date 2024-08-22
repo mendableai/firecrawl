@@ -12,7 +12,6 @@ import { Document } from "../lib/entities";
 import { supabase_service } from "../services/supabase";
 import { Logger } from "../lib/logger";
 import { ScrapeEvents } from "../lib/scrape-events";
-import { getScrapeQueue } from "../services/queue-service";
 
 export async function startWebScraperPipeline({
   job,

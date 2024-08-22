@@ -10,8 +10,9 @@ if (process.env.SENTRY_DSN) {
     integrations: [
       nodeProfilingIntegration(),
     ],
-    tracesSampleRate: 0.045,
+    tracesSampleRate: process.env.SENTRY_ENVIRONMENT === "dev" ? 1.0 : 0.045,
     profilesSampleRate: 1.0,
     serverName: process.env.FLY_MACHINE_ID,
+    environment: process.env.SENTRY_ENVIRONMENT ?? "production",
   });
 }
