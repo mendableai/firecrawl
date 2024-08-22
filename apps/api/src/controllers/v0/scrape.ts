@@ -74,7 +74,15 @@ export async function scrapeHelper(
 
   // Remove rawHtml if pageOptions.rawHtml is false and extractorOptions.mode is llm-extraction-from-raw-html
   if (!pageOptions.includeRawHtml && extractorOptions.mode == "llm-extraction-from-raw-html") {
-    delete doc.rawHtml;
+    if (doc.rawHtml) {
+      delete doc.rawHtml;
+    }
+  }
+
+  if (!pageOptions.includeHtml) {
+    if (doc.html) {
+      delete doc.html;
+    }
   }
 
   return {
