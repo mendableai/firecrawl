@@ -186,6 +186,10 @@ export async function searchController(req: Request, res: Response) {
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Job wait")) {
+      return res.status(408).json({ error: "Request timed out" });
+    }
+
     Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });
