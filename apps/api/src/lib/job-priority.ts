@@ -30,9 +30,11 @@ export async function deleteJobPriority(team_id, job_id) {
 export async function getJobPriority({
   plan,
   team_id,
+  basePriority = 10
 }: {
   plan: PlanType;
   team_id: string;
+  basePriority: number;
 }): Promise<number> {
   const setKey = SET_KEY_PREFIX + team_id;
 
@@ -40,11 +42,18 @@ export async function getJobPriority({
   const setLength = await redisConnection.scard(setKey);
 
   // Determine the priority based on the plan and set length
-  let basePriority = 10;
   let planModifier = 1;
   let bucketLimit = 0;
 
   switch (plan) {
+    case "free":
+      bucketLimit = 25;
+      planModifier = 1;
+      break;
+    case "hobby":
+      bucketLimit = 50;
+      planModifier = 0.5;
+      break;
     case "standard":
     case "standardnew":
       bucketLimit = 100;
@@ -55,11 +64,8 @@ export async function getJobPriority({
       bucketLimit = 200;
       planModifier = 0.2;
       break;
-    case "hobby":
-      bucketLimit = 50;
-      planModifier = 0.5;
-      break;
-    case "free":
+    
+    
     default:
       bucketLimit = 25;
       planModifier = 1;

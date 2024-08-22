@@ -38,7 +38,7 @@ export async function scrapeHelper(
     return { success: false, error: "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.", returnCode: 403 };
   }
 
-  const jobPriority = await getJobPriority({plan, team_id})
+  const jobPriority = await getJobPriority({plan, team_id, basePriority: 10})
 
   const job = await addScrapeJob({
     url,

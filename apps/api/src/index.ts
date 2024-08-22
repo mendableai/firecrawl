@@ -213,7 +213,7 @@ async function sendScrapeRequests() {
   await Promise.all(requests);
 }
 
-sendScrapeRequests();
+// sendScrapeRequests();
 // const sq = getScrapeQueue();
 
 // sq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));

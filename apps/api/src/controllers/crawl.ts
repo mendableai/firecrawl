@@ -25,10 +25,11 @@ import {
 } from "../../src/lib/crawl-redis";
 import { getScrapeQueue } from "../../src/services/queue-service";
 import { checkAndUpdateURL } from "../../src/lib/validateUrl";
+import { getJobPriority } from "../../src/lib/job-priority";
 
 export async function crawlController(req: Request, res: Response) {
   try {
-    const { success, team_id, error, status } = await authenticateUser(
+    const { success, team_id, error, status, plan } = await authenticateUser(
       req,
       res,
       RateLimiterMode.Crawl
@@ -126,6 +127,7 @@ export async function crawlController(req: Request, res: Response) {
       crawlerOptions,
       pageOptions,
       team_id,
+      plan,
       createdAt: Date.now(),
     };
 
@@ -175,6 +177,10 @@ export async function crawlController(req: Request, res: Response) {
       await getScrapeQueue().addBulk(jobs);
     } else {
       await lockURL(id, sc, url);
+
+      // Not needed, first one should be 15.
+      // const jobPriority = await getJobPriority({plan, team_id, basePriority: 10})
+
       const job = await addScrapeJob(
         {
           url,
