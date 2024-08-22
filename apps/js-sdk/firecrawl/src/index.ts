@@ -144,10 +144,9 @@ export interface ScrapeParamsV0 {
  * Response interface for scraping operations.
  * Defines the structure of the response received after a scraping operation.
  */
-export interface ScrapeResponse {
+export interface ScrapeResponse extends FirecrawlDocument {
   success: boolean;
   warning?: string;
-  data?: FirecrawlDocument;
   error?: string;
 }
 
@@ -375,7 +374,12 @@ export default class FirecrawlApp {
           if (this.version == 'v0') {
             return responseData as ScrapeResponseV0;
           } else {
-            return responseData as ScrapeResponse;
+            return {
+              success: true,
+              warning: responseData.warning,
+              error: responseData.error,
+              ...responseData.data
+            } as ScrapeResponse;
           }
         } else {
           throw new Error(`Failed to scrape URL. Error: ${responseData.error}`);

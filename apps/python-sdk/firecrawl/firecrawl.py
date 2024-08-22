@@ -244,8 +244,9 @@ class FirecrawlApp:
         )
         if response.status_code == 200:
             response = response.json()
-            if response['success'] and 'data' in response:
-                return response['data']
+            print(response)
+            if response['success'] and 'links' in response:
+                return response['links']
             else:
                 raise Exception(f'Failed to map URL. Error: {response["error"]}')
         else:
@@ -387,18 +388,19 @@ class FirecrawlApp:
         Raises:
             Exception: An exception with a message containing the status code and error details from the response.
         """
-        error_message = response.json().get('error', 'No additional error details provided.')
+        error_message = response.json().get('error', 'No error message provided.')
+        error_details = response.json().get('details', 'No additional error details provided.')
 
         if response.status_code == 402:
-            message = f"Payment Required: Failed to {action}. {error_message}"
+            message = f"Payment Required: Failed to {action}. {error_message} - {error_details}"
         elif response.status_code == 408:
-            message = f"Request Timeout: Failed to {action} as the request timed out. {error_message}"
+            message = f"Request Timeout: Failed to {action} as the request timed out. {error_message} - {error_details}"
         elif response.status_code == 409:
-            message = f"Conflict: Failed to {action} due to a conflict. {error_message}"
+            message = f"Conflict: Failed to {action} due to a conflict. {error_message} - {error_details}"
         elif response.status_code == 500:
-            message = f"Internal Server Error: Failed to {action}. {error_message}"
+            message = f"Internal Server Error: Failed to {action}. {error_message} - {error_details}"
         else:
-            message = f"Unexpected error during {action}: Status code {response.status_code}. {error_message}"
+            message = f"Unexpected error during {action}: Status code {response.status_code}. {error_message} - {error_details}"
 
         # Raise an HTTPError with the custom message and attach the response
         raise requests.exceptions.HTTPError(message, response=response)

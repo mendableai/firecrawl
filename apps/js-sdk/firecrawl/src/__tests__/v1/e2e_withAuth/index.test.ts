@@ -30,24 +30,24 @@ describe('FirecrawlApp E2E Tests', () => {
     const app = new FirecrawlApp({ apiKey: "this_is_just_a_preview_token", apiUrl: API_URL });
     const response = await app.scrapeUrl('https://roastmywebsite.ai') as ScrapeResponse;
     expect(response).not.toBeNull();
-    expect(response.data?.markdown).toContain("_Roast_");
+    expect(response?.markdown).toContain("_Roast_");
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should return successful response for valid scrape', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.scrapeUrl('https://roastmywebsite.ai') as ScrapeResponse;
     expect(response).not.toBeNull();
-    expect(response.data).not.toHaveProperty('content'); // v0
-    expect(response.data).not.toHaveProperty('html');
-    expect(response.data).not.toHaveProperty('rawHtml');
-    expect(response.data).not.toHaveProperty('screenshot');
-    expect(response.data).not.toHaveProperty('links');
+    expect(response).not.toHaveProperty('content'); // v0
+    expect(response).not.toHaveProperty('html');
+    expect(response).not.toHaveProperty('rawHtml');
+    expect(response).not.toHaveProperty('screenshot');
+    expect(response).not.toHaveProperty('links');
 
-    expect(response.data).toHaveProperty('markdown');
-    expect(response.data).toHaveProperty('metadata');
+    expect(response).toHaveProperty('markdown');
+    expect(response).toHaveProperty('metadata');
   }, 30000); // 30 seconds timeout
 
-  test.concurrent('should return successful response with valid API key and include HTML', async () => {
+  test.concurrent('should return successful response with valid API key and options', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.scrapeUrl(
       'https://roastmywebsite.ai', {
@@ -60,58 +60,58 @@ describe('FirecrawlApp E2E Tests', () => {
         waitFor: 1000
     }) as ScrapeResponse;
     expect(response).not.toBeNull();
-    expect(response.data).not.toHaveProperty('content'); // v0
-    expect(response.data?.markdown).toContain("_Roast_");
-    expect(response.data?.html).toContain("<h1");
-    expect(response.data?.rawHtml).toContain("<h1");
-    expect(response.data?.screenshot).not.toBeUndefined();
-    expect(response.data?.screenshot).not.toBeNull();
-    expect(response.data?.screenshot).toContain("https://");
-    expect(response.data?.links).not.toBeNull();
-    expect(response.data?.links?.length).toBeGreaterThan(0);
-    expect(response.data?.links?.[0]).toContain("https://");
-    expect(response.data?.metadata).not.toBeNull();
-    expect(response.data?.metadata).toHaveProperty("title");
-    expect(response.data?.metadata).toHaveProperty("description");
-    expect(response.data?.metadata).toHaveProperty("keywords");
-    expect(response.data?.metadata).toHaveProperty("robots");
-    expect(response.data?.metadata).toHaveProperty("ogTitle");
-    expect(response.data?.metadata).toHaveProperty("ogDescription");
-    expect(response.data?.metadata).toHaveProperty("ogUrl");
-    expect(response.data?.metadata).toHaveProperty("ogImage");
-    expect(response.data?.metadata).toHaveProperty("ogLocaleAlternate");
-    expect(response.data?.metadata).toHaveProperty("ogSiteName");
-    expect(response.data?.metadata).toHaveProperty("sourceURL");
-    expect(response.data?.metadata).not.toHaveProperty("pageStatusCode");
-    expect(response.data?.metadata).toHaveProperty("statusCode");
-    expect(response.data?.metadata).not.toHaveProperty("pageError");
-    expect(response.data?.metadata.error).toBeUndefined();
-    expect(response.data?.metadata.title).toBe("Roast My Website");
-    expect(response.data?.metadata.description).toBe("Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️");
-    expect(response.data?.metadata.keywords).toBe("Roast My Website,Roast,Website,GitHub,Firecrawl");
-    expect(response.data?.metadata.robots).toBe("follow, index");
-    expect(response.data?.metadata.ogTitle).toBe("Roast My Website");
-    expect(response.data?.metadata.ogDescription).toBe("Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️");
-    expect(response.data?.metadata.ogUrl).toBe("https://www.roastmywebsite.ai");
-    expect(response.data?.metadata.ogImage).toBe("https://www.roastmywebsite.ai/og.png");
-    expect(response.data?.metadata.ogLocaleAlternate).toStrictEqual([]);
-    expect(response.data?.metadata.ogSiteName).toBe("Roast My Website");
-    expect(response.data?.metadata.sourceURL).toBe("https://roastmywebsite.ai");
-    expect(response.data?.metadata.statusCode).toBe(200);
+    expect(response).not.toHaveProperty('content'); // v0
+    expect(response.markdown).toContain("_Roast_");
+    expect(response.html).toContain("<h1");
+    expect(response.rawHtml).toContain("<h1");
+    expect(response.screenshot).not.toBeUndefined();
+    expect(response.screenshot).not.toBeNull();
+    expect(response.screenshot).toContain("https://");
+    expect(response.links).not.toBeNull();
+    expect(response.links?.length).toBeGreaterThan(0);
+    expect(response.links?.[0]).toContain("https://");
+    expect(response.metadata).not.toBeNull();
+    expect(response.metadata).toHaveProperty("title");
+    expect(response.metadata).toHaveProperty("description");
+    expect(response.metadata).toHaveProperty("keywords");
+    expect(response.metadata).toHaveProperty("robots");
+    expect(response.metadata).toHaveProperty("ogTitle");
+    expect(response.metadata).toHaveProperty("ogDescription");
+    expect(response.metadata).toHaveProperty("ogUrl");
+    expect(response.metadata).toHaveProperty("ogImage");
+    expect(response.metadata).toHaveProperty("ogLocaleAlternate");
+    expect(response.metadata).toHaveProperty("ogSiteName");
+    expect(response.metadata).toHaveProperty("sourceURL");
+    expect(response.metadata).not.toHaveProperty("pageStatusCode");
+    expect(response.metadata).toHaveProperty("statusCode");
+    expect(response.metadata).not.toHaveProperty("pageError");
+    expect(response.metadata.error).toBeUndefined();
+    expect(response.metadata.title).toBe("Roast My Website");
+    expect(response.metadata.description).toBe("Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️");
+    expect(response.metadata.keywords).toBe("Roast My Website,Roast,Website,GitHub,Firecrawl");
+    expect(response.metadata.robots).toBe("follow, index");
+    expect(response.metadata.ogTitle).toBe("Roast My Website");
+    expect(response.metadata.ogDescription).toBe("Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️");
+    expect(response.metadata.ogUrl).toBe("https://www.roastmywebsite.ai");
+    expect(response.metadata.ogImage).toBe("https://www.roastmywebsite.ai/og.png");
+    expect(response.metadata.ogLocaleAlternate).toStrictEqual([]);
+    expect(response.metadata.ogSiteName).toBe("Roast My Website");
+    expect(response.metadata.sourceURL).toBe("https://roastmywebsite.ai");
+    expect(response.metadata.statusCode).toBe(200);
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should return successful response for valid scrape with PDF file', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.scrapeUrl('https://arxiv.org/pdf/astro-ph/9301001.pdf') as ScrapeResponse;
     expect(response).not.toBeNull();
-    expect(response.data?.markdown).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
+    expect(response?.markdown).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should return successful response for valid scrape with PDF file without explicit extension', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.scrapeUrl('https://arxiv.org/pdf/astro-ph/9301001') as ScrapeResponse;
     expect(response).not.toBeNull();
-    expect(response.data?.markdown).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
+    expect(response?.markdown).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should throw error for invalid API key on crawl', async () => {
@@ -304,4 +304,9 @@ describe('FirecrawlApp E2E Tests', () => {
     const filteredLinks = response.links?.filter((link: string) => link.includes("roastmywebsite.ai"));
     expect(filteredLinks?.length).toBeGreaterThan(0);
   }, 30000); // 30 seconds timeout
+
+  test('should throw NotImplementedError for search on v1', async () => {
+    const app = new FirecrawlApp({ apiUrl: API_URL, apiKey: TEST_API_KEY });
+    await expect(app.search("test query")).rejects.toThrow("Search is not supported in v1");
+  });
 });

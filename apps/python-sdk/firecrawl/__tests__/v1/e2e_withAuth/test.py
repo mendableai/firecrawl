@@ -4,6 +4,7 @@ import time
 import os
 from uuid import uuid4
 from dotenv import load_dotenv
+from datetime import datetime
 
 load_dotenv()
 
@@ -27,42 +28,92 @@ def test_scrape_url_invalid_api_key():
     invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key")
     with pytest.raises(Exception) as excinfo:
         invalid_app.scrape_url('https://firecrawl.dev')
-    assert "Unexpected error during scrape URL: Status code 401. Unauthorized: Invalid token" in str(excinfo.value)
+    assert "Unauthorized: Invalid token" in str(excinfo.value)
 
 def test_blocklisted_url():
     blocklisted_url = "https://facebook.com/fake-test"
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
     with pytest.raises(Exception) as excinfo:
         app.scrape_url(blocklisted_url)
-    assert "Unexpected error during scrape URL: Status code 403. Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it." in str(excinfo.value)
+    assert "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." in str(excinfo.value)
 
 def test_successful_response_with_valid_preview_token():
     app = FirecrawlApp(api_url=API_URL, api_key="this_is_just_a_preview_token")
     response = app.scrape_url('https://roastmywebsite.ai')
     assert response is not None
-    assert 'content' in response
-    assert "_Roast_" in response['content']
+    assert "_Roast_" in response['markdown']
+    assert "content" not in response
+    assert "html" not in response
+    assert "metadata" in response
+    assert "links" not in response
+    assert "rawHtml" not in response
 
-def test_scrape_url_e2e():
+def test_successful_response_for_valid_scrape():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
     response = app.scrape_url('https://roastmywebsite.ai')
     assert response is not None
-    assert 'content' not in response
     assert 'markdown' in response
-    assert 'metadata' in response
-    assert 'html' not in response
     assert "_Roast_" in response['markdown']
+    assert 'metadata' in response
+    assert 'content' not in response
+    assert 'html' not in response
+    assert 'rawHtml' not in response
+    assert 'screenshot' not in response
+    assert 'links' not in response
 
-def test_successful_response_with_valid_api_key_and_include_html():
+def test_successful_response_with_valid_api_key_and_options():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
-    response = app.scrape_url('https://roastmywebsite.ai', { 'formats': [ 'markdown', 'html' ]})
+    params = {
+        'formats': ['markdown', 'html', 'rawHtml', 'screenshot', 'links'],
+        'headers': {'x-key': 'test'},
+        'includeTags': ['h1'],
+        'excludeTags': ['h2'],
+        'onlyMainContent': True,
+        'timeout': 30000,
+        'waitFor': 1000
+    }
+    response = app.scrape_url('https://roastmywebsite.ai', params)
     assert response is not None
     assert 'content' not in response
     assert 'markdown' in response
     assert 'html' in response
-    assert 'metadata' in response
+    assert 'rawHtml' in response
+    assert 'screenshot' in response
+    assert 'links' in response
     assert "_Roast_" in response['markdown']
     assert "<h1" in response['html']
+    assert "<h1" in response['rawHtml']
+    assert "https://" in response['screenshot']
+    assert len(response['links']) > 0
+    assert "https://" in response['links'][0]
+    assert 'metadata' in response
+    assert 'title' in response['metadata']
+    assert 'description' in response['metadata']
+    assert 'keywords' in response['metadata']
+    assert 'robots' in response['metadata']
+    assert 'ogTitle' in response['metadata']
+    assert 'ogDescription' in response['metadata']
+    assert 'ogUrl' in response['metadata']
+    assert 'ogImage' in response['metadata']
+    assert 'ogLocaleAlternate' in response['metadata']
+    assert 'ogSiteName' in response['metadata']
+    assert 'sourceURL' in response['metadata']
+    assert 'statusCode' in response['metadata']
+    assert 'pageStatusCode' not in response['metadata']
+    assert 'pageError' not in response['metadata']
+    assert 'error' not in response['metadata']
+    assert response['metadata']['title'] == "Roast My Website"
+    assert response['metadata']['description'] == "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️"
+    assert response['metadata']['keywords'] == "Roast My Website,Roast,Website,GitHub,Firecrawl"
+    assert response['metadata']['robots'] == "follow, index"
+    assert response['metadata']['ogTitle'] == "Roast My Website"
+    assert response['metadata']['ogDescription'] == "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️"
+    assert response['metadata']['ogUrl'] == "https://www.roastmywebsite.ai"
+    assert response['metadata']['ogImage'] == "https://www.roastmywebsite.ai/og.png"
+    assert response['metadata']['ogLocaleAlternate'] == []
+    assert response['metadata']['ogSiteName'] == "Roast My Website"
+    assert response['metadata']['sourceURL'] == "https://roastmywebsite.ai"
+    assert response['metadata']['statusCode'] == 200
 
 def test_successful_response_for_valid_scrape_with_pdf_file():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
@@ -70,65 +121,202 @@ def test_successful_response_for_valid_scrape_with_pdf_file():
     assert response is not None
     assert 'content' not in response
     assert 'metadata' in response
-    assert 'We present spectrophotometric observations of the Broad Line Radio Galaxy' in response['content']
+    assert 'We present spectrophotometric observations of the Broad Line Radio Galaxy' in response['markdown']
 
 def test_successful_response_for_valid_scrape_with_pdf_file_without_explicit_extension():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
     response = app.scrape_url('https://arxiv.org/pdf/astro-ph/9301001')
-    time.sleep(6)  # wait for 6 seconds
+    time.sleep(1)  # wait for 1 second
     assert response is not None
-    assert 'content' not in response
-    assert 'metadata' in response
-    assert 'We present spectrophotometric observations of the Broad Line Radio Galaxy' in response['content']
+    assert 'We present spectrophotometric observations of the Broad Line Radio Galaxy' in response['markdown']
 
 def test_crawl_url_invalid_api_key():
     invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key")
     with pytest.raises(Exception) as excinfo:
         invalid_app.crawl_url('https://firecrawl.dev')
-    assert "Unexpected error during start crawl job: Status code 401. Unauthorized: Invalid token" in str(excinfo.value)
+    assert "Unauthorized: Invalid token" in str(excinfo.value)
 
 def test_should_return_error_for_blocklisted_url():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
     blocklisted_url = "https://twitter.com/fake-test"
     with pytest.raises(Exception) as excinfo:
         app.crawl_url(blocklisted_url)
-    assert "Unexpected error during start crawl job: Status code 403. Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it." in str(excinfo.value)
+    assert "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." in str(excinfo.value)
 
 def test_crawl_url_wait_for_completion_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
-    response = app.crawl_url('https://roastmywebsite.ai', {'crawlerOptions': {'excludes': ['blog/*']}}, True)
+    response = app.crawl_url('https://roastmywebsite.ai', {'excludePaths': ['blog/*']}, True, 30)
     assert response is not None
-    assert len(response) > 0
-    assert 'content' not in response[0]
-    assert 'markdown' in response[0]
-    assert "_Roast_" in response[0]['markdown']
+    assert 'totalCount' in response
+    assert response['totalCount'] > 0
+    assert 'creditsUsed' in response
+    assert response['creditsUsed'] > 0
+    assert 'expiresAt' in response
+    assert datetime.strptime(response['expiresAt'], '%Y-%m-%dT%H:%M:%S.%fZ') > datetime.now()
+    assert 'status' in response
+    assert response['status'] == 'completed'
+    assert 'next' not in response
+    assert len(response['data']) > 0
+    assert 'markdown' in response['data'][0]
+    assert "_Roast_" in response['data'][0]['markdown']
+    assert 'content' not in response['data'][0]
+    assert 'html' not in response['data'][0]
+    assert 'rawHtml' not in response['data'][0]
+    assert 'screenshot' not in response['data'][0]
+    assert 'links' not in response['data'][0]
+    assert 'metadata' in response['data'][0]
+    assert 'title' in response['data'][0]['metadata']
+    assert 'description' in response['data'][0]['metadata']
+    assert 'language' in response['data'][0]['metadata']
+    assert 'sourceURL' in response['data'][0]['metadata']
+    assert 'statusCode' in response['data'][0]['metadata']
+    assert 'error' not in response['data'][0]['metadata']
+
+def test_crawl_url_with_options_and_wait_for_completion():
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    response = app.crawl_url('https://roastmywebsite.ai', {
+        'excludePaths': ['blog/*'],
+        'includePaths': ['/'],
+        'maxDepth': 2,
+        'ignoreSitemap': True,
+        'limit': 10,
+        'allowBackwardLinks': True,
+        'allowExternalLinks': True,
+        'scrapeOptions': {
+            'formats': ['markdown', 'html', 'rawHtml', 'screenshot', 'links'],
+            'headers': {"x-key": "test"},
+            'includeTags': ['h1'],
+            'excludeTags': ['h2'],
+            'onlyMainContent': True,
+            'waitFor': 1000
+        }
+    }, True, 30)
+    assert response is not None
+    assert 'totalCount' in response
+    assert response['totalCount'] > 0
+    assert 'creditsUsed' in response
+    assert response['creditsUsed'] > 0
+    assert 'expiresAt' in response
+    assert datetime.strptime(response['expiresAt'], '%Y-%m-%dT%H:%M:%S.%fZ') > datetime.now()
+    assert 'status' in response
+    assert response['status'] == 'completed'
+    assert 'next' not in response
+    assert len(response['data']) > 0
+    assert 'markdown' in response['data'][0]
+    assert "_Roast_" in response['data'][0]['markdown']
+    assert 'content' not in response['data'][0]
+    assert 'html' in response['data'][0]
+    assert "<h1" in response['data'][0]['html']
+    assert 'rawHtml' in response['data'][0]
+    assert "<h1" in response['data'][0]['rawHtml']
+    assert 'screenshot' in response['data'][0]
+    assert "https://" in response['data'][0]['screenshot']
+    assert 'links' in response['data'][0]
+    assert len(response['data'][0]['links']) > 0
+    assert 'metadata' in response['data'][0]
+    assert 'title' in response['data'][0]['metadata']
+    assert 'description' in response['data'][0]['metadata']
+    assert 'language' in response['data'][0]['metadata']
+    assert 'sourceURL' in response['data'][0]['metadata']
+    assert 'statusCode' in response['data'][0]['metadata']
+    assert 'error' not in response['data'][0]['metadata']
 
 def test_crawl_url_with_idempotency_key_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
     uniqueIdempotencyKey = str(uuid4())
-    response = app.crawl_url('https://roastmywebsite.ai', {'crawlerOptions': {'excludes': ['blog/*']}}, True, 2, uniqueIdempotencyKey)
+    response = app.crawl_url('https://roastmywebsite.ai', {'excludePaths': ['blog/*']}, False, 2, uniqueIdempotencyKey)
     assert response is not None
-    assert len(response) > 0
-    assert 'content' in response[0]
-    assert "_Roast_" in response[0]['content']
+    assert 'id' in response
 
     with pytest.raises(Exception) as excinfo:
-        app.crawl_url('https://firecrawl.dev', {'crawlerOptions': {'excludes': ['blog/*']}}, True, 2, uniqueIdempotencyKey)
-    assert "Conflict: Failed to start crawl job due to a conflict. Idempotency key already used" in str(excinfo.value) 
+        app.crawl_url('https://firecrawl.dev', {'excludePaths': ['blog/*']}, True, 2, uniqueIdempotencyKey)
+    assert "Idempotency key already used" in str(excinfo.value)
 
 def test_check_crawl_status_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
-    response = app.crawl_url('https://firecrawl.dev', {'crawlerOptions': {'excludes': ['blog/*']}}, False)
+    response = app.crawl_url('https://firecrawl.dev', {'scrapeOptions': {'formats': ['markdown', 'html', 'rawHtml', 'screenshot', 'links']}}, False)
     assert response is not None
-    assert 'jobId' in response
+    assert 'id' in response
     
-    time.sleep(30)  # wait for 30 seconds
-    status_response = app.check_crawl_status(response['jobId'])
+    max_checks = 15
+    checks = 0
+    status_response = app.check_crawl_status(response['id'])
+    
+    while status_response['status'] == 'scraping' and checks < max_checks:
+        time.sleep(1)  # wait for 1 second
+        assert 'partial_data' not in status_response
+        assert 'current' not in status_response
+        assert 'data' in status_response
+        assert 'totalCount' in status_response
+        assert 'creditsUsed' in status_response
+        assert 'expiresAt' in status_response
+        assert 'status' in status_response
+        assert 'next' in status_response
+        assert status_response['totalCount'] > 0
+        assert status_response['creditsUsed'] > 0
+        assert datetime.strptime(status_response['expiresAt'], '%Y-%m-%dT%H:%M:%S.%fZ') > datetime.now()
+        assert status_response['status'] == 'scraping'
+        assert '/v1/crawl/' in status_response['next']
+        status_response = app.check_crawl_status(response['id'])
+        checks += 1
+
     assert status_response is not None
+    assert 'totalCount' in status_response
+    assert status_response['totalCount'] > 0
+    assert 'creditsUsed' in status_response
+    assert status_response['creditsUsed'] > 0
+    assert 'expiresAt' in status_response
+    assert datetime.strptime(status_response['expiresAt'], '%Y-%m-%dT%H:%M:%S.%fZ') > datetime.now()
     assert 'status' in status_response
     assert status_response['status'] == 'completed'
-    assert 'data' in status_response
     assert len(status_response['data']) > 0
+    assert 'markdown' in status_response['data'][0]
+    assert len(status_response['data'][0]['markdown']) > 10
+    assert 'content' not in status_response['data'][0]
+    assert 'html' in status_response['data'][0]
+    assert "<div" in status_response['data'][0]['html']
+    assert 'rawHtml' in status_response['data'][0]
+    assert "<div" in status_response['data'][0]['rawHtml']
+    assert 'screenshot' in status_response['data'][0]
+    assert "https://" in status_response['data'][0]['screenshot']
+    assert 'links' in status_response['data'][0]
+    assert status_response['data'][0]['links'] is not None
+    assert len(status_response['data'][0]['links']) > 0
+    assert 'metadata' in status_response['data'][0]
+    assert 'title' in status_response['data'][0]['metadata']
+    assert 'description' in status_response['data'][0]['metadata']
+    assert 'language' in status_response['data'][0]['metadata']
+    assert 'sourceURL' in status_response['data'][0]['metadata']
+    assert 'statusCode' in status_response['data'][0]['metadata']
+    assert 'error' not in status_response['data'][0]['metadata']
+
+def test_invalid_api_key_on_map():
+    invalid_app = FirecrawlApp(api_key="invalid_api_key", api_url=API_URL)
+    with pytest.raises(Exception) as excinfo:
+        invalid_app.map_url('https://roastmywebsite.ai')
+    assert "Unauthorized: Invalid token" in str(excinfo.value)
+
+def test_blocklisted_url_on_map():
+    app = FirecrawlApp(api_key=TEST_API_KEY, api_url=API_URL)
+    blocklisted_url = "https://facebook.com/fake-test"
+    with pytest.raises(Exception) as excinfo:
+        app.map_url(blocklisted_url)
+    assert "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." in str(excinfo.value)
+
+def test_successful_response_with_valid_preview_token_on_map():
+    app = FirecrawlApp(api_key="this_is_just_a_preview_token", api_url=API_URL)
+    response = app.map_url('https://roastmywebsite.ai')
+    assert response is not None
+    assert len(response) > 0
+
+def test_successful_response_for_valid_map():
+    app = FirecrawlApp(api_key=TEST_API_KEY, api_url=API_URL)
+    response = app.map_url('https://roastmywebsite.ai')
+    assert response is not None
+    assert len(response) > 0
+    assert any("https://" in link for link in response)
+    filtered_links = [link for link in response if "roastmywebsite.ai" in link]
+    assert len(filtered_links) > 0
 
 def test_search_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
@@ -136,33 +324,29 @@ def test_search_e2e():
         app.search("test query")
     assert "Search is not supported in v1" in str(excinfo.value)
 
-def test_llm_extraction():
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
-    response = app.scrape_url("https://mendable.ai", {
-        'extractorOptions': {
-            'mode': 'llm-extraction',
-            'extractionPrompt': "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source",
-            'extractionSchema': {
-                'type': 'object',
-                'properties': {
-                    'company_mission': {'type': 'string'},
-                    'supports_sso': {'type': 'boolean'},
-                    'is_open_source': {'type': 'boolean'}
-                },
-                'required': ['company_mission', 'supports_sso', 'is_open_source']
-            }
-        }
-    })
-    assert response is not None
-    assert 'llm_extraction' in response
-    llm_extraction = response['llm_extraction']
-    assert 'company_mission' in llm_extraction
-    assert isinstance(llm_extraction['supports_sso'], bool)
-    assert isinstance(llm_extraction['is_open_source'], bool)
+# def test_llm_extraction():
+#     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+#     response = app.scrape_url("https://mendable.ai", {
+#         'extractorOptions': {
+#             'mode': 'llm-extraction',
+#             'extractionPrompt': "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source",
+#             'extractionSchema': {
+#                 'type': 'object',
+#                 'properties': {
+#                     'company_mission': {'type': 'string'},
+#                     'supports_sso': {'type': 'boolean'},
+#                     'is_open_source': {'type': 'boolean'}
+#                 },
+#                 'required': ['company_mission', 'supports_sso', 'is_open_source']
+#             }
+#         }
+#     })
+#     assert response is not None
+#     assert 'llm_extraction' in response
+#     llm_extraction = response['llm_extraction']
+#     assert 'company_mission' in llm_extraction
+#     assert isinstance(llm_extraction['supports_sso'], bool)
+#     assert isinstance(llm_extraction['is_open_source'], bool)
 
-def test_map_e2e():
-    app = FirecrawlApp(api_url=API_URL, api_key="this_is_just_a_preview_token")
-    response = app.map_url('https://roastmywebsite.ai')
-    assert response is not None
-    assert isinstance(response, list)
+
     
