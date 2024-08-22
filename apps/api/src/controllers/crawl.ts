@@ -57,6 +57,26 @@ export async function crawlController(req: Request, res: Response) {
     };
     const pageOptions = { ...defaultCrawlPageOptions, ...req.body.pageOptions };
 
+    if (Array.isArray(crawlerOptions.includes)) {
+      for (const x of crawlerOptions.includes) {
+        try {
+          new RegExp(x);
+        } catch (e) {
+          return res.status(400).json({ error: e.message });
+        }
+      }
+    }
+
+    if (Array.isArray(crawlerOptions.excludes)) {
+      for (const x of crawlerOptions.excludes) {
+        try {
+          new RegExp(x);
+        } catch (e) {
+          return res.status(400).json({ error: e.message });
+        }
+      }
+    }
+
     const limitCheck = req.body?.crawlerOptions?.limit ?? 1;
     const { success: creditsCheckSuccess, message: creditsCheckMessage, remainingCredits } =
       await checkTeamCredits(team_id, limitCheck);
