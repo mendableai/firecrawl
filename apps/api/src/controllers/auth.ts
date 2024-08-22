@@ -61,8 +61,10 @@ async function getKeyAndPriceId(normalizedApi: string): Promise<{
     };
   }
   if (!data || data.length === 0) {
-    Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
-    Sentry.captureException(error);
+    if (error) {
+      Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
+      Sentry.captureException(error);
+    }
     // TODO: change this error code ?
     return {
       success: false,
@@ -309,8 +311,8 @@ export async function supaAuthenticateUser(
     if (error || !data || data.length === 0) {
       if (error) {
         Sentry.captureException(error);
+        Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
       }
-      Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
       return {
         success: false,
         error: "Unauthorized: Invalid token",
