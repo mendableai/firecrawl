@@ -15,6 +15,7 @@ import { redlock } from "../../src/services/redlock";
 import { getValue } from "../../src/services/redis";
 import { setValue } from "../../src/services/redis";
 import { validate } from "uuid";
+import * as Sentry from "@sentry/node";
 
 function normalizedApiIsUuid(potentialUuid: string): boolean {
   // Check if the string is a valid UUID
@@ -34,6 +35,7 @@ function setTrace(team_id: string, api_key: string) {
       api_key,
     });
   } catch (error) {
+    Sentry.captureException(error);
     Logger.error(`Error setting trace attributes: ${error.message}`);
   }
 }
@@ -49,6 +51,7 @@ async function getKeyAndPriceId(normalizedApi: string): Promise<{
     api_key: normalizedApi,
   });
   if (error) {
+    Sentry.captureException(error);
     Logger.error(`RPC ERROR (get_key_and_price_id_2): ${error.message}`);
     return {
       success: false,
@@ -59,6 +62,7 @@ async function getKeyAndPriceId(normalizedApi: string): Promise<{
   }
   if (!data || data.length === 0) {
     Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
+    Sentry.captureException(error);
     // TODO: change this error code ?
     return {
       success: false,
@@ -152,6 +156,7 @@ export async function supaAuthenticateUser(
         );
       }
     } catch (error) {
+      Sentry.captureException(error);
       Logger.error(`Error with auth function: ${error}`);
       // const {
       //   success,
@@ -302,6 +307,9 @@ export async function supaAuthenticateUser(
       .eq("key", normalizedApi);
 
     if (error || !data || data.length === 0) {
+      if (error) {
+        Sentry.captureException(error);
+      }
       Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
       return {
         success: false,

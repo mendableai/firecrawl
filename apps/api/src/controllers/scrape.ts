@@ -12,6 +12,7 @@ import { addScrapeJob } from '../services/queue-jobs';
 import { scrapeQueueEvents } from '../services/queue-service';
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from '../lib/logger';
+import * as Sentry from "@sentry/node";
 
 export async function scrapeHelper(
   jobId: string,
@@ -186,6 +187,7 @@ export async function scrapeController(req: Request, res: Response) {
     
     return res.status(result.returnCode).json(result);
   } catch (error) {
+    Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });
   }
