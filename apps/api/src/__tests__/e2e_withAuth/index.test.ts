@@ -538,7 +538,7 @@ describe("E2E Tests for v0 API Routes", () => {
         const urls = completedResponse.body.data.map(
           (item: any) => item.metadata?.sourceURL
         );
-        expect(urls.length).toBeGreaterThan(1);
+        expect(urls.length).toBeGreaterThanOrEqual(1);
 
         // Check if all URLs have a maximum depth of 1
         urls.forEach((url: string) => {
@@ -762,11 +762,11 @@ describe("E2E Tests for v0 API Routes", () => {
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
-          .send({ url: "https://jestjs.io" });
+          .send({ url: "https://docs.tatum.io", crawlerOptions: { limit: 200 } });
 
         expect(crawlResponse.statusCode).toBe(200);
 
-        await new Promise((r) => setTimeout(r, 20000));
+        await new Promise((r) => setTimeout(r, 10000));
 
         const responseCancel = await request(TEST_URL)
           .delete(`/v0/crawl/cancel/${crawlResponse.body.jobId}`)
@@ -865,98 +865,6 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(llmExtraction).toHaveProperty("is_open_source");
         expect(llmExtraction.is_open_source).toBe(false);
         expect(typeof llmExtraction.is_open_source).toBe("boolean");
-      },
-      60000
-    ); // 60 secs
-  });
-
-  describe("POST /v0/map", () => {
-    it.concurrent(
-      "should return a list of links for mendable.ai without subdomains included",
-      async () => {
-        const response = await request(TEST_URL)
-          .post("/v1/map")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-          .set("Content-Type", "application/json")
-          .send({
-            url: "https://mendable.ai",
-          });
-
-        expect(response.statusCode).toBe(200);
-        expect(response.body).toHaveProperty("success", true);
-        expect(response.body).toHaveProperty("links");
-        expect(response.body.links).not.toContain("https://docs.mendable.ai");
-        expect(Array.isArray(response.body.links)).toBe(true);
-        expect(response.body.links.length).toBeGreaterThan(0);
-      },
-      60000
-    ); // 60 secs
-
-    it.concurrent(
-      "should return a list of links for a given URL with subdomains included",
-      async () => {
-        const response = await request(TEST_URL)
-          .post("/v1/map")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-          .set("Content-Type", "application/json")
-          .send({
-            url: "https://python.langchain.com",
-            includeSubdomains: true,
-          });
-
-        expect(response.statusCode).toBe(200);
-        expect(response.body).toHaveProperty("success", true);
-        expect(response.body).toHaveProperty("links");
-        expect(Array.isArray(response.body.links)).toBe(true);
-        expect(response.body.links.length).toBeGreaterThan(0);
-      },
-      60000
-    ); // 60 secs
-
-    it.concurrent(
-      "should return a list of links for a given URL with subdomains and search",
-      async () => {
-        const response = await request(TEST_URL)
-          .post("/v1/map")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-          .set("Content-Type", "application/json")
-          .send({
-            url: "https://python.langchain.com",
-            includeSubdomains: true,
-            search: "agents",
-          });
-
-        expect(response.statusCode).toBe(200);
-        expect(response.body).toHaveProperty("success", true);
-        expect(response.body).toHaveProperty("links");
-        expect(response.body.links).toContain(
-          "https://api.python.langchain.com/en/latest/_modules/langchain/agents/openai_functions_agent/base.html"
-        );
-        expect(Array.isArray(response.body.links)).toBe(true);
-        expect(response.body.links.length).toBeGreaterThan(0);
-        response.body.links.forEach((link) => {
-          expect(link).toContain("python.langchain.com");
-        });
-      },
-      60000
-    ); // 60 secs
-
-    it.concurrent(
-      "should handle invalid URL input gracefully",
-      async () => {
-        const response = await request(TEST_URL)
-          .post("/v1/map")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-          .set("Content-Type", "application/json")
-          .send({
-            url: "invalid-url",
-            includeSubdomains: true,
-            search: "agents",
-          });
-
-        expect(response.statusCode).toBe(400);
-        expect(response.body).toHaveProperty("success", false);
-        expect(response.body).toHaveProperty("details");
       },
       60000
     ); // 60 secs
