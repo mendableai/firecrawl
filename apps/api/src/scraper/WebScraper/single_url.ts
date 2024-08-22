@@ -125,7 +125,7 @@ export async function scrapSingleUrl(
   pageOptions: PageOptions = {
     includeMarkdown: true,
     onlyMainContent: true,
-    includeHtml: false,
+    includeHtml: true,
     includeRawHtml: false,
     waitFor: 0,
     screenshot: false,

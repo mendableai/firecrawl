@@ -574,7 +574,7 @@ export class WebScraperDataProvider {
       options.crawlerOptions?.generateImgAltText ?? false;
     this.pageOptions = options.pageOptions ?? {
       onlyMainContent: false,
-      includeHtml: false,
+      includeHtml: true,
       replaceAllPathsWithAbsolutePaths: false,
       parsePDF: true,
       removeTags: [],
