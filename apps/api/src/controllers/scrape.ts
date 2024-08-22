@@ -9,7 +9,7 @@ import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import 
 import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../lib/default-values';
 import { addScrapeJob } from '../services/queue-jobs';
-import { getScrapeQueue, scrapeQueueEvents } from '../services/queue-service';
+import { getScrapeQueue } from '../services/queue-service';
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from '../lib/logger';
 import * as Sentry from "@sentry/node";
