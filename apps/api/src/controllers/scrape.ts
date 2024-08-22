@@ -105,6 +105,10 @@ export async function scrapeController(req: Request, res: Response) {
     let timeout = req.body.timeout ?? defaultTimeout;
 
     if (extractorOptions.mode.includes("llm-extraction")) {
+      if (typeof extractorOptions.extractionSchema !== "object" || extractorOptions.extractionSchema === null) {
+        return res.status(400).json({ error: "extractorOptions.extractionSchema must be an object if llm-extraction mode is specified" });
+      }
+
       pageOptions.onlyMainContent = true;
       timeout = req.body.timeout ?? 90000;
     }
