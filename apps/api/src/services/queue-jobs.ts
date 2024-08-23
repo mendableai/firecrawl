@@ -46,3 +46,17 @@ export async function addScrapeJob(
   }
 }
 
+export function waitForJob(jobId: string, timeout: number) {
+  return new Promise((resolve, reject) => {
+    const start = Date.now();
+    const int = setInterval(async () => {
+      if (Date.now() >= start + timeout) {
+        clearInterval(int);
+        reject(new Error("Job wait "));
+      } else if (await getScrapeQueue().getJobState(jobId) === "completed") {
+        clearInterval(int);
+        resolve((await getScrapeQueue().getJob(jobId)).returnvalue);
+      }
+    }, 1000);
+  })
+}

@@ -4,8 +4,7 @@ import { Document, legacyDocumentConverter, legacyScrapeOptions, RequestWithAuth
 import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from 'uuid';
 import { numTokensFromString } from "../../lib/LLM-extraction/helpers";
-import { addScrapeJob } from "../../services/queue-jobs";
-import { scrapeQueueEvents } from '../../services/queue-service';
+import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
 
 export async function scrapeController(req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>, res: Response<ScrapeResponse>) {
@@ -30,7 +29,7 @@ export async function scrapeController(req: RequestWithAuth<{}, ScrapeResponse, 
 
   let doc: any | undefined;
   try {
-    doc = (await job.waitUntilFinished(scrapeQueueEvents, timeout))[0]; // 60 seconds timeout
+    doc = (await waitForJob(job.id, timeout))[0];
   } catch (e) {
     Logger.error(`Error in scrapeController: ${e}`);
     if (e instanceof Error && e.message.startsWith("Job wait")) {

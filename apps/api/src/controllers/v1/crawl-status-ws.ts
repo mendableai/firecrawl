@@ -6,7 +6,7 @@ import { WebSocket } from "ws";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../lib/logger";
 import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength, isCrawlFinished, isCrawlFinishedLocked } from "../../lib/crawl-redis";
-import { getScrapeQueue, scrapeQueueEvents } from "../../services/queue-service";
+import { getScrapeQueue } from "../../services/queue-service";
 import { getJob, getJobs } from "./crawl-status";
 
 type ErrorMessage = {

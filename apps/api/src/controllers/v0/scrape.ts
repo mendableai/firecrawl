@@ -8,7 +8,7 @@ import { Document } from "../../lib/entities";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from '../../lib/LLM-extraction/helpers';
 import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../../lib/default-values';
-import { addScrapeJob } from '../../services/queue-jobs';
+import { addScrapeJob, waitForJob } from '../../services/queue-jobs';
 import { getScrapeQueue } from '../../services/queue-service';
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from '../../lib/logger';
@@ -52,18 +52,7 @@ export async function scrapeHelper(
 
   const err = await Sentry.startSpan({ name: "Wait for job to finish", op: "bullmq.wait", attributes: { job: jobId } }, async (span) => {
     try {
-      doc = (await new Promise((resolve, reject) => {
-        const start = Date.now();
-        const int = setInterval(async () => {
-          if (Date.now() >= start + timeout) {
-            clearInterval(int);
-            reject(new Error("Job wait "));
-          } else if (await job.getState() === "completed") {
-            clearInterval(int);
-            resolve((await getScrapeQueue().getJob(job.id)).returnvalue);
-          }
-        }, 1000);
-      }))[0]
+      doc = (await waitForJob(job.id, timeout))[0];
     } catch (e) {
       if (e instanceof Error && e.message.startsWith("Job wait")) {
         span.setAttribute("timedOut", true);
