@@ -1,4 +1,4 @@
-import { ExtractorOptions, PageOptions } from './../lib/entities';
+  import { ExtractorOptions, PageOptions } from './../lib/entities';
 import { Request, Response } from "express";
 import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
 import { authenticateUser } from "./auth";
@@ -78,7 +78,7 @@ export async function scrapeHelper(
           error: "Request timed out",
           returnCode: 408,
         }
-      } else if (typeof e === "string" && (e.includes("Error generating completions: ") || e.includes("Invalid schema for function"))) {
+      } else if (typeof e === "string" && (e.includes("Error generating completions: ") || e.includes("Invalid schema for function") || e.includes("LLM extraction did not match the extraction schema you provided."))) {
         return {
           success: false,
           error: e,
