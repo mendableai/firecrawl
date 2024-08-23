@@ -43,6 +43,9 @@ export async function scrapWithScrapingBee(
           transparent_status_code: "True",
         },
       });
+      Logger.info(
+        `⛏️ ScrapingBee: Scraping ${url}`
+      );
       const contentType = response.headers["content-type"];
       if (contentType && contentType.includes("application/pdf")) {
         logParams.success = true;

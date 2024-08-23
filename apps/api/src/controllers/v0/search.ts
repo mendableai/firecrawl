@@ -9,7 +9,9 @@ import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../lib/logger";
-import { getScrapeQueue, scrapeQueueEvents } from "../../services/queue-service";
+import { getScrapeQueue } from "../../services/queue-service";
+import { addScrapeJob } from "../../services/queue-jobs";
+import * as Sentry from "@sentry/node";
 
 export async function searchHelper(
   jobId: string,
@@ -90,22 +92,44 @@ export async function searchHelper(
       },
       opts: {
         jobId: uuid,
-        priority: 10,
+        priority: 20,
       }
     };
   })
-  
-  const jobs = await getScrapeQueue().addBulk(jobDatas);
 
-  const docs = (await Promise.all(jobs.map(x => x.waitUntilFinished(scrapeQueueEvents, 60000)))).map(x => x[0]);
+  let jobs = [];
+  if (Sentry.isInitialized()) {
+    for (const job of jobDatas) {
+      // add with sentry instrumentation
+      jobs.push(await addScrapeJob(job.data as any, {}, job.opts.jobId));
+    }
+  } else {
+    jobs = await getScrapeQueue().addBulk(jobDatas);
+    await getScrapeQueue().addBulk(jobs);
+  }
+
+  const docs = (await Promise.all(jobs.map(x => new Promise((resolve, reject) => {
+    const start = Date.now();
+    const int = setInterval(async () => {
+      if (Date.now() >= start + 60000) {
+        clearInterval(int);
+        reject(new Error("Job wait "));
+      } else if (await x.getState() === "completed") {
+        clearInterval(int);
+        resolve((await getScrapeQueue().getJob(x.id)).returnvalue);
+      }
+    }, 1000);
+  })))).map(x => x[0]);
   
   if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
   }
 
+  await Promise.all(jobs.map(x => x.remove()));
+
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(
-    (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
+    (doc: { content?: string }) => doc && doc.content && doc.content.trim().length > 0
   );
 
   if (filteredDocs.length === 0) {
@@ -151,6 +175,7 @@ export async function searchController(req: Request, res: Response) {
         return res.status(402).json({ error: "Insufficient credits" });
       }
     } catch (error) {
+      Sentry.captureException(error);
       Logger.error(error);
       return res.status(500).json({ error: "Internal server error" });
     }
@@ -181,6 +206,11 @@ export async function searchController(req: Request, res: Response) {
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Job wait")) {
+      return res.status(408).json({ error: "Request timed out" });
+    }
+
+    Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });
   }

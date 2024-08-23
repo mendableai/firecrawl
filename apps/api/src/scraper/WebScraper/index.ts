@@ -16,7 +16,6 @@ import {
   replacePathsWithAbsolutePaths,
 } from "./utils/replacePaths";
 import { generateCompletions } from "../../lib/LLM-extraction";
-import { getScrapeQueue } from "../../../src/services/queue-service";
 import { fetchAndProcessDocx } from "./utils/docxProcessor";
 import { getAdjustedMaxDepth, getURLDepth } from "./utils/maxDepthUtils";
 import { Logger } from "../../lib/logger";
@@ -45,6 +44,7 @@ export class WebScraperDataProvider {
   private allowBackwardCrawling: boolean = false;
   private allowExternalContentLinks: boolean = false;
   private priority?: number;
+  private teamId?: string;
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -75,6 +75,7 @@ export class WebScraperDataProvider {
             this.extractorOptions,
             existingHTML,
             this.priority,
+            this.teamId,
           );
           processedUrls++;
           if (inProgress) {
@@ -613,6 +614,7 @@ export class WebScraperDataProvider {
     this.allowExternalContentLinks =
       options.crawlerOptions?.allowExternalContentLinks ?? false;
     this.priority = options.priority;
+    this.teamId = options.teamId ?? null;
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {

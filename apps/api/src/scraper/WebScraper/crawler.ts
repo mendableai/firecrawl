@@ -53,8 +53,8 @@ export class WebCrawler {
     this.jobId = jobId;
     this.initialUrl = initialUrl;
     this.baseUrl = new URL(initialUrl).origin;
-    this.includes = includes ?? [];
-    this.excludes = excludes ?? [];
+    this.includes = Array.isArray(includes) ? includes : [];
+    this.excludes = Array.isArray(excludes) ? excludes : [];
     this.limit = limit;
     this.robotsTxtUrl = `${this.baseUrl}/robots.txt`;
     this.robots = robotsParser(this.robotsTxtUrl, "");
@@ -69,7 +69,13 @@ export class WebCrawler {
   public filterLinks(sitemapLinks: string[], limit: number, maxDepth: number): string[] {
     return sitemapLinks
       .filter((link) => {
-        const url = new URL(link.trim(), this.baseUrl);
+        let url: URL;
+        try {
+          url = new URL(link.trim(), this.baseUrl);
+        } catch (error) {
+          Logger.debug(`Error processing link: ${link} | Error: ${error.message}`);
+          return false;
+        }
         const path = url.pathname;
         
         const depth = getURLDepth(url.toString());
@@ -102,7 +108,12 @@ export class WebCrawler {
 
         // Normalize the initial URL and the link to account for www and non-www versions
         const normalizedInitialUrl = new URL(this.initialUrl);
-        const normalizedLink = new URL(link);
+        let normalizedLink;
+        try {
+          normalizedLink = new URL(link);
+        } catch (_) {
+          return false;
+        }
         const initialHostname = normalizedInitialUrl.hostname.replace(/^www\./, '');
         const linkHostname = normalizedLink.hostname.replace(/^www\./, '');
 
@@ -261,9 +272,18 @@ export class WebCrawler {
   public filterURL(href: string, url: string): string | null {
     let fullUrl = href;
     if (!href.startsWith("http")) {
-      fullUrl = new URL(href, this.baseUrl).toString();
+      try {
+        fullUrl = new URL(href, this.baseUrl).toString();
+      } catch (_) {
+        return null;
+      }
     }
-    const urlObj = new URL(fullUrl);
+    let urlObj;
+    try {
+      urlObj = new URL(fullUrl);
+    } catch (_) {
+      return null;
+    }
     const path = urlObj.pathname;
 
     if (this.isInternalLink(fullUrl)) { // INTERNAL LINKS

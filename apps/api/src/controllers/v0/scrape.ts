@@ -9,9 +9,10 @@ import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist"; // Impo
 import { numTokensFromString } from '../../lib/LLM-extraction/helpers';
 import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../../lib/default-values';
 import { addScrapeJob } from '../../services/queue-jobs';
-import { scrapeQueueEvents } from '../../services/queue-service';
+import { getScrapeQueue } from '../../services/queue-service';
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from '../../lib/logger';
+import * as Sentry from "@sentry/node";
 
 export async function scrapeHelper(
   jobId: string,
@@ -48,18 +49,39 @@ export async function scrapeHelper(
   }, {}, jobId);
 
   let doc;
-  try {
-    doc = (await job.waitUntilFinished(scrapeQueueEvents, timeout))[0]; //60 seconds timeout
-  } catch (e) {
-    if (e instanceof Error && e.message.startsWith("Job wait")) {
-      return {
-        success: false,
-        error: "Request timed out",
-        returnCode: 408,
+
+  const err = await Sentry.startSpan({ name: "Wait for job to finish", op: "bullmq.wait", attributes: { job: jobId } }, async (span) => {
+    try {
+      doc = (await new Promise((resolve, reject) => {
+        const start = Date.now();
+        const int = setInterval(async () => {
+          if (Date.now() >= start + timeout) {
+            clearInterval(int);
+            reject(new Error("Job wait "));
+          } else if (await job.getState() === "completed") {
+            clearInterval(int);
+            resolve((await getScrapeQueue().getJob(job.id)).returnvalue);
+          }
+        }, 1000);
+      }))[0]
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("Job wait")) {
+        span.setAttribute("timedOut", true);
+        return {
+          success: false,
+          error: "Request timed out",
+          returnCode: 408,
+        }
+      } else {
+        throw e;
       }
-    } else {
-      throw e;
     }
+    span.setAttribute("result", JSON.stringify(doc));
+    return null;
+  });
+
+  if (err !== null) {
+    return err;
   }
 
   await job.remove();
@@ -112,26 +134,26 @@ export async function scrapeController(req: Request, res: Response) {
     let timeout = req.body.timeout ?? defaultTimeout;
 
     if (extractorOptions.mode.includes("llm-extraction")) {
+      if (typeof extractorOptions.extractionSchema !== "object" || extractorOptions.extractionSchema === null) {
+        return res.status(400).json({ error: "extractorOptions.extractionSchema must be an object if llm-extraction mode is specified" });
+      }
+
       pageOptions.onlyMainContent = true;
       timeout = req.body.timeout ?? 90000;
     }
 
-    const checkCredits = async () => {
-      try {
-        const { success: creditsCheckSuccess, message: creditsCheckMessage } = await checkTeamCredits(team_id, 1);
-        if (!creditsCheckSuccess) {
-          earlyReturn = true;
-          return res.status(402).json({ error: "Insufficient credits" });
-        }
-      } catch (error) {
-        Logger.error(error);
+    // checkCredits
+    try {
+      const { success: creditsCheckSuccess, message: creditsCheckMessage } = await checkTeamCredits(team_id, 1);
+      if (!creditsCheckSuccess) {
         earlyReturn = true;
-        return res.status(500).json({ error: "Error checking team credits. Please contact hello@firecrawl.com for help." });
+        return res.status(402).json({ error: "Insufficient credits" });
       }
-    };
-
-
-    await checkCredits();
+    } catch (error) {
+      Logger.error(error);
+      earlyReturn = true;
+      return res.status(500).json({ error: "Error checking team credits. Please contact hello@firecrawl.com for help." });
+    }
 
     const jobId = uuidv4();
 
@@ -198,6 +220,7 @@ export async function scrapeController(req: Request, res: Response) {
     
     return res.status(result.returnCode).json(result);
   } catch (error) {
+    Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });
   }

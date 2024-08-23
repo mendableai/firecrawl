@@ -15,6 +15,7 @@ import { redlock } from "../../../src/services/redlock";
 import { getValue } from "../../../src/services/redis";
 import { setValue } from "../../../src/services/redis";
 import { validate } from "uuid";
+import * as Sentry from "@sentry/node";
 
 function normalizedApiIsUuid(potentialUuid: string): boolean {
   // Check if the string is a valid UUID
@@ -34,6 +35,7 @@ function setTrace(team_id: string, api_key: string) {
       api_key,
     });
   } catch (error) {
+    Sentry.captureException(error);
     Logger.error(`Error setting trace attributes: ${error.message}`);
   }
 }
@@ -49,6 +51,7 @@ async function getKeyAndPriceId(normalizedApi: string): Promise<{
     api_key: normalizedApi,
   });
   if (error) {
+    Sentry.captureException(error);
     Logger.error(`RPC ERROR (get_key_and_price_id_2): ${error.message}`);
     return {
       success: false,
@@ -58,7 +61,10 @@ async function getKeyAndPriceId(normalizedApi: string): Promise<{
     };
   }
   if (!data || data.length === 0) {
-    Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
+    if (error) {
+      Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
+      Sentry.captureException(error);
+    }
     // TODO: change this error code ?
     return {
       success: false,
@@ -152,7 +158,8 @@ export async function supaAuthenticateUser(
         );
       }
     } catch (error) {
-      Logger.error(`Error with auth function: ${error.message}`);
+      Sentry.captureException(error);
+      Logger.error(`Error with auth function: ${error}`);
       // const {
       //   success,
       //   teamId: tId,
@@ -268,7 +275,7 @@ export async function supaAuthenticateUser(
 
     return {
       success: false,
-      error: `Rate limit exceeded. Consumed points: ${rateLimiterRes.consumedPoints}, Remaining points: ${rateLimiterRes.remainingPoints}. Upgrade your plan at https://firecrawl.dev/pricing for increased rate limits or please retry after ${secs}s, resets at ${retryDate}`,
+      error: `Rate limit exceeded. Consumed (req/min): ${rateLimiterRes.consumedPoints}, Remaining (req/min): ${rateLimiterRes.remainingPoints}. Upgrade your plan at https://firecrawl.dev/pricing for increased rate limits or please retry after ${secs}s, resets at ${retryDate}`,
       status: 429,
     };
   }
@@ -302,7 +309,10 @@ export async function supaAuthenticateUser(
       .eq("key", normalizedApi);
 
     if (error || !data || data.length === 0) {
-      Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
+      if (error) {
+        Sentry.captureException(error);
+        Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
+      }
       return {
         success: false,
         error: "Unauthorized: Invalid token",

@@ -13,6 +13,7 @@ import { Logger } from "../../../src/lib/logger";
 import { addCrawlJob, addCrawlJobs, crawlToCrawler, lockURL, lockURLs, saveCrawl, StoredCrawl } from "../../../src/lib/crawl-redis";
 import { getScrapeQueue } from "../../../src/services/queue-service";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
+import * as Sentry from "@sentry/node";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -38,15 +39,49 @@ export async function crawlController(req: Request, res: Response) {
       }
     }
 
-    const { success: creditsCheckSuccess, message: creditsCheckMessage } =
-      await checkTeamCredits(team_id, 1);
-    if (!creditsCheckSuccess) {
-      return res.status(402).json({ error: "Insufficient credits" });
+    const crawlerOptions = {
+      ...defaultCrawlerOptions,
+      ...req.body.crawlerOptions,
+    };
+    const pageOptions = { ...defaultCrawlPageOptions, ...req.body.pageOptions };
+
+    if (Array.isArray(crawlerOptions.includes)) {
+      for (const x of crawlerOptions.includes) {
+        try {
+          new RegExp(x);
+        } catch (e) {
+          return res.status(400).json({ error: e.message });
+        }
+      }
     }
 
+    if (Array.isArray(crawlerOptions.excludes)) {
+      for (const x of crawlerOptions.excludes) {
+        try {
+          new RegExp(x);
+        } catch (e) {
+          return res.status(400).json({ error: e.message });
+        }
+      }
+    }
+
+    const limitCheck = req.body?.crawlerOptions?.limit ?? 1;
+    const { success: creditsCheckSuccess, message: creditsCheckMessage, remainingCredits } =
+      await checkTeamCredits(team_id, limitCheck);
+
+    if (!creditsCheckSuccess) {
+      return res.status(402).json({ error: "Insufficient credits. You may be requesting with a higher limit than the amount of credits you have left. If not, upgrade your plan at https://firecrawl.dev/pricing or contact us at hello@firecrawl.com" });
+    }
+
+    // TODO: need to do this to v1
+    crawlerOptions.limit = Math.min(remainingCredits, crawlerOptions.limit);
+    
     let url = req.body.url;
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
+    }
+    if (typeof url !== "string") {
+      return res.status(400).json({ error: "URL must be a string" });
     }
     try {
       url = checkAndUpdateURL(url).url;
@@ -57,18 +92,11 @@ export async function crawlController(req: Request, res: Response) {
     }
 
     if (isUrlBlocked(url)) {
-      return res
-        .status(403)
-        .json({
-          error:
-            "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-        });
+      return res.status(403).json({
+        error:
+          "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
+      });
     }
-
-    const mode = req.body.mode ?? "crawl";
-
-    const crawlerOptions = { ...defaultCrawlerOptions, ...req.body.crawlerOptions };
-    const pageOptions = { ...defaultCrawlPageOptions, ...req.body.pageOptions };
 
     // if (mode === "single_urls" && !url.includes(",")) { // NOTE: do we need this?
     //   try {
@@ -119,10 +147,12 @@ export async function crawlController(req: Request, res: Response) {
 
     await saveCrawl(id, sc);
 
-    const sitemap = sc.crawlerOptions?.ignoreSitemap ? null : await crawler.tryGetSitemap();
+    const sitemap = sc.crawlerOptions?.ignoreSitemap
+      ? null
+      : await crawler.tryGetSitemap();
 
-    if (sitemap !== null) {
-      const jobs = sitemap.map(x => {
+    if (sitemap !== null && sitemap.length > 0) {
+      const jobs = sitemap.map((x) => {
         const url = x.url;
         const uuid = uuidv4();
         return {
@@ -140,31 +170,48 @@ export async function crawlController(req: Request, res: Response) {
           opts: {
             jobId: uuid,
             priority: 20,
-          }
+          },
         };
-      })
+      });
 
-      await lockURLs(id, jobs.map(x => x.data.url));
-      await addCrawlJobs(id, jobs.map(x => x.opts.jobId));
-      await getScrapeQueue().addBulk(jobs);
+      await lockURLs(
+        id,
+        jobs.map((x) => x.data.url)
+      );
+      await addCrawlJobs(
+        id,
+        jobs.map((x) => x.opts.jobId)
+      );
+      if (Sentry.isInitialized()) {
+        for (const job of jobs) {
+          // add with sentry instrumentation
+          await addScrapeJob(job.data as any, {}, job.opts.jobId);
+        }
+      } else {
+        await getScrapeQueue().addBulk(jobs);
+      }
     } else {
       await lockURL(id, sc, url);
-      const job = await addScrapeJob({
-        url,
-        mode: "single_urls",
-        crawlerOptions: crawlerOptions,
-        team_id: team_id,
-        pageOptions: pageOptions,
-        origin: req.body.origin ?? defaultOrigin,
-        crawl_id: id,
-      }, {
-        priority: 15, // prioritize request 0 of crawl jobs same as scrape jobs
-      });
+      const job = await addScrapeJob(
+        {
+          url,
+          mode: "single_urls",
+          crawlerOptions: crawlerOptions,
+          team_id: team_id,
+          pageOptions: pageOptions,
+          origin: req.body.origin ?? defaultOrigin,
+          crawl_id: id,
+        },
+        {
+          priority: 15, // prioritize request 0 of crawl jobs same as scrape jobs
+        }
+      );
       await addCrawlJob(id, job.id);
     }
 
     res.json({ jobId: id });
   } catch (error) {
+    Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });
   }

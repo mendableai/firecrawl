@@ -4,7 +4,29 @@ import { RateLimiterMode } from "../../../src/types";
 import { getScrapeQueue } from "../../../src/services/queue-service";
 import { Logger } from "../../../src/lib/logger";
 import { getCrawl, getCrawlJobs } from "../../../src/lib/crawl-redis";
-import { supabaseGetJobById } from "../../../src/lib/supabase-jobs";
+import { supabaseGetJobsById } from "../../../src/lib/supabase-jobs";
+import * as Sentry from "@sentry/node";
+
+export async function getJobs(ids: string[]) {
+  const jobs = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x);
+  
+  if (process.env.USE_DB_AUTHENTICATION === "true") {
+    const supabaseData = await supabaseGetJobsById(ids);
+
+    supabaseData.forEach(x => {
+      const job = jobs.find(y => y.id === x.job_id);
+      if (job) {
+        job.returnvalue = x.docs;
+      }
+    })
+  }
+
+  jobs.forEach(job => {
+    job.returnvalue = Array.isArray(job.returnvalue) ? job.returnvalue[0] : job.returnvalue;
+  });
+
+  return jobs;
+}
 
 export async function crawlStatusController(req: Request, res: Response) {
   try {
@@ -28,19 +50,7 @@ export async function crawlStatusController(req: Request, res: Response) {
 
     const jobIDs = await getCrawlJobs(req.params.jobId);
 
-    const jobs = (await Promise.all(jobIDs.map(async x => {
-      const job = await getScrapeQueue().getJob(x);
-      
-      if (process.env.USE_DB_AUTHENTICATION === "true") {
-        const supabaseData = await supabaseGetJobById(job.id);
-
-        if (supabaseData) {
-          job.returnvalue = supabaseData.docs;
-        }
-      }
-
-      return job;
-    }))).sort((a, b) => a.timestamp - b.timestamp);
+    const jobs = (await getJobs(jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
     const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
     const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "active";
 
@@ -54,6 +64,7 @@ export async function crawlStatusController(req: Request, res: Response) {
       partial_data: jobStatus === "completed" ? [] : data.filter(x => x !== null),
     });
   } catch (error) {
+    Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });
   }

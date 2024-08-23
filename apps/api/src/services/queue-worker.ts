@@ -1,4 +1,6 @@
 import "dotenv/config";
+import "./sentry"
+import * as Sentry from "@sentry/node";
 import { CustomError } from "../lib/custom-error";
 import {
   getScrapeQueue,
@@ -48,6 +50,7 @@ const processJobInternal = async (token: string, job: Job) => {
     await job.extendLock(token, jobLockExtensionTime);
   }, jobLockExtendInterval);
 
+  let err = null;
   try {
     const result = await processJob(job, token);
     try{
@@ -60,11 +63,14 @@ const processJobInternal = async (token: string, job: Job) => {
     }
   } catch (error) {
     console.log("Job failed, error:", error);
-
+    Sentry.captureException(error);
+    err = error;
     await job.moveToFailed(error, token, false);
   } finally {
     clearInterval(extendLockInterval);
   }
+
+  return err;
 };
 
 let isShuttingDown = false;
@@ -74,7 +80,7 @@ process.on("SIGINT", () => {
   isShuttingDown = true;
 });
 
-const workerFun = async (queueName: string, processJobInternal: (token: string, job: Job) => Promise<void>) => {
+const workerFun = async (queueName: string, processJobInternal: (token: string, job: Job) => Promise<any>) => {
   const worker = new Worker(queueName, null, {
     connection: redisConnection,
     lockDuration: 1 * 60 * 1000, // 1 minute
@@ -102,7 +108,47 @@ const workerFun = async (queueName: string, processJobInternal: (token: string, 
 
     const job = await worker.getNextJob(token);
     if (job) {
-      processJobInternal(token, job);
+      if (job.data && job.data.sentry && Sentry.isInitialized()) {
+        Sentry.continueTrace({ sentryTrace: job.data.sentry.trace, baggage: job.data.sentry.baggage }, () => {
+          Sentry.startSpan({
+            name: "Scrape job",
+            attributes: {
+              job: job.id,
+              worker: process.env.FLY_MACHINE_ID ?? worker.id,
+            },
+          }, async (span) => {
+            await Sentry.startSpan({
+              name: "Process scrape job",
+              op: "queue.process",
+              attributes: {
+                "messaging.message.id": job.id,
+                "messaging.destination.name": getScrapeQueue().name,
+                "messaging.message.body.size": job.data.sentry.size,
+                "messaging.message.receive.latency": Date.now() - (job.processedOn ?? job.timestamp),
+                "messaging.message.retry.count": job.attemptsMade,
+              }
+            }, async () => {
+              const res = await processJobInternal(token, job);
+              if (res !== null) {
+                span.setStatus({ code: 2 }); // ERROR
+              } else {
+                span.setStatus({ code: 1 }); // OK
+              }
+            });
+          });
+        });
+      } else {
+        Sentry.startSpan({
+          name: "Scrape job",
+          attributes: {
+            job: job.id,
+            worker: process.env.FLY_MACHINE_ID ?? worker.id,
+          },
+        }, () => {
+          processJobInternal(token, job);
+        });
+      }
+      
       await sleep(gotJobInterval);
     } else {
       await sleep(connectionMonitorInterval);
@@ -115,6 +161,20 @@ workerFun(scrapeQueueName, processJobInternal);
 async function processJob(job: Job, token: string) {
   Logger.info(`🐂 Worker taking job ${job.id}`);
 
+  // Check if the job URL is researchhub and block it immediately
+  // TODO: remove this once solve the root issue
+  if (job.data.url && (job.data.url.includes("researchhub.com") || job.data.url.includes("ebay.com") || job.data.url.includes("youtube.com") || job.data.url.includes("microsoft.com") )) {
+    Logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
+    const data = {
+      success: false,
+      docs: [],
+      project_id: job.data.project_id,
+      error: "URL is blocked. Suspecious activity detected. Please contact hello@firecrawl.com if you believe this is an error.",
+    };
+    await job.moveToCompleted(data.docs, token, false);
+    return data;
+  }
+
   try {
     job.updateProgress({
       current: 1,
@@ -123,6 +183,7 @@ async function processJob(job: Job, token: string) {
       current_url: "",
     });
     const start = Date.now();
+    
     const { success, message, docs } = await startWebScraperPipeline({
       job,
       token,
@@ -275,6 +336,12 @@ async function processJob(job: Job, token: string) {
     return data;
   } catch (error) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);
+
+    Sentry.captureException(error, {
+      data: {
+        job: job.id
+      },
+    })
 
     if (error instanceof CustomError) {
       // Here we handle the error, then save the failed job

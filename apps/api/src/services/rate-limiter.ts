@@ -103,7 +103,7 @@ export function getRateLimiter(
   plan?: string
 ) {
 
-  if (token.includes("a01ccae") || token.includes("6254cf9")) {
+  if (token.includes("a01ccae") || token.includes("6254cf9") || token.includes("0f96e673")) {
     return testSuiteRateLimiter;
   }
 

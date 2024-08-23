@@ -26,6 +26,9 @@ export type PageOptions = {
   removeTags?: string | string[];
   onlyIncludeTags?: string | string[];
   includeLinks?: boolean;
+  useFastMode?: boolean; // beta
+  disableJSDom?: boolean; // beta
+  atsv?: boolean; // beta
 };
 
 export type ExtractorOptions = {
@@ -68,6 +71,7 @@ export type WebScraperOptions = {
   concurrentRequests?: number;
   bullJobId?: string;
   priority?: number;
+  teamId?: string;
 };
 
 export interface DocumentUrl {
@@ -144,4 +148,5 @@ export interface FireEngineOptions{
   blockMedia?: boolean;
   blockAds?: boolean;
   disableJsDom?: boolean;
+  atsv?: boolean; // beta
 }
