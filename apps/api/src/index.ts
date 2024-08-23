@@ -1,7 +1,7 @@
 import "dotenv/config";
 import "./services/sentry"
 import * as Sentry from "@sentry/node";
-import express from "express";
+import express, { NextFunction, Request, Response } from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import { getScrapeQueue } from "./services/queue-service";
@@ -18,8 +18,9 @@ import CacheableLookup  from 'cacheable-lookup';
 import { v1Router } from "./routes/v1";
 import expressWs from "express-ws";
 import { crawlStatusWSController } from "./controllers/v1/crawl-status-ws";
-
-
+import { ErrorResponse, ResponseWithSentry } from "./controllers/v1/types";
+import { ZodError } from "zod";
+import { v4 as uuidv4 } from "uuid";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -190,6 +191,27 @@ if (cluster.isMaster) {
   });
 
   Sentry.setupExpressErrorHandler(app);
+
+  app.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: ResponseWithSentry<ErrorResponse>, next: NextFunction) => {
+    if (err instanceof ZodError) {
+        res.status(400).json({ success: false, error: "Bad Request", details: err.errors });
+    } else {
+        const id = res.sentry ?? uuidv4();
+        let verbose = JSON.stringify(err);
+        if (verbose === "{}") {
+            if (err instanceof Error) {
+                verbose = JSON.stringify({
+                    message: err.message,
+                    name: err.name,
+                    stack: err.stack,
+                });
+            }
+        }
+
+        Logger.error("Error occurred in request! (" + req.path + ") -- ID " + id  + " -- " + verbose);
+        res.status(500).json({ success: false, error: "An unexpected error occurred. Please contact hello@firecrawl.com for help. Your exception ID is " + id });
+    }
+  });
 
   Logger.info(`Worker ${process.pid} started`);
 }

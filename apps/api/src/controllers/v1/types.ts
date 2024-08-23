@@ -1,4 +1,4 @@
-import { Request } from "express";
+import { Request, Response } from "express";
 import { z } from "zod";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { PageOptions } from "../../lib/entities";
@@ -247,6 +247,12 @@ export interface RequestWithAuth<
 > extends Request<ReqParams, ReqBody, ResBody> {
   auth: AuthObject;
   account?: Account;
+}
+
+export interface ResponseWithSentry<
+  ResBody = undefined,
+> extends Response<ResBody> {
+  sentry?: string,
 }
 
 export function legacyCrawlerOptions(x: CrawlerOptions) {

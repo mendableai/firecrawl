@@ -142,24 +142,3 @@ v1Router.ws(
 // Health/Probe routes
 // v1Router.get("/health/liveness", livenessController);
 // v1Router.get("/health/readiness", readinessController);
-
-v1Router.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: Response<ErrorResponse>, next: NextFunction) => {
-    if (err instanceof ZodError) {
-        res.status(400).json({ success: false, error: "Bad Request", details: err.errors });
-    } else {
-        const id = uuidv4();
-        let verbose = JSON.stringify(err);
-        if (verbose === "{}") {
-            if (err instanceof Error) {
-                verbose = JSON.stringify({
-                    message: err.message,
-                    name: err.name,
-                    stack: err.stack,
-                });
-            }
-        }
-
-        Logger.error("Error occurred in request! (" + req.path + ") -- ID " + id  + " -- " + verbose);
-        res.status(500).json({ success: false, error: "An unexpected error occurred. Please contact hello@firecrawl.com for help. Your exception ID is " + id + "" });
-    }
-});
