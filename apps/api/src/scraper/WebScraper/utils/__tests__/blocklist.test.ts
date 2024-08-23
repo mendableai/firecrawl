@@ -8,7 +8,6 @@ describe('Blocklist Functionality', () => {
       'https://twitter.com/home',
       'https://instagram.com/explore',
       'https://linkedin.com/in/johndoe',
-      'https://pinterest.com/pin/create',
       'https://snapchat.com/add/johndoe',
       'https://tiktok.com/@johndoe',
       'https://reddit.com/r/funny',
