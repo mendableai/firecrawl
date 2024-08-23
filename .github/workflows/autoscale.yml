@@ -1,7 +1,7 @@
 name: Simple Autoscaler
 on:
   schedule:
-    - cron: '*/0.5 * * * *'
+    - cron: '*/1 * * * *'
 
 env:
   BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}
