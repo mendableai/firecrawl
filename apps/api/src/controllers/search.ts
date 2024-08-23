@@ -114,9 +114,15 @@ export async function searchHelper(
       if (Date.now() >= start + 60000) {
         clearInterval(int);
         reject(new Error("Job wait "));
-      } else if (await x.getState() === "completed") {
-        clearInterval(int);
-        resolve((await getScrapeQueue().getJob(x.id)).returnvalue);
+      } else {
+        const state = await x.getState();
+        if (state === "completed") {
+          clearInterval(int);
+          resolve((await getScrapeQueue().getJob(x.id)).returnvalue);
+        } else if (state === "failed") {
+          clearInterval(int);
+          reject((await getScrapeQueue().getJob(x.id)).failedReason);
+        }
       }
     }, 1000);
   })))).map(x => x[0]);

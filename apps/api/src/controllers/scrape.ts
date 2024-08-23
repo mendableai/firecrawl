@@ -58,9 +58,15 @@ export async function scrapeHelper(
           if (Date.now() >= start + timeout) {
             clearInterval(int);
             reject(new Error("Job wait "));
-          } else if (await job.getState() === "completed") {
-            clearInterval(int);
-            resolve((await getScrapeQueue().getJob(job.id)).returnvalue);
+          } else {
+            const state = await job.getState();
+            if (state === "completed") {
+              clearInterval(int);
+              resolve((await getScrapeQueue().getJob(job.id)).returnvalue);
+            } else if (state === "failed") {
+              clearInterval(int);
+              reject((await getScrapeQueue().getJob(job.id)).failedReason);
+            }
           }
         }, 1000);
       }))[0]
@@ -72,6 +78,12 @@ export async function scrapeHelper(
           error: "Request timed out",
           returnCode: 408,
         }
+      } else if (typeof e === "string" && (e.includes("Error generating completions: ") || e.includes("Invalid schema for function"))) {
+        return {
+          success: false,
+          error: e,
+          returnCode: 500,
+        };
       } else {
         throw e;
       }
@@ -214,6 +226,6 @@ export async function scrapeController(req: Request, res: Response) {
   } catch (error) {
     Sentry.captureException(error);
     Logger.error(error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: typeof error === "string" ? error : (error?.message ?? "Internal Server Error") });
   }
 }
