@@ -1,0 +1,36 @@
+name: Simple Autoscaler
+on:
+  schedule:
+    - cron: '*/0.5 * * * *'
+
+env:
+  BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+    
+jobs:
+  scale:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: superfly/flyctl-actions/setup-flyctl@master
+      - name: Send GET request to check queues
+        run: |
+          response=$(curl --silent --max-time 180 https://api.firecrawl.dev/admin/${{ secrets.BULL_AUTH_KEY }}/autoscaler)
+          http_code=$(echo "$response" | jq -r '.status_code')
+          
+          mode=$(echo "$response" | jq -r '.mode')
+          count=$(echo "$response" | jq -r '.count')
+
+          echo "Mode: $mode"
+          echo "Count: $count"
+          
+          if [ "$mode" = "scale-descale" ]; then
+            flyctl scale count $count -c fly.staging.toml --process-group=worker --yes
+            echo "Scaled to $count machines."
+          else
+            echo "No scaling needed. Mode: $mode"
+          fi
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+          BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}
+        working-directory: apps/api
