@@ -6,7 +6,6 @@ const socialMediaBlocklist = [
   'twitter.com',
   'instagram.com',
   'linkedin.com',
-  'pinterest.com',
   'snapchat.com',
   'tiktok.com',
   'reddit.com',

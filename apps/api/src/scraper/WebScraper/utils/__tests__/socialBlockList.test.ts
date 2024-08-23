@@ -8,7 +8,6 @@ describe('isUrlBlocked', () => {
       'https://twitter.com/someuser',
       'https://instagram.com/someuser',
       'https://www.linkedin.com/in/someuser',
-      'https://pinterest.com/someuser',
       'https://snapchat.com/someuser',
       'https://tiktok.com/@someuser',
       'https://reddit.com/r/somesubreddit',
