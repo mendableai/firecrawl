@@ -61,6 +61,12 @@ export async function scrapeHelper(
           error: "Request timed out",
           returnCode: 408,
         }
+      } else if (typeof e === "string" && (e.includes("Error generating completions: ") || e.includes("Invalid schema for function"))) {
+        return {
+          success: false,
+          error: e,
+          returnCode: 500,
+        };
       } else {
         throw e;
       }
@@ -211,6 +217,6 @@ export async function scrapeController(req: Request, res: Response) {
   } catch (error) {
     Sentry.captureException(error);
     Logger.error(error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: typeof error === "string" ? error : (error?.message ?? "Internal Server Error") });
   }
 }

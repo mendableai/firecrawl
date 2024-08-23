@@ -53,9 +53,15 @@ export function waitForJob(jobId: string, timeout: number) {
       if (Date.now() >= start + timeout) {
         clearInterval(int);
         reject(new Error("Job wait "));
-      } else if (await getScrapeQueue().getJobState(jobId) === "completed") {
-        clearInterval(int);
-        resolve((await getScrapeQueue().getJob(jobId)).returnvalue);
+      } else {
+        const state = await getScrapeQueue().getJobState(jobId);
+        if (state === "completed") {
+          clearInterval(int);
+          resolve((await getScrapeQueue().getJob(jobId)).returnvalue);
+        } else if (state === "failed") {
+          clearInterval(int);
+          reject((await getScrapeQueue().getJob(jobId)).failedReason);
+        }
       }
     }, 1000);
   })
