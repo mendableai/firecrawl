@@ -115,7 +115,8 @@ export async function autoscalerController(req: Request, res: Response) {
     let targetMachineCount = activeMachines;
 
     const baseScaleUp = 10;
-    const baseScaleDown = 5;
+    // Slow scale down
+    const baseScaleDown = 2;
 
     // Scale up logic
     if (webScraperActive > 9000 || waitingAndPriorityCount > 2000) {
