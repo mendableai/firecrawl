@@ -110,7 +110,9 @@ export async function autoscalerController(req: Request, res: Response) {
       }
     )
     const machines = await request.json();
-    const activeMachines = machines.filter(machine => machine.state === 'started' || machine.state === "starting").length;
+    
+    // Only worker machines
+    const activeMachines = machines.filter(machine => (machine.state === 'started' || machine.state === "starting") && machine.config.env["FLY_PROCESS_GROUP"] === "worker").length;
 
     let targetMachineCount = activeMachines;
 
