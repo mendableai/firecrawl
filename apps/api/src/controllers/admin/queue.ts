@@ -113,7 +113,7 @@ export async function autoscalerController(req: Request, res: Response) {
     const machines = await request.json();
 
     // Only worker machines
-    const activeMachines = machines.filter(machine => (machine.state === 'started' || machine.state === "starting") && machine.config.env["FLY_PROCESS_GROUP"] === "worker").length;
+    const activeMachines = machines.filter(machine => (machine.state === 'started' || machine.state === "starting" || machine.state === "replacing") && machine.config.env["FLY_PROCESS_GROUP"] === "worker").length;
 
     let targetMachineCount = activeMachines;
 
@@ -143,9 +143,9 @@ export async function autoscalerController(req: Request, res: Response) {
       Logger.info(`🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting`);
 
       if(targetMachineCount > activeMachines) {
-        sendSlackWebhook("🐂 Scaling up to " + targetMachineCount + " machines", false, process.env.SLACK_AUTOSCALER ?? "");
+        sendSlackWebhook(`🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting`, false, process.env.SLACK_AUTOSCALER ?? "");
       } else {
-        sendSlackWebhook("🐂 Scaling down to " + targetMachineCount + " machines", false, process.env.SLACK_AUTOSCALER ?? "");
+        sendSlackWebhook(`🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting`, false, process.env.SLACK_AUTOSCALER ?? "");
       }
       return res.status(200).json({
         mode: "scale-descale",
