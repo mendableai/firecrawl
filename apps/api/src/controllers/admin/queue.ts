@@ -88,7 +88,7 @@ export async function queuesController(req: Request, res: Response) {
 
 export async function autoscalerController(req: Request, res: Response) {
   try {
-    const maxNumberOfMachines = 100;
+    const maxNumberOfMachines = 80;
     const minNumberOfMachines = 20;
 
     const scrapeQueue = getScrapeQueue();
@@ -110,7 +110,7 @@ export async function autoscalerController(req: Request, res: Response) {
       }
     )
     const machines = await request.json();
-    
+
     // Only worker machines
     const activeMachines = machines.filter(machine => (machine.state === 'started' || machine.state === "starting") && machine.config.env["FLY_PROCESS_GROUP"] === "worker").length;
 
