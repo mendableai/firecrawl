@@ -143,9 +143,9 @@ export async function autoscalerController(req: Request, res: Response) {
       Logger.info(`🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting`);
 
       if(targetMachineCount > activeMachines) {
-        sendSlackWebhook(`🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting`, false, process.env.SLACK_AUTOSCALER ?? "");
+        sendSlackWebhook(`🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting - Current DateTime: ${new Date().toISOString()}`, false, process.env.SLACK_AUTOSCALER ?? "");
       } else {
-        sendSlackWebhook(`🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting`, false, process.env.SLACK_AUTOSCALER ?? "");
+        sendSlackWebhook(`🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting - Current DateTime: ${new Date().toISOString()}`, false, process.env.SLACK_AUTOSCALER ?? "");
       }
       return res.status(200).json({
         mode: "scale-descale",
