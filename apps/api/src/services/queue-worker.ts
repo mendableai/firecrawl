@@ -215,7 +215,7 @@ async function processJob(job: Job, token: string) {
     };
 
     if (job.data.mode === "crawl") {
-      await callWebhook(job.data.team_id, job.id as string, data, job.data.webhook);
+      await callWebhook(job.data.team_id, job.id as string, data, job.data.webhook, job.data.v1);
     }
 
     if (job.data.crawl_id) {
@@ -259,6 +259,7 @@ async function processJob(job: Job, token: string) {
                 pageOptions: sc.pageOptions,
                 origin: job.data.origin,
                 crawl_id: job.data.crawl_id,
+                v1: job.data.v1,
               });
 
               await addCrawlJob(job.data.crawl_id, newJob.id);
@@ -328,7 +329,7 @@ async function processJob(job: Job, token: string) {
           docs: fullDocs,
         };
 
-        await callWebhook(job.data.team_id, job.data.crawl_id, data);
+        await callWebhook(job.data.team_id, job.data.crawl_id, data, job.data.webhook, job.data.v1);
       }
     }
 
@@ -372,7 +373,7 @@ async function processJob(job: Job, token: string) {
     };
     
     if (job.data.mode === "crawl" || job.data.crawl_id) {
-      await callWebhook(job.data.team_id, job.data.crawl_id ?? job.id as string, data);
+      await callWebhook(job.data.team_id, job.data.crawl_id ?? job.id as string, data, job.data.webhook, job.data.v1);
     }
     
     if (job.data.crawl_id) {

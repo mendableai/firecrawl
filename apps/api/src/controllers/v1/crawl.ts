@@ -81,6 +81,7 @@ export async function crawlController(
           origin: "api",
           crawl_id: id,
           sitemapped: true,
+          v1: true,
         },
         opts: {
           jobId: uuid,
@@ -110,6 +111,7 @@ export async function crawlController(
         origin: "api",
         crawl_id: id,
         webhook: req.body.webhook,
+        v1: true,
       },
       {
         priority: 15,

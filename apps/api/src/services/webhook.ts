@@ -1,7 +1,8 @@
+import { legacyDocumentConverter } from "../../src/controllers/v1/types";
 import { Logger } from "../../src/lib/logger";
 import { supabase_service } from "./supabase";
 
-export const callWebhook = async (teamId: string, jobId: string, data: any, specified?: string) => {
+export const callWebhook = async (teamId: string, jobId: string, data: any, specified?: string, v1 = false) => {
   try {
     const selfHostedUrl = process.env.SELF_HOSTED_WEBHOOK_URL?.replace("{{JOB_ID}}", jobId);
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
@@ -30,11 +31,15 @@ export const callWebhook = async (teamId: string, jobId: string, data: any, spec
     let dataToSend = [];
     if (data.result.links && data.result.links.length !== 0) {
       for (let i = 0; i < data.result.links.length; i++) {
-        dataToSend.push({
-          content: data.result.links[i].content.content,
-          markdown: data.result.links[i].content.markdown,
-          metadata: data.result.links[i].content.metadata,
-        });
+        if (v1) {
+          dataToSend.push(legacyDocumentConverter(data.result.links[i].content))
+        } else {
+          dataToSend.push({
+            content: data.result.links[i].content.content,
+            markdown: data.result.links[i].content.markdown,
+            metadata: data.result.links[i].content.metadata,
+          });
+        }
       }
     }
 

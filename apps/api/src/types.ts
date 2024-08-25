@@ -31,6 +31,7 @@ export interface WebScraperOptions {
   crawl_id?: string;
   sitemapped?: boolean;
   webhook?: string;
+  v1?: boolean;
 }
 
 export interface RunWebScraperParams {
