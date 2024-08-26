@@ -6,7 +6,7 @@ import { crawlStatusController } from "../../src/controllers/v1/crawl-status";
 import { mapController } from "../../src/controllers/v1/map";
 import { ErrorResponse, RequestWithAuth, RequestWithMaybeAuth } from "../controllers/v1/types";
 import { RateLimiterMode } from "../types";
-import { authenticateUser } from "../controllers/v1/auth";
+import { authenticateUser } from "../controllers/auth";
 import { Logger } from "../lib/logger";
 import { createIdempotencyKey } from "../services/idempotency/create";
 import { validateIdempotencyKey } from "../services/idempotency/validate";

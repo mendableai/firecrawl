@@ -1,6 +1,6 @@
 import { authMiddleware } from "../../routes/v1";
 import { RateLimiterMode } from "../../types";
-import { authenticateUser } from "../v0/auth";
+import { authenticateUser } from "../auth";
 import { CrawlStatusParams, CrawlStatusResponse, Document, ErrorResponse, legacyDocumentConverter, RequestWithAuth } from "./types";
 import { WebSocket } from "ws";
 import { v4 as uuidv4 } from "uuid";

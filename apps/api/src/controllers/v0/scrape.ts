@@ -1,7 +1,7 @@
 import { ExtractorOptions, PageOptions } from './../../lib/entities';
 import { Request, Response } from "express";
 import { billTeam, checkTeamCredits } from "../../services/billing/credit_billing";
-import { authenticateUser } from "./auth";
+import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
 import { Document } from "../../lib/entities";

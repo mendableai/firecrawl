@@ -34,9 +34,29 @@ export async function crawlController(
 
   const { remainingCredits } = req.account;
 
-  // TODO: Get rid of crawlerOptions
   const crawlerOptions = legacyCrawlerOptions(req.body);
   const pageOptions = legacyScrapeOptions(req.body.scrapeOptions);
+
+  // TODO: @rafa, is this right? copied from v0
+  if (Array.isArray(crawlerOptions.includes)) {
+    for (const x of crawlerOptions.includes) {
+      try {
+        new RegExp(x);
+      } catch (e) {
+        return res.status(400).json({ success: false, error: e.message });
+      }
+    }
+  }
+
+  if (Array.isArray(crawlerOptions.excludes)) {
+    for (const x of crawlerOptions.excludes) {
+      try {
+        new RegExp(x);
+      } catch (e) {
+        return res.status(400).json({ success: false, error: e.message });
+      }
+    }
+  }
 
   crawlerOptions.limit = Math.min(remainingCredits, crawlerOptions.limit);
   

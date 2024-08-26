@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { checkTeamCredits } from "../../../src/services/billing/credit_billing";
-import { authenticateUser } from "./auth";
+import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { addScrapeJob } from "../../../src/services/queue-jobs";
 import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";

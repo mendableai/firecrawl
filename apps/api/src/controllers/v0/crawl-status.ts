@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { authenticateUser } from "./auth";
+import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { getScrapeQueue } from "../../../src/services/queue-service";
 import { Logger } from "../../../src/lib/logger";

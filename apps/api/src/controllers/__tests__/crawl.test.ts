@@ -1,6 +1,6 @@
 import { crawlController } from '../v0/crawl'
 import { Request, Response } from 'express';
-import { authenticateUser } from '../v0/auth'; // Ensure this import is correct
+import { authenticateUser } from '../auth'; // Ensure this import is correct
 import { createIdempotencyKey } from '../../services/idempotency/create';
 import { validateIdempotencyKey } from '../../services/idempotency/validate';
 import { v4 as uuidv4 } from 'uuid';
