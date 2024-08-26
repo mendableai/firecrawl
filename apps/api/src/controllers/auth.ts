@@ -16,7 +16,20 @@ import { getValue } from "../services/redis";
 import { setValue } from "../services/redis";
 import { validate } from "uuid";
 import * as Sentry from "@sentry/node";
-
+// const { data, error } = await supabase_service
+//     .from('api_keys')
+//     .select(`
+//       key,
+//       team_id,
+//       teams (
+//         subscriptions (
+//           price_id
+//         )
+//       )
+//     `)
+//     .eq('key', normalizedApi)
+//     .limit(1)
+//     .single();
 function normalizedApiIsUuid(potentialUuid: string): boolean {
   // Check if the string is a valid UUID
   return validate(potentialUuid);
@@ -154,7 +167,7 @@ export async function supaAuthenticateUser(
         await setValue(
           cacheKey,
           JSON.stringify({ team_id: teamId, price_id: priceId }),
-          10
+          60
         );
       }
     } catch (error) {
