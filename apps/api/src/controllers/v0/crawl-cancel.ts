@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { authenticateUser } from "./auth";
+import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { supabase_service } from "../../../src/services/supabase";
 import { Logger } from "../../../src/lib/logger";

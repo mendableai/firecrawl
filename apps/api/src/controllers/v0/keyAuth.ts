@@ -2,7 +2,7 @@
 import { AuthResponse, RateLimiterMode } from "../../types";
 
 import { Request, Response } from "express";
-import { authenticateUser } from "./auth";
+import { authenticateUser } from "../auth";
 
 
 export const keyAuthController = async (req: Request, res: Response) => {

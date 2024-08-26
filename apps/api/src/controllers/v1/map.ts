@@ -97,7 +97,7 @@ export async function mapController(
 
   logJob({
     job_id: id,
-    success: true,
+    success: links.length > 0,
     message: "Map completed",
     num_docs: 1,
     docs: links,

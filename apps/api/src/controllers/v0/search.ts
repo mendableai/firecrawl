@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { WebScraperDataProvider } from "../../scraper/WebScraper";
 import { billTeam, checkTeamCredits } from "../../services/billing/credit_billing";
-import { authenticateUser } from "./auth";
+import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
 import { PageOptions, SearchOptions } from "../../lib/entities";

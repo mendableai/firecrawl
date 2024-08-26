@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { authenticateUser } from "./auth";
+import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
