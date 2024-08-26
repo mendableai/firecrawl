@@ -1,4 +1,4 @@
-import { isSameDomain } from "./validateUrl";
+import { isSameDomain, removeDuplicateUrls } from "./validateUrl";
 import { isSameSubdomain } from "./validateUrl";
 
 describe("isSameDomain", () => {
@@ -84,5 +84,76 @@ describe("isSameSubdomain", () => {
   it("should return false for a subdomain with www prefix and different subdomain", () => {
     const result = isSameSubdomain("http://www.docs.example.com", "http://blog.example.com");
     expect(result).toBe(false);
+  });
+});
+
+describe("removeDuplicateUrls", () => {
+  it("should remove duplicate URLs with different protocols", () => {
+    const urls = [
+      "http://example.com",
+      "https://example.com",
+      "http://www.example.com",
+      "https://www.example.com"
+    ];
+    const result = removeDuplicateUrls(urls);
+    expect(result).toEqual(["https://example.com"]);
+  });
+
+  it("should keep URLs with different paths", () => {
+    const urls = [
+      "https://example.com/page1",
+      "https://example.com/page2",
+      "https://example.com/page1?param=1",
+      "https://example.com/page1#section1"
+    ];
+    const result = removeDuplicateUrls(urls);
+    expect(result).toEqual([
+      "https://example.com/page1",
+      "https://example.com/page2",
+      "https://example.com/page1?param=1",
+      "https://example.com/page1#section1"
+    ]);
+  });
+
+  it("should prefer https over http", () => {
+    const urls = [
+      "http://example.com",
+      "https://example.com"
+    ];
+    const result = removeDuplicateUrls(urls);
+    expect(result).toEqual(["https://example.com"]);
+  });
+
+  it("should prefer non-www over www", () => {
+    const urls = [
+      "https://www.example.com",
+      "https://example.com"
+    ];
+    const result = removeDuplicateUrls(urls);
+    expect(result).toEqual(["https://example.com"]);
+  });
+
+  it("should handle empty input", () => {
+    const urls: string[] = [];
+    const result = removeDuplicateUrls(urls);
+    expect(result).toEqual([]);
+  });
+
+  it("should handle URLs with different cases", () => {
+    const urls = [
+      "https://EXAMPLE.com",
+      "https://example.com"
+    ];
+    const result = removeDuplicateUrls(urls);
+    expect(result).toEqual(["https://EXAMPLE.com"]);
+  });
+
+  it("should handle URLs with trailing slashes", () => {
+    const urls = [
+      "https://example.com",
+      "https://example.com/"
+    ];
+    const result = removeDuplicateUrls(urls);
+    expect(result).toEqual(["https://example.com"]);
   });
 });

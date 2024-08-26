@@ -120,3 +120,32 @@ export const checkAndUpdateURLForMap = (url: string) => {
 
 
 
+
+
+export function removeDuplicateUrls(urls: string[]): string[] {
+  const urlMap = new Map<string, string>();
+
+  for (const url of urls) {
+    const parsedUrl = new URL(url);
+    const protocol = parsedUrl.protocol;
+    const hostname = parsedUrl.hostname.replace(/^www\./, '');
+    const path = parsedUrl.pathname + parsedUrl.search + parsedUrl.hash;
+    
+    const key = `${hostname}${path}`;
+    
+    if (!urlMap.has(key)) {
+      urlMap.set(key, url);
+    } else {
+      const existingUrl = new URL(urlMap.get(key)!);
+      const existingProtocol = existingUrl.protocol;
+      
+      if (protocol === 'https:' && existingProtocol === 'http:') {
+        urlMap.set(key, url);
+      } else if (protocol === existingProtocol && !parsedUrl.hostname.startsWith('www.') && existingUrl.hostname.startsWith('www.')) {
+        urlMap.set(key, url);
+      }
+    }
+  }
+
+  return [...new Set(Array.from(urlMap.values()))];
+}

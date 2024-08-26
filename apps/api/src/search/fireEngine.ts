@@ -24,6 +24,7 @@ export async function fireEngineMap(q: string, options: {
   });
 
   if (!process.env.FIRE_ENGINE_BETA_URL) {
+    console.warn("(v1/map Beta) Results might differ from cloud offering currently.");
     return [];
   }
 

@@ -12,9 +12,11 @@ import {
   checkAndUpdateURLForMap,
   isSameDomain,
   isSameSubdomain,
+  removeDuplicateUrls,
 } from "../../lib/validateUrl";
 import { fireEngineMap } from "../../search/fireEngine";
 import { billTeam } from "../../services/billing/credit_billing";
+import { logJob } from "../../services/logging/log_job";
 
 configDotenv();
 
@@ -22,11 +24,13 @@ export async function mapController(
   req: RequestWithAuth<{}, MapResponse, MapRequest>,
   res: Response<MapResponse>
 ) {
+  const startTime = new Date().getTime();
+
   req.body = mapRequestSchema.parse(req.body);
 
+  const limit = req.body.limit;
   const id = uuidv4();
   let links: string[] = [req.body.url];
-
 
   const sc: StoredCrawl = {
     originUrl: req.body.url,
@@ -38,10 +42,7 @@ export async function mapController(
 
   const crawler = crawlToCrawler(id, sc);
 
-  const sitemap =
-    req.body.ignoreSitemap
-      ? null
-      : await crawler.tryGetSitemap();
+  const sitemap = req.body.ignoreSitemap ? null : await crawler.tryGetSitemap();
 
   if (sitemap !== null) {
     sitemap.map((x) => {
@@ -50,19 +51,24 @@ export async function mapController(
   }
 
   let urlWithoutWww = req.body.url.replace("www.", "");
-  
+
   let mapUrl = req.body.search
     ? `"${req.body.search}" site:${urlWithoutWww}`
     : `site:${req.body.url}`;
   // www. seems to exclude subdomains in some cases
   const mapResults = await fireEngineMap(mapUrl, {
-    numResults: 50,
+    // limit to 50 results (beta)
+    numResults: Math.min(limit, 50),
   });
 
   if (mapResults.length > 0) {
     if (req.body.search) {
       // Ensure all map results are first, maintaining their order
-      links = [mapResults[0].url, ...mapResults.slice(1).map(x => x.url), ...links];
+      links = [
+        mapResults[0].url,
+        ...mapResults.slice(1).map((x) => x.url),
+        ...links,
+      ];
     } else {
       mapResults.map((x) => {
         links.push(x.url);
@@ -71,8 +77,6 @@ export async function mapController(
   }
 
   links = links.map((x) => checkAndUpdateURLForMap(x).url.trim());
-
-
 
   // allows for subdomains to be included
   links = links.filter((x) => isSameDomain(x, req.body.url));
@@ -83,12 +87,32 @@ export async function mapController(
   }
 
   // remove duplicates that could be due to http/https or www
-  links = [...new Set(links)];
+  links = removeDuplicateUrls(links);
 
   await billTeam(req.auth.team_id, 1);
 
+  const endTime = new Date().getTime();
+  const timeTakenInSeconds = (endTime - startTime) / 1000;
+
+  logJob({
+    job_id: id,
+    success: true,
+    message: "Map completed",
+    num_docs: 1,
+    docs: links,
+    time_taken: timeTakenInSeconds,
+    team_id: req.auth.team_id,
+    mode: "map",
+    url: req.body.url,
+    crawlerOptions: {},
+    pageOptions: {},
+    origin: req.body.origin,
+    extractor_options: { mode: "markdown" },
+    num_tokens: 0,
+  });
+
   return res.status(200).json({
     success: true,
-    links,
+    links: links.slice(0, limit),
   });
 }
