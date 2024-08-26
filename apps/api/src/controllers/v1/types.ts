@@ -27,7 +27,10 @@ const url = z.preprocess(
     .string()
     .url()
     .regex(/^https?:\/\//, "URL uses unsupported protocol")
-    .regex(/\.[a-z]{2,}$/i, "URL must have a valid top-level domain")
+    .refine(
+      (x) => /\.[a-z]{2,}(\/|$)/i.test(x),
+      "URL must have a valid top-level domain or be a valid path"
+    )
     .refine(
       (x) => !isUrlBlocked(x),
       "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
