@@ -111,7 +111,7 @@ export function getRateLimiter(
   teamId?: string
 ) {
 
-  if (token.includes("a01ccae") || token.includes("6254cf9") || token.includes("0f96e673")) {
+  if (token.includes("a01ccae") || token.includes("6254cf9") || token.includes("0f96e673") || token.includes("23befa1b")) {
     return testSuiteRateLimiter;
   }
 
