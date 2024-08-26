@@ -1,7 +1,6 @@
 import request from "supertest";
 import dotenv from "dotenv";
 import {
-  ScrapeOptions,
   ScrapeRequest,
   ScrapeResponseRequestTest,
 } from "../../controllers/v1/types";
@@ -606,4 +605,360 @@ describe("POST /v1/map", () => {
     expect(response.body).toHaveProperty("error");
   });
 });
+
+
+describe("POST /v1/crawl", () => {
+  it.concurrent("should require authorization", async () => {
+    const response: ScrapeResponseRequestTest = await request(TEST_URL).post(
+      "/v1/crawl"
+    );
+    expect(response.statusCode).toBe(401);
+  });
+  
+  it.concurrent("should throw error for blocklisted URL", async () => {
+    const scrapeRequest: ScrapeRequest = {
+      url: "https://facebook.com/fake-test",
+    };
+
+    const response = await request(TEST_URL)
+      .post("/v1/crawl")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send(scrapeRequest);
+
+    expect(response.statusCode).toBe(403);
+    expect(response.body.error).toBe("URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions.");
+  });
+
+  it.concurrent(
+    "should return an error response with an invalid API key",
+    async () => {
+      const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        .post("/v1/crawl")
+        .set("Authorization", `Bearer invalid-api-key`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://firecrawl.dev" });
+      expect(response.statusCode).toBe(401);
+    }
+  );
+
+  it.concurrent("should return a successful response", async () => {
+    const response = await request(TEST_URL)
+      .post("/v1/crawl")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send({ url: "https://firecrawl.dev" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty("id");
+    expect(response.body.id).toMatch(
+      /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
+    );
+    expect(response.body).toHaveProperty("success", true);
+    expect(response.body).toHaveProperty("url");
+    expect(response.body.url).toContain("/v1/crawl/");
+  });
+
+  it.concurrent(
+    "should return a successful response with a valid API key and valid includes option",
+    async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v1/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://firecrawl.dev",
+          limit: 10,
+          includePaths: ["blog/*"],
+        });
+
+      let response;
+      let isFinished = false;
+
+      while (!isFinished) {
+        response = await request(TEST_URL)
+          .get(`/v1/crawl/${crawlResponse.body.id}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty("status");
+        isFinished = response.body.status === "completed";
+
+        if (!isFinished) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
+      const completedResponse = await request(TEST_URL)
+        .get(`/v1/crawl/${crawlResponse.body.id}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+      const urls = completedResponse.body.data.map(
+        (item: any) => item.metadata?.sourceURL
+      );
+      expect(urls.length).toBeGreaterThan(5);
+      urls.forEach((url: string) => {
+        expect(url).toContain("firecrawl.dev/blog");
+      });
+
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0]).not.toHaveProperty("content"); // v0
+      expect(completedResponse.body.data[0].metadata.statusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.error).toBeUndefined();
+    },
+    180000
+  ); // 180 seconds
+
+  it.concurrent(
+    "should return a successful response with a valid API key and valid excludes option",
+    async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v1/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://firecrawl.dev",
+          limit: 10,
+          excludePaths: ["blog/*"],
+        });
+
+      let isFinished = false;
+      let response;
+
+      while (!isFinished) {
+        response = await request(TEST_URL)
+          .get(`/v1/crawl/${crawlResponse.body.id}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty("status");
+        isFinished = response.body.status === "completed";
+
+        if (!isFinished) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
+      const completedResponse = await request(
+        TEST_URL
+      )
+        .get(`/v1/crawl/${crawlResponse.body.id}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+      const urls = completedResponse.body.data.map(
+        (item: any) => item.metadata?.sourceURL
+      );
+      expect(urls.length).toBeGreaterThan(3);
+      urls.forEach((url: string) => {
+        expect(url.startsWith("https://www.firecrawl.dev/blog/")).toBeFalsy();
+      });
+    },
+    90000
+  ); // 90 seconds
+
+  it.concurrent(
+    "should return a successful response with max depth option for a valid crawl job",
+    async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v1/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          url: "https://www.scrapethissite.com",
+          maxDepth: 1,
+        });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      const response = await request(TEST_URL)
+        .get(`/v1/crawl/${crawlResponse.body.id}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("status");
+      expect(["active", "waiting", "completed", "scraping"]).toContain(response.body.status);
+      // wait for 60 seconds
+      let isCompleted = false;
+      while (!isCompleted) {
+        const statusCheckResponse = await request(TEST_URL)
+          .get(`/v1/crawl/${crawlResponse.body.id}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(statusCheckResponse.statusCode).toBe(200);
+        isCompleted = statusCheckResponse.body.status === "completed";
+        if (!isCompleted) {
+          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+        }
+      }
+      const completedResponse = await request(
+        TEST_URL
+      )
+        .get(`/v1/crawl/${crawlResponse.body.id}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).not.toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0].metadata.statusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.error).toBeUndefined();
+      const urls = completedResponse.body.data.map(
+        (item: any) => item.metadata?.sourceURL
+      );
+      expect(urls.length).toBeGreaterThanOrEqual(1);
+
+      // Check if all URLs have a maximum depth of 1
+      urls.forEach((url: string) => {
+        const pathSplits = new URL(url).pathname.split("/");
+        const depth =
+          pathSplits.length -
+          (pathSplits[0].length === 0 &&
+          pathSplits[pathSplits.length - 1].length === 0
+            ? 1
+            : 0);
+        expect(depth).toBeLessThanOrEqual(2);
+      });
+    },
+    180000
+  );
+})
+
+describe("GET /v1/crawl/:jobId", () => {
+  it.concurrent("should require authorization", async () => {
+    const response = await request(TEST_URL).get("/v1/crawl/123");
+    expect(response.statusCode).toBe(401);
+  });
+
+  it.concurrent(
+    "should return an error response with an invalid API key",
+    async () => {
+      const response = await request(TEST_URL)
+        .get("/v1/crawl/123")
+        .set("Authorization", `Bearer invalid-api-key`);
+      expect(response.statusCode).toBe(401);
+    }
+  );
+
+  it.concurrent(
+    "should return Job not found for invalid job ID",
+    async () => {
+      const response = await request(TEST_URL)
+        .get("/v1/crawl/invalidJobId")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(response.statusCode).toBe(404);
+    }
+  );
+
+  it.concurrent(
+    "should return a successful crawl status response for a valid crawl job",
+    async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v1/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://mendable.ai/blog" });
+      expect(crawlResponse.statusCode).toBe(200);
+
+      let isCompleted = false;
+
+      while (!isCompleted) {
+        const response = await request(TEST_URL)
+          .get(`/v1/crawl/${crawlResponse.body.id}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(response.statusCode).toBe(200);
+        expect(response.body).toHaveProperty("status");
+
+        if (response.body.status === "completed") {
+          isCompleted = true;
+        } else {
+          await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
+        }
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
+      const completedResponse = await request(TEST_URL)
+        .get(`/v1/crawl/${crawlResponse.body.id}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("completed");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).not.toHaveProperty("content");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0].metadata.statusCode).toBe(
+        200
+      );
+      expect(
+        completedResponse.body.data[0].metadata.error
+      ).toBeUndefined();
+
+      const childrenLinks = completedResponse.body.data.filter(
+        (doc) =>
+          doc.metadata &&
+          doc.metadata.sourceURL &&
+          doc.metadata.sourceURL.includes("mendable.ai/blog")
+      );
+
+      expect(childrenLinks.length).toBe(completedResponse.body.data.length);
+    },
+    180000
+  ); // 120 seconds
+
+  // it.concurrent(
+  //   "If someone cancels a crawl job, it should turn into failed status",
+  //   async () => {
+  //     const crawlResponse = await request(TEST_URL)
+  //       .post("/v1/crawl")
+  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+  //       .set("Content-Type", "application/json")
+  //       .send({ url: "https://docs.tatum.io", limit: 200 });
+
+  //     expect(crawlResponse.statusCode).toBe(200);
+
+  //     await new Promise((r) => setTimeout(r, 10000));
+
+  //     const responseCancel = await request(TEST_URL)
+  //       .delete(`/v1/crawl/${crawlResponse.body.id}`)
+  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+  //     expect(responseCancel.statusCode).toBe(200);
+  //     expect(responseCancel.body).toHaveProperty("status");
+  //     expect(responseCancel.body.status).toBe("cancelled");
+
+  //     await new Promise((r) => setTimeout(r, 10000));
+  //     const completedResponse = await request(TEST_URL)
+  //       .get(`/v1/crawl/${crawlResponse.body.id}`)
+  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+
+  //     expect(completedResponse.statusCode).toBe(200);
+  //     expect(completedResponse.body).toHaveProperty("status");
+  //     expect(completedResponse.body.status).toBe("failed");
+  //     expect(completedResponse.body).toHaveProperty("data");
+
+  //     let isNullOrEmptyArray = false;
+  //     if (
+  //       completedResponse.body.data === null ||
+  //       completedResponse.body.data.length === 0
+  //     ) {
+  //       isNullOrEmptyArray = true;
+  //     }
+  //     expect(isNullOrEmptyArray).toBe(true);
+  //     expect(completedResponse.body.data).toEqual(expect.arrayContaining([]));
+  //     expect(completedResponse.body).toHaveProperty("data");
+  //     expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+  //     expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+  //     expect(completedResponse.body.data[0].metadata.statusCode).toBe(200);
+  //     expect(completedResponse.body.data[0].metadata.error).toBeUndefined();
+  //   },
+  //   60000
+  // ); // 60 seconds
+
+})
 });
