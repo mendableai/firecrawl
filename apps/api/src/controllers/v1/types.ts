@@ -2,6 +2,7 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { PageOptions } from "../../lib/entities";
+import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 
 export type Format =
   | "markdown"
@@ -11,17 +12,12 @@ export type Format =
   | "screenshot"
   | "screenshot@fullPage";
 
-const url = z.preprocess(
+export const url = z.preprocess(
   (x) => {
-    if (typeof x === "string" && !/^([^.:]+:\/\/)/.test(x)) {
-      if (x.startsWith("://")) {
-        return "http" + x;
-      } else {
-        return "http://" + x;
-      }
-    } else {
-      return x;
+    if (!protocolIncluded(x as string)) {
+      return `http://${x}`;
     }
+    return x;
   },
   z
     .string()
@@ -32,7 +28,11 @@ const url = z.preprocess(
       "URL must have a valid top-level domain or be a valid path"
     )
     .refine(
-      (x) => !isUrlBlocked(x),
+      (x) => checkUrl(x as string),
+      "Invalid URL"
+    )
+    .refine(
+      (x) => !isUrlBlocked(x as string),
       "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
     )
 );
