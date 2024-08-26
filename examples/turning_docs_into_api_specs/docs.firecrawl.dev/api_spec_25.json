@@ -1,0 +1,229 @@
+{
+  "info": {
+    "title": "Firecrawl API",
+    "version": "v0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/v0/crawl": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "crawlerOptions": {
+                    "properties": {
+                      "excludes": {
+                        "description": "Paths to exclude",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "includes": {
+                        "description": "Paths to include",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "limit": {
+                        "description": "Maximum pages to crawl",
+                        "type": "integer"
+                      },
+                      "maxDepth": {
+                        "description": "Maximum crawl depth",
+                        "type": "integer"
+                      },
+                      "returnOnlyUrls": {
+                        "description": "Only return URLs",
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "pageOptions": {
+                    "properties": {
+                      "onlyMainContent": {
+                        "description": "Extract main content",
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "url": {
+                    "description": "URL to crawl",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "jobId": {
+                      "description": "Job ID",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Crawl job created"
+          }
+        },
+        "summary": "Crawl a website"
+      }
+    },
+    "/v0/crawl/status/{jobId}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "current": {
+                      "type": "integer"
+                    },
+                    "data": {
+                      "items": {
+                        "properties": {
+                          "url": {
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "status": {
+                      "description": "Job status",
+                      "type": "string"
+                    },
+                    "total": {
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Crawl job status"
+          }
+        },
+        "summary": "Get crawl job status"
+      }
+    },
+    "/v0/scrape": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "pageOptions": {
+                    "properties": {
+                      "onlyMainContent": {
+                        "description": "Extract main content",
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "url": {
+                    "description": "URL to scrape",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "content": {
+                          "type": "string"
+                        },
+                        "html": {
+                          "type": "string"
+                        },
+                        "llm_extraction": {
+                          "type": "object"
+                        },
+                        "markdown": {
+                          "type": "string"
+                        },
+                        "metadata": {
+                          "properties": {
+                            "description": {
+                              "type": "string"
+                            },
+                            "language": {
+                              "type": "string"
+                            },
+                            "pageError": {
+                              "type": "string"
+                            },
+                            "pageStatusCode": {
+                              "type": "integer"
+                            },
+                            "sourceURL": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "rawHtml": {
+                          "type": "string"
+                        },
+                        "warning": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Scrape results"
+          }
+        },
+        "summary": "Scrape a webpage"
+      }
+    }
+  }
+}

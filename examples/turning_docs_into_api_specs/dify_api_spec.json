@@ -1,0 +1,164 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Knowledge Base API",
+    "description": "API for managing knowledge bases and documents."
+  },
+  "paths": {
+    "/datasets": {
+      "post": {
+        "summary": "Create an Empty Dataset",
+        "description": "Only used to create an empty dataset",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {}
+      },
+      "get": {
+        "summary": "Dataset List",
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": {
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {}
+      }
+    },
+    "/datasets/{dataset_id}/document/create_by_text": {
+      "post": {
+        "summary": "Create Document by Text",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string"
+                  },
+                  "text": {
+                    "type": "string"
+                  },
+                  "indexing_technique": {
+                    "type": "string"
+                  },
+                  "process_rule": {
+                    "type": "object"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {}
+      }
+    },
+    "/datasets/{dataset_id}/document/create_by_file": {
+      "post": {
+        "summary": "Create Document by File",
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "data": {
+                    "type": "string"
+                  },
+                  "file": {
+                    "type": "string",
+                    "format": "binary"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {}
+      }
+    },
+    "/datasets/{dataset_id}/documents/{batch}/indexing-status": {
+      "get": {
+        "summary": "Get Document Embedding Status (Progress)",
+        "responses": {}
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}": {
+      "delete": {
+        "summary": "Delete Document",
+        "responses": {}
+      }
+    },
+    "/datasets/{dataset_id}/documents": {
+      "get": {
+        "summary": "Dataset Document List",
+        "responses": {}
+      }
+    },
+    "/datasets/{dataset_id}/documents/{document_id}/segments": {
+      "post": {
+        "summary": "Add Segments",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "segments": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "content": {
+                          "type": "string"
+                        },
+                        "answer": {
+                          "type": "string"
+                        },
+                        "keywords": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {}
+      }
+    },
+    "/datasets/{dataset_id}/segments/{segment_id}": {
+      "delete": {
+        "summary": "Delete Document Segment",
+        "responses": {}
+      }
+    }
+  }
+}

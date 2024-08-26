@@ -1,0 +1,166 @@
+{
+  "info": {
+    "title": "Firecrawl API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/check-crawl-status/{jobId}": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "current": {
+                      "description": "Current progress",
+                      "type": "integer"
+                    },
+                    "data": {
+                      "items": {
+                        "properties": {
+                          "content": {
+                            "description": "Raw content",
+                            "type": "string"
+                          },
+                          "markdown": {
+                            "description": "Markdown content",
+                            "type": "string"
+                          },
+                          "metadata": {
+                            "description": "Page metadata",
+                            "type": "object"
+                          },
+                          "provider": {
+                            "description": "Data provider",
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "status": {
+                      "description": "Job status",
+                      "type": "string"
+                    },
+                    "total": {
+                      "description": "Total pages",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Crawl job status."
+          }
+        },
+        "summary": "Check crawl job status."
+      }
+    },
+    "/crawl": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "crawlerOptions": {
+                    "description": "Crawler options",
+                    "type": "object"
+                  },
+                  "url": {
+                    "description": "URL to crawl",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "jobId": {
+                      "description": "Job ID",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Crawl job submitted."
+          }
+        },
+        "summary": "Crawl a URL."
+      }
+    },
+    "/scrape": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "extractorOptions": {
+                    "description": "Extractor options",
+                    "type": "object"
+                  },
+                  "pageOptions": {
+                    "description": "Page options",
+                    "type": "object"
+                  },
+                  "url": {
+                    "description": "URL to scrape",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "description": "Scraped data",
+                      "type": "object"
+                    },
+                    "success": {
+                      "description": "Success flag",
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Scraped data."
+          }
+        },
+        "summary": "Scrape a single URL."
+      }
+    }
+  }
+}

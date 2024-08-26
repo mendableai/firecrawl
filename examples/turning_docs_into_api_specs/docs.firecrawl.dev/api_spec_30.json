@@ -1,0 +1,212 @@
+{
+  "info": {
+    "title": "Firecrawl API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/crawl": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "crawlerOptions": {
+                    "description": "Crawl job options",
+                    "properties": {
+                      "excludes": {
+                        "description": "Pages to exclude",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "includes": {
+                        "description": "Pages to include",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "limit": {
+                        "description": "Max pages to crawl",
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "pageOptions": {
+                    "description": "Page scraping options",
+                    "properties": {
+                      "onlyMainContent": {
+                        "description": "Only scrape main content",
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "url": {
+                    "description": "URL to crawl",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Crawl job result",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Crawl job result"
+          }
+        },
+        "summary": "Crawl a website"
+      }
+    },
+    "/crawl/{jobId}/cancel": {
+      "post": {
+        "parameters": [
+          {
+            "description": "Crawl job ID",
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Cancellation status",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Cancellation status"
+          }
+        },
+        "summary": "Cancel crawl job"
+      }
+    },
+    "/crawl/{jobId}/status": {
+      "get": {
+        "parameters": [
+          {
+            "description": "Crawl job ID",
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Crawl status",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Crawl status"
+          }
+        },
+        "summary": "Check crawl status"
+      }
+    },
+    "/scrape": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "extractorOptions": {
+                    "description": "LLM extraction options",
+                    "properties": {
+                      "extractionSchema": {
+                        "description": "JSON schema for extraction",
+                        "type": "object"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "url": {
+                    "description": "URL to scrape",
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "url"
+                ],
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Scraped data",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Scraped data"
+          }
+        },
+        "summary": "Scrape a single URL"
+      }
+    },
+    "/search": {
+      "get": {
+        "parameters": [
+          {
+            "description": "Search query",
+            "in": "query",
+            "name": "query",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "description": "Search results",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Search results"
+          }
+        },
+        "summary": "Search and scrape"
+      }
+    }
+  }
+}

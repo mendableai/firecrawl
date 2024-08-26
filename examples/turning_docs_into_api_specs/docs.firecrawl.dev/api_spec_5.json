@@ -1,0 +1,186 @@
+{
+  "info": {
+    "title": "Firecrawl API",
+    "version": "v0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/crawl/status/{jobId}": {
+      "get": {
+        "parameters": [
+          {
+            "description": "ID of crawl job",
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "current": {
+                      "description": "Current page number",
+                      "type": "integer"
+                    },
+                    "data": {
+                      "description": "Data from the job",
+                      "items": {
+                        "properties": {
+                          "content": {
+                            "type": "string"
+                          },
+                          "html": {
+                            "description": "HTML content",
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "index": {
+                            "description": "Page number crawled",
+                            "type": "integer"
+                          },
+                          "markdown": {
+                            "type": "string"
+                          },
+                          "metadata": {
+                            "properties": {
+                              "description": {
+                                "type": "string"
+                              },
+                              "language": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "pageError": {
+                                "description": "Error message of page",
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "pageStatusCode": {
+                                "description": "Status code of page",
+                                "type": "integer"
+                              },
+                              "sourceURL": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "{any other metadata}": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "rawHtml": {
+                            "description": "Raw HTML content",
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "partial_data": {
+                      "description": "Partial documents (streaming)",
+                      "items": {
+                        "properties": {
+                          "content": {
+                            "type": "string"
+                          },
+                          "html": {
+                            "description": "HTML content",
+                            "nullable": true,
+                            "type": "string"
+                          },
+                          "index": {
+                            "description": "Page number crawled",
+                            "type": "integer"
+                          },
+                          "markdown": {
+                            "type": "string"
+                          },
+                          "metadata": {
+                            "properties": {
+                              "description": {
+                                "type": "string"
+                              },
+                              "language": {
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "pageError": {
+                                "description": "Error message of page",
+                                "nullable": true,
+                                "type": "string"
+                              },
+                              "pageStatusCode": {
+                                "description": "Status code of page",
+                                "type": "integer"
+                              },
+                              "sourceURL": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              },
+                              "{any other metadata}": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "rawHtml": {
+                            "description": "Raw HTML content",
+                            "nullable": true,
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "status": {
+                      "description": "Status of the job",
+                      "type": "string"
+                    },
+                    "total": {
+                      "description": "Total number of pages",
+                      "type": "integer"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful operation"
+          }
+        },
+        "security": [
+          {
+            "Authorization": []
+          }
+        ],
+        "summary": "Get crawl job status"
+      }
+    }
+  },
+  "securitySchemes": {
+    "Authorization": {
+      "bearerFormat": "Bearer <token>",
+      "scheme": "bearer",
+      "type": "http"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.firecrawl.dev/v0"
+    }
+  ]
+}

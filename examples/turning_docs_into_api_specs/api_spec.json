@@ -1,0 +1,771 @@
+{
+  "info": {
+    "title": "Firecrawl API",
+    "version": "v0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/crawl": {
+      "post": {
+        "/crawl/cancel/{jobId}": {
+          "/crawl/status/{jobId}": {
+            "get": {
+              "/scrape": {
+                "/search": {
+                  "post": {
+                    "components": {
+                      "securitySchemes": {
+                        "Authorization": {
+                          "bearerFormat": "JWT",
+                          "scheme": "bearer",
+                          "type": "http"
+                        }
+                      }
+                    },
+                    "description": "Send a request to perform a web search and get scraped results from the top pages.",
+                    "operationId": "searchWeb",
+                    "parameters": [],
+                    "requestBody": {
+                      "content": {
+                        "application/json": {
+                          "schema": {
+                            "properties": {
+                              "pageOptions": {
+                                "description": "Options for controlling the scraping behavior of search result pages.",
+                                "properties": {
+                                  "fetchPageContent": {
+                                    "default": true,
+                                    "description": "Fetch the content of each page. If false, defaults to a basic fast serp API.",
+                                    "type": "boolean"
+                                  },
+                                  "includeHtml": {
+                                    "default": false,
+                                    "description": "Include the HTML version of the content on page. Will output a html key in the response.",
+                                    "type": "boolean"
+                                  },
+                                  "includeRawHtml": {
+                                    "default": false,
+                                    "description": "Include the raw HTML content of the page. Will output a rawHtml key in the response.",
+                                    "type": "boolean"
+                                  },
+                                  "onlyMainContent": {
+                                    "default": false,
+                                    "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
+                                    "type": "boolean"
+                                  }
+                                },
+                                "type": "object"
+                              },
+                              "query": {
+                                "description": "The search query.",
+                                "required": true,
+                                "type": "string"
+                              },
+                              "searchOptions": {
+                                "description": "Options for controlling the search.",
+                                "properties": {
+                                  "limit": {
+                                    "description": "Maximum number of search results to return.",
+                                    "type": "integer"
+                                  }
+                                },
+                                "type": "object"
+                              }
+                            },
+                            "type": "object"
+                          }
+                        }
+                      },
+                      "responses": {
+                        "200": {
+                          "402": {
+                            "description": "Payment required."
+                          },
+                          "429": {
+                            "description": "Rate limit exceeded."
+                          },
+                          "500": {
+                            "description": "Internal server error."
+                          },
+                          "content": {
+                            "application/json": {
+                              "schema": {
+                                "properties": {
+                                  "data": {
+                                    "description": "An array of search results.",
+                                    "items": {
+                                      "properties": {
+                                        "content": {
+                                          "description": "Raw content of the search result page.",
+                                          "type": "string"
+                                        },
+                                        "markdown": {
+                                          "description": "Markdown content of the search result page.",
+                                          "type": "string"
+                                        },
+                                        "metadata": {
+                                          "description": "Metadata extracted from the search result page.",
+                                          "properties": {
+                                            "description": {
+                                              "description": "Page description.",
+                                              "type": "string"
+                                            },
+                                            "language": {
+                                              "description": "Page language.",
+                                              "nullable": true,
+                                              "type": "string"
+                                            },
+                                            "sourceURL": {
+                                              "description": "Source URL of the search result page.",
+                                              "type": "string"
+                                            },
+                                            "title": {
+                                              "description": "Page title.",
+                                              "type": "string"
+                                            }
+                                          },
+                                          "type": "object"
+                                        },
+                                        "url": {
+                                          "description": "URL of the search result.",
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "type": "array"
+                                  },
+                                  "success": {
+                                    "description": "Indicates if the search was successful.",
+                                    "type": "boolean"
+                                  }
+                                },
+                                "type": "object"
+                              }
+                            }
+                          },
+                          "description": "Web search completed successfully."
+                        }
+                      }
+                    },
+                    "summary": "Search the Web"
+                  }
+                },
+                "post": {
+                  "description": "Send a request to scrape a single URL and get its content.",
+                  "operationId": "scrapeURL",
+                  "parameters": [],
+                  "requestBody": {
+                    "402": {
+                      "description": "Payment required."
+                    },
+                    "429": {
+                      "description": "Rate limit exceeded."
+                    },
+                    "500": {
+                      "description": "Internal server error."
+                    },
+                    "content": {
+                      "application/json": {
+                        "schema": {
+                          "properties": {
+                            "extractorOptions": {
+                              "description": "Options for extraction of structured information from the page content. Note: LLM-based extraction is not performed by default and only occurs when explicitly configured. The 'markdown' mode simply returns the scraped markdown and is the default mode for scraping.",
+                              "properties": {
+                                "extractionPrompt": {
+                                  "description": "A prompt describing what information to extract from the page, applicable for LLM extraction modes.",
+                                  "type": "string"
+                                },
+                                "extractionSchema": {
+                                  "description": "The schema for the data to be extracted, required only for LLM extraction modes.",
+                                  "type": "object"
+                                },
+                                "mode": {
+                                  "default": "markdown",
+                                  "description": "The extraction mode to use. 'markdown': Returns the scraped markdown content, does not perform LLM extraction. 'llm-extraction': Extracts information from the cleaned and parsed content using LLM. 'llm-extraction-from-raw-html': Extracts information directly from the raw HTML using LLM. 'llm-extraction-from-markdown': Extracts information from the markdown content using LLM.",
+                                  "enum": [
+                                    "markdown",
+                                    "llm-extraction",
+                                    "llm-extraction-from-raw-html",
+                                    "llm-extraction-from-markdown"
+                                  ],
+                                  "type": "string"
+                                }
+                              },
+                              "type": "object"
+                            },
+                            "pageOptions": {
+                              "description": "Options for controlling the scraping behavior.",
+                              "properties": {
+                                "fullPageScreenshot": {
+                                  "default": false,
+                                  "description": "Include a full page screenshot of the page that you are scraping.",
+                                  "type": "boolean"
+                                },
+                                "headers": {
+                                  "description": "Headers to send with the request. Can be used to send cookies, user-agent, etc.",
+                                  "type": "object"
+                                },
+                                "includeHtml": {
+                                  "default": false,
+                                  "description": "Include the HTML version of the content on page. Will output a html key in the response.",
+                                  "type": "boolean"
+                                },
+                                "includeRawHtml": {
+                                  "default": false,
+                                  "description": "Include the raw HTML content of the page. Will output a rawHtml key in the response.",
+                                  "type": "boolean"
+                                },
+                                "onlyIncludeTags": {
+                                  "description": "Only include tags, classes and ids from the page in the final output. Use comma separated values. Example: 'script, .ad, #footer'",
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                },
+                                "onlyMainContent": {
+                                  "default": false,
+                                  "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
+                                  "type": "boolean"
+                                },
+                                "removeTags": {
+                                  "description": "Tags, classes and ids to remove from the page. Use comma separated values. Example: 'script, .ad, #footer'",
+                                  "items": {
+                                    "type": "string"
+                                  },
+                                  "type": "array"
+                                },
+                                "replaceAllPathsWithAbsolutePaths": {
+                                  "default": false,
+                                  "description": "Replace all relative paths with absolute paths for images and links",
+                                  "type": "boolean"
+                                },
+                                "screenshot": {
+                                  "default": false,
+                                  "description": "Include a screenshot of the top of the page that you are scraping.",
+                                  "type": "boolean"
+                                },
+                                "waitFor": {
+                                  "default": 0,
+                                  "description": "Wait x amount of milliseconds for the page to load to fetch content",
+                                  "type": "integer"
+                                }
+                              },
+                              "type": "object"
+                            },
+                            "timeout": {
+                              "default": 30000,
+                              "description": "Timeout in milliseconds for the request",
+                              "type": "integer"
+                            },
+                            "url": {
+                              "description": "The URL to scrape.",
+                              "required": true,
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        }
+                      }
+                    },
+                    "responses": {
+                      "200": {
+                        "content": {
+                          "application/json": {
+                            "schema": {
+                              "properties": {
+                                "data": {
+                                  "properties": {
+                                    "content": {
+                                      "description": "Raw content of the page.",
+                                      "type": "string"
+                                    },
+                                    "html": {
+                                      "description": "HTML version of the page content, only present if `includeHtml` was set to `true` in the request.",
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "llm_extraction": {
+                                      "description": "Extracted data from the page using the specified schema, only present if an LLM extraction mode was used.",
+                                      "nullable": true,
+                                      "type": "object"
+                                    },
+                                    "markdown": {
+                                      "description": "Markdown version of the page content.",
+                                      "type": "string"
+                                    },
+                                    "metadata": {
+                                      "properties": {
+                                        "<any other metadata> ": {
+                                          "description": "Any other extracted metadata.",
+                                          "type": "string"
+                                        },
+                                        "description": {
+                                          "description": "Page description.",
+                                          "type": "string"
+                                        },
+                                        "language": {
+                                          "description": "Page language.",
+                                          "nullable": true,
+                                          "type": "string"
+                                        },
+                                        "pageError": {
+                                          "description": "Error message if there was an error scraping the page.",
+                                          "nullable": true,
+                                          "type": "string"
+                                        },
+                                        "pageStatusCode": {
+                                          "description": "HTTP status code of the page.",
+                                          "type": "integer"
+                                        },
+                                        "sourceURL": {
+                                          "description": "Source URL of the page.",
+                                          "type": "string"
+                                        },
+                                        "title": {
+                                          "description": "Page title.",
+                                          "type": "string"
+                                        }
+                                      },
+                                      "type": "object"
+                                    },
+                                    "rawHtml": {
+                                      "description": "Raw HTML content of the page, only present if `includeRawHtml` was set to `true` in the request.",
+                                      "nullable": true,
+                                      "type": "string"
+                                    },
+                                    "warning": {
+                                      "description": "Warning message from the LLM extraction process, if any.",
+                                      "nullable": true,
+                                      "type": "string"
+                                    }
+                                  },
+                                  "type": "object"
+                                },
+                                "success": {
+                                  "description": "Indicates whether the scraping was successful.",
+                                  "type": "boolean"
+                                }
+                              },
+                              "type": "object"
+                            }
+                          }
+                        },
+                        "description": "URL scraped successfully."
+                      }
+                    }
+                  },
+                  "summary": "Scrape a URL"
+                }
+              },
+              "description": "Send a request to get the status and results of a crawl job.",
+              "operationId": "getCrawlJobStatus",
+              "parameters": [
+                {
+                  "description": "ID of the crawl job to check.",
+                  "in": "path",
+                  "name": "jobId",
+                  "required": true,
+                  "schema": {
+                    "type": "string"
+                  }
+                }
+              ],
+              "requestBody": {
+                "content": {}
+              },
+              "responses": {
+                "200": {
+                  "402": {
+                    "description": "Payment required."
+                  },
+                  "429": {
+                    "description": "Rate limit exceeded."
+                  },
+                  "500": {
+                    "description": "Internal server error."
+                  },
+                  "content": {
+                    "application/json": {
+                      "schema": {
+                        "properties": {
+                          "current": {
+                            "description": "The number of pages crawled so far.",
+                            "type": "integer"
+                          },
+                          "data": {
+                            "description": "The crawl results. Only available when the crawl job is completed.",
+                            "items": {
+                              "properties": {
+                                "content": {
+                                  "description": "Raw content of the page.",
+                                  "type": "string"
+                                },
+                                "html": {
+                                  "description": "HTML version of the page content, only present if `includeHtml` was set to `true` in the crawl request.",
+                                  "type": "string"
+                                },
+                                "index": {
+                                  "description": "The index of the crawled page in the results.",
+                                  "type": "integer"
+                                },
+                                "markdown": {
+                                  "description": "Markdown content of the page.",
+                                  "type": "string"
+                                },
+                                "metadata": {
+                                  "description": "Metadata extracted from the page.",
+                                  "properties": {
+                                    "<any other metadata> ": {
+                                      "description": "Any other extracted metadata.",
+                                      "type": "string"
+                                    },
+                                    "description": {
+                                      "description": "Page description.",
+                                      "type": "string"
+                                    },
+                                    "language": {
+                                      "description": "Page language.",
+                                      "type": "string"
+                                    },
+                                    "pageError": {
+                                      "description": "Error message if there was an error scraping the page.",
+                                      "type": "string"
+                                    },
+                                    "pageStatusCode": {
+                                      "description": "HTTP status code of the page.",
+                                      "type": "integer"
+                                    },
+                                    "sourceURL": {
+                                      "description": "Source URL of the page.",
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "description": "Page title.",
+                                      "type": "string"
+                                    }
+                                  },
+                                  "type": "object"
+                                },
+                                "rawHtml": {
+                                  "description": "Raw HTML content of the page, only present if `includeRawHtml` was set to `true` in the crawl request.",
+                                  "type": "string"
+                                }
+                              },
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "partial_data": {
+                            "description": "Partial results streamed as the crawl progresses. This feature is in alpha and may change.",
+                            "items": {
+                              "properties": {
+                                "content": {
+                                  "description": "Raw content of the page.",
+                                  "type": "string"
+                                },
+                                "html": {
+                                  "description": "HTML version of the page content, only present if `includeHtml` was set to `true` in the crawl request.",
+                                  "type": "string"
+                                },
+                                "index": {
+                                  "description": "The index of the crawled page in the results.",
+                                  "type": "integer"
+                                },
+                                "markdown": {
+                                  "description": "Markdown content of the page.",
+                                  "type": "string"
+                                },
+                                "metadata": {
+                                  "description": "Metadata extracted from the page.",
+                                  "properties": {
+                                    "<any other metadata> ": {
+                                      "description": "Any other extracted metadata.",
+                                      "type": "string"
+                                    },
+                                    "description": {
+                                      "description": "Page description.",
+                                      "type": "string"
+                                    },
+                                    "language": {
+                                      "description": "Page language.",
+                                      "type": "string"
+                                    },
+                                    "pageError": {
+                                      "description": "Error message if there was an error scraping the page.",
+                                      "type": "string"
+                                    },
+                                    "pageStatusCode": {
+                                      "description": "HTTP status code of the page.",
+                                      "type": "integer"
+                                    },
+                                    "sourceURL": {
+                                      "description": "Source URL of the page.",
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "description": "Page title.",
+                                      "type": "string"
+                                    }
+                                  },
+                                  "type": "object"
+                                },
+                                "rawHtml": {
+                                  "description": "Raw HTML content of the page, only present if `includeRawHtml` was set to `true` in the crawl request.",
+                                  "type": "string"
+                                }
+                              },
+                              "type": "object"
+                            },
+                            "type": "array"
+                          },
+                          "status": {
+                            "description": "Status of the crawl job. Can be 'completed', 'active', 'failed', or 'paused'.",
+                            "enum": [
+                              "completed",
+                              "active",
+                              "failed",
+                              "paused"
+                            ],
+                            "type": "string"
+                          },
+                          "total": {
+                            "description": "The total estimated number of pages to crawl.",
+                            "type": "integer"
+                          }
+                        },
+                        "type": "object"
+                      }
+                    }
+                  },
+                  "description": "Crawl job status retrieved."
+                }
+              },
+              "summary": "Get Crawl Job Status"
+            }
+          },
+          "delete": {
+            "description": "Send a request to cancel a running crawl job.",
+            "operationId": "cancelCrawlJob",
+            "parameters": [
+              {
+                "description": "ID of the crawl job to cancel.",
+                "in": "path",
+                "name": "jobId",
+                "required": true,
+                "schema": {
+                  "type": "string"
+                }
+              }
+            ],
+            "requestBody": {
+              "content": {}
+            },
+            "responses": {
+              "200": {
+                "content": {
+                  "application/json": {
+                    "schema": {
+                      "properties": {
+                        "status": {
+                          "description": "The status of the crawl job cancellation request, usually 'cancelled'.",
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    }
+                  }
+                },
+                "description": "Crawl job cancellation request submitted."
+              },
+              "402": {
+                "description": "Payment required."
+              },
+              "429": {
+                "description": "Rate limit exceeded."
+              },
+              "500": {
+                "description": "Internal server error."
+              }
+            },
+            "summary": "Cancel a Crawl Job"
+          }
+        },
+        "description": "Send a request to crawl a URL and all accessible subpages. This submits a crawl job and returns a job ID to check the status of the crawl.",
+        "operationId": "crawlWebsite",
+        "parameters": [],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "crawlerOptions": {
+                    "description": "Options for controlling the crawling behavior.",
+                    "properties": {
+                      "allowBackwardCrawling": {
+                        "default": false,
+                        "description": "Enables the crawler to navigate from a specific URL to previously linked pages. For instance, from 'example.com/product/123' back to 'example.com/product'",
+                        "type": "boolean"
+                      },
+                      "allowExternalContentLinks": {
+                        "default": false,
+                        "description": "Allows the crawler to follow links to external websites.",
+                        "type": "boolean"
+                      },
+                      "excludes": {
+                        "description": "URL patterns to exclude",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "generateImgAltText": {
+                        "default": false,
+                        "description": "Generate alt text for images using LLMs (must have a paid plan)",
+                        "type": "boolean"
+                      },
+                      "ignoreSitemap": {
+                        "default": false,
+                        "description": "Ignore the website sitemap when crawling",
+                        "type": "boolean"
+                      },
+                      "includes": {
+                        "description": "URL patterns to include",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "limit": {
+                        "default": 10000,
+                        "description": "Maximum number of pages to crawl",
+                        "type": "integer"
+                      },
+                      "maxDepth": {
+                        "description": "Maximum depth to crawl relative to the entered URL. A maxDepth of 0 scrapes only the entered URL. A maxDepth of 1 scrapes the entered URL and all pages one level deep. A maxDepth of 2 scrapes the entered URL and all pages up to two levels deep. Higher values follow the same pattern.",
+                        "type": "integer"
+                      },
+                      "mode": {
+                        "default": "default",
+                        "description": "The crawling mode to use. Fast mode crawls 4x faster websites without sitemap, but may not be as accurate and shouldn't be used in heavy js-rendered websites.",
+                        "enum": [
+                          "default",
+                          "fast"
+                        ],
+                        "type": "string"
+                      },
+                      "returnOnlyUrls": {
+                        "default": false,
+                        "description": "If true, returns only the URLs as a list on the crawl status. Attention: the return response will be a list of URLs inside the data, not a list of documents.",
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "pageOptions": {
+                    "description": "Options for controlling the scraping behavior of individual pages.",
+                    "properties": {
+                      "fullPageScreenshot": {
+                        "default": false,
+                        "description": "Include a full page screenshot of the page that you are scraping.",
+                        "type": "boolean"
+                      },
+                      "headers": {
+                        "description": "Headers to send with the request. Can be used to send cookies, user-agent, etc.",
+                        "type": "object"
+                      },
+                      "includeHtml": {
+                        "default": false,
+                        "description": "Include the HTML version of the content on page. Will output a html key in the response.",
+                        "type": "boolean"
+                      },
+                      "includeRawHtml": {
+                        "default": false,
+                        "description": "Include the raw HTML content of the page. Will output a rawHtml key in the response.",
+                        "type": "boolean"
+                      },
+                      "onlyIncludeTags": {
+                        "description": "Only include tags, classes and ids from the page in the final output. Use comma separated values. Example: 'script, .ad, #footer'",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "onlyMainContent": {
+                        "default": false,
+                        "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
+                        "type": "boolean"
+                      },
+                      "removeTags": {
+                        "description": "Tags, classes and ids to remove from the page. Use comma separated values. Example: 'script, .ad, #footer'",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "replaceAllPathsWithAbsolutePaths": {
+                        "default": false,
+                        "description": "Replace all relative paths with absolute paths for images and links",
+                        "type": "boolean"
+                      },
+                      "screenshot": {
+                        "default": false,
+                        "description": "Include a screenshot of the top of the page that you are scraping.",
+                        "type": "boolean"
+                      },
+                      "waitFor": {
+                        "default": 0,
+                        "description": "Wait x amount of milliseconds for the page to load to fetch content",
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "url": {
+                    "description": "The base URL to start crawling from",
+                    "required": true,
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "properties": {
+                      "jobId": {
+                        "description": "The ID of the submitted crawl job.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  }
+                }
+              },
+              "description": "Crawl job submitted successfully."
+            },
+            "402": {
+              "description": "Payment required."
+            },
+            "429": {
+              "description": "Rate limit exceeded."
+            },
+            "500": {
+              "description": "Internal server error."
+            }
+          }
+        },
+        "summary": "Crawl a Website"
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.firecrawl.dev/v0"
+    }
+  ]
+}

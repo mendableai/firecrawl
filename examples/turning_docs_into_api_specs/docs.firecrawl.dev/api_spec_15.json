@@ -1,0 +1,83 @@
+{
+  "info": {
+    "title": "Firecrawl API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/crawl": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "url": {
+                    "description": "Website URL to crawl.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "properties": {
+                      "markdown": {
+                        "description": "Markdown content.",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Website crawled successfully."
+          }
+        },
+        "summary": "Crawl a website."
+      }
+    },
+    "/scrape": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "url": {
+                    "description": "Page URL to scrape.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "description": "Scraped content.",
+                  "type": "string"
+                }
+              }
+            },
+            "description": "Page scraped successfully."
+          }
+        },
+        "summary": "Scrape a single page."
+      }
+    }
+  }
+}

@@ -1,0 +1,131 @@
+{
+  "info": {
+    "title": "Firecrawl API",
+    "version": "v0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/scrape": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "example": {
+                "extractorOptions": {
+                  "extractionPrompt": "Based on the information on the page, extract the information from the schema. ",
+                  "extractionSchema": {
+                    "properties": {
+                      "company_mission": {
+                        "type": "string"
+                      },
+                      "is_in_yc": {
+                        "type": "boolean"
+                      },
+                      "is_open_source": {
+                        "type": "boolean"
+                      },
+                      "supports_sso": {
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "company_mission",
+                      "supports_sso",
+                      "is_open_source",
+                      "is_in_yc"
+                    ],
+                    "type": "object"
+                  },
+                  "mode": "llm-extraction"
+                },
+                "url": "https://docs.firecrawl.dev/"
+              },
+              "schema": {
+                "properties": {
+                  "extractorOptions": {
+                    "properties": {
+                      "extractionPrompt": {
+                        "description": "Prompt for extraction",
+                        "type": "string"
+                      },
+                      "extractionSchema": {
+                        "description": "Schema for data extraction",
+                        "type": "object"
+                      },
+                      "mode": {
+                        "description": "Extraction mode",
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "url": {
+                    "description": "URL to scrape",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "example": {
+                  "data": {
+                    "content": "Raw Content",
+                    "llm_extraction": {
+                      "company_mission": "Train a secure AI on your technical resources that answers customer and employee questions so your team doesn't have to",
+                      "is_in_yc": true,
+                      "is_open_source": false,
+                      "supports_sso": true
+                    },
+                    "metadata": {
+                      "description": "Mendable allows you to easily build AI chat applications. Ingest, customize, then deploy with one line of code anywhere you want. Brought to you by SideGuide",
+                      "ogDescription": "Mendable allows you to easily build AI chat applications. Ingest, customize, then deploy with one line of code anywhere you want. Brought to you by SideGuide",
+                      "ogImage": "https://docs.firecrawl.dev/mendable_new_og1.png",
+                      "ogLocaleAlternate": [],
+                      "ogSiteName": "Mendable",
+                      "ogTitle": "Mendable",
+                      "ogUrl": "https://docs.firecrawl.dev/",
+                      "robots": "follow, index",
+                      "sourceURL": "https://docs.firecrawl.dev/",
+                      "title": "Mendable"
+                    }
+                  },
+                  "success": true
+                },
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "content": {
+                          "type": "string"
+                        },
+                        "llm_extraction": {
+                          "type": "object"
+                        },
+                        "metadata": {
+                          "type": "object"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful scrape"
+          }
+        },
+        "summary": "Extract data from pages."
+      }
+    }
+  }
+}

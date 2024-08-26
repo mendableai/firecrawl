@@ -1,0 +1,129 @@
+{
+  "components": {
+    "securitySchemes": {
+      "Bearer": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Firecrawl API",
+    "version": "v0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/search": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "pageOptions": {
+                    "properties": {
+                      "fetchPageContent": {
+                        "description": "Fetch content of each page.",
+                        "type": "boolean"
+                      },
+                      "includeHtml": {
+                        "description": "Include HTML content.",
+                        "type": "boolean"
+                      },
+                      "includeRawHtml": {
+                        "description": "Include raw HTML content.",
+                        "type": "boolean"
+                      },
+                      "onlyMainContent": {
+                        "description": "Only return main content.",
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "query": {
+                    "description": "The query to search for",
+                    "type": "string"
+                  },
+                  "searchOptions": {
+                    "properties": {
+                      "limit": {
+                        "description": "Maximum number of results.",
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "properties": {
+                          "content": {
+                            "type": "string"
+                          },
+                          "markdown": {
+                            "type": "string"
+                          },
+                          "metadata": {
+                            "properties": {
+                              "description": {
+                                "type": "string"
+                              },
+                              "language": {
+                                "type": "string"
+                              },
+                              "sourceURL": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "url": {
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful search."
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "summary": "Search the web."
+      }
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.firecrawl.dev/v0"
+    }
+  ]
+}

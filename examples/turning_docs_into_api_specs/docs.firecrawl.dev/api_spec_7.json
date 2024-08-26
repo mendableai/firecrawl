@@ -1,0 +1,86 @@
+{
+  "info": {
+    "title": "Firecrawl API",
+    "version": "v0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/v0/search": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "pageOptions": {
+                    "properties": {
+                      "fetchPageContent": {
+                        "description": "Fetch page content",
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "query": {
+                    "description": "Search term",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "items": {
+                        "properties": {
+                          "markdown": {
+                            "type": "string"
+                          },
+                          "metadata": {
+                            "properties": {
+                              "description": {
+                                "type": "string"
+                              },
+                              "language": {
+                                "type": "string"
+                              },
+                              "sourceURL": {
+                                "type": "string"
+                              },
+                              "title": {
+                                "type": "string"
+                              }
+                            },
+                            "type": "object"
+                          },
+                          "url": {
+                            "type": "string"
+                          }
+                        },
+                        "type": "object"
+                      },
+                      "type": "array"
+                    },
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful search"
+          }
+        },
+        "summary": "Search and extract content"
+      }
+    }
+  }
+}

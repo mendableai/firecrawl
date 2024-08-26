@@ -1,0 +1,211 @@
+{
+  "info": {
+    "title": "Firecrawl API",
+    "version": "v0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/v0/crawl": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "crawlerOptions": {
+                    "description": "Crawling options.",
+                    "properties": {
+                      "excludes": {
+                        "description": "URL patterns to exclude.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "includes": {
+                        "description": "URL patterns to include.",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "limit": {
+                        "description": "Maximum pages to crawl.",
+                        "type": "integer"
+                      },
+                      "maxDepth": {
+                        "description": "Maximum crawl depth.",
+                        "type": "integer"
+                      },
+                      "mode": {
+                        "description": "Crawling mode.",
+                        "enum": [
+                          "default",
+                          "fast"
+                        ],
+                        "type": "string"
+                      },
+                      "returnOnlyUrls": {
+                        "description": "Return only URLs.",
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "pageOptions": {
+                    "description": "Page scraping options.",
+                    "properties": {
+                      "includeHtml": {
+                        "description": "Include HTML content.",
+                        "type": "boolean"
+                      },
+                      "includeRawHtml": {
+                        "description": "Include raw HTML content.",
+                        "type": "boolean"
+                      },
+                      "onlyMainContent": {
+                        "description": "Only main content.",
+                        "type": "boolean"
+                      },
+                      "screenshot": {
+                        "description": "Include page screenshot.",
+                        "type": "boolean"
+                      },
+                      "waitFor": {
+                        "description": "Wait time in milliseconds.",
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "url": {
+                    "description": "Base URL to crawl.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "jobId": {
+                      "description": "Crawl job ID.",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Crawl job initiated."
+          }
+        },
+        "summary": "Crawl multiple pages."
+      }
+    },
+    "/v0/crawl/status/{jobId}": {
+      "get": {
+        "parameters": [
+          {
+            "description": "Crawl job ID.",
+            "in": "path",
+            "name": "jobId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Crawl job status."
+          }
+        },
+        "summary": "Check crawl job status."
+      }
+    },
+    "/v0/scrape": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "extractorOptions": {
+                    "description": "Data extraction options.",
+                    "properties": {
+                      "extractionPrompt": {
+                        "description": "Prompt for data extraction.",
+                        "type": "string"
+                      },
+                      "extractionSchema": {
+                        "description": "Schema for data extraction.",
+                        "type": "object"
+                      },
+                      "mode": {
+                        "description": "Extraction mode.",
+                        "enum": [
+                          "llm-extraction",
+                          "llm-extraction-from-raw-html"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "pageOptions": {
+                    "description": "Page scraping options.",
+                    "properties": {
+                      "includeHtml": {
+                        "description": "Include HTML content.",
+                        "type": "boolean"
+                      },
+                      "includeRawHtml": {
+                        "description": "Include raw HTML content.",
+                        "type": "boolean"
+                      },
+                      "onlyMainContent": {
+                        "description": "Only main content.",
+                        "type": "boolean"
+                      },
+                      "screenshot": {
+                        "description": "Include page screenshot.",
+                        "type": "boolean"
+                      },
+                      "waitFor": {
+                        "description": "Wait time in milliseconds.",
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "timeout": {
+                    "description": "Timeout in milliseconds.",
+                    "type": "integer"
+                  },
+                  "url": {
+                    "description": "URL to scrape.",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful scraping."
+          }
+        },
+        "summary": "Scrape a single page."
+      }
+    }
+  }
+}

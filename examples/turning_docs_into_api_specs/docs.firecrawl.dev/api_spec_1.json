@@ -1,0 +1,165 @@
+{
+  "info": {
+    "title": "Firecrawl API",
+    "version": "v0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/crawl": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "crawlerOptions": {
+                    "properties": {
+                      "allowBackwardCrawling": {
+                        "description": "Allow backward crawling",
+                        "type": "boolean"
+                      },
+                      "allowExternalContentLinks": {
+                        "description": "Allow external links",
+                        "type": "boolean"
+                      },
+                      "excludes": {
+                        "description": "URL patterns to exclude",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "generateImgAltText": {
+                        "description": "Generate alt text for images",
+                        "type": "boolean"
+                      },
+                      "ignoreSitemap": {
+                        "description": "Ignore website sitemap",
+                        "type": "boolean"
+                      },
+                      "includes": {
+                        "description": "URL patterns to include",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "limit": {
+                        "description": "Maximum pages to crawl",
+                        "type": "integer"
+                      },
+                      "maxDepth": {
+                        "description": "Maximum crawl depth",
+                        "type": "integer"
+                      },
+                      "mode": {
+                        "description": "Crawling mode",
+                        "enum": [
+                          "default",
+                          "fast"
+                        ],
+                        "type": "string"
+                      },
+                      "returnOnlyUrls": {
+                        "description": "Return only crawled URLs",
+                        "type": "boolean"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "pageOptions": {
+                    "properties": {
+                      "fullPageScreenshot": {
+                        "description": "Include full page screenshot",
+                        "type": "boolean"
+                      },
+                      "headers": {
+                        "description": "Headers for requests",
+                        "type": "object"
+                      },
+                      "includeHtml": {
+                        "description": "Include HTML content",
+                        "type": "boolean"
+                      },
+                      "includeRawHtml": {
+                        "description": "Include raw HTML content",
+                        "type": "boolean"
+                      },
+                      "onlyIncludeTags": {
+                        "description": "Include only specific tags",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "onlyMainContent": {
+                        "description": "Return only main content",
+                        "type": "boolean"
+                      },
+                      "removeTags": {
+                        "description": "Remove specific tags",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "replaceAllPathsWithAbsolutePaths": {
+                        "description": "Use absolute paths",
+                        "type": "boolean"
+                      },
+                      "screenshot": {
+                        "description": "Include page screenshot",
+                        "type": "boolean"
+                      },
+                      "waitFor": {
+                        "description": "Wait for page load (ms)",
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "url": {
+                    "description": "Base URL to crawl",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "jobId": {
+                      "description": "Job ID of the crawl",
+                      "type": "string"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Crawl request successful"
+          }
+        },
+        "security": [
+          {
+            "Bearer": []
+          }
+        ],
+        "summary": "Crawl a website"
+      }
+    }
+  },
+  "securitySchemes": {
+    "Bearer": {
+      "bearerFormat": "JWT",
+      "scheme": "bearer",
+      "type": "http"
+    }
+  }
+}

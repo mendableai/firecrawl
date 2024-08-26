@@ -1,0 +1,185 @@
+{
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "scheme": "bearer",
+        "type": "http"
+      }
+    }
+  },
+  "info": {
+    "title": "Firecrawl API",
+    "version": "v0"
+  },
+  "openapi": "3.0.0",
+  "paths": {
+    "/v0/scrape": {
+      "post": {
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "properties": {
+                  "extractorOptions": {
+                    "description": "Options for extraction",
+                    "properties": {
+                      "extractionPrompt": {
+                        "description": "Prompt for LLM extraction",
+                        "type": "string"
+                      },
+                      "extractionSchema": {
+                        "description": "Schema for LLM extraction",
+                        "type": "object"
+                      },
+                      "mode": {
+                        "description": "Extraction mode",
+                        "enum": [
+                          "markdown",
+                          "llm-extraction",
+                          "llm-extraction-from-raw-html",
+                          "llm-extraction-from-markdown"
+                        ],
+                        "type": "string"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "pageOptions": {
+                    "properties": {
+                      "fullPageScreenshot": {
+                        "description": "Include full page screenshot",
+                        "type": "boolean"
+                      },
+                      "headers": {
+                        "description": "Headers for request",
+                        "type": "object"
+                      },
+                      "includeHtml": {
+                        "description": "Include HTML content",
+                        "type": "boolean"
+                      },
+                      "includeRawHtml": {
+                        "description": "Include raw HTML content",
+                        "type": "boolean"
+                      },
+                      "onlyIncludeTags": {
+                        "description": "Include only these tags",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "onlyMainContent": {
+                        "description": "Only return main content",
+                        "type": "boolean"
+                      },
+                      "removeTags": {
+                        "description": "Remove these tags",
+                        "items": {
+                          "type": "string"
+                        },
+                        "type": "array"
+                      },
+                      "replaceAllPathsWithAbsolutePaths": {
+                        "description": "Replace relative paths",
+                        "type": "boolean"
+                      },
+                      "screenshot": {
+                        "description": "Include screenshot",
+                        "type": "boolean"
+                      },
+                      "waitFor": {
+                        "description": "Wait time in ms",
+                        "type": "integer"
+                      }
+                    },
+                    "type": "object"
+                  },
+                  "timeout": {
+                    "description": "Timeout in ms",
+                    "type": "integer"
+                  },
+                  "url": {
+                    "description": "URL to scrape",
+                    "type": "string"
+                  }
+                },
+                "type": "object"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "properties": {
+                    "data": {
+                      "properties": {
+                        "content": {
+                          "type": "string"
+                        },
+                        "html": {
+                          "type": "string"
+                        },
+                        "llm_extraction": {
+                          "type": "object"
+                        },
+                        "markdown": {
+                          "type": "string"
+                        },
+                        "metadata": {
+                          "properties": {
+                            "description": {
+                              "type": "string"
+                            },
+                            "language": {
+                              "type": "string"
+                            },
+                            "pageError": {
+                              "type": "string"
+                            },
+                            "pageStatusCode": {
+                              "type": "integer"
+                            },
+                            "sourceURL": {
+                              "type": "string"
+                            },
+                            "title": {
+                              "type": "string"
+                            }
+                          },
+                          "type": "object"
+                        },
+                        "rawHtml": {
+                          "type": "string"
+                        },
+                        "warning": {
+                          "type": "string"
+                        }
+                      },
+                      "type": "object"
+                    },
+                    "success": {
+                      "type": "boolean"
+                    }
+                  },
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful scrape"
+          }
+        },
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "summary": "Scrape a webpage"
+      }
+    }
+  }
+}
