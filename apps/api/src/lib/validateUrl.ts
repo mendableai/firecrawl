@@ -1,4 +1,4 @@
-const protocolIncluded = (url: string) => {
+export const protocolIncluded = (url: string) => {
   // if :// not in the start of the url assume http (maybe https?)
   // regex checks if :// appears before any .
   return /^([^.:]+:\/\/)/.test(url);
@@ -33,6 +33,25 @@ export const checkAndUpdateURL = (url: string) => {
   }
 
   return { urlObj: typedUrlObj, url: url };
+};
+
+export const checkUrl = (url: string) => {
+  const { error, urlObj } = getURLobj(url);
+  if (error) {
+    throw new Error("Invalid URL");
+  }
+
+  const typedUrlObj = urlObj as URL;
+
+  if (typedUrlObj.protocol !== "http:" && typedUrlObj.protocol !== "https:") {
+    throw new Error("Invalid URL");
+  }
+
+  if ((url.split(".")[0].match(/:/g) || []).length !== 1) {
+    throw new Error("Invalid URL. Invalid protocol."); // for this one: http://http://example.com
+  }
+
+  return url;
 };
 
 /**
