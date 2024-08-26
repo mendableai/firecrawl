@@ -81,6 +81,7 @@
     "gpt3-tokenizer": "^1.1.5",
     "ioredis": "^5.4.1",
     "joplin-turndown-plugin-gfm": "^1.0.12",
+    "jsdom": "^25.0.0",
     "json-schema-to-zod": "^2.3.0",
     "keyword-extractor": "^0.0.28",
     "langchain": "^0.2.8",

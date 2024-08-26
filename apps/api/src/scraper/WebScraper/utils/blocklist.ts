@@ -16,7 +16,7 @@ const socialMediaBlocklist = [
   'telegram.org',
   'researchhub.com',
   'youtube.com',
-  'corterix.com',
+  // 'corterix.com',
 ];
 
 const allowedKeywords = [

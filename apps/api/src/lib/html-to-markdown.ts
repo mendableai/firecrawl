@@ -1,8 +1,22 @@
+import { Logger } from "./logger";
+import { JSDOM } from "jsdom";
 
-export async function parseMarkdown(html: string) {
+export function parseMarkdown(html: string) {
   var TurndownService = require("turndown");
   var turndownPluginGfm = require('joplin-turndown-plugin-gfm')
 
+  // Preprocess HTML to remove large tables that bugs the turndown service
+  const dom = new JSDOM(html);
+  const document = dom.window.document;
+
+  // Remove large tables
+  const tables = document.querySelectorAll('table');
+  tables.forEach(table => {
+    if (table.rows.length > 30000) {
+      Logger.error(`Table with ${table.rows.length} rows found, skipping page...`);
+      throw new Error("Not able to parse this page.");
+    }
+  });
 
   const turndownService = new TurndownService();
   turndownService.addRule("inlineLink", {
@@ -21,27 +35,7 @@ export async function parseMarkdown(html: string) {
   });
   var gfm = turndownPluginGfm.gfm;
   turndownService.use(gfm);
-  let markdownContent = "";
-  const turndownPromise = new Promise<string>((resolve, reject) => {
-    try {
-      const result = turndownService.turndown(html);
-      resolve(result);
-    } catch (error) {
-      reject("Error converting HTML to Markdown: " + error);
-    }
-  });
-
-  const timeoutPromise = new Promise<string>((resolve, reject) => {
-    const timeout = 5000; // Timeout in milliseconds
-    setTimeout(() => reject("Conversion timed out after " + timeout + "ms"), timeout);
-  });
-
-  try {
-    markdownContent = await Promise.race([turndownPromise, timeoutPromise]);
-  } catch (error) {
-    console.error(error);
-    return ""; // Optionally return an empty string or handle the error as needed
-  }
+  let markdownContent = turndownService.turndown(html);
 
   // multiple line links
   let insideLinkContent = false;
