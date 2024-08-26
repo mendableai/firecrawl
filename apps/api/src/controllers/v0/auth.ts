@@ -222,7 +222,8 @@ export async function supaAuthenticateUser(
         rateLimiter = getRateLimiter(
           RateLimiterMode.Scrape,
           token,
-          subscriptionData.plan
+          subscriptionData.plan,
+          teamId
         );
         break;
       case RateLimiterMode.Search:

@@ -1,5 +1,5 @@
 
-export function parseMarkdown(html: string) {
+export async function parseMarkdown(html: string) {
   var TurndownService = require("turndown");
   var turndownPluginGfm = require('joplin-turndown-plugin-gfm')
 
@@ -21,7 +21,27 @@ export function parseMarkdown(html: string) {
   });
   var gfm = turndownPluginGfm.gfm;
   turndownService.use(gfm);
-  let markdownContent = turndownService.turndown(html);
+  let markdownContent = "";
+  const turndownPromise = new Promise<string>((resolve, reject) => {
+    try {
+      const result = turndownService.turndown(html);
+      resolve(result);
+    } catch (error) {
+      reject("Error converting HTML to Markdown: " + error);
+    }
+  });
+
+  const timeoutPromise = new Promise<string>((resolve, reject) => {
+    const timeout = 5000; // Timeout in milliseconds
+    setTimeout(() => reject("Conversion timed out after " + timeout + "ms"), timeout);
+  });
+
+  try {
+    markdownContent = await Promise.race([turndownPromise, timeoutPromise]);
+  } catch (error) {
+    console.error(error);
+    return ""; // Optionally return an empty string or handle the error as needed
+  }
 
   // multiple line links
   let insideLinkContent = false;

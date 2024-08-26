@@ -97,14 +97,26 @@ export const testSuiteRateLimiter = new RateLimiterRedis({
   duration: 60, // Duration in seconds
 });
 
+export const devBRateLimiter = new RateLimiterRedis({
+  storeClient: redisRateLimitClient,
+  keyPrefix: "dev-b",
+  points: 1200,
+  duration: 60, // Duration in seconds
+});
+
 export function getRateLimiter(
   mode: RateLimiterMode,
   token: string,
-  plan?: string
+  plan?: string,
+  teamId?: string
 ) {
 
   if (token.includes("a01ccae") || token.includes("6254cf9") || token.includes("0f96e673")) {
     return testSuiteRateLimiter;
+  }
+
+  if(teamId === process.env.DEV_B_TEAM_ID) {
+    return devBRateLimiter;
   }
 
   const rateLimitConfig = RATE_LIMITS[mode]; // {default : 5}

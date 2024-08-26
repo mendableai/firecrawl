@@ -3,9 +3,9 @@ import { Logger } from "../../../src/lib/logger";
 
 export async function sendSlackWebhook(
   message: string,
-  alertEveryone: boolean = false
+  alertEveryone: boolean = false,
+  webhookUrl: string = process.env.SLACK_WEBHOOK_URL ?? ""
 ) {
-  const webhookUrl = process.env.SLACK_WEBHOOK_URL;
   const messagePrefix = alertEveryone ? "<!channel> " : "";
   const payload = {
     text: `${messagePrefix} ${message}`,

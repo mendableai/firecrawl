@@ -24,8 +24,8 @@ import { clientSideError } from "../../strings";
 dotenv.config();
 
 export const baseScrapers = [
-  "fire-engine",
   "fire-engine;chrome-cdp",
+  "fire-engine",
   "scrapingBee",
   process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
   "scrapingBeeLoad",
@@ -85,8 +85,8 @@ function getScrapingFallbackOrder(
   });
 
   let defaultOrder = [
-    !process.env.USE_DB_AUTHENTICATION ? undefined : "fire-engine",
     !process.env.USE_DB_AUTHENTICATION ? undefined : "fire-engine;chrome-cdp",
+    !process.env.USE_DB_AUTHENTICATION ? undefined : "fire-engine",
     "scrapingBee",
     process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
     "scrapingBeeLoad",
