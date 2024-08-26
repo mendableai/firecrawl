@@ -27,6 +27,7 @@ const url = z.preprocess(
     .string()
     .url()
     .regex(/^https?:\/\//, "URL uses unsupported protocol")
+    .regex(/\.[a-z]{2,}$/i, "URL must have a valid top-level domain")
     .refine(
       (x) => !isUrlBlocked(x),
       "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
@@ -121,7 +122,7 @@ export const mapRequestSchema = crawlerOptions.extend({
   includeSubdomains: z.boolean().default(true),
   search: z.string().optional(),
   ignoreSitemap: z.boolean().default(false),
-  limit: z.number().min(1).max(50).default(5000),
+  limit: z.number().min(1).max(50).default(5000).optional(),
 }).strict(strictMessage);
 
 // export type MapRequest = {
