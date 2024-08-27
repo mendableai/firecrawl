@@ -11,6 +11,8 @@ export async function addJobPriority(team_id, job_id) {
 
     // Add scrape job id to the set
     await redisConnection.sadd(setKey, job_id);
+    await redisConnection.expire(setKey, 60);
+
   } catch (e) {
     Logger.error(`Add job priority (sadd) failed: ${team_id}, ${job_id}`);
   }
