@@ -1,13 +1,13 @@
-import FirecrawlApp from './firecrawl/src/index' //'@mendable/firecrawl-js';
+import FirecrawlApp, { ScrapeResponse } from './firecrawl/src/index' //'@mendable/firecrawl-js';
 import { CrawlStatusResponse } from './firecrawl/src/index';
 
 const app = new FirecrawlApp({apiKey: "fc-YOUR_API_KEY"});
 
 // Scrape a website:
-const scrapeResult = await app.scrapeUrl('firecrawl.dev');
+const scrapeResult = await app.scrapeUrl('firecrawl.dev') as ScrapeResponse;
 
-if (scrapeResult.data) {
-  console.log(scrapeResult.data.markdown)
+if (scrapeResult) {
+  console.log(scrapeResult.markdown)
 }
 
 // Crawl a website:
@@ -30,5 +30,5 @@ if (job.data) {
   console.log(job.data[0].markdown);
 }
 
-const mapResult = await app.map('https://firecrawl.dev');
+const mapResult = await app.mapUrl('https://firecrawl.dev');
 console.log(mapResult)
