@@ -246,6 +246,13 @@ export async function supaAuthenticateUser(
           subscriptionData.plan
         );
         break;
+      case RateLimiterMode.Map:
+        rateLimiter = getRateLimiter(
+          RateLimiterMode.Map,
+          token,
+          subscriptionData.plan
+        );
+        break;
       case RateLimiterMode.CrawlStatus:
         rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
         break;
@@ -298,6 +305,8 @@ export async function supaAuthenticateUser(
     token === "this_is_just_a_preview_token" &&
     (mode === RateLimiterMode.Scrape ||
       mode === RateLimiterMode.Preview ||
+      mode === RateLimiterMode.Map ||
+      // mode === RateLimiterMode.Crawl ||
       mode === RateLimiterMode.Search)
   ) {
     return { success: true, team_id: "preview" };

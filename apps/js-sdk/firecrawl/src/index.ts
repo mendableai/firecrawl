@@ -315,10 +315,10 @@ export interface SearchResponseV0 {
  * Main class for interacting with the Firecrawl API.
  * Provides methods for scraping, searching, crawling, and mapping web content.
  */
-export default class FirecrawlApp {
+export default class FirecrawlApp<T extends "v0" | "v1"> {
   private apiKey: string;
   private apiUrl: string;
-  private version: "v0" | "v1";
+  public version: T;
 
   /**
    * Initializes a new instance of the FirecrawlApp class.
@@ -327,7 +327,7 @@ export default class FirecrawlApp {
   constructor({ apiKey = null, apiUrl = null, version = "v1" }: FirecrawlAppConfig) {
     this.apiKey = apiKey || "";
     this.apiUrl = apiUrl || "https://api.firecrawl.dev";
-    this.version = version;
+    this.version = version as T;
     if (!this.apiKey) {
       throw new Error("No API key provided");
     }
@@ -342,7 +342,7 @@ export default class FirecrawlApp {
   async scrapeUrl(
     url: string,
     params?: ScrapeParams | ScrapeParamsV0
-  ): Promise<ScrapeResponse | ScrapeResponseV0> {
+  ): Promise<this['version'] extends 'v0' ? ScrapeResponseV0 : ScrapeResponse> {
     const headers: AxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this.apiKey}`,
@@ -372,16 +372,12 @@ export default class FirecrawlApp {
       if (response.status === 200) {
         const responseData = response.data;
         if (responseData.success) {
-          if (this.version == 'v0') {
-            return responseData as ScrapeResponseV0;
-          } else {
-            return {
-              success: true,
-              warning: responseData.warning,
-              error: responseData.error,
-              ...responseData.data
-            } as ScrapeResponse;
-          }
+          return (this.version === 'v0' ? responseData as ScrapeResponseV0 : {
+            success: true,
+            warning: responseData.warning,
+            error: responseData.error,
+            ...responseData.data
+          }) as ScrapeResponse;
         } else {
           throw new Error(`Failed to scrape URL. Error: ${responseData.error}`);
         }
@@ -391,7 +387,7 @@ export default class FirecrawlApp {
     } catch (error: any) {
       throw new Error(error.message);
     }
-    return { success: false, error: "Internal server error." };
+    return { success: false, error: "Internal server error." } as this['version'] extends 'v0' ? ScrapeResponseV0 : ScrapeResponse;
   }
 
   /**
@@ -405,7 +401,7 @@ export default class FirecrawlApp {
     params?: SearchParamsV0
   ): Promise<SearchResponseV0> {
     if (this.version === "v1") {
-      throw new Error("Search is not supported in v1");
+      throw new Error("Search is not supported in v1, please update FirecrawlApp() initialization to use v0.");
     }
 
     const headers: AxiosRequestHeaders = {
@@ -449,11 +445,15 @@ export default class FirecrawlApp {
    */
   async crawlUrl(
     url: string,
-    params?: CrawlParams | CrawlParamsV0,
+    params?: this['version'] extends 'v0' ? CrawlParamsV0 : CrawlParams,
     waitUntilDone: boolean = true,
     pollInterval: number = 2,
     idempotencyKey?: string
-  ): Promise<CrawlResponse | CrawlResponseV0 | CrawlStatusResponse | CrawlStatusResponseV0 | FirecrawlDocumentV0[]> {
+  ): Promise<
+    this['version'] extends 'v0'
+      ? CrawlResponseV0 | CrawlStatusResponseV0 | FirecrawlDocumentV0[]
+      : CrawlResponse | CrawlStatusResponse
+  > {
     const headers = this.prepareHeaders(idempotencyKey);
     let jsonData: any = { url, ...params };
     try {
@@ -463,13 +463,13 @@ export default class FirecrawlApp {
         headers
       );
       if (response.status === 200) {
-        const id: string = this.version == 'v0' ? response.data.jobId : response.data.id;
+        const id: string = this.version === 'v0' ? response.data.jobId : response.data.id;
         let checkUrl: string | undefined = undefined;
         if (waitUntilDone) {
-          if (this.version == 'v1') { checkUrl = response.data.url }
+          if (this.version === 'v1') { checkUrl = response.data.url }
           return this.monitorJobStatus(id, headers, pollInterval, checkUrl);
         } else {
-          if (this.version == 'v0') {
+          if (this.version === 'v0') {
             return {
               success: true,
               jobId: id
@@ -485,13 +485,13 @@ export default class FirecrawlApp {
         this.handleError(response, "start crawl job");
       }
     } catch (error: any) {
-      if (error.response.data.error) {
+      if (error.response?.data?.error) {
         throw new Error(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`);
       } else {
         throw new Error(error.message);
       }
     }
-    return { success: false, error: "Internal server error." };
+    return { success: false, error: "Internal server error." } as this['version'] extends 'v0' ? CrawlResponseV0 : CrawlResponse;
   }
 
   /**
@@ -499,7 +499,7 @@ export default class FirecrawlApp {
    * @param id - The ID of the crawl operation.
    * @returns The response containing the job status.
    */
-  async checkCrawlStatus(id?: string): Promise<CrawlStatusResponse | CrawlStatusResponseV0> {
+  async checkCrawlStatus(id?: string): Promise<this['version'] extends 'v0' ? CrawlStatusResponseV0 : CrawlStatusResponse> {
     if (!id) {
       throw new Error("No crawl ID provided");
     }
@@ -507,14 +507,14 @@ export default class FirecrawlApp {
     const headers: AxiosRequestHeaders = this.prepareHeaders();
     try {
       const response: AxiosResponse = await this.getRequest(
-        this.version == 'v1' ?
-          this.apiUrl + `/${this.version}/crawl/${id}` :
-          this.apiUrl + `/${this.version}/crawl/status/${id}`,
+        this.version === 'v1' ?
+          `${this.apiUrl}/${this.version}/crawl/${id}` :
+          `${this.apiUrl}/${this.version}/crawl/status/${id}`,
         headers
       );
       if (response.status === 200) {
-        if (this.version == 'v0') {
-          return {
+        if (this.version === 'v0') {
+          return ({
             success: true,
             status: response.data.status,
             current: response.data.current,
@@ -525,9 +525,9 @@ export default class FirecrawlApp {
             partial_data: !response.data.data
               ? response.data.partial_data
               : undefined,
-          } as CrawlStatusResponseV0;
-        } else if (this.version == 'v1') {
-          return {
+          } as CrawlStatusResponseV0) as this['version'] extends 'v0' ? CrawlStatusResponseV0 : CrawlStatusResponse;
+        } else {
+          return ({
             success: true,
             status: response.data.status,
             totalCount: response.data.totalCount,
@@ -536,7 +536,7 @@ export default class FirecrawlApp {
             next: response.data.next,
             data: response.data.data,
             error: response.data.error
-          } as CrawlStatusResponse;
+          } as CrawlStatusResponse) as this['version'] extends 'v0' ? CrawlStatusResponseV0 : CrawlStatusResponse;
         }
       } else {
         this.handleError(response, "check crawl status");
@@ -545,8 +545,8 @@ export default class FirecrawlApp {
       throw new Error(error.message);
     }
 
-    if (this.version == 'v0') {
-      return {
+    return this.version === 'v0' ?
+      ({
         success: false,
         status: "unknown",
         current: 0,
@@ -554,13 +554,11 @@ export default class FirecrawlApp {
         current_step: "",
         total: 0,
         error: "Internal server error.",
-      } as CrawlStatusResponseV0;
-    } else {
-      return {
+      } as this['version'] extends 'v0' ? CrawlStatusResponseV0 : CrawlStatusResponse) :
+      ({
         success: false,
         error: "Internal server error.",
-      } as CrawlStatusResponse;
-    }
+      } as this['version'] extends 'v0' ? CrawlStatusResponseV0 : CrawlStatusResponse);
   }
 
   async mapUrl(url: string, params?: MapParams): Promise<MapResponse> {
@@ -633,6 +631,7 @@ export default class FirecrawlApp {
    * @param id - The ID of the crawl operation.
    * @param headers - The headers for the request.
    * @param checkInterval - Interval in seconds for job status checks.
+   * @param checkUrl - Optional URL to check the status (used for v1 API)
    * @returns The final job status or data.
    */
   async monitorJobStatus(
@@ -640,13 +639,13 @@ export default class FirecrawlApp {
     headers: AxiosRequestHeaders,
     checkInterval: number,
     checkUrl?: string
-  ): Promise<CrawlStatusResponse | FirecrawlDocumentV0[]> {
+  ): Promise<this['version'] extends 'v0' ? CrawlStatusResponseV0 | FirecrawlDocumentV0[] : CrawlStatusResponse> {
     let apiUrl: string = '';
     while (true) {
-      if (this.version == 'v1') {
-        apiUrl = checkUrl ?? this.apiUrl + `/v1/crawl/${id}`;
-      } else if (this.version == 'v0') {
-        apiUrl = checkUrl ?? this.apiUrl + `/v0/crawl/status/${id}`;
+      if (this.version === 'v1') {
+        apiUrl = checkUrl ?? `${this.apiUrl}/v1/crawl/${id}`;
+      } else if (this.version === 'v0') {
+        apiUrl = `${this.apiUrl}/v0/crawl/status/${id}`;
       }
       const statusResponse: AxiosResponse = await this.getRequest(
         apiUrl,
@@ -656,19 +655,17 @@ export default class FirecrawlApp {
         const statusData = statusResponse.data;
         if (statusData.status === "completed") {
           if ("data" in statusData) {
-            return this.version == 'v0' ? statusData.data : statusData;
+            return this.version === 'v0' ? statusData.data : statusData;
           } else {
             throw new Error("Crawl job completed but no data was returned");
           }
         } else if (
           ["active", "paused", "pending", "queued", "scraping"].includes(statusData.status)
         ) {
-          if (checkInterval < 2) {
-            checkInterval = 2;
-          }
+          checkInterval = Math.max(checkInterval, 2);
           await new Promise((resolve) =>
             setTimeout(resolve, checkInterval * 1000)
-          ); // Wait for the specified timeout before checking again
+          );
         } else {
           throw new Error(
             `Crawl job failed or was stopped. Status: ${statusData.status}`

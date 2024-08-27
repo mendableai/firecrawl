@@ -4,14 +4,14 @@ import { CrawlStatusResponse } from './firecrawl/src/index';
 const app = new FirecrawlApp({apiKey: "fc-YOUR_API_KEY"});
 
 // Scrape a website:
-const scrapeResult = await app.scrapeUrl('firecrawl.dev') as ScrapeResponse;
+const scrapeResult = await app.scrapeUrl('firecrawl.dev');
 
 if (scrapeResult) {
   console.log(scrapeResult.markdown)
 }
 
 // Crawl a website:
-const crawlResult = await app.crawlUrl('mendable.ai', {crawlerOptions: {excludes: ['blog/*'], limit: 5}}, false);
+const crawlResult = await app.crawlUrl('mendable.ai', {crawlerOptions: {excludePaths: ['blog/*'], limit: 5}}, false);
 console.log(crawlResult)
 
 const jobId: string = await crawlResult['jobId'];

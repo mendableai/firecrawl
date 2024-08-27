@@ -1,10 +1,10 @@
 import FirecrawlApp, { ScrapeResponseV0, CrawlStatusResponseV0, SearchResponseV0 } from './firecrawl/src/index' //'@mendable/firecrawl-js';
 import { z } from "zod";
 
-const app = new FirecrawlApp({apiKey: "fc-YOUR_API_KEY", version: "v0"});
+const app = new FirecrawlApp<"v0">({apiKey: "fc-YOUR_API_KEY", version: "v0"})
 
 // Scrape a website:
-const scrapeResult = await app.scrapeUrl('firecrawl.dev') as ScrapeResponseV0;
+const scrapeResult = await app.scrapeUrl('firecrawl.dev');
 
 if (scrapeResult.data) {
   console.log(scrapeResult.data.content)
@@ -53,9 +53,7 @@ const zodSchema = z.object({
     .describe("Top 5 stories on Hacker News"),
 });
 
-let llmExtractionResult = await app.scrapeUrl("https://news.ycombinator.com", {
-  extractorOptions: { extractionSchema: zodSchema },
-});
+let llmExtractionResult = await app.scrapeUrl("https://news.ycombinator.com");
 
 if (llmExtractionResult.data) {
   console.log(llmExtractionResult.data[0].llm_extraction);

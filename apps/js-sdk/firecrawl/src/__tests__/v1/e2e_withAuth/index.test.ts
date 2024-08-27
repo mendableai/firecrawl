@@ -222,7 +222,7 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response).not.toBeNull();
     expect(response.id).toBeDefined();
 
-    let statusResponse: any = await app.checkCrawlStatus(response.id) as CrawlStatusResponse;
+    let statusResponse = await app.checkCrawlStatus(response.id);
     const maxChecks = 15;
     let checks = 0;
 
