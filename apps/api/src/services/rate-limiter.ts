@@ -18,12 +18,12 @@ const RATE_LIMITS = {
   },
   scrape: {
     default: 20,
-    free: 5,
+    free: 10,
     starter: 20,
     standard: 100,
     standardOld: 40,
     scale: 500,
-    hobby: 10,
+    hobby: 20,
     standardNew: 100,
     standardnew: 100,
     growth: 1000,
@@ -115,7 +115,7 @@ export function getRateLimiter(
     return testSuiteRateLimiter;
   }
 
-  if(teamId === process.env.DEV_B_TEAM_ID) {
+  if(teamId && teamId === process.env.DEV_B_TEAM_ID) {
     return devBRateLimiter;
   }
 
