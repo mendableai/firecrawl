@@ -1,9 +1,9 @@
 import express, { NextFunction, Request, Response } from "express";
-import { crawlController } from "../../src/controllers/v1/crawl";
+import { crawlController } from "../controllers/v1/crawl";
 // import { crawlStatusController } from "../../src/controllers/v1/crawl-status";
 import { scrapeController } from "../../src/controllers/v1/scrape";
-import { crawlStatusController } from "../../src/controllers/v1/crawl-status";
-import { mapController } from "../../src/controllers/v1/map";
+import { crawlStatusController } from "../controllers/v1/crawl-status";
+import { mapController } from "../controllers/v1/map";
 import { ErrorResponse, RequestWithAuth, RequestWithMaybeAuth } from "../controllers/v1/types";
 import { RateLimiterMode } from "../types";
 import { authenticateUser } from "../controllers/auth";
@@ -16,6 +16,7 @@ import { v4 as uuidv4 } from "uuid";
 import expressWs from "express-ws";
 import { crawlStatusWSController } from "../controllers/v1/crawl-status-ws";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
+import { crawlCancelController } from "../controllers/v1/crawl-cancel";
 // import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
 // import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
 // import { searchController } from "../../src/controllers/v1/search";
@@ -130,7 +131,13 @@ v1Router.ws(
 );
 
 // v1Router.post("/crawlWebsitePreview", crawlPreviewController);
-// v1Router.delete("/crawl/:jobId", crawlCancelController);
+
+
+v1Router.delete(
+  "/crawl/:jobId",
+  authMiddleware(RateLimiterMode.Crawl),
+  crawlCancelController
+);
 // v1Router.get("/checkJobStatus/:jobId", crawlJobStatusPreviewController);
 
 // // Auth route for key based authentication

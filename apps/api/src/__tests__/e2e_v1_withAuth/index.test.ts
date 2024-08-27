@@ -912,53 +912,41 @@ describe("GET /v1/crawl/:jobId", () => {
     180000
   ); // 120 seconds
 
-  // it.concurrent(
-  //   "If someone cancels a crawl job, it should turn into failed status",
-  //   async () => {
-  //     const crawlResponse = await request(TEST_URL)
-  //       .post("/v1/crawl")
-  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-  //       .set("Content-Type", "application/json")
-  //       .send({ url: "https://docs.tatum.io", limit: 200 });
+  it.concurrent(
+    "If someone cancels a crawl job, it should turn into failed status",
+    async () => {
+      const crawlResponse = await request(TEST_URL)
+        .post("/v1/crawl")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ url: "https://docs.tatum.io", limit: 200 });
 
-  //     expect(crawlResponse.statusCode).toBe(200);
+      expect(crawlResponse.statusCode).toBe(200);
 
-  //     await new Promise((r) => setTimeout(r, 10000));
+      await new Promise((r) => setTimeout(r, 10000));
 
-  //     const responseCancel = await request(TEST_URL)
-  //       .delete(`/v1/crawl/${crawlResponse.body.id}`)
-  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-  //     expect(responseCancel.statusCode).toBe(200);
-  //     expect(responseCancel.body).toHaveProperty("status");
-  //     expect(responseCancel.body.status).toBe("cancelled");
+      const responseCancel = await request(TEST_URL)
+        .delete(`/v1/crawl/${crawlResponse.body.id}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      expect(responseCancel.statusCode).toBe(200);
+      expect(responseCancel.body).toHaveProperty("status");
+      expect(responseCancel.body.status).toBe("cancelled");
 
-  //     await new Promise((r) => setTimeout(r, 10000));
-  //     const completedResponse = await request(TEST_URL)
-  //       .get(`/v1/crawl/${crawlResponse.body.id}`)
-  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
-
-  //     expect(completedResponse.statusCode).toBe(200);
-  //     expect(completedResponse.body).toHaveProperty("status");
-  //     expect(completedResponse.body.status).toBe("failed");
-  //     expect(completedResponse.body).toHaveProperty("data");
-
-  //     let isNullOrEmptyArray = false;
-  //     if (
-  //       completedResponse.body.data === null ||
-  //       completedResponse.body.data.length === 0
-  //     ) {
-  //       isNullOrEmptyArray = true;
-  //     }
-  //     expect(isNullOrEmptyArray).toBe(true);
-  //     expect(completedResponse.body.data).toEqual(expect.arrayContaining([]));
-  //     expect(completedResponse.body).toHaveProperty("data");
-  //     expect(completedResponse.body.data[0]).toHaveProperty("markdown");
-  //     expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-  //     expect(completedResponse.body.data[0].metadata.statusCode).toBe(200);
-  //     expect(completedResponse.body.data[0].metadata.error).toBeUndefined();
-  //   },
-  //   60000
-  // ); // 60 seconds
-
+      await new Promise((r) => setTimeout(r, 10000));
+      const completedResponse = await request(TEST_URL)
+        .get(`/v1/crawl/${crawlResponse.body.id}`)
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+      
+      expect(completedResponse.statusCode).toBe(200);
+      expect(completedResponse.body).toHaveProperty("status");
+      expect(completedResponse.body.status).toBe("cancelled");
+      expect(completedResponse.body).toHaveProperty("data");
+      expect(completedResponse.body.data[0]).toHaveProperty("markdown");
+      expect(completedResponse.body.data[0]).toHaveProperty("metadata");
+      expect(completedResponse.body.data[0].metadata.statusCode).toBe(200);
+      expect(completedResponse.body.data[0].metadata.error).toBeUndefined();
+    },
+    60000
+  ); // 60 seconds
 })
 });
