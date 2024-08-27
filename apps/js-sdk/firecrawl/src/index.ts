@@ -260,6 +260,7 @@ export interface CrawlStatusResponseV0 {
   error?: string;
 }
 
+
 /**
  * Parameters for mapping operations.
  * Defines options for mapping URLs during a crawl.
@@ -452,7 +453,7 @@ export default class FirecrawlApp {
     waitUntilDone: boolean = true,
     pollInterval: number = 2,
     idempotencyKey?: string
-  ): Promise<CrawlResponse | CrawlResponseV0 | CrawlStatusResponse | CrawlStatusResponseV0> {
+  ): Promise<CrawlResponse | CrawlResponseV0 | CrawlStatusResponse | CrawlStatusResponseV0 | FirecrawlDocumentV0[]> {
     const headers = this.prepareHeaders(idempotencyKey);
     let jsonData: any = { url, ...params };
     try {
@@ -639,7 +640,7 @@ export default class FirecrawlApp {
     headers: AxiosRequestHeaders,
     checkInterval: number,
     checkUrl?: string
-  ): Promise<CrawlStatusResponse | CrawlStatusResponseV0> {
+  ): Promise<CrawlStatusResponse | FirecrawlDocumentV0[]> {
     let apiUrl: string = '';
     while (true) {
       if (this.version == 'v1') {

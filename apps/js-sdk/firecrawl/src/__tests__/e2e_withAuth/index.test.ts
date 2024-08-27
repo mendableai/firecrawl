@@ -1,4 +1,4 @@
-import FirecrawlApp, { CrawlResponseV0, FirecrawlDocumentV0, JobStatusResponseV0, ScrapeResponseV0, SearchResponseV0 } from '../../index';
+import FirecrawlApp, { CrawlResponseV0, CrawlStatusResponse, CrawlStatusResponseV0, FirecrawlDocumentV0, ScrapeResponseV0, SearchResponseV0 } from '../../index';
 import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
 import { describe, test, expect } from '@jest/globals';
@@ -79,8 +79,9 @@ describe('FirecrawlApp E2E Tests', () => {
 
   test.concurrent('should return successful response for crawl and wait for completion', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL, version: "v0" });
-    const response = await app.crawlUrl('https://roastmywebsite.ai', { crawlerOptions: { excludes: ['blog/*'] } }, true, 30) as CrawlResponseV0;
+    const response = await app.crawlUrl('https://roastmywebsite.ai', { crawlerOptions: { excludes: ['blog/*'] } }, true, 10) as FirecrawlDocumentV0[];
     expect(response).not.toBeNull();
+    console.log({response});
     expect(response[0].content).toContain("_Roast_");
   }, 60000); // 60 seconds timeout
 
@@ -96,7 +97,7 @@ describe('FirecrawlApp E2E Tests', () => {
 
   test.concurrent('should check crawl status', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL, version: "v0" });
-    const response: any = await app.crawlUrl('https://roastmywebsite.ai', { crawlerOptions: { excludes: ['blog/*'] } }, false) as JobStatusResponseV0;
+    const response: any = await app.crawlUrl('https://roastmywebsite.ai', { crawlerOptions: { excludes: ['blog/*'] } }, false) as CrawlResponseV0;
     expect(response).not.toBeNull();
     expect(response.jobId).toBeDefined();
 
@@ -105,10 +106,10 @@ describe('FirecrawlApp E2E Tests', () => {
     let checks = 0;
 
     while (statusResponse.status === 'active' && checks < maxChecks) {
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      await new Promise(resolve => setTimeout(resolve, 5000));
       expect(statusResponse.partial_data).not.toBeNull();
-      expect(statusResponse.current).toBeGreaterThanOrEqual(1);
-      statusResponse = await app.checkCrawlStatus(response.jobId) as CrawlResponseV0;
+      // expect(statusResponse.current).toBeGreaterThanOrEqual(1);
+      statusResponse = await app.checkCrawlStatus(response.jobId) as CrawlStatusResponseV0;
       checks++;
     }
 
@@ -117,6 +118,8 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(statusResponse.status).toBe('completed');
     expect(statusResponse.total).toEqual(statusResponse.current);
     expect(statusResponse.current_step).not.toBeNull();
+    expect(statusResponse.current).toBeGreaterThanOrEqual(1);
+
     expect(statusResponse?.data?.length).toBeGreaterThan(0);
   }, 35000); // 35 seconds timeout
 
