@@ -115,7 +115,7 @@ export function getRateLimiter(
     return testSuiteRateLimiter;
   }
 
-  if(teamId === process.env.DEV_B_TEAM_ID) {
+  if(teamId && teamId === process.env.DEV_B_TEAM_ID) {
     return devBRateLimiter;
   }
 
