@@ -50,11 +50,11 @@ describe("Job Priority Tests", () => {
     (redisConnection.scard as jest.Mock).mockResolvedValue(150);
 
     const priority = await getJobPriority({ plan, team_id });
-    expect(priority).toBe(20);
+    expect(priority).toBe(10);
 
     (redisConnection.scard as jest.Mock).mockResolvedValue(250);
     const priorityExceeded = await getJobPriority({ plan, team_id });
-    expect(priorityExceeded).toBe(40); // basePriority + Math.ceil((250 - 200) * 0.2)
+    expect(priorityExceeded).toBe(20); // basePriority + Math.ceil((250 - 200) * 0.4)
   });
 
   test("getJobPriority should handle different plans correctly", async () => {
@@ -68,7 +68,7 @@ describe("Job Priority Tests", () => {
     (redisConnection.scard as jest.Mock).mockResolvedValue(150);
     plan = "hobby";
     priority = await getJobPriority({ plan, team_id });
-    expect(priority).toBe(40); // basePriority + Math.ceil((150 - 50) * 0.3)
+    expect(priority).toBe(25); // basePriority + Math.ceil((150 - 50) * 0.3)
 
     (redisConnection.scard as jest.Mock).mockResolvedValue(25);
     plan = "free";

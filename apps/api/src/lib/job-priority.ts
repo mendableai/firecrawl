@@ -53,17 +53,17 @@ export async function getJobPriority({
         planModifier = 0.5;
         break;
       case "hobby":
-        bucketLimit = 50;
+        bucketLimit = 100;
         planModifier = 0.3;
         break;
       case "standard":
       case "standardnew":
-        bucketLimit = 100;
+        bucketLimit = 200;
         planModifier = 0.2;
         break;
       case "growth":
       case "growthdouble":
-        bucketLimit = 200;
+        bucketLimit = 400;
         planModifier = 0.2;
         break;
 
