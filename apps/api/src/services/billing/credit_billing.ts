@@ -317,21 +317,21 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
 
   // Compare the adjusted total credits used with the credits allowed by the plan
   if (adjustedCreditsUsed + credits > price.credits) {
-    await sendNotification(
-      team_id,
-      NotificationType.LIMIT_REACHED,
-      subscription.current_period_start,
-      subscription.current_period_end
-    );
+    // await sendNotification(
+    //   team_id,
+    //   NotificationType.LIMIT_REACHED,
+    //   subscription.current_period_start,
+    //   subscription.current_period_end
+    // );
     return { success: false, message: "Insufficient credits, please upgrade!", remainingCredits: creditLimit - adjustedCreditsUsed };
   } else if (creditUsagePercentage >= 0.8) {
     // Send email notification for approaching credit limit
-    await sendNotification(
-      team_id,
-      NotificationType.APPROACHING_LIMIT,
-      subscription.current_period_start,
-      subscription.current_period_end
-    );
+    // await sendNotification(
+    //   team_id,
+    //   NotificationType.APPROACHING_LIMIT,
+    //   subscription.current_period_start,
+    //   subscription.current_period_end
+    // );
   }
 
   return { success: true, message: "Sufficient credits available", remainingCredits: creditLimit - adjustedCreditsUsed };
