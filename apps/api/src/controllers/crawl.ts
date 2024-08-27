@@ -25,11 +25,12 @@ import {
 } from "../../src/lib/crawl-redis";
 import { getScrapeQueue } from "../../src/services/queue-service";
 import { checkAndUpdateURL } from "../../src/lib/validateUrl";
+import { getJobPriority } from "../../src/lib/job-priority";
 import * as Sentry from "@sentry/node";
 
 export async function crawlController(req: Request, res: Response) {
   try {
-    const { success, team_id, error, status } = await authenticateUser(
+    const { success, team_id, error, status, plan } = await authenticateUser(
       req,
       res,
       RateLimiterMode.Crawl
@@ -148,6 +149,7 @@ export async function crawlController(req: Request, res: Response) {
       crawlerOptions,
       pageOptions,
       team_id,
+      plan,
       createdAt: Date.now(),
     };
 
@@ -163,7 +165,15 @@ export async function crawlController(req: Request, res: Response) {
       ? null
       : await crawler.tryGetSitemap();
 
+
     if (sitemap !== null && sitemap.length > 0) {
+      let jobPriority = 20;
+      // If it is over 1000, we need to get the job priority,
+      // otherwise we can use the default priority of 20
+      if(sitemap.length > 1000){
+        // set base to 21
+        jobPriority = await getJobPriority({plan, team_id, basePriority: 21})
+      }
       const jobs = sitemap.map((x) => {
         const url = x.url;
         const uuid = uuidv4();
@@ -181,7 +191,7 @@ export async function crawlController(req: Request, res: Response) {
           },
           opts: {
             jobId: uuid,
-            priority: 20,
+            priority: jobPriority,
           },
         };
       });
@@ -204,6 +214,10 @@ export async function crawlController(req: Request, res: Response) {
       }
     } else {
       await lockURL(id, sc, url);
+
+      // Not needed, first one should be 15.
+      // const jobPriority = await getJobPriority({plan, team_id, basePriority: 10})
+
       const job = await addScrapeJob(
         {
           url,

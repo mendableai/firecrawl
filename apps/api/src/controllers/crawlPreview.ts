@@ -11,7 +11,7 @@ import * as Sentry from "@sentry/node";
 
 export async function crawlPreviewController(req: Request, res: Response) {
   try {
-    const { success, error, status } = await authenticateUser(
+    const { success, error, status, team_id:a, plan } = await authenticateUser(
       req,
       res,
       RateLimiterMode.Preview
@@ -89,6 +89,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
       crawlerOptions,
       pageOptions,
       team_id,
+      plan,
       robots,
       createdAt: Date.now(),
     };

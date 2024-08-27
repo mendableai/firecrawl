@@ -3,6 +3,7 @@ import { getRateLimiter } from "../../src/services/rate-limiter";
 import {
   AuthResponse,
   NotificationType,
+  PlanType,
   RateLimiterMode,
 } from "../../src/types";
 import { supabase_service } from "../../src/services/supabase";
@@ -88,7 +89,7 @@ export async function supaAuthenticateUser(
   team_id?: string;
   error?: string;
   status?: number;
-  plan?: string;
+  plan?: PlanType;
 }> {
   const authHeader = req.headers.authorization;
   if (!authHeader) {
@@ -327,10 +328,10 @@ export async function supaAuthenticateUser(
   return {
     success: true,
     team_id: subscriptionData.team_id,
-    plan: subscriptionData.plan ?? "",
+    plan: (subscriptionData.plan ?? "") as PlanType,
   };
 }
-function getPlanByPriceId(price_id: string) {
+function getPlanByPriceId(price_id: string): PlanType {
   switch (price_id) {
     case process.env.STRIPE_PRICE_ID_STARTER:
       return "starter";
