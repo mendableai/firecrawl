@@ -64,7 +64,7 @@ export async function getJobPriority({
       case "growth":
       case "growthdouble":
         bucketLimit = 400;
-        planModifier = 0.2;
+        planModifier = 0.1;
         break;
 
       default:
