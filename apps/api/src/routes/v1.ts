@@ -7,16 +7,14 @@ import { mapController } from "../controllers/v1/map";
 import { ErrorResponse, RequestWithAuth, RequestWithMaybeAuth } from "../controllers/v1/types";
 import { RateLimiterMode } from "../types";
 import { authenticateUser } from "../controllers/auth";
-import { Logger } from "../lib/logger";
 import { createIdempotencyKey } from "../services/idempotency/create";
 import { validateIdempotencyKey } from "../services/idempotency/validate";
-import { ZodError } from "zod";
 import { checkTeamCredits } from "../services/billing/credit_billing";
-import { v4 as uuidv4 } from "uuid";
 import expressWs from "express-ws";
 import { crawlStatusWSController } from "../controllers/v1/crawl-status-ws";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { crawlCancelController } from "../controllers/v1/crawl-cancel";
+import { Logger } from "../lib/logger";
 // import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
 // import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
 // import { searchController } from "../../src/controllers/v1/search";
@@ -33,6 +31,7 @@ function checkCreditsMiddleware(minimum?: number): (req: RequestWithAuth, res: R
             }
             const { success, message, remainingCredits } = await checkTeamCredits(req.auth.team_id, minimum);
             if (!success) {
+                Logger.error(`Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`);
                 return res.status(402).json({ success: false, error: "Insufficient credits" });
             }
             req.account = { remainingCredits }
