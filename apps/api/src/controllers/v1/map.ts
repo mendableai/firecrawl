@@ -95,12 +95,14 @@ export async function mapController(
   const endTime = new Date().getTime();
   const timeTakenInSeconds = (endTime - startTime) / 1000;
 
+  const linksToReturn = links.slice(0, limit);
+  
   logJob({
     job_id: id,
     success: links.length > 0,
     message: "Map completed",
-    num_docs: 1,
-    docs: links,
+    num_docs: links.length,
+    docs: linksToReturn,
     time_taken: timeTakenInSeconds,
     team_id: req.auth.team_id,
     mode: "map",
@@ -114,6 +116,6 @@ export async function mapController(
 
   return res.status(200).json({
     success: true,
-    links: links.slice(0, limit),
+    links: linksToReturn,
   });
 }
