@@ -11,6 +11,8 @@ export async function addJobPriority(team_id, job_id) {
 
     // Add scrape job id to the set
     await redisConnection.sadd(setKey, job_id);
+    
+    // This approach will reset the expiration time to 60 seconds every time a new job is added to the set.
     await redisConnection.expire(setKey, 60);
 
   } catch (e) {
