@@ -37,48 +37,55 @@ export async function getJobPriority({
   team_id: string;
   basePriority?: number;
 }): Promise<number> {
-  const setKey = SET_KEY_PREFIX + team_id;
+  try {
+    const setKey = SET_KEY_PREFIX + team_id;
 
-  // Get the length of the set
-  const setLength = await redisConnection.scard(setKey);
+    // Get the length of the set
+    const setLength = await redisConnection.scard(setKey);
 
-  // Determine the priority based on the plan and set length
-  let planModifier = 1;
-  let bucketLimit = 0;
+    // Determine the priority based on the plan and set length
+    let planModifier = 1;
+    let bucketLimit = 0;
 
-  switch (plan) {
-    case "free":
-      bucketLimit = 25;
-      planModifier = 0.5;
-      break;
-    case "hobby":
-      bucketLimit = 50;
-      planModifier = 0.3;
-      break;
-    case "standard":
-    case "standardnew":
-      bucketLimit = 100;
-      planModifier = 0.2;
-      break;
-    case "growth":
-    case "growthdouble":
-      bucketLimit = 200;
-      planModifier = 0.2;
-      break;
+    switch (plan) {
+      case "free":
+        bucketLimit = 25;
+        planModifier = 0.5;
+        break;
+      case "hobby":
+        bucketLimit = 50;
+        planModifier = 0.3;
+        break;
+      case "standard":
+      case "standardnew":
+        bucketLimit = 100;
+        planModifier = 0.2;
+        break;
+      case "growth":
+      case "growthdouble":
+        bucketLimit = 200;
+        planModifier = 0.2;
+        break;
 
-    default:
-      bucketLimit = 25;
-      planModifier = 1;
-      break;
-  }
+      default:
+        bucketLimit = 25;
+        planModifier = 1;
+        break;
+    }
 
-  // if length set is smaller than set, just return base priority
-  if (setLength <= bucketLimit) {
-    return basePriority;
-  } else {
-    // If not, we keep base priority + planModifier
-    return Math.ceil(
-      basePriority + Math.ceil((setLength - bucketLimit) * planModifier)
+    // if length set is smaller than set, just return base priority
+    if (setLength <= bucketLimit) {
+      return basePriority;
+    } else {
+      // If not, we keep base priority + planModifier
+      return Math.ceil(
+        basePriority + Math.ceil((setLength - bucketLimit) * planModifier)
+      );
+    }
+  } catch (e) {
+    Logger.error(
+      `Get job priority failed: ${team_id}, ${plan}, ${basePriority}`
     );
+    return basePriority;
   }
 }
