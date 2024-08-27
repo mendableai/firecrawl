@@ -1,13 +1,8 @@
 app = 'firecrawl-dragonfly'
 primary_region = 'iad'
 
-[experimental]
-  cmd = ['dragonfly','--logtostderr', '--cluster_mode=emulated', '--lock_on_hashtags', "--bind","::"]
-[build]
-  image = 'ghcr.io/dragonflydb/dragonfly'
-
 [[mounts]]
-  source = 'firecrawl_dragonfly'
+  source = 'firecrawl_redis'
   destination = '/data'
 
 [[services]]

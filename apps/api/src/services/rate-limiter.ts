@@ -18,9 +18,22 @@ const RATE_LIMITS = {
   },
   scrape: {
     default: 20,
+    free: 10,
+    starter: 20,
+    standard: 100,
+    standardOld: 40,
+    scale: 500,
+    hobby: 20,
+    standardNew: 100,
+    standardnew: 100,
+    growth: 1000,
+    growthdouble: 1000,
+  },
+  search: {
+    default: 20,
     free: 5,
     starter: 20,
-    standard: 50,
+    standard: 40,
     standardOld: 40,
     scale: 500,
     hobby: 10,
@@ -29,7 +42,7 @@ const RATE_LIMITS = {
     growth: 500,
     growthdouble: 500,
   },
-  search: {
+  map:{
     default: 20,
     free: 5,
     starter: 20,
@@ -84,14 +97,26 @@ export const testSuiteRateLimiter = new RateLimiterRedis({
   duration: 60, // Duration in seconds
 });
 
+export const devBRateLimiter = new RateLimiterRedis({
+  storeClient: redisRateLimitClient,
+  keyPrefix: "dev-b",
+  points: 1200,
+  duration: 60, // Duration in seconds
+});
+
 export function getRateLimiter(
   mode: RateLimiterMode,
   token: string,
-  plan?: string
+  plan?: string,
+  teamId?: string
 ) {
 
-  if (token.includes("a01ccae") || token.includes("6254cf9")) {
+  if (token.includes("a01ccae") || token.includes("6254cf9") || token.includes("0f96e673") || token.includes("23befa1b")) {
     return testSuiteRateLimiter;
+  }
+
+  if(teamId === process.env.DEV_B_TEAM_ID) {
+    return devBRateLimiter;
   }
 
   const rateLimitConfig = RATE_LIMITS[mode]; // {default : 5}

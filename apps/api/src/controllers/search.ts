@@ -9,9 +9,10 @@ import { search } from "../search";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../lib/logger";
-import { getScrapeQueue, scrapeQueueEvents } from "../services/queue-service";
 import { getJobPriority } from "../lib/job-priority";
+import { getScrapeQueue } from "../services/queue-service";
 import * as Sentry from "@sentry/node";
+import { addScrapeJob } from "../services/queue-jobs";
 
 export async function searchHelper(
   jobId: string,
@@ -99,10 +100,36 @@ export async function searchHelper(
       }
     };
   })
-  
-  const jobs = await getScrapeQueue().addBulk(jobDatas);
 
-  const docs = (await Promise.all(jobs.map(x => x.waitUntilFinished(scrapeQueueEvents, 60000)))).map(x => x[0]);
+  let jobs = [];
+  if (Sentry.isInitialized()) {
+    for (const job of jobDatas) {
+      // add with sentry instrumentation
+      jobs.push(await addScrapeJob(job.data as any, {}, job.opts.jobId));
+    }
+  } else {
+    jobs = await getScrapeQueue().addBulk(jobDatas);
+    await getScrapeQueue().addBulk(jobs);
+  }
+
+  const docs = (await Promise.all(jobs.map(x => new Promise((resolve, reject) => {
+    const start = Date.now();
+    const int = setInterval(async () => {
+      if (Date.now() >= start + 60000) {
+        clearInterval(int);
+        reject(new Error("Job wait "));
+      } else {
+        const state = await x.getState();
+        if (state === "completed") {
+          clearInterval(int);
+          resolve((await getScrapeQueue().getJob(x.id)).returnvalue);
+        } else if (state === "failed") {
+          clearInterval(int);
+          reject((await getScrapeQueue().getJob(x.id)).failedReason);
+        }
+      }
+    }, 1000);
+  })))).map(x => x[0]);
   
   if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
@@ -112,7 +139,7 @@ export async function searchHelper(
 
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(
-    (doc: { content?: string }) => doc.content && doc.content.trim().length > 0
+    (doc: { content?: string }) => doc && doc.content && doc.content.trim().length > 0
   );
 
   if (filteredDocs.length === 0) {
@@ -191,6 +218,10 @@ export async function searchController(req: Request, res: Response) {
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Job wait")) {
+      return res.status(408).json({ error: "Request timed out" });
+    }
+
     Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });

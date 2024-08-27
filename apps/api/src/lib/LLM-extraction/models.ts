@@ -15,7 +15,7 @@ const defaultPrompt =
 function prepareOpenAIDoc(
   document: Document,
   mode: "markdown" | "raw-html"
-): [OpenAI.Chat.Completions.ChatCompletionContentPart[], number] {
+): [OpenAI.Chat.Completions.ChatCompletionContentPart[], number] | null {
 
   let markdown = document.markdown;
 
@@ -27,9 +27,10 @@ function prepareOpenAIDoc(
 
   // Check if the markdown content exists in the document
   if (!extractionTarget) {
-    throw new Error(
-      `${mode} content is missing in the document. This is likely due to an error in the scraping process. Please try again or reach out to help@mendable.ai`
-    );
+    return null;
+    // throw new Error(
+    //   `${mode} content is missing in the document. This is likely due to an error in the scraping process. Please try again or reach out to help@mendable.ai`
+    // );
   }
 
 
@@ -64,7 +65,16 @@ export async function generateOpenAICompletions({
   mode: "markdown" | "raw-html";
 }): Promise<Document> {
   const openai = client as OpenAI;
-  const [content, numTokens] = prepareOpenAIDoc(document, mode);
+  const preparedDoc = prepareOpenAIDoc(document, mode);
+
+  if (preparedDoc === null) {
+    return {
+      ...document,
+      warning: "LLM extraction was not performed since the document's content is empty or missing.",
+    };
+  }
+
+  const [content, numTokens] = preparedDoc;
 
   const completion = await openai.chat.completions.create({
     model,

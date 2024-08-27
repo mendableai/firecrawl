@@ -35,6 +35,6 @@ export function getScrapeQueue() {
 }
 
 
-import { QueueEvents } from 'bullmq';
-
-export const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection });
+// === REMOVED IN FAVOR OF POLLING -- NOT RELIABLE
+// import { QueueEvents } from 'bullmq';
+// export const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection.duplicate() });

@@ -6,7 +6,6 @@ const socialMediaBlocklist = [
   'twitter.com',
   'instagram.com',
   'linkedin.com',
-  'pinterest.com',
   'snapchat.com',
   'tiktok.com',
   'reddit.com',
@@ -16,7 +15,8 @@ const socialMediaBlocklist = [
   'wechat.com',
   'telegram.org',
   'researchhub.com',
-  'youtube.com'
+  'youtube.com',
+  'corterix.com',
 ];
 
 const allowedKeywords = [

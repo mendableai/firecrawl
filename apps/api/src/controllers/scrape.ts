@@ -1,4 +1,4 @@
-import { ExtractorOptions, PageOptions } from './../lib/entities';
+  import { ExtractorOptions, PageOptions } from './../lib/entities';
 import { Request, Response } from "express";
 import { billTeam, checkTeamCredits } from "../services/billing/credit_billing";
 import { authenticateUser } from "./auth";
@@ -9,7 +9,7 @@ import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist"; // Import 
 import { numTokensFromString } from '../lib/LLM-extraction/helpers';
 import { defaultPageOptions, defaultExtractorOptions, defaultTimeout, defaultOrigin } from '../lib/default-values';
 import { addScrapeJob } from '../services/queue-jobs';
-import { scrapeQueueEvents } from '../services/queue-service';
+import { getScrapeQueue } from '../services/queue-service';
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from '../lib/logger';
 import { getJobPriority } from '../lib/job-priority';
@@ -52,18 +52,51 @@ export async function scrapeHelper(
   }, {}, jobId, jobPriority);
 
   let doc;
-  try {
-    doc = (await job.waitUntilFinished(scrapeQueueEvents, timeout))[0]; //60 seconds timeout
-  } catch (e) {
-    if (e instanceof Error && e.message.startsWith("Job wait")) {
-      return {
-        success: false,
-        error: "Request timed out",
-        returnCode: 408,
+
+  const err = await Sentry.startSpan({ name: "Wait for job to finish", op: "bullmq.wait", attributes: { job: jobId } }, async (span) => {
+    try {
+      doc = (await new Promise((resolve, reject) => {
+        const start = Date.now();
+        const int = setInterval(async () => {
+          if (Date.now() >= start + timeout) {
+            clearInterval(int);
+            reject(new Error("Job wait "));
+          } else {
+            const state = await job.getState();
+            if (state === "completed") {
+              clearInterval(int);
+              resolve((await getScrapeQueue().getJob(job.id)).returnvalue);
+            } else if (state === "failed") {
+              clearInterval(int);
+              reject((await getScrapeQueue().getJob(job.id)).failedReason);
+            }
+          }
+        }, 1000);
+      }))[0]
+    } catch (e) {
+      if (e instanceof Error && e.message.startsWith("Job wait")) {
+        span.setAttribute("timedOut", true);
+        return {
+          success: false,
+          error: "Request timed out",
+          returnCode: 408,
+        }
+      } else if (typeof e === "string" && (e.includes("Error generating completions: ") || e.includes("Invalid schema for function") || e.includes("LLM extraction did not match the extraction schema you provided."))) {
+        return {
+          success: false,
+          error: e,
+          returnCode: 500,
+        };
+      } else {
+        throw e;
       }
-    } else {
-      throw e;
     }
+    span.setAttribute("result", JSON.stringify(doc));
+    return null;
+  });
+
+  if (err !== null) {
+    return err;
   }
 
   await job.remove();
@@ -108,6 +141,10 @@ export async function scrapeController(req: Request, res: Response) {
     let timeout = req.body.timeout ?? defaultTimeout;
 
     if (extractorOptions.mode.includes("llm-extraction")) {
+      if (typeof extractorOptions.extractionSchema !== "object" || extractorOptions.extractionSchema === null) {
+        return res.status(400).json({ error: "extractorOptions.extractionSchema must be an object if llm-extraction mode is specified" });
+      }
+
       pageOptions.onlyMainContent = true;
       timeout = req.body.timeout ?? 90000;
     }
@@ -192,6 +229,6 @@ export async function scrapeController(req: Request, res: Response) {
   } catch (error) {
     Sentry.captureException(error);
     Logger.error(error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: typeof error === "string" ? error : (error?.message ?? "Internal Server Error") });
   }
 }
