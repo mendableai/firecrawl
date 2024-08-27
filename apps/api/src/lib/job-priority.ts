@@ -2,19 +2,16 @@ import { redisConnection } from "../../src/services/queue-service";
 import { PlanType } from "../../src/types";
 import { Logger } from "./logger";
 
-
-
-const SET_KEY_PREFIX = "limit_team_id:"
+const SET_KEY_PREFIX = "limit_team_id:";
 export async function addJobPriority(team_id, job_id) {
   try {
     const setKey = SET_KEY_PREFIX + team_id;
 
     // Add scrape job id to the set
     await redisConnection.sadd(setKey, job_id);
-    
+
     // This approach will reset the expiration time to 60 seconds every time a new job is added to the set.
     await redisConnection.expire(setKey, 60);
-
   } catch (e) {
     Logger.error(`Add job priority (sadd) failed: ${team_id}, ${job_id}`);
   }
@@ -34,11 +31,11 @@ export async function deleteJobPriority(team_id, job_id) {
 export async function getJobPriority({
   plan,
   team_id,
-  basePriority = 10
+  basePriority = 10,
 }: {
   plan: PlanType;
   team_id: string;
-  basePriority: number;
+  basePriority?: number;
 }): Promise<number> {
   const setKey = SET_KEY_PREFIX + team_id;
 
@@ -52,11 +49,11 @@ export async function getJobPriority({
   switch (plan) {
     case "free":
       bucketLimit = 25;
-      planModifier = 1;
+      planModifier = 0.5;
       break;
     case "hobby":
       bucketLimit = 50;
-      planModifier = 0.5;
+      planModifier = 0.3;
       break;
     case "standard":
     case "standardnew":
@@ -68,8 +65,7 @@ export async function getJobPriority({
       bucketLimit = 200;
       planModifier = 0.2;
       break;
-    
-    
+
     default:
       bucketLimit = 25;
       planModifier = 1;
