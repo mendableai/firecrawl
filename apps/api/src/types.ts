@@ -30,6 +30,8 @@ export interface WebScraperOptions {
   origin?: string;
   crawl_id?: string;
   sitemapped?: boolean;
+  webhook?: string;
+  v1?: boolean;
 }
 
 export interface RunWebScraperParams {
@@ -105,6 +107,7 @@ export enum RateLimiterMode {
   Scrape = "scrape",
   Preview = "preview",
   Search = "search",
+  Map = "map",
 
 }
 
@@ -113,6 +116,7 @@ export interface AuthResponse {
   team_id?: string;
   error?: string;
   status?: number;
+  api_key?: string;
   plan?: PlanType;
 }
   

@@ -1,23 +1,36 @@
-import { parseApi } from "../../src/lib/parseApi";
-import { getRateLimiter } from "../../src/services/rate-limiter";
+import { parseApi } from "../lib/parseApi";
+import { getRateLimiter } from "../services/rate-limiter";
 import {
   AuthResponse,
   NotificationType,
   PlanType,
   RateLimiterMode,
-} from "../../src/types";
-import { supabase_service } from "../../src/services/supabase";
-import { withAuth } from "../../src/lib/withAuth";
+} from "../types";
+import { supabase_service } from "../services/supabase";
+import { withAuth } from "../lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import { setTraceAttributes } from "@hyperdx/node-opentelemetry";
 import { sendNotification } from "../services/notification/email_notification";
 import { Logger } from "../lib/logger";
-import { redlock } from "../../src/services/redlock";
-import { getValue } from "../../src/services/redis";
-import { setValue } from "../../src/services/redis";
+import { redlock } from "../services/redlock";
+import { getValue } from "../services/redis";
+import { setValue } from "../services/redis";
 import { validate } from "uuid";
 import * as Sentry from "@sentry/node";
-
+// const { data, error } = await supabase_service
+//     .from('api_keys')
+//     .select(`
+//       key,
+//       team_id,
+//       teams (
+//         subscriptions (
+//           price_id
+//         )
+//       )
+//     `)
+//     .eq('key', normalizedApi)
+//     .limit(1)
+//     .single();
 function normalizedApiIsUuid(potentialUuid: string): boolean {
   // Check if the string is a valid UUID
   return validate(potentialUuid);
@@ -119,7 +132,11 @@ export async function supaAuthenticateUser(
   let priceId: string | null = null;
 
   if (token == "this_is_just_a_preview_token") {
-    rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
+    if (mode == RateLimiterMode.CrawlStatus) {
+      rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
+    } else {
+      rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
+    }      
     teamId = "preview";
   } else {
     normalizedApi = parseApi(token);
@@ -155,7 +172,7 @@ export async function supaAuthenticateUser(
         await setValue(
           cacheKey,
           JSON.stringify({ team_id: teamId, price_id: priceId }),
-          10
+          60
         );
       }
     } catch (error) {
@@ -234,6 +251,13 @@ export async function supaAuthenticateUser(
           subscriptionData.plan
         );
         break;
+      case RateLimiterMode.Map:
+        rateLimiter = getRateLimiter(
+          RateLimiterMode.Map,
+          token,
+          subscriptionData.plan
+        );
+        break;
       case RateLimiterMode.CrawlStatus:
         rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
         break;
@@ -286,6 +310,9 @@ export async function supaAuthenticateUser(
     token === "this_is_just_a_preview_token" &&
     (mode === RateLimiterMode.Scrape ||
       mode === RateLimiterMode.Preview ||
+      mode === RateLimiterMode.Map ||
+      mode === RateLimiterMode.Crawl ||
+      mode === RateLimiterMode.CrawlStatus ||
       mode === RateLimiterMode.Search)
   ) {
     return { success: true, team_id: "preview" };

@@ -11,6 +11,7 @@ export interface Progress {
 }
 
 export type PageOptions = {
+  includeMarkdown?: boolean;
   onlyMainContent?: boolean;
   includeHtml?: boolean;
   includeRawHtml?: boolean;
@@ -24,6 +25,7 @@ export type PageOptions = {
   parsePDF?: boolean;
   removeTags?: string | string[];
   onlyIncludeTags?: string | string[];
+  includeLinks?: boolean;
   useFastMode?: boolean; // beta
   disableJSDom?: boolean; // beta
   atsv?: boolean; // beta

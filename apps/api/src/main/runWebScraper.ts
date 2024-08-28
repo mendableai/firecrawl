@@ -26,7 +26,12 @@ export async function startWebScraperPipeline({
     mode: job.data.mode,
     crawlerOptions: job.data.crawlerOptions,
     extractorOptions: job.data.extractorOptions,
-    pageOptions: job.data.pageOptions,
+    pageOptions: {
+      ...job.data.pageOptions,
+      ...(job.data.crawl_id ? ({
+        includeRawHtml: true,
+      }): {}),
+    },
     inProgress: (progress) => {
       Logger.debug(`🐂 Job in progress ${job.id}`);
       if (progress.currentDocument) {
@@ -39,6 +44,9 @@ export async function startWebScraperPipeline({
     },
     onSuccess: (result, mode) => {
       Logger.debug(`🐂 Job completed ${job.id}`);
+      if (job.data.crawl_id && (!job.data.pageOptions || !job.data.pageOptions.includeRawHtml)) {
+        delete result[0].rawHtml;
+      }
       saveJob(job, result, token, mode);
     },
     onError: (error) => {

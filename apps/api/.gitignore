@@ -7,5 +7,5 @@ dump.rdb
 
 /.next/
 
-# Sentry Config File
+.rdb
 .sentryclirc

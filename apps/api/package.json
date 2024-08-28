@@ -61,6 +61,8 @@
     "@sentry/node": "^8.26.0",
     "@sentry/profiling-node": "^8.26.0",
     "@supabase/supabase-js": "^2.44.2",
+    "@types/express-ws": "^3.0.4",
+    "@types/ws": "^8.5.12",
     "ajv": "^8.16.0",
     "async": "^3.2.5",
     "async-mutex": "^0.5.0",
@@ -76,6 +78,7 @@
     "dotenv": "^16.3.1",
     "dotenv-cli": "^7.4.2",
     "express-rate-limit": "^7.3.1",
+    "express-ws": "^5.0.2",
     "form-data": "^4.0.0",
     "glob": "^10.4.2",
     "gpt3-tokenizer": "^1.1.5",
@@ -110,8 +113,9 @@
     "unstructured-client": "^0.11.3",
     "uuid": "^10.0.0",
     "wordpos": "^2.1.0",
+    "ws": "^8.18.0",
     "xml2js": "^0.6.2",
-    "zod": "^3.23.4",
+    "zod": "^3.23.8",
     "zod-to-json-schema": "^3.23.1"
   },
   "nodemonConfig": {

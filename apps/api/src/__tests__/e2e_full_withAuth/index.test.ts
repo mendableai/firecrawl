@@ -404,7 +404,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .set("x-idempotency-key", uniqueIdempotencyKey)
-        .send({ url: 'https://mendable.ai' });
+        .send({ url: 'https://docs.firecrawl.dev' });
   
         expect(firstResponse.statusCode).toBe(200);
   
@@ -414,7 +414,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .set("x-idempotency-key", uniqueIdempotencyKey)
-        .send({ url: 'https://mendable.ai' });
+        .send({ url: 'https://docs.firecrawl.dev' });
   
       expect(secondResponse.statusCode).toBe(409);
       expect(secondResponse.body.error).toBe('Idempotency key already used');

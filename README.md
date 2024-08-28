@@ -6,7 +6,7 @@ _This repository is in its early development stages. We are still merging custom
 
 ## What is Firecrawl?
 
-[Firecrawl](https://firecrawl.dev?ref=github) is an API service that takes a URL, crawls it, and converts it into clean markdown or structured data. We crawl all accessible subpages and give you clean data for each. No sitemap required.
+[Firecrawl](https://firecrawl.dev?ref=github) is an API service that takes a URL, crawls it, and converts it into clean markdown or structured data. We crawl all accessible subpages and give you clean data for each. No sitemap required. Check out our [documentation](https://docs.firecrawl.dev).
 
 _Pst. hey, you, join our stargazers :)_
 
@@ -41,18 +41,26 @@ To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and ge
 Used to crawl a URL and all accessible subpages. This submits a crawl job and returns a job ID to check the status of the crawl.
 
 ```bash
-curl -X POST https://api.firecrawl.dev/v0/crawl \
+curl -X POST https://api.firecrawl.dev/v1/crawl \
     -H 'Content-Type: application/json' \
-    -H 'Authorization: Bearer YOUR_API_KEY' \
+    -H 'Authorization: Bearer fc-YOUR_API_KEY' \
     -d '{
-      "url": "https://mendable.ai"
+      "url": "https://docs.firecrawl.dev",
+      "limit": 100,
+      "scrapeOptions": {
+        "formats": ["markdown", "html"]
+      }
     }'
 ```
 
-Returns a jobId
+Returns a crawl job id and the url to check the status of the crawl.
 
 ```json
-{ "jobId": "1234-5678-9101" }
+{
+  "success": true,
+  "id": "123-456-789",
+  "url": "https://api.firecrawl.dev/v1/crawl/123-456-789"
+}
 ```
 
 ### Check Crawl Job
@@ -60,7 +68,7 @@ Returns a jobId
 Used to check the status of a crawl job and get its result.
 
 ```bash
-curl -X GET https://api.firecrawl.dev/v0/crawl/status/1234-5678-9101 \
+curl -X GET https://api.firecrawl.dev/v1/crawl/123-456-789 \
   -H 'Content-Type: application/json' \
   -H 'Authorization: Bearer YOUR_API_KEY'
 ```
@@ -68,18 +76,20 @@ curl -X GET https://api.firecrawl.dev/v0/crawl/status/1234-5678-9101 \
 ```json
 {
   "status": "completed",
-  "current": 22,
-  "total": 22,
+  "total": 36,
+  "creditsUsed": 36,
+  "expiresAt": "2024-00-00T00:00:00.000Z",
   "data": [
     {
-      "content": "Raw Content ",
-      "markdown": "# Markdown Content",
-      "provider": "web-scraper",
+      "markdown": "[Firecrawl Docs home page![light logo](https://mintlify.s3-us-west-1.amazonaws.com/firecrawl/logo/light.svg)!...",
+      "html": "<!DOCTYPE html><html lang=\"en\" class=\"js-focus-visible lg:[--scroll-mt:9.5rem]\" data-js-focus-visible=\"\">...",
       "metadata": {
-        "title": "Mendable | AI for CX and Sales",
-        "description": "AI for CX and Sales",
-        "language": null,
-        "sourceURL": "https://www.mendable.ai/"
+        "title": "Build a 'Chat with website' using Groq Llama 3 | Firecrawl",
+        "language": "en",
+        "sourceURL": "https://docs.firecrawl.dev/learn/rag-llama3",
+        "description": "Learn how to use Firecrawl, Groq Llama 3, and Langchain to build a 'Chat with your website' bot.",
+        "ogLocaleAlternate": [],
+        "statusCode": 200
       }
     }
   ]
@@ -88,14 +98,15 @@ curl -X GET https://api.firecrawl.dev/v0/crawl/status/1234-5678-9101 \
 
 ### Scraping
 
-Used to scrape a URL and get its content.
+Used to scrape a URL and get its content in the specified formats.
 
 ```bash
-curl -X POST https://api.firecrawl.dev/v0/scrape \
+curl -X POST https://api.firecrawl.dev/v1/scrape \
     -H 'Content-Type: application/json' \
     -H 'Authorization: Bearer YOUR_API_KEY' \
     -d '{
-      "url": "https://mendable.ai"
+      "url": "https://docs.firecrawl.dev",
+      "formats" : ["markdown", "html"]
     }'
 ```
 
@@ -105,55 +116,83 @@ Response:
 {
   "success": true,
   "data": {
-    "content": "Raw Content ",
-    "markdown": "# Markdown Content",
-    "provider": "web-scraper",
+    "markdown": "Launch Week I is here! [See our Day 2 Release 🚀](https://www.firecrawl.dev/blog/launch-week-i-day-2-doubled-rate-limits)[💥 Get 2 months free...",
+    "html": "<!DOCTYPE html><html lang=\"en\" class=\"light\" style=\"color-scheme: light;\"><body class=\"__variable_36bd41 __variable_d7dc5d font-inter ...",
     "metadata": {
-      "title": "Mendable | AI for CX and Sales",
-      "description": "AI for CX and Sales",
-      "language": null,
-      "sourceURL": "https://www.mendable.ai/"
+      "title": "Home - Firecrawl",
+      "description": "Firecrawl crawls and converts any website into clean markdown.",
+      "language": "en",
+      "keywords": "Firecrawl,Markdown,Data,Mendable,Langchain",
+      "robots": "follow, index",
+      "ogTitle": "Firecrawl",
+      "ogDescription": "Turn any website into LLM-ready data.",
+      "ogUrl": "https://www.firecrawl.dev/",
+      "ogImage": "https://www.firecrawl.dev/og.png?123",
+      "ogLocaleAlternate": [],
+      "ogSiteName": "Firecrawl",
+      "sourceURL": "https://firecrawl.dev",
+      "statusCode": 200
     }
   }
 }
 ```
 
-### Search (Beta)
+### Map (Alpha)
 
-Used to search the web, get the most relevant results, scrape each page and return the markdown.
+Used to map a URL and get urls of the website. This returns most links present on the website.
 
-```bash
-curl -X POST https://api.firecrawl.dev/v0/search \
+```bash cURL
+curl -X POST https://api.firecrawl.dev/v1/map \
     -H 'Content-Type: application/json' \
     -H 'Authorization: Bearer YOUR_API_KEY' \
     -d '{
-      "query": "firecrawl",
-      "pageOptions": {
-        "fetchPageContent": true // false for a fast serp api
-      }
+      "url": "https://firecrawl.dev"
     }'
 ```
 
+Response:
+
 ```json
 {
-  "success": true,
-  "data": [
-    {
-      "url": "https://mendable.ai",
-      "markdown": "# Markdown Content",
-      "provider": "web-scraper",
-      "metadata": {
-        "title": "Mendable | AI for CX and Sales",
-        "description": "AI for CX and Sales",
-        "language": null,
-        "sourceURL": "https://www.mendable.ai/"
-      }
-    }
+  "status": "success",
+  "links": [
+    "https://firecrawl.dev",
+    "https://www.firecrawl.dev/pricing",
+    "https://www.firecrawl.dev/blog",
+    "https://www.firecrawl.dev/playground",
+    "https://www.firecrawl.dev/smart-crawl",
   ]
 }
 ```
 
-### Intelligent Extraction (Beta)
+#### Map with search
+
+Map with `search` param allows you to search for specific urls inside a website.
+
+```bash cURL
+curl -X POST https://api.firecrawl.dev/v1/map \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer YOUR_API_KEY' \
+    -d '{
+      "url": "https://firecrawl.dev",
+      "search": "docs"
+    }'
+```
+
+Response will be an ordered list from the most relevant to the least relevant.
+
+```json
+{
+  "status": "success",
+  "links": [
+    "https://docs.firecrawl.dev",
+    "https://docs.firecrawl.dev/sdks/python",
+    "https://docs.firecrawl.dev/learn/rag-llama3",
+  ]
+}
+```
+
+### LLM Extraction (v0) (Beta)
 
 Used to extract structured data from scraped pages.
 
@@ -220,6 +259,42 @@ curl -X POST https://api.firecrawl.dev/v0/scrape \
 }
 ```
 
+
+### Search (v0) (Beta)
+
+Used to search the web, get the most relevant results, scrape each page and return the markdown.
+
+```bash
+curl -X POST https://api.firecrawl.dev/v0/search \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer YOUR_API_KEY' \
+    -d '{
+      "query": "firecrawl",
+      "pageOptions": {
+        "fetchPageContent": true // false for a fast serp api
+      }
+    }'
+```
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "url": "https://mendable.ai",
+      "markdown": "# Markdown Content",
+      "provider": "web-scraper",
+      "metadata": {
+        "title": "Mendable | AI for CX and Sales",
+        "description": "AI for CX and Sales",
+        "language": null,
+        "sourceURL": "https://www.mendable.ai/"
+      }
+    }
+  ]
+}
+```
+
 ## Using Python SDK
 
 ### Installing Python SDK
@@ -231,24 +306,28 @@ pip install firecrawl-py
 ### Crawl a website
 
 ```python
-from firecrawl import FirecrawlApp
+from firecrawl.firecrawl import FirecrawlApp
 
-app = FirecrawlApp(api_key="YOUR_API_KEY")
+app = FirecrawlApp(api_key="fc-YOUR_API_KEY")
 
-crawl_result = app.crawl_url('mendable.ai', {'crawlerOptions': {'excludes': ['blog/*']}})
+# Scrape a website:
+scrape_status = app.scrape_url(
+  'https://firecrawl.dev', 
+  params={'formats': ['markdown', 'html']}
+)
+print(scrape_status)
 
-# Get the markdown
-for result in crawl_result:
-    print(result['markdown'])
-```
-
-### Scraping a URL
-
-To scrape a single URL, use the `scrape_url` method. It takes the URL as a parameter and returns the scraped data as a dictionary.
-
-```python
-url = 'https://example.com'
-scraped_data = app.scrape_url(url)
+# Crawl a website:
+crawl_status = app.crawl_url(
+  'https://firecrawl.dev', 
+  params={
+    'limit': 100, 
+    'scrapeOptions': {'formats': ['markdown', 'html']}
+  }, 
+  wait_until_done=True, 
+  poll_interval=30
+)
+print(crawl_status)
 ```
 
 ### Extracting structured data from a URL
@@ -256,6 +335,11 @@ scraped_data = app.scrape_url(url)
 With LLM extraction, you can easily extract structured data from any URL. We support pydantic schemas to make it easier for you too. Here is how you to use it:
 
 ```python
+
+from firecrawl.firecrawl import FirecrawlApp
+
+app = FirecrawlApp(api_key="fc-YOUR_API_KEY", version="v0")
+
 class ArticleSchema(BaseModel):
     title: str
     points: int
@@ -277,15 +361,6 @@ data = app.scrape_url('https://news.ycombinator.com', {
 print(data["llm_extraction"])
 ```
 
-### Search for a query
-
-Performs a web search, retrieve the top results, extract data from each page, and returns their markdown.
-
-```python
-query = 'What is Mendable?'
-search_result = app.search(query)
-```
-
 ## Using the Node SDK
 
 ### Installation
@@ -301,54 +376,33 @@ npm install @mendable/firecrawl-js
 1. Get an API key from [firecrawl.dev](https://firecrawl.dev)
 2. Set the API key as an environment variable named `FIRECRAWL_API_KEY` or pass it as a parameter to the `FirecrawlApp` class.
 
-### Scraping a URL
-
-To scrape a single URL with error handling, use the `scrapeUrl` method. It takes the URL as a parameter and returns the scraped data as a dictionary.
-
 ```js
-try {
-  const url = "https://example.com";
-  const scrapedData = await app.scrapeUrl(url);
-  console.log(scrapedData);
-} catch (error) {
-  console.error("Error occurred while scraping:", error.message);
+import FirecrawlApp, { CrawlParams, CrawlStatusResponse } from '@mendable/firecrawl-js';
+
+const app = new FirecrawlApp({apiKey: "fc-YOUR_API_KEY"});
+
+// Scrape a website
+const scrapeResponse = await app.scrapeUrl('https://firecrawl.dev', {
+  formats: ['markdown', 'html'],
+});
+
+if (scrapeResponse) {
+  console.log(scrapeResponse)
+}
+
+// Crawl a website
+const crawlResponse = await app.crawlUrl('https://firecrawl.dev', {
+  limit: 100,
+  scrapeOptions: {
+    formats: ['markdown', 'html'],
+  }
+} as CrawlParams, true, 30) as CrawlStatusResponse;
+
+if (crawlResponse) {
+  console.log(crawlResponse)
 }
 ```
 
-### Crawling a Website
-
-To crawl a website with error handling, use the `crawlUrl` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
-
-```js
-const crawlUrl = "https://example.com";
-const params = {
-  crawlerOptions: {
-    excludes: ["blog/"],
-    includes: [], // leave empty for all pages
-    limit: 1000,
-  },
-  pageOptions: {
-    onlyMainContent: true,
-  },
-};
-const waitUntilDone = true;
-const timeout = 5;
-const crawlResult = await app.crawlUrl(
-  crawlUrl,
-  params,
-  waitUntilDone,
-  timeout
-);
-```
-
-### Checking Crawl Status
-
-To check the status of a crawl job with error handling, use the `checkCrawlStatus` method. It takes the job ID as a parameter and returns the current status of the crawl job.
-
-```js
-const status = await app.checkCrawlStatus(jobId);
-console.log(status);
-```
 
 ### Extracting structured data from a URL
 
@@ -360,6 +414,7 @@ import { z } from "zod";
 
 const app = new FirecrawlApp({
   apiKey: "fc-YOUR_API_KEY",
+  version: "v0"
 });
 
 // Define schema to extract contents into
@@ -382,19 +437,6 @@ const scrapeResult = await app.scrapeUrl("https://news.ycombinator.com", {
 });
 
 console.log(scrapeResult.data["llm_extraction"]);
-```
-
-### Search for a query
-
-With the `search` method, you can search for a query in a search engine and get the top results along with the page content for each result. The method takes the query as a parameter and returns the search results.
-
-```js
-const query = "what is mendable?";
-const searchResults = await app.search(query, {
-  pageOptions: {
-    fetchPageContent: true, // Fetch the page content for each search result
-  },
-});
 ```
 
 ## Contributing
