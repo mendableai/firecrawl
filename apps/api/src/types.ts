@@ -32,6 +32,7 @@ export interface WebScraperOptions {
   sitemapped?: boolean;
   webhook?: string;
   v1?: boolean;
+  is_scrape?: boolean;
 }
 
 export interface RunWebScraperParams {
@@ -46,6 +47,7 @@ export interface RunWebScraperParams {
   team_id: string;
   bull_job_id: string;
   priority?: number;
+  is_scrape?: boolean;
 }
 
 export interface RunWebScraperResult {

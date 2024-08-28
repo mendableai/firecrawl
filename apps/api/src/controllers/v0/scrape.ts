@@ -63,6 +63,7 @@ export async function scrapeHelper(
       pageOptions,
       extractorOptions,
       origin: req.body.origin ?? defaultOrigin,
+      is_scrape: true,
     },
     {},
     jobId,
@@ -179,12 +180,10 @@ export async function scrapeController(req: Request, res: Response) {
         typeof extractorOptions.extractionSchema !== "object" ||
         extractorOptions.extractionSchema === null
       ) {
-        return res
-          .status(400)
-          .json({
-            error:
-              "extractorOptions.extractionSchema must be an object if llm-extraction mode is specified",
-          });
+        return res.status(400).json({
+          error:
+            "extractorOptions.extractionSchema must be an object if llm-extraction mode is specified",
+        });
       }
 
       pageOptions.onlyMainContent = true;
@@ -202,12 +201,10 @@ export async function scrapeController(req: Request, res: Response) {
     } catch (error) {
       Logger.error(error);
       earlyReturn = true;
-      return res
-        .status(500)
-        .json({
-          error:
-            "Error checking team credits. Please contact hello@firecrawl.com for help.",
-        });
+      return res.status(500).json({
+        error:
+          "Error checking team credits. Please contact hello@firecrawl.com for help.",
+      });
     }
 
     const jobId = uuidv4();
@@ -231,8 +228,8 @@ export async function scrapeController(req: Request, res: Response) {
         : 0;
 
     if (result.success) {
-      let creditsToBeBilled = 0; // billing for doc done on queue end
-      const creditsPerLLMExtract = 50;
+      let creditsToBeBilled = 1;
+      const creditsPerLLMExtract = 49;
 
       if (extractorOptions.mode.includes("llm-extraction")) {
         // creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length);
@@ -245,13 +242,16 @@ export async function scrapeController(req: Request, res: Response) {
         // Don't bill if we're early returning
         return;
       }
-      const billingResult = await billTeam(team_id, creditsToBeBilled);
-      if (!billingResult.success) {
-        return res.status(402).json({
-          success: false,
-          error:
-            "Failed to bill team. Insufficient credits or subscription not found.",
-        });
+      if (creditsToBeBilled > 0) {
+        // billing for doc done on queue end, bill only for llm extraction
+        const billingResult = await billTeam(team_id, creditsToBeBilled);
+        if (!billingResult.success) {
+          return res.status(402).json({
+            success: false,
+            error:
+              "Failed to bill team. Insufficient credits or subscription not found.",
+          });
+        }
       }
     }
 
@@ -276,13 +276,11 @@ export async function scrapeController(req: Request, res: Response) {
   } catch (error) {
     Sentry.captureException(error);
     Logger.error(error);
-    return res
-      .status(500)
-      .json({
-        error:
-          typeof error === "string"
-            ? error
-            : error?.message ?? "Internal Server Error",
-      });
+    return res.status(500).json({
+      error:
+        typeof error === "string"
+          ? error
+          : error?.message ?? "Internal Server Error",
+    });
   }
 }

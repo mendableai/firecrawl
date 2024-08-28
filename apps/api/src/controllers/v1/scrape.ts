@@ -29,6 +29,7 @@ export async function scrapeController(req: RequestWithAuth<{}, ScrapeResponse, 
     pageOptions,
     extractorOptions: {},
     origin: req.body.origin,
+    is_scrape: true,
   }, {}, jobId, jobPriority);
 
   let doc: any | undefined;

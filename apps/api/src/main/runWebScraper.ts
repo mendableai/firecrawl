@@ -57,6 +57,7 @@ export async function startWebScraperPipeline({
     team_id: job.data.team_id,
     bull_job_id: job.id.toString(),
     priority: job.opts.priority,
+    is_scrape: job.data.is_scrape ?? false,
   })) as { success: boolean; message: string; docs: Document[] };
 }
 export async function runWebScraper({
@@ -71,6 +72,7 @@ export async function runWebScraper({
   team_id,
   bull_job_id,
   priority,
+  is_scrape=false,
 }: RunWebScraperParams): Promise<RunWebScraperResult> {
   try {
     const provider = new WebScraperDataProvider();
@@ -117,17 +119,20 @@ export async function runWebScraper({
           }
         })
       : docs;
-    
-    const billingResult = await billTeam(team_id, filteredDocs.length);
 
-    if (!billingResult.success) {
-      // throw new Error("Failed to bill team, no subscription was found");
-      return {
-        success: false,
-        message: "Failed to bill team, no subscription was found",
-        docs: [],
-      };
+    if(is_scrape === false) {
+      const billingResult = await billTeam(team_id, filteredDocs.length);
+      if (!billingResult.success) {
+        // throw new Error("Failed to bill team, no subscription was found");
+        return {
+          success: false,
+          message: "Failed to bill team, no subscription was found",
+          docs: [],
+        };
+      }
     }
+
+    
 
     // This is where the returnvalue from the job is set
     onSuccess(filteredDocs, mode);
