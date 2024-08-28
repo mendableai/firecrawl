@@ -1,13 +1,4 @@
 "use strict";
-var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
-    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
-    return new (P || (P = Promise))(function (resolve, reject) {
-        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
-        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
-        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
-        step((generator = generator.apply(thisArg, _arguments || [])).next());
-    });
-};
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -17,148 +8,179 @@ const zod_1 = require("zod");
 const zod_to_json_schema_1 = require("zod-to-json-schema");
 /**
  * Main class for interacting with the Firecrawl API.
+ * Provides methods for scraping, searching, crawling, and mapping web content.
  */
 class FirecrawlApp {
     /**
      * Initializes a new instance of the FirecrawlApp class.
-     * @param {FirecrawlAppConfig} config - Configuration options for the FirecrawlApp instance.
+     * @param config - Configuration options for the FirecrawlApp instance.
      */
-    constructor({ apiKey = null, apiUrl = null }) {
+    constructor({ apiKey = null, apiUrl = null, version = "v1" }) {
         this.apiKey = apiKey || "";
         this.apiUrl = apiUrl || "https://api.firecrawl.dev";
+        this.version = version;
         if (!this.apiKey) {
             throw new Error("No API key provided");
         }
     }
     /**
      * Scrapes a URL using the Firecrawl API.
-     * @param {string} url - The URL to scrape.
-     * @param {Params | null} params - Additional parameters for the scrape request.
-     * @returns {Promise<ScrapeResponse>} The response from the scrape operation.
+     * @param url - The URL to scrape.
+     * @param params - Additional parameters for the scrape request.
+     * @returns The response from the scrape operation.
      */
-    scrapeUrl(url_1) {
-        return __awaiter(this, arguments, void 0, function* (url, params = null) {
-            var _a;
-            const headers = {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${this.apiKey}`,
-            };
-            let jsonData = Object.assign({ url }, params);
-            if ((_a = params === null || params === void 0 ? void 0 : params.extractorOptions) === null || _a === void 0 ? void 0 : _a.extractionSchema) {
-                let schema = params.extractorOptions.extractionSchema;
-                // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
-                if (schema instanceof zod_1.z.ZodSchema) {
-                    schema = (0, zod_to_json_schema_1.zodToJsonSchema)(schema);
-                }
-                jsonData = Object.assign(Object.assign({}, jsonData), { extractorOptions: Object.assign(Object.assign({}, params.extractorOptions), { extractionSchema: schema, mode: params.extractorOptions.mode || "llm-extraction" }) });
+    async scrapeUrl(url, params) {
+        const headers = {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+        };
+        let jsonData = { url, ...params };
+        if (jsonData?.extractorOptions?.extractionSchema) {
+            let schema = jsonData.extractorOptions.extractionSchema;
+            // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
+            if (schema instanceof zod_1.z.ZodSchema) {
+                schema = (0, zod_to_json_schema_1.zodToJsonSchema)(schema);
             }
-            try {
-                const response = yield axios_1.default.post(this.apiUrl + "/v0/scrape", jsonData, { headers });
-                if (response.status === 200) {
-                    const responseData = response.data;
-                    if (responseData.success) {
-                        return responseData;
-                    }
-                    else {
-                        throw new Error(`Failed to scrape URL. Error: ${responseData.error}`);
-                    }
+            jsonData = {
+                ...jsonData,
+                extractorOptions: {
+                    ...jsonData.extractorOptions,
+                    extractionSchema: schema,
+                    mode: jsonData.extractorOptions.mode || "llm-extraction",
+                },
+            };
+        }
+        try {
+            const response = await axios_1.default.post(this.apiUrl + `/${this.version}/scrape`, jsonData, { headers });
+            if (response.status === 200) {
+                const responseData = response.data;
+                if (responseData.success) {
+                    return (this.version === 'v0' ? responseData : {
+                        success: true,
+                        warning: responseData.warning,
+                        error: responseData.error,
+                        ...responseData.data
+                    });
                 }
                 else {
-                    this.handleError(response, "scrape URL");
+                    throw new Error(`Failed to scrape URL. Error: ${responseData.error}`);
                 }
             }
-            catch (error) {
-                throw new Error(error.message);
+            else {
+                this.handleError(response, "scrape URL");
             }
-            return { success: false, error: "Internal server error." };
-        });
+        }
+        catch (error) {
+            throw new Error(error.message);
+        }
+        return { success: false, error: "Internal server error." };
     }
     /**
      * Searches for a query using the Firecrawl API.
-     * @param {string} query - The query to search for.
-     * @param {Params | null} params - Additional parameters for the search request.
-     * @returns {Promise<SearchResponse>} The response from the search operation.
+     * @param query - The query to search for.
+     * @param params - Additional parameters for the search request.
+     * @returns The response from the search operation.
      */
-    search(query_1) {
-        return __awaiter(this, arguments, void 0, function* (query, params = null) {
-            const headers = {
-                "Content-Type": "application/json",
-                Authorization: `Bearer ${this.apiKey}`,
-            };
-            let jsonData = { query };
-            if (params) {
-                jsonData = Object.assign(Object.assign({}, jsonData), params);
-            }
-            try {
-                const response = yield axios_1.default.post(this.apiUrl + "/v0/search", jsonData, { headers });
-                if (response.status === 200) {
-                    const responseData = response.data;
-                    if (responseData.success) {
-                        return responseData;
-                    }
-                    else {
-                        throw new Error(`Failed to search. Error: ${responseData.error}`);
-                    }
+    async search(query, params) {
+        if (this.version === "v1") {
+            throw new Error("Search is not supported in v1, please update FirecrawlApp() initialization to use v0.");
+        }
+        const headers = {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+        };
+        let jsonData = { query };
+        if (params) {
+            jsonData = { ...jsonData, ...params };
+        }
+        try {
+            const response = await axios_1.default.post(this.apiUrl + "/v0/search", jsonData, { headers });
+            if (response.status === 200) {
+                const responseData = response.data;
+                if (responseData.success) {
+                    return responseData;
                 }
                 else {
-                    this.handleError(response, "search");
+                    throw new Error(`Failed to search. Error: ${responseData.error}`);
                 }
             }
-            catch (error) {
-                throw new Error(error.message);
+            else {
+                this.handleError(response, "search");
             }
-            return { success: false, error: "Internal server error." };
-        });
+        }
+        catch (error) {
+            throw new Error(error.message);
+        }
+        return { success: false, error: "Internal server error." };
     }
     /**
      * Initiates a crawl job for a URL using the Firecrawl API.
-     * @param {string} url - The URL to crawl.
-     * @param {Params | null} params - Additional parameters for the crawl request.
-     * @param {boolean} waitUntilDone - Whether to wait for the crawl job to complete.
-     * @param {number} pollInterval - Time in seconds for job status checks.
-     * @param {string} idempotencyKey - Optional idempotency key for the request.
-     * @returns {Promise<CrawlResponse | any>} The response from the crawl operation.
+     * @param url - The URL to crawl.
+     * @param params - Additional parameters for the crawl request.
+     * @param waitUntilDone - Whether to wait for the crawl job to complete.
+     * @param pollInterval - Time in seconds for job status checks.
+     * @param idempotencyKey - Optional idempotency key for the request.
+     * @returns The response from the crawl operation.
      */
-    crawlUrl(url_1) {
-        return __awaiter(this, arguments, void 0, function* (url, params = null, waitUntilDone = true, pollInterval = 2, idempotencyKey) {
-            const headers = this.prepareHeaders(idempotencyKey);
-            let jsonData = { url };
-            if (params) {
-                jsonData = Object.assign(Object.assign({}, jsonData), params);
-            }
-            try {
-                const response = yield this.postRequest(this.apiUrl + "/v0/crawl", jsonData, headers);
-                if (response.status === 200) {
-                    const jobId = response.data.jobId;
-                    if (waitUntilDone) {
-                        return this.monitorJobStatus(jobId, headers, pollInterval);
+    async crawlUrl(url, params, waitUntilDone = true, pollInterval = 2, idempotencyKey) {
+        const headers = this.prepareHeaders(idempotencyKey);
+        let jsonData = { url, ...params };
+        try {
+            const response = await this.postRequest(this.apiUrl + `/${this.version}/crawl`, jsonData, headers);
+            if (response.status === 200) {
+                const id = this.version === 'v0' ? response.data.jobId : response.data.id;
+                let checkUrl = undefined;
+                if (waitUntilDone) {
+                    if (this.version === 'v1') {
+                        checkUrl = response.data.url;
                     }
-                    else {
-                        return { success: true, jobId };
-                    }
+                    return this.monitorJobStatus(id, headers, pollInterval, checkUrl);
                 }
                 else {
-                    this.handleError(response, "start crawl job");
+                    if (this.version === 'v0') {
+                        return {
+                            success: true,
+                            jobId: id
+                        };
+                    }
+                    else {
+                        return {
+                            success: true,
+                            id: id
+                        };
+                    }
                 }
             }
-            catch (error) {
-                console.log(error);
+            else {
+                this.handleError(response, "start crawl job");
+            }
+        }
+        catch (error) {
+            if (error.response?.data?.error) {
+                throw new Error(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`);
+            }
+            else {
                 throw new Error(error.message);
             }
-            return { success: false, error: "Internal server error." };
-        });
+        }
+        return { success: false, error: "Internal server error." };
     }
     /**
      * Checks the status of a crawl job using the Firecrawl API.
-     * @param {string} jobId - The job ID of the crawl operation.
-     * @returns {Promise<JobStatusResponse>} The response containing the job status.
+     * @param id - The ID of the crawl operation.
+     * @returns The response containing the job status.
      */
-    checkCrawlStatus(jobId) {
-        return __awaiter(this, void 0, void 0, function* () {
-            const headers = this.prepareHeaders();
-            try {
-                const response = yield this.getRequest(this.apiUrl + `/v0/crawl/status/${jobId}`, headers);
-                if (response.status === 200) {
+    async checkCrawlStatus(id) {
+        if (!id) {
+            throw new Error("No crawl ID provided");
+        }
+        const headers = this.prepareHeaders();
+        try {
+            const response = await this.getRequest(this.version === 'v1' ?
+                `${this.apiUrl}/${this.version}/crawl/${id}` :
+                `${this.apiUrl}/${this.version}/crawl/status/${id}`, headers);
+            if (response.status === 200) {
+                if (this.version === 'v0') {
                     return {
                         success: true,
                         status: response.data.status,
@@ -173,13 +195,28 @@ class FirecrawlApp {
                     };
                 }
                 else {
-                    this.handleError(response, "check crawl status");
+                    return {
+                        success: true,
+                        status: response.data.status,
+                        total: response.data.total,
+                        completed: response.data.completed,
+                        creditsUsed: response.data.creditsUsed,
+                        expiresAt: new Date(response.data.expiresAt),
+                        next: response.data.next,
+                        data: response.data.data,
+                        error: response.data.error
+                    };
                 }
             }
-            catch (error) {
-                throw new Error(error.message);
+            else {
+                this.handleError(response, "check crawl status");
             }
-            return {
+        }
+        catch (error) {
+            throw new Error(error.message);
+        }
+        return this.version === 'v0' ?
+            {
                 success: false,
                 status: "unknown",
                 current: 0,
@@ -187,71 +224,103 @@ class FirecrawlApp {
                 current_step: "",
                 total: 0,
                 error: "Internal server error.",
+            } :
+            {
+                success: false,
+                error: "Internal server error.",
             };
-        });
+    }
+    async mapUrl(url, params) {
+        if (this.version == 'v0') {
+            throw new Error("Map is not supported in v0");
+        }
+        const headers = this.prepareHeaders();
+        let jsonData = { url, ...params };
+        try {
+            const response = await this.postRequest(this.apiUrl + `/${this.version}/map`, jsonData, headers);
+            if (response.status === 200) {
+                return response.data;
+            }
+            else {
+                this.handleError(response, "map");
+            }
+        }
+        catch (error) {
+            throw new Error(error.message);
+        }
+        return { success: false, error: "Internal server error." };
     }
     /**
      * Prepares the headers for an API request.
-     * @returns {AxiosRequestHeaders} The prepared headers.
+     * @param idempotencyKey - Optional key to ensure idempotency.
+     * @returns The prepared headers.
      */
     prepareHeaders(idempotencyKey) {
-        return Object.assign({ "Content-Type": "application/json", Authorization: `Bearer ${this.apiKey}` }, (idempotencyKey ? { "x-idempotency-key": idempotencyKey } : {}));
+        return {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${this.apiKey}`,
+            ...(idempotencyKey ? { "x-idempotency-key": idempotencyKey } : {}),
+        };
     }
     /**
      * Sends a POST request to the specified URL.
-     * @param {string} url - The URL to send the request to.
-     * @param {Params} data - The data to send in the request.
-     * @param {AxiosRequestHeaders} headers - The headers for the request.
-     * @returns {Promise<AxiosResponse>} The response from the POST request.
+     * @param url - The URL to send the request to.
+     * @param data - The data to send in the request.
+     * @param headers - The headers for the request.
+     * @returns The response from the POST request.
      */
     postRequest(url, data, headers) {
         return axios_1.default.post(url, data, { headers });
     }
     /**
      * Sends a GET request to the specified URL.
-     * @param {string} url - The URL to send the request to.
-     * @param {AxiosRequestHeaders} headers - The headers for the request.
-     * @returns {Promise<AxiosResponse>} The response from the GET request.
+     * @param url - The URL to send the request to.
+     * @param headers - The headers for the request.
+     * @returns The response from the GET request.
      */
     getRequest(url, headers) {
         return axios_1.default.get(url, { headers });
     }
     /**
      * Monitors the status of a crawl job until completion or failure.
-     * @param {string} jobId - The job ID of the crawl operation.
-     * @param {AxiosRequestHeaders} headers - The headers for the request.
-     * @param {number} timeout - Timeout in seconds for job status checks.
-     * @returns {Promise<any>} The final job status or data.
+     * @param id - The ID of the crawl operation.
+     * @param headers - The headers for the request.
+     * @param checkInterval - Interval in seconds for job status checks.
+     * @param checkUrl - Optional URL to check the status (used for v1 API)
+     * @returns The final job status or data.
      */
-    monitorJobStatus(jobId, headers, checkInterval) {
-        return __awaiter(this, void 0, void 0, function* () {
-            while (true) {
-                const statusResponse = yield this.getRequest(this.apiUrl + `/v0/crawl/status/${jobId}`, headers);
-                if (statusResponse.status === 200) {
-                    const statusData = statusResponse.data;
-                    if (statusData.status === "completed") {
-                        if ("data" in statusData) {
-                            return statusData.data;
-                        }
-                        else {
-                            throw new Error("Crawl job completed but no data was returned");
-                        }
-                    }
-                    else if (["active", "paused", "pending", "queued"].includes(statusData.status)) {
-                        if (checkInterval < 2) {
-                            checkInterval = 2;
-                        }
-                        yield new Promise((resolve) => setTimeout(resolve, checkInterval * 1000)); // Wait for the specified timeout before checking again
+    async monitorJobStatus(id, headers, checkInterval, checkUrl) {
+        let apiUrl = '';
+        while (true) {
+            if (this.version === 'v1') {
+                apiUrl = checkUrl ?? `${this.apiUrl}/v1/crawl/${id}`;
+            }
+            else if (this.version === 'v0') {
+                apiUrl = `${this.apiUrl}/v0/crawl/status/${id}`;
+            }
+            const statusResponse = await this.getRequest(apiUrl, headers);
+            if (statusResponse.status === 200) {
+                const statusData = statusResponse.data;
+                if (statusData.status === "completed") {
+                    if ("data" in statusData) {
+                        return this.version === 'v0' ? statusData.data : statusData;
                     }
                     else {
-                        throw new Error(`Crawl job failed or was stopped. Status: ${statusData.status}`);
+                        throw new Error("Crawl job completed but no data was returned");
                     }
                 }
+                else if (["active", "paused", "pending", "queued", "scraping"].includes(statusData.status)) {
+                    checkInterval = Math.max(checkInterval, 2);
+                    await new Promise((resolve) => setTimeout(resolve, checkInterval * 1000));
+                }
                 else {
-                    this.handleError(statusResponse, "check crawl status");
+                    throw new Error(`Crawl job failed or was stopped. Status: ${statusData.status}`);
                 }
             }
-        });
+            else {
+                this.handleError(statusResponse, "check crawl status");
+            }
+        }
     }
     /**
      * Handles errors from API responses.
