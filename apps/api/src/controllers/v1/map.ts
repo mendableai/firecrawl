@@ -17,6 +17,7 @@ import {
 import { fireEngineMap } from "../../search/fireEngine";
 import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
+import { performCosineSimilarity } from "../../lib/map-cosine";
 
 configDotenv();
 
@@ -76,6 +77,13 @@ export async function mapController(
         links.push(x.url);
       });
     }
+  }
+
+  // Perform cosine similarity between the search query and the list of links
+  if (req.body.search) {
+    const searchQuery = req.body.search.toLowerCase();
+    
+    links = performCosineSimilarity(links, searchQuery);
   }
 
   links = links.map((x) => checkAndUpdateURLForMap(x).url.trim());
