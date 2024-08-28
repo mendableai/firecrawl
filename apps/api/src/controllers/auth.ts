@@ -132,7 +132,11 @@ export async function supaAuthenticateUser(
   let priceId: string | null = null;
 
   if (token == "this_is_just_a_preview_token") {
-    rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
+    if (mode == RateLimiterMode.CrawlStatus) {
+      rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
+    } else {
+      rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
+    }      
     teamId = "preview";
   } else {
     normalizedApi = parseApi(token);
