@@ -903,8 +903,7 @@ describe("GET /v1/crawl/:jobId", () => {
       const childrenLinks = completedResponse.body.data.filter(
         (doc) =>
           doc.metadata &&
-          doc.metadata.sourceURL &&
-          doc.metadata.sourceURL.includes("mendable.ai/blog")
+          doc.metadata.sourceURL
       );
 
       expect(childrenLinks.length).toBe(completedResponse.body.data.length);
