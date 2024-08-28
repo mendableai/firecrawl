@@ -863,7 +863,7 @@ describe("GET /v1/crawl/:jobId", () => {
         .post("/v1/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://roastmywebsite.ai" });
+        .send({ url: "https://docs.mendable.ai" });
       expect(crawlResponse.statusCode).toBe(200);
 
       let isCompleted = false;
