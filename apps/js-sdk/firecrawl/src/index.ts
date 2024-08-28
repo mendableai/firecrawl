@@ -235,7 +235,8 @@ export interface CrawlResponseV0 {
  */
 export interface CrawlStatusResponse {
   success: boolean;
-  totalCount: number;
+  total: number;
+  completed: number;
   creditsUsed: number;
   expiresAt: Date;
   status: "scraping" | "completed" | "failed";
@@ -530,7 +531,8 @@ export default class FirecrawlApp<T extends "v0" | "v1"> {
           return ({
             success: true,
             status: response.data.status,
-            totalCount: response.data.totalCount,
+            total: response.data.total,
+            completed: response.data.completed,
             creditsUsed: response.data.creditsUsed,
             expiresAt: new Date(response.data.expiresAt),
             next: response.data.next,

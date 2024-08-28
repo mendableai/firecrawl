@@ -147,8 +147,8 @@ def test_crawl_url_wait_for_completion_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
     response = app.crawl_url('https://roastmywebsite.ai', {'excludePaths': ['blog/*']}, True, 30)
     assert response is not None
-    assert 'totalCount' in response
-    assert response['totalCount'] > 0
+    assert 'total' in response
+    assert response['total'] > 0
     assert 'creditsUsed' in response
     assert response['creditsUsed'] > 0
     assert 'expiresAt' in response
@@ -192,8 +192,8 @@ def test_crawl_url_with_options_and_wait_for_completion():
         }
     }, True, 30)
     assert response is not None
-    assert 'totalCount' in response
-    assert response['totalCount'] > 0
+    assert 'total' in response
+    assert response['total'] > 0
     assert 'creditsUsed' in response
     assert response['creditsUsed'] > 0
     assert 'expiresAt' in response
@@ -247,12 +247,12 @@ def test_check_crawl_status_e2e():
         assert 'partial_data' not in status_response
         assert 'current' not in status_response
         assert 'data' in status_response
-        assert 'totalCount' in status_response
+        assert 'total' in status_response
         assert 'creditsUsed' in status_response
         assert 'expiresAt' in status_response
         assert 'status' in status_response
         assert 'next' in status_response
-        assert status_response['totalCount'] > 0
+        assert status_response['total'] > 0
         assert status_response['creditsUsed'] > 0
         assert datetime.strptime(status_response['expiresAt'], '%Y-%m-%dT%H:%M:%S.%fZ') > datetime.now()
         assert status_response['status'] == 'scraping'
@@ -261,8 +261,8 @@ def test_check_crawl_status_e2e():
         checks += 1
 
     assert status_response is not None
-    assert 'totalCount' in status_response
-    assert status_response['totalCount'] > 0
+    assert 'total' in status_response
+    assert status_response['total'] > 0
     assert 'creditsUsed' in status_response
     assert status_response['creditsUsed'] > 0
     assert 'expiresAt' in status_response

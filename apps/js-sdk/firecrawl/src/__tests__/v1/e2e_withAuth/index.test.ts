@@ -129,8 +129,8 @@ describe('FirecrawlApp E2E Tests', () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.crawlUrl('https://roastmywebsite.ai', {}, true, 30) as CrawlStatusResponse;
     expect(response).not.toBeNull();
-    expect(response).toHaveProperty("totalCount");
-    expect(response.totalCount).toBeGreaterThan(0);
+    expect(response).toHaveProperty("total");
+    expect(response.total).toBeGreaterThan(0);
     expect(response).toHaveProperty("creditsUsed");
     expect(response.creditsUsed).toBeGreaterThan(0);
     expect(response).toHaveProperty("expiresAt");
@@ -175,8 +175,8 @@ describe('FirecrawlApp E2E Tests', () => {
       }
     } as CrawlParams, true, 30) as CrawlStatusResponse;
     expect(response).not.toBeNull();
-    expect(response).toHaveProperty("totalCount");
-    expect(response.totalCount).toBeGreaterThan(0);
+    expect(response).toHaveProperty("total");
+    expect(response.total).toBeGreaterThan(0);
     expect(response).toHaveProperty("creditsUsed");
     expect(response.creditsUsed).toBeGreaterThan(0);
     expect(response).toHaveProperty("expiresAt");
@@ -231,12 +231,12 @@ describe('FirecrawlApp E2E Tests', () => {
       expect(statusResponse).not.toHaveProperty("partial_data"); // v0
       expect(statusResponse).not.toHaveProperty("current"); // v0
       expect(statusResponse).toHaveProperty("data");
-      expect(statusResponse).toHaveProperty("totalCount");
+      expect(statusResponse).toHaveProperty("total");
       expect(statusResponse).toHaveProperty("creditsUsed");
       expect(statusResponse).toHaveProperty("expiresAt");
       expect(statusResponse).toHaveProperty("status");
       expect(statusResponse).toHaveProperty("next");
-      expect(statusResponse.totalCount).toBeGreaterThan(0);
+      expect(statusResponse.total).toBeGreaterThan(0);
       expect(statusResponse.creditsUsed).toBeGreaterThan(0);
       expect(statusResponse.expiresAt.getTime()).toBeGreaterThan(Date.now());
       expect(statusResponse.status).toBe("scraping");
@@ -246,8 +246,8 @@ describe('FirecrawlApp E2E Tests', () => {
     }
 
     expect(statusResponse).not.toBeNull();
-    expect(statusResponse).toHaveProperty("totalCount");
-    expect(statusResponse.totalCount).toBeGreaterThan(0);
+    expect(statusResponse).toHaveProperty("total");
+    expect(statusResponse.total).toBeGreaterThan(0);
     expect(statusResponse).toHaveProperty("creditsUsed");
     expect(statusResponse.creditsUsed).toBeGreaterThan(0);
     expect(statusResponse).toHaveProperty("expiresAt");

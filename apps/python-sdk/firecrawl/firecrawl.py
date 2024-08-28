@@ -211,7 +211,8 @@ class FirecrawlApp:
                 return {
                     'success': True,
                     'status': data.get('status'),
-                    'totalCount': data.get('totalCount'),
+                    'total': data.get('total'),
+                    'completed': data.get('completed'),
                     'creditsUsed': data.get('creditsUsed'),
                     'expiresAt': data.get('expiresAt'),
                     'next': data.get('next'),

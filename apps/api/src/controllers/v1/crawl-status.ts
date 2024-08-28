@@ -102,7 +102,8 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
 
   res.status(200).json({
     status,
-    totalCount: jobIDs.length,
+    completed: doneJobsLength,
+    total: jobIDs.length,
     creditsUsed: jobIDs.length,
     expiresAt: (await getCrawlExpiry(req.params.jobId)).toISOString(),
     next:
