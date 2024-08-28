@@ -145,7 +145,7 @@ export async function scrapSingleUrl(
 
   if (extractorOptions) {
     extractorOptions = {
-      mode: extractorOptions.mode ?? "llm-extraction-from-markdown",
+      mode: extractorOptions?.mode ?? "llm-extraction-from-markdown",
     }
   }
 
@@ -391,7 +391,7 @@ export async function scrapSingleUrl(
         html: pageOptions.includeHtml ? html : undefined,
         rawHtml:
           pageOptions.includeRawHtml ||
-            extractorOptions.mode === "llm-extraction-from-raw-html"
+            extractorOptions?.mode === "llm-extraction-from-raw-html"
             ? rawHtml
             : undefined,
         linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
@@ -410,7 +410,7 @@ export async function scrapSingleUrl(
         html: pageOptions.includeHtml ? html : undefined,
         rawHtml:
           pageOptions.includeRawHtml ||
-            extractorOptions.mode === "llm-extraction-from-raw-html"
+            extractorOptions?.mode === "llm-extraction-from-raw-html"
             ? rawHtml
             : undefined,
         metadata: {
