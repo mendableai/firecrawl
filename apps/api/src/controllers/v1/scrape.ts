@@ -6,6 +6,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { numTokensFromString } from "../../lib/LLM-extraction/helpers";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
+import { getJobPriority } from "../../lib/job-priority";
+import { PlanType } from "../../types";
 
 export async function scrapeController(req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>, res: Response<ScrapeResponse>) {
   req.body = scrapeRequestSchema.parse(req.body);
@@ -17,6 +19,8 @@ export async function scrapeController(req: RequestWithAuth<{}, ScrapeResponse, 
   const jobId = uuidv4();
 
   const startTime = new Date().getTime();
+  const jobPriority = await getJobPriority({plan: req.auth.plan as PlanType, team_id: req.auth.team_id, basePriority: 10})
+
   const job = await addScrapeJob({
     url: req.body.url,
     mode: "single_urls",
@@ -25,7 +29,7 @@ export async function scrapeController(req: RequestWithAuth<{}, ScrapeResponse, 
     pageOptions,
     extractorOptions: {},
     origin: req.body.origin,
-  }, {}, jobId);
+  }, {}, jobId, jobPriority);
 
   let doc: any | undefined;
   try {

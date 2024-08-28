@@ -21,6 +21,7 @@ import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
 import { addScrapeJob } from "../../services/queue-jobs";
 import { Logger } from "../../lib/logger";
+import { getJobPriority } from "../../lib/job-priority";
 
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
@@ -66,6 +67,7 @@ export async function crawlController(
     pageOptions,
     team_id: req.auth.team_id,
     createdAt: Date.now(),
+    plan: req.auth.plan,
   };
 
   const crawler = crawlToCrawler(id, sc);
@@ -86,7 +88,14 @@ export async function crawlController(
     ? null
     : await crawler.tryGetSitemap();
 
-  if (sitemap !== null) {
+  if (sitemap !== null && sitemap.length > 0) {
+    let jobPriority = 20;
+      // If it is over 1000, we need to get the job priority,
+      // otherwise we can use the default priority of 20
+      if(sitemap.length > 1000){
+        // set base to 21
+        jobPriority = await getJobPriority({plan: req.auth.plan, team_id: req.auth.team_id, basePriority: 21})
+      }
     const jobs = sitemap.map((x) => {
       const url = x.url;
       const uuid = uuidv4();

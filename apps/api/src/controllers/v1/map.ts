@@ -39,6 +39,7 @@ export async function mapController(
     pageOptions: {},
     team_id: req.auth.team_id,
     createdAt: Date.now(),
+    plan: req.auth.plan,
   };
 
   const crawler = crawlToCrawler(id, sc);

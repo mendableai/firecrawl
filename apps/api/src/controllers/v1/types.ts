@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { PageOptions } from "../../lib/entities";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
+import { PlanType } from "../../types";
 
 export type Format =
   | "markdown"
@@ -229,7 +230,7 @@ export type CrawlStatusResponse =
 
 type AuthObject = {
   team_id: string;
-  plan: string;
+  plan: PlanType;
 };
 
 type Account = {
