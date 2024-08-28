@@ -582,8 +582,9 @@ export class WebScraperDataProvider {
     this.pageOptions = {
       onlyMainContent: options.pageOptions?.onlyMainContent ?? false,
       includeHtml: options.pageOptions?.includeHtml ?? false,
-      replaceAllPathsWithAbsolutePaths: options.pageOptions?.replaceAllPathsWithAbsolutePaths ?? false,
+      replaceAllPathsWithAbsolutePaths: options.pageOptions?.replaceAllPathsWithAbsolutePaths ?? true,
       parsePDF: options.pageOptions?.parsePDF ?? true,
+      onlyIncludeTags: options.pageOptions?.onlyIncludeTags ?? [],
       removeTags: options.pageOptions?.removeTags ?? [],
       includeMarkdown: options.pageOptions?.includeMarkdown ?? true,
       includeRawHtml: options.pageOptions?.includeRawHtml ?? false,
