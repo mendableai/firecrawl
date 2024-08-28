@@ -165,16 +165,14 @@ export interface ScrapeResponseV0 {
  * Includes options for both scraping and mapping during a crawl.
  */
 export interface CrawlParams {
+  includePaths?: string[];
+  excludePaths?: string[];
+  maxDepth?: number;
+  limit?: number;
+  allowBackwardLinks?: boolean;
+  allowExternalLinks?: boolean;
+  ignoreSitemap?: boolean;
   scrapeOptions?: ScrapeParams;
-  crawlerOptions?: {
-    includePaths?: string[]
-    excludePaths?: string[]
-    maxDepth?: number
-    limit?: number
-    allowBackwardLinks?: boolean
-    allowExternalLinks?: boolean
-    ignoreSitemap?: boolean
-  };
 }
 
 /**
