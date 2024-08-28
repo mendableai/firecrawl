@@ -312,6 +312,7 @@ export async function supaAuthenticateUser(
       mode === RateLimiterMode.Preview ||
       mode === RateLimiterMode.Map ||
       mode === RateLimiterMode.Crawl ||
+      mode === RateLimiterMode.CrawlStatus ||
       mode === RateLimiterMode.Search)
   ) {
     return { success: true, team_id: "preview" };
