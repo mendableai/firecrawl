@@ -138,9 +138,10 @@ export async function scrapSingleUrl(
     fullPageScreenshot: pageOptions.fullPageScreenshot ?? false,
     headers: pageOptions.headers ?? undefined,
     includeLinks: pageOptions.includeLinks ?? true,
-    replaceAllPathsWithAbsolutePaths: pageOptions.replaceAllPathsWithAbsolutePaths ?? false,
+    replaceAllPathsWithAbsolutePaths: pageOptions.replaceAllPathsWithAbsolutePaths ?? true,
     parsePDF: pageOptions.parsePDF ?? true,
     removeTags: pageOptions.removeTags ?? [],
+    onlyIncludeTags: pageOptions.onlyIncludeTags ?? [],
   }
 
   if (extractorOptions) {
