@@ -216,6 +216,8 @@ if (cluster.isMaster) {
   Logger.info(`Worker ${process.pid} started`);
 }
 
+
+
 // const sq = getScrapeQueue();
 
 // sq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));

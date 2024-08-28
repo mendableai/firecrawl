@@ -116,8 +116,8 @@ export interface AuthResponse {
   team_id?: string;
   error?: string;
   status?: number;
-  plan?: string;
   api_key?: string;
+  plan?: PlanType;
 }
   
 
@@ -141,3 +141,14 @@ export type ScrapeLog = {
   ipv4_support?: boolean | null;
   ipv6_support?: boolean | null;
 };
+
+export type PlanType = 
+  | "starter"
+  | "standard"
+  | "scale"
+  | "hobby"
+  | "standardnew"
+  | "growth"
+  | "growthdouble"
+  | "free"
+  | "";

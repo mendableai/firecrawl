@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { WebScraperDataProvider } from "../../scraper/WebScraper";
 import { billTeam, checkTeamCredits } from "../../services/billing/credit_billing";
 import { authenticateUser } from "../auth";
-import { RateLimiterMode } from "../../types";
+import { PlanType, RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
 import { PageOptions, SearchOptions } from "../../lib/entities";
 import { search } from "../../search";
@@ -12,6 +12,7 @@ import { Logger } from "../../lib/logger";
 import { getScrapeQueue } from "../../services/queue-service";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import * as Sentry from "@sentry/node";
+import { getJobPriority } from "../../lib/job-priority";
 
 export async function searchHelper(
   jobId: string,
@@ -20,6 +21,7 @@ export async function searchHelper(
   crawlerOptions: any,
   pageOptions: PageOptions,
   searchOptions: SearchOptions,
+  plan: PlanType
 ): Promise<{
   success: boolean;
   error?: string;
@@ -76,6 +78,8 @@ export async function searchHelper(
     return { success: true, error: "No search results found", returnCode: 200 };
   }
 
+  const jobPriority = await getJobPriority({plan, team_id, basePriority: 20});
+  
   // filter out social media links
 
   const jobDatas = res.map(x => {
@@ -92,7 +96,7 @@ export async function searchHelper(
       },
       opts: {
         jobId: uuid,
-        priority: 20,
+        priority: jobPriority,
       }
     };
   })
@@ -135,7 +139,7 @@ export async function searchHelper(
 export async function searchController(req: Request, res: Response) {
   try {
     // make sure to authenticate user first, Bearer <token>
-    const { success, team_id, error, status } = await authenticateUser(
+    const { success, team_id, error, status, plan } = await authenticateUser(
       req,
       res,
       RateLimiterMode.Search
@@ -176,6 +180,7 @@ export async function searchController(req: Request, res: Response) {
       crawlerOptions,
       pageOptions,
       searchOptions,
+      plan
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;

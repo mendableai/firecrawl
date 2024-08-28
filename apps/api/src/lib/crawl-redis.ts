@@ -6,6 +6,7 @@ export type StoredCrawl = {
     crawlerOptions: any;
     pageOptions: any;
     team_id: string;
+    plan: string;
     robots?: string;
     cancelled?: boolean;
     createdAt: number;
