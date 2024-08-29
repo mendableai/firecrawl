@@ -44,9 +44,6 @@ export async function startWebScraperPipeline({
     },
     onSuccess: (result, mode) => {
       Logger.debug(`🐂 Job completed ${job.id}`);
-      if (job.data.crawl_id && (!job.data.pageOptions || !job.data.pageOptions.includeRawHtml)) {
-        delete result[0].rawHtml;
-      }
       saveJob(job, result, token, mode);
     },
     onError: (error) => {
