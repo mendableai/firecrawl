@@ -203,6 +203,18 @@ async function processJob(job: Job, token: string) {
       }
     }
 
+    if(job.data.pageOptions && job.data.pageOptions.includeExtract ) {
+      if(!job.data.pageOptions.includeMarkdown) {
+        delete docs[0].markdown;
+      }
+      // if(!job.data.pageOptions.includeRawHtml) {
+      //   delete docs[0].rawHtml;
+      // }
+      // if(!job.data.pageOptions.includeHtml) {
+      //   delete docs[0].html;
+      // }
+    }
+
     const data = {
       success,
       result: {

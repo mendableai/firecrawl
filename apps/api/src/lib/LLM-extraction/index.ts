@@ -25,6 +25,7 @@ export async function generateCompletions(
         case "openAI":
           const llm = new OpenAI();
           try{
+
           const completionResult = await generateOpenAICompletions({
             client: llm,
             document: document,

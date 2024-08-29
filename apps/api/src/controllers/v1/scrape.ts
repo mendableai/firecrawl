@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { Logger } from '../../lib/logger';
-import { Document, legacyDocumentConverter, legacyScrapeOptions, RequestWithAuth, ScrapeRequest, scrapeRequestSchema, ScrapeResponse } from "./types";
+import { Document, legacyDocumentConverter, legacyExtractorOptions, legacyScrapeOptions, RequestWithAuth, ScrapeRequest, scrapeRequestSchema, ScrapeResponse } from "./types";
 import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from 'uuid';
 import { numTokensFromString } from "../../lib/LLM-extraction/helpers";
@@ -16,6 +16,7 @@ export async function scrapeController(req: RequestWithAuth<{}, ScrapeResponse, 
   const origin = req.body.origin;
   const timeout = req.body.timeout;
   const pageOptions = legacyScrapeOptions(req.body);
+  const extractorOptions = legacyExtractorOptions(req.body.extract);
   const jobId = uuidv4();
 
   const startTime = new Date().getTime();
@@ -27,7 +28,7 @@ export async function scrapeController(req: RequestWithAuth<{}, ScrapeResponse, 
     crawlerOptions: {},
     team_id: req.auth.team_id,
     pageOptions,
-    extractorOptions: {},
+    extractorOptions,
     origin: req.body.origin,
     is_scrape: true,
   }, {}, jobId, jobPriority);

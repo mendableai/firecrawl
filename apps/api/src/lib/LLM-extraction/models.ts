@@ -25,6 +25,7 @@ function prepareOpenAIDoc(
     extractionTarget = document.rawHtml;
   }
 
+
   // Check if the markdown content exists in the document
   if (!extractionTarget) {
     return null;
@@ -43,7 +44,6 @@ function prepareOpenAIDoc(
     // trim the document to the maximum number of tokens, tokens != characters
     extractionTarget = extractionTarget.slice(0, (maxTokens * modifier));
   }
-
   return [[{ type: "text", text: extractionTarget }], numTokens];
 }
 
@@ -73,7 +73,6 @@ export async function generateOpenAICompletions({
       warning: "LLM extraction was not performed since the document's content is empty or missing.",
     };
   }
-
   const [content, numTokens] = preparedDoc;
 
   const completion = await openai.chat.completions.create({
