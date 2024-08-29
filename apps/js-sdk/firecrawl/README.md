@@ -1,10 +1,10 @@
-# Firecrawl JavaScript SDK
+# Firecrawl Node SDK
 
-The Firecrawl JavaScript SDK is a library that allows you to easily scrape and crawl websites, and output the data in a format ready for use with language models (LLMs). It provides a simple and intuitive interface for interacting with the Firecrawl API.
+The Firecrawl Node SDK is a library that allows you to easily scrape and crawl websites, and output the data in a format ready for use with language models (LLMs). It provides a simple and intuitive interface for interacting with the Firecrawl API.
 
 ## Installation
 
-To install the Firecrawl JavaScript SDK, you can use npm:
+To install the Firecrawl Node SDK, you can use npm:
 
 ```bash
 npm install @mendable/firecrawl-js
@@ -15,44 +15,33 @@ npm install @mendable/firecrawl-js
 1. Get an API key from [firecrawl.dev](https://firecrawl.dev)
 2. Set the API key as an environment variable named `FIRECRAWL_API_KEY` or pass it as a parameter to the `FirecrawlApp` class.
 
-
 Here's an example of how to use the SDK with error handling:
 
 ```js
-  import FirecrawlApp from '@mendable/firecrawl-js';
+import FirecrawlApp, { CrawlParams, CrawlStatusResponse } from '@mendable/firecrawl-js';
 
-  async function main() {
-    try {
-      // Initialize the FirecrawlApp with your API key
-      const app = new FirecrawlApp({ apiKey: "YOUR_API_KEY" });
+const app = new FirecrawlApp({apiKey: "fc-YOUR_API_KEY"});
 
-      // Scrape a single URL
-      const url = 'https://mendable.ai';
-      const scrapedData = await app.scrapeUrl(url);
-      console.log(scrapedData);
-      
-      // Crawl a website
-      const crawlUrl = 'https://mendable.ai';
-      const params = {
-      crawlerOptions: {
-        excludes: ['blog/'],
-        includes: [], // leave empty for all pages 
-        limit: 1000,
-        },
-        pageOptions: {
-            onlyMainContent: true
-        }
-      };
+// Scrape a website
+const scrapeResponse = await app.scrapeUrl('https://firecrawl.dev', {
+  formats: ['markdown', 'html'],
+});
 
-      const crawlResult = await app.crawlUrl(crawlUrl, params);
-      console.log(crawlResult);
+if (scrapeResponse) {
+  console.log(scrapeResponse)
+}
 
-    } catch (error) {
-      console.error('An error occurred:', error.message);
-    }
+// Crawl a website
+const crawlResponse = await app.crawlUrl('https://firecrawl.dev', {
+  limit: 100,
+  scrapeOptions: {
+    formats: ['markdown', 'html'],
   }
+} as CrawlParams, true, 30) as CrawlStatusResponse;
 
-  main();
+if (crawlResponse) {
+  console.log(crawlResponse)
+}
 ```
 
 ### Scraping a URL
@@ -60,31 +49,49 @@ Here's an example of how to use the SDK with error handling:
 To scrape a single URL with error handling, use the `scrapeUrl` method. It takes the URL as a parameter and returns the scraped data as a dictionary.
 
 ```js
-  async function scrapeExample() {
-    try {
-      const url = 'https://example.com';
-      const scrapedData = await app.scrapeUrl(url);
-      console.log(scrapedData);
+const url = "https://example.com";
+const scrapedData = await app.scrapeUrl(url);
+```
 
-    } catch (error) {
-      console.error(
-        'Error occurred while scraping:',
-        error.message
-      );
-    }
+### Crawling a Website
+
+To crawl a website with error handling, use the `crawlUrl` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
+
+```js
+const crawlResponse = await app.crawlUrl('https://firecrawl.dev', {
+  limit: 100,
+  scrapeOptions: {
+    formats: ['markdown', 'html'],
   }
-  
-  scrapeExample();
+} as CrawlParams, true, 30) as CrawlStatusResponse;
+
+if (crawlResponse) {
+  console.log(crawlResponse)
+}
+```
+
+### Checking Crawl Status
+
+To check the status of a crawl job with error handling, use the `checkCrawlStatus` method. It takes the job ID as a parameter and returns the current status of the crawl job.
+
+```js
+const status = await app.checkCrawlStatus(id);
 ```
 
 ### Extracting structured data from a URL
 
-With LLM extraction, you can easily extract structured data from any URL. We support zod schemas to make it easier for you too. Here is how you to use it:
+With LLM extraction, you can easily extract structured data from any URL. We support zod schema to make it easier for you too. Here is how you to use it:
 
 ```js
+import FirecrawlApp from "@mendable/firecrawl-js";
 import { z } from "zod";
 
-const zodSchema = z.object({
+const app = new FirecrawlApp({
+  apiKey: "fc-YOUR_API_KEY",
+});
+
+// Define schema to extract contents into
+const schema = z.object({
   top: z
     .array(
       z.object({
@@ -98,98 +105,32 @@ const zodSchema = z.object({
     .describe("Top 5 stories on Hacker News"),
 });
 
-let llmExtractionResult = await app.scrapeUrl("https://news.ycombinator.com", {
-  extractorOptions: { extractionSchema: zodSchema },
+const scrapeResult = await app.scrapeUrl("https://firecrawl.dev", {
+  extractorOptions: { extractionSchema: schema },
 });
 
-console.log(llmExtractionResult.data.llm_extraction);
+console.log(scrapeResult.data["llm_extraction"]);
 ```
 
-### Search for a query
+### Map a Website
 
-Used to search the web, get the most relevant results, scrap each page and return the markdown.
-
-```js
-query = 'what is mendable?'
-searchResult = app.search(query)
-```
-
-### Crawling a Website
-
-To crawl a website with error handling, use the `crawlUrl` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
+Use `map_url` to generate a list of URLs from a website. The `params` argument let you customize the mapping process, including options to exclude subdomains or to utilize the sitemap.
 
 ```js
-async function crawlExample() {
-  try {
-    const crawlUrl = 'https://example.com';
-    const params = {
-      crawlerOptions: {
-        excludes: ['blog/'],
-        includes: [], // leave empty for all pages
-        limit: 1000,
-      },
-      pageOptions: {
-        onlyMainContent: true
-      }
-    };
-    const waitUntilDone = true;
-    const timeout = 5;
-    const crawlResult = await app.crawlUrl(
-      crawlUrl,
-      params,
-      waitUntilDone,
-      timeout
-    );
-
-    console.log(crawlResult);
-
-  } catch (error) {
-    console.error(
-      'Error occurred while crawling:',
-      error.message
-    );
-  }
-}
-
-crawlExample();
-```
-
-
-### Checking Crawl Status
-
-To check the status of a crawl job with error handling, use the `checkCrawlStatus` method. It takes the job ID as a parameter and returns the current status of the crawl job.
-
-```js
-async function checkStatusExample(jobId) {
-  try {
-    const status = await app.checkCrawlStatus(jobId);
-    console.log(status);
-
-  } catch (error) {
-    console.error(
-      'Error occurred while checking crawl status:',
-      error.message
-    );
-  }
-}
-// Example usage, assuming you have a jobId
-checkStatusExample('your_job_id_here');
-```
-
-## Running Locally
-To use the SDK when running Firecrawl locally, you can change the initial Firecrawl app instance to:
-```js
-const app = new FirecrawlApp({ apiKey: "YOUR_API_KEY", apiUrl: "http://localhost:3002" });
+const mapResult = await app.mapUrl('https://example.com') as MapResponse;
+console.log(mapResult)
 ```
 
 ## Error Handling
 
 The SDK handles errors returned by the Firecrawl API and raises appropriate exceptions. If an error occurs during a request, an exception will be raised with a descriptive error message. The examples above demonstrate how to handle these errors using `try/catch` blocks.
 
-## Contributing
-
-Contributions to the Firecrawl JavaScript SDK are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request on the GitHub repository.
-
 ## License
 
-The Firecrawl JavaScript SDK is open-source and released under the [MIT License](https://opensource.org/licenses/MIT).
+The Firecrawl Node SDK is licensed under the MIT License. This means you are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the SDK, subject to the following conditions:
+
+- The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+Please note that while this SDK is MIT licensed, it is part of a larger project which may be under different licensing terms. Always refer to the license information in the root directory of the main project for overall licensing details.

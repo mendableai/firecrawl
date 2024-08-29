@@ -1,92 +1,39 @@
-import FirecrawlApp, { JobStatusResponse } from './firecrawl/src/index' //'@mendable/firecrawl-js';
-import { z } from "zod";
+import FirecrawlApp, { CrawlStatusResponse, CrawlResponse } from '@mendable/firecrawl-js';
 
 const app = new FirecrawlApp({apiKey: "fc-YOUR_API_KEY"});
 
-// Scrape a website:
-const scrapeResult = await app.scrapeUrl('firecrawl.dev');
+const main = async () => {
 
-if (scrapeResult.data) {
-  console.log(scrapeResult.data.content)
-}
+  // Scrape a website:
+  const scrapeResult = await app.scrapeUrl('firecrawl.dev');
 
-// Crawl a website:
-const crawlResult = await app.crawlUrl('mendable.ai', {crawlerOptions: {excludes: ['blog/*'], limit: 5}}, false);
-console.log(crawlResult)
-
-const jobId: string = await crawlResult['jobId'];
-console.log(jobId);
-
-let job: JobStatusResponse;
-while (true) {
-  job = await app.checkCrawlStatus(jobId);
-  if (job.status === 'completed') {
-    break;
+  if (scrapeResult) {
+    console.log(scrapeResult.markdown)
   }
-  await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
-}
 
-if (job.data) {
-  console.log(job.data[0].content);
-}
+  // Crawl a website:
+  // @ts-ignore
+  const crawlResult = await app.crawlUrl('mendable.ai', { excludePaths: ['blog/*'], limit: 5}, false) as CrawlResponse;
+  console.log(crawlResult)
 
-// Search for a query:
-const query = 'what is mendable?'
-const searchResult = await app.search(query)
+  const id = crawlResult.id;
+  console.log(id);
 
-// LLM Extraction:
-//  Define schema to extract contents into using zod schema
-const zodSchema = z.object({
-  top: z
-    .array(
-      z.object({
-        title: z.string(),
-        points: z.number(),
-        by: z.string(),
-        commentsURL: z.string(),
-      })
-    )
-    .length(5)
-    .describe("Top 5 stories on Hacker News"),
-});
-
-let llmExtractionResult = await app.scrapeUrl("https://news.ycombinator.com", {
-  extractorOptions: { extractionSchema: zodSchema },
-});
-
-if (llmExtractionResult.data) {
-  console.log(llmExtractionResult.data.llm_extraction);
-}
-
-// Define schema to extract contents into using json schema
-const jsonSchema = {
-  "type": "object",
-  "properties": {
-    "top": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "title": {"type": "string"},
-          "points": {"type": "number"},
-          "by": {"type": "string"},
-          "commentsURL": {"type": "string"}
-        },
-        "required": ["title", "points", "by", "commentsURL"]
-      },
-      "minItems": 5,
-      "maxItems": 5,
-      "description": "Top 5 stories on Hacker News"
+  let checkStatus: CrawlStatusResponse;
+  while (true) {
+    checkStatus = await app.checkCrawlStatus(id);
+    if (checkStatus.status === 'completed') {
+      break;
     }
-  },
-  "required": ["top"]
+    await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
+  }
+
+  if (checkStatus.data) {
+    console.log(checkStatus.data[0].markdown);
+  }
+
+  const mapResult = await app.mapUrl('https://firecrawl.dev');
+  console.log(mapResult)
 }
 
-llmExtractionResult = await app.scrapeUrl("https://news.ycombinator.com", {
-  extractorOptions: { extractionSchema: jsonSchema },
-});
-
-if (llmExtractionResult.data) {
-  console.log(llmExtractionResult.data.llm_extraction);
-}
-
+main()

@@ -1,5 +1,5 @@
 import { Logger } from "../../../src/lib/logger";
-import { getWebScraperQueue } from "../queue-service";
+import { getScrapeQueue } from "../queue-service";
 import { sendSlackWebhook } from "./slack";
 
 export async function checkAlerts() {
@@ -13,8 +13,8 @@ export async function checkAlerts() {
       Logger.info("Initializing alerts");
       const checkActiveJobs = async () => {
         try {
-          const webScraperQueue = getWebScraperQueue();
-          const activeJobs = await webScraperQueue.getActiveCount();
+          const scrapeQueue = getScrapeQueue();
+          const activeJobs = await scrapeQueue.getActiveCount();
           if (activeJobs > Number(process.env.ALERT_NUM_ACTIVE_JOBS)) {
             Logger.warn(
               `Alert: Number of active jobs is over ${process.env.ALERT_NUM_ACTIVE_JOBS}. Current active jobs: ${activeJobs}.`
@@ -34,11 +34,10 @@ export async function checkAlerts() {
       };
 
       const checkWaitingQueue = async () => {
-        const webScraperQueue = getWebScraperQueue();
-        const waitingJobs = await webScraperQueue.getWaitingCount();
-        const paused = await webScraperQueue.getPausedCount();
+        const scrapeQueue = getScrapeQueue();
+        const waitingJobs = await scrapeQueue.getWaitingCount();
 
-        if (waitingJobs !== paused && waitingJobs > Number(process.env.ALERT_NUM_WAITING_JOBS)) {
+        if (waitingJobs > Number(process.env.ALERT_NUM_WAITING_JOBS)) {
           Logger.warn(
             `Alert: Number of waiting jobs is over ${process.env.ALERT_NUM_WAITING_JOBS}. Current waiting jobs: ${waitingJobs}.`
           );

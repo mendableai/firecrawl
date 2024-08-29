@@ -7,7 +7,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-API_URL = "http://127.0.0.1:3002";
+API_URL = "http://127.0.0.1:3002"
 ABSOLUTE_FIRECRAWL_PATH = "firecrawl/firecrawl.py"
 TEST_API_KEY = os.getenv('TEST_API_KEY')
 
@@ -20,32 +20,34 @@ FirecrawlApp = firecrawl.FirecrawlApp
 
 def test_no_api_key():
     with pytest.raises(Exception) as excinfo:
-      invalid_app = FirecrawlApp(api_url=API_URL)
+      invalid_app = FirecrawlApp(api_url=API_URL, version='v0')
     assert "No API key provided" in str(excinfo.value)
 
 def test_scrape_url_invalid_api_key():
-    invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key")
+    invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key", version='v0')
     with pytest.raises(Exception) as excinfo:
         invalid_app.scrape_url('https://firecrawl.dev')
     assert "Unexpected error during scrape URL: Status code 401. Unauthorized: Invalid token" in str(excinfo.value)
 
 def test_blocklisted_url():
     blocklisted_url = "https://facebook.com/fake-test"
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
     with pytest.raises(Exception) as excinfo:
         app.scrape_url(blocklisted_url)
     assert "Unexpected error during scrape URL: Status code 403. Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it." in str(excinfo.value)
 
 def test_successful_response_with_valid_preview_token():
-    app = FirecrawlApp(api_url=API_URL, api_key="this_is_just_a_preview_token")
+    app = FirecrawlApp(api_url=API_URL, api_key="this_is_just_a_preview_token", version='v0')
     response = app.scrape_url('https://roastmywebsite.ai')
     assert response is not None
     assert 'content' in response
     assert "_Roast_" in response['content']
 
 def test_scrape_url_e2e():
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
     response = app.scrape_url('https://roastmywebsite.ai')
+    print(response)
+
     assert response is not None
     assert 'content' in response
     assert 'markdown' in response
@@ -54,7 +56,7 @@ def test_scrape_url_e2e():
     assert "_Roast_" in response['content']
 
 def test_successful_response_with_valid_api_key_and_include_html():
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
     response = app.scrape_url('https://roastmywebsite.ai', {'pageOptions': {'includeHtml': True}})
     assert response is not None
     assert 'content' in response
@@ -66,7 +68,7 @@ def test_successful_response_with_valid_api_key_and_include_html():
     assert "<h1" in response['html']
 
 def test_successful_response_for_valid_scrape_with_pdf_file():
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
     response = app.scrape_url('https://arxiv.org/pdf/astro-ph/9301001.pdf')
     assert response is not None
     assert 'content' in response
@@ -74,7 +76,7 @@ def test_successful_response_for_valid_scrape_with_pdf_file():
     assert 'We present spectrophotometric observations of the Broad Line Radio Galaxy' in response['content']
 
 def test_successful_response_for_valid_scrape_with_pdf_file_without_explicit_extension():
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
     response = app.scrape_url('https://arxiv.org/pdf/astro-ph/9301001')
     time.sleep(6)  # wait for 6 seconds
     assert response is not None
@@ -83,20 +85,20 @@ def test_successful_response_for_valid_scrape_with_pdf_file_without_explicit_ext
     assert 'We present spectrophotometric observations of the Broad Line Radio Galaxy' in response['content']
 
 def test_crawl_url_invalid_api_key():
-    invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key")
+    invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key", version='v0')
     with pytest.raises(Exception) as excinfo:
         invalid_app.crawl_url('https://firecrawl.dev')
     assert "Unexpected error during start crawl job: Status code 401. Unauthorized: Invalid token" in str(excinfo.value)
 
 def test_should_return_error_for_blocklisted_url():
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
     blocklisted_url = "https://twitter.com/fake-test"
     with pytest.raises(Exception) as excinfo:
         app.crawl_url(blocklisted_url)
     assert "Unexpected error during start crawl job: Status code 403. Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it." in str(excinfo.value)
 
 def test_crawl_url_wait_for_completion_e2e():
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
     response = app.crawl_url('https://roastmywebsite.ai', {'crawlerOptions': {'excludes': ['blog/*']}}, True)
     assert response is not None
     assert len(response) > 0
@@ -104,7 +106,7 @@ def test_crawl_url_wait_for_completion_e2e():
     assert "_Roast_" in response[0]['content']
 
 def test_crawl_url_with_idempotency_key_e2e():
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
     uniqueIdempotencyKey = str(uuid4())
     response = app.crawl_url('https://roastmywebsite.ai', {'crawlerOptions': {'excludes': ['blog/*']}}, True, 2, uniqueIdempotencyKey)
     assert response is not None
@@ -117,7 +119,7 @@ def test_crawl_url_with_idempotency_key_e2e():
     assert "Conflict: Failed to start crawl job due to a conflict. Idempotency key already used" in str(excinfo.value) 
 
 def test_check_crawl_status_e2e():
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
     response = app.crawl_url('https://firecrawl.dev', {'crawlerOptions': {'excludes': ['blog/*']}}, False)
     assert response is not None
     assert 'jobId' in response
@@ -131,21 +133,21 @@ def test_check_crawl_status_e2e():
     assert len(status_response['data']) > 0
 
 def test_search_e2e():
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
     response = app.search("test query")
     assert response is not None
     assert 'content' in response[0]
     assert len(response) > 2
 
 def test_search_invalid_api_key():
-    invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key")
+    invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key", version='v0')
     with pytest.raises(Exception) as excinfo:
         invalid_app.search("test query")
     assert "Unexpected error during search: Status code 401. Unauthorized: Invalid token" in str(excinfo.value)
 
 def test_llm_extraction():
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
-    response = app.scrape_url("https://mendable.ai", {
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
+    response = app.scrape_url("https://firecrawl.dev", {
         'extractorOptions': {
             'mode': 'llm-extraction',
             'extractionPrompt': "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source",

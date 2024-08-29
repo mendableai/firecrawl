@@ -27,6 +27,7 @@ env:
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
   CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+  SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
 jobs:
   pre-deploy-e2e-tests:
@@ -132,7 +133,7 @@ jobs:
         working-directory: ./apps/python-sdk
       - name: Run E2E tests for Python SDK
         run: |
-          pytest firecrawl/__tests__/e2e_withAuth/test.py
+          pytest firecrawl/__tests__/v1/e2e_withAuth/test.py
         working-directory: ./apps/python-sdk
 
   js-sdk-tests:
@@ -247,11 +248,12 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: superfly/flyctl-actions/setup-flyctl@master
-      - run: flyctl deploy --remote-only -a firecrawl-scraper-js
+      - run: flyctl deploy --remote-only -a firecrawl-scraper-js --build-secret SENTRY_AUTH_TOKEN=$SENTRY_AUTH_TOKEN
         working-directory: ./apps/api
         env:
           FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
           BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}
+          SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
   build-and-publish-python-sdk:
     name: Build and publish Python SDK

@@ -18,29 +18,30 @@ npm install @mendable/firecrawl-js
 Here's an example of how to use the SDK with error handling:
 
 ```js
-import FirecrawlApp from "@mendable/firecrawl-js";
+import FirecrawlApp, { CrawlParams, CrawlStatusResponse } from '@mendable/firecrawl-js';
 
-// Initialize the FirecrawlApp with your API key
-const app = new FirecrawlApp({ apiKey: "YOUR_API_KEY" });
+const app = new FirecrawlApp({apiKey: "fc-YOUR_API_KEY"});
 
-// Scrape a single URL
-const url = "https://mendable.ai";
-const scrapedData = await app.scrapeUrl(url);
+// Scrape a website
+const scrapeResponse = await app.scrapeUrl('https://firecrawl.dev', {
+  formats: ['markdown', 'html'],
+});
+
+if (scrapeResponse) {
+  console.log(scrapeResponse)
+}
 
 // Crawl a website
-const crawlUrl = "https://mendable.ai";
-const params = {
-  crawlerOptions: {
-    excludes: ["blog/"],
-    includes: [], // leave empty for all pages
-    limit: 1000,
-  },
-  pageOptions: {
-    onlyMainContent: true,
-  },
-};
+const crawlResponse = await app.crawlUrl('https://firecrawl.dev', {
+  limit: 100,
+  scrapeOptions: {
+    formats: ['markdown', 'html'],
+  }
+} as CrawlParams, true, 30) as CrawlStatusResponse;
 
-const crawlResult = await app.crawlUrl(crawlUrl, params);
+if (crawlResponse) {
+  console.log(crawlResponse)
+}
 ```
 
 ### Scraping a URL
@@ -57,28 +58,16 @@ const scrapedData = await app.scrapeUrl(url);
 To crawl a website with error handling, use the `crawlUrl` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
 
 ```js
-const crawlUrl = "https://example.com";
+const crawlResponse = await app.crawlUrl('https://firecrawl.dev', {
+  limit: 100,
+  scrapeOptions: {
+    formats: ['markdown', 'html'],
+  }
+} as CrawlParams, true, 30) as CrawlStatusResponse;
 
-const params = {
-  crawlerOptions: {
-    excludes: ["blog/"],
-    includes: [], // leave empty for all pages
-    limit: 1000,
-  },
-  pageOptions: {
-    onlyMainContent: true,
-  },
-};
-
-const waitUntilDone = true;
-const pollInterval = 5;
-
-const crawlResult = await app.crawlUrl(
-  crawlUrl,
-  params,
-  waitUntilDone,
-  pollInterval
-);
+if (crawlResponse) {
+  console.log(crawlResponse)
+}
 ```
 
 ### Checking Crawl Status
@@ -86,7 +75,7 @@ const crawlResult = await app.crawlUrl(
 To check the status of a crawl job with error handling, use the `checkCrawlStatus` method. It takes the job ID as a parameter and returns the current status of the crawl job.
 
 ```js
-const status = await app.checkCrawlStatus(jobId);
+const status = await app.checkCrawlStatus(id);
 ```
 
 ### Extracting structured data from a URL
@@ -123,17 +112,13 @@ const scrapeResult = await app.scrapeUrl("https://firecrawl.dev", {
 console.log(scrapeResult.data["llm_extraction"]);
 ```
 
-### Search for a query
+### Map a Website
 
-With the `search` method, you can search for a query in a search engine and get the top results along with the page content for each result. The method takes the query as a parameter and returns the search results.
+Use `map_url` to generate a list of URLs from a website. The `params` argument let you customize the mapping process, including options to exclude subdomains or to utilize the sitemap.
 
 ```js
-const query = "what is mendable?";
-const searchResults = await app.search(query, {
-  pageOptions: {
-    fetchPageContent: true, // Fetch the page content for each search result
-  },
-});
+const mapResult = await app.mapUrl('https://example.com') as MapResponse;
+console.log(mapResult)
 ```
 
 ## Error Handling

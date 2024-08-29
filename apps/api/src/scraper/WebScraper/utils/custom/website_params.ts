@@ -234,5 +234,13 @@ export const urlSpecificParams = {
         engine: "tlsclient",
       },
     },
+  },
+  "zoopla.co.uk":{
+    defaultScraper: "fire-engine",
+    params:{
+      fireEngineOptions:{
+        engine: "chrome-cdp",
+      },
+    },
   }
 };
