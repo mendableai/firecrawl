@@ -26,6 +26,7 @@ env:
   PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
 jobs:
@@ -169,7 +170,7 @@ jobs:
       - name: Run E2E tests for JavaScript SDK
         run: npm run test
         working-directory: ./apps/js-sdk/firecrawl
-        
+
   go-sdk-tests:
     name: Go SDK Tests
     needs: pre-deploy-e2e-tests
@@ -205,10 +206,45 @@ jobs:
         run: go test -v ./... -timeout 180s
         working-directory: ./apps/go-sdk/firecrawl
 
+  rust-sdk-tests:
+    name: Rust SDK Tests
+    needs: pre-deploy-e2e-tests
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+      - name: Install pnpm
+        run: npm install -g pnpm
+      - name: Install dependencies for API
+        run: pnpm install
+        working-directory: ./apps/api
+      - name: Start the application
+        run: npm start &
+        working-directory: ./apps/api
+        id: start_app
+      - name: Start workers
+        run: npm run workers &
+        working-directory: ./apps/api
+        id: start_workers
+      - name: Set up Rust
+        uses: actions/setup-rust@v1
+        with:
+          rust-version: stable
+      - name: Try the lib build
+        working-directory: ./apps/rust-sdk
+        run: cargo build
+      - name: Run E2E tests for Rust SDK
+        run: cargo test --test e2e_with_auth
+
   deploy:
     name: Deploy app
     runs-on: ubuntu-latest
-    needs: [pre-deploy-test-suite, python-sdk-tests, js-sdk-tests]
+    needs: [pre-deploy-test-suite, python-sdk-tests, js-sdk-tests, rust-sdk-tests]
     steps:
       - uses: actions/checkout@v3
       - uses: superfly/flyctl-actions/setup-flyctl@master
@@ -285,7 +321,7 @@ jobs:
       - name: Install dependencies for JavaScript SDK
         run: pnpm install
         working-directory: ./apps/js-sdk/firecrawl
-        
+
       - name: Run version check script
         id: version_check_script
         run: |
@@ -299,4 +335,38 @@ jobs:
         run: |
           npm run build-and-publish
         working-directory: ./apps/js-sdk/firecrawl
-      
+  build-and-publish-rust-sdk:
+    name: Build and publish Rust SDK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          default: true
+          profile: minimal
+
+      - name: Install dependencies
+        run: cargo build --release
+
+      - name: Run version check script
+        id: version_check_script
+        run: |
+          VERSION_INCREMENTED=$(cargo search --limit 1 my_crate_name | grep my_crate_name)
+          echo "VERSION_INCREMENTED=$VERSION_INCREMENTED" >> $GITHUB_ENV
+
+      - name: Build the package
+        if: ${{ env.VERSION_INCREMENTED == 'true' }}
+        run: cargo package
+        working-directory: ./apps/rust-sdk
+
+      - name: Publish to crates.io
+        if: ${{ env.VERSION_INCREMENTED == 'true' }}
+        env:
+          CARGO_REG_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
+        run: cargo publish
+        working-directory: ./apps/rust-sdk
