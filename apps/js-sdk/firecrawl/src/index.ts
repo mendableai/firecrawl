@@ -1,6 +1,8 @@
 import axios, { AxiosResponse, AxiosRequestHeaders } from "axios";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { WebSocket } from "isows";
+import { TypedEventTarget } from "typescript-event-target";
 
 /**
  * Configuration interface for FirecrawlApp.
@@ -315,8 +317,8 @@ export interface SearchResponseV0 {
  * Provides methods for scraping, searching, crawling, and mapping web content.
  */
 export default class FirecrawlApp<T extends "v0" | "v1"> {
-  private apiKey: string;
-  private apiUrl: string;
+  public apiKey: string;
+  public apiUrl: string;
   public version: T;
 
   /**
@@ -561,6 +563,21 @@ export default class FirecrawlApp<T extends "v0" | "v1"> {
       } as this['version'] extends 'v0' ? CrawlStatusResponseV0 : CrawlStatusResponse);
   }
 
+  async crawlUrlAndWatch(
+    url: string,
+    params?: this['version'] extends 'v0' ? CrawlParamsV0 : CrawlParams,
+    idempotencyKey?: string,
+  ) {
+    if (this.version === 'v0') {
+      throw new Error("crawlUrlAndWatch is only available on v1");
+    }
+
+    const crawl = await this.crawlUrl(url, params, false, 0, idempotencyKey);
+    const id = this.version === 'v0' ? (crawl as CrawlResponseV0).jobId : (crawl as CrawlResponse).id;
+
+    return new CrawlWatcher(id as string, this as FirecrawlApp<"v1">);
+  }
+
   async mapUrl(url: string, params?: MapParams): Promise<MapResponse> {
     if (this.version == 'v0') {
       throw new Error("Map is not supported in v0");
@@ -694,5 +711,113 @@ export default class FirecrawlApp<T extends "v0" | "v1"> {
         `Unexpected error occurred while trying to ${action}. Status code: ${response.status}`
       );
     }
+  }
+}
+
+interface CrawlWatcherEvents {
+  document: CustomEvent<FirecrawlDocument>,
+  done: CustomEvent<{
+    status: CrawlStatusResponse["status"];
+    data: FirecrawlDocument[];
+  }>,
+  error: CustomEvent<{
+    status: CrawlStatusResponse["status"],
+    data: FirecrawlDocument[],
+    error: string,
+  }>,
+}
+
+export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
+  private ws: WebSocket;
+  public data: FirecrawlDocument[];
+  public status: CrawlStatusResponse["status"];
+
+  constructor(id: string, app: FirecrawlApp<"v1">) {
+    super();
+    this.ws = new WebSocket(`${app.apiUrl}/v1/crawl/${id}`, app.apiKey);
+    this.status = "scraping";
+    this.data = [];
+
+    type ErrorMessage = {
+      type: "error",
+      error: string,
+    }
+    
+    type CatchupMessage = {
+      type: "catchup",
+      data: CrawlStatusResponse,
+    }
+    
+    type DocumentMessage = {
+      type: "document",
+      data: FirecrawlDocument,
+    }
+    
+    type DoneMessage = { type: "done" }
+    
+    type Message = ErrorMessage | CatchupMessage | DoneMessage | DocumentMessage;
+
+    const messageHandler = (msg: Message) => {
+      if (msg.type === "done") {
+        this.status = "completed";
+        this.dispatchTypedEvent("done", new CustomEvent("done", {
+          detail: {
+            status: this.status,
+            data: this.data,
+          },
+        }));
+      } else if (msg.type === "error") {
+        this.status = "failed";
+        this.dispatchTypedEvent("error", new CustomEvent("error", {
+          detail: {
+            status: this.status,
+            data: this.data,
+            error: msg.error,
+          },
+        }));
+      } else if (msg.type === "catchup") {
+        this.status = msg.data.status;
+        this.data.push(...(msg.data.data ?? []));
+        for (const doc of this.data) {
+          this.dispatchTypedEvent("document", new CustomEvent("document", {
+            detail: doc,
+          }));
+        }
+      } else if (msg.type === "document") {
+        this.dispatchTypedEvent("document", new CustomEvent("document", {
+          detail: msg.data,
+        }));
+      }
+    }
+
+    this.ws.onmessage = ((ev: MessageEvent) => {
+      if (typeof ev.data !== "string") {
+        this.ws.close();
+        return;
+      }
+
+      const msg = JSON.parse(ev.data) as Message;
+      messageHandler(msg);
+    }).bind(this);
+
+    this.ws.onclose = ((ev: CloseEvent) => {
+      const msg = JSON.parse(ev.reason) as Message;
+      messageHandler(msg);
+    }).bind(this);
+
+    this.ws.onerror = ((_: Event) => {
+      this.status = "failed"
+      this.dispatchTypedEvent("error", new CustomEvent("error", {
+        detail: {
+          status: this.status,
+          data: this.data,
+          error: "WebSocket error",
+        },
+      }));
+    }).bind(this);
+  }
+
+  close() {
+    this.ws.close();
   }
 }

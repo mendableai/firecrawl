@@ -29,5 +29,21 @@ if (job.data) {
   console.log(job.data[0].markdown);
 }
 
+// Map a website:
 const mapResult = await app.map('https://firecrawl.dev');
 console.log(mapResult)
+
+// Crawl a website with WebSockets:
+const watch = await app.crawlUrlAndWatch('mendable.ai', { excludePaths: ['blog/*'], limit: 5});
+
+watch.addEventListener("document", doc => {
+  console.log("DOC", doc.detail);
+});
+
+watch.addEventListener("error", err => {
+  console.error("ERR", err.detail.error);
+});
+
+watch.addEventListener("done", state => {
+  console.log("DONE", state.detail.status);
+});
