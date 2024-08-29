@@ -56,6 +56,19 @@ export async function crawlStatusController(req: Request, res: Response) {
 
     const data = jobs.map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
 
+    if (
+      jobs.length > 0 &&
+      jobs[0].data &&
+      jobs[0].data.pageOptions &&
+      !jobs[0].data.pageOptions.includeRawHtml
+    ) {
+      data.forEach(item => {
+        if (item) {
+          delete item.rawHtml;
+        }
+      });
+    }
+
     res.json({
       status: jobStatus,
       current: jobStatuses.filter(x => x === "completed" || x === "failed").length,
