@@ -265,13 +265,10 @@ export interface CrawlStatusResponseV0 {
  * Defines options for mapping URLs during a crawl.
  */
 export interface MapParams {
-  includePaths?: string[]
-  excludePaths?: string[]
-  maxDepth?: number
-  limit?: number
-  allowBackwardLinks?: boolean
-  allowExternalLinks?: boolean
-  ignoreSitemap?: boolean
+  search?: string;
+  ignoreSitemap?: boolean;
+  includeSubdomains?: boolean;
+  limit?: number;
 }
 
 /**
