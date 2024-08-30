@@ -81,22 +81,20 @@ print(data["llm_extraction"])
 
 To crawl a website, use the `crawl_url` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
 
-The `wait_until_done` parameter determines whether the method should wait for the crawl job to complete before returning the result. If set to `True`, the method will periodically check the status of the crawl job until it is completed or the specified `timeout` (in seconds) is reached. If set to `False`, the method will return immediately with the job ID, and you can manually check the status of the crawl job using the `check_crawl_status` method.
-
 ```python
-crawl_status = app.crawl_url(
-  'https://firecrawl.dev', 
-  params={
-    'limit': 100, 
-    'scrapeOptions': {'formats': ['markdown', 'html']}
-  }, 
-  wait_until_done=True, 
-  poll_interval=30
-)
-print(crawl_status)
+idempotency_key = str(uuid.uuid4()) # optional idempotency key
+crawl_result = app.crawl_url('firecrawl.dev', {'excludePaths': ['blog/*']}, 2, idempotency_key)
+print(crawl_result)
 ```
 
-If `wait_until_done` is set to `True`, the `crawl_url` method will return the crawl result once the job is completed. If the job fails or is stopped, an exception will be raised.
+### Asynchronous Crawl a Website
+
+To crawl a website asynchronously, use the `async_crawl_url` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
+
+```python
+crawl_result = app.async_crawl_url('firecrawl.dev', {'excludePaths': ['blog/*']}, "")
+print(crawl_result)
+```
 
 ### Checking Crawl Status
 
@@ -115,6 +113,41 @@ Use `map_url` to generate a list of URLs from a website. The `params` argument l
 # Map a website:
 map_result = app.map_url('https://example.com')
 print(map_result)
+```
+
+### Crawl a website with WebSockets
+
+To crawl a website with WebSockets, use the `crawl_url_and_watch` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
+
+```python
+# inside an async function...
+nest_asyncio.apply()
+
+# Define event handlers
+def on_document(detail):
+    print("DOC", detail)
+
+def on_error(detail):
+    print("ERR", detail['error'])
+
+def on_done(detail):
+    print("DONE", detail['status'])
+
+    # Function to start the crawl and watch process
+async def start_crawl_and_watch():
+    # Initiate the crawl job and get the watcher
+    watcher = app.crawl_url_and_watch('firecrawl.dev', { 'excludePaths': ['blog/*'], 'limit': 5 })
+
+    # Add event listeners
+    watcher.add_event_listener("document", on_document)
+    watcher.add_event_listener("error", on_error)
+    watcher.add_event_listener("done", on_done)
+
+    # Start the watcher
+    await watcher.connect()
+
+# Run the event loop
+await start_crawl_and_watch()
 ```
 
 ## Error Handling

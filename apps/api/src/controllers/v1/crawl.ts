@@ -110,6 +110,7 @@ export async function crawlController(
           origin: "api",
           crawl_id: id,
           sitemapped: true,
+          webhook: req.body.webhook,
           v1: true,
         },
         opts: {
@@ -155,3 +156,5 @@ export async function crawlController(
     url: `${req.protocol}://${req.get("host")}/v1/crawl/${id}`,
   });
 }
+
+

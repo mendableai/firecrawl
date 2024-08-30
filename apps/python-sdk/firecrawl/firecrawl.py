@@ -12,29 +12,30 @@ Classes:
 import logging
 import os
 import time
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, List
+import asyncio
+import json
 
 import requests
+import websockets
 
 logger : logging.Logger = logging.getLogger("firecrawl")
 
 class FirecrawlApp:
-    def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None, version: str = 'v1') -> None:
+    def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
       """
-      Initialize the FirecrawlApp instance with API key, API URL, and version.
+      Initialize the FirecrawlApp instance with API key, API URL.
 
       Args:
           api_key (Optional[str]): API key for authenticating with the Firecrawl API.
           api_url (Optional[str]): Base URL for the Firecrawl API.
-          version (str): API version, either 'v0' or 'v1'.
       """
       self.api_key = api_key or os.getenv('FIRECRAWL_API_KEY')
       self.api_url = api_url or os.getenv('FIRECRAWL_API_URL', 'https://api.firecrawl.dev')
-      self.version = version
       if self.api_key is None:
           logger.warning("No API key provided")
           raise ValueError('No API key provided')
-      logger.debug(f"Initialized FirecrawlApp with API key: {self.api_key} and version: {self.version}")
+      logger.debug(f"Initialized FirecrawlApp with API key: {self.api_key}")
 
     def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
         """
@@ -84,7 +85,7 @@ class FirecrawlApp:
                     if key not in ['extract']:
                         scrape_params[key] = value
 
-        endpoint = f'/{self.version}/scrape'
+        endpoint = f'/v1/scrape'
         # Make the POST request with the prepared headers and JSON data
         response = requests.post(
             f'{self.api_url}{endpoint}',
@@ -112,35 +113,14 @@ class FirecrawlApp:
             Any: The search results if the request is successful.
 
         Raises:
+            NotImplementedError: If the search request is attempted on API version v1.
             Exception: If the search request fails.
         """
-        if self.version == 'v1':
-            raise NotImplementedError("Search is not supported in v1")
-        
-        headers = self._prepare_headers()
-        json_data = {'query': query}
-        if params:
-            json_data.update(params)
-        response = requests.post(
-            f'{self.api_url}/v0/search',
-            headers=headers,
-            json=json_data
-        )
-        if response.status_code == 200:
-            response = response.json()
-
-            if response['success'] and 'data' in response:
-                return response['data']
-            else:
-                raise Exception(f'Failed to search. Error: {response["error"]}')
-
-        else:
-            self._handle_error(response, 'search')
+        raise NotImplementedError("Search is not supported in v1.")
 
     def crawl_url(self, url: str,
                   params: Optional[Dict[str, Any]] = None,
-                  wait_until_done: bool = True,
-                  poll_interval: int = 2,
+                  poll_interval: Optional[int] = 2,
                   idempotency_key: Optional[str] = None) -> Any:
         """
         Initiate a crawl job for the specified URL using the Firecrawl API.
@@ -148,8 +128,7 @@ class FirecrawlApp:
         Args:
             url (str): The URL to crawl.
             params (Optional[Dict[str, Any]]): Additional parameters for the crawl request.
-            wait_until_done (bool): Whether to wait until the crawl job is completed.
-            poll_interval (int): Time in seconds between status checks when waiting for job completion.
+            poll_interval (Optional[int]): Time in seconds between status checks when waiting for job completion. Defaults to 2 seconds.
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
 
         Returns:
@@ -158,28 +137,40 @@ class FirecrawlApp:
         Raises:
             Exception: If the crawl job initiation or monitoring fails.
         """
-        endpoint = f'/{self.version}/crawl'
+        endpoint = f'/v1/crawl'
         headers = self._prepare_headers(idempotency_key)
         json_data = {'url': url}
         if params:
             json_data.update(params)
         response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
         if response.status_code == 200:
-            if self.version == 'v0':
-                id = response.json().get('jobId')
-            else:
-                id = response.json().get('id')
+            id = response.json().get('id')
+            return self._monitor_job_status(id, headers, poll_interval)
 
-            if wait_until_done:
-                check_url = None
-                if self.version == 'v1':
-                    check_url = response.json().get('url')
-                return self._monitor_job_status(id, headers, poll_interval, check_url)
-            else:
-                if self.version == 'v0':
-                    return {'jobId': id}
-                else:
-                    return {'id': id}
+        else:
+            self._handle_error(response, 'start crawl job')
+
+
+    def async_crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Initiate a crawl job asynchronously.
+
+        Args:
+            url (str): The URL to crawl.
+            params (Optional[Dict[str, Any]]): Additional parameters for the crawl request.
+            idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+
+        Returns:
+            Dict[str, Any]: The response from the crawl initiation request.
+        """
+        endpoint = f'/v1/crawl'
+        headers = self._prepare_headers(idempotency_key)
+        json_data = {'url': url}
+        if params:
+            json_data.update(params)
+        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
+        if response.status_code == 200:
+            return response.json()
         else:
             self._handle_error(response, 'start crawl job')
 
@@ -196,50 +187,56 @@ class FirecrawlApp:
         Raises:
             Exception: If the status check request fails.
         """
-
-        if self.version == 'v0':
-            endpoint = f'/{self.version}/crawl/status/{id}'
-        else:
-            endpoint = f'/{self.version}/crawl/{id}'
+        endpoint = f'/v1/crawl/{id}'
 
         headers = self._prepare_headers()
         response = self._get_request(f'{self.api_url}{endpoint}', headers)
         if response.status_code == 200:
             data = response.json()
-            if self.version == 'v0':
-                return {
-                    'success': True,
-                    'status': data.get('status'),
-                    'current': data.get('current'),
-                    'current_url': data.get('current_url'),
-                    'current_step': data.get('current_step'),
-                    'total': data.get('total'),
-                    'data': data.get('data'),
-                    'partial_data': data.get('partial_data') if not data.get('data') else None,
-                }
-            elif self.version == 'v1':
-                return {
-                    'success': True,
-                    'status': data.get('status'),
-                    'total': data.get('total'),
-                    'completed': data.get('completed'),
-                    'creditsUsed': data.get('creditsUsed'),
-                    'expiresAt': data.get('expiresAt'),
-                    'next': data.get('next'),
-                    'data': data.get('data'),
-                    'error': data.get('error')
-                }
+            return {
+                'success': True,
+                'status': data.get('status'),
+                'total': data.get('total'),
+                'completed': data.get('completed'),
+                'creditsUsed': data.get('creditsUsed'),
+                'expiresAt': data.get('expiresAt'),
+                'next': data.get('next'),
+                'data': data.get('data'),
+                'error': data.get('error')
+            }
         else:
             self._handle_error(response, 'check crawl status')
+
+    def crawl_url_and_watch(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> 'CrawlWatcher':
+        """
+        Initiate a crawl job and return a CrawlWatcher to monitor the job via WebSocket.
+
+        Args:
+            url (str): The URL to crawl.
+            params (Optional[Dict[str, Any]]): Additional parameters for the crawl request.
+            idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+
+        Returns:
+            CrawlWatcher: An instance of CrawlWatcher to monitor the crawl job.
+        """
+        crawl_response = self.async_crawl_url(url, params, idempotency_key)
+        if crawl_response['success'] and 'id' in crawl_response:
+            return CrawlWatcher(crawl_response['id'], self)
+        else:
+            raise Exception("Crawl job failed to start")
 
     def map_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
         """
         Perform a map search using the Firecrawl API.
+
+        Args:
+            url (str): The URL to perform the map search on.
+            params (Optional[Dict[str, Any]]): Additional parameters for the map search.
+
+        Returns:
+            Any: The result of the map search, typically a dictionary containing mapping data.
         """
-        if self.version == 'v0':
-            raise NotImplementedError("Map is not supported in v0")
-        
-        endpoint = f'/{self.version}/map'
+        endpoint = f'/v1/map'
         headers = self._prepare_headers()
 
         # Prepare the base scrape parameters with the URL
@@ -341,7 +338,7 @@ class FirecrawlApp:
                 return response
         return response
 
-    def _monitor_job_status(self, id: str, headers: Dict[str, str], poll_interval: int, check_url: Optional[str] = None) -> Any:
+    def _monitor_job_status(self, id: str, headers: Dict[str, str], poll_interval: int) -> Any:
         """
         Monitor the status of a crawl job until completion.
 
@@ -349,7 +346,6 @@ class FirecrawlApp:
             id (str): The ID of the crawl job.
             headers (Dict[str, str]): The headers to include in the status check requests.
             poll_interval (int): Secounds between status checks.
-            check_url (Optional[str]): The URL to check for the crawl job.
         Returns:
             Any: The crawl results if the job is completed successfully.
 
@@ -357,27 +353,14 @@ class FirecrawlApp:
             Exception: If the job fails or an error occurs during status checks.
         """
         while True:
-            api_url = ''
-            if (self.version == 'v0'):
-                if check_url:
-                    api_url = check_url
-                else:
-                    api_url = f'{self.api_url}/v0/crawl/status/{id}'
-            else:
-                if check_url:
-                    api_url = check_url
-                else:
-                    api_url = f'{self.api_url}/v1/crawl/{id}'
+            api_url = f'{self.api_url}/v1/crawl/{id}'
 
             status_response = self._get_request(api_url, headers)
             if status_response.status_code == 200:
                 status_data = status_response.json()
                 if status_data['status'] == 'completed':
                     if 'data' in status_data:
-                        if self.version == 'v0':
-                            return status_data['data']
-                        else:
-                            return status_data
+                        return status_data
                     else:
                         raise Exception('Crawl job completed but no data was returned')
                 elif status_data['status'] in ['active', 'paused', 'pending', 'queued', 'waiting', 'scraping']:
@@ -415,4 +398,50 @@ class FirecrawlApp:
 
         # Raise an HTTPError with the custom message and attach the response
         raise requests.exceptions.HTTPError(message, response=response)
-    
+
+class CrawlWatcher:
+    def __init__(self, id: str, app: FirecrawlApp):
+        self.id = id
+        self.app = app
+        self.data: List[Dict[str, Any]] = []
+        self.status = "scraping"
+        self.ws_url = f"{app.api_url.replace('http', 'ws')}/v1/crawl/{id}"
+        self.event_handlers = {
+            'done': [],
+            'error': [],
+            'document': []
+        }
+
+    async def connect(self):
+        async with websockets.connect(self.ws_url, extra_headers={"Authorization": f"Bearer {self.app.api_key}"}) as websocket:
+            await self._listen(websocket)
+
+    async def _listen(self, websocket):
+        async for message in websocket:
+            msg = json.loads(message)
+            await self._handle_message(msg)
+
+    def add_event_listener(self, event_type: str, handler):
+        if event_type in self.event_handlers:
+            self.event_handlers[event_type].append(handler)
+
+    def dispatch_event(self, event_type: str, detail: Dict[str, Any]):
+        if event_type in self.event_handlers:
+            for handler in self.event_handlers[event_type]:
+                handler(detail)
+
+    async def _handle_message(self, msg: Dict[str, Any]):
+        if msg['type'] == 'done':
+            self.status = 'completed'
+            self.dispatch_event('done', {'status': self.status, 'data': self.data})
+        elif msg['type'] == 'error':
+            self.status = 'failed'
+            self.dispatch_event('error', {'status': self.status, 'data': self.data, 'error': msg['error']})
+        elif msg['type'] == 'catchup':
+            self.status = msg['data']['status']
+            self.data.extend(msg['data'].get('data', []))
+            for doc in self.data:
+                self.dispatch_event('document', doc)
+        elif msg['type'] == 'document':
+            self.data.append(msg['data'])
+            self.dispatch_event('document', msg['data'])
