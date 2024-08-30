@@ -44,7 +44,8 @@ const strictMessage = "Unrecognized key in body -- please review the v1 API docu
 export const extractOptions = z.object({
   mode: z.enum(["llm"]).default("llm"),
   schema: z.any().optional(),
-  prompt: z.string().default("Based on the information on the page, extract the information from the schema.")
+  systemPrompt: z.string().default("Based on the information on the page, extract the information from the schema."),
+  prompt: z.string().optional()
 }).strict(strictMessage);
 
 export type ExtractOptions = z.infer<typeof extractOptions>;
@@ -316,6 +317,7 @@ export function legacyExtractorOptions(x: ExtractOptions): ExtractorOptions {
     mode: x.mode ? "llm-extraction" : "markdown",
     extractionPrompt: x.prompt ?? "Based on the information on the page, extract the information from the schema.",
     extractionSchema: x.schema,
+    userPrompt: x.prompt ?? "",
   };
 }
 

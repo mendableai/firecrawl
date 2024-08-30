@@ -15,7 +15,8 @@ export async function generateCompletions(
   // const schema = zodToJsonSchema(options.schema)
 
   const schema = extractionOptions.extractionSchema;
-  const prompt = extractionOptions.extractionPrompt;
+  const systemPrompt = extractionOptions.extractionPrompt;
+  const prompt = extractionOptions.userPrompt;
 
   const switchVariable = "openAI"; // Placholder, want to think more about how we abstract the model provider
 
@@ -31,9 +32,11 @@ export async function generateCompletions(
             document: document,
             schema: schema,
             prompt: prompt,
+            systemPrompt: systemPrompt,
             mode: mode,
           });
           // Validate the JSON output against the schema using AJV
+          if(schema){
           const validate = ajv.compile(schema);
           if (!validate(completionResult.llm_extraction)) {
             //TODO: add Custom Error handling middleware that bubbles this up with proper Error code, etc.
@@ -41,7 +44,8 @@ export async function generateCompletions(
               `JSON parsing error(s): ${validate.errors
                 ?.map((err) => err.message)
                 .join(", ")}\n\nLLM extraction did not match the extraction schema you provided. This could be because of a model hallucination, or an Error on our side. Try adjusting your prompt, and if it doesn't work reach out to support.`
-            );
+              );
+            }
           }
 
           return completionResult;
