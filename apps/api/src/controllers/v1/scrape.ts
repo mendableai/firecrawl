@@ -102,6 +102,9 @@ export async function scrapeController(
     // Don't bill if we're early returning
     return;
   }
+  if(req.body.extract && req.body.formats.includes("extract")) {
+    creditsToBeBilled = 50;
+  }
 
   const billingResult = await billTeam(req.auth.team_id, creditsToBeBilled);
   if (!billingResult.success) {
