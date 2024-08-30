@@ -306,7 +306,7 @@ export class WebScraperDataProvider {
     
     // documents = await this.applyImgAltText(documents);
     if (this.mode === "single_urls" && this.pageOptions.includeExtract) {
-      const extractionMode = this.extractorOptions.mode;
+      const extractionMode = this.extractorOptions?.mode ?? "markdown";
       const completionMode = extractionMode === "llm-extraction-from-raw-html" ? "raw-html" : "markdown";
 
       if (
@@ -583,7 +583,7 @@ export class WebScraperDataProvider {
       removeTags: options.pageOptions?.removeTags ?? [],
       includeMarkdown: options.pageOptions?.includeMarkdown ?? true,
       includeRawHtml: options.pageOptions?.includeRawHtml ?? false,
-      includeExtract: options.pageOptions?.includeExtract ?? options.extractorOptions.mode !== "markdown" ?? false, 
+      includeExtract: options.pageOptions?.includeExtract ?? (options.extractorOptions?.mode && options.extractorOptions?.mode !== "markdown") ?? false, 
       waitFor: options.pageOptions?.waitFor ?? undefined,
       headers: options.pageOptions?.headers ?? undefined,
       includeLinks: options.pageOptions?.includeLinks ?? true,
