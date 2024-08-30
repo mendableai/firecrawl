@@ -106,7 +106,7 @@ export interface FirecrawlDocumentV0 {
  * Defines the options and configurations available for scraping web content.
  */
 export interface ScrapeParams {
-  formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot")[];
+  formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "extract")[];
   headers?: Record<string, string>;
   includeTags?: string[];
   excludeTags?: string[];
@@ -114,6 +114,11 @@ export interface ScrapeParams {
   screenshotMode?: "desktop" | "full-desktop" | "mobile" | "full-mobile";
   waitFor?: number;
   timeout?: number;
+  extract?: {
+    prompt?: string;
+    schema?: z.ZodSchema | any;
+    systemPrompt?: string;
+  };
 }
 
 /**
@@ -345,30 +350,36 @@ export default class FirecrawlApp<T extends "v0" | "v1"> {
       Authorization: `Bearer ${this.apiKey}`,
     } as AxiosRequestHeaders;
     let jsonData: any = { url, ...params };
-    if (jsonData?.extractorOptions?.extractionSchema || jsonData?.extract?.schema) {
-      let schema = jsonData.extractorOptions?.extractionSchema || jsonData.extract?.schema;
+    if (this.version === 'v0' && jsonData?.extractorOptions?.extractionSchema) {
+      let schema = jsonData.extractorOptions.extractionSchema;
       // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
-      if (schema instanceof z.ZodSchema) {
+      if (schema instanceof z.ZodSchema || schema instanceof z.ZodObject) {
         schema = zodToJsonSchema(schema);
       }
-      if(this.version === 'v0') {
-        jsonData = {
-          ...jsonData,
-          extractorOptions: {
-            ...jsonData.extractorOptions,
-            extractionSchema: schema,
-            mode: jsonData.extractorOptions.mode || "llm-extraction",
-          },
-        };
-      } else {
-        jsonData = {
-          ...jsonData,
-          extract: {
-            ...jsonData.extract,
-            schema: schema,
-          },
-        };
+      jsonData = {
+        ...jsonData,
+        extractorOptions: {
+          ...jsonData.extractorOptions,
+          extractionSchema: schema,
+          mode: jsonData.extractorOptions.mode || "llm-extraction",
+        },
+      };
+    } else if (this.version === 'v1' && jsonData?.extract?.schema) {
+      let schema = jsonData.extract.schema;
+
+      // Try parsing the schema as a Zod schema
+      try {
+        schema = zodToJsonSchema(schema);
+      } catch (error) {
+        
       }
+      jsonData = {
+        ...jsonData,
+        extract: {
+          ...jsonData.extract,
+          schema: schema,
+        },
+      };
     }
     try {
       const response: AxiosResponse = await axios.post(

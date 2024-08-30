@@ -69,6 +69,7 @@ export interface FirecrawlDocument {
     html?: string;
     rawHtml?: string;
     links?: string[];
+    extract?: Record<any, any>;
     screenshot?: string;
     metadata: FirecrawlDocumentMetadata;
 }
@@ -97,7 +98,7 @@ export interface FirecrawlDocumentV0 {
  * Defines the options and configurations available for scraping web content.
  */
 export interface ScrapeParams {
-    formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot")[];
+    formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "extract")[];
     headers?: Record<string, string>;
     includeTags?: string[];
     excludeTags?: string[];
@@ -105,6 +106,11 @@ export interface ScrapeParams {
     screenshotMode?: "desktop" | "full-desktop" | "mobile" | "full-mobile";
     waitFor?: number;
     timeout?: number;
+    extract?: {
+        prompt?: string;
+        schema?: z.ZodSchema | any;
+        systemPrompt?: string;
+    };
 }
 /**
  * Parameters for scraping operations on v0.

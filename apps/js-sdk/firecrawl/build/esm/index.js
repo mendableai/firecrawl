@@ -30,7 +30,7 @@ export default class FirecrawlApp {
             Authorization: `Bearer ${this.apiKey}`,
         };
         let jsonData = { url, ...params };
-        if (jsonData?.extractorOptions?.extractionSchema) {
+        if (this.version === 'v0' && jsonData?.extractorOptions?.extractionSchema) {
             let schema = jsonData.extractorOptions.extractionSchema;
             // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
             if (schema instanceof z.ZodSchema) {
@@ -42,6 +42,20 @@ export default class FirecrawlApp {
                     ...jsonData.extractorOptions,
                     extractionSchema: schema,
                     mode: jsonData.extractorOptions.mode || "llm-extraction",
+                },
+            };
+        }
+        else if (this.version === 'v1' && jsonData?.extract?.schema) {
+            let schema = jsonData.extract.schema;
+            // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
+            if (schema instanceof z.ZodSchema) {
+                schema = zodToJsonSchema(schema);
+            }
+            jsonData = {
+                ...jsonData,
+                extract: {
+                    ...jsonData.extract,
+                    schema: schema,
                 },
             };
         }
