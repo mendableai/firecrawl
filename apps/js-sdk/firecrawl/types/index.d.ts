@@ -1,5 +1,6 @@
 import { AxiosResponse, AxiosRequestHeaders } from "axios";
 import { TypedEventTarget } from "typescript-event-target";
+import { z } from "zod";
 /**
  * Configuration interface for FirecrawlApp.
  * @param apiKey - Optional API key for authentication.

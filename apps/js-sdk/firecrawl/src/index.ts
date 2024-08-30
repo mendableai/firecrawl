@@ -202,21 +202,7 @@ export default class FirecrawlApp {
       Authorization: `Bearer ${this.apiKey}`,
     } as AxiosRequestHeaders;
     let jsonData: any = { url, ...params };
-    if (this.version === 'v0' && jsonData?.extractorOptions?.extractionSchema) {
-      let schema = jsonData.extractorOptions.extractionSchema;
-      // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
-      if (schema instanceof z.ZodSchema || schema instanceof z.ZodObject) {
-        schema = zodToJsonSchema(schema);
-      }
-      jsonData = {
-        ...jsonData,
-        extractorOptions: {
-          ...jsonData.extractorOptions,
-          extractionSchema: schema,
-          mode: jsonData.extractorOptions.mode || "llm-extraction",
-        },
-      };
-    } else if (this.version === 'v1' && jsonData?.extract?.schema) {
+    if (jsonData?.extract?.schema) {
       let schema = jsonData.extract.schema;
 
       // Try parsing the schema as a Zod schema
