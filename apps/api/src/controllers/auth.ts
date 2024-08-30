@@ -104,7 +104,7 @@ export async function supaAuthenticateUser(
   status?: number;
   plan?: PlanType;
 }> {
-  console.log(req.headers);
+
   const authHeader = req.headers.authorization ?? (req.headers["sec-websocket-protocol"] ? `Bearer ${req.headers["sec-websocket-protocol"]}` : null);
   if (!authHeader) {
     return { success: false, error: "Unauthorized", status: 401 };
