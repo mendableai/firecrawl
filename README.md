@@ -45,7 +45,9 @@ _This repository is in its early development stages. We are still merging custom
 
 _Pst. hey, you, join our stargazers :)_
 
-<img src="https://github.com/mendableai/firecrawl/assets/44934913/53c4483a-0f0e-40c6-bd84-153a07f94d29" width="200">
+<a href="https://github.com/mendableai/firecrawl">
+  <img src="https://img.shields.io/github/stars/mendableai/firecrawl.svg?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
+</a>
 
 ## How to use it?
 
