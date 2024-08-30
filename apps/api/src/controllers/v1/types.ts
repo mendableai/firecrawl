@@ -68,18 +68,28 @@ export const scrapeOptions = z.object({
   includeTags: z.string().array().optional(),
   excludeTags: z.string().array().optional(),
   onlyMainContent: z.boolean().default(true),
-  timeout: z.number().int().positive().finite().safe().default(30000), // default?
+  timeout: z.number().int().positive().finite().safe().default(30000),
   waitFor: z.number().int().nonnegative().finite().safe().default(0),
   extract: extractOptions.optional(),
   parsePDF: z.boolean().default(true),
-}).strict(strictMessage);
+}).strict(strictMessage)
+
 
 export type ScrapeOptions = z.infer<typeof scrapeOptions>;
 
 export const scrapeRequestSchema = scrapeOptions.extend({
   url,
   origin: z.string().optional().default("api"),
-}).strict(strictMessage);
+}).strict(strictMessage).refine(
+  (obj) => {
+    const hasExtractFormat = obj.formats?.includes("extract");
+    const hasExtractOptions = obj.extract !== undefined;
+    return (hasExtractFormat && hasExtractOptions) || (!hasExtractFormat && !hasExtractOptions);
+  },
+  {
+    message: "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
+  }
+);
 
 // export type ScrapeRequest = {
 //   url: string;
