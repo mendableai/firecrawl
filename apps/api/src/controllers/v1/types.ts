@@ -312,12 +312,12 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
   };
 }
 
-export function legacyExtractorOptions(x: ExtractOptions): ExtractorOptions {
+export function legacyExtractorOptions(x?: ExtractOptions): ExtractorOptions {
   return {
-    mode: x.mode ? "llm-extraction" : "markdown",
-    extractionPrompt: x.prompt ?? "Based on the information on the page, extract the information from the schema.",
-    extractionSchema: x.schema,
-    userPrompt: x.prompt ?? "",
+    mode: x?.mode ? "llm-extraction" : "markdown",
+    extractionPrompt: x?.prompt ?? "Based on the information on the page, extract the information from the schema.",
+    extractionSchema: x?.schema,
+    userPrompt: x?.prompt ?? "",
   };
 }
 
