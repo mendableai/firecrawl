@@ -1,33 +1,62 @@
-import FirecrawlApp from './firecrawl/src/index'; //'@mendable/firecrawl-js';
+import FirecrawlApp from '@mendable/firecrawl-js';
 
 const app = new FirecrawlApp({apiKey: "fc-YOUR_API_KEY"});
 
-// Scrape a website:
-const scrapeResult = await app.scrapeUrl('firecrawl.dev');
+const main = async () => {
 
-if (scrapeResult.data) {
-  console.log(scrapeResult.data.markdown)
-}
+  // Scrape a website:
+  const scrapeResult = await app.scrapeUrl('firecrawl.dev');
 
-// Crawl a website:
-const crawlResult = await app.crawlUrl('mendable.ai', {crawlerOptions: {excludes: ['blog/*'], limit: 5}}, false);
-console.log(crawlResult)
-
-const jobId = await crawlResult['jobId'];
-console.log(jobId);
-
-let job;
-while (true) {
-  job = await app.checkCrawlStatus(jobId);
-  if (job.status === 'completed') {
-    break;
+  if (scrapeResult.success) {
+    console.log(scrapeResult.markdown)
   }
-  await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
+
+  // Crawl a website:
+  const crawlResult = await app.crawlUrl('mendable.ai', { excludePaths: ['blog/*'], limit: 5});
+  console.log(crawlResult);
+
+  // Asynchronously crawl a website:
+  const asyncCrawlResult = await app.asyncCrawlUrl('mendable.ai', { excludePaths: ['blog/*'], limit: 5});
+  
+  if (asyncCrawlResult.success) {
+    const id = asyncCrawlResult.id;
+    console.log(id);
+
+    let checkStatus;
+    if (asyncCrawlResult.success) {
+      while (true) {
+        checkStatus = await app.checkCrawlStatus(id);
+        if (checkStatus.success && checkStatus.status === 'completed') {
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
+      }
+
+      if (checkStatus.success && checkStatus.data) {
+        console.log(checkStatus.data[0].markdown);
+      }
+    }
+  }
+
+  // Map a website:
+  const mapResult = await app.mapUrl('https://firecrawl.dev');
+  console.log(mapResult)
+
+
+  // Crawl a website with WebSockets:
+  const watch = await app.crawlUrlAndWatch('mendable.ai', { excludePaths: ['blog/*'], limit: 5});
+
+  watch.addEventListener("document", doc => {
+    console.log("DOC", doc.detail);
+  });
+
+  watch.addEventListener("error", err => {
+    console.error("ERR", err.detail.error);
+  });
+
+  watch.addEventListener("done", state => {
+    console.log("DONE", state.detail.status);
+  });
 }
 
-if (job.data) {
-  console.log(job.data[0].markdown);
-}
-
-const mapResult = await app.map('https://firecrawl.dev');
-console.log(mapResult)
+main()

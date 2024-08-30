@@ -85,6 +85,8 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
       }
     }
 
+    doneJobIDs.push(...newlyDoneJobIDs);
+
     setTimeout(loop, 1000);
   };
 

@@ -37,11 +37,9 @@ const crawlResponse = await app.crawlUrl('https://firecrawl.dev', {
   scrapeOptions: {
     formats: ['markdown', 'html'],
   }
-} as CrawlParams, true, 30) as CrawlStatusResponse;
+})
 
-if (crawlResponse) {
-  console.log(crawlResponse)
-}
+console.log(crawlResponse)
 ```
 
 ### Scraping a URL
@@ -63,16 +61,21 @@ const crawlResponse = await app.crawlUrl('https://firecrawl.dev', {
   scrapeOptions: {
     formats: ['markdown', 'html'],
   }
-} as CrawlParams, true, 30) as CrawlStatusResponse;
+})
+```
 
-if (crawlResponse) {
-  console.log(crawlResponse)
-}
+
+### Asynchronous Crawl
+
+To initiate an asynchronous crawl of a website, utilize the AsyncCrawlURL method. This method requires the starting URL and optional parameters as inputs. The params argument enables you to define various settings for the asynchronous crawl, such as the maximum number of pages to crawl, permitted domains, and the output format. Upon successful initiation, this method returns an ID, which is essential for subsequently checking the status of the crawl.
+
+```js
+const asyncCrawlResult = await app.asyncCrawlUrl('mendable.ai', { excludePaths: ['blog/*'], limit: 5});
 ```
 
 ### Checking Crawl Status
 
-To check the status of a crawl job with error handling, use the `checkCrawlStatus` method. It takes the job ID as a parameter and returns the current status of the crawl job.
+To check the status of a crawl job with error handling, use the `checkCrawlStatus` method. It takes the job ID as a parameter and returns the current status of the crawl job`
 
 ```js
 const status = await app.checkCrawlStatus(id);
@@ -119,6 +122,27 @@ Use `map_url` to generate a list of URLs from a website. The `params` argument l
 ```js
 const mapResult = await app.mapUrl('https://example.com') as MapResponse;
 console.log(mapResult)
+```
+
+### Crawl a website with WebSockets
+
+To crawl a website with WebSockets, use the `crawlUrlAndWatch` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
+
+```js
+// Crawl a website with WebSockets:
+const watch = await app.crawlUrlAndWatch('mendable.ai', { excludePaths: ['blog/*'], limit: 5});
+
+watch.addEventListener("document", doc => {
+ console.log("DOC", doc.detail);
+});
+
+watch.addEventListener("error", err => {
+ console.error("ERR", err.detail.error);
+});
+
+watch.addEventListener("done", state => {
+ console.log("DONE", state.detail.status);
+});
 ```
 
 ## Error Handling
