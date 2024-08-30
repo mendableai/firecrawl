@@ -199,8 +199,13 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     );
   }
 
+  if(subscriptionError) {
+    Logger.error(`Subscription error: ${subscriptionError}`);
+    throw new Error(`Subscription error: ${subscriptionError}`);
+  }
+
   // Free credits, no coupons
-  if (subscriptionError || !subscription) {
+  if (!subscription) {
     // If there is no active subscription but there are available coupons
     if (couponCredits >= credits) {
       return { success: true, message: "Sufficient credits available", remainingCredits: couponCredits };
@@ -214,6 +219,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
         .eq("team_id", team_id);
 
     if (creditUsageError) {
+      Logger.error(`Credit usage error: ${creditUsageError}`);
       throw new Error(
         `Failed to retrieve credit usage for team_id: ${team_id}`
       );
