@@ -1,16 +1,17 @@
 import uuid
 from firecrawl.firecrawl import FirecrawlApp
 
-app = FirecrawlApp(api_key="fc-YOUR_API_KEY")
+app = FirecrawlApp(api_key="fc-")
 
 # Scrape a website:
 scrape_result = app.scrape_url('firecrawl.dev')
 print(scrape_result['markdown'])
 
 # Crawl a website:
-idempotency_key = str(uuid.uuid4()) # optional idempotency key
-crawl_result = app.crawl_url('mendable.ai', {'crawlerOptions': {'excludes': ['blog/*']}}, True, 2, idempotency_key)
+crawl_result = app.crawl_url('docs.firecrawl.dev', {}, True, 2)
 print(crawl_result)
+
+
 
 # LLM Extraction:
 # Define schema to extract contents into using pydantic
@@ -27,18 +28,15 @@ class TopArticlesSchema(BaseModel):
     top: List[ArticleSchema] = Field(..., max_items=5, description="Top 5 stories")
 
 llm_extraction_result = app.scrape_url('https://news.ycombinator.com', {
-    'extractorOptions': {
-        'extractionSchema': TopArticlesSchema.model_json_schema(),
-        'mode': 'llm-extraction'
-    },
-    'pageOptions':{
-        'onlyMainContent': True
+    'formats': ['extract'],
+    'extract': {
+        'schema': TopArticlesSchema.model_json_schema()
     }
 })
 
-print(llm_extraction_result['llm_extraction'])
+print(llm_extraction_result['extract'])
 
-# Define schema to extract contents into using json schema
+# # Define schema to extract contents into using json schema
 json_schema = {
   "type": "object",
   "properties": {
@@ -62,7 +60,10 @@ json_schema = {
   "required": ["top"]
 }
 
-llm_extraction_result = app.scrape_url('https://news.ycombinator.com', {
+app2 = FirecrawlApp(api_key="fc-", version="v0")
+
+
+llm_extraction_result = app2.scrape_url('https://news.ycombinator.com', {
     'extractorOptions': {
         'extractionSchema': json_schema,
         'mode': 'llm-extraction'
