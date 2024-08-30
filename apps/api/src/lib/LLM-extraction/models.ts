@@ -76,27 +76,6 @@ export async function generateOpenAICompletions({
   let completion;
   let llmExtraction;
   if (prompt && !schema) {
-    // If prompt is defined, ask OpenAI to generate a schema based on the prompt
-    //   const schemaCompletion = await openai.chat.completions.create({
-    //     model,
-    //     messages: [
-    //       {
-    //         role: "system",
-    //         content: "You are a helpful assistant that generates JSON schemas based on user prompts.",
-    //       },
-    //       {
-    //         role: "user",
-    //         content: `Generate a JSON schema compatible with openai function calling based on this prompt: ${prompt}`,
-    //       },
-    //     ],
-    //     temperature: 0,
-    //     response_format: { type: "json_object" },
-    // });
-
-    // console.log(schemaCompletion.choices[0].message.content);
-
-    // const generatedSchema = JSON.parse(schemaCompletion.choices[0].message.content);
-    console.log(prompt);
     const jsonCompletion = await openai.chat.completions.create({
       model,
       messages: [
@@ -105,16 +84,22 @@ export async function generateOpenAICompletions({
           content: systemPrompt,
         },
         { role: "user", content },
-        { role: "user", content: `Transform the above content into structured json output based on the following user request: ${prompt}` },
+        {
+          role: "user",
+          content: `Transform the above content into structured json output based on the following user request: ${prompt}`,
+        },
       ],
       response_format: { type: "json_object" },
       temperature,
     });
 
-    console.log(jsonCompletion.choices[0].message.content);
-
-    llmExtraction = JSON.parse(jsonCompletion.choices[0].message.content.trim());
-    console.log(llmExtraction);
+    try {
+      llmExtraction = JSON.parse(
+        jsonCompletion.choices[0].message.content.trim()
+      );
+    } catch (e) {
+      throw new Error("Invalid JSON");
+    }
   } else {
     completion = await openai.chat.completions.create({
       model,
@@ -141,7 +126,11 @@ export async function generateOpenAICompletions({
     const c = completion.choices[0].message.tool_calls[0].function.arguments;
 
     // Extract the LLM extraction content from the completion response
-    llmExtraction = JSON.parse(c);
+    try {
+      llmExtraction = JSON.parse(c);
+    } catch (e) {
+      throw new Error("Invalid JSON");
+    }
   }
 
   // Return the document with the LLM extraction content added

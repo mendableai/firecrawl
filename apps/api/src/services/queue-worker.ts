@@ -192,6 +192,11 @@ async function processJob(job: Job, token: string) {
       job,
       token,
     });
+
+    // Better if we throw here so we capture with the correct error
+    if(!success) {
+      throw new Error(message);
+    }
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
