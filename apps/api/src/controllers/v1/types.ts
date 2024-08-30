@@ -126,7 +126,7 @@ export const mapRequestSchema = crawlerOptions.extend({
   includeSubdomains: z.boolean().default(true),
   search: z.string().optional(),
   ignoreSitemap: z.boolean().default(false),
-  limit: z.number().min(1).max(50).default(5000).optional(),
+  limit: z.number().min(1).max(5000).default(5000).optional(),
 }).strict(strictMessage);
 
 // export type MapRequest = {
