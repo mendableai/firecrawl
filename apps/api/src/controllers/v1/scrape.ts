@@ -28,7 +28,7 @@ export async function scrapeController(
   const origin = req.body.origin;
   const timeout = req.body.timeout;
   const pageOptions = legacyScrapeOptions(req.body);
-  const extractorOptions = legacyExtractorOptions(req.body.extract);
+  const extractorOptions = req.body.extract ? legacyExtractorOptions(req.body.extract) : undefined;
   const jobId = uuidv4();
 
   const startTime = new Date().getTime();
