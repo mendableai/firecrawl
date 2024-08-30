@@ -100,6 +100,14 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
     nextURL.searchParams.set("limit", req.query.limit);
   }
 
+  if (data.length > 0) {
+    if (!doneJobs[0].data.pageOptions.includeRawHtml) {
+      for (let ii = 0; ii < doneJobs.length; ii++) {
+        delete data[ii].rawHtml;
+      }
+    }
+  }
+
   res.status(200).json({
     status,
     completed: doneJobsLength,
