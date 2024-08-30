@@ -189,7 +189,6 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
         10
       )) as FirecrawlDocumentV0[];
       expect(response).not.toBeNull();
-      console.log({ response });
       expect(response[0].content).toContain("_Roast_");
     },
     60000
