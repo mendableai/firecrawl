@@ -292,6 +292,8 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
 }
 
 export function legacyDocumentConverter(doc: any): Document {
+  if (doc === null || doc === undefined) return doc;
+
   if (doc.metadata) {
     if (doc.metadata.screenshot) {
       doc.screenshot = doc.metadata.screenshot;
