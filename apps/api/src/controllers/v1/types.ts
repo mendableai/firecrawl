@@ -89,7 +89,12 @@ export const scrapeRequestSchema = scrapeOptions.extend({
   {
     message: "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
   }
-);
+).transform((obj) => {
+  if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
+    return { ...obj, timeout: 60000 };
+  }
+  return obj;
+});
 
 // export type ScrapeRequest = {
 //   url: string;
