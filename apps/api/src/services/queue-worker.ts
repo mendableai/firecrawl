@@ -218,6 +218,9 @@ async function processJob(job: Job, token: string) {
       docs,
     };
 
+    if (job.data.mode === "crawl") {
+      await callWebhook(job.data.team_id, job.id as string, data, job.data.webhook, job.data.v1);
+    }
     if (job.data.webhook && job.data.mode !== "crawl") {
       await callWebhook(job.data.team_id, job.data.crawl_id, data, job.data.webhook, job.data.v1);
     }
@@ -345,6 +348,10 @@ async function processJob(job: Job, token: string) {
       }
     }
 
+    if (!job.data.v1) {
+      await callWebhook(job.data.team_id, job.data.crawl_id, data, job.data.webhook, job.data.v1);
+    }
+
     Logger.info(`🐂 Job done ${job.id}`);
     return data;
   } catch (error) {
@@ -383,6 +390,10 @@ async function processJob(job: Job, token: string) {
       error:
         "Something went wrong... Contact help@mendable.ai or try again." /* etc... */,
     };
+
+    if (!job.data.v1 && (job.data.mode === "crawl" || job.data.crawl_id)) {
+      await callWebhook(job.data.team_id, job.data.crawl_id ?? job.id as string, data, job.data.webhook, job.data.v1);
+    }
     
     if (job.data.crawl_id) {
       await logJob({
