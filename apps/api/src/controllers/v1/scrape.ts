@@ -115,6 +115,18 @@ export async function scrapeController(
     });
   }
 
+  if (!pageOptions || !pageOptions.includeRawHtml) {
+    if (doc && doc.rawHtml) {
+      delete doc.rawHtml;
+    }
+  }
+
+  if(pageOptions && pageOptions.includeExtract) {
+    if(!pageOptions.includeMarkdown && doc && doc.markdown) {
+      delete doc.markdown;
+    }
+  }
+
   logJob({
     job_id: jobId,
     success: true,

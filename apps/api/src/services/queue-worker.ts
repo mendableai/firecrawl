@@ -202,24 +202,6 @@ async function processJob(job: Job, token: string) {
 
     const rawHtml = docs[0] ? docs[0].rawHtml : "";
 
-    if (job.data.crawl_id && (!job.data.pageOptions || !job.data.pageOptions.includeRawHtml)) {
-      if (docs[0] && docs[0].rawHtml) {
-        delete docs[0].rawHtml;
-      }
-    }
-
-    if(job.data.pageOptions && job.data.pageOptions.includeExtract ) {
-      if(!job.data.pageOptions.includeMarkdown) {
-        delete docs[0].markdown;
-      }
-      // if(!job.data.pageOptions.includeRawHtml) {
-      //   delete docs[0].rawHtml;
-      // }
-      // if(!job.data.pageOptions.includeHtml) {
-      //   delete docs[0].html;
-      // }
-    }
-
     const data = {
       success,
       result: {
