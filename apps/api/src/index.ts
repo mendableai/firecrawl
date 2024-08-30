@@ -190,27 +190,31 @@ if (cluster.isMaster) {
     res.send({ isProduction: global.isProduction });
   });
 
-  Sentry.setupExpressErrorHandler(app);
-
-  app.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: ResponseWithSentry<ErrorResponse>, next: NextFunction) => {
+  app.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: Response<ErrorResponse>, next: NextFunction) => {
     if (err instanceof ZodError) {
         res.status(400).json({ success: false, error: "Bad Request", details: err.errors });
     } else {
-        const id = res.sentry ?? uuidv4();
-        let verbose = JSON.stringify(err);
-        if (verbose === "{}") {
-            if (err instanceof Error) {
-                verbose = JSON.stringify({
-                    message: err.message,
-                    name: err.name,
-                    stack: err.stack,
-                });
-            }
-        }
-
-        Logger.error("Error occurred in request! (" + req.path + ") -- ID " + id  + " -- " + verbose);
-        res.status(500).json({ success: false, error: "An unexpected error occurred. Please contact hello@firecrawl.com for help. Your exception ID is " + id });
+        next(err);
     }
+  });
+
+  Sentry.setupExpressErrorHandler(app);
+
+  app.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: ResponseWithSentry<ErrorResponse>, next: NextFunction) => {
+    const id = res.sentry ?? uuidv4();
+    let verbose = JSON.stringify(err);
+    if (verbose === "{}") {
+        if (err instanceof Error) {
+            verbose = JSON.stringify({
+                message: err.message,
+                name: err.name,
+                stack: err.stack,
+            });
+        }
+    }
+
+    Logger.error("Error occurred in request! (" + req.path + ") -- ID " + id  + " -- " + verbose);
+    res.status(500).json({ success: false, error: "An unexpected error occurred. Please contact hello@firecrawl.com for help. Your exception ID is " + id });
   });
 
   Logger.info(`Worker ${process.pid} started`);
