@@ -163,6 +163,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
   }
 
   // Retrieve the team's active subscription and check for available coupons concurrently
+  const start = Date.now();
   const [subscriptionRes, couponsRes] =
     await Promise.allSettled([
       await db.select({
@@ -185,6 +186,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
           eq(couponsDb.status, "active"),
         )),
     ]);
+  console.log("big", Date.now() - start);
   
   const subscription = subscriptionRes.status === "fulfilled" ? subscriptionRes.value[0] : undefined;
   const subscriptionError = subscriptionRes.status === "rejected" ? subscriptionRes.reason : undefined;
@@ -277,7 +279,9 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
       } else {
         let creditUsages: { total_credits_used: number }[];
         try {
+          const start = Date.now();
           creditUsages = (await db.execute(sql`SELECT * FROM get_credit_usage_2(${subscription.id}, ${subscription.currentPeriodStart}, ${subscription.currentPeriodEnd})`)).rows as any;
+          console.log("cu", Date.now() - start);
         } catch (error) {
           Logger.error(`Error calculating credit usage: ${error}`);
         }

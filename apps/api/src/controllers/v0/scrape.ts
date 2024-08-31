@@ -155,6 +155,8 @@ export async function scrapeHelper(
 
 export async function scrapeController(req: Request, res: Response) {
   try {
+    const start = Date.now();
+    console.log("started at", start);
     let earlyReturn = false;
     // make sure to authenticate user first, Bearer <token>
     const { success, team_id, error, status, plan } = await authenticateUser(
@@ -165,6 +167,7 @@ export async function scrapeController(req: Request, res: Response) {
     if (!success) {
       return res.status(status).json({ error });
     }
+    console.log("s2auth", Date.now() - start);
 
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = { ...defaultPageOptions, ...req.body.pageOptions };
@@ -206,6 +209,7 @@ export async function scrapeController(req: Request, res: Response) {
           "Error checking team credits. Please contact hello@firecrawl.com for help.",
       });
     }
+    console.log("s2ctc", Date.now() - start);
 
     const jobId = uuidv4();
 
@@ -254,6 +258,7 @@ export async function scrapeController(req: Request, res: Response) {
         }
       }
     }
+    console.log("s2done", Date.now() - start);
 
     logJob({
       job_id: jobId,
@@ -271,6 +276,7 @@ export async function scrapeController(req: Request, res: Response) {
       extractor_options: extractorOptions,
       num_tokens: numTokens,
     });
+    console.log("s2log", Date.now() - start);
 
     return res.status(result.returnCode).json(result);
   } catch (error) {

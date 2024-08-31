@@ -156,6 +156,7 @@ export async function supaAuthenticateUser(
         teamId = team_id;
         priceId = price_id;
       } else {
+        const start = Date.now();
         const {
           success,
           teamId: tId,
@@ -163,6 +164,7 @@ export async function supaAuthenticateUser(
           error,
           status,
         } = await getKeyAndPriceId(normalizedApi);
+        console.log("gkp", Date.now() - start)
         if (!success) {
           return { success, error, status };
         }
@@ -330,7 +332,8 @@ export async function supaAuthenticateUser(
   // make sure api key is valid, based on the api_keys table in supabase
   if (!subscriptionData) {
     normalizedApi = parseApi(token);
-
+    
+    const start = Date.now();
     let data: { teamId: string };
     let error;
     try {
@@ -341,6 +344,7 @@ export async function supaAuthenticateUser(
     } catch (e) {
       error = e;
     }
+    console.log("sub backfill", Date.now() - start);
 
     if (error || !data) {
       if (error) {

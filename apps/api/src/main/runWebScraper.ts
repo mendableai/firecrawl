@@ -147,10 +147,12 @@ export async function runWebScraper({
 const saveJob = async (job: Job, result: any, token: string, mode: string) => {
   try {
     if (process.env.USE_DB_AUTHENTICATION === "true") {
+      const start = Date.now();
       await db
         .update(firecrawlJobs)
         .set({ docs: result })
         .where(eq(firecrawlJobs.jobId, job.id));
+      console.log("saveJob took", Date.now() - start);
 
         // try {
       //   if (mode === "crawl") {
