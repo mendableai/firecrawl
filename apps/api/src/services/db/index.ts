@@ -1,13 +1,22 @@
 import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { withReplicas } from 'drizzle-orm/pg-core';
 import { Pool } from "pg";
 
 function createDB() {
     if (process.env.DATABASE_URI) {
-        const pool = new Pool({
+        const db = drizzle(new Pool({
             connectionString: process.env.DATABASE_URI,
-        })
+        }))
 
-        return drizzle(pool);
+        if (process.env.DATABASE_REPLICA_URI) {
+            const replica = drizzle(new Pool({
+                connectionString: process.env.DATABASE_REPLICA_URI,
+            }));
+
+            return withReplicas(db, [replica])
+        } else {
+            return db;
+        }
     } else {
         return { no: true };
     }
