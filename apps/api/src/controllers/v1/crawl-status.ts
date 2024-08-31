@@ -28,7 +28,7 @@ export async function getJobs(ids: string[]) {
     const supabaseData = await supabaseGetJobsById(ids);
 
     supabaseData.forEach(x => {
-      const job = jobs.find(y => y.id === x.job_id);
+      const job = jobs.find(y => y.id === x.jobId);
       if (job) {
         job.returnvalue = x.docs;
       }

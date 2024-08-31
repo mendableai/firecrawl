@@ -1,4 +1,4 @@
-import { eq, InferSelectModel, sql } from "drizzle-orm";
+import { eq, inArray } from "drizzle-orm";
 import db from "../services/db";
 import { firecrawlJobs } from "../services/db/schema";
 import { Logger } from "./logger";
@@ -18,11 +18,10 @@ export const supabaseGetJobById = async (jobId: string) => {
   }
 };
 
-// NOTE: why is this an RPC??
 export const supabaseGetJobsById = async (jobIds: string[]) => {
-  let data: { job_id: string, docs: unknown }[];
+  let data: { jobId: string, docs: unknown }[];
   try {
-    data = await db.execute(sql`SELECT job_id, docs FROM get_jobs_by_ids(${jobIds})`);
+    data = await db.select().from(firecrawlJobs).where(inArray(firecrawlJobs.jobId, jobIds));
   } catch (error) {
     Logger.error(`Error in get_jobs_by_ids: ${error}`);
     Sentry.captureException(error);
