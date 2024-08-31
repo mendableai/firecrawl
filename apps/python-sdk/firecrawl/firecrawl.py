@@ -59,31 +59,17 @@ class FirecrawlApp:
 
         # If there are additional params, process them
         if params:
-            if self.version == 'v0':
-                # Handle extractorOptions (for v0 compatibility)
-                extractor_options = params.get('extractorOptions', {})
-                if extractor_options:
-                    if 'extractionSchema' in extractor_options and hasattr(extractor_options['extractionSchema'], 'schema'):
-                        extractor_options['extractionSchema'] = extractor_options['extractionSchema'].schema()
-                    extractor_options['mode'] = extractor_options.get('mode', 'llm-extraction')
-                    scrape_params['extractorOptions'] = extractor_options
+            # Handle extract (for v1)
+            extract = params.get('extract', {})
+            if extract:
+                if 'schema' in extract and hasattr(extract['schema'], 'schema'):
+                    extract['schema'] = extract['schema'].schema()
+                scrape_params['extract'] = extract
 
-                # Include any other params directly at the top level of scrape_params
-                for key, value in params.items():
-                    if key not in ['extractorOptions']:
-                        scrape_params[key] = value
-            elif self.version == 'v1':
-                # Handle extract (for v1)
-                extract = params.get('extract', {})
-                if extract:
-                    if 'schema' in extract and hasattr(extract['schema'], 'schema'):
-                        extract['schema'] = extract['schema'].schema()
-                    scrape_params['extract'] = extract
-
-                # Include any other params directly at the top level of scrape_params
-                for key, value in params.items():
-                    if key not in ['extract']:
-                        scrape_params[key] = value
+            # Include any other params directly at the top level of scrape_params
+            for key, value in params.items():
+                if key not in ['extract']:
+                    scrape_params[key] = value
 
         endpoint = f'/v1/scrape'
         # Make the POST request with the prepared headers and JSON data

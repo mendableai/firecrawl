@@ -44,7 +44,7 @@ const strictMessage = "Unrecognized key in body -- please review the v1 API docu
 export const extractOptions = z.object({
   mode: z.enum(["llm"]).default("llm"),
   schema: z.any().optional(),
-  systemPrompt: z.string().default("Based on the information on the page, extract the information from the schema."),
+  systemPrompt: z.string().default("Based on the information on the page, extract all the information from the schema. Try to extract all the fields even those that might not be marked as required."),
   prompt: z.string().optional()
 }).strict(strictMessage);
 

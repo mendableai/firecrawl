@@ -5,7 +5,6 @@ var __importDefault = (this && this.__importDefault) || function (mod) {
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.CrawlWatcher = void 0;
 const axios_1 = __importDefault(require("axios"));
-const zod_1 = require("zod");
 const zod_to_json_schema_1 = require("zod-to-json-schema");
 const isows_1 = require("isows");
 const typescript_event_target_1 = require("typescript-event-target");
@@ -34,26 +33,13 @@ class FirecrawlApp {
             Authorization: `Bearer ${this.apiKey}`,
         };
         let jsonData = { url, ...params };
-        if (this.version === 'v0' && jsonData?.extractorOptions?.extractionSchema) {
-            let schema = jsonData.extractorOptions.extractionSchema;
-            // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
-            if (schema instanceof zod_1.z.ZodSchema) {
+        if (jsonData?.extract?.schema) {
+            let schema = jsonData.extract.schema;
+            // Try parsing the schema as a Zod schema
+            try {
                 schema = (0, zod_to_json_schema_1.zodToJsonSchema)(schema);
             }
-            jsonData = {
-                ...jsonData,
-                extractorOptions: {
-                    ...jsonData.extractorOptions,
-                    extractionSchema: schema,
-                    mode: jsonData.extractorOptions.mode || "llm-extraction",
-                },
-            };
-        }
-        else if (this.version === 'v1' && jsonData?.extract?.schema) {
-            let schema = jsonData.extract.schema;
-            // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
-            if (schema instanceof zod_1.z.ZodSchema) {
-                schema = (0, zod_to_json_schema_1.zodToJsonSchema)(schema);
+            catch (error) {
             }
             jsonData = {
                 ...jsonData,

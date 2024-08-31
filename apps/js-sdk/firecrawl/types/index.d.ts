@@ -1,6 +1,6 @@
 import { AxiosResponse, AxiosRequestHeaders } from "axios";
-import { TypedEventTarget } from "typescript-event-target";
 import { z } from "zod";
+import { TypedEventTarget } from "typescript-event-target";
 /**
  * Configuration interface for FirecrawlApp.
  * @param apiKey - Optional API key for authentication.
@@ -73,13 +73,13 @@ export interface ScrapeParams {
     includeTags?: string[];
     excludeTags?: string[];
     onlyMainContent?: boolean;
-    waitFor?: number;
-    timeout?: number;
     extract?: {
         prompt?: string;
         schema?: z.ZodSchema | any;
         systemPrompt?: string;
     };
+    waitFor?: number;
+    timeout?: number;
 }
 /**
  * Response interface for scraping operations.
