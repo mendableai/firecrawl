@@ -1,7 +1,9 @@
 import { Job } from "bullmq";
 import type { baseScrapers } from "../scraper/WebScraper/single_url";
-import { supabase_service as supabase } from "../services/supabase";
 import { Logger } from "./logger";
+import db from "../services/db";
+import { scrapeEvents } from "../services/db/schema";
+import { eq } from "drizzle-orm";
 
 export type ScrapeErrorEvent = {
   type: "error",
@@ -38,13 +40,12 @@ export class ScrapeEvents {
     
     if (process.env.USE_DB_AUTHENTICATION) {
       try {
-        const result = await supabase.from("scrape_events").insert({
-          job_id: jobId,
+        const result = await db.insert(scrapeEvents).values({
+          jobId: jobId,
           type: content.type,
           content: content,
-          // created_at
-        }).select().single();
-        return (result.data as any).id;
+        }).returning();
+        return result[0].id;
       } catch (error) {
         // Logger.error(`Error inserting scrape event: ${error}`);
         return null;
@@ -58,13 +59,14 @@ export class ScrapeEvents {
     if (logId === null) return;
 
     try {
-      const previousLog = (await supabase.from("scrape_events").select().eq("id", logId).single()).data as any;
-      await supabase.from("scrape_events").update({
+      const previousLog = (await db.select().from(scrapeEvents).where(eq(scrapeEvents.id, logId)).limit(1))[0];
+      await db.update(scrapeEvents).set({
         content: {
-          ...previousLog.content,
+          ...(previousLog.content as any),
+          type: "scrape",
           result,
-        }
-      }).eq("id", logId);
+        },
+      }).where(eq(scrapeEvents.id, logId));
     } catch (error) {
       Logger.error(`Error updating scrape result: ${error}`);
     }

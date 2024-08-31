@@ -8,14 +8,10 @@
 
     "module": "commonjs",
     "esModuleInterop": true,
+    "skipLibCheck": true,
     "sourceMap": true,
     "outDir": "./dist/src",
     "moduleResolution": "node",
-    "baseUrl": ".",
-
-    "paths": {
-      "*": ["node_modules/*", "src/types/*"],
-    },
 
     "inlineSources": true
   },

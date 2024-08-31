@@ -1,6 +1,8 @@
 import { legacyDocumentConverter } from "../../src/controllers/v1/types";
 import { Logger } from "../../src/lib/logger";
-import { supabase_service } from "./supabase";
+import db from "./db";
+import { webhooks } from "./db/schema";
+import { eq } from 'drizzle-orm';
 
 export const callWebhook = async (teamId: string, jobId: string, data: any, specified?: string, v1 = false) => {
   try {
@@ -11,12 +13,13 @@ export const callWebhook = async (teamId: string, jobId: string, data: any, spec
     // Only fetch the webhook URL from the database if the self-hosted webhook URL and specified webhook are not set
     // and the USE_DB_AUTHENTICATION environment variable is set to true
     if (!webhookUrl && useDbAuthentication) {
-      const { data: webhooksData, error } = await supabase_service
-        .from("webhooks")
-        .select("url")
-        .eq("team_id", teamId)
-        .limit(1);
-      if (error) {
+      let webhooksData: { url: string }[];
+      try {
+        webhooksData = await db.select({ url: webhooks.url })
+          .from(webhooks)
+          .where(eq(webhooks.teamId, teamId))
+          .limit(1);
+      } catch (error) {
         Logger.error(`Error fetching webhook URL for team ID: ${teamId}, error: ${error.message}`);
         return null;
       }

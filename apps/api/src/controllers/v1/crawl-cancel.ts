@@ -1,10 +1,12 @@
 import { Request, Response } from "express";
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../types";
-import { supabase_service } from "../../services/supabase";
 import { Logger } from "../../lib/logger";
 import { getCrawl, saveCrawl } from "../../lib/crawl-redis";
 import * as Sentry from "@sentry/node";
+import db from "../../services/db";
+import { bulljobsTeams } from "../../services/db/schema";
+import { and, eq } from "drizzle-orm";
 
 export async function crawlCancelController(req: Request, res: Response) {
   try {
@@ -26,14 +28,12 @@ export async function crawlCancelController(req: Request, res: Response) {
 
     // check if the job belongs to the team
     if (useDbAuthentication) {
-      const { data, error: supaError } = await supabase_service
-        .from("bulljobs_teams")
-        .select("*")
-        .eq("job_id", req.params.jobId)
-        .eq("team_id", team_id);
-      if (supaError) {
-        return res.status(500).json({ error: supaError.message });
-      }
+      const data = await db.select()
+        .from(bulljobsTeams)
+        .where(and(
+          eq(bulljobsTeams.jobId, req.params.jobId),
+          eq(bulljobsTeams.teamId, team_id)
+        ));
 
       if (data.length === 0) {
         return res.status(403).json({ error: "Unauthorized" });

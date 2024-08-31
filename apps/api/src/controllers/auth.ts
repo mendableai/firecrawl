@@ -6,17 +6,17 @@ import {
   PlanType,
   RateLimiterMode,
 } from "../types";
-import { supabase_service } from "../services/supabase";
 import { withAuth } from "../lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import { setTraceAttributes } from "@hyperdx/node-opentelemetry";
-import { sendNotification } from "../services/notification/email_notification";
 import { Logger } from "../lib/logger";
-import { redlock } from "../services/redlock";
 import { getValue } from "../services/redis";
 import { setValue } from "../services/redis";
 import { validate } from "uuid";
 import * as Sentry from "@sentry/node";
+import db from "../services/db";
+import { apiKeys } from "../services/db/schema";
+import { eq, sql } from "drizzle-orm";
 // const { data, error } = await supabase_service
 //     .from('api_keys')
 //     .select(`
@@ -61,10 +61,11 @@ async function getKeyAndPriceId(normalizedApi: string): Promise<{
   error?: string;
   status?: number;
 }> {
-  const { data, error } = await supabase_service.rpc("get_key_and_price_id_2", {
-    api_key: normalizedApi,
-  });
-  if (error) {
+  let data: { key: string, team_id: string, price_id: string }[];
+
+  try {
+    data = await db.execute(sql`SELECT key, team_id, price_id FROM get_key_and_price_id_2(${normalizedApi})`);
+  } catch (error) {
     Sentry.captureException(error);
     Logger.error(`RPC ERROR (get_key_and_price_id_2): ${error.message}`);
     return {
@@ -74,11 +75,8 @@ async function getKeyAndPriceId(normalizedApi: string): Promise<{
       status: 500,
     };
   }
+
   if (!data || data.length === 0) {
-    if (error) {
-      Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
-      Sentry.captureException(error);
-    }
     // TODO: change this error code ?
     return {
       success: false,
@@ -333,12 +331,18 @@ export async function supaAuthenticateUser(
   if (!subscriptionData) {
     normalizedApi = parseApi(token);
 
-    const { data, error } = await supabase_service
-      .from("api_keys")
-      .select("*")
-      .eq("key", normalizedApi);
+    let data: { teamId: string };
+    let error;
+    try {
+      [data] = await db.select()
+        .from(apiKeys)
+        .where(eq(apiKeys.key, normalizedApi))
+        .limit(1);
+    } catch (e) {
+      error = e;
+    }
 
-    if (error || !data || data.length === 0) {
+    if (error || !data) {
       if (error) {
         Sentry.captureException(error);
         Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
@@ -350,7 +354,10 @@ export async function supaAuthenticateUser(
       };
     }
 
-    subscriptionData = data[0];
+    subscriptionData = {
+      team_id: data.teamId,
+      plan: undefined,
+    };
   }
 
   return {

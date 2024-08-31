@@ -1,8 +1,10 @@
-import { supabase_service } from "../supabase";
 import { withAuth } from "../../lib/withAuth";
 import { Resend } from "resend";
 import { NotificationType } from "../../types";
 import { Logger } from "../../../src/lib/logger";
+import db from "../db";
+import { userNotifications, users } from "../db/schema";
+import { and, eq, gte, lte } from "drizzle-orm";
 
 const emailTemplates: Record<
   NotificationType,
@@ -75,14 +77,16 @@ export async function sendNotificationInternal(
   const fifteenDaysAgo = new Date();
   fifteenDaysAgo.setDate(fifteenDaysAgo.getDate() - 15);
 
-  const { data, error } = await supabase_service
-    .from("user_notifications")
-    .select("*")
-    .eq("team_id", team_id)
-    .eq("notification_type", notificationType)
-    .gte("sent_date", fifteenDaysAgo.toISOString());
-
-  if (error) {
+  let data;
+  try {
+    data = await db.select()
+      .from(userNotifications)
+      .where(and(
+        eq(userNotifications.teamId, team_id),
+        eq(userNotifications.notificationType, notificationType),
+        gte(userNotifications.sentDate, fifteenDaysAgo.toISOString()),
+      ))
+  } catch (error) {
     Logger.debug(`Error fetching notifications: ${error}`);
     return { success: false };
   }
@@ -92,16 +96,18 @@ export async function sendNotificationInternal(
     return { success: false };
   }
 
-  const { data: recentData, error: recentError } = await supabase_service
-    .from("user_notifications")
-    .select("*")
-    .eq("team_id", team_id)
-    .eq("notification_type", notificationType)
-    .gte("sent_date", startDateString)
-    .lte("sent_date", endDateString);
-
-  if (recentError) {
-    Logger.debug(`Error fetching recent notifications: ${recentError}`);
+  let recentData;
+  try {
+    recentData = await db.select()
+      .from(userNotifications)
+      .where(and(
+        eq(userNotifications.teamId, team_id),
+        eq(userNotifications.notificationType, notificationType),
+        gte(userNotifications.sentDate, startDateString),
+        lte(userNotifications.sentDate, endDateString),
+      ))
+  } catch (error) {
+    Logger.debug(`Error fetching recent notifications: ${error}`);
     return { success: false };
   }
 
@@ -111,13 +117,14 @@ export async function sendNotificationInternal(
   } else {
     console.log(`Sending notification for team_id: ${team_id} and notificationType: ${notificationType}`);
     // get the emails from the user with the team_id
-    const { data: emails, error: emailsError } = await supabase_service
-      .from("users")
-      .select("email")
-      .eq("team_id", team_id);
+    let emails;
 
-    if (emailsError) {
-      Logger.debug(`Error fetching emails: ${emailsError}`);
+    try {
+      emails = await db.select({ email: users.email })
+        .from(users)
+        .where(eq(users.teamId, team_id));
+    } catch (error) {
+      Logger.debug(`Error fetching emails: ${error}`);
       return { success: false };
     }
 
@@ -125,18 +132,15 @@ export async function sendNotificationInternal(
       await sendEmailNotification(email.email, notificationType);
     }
 
-    const { error: insertError } = await supabase_service
-      .from("user_notifications")
-      .insert([
-        {
-          team_id: team_id,
-          notification_type: notificationType,
-          sent_date: new Date().toISOString(),
-        },
-      ]);
-
-    if (insertError) {
-      Logger.debug(`Error inserting notification record: ${insertError}`);
+    try {
+      await db.insert(userNotifications)
+        .values({
+          teamId: team_id,
+          notificationType,
+          sentDate: new Date().toISOString(),
+        })
+    } catch (error) {
+      Logger.debug(`Error inserting notification record: ${error}`);
       return { success: false };
     }
 

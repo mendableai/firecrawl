@@ -1,9 +1,9 @@
-import { ExtractorOptions } from "./../../lib/entities";
-import { supabase_service } from "../supabase";
 import { FirecrawlJob } from "../../types";
 import { posthog } from "../posthog";
 import "dotenv/config";
 import { Logger } from "../../lib/logger";
+import db from "../db";
+import { firecrawlJobs } from "../db/schema";
 
 export async function logJob(job: FirecrawlJob) {
   try {
@@ -21,28 +21,28 @@ export async function logJob(job: FirecrawlJob) {
       job.docs = [{ content: "REDACTED DUE TO AUTHORIZATION HEADER", html: "REDACTED DUE TO AUTHORIZATION HEADER" }];
     }
 
-    const { data, error } = await supabase_service
-      .from("firecrawl_jobs")
-      .insert([
-        {
-          job_id: job.job_id ? job.job_id : null,
-          success: job.success,
-          message: job.message,
-          num_docs: job.num_docs,
-          docs: job.docs,
-          time_taken: job.time_taken,
-          team_id: job.team_id === "preview" ? null : job.team_id,
-          mode: job.mode,
-          url: job.url,
-          crawler_options: job.crawlerOptions,
-          page_options: job.pageOptions,
-          origin: job.origin,
-          extractor_options: job.extractor_options,
-          num_tokens: job.num_tokens,
-          retry: !!job.retry,
-          crawl_id: job.crawl_id,
-        },
-      ]);
+    try {
+      await db.insert(firecrawlJobs).values({
+        jobId: job.job_id ? job.job_id : null,
+        success: job.success,
+        message: job.message,
+        numDocs: job.num_docs,
+        docs: job.docs,
+        timeTaken: job.time_taken.toString(),
+        teamId: job.team_id === "preview" ? null : job.team_id,
+        mode: job.mode,
+        url: job.url,
+        crawlerOptions: job.crawlerOptions,
+        pageOptions: job.pageOptions,
+        origin: job.origin,
+        extractorOptions: job.extractor_options,
+        numTokens: job.num_tokens,
+        retry: !!job.retry,
+        crawlId: job.crawl_id,
+      });
+    } catch (error) {
+      Logger.error(`Error logging job: ${error.message}`);
+    }
 
     if (process.env.POSTHOG_API_KEY && !job.crawl_id) {
       let phLog = {
@@ -68,9 +68,6 @@ export async function logJob(job: FirecrawlJob) {
         },
       };
       posthog.capture(phLog);
-    }
-    if (error) {
-      Logger.error(`Error logging job: ${error.message}`);
     }
   } catch (error) {
     Logger.error(`Error logging job: ${error.message}`);

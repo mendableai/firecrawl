@@ -1,10 +1,10 @@
 ### Crawl Website
 POST http://localhost:3002/v0/scrape HTTP/1.1
-Authorization: Bearer fc-
+Authorization: Bearer ***REMOVED***
 content-type: application/json
 
 {
-    "url":"corterix.com"
+    "url": "https://www.firecrawl.dev/"
 }
 
 ### Check Job Status
@@ -18,11 +18,11 @@ GET http://localhost:3002/v0/jobs/active HTTP/1.1
 
 ### Scrape Website
 POST http://localhost:3002/v0/crawl HTTP/1.1
-Authorization: Bearer fc-
+Authorization: Bearer ***REMOVED***
 content-type: application/json
 
 {
-  "url": "firecrawl.dev"
+  "url": "https://www.firecrawl.dev/"
 }
 
 ## "reoveTags": [],

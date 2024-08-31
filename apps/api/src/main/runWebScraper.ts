@@ -9,9 +9,11 @@ import { WebScraperDataProvider } from "../scraper/WebScraper";
 import { DocumentUrl, Progress } from "../lib/entities";
 import { billTeam } from "../services/billing/credit_billing";
 import { Document } from "../lib/entities";
-import { supabase_service } from "../services/supabase";
 import { Logger } from "../lib/logger";
 import { ScrapeEvents } from "../lib/scrape-events";
+import db from "../services/db";
+import { firecrawlJobs } from "../services/db/schema";
+import { eq } from "drizzle-orm";
 
 export async function startWebScraperPipeline({
   job,
@@ -145,13 +147,12 @@ export async function runWebScraper({
 const saveJob = async (job: Job, result: any, token: string, mode: string) => {
   try {
     if (process.env.USE_DB_AUTHENTICATION === "true") {
-      const { data, error } = await supabase_service
-        .from("firecrawl_jobs")
-        .update({ docs: result })
-        .eq("job_id", job.id);
+      await db
+        .update(firecrawlJobs)
+        .set({ docs: result })
+        .where(eq(firecrawlJobs.jobId, job.id));
 
-      if (error) throw new Error(error.message);
-      // try {
+        // try {
       //   if (mode === "crawl") {
       //     await job.moveToCompleted(null, token, false);
       //   } else {

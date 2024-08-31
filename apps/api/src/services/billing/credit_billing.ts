@@ -1,10 +1,12 @@
 import { NotificationType } from "../../types";
 import { withAuth } from "../../lib/withAuth";
 import { sendNotification } from "../notification/email_notification";
-import { supabase_service } from "../supabase";
 import { Logger } from "../../lib/logger";
 import { getValue, setValue } from "../redis";
 import { redlock } from "../redlock";
+import db from "../db";
+import { subscriptions, coupons as couponsDb, creditUsage, prices } from "../db/schema";
+import { and, eq, gte, isNull, lte, sql } from "drizzle-orm";
 
 
 const FREE_CREDITS = 500;
@@ -25,18 +27,22 @@ export async function supaBillTeam(team_id: string, credits: number) {
   // created_at: The timestamp of the API usage.
 
   // 1. get the subscription and check for available coupons concurrently
-  const [{ data: subscription }, { data: coupons }] = await Promise.all([
-    supabase_service
-      .from("subscriptions")
-      .select("*")
-      .eq("team_id", team_id)
-      .eq("status", "active")
-      .single(),
-    supabase_service
-      .from("coupons")
-      .select("id, credits")
-      .eq("team_id", team_id)
-      .eq("status", "active"),
+  const [[subscription], coupons] = await Promise.all([
+    db
+      .select()
+      .from(subscriptions)
+      .where(and(
+        eq(subscriptions.teamId, team_id),
+        eq(subscriptions.status, "active"),
+      ))
+      .limit(1),
+    db
+      .select({ id: couponsDb.id, credits: couponsDb.credits })
+      .from(couponsDb)
+      .where(and(
+        eq(couponsDb.teamId, team_id),
+        eq(couponsDb.status, "active"),
+      )),
   ]);
 
   let couponCredits = 0;
@@ -62,21 +68,14 @@ export async function supaBillTeam(team_id: string, credits: number) {
           if (sortedCoupons[0].credits < usedCredits) {
             usedCredits = usedCredits - sortedCoupons[0].credits;
             // update coupon credits
-            await supabase_service
-              .from("coupons")
-              .update({
-                credits: 0,
-              })
-              .eq("id", sortedCoupons[0].id);
-            sortedCoupons.shift();
+            await db.update(couponsDb).set({
+              credits: 0
+            }).where(eq(couponsDb.id, sortedCoupons[0].id));
           } else {
             // update coupon credits
-            await supabase_service
-              .from("coupons")
-              .update({
-                credits: sortedCoupons[0].credits - usedCredits,
-              })
-              .eq("id", sortedCoupons[0].id);
+            await db.update(couponsDb).set({
+              credits: sortedCoupons[0].credits - usedCredits,
+            }).where(eq(couponsDb.id, sortedCoupons[0].id));
             usedCredits = 0;
           }
         }
@@ -88,12 +87,9 @@ export async function supaBillTeam(team_id: string, credits: number) {
         // update coupon credits
         const usedCredits = credits - couponCredits;
         for (let i = 0; i < sortedCoupons.length; i++) {
-          await supabase_service
-            .from("coupons")
-            .update({
-              credits: 0,
-            })
-            .eq("id", sortedCoupons[i].id);
+          await db.update(couponsDb).set({
+            credits: 0
+          }).where(eq(couponsDb.id, sortedCoupons[i].id));
         }
 
         return await createCreditUsage({ team_id, credits: usedCredits });
@@ -105,12 +101,9 @@ export async function supaBillTeam(team_id: string, credits: number) {
     if (credits > couponCredits) {
       // update coupon credits
       for (let i = 0; i < sortedCoupons.length; i++) {
-        await supabase_service
-          .from("coupons")
-          .update({
-            credits: 0,
-          })
-          .eq("id", sortedCoupons[i].id);
+        await db.update(couponsDb).set({
+          credits: 0
+        }).where(eq(couponsDb.id, sortedCoupons[i].id));
       }
       const usedCredits = credits - couponCredits;
       return await createCreditUsage({
@@ -126,21 +119,15 @@ export async function supaBillTeam(team_id: string, credits: number) {
         if (sortedCoupons[0].credits < usedCredits) {
           usedCredits = usedCredits - sortedCoupons[0].credits;
           // update coupon credits
-          await supabase_service
-            .from("coupons")
-            .update({
-              credits: 0,
-            })
-            .eq("id", sortedCoupons[0].id);
+          await db.update(couponsDb).set({
+            credits: 0,
+          }).where(eq(couponsDb.id, sortedCoupons[0].id));
           sortedCoupons.shift();
         } else {
           // update coupon credits
-          await supabase_service
-            .from("coupons")
-            .update({
-              credits: sortedCoupons[0].credits - usedCredits,
-            })
-            .eq("id", sortedCoupons[0].id);
+          await db.update(couponsDb).set({
+            credits: sortedCoupons[0].credits - usedCredits,
+          }).where(eq(couponsDb.id, sortedCoupons[0].id));
           usedCredits = 0;
         }
       }
@@ -176,20 +163,32 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
   }
 
   // Retrieve the team's active subscription and check for available coupons concurrently
-  const [{ data: subscription, error: subscriptionError }, { data: coupons }] =
-    await Promise.all([
-      supabase_service
-        .from("subscriptions")
-        .select("id, price_id, current_period_start, current_period_end")
-        .eq("team_id", team_id)
-        .eq("status", "active")
-        .single(),
-      supabase_service
-        .from("coupons")
-        .select("credits")
-        .eq("team_id", team_id)
-        .eq("status", "active"),
+  const [subscriptionRes, couponsRes] =
+    await Promise.allSettled([
+      await db.select({
+        id: subscriptions.id,
+        priceId: subscriptions.priceId,
+        currentPeriodStart: subscriptions.currentPeriodStart,
+        currentPeriodEnd: subscriptions.currentPeriodEnd,
+      })
+        .from(subscriptions)
+        .where(and(
+          eq(subscriptions.teamId, team_id),
+          eq(subscriptions.status, "active"),
+        ))
+        .limit(1),
+      db
+        .select({ credits: couponsDb.credits })
+        .from(couponsDb)
+        .where(and(
+          eq(couponsDb.teamId, team_id),
+          eq(couponsDb.status, "active"),
+        )),
     ]);
+  
+  const subscription = subscriptionRes.status === "fulfilled" ? subscriptionRes.value[0] : undefined;
+  const subscriptionError = subscriptionRes.status === "rejected" ? subscriptionRes.reason : undefined;
+  const coupons = couponsRes.status === "fulfilled" ? couponsRes.value : (() => {throw couponsRes.reason})();
 
   let couponCredits = 0;
   if (coupons && coupons.length > 0) {
@@ -206,21 +205,24 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
       return { success: true, message: "Sufficient credits available", remainingCredits: couponCredits };
     }
 
-    const { data: creditUsages, error: creditUsageError } =
-      await supabase_service
-        .from("credit_usage")
-        .select("credits_used")
-        .is("subscription_id", null)
-        .eq("team_id", team_id);
-
-    if (creditUsageError) {
+    let creditUsages: { creditsUsed: number }[];
+    try {
+      creditUsages =
+        await db
+          .select({ creditsUsed: creditUsage.creditsUsed })
+          .from(creditUsage)
+          .where(and(
+            isNull(creditUsage.subscriptionId),
+            eq(creditUsage.teamId, team_id),
+          ))
+    } catch (error) {
       throw new Error(
         `Failed to retrieve credit usage for team_id: ${team_id}`
       );
     }
 
     const totalCreditsUsed = creditUsages.reduce(
-      (acc, usage) => acc + usage.credits_used,
+      (acc, usage) => acc + usage.creditsUsed,
       0
     );
 
@@ -260,7 +262,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
   }
 
   let totalCreditsUsed = 0;
-  const cacheKey = `credit_usage_${subscription.id}_${subscription.current_period_start}_${subscription.current_period_end}_lc`;
+  const cacheKey = `credit_usage_${subscription.id}_${subscription.currentPeriodStart}_${subscription.currentPeriodEnd}_lc`;
   const redLockKey = `lock_${cacheKey}`;
   const lockTTL = 10000; // 10 seconds
 
@@ -273,15 +275,11 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
       if (cachedCreditUsage) {
         totalCreditsUsed = parseInt(cachedCreditUsage);
       } else {
-        const { data: creditUsages, error: creditUsageError } =
-          await supabase_service.rpc("get_credit_usage_2", {
-            sub_id: subscription.id,
-            start_time: subscription.current_period_start,
-            end_time: subscription.current_period_end,
-          });
-
-        if (creditUsageError) {
-          Logger.error(`Error calculating credit usage: ${creditUsageError}`);
+        let creditUsages: { total_credits_used: number }[];
+        try {
+          creditUsages = await db.execute(sql`SELECT * FROM get_credit_usage_2(${subscription.id}, ${subscription.currentPeriodStart}, ${subscription.currentPeriodEnd})`)
+        } catch (error) {
+          Logger.error(`Error calculating credit usage: ${error}`);
         }
 
         if (creditUsages && creditUsages.length > 0) {
@@ -300,15 +298,17 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
   // Adjust total credits used by subtracting coupon value
   const adjustedCreditsUsed = Math.max(0, totalCreditsUsed - couponCredits);
   // Get the price details
-  const { data: price, error: priceError } = await supabase_service
-    .from("prices")
-    .select("credits")
-    .eq("id", subscription.price_id)
-    .single();
 
-  if (priceError) {
+  let price: { credits: number } | undefined;
+  try {
+    [price] = await db
+      .select({ credits: prices.credits })
+      .from(prices)
+      .where(eq(prices.id, subscription.priceId))
+      .limit(1);
+  } catch (error) {
     throw new Error(
-      `Failed to retrieve price for price_id: ${subscription.price_id}`
+      `Failed to retrieve price for price_id: ${subscription.priceId}`
     );
   }
 
@@ -342,18 +342,31 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
   team_id: string
 ) {
   // 1. Retrieve the team's active subscription based on the team_id.
-  const { data: subscription, error: subscriptionError } =
-    await supabase_service
-      .from("subscriptions")
-      .select("id, price_id, current_period_start, current_period_end")
-      .eq("team_id", team_id)
-      .single();
-
-  const { data: coupons } = await supabase_service
-    .from("coupons")
-    .select("credits")
-    .eq("team_id", team_id)
-    .eq("status", "active");
+  const [subscriptionRes, couponsRes] =
+    await Promise.allSettled([
+      await db.select({
+        id: subscriptions.id,
+        currentPeriodStart: subscriptions.currentPeriodStart,
+        currentPeriodEnd: subscriptions.currentPeriodEnd,
+        priceId: subscriptions.priceId
+      })
+        .from(subscriptions)
+        .where(and(
+          eq(subscriptions.teamId, team_id),
+        ))
+        .limit(1),
+      db
+        .select({ credits: couponsDb.credits })
+        .from(couponsDb)
+        .where(and(
+          eq(couponsDb.teamId, team_id),
+          eq(couponsDb.status, "active"),
+        )),
+    ]);
+  
+  const subscription = subscriptionRes.status === "fulfilled" ? subscriptionRes.value[0] : undefined;
+  const subscriptionError = subscriptionRes.status === "rejected" ? subscriptionRes.reason : undefined;
+  const coupons = couponsRes.status === "fulfilled" ? couponsRes.value : (() => {throw couponsRes.reason})();
 
   let couponCredits = 0;
   if (coupons && coupons.length > 0) {
@@ -365,21 +378,23 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
 
   if (subscriptionError || !subscription) {
     // Free
-    const { data: creditUsages, error: creditUsageError } =
-      await supabase_service
-        .from("credit_usage")
-        .select("credits_used")
-        .is("subscription_id", null)
-        .eq("team_id", team_id);
-
-    if (creditUsageError || !creditUsages) {
+    let creditUsages: { creditsUsed: number }[];
+    try {
+      creditUsages =
+        await db.select({ creditsUsed: creditUsage.creditsUsed })
+          .from(creditUsage)
+          .where(and(
+            isNull(creditUsage.subscriptionId),
+            eq(creditUsage.teamId, team_id)
+          ));
+    } catch (error) {
       throw new Error(
         `Failed to retrieve credit usage for team_id: ${team_id}`
       );
     }
 
     const totalCreditsUsed = creditUsages.reduce(
-      (acc, usage) => acc + usage.credits_used,
+      (acc, usage) => acc + usage.creditsUsed,
       0
     );
 
@@ -391,36 +406,40 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
     };
   }
 
-  const { data: creditUsages, error: creditUsageError } = await supabase_service
-    .from("credit_usage")
-    .select("credits_used")
-    .eq("subscription_id", subscription.id)
-    .gte("created_at", subscription.current_period_start)
-    .lte("created_at", subscription.current_period_end);
+  let creditUsages: { creditsUsed: number }[];
 
-  if (creditUsageError || !creditUsages) {
+  try {
+    creditUsages = await db
+      .select({ creditsUsed: creditUsage.creditsUsed })
+      .from(creditUsage)
+      .where(and(
+        eq(creditUsage.subscriptionId, subscription.id),
+        gte(creditUsage.createdAt, subscription.currentPeriodStart),
+        lte(creditUsage.createdAt, subscription.currentPeriodEnd),
+      ));
+  } catch (error) {
     throw new Error(
       `Failed to retrieve credit usage for subscription_id: ${subscription.id}`
     );
   }
 
   const totalCreditsUsed = creditUsages.reduce(
-    (acc, usage) => acc + usage.credits_used,
+    (acc, usage) => acc + usage.creditsUsed,
     0
   );
 
-  const { data: price, error: priceError } = await supabase_service
-    .from("prices")
-    .select("credits")
-    .eq("id", subscription.price_id)
-    .single();
-
-  if (priceError || !price) {
+  let price: { credits: number };
+  try {
+    [price] = await db.select({ credits: prices.credits })
+      .from(prices)
+      .where(eq(prices.id, subscription.priceId))
+      .limit(1)
+  } catch (error) {
     throw new Error(
-      `Failed to retrieve price for price_id: ${subscription.price_id}`
+      `Failed to retrieve price for price_id: ${error}`
     );
   }
-
+  
   const remainingCredits = price.credits + couponCredits - totalCreditsUsed;
 
   return {
@@ -439,17 +458,15 @@ async function createCreditUsage({
   subscription_id?: string;
   credits: number;
 }) {
-  const { data: credit_usage } = await supabase_service
-    .from("credit_usage")
-    .insert([
-      {
-        team_id,
-        credits_used: credits,
-        subscription_id: subscription_id || null,
-        created_at: new Date(),
-      },
-    ])
-    .select();
+  const credit_usage = await db
+    .insert(creditUsage)
+    .values({
+      teamId: team_id,
+      creditsUsed: credits,
+      subscriptionId: subscription_id || null,
+      createdAt: new Date().toISOString(),
+    })
+    .returning();
 
   return { success: true, credit_usage };
 }

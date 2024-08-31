@@ -1,11 +1,10 @@
-import { authMiddleware } from "../../routes/v1";
 import { RateLimiterMode } from "../../types";
 import { authenticateUser } from "../auth";
 import { CrawlStatusParams, CrawlStatusResponse, Document, ErrorResponse, legacyDocumentConverter, RequestWithAuth } from "./types";
 import { WebSocket } from "ws";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../lib/logger";
-import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength, isCrawlFinished, isCrawlFinishedLocked } from "../../lib/crawl-redis";
+import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
 import { getJob, getJobs } from "./crawl-status";
 import * as Sentry from "@sentry/node";

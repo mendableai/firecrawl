@@ -1,15 +1,16 @@
 import "dotenv/config";
 import { ScrapeLog } from "../../types";
-import { supabase_service } from "../supabase";
 import { PageOptions } from "../../lib/entities";
 import { Logger } from "../../lib/logger";
+import db from "../db";
+import { scrapeLogs } from "../db/schema";
 
 export async function logScrape(
   scrapeLog: ScrapeLog,
   pageOptions?: PageOptions
 ) {
   if (process.env.USE_DB_AUTHENTICATION === "false") {
-    Logger.debug("Skipping logging scrape to Supabase");
+    Logger.debug("Skipping logging scrape to DB");
     return;
   }
   try {
@@ -26,24 +27,22 @@ export async function logScrape(
       scrapeLog.html = "REDACTED DUE TO AUTHORIZATION HEADER";
     }
 
-    const { data, error } = await supabase_service.from("scrape_logs").insert([
-      {
+    try {
+      await db.insert(scrapeLogs).values({
         url: scrapeLog.url,
         scraper: scrapeLog.scraper,
         success: scrapeLog.success,
-        response_code: scrapeLog.response_code,
-        time_taken_seconds: scrapeLog.time_taken_seconds,
+        responseCode: scrapeLog.response_code,
+        timeTakenSeconds: scrapeLog.time_taken_seconds,
         proxy: scrapeLog.proxy,
         retried: scrapeLog.retried,
-        error_message: scrapeLog.error_message,
-        date_added: new Date().toISOString(),
+        errorMessage: scrapeLog.error_message,
+        dateAdded: new Date().toISOString(),
         html: "Removed to save db space",
-        ipv4_support: scrapeLog.ipv4_support,
-        ipv6_support: scrapeLog.ipv6_support,
-      },
-    ]);
-
-    if (error) {
+        ipv4Support: scrapeLog.ipv4_support,
+        ipv6Support: scrapeLog.ipv6_support,
+      });
+    } catch (error) {
       Logger.error(`Error logging proxy:\n${JSON.stringify(error)}`);
     }
   } catch (error) {
