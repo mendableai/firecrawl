@@ -229,20 +229,19 @@ Response will be an ordered list from the most relevant to the least relevant.
 }
 ```
 
-### LLM Extraction (v0) (Beta)
+### LLM Extraction (Beta)
 
 Used to extract structured data from scraped pages.
 
 ```bash
-curl -X POST https://api.firecrawl.dev/v0/scrape \
+curl -X POST https://api.firecrawl.dev/v1/scrape \
     -H 'Content-Type: application/json' \
     -H 'Authorization: Bearer YOUR_API_KEY' \
     -d '{
       "url": "https://www.mendable.ai/",
-      "extractorOptions": {
-        "mode": "llm-extraction",
-        "extractionPrompt": "Based on the information on the page, extract the information from the schema. ",
-        "extractionSchema": {
+      "formats": ["extract"],
+      "extract": {
+        "schema": {
           "type": "object",
           "properties": {
             "company_mission": {
@@ -294,6 +293,23 @@ curl -X POST https://api.firecrawl.dev/v0/scrape \
     }
   }
 }
+```
+
+### Extracting without a schema (New)
+
+You can now extract without a schema by just passing a `prompt` to the endpoint. The llm chooses the structure of the data.
+
+```bash
+curl -X POST https://api.firecrawl.dev/v1/scrape \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer YOUR_API_KEY' \
+    -d '{
+      "url": "https://docs.firecrawl.dev/",
+      "formats": ["extract"],
+      "extract": {
+        "prompt": "Extract the company mission from the page."
+      }
+    }'
 ```
 
 

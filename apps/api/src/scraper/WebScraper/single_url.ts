@@ -130,6 +130,7 @@ export async function scrapSingleUrl(
 ): Promise<Document> {
   pageOptions = {
     includeMarkdown: pageOptions.includeMarkdown ?? true,
+    includeExtract: pageOptions.includeExtract ?? false,
     onlyMainContent: pageOptions.onlyMainContent ?? false,
     includeHtml: pageOptions.includeHtml ?? false,
     includeRawHtml: pageOptions.includeRawHtml ?? false,
@@ -388,11 +389,11 @@ export async function scrapSingleUrl(
     if (screenshot && screenshot.length > 0) {
       document = {
         content: text,
-        markdown: pageOptions.includeMarkdown ? text : undefined,
+        markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? text : undefined,
         html: pageOptions.includeHtml ? html : undefined,
         rawHtml:
           pageOptions.includeRawHtml ||
-            extractorOptions?.mode === "llm-extraction-from-raw-html"
+            (extractorOptions?.mode === "llm-extraction-from-raw-html" && pageOptions.includeExtract)
             ? rawHtml
             : undefined,
         linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
@@ -407,11 +408,11 @@ export async function scrapSingleUrl(
     } else {
       document = {
         content: text,
-        markdown: pageOptions.includeMarkdown ? text : undefined,
+        markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? text : undefined,
         html: pageOptions.includeHtml ? html : undefined,
         rawHtml:
           pageOptions.includeRawHtml ||
-            extractorOptions?.mode === "llm-extraction-from-raw-html"
+            (extractorOptions?.mode === "llm-extraction-from-raw-html" && pageOptions.includeExtract)
             ? rawHtml
             : undefined,
         metadata: {
@@ -434,7 +435,7 @@ export async function scrapSingleUrl(
     });
     return {
       content: "",
-      markdown: pageOptions.includeMarkdown ? "" : undefined,
+      markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? "" : undefined,
       html: "",
       linksOnPage: pageOptions.includeLinks ? [] : undefined,
       metadata: {

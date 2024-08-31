@@ -64,6 +64,7 @@ export interface FirecrawlDocument {
   html?: string;
   rawHtml?: string;
   links?: string[];
+  extract?: Record<any, any>;
   screenshot?: string;
   metadata?: FirecrawlDocumentMetadata;
 }
@@ -73,12 +74,17 @@ export interface FirecrawlDocument {
  * Defines the options and configurations available for scraping web content.
  */
 export interface ScrapeParams {
-  formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "full@scrennshot")[];
+  formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "extract" | "full@scrennshot")[];
   headers?: Record<string, string>;
   includeTags?: string[];
   excludeTags?: string[];
   onlyMainContent?: boolean;
-    waitFor?: number;
+  extract?: {
+    prompt?: string;
+    schema?: z.ZodSchema | any;
+    systemPrompt?: string;
+  };
+  waitFor?: number;
   timeout?: number;
 }
 
@@ -196,18 +202,20 @@ export default class FirecrawlApp {
       Authorization: `Bearer ${this.apiKey}`,
     } as AxiosRequestHeaders;
     let jsonData: any = { url, ...params };
-    if (jsonData?.extractorOptions?.extractionSchema) {
-      let schema = jsonData.extractorOptions.extractionSchema;
-      // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
-      if (schema instanceof z.ZodSchema) {
+    if (jsonData?.extract?.schema) {
+      let schema = jsonData.extract.schema;
+
+      // Try parsing the schema as a Zod schema
+      try {
         schema = zodToJsonSchema(schema);
+      } catch (error) {
+        
       }
       jsonData = {
         ...jsonData,
-        extractorOptions: {
-          ...jsonData.extractorOptions,
-          extractionSchema: schema,
-          mode: jsonData.extractorOptions.mode || "llm-extraction",
+        extract: {
+          ...jsonData.extract,
+          schema: schema,
         },
       };
     }

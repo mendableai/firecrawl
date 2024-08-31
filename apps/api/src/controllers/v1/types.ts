@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
-import { PageOptions } from "../../lib/entities";
+import { ExtractorOptions, PageOptions } from "../../lib/entities";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { PlanType } from "../../types";
 
@@ -11,7 +11,8 @@ export type Format =
   | "rawHtml"
   | "links"
   | "screenshot"
-  | "screenshot@fullPage";
+  | "screenshot@fullPage"
+  | "extract";
 
 export const url = z.preprocess(
   (x) => {
@@ -40,6 +41,15 @@ export const url = z.preprocess(
 
 const strictMessage = "Unrecognized key in body -- please review the v1 API documentation for request body changes";
 
+export const extractOptions = z.object({
+  mode: z.enum(["llm"]).default("llm"),
+  schema: z.any().optional(),
+  systemPrompt: z.string().default("Based on the information on the page, extract the information from the schema."),
+  prompt: z.string().optional()
+}).strict(strictMessage);
+
+export type ExtractOptions = z.infer<typeof extractOptions>;
+
 export const scrapeOptions = z.object({
   formats: z
     .enum([
@@ -49,6 +59,7 @@ export const scrapeOptions = z.object({
       "links",
       "screenshot",
       "screenshot@fullPage",
+      "extract"
     ])
     .array()
     .optional()
@@ -57,17 +68,33 @@ export const scrapeOptions = z.object({
   includeTags: z.string().array().optional(),
   excludeTags: z.string().array().optional(),
   onlyMainContent: z.boolean().default(true),
-  timeout: z.number().int().positive().finite().safe().default(30000), // default?
+  timeout: z.number().int().positive().finite().safe().default(30000),
   waitFor: z.number().int().nonnegative().finite().safe().default(0),
+  extract: extractOptions.optional(),
   parsePDF: z.boolean().default(true),
-}).strict(strictMessage);
+}).strict(strictMessage)
+
 
 export type ScrapeOptions = z.infer<typeof scrapeOptions>;
 
 export const scrapeRequestSchema = scrapeOptions.extend({
   url,
   origin: z.string().optional().default("api"),
-}).strict(strictMessage);
+}).strict(strictMessage).refine(
+  (obj) => {
+    const hasExtractFormat = obj.formats?.includes("extract");
+    const hasExtractOptions = obj.extract !== undefined;
+    return (hasExtractFormat && hasExtractOptions) || (!hasExtractFormat && !hasExtractOptions);
+  },
+  {
+    message: "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
+  }
+).transform((obj) => {
+  if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
+    return { ...obj, timeout: 60000 };
+  }
+  return obj;
+});
 
 // export type ScrapeRequest = {
 //   url: string;
@@ -118,6 +145,13 @@ export const crawlRequestSchema = crawlerOptions.extend({
 //   scrapeOptions?: Exclude<ScrapeRequest, "url">;
 // };
 
+// export type ExtractorOptions = {
+//   mode: "markdown" | "llm-extraction" | "llm-extraction-from-markdown" | "llm-extraction-from-raw-html";
+//   extractionPrompt?: string;
+//   extractionSchema?: Record<string, any>;
+// }
+
+
 export type CrawlRequest = z.infer<typeof crawlRequestSchema>;
 
 export const mapRequestSchema = crawlerOptions.extend({
@@ -138,6 +172,7 @@ export type MapRequest = z.infer<typeof mapRequestSchema>;
 
 export type Document = {
   markdown?: string;
+  extract?: string;
   html?: string;
   rawHtml?: string;
   links?: string[];
@@ -280,6 +315,7 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     includeMarkdown: x.formats.includes("markdown"),
     includeHtml: x.formats.includes("html"),
     includeRawHtml: x.formats.includes("rawHtml"),
+    includeExtract: x.formats.includes("extract"),
     onlyIncludeTags: x.includeTags,
     removeTags: x.excludeTags,
     onlyMainContent: x.onlyMainContent,
@@ -288,6 +324,15 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     screenshot: x.formats.includes("screenshot"),
     fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
     parsePDF: x.parsePDF,
+  };
+}
+
+export function legacyExtractorOptions(x: ExtractOptions): ExtractorOptions {
+  return {
+    mode: x.mode ? "llm-extraction" : "markdown",
+    extractionPrompt: x.prompt ?? "Based on the information on the page, extract the information from the schema.",
+    extractionSchema: x.schema,
+    userPrompt: x.prompt ?? "",
   };
 }
 
@@ -311,6 +356,7 @@ export function legacyDocumentConverter(doc: any): Document {
     links: doc.linksOnPage,
     rawHtml: doc.rawHtml,
     html: doc.html,
+    extract: doc.llm_extraction,
     screenshot: doc.screenshot ?? doc.fullPageScreenshot,
     metadata: {
       ...doc.metadata,

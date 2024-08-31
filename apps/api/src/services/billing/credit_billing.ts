@@ -199,21 +199,44 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     );
   }
 
+  
+
   // Free credits, no coupons
-  if (subscriptionError || !subscription) {
+  if (!subscription || subscriptionError) {
+
     // If there is no active subscription but there are available coupons
     if (couponCredits >= credits) {
       return { success: true, message: "Sufficient credits available", remainingCredits: couponCredits };
     }
 
-    const { data: creditUsages, error: creditUsageError } =
-      await supabase_service
+    let creditUsages;
+    let creditUsageError;
+    let retries = 0;
+    const maxRetries = 3;
+    const retryInterval = 2000; // 2 seconds
+
+    while (retries < maxRetries) {
+      const result = await supabase_service
         .from("credit_usage")
         .select("credits_used")
         .is("subscription_id", null)
         .eq("team_id", team_id);
 
+      creditUsages = result.data;
+      creditUsageError = result.error;
+
+      if (!creditUsageError) {
+        break;
+      }
+
+      retries++;
+      if (retries < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, retryInterval));
+      }
+    }
+
     if (creditUsageError) {
+      Logger.error(`Credit usage error after ${maxRetries} attempts: ${creditUsageError}`);
       throw new Error(
         `Failed to retrieve credit usage for team_id: ${team_id}`
       );

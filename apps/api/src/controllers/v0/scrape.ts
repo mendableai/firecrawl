@@ -254,13 +254,26 @@ export async function scrapeController(req: Request, res: Response) {
         }
       }
     }
+    
+    let doc = result.data;
+    if (!pageOptions || !pageOptions.includeRawHtml) {
+      if (doc && doc.rawHtml) {
+        delete doc.rawHtml;
+      }
+    }
+  
+    if(pageOptions && pageOptions.includeExtract) {
+      if(!pageOptions.includeMarkdown && doc && doc.markdown) {
+        delete doc.markdown;
+      }
+    }
 
     logJob({
       job_id: jobId,
       success: result.success,
       message: result.error,
       num_docs: 1,
-      docs: [result.data],
+      docs: [doc],
       time_taken: timeTakenInSeconds,
       team_id: team_id,
       mode: "scrape",

@@ -62,6 +62,7 @@ export function waitForJob(jobId: string, timeout: number) {
           clearInterval(int);
           resolve((await getScrapeQueue().getJob(jobId)).returnvalue);
         } else if (state === "failed") {
+          // console.log("failed", (await getScrapeQueue().getJob(jobId)).failedReason);
           clearInterval(int);
           reject((await getScrapeQueue().getJob(jobId)).failedReason);
         }
