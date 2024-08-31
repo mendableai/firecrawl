@@ -64,7 +64,7 @@ async function getKeyAndPriceId(normalizedApi: string): Promise<{
   let data: { key: string, team_id: string, price_id: string }[];
 
   try {
-    data = await db.execute(sql`SELECT key, team_id, price_id FROM get_key_and_price_id_2(${normalizedApi})`);
+    data = (await db.execute(sql`SELECT key, team_id, price_id FROM get_key_and_price_id_2(${normalizedApi})`)).rows as any;
   } catch (error) {
     Sentry.captureException(error);
     Logger.error(`RPC ERROR (get_key_and_price_id_2): ${error.message}`);

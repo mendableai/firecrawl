@@ -1,12 +1,15 @@
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
+import { drizzle, NodePgDatabase } from 'drizzle-orm/node-postgres';
+import { Pool } from "pg";
 
 function createDB() {
     if (process.env.DATABASE_URI) {
-        const client = postgres(process.env.DATABASE_URI);
-        return drizzle(client);
+        const pool = new Pool({
+            connectionString: process.env.DATABASE_URI,
+        })
+
+        return drizzle(pool);
     } else {
-        return null;
+        return { no: true };
     }
 }
 
@@ -18,7 +21,7 @@ const db = new Proxy(
         get: function (target, prop, receiver) {
         const client = target;
         // If the DB client is not initialized, intercept property access to provide meaningful error feedback.
-        if (client === null) {
+        if ((client as any).no === true) {
             return () => {
                 throw new Error("Database client is not configured.");
             };
@@ -31,6 +34,6 @@ const db = new Proxy(
         return Reflect.get(client, prop, receiver);
         },
     }
-);
+) as unknown as NodePgDatabase<Record<string, never>>;
 
 export default db;

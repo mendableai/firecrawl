@@ -277,7 +277,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
       } else {
         let creditUsages: { total_credits_used: number }[];
         try {
-          creditUsages = await db.execute(sql`SELECT * FROM get_credit_usage_2(${subscription.id}, ${subscription.currentPeriodStart}, ${subscription.currentPeriodEnd})`)
+          creditUsages = (await db.execute(sql`SELECT * FROM get_credit_usage_2(${subscription.id}, ${subscription.currentPeriodStart}, ${subscription.currentPeriodEnd})`)).rows as any;
         } catch (error) {
           Logger.error(`Error calculating credit usage: ${error}`);
         }
