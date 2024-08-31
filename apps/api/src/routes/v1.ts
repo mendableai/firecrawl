@@ -15,6 +15,7 @@ import { crawlStatusWSController } from "../controllers/v1/crawl-status-ws";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { crawlCancelController } from "../controllers/v1/crawl-cancel";
 import { Logger } from "../lib/logger";
+import { scrapeStatusController } from "../controllers/v1/scrape-status";
 // import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
 // import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
 // import { searchController } from "../../src/controllers/v1/search";
@@ -122,6 +123,11 @@ v1Router.get(
     "/crawl/:jobId",
     authMiddleware(RateLimiterMode.CrawlStatus),
     wrap(crawlStatusController)
+);
+
+v1Router.get(
+    "/scrape/:jobId",
+    wrap(scrapeStatusController)
 );
 
 v1Router.ws(
