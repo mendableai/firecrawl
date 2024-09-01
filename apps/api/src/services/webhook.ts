@@ -86,7 +86,7 @@ export const callWebhook = async (
           headers: {
             "Content-Type": "application/json",
           },
-          timeout: 10000, // 10 seconds timeout
+          timeout: v1 ? 10000 : 30000, // 10 seconds timeout (v1)
         }
       )
       .catch((error) => {
