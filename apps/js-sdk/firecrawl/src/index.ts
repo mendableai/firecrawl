@@ -111,6 +111,7 @@ export interface CrawlParams {
   allowExternalLinks?: boolean;
   ignoreSitemap?: boolean;
   scrapeOptions?: ScrapeParams;
+  webhook?: string;
 }
 
 /**
