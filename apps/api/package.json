@@ -94,7 +94,7 @@
     "moment": "^2.29.4",
     "mongoose": "^8.4.4",
     "natural": "^7.0.7",
-    "openai": "^4.52.2",
+    "openai": "^4.57.0",
     "pdf-parse": "^1.1.1",
     "pos": "^0.4.2",
     "posthog-node": "^4.0.1",

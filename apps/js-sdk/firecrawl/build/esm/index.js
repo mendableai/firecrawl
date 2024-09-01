@@ -1,5 +1,4 @@
 import axios from "axios";
-import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WebSocket } from "isows";
 import { TypedEventTarget } from "typescript-event-target";
@@ -28,18 +27,19 @@ export default class FirecrawlApp {
             Authorization: `Bearer ${this.apiKey}`,
         };
         let jsonData = { url, ...params };
-        if (jsonData?.extractorOptions?.extractionSchema) {
-            let schema = jsonData.extractorOptions.extractionSchema;
-            // Check if schema is an instance of ZodSchema to correctly identify Zod schemas
-            if (schema instanceof z.ZodSchema) {
+        if (jsonData?.extract?.schema) {
+            let schema = jsonData.extract.schema;
+            // Try parsing the schema as a Zod schema
+            try {
                 schema = zodToJsonSchema(schema);
+            }
+            catch (error) {
             }
             jsonData = {
                 ...jsonData,
-                extractorOptions: {
-                    ...jsonData.extractorOptions,
-                    extractionSchema: schema,
-                    mode: jsonData.extractorOptions.mode || "llm-extraction",
+                extract: {
+                    ...jsonData.extract,
+                    schema: schema,
                 },
             };
         }

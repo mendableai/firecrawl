@@ -1,4 +1,5 @@
 import { AxiosResponse, AxiosRequestHeaders } from "axios";
+import { z } from "zod";
 import { TypedEventTarget } from "typescript-event-target";
 /**
  * Configuration interface for FirecrawlApp.
@@ -58,6 +59,7 @@ export interface FirecrawlDocument {
     html?: string;
     rawHtml?: string;
     links?: string[];
+    extract?: Record<any, any>;
     screenshot?: string;
     metadata?: FirecrawlDocumentMetadata;
 }
@@ -66,11 +68,16 @@ export interface FirecrawlDocument {
  * Defines the options and configurations available for scraping web content.
  */
 export interface ScrapeParams {
-    formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "full@scrennshot")[];
+    formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "extract" | "full@scrennshot")[];
     headers?: Record<string, string>;
     includeTags?: string[];
     excludeTags?: string[];
     onlyMainContent?: boolean;
+    extract?: {
+        prompt?: string;
+        schema?: z.ZodSchema | any;
+        systemPrompt?: string;
+    };
     waitFor?: number;
     timeout?: number;
 }

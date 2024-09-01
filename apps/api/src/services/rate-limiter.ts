@@ -104,6 +104,14 @@ export const devBRateLimiter = new RateLimiterRedis({
   duration: 60, // Duration in seconds
 });
 
+
+export const scrapeStatusRateLimiter = new RateLimiterRedis({
+  storeClient: redisRateLimitClient,
+  keyPrefix: "scrape-status",
+  points: 400,
+  duration: 60, // Duration in seconds
+});
+
 export function getRateLimiter(
   mode: RateLimiterMode,
   token: string,

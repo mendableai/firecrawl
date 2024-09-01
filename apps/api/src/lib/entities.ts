@@ -12,6 +12,7 @@ export interface Progress {
 
 export type PageOptions = {
   includeMarkdown?: boolean;
+  includeExtract?: boolean;
   onlyMainContent?: boolean;
   includeHtml?: boolean;
   includeRawHtml?: boolean;
@@ -35,6 +36,7 @@ export type ExtractorOptions = {
   mode: "markdown" | "llm-extraction" | "llm-extraction-from-markdown" | "llm-extraction-from-raw-html";
   extractionPrompt?: string;
   extractionSchema?: Record<string, any>;
+  userPrompt?: string;
 }
 
 export type SearchOptions = {

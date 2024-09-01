@@ -37,3 +37,22 @@ export const supabaseGetJobsById = async (jobIds: string[]) => {
 
   return data;
 };
+
+
+export const supabaseGetJobByIdOnlyData = async (jobId: string) => {
+  const { data, error } = await supabase_service
+    .from("firecrawl_jobs")
+    .select("docs, team_id")
+    .eq("job_id", jobId)
+    .single();
+
+  if (error) {
+    return null;
+  }
+
+  if (!data) {
+    return null;
+  }
+
+  return data;
+};

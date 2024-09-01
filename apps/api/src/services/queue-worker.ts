@@ -192,16 +192,15 @@ async function processJob(job: Job, token: string) {
       job,
       token,
     });
+
+    // Better if we throw here so we capture with the correct error
+    if(!success) {
+      throw new Error(message);
+    }
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
     const rawHtml = docs[0] ? docs[0].rawHtml : "";
-
-    if (job.data.crawl_id && (!job.data.pageOptions || !job.data.pageOptions.includeRawHtml)) {
-      if (docs[0] && docs[0].rawHtml) {
-        delete docs[0].rawHtml;
-      }
-    }
 
     const data = {
       success,
