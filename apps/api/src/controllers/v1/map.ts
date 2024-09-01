@@ -30,8 +30,8 @@ export async function mapController(
   req.body = mapRequestSchema.parse(req.body);
 
 
-  const limit = req.body.limit ?? 5000;
-  
+  const limit : number = req.body.limit ?? 5000;
+
   const id = uuidv4();
   let links: string[] = [req.body.url];
 
