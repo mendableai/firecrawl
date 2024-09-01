@@ -91,7 +91,7 @@ export const callWebhook = async (
       )
       .catch((error) => {
         Logger.error(
-          `Error sending webhook for team ID: ${teamId}, error: ${error.message}`
+          `Axios error sending webhook for team ID: ${teamId}, error: ${error.message}`
         );
       });
   } catch (error) {
