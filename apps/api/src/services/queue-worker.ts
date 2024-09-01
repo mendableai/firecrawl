@@ -288,6 +288,11 @@ async function processJob(job: Job, token: string) {
       }
 
       if (await finishCrawl(job.data.crawl_id)) {
+        // v1 web hooks, call when done with no data, but with event completed
+        if (job.data.v1 && job.data.webhook) {
+          callWebhook(job.data.team_id, job.data.crawl_id, [], job.data.webhook, job.data.v1, "crawl.completed");
+        }
+        
         const jobIDs = await getCrawlJobs(job.data.crawl_id);
 
         const jobs = (await Promise.all(jobIDs.map(async x => {
@@ -351,10 +356,7 @@ async function processJob(job: Job, token: string) {
         if (!job.data.v1) {
           callWebhook(job.data.team_id, job.data.crawl_id, data, job.data.webhook, job.data.v1, "crawl.completed");
         }
-        // v1 web hooks, call when done with no data, but with event completed
-        if (job.data.v1 && job.data.webhook) {
-          callWebhook(job.data.team_id, job.data.crawl_id, [], job.data.webhook, job.data.v1, "crawl.completed");
-        }
+        
       }
     }
 
