@@ -221,12 +221,10 @@ async function processJob(job: Job, token: string) {
 
     // No idea what this does and when it is called.
     if (job.data.mode === "crawl" && !job.data.v1) {
-      callWebhook(job.data.team_id, job.id as string, data, job.data.webhook, job.data.v1).catch((error) => {
-        Logger.error(`Error calling webhook for job (1 - mode crawl - v0) ${job.id} - ${error}`);
-      });
+      callWebhook(job.data.team_id, job.id as string, data, job.data.webhook, job.data.v1);
     }
     if (job.data.webhook && job.data.mode !== "crawl" && job.data.v1) {
-      await callWebhook(job.data.team_id, job.data.crawl_id, data, job.data.webhook, job.data.v1);
+      callWebhook(job.data.team_id, job.data.crawl_id, data, job.data.webhook, job.data.v1);
     }
 
     if (job.data.crawl_id) {
@@ -351,15 +349,11 @@ async function processJob(job: Job, token: string) {
         };
           // v0 web hooks, call when done with all the data
         if (!job.data.v1) {
-          callWebhook(job.data.team_id, job.data.crawl_id, data, job.data.webhook, job.data.v1, "crawl.completed").catch((error) => {
-            Logger.error(`Error calling webhook for job ${job.id} - ${error}`);
-          });
+          callWebhook(job.data.team_id, job.data.crawl_id, data, job.data.webhook, job.data.v1, "crawl.completed");
         }
         // v1 web hooks, call when done with no data, but with event completed
         if (job.data.v1 && job.data.webhook) {
-          callWebhook(job.data.team_id, job.data.crawl_id, [], job.data.webhook, job.data.v1, "crawl.completed").catch((error) => {
-            Logger.error(`Error calling webhook for job ${job.id} - ${error}`);
-          });
+          callWebhook(job.data.team_id, job.data.crawl_id, [], job.data.webhook, job.data.v1, "crawl.completed");
         }
       }
     }
@@ -407,14 +401,10 @@ async function processJob(job: Job, token: string) {
     };
 
     if (!job.data.v1 && (job.data.mode === "crawl" || job.data.crawl_id)) {
-      callWebhook(job.data.team_id, job.data.crawl_id ?? job.id as string, data, job.data.webhook, job.data.v1).catch((error) => {
-        Logger.error(`Error calling webhook for job (catch - v0) ${job.id} - ${error}`);
-      });
+      callWebhook(job.data.team_id, job.data.crawl_id ?? job.id as string, data, job.data.webhook, job.data.v1);
     }
     if(job.data.v1) {
-      callWebhook(job.data.team_id, job.id as string, [], job.data.webhook, job.data.v1, "crawl.failed").catch((error) => {
-        Logger.error(`Error calling webhook for job (catch - v1) ${job.id} - ${error}`);
-      });
+      callWebhook(job.data.team_id, job.id as string, [], job.data.webhook, job.data.v1, "crawl.failed");
     }
     
     if (job.data.crawl_id) {

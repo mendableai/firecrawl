@@ -43,7 +43,12 @@ export const callWebhook = async (
     }
 
     let dataToSend = [];
-    if (data && data.result && data.result.links && data.result.links.length !== 0) {
+    if (
+      data &&
+      data.result &&
+      data.result.links &&
+      data.result.links.length !== 0
+    ) {
       for (let i = 0; i < data.result.links.length; i++) {
         if (v1) {
           dataToSend.push(
@@ -59,26 +64,36 @@ export const callWebhook = async (
       }
     }
 
-    axios.post(
-      webhookUrl,
-      {
-        success: !v1 ? data.success : eventType === "crawl.page" ? data.success : true,
-        type: eventType,
-        [v1 ? 'id' : 'jobId']: id,
-        data: dataToSend,
-        error: !v1 ? data?.error || undefined : eventType === "crawl.page" ? data?.error || undefined : undefined,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
+    axios
+      .post(
+        webhookUrl,
+        {
+          success: !v1
+            ? data.success
+            : eventType === "crawl.page"
+            ? data.success
+            : true,
+          type: eventType,
+          [v1 ? "id" : "jobId"]: id,
+          data: dataToSend,
+          error: !v1
+            ? data?.error || undefined
+            : eventType === "crawl.page"
+            ? data?.error || undefined
+            : undefined,
         },
-        timeout: 10000, // 10 seconds timeout
-      }
-    ).catch((error) => {
-      Logger.error(
-        `Error sending webhook for team ID: ${teamId}, error: ${error.message}`
-      );
-    });
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          timeout: 10000, // 10 seconds timeout
+        }
+      )
+      .catch((error) => {
+        Logger.error(
+          `Error sending webhook for team ID: ${teamId}, error: ${error.message}`
+        );
+      });
   } catch (error) {
     Logger.debug(
       `Error sending webhook for team ID: ${teamId}, error: ${error.message}`
