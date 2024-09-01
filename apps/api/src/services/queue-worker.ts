@@ -357,7 +357,7 @@ async function processJob(job: Job, token: string) {
         }
         // v1 web hooks, call when done with no data, but with event completed
         if (job.data.v1 && job.data.webhook) {
-          callWebhook(job.data.team_id, job.id as string, [], job.data.webhook, job.data.v1, "crawl.completed").catch((error) => {
+          callWebhook(job.data.team_id, job.data.crawl_id, [], job.data.webhook, job.data.v1, "crawl.completed").catch((error) => {
             Logger.error(`Error calling webhook for job ${job.id} - ${error}`);
           });
         }
