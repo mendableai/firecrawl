@@ -154,3 +154,6 @@ export type PlanType =
   | "growthdouble"
   | "free"
   | "";
+
+
+export type WebhookEventType = "crawl.page" | "crawl.started" | "crawl.completed" | "crawl.failed";
