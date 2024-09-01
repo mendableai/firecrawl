@@ -10,7 +10,8 @@ export const callWebhook = async (
   data: any | null,
   specified?: string,
   v1 = false,
-  eventType: WebhookEventType = "crawl.page"
+  eventType: WebhookEventType = "crawl.page",
+  awaitWebhook: boolean = false
 ) => {
   try {
     const selfHostedUrl = process.env.SELF_HOSTED_WEBHOOK_URL?.replace(
@@ -64,36 +65,69 @@ export const callWebhook = async (
       }
     }
 
-    axios
-      .post(
-        webhookUrl,
-        {
-          success: !v1
-            ? data.success
-            : eventType === "crawl.page"
-            ? data.success
-            : true,
-          type: eventType,
-          [v1 ? "id" : "jobId"]: id,
-          data: dataToSend,
-          error: !v1
-            ? data?.error || undefined
-            : eventType === "crawl.page"
-            ? data?.error || undefined
-            : undefined,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
+    if (awaitWebhook) {
+      try {
+        await axios.post(
+          webhookUrl,
+          {
+            success: !v1
+              ? data.success
+              : eventType === "crawl.page"
+              ? data.success
+              : true,
+            type: eventType,
+            [v1 ? "id" : "jobId"]: id,
+            data: dataToSend,
+            error: !v1
+              ? data?.error || undefined
+              : eventType === "crawl.page"
+              ? data?.error || undefined
+              : undefined,
           },
-          timeout: v1 ? 10000 : 30000, // 10 seconds timeout (v1)
-        }
-      )
-      .catch((error) => {
-        Logger.error(
-          `Axios error sending webhook for team ID: ${teamId}, error: ${error.message}`
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+            timeout: v1 ? 10000 : 30000, // 10 seconds timeout (v1)
+          }
         );
-      });
+      } catch (error) {
+        Logger.error(
+          `Axios error (0) sending webhook for team ID: ${teamId}, error: ${error.message}`
+        );
+      }
+    } else {
+      axios
+        .post(
+          webhookUrl,
+          {
+            success: !v1
+              ? data.success
+              : eventType === "crawl.page"
+              ? data.success
+              : true,
+            type: eventType,
+            [v1 ? "id" : "jobId"]: id,
+            data: dataToSend,
+            error: !v1
+              ? data?.error || undefined
+              : eventType === "crawl.page"
+              ? data?.error || undefined
+              : undefined,
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+            },
+            timeout: v1 ? 10000 : 30000, // 10 seconds timeout (v1)
+          }
+        )
+        .catch((error) => {
+          Logger.error(
+            `Axios error sending webhook for team ID: ${teamId}, error: ${error.message}`
+          );
+        });
+    }
   } catch (error) {
     Logger.debug(
       `Error sending webhook for team ID: ${teamId}, error: ${error.message}`

@@ -266,12 +266,14 @@ async function processJob(job: Job, token: string) {
       );
     }
     if (job.data.webhook && job.data.mode !== "crawl" && job.data.v1) {
-      callWebhook(
+      await callWebhook(
         job.data.team_id,
         job.data.crawl_id,
         data,
         job.data.webhook,
-        job.data.v1
+        job.data.v1,
+        "crawl.page",
+        true
       );
     }
 
@@ -344,17 +346,7 @@ async function processJob(job: Job, token: string) {
       }
 
       if (await finishCrawl(job.data.crawl_id)) {
-        // v1 web hooks, call when done with no data, but with event completed
-        if (job.data.v1 && job.data.webhook) {
-          callWebhook(
-            job.data.team_id,
-            job.data.crawl_id,
-            [],
-            job.data.webhook,
-            job.data.v1,
-            "crawl.completed"
-          );
-        }
+        
 
         if (!job.data.v1) {
           const jobIDs = await getCrawlJobs(job.data.crawl_id);
@@ -400,7 +392,6 @@ async function processJob(job: Job, token: string) {
             docs: fullDocs,
           };
 
-          console.log(fullDocs.length);
           // v0 web hooks, call when done with all the data
           if (!job.data.v1) {
             callWebhook(
@@ -419,6 +410,18 @@ async function processJob(job: Job, token: string) {
             sc.cancelled || jobStatuses.some((x) => x === "failed")
               ? "failed"
               : "completed";
+
+          // v1 web hooks, call when done with no data, but with event completed
+          if (job.data.v1 && job.data.webhook) {
+            callWebhook(
+              job.data.team_id,
+              job.data.crawl_id,
+              [],
+              job.data.webhook,
+              job.data.v1,
+              "crawl.completed"
+              );
+            }
 
           await logJob({
             job_id: job.data.crawl_id,
