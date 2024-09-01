@@ -12,6 +12,12 @@ export async function scrapeStatusController(req: any, res: any) {
 
     const job = await supabaseGetJobByIdOnlyData(req.params.jobId);
 
+    if(job.team_id !== "41bdbfe1-0579-4d9b-b6d5-809f16be12f5"){
+      return res.status(403).json({
+        success: false,
+        error: "You are not allowed to access this resource.",
+      });
+    }
     return res.status(200).json({
       success: true,
       data: job?.docs[0],
