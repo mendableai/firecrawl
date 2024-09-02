@@ -302,7 +302,7 @@ export function legacyCrawlerOptions(x: CrawlerOptions) {
     includes: x.includePaths,
     excludes: x.excludePaths,
     maxCrawledLinks: x.limit,
-    maxCrawledDepth: x.maxDepth,
+    maxDepth: x.maxDepth,
     limit: x.limit,
     generateImgAltText: false,
     allowBackwardCrawling: x.allowBackwardLinks,
