@@ -127,5 +127,6 @@ export async function mapController(
   return res.status(200).json({
     success: true,
     links: linksToReturn,
+    scrape_id: req.body.origin?.includes("website") ? id : undefined,
   });
 }
