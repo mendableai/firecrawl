@@ -346,12 +346,12 @@ async function processJob(job: Job, token: string) {
       }
 
       if (await finishCrawl(job.data.crawl_id)) {
-        
-
         if (!job.data.v1) {
           const jobIDs = await getCrawlJobs(job.data.crawl_id);
 
-          const jobs = (await getJobs(jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
+          const jobs = (await getJobs(jobIDs)).sort(
+            (a, b) => a.timestamp - b.timestamp
+          );
           const jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
           const jobStatus =
             sc.cancelled || jobStatuses.some((x) => x === "failed")
@@ -405,7 +405,9 @@ async function processJob(job: Job, token: string) {
           }
         } else {
           const jobIDs = await getCrawlJobs(job.data.crawl_id);
-          const jobStatuses = await Promise.all(jobIDs.map((x) => getScrapeQueue().getJobState(x)));
+          const jobStatuses = await Promise.all(
+            jobIDs.map((x) => getScrapeQueue().getJobState(x))
+          );
           const jobStatus =
             sc.cancelled || jobStatuses.some((x) => x === "failed")
               ? "failed"
@@ -420,8 +422,8 @@ async function processJob(job: Job, token: string) {
               job.data.webhook,
               job.data.v1,
               "crawl.completed"
-              );
-            }
+            );
+          }
 
           await logJob({
             job_id: job.data.crawl_id,

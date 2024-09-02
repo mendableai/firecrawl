@@ -28,9 +28,11 @@ export async function startWebScraperPipeline({
     extractorOptions: job.data.extractorOptions,
     pageOptions: {
       ...job.data.pageOptions,
-      ...(job.data.crawl_id ? ({
-        includeRawHtml: true,
-      }): {}),
+      ...(job.data.crawl_id
+        ? {
+            includeRawHtml: true,
+          }
+        : {}),
     },
     inProgress: (progress) => {
       Logger.debug(`🐂 Job in progress ${job.id}`);
@@ -69,7 +71,7 @@ export async function runWebScraper({
   team_id,
   bull_job_id,
   priority,
-  is_scrape=false,
+  is_scrape = false,
 }: RunWebScraperParams): Promise<RunWebScraperResult> {
   try {
     const provider = new WebScraperDataProvider();
@@ -93,7 +95,7 @@ export async function runWebScraper({
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
         priority,
-        teamId: team_id
+        teamId: team_id,
       });
     }
     const docs = (await provider.getDocuments(false, (progress: Progress) => {
@@ -117,7 +119,7 @@ export async function runWebScraper({
         })
       : docs;
 
-    if(is_scrape === false) {
+    if (is_scrape === false) {
       const billingResult = await billTeam(team_id, filteredDocs.length);
       if (!billingResult.success) {
         // throw new Error("Failed to bill team, no subscription was found");
@@ -128,8 +130,6 @@ export async function runWebScraper({
         };
       }
     }
-
-    
 
     // This is where the returnvalue from the job is set
     onSuccess(filteredDocs, mode);
@@ -160,12 +160,12 @@ const saveJob = async (job: Job, result: any, token: string, mode: string) => {
       // } catch (error) {
       //   // I think the job won't exist here anymore
       // }
-    // } else {
-    //   try {
-    //     await job.moveToCompleted(result, token, false);
-    //   } catch (error) {
-    //     // I think the job won't exist here anymore
-    //   }
+      // } else {
+      //   try {
+      //     await job.moveToCompleted(result, token, false);
+      //   } catch (error) {
+      //     // I think the job won't exist here anymore
+      //   }
     }
     ScrapeEvents.logJobEvent(job, "completed");
   } catch (error) {
