@@ -225,6 +225,7 @@ export type ScrapeResponse =
       success: true;
       warning?: string;
       data: Document;
+      scrape_id?: string;
     };
 
 export interface ScrapeResponseRequestTest {
