@@ -32,6 +32,7 @@ export async function parseMarkdown(html: string): Promise<string> {
 
       markdownContent = processMultiLineLinks(markdownContent);
       markdownContent = removeSkipToContentLinks(markdownContent);
+      Logger.info(`HTML to Markdown conversion using Go parser successful`);
       return markdownContent;
     }
   } catch (error) {
