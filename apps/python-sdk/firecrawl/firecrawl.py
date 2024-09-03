@@ -238,7 +238,7 @@ class FirecrawlApp:
         if response.status_code == 200:
             response = response.json()
             if response['success'] and 'links' in response:
-                return response
+                return response['links']
             else:
                 raise Exception(f'Failed to map URL. Error: {response["error"]}')
         else:
