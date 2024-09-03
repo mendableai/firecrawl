@@ -167,6 +167,31 @@ function isZodSchema(schema: unknown): schema is z.ZodType {
   return schema instanceof z.ZodType;
 }
 
+function getFetch(): typeof fetch {
+  /**
+   * Browser or Node 18+
+   */
+  try {
+    if (typeof globalThis !== "undefined" && "fetch" in globalThis) {
+      return fetch.bind(globalThis);
+    }
+  } catch (err) {
+    
+  }
+
+  /**
+   * Existing polyfilled fetch
+   */
+  if (typeof fetch !== "undefined") {
+    return fetch;
+  }
+
+  /**
+   * Environments where fetch cannot be found and must be polyfilled
+   */
+  return require("cross-fetch") as typeof fetch;
+}
+
 /**
  * Error class for Firecrawl API errors.
  * 
@@ -200,6 +225,7 @@ export class FirecrawlApiError extends Error {
 export default class FirecrawlApp {
   public apiKey: string;
   public apiUrl: string;
+  private fetch: typeof fetch;
 
   /**
    * Initializes a new instance of the FirecrawlApp class.
@@ -208,6 +234,7 @@ export default class FirecrawlApp {
   constructor({ apiKey = null, apiUrl = null }: FirecrawlAppConfig) {
     this.apiKey = apiKey || "";
     this.apiUrl = apiUrl || "https://api.firecrawl.dev";
+    this.fetch = getFetch();
   }
 
   /**
@@ -244,7 +271,7 @@ export default class FirecrawlApp {
 
     // `fetch` will throw any network related errors
     // We don't need to worry about them since users can handle network errors themselves
-    const response = await fetch(request);
+    const response = await this.fetch(request);
 
     if (!response.ok) {
       throw new FirecrawlApiError(`Failed to scrape URL. Error: ${response.statusText}`, request, response);
@@ -296,7 +323,7 @@ export default class FirecrawlApp {
       body: JSON.stringify({ url, ...params }),
     })
 
-    const response = await fetch(request);
+    const response = await this.fetch(request);
 
     if (!response.ok) {
       throw new FirecrawlApiError(`Failed to crawl URL. Error: ${response.statusText}`, request, response);
@@ -319,7 +346,7 @@ export default class FirecrawlApp {
       body: JSON.stringify({ url, ...params }),
     })
 
-    const response = await fetch(request);
+    const response = await this.fetch(request);
 
     if (!response.ok) {
       throw new FirecrawlApiError(`Failed to crawl URL. Error: ${response.statusText}`, request, response);
@@ -339,7 +366,7 @@ export default class FirecrawlApp {
       headers: this.composeHeaders(),
     })
 
-    const response = await fetch(request);
+    const response = await this.fetch(request);
 
     if (!response.ok) {
       throw new FirecrawlApiError(`Failed to check crawl status. Error: ${response.statusText}`, request, response);
@@ -402,7 +429,7 @@ export default class FirecrawlApp {
       body: JSON.stringify({ url, ...params }),
     })
 
-    const response = await fetch(request);
+    const response = await this.fetch(request);
 
     if (!response.ok) {
       throw new FirecrawlApiError(`Failed to map URL. Error: ${response.statusText}`, request, response);
@@ -443,7 +470,7 @@ export default class FirecrawlApp {
         headers: this.composeHeaders(idempotencyKey),
       })
 
-      const response = await fetch(request);
+      const response = await this.fetch(request);
 
       if (!response.ok) {
         throw new FirecrawlApiError(`Failed to monitor crawl status. Error: ${response.statusText}`, request, response);

@@ -28,6 +28,7 @@
   "author": "Mendable.ai",
   "license": "MIT",
   "dependencies": {
+    "cross-fetch": "^4.0.0",
     "dotenv": "^16.4.5",
     "isows": "^1.0.4",
     "typescript-event-target": "^1.1.1",
