@@ -1,6 +1,6 @@
 export const defaultOrigin = "api";
 
-export const defaultTimeout = 45000; // 45 seconds
+export const defaultTimeout = 60000; // 60 seconds
 
 export const defaultPageOptions = {
   onlyMainContent: false,
@@ -12,7 +12,8 @@ export const defaultPageOptions = {
 };
 
 export const defaultCrawlerOptions = {
-  allowBackwardCrawling: false
+  allowBackwardCrawling: false,
+  limit: 10000
 }
 
 export const defaultCrawlPageOptions = {

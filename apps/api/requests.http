@@ -1,11 +1,15 @@
 ### Crawl Website
 POST http://localhost:3002/v0/scrape HTTP/1.1
-Authorization: Bearer fc
+Authorization: Bearer fc-
 content-type: application/json
 
 {
-    "url":"firecrawl.dev"
+    "url":"corterix.com"
 }
+
+### Check Job Status
+GET http://localhost:3002/v1/crawl/1dd0f924-a36f-4b96-94ea-32ed954dac67 HTTP/1.1
+Authorization: Bearer fc-
 
 
 ### Check Job Status

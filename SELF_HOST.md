@@ -65,7 +65,6 @@ BULL_AUTH_KEY= @
 LOGTAIL_KEY= # Use if you're configuring basic logging with logtail
 PLAYWRIGHT_MICROSERVICE_URL=  # set if you'd like to run a playwright fallback
 LLAMAPARSE_API_KEY= #Set if you have a llamaparse key you'd like to use to parse pdfs
-SERPER_API_KEY= #Set if you have a serper key you'd like to use as a search api
 SLACK_WEBHOOK_URL= # set if you'd like to send slack server health status messages
 POSTHOG_API_KEY= # set if you'd like to send posthog events like job logs
 POSTHOG_HOST= # set if you'd like to send posthog events like job logs
@@ -160,7 +159,7 @@ Errors related to connecting to Redis, such as timeouts or "Connection refused".
 
 **Solution:**
 - Ensure that the Redis service is up and running in your Docker environment.
-- Verify that the REDIS_URL and REDIS_RATE_LIMIT_URL in your .env file point to the correct Redis instance.
+- Verify that the REDIS_URL and REDIS_RATE_LIMIT_URL in your .env file point to the correct Redis instance, ensure that it points to the same URL in the `docker-compose.yaml` file (`redis://redis:6379`)
 - Check network settings and firewall rules that may block the connection to the Redis port.
 
 ### API endpoint does not respond

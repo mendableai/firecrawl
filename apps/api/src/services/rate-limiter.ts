@@ -14,18 +14,20 @@ const RATE_LIMITS = {
     standardNew: 10,
     standardnew: 10,
     growth: 50,
+    growthdouble: 50,
   },
   scrape: {
     default: 20,
-    free: 5,
+    free: 10,
     starter: 20,
-    standard: 50,
+    standard: 100,
     standardOld: 40,
     scale: 500,
-    hobby: 10,
-    standardNew: 50,
-    standardnew: 50,
-    growth: 500,
+    hobby: 20,
+    standardNew: 100,
+    standardnew: 100,
+    growth: 1000,
+    growthdouble: 1000,
   },
   search: {
     default: 20,
@@ -38,6 +40,20 @@ const RATE_LIMITS = {
     standardNew: 50,
     standardnew: 50,
     growth: 500,
+    growthdouble: 500,
+  },
+  map:{
+    default: 20,
+    free: 5,
+    starter: 20,
+    standard: 40,
+    standardOld: 40,
+    scale: 500,
+    hobby: 10,
+    standardNew: 50,
+    standardnew: 50,
+    growth: 500,
+    growthdouble: 500,
   },
   preview: {
     free: 5,
@@ -49,7 +65,7 @@ const RATE_LIMITS = {
   },
   crawlStatus: {
     free: 150,
-    default: 150,
+    default: 250,
   },
   testSuite: {
     free: 10000,
@@ -81,14 +97,34 @@ export const testSuiteRateLimiter = new RateLimiterRedis({
   duration: 60, // Duration in seconds
 });
 
+export const devBRateLimiter = new RateLimiterRedis({
+  storeClient: redisRateLimitClient,
+  keyPrefix: "dev-b",
+  points: 1200,
+  duration: 60, // Duration in seconds
+});
+
+
+export const scrapeStatusRateLimiter = new RateLimiterRedis({
+  storeClient: redisRateLimitClient,
+  keyPrefix: "scrape-status",
+  points: 400,
+  duration: 60, // Duration in seconds
+});
+
 export function getRateLimiter(
   mode: RateLimiterMode,
   token: string,
-  plan?: string
+  plan?: string,
+  teamId?: string
 ) {
 
-  if (token.includes("a01ccae") || token.includes("6254cf9")) {
+  if (token.includes("a01ccae") || token.includes("6254cf9") || token.includes("0f96e673") || token.includes("23befa1b")) {
     return testSuiteRateLimiter;
+  }
+
+  if(teamId && teamId === process.env.DEV_B_TEAM_ID) {
+    return devBRateLimiter;
   }
 
   const rateLimitConfig = RATE_LIMITS[mode]; // {default : 5}

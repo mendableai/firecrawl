@@ -1,85 +1,62 @@
-import { v4 as uuidv4 } from 'uuid';
 import FirecrawlApp from '@mendable/firecrawl-js';
-import { z } from "zod";
 
 const app = new FirecrawlApp({apiKey: "fc-YOUR_API_KEY"});
 
-// Scrape a website:
-const scrapeResult = await app.scrapeUrl('firecrawl.dev');
-console.log(scrapeResult.data.content)
+const main = async () => {
 
-// Crawl a website:
-const idempotencyKey = uuidv4(); // optional
-const crawlResult = await app.crawlUrl('mendable.ai', {crawlerOptions: {excludes: ['blog/*'], limit: 5}}, false, 2, idempotencyKey);
-console.log(crawlResult)
+  // Scrape a website:
+  const scrapeResult = await app.scrapeUrl('firecrawl.dev');
 
-const jobId = await crawlResult['jobId'];
-console.log(jobId);
-
-let job;
-while (true) {
-  job = await app.checkCrawlStatus(jobId);
-  if (job.status == 'completed') {
-    break;
+  if (scrapeResult.success) {
+    console.log(scrapeResult.markdown)
   }
-  await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
-}
 
-console.log(job.data[0].content);
+  // Crawl a website:
+  const crawlResult = await app.crawlUrl('mendable.ai', { excludePaths: ['blog/*'], limit: 5});
+  console.log(crawlResult);
 
-// Search for a query:
-const query = 'what is mendable?'
-const searchResult = await app.search(query)
-console.log(searchResult)
+  // Asynchronously crawl a website:
+  const asyncCrawlResult = await app.asyncCrawlUrl('mendable.ai', { excludePaths: ['blog/*'], limit: 5});
+  
+  if (asyncCrawlResult.success) {
+    const id = asyncCrawlResult.id;
+    console.log(id);
 
-// LLM Extraction:
-//  Define schema to extract contents into using zod schema
-const zodSchema = z.object({
-  top: z
-    .array(
-      z.object({
-        title: z.string(),
-        points: z.number(),
-        by: z.string(),
-        commentsURL: z.string(),
-      })
-    )
-    .length(5)
-    .describe("Top 5 stories on Hacker News"),
-});
+    let checkStatus;
+    if (asyncCrawlResult.success) {
+      while (true) {
+        checkStatus = await app.checkCrawlStatus(id);
+        if (checkStatus.success && checkStatus.status === 'completed') {
+          break;
+        }
+        await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
+      }
 
-let llmExtractionResult = await app.scrapeUrl("https://news.ycombinator.com", {
-  extractorOptions: { extractionSchema: zodSchema },
-});
-
-console.log(llmExtractionResult.data.llm_extraction);
-
-// Define schema to extract contents into using json schema
-const jsonSchema = {
-  "type": "object",
-  "properties": {
-    "top": {
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "title": {"type": "string"},
-          "points": {"type": "number"},
-          "by": {"type": "string"},
-          "commentsURL": {"type": "string"}
-        },
-        "required": ["title", "points", "by", "commentsURL"]
-      },
-      "minItems": 5,
-      "maxItems": 5,
-      "description": "Top 5 stories on Hacker News"
+      if (checkStatus.success && checkStatus.data) {
+        console.log(checkStatus.data[0].markdown);
+      }
     }
-  },
-  "required": ["top"]
+  }
+
+  // Map a website:
+  const mapResult = await app.mapUrl('https://firecrawl.dev');
+  console.log(mapResult)
+
+
+  // Crawl a website with WebSockets:
+  const watch = await app.crawlUrlAndWatch('mendable.ai', { excludePaths: ['blog/*'], limit: 5});
+
+  watch.addEventListener("document", doc => {
+    console.log("DOC", doc.detail);
+  });
+
+  watch.addEventListener("error", err => {
+    console.error("ERR", err.detail.error);
+  });
+
+  watch.addEventListener("done", state => {
+    console.log("DONE", state.detail.status);
+  });
 }
 
-llmExtractionResult = await app.scrapeUrl("https://news.ycombinator.com", {
-  extractorOptions: { extractionSchema: jsonSchema },
-});
-
-console.log(llmExtractionResult.data.llm_extraction);
+main()

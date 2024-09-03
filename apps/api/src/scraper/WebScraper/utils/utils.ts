@@ -41,10 +41,10 @@ export function extractLinks(html: string, baseUrl: string): string[] {
         links.push(href);
       } else if (href.startsWith('/')) {
         // Relative URL starting with '/', append to origin
-        links.push(`${origin}${href}`);
+        links.push(new URL(href, baseUrl).href);
       } else if (!href.startsWith('#') && !href.startsWith('mailto:')) {
         // Relative URL not starting with '/', append to base URL
-        links.push(`${baseUrl}/${href}`);
+        links.push(new URL(href, baseUrl).href);
       } else if (href.startsWith('mailto:')) {
         // mailto: links, add as is
         links.push(href);

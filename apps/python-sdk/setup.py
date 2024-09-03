@@ -30,6 +30,9 @@ setup(
         'requests',
         'pytest',
         'python-dotenv',
+        'websockets',
+        'asyncio',
+        'nest-asyncio'
     ],
     python_requires=">=3.8",
     classifiers=[

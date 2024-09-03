@@ -20,7 +20,7 @@ This template provides an easy way to spin up a UI for Firecrawl using React. It
    ```
 
 2. Set up your Firecrawl API key:
-   Open `src/components/FirecrawlComponent.tsx` and replace the placeholder API key:
+   Open `src/components/ingestion.tsx` and replace the placeholder API key:
 
    ```typescript
    const FIRECRAWL_API_KEY = "your-api-key-here";
@@ -36,7 +36,7 @@ This template provides an easy way to spin up a UI for Firecrawl using React. It
 
 ## Customization
 
-The main Firecrawl component is located in `src/components/FirecrawlComponent.tsx`. You can modify this file to customize the UI or add additional features.
+The main Firecrawl component is located in `src/components/ingestion.tsx`. You can modify this file to customize the UI or add additional features.
 
 ## Security Considerations
 
