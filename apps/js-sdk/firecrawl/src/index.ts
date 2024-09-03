@@ -1,4 +1,3 @@
-import axios, { AxiosResponse, AxiosRequestHeaders } from "axios";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WebSocket } from "isows";
@@ -69,6 +68,8 @@ export interface FirecrawlDocument {
   metadata?: FirecrawlDocumentMetadata;
 }
 
+type JsonSchema = ReturnType<typeof zodToJsonSchema>;
+
 /**
  * Parameters for scraping operations.
  * Defines the options and configurations available for scraping web content.
@@ -81,7 +82,7 @@ export interface ScrapeParams {
   onlyMainContent?: boolean;
   extract?: {
     prompt?: string;
-    schema?: z.ZodSchema | any;
+    schema?: z.ZodTypeAny | JsonSchema
     systemPrompt?: string;
   };
   waitFor?: number;
@@ -95,7 +96,6 @@ export interface ScrapeParams {
 export interface ScrapeResponse extends FirecrawlDocument {
   success: true;
   warning?: string;
-  error?: string;
 }
 
 /**
@@ -162,13 +162,35 @@ export interface MapResponse {
   error?: string;
 }
 
+
+function isZodSchema(schema: unknown): schema is z.ZodType {
+  return schema instanceof z.ZodType;
+}
+
 /**
- * Error response interface.
- * Defines the structure of the response received when an error occurs.
+ * Error class for Firecrawl API errors.
+ * 
+ * @example
+ * ```ts
+ * try {
+ *   const response = await firecrawl.scrapeUrl("https://example.com");
+ * } catch (error) {
+ *   if (error instanceof FirecrawlApiError) {
+ *     console.error("Firecrawl API error:", error.message);
+ *     console.error("Request:", error.request);
+ *     console.error("Response:", error.response);
+ *   }
+ * ```
  */
-export interface ErrorResponse {
-  success: false;
-  error: string;
+export class FirecrawlApiError extends Error {
+  public request: Request;
+  public response: Response;
+
+  constructor(message: string, request: Request, response: Response) {
+    super(message);
+    this.request = request;
+    this.response = response;
+  }
 }
 
 /**
@@ -197,54 +219,48 @@ export default class FirecrawlApp {
   async scrapeUrl(
     url: string,
     params?: ScrapeParams
-  ): Promise<ScrapeResponse | ErrorResponse> {
-    const headers: AxiosRequestHeaders = {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${this.apiKey}`,
-    } as AxiosRequestHeaders;
-    let jsonData: any = { url, ...params };
-    if (jsonData?.extract?.schema) {
-      let schema = jsonData.extract.schema;
+  ): Promise<ScrapeResponse> {
+    let body = { url, ...params };
 
-      // Try parsing the schema as a Zod schema
-      try {
-        schema = zodToJsonSchema(schema);
-      } catch (error) {
-        
-      }
-      jsonData = {
-        ...jsonData,
+    let schema = body.extract?.schema
+
+    if (schema && isZodSchema(schema)) {
+      schema = zodToJsonSchema(schema);
+
+      body = {
+        ...body,
         extract: {
-          ...jsonData.extract,
+          ...body.extract,
           schema: schema,
-        },
-      };
-    }
-    try {
-      const response: AxiosResponse = await axios.post(
-        this.apiUrl + `/v1/scrape`,
-        jsonData,
-        { headers }
-      );
-      if (response.status === 200) {
-        const responseData = response.data;
-        if (responseData.success) {
-          return {
-            success: true,
-            warning: responseData.warning,
-            error: responseData.error,
-            ...responseData.data
-          };
-        } else {
-          throw new Error(`Failed to scrape URL. Error: ${responseData.error}`);
         }
-      } else {
-        this.handleError(response, "scrape URL");
       }
-    } catch (error: any) {
-      throw new Error(error.message);
     }
-    return { success: false, error: "Internal server error." };
+
+    const request = new Request(this.apiUrl + `/v1/scrape`, {
+      method: "POST",
+      headers: this.composeHeaders(),
+      body: JSON.stringify(body),
+    })
+
+    // `fetch` will throw any network related errors
+    // We don't need to worry about them since users can handle network errors themselves
+    const response = await fetch(request);
+
+    if (!response.ok) {
+      throw new FirecrawlApiError(`Failed to scrape URL. Error: ${response.statusText}`, request, response);
+    }
+
+    const data: { success: true, warning?: string, error?: string, data?: FirecrawlDocument } | { success: false, error: string }  = await response.json()
+
+    if (!data.success) {
+      throw new FirecrawlApiError(`Failed to scrape URL. Error: ${data.error}`, request, response);
+    }
+
+    return {
+      success: true,
+      warning: data.warning,
+      ...data.data,
+    }
   }
 
   /**
@@ -264,7 +280,7 @@ export default class FirecrawlApp {
    * Initiates a crawl job for a URL using the Firecrawl API.
    * @param url - The URL to crawl.
    * @param params - Additional parameters for the crawl request.
-   * @param pollInterval - Time in seconds for job status checks.
+   * @param pollInterval - Time in seconds for job status checks. Minimum 2 seconds.
    * @param idempotencyKey - Optional idempotency key for the request.
    * @returns The response from the crawl operation.
    */
@@ -273,57 +289,43 @@ export default class FirecrawlApp {
     params?: CrawlParams,
     pollInterval: number = 2,
     idempotencyKey?: string
-  ): Promise<CrawlStatusResponse | ErrorResponse> {
-    const headers = this.prepareHeaders(idempotencyKey);
-    let jsonData: any = { url, ...params };
-    try {
-      const response: AxiosResponse = await this.postRequest(
-        this.apiUrl + `/v1/crawl`,
-        jsonData,
-        headers
-      );
-      if (response.status === 200) {
-        const id: string = response.data.id;
-        return this.monitorJobStatus(id, headers, pollInterval);
-      } else {
-        this.handleError(response, "start crawl job");
-      }
-    } catch (error: any) {
-      if (error.response?.data?.error) {
-        throw new Error(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`);
-      } else {
-        throw new Error(error.message);
-      }
+  ): Promise<CrawlStatusResponse> {
+    const request = new Request(this.apiUrl + `/v1/crawl`, {
+      method: "POST",
+      headers: this.composeHeaders(idempotencyKey),
+      body: JSON.stringify({ url, ...params }),
+    })
+
+    const response = await fetch(request);
+
+    if (!response.ok) {
+      throw new FirecrawlApiError(`Failed to crawl URL. Error: ${response.statusText}`, request, response);
     }
-    return { success: false, error: "Internal server error." };
+
+    const data: { id: string } = await response.json();
+
+    return this.monitorJobStatus(data.id, pollInterval, idempotencyKey);
   }
 
   async asyncCrawlUrl(
     url: string,
     params?: CrawlParams,
     idempotencyKey?: string
-  ): Promise<CrawlResponse | ErrorResponse> {
-    const headers = this.prepareHeaders(idempotencyKey);
-    let jsonData: any = { url, ...params };
-    try {
-      const response: AxiosResponse = await this.postRequest(
-        this.apiUrl + `/v1/crawl`,
-        jsonData,
-        headers
-      );
-      if (response.status === 200) {
-        return response.data;
-      } else {
-        this.handleError(response, "start crawl job");
-      }
-    } catch (error: any) {
-      if (error.response?.data?.error) {
-        throw new Error(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`);
-      } else {
-        throw new Error(error.message);
-      }
+  ): Promise<CrawlResponse> {
+    // TODO: use `crawlUrl`
+    const request = new Request(this.apiUrl + `/v1/crawl`, {
+      method: "POST",
+      headers: this.composeHeaders(idempotencyKey),
+      body: JSON.stringify({ url, ...params }),
+    })
+
+    const response = await fetch(request);
+
+    if (!response.ok) {
+      throw new FirecrawlApiError(`Failed to crawl URL. Error: ${response.statusText}`, request, response);
     }
-    return { success: false, error: "Internal server error." };
+
+    return response.json();
   }
 
   /**
@@ -331,36 +333,31 @@ export default class FirecrawlApp {
    * @param id - The ID of the crawl operation.
    * @returns The response containing the job status.
    */
-  async checkCrawlStatus(id?: string): Promise<CrawlStatusResponse | ErrorResponse> {
-    if (!id) {
-      throw new Error("No crawl ID provided");
+  async checkCrawlStatus(id: string): Promise<CrawlStatusResponse> {
+    const request = new Request(this.apiUrl + `/v1/crawl/${id}`, {
+      method: "GET",
+      headers: this.composeHeaders(),
+    })
+
+    const response = await fetch(request);
+
+    if (!response.ok) {
+      throw new FirecrawlApiError(`Failed to check crawl status. Error: ${response.statusText}`, request, response);
     }
 
-    const headers: AxiosRequestHeaders = this.prepareHeaders();
-    try {
-      const response: AxiosResponse = await this.getRequest(
-        `${this.apiUrl}/v1/crawl/${id}`,
-        headers
-      );
-      if (response.status === 200) {
-        return ({
-          success: true,
-          status: response.data.status,
-          total: response.data.total,
-          completed: response.data.completed,
-          creditsUsed: response.data.creditsUsed,
-          expiresAt: new Date(response.data.expiresAt),
-          next: response.data.next,
-          data: response.data.data,
-          error: response.data.error
-        })
-      } else {
-        this.handleError(response, "check crawl status");
-      }
-    } catch (error: any) {
-      throw new Error(error.message);
+    const data: CrawlStatusResponse = await response.json();
+
+    return {
+      success: true,
+      status: data.status,
+      total: data.total,
+      completed: data.completed,
+      creditsUsed: data.creditsUsed,
+      expiresAt: new Date(data.expiresAt),
+      next: data.next,
+      data: data.data,
+      error: data.error,
     }
-    return { success: false, error: "Internal server error." };
   }
 
   async crawlUrlAndWatch(
@@ -368,76 +365,63 @@ export default class FirecrawlApp {
     params?: CrawlParams,
     idempotencyKey?: string,
   ) {
-    const crawl = await this.asyncCrawlUrl(url, params, idempotencyKey);
+    const { id } = await this.asyncCrawlUrl(url, params, idempotencyKey);
 
-    if (crawl.success && crawl.id) {
-      const id = crawl.id;
-      return new CrawlWatcher(id, this);
+    // TODO is undefined id even possible?
+    if (!id) {
+      throw new Error("Crawl job failed to start: no crawl id returned");
     }
 
-    throw new Error("Crawl job failed to start");
-  }
-
-  async mapUrl(url: string, params?: MapParams): Promise<MapResponse | ErrorResponse> {
-    const headers = this.prepareHeaders();
-    let jsonData: { url: string } & MapParams = { url, ...params };
-
-    try {
-      const response: AxiosResponse = await this.postRequest(
-        this.apiUrl + `/v1/map`,
-        jsonData,
-        headers
-      );
-      if (response.status === 200) {
-        return response.data as MapResponse;
-      } else {
-        this.handleError(response, "map");
-      }
-    } catch (error: any) {
-      throw new Error(error.message);
-    }
-    return { success: false, error: "Internal server error." };
+    return new CrawlWatcher(id, this);
   }
 
   /**
-   * Prepares the headers for an API request.
+   * [ALPHA] Input a website and get all the urls on the website - extremly fast
+   * 
+   * The easiest way to go from a single url to a map of the entire website. This is extremely useful for:
+   * - When you need to prompt the end-user to choose which links to scrape
+   * - Need to quickly know the links on a website
+   * - Need to scrape pages of a website that are related to a specific topic (use the search parameter)
+   * - Only need to scrape specific pages of a website
+​
+
+   * @param url The URL to map
+   * @param params Additional parameters for the map request.
+   * @returns Most links present on the website.
+   * 
+   * @example
+   * ```ts
+   * const firecrawl = new FirecrawlApp({ apiKey: "YOUR_API_KEY" });
+   * const result = await firecrawl.mapUrl("http://example.com");
+   * ```
+   */
+  async mapUrl(url: string, params?: MapParams): Promise<MapResponse> {
+    const request = new Request(this.apiUrl + `/v1/map`, {
+      method: "POST",
+      headers: this.composeHeaders(),
+      body: JSON.stringify({ url, ...params }),
+    })
+
+    const response = await fetch(request);
+
+    if (!response.ok) {
+      throw new FirecrawlApiError(`Failed to map URL. Error: ${response.statusText}`, request, response);
+    }
+
+    return response.json()
+  }
+
+  /**
+   * Composes the headers for an API request.
    * @param idempotencyKey - Optional key to ensure idempotency.
    * @returns The prepared headers.
    */
-  prepareHeaders(idempotencyKey?: string): AxiosRequestHeaders {
+  private composeHeaders(idempotencyKey?: string): Record<string, string> {
     return {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this.apiKey}`,
       ...(idempotencyKey ? { "x-idempotency-key": idempotencyKey } : {}),
-    } as AxiosRequestHeaders & { "x-idempotency-key"?: string };
-  }
-
-  /**
-   * Sends a POST request to the specified URL.
-   * @param url - The URL to send the request to.
-   * @param data - The data to send in the request.
-   * @param headers - The headers for the request.
-   * @returns The response from the POST request.
-   */
-  postRequest(
-    url: string,
-    data: any,
-    headers: AxiosRequestHeaders
-  ): Promise<AxiosResponse> {
-    return axios.post(url, data, { headers });
-  }
-
-  /**
-   * Sends a GET request to the specified URL.
-   * @param url - The URL to send the request to.
-   * @param headers - The headers for the request.
-   * @returns The response from the GET request.
-   */
-  getRequest(
-    url: string,
-    headers: AxiosRequestHeaders
-  ): Promise<AxiosResponse> {
-    return axios.get(url, { headers });
+    }
   }
 
   /**
@@ -450,56 +434,33 @@ export default class FirecrawlApp {
    */
   async monitorJobStatus(
     id: string,
-    headers: AxiosRequestHeaders,
-    checkInterval: number
+    checkInterval: number,
+    idempotencyKey?: string
   ): Promise<CrawlStatusResponse> {
     while (true) {
-      const statusResponse: AxiosResponse = await this.getRequest(
-        `${this.apiUrl}/v1/crawl/${id}`,
-        headers
-      );
-      if (statusResponse.status === 200) {
-        const statusData = statusResponse.data;
-        if (statusData.status === "completed") {
-          if ("data" in statusData) {
-            return statusData;
-          } else {
-            throw new Error("Crawl job completed but no data was returned");
-          }
-        } else if (
-          ["active", "paused", "pending", "queued", "scraping"].includes(statusData.status)
-        ) {
-          checkInterval = Math.max(checkInterval, 2);
-          await new Promise((resolve) =>
-            setTimeout(resolve, checkInterval * 1000)
-          );
-        } else {
-          throw new Error(
-            `Crawl job failed or was stopped. Status: ${statusData.status}`
-          );
-        }
-      } else {
-        this.handleError(statusResponse, "check crawl status");
-      }
-    }
-  }
+      const request = new Request(this.apiUrl + `/v1/crawl/${id}`, {
+        method: "GET",
+        headers: this.composeHeaders(idempotencyKey),
+      })
 
-  /**
-   * Handles errors from API responses.
-   * @param {AxiosResponse} response - The response from the API.
-   * @param {string} action - The action being performed when the error occurred.
-   */
-  handleError(response: AxiosResponse, action: string): void {
-    if ([402, 408, 409, 500].includes(response.status)) {
-      const errorMessage: string =
-        response.data.error || "Unknown error occurred";
-      throw new Error(
-        `Failed to ${action}. Status code: ${response.status}. Error: ${errorMessage}`
-      );
-    } else {
-      throw new Error(
-        `Unexpected error occurred while trying to ${action}. Status code: ${response.status}`
-      );
+      const response = await fetch(request);
+
+      if (!response.ok) {
+        throw new FirecrawlApiError(`Failed to monitor crawl status. Error: ${response.statusText}`, request, response);
+      }
+
+      const data: CrawlStatusResponse = await response.json();
+
+      if (data.status === "completed") {
+        return data;
+      }
+
+      if (["active", "paused", "pending", "queued", "scraping"].includes(data.status)) {
+        checkInterval = Math.max(checkInterval, 2);
+        await new Promise((resolve) => setTimeout(resolve, checkInterval * 1000));
+      } else {
+        throw new Error(`Crawl job failed or was stopped. Status: ${data.status}`);
+      }
     }
   }
 }
