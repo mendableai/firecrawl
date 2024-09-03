@@ -255,7 +255,9 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     const creditLimit = FREE_CREDITS;
     const creditUsagePercentage = (totalCreditsUsed + credits) / creditLimit;
 
-    if (creditUsagePercentage >= 0.8) {
+    // Add a check to ensure totalCreditsUsed is greater than 0
+    if (totalCreditsUsed > 0 && creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
+      Logger.info(`Sending notification for team ${team_id}. Total credits used: ${totalCreditsUsed}, Credit usage percentage: ${creditUsagePercentage}`);
       await sendNotification(
         team_id,
         NotificationType.APPROACHING_LIMIT,
