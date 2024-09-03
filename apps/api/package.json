@@ -86,6 +86,7 @@
     "joplin-turndown-plugin-gfm": "^1.0.12",
     "json-schema-to-zod": "^2.3.0",
     "keyword-extractor": "^0.0.28",
+    "koffi": "^2.9.0",
     "langchain": "^0.2.8",
     "languagedetect": "^2.0.0",
     "logsnag": "^1.0.0",
