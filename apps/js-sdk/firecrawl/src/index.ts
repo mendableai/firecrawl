@@ -1,4 +1,4 @@
-import axios, { AxiosResponse, AxiosRequestHeaders } from "axios";
+import axios, { type AxiosResponse, type AxiosRequestHeaders } from "axios";
 import { z } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WebSocket } from "isows";
