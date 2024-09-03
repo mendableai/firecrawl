@@ -8,7 +8,6 @@ import dotenv from 'dotenv';
 import { Logger } from './logger';
 dotenv.config();
 
-// TODO: test with invalid html
 // TODO: create a singleton for the converter
 // TODO: add a timeout to the Go parser
 
