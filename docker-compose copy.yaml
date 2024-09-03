@@ -2,7 +2,7 @@ version: "3.8"
 
 services:
   api:
-    build: /api
+    build: apps/api
     networks:
       - backend
     environment:
@@ -29,12 +29,11 @@ services:
       - SCRAPING_BEE_API_KEY=${SCRAPING_BEE_API_KEY}
       - SELF_HOSTED_WEBHOOK_URL=${SELF_HOSTED_WEBHOOK_URL}
       - LOGGING_LEVEL=${LOGGING_LEVEL}
-      - MAX_CPU=${MAX_CPU}
-      - MAX_RAM=${MAX_RAM}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
       - redis
+      - db
     ports:
       - "3002:3002"
     command: ["pnpm", "run", "start"]
@@ -47,8 +46,35 @@ services:
     volumes:
       - redis-data:/data
 
+  db:
+    image: supabase/postgres:15.6.1.115
+    ports:
+      - "5432:5432"
+    command: postgres -c config_file=/etc/postgresql/postgresql.conf
+    environment:
+      POSTGRES_PASSWORD: postgres
+    networks:
+      - backend
+    volumes:
+      - supabase-data:/var/lib/postgresql/data
+
+  studio:
+    image: supabase/studio:latest
+    ports:
+      - "8000:8000"
+    environment:
+      SUPABASE_URL: http://db:5432
+      SUPABASE_ANON_TOKEN: "your-anon-key-here" # Replace with actual anon key
+      SUPABASE_SERVICE_ROLE_KEY: "your-service-role-key-here" # Replace with actual service role key
+      POSTGRES_PASSWORD: postgres
+    depends_on:
+      - db
+    networks:
+      - backend
+
 volumes:
   redis-data:
+  supabase-data:
 
 networks:
   backend:

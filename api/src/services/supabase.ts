@@ -1,6 +1,26 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { Logger } from "../lib/logger";
 
+/* const supabaseUrl = process.env.SUPABASE_URL || "http://localhost:5432"; // Update with your Docker host if needed
+const supabaseAnonKey = process.env.SUPABASE_ANON_TOKEN || "your-anon-key-here"; // Replace with your actual anon key
+const supabaseServiceToken = process.env.SUPABASE_SERVICE_TOKEN || "";
+console.log(supabaseServiceToken);
+console.log(supabaseUrl);
+// Initialize the Supabase client
+const supabaseClient: SupabaseClient = createClient(
+  supabaseUrl,
+  supabaseAnonKey
+); 
+
+export const supabase_service = supabaseClient;*/
+
+/* const temp = async () => {
+  console.log(supabase_service);
+  const asd = await supabase_service.auth.reauthenticate();
+  console.log(asd);
+};
+temp(); */
+
 // SupabaseService class initializes the Supabase client conditionally based on environment variables.
 class SupabaseService {
   private client: SupabaseClient | null = null;
@@ -8,6 +28,9 @@ class SupabaseService {
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceToken = process.env.SUPABASE_SERVICE_TOKEN;
+    const supabaseAnonKey =
+      process.env.SUPABASE_ANON_TOKEN || "your-anon-key-here"; // Replace with your actual anon key
+
     // Only initialize the Supabase client if both URL and Service Token are provided.
     if (process.env.USE_DB_AUTHENTICATION === "false") {
       // Warn the user that Authentication is disabled by setting the client to null
@@ -20,7 +43,7 @@ class SupabaseService {
         "Supabase environment variables aren't configured correctly. Supabase client will not be initialized. Fix ENV configuration or disable DB authentication with USE_DB_AUTHENTICATION env variable"
       );
     } else {
-      this.client = createClient(supabaseUrl, supabaseServiceToken);
+      this.client = createClient(supabaseUrl, supabaseAnonKey);
     }
   }
 
