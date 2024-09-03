@@ -27,10 +27,6 @@ def _configure_logger() -> None:
     format to the firecrawl logger.
     """
     try:
-        # Check if the firecrawl logger already has a handler
-        if logger.hasHandlers():
-            return
-
         # Create the formatter
         formatter = logging.Formatter(
             "[%(asctime)s - %(name)s:%(lineno)d - %(levelname)s] %(message)s",
@@ -49,6 +45,10 @@ def _configure_logger() -> None:
 
 def setup_logging() -> None:
     """Set up logging based on the FIRECRAWL_LOGGING_LEVEL environment variable."""
+    # Check if the firecrawl logger already has a handler
+    if logger.hasHandlers():
+        return # To prevent duplicate logging
+
     # Check if the FIRECRAWL_LOGGING_LEVEL environment variable is set
     if not (env := os.getenv("FIRECRAWL_LOGGING_LEVEL", "").upper()):
         # Attach a no-op handler to prevent warnings about no handlers
