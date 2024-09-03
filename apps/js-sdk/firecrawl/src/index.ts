@@ -454,20 +454,27 @@ export default class FirecrawlApp {
     checkInterval: number
   ): Promise<CrawlStatusResponse> {
     while (true) {
-      const statusResponse: AxiosResponse = await this.getRequest(
+      let statusResponse: AxiosResponse = await this.getRequest(
         `${this.apiUrl}/v1/crawl/${id}`,
         headers
       );
       if (statusResponse.status === 200) {
-        const statusData = statusResponse.data;
+        let statusData = statusResponse.data;
         if (statusData.status === "completed") {
           if ("data" in statusData) {
+            let data = statusData.data;
+            while ('next' in statusData) {
+              statusResponse = await this.getRequest(statusData.next, headers);
+              statusData = statusResponse.data;
+              data = data.concat(statusData.data);
+            }
+            statusData.data = data;
             return statusData;
           } else {
             throw new Error("Crawl job completed but no data was returned");
           }
         } else if (
-          ["active", "paused", "pending", "queued", "scraping"].includes(statusData.status)
+          ["active", "paused", "pending", "queued", "waiting", "scraping"].includes(statusData.status)
         ) {
           checkInterval = Math.max(checkInterval, 2);
           await new Promise((resolve) =>
