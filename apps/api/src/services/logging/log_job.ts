@@ -7,7 +7,8 @@ import { Logger } from "../../lib/logger";
 
 export async function logJob(job: FirecrawlJob) {
   try {
-    if (process.env.USE_DB_AUTHENTICATION === "false") {
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+    if (!useDbAuthentication) {
       return;
     }
 
