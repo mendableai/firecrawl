@@ -8,6 +8,10 @@ import dotenv from 'dotenv';
 import { Logger } from './logger';
 dotenv.config();
 
+// TODO: test with invalid html
+// TODO: create a singleton for the converter
+// TODO: add a timeout to the Go parser
+
 export async function parseMarkdown(html: string): Promise<string> {
   if (!html) {
     return '';
@@ -18,7 +22,7 @@ export async function parseMarkdown(html: string): Promise<string> {
       const goExecutablePath = join(__dirname, 'go-html-to-md/html-to-markdown.so');
       const lib = koffi.load(goExecutablePath);
     
-      const convert = lib.func('Convert', 'string', ['string']);
+      const convert = lib.func('ConvertHTMLToMarkdown', 'string', ['string']);
 
       let markdownContent = await new Promise<string>((resolve, reject) => {
         convert.async(html, (err: Error, res: string) => {
