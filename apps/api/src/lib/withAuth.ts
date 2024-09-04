@@ -1,6 +1,8 @@
 import { AuthResponse } from "../../src/types";
 import { Logger } from "./logger";
 import * as Sentry from "@sentry/node";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 let warningCount = 0;
 

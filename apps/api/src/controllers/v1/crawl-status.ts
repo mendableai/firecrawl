@@ -3,6 +3,8 @@ import { CrawlStatusParams, CrawlStatusResponse, ErrorResponse, legacyDocumentCo
 import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
 import { supabaseGetJobById, supabaseGetJobsById } from "../../lib/supabase-jobs";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 export async function getJob(id: string) {
   const job = await getScrapeQueue().getJob(id);

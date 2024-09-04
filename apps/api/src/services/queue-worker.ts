@@ -36,6 +36,8 @@ import {
 } from "../../src/lib/job-priority";
 import { PlanType } from "../types";
 import { getJobs } from "../../src/controllers/v1/crawl-status";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 if (process.env.ENV === "production") {
   initSDK({
