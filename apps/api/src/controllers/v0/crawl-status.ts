@@ -6,6 +6,8 @@ import { Logger } from "../../../src/lib/logger";
 import { getCrawl, getCrawlJobs } from "../../../src/lib/crawl-redis";
 import { supabaseGetJobsById } from "../../../src/lib/supabase-jobs";
 import * as Sentry from "@sentry/node";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 export async function getJobs(ids: string[]) {
   const jobs = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x);

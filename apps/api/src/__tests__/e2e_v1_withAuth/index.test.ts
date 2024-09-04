@@ -1,11 +1,11 @@
 import request from "supertest";
-import dotenv from "dotenv";
+import { configDotenv } from "dotenv";
 import {
   ScrapeRequest,
   ScrapeResponseRequestTest,
 } from "../../controllers/v1/types";
 
-dotenv.config();
+configDotenv();
 const TEST_URL = "http://127.0.0.1:3002";
 
 describe("E2E Tests for v1 API Routes", () => {
