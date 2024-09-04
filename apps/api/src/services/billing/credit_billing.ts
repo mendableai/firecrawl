@@ -213,10 +213,8 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
 
     // Cache the results for a minute, sub can be null and that's fine
     await setValue(cacheKeySubscription, JSON.stringify(subscription), 60); // Cache for 1 minute, even if null
-    
-    if (coupons) {
-      await setValue(cacheKeyCoupons, JSON.stringify(coupons), 60); // Cache for 1 minute
-    }
+    await setValue(cacheKeyCoupons, JSON.stringify(coupons), 60); // Cache for 1 minute
+  
   }
 
   let couponCredits = 0;
