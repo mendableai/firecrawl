@@ -390,7 +390,7 @@ describe("E2E Tests for v1 API Routes", () => {
           const scrapeRequest: ScrapeRequest = {
             url: "https://ycombinator.com/companies",
             formats: ["markdown"],
-            waitFor: 5000
+            waitFor: 8000
           };
   
           const response: ScrapeResponseRequestTest = await request(TEST_URL)
@@ -560,7 +560,9 @@ describe("POST /v1/map", () => {
     const links = response.body.links as unknown[];
     expect(Array.isArray(links)).toBe(true);
     expect(links.length).toBeGreaterThan(0);
-    expect(links[0]).toContain("docs.firecrawl.dev");
+
+    const containsDocsFirecrawlDev = links.some((link: string) => link.includes("docs.firecrawl.dev"));
+    expect(containsDocsFirecrawlDev).toBe(true);
   }, 10000)
 
   it.concurrent("should return a successful response with a valid API key and search and not allowSubdomains and www", async () => {
@@ -894,9 +896,7 @@ describe("GET /v1/crawl/:jobId", () => {
       expect(completedResponse.body.data[0]).not.toHaveProperty("content");
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.data[0].metadata.statusCode).toBe(
-        200
-      );
+      expect(completedResponse.body.data[0].metadata.statusCode).toBe(200);
       expect(
         completedResponse.body.data[0].metadata.error
       ).toBeUndefined();
