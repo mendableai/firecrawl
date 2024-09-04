@@ -34,6 +34,7 @@ describe("E2E Tests for v1 API Routes", () => {
       );
       console.log({
         response: response.body,
+        details: response.body.success == false ? response.body.details : null,
         statusCode: response.statusCode,
       })
       expect(response.statusCode).toBe(401);
