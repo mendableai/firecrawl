@@ -57,6 +57,9 @@ jobs:
         run: npm run workers &
         working-directory: ./apps/api
         id: start_workers
+      - name: Wait for the application to be ready
+        run: |
+          sleep 10
       - name: Run E2E tests
         run: |
           npm run test:prod
@@ -338,6 +341,7 @@ jobs:
   build-and-publish-rust-sdk:
     name: Build and publish Rust SDK
     runs-on: ubuntu-latest
+    needs: deploy
 
     steps:
       - name: Checkout repository
