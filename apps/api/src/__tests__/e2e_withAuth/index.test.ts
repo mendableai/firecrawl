@@ -659,7 +659,7 @@ describe("E2E Tests for v0 API Routes", () => {
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
-          .send({ url: "https://mendable.ai/blog" });
+          .send({ url: "https://firecrawl.dev/blog" });
         expect(crawlResponse.statusCode).toBe(200);
 
         let isCompleted = false;
@@ -689,10 +689,8 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(completedResponse.body.data[0]).toHaveProperty("content");
         expect(completedResponse.body.data[0]).toHaveProperty("markdown");
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-        expect(completedResponse.body.data[0].content).toContain("Mendable");
-        expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(
-          200
-        );
+        expect(completedResponse.body.data[0].content).toContain("Firecrawl");
+        expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
         expect(
           completedResponse.body.data[0].metadata.pageError
         ).toBeUndefined();
@@ -701,7 +699,7 @@ describe("E2E Tests for v0 API Routes", () => {
           (doc) =>
             doc.metadata &&
             doc.metadata.sourceURL &&
-            doc.metadata.sourceURL.includes("mendable.ai/blog")
+            doc.metadata.sourceURL.includes("firecrawl.dev/blog")
         );
 
         expect(childrenLinks.length).toBe(completedResponse.body.data.length);
