@@ -238,7 +238,6 @@ class FirecrawlApp:
         )
         if response.status_code == 200:
             response = response.json()
-            print(response)
             if response['success'] and 'links' in response:
                 return response['links']
             else:
