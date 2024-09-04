@@ -26,7 +26,7 @@ describe("E2E Tests for v1 API Routes", () => {
       console.log('process.env.USE_DB_AUTHENTICATION', process.env.USE_DB_AUTHENTICATION);
       console.log('?', process.env.USE_DB_AUTHENTICATION === 'true');
       const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
-      console.log('useDbAuthentication', useDbAuthentication);
+      console.log('!!useDbAuthentication', !!useDbAuthentication);
       console.log('!useDbAuthentication', !useDbAuthentication);
 
       expect(response.statusCode).toBe(200);
