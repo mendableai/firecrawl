@@ -40,14 +40,15 @@ export async function supaBillTeam(team_id: string, credits: number) {
   ]);
 
   let couponCredits = 0;
+  let sortedCoupons = [];
+
   if (coupons && coupons.length > 0) {
     couponCredits = coupons.reduce(
       (total, coupon) => total + coupon.credits,
       0
     );
+    sortedCoupons = [...coupons].sort((a, b) => b.credits - a.credits);
   }
-
-  let sortedCoupons = coupons.sort((a, b) => b.credits - a.credits);
   // using coupon credits:
   if (couponCredits > 0) {
     // if there is no subscription and they have enough coupon credits
