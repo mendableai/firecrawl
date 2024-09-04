@@ -31,6 +31,7 @@ services:
       - LOGGING_LEVEL=${LOGGING_LEVEL}
       - MAX_CPU=${MAX_CPU}
       - MAX_RAM=${MAX_RAM}
+      - ADMIN_AUTH_TOKEN=${ADMIN_AUTH_TOKEN}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

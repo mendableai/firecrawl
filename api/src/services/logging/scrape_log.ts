@@ -42,7 +42,6 @@ export async function logScrape(
         ipv6_support: scrapeLog.ipv6_support,
       },
     ]);
-
     if (error) {
       Logger.error(`Error logging proxy:\n${JSON.stringify(error)}`);
     }

@@ -18,14 +18,19 @@ export async function logJob(job: FirecrawlJob) {
       job.pageOptions.headers["Authorization"]
     ) {
       job.pageOptions.headers["Authorization"] = "REDACTED";
-      job.docs = [{ content: "REDACTED DUE TO AUTHORIZATION HEADER", html: "REDACTED DUE TO AUTHORIZATION HEADER" }];
+      job.docs = [
+        {
+          content: "REDACTED DUE TO AUTHORIZATION HEADER",
+          html: "REDACTED DUE TO AUTHORIZATION HEADER",
+        },
+      ];
     }
 
     const { data, error } = await supabase_service
       .from("firecrawl_jobs")
       .insert([
         {
-          job_id: job.job_id ? job.job_id : null,
+          id: job.job_id ? job.job_id : null,
           success: job.success,
           message: job.message,
           num_docs: job.num_docs,
@@ -69,6 +74,7 @@ export async function logJob(job: FirecrawlJob) {
       };
       posthog.capture(phLog);
     }
+
     if (error) {
       Logger.error(`Error logging job: ${error.message}`);
     }

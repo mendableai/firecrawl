@@ -14,13 +14,6 @@ const supabaseClient: SupabaseClient = createClient(
 
 export const supabase_service = supabaseClient;*/
 
-/* const temp = async () => {
-  console.log(supabase_service);
-  const asd = await supabase_service.auth.reauthenticate();
-  console.log(asd);
-};
-temp(); */
-
 // SupabaseService class initializes the Supabase client conditionally based on environment variables.
 class SupabaseService {
   private client: SupabaseClient | null = null;
