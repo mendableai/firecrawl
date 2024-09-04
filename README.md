@@ -14,10 +14,9 @@
 <a href="https://GitHub.com/mendableai/firecrawl/graphs/contributors">
   <img src="https://img.shields.io/github/contributors/mendableai/firecrawl.svg" alt="GitHub Contributors">
 </a>
-<a href="https://github.com/mendableai/firecrawl">
-  <img src="https://badgen.net/badge/Open%20Source%20%3F/Yes%21/blue?icon=github" alt="Open Source">
+<a href="https://firecrawl.dev">
+  <img src="https://img.shields.io/badge/Visit-firecrawl.dev-orange" alt="Visit firecrawl.dev">
 </a>
-
 </div>
 <div>
   <p align="center">
