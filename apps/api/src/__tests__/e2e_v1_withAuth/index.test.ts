@@ -32,6 +32,10 @@ describe("E2E Tests for v1 API Routes", () => {
       const response: ScrapeResponseRequestTest = await request(TEST_URL).post(
         "/v1/scrape"
       );
+      console.log({
+        response: response.body,
+        statusCode: response.statusCode,
+      })
       expect(response.statusCode).toBe(401);
     });
 
