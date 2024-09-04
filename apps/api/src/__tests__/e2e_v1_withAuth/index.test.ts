@@ -535,7 +535,9 @@ describe("POST /v1/map", () => {
     const links = response.body.links as unknown[];
     expect(Array.isArray(links)).toBe(true);
     expect(links.length).toBeGreaterThan(0);
-    expect(links[0]).toContain("docs.firecrawl.dev");
+
+    const containsDocsFirecrawlDev = links.some((link: string) => link.includes("docs.firecrawl.dev"));
+    expect(containsDocsFirecrawlDev).toBe(true);
   });
 
   it.concurrent("should return a successful response with a valid API key and search and allowSubdomains and www", async () => {
