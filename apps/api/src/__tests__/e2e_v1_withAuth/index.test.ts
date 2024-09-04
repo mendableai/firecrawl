@@ -29,14 +29,10 @@ describe("E2E Tests for v1 API Routes", () => {
 
   describe("POST /v1/scrape", () => {
     it.concurrent("should require authorization", async () => {
-      const response: ScrapeResponseRequestTest = await request(TEST_URL).post(
-        "/v1/scrape"
-      );
-      console.log({
-        response: response.body,
-        details: response.body.success == false ? response.body.details : null,
-        statusCode: response.statusCode,
-      })
+      const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      .post("/v1/scrape")
+      .send({ url: "https://firecrawl.dev"})
+
       expect(response.statusCode).toBe(401);
     });
 
@@ -456,9 +452,9 @@ describe("E2E Tests for v1 API Routes", () => {
 
 describe("POST /v1/map", () => {
   it.concurrent("should require authorization", async () => {
-    const response: ScrapeResponseRequestTest = await request(TEST_URL).post(
-      "/v1/map"
-    );
+    const response: ScrapeResponseRequestTest = await request(TEST_URL)
+    .post("/v1/map")
+    .send({ url: "https://firecrawl.dev" });
     expect(response.statusCode).toBe(401);
   });
 
@@ -614,9 +610,9 @@ describe("POST /v1/map", () => {
 
 describe("POST /v1/crawl", () => {
   it.concurrent("should require authorization", async () => {
-    const response: ScrapeResponseRequestTest = await request(TEST_URL).post(
-      "/v1/crawl"
-    );
+    const response: ScrapeResponseRequestTest = await request(TEST_URL)
+    .post("/v1/crawl")
+    .send({ url: "https://firecrawl.dev" });
     expect(response.statusCode).toBe(401);
   });
   
@@ -868,7 +864,7 @@ describe("GET /v1/crawl/:jobId", () => {
         .post("/v1/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://docs.mendable.ai" });
+        .send({ url: "https://docs.firecrawl.dev" });
       expect(crawlResponse.statusCode).toBe(200);
 
       let isCompleted = false;
