@@ -28,6 +28,7 @@ env:
   NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
   CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+  USE_DB_AUTHENTICATION: ${{ secrets.USE_DB_AUTHENTICATION }}
 
 jobs:
   pre-deploy-e2e-tests:
