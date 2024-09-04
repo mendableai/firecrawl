@@ -1,3 +1,6 @@
+import { configDotenv } from "dotenv";
+configDotenv();
+
 enum LogLevel {
   NONE = 'NONE',    // No logs will be output.
   ERROR = 'ERROR',  // For logging error messages that indicate a failure in a specific operation.
@@ -25,7 +28,8 @@ export class Logger {
       const color = Logger.colors[level];
       console[level.toLowerCase()](color, `[${new Date().toISOString()}]${level} - ${message}`);
 
-      // if (process.env.USE_DB_AUTH) {
+      // const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+      // if (useDbAuthentication) {
       // save to supabase? another place?
       // supabase.from('logs').insert({ level: level, message: message, timestamp: new Date().toISOString(), success: boolean });
       // }

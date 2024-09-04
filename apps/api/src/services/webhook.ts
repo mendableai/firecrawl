@@ -3,6 +3,8 @@ import { legacyDocumentConverter } from "../../src/controllers/v1/types";
 import { Logger } from "../../src/lib/logger";
 import { supabase_service } from "./supabase";
 import { WebhookEventType } from "../types";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 export const callWebhook = async (
   teamId: string,

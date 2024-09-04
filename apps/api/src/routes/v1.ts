@@ -33,7 +33,9 @@ function checkCreditsMiddleware(minimum?: number): (req: RequestWithAuth, res: R
             const { success, message, remainingCredits } = await checkTeamCredits(req.auth.team_id, minimum);
             if (!success) {
                 Logger.error(`Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`);
-                return res.status(402).json({ success: false, error: "Insufficient credits" });
+                if (!res.headersSent) {
+                    return res.status(402).json({ success: false, error: "Insufficient credits" });
+                }
             }
             req.account = { remainingCredits }
             next();
@@ -52,7 +54,9 @@ export function authMiddleware(rateLimiterMode: RateLimiterMode): (req: RequestW
             );
 
             if (!success) {
-                return res.status(status).json({ success: false, error });
+                if (!res.headersSent) {
+                    return res.status(status).json({ success: false, error });
+                }
             }
 
             req.auth = { team_id, plan };
@@ -67,7 +71,9 @@ function idempotencyMiddleware(req: Request, res: Response, next: NextFunction) 
         if (req.headers["x-idempotency-key"]) {
             const isIdempotencyValid = await validateIdempotencyKey(req);
             if (!isIdempotencyValid) {
-                return res.status(409).json({ success: false, error: "Idempotency key already used" });
+                if (!res.headersSent) {
+                    return res.status(409).json({ success: false, error: "Idempotency key already used" });
+                }
             }
             createIdempotencyKey(req);
         }
@@ -78,7 +84,9 @@ function idempotencyMiddleware(req: Request, res: Response, next: NextFunction) 
 
 function blocklistMiddleware(req: Request, res: Response, next: NextFunction) {
     if (req.body.url && isUrlBlocked(req.body.url)) {
-        return res.status(403).json({ success: false, error: "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." });
+        if (!res.headersSent) {
+            return res.status(403).json({ success: false, error: "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." });
+        }
     }
     next();
 }
@@ -96,26 +104,26 @@ export const v1Router = express.Router();
 
 v1Router.post(
     "/scrape",
-    blocklistMiddleware,
     authMiddleware(RateLimiterMode.Scrape),
     checkCreditsMiddleware(1),
+    blocklistMiddleware,
     wrap(scrapeController)
 );
 
 v1Router.post(
     "/crawl",
-    blocklistMiddleware,
     authMiddleware(RateLimiterMode.Crawl),
-    idempotencyMiddleware,
     checkCreditsMiddleware(),
+    blocklistMiddleware,
+    idempotencyMiddleware,
     wrap(crawlController)
 );
 
 v1Router.post(
     "/map",
-    blocklistMiddleware,
     authMiddleware(RateLimiterMode.Map),
     checkCreditsMiddleware(1),
+    blocklistMiddleware,
     wrap(mapController)
 );
 

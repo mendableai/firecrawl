@@ -23,12 +23,15 @@ import { clientSideError } from "../../strings";
 
 dotenv.config();
 
+const useScrapingBee = process.env.SCRAPING_BEE_API_KEY !== '' && process.env.SCRAPING_BEE_API_KEY !== undefined;
+const useFireEngine = process.env.FIRE_ENGINE_BETA_URL !== '' && process.env.FIRE_ENGINE_BETA_URL !== undefined;
+
 export const baseScrapers = [
-  "fire-engine;chrome-cdp",
-  "fire-engine",
-  "scrapingBee",
-  process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
-  "scrapingBeeLoad",
+  useFireEngine ? "fire-engine;chrome-cdp" : undefined,
+  useFireEngine ? "fire-engine" : undefined,
+  useScrapingBee ? "scrapingBee" : undefined,
+  useFireEngine ? undefined : "playwright",
+  useScrapingBee ? "scrapingBeeLoad" : undefined,
   "fetch",
 ].filter(Boolean);
 
@@ -85,18 +88,18 @@ function getScrapingFallbackOrder(
   });
 
   let defaultOrder = [
-    !process.env.USE_DB_AUTHENTICATION ? undefined : "fire-engine;chrome-cdp",
-    !process.env.USE_DB_AUTHENTICATION ? undefined : "fire-engine",
-    "scrapingBee",
-    process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
-    "scrapingBeeLoad",
+    useFireEngine ? "fire-engine;chrome-cdp" : undefined,
+    useFireEngine ? "fire-engine" : undefined,
+    useScrapingBee ? "scrapingBee" : undefined,
+    useScrapingBee ? "scrapingBeeLoad" : undefined,
+    useFireEngine ? undefined : "playwright",
     "fetch",
   ].filter(Boolean);
 
   if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
     defaultOrder = [
       "fire-engine",
-      process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
+      useFireEngine ? undefined : "playwright",
       ...defaultOrder.filter(
         (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
       ),

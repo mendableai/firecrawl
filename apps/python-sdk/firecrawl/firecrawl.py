@@ -238,7 +238,6 @@ class FirecrawlApp:
         )
         if response.status_code == 200:
             response = response.json()
-            print(response)
             if response['success'] and 'links' in response:
                 return response['links']
             else:
@@ -346,6 +345,12 @@ class FirecrawlApp:
                 status_data = status_response.json()
                 if status_data['status'] == 'completed':
                     if 'data' in status_data:
+                        data = status_data['data']
+                        while 'next' in status_data:
+                          status_response = self._get_request(status_data['next'], headers)
+                          status_data = status_response.json()
+                          data.extend(status_data['data'])
+                        status_data['data'] = data
                         return status_data
                     else:
                         raise Exception('Crawl job completed but no data was returned')

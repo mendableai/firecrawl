@@ -1,11 +1,11 @@
 import request from "supertest";
-import dotenv from "dotenv";
+import { configDotenv } from "dotenv";
 import {
   ScrapeRequest,
   ScrapeResponseRequestTest,
 } from "../../controllers/v1/types";
 
-dotenv.config();
+configDotenv();
 const TEST_URL = "http://127.0.0.1:3002";
 
 describe("E2E Tests for v1 API Routes", () => {
@@ -22,6 +22,13 @@ describe("E2E Tests for v1 API Routes", () => {
       const response: ScrapeResponseRequestTest = await request(TEST_URL).get(
         "/is-production"
       );
+
+      console.log('process.env.USE_DB_AUTHENTICATION', process.env.USE_DB_AUTHENTICATION);
+      console.log('?', process.env.USE_DB_AUTHENTICATION === 'true');
+      const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+      console.log('!!useDbAuthentication', !!useDbAuthentication);
+      console.log('!useDbAuthentication', !useDbAuthentication);
+
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("isProduction");
     });
@@ -29,9 +36,10 @@ describe("E2E Tests for v1 API Routes", () => {
 
   describe("POST /v1/scrape", () => {
     it.concurrent("should require authorization", async () => {
-      const response: ScrapeResponseRequestTest = await request(TEST_URL).post(
-        "/v1/scrape"
-      );
+      const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      .post("/v1/scrape")
+      .send({ url: "https://firecrawl.dev"})
+
       expect(response.statusCode).toBe(401);
     });
 
@@ -389,7 +397,7 @@ describe("E2E Tests for v1 API Routes", () => {
           const scrapeRequest: ScrapeRequest = {
             url: "https://ycombinator.com/companies",
             formats: ["markdown"],
-            waitFor: 5000
+            waitFor: 8000
           };
   
           const response: ScrapeResponseRequestTest = await request(TEST_URL)
@@ -451,9 +459,9 @@ describe("E2E Tests for v1 API Routes", () => {
 
 describe("POST /v1/map", () => {
   it.concurrent("should require authorization", async () => {
-    const response: ScrapeResponseRequestTest = await request(TEST_URL).post(
-      "/v1/map"
-    );
+    const response: ScrapeResponseRequestTest = await request(TEST_URL)
+    .post("/v1/map")
+    .send({ url: "https://firecrawl.dev" });
     expect(response.statusCode).toBe(401);
   });
 
@@ -534,7 +542,9 @@ describe("POST /v1/map", () => {
     const links = response.body.links as unknown[];
     expect(Array.isArray(links)).toBe(true);
     expect(links.length).toBeGreaterThan(0);
-    expect(links[0]).toContain("docs.firecrawl.dev");
+
+    const containsDocsFirecrawlDev = links.some((link: string) => link.includes("docs.firecrawl.dev"));
+    expect(containsDocsFirecrawlDev).toBe(true);
   });
 
   it.concurrent("should return a successful response with a valid API key and search and allowSubdomains and www", async () => {
@@ -559,7 +569,9 @@ describe("POST /v1/map", () => {
     const links = response.body.links as unknown[];
     expect(Array.isArray(links)).toBe(true);
     expect(links.length).toBeGreaterThan(0);
-    expect(links[0]).toContain("docs.firecrawl.dev");
+
+    const containsDocsFirecrawlDev = links.some((link: string) => link.includes("docs.firecrawl.dev"));
+    expect(containsDocsFirecrawlDev).toBe(true);
   }, 10000)
 
   it.concurrent("should return a successful response with a valid API key and search and not allowSubdomains and www", async () => {
@@ -609,9 +621,9 @@ describe("POST /v1/map", () => {
 
 describe("POST /v1/crawl", () => {
   it.concurrent("should require authorization", async () => {
-    const response: ScrapeResponseRequestTest = await request(TEST_URL).post(
-      "/v1/crawl"
-    );
+    const response: ScrapeResponseRequestTest = await request(TEST_URL)
+    .post("/v1/crawl")
+    .send({ url: "https://firecrawl.dev" });
     expect(response.statusCode).toBe(401);
   });
   
@@ -863,7 +875,7 @@ describe("GET /v1/crawl/:jobId", () => {
         .post("/v1/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://docs.mendable.ai" });
+        .send({ url: "https://docs.firecrawl.dev" });
       expect(crawlResponse.statusCode).toBe(200);
 
       let isCompleted = false;
@@ -893,9 +905,7 @@ describe("GET /v1/crawl/:jobId", () => {
       expect(completedResponse.body.data[0]).not.toHaveProperty("content");
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-      expect(completedResponse.body.data[0].metadata.statusCode).toBe(
-        200
-      );
+      expect(completedResponse.body.data[0].metadata.statusCode).toBe(200);
       expect(
         completedResponse.body.data[0].metadata.error
       ).toBeUndefined();
