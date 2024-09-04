@@ -391,7 +391,7 @@ With LLM extraction, you can easily extract structured data from any URL. We sup
 
 from firecrawl.firecrawl import FirecrawlApp
 
-app = FirecrawlApp(api_key="fc-YOUR_API_KEY", version="v0")
+app = FirecrawlApp(api_key="fc-YOUR_API_KEY")
 
 class ArticleSchema(BaseModel):
     title: str
@@ -466,8 +466,7 @@ import FirecrawlApp from "@mendable/firecrawl-js";
 import { z } from "zod";
 
 const app = new FirecrawlApp({
-  apiKey: "fc-YOUR_API_KEY",
-  version: "v0"
+  apiKey: "fc-YOUR_API_KEY"
 });
 
 // Define schema to extract contents into
