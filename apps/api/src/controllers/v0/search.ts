@@ -54,18 +54,10 @@ export async function searchHelper(
   
 
   if (justSearch) {
-    const billingResult = await billTeam(
-      team_id,
-      res.length
-    );
-    if (!billingResult.success) {
-      return {
-        success: false,
-        error:
-          "Failed to bill team. Insufficient credits or subscription not found.",
-        returnCode: 402,
-      };
-    }
+    billTeam(team_id, res.length).catch(error => {
+      Logger.error(`Failed to bill team ${team_id} for ${res.length} credits: ${error}`);
+      // Optionally, you could notify an admin or add to a retry queue here
+    });
     return { success: true, data: res, returnCode: 200 };
   }
 

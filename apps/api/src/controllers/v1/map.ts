@@ -18,6 +18,7 @@ import { fireEngineMap } from "../../search/fireEngine";
 import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { performCosineSimilarity } from "../../lib/map-cosine";
+import { Logger } from "../../lib/logger";
 
 configDotenv();
 
@@ -100,7 +101,10 @@ export async function mapController(
   // remove duplicates that could be due to http/https or www
   links = removeDuplicateUrls(links);
 
-  await billTeam(req.auth.team_id, 1);
+  billTeam(req.auth.team_id, 1).catch(error => {
+    Logger.error(`Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`);
+    // Optionally, you could notify an admin or add to a retry queue here
+  });
 
   const endTime = new Date().getTime();
   const timeTakenInSeconds = (endTime - startTime) / 1000;

@@ -465,8 +465,8 @@ async function createCreditUsage({
   subscription_id?: string;
   credits: number;
 }) {
-  const { data: credit_usage } = await supabase_service
-    .from("credit_usage")
+    await supabase_service
+      .from("credit_usage")
     .insert([
       {
         team_id,
@@ -474,8 +474,7 @@ async function createCreditUsage({
         subscription_id: subscription_id || null,
         created_at: new Date(),
       },
-    ])
-    .select();
+    ]);
 
-  return { success: true, credit_usage };
+  return { success: true };
 }
