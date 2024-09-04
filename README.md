@@ -66,7 +66,7 @@ We provide an easy to use API with our hosted version. You can find the playgrou
 - [x] [Zapier Integration](https://zapier.com/apps/firecrawl/integrations)
 - [ ] Want an SDK or Integration? Let us know by opening an issue.
 
-To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/CONTRIBUTING.md).
+To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/SELF_HOST.md).
 
 ### API Key
 
