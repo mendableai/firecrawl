@@ -155,10 +155,12 @@ export async function crawlController(
     await callWebhook(req.auth.team_id, id, null, req.body.webhook, true, "crawl.started");
   }
 
+  const protocol = process.env.ENV === "local" ? req.protocol : "https";
+  
   return res.status(200).json({
     success: true,
     id,
-    url: `${req.protocol}://${req.get("host")}/v1/crawl/${id}`,
+    url: `${protocol}://${req.get("host")}/v1/crawl/${id}`,
   });
 }
 
