@@ -146,6 +146,9 @@ export async function scrapSingleUrl(
     parsePDF: pageOptions.parsePDF ?? true,
     removeTags: pageOptions.removeTags ?? [],
     onlyIncludeTags: pageOptions.onlyIncludeTags ?? [],
+    useFastMode: pageOptions.useFastMode ?? false,
+    disableJSDom: pageOptions.disableJSDom ?? false,
+    atsv: pageOptions.atsv ?? false
   }
 
   if (extractorOptions) {
