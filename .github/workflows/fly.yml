@@ -29,6 +29,7 @@ env:
   CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
   USE_DB_AUTHENTICATION: ${{ secrets.USE_DB_AUTHENTICATION }}
+  ENV: ${{ secrets.ENV }}
 
 jobs:
   pre-deploy-e2e-tests:
