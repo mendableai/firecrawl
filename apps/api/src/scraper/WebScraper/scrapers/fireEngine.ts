@@ -69,14 +69,14 @@ export async function scrapWithFireEngine({
 
     let engine = engineParam; // do we want fireEngineOptions as first choice?
 
-    Logger.info(
-      `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { wait: ${waitParam}, screenshot: ${screenshotParam}, fullPageScreenshot: ${fullPageScreenshot}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
-    );
-
     if (pageOptions?.useFastMode) {
       fireEngineOptionsParam.engine = "tlsclient";
       engine = "tlsclient";
     }
+
+    Logger.info(
+      `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { wait: ${waitParam}, screenshot: ${screenshotParam}, fullPageScreenshot: ${fullPageScreenshot}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
+    );
 
     // atsv is only available for beta customers
     const betaCustomersString = process.env.BETA_CUSTOMERS;
@@ -96,6 +96,7 @@ export async function scrapWithFireEngine({
     const _response = await Sentry.startSpan({
       name: "Call to fire-engine"
     }, async span => {
+      
       return await axiosInstance.post(
         process.env.FIRE_ENGINE_BETA_URL + endpoint,
         {
