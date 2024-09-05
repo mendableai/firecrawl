@@ -5,6 +5,8 @@ import { supabase_service } from "../../../src/services/supabase";
 import { Logger } from "../../../src/lib/logger";
 import { getCrawl, saveCrawl } from "../../../src/lib/crawl-redis";
 import * as Sentry from "@sentry/node";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 export async function crawlCancelController(req: Request, res: Response) {
   try {

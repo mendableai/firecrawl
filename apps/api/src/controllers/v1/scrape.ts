@@ -106,14 +106,10 @@ export async function scrapeController(
     creditsToBeBilled = 50;
   }
 
-  const billingResult = await billTeam(req.auth.team_id, creditsToBeBilled);
-  if (!billingResult.success) {
-    return res.status(402).json({
-      success: false,
-      error:
-        "Failed to bill team. Insufficient credits or subscription not found.",
-    });
-  }
+  billTeam(req.auth.team_id, creditsToBeBilled).catch(error => {
+    Logger.error(`Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`);
+    // Optionally, you could notify an admin or add to a retry queue here
+  });
 
   if (!pageOptions || !pageOptions.includeRawHtml) {
     if (doc && doc.rawHtml) {
@@ -147,5 +143,6 @@ export async function scrapeController(
   return res.status(200).json({
     success: true,
     data: legacyDocumentConverter(doc),
+    scrape_id: origin?.includes("website") ? jobId : undefined,
   });
 }

@@ -1,9 +1,11 @@
 import { supabase_service } from "../supabase";
 import { Logger } from "../../../src/lib/logger";
-import "dotenv/config";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 export async function logCrawl(job_id: string, team_id: string) {
-  if (process.env.USE_DB_AUTHENTICATION === 'true') {
+  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+  if (useDbAuthentication) {
     try {
       const { data, error } = await supabase_service
       .from("bulljobs_teams")

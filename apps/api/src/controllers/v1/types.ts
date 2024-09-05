@@ -225,6 +225,7 @@ export type ScrapeResponse =
       success: true;
       warning?: string;
       data: Document;
+      scrape_id?: string;
     };
 
 export interface ScrapeResponseRequestTest {
@@ -246,6 +247,7 @@ export type MapResponse =
   | {
       success: true;
       links: string[];
+      scrape_id?: string;
     };
 
 export type CrawlStatusParams = {
