@@ -8,8 +8,37 @@ import dotenv from 'dotenv';
 import { Logger } from './logger';
 dotenv.config();
 
-// TODO: create a singleton for the converter
 // TODO: add a timeout to the Go parser
+
+class GoMarkdownConverter {
+  private static instance: GoMarkdownConverter;
+  private convert: any;
+
+  private constructor() {
+    const goExecutablePath = join(__dirname, 'go-html-to-md/html-to-markdown.so');
+    const lib = koffi.load(goExecutablePath);
+    this.convert = lib.func('ConvertHTMLToMarkdown', 'string', ['string']);
+  }
+
+  public static getInstance(): GoMarkdownConverter {
+    if (!GoMarkdownConverter.instance) {
+      GoMarkdownConverter.instance = new GoMarkdownConverter();
+    }
+    return GoMarkdownConverter.instance;
+  }
+
+  public async convertHTMLToMarkdown(html: string): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      this.convert.async(html, (err: Error, res: string) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(res);
+        }
+      });
+    });
+  }
+}
 
 export async function parseMarkdown(html: string): Promise<string> {
   if (!html) {
@@ -18,20 +47,8 @@ export async function parseMarkdown(html: string): Promise<string> {
 
   try {
     if (process.env.USE_GO_MARKDOWN_PARSER == "true") {
-      const goExecutablePath = join(__dirname, 'go-html-to-md/html-to-markdown.so');
-      const lib = koffi.load(goExecutablePath);
-    
-      const convert = lib.func('ConvertHTMLToMarkdown', 'string', ['string']);
-
-      let markdownContent = await new Promise<string>((resolve, reject) => {
-        convert.async(html, (err: Error, res: string) => {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(res);
-          }
-        });
-      });
+      const converter = GoMarkdownConverter.getInstance();
+      let markdownContent = await converter.convertHTMLToMarkdown(html);
 
       markdownContent = processMultiLineLinks(markdownContent);
       markdownContent = removeSkipToContentLinks(markdownContent);
