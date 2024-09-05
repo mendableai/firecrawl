@@ -147,7 +147,7 @@ export async function scrapSingleUrl(
     removeTags: pageOptions.removeTags ?? [],
     onlyIncludeTags: pageOptions.onlyIncludeTags ?? [],
     useFastMode: pageOptions.useFastMode ?? false,
-    disableJSDom: pageOptions.disableJSDom ?? false,
+    disableJsDom: pageOptions.disableJsDom ?? false,
     atsv: pageOptions.atsv ?? false
   }
 
@@ -203,6 +203,7 @@ export async function scrapSingleUrl(
             fireEngineOptions: {
               engine: engine,
               atsv: pageOptions.atsv,
+              disableJsDom: pageOptions.disableJsDom,
             },
             priority,
             teamId,

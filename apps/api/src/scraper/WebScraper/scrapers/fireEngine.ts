@@ -104,12 +104,13 @@ export async function scrapWithFireEngine({
           screenshot: screenshotParam,
           fullPageScreenshot: fullPageScreenshotParam,
           headers: headers,
-          pageOptions: pageOptions,
           disableJsDom: pageOptions?.disableJsDom ?? false,
           priority,
           engine,
           instantReturn: true,
           ...fireEngineOptionsParam,
+          atsv: pageOptions?.atsv ?? false,
+          scrollXPaths: pageOptions?.scrollXPaths ?? [],
         },
         {
           headers: {

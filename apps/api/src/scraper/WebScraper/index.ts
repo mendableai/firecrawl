@@ -590,7 +590,7 @@ export class WebScraperDataProvider {
       fullPageScreenshot: options.pageOptions?.fullPageScreenshot ?? false,
       screenshot: options.pageOptions?.screenshot ?? false,
       useFastMode: options.pageOptions?.useFastMode ?? false,
-      disableJSDom: options.pageOptions?.disableJSDom ?? false,
+      disableJsDom: options.pageOptions?.disableJsDom ?? false,
       atsv: options.pageOptions?.atsv ?? false
     };
     this.extractorOptions = options.extractorOptions ?? { mode: "markdown" };
