@@ -62,8 +62,8 @@ export async function mapController(
     : `site:${req.body.url}`;
   // www. seems to exclude subdomains in some cases
   const mapResults = await fireEngineMap(mapUrl, {
-    // limit to 50 results (beta)
-    numResults: Math.min(limit, 50),
+    // limit to 100 results (beta)
+    numResults: Math.min(limit, 100),
   });
 
   if (mapResults.length > 0) {
