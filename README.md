@@ -402,6 +402,7 @@ class TopArticlesSchema(BaseModel):
     top: List[ArticleSchema] = Field(..., max_items=5, description="Top 5 stories")
 
 data = app.scrape_url('https://news.ycombinator.com', {
+    'formats': ['extract'],
     'extract': {
         'schema': TopArticlesSchema.model_json_schema()
     }
