@@ -122,6 +122,9 @@ importers:
       keyword-extractor:
         specifier: ^0.0.28
         version: 0.0.28
+      koffi:
+        specifier: ^2.9.0
+        version: 2.9.0
       langchain:
         specifier: ^0.2.8
         version: 0.2.8(@supabase/supabase-js@2.44.2)(axios@1.7.2)(cheerio@1.0.0-rc.12)(handlebars@4.7.8)(html-to-text@9.0.5)(ioredis@5.4.1)(mammoth@1.7.2)(mongodb@6.6.2(socks@2.8.3))(openai@4.57.0(zod@3.23.8))(pdf-parse@1.1.1)(puppeteer@22.12.1(typescript@5.4.5))(redis@4.6.14)(ws@8.18.0)
@@ -3169,6 +3172,9 @@ packages:
   kleur@3.0.3:
     resolution: {integrity: sha512-eTIzlVOSUR+JxdDFepEYcBMtZ9Qqdef+rnzWdRZuMbOywu5tO2w2N7rqjoANZ5k9vywhL6Br1VRjUIgTQx4E8w==}
     engines: {node: '>=6'}
+
+  koffi@2.9.0:
+    resolution: {integrity: sha512-KCsuJ2gM58n6bNdR2Z7gqsh/3TchxxQFbVgax2/UvAjRTgwNSYAJDx9E3jrkBP4jEDHWRCfE47Y2OG+/fiSvEw==}
 
   langchain@0.2.8:
     resolution: {integrity: sha512-kb2IOMA71xH8e6EXFg0l4S+QSMC/c796pj1+7mPBkR91HHwoyHZhFRrBaZv4tV+Td+Ba91J2uEDBmySklZLpNQ==}
@@ -8491,6 +8497,8 @@ snapshots:
   keyword-extractor@0.0.28: {}
 
   kleur@3.0.3: {}
+
+  koffi@2.9.0: {}
 
   langchain@0.2.8(@supabase/supabase-js@2.44.2)(axios@1.7.2)(cheerio@1.0.0-rc.12)(handlebars@4.7.8)(html-to-text@9.0.5)(ioredis@5.4.1)(mammoth@1.7.2)(mongodb@6.6.2(socks@2.8.3))(openai@4.57.0(zod@3.23.8))(pdf-parse@1.1.1)(puppeteer@22.12.1(typescript@5.4.5))(redis@4.6.14)(ws@8.18.0):
     dependencies:
