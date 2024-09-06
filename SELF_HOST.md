@@ -106,7 +106,7 @@ You should be able to see the Bull Queue Manager UI on `http://localhost:3002/ad
 If you’d like to test the crawl endpoint, you can run this:
 
   ```bash
-  curl -X POST http://localhost:3002/v0/crawl \
+  curl -X POST http://localhost:3002/v1/crawl \
       -H 'Content-Type: application/json' \
       -d '{
         "url": "https://mendable.ai"
