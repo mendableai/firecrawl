@@ -47,24 +47,42 @@ export async function mapController(
 
   const crawler = crawlToCrawler(id, sc);
 
-  const sitemap = req.body.ignoreSitemap ? null : await crawler.tryGetSitemap();
-
-  if (sitemap !== null) {
-    sitemap.map((x) => {
-      links.push(x.url);
-    });
-  }
-
   let urlWithoutWww = req.body.url.replace("www.", "");
 
   let mapUrl = req.body.search
     ? `"${req.body.search}" site:${urlWithoutWww}`
     : `site:${req.body.url}`;
-  // www. seems to exclude subdomains in some cases
-  const mapResults = await fireEngineMap(mapUrl, {
-    // limit to 100 results (beta)
-    numResults: Math.min(limit, 100),
-  });
+
+  const maxResults = 5000;
+  const resultsPerPage = 100;
+  const maxPages = Math.ceil(maxResults / resultsPerPage);
+
+  const fetchPage = async (page: number) => {
+    return fireEngineMap(mapUrl, {
+      numResults: resultsPerPage,
+      page: page
+    });
+  };
+
+  const pagePromises = Array.from({ length: maxPages }, (_, i) => fetchPage(i + 1));
+  
+  // Parallelize sitemap fetch with serper search
+  const [sitemap, ...allResults] = await Promise.all([
+    req.body.ignoreSitemap ? null : crawler.tryGetSitemap(),
+    ...pagePromises
+  ]);
+
+  if (sitemap !== null) {
+    sitemap.forEach((x) => {
+      links.push(x.url);
+    });
+  }
+
+  let mapResults = allResults.flat().filter(result => result !== null && result !== undefined);
+
+  if (mapResults.length > maxResults) {
+    mapResults = mapResults.slice(0, maxResults);
+  }
 
   if (mapResults.length > 0) {
     if (req.body.search) {
