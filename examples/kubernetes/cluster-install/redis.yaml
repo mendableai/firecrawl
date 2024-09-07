@@ -15,7 +15,22 @@ spec:
       containers:
       - name: redis
         image: redis:alpine
-        args: ["redis-server", "--bind", "0.0.0.0"]
+        command: [ "/bin/sh", "-c" ]  # Run a shell script as entrypoint
+        args:
+          - |
+            if [ -n "$REDIS_PASSWORD" ]; then
+              echo "Starting Redis with authentication"
+              exec redis-server --bind 0.0.0.0 --requirepass "$REDIS_PASSWORD"
+            else
+              echo "Starting Redis without authentication"
+              exec redis-server --bind 0.0.0.0
+            fi
+        env:
+          - name: REDIS_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: firecrawl-secret
+                key: REDIS_PASSWORD
 ---
 apiVersion: v1
 kind: Service
