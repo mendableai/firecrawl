@@ -39,16 +39,8 @@ export const excludeNonMainTags = [
   "#search",
   ".share",
   "#share",
-  ".pagination",
-  "#pagination",
   ".widget",
   "#widget",
-  ".related",
-  "#related",
-  ".tag",
-  "#tag",
-  ".category",
-  "#category",
   ".cookie",
   "#cookie"
 ];
