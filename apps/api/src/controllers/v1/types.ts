@@ -322,6 +322,7 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     removeTags: x.excludeTags,
     onlyMainContent: x.onlyMainContent,
     waitFor: x.waitFor,
+    headers: x.headers,
     includeLinks: x.formats.includes("links"),
     screenshot: x.formats.includes("screenshot"),
     fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
