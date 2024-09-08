@@ -308,7 +308,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     }
 
     // 5. Compare the total credits used with the credits allowed by the plan.
-    if (totalCreditsUsed > FREE_CREDITS) {
+    if (totalCreditsUsed >= FREE_CREDITS) {
       // Send email notification for insufficient credits
       await sendNotification(
         team_id,
@@ -405,7 +405,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
   const creditUsagePercentage = adjustedCreditsUsed / creditLimit;
 
   // Compare the adjusted total credits used with the credits allowed by the plan
-  if (adjustedCreditsUsed > price.credits) {
+  if (adjustedCreditsUsed >= price.credits) {
     await sendNotification(
       team_id,
       NotificationType.LIMIT_REACHED,
