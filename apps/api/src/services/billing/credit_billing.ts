@@ -186,7 +186,8 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     getValue(cacheKeyCoupons)
   ]);
 
-  let subscription, subscriptionError, coupons;
+  let subscription, subscriptionError;
+  let coupons : {credits: number}[];
 
   if (cachedSubscription && cachedCoupons) {
     subscription = JSON.parse(cachedSubscription);
@@ -225,15 +226,15 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     );
   }
 
+
+  // If there are available coupons and they are enough for the operation
+  if (couponCredits >= credits) {
+    return { success: true, message: "Sufficient credits available", remainingCredits: couponCredits };
+  }
   
 
   // Free credits, no coupons
   if (!subscription || subscriptionError) {
-
-    // If there is no active subscription but there are available coupons
-    if (couponCredits >= credits) {
-      return { success: true, message: "Sufficient credits available", remainingCredits: couponCredits };
-    }
 
     let creditUsages;
     let creditUsageError;
@@ -251,6 +252,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
       const retryInterval = 2000; // 2 seconds
 
       while (retries < maxRetries) {
+        // Reminder, this has an 1000 limit.
         const result = await supabase_service
           .from("credit_usage")
           .select("credits_used")
@@ -292,7 +294,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     end.setDate(end.getDate() + 30);
     // check if usage is within 80% of the limit
     const creditLimit = FREE_CREDITS;
-    const creditUsagePercentage = (totalCreditsUsed + credits) / creditLimit;
+    const creditUsagePercentage = totalCreditsUsed / creditLimit;
 
     // Add a check to ensure totalCreditsUsed is greater than 0
     if (totalCreditsUsed > 0 && creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
@@ -306,7 +308,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     }
 
     // 5. Compare the total credits used with the credits allowed by the plan.
-    if (totalCreditsUsed + credits > FREE_CREDITS) {
+    if (totalCreditsUsed >= FREE_CREDITS) {
       // Send email notification for insufficient credits
       await sendNotification(
         team_id,
@@ -366,7 +368,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
 
   // Get the price details from cache or database
   const priceCacheKey = `price_${subscription.price_id}`;
-  let price;
+  let price : {credits: number};
 
   try {
     const cachedPrice = await getValue(priceCacheKey);
@@ -394,29 +396,31 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     Logger.error(`Error retrieving or caching price: ${error}`);
     Sentry.captureException(error);
     // If errors, just assume it's a big number so user don't get an error
-    price = { credits: 1000000 };
+    price = { credits: 10000000 };
   }
 
   const creditLimit = price.credits;
-  const creditUsagePercentage = (adjustedCreditsUsed + credits) / creditLimit;
+
+  // Removal of + credits
+  const creditUsagePercentage = adjustedCreditsUsed / creditLimit;
 
   // Compare the adjusted total credits used with the credits allowed by the plan
-  if (adjustedCreditsUsed + credits > price.credits) {
-    // await sendNotification(
-    //   team_id,
-    //   NotificationType.LIMIT_REACHED,
-    //   subscription.current_period_start,
-    //   subscription.current_period_end
-    // );
+  if (adjustedCreditsUsed >= price.credits) {
+    await sendNotification(
+      team_id,
+      NotificationType.LIMIT_REACHED,
+      subscription.current_period_start,
+      subscription.current_period_end
+    );
     return { success: false, message: "Insufficient credits, please upgrade!", remainingCredits: creditLimit - adjustedCreditsUsed };
-  } else if (creditUsagePercentage >= 0.8) {
+  } else if (creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
     // Send email notification for approaching credit limit
-    // await sendNotification(
-    //   team_id,
-    //   NotificationType.APPROACHING_LIMIT,
-    //   subscription.current_period_start,
-    //   subscription.current_period_end
-    // );
+    await sendNotification(
+      team_id,
+      NotificationType.APPROACHING_LIMIT,
+      subscription.current_period_start,
+      subscription.current_period_end
+    );
   }
 
   return { success: true, message: "Sufficient credits available", remainingCredits: creditLimit - adjustedCreditsUsed };
