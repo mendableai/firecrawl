@@ -1,7 +1,6 @@
 # Install Firecrawl on a Kubernetes Cluster (Simple Version)
 # Before installing
 1. Set [secret.yaml](secret.yaml) and [configmap.yaml](configmap.yaml) and do not check in secrets
-   Here's the modified markdown with the statement you requested:
    - **Note**: If `REDIS_PASSWORD` is configured in the secret, please modify the ConfigMap to reflect the following format for `REDIS_URL` and `REDIS_RATE_LIMIT_URL`:
      ```yaml
      REDIS_URL: "redis://:password@host:port"
