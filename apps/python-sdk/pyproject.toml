@@ -12,8 +12,7 @@ dependencies = [
     "requests",
     "python-dotenv",
     "websockets",
-    "asyncio",
-"nest-asyncio"
+    "nest-asyncio"
 ]
 authors = [{name = "Mendable.ai",email = "nick@mendable.ai"}]
 maintainers = [{name = "Mendable.ai",email = "nick@mendable.ai"}]
