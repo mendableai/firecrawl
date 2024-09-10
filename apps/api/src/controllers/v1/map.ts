@@ -88,7 +88,13 @@ export async function mapController(
     links = performCosineSimilarity(links, searchQuery);
   }
 
-  links = links.map((x) => checkAndUpdateURLForMap(x).url.trim());
+  links = links.map((x) => {
+    try {
+      return checkAndUpdateURLForMap(x).url.trim()
+    } catch (_) {
+      return null;
+    }
+  }).filter(x => x !== null);
 
   // allows for subdomains to be included
   links = links.filter((x) => isSameDomain(x, req.body.url));
