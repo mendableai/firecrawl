@@ -138,10 +138,10 @@ export class SearchResult {
 export interface FireEngineResponse {
   html: string;
   screenshot: string;
+  screenshotFullPage: string;
   pageStatusCode?: number;
   pageError?: string;
 }
-
 
 export interface FireEngineOptions{
   mobileProxy?: boolean;

@@ -68,7 +68,7 @@ export interface FirecrawlDocument {
  * Defines the options and configurations available for scraping web content.
  */
 export interface ScrapeParams {
-    formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "extract" | "full@scrennshot")[];
+    formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "extract" | "screenshot@fullPage")[];
     headers?: Record<string, string>;
     includeTags?: string[];
     excludeTags?: string[];

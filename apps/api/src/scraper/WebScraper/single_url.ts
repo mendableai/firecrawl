@@ -170,10 +170,11 @@ export async function scrapSingleUrl(
     let scraperResponse: {
       text: string;
       screenshot: string;
+      screenshotFullPage: string;
       metadata: { pageStatusCode?: number; pageError?: string | null };
-    } = { text: "", screenshot: "", metadata: {} };
+    } = { text: "", screenshot: "", screenshotFullPage: "", metadata: {} };
     let screenshot = "";
-
+    let screenshotFullPage = "";
     const timer = Date.now();
     const logInsertPromise = ScrapeEvents.insert(jobId, {
       type: "scrape",
@@ -210,6 +211,7 @@ export async function scrapSingleUrl(
           });
           scraperResponse.text = response.html;
           scraperResponse.screenshot = response.screenshot;
+          scraperResponse.screenshotFullPage = response.screenshotFullPage;
           scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
           scraperResponse.metadata.pageError = response.pageError;
         }
@@ -269,10 +271,14 @@ export async function scrapSingleUrl(
             url: customScraperResult.url,
             waitFor: customScraperResult.waitAfterLoad,
             screenshot: false,
+            fullPageScreenshot: false,
             pageOptions: customScraperResult.pageOptions,
           });
           if (screenshot) {
             customScrapedContent.screenshot = screenshot;
+          }
+          if (screenshotFullPage) {
+            customScrapedContent.screenshotFullPage = screenshotFullPage;
           }
           break;
         case "pdf":
@@ -284,6 +290,7 @@ export async function scrapSingleUrl(
           customScrapedContent = {
             html: content,
             screenshot,
+            screenshotFullPage,
             pageStatusCode,
             pageError,
           };
@@ -294,6 +301,7 @@ export async function scrapSingleUrl(
     if (customScrapedContent) {
       scraperResponse.text = customScrapedContent.html;
       screenshot = customScrapedContent.screenshot;
+      screenshotFullPage = customScrapedContent.screenshotFullPage;
     }
     //* TODO: add an optional to return markdown or structured/extracted content
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
@@ -313,16 +321,18 @@ export async function scrapSingleUrl(
       html: cleanedHtml,
       rawHtml: scraperResponse.text,
       screenshot: scraperResponse.screenshot,
+      screenshotFullPage: scraperResponse.screenshotFullPage,
       pageStatusCode: scraperResponse.metadata.pageStatusCode,
       pageError: scraperResponse.metadata.pageError || undefined,
     };
   };
 
-  let { text, html, rawHtml, screenshot, pageStatusCode, pageError } = {
+  let { text, html, rawHtml, screenshot, screenshotFullPage, pageStatusCode, pageError } = {
     text: "",
     html: "",
     rawHtml: "",
     screenshot: "",
+    screenshotFullPage: "",
     pageStatusCode: 200,
     pageError: undefined,
   };
@@ -355,7 +365,7 @@ export async function scrapSingleUrl(
       html = attempt.html ?? "";
       rawHtml = attempt.rawHtml ?? "";
       screenshot = attempt.screenshot ?? "";
-
+      screenshotFullPage = attempt.screenshotFullPage ?? "";
       if (attempt.pageStatusCode) {
         pageStatusCode = attempt.pageStatusCode;
       }
@@ -393,7 +403,7 @@ export async function scrapSingleUrl(
     }
 
     let document: Document;
-    if (screenshot && screenshot.length > 0) {
+    if ((screenshot && screenshot.length > 0) || (screenshotFullPage && screenshotFullPage.length > 0)) {
       document = {
         content: text,
         markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? text : undefined,
@@ -406,7 +416,8 @@ export async function scrapSingleUrl(
         linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
         metadata: {
           ...metadata,
-          screenshot: screenshot,
+          screenshot: screenshot ?? "",
+          screenshotFullPage: screenshotFullPage ?? "",
           sourceURL: urlToScrap,
           pageStatusCode: pageStatusCode,
           pageError: pageError,

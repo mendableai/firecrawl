@@ -96,23 +96,26 @@ export async function scrapWithFireEngine({
     const _response = await Sentry.startSpan({
       name: "Call to fire-engine"
     }, async span => {
+
+      const requestBody = {
+        url: url,
+        wait: waitParam,
+        screenshot: screenshotParam,
+        fullPageScreenshot: fullPageScreenshotParam,
+        headers: headers,
+        disableJsDom: pageOptions?.disableJsDom ?? false,
+        priority,
+        engine,
+        instantReturn: true,
+        ...fireEngineOptionsParam,
+        atsv: pageOptions?.atsv ?? false,
+        scrollXPaths: pageOptions?.scrollXPaths ?? [],
+      }
+      console.log({requestBody});
       
       return await axiosInstance.post(
         process.env.FIRE_ENGINE_BETA_URL + endpoint,
-        {
-          url: url,
-          wait: waitParam,
-          screenshot: screenshotParam,
-          fullPageScreenshot: fullPageScreenshotParam,
-          headers: headers,
-          disableJsDom: pageOptions?.disableJsDom ?? false,
-          priority,
-          engine,
-          instantReturn: true,
-          ...fireEngineOptionsParam,
-          atsv: pageOptions?.atsv ?? false,
-          scrollXPaths: pageOptions?.scrollXPaths ?? [],
-        },
+        requestBody,
         {
           headers: {
             "Content-Type": "application/json",
@@ -143,7 +146,7 @@ export async function scrapWithFireEngine({
       
       Logger.debug(`⛏️ Fire-Engine (${engine}): Request timed out for ${url}`);
       logParams.error_message = "Request timed out";
-      return { html: "", screenshot: "", pageStatusCode: null, pageError: "" };
+      return { html: "", screenshot: "", screenshotFullPage: "", pageStatusCode: null, pageError: "" };
     }
 
     if (checkStatusResponse.status !== 200 || checkStatusResponse.data.error) {
@@ -163,6 +166,7 @@ export async function scrapWithFireEngine({
       return {
         html: "",
         screenshot: "",
+        screenshotFullPage: "",
         pageStatusCode,
         pageError: checkStatusResponse.data?.pageError ?? checkStatusResponse.data?.error,
       };
@@ -178,7 +182,7 @@ export async function scrapWithFireEngine({
       logParams.success = true;
       logParams.response_code = pageStatusCode;
       logParams.error_message = pageError;
-      return { html: content, screenshot: "", pageStatusCode, pageError };
+      return { html: content, screenshot: "", screenshotFullPage: "", pageStatusCode, pageError };
     } else {
       const data = checkStatusResponse.data;
       
@@ -191,6 +195,7 @@ export async function scrapWithFireEngine({
       return {
         html: data.content ?? "",
         screenshot: data.screenshot ?? "",
+        screenshotFullPage: data.fullPageScreenshot ?? "",
         pageStatusCode: data.pageStatusCode,
         pageError: data.pageError ?? data.error,
       };
@@ -203,7 +208,7 @@ export async function scrapWithFireEngine({
       Logger.debug(`⛏️ Fire-Engine: Failed to fetch url: ${url} | Error: ${error}`);
       logParams.error_message = error.message || error;
     }
-    return { html: "", screenshot: "", pageStatusCode: null, pageError: logParams.error_message };
+    return { html: "", screenshot: "", screenshotFullPage: "", pageStatusCode: null, pageError: logParams.error_message };
   } finally {
     const endTime = Date.now();
     logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;
