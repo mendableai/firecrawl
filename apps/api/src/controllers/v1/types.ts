@@ -30,7 +30,14 @@ export const url = z.preprocess(
       "URL must have a valid top-level domain or be a valid path"
     )
     .refine(
-      (x) => checkUrl(x as string),
+      (x) => {
+        try {
+          checkUrl(x as string)
+          return true;
+        } catch (_) {
+          return false;
+        }
+      },
       "Invalid URL"
     )
     .refine(
