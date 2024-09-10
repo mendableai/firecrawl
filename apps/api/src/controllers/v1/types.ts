@@ -184,6 +184,7 @@ export type Document = {
   rawHtml?: string;
   links?: string[];
   screenshot?: string;
+  'screenshot@fullPage'?: string;
   metadata: {
     title?: string;
     description?: string;
@@ -351,14 +352,14 @@ export function legacyDocumentConverter(doc: any): Document {
   if (doc === null || doc === undefined) return null;
 
   if (doc.metadata) {
-    if (doc.metadata.screenshot) {
+    if (doc.metadata.screenshot || doc.metadata.screenshot == "") {
       doc.screenshot = doc.metadata.screenshot;
       delete doc.metadata.screenshot;
     }
 
-    if (doc.metadata.fullPageScreenshot) {
-      doc.fullPageScreenshot = doc.metadata.fullPageScreenshot;
-      delete doc.metadata.fullPageScreenshot;
+    if (doc.metadata.screenshotFullPage || doc.metadata.screenshotFullPage == "") {
+      doc.screenshotFullPage = doc.metadata.screenshotFullPage;
+      delete doc.metadata.screenshotFullPage;
     }
   }
 
@@ -368,7 +369,8 @@ export function legacyDocumentConverter(doc: any): Document {
     rawHtml: doc.rawHtml,
     html: doc.html,
     extract: doc.llm_extraction,
-    screenshot: doc.screenshot ?? doc.fullPageScreenshot,
+    screenshot: doc.screenshot != "" ? doc.screenshot : undefined,
+    'screenshot@fullPage': doc.screenshotFullPage != "" ? doc.screenshotFullPage : undefined,
     metadata: {
       ...doc.metadata,
       pageError: undefined,

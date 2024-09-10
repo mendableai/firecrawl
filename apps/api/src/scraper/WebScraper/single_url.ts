@@ -416,8 +416,8 @@ export async function scrapSingleUrl(
         linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
         metadata: {
           ...metadata,
-          screenshot: screenshot ?? "",
-          screenshotFullPage: screenshotFullPage ?? "",
+          screenshot: screenshot ?? undefined,
+          screenshotFullPage: screenshotFullPage ?? undefined,
           sourceURL: urlToScrap,
           pageStatusCode: pageStatusCode,
           pageError: pageError,
