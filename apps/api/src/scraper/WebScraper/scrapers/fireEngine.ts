@@ -55,7 +55,7 @@ export async function scrapWithFireEngine({
   try {
     const reqParams = await generateRequestParams(url);
     let waitParam = reqParams["params"]?.wait ?? waitFor;
-    let engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "playwright";
+    let engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "chrome-cdp";
     let screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
     let fullPageScreenshotParam = reqParams["params"]?.fullPageScreenshot ?? fullPageScreenshot;
     let fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
