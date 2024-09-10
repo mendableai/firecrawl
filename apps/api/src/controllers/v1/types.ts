@@ -264,6 +264,7 @@ export type CrawlStatusParams = {
 export type CrawlStatusResponse =
   | ErrorResponse
   | {
+      success: true;
       status: "scraping" | "completed" | "failed" | "cancelled";
       completed: number;
       total: number;

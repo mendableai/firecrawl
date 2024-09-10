@@ -114,6 +114,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
   }
 
   res.status(200).json({
+    success: true,
     status,
     completed: doneJobsLength,
     total: jobIDs.length,
