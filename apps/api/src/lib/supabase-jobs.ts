@@ -31,12 +31,13 @@ export const supabaseGetJobById = async (jobId: string) => {
  * @returns {any[]} Jobs
  */
 export const supabaseGetJobsById = async (jobIds: string[]) => {
-  const { data, error } = await supabase_service.rpc("get_jobs_by_ids", {
-    job_ids: jobIds,
-  });
+  const { data, error } = await supabase_service
+    .from("firecrawl_jobs")
+    .select()
+    .in("job_id", jobIds);
 
   if (error) {
-    Logger.error(`Error in get_jobs_by_ids: ${error}`);
+    Logger.error(`Error in supabaseGetJobsById: ${error}`);
     Sentry.captureException(error);
     return [];
   }
