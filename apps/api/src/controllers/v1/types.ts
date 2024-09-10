@@ -348,7 +348,7 @@ export function legacyExtractorOptions(x: ExtractOptions): ExtractorOptions {
 }
 
 export function legacyDocumentConverter(doc: any): Document {
-  if (doc === null || doc === undefined) return doc;
+  if (doc === null || doc === undefined) return null;
 
   if (doc.metadata) {
     if (doc.metadata.screenshot) {
