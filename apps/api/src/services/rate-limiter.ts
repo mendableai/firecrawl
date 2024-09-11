@@ -112,14 +112,16 @@ export const scrapeStatusRateLimiter = new RateLimiterRedis({
   duration: 60, // Duration in seconds
 });
 
+const testSuiteTokens = ["a01ccae", "6254cf9", "0f96e673", "23befa1b", "69141c4"];
+
 export function getRateLimiter(
   mode: RateLimiterMode,
   token: string,
   plan?: string,
   teamId?: string
 ) {
-
-  if (token.includes("a01ccae") || token.includes("6254cf9") || token.includes("0f96e673") || token.includes("23befa1b")) {
+  
+  if (testSuiteTokens.some(testToken => token.includes(testToken))) {
     return testSuiteRateLimiter;
   }
 
