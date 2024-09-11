@@ -1,5 +1,5 @@
 import axios, { AxiosResponse, AxiosRequestHeaders } from "axios";
-import { z } from "zod";
+import type { ZodSchema } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WebSocket } from "isows";
 import { TypedEventTarget } from "typescript-event-target";
@@ -81,7 +81,7 @@ export interface ScrapeParams {
   onlyMainContent?: boolean;
   extract?: {
     prompt?: string;
-    schema?: z.ZodSchema | any;
+    schema?: ZodSchema | any;
     systemPrompt?: string;
   };
   waitFor?: number;
