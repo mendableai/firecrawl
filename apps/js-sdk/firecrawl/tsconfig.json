@@ -16,17 +16,9 @@
     "noUncheckedIndexedAccess": true,
     "noImplicitOverride": true,
 
-    /* If transpiling with TypeScript: */
+    /* If NOT transpiling with TypeScript: */
     "module": "NodeNext",
-    "outDir": "dist",
-    "rootDir": "src",
-    "sourceMap": true,
-
-    /* AND if you're building for a library: */
-    "declaration": true,
-
-    /* AND if you're building for a library in a monorepo: */
-    "declarationMap": true /* Skip type checking all .d.ts files. */
+    "noEmit": true,
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist", "**/__tests__/*"]

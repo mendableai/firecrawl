@@ -4,9 +4,16 @@
   "description": "JavaScript SDK for Firecrawl API",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": "./dist/index.js",
+      "default": "./dist/index.cjs"
+    }
+  },
   "type": "module",
   "scripts": {
-    "build": "tsc",
+    "build": "tsup",
     "build-and-publish": "npm run build && npm publish --access public",
     "publish-beta": "npm run build && npm publish --access public --tag beta",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --verbose src/__tests__/v1/**/*.test.ts"
@@ -40,6 +47,7 @@
     "@types/uuid": "^9.0.8",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.2",
+    "tsup": "^8.2.4",
     "typescript": "^5.4.5"
   },
   "keywords": [
