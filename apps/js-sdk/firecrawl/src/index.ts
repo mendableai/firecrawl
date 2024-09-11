@@ -183,7 +183,11 @@ export default class FirecrawlApp {
    * @param config - Configuration options for the FirecrawlApp instance.
    */
   constructor({ apiKey = null, apiUrl = null }: FirecrawlAppConfig) {
-    this.apiKey = apiKey || "";
+    if (typeof apiKey !== "string") {
+      throw new Error("No API key provided");
+    }
+    
+    this.apiKey = apiKey;
     this.apiUrl = apiUrl || "https://api.firecrawl.dev";
   }
 
