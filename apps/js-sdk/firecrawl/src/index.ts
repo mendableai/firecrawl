@@ -186,7 +186,7 @@ export default class FirecrawlApp {
     if (typeof apiKey !== "string") {
       throw new Error("No API key provided");
     }
-    
+
     this.apiKey = apiKey;
     this.apiUrl = apiUrl || "https://api.firecrawl.dev";
   }
@@ -346,9 +346,9 @@ export default class FirecrawlApp {
         `${this.apiUrl}/v1/crawl/${id}`,
         headers
       );
-      if (response.status === 200 && getAllData) {
+      if (response.status === 200) {
         let allData = response.data.data;
-        if (response.data.status === "completed") {
+        if (getAllData && response.data.status === "completed") {
           let statusData = response.data
           if ("data" in statusData) {
             let data = statusData.data;
