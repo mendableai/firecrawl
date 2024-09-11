@@ -21,3 +21,5 @@ apps/playwright-service-ts/package-lock.json
 
 *.pyc
 .rdb
+
+apps/js-sdk/firecrawl/dist
