@@ -30,7 +30,14 @@ export const url = z.preprocess(
       "URL must have a valid top-level domain or be a valid path"
     )
     .refine(
-      (x) => checkUrl(x as string),
+      (x) => {
+        try {
+          checkUrl(x as string)
+          return true;
+        } catch (_) {
+          return false;
+        }
+      },
       "Invalid URL"
     )
     .refine(
@@ -257,6 +264,7 @@ export type CrawlStatusParams = {
 export type CrawlStatusResponse =
   | ErrorResponse
   | {
+      success: true;
       status: "scraping" | "completed" | "failed" | "cancelled";
       completed: number;
       total: number;
@@ -322,6 +330,7 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     removeTags: x.excludeTags,
     onlyMainContent: x.onlyMainContent,
     waitFor: x.waitFor,
+    headers: x.headers,
     includeLinks: x.formats.includes("links"),
     screenshot: x.formats.includes("screenshot"),
     fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
@@ -339,7 +348,7 @@ export function legacyExtractorOptions(x: ExtractOptions): ExtractorOptions {
 }
 
 export function legacyDocumentConverter(doc: any): Document {
-  if (doc === null || doc === undefined) return doc;
+  if (doc === null || doc === undefined) return null;
 
   if (doc.metadata) {
     if (doc.metadata.screenshot) {

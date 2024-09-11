@@ -55,7 +55,7 @@ export async function scrapWithFireEngine({
   try {
     const reqParams = await generateRequestParams(url);
     let waitParam = reqParams["params"]?.wait ?? waitFor;
-    let engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "playwright";
+    let engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "chrome-cdp";
     let screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
     let fullPageScreenshotParam = reqParams["params"]?.fullPageScreenshot ?? fullPageScreenshot;
     let fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
@@ -69,14 +69,14 @@ export async function scrapWithFireEngine({
 
     let engine = engineParam; // do we want fireEngineOptions as first choice?
 
-    Logger.info(
-      `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { wait: ${waitParam}, screenshot: ${screenshotParam}, fullPageScreenshot: ${fullPageScreenshot}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
-    );
-
     if (pageOptions?.useFastMode) {
       fireEngineOptionsParam.engine = "tlsclient";
       engine = "tlsclient";
     }
+
+    Logger.info(
+      `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { wait: ${waitParam}, screenshot: ${screenshotParam}, fullPageScreenshot: ${fullPageScreenshot}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
+    );
 
     // atsv is only available for beta customers
     const betaCustomersString = process.env.BETA_CUSTOMERS;
@@ -96,6 +96,7 @@ export async function scrapWithFireEngine({
     const _response = await Sentry.startSpan({
       name: "Call to fire-engine"
     }, async span => {
+      
       return await axiosInstance.post(
         process.env.FIRE_ENGINE_BETA_URL + endpoint,
         {
@@ -104,12 +105,13 @@ export async function scrapWithFireEngine({
           screenshot: screenshotParam,
           fullPageScreenshot: fullPageScreenshotParam,
           headers: headers,
-          pageOptions: pageOptions,
           disableJsDom: pageOptions?.disableJsDom ?? false,
           priority,
           engine,
           instantReturn: true,
           ...fireEngineOptionsParam,
+          atsv: pageOptions?.atsv ?? false,
+          scrollXPaths: pageOptions?.scrollXPaths ?? [],
         },
         {
           headers: {

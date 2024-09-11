@@ -3,6 +3,8 @@ import { ScrapeLog } from "../../types";
 import { supabase_service } from "../supabase";
 import { PageOptions } from "../../lib/entities";
 import { Logger } from "../../lib/logger";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 export async function logScrape(
   scrapeLog: ScrapeLog,

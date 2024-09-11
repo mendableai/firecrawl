@@ -18,6 +18,7 @@ import { fireEngineMap } from "../../search/fireEngine";
 import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { performCosineSimilarity } from "../../lib/map-cosine";
+import { Logger } from "../../lib/logger";
 
 configDotenv();
 
@@ -61,8 +62,8 @@ export async function mapController(
     : `site:${req.body.url}`;
   // www. seems to exclude subdomains in some cases
   const mapResults = await fireEngineMap(mapUrl, {
-    // limit to 50 results (beta)
-    numResults: Math.min(limit, 50),
+    // limit to 100 results (beta)
+    numResults: Math.min(limit, 100),
   });
 
   if (mapResults.length > 0) {
@@ -87,7 +88,13 @@ export async function mapController(
     links = performCosineSimilarity(links, searchQuery);
   }
 
-  links = links.map((x) => checkAndUpdateURLForMap(x).url.trim());
+  links = links.map((x) => {
+    try {
+      return checkAndUpdateURLForMap(x).url.trim()
+    } catch (_) {
+      return null;
+    }
+  }).filter(x => x !== null);
 
   // allows for subdomains to be included
   links = links.filter((x) => isSameDomain(x, req.body.url));
@@ -100,7 +107,10 @@ export async function mapController(
   // remove duplicates that could be due to http/https or www
   links = removeDuplicateUrls(links);
 
-  await billTeam(req.auth.team_id, 1);
+  billTeam(req.auth.team_id, 1).catch(error => {
+    Logger.error(`Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`);
+    // Optionally, you could notify an admin or add to a retry queue here
+  });
 
   const endTime = new Date().getTime();
   const timeTakenInSeconds = (endTime - startTime) / 1000;

@@ -39,7 +39,7 @@ export async function scrapeHelper(
   returnCode: number;
 }> {
   const url = req.body.url;
-  if (!url) {
+  if (typeof url !== "string") {
     return { success: false, error: "Url is required", returnCode: 400 };
   }
 
@@ -244,14 +244,10 @@ export async function scrapeController(req: Request, res: Response) {
       }
       if (creditsToBeBilled > 0) {
         // billing for doc done on queue end, bill only for llm extraction
-        const billingResult = await billTeam(team_id, creditsToBeBilled);
-        if (!billingResult.success) {
-          return res.status(402).json({
-            success: false,
-            error:
-              "Failed to bill team. Insufficient credits or subscription not found.",
-          });
-        }
+        billTeam(team_id, creditsToBeBilled).catch(error => {
+          Logger.error(`Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`);
+          // Optionally, you could notify an admin or add to a retry queue here
+        });
       }
     }
     

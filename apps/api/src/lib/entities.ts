@@ -28,7 +28,7 @@ export type PageOptions = {
   onlyIncludeTags?: string | string[];
   includeLinks?: boolean;
   useFastMode?: boolean; // beta
-  disableJSDom?: boolean; // beta
+  disableJsDom?: boolean; // beta
   atsv?: boolean; // beta
 };
 

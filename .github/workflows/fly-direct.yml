@@ -22,7 +22,13 @@ env:
   SUPABASE_SERVICE_TOKEN: ${{ secrets.SUPABASE_SERVICE_TOKEN }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
+  PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
+  PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+  NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+  CRATES_IO_TOKEN: ${{ secrets.CRATES_IO_TOKEN }}
   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
+  USE_DB_AUTHENTICATION: ${{ secrets.USE_DB_AUTHENTICATION }}
+  ENV: ${{ secrets.ENV }}
 
 jobs:
   deploy:

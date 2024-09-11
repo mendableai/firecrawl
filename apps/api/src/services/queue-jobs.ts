@@ -67,6 +67,6 @@ export function waitForJob(jobId: string, timeout: number) {
           reject((await getScrapeQueue().getJob(jobId)).failedReason);
         }
       }
-    }, 1000);
+    }, 500);
   })
 }

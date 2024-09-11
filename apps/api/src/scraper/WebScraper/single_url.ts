@@ -96,15 +96,15 @@ function getScrapingFallbackOrder(
     "fetch",
   ].filter(Boolean);
 
-  if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
-    defaultOrder = [
-      "fire-engine",
-      useFireEngine ? undefined : "playwright",
-      ...defaultOrder.filter(
-        (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
-      ),
-    ].filter(Boolean);
-  }
+  // if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
+  //   defaultOrder = [
+  //     "fire-engine",
+  //     useFireEngine ? undefined : "playwright",
+  //     ...defaultOrder.filter(
+  //       (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
+  //     ),
+  //   ].filter(Boolean);
+  // }
 
   const filteredDefaultOrder = defaultOrder.filter(
     (scraper: (typeof baseScrapers)[number]) =>
@@ -146,6 +146,9 @@ export async function scrapSingleUrl(
     parsePDF: pageOptions.parsePDF ?? true,
     removeTags: pageOptions.removeTags ?? [],
     onlyIncludeTags: pageOptions.onlyIncludeTags ?? [],
+    useFastMode: pageOptions.useFastMode ?? false,
+    disableJsDom: pageOptions.disableJsDom ?? false,
+    atsv: pageOptions.atsv ?? false
   }
 
   if (extractorOptions) {
@@ -200,6 +203,7 @@ export async function scrapSingleUrl(
             fireEngineOptions: {
               engine: engine,
               atsv: pageOptions.atsv,
+              disableJsDom: pageOptions.disableJsDom,
             },
             priority,
             teamId,
