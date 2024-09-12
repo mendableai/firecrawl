@@ -31,9 +31,9 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
         version: "v0",
       });
       await expect(
-        invalidApp.scrapeUrl("https://roastmywebsite.ai")
+        invalidApp.scrapeUrl("https://roastmywebsite.ai"),
       ).rejects.toThrow("Request failed with status code 401");
-    }
+    },
   );
 
   test.concurrent(
@@ -46,9 +46,9 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       });
       const blocklistedUrl = "https://facebook.com/fake-test";
       await expect(app.scrapeUrl(blocklistedUrl)).rejects.toThrow(
-        "Request failed with status code 403"
+        "Request failed with status code 403",
       );
-    }
+    },
   );
 
   test.concurrent(
@@ -60,12 +60,12 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
         version: "v0",
       });
       const response = (await app.scrapeUrl(
-        "https://roastmywebsite.ai"
+        "https://roastmywebsite.ai",
       )) as ScrapeResponseV0;
       expect(response).not.toBeNull();
       expect(response.data?.content).toContain("_Roast_");
     },
-    30000
+    30000,
   ); // 30 seconds timeout
 
   test.concurrent(
@@ -77,7 +77,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
         version: "v0",
       });
       const response = (await app.scrapeUrl(
-        "https://roastmywebsite.ai"
+        "https://roastmywebsite.ai",
       )) as ScrapeResponseV0;
       expect(response).not.toBeNull();
       expect(response.data?.content).toContain("_Roast_");
@@ -85,7 +85,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       expect(response.data).toHaveProperty("metadata");
       expect(response.data).not.toHaveProperty("html");
     },
-    30000
+    30000,
   ); // 30 seconds timeout
 
   test.concurrent(
@@ -104,7 +104,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       expect(response.data?.markdown).toContain("_Roast_");
       expect(response.data?.html).toContain("<h1");
     },
-    30000
+    30000,
   ); // 30 seconds timeout
 
   test.concurrent(
@@ -116,14 +116,14 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
         version: "v0",
       });
       const response = (await app.scrapeUrl(
-        "https://arxiv.org/pdf/astro-ph/9301001.pdf"
+        "https://arxiv.org/pdf/astro-ph/9301001.pdf",
       )) as ScrapeResponseV0;
       expect(response).not.toBeNull();
       expect(response.data?.content).toContain(
-        "We present spectrophotometric observations of the Broad Line Radio Galaxy"
+        "We present spectrophotometric observations of the Broad Line Radio Galaxy",
       );
     },
-    30000
+    30000,
   ); // 30 seconds timeout
 
   test.concurrent(
@@ -135,14 +135,14 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
         version: "v0",
       });
       const response = (await app.scrapeUrl(
-        "https://arxiv.org/pdf/astro-ph/9301001"
+        "https://arxiv.org/pdf/astro-ph/9301001",
       )) as ScrapeResponseV0;
       expect(response).not.toBeNull();
       expect(response.data?.content).toContain(
-        "We present spectrophotometric observations of the Broad Line Radio Galaxy"
+        "We present spectrophotometric observations of the Broad Line Radio Galaxy",
       );
     },
-    30000
+    30000,
   ); // 30 seconds timeout
 
   test.concurrent(
@@ -154,9 +154,9 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
         version: "v0",
       });
       await expect(
-        invalidApp.crawlUrl("https://roastmywebsite.ai")
+        invalidApp.crawlUrl("https://roastmywebsite.ai"),
       ).rejects.toThrow("Request failed with status code 401");
-    }
+    },
   );
 
   test.concurrent(
@@ -169,9 +169,9 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       });
       const blocklistedUrl = "https://twitter.com/fake-test";
       await expect(app.crawlUrl(blocklistedUrl)).rejects.toThrow(
-        "Request failed with status code 403"
+        "Request failed with status code 403",
       );
-    }
+    },
   );
 
   test.concurrent(
@@ -186,12 +186,12 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
         "https://roastmywebsite.ai",
         { crawlerOptions: { excludes: ["blog/*"] } },
         true,
-        10
+        10,
       )) as FirecrawlDocumentV0[];
       expect(response).not.toBeNull();
       expect(response[0].content).toContain("_Roast_");
     },
-    60000
+    60000,
   ); // 60 seconds timeout
 
   test.concurrent("should handle idempotency key for crawl", async () => {
@@ -206,7 +206,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       { crawlerOptions: { excludes: ["blog/*"] } },
       false,
       2,
-      uniqueIdempotencyKey
+      uniqueIdempotencyKey,
     )) as CrawlResponseV0;
     expect(response).not.toBeNull();
     expect(response.jobId).toBeDefined();
@@ -217,8 +217,8 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
         { crawlerOptions: { excludes: ["blog/*"] } },
         true,
         2,
-        uniqueIdempotencyKey
-      )
+        uniqueIdempotencyKey,
+      ),
     ).rejects.toThrow("Request failed with status code 409");
   });
 
@@ -233,7 +233,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       const response: any = (await app.crawlUrl(
         "https://roastmywebsite.ai",
         { crawlerOptions: { excludes: ["blog/*"] } },
-        false
+        false,
       )) as CrawlResponseV0;
       expect(response).not.toBeNull();
       expect(response.jobId).toBeDefined();
@@ -247,7 +247,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
         expect(statusResponse.partial_data).not.toBeNull();
         // expect(statusResponse.current).toBeGreaterThanOrEqual(1);
         statusResponse = (await app.checkCrawlStatus(
-          response.jobId
+          response.jobId,
         )) as CrawlStatusResponseV0;
         checks++;
       }
@@ -259,9 +259,9 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       expect(statusResponse.current_step).not.toBeNull();
       expect(statusResponse.current).toBeGreaterThanOrEqual(1);
 
-      expect(statusResponse?.data?.length).toBeGreaterThan(0);
+      expect(statusResponse.data.length).toBeGreaterThan(0);
     },
-    35000
+    35000,
   ); // 35 seconds timeout
 
   test.concurrent(
@@ -277,7 +277,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       expect(response?.data?.[0]?.content).toBeDefined();
       expect(response?.data?.length).toBeGreaterThan(2);
     },
-    30000
+    30000,
   ); // 30 seconds timeout
 
   test.concurrent(
@@ -289,9 +289,9 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
         version: "v0",
       });
       await expect(invalidApp.search("test query")).rejects.toThrow(
-        "Request failed with status code 401"
+        "Request failed with status code 401",
       );
-    }
+    },
   );
 
   test.concurrent(
@@ -325,6 +325,6 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       expect(typeof llmExtraction?.supports_sso).toBe("boolean");
       expect(typeof llmExtraction?.is_open_source).toBe("boolean");
     },
-    30000
+    30000,
   ); // 30 seconds timeout
 });

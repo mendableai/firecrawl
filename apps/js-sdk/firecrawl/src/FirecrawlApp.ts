@@ -1,5 +1,15 @@
-import { zodToJsonSchema} from "zod-to-json-schema";
-import type { CrawlParams, CrawlResponse, CrawlStatusResponse, FirecrawlAppConfig, FirecrawlDocument, MapParams, MapResponse, ScrapeParams, ScrapeResponse } from "./types";
+import { zodToJsonSchema } from "zod-to-json-schema";
+import type {
+  CrawlParams,
+  CrawlResponse,
+  CrawlStatusResponse,
+  FirecrawlAppConfig,
+  FirecrawlDocument,
+  MapParams,
+  MapResponse,
+  ScrapeParams,
+  ScrapeResponse,
+} from "./types";
 import { getFetch } from "./utils/getFetch";
 import { isZodSchema } from "./utils/isZodSchema";
 import { FirecrawlApiError } from "./FirecrawlApiError";
@@ -34,13 +44,10 @@ export class FirecrawlApp {
    * @param params - Additional parameters for the scrape request.
    * @returns The response from the scrape operation.
    */
-  async scrapeUrl(
-    url: string,
-    params?: ScrapeParams
-  ): Promise<ScrapeResponse> {
+  async scrapeUrl(url: string, params?: ScrapeParams): Promise<ScrapeResponse> {
     let body = { url, ...params };
 
-    let schema = body.extract?.schema
+    let schema = body.extract?.schema;
 
     if (schema && isZodSchema(schema)) {
       schema = zodToJsonSchema(schema);
@@ -50,35 +57,50 @@ export class FirecrawlApp {
         extract: {
           ...body.extract,
           schema: schema,
-        }
-      }
+        },
+      };
     }
 
     const request = new Request(this.apiUrl + `/v1/scrape`, {
       method: "POST",
       headers: this.composeHeaders(),
       body: JSON.stringify(body),
-    })
+    });
 
     // `fetch` will throw any network related errors
     // We don't need to worry about them since users can handle network errors themselves
     const response = await this.fetch(request);
 
     if (!response.ok) {
-      throw new FirecrawlApiError(`Failed to scrape URL. Error: ${response.statusText}`, request, response);
+      throw new FirecrawlApiError(
+        `Failed to scrape URL. Error: ${response.statusText}`,
+        request,
+        response,
+      );
     }
 
-    const data: { success: true, warning?: string, error?: string, data?: FirecrawlDocument } | { success: false, error: string }  = await response.json()
+    const data:
+      | {
+          success: true;
+          warning?: string;
+          error?: string;
+          data?: FirecrawlDocument;
+        }
+      | { success: false; error: string } = await response.json();
 
     if (!data.success) {
-      throw new FirecrawlApiError(`Failed to scrape URL. Error: ${data.error}`, request, response);
+      throw new FirecrawlApiError(
+        `Failed to scrape URL. Error: ${data.error}`,
+        request,
+        response,
+      );
     }
 
     return {
       success: true,
       warning: data.warning,
       ...data.data,
-    }
+    };
   }
 
   /**
@@ -87,11 +109,10 @@ export class FirecrawlApp {
    * @param params - Additional parameters for the search.
    * @returns Throws an error advising to use version 0 of the API.
    */
-  async search(
-    query: string,
-    params?: any
-  ): Promise<any> {
-    throw new Error("Search is not supported in v1, please update FirecrawlApp() initialization to use v0.");
+  async search(query: string, params?: any): Promise<any> {
+    throw new Error(
+      "Search is not supported in v1, please update FirecrawlApp() initialization to use v0.",
+    );
   }
 
   /**
@@ -106,18 +127,22 @@ export class FirecrawlApp {
     url: string,
     params?: CrawlParams,
     pollInterval: number = 2,
-    idempotencyKey?: string
+    idempotencyKey?: string,
   ): Promise<CrawlStatusResponse> {
     const request = new Request(this.apiUrl + `/v1/crawl`, {
       method: "POST",
       headers: this.composeHeaders(idempotencyKey),
       body: JSON.stringify({ url, ...params }),
-    })
+    });
 
     const response = await this.fetch(request);
 
     if (!response.ok) {
-      throw new FirecrawlApiError(`Failed to crawl URL. Error: ${response.statusText}`, request, response);
+      throw new FirecrawlApiError(
+        `Failed to crawl URL. Error: ${response.statusText}`,
+        request,
+        response,
+      );
     }
 
     const data: { id: string } = await response.json();
@@ -128,19 +153,23 @@ export class FirecrawlApp {
   async asyncCrawlUrl(
     url: string,
     params?: CrawlParams,
-    idempotencyKey?: string
+    idempotencyKey?: string,
   ): Promise<CrawlResponse> {
     // TODO: use `crawlUrl`
     const request = new Request(this.apiUrl + `/v1/crawl`, {
       method: "POST",
       headers: this.composeHeaders(idempotencyKey),
       body: JSON.stringify({ url, ...params }),
-    })
+    });
 
     const response = await this.fetch(request);
 
     if (!response.ok) {
-      throw new FirecrawlApiError(`Failed to crawl URL. Error: ${response.statusText}`, request, response);
+      throw new FirecrawlApiError(
+        `Failed to crawl URL. Error: ${response.statusText}`,
+        request,
+        response,
+      );
     }
 
     return response.json();
@@ -152,32 +181,39 @@ export class FirecrawlApp {
    * @param getAllData - Paginate through all the pages of documents, returning the full list of all documents. (default: `false`)
    * @returns The response containing the job status.
    */
-  async checkCrawlStatus(id: string, getAllData = false): Promise<CrawlStatusResponse> {
+  async checkCrawlStatus(
+    id: string,
+    getAllData = false,
+  ): Promise<CrawlStatusResponse> {
     const request = new Request(this.apiUrl + `/v1/crawl/${id}`, {
       method: "GET",
       headers: this.composeHeaders(),
-    })
+    });
 
     const response = await this.fetch(request);
 
     if (!response.ok) {
-      throw new FirecrawlApiError(`Failed to check crawl status. Error: ${response.statusText}`, request, response);
+      throw new FirecrawlApiError(
+        `Failed to check crawl status. Error: ${response.statusText}`,
+        request,
+        response,
+      );
     }
 
     const data: CrawlStatusResponse = await response.json();
-    
+
     let allData = response.data.data;
-        if (getAllData && response.data.status === "completed") {
-          let statusData = response.data
-          if ("data" in statusData) {
-            let data = statusData.data;
-            while ('next' in statusData) {
-              statusData = (await this.getRequest(statusData.next, headers)).data;
-              data = data.concat(statusData.data);
-            }
-            allData = data;
-          }
+    if (getAllData && response.data.status === "completed") {
+      let statusData = response.data;
+      if ("data" in statusData) {
+        let data = statusData.data;
+        while ("next" in statusData) {
+          statusData = (await this.getRequest(statusData.next, headers)).data;
+          data = data.concat(statusData.data);
         }
+        allData = data;
+      }
+    }
 
     return {
       success: true,
@@ -189,7 +225,7 @@ export class FirecrawlApp {
       next: data.next,
       data: allData,
       error: data.error,
-    }
+    };
   }
 
   async crawlUrlAndWatch(
@@ -232,15 +268,19 @@ export class FirecrawlApp {
       method: "POST",
       headers: this.composeHeaders(),
       body: JSON.stringify({ url, ...params }),
-    })
+    });
 
     const response = await this.fetch(request);
 
     if (!response.ok) {
-      throw new FirecrawlApiError(`Failed to map URL. Error: ${response.statusText}`, request, response);
+      throw new FirecrawlApiError(
+        `Failed to map URL. Error: ${response.statusText}`,
+        request,
+        response,
+      );
     }
 
-    return response.json()
+    return response.json();
   }
 
   /**
@@ -253,7 +293,7 @@ export class FirecrawlApp {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this.apiKey}`,
       ...(idempotencyKey ? { "x-idempotency-key": idempotencyKey } : {}),
-    }
+    };
   }
 
   /**
@@ -267,35 +307,39 @@ export class FirecrawlApp {
   async monitorJobStatus(
     id: string,
     checkInterval: number,
-    idempotencyKey?: string
+    idempotencyKey?: string,
   ): Promise<CrawlStatusResponse> {
     while (true) {
       const request = new Request(this.apiUrl + `/v1/crawl/${id}`, {
         method: "GET",
         headers: this.composeHeaders(idempotencyKey),
-      })
+      });
 
       const response = await this.fetch(request);
 
       if (!response.ok) {
-        throw new FirecrawlApiError(`Failed to monitor crawl status. Error: ${response.statusText}`, request, response);
+        throw new FirecrawlApiError(
+          `Failed to monitor crawl status. Error: ${response.statusText}`,
+          request,
+          response,
+        );
       }
-     
-     let statusData = statusResponse.data;
-          if (statusData.status === "completed") {
-            if ("data" in statusData) {
-              let data = statusData.data;
-              while ('next' in statusData) {
-                statusResponse = await this.getRequest(statusData.next, headers);
-                statusData = statusResponse.data;
-                data = data.concat(statusData.data);
-              }
-              statusData.data = data;
-              return statusData;
-            } else {
-              throw new Error("Crawl job completed but no data was returned");
-            }
+
+      let statusData = statusResponse.data;
+      if (statusData.status === "completed") {
+        if ("data" in statusData) {
+          let data = statusData.data;
+          while ("next" in statusData) {
+            statusResponse = await this.getRequest(statusData.next, headers);
+            statusData = statusResponse.data;
+            data = data.concat(statusData.data);
           }
+          statusData.data = data;
+          return statusData;
+        } else {
+          throw new Error("Crawl job completed but no data was returned");
+        }
+      }
 
       const data: CrawlStatusResponse = await response.json();
 
@@ -303,13 +347,20 @@ export class FirecrawlApp {
         return data;
       }
 
-      if (["active", "paused", "pending", "queued", "scraping"].includes(data.status)) {
+      if (
+        ["active", "paused", "pending", "queued", "scraping"].includes(
+          data.status,
+        )
+      ) {
         checkInterval = Math.max(checkInterval, 2);
-        await new Promise((resolve) => setTimeout(resolve, checkInterval * 1000));
+        await new Promise((resolve) =>
+          setTimeout(resolve, checkInterval * 1000),
+        );
       } else {
-        throw new Error(`Crawl job failed or was stopped. Status: ${data.status}`);
+        throw new Error(
+          `Crawl job failed or was stopped. Status: ${data.status}`,
+        );
       }
     }
   }
 }
-

@@ -21,6 +21,6 @@
     "moduleResolution": "Bundler",
     "noEmit": true,
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist", "**/__tests__/*"]
+  "include": ["src/**/*", "eslint.config.js", "tsup.config.ts"],
+  "exclude": ["node_modules", "dist"]
 }

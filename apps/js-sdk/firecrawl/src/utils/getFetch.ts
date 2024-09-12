@@ -6,9 +6,7 @@ export function getFetch(): typeof fetch {
     if (typeof globalThis !== "undefined" && "fetch" in globalThis) {
       return fetch.bind(globalThis);
     }
-  } catch (err) {
-    
-  }
+  } catch (err) {}
 
   /**
    * Existing polyfilled fetch

@@ -1,19 +1,19 @@
 import { TypedEventTarget } from "typescript-event-target";
 import type { CrawlStatusResponse, FirecrawlDocument } from "./types";
-import type { FirecrawlApp} from "./FirecrawlApp";
+import type { FirecrawlApp } from "./FirecrawlApp";
 import { WebSocket } from "isows";
 
 interface CrawlWatcherEvents {
-  document: CustomEvent<FirecrawlDocument>,
+  document: CustomEvent<FirecrawlDocument>;
   done: CustomEvent<{
     status: CrawlStatusResponse["status"];
     data: FirecrawlDocument[];
-  }>,
+  }>;
   error: CustomEvent<{
-    status: CrawlStatusResponse["status"],
-    data: FirecrawlDocument[],
-    error: string,
-  }>,
+    status: CrawlStatusResponse["status"];
+    data: FirecrawlDocument[];
+    error: string;
+  }>;
 }
 
 export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
@@ -28,56 +28,72 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
     this.data = [];
 
     type ErrorMessage = {
-      type: "error",
-      error: string,
-    }
-    
+      type: "error";
+      error: string;
+    };
+
     type CatchupMessage = {
-      type: "catchup",
-      data: CrawlStatusResponse,
-    }
-    
+      type: "catchup";
+      data: CrawlStatusResponse;
+    };
+
     type DocumentMessage = {
-      type: "document",
-      data: FirecrawlDocument,
-    }
-    
-    type DoneMessage = { type: "done" }
-    
-    type Message = ErrorMessage | CatchupMessage | DoneMessage | DocumentMessage;
+      type: "document";
+      data: FirecrawlDocument;
+    };
+
+    type DoneMessage = { type: "done" };
+
+    type Message =
+      | ErrorMessage
+      | CatchupMessage
+      | DoneMessage
+      | DocumentMessage;
 
     const messageHandler = (msg: Message) => {
       if (msg.type === "done") {
         this.status = "completed";
-        this.dispatchTypedEvent("done", new CustomEvent("done", {
-          detail: {
-            status: this.status,
-            data: this.data,
-          },
-        }));
+        this.dispatchTypedEvent(
+          "done",
+          new CustomEvent("done", {
+            detail: {
+              status: this.status,
+              data: this.data,
+            },
+          }),
+        );
       } else if (msg.type === "error") {
         this.status = "failed";
-        this.dispatchTypedEvent("error", new CustomEvent("error", {
-          detail: {
-            status: this.status,
-            data: this.data,
-            error: msg.error,
-          },
-        }));
+        this.dispatchTypedEvent(
+          "error",
+          new CustomEvent("error", {
+            detail: {
+              status: this.status,
+              data: this.data,
+              error: msg.error,
+            },
+          }),
+        );
       } else if (msg.type === "catchup") {
         this.status = msg.data.status;
         this.data.push(...(msg.data.data ?? []));
         for (const doc of this.data) {
-          this.dispatchTypedEvent("document", new CustomEvent("document", {
-            detail: doc,
-          }));
+          this.dispatchTypedEvent(
+            "document",
+            new CustomEvent("document", {
+              detail: doc,
+            }),
+          );
         }
       } else if (msg.type === "document") {
-        this.dispatchTypedEvent("document", new CustomEvent("document", {
-          detail: msg.data,
-        }));
+        this.dispatchTypedEvent(
+          "document",
+          new CustomEvent("document", {
+            detail: msg.data,
+          }),
+        );
       }
-    }
+    };
 
     this.ws.onmessage = ((ev: MessageEvent) => {
       if (typeof ev.data !== "string") {
@@ -95,14 +111,17 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
     }).bind(this);
 
     this.ws.onerror = ((_: Event) => {
-      this.status = "failed"
-      this.dispatchTypedEvent("error", new CustomEvent("error", {
-        detail: {
-          status: this.status,
-          data: this.data,
-          error: "WebSocket error",
-        },
-      }));
+      this.status = "failed";
+      this.dispatchTypedEvent(
+        "error",
+        new CustomEvent("error", {
+          detail: {
+            status: this.status,
+            data: this.data,
+            error: "WebSocket error",
+          },
+        }),
+      );
     }).bind(this);
   }
 

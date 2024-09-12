@@ -1,5 +1,5 @@
 import type { ZodSchema } from "zod";
-import type { zodToJsonSchema} from "zod-to-json-schema";
+import type { zodToJsonSchema } from "zod-to-json-schema";
 
 /**
  * Configuration interface for FirecrawlApp.
@@ -73,14 +73,23 @@ type JsonSchema = ReturnType<typeof zodToJsonSchema>;
  * Defines the options and configurations available for scraping web content.
  */
 export interface ScrapeParams {
-  formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "extract" | "full@scrennshot")[];
+  formats: (
+    | "markdown"
+    | "html"
+    | "rawHtml"
+    | "content"
+    | "links"
+    | "screenshot"
+    | "extract"
+    | "full@scrennshot"
+  )[];
   headers?: Record<string, string>;
   includeTags?: string[];
   excludeTags?: string[];
   onlyMainContent?: boolean;
   extract?: {
     prompt?: string;
-    schema?: ZodSchema | JsonSchema
+    schema?: ZodSchema | JsonSchema;
     systemPrompt?: string;
   };
   waitFor?: number;
@@ -136,7 +145,7 @@ export interface CrawlStatusResponse {
   expiresAt: Date;
   next?: string;
   data: FirecrawlDocument[];
-};
+}
 
 /**
  * Parameters for mapping operations.

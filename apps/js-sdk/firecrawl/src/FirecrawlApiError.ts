@@ -1,6 +1,6 @@
 /**
  * Error class for Firecrawl API errors.
- * 
+ *
  * @example
  * ```ts
  * try {
