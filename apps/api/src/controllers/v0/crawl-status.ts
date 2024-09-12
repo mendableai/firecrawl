@@ -4,16 +4,16 @@ import { RateLimiterMode } from "../../../src/types";
 import { getScrapeQueue } from "../../../src/services/queue-service";
 import { Logger } from "../../../src/lib/logger";
 import { getCrawl, getCrawlJobs } from "../../../src/lib/crawl-redis";
-import { supabaseGetJobsById } from "../../../src/lib/supabase-jobs";
+import { supabaseGetJobsByCrawlId } from "../../../src/lib/supabase-jobs";
 import * as Sentry from "@sentry/node";
 import { configDotenv } from "dotenv";
 configDotenv();
 
-export async function getJobs(ids: string[]) {
+export async function getJobs(crawlId: string, ids: string[]) {
   const jobs = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x);
   
   if (process.env.USE_DB_AUTHENTICATION === "true") {
-    const supabaseData = await supabaseGetJobsById(ids);
+    const supabaseData = await supabaseGetJobsByCrawlId(crawlId);
 
     supabaseData.forEach(x => {
       const job = jobs.find(y => y.id === x.job_id);
@@ -52,7 +52,7 @@ export async function crawlStatusController(req: Request, res: Response) {
 
     const jobIDs = await getCrawlJobs(req.params.jobId);
 
-    const jobs = (await getJobs(jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
+    const jobs = (await getJobs(req.params.jobId, jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
     const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
     const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "active";
 

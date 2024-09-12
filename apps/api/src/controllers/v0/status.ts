@@ -22,7 +22,7 @@ export async function crawlJobStatusPreviewController(req: Request, res: Respons
     //   }
     // }
 
-    const jobs = (await getJobs(jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
+    const jobs = (await getJobs(req.params.jobId, jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
     const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
     const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "active";
 
