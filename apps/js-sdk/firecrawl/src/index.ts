@@ -1,5 +1,5 @@
 import axios, { type AxiosResponse, type AxiosRequestHeaders } from "axios";
-import type { ZodSchema } from "zod";
+import type { infer as ZodInfer, ZodSchema } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WebSocket } from "isows";
 import { TypedEventTarget } from "typescript-event-target";
@@ -58,13 +58,13 @@ export interface FirecrawlDocumentMetadata {
  * Document interface for Firecrawl.
  * Represents a document retrieved or processed by Firecrawl.
  */
-export interface FirecrawlDocument {
+export interface FirecrawlDocument<T> {
   url?: string;
   markdown?: string;
   html?: string;
   rawHtml?: string;
   links?: string[];
-  extract?: Record<any, any>;
+  extract?: T;
   screenshot?: string;
   metadata?: FirecrawlDocumentMetadata;
 }
@@ -73,26 +73,29 @@ export interface FirecrawlDocument {
  * Parameters for scraping operations.
  * Defines the options and configurations available for scraping web content.
  */
-export interface ScrapeParams {
+export interface CrawlScrapeOptions {
   formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "extract" | "full@scrennshot")[];
   headers?: Record<string, string>;
   includeTags?: string[];
   excludeTags?: string[];
   onlyMainContent?: boolean;
-  extract?: {
-    prompt?: string;
-    schema?: ZodSchema | any;
-    systemPrompt?: string;
-  };
   waitFor?: number;
   timeout?: number;
+}
+
+export interface ScrapeParams<LLMSchema extends ZodSchema> extends CrawlScrapeOptions {
+  extract?: {
+    prompt?: string;
+    schema?: LLMSchema;
+    systemPrompt?: string;
+  };
 }
 
 /**
  * Response interface for scraping operations.
  * Defines the structure of the response received after a scraping operation.
  */
-export interface ScrapeResponse extends FirecrawlDocument {
+export interface ScrapeResponse<LLMResult> extends FirecrawlDocument<LLMResult> {
   success: true;
   warning?: string;
   error?: string;
@@ -110,7 +113,7 @@ export interface CrawlParams {
   allowBackwardLinks?: boolean;
   allowExternalLinks?: boolean;
   ignoreSitemap?: boolean;
-  scrapeOptions?: ScrapeParams;
+  scrapeOptions?: CrawlScrapeOptions;
   webhook?: string;
 }
 
@@ -137,7 +140,7 @@ export interface CrawlStatusResponse {
   creditsUsed: number;
   expiresAt: Date;
   next?: string;
-  data: FirecrawlDocument[];
+  data: FirecrawlDocument<undefined>[];
 };
 
 /**
@@ -197,10 +200,10 @@ export default class FirecrawlApp {
    * @param params - Additional parameters for the scrape request.
    * @returns The response from the scrape operation.
    */
-  async scrapeUrl(
+  async scrapeUrl<T extends ZodSchema>(
     url: string,
-    params?: ScrapeParams
-  ): Promise<ScrapeResponse | ErrorResponse> {
+    params?: ScrapeParams<T>
+  ): Promise<ScrapeResponse<ZodInfer<T>> | ErrorResponse> {
     const headers: AxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this.apiKey}`,
@@ -528,21 +531,21 @@ export default class FirecrawlApp {
 }
 
 interface CrawlWatcherEvents {
-  document: CustomEvent<FirecrawlDocument>,
+  document: CustomEvent<FirecrawlDocument<undefined>>,
   done: CustomEvent<{
     status: CrawlStatusResponse["status"];
-    data: FirecrawlDocument[];
+    data: FirecrawlDocument<undefined>[];
   }>,
   error: CustomEvent<{
     status: CrawlStatusResponse["status"],
-    data: FirecrawlDocument[],
+    data: FirecrawlDocument<undefined>[],
     error: string,
   }>,
 }
 
 export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
   private ws: WebSocket;
-  public data: FirecrawlDocument[];
+  public data: FirecrawlDocument<undefined>[];
   public status: CrawlStatusResponse["status"];
 
   constructor(id: string, app: FirecrawlApp) {
@@ -563,7 +566,7 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
     
     type DocumentMessage = {
       type: "document",
-      data: FirecrawlDocument,
+      data: FirecrawlDocument<undefined>,
     }
     
     type DoneMessage = { type: "done" }
