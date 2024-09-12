@@ -229,7 +229,7 @@ export async function scrapeController(req: Request, res: Response) {
 
     if (result.success) {
       let creditsToBeBilled = 1;
-      const creditsPerLLMExtract = 49;
+      const creditsPerLLMExtract = 4;
 
       if (extractorOptions.mode.includes("llm-extraction")) {
         // creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length);
