@@ -1,4 +1,4 @@
-import axios, { type AxiosResponse, type AxiosRequestHeaders } from "axios";
+import axios, { type AxiosResponse, type AxiosRequestHeaders, AxiosError } from "axios";
 import type * as zt from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WebSocket } from "isows";
@@ -452,11 +452,19 @@ export default class FirecrawlApp {
    * @param headers - The headers for the request.
    * @returns The response from the GET request.
    */
-  getRequest(
+  async getRequest(
     url: string,
     headers: AxiosRequestHeaders
   ): Promise<AxiosResponse> {
-    return axios.get(url, { headers });
+    try {
+      return await axios.get(url, { headers });
+    } catch (error) {
+      if (error instanceof AxiosError && error.response) {
+        return error.response as AxiosResponse;
+      } else {
+        throw error;
+      }
+    }
   }
 
   /**
