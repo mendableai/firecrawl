@@ -1,5 +1,5 @@
-import axios, { AxiosResponse, AxiosRequestHeaders } from "axios";
-import { z } from "zod";
+import axios, { type AxiosResponse, type AxiosRequestHeaders } from "axios";
+import type { ZodSchema } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WebSocket } from "isows";
 import { TypedEventTarget } from "typescript-event-target";
@@ -81,7 +81,7 @@ export interface ScrapeParams {
   onlyMainContent?: boolean;
   extract?: {
     prompt?: string;
-    schema?: z.ZodSchema | any;
+    schema?: ZodSchema | any;
     systemPrompt?: string;
   };
   waitFor?: number;
@@ -131,15 +131,14 @@ export interface CrawlResponse {
  */
 export interface CrawlStatusResponse {
   success: true;
-  total: number;
+  status: "scraping" | "completed" | "failed" | "cancelled";
   completed: number;
+  total: number;
   creditsUsed: number;
   expiresAt: Date;
-  status: "scraping" | "completed" | "failed";
-  next: string;
-  data?: FirecrawlDocument[];
-  error?: string;
-}
+  next?: string;
+  data: FirecrawlDocument[];
+};
 
 /**
  * Parameters for mapping operations.
@@ -184,7 +183,11 @@ export default class FirecrawlApp {
    * @param config - Configuration options for the FirecrawlApp instance.
    */
   constructor({ apiKey = null, apiUrl = null }: FirecrawlAppConfig) {
-    this.apiKey = apiKey || "";
+    if (typeof apiKey !== "string") {
+      throw new Error("No API key provided");
+    }
+
+    this.apiKey = apiKey;
     this.apiUrl = apiUrl || "https://api.firecrawl.dev";
   }
 
@@ -329,9 +332,10 @@ export default class FirecrawlApp {
   /**
    * Checks the status of a crawl job using the Firecrawl API.
    * @param id - The ID of the crawl operation.
+   * @param getAllData - Paginate through all the pages of documents, returning the full list of all documents. (default: `false`)
    * @returns The response containing the job status.
    */
-  async checkCrawlStatus(id?: string): Promise<CrawlStatusResponse | ErrorResponse> {
+  async checkCrawlStatus(id?: string, getAllData = false): Promise<CrawlStatusResponse | ErrorResponse> {
     if (!id) {
       throw new Error("No crawl ID provided");
     }
@@ -343,16 +347,28 @@ export default class FirecrawlApp {
         headers
       );
       if (response.status === 200) {
+        let allData = response.data.data;
+        if (getAllData && response.data.status === "completed") {
+          let statusData = response.data
+          if ("data" in statusData) {
+            let data = statusData.data;
+            while ('next' in statusData) {
+              statusData = (await this.getRequest(statusData.next, headers)).data;
+              data = data.concat(statusData.data);
+            }
+            allData = data;
+          }
+        }
         return ({
-          success: true,
+          success: response.data.success,
           status: response.data.status,
           total: response.data.total,
           completed: response.data.completed,
           creditsUsed: response.data.creditsUsed,
           expiresAt: new Date(response.data.expiresAt),
           next: response.data.next,
-          data: response.data.data,
-          error: response.data.error
+          data: allData,
+          error: response.data.error,
         })
       } else {
         this.handleError(response, "check crawl status");
@@ -452,7 +468,7 @@ export default class FirecrawlApp {
     id: string,
     headers: AxiosRequestHeaders,
     checkInterval: number
-  ): Promise<CrawlStatusResponse> {
+  ): Promise<CrawlStatusResponse | ErrorResponse> {
     while (true) {
       let statusResponse: AxiosResponse = await this.getRequest(
         `${this.apiUrl}/v1/crawl/${id}`,
@@ -460,20 +476,20 @@ export default class FirecrawlApp {
       );
       if (statusResponse.status === 200) {
         let statusData = statusResponse.data;
-        if (statusData.status === "completed") {
-          if ("data" in statusData) {
-            let data = statusData.data;
-            while ('next' in statusData) {
-              statusResponse = await this.getRequest(statusData.next, headers);
-              statusData = statusResponse.data;
-              data = data.concat(statusData.data);
+          if (statusData.status === "completed") {
+            if ("data" in statusData) {
+              let data = statusData.data;
+              while ('next' in statusData) {
+                statusResponse = await this.getRequest(statusData.next, headers);
+                statusData = statusResponse.data;
+                data = data.concat(statusData.data);
+              }
+              statusData.data = data;
+              return statusData;
+            } else {
+              throw new Error("Crawl job completed but no data was returned");
             }
-            statusData.data = data;
-            return statusData;
-          } else {
-            throw new Error("Crawl job completed but no data was returned");
-          }
-        } else if (
+          } else if (
           ["active", "paused", "pending", "queued", "waiting", "scraping"].includes(statusData.status)
         ) {
           checkInterval = Math.max(checkInterval, 2);

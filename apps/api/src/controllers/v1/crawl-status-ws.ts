@@ -103,6 +103,7 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
   send(ws, {
     type: "catchup",
     data: {
+      success: true,
       status,
       total: jobIDs.length,
       completed: doneJobIDs.length,
