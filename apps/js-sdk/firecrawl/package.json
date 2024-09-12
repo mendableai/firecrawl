@@ -17,7 +17,7 @@
     "lint": "eslint .",
     "build-and-publish": "npm run build && npm publish --access public",
     "publish-beta": "npm run build && npm publish --access public --tag beta",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest --verbose src/__tests__/v1/**/*.test.ts"
+    "test": "vitest run"
   },
   "repository": {
     "type": "git",
@@ -38,24 +38,15 @@
   "homepage": "https://github.com/mendableai/firecrawl#readme",
   "devDependencies": {
     "@eslint/js": "^9.10.0",
-    "@jest/globals": "^29.7.0",
-    "@types/dotenv": "^8.2.0",
     "@types/eslint__js": "^8.42.3",
-    "@types/jest": "^29.5.12",
-    "@types/mocha": "^10.0.6",
-    "@types/node": "^20.12.12",
-    "@types/uuid": "^9.0.8",
-    "dotenv": "^16.4.5",
     "eslint": "^9.10.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
-    "jest": "^29.7.0",
     "prettier": "^3.3.3",
-    "ts-jest": "^29.2.2",
     "tsup": "^8.2.4",
     "typescript": "^5.4.5",
     "typescript-eslint": "^8.5.0",
-    "uuid": "^9.0.1"
+    "vitest": "^2.1.0"
   },
   "keywords": [
     "firecrawl",
