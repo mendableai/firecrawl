@@ -1,5 +1,5 @@
 import axios, { type AxiosResponse, type AxiosRequestHeaders } from "axios";
-import type { infer as ZodInfer, ZodSchema } from "zod";
+import type * as zt from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WebSocket } from "isows";
 import { TypedEventTarget } from "typescript-event-target";
@@ -83,7 +83,7 @@ export interface CrawlScrapeOptions {
   timeout?: number;
 }
 
-export interface ScrapeParams<LLMSchema extends ZodSchema> extends CrawlScrapeOptions {
+export interface ScrapeParams<LLMSchema extends zt.ZodSchema> extends CrawlScrapeOptions {
   extract?: {
     prompt?: string;
     schema?: LLMSchema;
@@ -200,10 +200,10 @@ export default class FirecrawlApp {
    * @param params - Additional parameters for the scrape request.
    * @returns The response from the scrape operation.
    */
-  async scrapeUrl<T extends ZodSchema>(
+  async scrapeUrl<T extends zt.ZodSchema>(
     url: string,
     params?: ScrapeParams<T>
-  ): Promise<ScrapeResponse<ZodInfer<T>> | ErrorResponse> {
+  ): Promise<ScrapeResponse<zt.infer<T>> | ErrorResponse> {
     const headers: AxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this.apiKey}`,
