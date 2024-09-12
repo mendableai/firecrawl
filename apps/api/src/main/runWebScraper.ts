@@ -12,6 +12,8 @@ import { Document } from "../lib/entities";
 import { supabase_service } from "../services/supabase";
 import { Logger } from "../lib/logger";
 import { ScrapeEvents } from "../lib/scrape-events";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 export async function startWebScraperPipeline({
   job,
@@ -118,15 +120,10 @@ export async function runWebScraper({
       : docs;
 
     if(is_scrape === false) {
-      const billingResult = await billTeam(team_id, filteredDocs.length);
-      if (!billingResult.success) {
-        // throw new Error("Failed to bill team, no subscription was found");
-        return {
-          success: false,
-          message: "Failed to bill team, no subscription was found",
-          docs: [],
-        };
-      }
+      billTeam(team_id, filteredDocs.length).catch(error => {
+        Logger.error(`Failed to bill team ${team_id} for ${filteredDocs.length} credits: ${error}`);
+        // Optionally, you could notify an admin or add to a retry queue here
+      });
     }
 
     

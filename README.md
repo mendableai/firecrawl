@@ -14,10 +14,9 @@
 <a href="https://GitHub.com/mendableai/firecrawl/graphs/contributors">
   <img src="https://img.shields.io/github/contributors/mendableai/firecrawl.svg" alt="GitHub Contributors">
 </a>
-<a href="https://github.com/mendableai/firecrawl">
-  <img src="https://badgen.net/badge/Open%20Source%20%3F/Yes%21/blue?icon=github" alt="Open Source">
+<a href="https://firecrawl.dev">
+  <img src="https://img.shields.io/badge/Visit-firecrawl.dev-orange" alt="Visit firecrawl.dev">
 </a>
-
 </div>
 <div>
   <p align="center">
@@ -391,7 +390,7 @@ With LLM extraction, you can easily extract structured data from any URL. We sup
 
 from firecrawl.firecrawl import FirecrawlApp
 
-app = FirecrawlApp(api_key="fc-YOUR_API_KEY", version="v0")
+app = FirecrawlApp(api_key="fc-YOUR_API_KEY")
 
 class ArticleSchema(BaseModel):
     title: str
@@ -403,15 +402,12 @@ class TopArticlesSchema(BaseModel):
     top: List[ArticleSchema] = Field(..., max_items=5, description="Top 5 stories")
 
 data = app.scrape_url('https://news.ycombinator.com', {
-    'extractorOptions': {
-        'extractionSchema': TopArticlesSchema.model_json_schema(),
-        'mode': 'llm-extraction'
-    },
-    'pageOptions':{
-        'onlyMainContent': True
+    'formats': ['extract'],
+    'extract': {
+        'schema': TopArticlesSchema.model_json_schema()
     }
 })
-print(data["llm_extraction"])
+print(data["extract"])
 ```
 
 ## Using the Node SDK
@@ -466,8 +462,7 @@ import FirecrawlApp from "@mendable/firecrawl-js";
 import { z } from "zod";
 
 const app = new FirecrawlApp({
-  apiKey: "fc-YOUR_API_KEY",
-  version: "v0"
+  apiKey: "fc-YOUR_API_KEY"
 });
 
 // Define schema to extract contents into

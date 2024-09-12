@@ -1,4 +1,4 @@
-import { z } from "zod";
+import type { ZodSchema } from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WebSocket } from "isows";
 import { TypedEventTarget } from "typescript-event-target";
@@ -82,7 +82,7 @@ export interface ScrapeParams {
   onlyMainContent?: boolean;
   extract?: {
     prompt?: string;
-    schema?: z.ZodTypeAny | JsonSchema
+    schema?: ZodSchema | JsonSchema
     systemPrompt?: string;
   };
   waitFor?: number;
@@ -131,15 +131,14 @@ export interface CrawlResponse {
  */
 export interface CrawlStatusResponse {
   success: true;
-  total: number;
+  status: "scraping" | "completed" | "failed" | "cancelled";
   completed: number;
+  total: number;
   creditsUsed: number;
   expiresAt: Date;
-  status: "scraping" | "completed" | "failed";
-  next: string;
-  data?: FirecrawlDocument[];
-  error?: string;
-}
+  next?: string;
+  data: FirecrawlDocument[];
+};
 
 /**
  * Parameters for mapping operations.
@@ -232,7 +231,11 @@ export default class FirecrawlApp {
    * @param config - Configuration options for the FirecrawlApp instance.
    */
   constructor({ apiKey = null, apiUrl = null }: FirecrawlAppConfig) {
-    this.apiKey = apiKey || "";
+    if (typeof apiKey !== "string") {
+      throw new Error("No API key provided");
+    }
+
+    this.apiKey = apiKey;
     this.apiUrl = apiUrl || "https://api.firecrawl.dev";
     this.fetch = getFetch();
   }
@@ -358,9 +361,10 @@ export default class FirecrawlApp {
   /**
    * Checks the status of a crawl job using the Firecrawl API.
    * @param id - The ID of the crawl operation.
+   * @param getAllData - Paginate through all the pages of documents, returning the full list of all documents. (default: `false`)
    * @returns The response containing the job status.
    */
-  async checkCrawlStatus(id: string): Promise<CrawlStatusResponse> {
+  async checkCrawlStatus(id: string, getAllData = false): Promise<CrawlStatusResponse> {
     const request = new Request(this.apiUrl + `/v1/crawl/${id}`, {
       method: "GET",
       headers: this.composeHeaders(),
@@ -373,6 +377,19 @@ export default class FirecrawlApp {
     }
 
     const data: CrawlStatusResponse = await response.json();
+    
+    let allData = response.data.data;
+        if (getAllData && response.data.status === "completed") {
+          let statusData = response.data
+          if ("data" in statusData) {
+            let data = statusData.data;
+            while ('next' in statusData) {
+              statusData = (await this.getRequest(statusData.next, headers)).data;
+              data = data.concat(statusData.data);
+            }
+            allData = data;
+          }
+        }
 
     return {
       success: true,
@@ -382,7 +399,7 @@ export default class FirecrawlApp {
       creditsUsed: data.creditsUsed,
       expiresAt: new Date(data.expiresAt),
       next: data.next,
-      data: data.data,
+      data: allData,
       error: data.error,
     }
   }
@@ -474,7 +491,29 @@ export default class FirecrawlApp {
 
       if (!response.ok) {
         throw new FirecrawlApiError(`Failed to monitor crawl status. Error: ${response.statusText}`, request, response);
-      }
+=======
+    headers: AxiosRequestHeaders,
+    checkInterval: number
+  ): Promise<CrawlStatusResponse | ErrorResponse> {
+    while (true) {
+      let statusResponse: AxiosResponse = await this.getRequest(
+        `${this.apiUrl}/v1/crawl/${id}`,
+        headers
+      );
+     let statusData = statusResponse.data;
+          if (statusData.status === "completed") {
+            if ("data" in statusData) {
+              let data = statusData.data;
+              while ('next' in statusData) {
+                statusResponse = await this.getRequest(statusData.next, headers);
+                statusData = statusResponse.data;
+                data = data.concat(statusData.data);
+              }
+              statusData.data = data;
+              return statusData;
+            } else {
+              throw new Error("Crawl job completed but no data was returned");
+            }
 
       const data: CrawlStatusResponse = await response.json();
 

@@ -589,6 +589,9 @@ export class WebScraperDataProvider {
       includeLinks: options.pageOptions?.includeLinks ?? true,
       fullPageScreenshot: options.pageOptions?.fullPageScreenshot ?? false,
       screenshot: options.pageOptions?.screenshot ?? false,
+      useFastMode: options.pageOptions?.useFastMode ?? false,
+      disableJsDom: options.pageOptions?.disableJsDom ?? false,
+      atsv: options.pageOptions?.atsv ?? false
     };
     this.extractorOptions = options.extractorOptions ?? { mode: "markdown" };
     this.replaceAllPathsWithAbsolutePaths =
