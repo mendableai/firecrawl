@@ -127,7 +127,7 @@ export async function scrapWithFireEngine({
 
     let checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
     while (checkStatusResponse.data.processing && Date.now() - startTime < universalTimeout + waitParam) {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
+      await new Promise(resolve => setTimeout(resolve, 250)); // wait 0.25 seconds
       checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
     }
 
