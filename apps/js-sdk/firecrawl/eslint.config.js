@@ -15,5 +15,8 @@ export default [
         tsconfigRootDir: import.meta.dirname,
       },
     },
+    rules: {
+      "no-console": "error",
+    },
   },
 ];

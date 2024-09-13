@@ -48,7 +48,7 @@ export interface FirecrawlDocumentMetadata {
   sourceURL?: string;
   statusCode?: number;
   error?: string;
-  [key: string]: any; // Allows for additional metadata properties not explicitly defined.
+  [key: string]: unknown; // Allows for additional metadata properties not explicitly defined.
 }
 
 /**
@@ -61,7 +61,7 @@ export interface FirecrawlDocument {
   html?: string;
   rawHtml?: string;
   links?: string[];
-  extract?: Record<any, any>;
+  extract?: Record<string, unknown>;
   screenshot?: string;
   metadata?: FirecrawlDocumentMetadata;
 }
@@ -166,4 +166,49 @@ export interface MapResponse {
   success: true;
   links?: string[];
   error?: string;
+}
+
+export enum CrawlWatcherMessageType {
+  Error = "error",
+  Catchup = "catchup",
+  Done = "done",
+  Document = "document",
+}
+
+export interface CrawlWatcherErrorMessage {
+  type: CrawlWatcherMessageType.Error;
+  error: string;
+}
+
+export interface CrawlWatcherCatchupMessage {
+  type: CrawlWatcherMessageType.Catchup;
+  data: CrawlStatusResponse;
+}
+
+export interface CrawlWatcherDoneMessage {
+  type: CrawlWatcherMessageType.Done;
+}
+
+export interface CrawlWatcherDocumentMessage {
+  type: CrawlWatcherMessageType.Document;
+  data: FirecrawlDocument;
+}
+
+export type CrawlWatcherMessage =
+  | CrawlWatcherErrorMessage
+  | CrawlWatcherCatchupMessage
+  | CrawlWatcherDoneMessage
+  | CrawlWatcherDocumentMessage;
+
+export interface CrawlWatcherEvents {
+  document: CustomEvent<FirecrawlDocument>;
+  done: CustomEvent<{
+    status: CrawlStatusResponse["status"];
+    data: FirecrawlDocument[];
+  }>;
+  error: CustomEvent<{
+    status: CrawlStatusResponse["status"];
+    data: FirecrawlDocument[];
+    error: string;
+  }>;
 }

@@ -1,57 +1,46 @@
 import { TypedEventTarget } from "typescript-event-target";
-import type { CrawlStatusResponse, FirecrawlDocument } from "./types";
-import type { FirecrawlApp } from "./FirecrawlApp";
+import {
+  CrawlWatcherMessageType,
+  type CrawlStatusResponse,
+  type CrawlWatcherEvents,
+  type CrawlWatcherMessage,
+  type FirecrawlDocument,
+} from "./types";
 import { WebSocket } from "isows";
+import { DEFAULT_API_URL } from "./constants";
 
-interface CrawlWatcherEvents {
-  document: CustomEvent<FirecrawlDocument>;
-  done: CustomEvent<{
-    status: CrawlStatusResponse["status"];
-    data: FirecrawlDocument[];
-  }>;
-  error: CustomEvent<{
-    status: CrawlStatusResponse["status"];
-    data: FirecrawlDocument[];
-    error: string;
-  }>;
-}
-
+/**
+ * Watches a crawl and dispatches events for each document and the overall crawl status.
+ */
 export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
   private ws: WebSocket;
   public data: FirecrawlDocument[];
   public status: CrawlStatusResponse["status"];
 
-  constructor(id: string, app: FirecrawlApp) {
+  /**
+   * Creates a new CrawlWatcher to monitor a crawl via WebSocket.
+   *
+   * @param options - The crawl ID, API key, and optional API URL.
+   */
+  constructor({
+    crawlId,
+    apiUrl,
+    apiKey,
+  }: {
+    crawlId: string;
+    apiUrl?: string;
+    apiKey: string;
+  }) {
     super();
-    this.ws = new WebSocket(`${app.apiUrl}/v1/crawl/${id}`, app.apiKey);
+    this.ws = new WebSocket(
+      `${apiUrl ?? DEFAULT_API_URL}/v1/crawl/${crawlId}`,
+      apiKey,
+    );
     this.status = "scraping";
     this.data = [];
 
-    type ErrorMessage = {
-      type: "error";
-      error: string;
-    };
-
-    type CatchupMessage = {
-      type: "catchup";
-      data: CrawlStatusResponse;
-    };
-
-    type DocumentMessage = {
-      type: "document";
-      data: FirecrawlDocument;
-    };
-
-    type DoneMessage = { type: "done" };
-
-    type Message =
-      | ErrorMessage
-      | CatchupMessage
-      | DoneMessage
-      | DocumentMessage;
-
-    const messageHandler = (msg: Message) => {
-      if (msg.type === "done") {
+    const messageHandler = (message: CrawlWatcherMessage) => {
+      if (message.type === CrawlWatcherMessageType.Done) {
         this.status = "completed";
         this.dispatchTypedEvent(
           "done",
@@ -62,7 +51,10 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
             },
           }),
         );
-      } else if (msg.type === "error") {
+        return;
+      }
+
+      if (message.type === CrawlWatcherMessageType.Error) {
         this.status = "failed";
         this.dispatchTypedEvent(
           "error",
@@ -70,13 +62,17 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
             detail: {
               status: this.status,
               data: this.data,
-              error: msg.error,
+              error: message.error,
             },
           }),
         );
-      } else if (msg.type === "catchup") {
-        this.status = msg.data.status;
-        this.data.push(...(msg.data.data ?? []));
+
+        return;
+      }
+
+      if (message.type === CrawlWatcherMessageType.Catchup) {
+        this.status = message.data.status;
+        this.data.push(...message.data.data);
         for (const doc of this.data) {
           this.dispatchTypedEvent(
             "document",
@@ -85,32 +81,33 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
             }),
           );
         }
-      } else if (msg.type === "document") {
-        this.dispatchTypedEvent(
-          "document",
-          new CustomEvent("document", {
-            detail: msg.data,
-          }),
-        );
+        return;
       }
+
+      this.dispatchTypedEvent(
+        "document",
+        new CustomEvent("document", {
+          detail: message.data,
+        }),
+      );
     };
 
-    this.ws.onmessage = ((ev: MessageEvent) => {
-      if (typeof ev.data !== "string") {
+    this.ws.onmessage = ((event: MessageEvent) => {
+      if (typeof event.data !== "string") {
         this.ws.close();
         return;
       }
 
-      const msg = JSON.parse(ev.data) as Message;
-      messageHandler(msg);
+      const message = JSON.parse(event.data) as CrawlWatcherMessage;
+      messageHandler(message);
     }).bind(this);
 
-    this.ws.onclose = ((ev: CloseEvent) => {
-      const msg = JSON.parse(ev.reason) as Message;
-      messageHandler(msg);
+    this.ws.onclose = ((event: CloseEvent) => {
+      const message = JSON.parse(event.reason) as CrawlWatcherMessage;
+      messageHandler(message);
     }).bind(this);
 
-    this.ws.onerror = ((_: Event) => {
+    this.ws.onerror = (() => {
       this.status = "failed";
       this.dispatchTypedEvent(
         "error",
@@ -125,6 +122,9 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
     }).bind(this);
   }
 
+  /**
+   * Closes the underlying WebSocket connection.
+   */
   close() {
     this.ws.close();
   }
