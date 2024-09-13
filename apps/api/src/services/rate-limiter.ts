@@ -104,6 +104,13 @@ export const devBRateLimiter = new RateLimiterRedis({
   duration: 60, // Duration in seconds
 });
 
+export const manualRateLimiter = new RateLimiterRedis({
+  storeClient: redisRateLimitClient,
+  keyPrefix: "manual",
+  points: 2000,
+  duration: 60, // Duration in seconds
+});
+
 
 export const scrapeStatusRateLimiter = new RateLimiterRedis({
   storeClient: redisRateLimitClient,
@@ -113,6 +120,8 @@ export const scrapeStatusRateLimiter = new RateLimiterRedis({
 });
 
 const testSuiteTokens = ["a01ccae", "6254cf9", "0f96e673", "23befa1b", "69141c4"];
+
+const manual = ["69be9e74-7624-4990-b20d-08e0acc70cf6"];
 
 export function getRateLimiter(
   mode: RateLimiterMode,
@@ -127,6 +136,10 @@ export function getRateLimiter(
 
   if(teamId && teamId === process.env.DEV_B_TEAM_ID) {
     return devBRateLimiter;
+  }
+
+  if(teamId && manual.includes(teamId)) {
+    return manualRateLimiter;
   }
 
   const rateLimitConfig = RATE_LIMITS[mode]; // {default : 5}
