@@ -38,7 +38,9 @@
   "homepage": "https://github.com/mendableai/firecrawl#readme",
   "devDependencies": {
     "@eslint/js": "^9.10.0",
+    "@faker-js/faker": "^9.0.0",
     "@types/eslint__js": "^8.42.3",
+    "@types/ws": "^8.5.12",
     "eslint": "^9.10.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-prettier": "^5.2.1",
@@ -46,7 +48,8 @@
     "tsup": "^8.2.4",
     "typescript": "^5.4.5",
     "typescript-eslint": "^8.5.0",
-    "vitest": "^2.1.0"
+    "vitest": "^2.1.0",
+    "ws": "^8.18.0"
   },
   "keywords": [
     "firecrawl",
