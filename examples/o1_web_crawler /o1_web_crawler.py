@@ -4,6 +4,16 @@ import json
 from dotenv import load_dotenv
 from openai import OpenAI
 
+# ANSI color codes
+class Colors:
+    CYAN = '\033[96m'
+    YELLOW = '\033[93m'
+    GREEN = '\033[92m'
+    RED = '\033[91m'
+    MAGENTA = '\033[95m'
+    BLUE = '\033[94m'
+    RESET = '\033[0m'
+
 # Load environment variables
 load_dotenv()
 
@@ -18,14 +28,14 @@ client = OpenAI(api_key=openai_api_key)
 # Find the page that most likely contains the objective
 def find_relevant_page_via_map(objective, url, app, client):
     try:
-        print(f"Understood. The objective is: {objective}")
-        print(f"Initiating search on the website: {url}")
+        print(f"{Colors.CYAN}Understood. The objective is: {objective}{Colors.RESET}")
+        print(f"{Colors.CYAN}Initiating search on the website: {url}{Colors.RESET}")
         
         map_prompt = f"""
         The map function generates a list of URLs from a website and it accepts a search parameter. Based on the objective of: {objective}, come up with a 1-2 word search parameter that will help us find the information we need. Only respond with 1-2 words nothing else.
         """
 
-        print("Analyzing objective to determine optimal search parameter...")
+        print(f"{Colors.YELLOW}Analyzing objective to determine optimal search parameter...{Colors.RESET}")
         completion = client.chat.completions.create(
             model="o1-preview",
             messages=[
@@ -42,15 +52,15 @@ def find_relevant_page_via_map(objective, url, app, client):
         )
 
         map_search_parameter = completion.choices[0].message.content
-        print(f"Optimal search parameter identified: {map_search_parameter}")
+        print(f"{Colors.GREEN}Optimal search parameter identified: {map_search_parameter}{Colors.RESET}")
 
-        print(f"Mapping website using the identified search parameter...")
+        print(f"{Colors.YELLOW}Mapping website using the identified search parameter...{Colors.RESET}")
         map_website = app.map_url(url, params={"search": map_search_parameter})
-        print("Website mapping completed successfully.")
-        print(f"Located {len(map_website)} relevant links.")
+        print(f"{Colors.GREEN}Website mapping completed successfully.{Colors.RESET}")
+        print(f"{Colors.GREEN}Located {len(map_website)} relevant links.{Colors.RESET}")
         return map_website
     except Exception as e:
-        print(f"Error encountered during relevant page identification: {str(e)}")
+        print(f"{Colors.RED}Error encountered during relevant page identification: {str(e)}{Colors.RESET}")
         return None
     
 # Scrape the top 3 pages and see if the objective is met, if so return in json format else return None
@@ -58,13 +68,13 @@ def find_objective_in_top_pages(map_website, objective, app, client):
     try:
         # Get top 3 links from the map result
         top_links = map_website[:3] if isinstance(map_website, list) else []
-        print(f"Proceeding to analyze top {len(top_links)} links: {top_links}")
+        print(f"{Colors.CYAN}Proceeding to analyze top {len(top_links)} links: {top_links}{Colors.RESET}")
         
         for link in top_links:
-            print(f"Initiating scrape of page: {link}")
+            print(f"{Colors.YELLOW}Initiating scrape of page: {link}{Colors.RESET}")
             # Scrape the page
             scrape_result = app.scrape_url(link, params={'formats': ['markdown']})
-            print("Page scraping completed successfully.")
+            print(f"{Colors.GREEN}Page scraping completed successfully.{Colors.RESET}")
      
             
             # Check if objective is met
@@ -82,7 +92,7 @@ def find_objective_in_top_pages(map_website, objective, app, client):
             3. Do not include any explanations or markdown formatting in your response.
             """
             
-            print("Analyzing scraped content to determine objective fulfillment...")
+            print(f"{Colors.YELLOW}Analyzing scraped content to determine objective fulfillment...{Colors.RESET}")
             completion = client.chat.completions.create(
             model="o1-preview",
             messages=[
@@ -101,43 +111,42 @@ def find_objective_in_top_pages(map_website, objective, app, client):
             result = completion.choices[0].message.content
             
             if result != "Objective not met":
-                print("Objective potentially fulfilled. Relevant information identified.")
+                print(f"{Colors.GREEN}Objective potentially fulfilled. Relevant information identified.{Colors.RESET}")
                 try:
-                    print(result)
                     return json.loads(result)
                 except json.JSONDecodeError:
-                    print("Error in parsing response. Proceeding to next page...")
+                    print(f"{Colors.RED}Error in parsing response. Proceeding to next page...{Colors.RESET}")
             else:
-                print("Objective not met on this page. Proceeding to next link...")
+                print(f"{Colors.YELLOW}Objective not met on this page. Proceeding to next link...{Colors.RESET}")
         
-        print("All available pages analyzed. Objective not fulfilled in examined content.")
+        print(f"{Colors.RED}All available pages analyzed. Objective not fulfilled in examined content.{Colors.RESET}")
         return None
     except Exception as e:
-        print(f"Error encountered during page analysis: {str(e)}")
+        print(f"{Colors.RED}Error encountered during page analysis: {str(e)}{Colors.RESET}")
         return None
 
 # Main function to execute the process
 def main():
     # Get user input
-    url = input("Enter the website to crawl: ")
-    objective = input("Enter your objective: ")
+    url = input(f"{Colors.BLUE}Enter the website to crawl: {Colors.RESET}")
+    objective = input(f"{Colors.BLUE}Enter your objective: {Colors.RESET}")
     
-    print("Initiating web crawling process.")
+    print(f"{Colors.YELLOW}Initiating web crawling process...{Colors.RESET}")
     # Find the relevant page
     map_website = find_relevant_page_via_map(objective, url, app, client)
     
     if map_website:
-        print("Relevant pages identified. Proceeding with detailed analysis...")
+        print(f"{Colors.GREEN}Relevant pages identified. Proceeding with detailed analysis...{Colors.RESET}")
         # Find objective in top pages
         result = find_objective_in_top_pages(map_website, objective, app, client)
         
         if result:
-            print("Objective successfully fulfilled. Extracted information:")
-            print(json.dumps(result, indent=2))
+            print(f"{Colors.GREEN}Objective successfully fulfilled. Extracted information:{Colors.RESET}")
+            print(f"{Colors.MAGENTA}{json.dumps(result, indent=2)}{Colors.RESET}")
         else:
-            print("Unable to fulfill the objective with the available content.")
+            print(f"{Colors.RED}Unable to fulfill the objective with the available content.{Colors.RESET}")
     else:
-        print("No relevant pages identified. Consider refining the search parameters or trying a different website.")
+        print(f"{Colors.RED}No relevant pages identified. Consider refining the search parameters or trying a different website.{Colors.RESET}")
 
 if __name__ == "__main__":
     main()
