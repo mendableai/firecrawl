@@ -39,7 +39,7 @@ export async function scrapeHelper(
   returnCode: number;
 }> {
   const url = req.body.url;
-  if (!url) {
+  if (typeof url !== "string") {
     return { success: false, error: "Url is required", returnCode: 400 };
   }
 
@@ -229,7 +229,7 @@ export async function scrapeController(req: Request, res: Response) {
 
     if (result.success) {
       let creditsToBeBilled = 1;
-      const creditsPerLLMExtract = 49;
+      const creditsPerLLMExtract = 4;
 
       if (extractorOptions.mode.includes("llm-extraction")) {
         // creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length);

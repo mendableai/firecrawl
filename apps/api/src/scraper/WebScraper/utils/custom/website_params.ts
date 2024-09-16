@@ -242,5 +242,13 @@ export const urlSpecificParams = {
         engine: "chrome-cdp",
       },
     },
+  },
+  "lorealparis.hu":{
+    defaultScraper: "fire-engine",
+    params:{
+      fireEngineOptions:{
+        engine: "tlsclient",
+      },
+    },
   }
 };

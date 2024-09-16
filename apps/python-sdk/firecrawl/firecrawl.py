@@ -13,7 +13,6 @@ import logging
 import os
 import time
 from typing import Any, Dict, Optional, List
-import asyncio
 import json
 
 import requests

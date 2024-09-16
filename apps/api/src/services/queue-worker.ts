@@ -448,11 +448,13 @@ async function processJob(job: Job, token: string) {
   } catch (error) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);
 
-    Sentry.captureException(error, {
-      data: {
-        job: job.id,
-      },
-    });
+    if (!(error instanceof Error && error.message.includes("JSON parsing error(s): "))) {
+      Sentry.captureException(error, {
+        data: {
+          job: job.id,
+        },
+      });
+    }
 
     if (error instanceof CustomError) {
       // Here we handle the error, then save the failed job

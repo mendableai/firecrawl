@@ -96,15 +96,15 @@ function getScrapingFallbackOrder(
     "fetch",
   ].filter(Boolean);
 
-  if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
-    defaultOrder = [
-      "fire-engine",
-      useFireEngine ? undefined : "playwright",
-      ...defaultOrder.filter(
-        (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
-      ),
-    ].filter(Boolean);
-  }
+  // if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
+  //   defaultOrder = [
+  //     "fire-engine",
+  //     useFireEngine ? undefined : "playwright",
+  //     ...defaultOrder.filter(
+  //       (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
+  //     ),
+  //   ].filter(Boolean);
+  // }
 
   const filteredDefaultOrder = defaultOrder.filter(
     (scraper: (typeof baseScrapers)[number]) =>

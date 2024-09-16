@@ -55,7 +55,7 @@ export async function scrapWithFireEngine({
   try {
     const reqParams = await generateRequestParams(url);
     let waitParam = reqParams["params"]?.wait ?? waitFor;
-    let engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "playwright";
+    let engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "chrome-cdp";
     let screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
     let fullPageScreenshotParam = reqParams["params"]?.fullPageScreenshot ?? fullPageScreenshot;
     let fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
@@ -127,7 +127,7 @@ export async function scrapWithFireEngine({
 
     let checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
     while (checkStatusResponse.data.processing && Date.now() - startTime < universalTimeout + waitParam) {
-      await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
+      await new Promise(resolve => setTimeout(resolve, 250)); // wait 0.25 seconds
       checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
     }
 

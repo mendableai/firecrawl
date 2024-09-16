@@ -103,7 +103,7 @@ export async function scrapeController(
     return;
   }
   if(req.body.extract && req.body.formats.includes("extract")) {
-    creditsToBeBilled = 50;
+    creditsToBeBilled = 5;
   }
 
   billTeam(req.auth.team_id, creditsToBeBilled).catch(error => {
