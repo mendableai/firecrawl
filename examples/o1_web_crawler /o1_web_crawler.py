@@ -79,20 +79,19 @@ def find_objective_in_top_pages(map_website, objective, app, client):
             
             # Check if objective is met
             check_prompt = f"""
-            Given the following scraped content and objective, determine if the objective is met with high confidence.
+            Given the following scraped content and objective, determine if the objective is met.
             If it is, extract the relevant information in a simple and concise JSON format. Use only the necessary fields and avoid nested structures if possible.
-            If the objective is not met with high confidence, respond with 'Objective not met'.
+            If the objective is not met with confidence, respond with 'Objective not met'.
 
             Objective: {objective}
             Scraped content: {scrape_result['markdown']}
 
             Remember:
-            1. Only return JSON if you are highly confident the objective is fully met.
+            1. Only return JSON if you are confident the objective is fully met.
             2. Keep the JSON structure as simple and flat as possible.
             3. Do not include any explanations or markdown formatting in your response.
             """
-            
-            print(f"{Colors.YELLOW}Analyzing scraped content to determine objective fulfillment...{Colors.RESET}")
+        
             completion = client.chat.completions.create(
             model="o1-preview",
             messages=[
@@ -121,6 +120,7 @@ def find_objective_in_top_pages(map_website, objective, app, client):
         
         print(f"{Colors.RED}All available pages analyzed. Objective not fulfilled in examined content.{Colors.RESET}")
         return None
+    
     except Exception as e:
         print(f"{Colors.RED}Error encountered during page analysis: {str(e)}{Colors.RESET}")
         return None
