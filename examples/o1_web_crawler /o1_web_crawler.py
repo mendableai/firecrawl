@@ -18,14 +18,14 @@ client = OpenAI(api_key=openai_api_key)
 # Find the page that most likely contains the objective
 def find_relevant_page_via_map(objective, url, app, client):
     try:
-        print(f"Okay, the objective is: {objective}")
-        print(f"I am going to search the website: {url}")
+        print(f"Understood. The objective is: {objective}")
+        print(f"Initiating search on the website: {url}")
         
         map_prompt = f"""
         The map function generates a list of URLs from a website and it accepts a search parameter. Based on the objective of: {objective}, come up with a 1-2 word search parameter that will help us find the information we need. Only respond with 1-2 words nothing else.
         """
 
-        print("I'm asking the AI to suggest a search parameter...")
+        print("Analyzing objective to determine optimal search parameter...")
         completion = client.chat.completions.create(
             model="o1-preview",
             messages=[
@@ -42,40 +42,47 @@ def find_relevant_page_via_map(objective, url, app, client):
         )
 
         map_search_parameter = completion.choices[0].message.content
-        print(f"I think the search parameter should be: {map_search_parameter}")
+        print(f"Optimal search parameter identified: {map_search_parameter}")
 
-        print(f"Now I'm going to map the website using this search parameter...")
-        map_website = app.map_url(url, params=map_search_parameter)
-        print("I've successfully mapped the website!")
+        print(f"Mapping website using the identified search parameter...")
+        map_website = app.map_url(url, params={"search": map_search_parameter})
+        print("Website mapping completed successfully.")
+        print(f"Located {len(map_website)} relevant links.")
         return map_website
     except Exception as e:
-        print(f"Oops! An error occurred while finding the relevant page: {str(e)}")
+        print(f"Error encountered during relevant page identification: {str(e)}")
         return None
     
 # Scrape the top 3 pages and see if the objective is met, if so return in json format else return None
 def find_objective_in_top_pages(map_website, objective, app, client):
     try:
         # Get top 3 links from the map result
-        top_links = map_website['links'][:3]
-        print(f"I'm going to check the top 3 links: {top_links}")
+        top_links = map_website[:3] if isinstance(map_website, list) else []
+        print(f"Proceeding to analyze top {len(top_links)} links: {top_links}")
         
         for link in top_links:
-            print(f"Now I'm scraping this page: {link}")
+            print(f"Initiating scrape of page: {link}")
             # Scrape the page
             scrape_result = app.scrape_url(link, params={'formats': ['markdown']})
-            print("I've successfully scraped the page!")
+            print("Page scraping completed successfully.")
+     
             
             # Check if objective is met
             check_prompt = f"""
-            Given the following scraped content and objective, determine if the objective is met.
-            If it is, extract the relevant information in JSON format.
-            If not, respond with 'Objective not met'.
+            Given the following scraped content and objective, determine if the objective is met with high confidence.
+            If it is, extract the relevant information in a simple and concise JSON format. Use only the necessary fields and avoid nested structures if possible.
+            If the objective is not met with high confidence, respond with 'Objective not met'.
 
             Objective: {objective}
-            Scraped content: {scrape_result['data']['markdown']}
+            Scraped content: {scrape_result['markdown']}
+
+            Remember:
+            1. Only return JSON if you are highly confident the objective is fully met.
+            2. Keep the JSON structure as simple and flat as possible.
+            3. Do not include any explanations or markdown formatting in your response.
             """
             
-            print("I'm asking the AI to check if the objective is met...")
+            print("Analyzing scraped content to determine objective fulfillment...")
             completion = client.chat.completions.create(
             model="o1-preview",
             messages=[
@@ -94,15 +101,19 @@ def find_objective_in_top_pages(map_website, objective, app, client):
             result = completion.choices[0].message.content
             
             if result != "Objective not met":
-                print("Great news! I think I've found what we're looking for!")
-                return json.loads(result)
+                print("Objective potentially fulfilled. Relevant information identified.")
+                try:
+                    print(result)
+                    return json.loads(result)
+                except json.JSONDecodeError:
+                    print("Error in parsing response. Proceeding to next page...")
             else:
-                print("This page doesn't seem to have what we need. Moving to the next one...")
+                print("Objective not met on this page. Proceeding to next link...")
         
-        print("I've checked all 3 pages, but couldn't find what we're looking for.")
+        print("All available pages analyzed. Objective not fulfilled in examined content.")
         return None
     except Exception as e:
-        print(f"Oh no! An error occurred while scraping top pages: {str(e)}")
+        print(f"Error encountered during page analysis: {str(e)}")
         return None
 
 # Main function to execute the process
@@ -111,22 +122,22 @@ def main():
     url = input("Enter the website to crawl: ")
     objective = input("Enter your objective: ")
     
-    print("Alright, let's get started!")
+    print("Initiating web crawling process.")
     # Find the relevant page
     map_website = find_relevant_page_via_map(objective, url, app, client)
     
     if map_website:
-        print("Great! I've found some relevant pages. Now let's see if we can find what we're looking for...")
+        print("Relevant pages identified. Proceeding with detailed analysis...")
         # Find objective in top pages
         result = find_objective_in_top_pages(map_website, objective, app, client)
         
         if result:
-            print("Success! I've found what you're looking for. Here's the extracted information:")
+            print("Objective successfully fulfilled. Extracted information:")
             print(json.dumps(result, indent=2))
         else:
-            print("I'm sorry, but I couldn't find what you're looking for in the top 3 pages.")
+            print("Unable to fulfill the objective with the available content.")
     else:
-        print("I'm afraid I couldn't find any relevant pages. Maybe we could try a different website or rephrase the objective?")
+        print("No relevant pages identified. Consider refining the search parameters or trying a different website.")
 
 if __name__ == "__main__":
     main()
