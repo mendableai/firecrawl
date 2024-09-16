@@ -31,6 +31,7 @@ describe("Scraping Checkup (E2E)", () => {
 
   describe("Scraping website tests with a dataset", () => {
     it("Should scrape the website and prompt it against OpenAI", async () => {
+      let totalTimeTaken = 0;
       let passedTests = 0;
       const batchSize = 15; // Adjusted to comply with the rate limit of 15 per minute
       const batchPromises = [];
@@ -51,11 +52,16 @@ describe("Scraping Checkup (E2E)", () => {
         const batchPromise = Promise.all(
           batch.map(async (websiteData: WebsiteData) => {
             try {
+              const startTime = new Date().getTime();
               const scrapedContent = await request(TEST_URL || "")
-                .post("/v0/scrape")
+                .post("/v1/scrape")
                 .set("Content-Type", "application/json")
                 .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-                .send({ url: websiteData.website, pageOptions: { onlyMainContent: true } });
+                .send({ url: websiteData.website });
+
+              const endTime = new Date().getTime();
+              const timeTaken = endTime - startTime;
+              totalTimeTaken += timeTaken;
 
               if (scrapedContent.statusCode !== 200) {
                 console.error(`Failed to scrape ${websiteData.website} ${scrapedContent.statusCode}`);
@@ -165,6 +171,7 @@ describe("Scraping Checkup (E2E)", () => {
       const timeTaken = (endTime - startTime) / 1000;
       console.log(`Score: ${score}%`);
       console.log(`Total tokens: ${totalTokens}`);
+      console.log(`Total time taken: ${totalTimeTaken} miliseconds`);
 
       await logErrors(errorLog, timeTaken, totalTokens, score, websitesData.length);
       

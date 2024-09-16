@@ -1,5 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { Logger } from "../lib/logger";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 // SupabaseService class initializes the Supabase client conditionally based on environment variables.
 class SupabaseService {
@@ -8,8 +10,9 @@ class SupabaseService {
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceToken = process.env.SUPABASE_SERVICE_TOKEN;
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
     // Only initialize the Supabase client if both URL and Service Token are provided.
-    if (process.env.USE_DB_AUTHENTICATION === "false") {
+    if (!useDbAuthentication) {
       // Warn the user that Authentication is disabled by setting the client to null
       Logger.warn(
         "Authentication is disabled. Supabase client will not be initialized."

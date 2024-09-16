@@ -309,6 +309,23 @@ export class WebCrawler {
     return null;
   }
 
+  public extractLinksFromHTML(html: string, url: string) {
+    let links: string[] = [];
+
+    const $ = load(html);
+    $("a").each((_, element) => {
+      const href = $(element).attr("href");
+      if (href) {
+        const u = this.filterURL(href, url);
+        if (u !== null) {
+          links.push(u);
+        }
+      }
+    });
+
+    return links;
+  }
+
   async crawl(url: string, pageOptions: PageOptions): Promise<{url: string, html: string, pageStatusCode?: number, pageError?: string}[]> {
     if (this.visited.has(url) || !this.robots.isAllowed(url, "FireCrawlAgent")) {
       return [];
@@ -352,15 +369,7 @@ export class WebCrawler {
         links.push({ url, html: content, pageStatusCode, pageError });
       }
 
-      $("a").each((_, element) => {
-        const href = $(element).attr("href");
-        if (href) {
-          const u = this.filterURL(href, url);
-          if (u !== null) {
-            links.push({ url: u, html: content, pageStatusCode, pageError });
-          }
-        }
-      });
+      links.push(...this.extractLinksFromHTML(content, url).map(url => ({ url, html: content, pageStatusCode, pageError })));
       
       if (this.visited.size === 1) {
         return links;

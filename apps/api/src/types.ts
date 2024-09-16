@@ -30,6 +30,9 @@ export interface WebScraperOptions {
   origin?: string;
   crawl_id?: string;
   sitemapped?: boolean;
+  webhook?: string;
+  v1?: boolean;
+  is_scrape?: boolean;
 }
 
 export interface RunWebScraperParams {
@@ -44,6 +47,7 @@ export interface RunWebScraperParams {
   team_id: string;
   bull_job_id: string;
   priority?: number;
+  is_scrape?: boolean;
 }
 
 export interface RunWebScraperResult {
@@ -105,6 +109,7 @@ export enum RateLimiterMode {
   Scrape = "scrape",
   Preview = "preview",
   Search = "search",
+  Map = "map",
 
 }
 
@@ -113,7 +118,8 @@ export interface AuthResponse {
   team_id?: string;
   error?: string;
   status?: number;
-  plan?: string;
+  api_key?: string;
+  plan?: PlanType;
 }
   
 
@@ -137,3 +143,17 @@ export type ScrapeLog = {
   ipv4_support?: boolean | null;
   ipv6_support?: boolean | null;
 };
+
+export type PlanType = 
+  | "starter"
+  | "standard"
+  | "scale"
+  | "hobby"
+  | "standardnew"
+  | "growth"
+  | "growthdouble"
+  | "free"
+  | "";
+
+
+export type WebhookEventType = "crawl.page" | "crawl.started" | "crawl.completed" | "crawl.failed";

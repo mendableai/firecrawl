@@ -4,10 +4,13 @@ import { FirecrawlJob } from "../../types";
 import { posthog } from "../posthog";
 import "dotenv/config";
 import { Logger } from "../../lib/logger";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 export async function logJob(job: FirecrawlJob) {
   try {
-    if (process.env.USE_DB_AUTHENTICATION === "false") {
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+    if (!useDbAuthentication) {
       return;
     }
 

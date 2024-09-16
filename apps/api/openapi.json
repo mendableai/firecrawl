@@ -18,8 +18,8 @@
   "paths": {
     "/scrape": {
       "post": {
-        "summary": "Scrape a single URL and optionally extract information using an LLM",
-        "operationId": "scrapeAndExtractFromUrl",
+        "summary": "Scrape a single URL",
+        "operationId": "scrape",
         "tags": ["Scraping"],
         "security": [
           {
@@ -38,94 +38,47 @@
                     "format": "uri",
                     "description": "The URL to scrape"
                   },
-                  "pageOptions": {
-                    "type": "object",
-                    "properties": {
-                      "headers": {
-                        "type": "object",
-                        "description": "Headers to send with the request. Can be used to send cookies, user-agent, etc."
-                      },
-                      "includeHtml": {
-                        "type": "boolean",
-                        "description": "Include the HTML version of the content on page. Will output a html key in the response.",
-                        "default": false
-                      },
-                      "includeRawHtml": {
-                        "type": "boolean",
-                        "description": "Include the raw HTML content of the page. Will output a rawHtml key in the response.",
-                        "default": false
-                      },
-                      "onlyIncludeTags": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        },
-                        "description": "Only include tags, classes and ids from the page in the final output. Use comma separated values. Example: 'script, .ad, #footer'"
-                      },
-                      "onlyMainContent": {
-                        "type": "boolean",
-                        "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
-                        "default": false
-                      },
-                      "removeTags": {
-                        "type": "array",
-                        "items": {
-                          "type": "string"
-                        },
-                        "description": "Tags, classes and ids to remove from the page. Use comma separated values. Example: 'script, .ad, #footer'"
-                      },
-                      "replaceAllPathsWithAbsolutePaths": {
-                        "type": "boolean",
-                        "description": "Replace all relative paths with absolute paths for images and links",
-                        "default": false
-                      },
-                      "screenshot": {
-                        "type": "boolean",
-                        "description": "Include a screenshot of the top of the page that you are scraping.",
-                        "default": false
-                      },
-                      "fullPageScreenshot": {
-                        "type": "boolean",
-                        "description": "Include a full page screenshot of the page that you are scraping.",
-                        "default": false
-                      },
-                      "waitFor": {
-                        "type": "integer",
-                        "description": "Wait x amount of milliseconds for the page to load to fetch content",
-                        "default": 0
-                      }
-                    }
+                  "formats": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage"]
+                    },
+                    "description": "Specific formats to return.\n\n - markdown: The page in Markdown format.\n - html: The page's HTML, trimmed to include only meaningful content.\n - rawHtml: The page's original HTML.\n - links: The links on the page.\n - screenshot: A screenshot of the top of the page.\n - screenshot@fullPage: A screenshot of the full page. (overridden by screenshot if present)",
+                    "default": ["markdown"]
                   },
-                  "extractorOptions": {
+                  "headers": {
                     "type": "object",
-                    "description": "Options for extraction of structured information from the page content. Note: LLM-based extraction is not performed by default and only occurs when explicitly configured. The 'markdown' mode simply returns the scraped markdown and is the default mode for scraping.",
-                    "default": {},
-                    "properties": {
-                      "mode": {
-                        "type": "string",
-                        "enum": ["markdown", "llm-extraction", "llm-extraction-from-raw-html", "llm-extraction-from-markdown"],
-                        "description": "The extraction mode to use. 'markdown': Returns the scraped markdown content, does not perform LLM extraction. 'llm-extraction': Extracts information from the cleaned and parsed content using LLM. 'llm-extraction-from-raw-html': Extracts information directly from the raw HTML using LLM. 'llm-extraction-from-markdown': Extracts information from the markdown content using LLM."
-                      },
-                      "extractionPrompt": {
-                        "type": "string",
-                        "description": "A prompt describing what information to extract from the page, applicable for LLM extraction modes."
-                      },
-                      "extractionSchema": {
-                        "type": "object",
-                        "additionalProperties": true,
-                        "description": "The schema for the data to be extracted, required only for LLM extraction modes.",
-                        "required": [
-                          "company_mission",
-                          "supports_sso",
-                          "is_open_source"
-                        ]
-                      }
-                    }
+                    "description": "Headers to send with the request. Can be used to send cookies, user-agent, etc."
+                  },
+                  "includeTags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Only include tags, classes and ids from the page in the final output. Use comma separated values. Example: 'script, .ad, #footer'"
+                  },
+                  "excludeTags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Tags, classes and ids to remove from the page. Use comma separated values. Example: 'script, .ad, #footer'"
+                  },
+                  "onlyMainContent": {
+                    "type": "boolean",
+                    "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
+                    "default": true
                   },
                   "timeout": {
                     "type": "integer",
                     "description": "Timeout in milliseconds for the request",
                     "default": 30000
+                  },
+                  "waitFor": {
+                    "type": "integer",
+                    "description": "Wait x amount of milliseconds for the page to load to fetch content",
+                    "default": 0
                   }
                 },
                 "required": ["url"]
@@ -741,24 +694,42 @@
           "success": {
             "type": "boolean"
           },
+          "warning": {
+            "type": "string",
+            "nullable": true,
+            "description": "Warning message to let you know of any issues."
+          },
           "data": {
             "type": "object",
             "properties": {
               "markdown": {
-                "type": "string"
-              },
-              "content": {
-                "type": "string"
+                "type": "string",
+                "nullable": true,
+                "description": "Markdown content of the page if the `markdown` format was specified (default)"
               },
               "html": {
                 "type": "string",
                 "nullable": true,
-                "description": "HTML version of the content on page if `includeHtml`  is true"
+                "description": "HTML version of the content on page if the `html` format was specified"
               },
               "rawHtml": {
                 "type": "string",
                 "nullable": true,
-                "description": "Raw HTML content of the page if `includeRawHtml`  is true"
+                "description": "Raw HTML content of the page if the `rawHtml` format was specified"
+              },
+              "links": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uri"
+                },
+                "nullable": true,
+                "description": "Links on the page if the `links` format was specified"
+              },
+              "screenshot": {
+                "type": "string",
+                "nullable": true,
+                "description": "URL of the screenshot of the page if the `screenshot` or `screenshot@fullSize` format was specified"
               },
               "metadata": {
                 "type": "object",
@@ -780,27 +751,16 @@
                   "<any other metadata> ": {
                     "type": "string"
                   },
-                  "pageStatusCode": {
+                  "statusCode": {
                     "type": "integer",
                     "description": "The status code of the page"
                   },
-                  "pageError": {
+                  "error": {
                     "type": "string",
                     "nullable": true,
                     "description": "The error message of the page"
                   }
-                  
                 }
-              },
-              "llm_extraction": {
-                "type": "object",
-                "description": "Displayed when using LLM Extraction. Extracted data from the page following the schema defined.",
-                "nullable": true
-              },
-              "warning": {
-                "type": "string",
-                "nullable": true,
-                "description": "Can be displayed when using LLM Extraction. Warning message will let you know any issues with the extraction."
               }
             }
           }
@@ -810,24 +770,33 @@
         "type": "object",
         "properties": {
           "markdown": {
-            "type": "string"
-          },
-          "content": {
-            "type": "string"
+            "type": "string",
+            "nullable": true,
+            "description": "Markdown content of the page if the `markdown` format was specified (default)"
           },
           "html": {
             "type": "string",
             "nullable": true,
-            "description": "HTML version of the content on page if `includeHtml`  is true"
+            "description": "HTML version of the content on page if the `html` format was specified"
           },
           "rawHtml": {
             "type": "string",
             "nullable": true,
-            "description": "Raw HTML content of the page if `includeRawHtml`  is true"
+            "description": "Raw HTML content of the page if the `rawHtml` format was specified"
           },
-          "index": {
-            "type": "integer",
-            "description": "The number of the page that was crawled. This is useful for `partial_data` so you know which page the data is from." 
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "format": "uri"
+            },
+            "nullable": true,
+            "description": "Links on the page if the `links` format was specified"
+          },
+          "screenshot": {
+            "type": "string",
+            "nullable": true,
+            "description": "URL of the screenshot of the page if the `screenshot` or `screenshot@fullSize` format was specified"
           },
           "metadata": {
             "type": "object",
@@ -849,11 +818,11 @@
               "<any other metadata> ": {
                 "type": "string"
               },
-              "pageStatusCode": {
+              "statusCode": {
                 "type": "integer",
                 "description": "The status code of the page"
               },
-              "pageError": {
+              "error": {
                 "type": "string",
                 "nullable": true,
                 "description": "The error message of the page"
@@ -871,34 +840,63 @@
           "data": {
             "type": "array",
             "items": {
-              "type": "object",
-              "properties": {
-                "url": {
-                  "type": "string"
+              "markdown": {
+                "type": "string",
+                "nullable": true,
+                "description": "Markdown content of the page if the `markdown` format was specified (default)"
+              },
+              "html": {
+                "type": "string",
+                "nullable": true,
+                "description": "HTML version of the content on page if the `html` format was specified"
+              },
+              "rawHtml": {
+                "type": "string",
+                "nullable": true,
+                "description": "Raw HTML content of the page if the `rawHtml` format was specified"
+              },
+              "links": {
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "format": "uri"
                 },
-                "markdown": {
-                  "type": "string"
-                },
-                "content": {
-                  "type": "string"
-                },
-                "metadata": {
-                  "type": "object",
-                  "properties": {
-                    "title": {
-                      "type": "string"
-                    },
-                    "description": {
-                      "type": "string"
-                    },
-                    "language": {
-                      "type": "string",
-                      "nullable": true
-                    },
-                    "sourceURL": {
-                      "type": "string",
-                      "format": "uri"
-                    }
+                "nullable": true,
+                "description": "Links on the page if the `links` format was specified"
+              },
+              "screenshot": {
+                "type": "string",
+                "nullable": true,
+                "description": "URL of the screenshot of the page if the `screenshot` or `screenshot@fullSize` format was specified"
+              },
+              "metadata": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "language": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "sourceURL": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "<any other metadata> ": {
+                    "type": "string"
+                  },
+                  "statusCode": {
+                    "type": "integer",
+                    "description": "The status code of the page"
+                  },
+                  "error": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "The error message of the page"
                   }
                 }
               }
@@ -909,8 +907,15 @@
       "CrawlResponse": {
         "type": "object",
         "properties": {
-          "jobId": {
+          "success": {
+            "type": "boolean"
+          },
+          "id": {
             "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
           }
         }
       }

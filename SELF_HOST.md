@@ -65,7 +65,6 @@ BULL_AUTH_KEY= @
 LOGTAIL_KEY= # Use if you're configuring basic logging with logtail
 PLAYWRIGHT_MICROSERVICE_URL=  # set if you'd like to run a playwright fallback
 LLAMAPARSE_API_KEY= #Set if you have a llamaparse key you'd like to use to parse pdfs
-SERPER_API_KEY= #Set if you have a serper key you'd like to use as a search api
 SLACK_WEBHOOK_URL= # set if you'd like to send slack server health status messages
 POSTHOG_API_KEY= # set if you'd like to send posthog events like job logs
 POSTHOG_HOST= # set if you'd like to send posthog events like job logs
@@ -107,7 +106,7 @@ You should be able to see the Bull Queue Manager UI on `http://localhost:3002/ad
 If you’d like to test the crawl endpoint, you can run this:
 
   ```bash
-  curl -X POST http://localhost:3002/v0/crawl \
+  curl -X POST http://localhost:3002/v1/crawl \
       -H 'Content-Type: application/json' \
       -d '{
         "url": "https://mendable.ai"

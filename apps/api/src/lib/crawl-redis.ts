@@ -6,6 +6,7 @@ export type StoredCrawl = {
     crawlerOptions: any;
     pageOptions: any;
     team_id: string;
+    plan: string;
     robots?: string;
     cancelled?: boolean;
     createdAt: number;
@@ -26,6 +27,14 @@ export async function getCrawl(id: string): Promise<StoredCrawl | null> {
     return JSON.parse(x);
 }
 
+export async function getCrawlExpiry(id: string): Promise<Date> {
+    const d = new Date();
+    const ttl = await redisConnection.pttl("crawl:" + id);
+    d.setMilliseconds(d.getMilliseconds() + ttl);
+    d.setMilliseconds(0);
+    return d;
+}
+
 export async function addCrawlJob(id: string, job_id: string) {
     await redisConnection.sadd("crawl:" + id + ":jobs", job_id);
     await redisConnection.expire("crawl:" + id + ":jobs", 24 * 60 * 60, "NX");
@@ -38,11 +47,25 @@ export async function addCrawlJobs(id: string, job_ids: string[]) {
 
 export async function addCrawlJobDone(id: string, job_id: string) {
     await redisConnection.sadd("crawl:" + id + ":jobs_done", job_id);
+    await redisConnection.lpush("crawl:" + id + ":jobs_done_ordered", job_id);
     await redisConnection.expire("crawl:" + id + ":jobs_done", 24 * 60 * 60, "NX");
+    await redisConnection.expire("crawl:" + id + ":jobs_done_ordered", 24 * 60 * 60, "NX");
+}
+
+export async function getDoneJobsOrderedLength(id: string): Promise<number> {
+    return await redisConnection.llen("crawl:" + id + ":jobs_done_ordered");
+}
+
+export async function getDoneJobsOrdered(id: string, start = 0, end = -1): Promise<string[]> {
+    return await redisConnection.lrange("crawl:" + id + ":jobs_done_ordered", start, end);
 }
 
 export async function isCrawlFinished(id: string) {
     return (await redisConnection.scard("crawl:" + id + ":jobs_done")) === (await redisConnection.scard("crawl:" + id + ":jobs"));
+}
+
+export async function isCrawlFinishedLocked(id: string) {
+    return (await redisConnection.exists("crawl:" + id + ":finish"));
 }
 
 export async function finishCrawl(id: string) {

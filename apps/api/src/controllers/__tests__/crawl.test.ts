@@ -1,4 +1,4 @@
-import { crawlController } from '../crawl'
+import { crawlController } from '../v0/crawl'
 import { Request, Response } from 'express';
 import { authenticateUser } from '../auth'; // Ensure this import is correct
 import { createIdempotencyKey } from '../../services/idempotency/create';

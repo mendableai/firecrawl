@@ -34,4 +34,4 @@ it('should return a list of links on the firecrawl.ai page', async () => {
   expect(Array.isArray(result.linksOnPage)).toBe(true);
   expect(result.linksOnPage.length).toBeGreaterThan(0);
   expect(result.linksOnPage).toContain('https://flutterbricks.com/features')
-}, 10000);
+}, 15000);

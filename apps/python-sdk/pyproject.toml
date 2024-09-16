@@ -10,6 +10,9 @@ readme = {file="README.md", content-type = "text/markdown"}
 requires-python = ">=3.8"
 dependencies = [
     "requests",
+    "python-dotenv",
+    "websockets",
+    "nest-asyncio"
 ]
 authors = [{name = "Mendable.ai",email = "nick@mendable.ai"}]
 maintainers = [{name = "Mendable.ai",email = "nick@mendable.ai"}]

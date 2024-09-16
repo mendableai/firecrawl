@@ -23,12 +23,15 @@ import { clientSideError } from "../../strings";
 
 dotenv.config();
 
+const useScrapingBee = process.env.SCRAPING_BEE_API_KEY !== '' && process.env.SCRAPING_BEE_API_KEY !== undefined;
+const useFireEngine = process.env.FIRE_ENGINE_BETA_URL !== '' && process.env.FIRE_ENGINE_BETA_URL !== undefined;
+
 export const baseScrapers = [
-  "fire-engine;chrome-cdp",
-  "fire-engine",
-  "scrapingBee",
-  process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
-  "scrapingBeeLoad",
+  useFireEngine ? "fire-engine;chrome-cdp" : undefined,
+  useFireEngine ? "fire-engine" : undefined,
+  useScrapingBee ? "scrapingBee" : undefined,
+  useFireEngine ? undefined : "playwright",
+  useScrapingBee ? "scrapingBeeLoad" : undefined,
   "fetch",
 ].filter(Boolean);
 
@@ -85,23 +88,23 @@ function getScrapingFallbackOrder(
   });
 
   let defaultOrder = [
-    !process.env.USE_DB_AUTHENTICATION ? undefined : "fire-engine;chrome-cdp",
-    !process.env.USE_DB_AUTHENTICATION ? undefined : "fire-engine",
-    "scrapingBee",
-    process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
-    "scrapingBeeLoad",
+    useFireEngine ? "fire-engine;chrome-cdp" : undefined,
+    useFireEngine ? "fire-engine" : undefined,
+    useScrapingBee ? "scrapingBee" : undefined,
+    useScrapingBee ? "scrapingBeeLoad" : undefined,
+    useFireEngine ? undefined : "playwright",
     "fetch",
   ].filter(Boolean);
 
-  if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
-    defaultOrder = [
-      "fire-engine",
-      process.env.USE_DB_AUTHENTICATION ? undefined : "playwright",
-      ...defaultOrder.filter(
-        (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
-      ),
-    ].filter(Boolean);
-  }
+  // if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
+  //   defaultOrder = [
+  //     "fire-engine",
+  //     useFireEngine ? undefined : "playwright",
+  //     ...defaultOrder.filter(
+  //       (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
+  //     ),
+  //   ].filter(Boolean);
+  // }
 
   const filteredDefaultOrder = defaultOrder.filter(
     (scraper: (typeof baseScrapers)[number]) =>
@@ -122,22 +125,42 @@ function getScrapingFallbackOrder(
 export async function scrapSingleUrl(
   jobId: string,
   urlToScrap: string,
-  pageOptions: PageOptions = {
-    onlyMainContent: true,
-    includeHtml: false,
-    includeRawHtml: false,
-    waitFor: 0,
-    screenshot: false,
-    fullPageScreenshot: false,
-    headers: undefined,
-  },
-  extractorOptions: ExtractorOptions = {
-    mode: "llm-extraction-from-markdown",
-  },
-  existingHtml: string = "",
+  pageOptions: PageOptions,
+  extractorOptions?: ExtractorOptions,
+  existingHtml?: string,
   priority?: number,
   teamId?: string
 ): Promise<Document> {
+  pageOptions = {
+    includeMarkdown: pageOptions.includeMarkdown ?? true,
+    includeExtract: pageOptions.includeExtract ?? false,
+    onlyMainContent: pageOptions.onlyMainContent ?? false,
+    includeHtml: pageOptions.includeHtml ?? false,
+    includeRawHtml: pageOptions.includeRawHtml ?? false,
+    waitFor: pageOptions.waitFor ?? undefined,
+    screenshot: pageOptions.screenshot ?? false,
+    fullPageScreenshot: pageOptions.fullPageScreenshot ?? false,
+    headers: pageOptions.headers ?? undefined,
+    includeLinks: pageOptions.includeLinks ?? true,
+    replaceAllPathsWithAbsolutePaths: pageOptions.replaceAllPathsWithAbsolutePaths ?? true,
+    parsePDF: pageOptions.parsePDF ?? true,
+    removeTags: pageOptions.removeTags ?? [],
+    onlyIncludeTags: pageOptions.onlyIncludeTags ?? [],
+    useFastMode: pageOptions.useFastMode ?? false,
+    disableJsDom: pageOptions.disableJsDom ?? false,
+    atsv: pageOptions.atsv ?? false
+  }
+
+  if (extractorOptions) {
+    extractorOptions = {
+      mode: extractorOptions?.mode ?? "llm-extraction-from-markdown",
+    }
+  }
+
+  if (!existingHtml) {
+    existingHtml = "";
+  }
+
   urlToScrap = urlToScrap.trim();
 
   const attemptScraping = async (
@@ -180,6 +203,7 @@ export async function scrapSingleUrl(
             fireEngineOptions: {
               engine: engine,
               atsv: pageOptions.atsv,
+              disableJsDom: pageOptions.disableJsDom,
             },
             priority,
             teamId,
@@ -341,8 +365,8 @@ export async function scrapSingleUrl(
         pageError = undefined;
       }
 
-      if (text && text.trim().length >= 100) {
-        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100, breaking`);
+      if ((text && text.trim().length >= 100) || (typeof screenshot === "string" && screenshot.length > 0)) {
+        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100 or screenshot, breaking`);
         break;
       }
       if (pageStatusCode && (pageStatusCode == 404 || pageStatusCode == 500)) {
@@ -364,20 +388,22 @@ export async function scrapSingleUrl(
 
     let linksOnPage: string[] | undefined;
 
-    linksOnPage = extractLinks(rawHtml, urlToScrap);
+    if (pageOptions.includeLinks) {
+      linksOnPage = extractLinks(rawHtml, urlToScrap);
+    }
 
     let document: Document;
     if (screenshot && screenshot.length > 0) {
       document = {
         content: text,
-        markdown: text,
+        markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? text : undefined,
         html: pageOptions.includeHtml ? html : undefined,
         rawHtml:
           pageOptions.includeRawHtml ||
-            extractorOptions.mode === "llm-extraction-from-raw-html"
+            (extractorOptions?.mode === "llm-extraction-from-raw-html" && pageOptions.includeExtract)
             ? rawHtml
             : undefined,
-        linksOnPage,
+        linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
         metadata: {
           ...metadata,
           screenshot: screenshot,
@@ -389,11 +415,11 @@ export async function scrapSingleUrl(
     } else {
       document = {
         content: text,
-        markdown: text,
+        markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? text : undefined,
         html: pageOptions.includeHtml ? html : undefined,
         rawHtml:
           pageOptions.includeRawHtml ||
-            extractorOptions.mode === "llm-extraction-from-raw-html"
+            (extractorOptions?.mode === "llm-extraction-from-raw-html" && pageOptions.includeExtract)
             ? rawHtml
             : undefined,
         metadata: {
@@ -402,7 +428,7 @@ export async function scrapSingleUrl(
           pageStatusCode: pageStatusCode,
           pageError: pageError,
         },
-        linksOnPage,
+        linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
       };
     }
 
@@ -416,9 +442,9 @@ export async function scrapSingleUrl(
     });
     return {
       content: "",
-      markdown: "",
+      markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? "" : undefined,
       html: "",
-      linksOnPage: [],
+      linksOnPage: pageOptions.includeLinks ? [] : undefined,
       metadata: {
         sourceURL: urlToScrap,
         pageStatusCode: pageStatusCode,

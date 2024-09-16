@@ -16,7 +16,6 @@ function prepareOpenAIDoc(
   document: Document,
   mode: "markdown" | "raw-html"
 ): [OpenAI.Chat.Completions.ChatCompletionContentPart[], number] | null {
-
   let markdown = document.markdown;
 
   let extractionTarget = document.markdown;
@@ -33,34 +32,32 @@ function prepareOpenAIDoc(
     // );
   }
 
-
-
-
   // count number of tokens
   const numTokens = numTokensFromString(extractionTarget, "gpt-4");
 
   if (numTokens > maxTokens) {
     // trim the document to the maximum number of tokens, tokens != characters
-    extractionTarget = extractionTarget.slice(0, (maxTokens * modifier));
+    extractionTarget = extractionTarget.slice(0, maxTokens * modifier);
   }
-
   return [[{ type: "text", text: extractionTarget }], numTokens];
 }
 
 export async function generateOpenAICompletions({
   client,
-  model = process.env.MODEL_NAME || "gpt-4o",
+  model = process.env.MODEL_NAME || "gpt-4o-mini",
   document,
   schema, //TODO - add zod dynamic type checking
-  prompt = defaultPrompt,
+  systemPrompt = defaultPrompt,
+  prompt,
   temperature,
-  mode
+  mode,
 }: {
   client: OpenAI;
   model?: string;
   document: Document;
   schema: any; // This should be replaced with a proper Zod schema type when available
   prompt?: string;
+  systemPrompt?: string;
   temperature?: number;
   mode: "markdown" | "raw-html";
 }): Promise<Document> {
@@ -70,45 +67,79 @@ export async function generateOpenAICompletions({
   if (preparedDoc === null) {
     return {
       ...document,
-      warning: "LLM extraction was not performed since the document's content is empty or missing.",
+      warning:
+        "LLM extraction was not performed since the document's content is empty or missing.",
     };
   }
-
   const [content, numTokens] = preparedDoc;
 
-  const completion = await openai.chat.completions.create({
-    model,
-    messages: [
-      {
-        role: "system",
-        content: prompt,
-      },
-      { role: "user", content },
-    ],
-    tools: [
-      {
-        type: "function",
-        function: {
-          name: "extract_content",
-          description: "Extracts the content from the given webpage(s)",
-          parameters: schema,
+  let completion;
+  let llmExtraction;
+  if (prompt && !schema) {
+    const jsonCompletion = await openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt,
         },
-      },
-    ],
-    tool_choice: { "type": "function", "function": {"name": "extract_content"}},
-    temperature,
-  });
+        { role: "user", content },
+        {
+          role: "user",
+          content: `Transform the above content into structured json output based on the following user request: ${prompt}`,
+        },
+      ],
+      response_format: { type: "json_object" },
+      temperature,
+    });
 
-  const c = completion.choices[0].message.tool_calls[0].function.arguments;
+    try {
+      llmExtraction = JSON.parse(
+        jsonCompletion.choices[0].message.content.trim()
+      );
+    } catch (e) {
+      throw new Error("Invalid JSON");
+    }
+  } else {
+    completion = await openai.chat.completions.create({
+      model,
+      messages: [
+        {
+          role: "system",
+          content: systemPrompt,
+        },
+        { role: "user", content },
+      ],
+      tools: [
+        {
+          type: "function",
+          function: {
+            name: "extract_content",
+            description: "Extracts the content from the given webpage(s)",
+            parameters: schema,
+          },
+        },
+      ],
+      tool_choice: { type: "function", function: { name: "extract_content" } },
+      temperature,
+    });
+    const c = completion.choices[0].message.tool_calls[0].function.arguments;
 
-  // Extract the LLM extraction content from the completion response
-  const llmExtraction = JSON.parse(c);
+    // Extract the LLM extraction content from the completion response
+    try {
+      llmExtraction = JSON.parse(c);
+    } catch (e) {
+      throw new Error("Invalid JSON");
+    }
+  }
 
   // Return the document with the LLM extraction content added
   return {
     ...document,
     llm_extraction: llmExtraction,
-    warning: numTokens > maxTokens ? `Page was trimmed to fit the maximum token limit defined by the LLM model (Max: ${maxTokens} tokens, Attemped: ${numTokens} tokens). If results are not good, email us at help@mendable.ai so we can help you.` : undefined,
+    warning:
+      numTokens > maxTokens
+        ? `Page was trimmed to fit the maximum token limit defined by the LLM model (Max: ${maxTokens} tokens, Attemped: ${numTokens} tokens). If results are not good, email us at help@mendable.ai so we can help you.`
+        : undefined,
   };
 }
-

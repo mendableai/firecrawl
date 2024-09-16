@@ -17,6 +17,8 @@ const socialMediaBlocklist = [
   'researchhub.com',
   'youtube.com',
   'corterix.com',
+  'southwest.com',
+  'ryanair.com'
 ];
 
 const allowedKeywords = [
