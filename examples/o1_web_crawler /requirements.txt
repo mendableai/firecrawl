@@ -1,3 +1,0 @@
-firecrawl-py
-python-dotenv
-openai
