@@ -58,7 +58,7 @@ export interface FirecrawlDocumentMetadata {
  * Document interface for Firecrawl.
  * Represents a document retrieved or processed by Firecrawl.
  */
-export interface FirecrawlDocument<T> {
+export interface FirecrawlDocument<T = any> {
   url?: string;
   markdown?: string;
   html?: string;
@@ -83,7 +83,7 @@ export interface CrawlScrapeOptions {
   timeout?: number;
 }
 
-export interface ScrapeParams<LLMSchema extends zt.ZodSchema> extends CrawlScrapeOptions {
+export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any> extends CrawlScrapeOptions {
   extract?: {
     prompt?: string;
     schema?: LLMSchema;
@@ -95,7 +95,7 @@ export interface ScrapeParams<LLMSchema extends zt.ZodSchema> extends CrawlScrap
  * Response interface for scraping operations.
  * Defines the structure of the response received after a scraping operation.
  */
-export interface ScrapeResponse<LLMResult> extends FirecrawlDocument<LLMResult> {
+export interface ScrapeResponse<LLMResult = any> extends FirecrawlDocument<LLMResult> {
   success: true;
   warning?: string;
   error?: string;
