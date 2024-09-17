@@ -38,7 +38,6 @@ Crawl and convert any website into LLM-ready markdown or structured data. Built 
 
 _This repository is in its early development stages. We are still merging custom modules in the mono repo. It's not completely yet ready for full self-host deployment, but you can already run it locally._
 
-
 ## What is Firecrawl?
 
 [Firecrawl](https://firecrawl.dev?ref=github) is an API service that takes a URL, crawls it, and converts it into clean markdown or structured data. We crawl all accessible subpages and give you clean data for each. No sitemap required. Check out our [documentation](https://docs.firecrawl.dev).
