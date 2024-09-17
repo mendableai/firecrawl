@@ -27,9 +27,9 @@ const useScrapingBee = process.env.SCRAPING_BEE_API_KEY !== '' && process.env.SC
 const useFireEngine = process.env.FIRE_ENGINE_BETA_URL !== '' && process.env.FIRE_ENGINE_BETA_URL !== undefined;
 
 export const baseScrapers = [
-useScrapingBee ? "scrapingBee" : undefined,
   useFireEngine ? "fire-engine;chrome-cdp" : undefined,
   useFireEngine ? "fire-engine" : undefined,
+  useScrapingBee ? "scrapingBee" : undefined,
   useFireEngine ? undefined : "playwright",
   useScrapingBee ? "scrapingBeeLoad" : undefined,
   "fetch",
@@ -88,10 +88,9 @@ function getScrapingFallbackOrder(
   });
 
   let defaultOrder = [
-useScrapingBee ? "scrapingBee" : undefined,
     useFireEngine ? "fire-engine;chrome-cdp" : undefined,
     useFireEngine ? "fire-engine" : undefined,
-    
+    useScrapingBee ? "scrapingBee" : undefined,
     useScrapingBee ? "scrapingBeeLoad" : undefined,
     useFireEngine ? undefined : "playwright",
     "fetch",
