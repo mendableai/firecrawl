@@ -28,14 +28,22 @@ describe('FirecrawlApp E2E Tests', () => {
 
   test.concurrent('should return successful response with valid preview token', async () => {
     const app = new FirecrawlApp({ apiKey: "this_is_just_a_preview_token", apiUrl: API_URL });
-    const response = await app.scrapeUrl('https://roastmywebsite.ai') as ScrapeResponse;
+    const response = await app.scrapeUrl('https://roastmywebsite.ai');
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+
     expect(response).not.toBeNull();
     expect(response?.markdown).toContain("_Roast_");
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should return successful response for valid scrape', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
-    const response = await app.scrapeUrl('https://roastmywebsite.ai') as ScrapeResponse;
+    const response = await app.scrapeUrl('https://roastmywebsite.ai');
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+
     expect(response).not.toBeNull();
     expect(response).not.toHaveProperty('content'); // v0
     expect(response).not.toHaveProperty('html');
@@ -58,7 +66,11 @@ describe('FirecrawlApp E2E Tests', () => {
         onlyMainContent: true,
         timeout: 30000,
         waitFor: 1000
-    }) as ScrapeResponse;
+    });
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+
     expect(response).not.toBeNull();
     expect(response).not.toHaveProperty('content'); // v0
     expect(response.markdown).toContain("_Roast_");
@@ -86,6 +98,7 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(response.metadata).not.toHaveProperty("pageStatusCode");
     expect(response.metadata).toHaveProperty("statusCode");
     expect(response.metadata).not.toHaveProperty("pageError");
+
     if (response.metadata !== undefined) {
       expect(response.metadata.error).toBeUndefined();
       expect(response.metadata.title).toBe("Roast My Website");
@@ -103,16 +116,40 @@ describe('FirecrawlApp E2E Tests', () => {
     }
   }, 30000); // 30 seconds timeout
 
+  test.concurrent('should return successful response with valid API key and screenshot fullPage', async () => {
+    const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
+    const response = await app.scrapeUrl(
+      'https://roastmywebsite.ai', {
+        formats: ['screenshot@fullPage'],
+    });
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+
+    expect(response).not.toBeNull();
+    expect(response.screenshot).not.toBeUndefined();
+    expect(response.screenshot).not.toBeNull();
+    expect(response.screenshot).toContain("https://");
+  }, 30000); // 30 seconds timeout
+
   test.concurrent('should return successful response for valid scrape with PDF file', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
-    const response = await app.scrapeUrl('https://arxiv.org/pdf/astro-ph/9301001.pdf') as ScrapeResponse;
+    const response = await app.scrapeUrl('https://arxiv.org/pdf/astro-ph/9301001.pdf');
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+
     expect(response).not.toBeNull();
     expect(response?.markdown).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should return successful response for valid scrape with PDF file without explicit extension', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
-    const response = await app.scrapeUrl('https://arxiv.org/pdf/astro-ph/9301001') as ScrapeResponse;
+    const response = await app.scrapeUrl('https://arxiv.org/pdf/astro-ph/9301001');
+    if (!response.success) {
+      throw new Error(response.error);
+    }
+
     expect(response).not.toBeNull();
     expect(response?.markdown).toContain('We present spectrophotometric observations of the Broad Line Radio Galaxy');
   }, 30000); // 30 seconds timeout
