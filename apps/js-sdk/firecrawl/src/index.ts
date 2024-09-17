@@ -74,7 +74,7 @@ export interface FirecrawlDocument<T> {
  * Defines the options and configurations available for scraping web content.
  */
 export interface CrawlScrapeOptions {
-  formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "extract" | "full@scrennshot")[];
+  formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "screenshot@fullPage" | "extract")[];
   headers?: Record<string, string>;
   includeTags?: string[];
   excludeTags?: string[];
