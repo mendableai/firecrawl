@@ -32,8 +32,41 @@ env:
   ENV: ${{ secrets.ENV }}
 
 jobs:
+  pre-deploy:
+    name: Pre-deploy checks
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      - name: Install pnpm
+        run: npm install -g pnpm
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: ./apps/api
+      - name: Start the application
+        run: npm start &
+        working-directory: ./apps/api
+        id: start_app
+      - name: Start workers
+        run: npm run workers &
+        working-directory: ./apps/api
+        id: start_workers
+      - name: Run E2E tests
+        run: |
+          npm run test:prod
+        working-directory: ./apps/api
+
   deploy:
     name: Deploy app
+    needs: pre-deploy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
