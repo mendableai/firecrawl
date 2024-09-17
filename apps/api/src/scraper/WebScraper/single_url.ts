@@ -89,8 +89,8 @@ function getScrapingFallbackOrder(
 
   let defaultOrder = [
     useFireEngine ? "fire-engine;chrome-cdp" : undefined,
-    useFireEngine ? "fire-engine" : undefined,
     useScrapingBee ? "scrapingBee" : undefined,
+    useFireEngine ? "fire-engine" : undefined,
     useScrapingBee ? "scrapingBeeLoad" : undefined,
     useFireEngine ? undefined : "playwright",
     "fetch",
