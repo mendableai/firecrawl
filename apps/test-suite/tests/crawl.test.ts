@@ -27,6 +27,7 @@ describe("Crawling Checkup (E2E)", () => {
   describe("Crawling website tests with a dataset", () => {
     it("Should crawl the website and verify the response", async () => {
       let passedTests = 0;
+      let maxAttempts = 15;
       const startTime = new Date().getTime();
       const date = new Date();
       const logsDir = `logs/${date.getMonth() + 1}-${date.getDate()}-${date.getFullYear()}`;
@@ -37,23 +38,24 @@ describe("Crawling Checkup (E2E)", () => {
       for (const websiteData of websitesData) {
         try {
           const crawlResponse = await request(TEST_URL || "")
-            .post("/v0/crawl")
+            .post("/v1/crawl")
             .set("Content-Type", "application/json")
             .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-            .send({ url: websiteData.website, pageOptions: { onlyMainContent: true }, crawlerOptions: { limit: 100, returnOnlyUrls: true }});
+            .send({ url: websiteData.website, limit: 100 });
 
-          const jobId = crawlResponse.body.jobId;
+          const id = crawlResponse.body.id;
           let completedResponse: any;
           let isFinished = false;
 
-          while (!isFinished) {
+          while (!isFinished && maxAttempts > 0) {
             completedResponse = await request(TEST_URL)
-              .get(`/v0/crawl/status/${jobId}`)
+              .get(`/v1/crawl/${id}`)
               .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
             isFinished = completedResponse.body.status === "completed";
 
             if (!isFinished) {
+              maxAttempts--;
               await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
             }
           }
@@ -117,6 +119,7 @@ describe("Crawling Checkup (E2E)", () => {
           }
 
           passedTests++;
+          maxAttempts = 15;
         } catch (error) {
           console.error(`Error processing ${websiteData.website}: ${error}`);
           errorLog.push({
