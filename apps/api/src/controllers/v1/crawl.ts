@@ -19,7 +19,7 @@ import {
 } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
-import { addScrapeJob } from "../../services/queue-jobs";
+import { addCrawlPreJob, addScrapeJob } from "../../services/queue-jobs";
 import { Logger } from "../../lib/logger";
 import { getJobPriority } from "../../lib/job-priority";
 import { callWebhook } from "../../services/webhook";
@@ -71,85 +71,15 @@ export async function crawlController(
     plan: req.auth.plan,
   };
 
-  const crawler = crawlToCrawler(id, sc);
-
-  try {
-    sc.robots = await crawler.getRobotsTxt();
-  } catch (e) {
-    Logger.debug(
-      `[Crawl] Failed to get robots.txt (this is probably fine!): ${JSON.stringify(
-        e
-      )}`
-    );
-  }
-
   await saveCrawl(id, sc);
 
-  const sitemap = sc.crawlerOptions.ignoreSitemap
-    ? null
-    : await crawler.tryGetSitemap();
-
-  if (sitemap !== null && sitemap.length > 0) {
-    let jobPriority = 20;
-      // If it is over 1000, we need to get the job priority,
-      // otherwise we can use the default priority of 20
-      if(sitemap.length > 1000){
-        // set base to 21
-        jobPriority = await getJobPriority({plan: req.auth.plan, team_id: req.auth.team_id, basePriority: 21})
-      }
-    const jobs = sitemap.map((x) => {
-      const url = x.url;
-      const uuid = uuidv4();
-      return {
-        name: uuid,
-        data: {
-          url,
-          mode: "single_urls",
-          team_id: req.auth.team_id,
-          crawlerOptions,
-          pageOptions,
-          origin: "api",
-          crawl_id: id,
-          sitemapped: true,
-          webhook: req.body.webhook,
-          v1: true,
-        },
-        opts: {
-          jobId: uuid,
-          priority: 20,
-        },
-      };
-    });
-
-    await lockURLs(
-      id,
-      jobs.map((x) => x.data.url)
-    );
-    await addCrawlJobs(
-      id,
-      jobs.map((x) => x.opts.jobId)
-    );
-    await getScrapeQueue().addBulk(jobs);
-  } else {
-    await lockURL(id, sc, req.body.url);
-    const job = await addScrapeJob(
-      {
-        url: req.body.url,
-        mode: "single_urls",
-        crawlerOptions: crawlerOptions,
-        team_id: req.auth.team_id,
-        pageOptions: pageOptions,
-        origin: "api",
-        crawl_id: id,
-        webhook: req.body.webhook,
-        v1: true,
-      },
-      {
-        priority: 15,
-      }
-    );
-    await addCrawlJob(id, job.id);
-  }
+  await addCrawlPreJob({
+    auth: req.auth,
+    crawlerOptions,
+    pageOptions,
+    webhook: req.body.webhook,
+    url: req.body.url,
+  }, id);
 
   if(req.body.webhook) {
     await callWebhook(req.auth.team_id, id, null, req.body.webhook, true, "crawl.started");

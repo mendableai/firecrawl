@@ -3,6 +3,7 @@ import { Logger } from "../lib/logger";
 import IORedis from "ioredis";
 
 let scrapeQueue: Queue;
+let crawlPreQueue: Queue;
 
 export const redisConnection = new IORedis(process.env.REDIS_URL, {
   maxRetriesPerRequest: null,
@@ -33,6 +34,33 @@ export function getScrapeQueue() {
   }
   return scrapeQueue;
 }
+
+export const crawlPreQueueName = "{crawlPreQueue}";
+
+export function getCrawlPreQueue() {
+  if (!crawlPreQueue) {
+    crawlPreQueue = new Queue(
+      crawlPreQueueName,
+      {
+        connection: redisConnection,
+      }
+      //   {
+      //   settings: {
+      //     lockDuration: 1 * 60 * 1000, // 1 minute in milliseconds,
+      //     lockRenewTime: 15 * 1000, // 15 seconds in milliseconds
+      //     stalledInterval: 30 * 1000,
+      //     maxStalledCount: 10,
+      //   },
+      //   defaultJobOptions:{
+      //     attempts: 5
+      //   }
+      // }
+    );
+    Logger.info("Crawl pre queue created");
+  }
+  return crawlPreQueue;
+}
+
 
 
 // === REMOVED IN FAVOR OF POLLING -- NOT RELIABLE

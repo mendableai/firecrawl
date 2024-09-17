@@ -3,6 +3,7 @@ import "./sentry";
 import * as Sentry from "@sentry/node";
 import { CustomError } from "../lib/custom-error";
 import {
+  crawlPreQueueName,
   getScrapeQueue,
   redisConnection,
   scrapeQueueName,
@@ -24,7 +25,10 @@ import {
   finishCrawl,
   getCrawl,
   getCrawlJobs,
+  lockURLs,
+  saveCrawl,
   lockURL,
+  addCrawlJobs,
 } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
 import { addScrapeJob } from "./queue-jobs";
@@ -37,6 +41,7 @@ import {
 import { PlanType } from "../types";
 import { getJobs } from "../../src/controllers/v1/crawl-status";
 import { configDotenv } from "dotenv";
+import { AuthObject } from "../../src/controllers/v1/types";
 configDotenv();
 
 if (process.env.ENV === "production") {
@@ -138,7 +143,7 @@ const workerFun = async (
           () => {
             Sentry.startSpan(
               {
-                name: "Scrape job",
+                name: queueName === scrapeQueueName ? "Scrape job" : "Crawl pre job",
                 attributes: {
                   job: job.id,
                   worker: process.env.FLY_MACHINE_ID ?? worker.id,
@@ -147,11 +152,11 @@ const workerFun = async (
               async (span) => {
                 await Sentry.startSpan(
                   {
-                    name: "Process scrape job",
+                    name: queueName === scrapeQueueName ? "Process scrape job" : "Process crawl pre job",
                     op: "queue.process",
                     attributes: {
                       "messaging.message.id": job.id,
-                      "messaging.destination.name": getScrapeQueue().name,
+                      "messaging.destination.name": queueName,
                       "messaging.message.body.size": job.data.sentry.size,
                       "messaging.message.receive.latency":
                         Date.now() - (job.processedOn ?? job.timestamp),
@@ -174,7 +179,7 @@ const workerFun = async (
       } else {
         Sentry.startSpan(
           {
-            name: "Scrape job",
+            name: queueName === scrapeQueueName ? "Scrape job" : "Crawl pre job",
             attributes: {
               job: job.id,
               worker: process.env.FLY_MACHINE_ID ?? worker.id,
@@ -560,3 +565,230 @@ async function processJob(job: Job, token: string) {
 // wsq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
 // wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
 // wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
+
+
+const processCrawlPreJobInternal = async (token: string, job: Job) => {
+  const extendLockInterval = setInterval(async () => {
+    Logger.info(`🐂 Worker extending lock on crawl pre job ${job.id}`);
+    await job.extendLock(token, jobLockExtensionTime);
+  }, jobLockExtendInterval);
+
+  let err = null;
+  try {
+    const result = await processCrawlPreJob(job, token);
+    try {
+      await job.moveToCompleted(null, token, false);
+    } catch (e) {}
+  } catch (error) {
+    console.log("Job failed, error:", error);
+    Sentry.captureException(error);
+    err = error;
+    await job.moveToFailed(error, token, false);
+  } finally {
+    clearInterval(extendLockInterval);
+  }
+
+  return err;
+};
+
+workerFun(crawlPreQueueName, processCrawlPreJobInternal);
+
+async function processCrawlPreJob(job: Job, token: string) {
+  Logger.info(`🐂 Worker taking crawl pre job ${job.id}`);
+
+  try {
+    const data = job.data as {
+      auth: AuthObject,
+      crawlerOptions: any,
+      pageOptions: any,
+      webhook?: string, // req.body.webhook
+      url: string, // req.body.url
+    };
+
+    const id = job.id as string;
+    const sc = await getCrawl(id);
+    if (!sc) throw new Error("Stored crawl with id " + id + " not found");
+
+    const crawler = crawlToCrawler(id, sc);
+
+    try {
+      sc.robots = await crawler.getRobotsTxt();
+    } catch (e) {
+      Logger.debug(
+        `[Crawl] Failed to get robots.txt (this is probably fine!): ${JSON.stringify(
+          e
+        )}`
+      );
+    }
+
+    await saveCrawl(id, sc);
+  
+    const sitemap = sc.crawlerOptions.ignoreSitemap
+      ? null
+      : await crawler.tryGetSitemap();
+  
+    if (sitemap !== null && sitemap.length > 0) {
+      let jobPriority = 20;
+        // If it is over 1000, we need to get the job priority,
+        // otherwise we can use the default priority of 20
+        if(sitemap.length > 1000){
+          // set base to 21
+          jobPriority = await getJobPriority({plan: data.auth.plan, team_id: data.auth.team_id, basePriority: 21})
+        }
+      const jobs = sitemap.map((x) => {
+        const url = x.url;
+        const uuid = uuidv4();
+        return {
+          name: uuid,
+          data: {
+            url,
+            mode: "single_urls",
+            team_id: data.auth.team_id,
+            crawlerOptions: data.crawlerOptions,
+            pageOptions: data.pageOptions,
+            origin: "api",
+            crawl_id: id,
+            sitemapped: true,
+            webhook: data.webhook,
+            v1: true,
+          },
+          opts: {
+            jobId: uuid,
+            priority: 20,
+          },
+        };
+      });
+  
+      await lockURLs(
+        id,
+        jobs.map((x) => x.data.url)
+      );
+      await addCrawlJobs(
+        id,
+        jobs.map((x) => x.opts.jobId)
+      );
+      await getScrapeQueue().addBulk(jobs);
+    } else {
+      await lockURL(id, sc, data.url);
+      const job = await addScrapeJob(
+        {
+          url: data.url,
+          mode: "single_urls",
+          crawlerOptions: data.crawlerOptions,
+          team_id: data.auth.team_id,
+          pageOptions: data.pageOptions,
+          origin: "api",
+          crawl_id: id,
+          webhook: data.webhook,
+          v1: true,
+        },
+        {
+          priority: 15,
+        }
+      );
+      await addCrawlJob(id, job.id);
+    }
+    Logger.info(`🐂 Crawl pre job done ${job.id}`);
+  } catch (error) {
+    Logger.error(`🐂 Job errored ${job.id} - ${error}`);
+
+    Sentry.captureException(error, {
+      data: {
+        job: job.id,
+      },
+    });
+
+    if (error instanceof CustomError) {
+      // Here we handle the error, then save the failed job
+      Logger.error(error.message); // or any other error handling
+
+      logtail.error("Custom error while ingesting", {
+        job_id: job.id,
+        error: error.message,
+        dataIngestionJob: error.dataIngestionJob,
+      });
+    }
+    Logger.error(error);
+    if (error.stack) {
+      Logger.error(error.stack);
+    }
+
+    logtail.error("Overall error ingesting", {
+      job_id: job.id,
+      error: error.message,
+    });
+
+    const data = {
+      success: false,
+      docs: [],
+      project_id: job.data.project_id,
+      error:
+        "Something went wrong... Contact help@mendable.ai or try again." /* etc... */,
+    };
+
+    if (!job.data.v1 && (job.data.mode === "crawl" || job.data.crawl_id)) {
+      callWebhook(
+        job.data.team_id,
+        job.data.crawl_id ?? (job.id as string),
+        data,
+        job.data.webhook,
+        job.data.v1
+      );
+    }
+    if (job.data.v1) {
+      callWebhook(
+        job.data.team_id,
+        job.id as string,
+        [],
+        job.data.webhook,
+        job.data.v1,
+        "crawl.failed"
+      );
+    }
+
+    if (job.data.crawl_id) {
+      await logJob({
+        job_id: job.id as string,
+        success: false,
+        message:
+          typeof error === "string"
+            ? error
+            : error.message ??
+              "Something went wrong... Contact help@mendable.ai",
+        num_docs: 0,
+        docs: [],
+        time_taken: 0,
+        team_id: job.data.team_id,
+        mode: job.data.mode,
+        url: job.data.url,
+        crawlerOptions: job.data.crawlerOptions,
+        pageOptions: job.data.pageOptions,
+        origin: job.data.origin,
+        crawl_id: job.data.crawl_id,
+      });
+
+      const sc = await getCrawl(job.data.crawl_id);
+
+      await logJob({
+        job_id: job.data.crawl_id,
+        success: false,
+        message:
+          typeof error === "string"
+            ? error
+            : error.message ??
+              "Something went wrong... Contact help@mendable.ai",
+        num_docs: 0,
+        docs: [],
+        time_taken: 0,
+        team_id: job.data.team_id,
+        mode: "crawl",
+        url: sc ? sc.originUrl : job.data.url,
+        crawlerOptions: sc ? sc.crawlerOptions : job.data.crawlerOptions,
+        pageOptions: sc ? sc.pageOptions : job.data.pageOptions,
+        origin: job.data.origin,
+      });
+    }
+    // done(null, data);
+    return data;
+  }
+}

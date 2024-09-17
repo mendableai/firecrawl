@@ -1,8 +1,9 @@
 import { Job, Queue } from "bullmq";
-import { getScrapeQueue } from "./queue-service";
+import { getCrawlPreQueue, getScrapeQueue } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
 import { WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
+import { AuthObject } from "../controllers/v1/types";
 
 async function addScrapeJobRaw(
   webScraperOptions: any,
@@ -46,6 +47,52 @@ export async function addScrapeJob(
     });
   } else {
     return await addScrapeJobRaw(webScraperOptions, options, jobId, jobPriority);
+  }
+}
+
+async function addCrawlPreJobRaw(
+  data: any,
+  jobId: string,
+): Promise<Job> {
+  return await getCrawlPreQueue().add(jobId, data, {
+    jobId,
+  });
+}
+
+export async function addCrawlPreJob(
+  data: {
+    auth: AuthObject,
+    crawlerOptions: any,
+    pageOptions: any,
+    webhook?: string, // req.body.webhook
+    url: string, // req.body.url
+    sentry?: any,
+  },
+  jobId: string,
+): Promise<Job> {
+  
+  if (Sentry.isInitialized()) {
+    const size = JSON.stringify(data).length;
+    return await Sentry.startSpan({
+      name: "Add crawl pre job",
+      op: "queue.publish",
+      attributes: {
+        "messaging.message.id": jobId,
+        "messaging.destination.name": getCrawlPreQueue().name,
+        "messaging.message.body.size": size,
+      },
+    }, async (span) => {
+      return await addCrawlPreJobRaw({
+        ...data,
+        sentry: {
+          trace: Sentry.spanToTraceHeader(span),
+          baggage: Sentry.spanToBaggageHeader(span),
+          size,
+        },
+      }, jobId);
+    });
+  } else {
+    return await addCrawlPreJobRaw(data, jobId);
   }
 }
 
