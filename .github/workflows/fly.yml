@@ -32,7 +32,6 @@ env:
   ENV: ${{ secrets.ENV }}
 
 jobs:
-
   deploy:
     name: Deploy app
     runs-on: ubuntu-latest
