@@ -110,6 +110,9 @@ export class Document {
   childrenLinks?: string[];
   provider?: string;
   warning?: string;
+  actions?: {
+    screenshots: string[];
+  }
 
   index?: number;
   linksOnPage?: string[]; // Add this new field as a separate property
@@ -149,7 +152,7 @@ export class SearchResult {
 
 export interface FireEngineResponse {
   html: string;
-  screenshot: string;
+  screenshots?: string[];
   pageStatusCode?: number;
   pageError?: string;
 }

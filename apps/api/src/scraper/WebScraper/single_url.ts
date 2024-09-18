@@ -69,8 +69,13 @@ function getScrapingFallbackOrder(
   defaultScraper?: string,
   isWaitPresent: boolean = false,
   isScreenshotPresent: boolean = false,
-  isHeadersPresent: boolean = false
+  isHeadersPresent: boolean = false,
+  isActionsPresent: boolean = false,
 ) {
+  if (isActionsPresent) {
+    return useFireEngine ? ["fire-engine;chrome-cdp"] : [];
+  }
+
   const availableScrapers = baseScrapers.filter((scraper) => {
     switch (scraper) {
       case "scrapingBee":
@@ -170,6 +175,9 @@ export async function scrapSingleUrl(
     let scraperResponse: {
       text: string;
       screenshot: string;
+      actions?: {
+        screenshots: string[];
+      };
       metadata: { pageStatusCode?: number; pageError?: string | null };
     } = { text: "", screenshot: "", metadata: {} };
     let screenshot = "";
@@ -217,7 +225,14 @@ export async function scrapSingleUrl(
             teamId,
           });
           scraperResponse.text = response.html;
-          scraperResponse.screenshot = response.screenshot;
+          if (pageOptions.screenshot || pageOptions.fullPageScreenshot) {
+            scraperResponse.screenshot = (response.screenshots ?? []).splice(0, 1)[0] ?? "";
+          }
+          if (pageOptions.actions) {
+            scraperResponse.actions = {
+              screenshots: response.screenshots ?? [],
+            };
+          }
           scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
           scraperResponse.metadata.pageError = response.pageError;
         }
@@ -283,9 +298,6 @@ export async function scrapSingleUrl(
             ]) : ([]),
             pageOptions: customScraperResult.pageOptions,
           });
-          if (screenshot) {
-            customScrapedContent.screenshot = screenshot;
-          }
           break;
         case "pdf":
           const { content, pageStatusCode, pageError } =
@@ -295,7 +307,6 @@ export async function scrapSingleUrl(
             );
           customScrapedContent = {
             html: content,
-            screenshot,
             pageStatusCode,
             pageError,
           };
@@ -305,7 +316,6 @@ export async function scrapSingleUrl(
 
     if (customScrapedContent) {
       scraperResponse.text = customScrapedContent.html;
-      screenshot = customScrapedContent.screenshot;
     }
     //* TODO: add an optional to return markdown or structured/extracted content
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
@@ -325,16 +335,18 @@ export async function scrapSingleUrl(
       html: cleanedHtml,
       rawHtml: scraperResponse.text,
       screenshot: scraperResponse.screenshot,
+      actions: scraperResponse.actions,
       pageStatusCode: scraperResponse.metadata.pageStatusCode,
       pageError: scraperResponse.metadata.pageError || undefined,
     };
   };
 
-  let { text, html, rawHtml, screenshot, pageStatusCode, pageError } = {
+  let { text, html, rawHtml, screenshot, actions, pageStatusCode, pageError } = {
     text: "",
     html: "",
     rawHtml: "",
     screenshot: "",
+    actions: undefined,
     pageStatusCode: 200,
     pageError: undefined,
   };
@@ -350,7 +362,8 @@ export async function scrapSingleUrl(
       defaultScraper,
       pageOptions && pageOptions.waitFor && pageOptions.waitFor > 0,
       pageOptions && (pageOptions.screenshot || pageOptions.fullPageScreenshot) && (pageOptions.screenshot === true || pageOptions.fullPageScreenshot === true),
-      pageOptions && pageOptions.headers && pageOptions.headers !== undefined
+      pageOptions && pageOptions.headers && pageOptions.headers !== undefined,
+      pageOptions && Array.isArray(pageOptions.actions) && pageOptions.actions.length > 0,
     );
 
     for (const scraper of scrapersInOrder) {
@@ -367,6 +380,7 @@ export async function scrapSingleUrl(
       html = attempt.html ?? "";
       rawHtml = attempt.rawHtml ?? "";
       screenshot = attempt.screenshot ?? "";
+      actions = attempt.actions ?? undefined;
 
       if (attempt.pageStatusCode) {
         pageStatusCode = attempt.pageStatusCode;
@@ -404,45 +418,27 @@ export async function scrapSingleUrl(
       linksOnPage = extractLinks(rawHtml, urlToScrap);
     }
 
-    let document: Document;
-    if (screenshot && screenshot.length > 0) {
-      document = {
-        content: text,
-        markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? text : undefined,
-        html: pageOptions.includeHtml ? html : undefined,
-        rawHtml:
-          pageOptions.includeRawHtml ||
-            (extractorOptions?.mode === "llm-extraction-from-raw-html" && pageOptions.includeExtract)
-            ? rawHtml
-            : undefined,
-        linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
-        metadata: {
-          ...metadata,
-          screenshot: screenshot,
-          sourceURL: urlToScrap,
-          pageStatusCode: pageStatusCode,
-          pageError: pageError,
-        },
-      };
-    } else {
-      document = {
-        content: text,
-        markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? text : undefined,
-        html: pageOptions.includeHtml ? html : undefined,
-        rawHtml:
-          pageOptions.includeRawHtml ||
-            (extractorOptions?.mode === "llm-extraction-from-raw-html" && pageOptions.includeExtract)
-            ? rawHtml
-            : undefined,
-        metadata: {
-          ...metadata,
-          sourceURL: urlToScrap,
-          pageStatusCode: pageStatusCode,
-          pageError: pageError,
-        },
-        linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
-      };
-    }
+    let document: Document = {
+      content: text,
+      markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? text : undefined,
+      html: pageOptions.includeHtml ? html : undefined,
+      rawHtml:
+        pageOptions.includeRawHtml ||
+          (extractorOptions?.mode === "llm-extraction-from-raw-html" && pageOptions.includeExtract)
+          ? rawHtml
+          : undefined,
+      linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
+      actions,
+      metadata: {
+        ...metadata,
+        ...(screenshot && screenshot.length > 0 ? ({
+          screenshot,
+        }) : {}),
+        sourceURL: urlToScrap,
+        pageStatusCode: pageStatusCode,
+        pageError: pageError,
+      },
+    };
 
     return document;
   } catch (error) {

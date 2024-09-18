@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
-import { ExtractorOptions, PageOptions } from "../../lib/entities";
+import { Action, ExtractorOptions, PageOptions } from "../../lib/entities";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { PlanType } from "../../types";
 
@@ -57,6 +57,21 @@ export const extractOptions = z.object({
 
 export type ExtractOptions = z.infer<typeof extractOptions>;
 
+export const actionsSchema = z.array(z.union([
+  z.object({
+    type: z.literal("wait"),
+    milliseconds: z.number().int().positive().finite(),
+  }),
+  z.object({
+    type: z.literal("click"),
+    selector: z.string(),
+  }),
+  z.object({
+    type: z.literal("screenshot"),
+    fullPage: z.boolean().default(false),
+  }),
+]));
+
 export const scrapeOptions = z.object({
   formats: z
     .enum([
@@ -80,6 +95,7 @@ export const scrapeOptions = z.object({
   waitFor: z.number().int().nonnegative().finite().safe().default(0),
   extract: extractOptions.optional(),
   parsePDF: z.boolean().default(true),
+  actions: actionsSchema.optional(),
 }).strict(strictMessage)
 
 
@@ -185,6 +201,9 @@ export type Document = {
   rawHtml?: string;
   links?: string[];
   screenshot?: string;
+  actions?: {
+    screenshots: string[];
+  };
   metadata: {
     title?: string;
     description?: string;
@@ -336,6 +355,7 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     screenshot: x.formats.includes("screenshot"),
     fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
     parsePDF: x.parsePDF,
+    actions: x.actions as Action[], // no strict null checking grrrr - mogery
   };
 }
 
@@ -370,6 +390,7 @@ export function legacyDocumentConverter(doc: any): Document {
     html: doc.html,
     extract: doc.llm_extraction,
     screenshot: doc.screenshot ?? doc.fullPageScreenshot,
+    actions: doc.actions ?? undefined,
     metadata: {
       ...doc.metadata,
       pageError: undefined,
