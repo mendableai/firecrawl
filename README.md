@@ -34,9 +34,9 @@
 
 # 🔥 Firecrawl
 
-Crawl and convert any website into LLM-ready markdown or structured data. Built by [Mendable.ai](https://mendable.ai?ref=gfirecrawl) and the Firecrawl community. Includes powerful scraping, crawling and data extraction capabilities.
+Empower your AI apps with clean data from any website. Featuring advanced scraping, crawling, and data extraction capabilities.
 
-_This repository is in its early development stages. We are still merging custom modules in the mono repo. It's not completely yet ready for full self-host deployment, but you can already run it locally._
+_This repository is in early development, and we’re still integrating custom modules into the mono repo. It's not fully ready for self-hosted deployment yet, but you can run it locally._
 
 ## What is Firecrawl?
 
@@ -52,9 +52,12 @@ _Pst. hey, you, join our stargazers :)_
 
 We provide an easy to use API with our hosted version. You can find the playground and documentation [here](https://firecrawl.dev/playground). You can also self host the backend if you'd like.
 
-- [x] [API](https://firecrawl.dev/playground)
-- [x] [Python SDK](https://github.com/mendableai/firecrawl/tree/main/apps/python-sdk)
-- [x] [Node SDK](https://github.com/mendableai/firecrawl/tree/main/apps/js-sdk)
+Check out the following resources to get started:
+- [x] [API](https://docs.firecrawl.dev/api-reference/introduction)
+- [x] [Python SDK](https://docs.firecrawl.dev/sdks/python)
+- [x] [Node SDK](https://docs.firecrawl.dev/sdks/node)
+- [x] [Go SDK](https://docs.firecrawl.dev/sdks/go)
+- [x] [Rust SDK](https://docs.firecrawl.dev/sdks/rust)
 - [x] [Langchain Integration 🦜🔗](https://python.langchain.com/docs/integrations/document_loaders/firecrawl/)
 - [x] [Langchain JS Integration 🦜🔗](https://js.langchain.com/docs/integrations/document_loaders/web_loaders/firecrawl)
 - [x] [Llama Index Integration 🦙](https://docs.llamaindex.ai/en/latest/examples/data_connectors/WebPageDemo/#using-firecrawl-reader)
@@ -62,8 +65,12 @@ We provide an easy to use API with our hosted version. You can find the playgrou
 - [x] [Langflow Integration](https://docs.langflow.org/)
 - [x] [Crew.ai Integration](https://docs.crewai.com/)
 - [x] [Flowise AI Integration](https://docs.flowiseai.com/integrations/langchain/document-loaders/firecrawl)
+- [x] [Composio Integration](https://composio.dev/tools/firecrawl/all)
 - [x] [PraisonAI Integration](https://docs.praison.ai/firecrawl/)
 - [x] [Zapier Integration](https://zapier.com/apps/firecrawl/integrations)
+- [x] [Cargo Integration](https://docs.getcargo.io/integration/firecrawl)
+- [x] [Pipedream Integration](https://pipedream.com/apps/firecrawl/)
+- [x] [Pabbly Integration](https://www.pabbly.com/connect/integrations/firecrawl/)
 - [ ] Want an SDK or Integration? Let us know by opening an issue.
 
 To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/CONTRIBUTING.md).
