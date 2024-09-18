@@ -58,7 +58,7 @@ export interface FirecrawlDocumentMetadata {
  * Document interface for Firecrawl.
  * Represents a document retrieved or processed by Firecrawl.
  */
-export interface FirecrawlDocument<T = any> {
+export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult | never) = never> {
   url?: string;
   markdown?: string;
   html?: string;
@@ -67,6 +67,7 @@ export interface FirecrawlDocument<T = any> {
   extract?: T;
   screenshot?: string;
   metadata?: FirecrawlDocumentMetadata;
+  actions: ActionsSchema;
 }
 
 /**
@@ -83,19 +84,35 @@ export interface CrawlScrapeOptions {
   timeout?: number;
 }
 
-export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any> extends CrawlScrapeOptions {
+export type Action = {
+  type: "wait",
+  milliseconds: number,
+} | {
+  type: "click",
+  selector: string,
+} | {
+  type: "screenshot",
+  fullPage?: boolean,
+};
+
+export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchema extends (Action[] | undefined) = undefined> extends CrawlScrapeOptions {
   extract?: {
     prompt?: string;
     schema?: LLMSchema;
     systemPrompt?: string;
   };
+  actions?: ActionsSchema;
+}
+
+export interface ActionsResult {
+  screenshots: string[];
 }
 
 /**
  * Response interface for scraping operations.
  * Defines the structure of the response received after a scraping operation.
  */
-export interface ScrapeResponse<LLMResult = any> extends FirecrawlDocument<LLMResult> {
+export interface ScrapeResponse<LLMResult = any, ActionsSchema extends (ActionsResult | never) = never> extends FirecrawlDocument<LLMResult, ActionsSchema> {
   success: true;
   warning?: string;
   error?: string;
@@ -200,10 +217,10 @@ export default class FirecrawlApp {
    * @param params - Additional parameters for the scrape request.
    * @returns The response from the scrape operation.
    */
-  async scrapeUrl<T extends zt.ZodSchema>(
+  async scrapeUrl<T extends zt.ZodSchema, ActionsSchema extends (Action[] | undefined) = undefined>(
     url: string,
-    params?: ScrapeParams<T>
-  ): Promise<ScrapeResponse<zt.infer<T>> | ErrorResponse> {
+    params?: ScrapeParams<T, ActionsSchema>
+  ): Promise<ScrapeResponse<zt.infer<T>, ActionsSchema extends Action[] ? ActionsResult : never> | ErrorResponse> {
     const headers: AxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this.apiKey}`,
