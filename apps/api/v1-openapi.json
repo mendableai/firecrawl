@@ -6,7 +6,7 @@
     "description": "API for interacting with Firecrawl services to perform web scraping and crawling tasks.",
     "contact": {
       "name": "Firecrawl Support",
-      "url": "https://firecrawl.dev/support",
+      "url": "https://firecrawl.dev",
       "email": "support@firecrawl.dev"
     }
   },
