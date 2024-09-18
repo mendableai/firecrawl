@@ -70,7 +70,8 @@ export const scrapeOptions = z.object({
     ])
     .array()
     .optional()
-    .default(["markdown"]),
+    .default(["markdown"])
+    .refine(x => !(x.includes("screenshot") && x.includes("screenshot@fullPage")), "You may only specify either screenshot or screenshot@fullPage"),
   headers: z.record(z.string(), z.string()).optional(),
   includeTags: z.string().array().optional(),
   excludeTags: z.string().array().optional(),
