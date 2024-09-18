@@ -195,9 +195,17 @@ export async function scrapSingleUrl(
         if (process.env.FIRE_ENGINE_BETA_URL) {
           const response = await scrapWithFireEngine({
             url,
-            waitFor: pageOptions.waitFor,
-            screenshot: pageOptions.screenshot,
-            fullPageScreenshot: pageOptions.fullPageScreenshot,
+            actions: [
+              ...(pageOptions.waitFor ? [{
+                type: "wait" as const,
+                milliseconds: pageOptions.waitFor,
+              }] : []),
+              ...((pageOptions.screenshot || pageOptions.fullPageScreenshot) ? [{
+                type: "screenshot" as const,
+                fullPage: !!pageOptions.fullPageScreenshot,
+              }] : []),
+              ...(pageOptions.actions ?? []),
+            ],
             pageOptions: pageOptions,
             headers: pageOptions.headers,
             fireEngineOptions: {
@@ -267,8 +275,12 @@ export async function scrapSingleUrl(
         case "fire-engine":
           customScrapedContent = await scrapWithFireEngine({
             url: customScraperResult.url,
-            waitFor: customScraperResult.waitAfterLoad,
-            screenshot: false,
+            actions: customScraperResult.waitAfterLoad ? ([
+              {
+                type: "wait",
+                milliseconds: customScraperResult.waitAfterLoad,
+              }
+            ]) : ([]),
             pageOptions: customScraperResult.pageOptions,
           });
           if (screenshot) {

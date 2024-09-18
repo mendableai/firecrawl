@@ -10,6 +10,17 @@ export interface Progress {
   currentDocument?: Document;
 }
 
+export type Action = {
+  type: "wait",
+  milliseconds: number,
+} | {
+  type: "click",
+  selector: string,
+} | {
+  type: "screenshot",
+  fullPage?: boolean,
+};
+
 export type PageOptions = {
   includeMarkdown?: boolean;
   includeExtract?: boolean;
@@ -29,7 +40,8 @@ export type PageOptions = {
   includeLinks?: boolean;
   useFastMode?: boolean; // beta
   disableJsDom?: boolean; // beta
-  atsv?: boolean; // beta
+  atsv?: boolean; // anti-bot solver, beta
+  actions?: Action[]; // beta
 };
 
 export type ExtractorOptions = {
