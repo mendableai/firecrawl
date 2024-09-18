@@ -153,7 +153,8 @@ export async function scrapSingleUrl(
     onlyIncludeTags: pageOptions.onlyIncludeTags ?? [],
     useFastMode: pageOptions.useFastMode ?? false,
     disableJsDom: pageOptions.disableJsDom ?? false,
-    atsv: pageOptions.atsv ?? false
+    atsv: pageOptions.atsv ?? false,
+    actions: pageOptions.actions ?? undefined,
   }
 
   if (extractorOptions) {

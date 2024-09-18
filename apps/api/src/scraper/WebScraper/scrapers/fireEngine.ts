@@ -116,7 +116,7 @@ export async function scrapWithFireEngine({
       );
     });
 
-    const waitTotal = (actions ?? []).filter(x => x.type === "wait").reduce((a, x) => x.milliseconds + a, 0);
+    const waitTotal = (actions ?? []).filter(x => x.type === "wait").reduce((a, x) => (x as { type: "wait"; milliseconds: number; }).milliseconds + a, 0);
 
     let checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
     while (checkStatusResponse.data.processing && Date.now() - startTime < universalTimeout + waitTotal) {
@@ -141,7 +141,7 @@ export async function scrapWithFireEngine({
 
     if (checkStatusResponse.status !== 200 || checkStatusResponse.data.error) {
       Logger.debug(
-        `⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${checkStatusResponse.status}`
+        `⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${checkStatusResponse.status}\t ${checkStatusResponse.data.error}`
       );
       
       logParams.error_message = checkStatusResponse.data?.pageError ?? checkStatusResponse.data?.error;
