@@ -36,17 +36,15 @@ export async function getLinksFromSitemap(
     const root = parsed.urlset || parsed.sitemapindex;
 
     if (root && root.sitemap) {
-      for (const sitemap of root.sitemap) {
-        if (sitemap.loc && sitemap.loc.length > 0) {
-          await getLinksFromSitemap({ sitemapUrl: sitemap.loc[0], allUrls, mode });
-        }
-      }
+      const sitemapPromises = root.sitemap
+        .filter(sitemap => sitemap.loc && sitemap.loc.length > 0)
+        .map(sitemap => getLinksFromSitemap({ sitemapUrl: sitemap.loc[0], allUrls, mode }));
+      await Promise.all(sitemapPromises);
     } else if (root && root.url) {
-      for (const url of root.url) {
-        if (url.loc && url.loc.length > 0 && !WebCrawler.prototype.isFile(url.loc[0])) {
-          allUrls.push(url.loc[0]);
-        }
-      }
+      const validUrls = root.url
+        .filter(url => url.loc && url.loc.length > 0 && !WebCrawler.prototype.isFile(url.loc[0]))
+        .map(url => url.loc[0]);
+      allUrls.push(...validUrls);
     }
   } catch (error) {
     Logger.debug(`Error processing sitemapUrl: ${sitemapUrl} | Error: ${error.message}`);
