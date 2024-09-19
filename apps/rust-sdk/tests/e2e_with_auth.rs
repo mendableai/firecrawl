@@ -1,5 +1,5 @@
 use assert_matches::assert_matches;
-use dotenv::dotenv;
+use dotenvy::dotenv;
 use firecrawl::FirecrawlApp;
 use serde_json::json;
 use std::env;
