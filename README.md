@@ -73,7 +73,7 @@ Check out the following resources to get started:
 - [x] [Pabbly Integration](https://www.pabbly.com/connect/integrations/firecrawl/)
 - [ ] Want an SDK or Integration? Let us know by opening an issue.
 
-To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/SELF_HOST.md).
+To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/CONTRIBUTING.md).
 
 ### API Key
 
@@ -507,7 +507,7 @@ Firecrawl Cloud is available at [firecrawl.dev](https://firecrawl.dev) and offer
 
 ## Contributing
 
-We love contributions! Please read our [contributing guide](CONTRIBUTING.md) before submitting a pull request.
+We love contributions! Please read our [contributing guide](CONTRIBUTING.md) before submitting a pull request. If you'd like to self-host, refer to the [self-hosting guide](SELF_HOST.md).
 
 _It is the sole responsibility of the end users to respect websites' policies when scraping, searching and crawling with Firecrawl. Users are advised to adhere to the applicable privacy policies and terms of use of the websites prior to initiating any scraping activities. By default, Firecrawl respects the directives specified in the websites' robots.txt files when crawling. By utilizing Firecrawl, you expressly agree to comply with these conditions._
 
