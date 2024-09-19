@@ -36,7 +36,7 @@
 
 Empower your AI apps with clean data from any website. Featuring advanced scraping, crawling, and data extraction capabilities.
 
-_This repository is in early development, and we’re still integrating custom modules into the mono repo. It's not fully ready for self-hosted deployment yet, but you can run it locally._
+_This repository is in development, and we’re still integrating custom modules into the mono repo. It's not fully ready for self-hosted deployment yet, but you can run it locally._
 
 ## What is Firecrawl?
 
