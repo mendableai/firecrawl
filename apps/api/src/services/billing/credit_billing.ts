@@ -5,7 +5,7 @@ import { supabase_service } from "../supabase";
 import { Logger } from "../../lib/logger";
 import { getValue, setValue } from "../redis";
 import { redlock } from "../redlock";
-
+import * as Sentry from "@sentry/node";
 
 const FREE_CREDITS = 500;
 
@@ -176,9 +176,25 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     return { success: true, message: "Preview team, no credits used", remainingCredits: Infinity };
   }
 
-  // Retrieve the team's active subscription and check for available coupons concurrently
-  const [{ data: subscription, error: subscriptionError }, { data: coupons }] =
-    await Promise.all([
+
+  let cacheKeySubscription = `subscription_${team_id}`;
+  let cacheKeyCoupons = `coupons_${team_id}`;
+
+  // Try to get data from cache first
+  const [cachedSubscription, cachedCoupons] = await Promise.all([
+    getValue(cacheKeySubscription),
+    getValue(cacheKeyCoupons)
+  ]);
+
+  let subscription, subscriptionError;
+  let coupons : {credits: number}[];
+
+  if (cachedSubscription && cachedCoupons) {
+    subscription = JSON.parse(cachedSubscription);
+    coupons = JSON.parse(cachedCoupons);
+  } else {
+    // If not in cache, retrieve from database
+    const [subscriptionResult, couponsResult] = await Promise.all([
       supabase_service
         .from("subscriptions")
         .select("id, price_id, current_period_start, current_period_end")
@@ -192,6 +208,16 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
         .eq("status", "active"),
     ]);
 
+    subscription = subscriptionResult.data;
+    subscriptionError = subscriptionResult.error;
+    coupons = couponsResult.data;
+
+    // Cache the results for a minute, sub can be null and that's fine
+    await setValue(cacheKeySubscription, JSON.stringify(subscription), 60); // Cache for 1 minute, even if null
+    await setValue(cacheKeyCoupons, JSON.stringify(coupons), 60); // Cache for 1 minute
+  
+  }
+
   let couponCredits = 0;
   if (coupons && coupons.length > 0) {
     couponCredits = coupons.reduce(
@@ -200,53 +226,67 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     );
   }
 
+
+  // If there are available coupons and they are enough for the operation
+  if (couponCredits >= credits) {
+    return { success: true, message: "Sufficient credits available", remainingCredits: couponCredits };
+  }
   
 
   // Free credits, no coupons
   if (!subscription || subscriptionError) {
 
-    // If there is no active subscription but there are available coupons
-    if (couponCredits >= credits) {
-      return { success: true, message: "Sufficient credits available", remainingCredits: couponCredits };
-    }
-
     let creditUsages;
     let creditUsageError;
-    let retries = 0;
-    const maxRetries = 3;
-    const retryInterval = 2000; // 2 seconds
+    let totalCreditsUsed = 0;
+    const cacheKeyCreditUsage = `credit_usage_${team_id}`;
 
-    while (retries < maxRetries) {
-      const result = await supabase_service
-        .from("credit_usage")
-        .select("credits_used")
-        .is("subscription_id", null)
-        .eq("team_id", team_id);
+    // Try to get credit usage from cache
+    const cachedCreditUsage = await getValue(cacheKeyCreditUsage);
 
-      creditUsages = result.data;
-      creditUsageError = result.error;
+    if (cachedCreditUsage) {
+      totalCreditsUsed = parseInt(cachedCreditUsage);
+    } else {
+      let retries = 0;
+      const maxRetries = 3;
+      const retryInterval = 2000; // 2 seconds
 
-      if (!creditUsageError) {
-        break;
+      while (retries < maxRetries) {
+        // Reminder, this has an 1000 limit.
+        const result = await supabase_service
+          .from("credit_usage")
+          .select("credits_used")
+          .is("subscription_id", null)
+          .eq("team_id", team_id);
+
+        creditUsages = result.data;
+        creditUsageError = result.error;
+
+        if (!creditUsageError) {
+          break;
+        }
+
+        retries++;
+        if (retries < maxRetries) {
+          await new Promise(resolve => setTimeout(resolve, retryInterval));
+        }
       }
 
-      retries++;
-      if (retries < maxRetries) {
-        await new Promise(resolve => setTimeout(resolve, retryInterval));
+      if (creditUsageError) {
+        Logger.error(`Credit usage error after ${maxRetries} attempts: ${creditUsageError}`);
+        throw new Error(
+          `Failed to retrieve credit usage for team_id: ${team_id}`
+        );
       }
-    }
 
-    if (creditUsageError) {
-      Logger.error(`Credit usage error after ${maxRetries} attempts: ${creditUsageError}`);
-      throw new Error(
-        `Failed to retrieve credit usage for team_id: ${team_id}`
+      totalCreditsUsed = creditUsages.reduce(
+        (acc, usage) => acc + usage.credits_used,
+        0
       );
-    }
 
-    const totalCreditsUsed = creditUsages.reduce(
-      (acc, usage) => acc + usage.credits_used,
-      0
-    );
+      // Cache the result for 30 seconds
+      await setValue(cacheKeyCreditUsage, totalCreditsUsed.toString(), 30);
+    }
 
     Logger.info(`totalCreditsUsed: ${totalCreditsUsed}`);
 
@@ -254,7 +294,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     end.setDate(end.getDate() + 30);
     // check if usage is within 80% of the limit
     const creditLimit = FREE_CREDITS;
-    const creditUsagePercentage = (totalCreditsUsed + credits) / creditLimit;
+    const creditUsagePercentage = totalCreditsUsed / creditLimit;
 
     // Add a check to ensure totalCreditsUsed is greater than 0
     if (totalCreditsUsed > 0 && creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
@@ -268,7 +308,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     }
 
     // 5. Compare the total credits used with the credits allowed by the plan.
-    if (totalCreditsUsed + credits > FREE_CREDITS) {
+    if (totalCreditsUsed >= FREE_CREDITS) {
       // Send email notification for insufficient credits
       await sendNotification(
         team_id,
@@ -312,7 +352,7 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
 
         if (creditUsages && creditUsages.length > 0) {
           totalCreditsUsed = creditUsages[0].total_credits_used;
-          await setValue(cacheKey, totalCreditsUsed.toString(), 1800); // Cache for 30 minutes
+          await setValue(cacheKey, totalCreditsUsed.toString(), 500); // Cache for 8 minutes
           // Logger.info(`Cache set for credit usage: ${totalCreditsUsed}`);
         }
       }
@@ -325,39 +365,62 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
 
   // Adjust total credits used by subtracting coupon value
   const adjustedCreditsUsed = Math.max(0, totalCreditsUsed - couponCredits);
-  // Get the price details
-  const { data: price, error: priceError } = await supabase_service
-    .from("prices")
-    .select("credits")
-    .eq("id", subscription.price_id)
-    .single();
 
-  if (priceError) {
-    throw new Error(
-      `Failed to retrieve price for price_id: ${subscription.price_id}`
-    );
+  // Get the price details from cache or database
+  const priceCacheKey = `price_${subscription.price_id}`;
+  let price : {credits: number};
+
+  try {
+    const cachedPrice = await getValue(priceCacheKey);
+    if (cachedPrice) {
+      price = JSON.parse(cachedPrice);
+    } else {
+      const { data, error: priceError } = await supabase_service
+        .from("prices")
+        .select("credits")
+        .eq("id", subscription.price_id)
+        .single();
+
+      if (priceError) {
+        throw new Error(
+          `Failed to retrieve price for price_id: ${subscription.price_id}`
+        );
+      }
+
+      price = data;
+      // There are only 21 records, so this is super fine
+      // Cache the price for a long time (e.g., 1 day)
+      await setValue(priceCacheKey, JSON.stringify(price), 86400);
+    }
+  } catch (error) {
+    Logger.error(`Error retrieving or caching price: ${error}`);
+    Sentry.captureException(error);
+    // If errors, just assume it's a big number so user don't get an error
+    price = { credits: 10000000 };
   }
 
   const creditLimit = price.credits;
-  const creditUsagePercentage = (adjustedCreditsUsed + credits) / creditLimit;
+
+  // Removal of + credits
+  const creditUsagePercentage = adjustedCreditsUsed / creditLimit;
 
   // Compare the adjusted total credits used with the credits allowed by the plan
-  if (adjustedCreditsUsed + credits > price.credits) {
-    // await sendNotification(
-    //   team_id,
-    //   NotificationType.LIMIT_REACHED,
-    //   subscription.current_period_start,
-    //   subscription.current_period_end
-    // );
+  if (adjustedCreditsUsed >= price.credits) {
+    await sendNotification(
+      team_id,
+      NotificationType.LIMIT_REACHED,
+      subscription.current_period_start,
+      subscription.current_period_end
+    );
     return { success: false, message: "Insufficient credits, please upgrade!", remainingCredits: creditLimit - adjustedCreditsUsed };
-  } else if (creditUsagePercentage >= 0.8) {
+  } else if (creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
     // Send email notification for approaching credit limit
-    // await sendNotification(
-    //   team_id,
-    //   NotificationType.APPROACHING_LIMIT,
-    //   subscription.current_period_start,
-    //   subscription.current_period_end
-    // );
+    await sendNotification(
+      team_id,
+      NotificationType.APPROACHING_LIMIT,
+      subscription.current_period_start,
+      subscription.current_period_end
+    );
   }
 
   return { success: true, message: "Sufficient credits available", remainingCredits: creditLimit - adjustedCreditsUsed };

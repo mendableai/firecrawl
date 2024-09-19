@@ -1,3 +1,6 @@
+import { configDotenv } from "dotenv";
+configDotenv();
+
 enum LogLevel {
   NONE = 'NONE',    // No logs will be output.
   ERROR = 'ERROR',  // For logging error messages that indicate a failure in a specific operation.

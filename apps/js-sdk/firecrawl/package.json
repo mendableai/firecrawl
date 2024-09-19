@@ -1,22 +1,19 @@
 {
   "name": "@mendable/firecrawl-js",
-  "version": "1.2.2",
+  "version": "1.4.5",
   "description": "JavaScript SDK for Firecrawl API",
-  "main": "build/cjs/index.js",
-  "types": "types/index.d.ts",
-  "type": "module",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
   "exports": {
-    "require": {
-      "types": "./types/index.d.ts",
-      "default": "./build/cjs/index.js"
-    },
-    "import": {
-      "types": "./types/index.d.ts",
-      "default": "./build/esm/index.js"
+    "./package.json": "./package.json",
+    ".": {
+      "import": "./dist/index.js",
+      "default": "./dist/index.cjs"
     }
   },
+  "type": "module",
   "scripts": {
-    "build": "tsc --module commonjs --moduleResolution node10 --outDir build/cjs/ && echo '{\"type\": \"commonjs\"}' > build/cjs/package.json && npx tsc --module NodeNext --moduleResolution NodeNext --outDir build/esm/ && echo '{\"type\": \"module\"}' > build/esm/package.json",
+    "build": "tsup",
     "build-and-publish": "npm run build && npm publish --access public",
     "publish-beta": "npm run build && npm publish --access public --tag beta",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest --verbose src/__tests__/v1/**/*.test.ts"
@@ -29,10 +26,8 @@
   "license": "MIT",
   "dependencies": {
     "axios": "^1.6.8",
-    "dotenv": "^16.4.5",
     "isows": "^1.0.4",
     "typescript-event-target": "^1.1.1",
-    "uuid": "^9.0.1",
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.23.0"
   },
@@ -41,6 +36,8 @@
   },
   "homepage": "https://github.com/mendableai/firecrawl#readme",
   "devDependencies": {
+    "uuid": "^9.0.1",
+    "dotenv": "^16.4.5",
     "@jest/globals": "^29.7.0",
     "@types/axios": "^0.14.0",
     "@types/dotenv": "^8.2.0",
@@ -50,6 +47,7 @@
     "@types/uuid": "^9.0.8",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.2",
+    "tsup": "^8.2.4",
     "typescript": "^5.4.5"
   },
   "keywords": [

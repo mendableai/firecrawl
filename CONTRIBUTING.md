@@ -103,7 +103,7 @@ This should return the response Hello, world!
 If you’d like to test the crawl endpoint, you can run this
 
 ```curl
-curl -X POST http://localhost:3002/v0/crawl \
+curl -X POST http://localhost:3002/v1/crawl \
     -H 'Content-Type: application/json' \
     -d '{
       "url": "https://mendable.ai"

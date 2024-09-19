@@ -28,7 +28,8 @@ env:
   HYPERDX_API_KEY: ${{ secrets.HYPERDX_API_KEY }}
   HDX_NODE_BETA_MODE: 1
   FIRE_ENGINE_BETA_URL: ${{ secrets.FIRE_ENGINE_BETA_URL }}
-
+  USE_DB_AUTHENTICATION: ${{ secrets.USE_DB_AUTHENTICATION }}
+  ENV: ${{ secrets.ENV }}
 
 jobs:
   pre-deploy:

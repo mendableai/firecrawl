@@ -13,7 +13,6 @@ import logging
 import os
 import time
 from typing import Any, Dict, Optional, List
-import asyncio
 import json
 
 import requests
@@ -229,7 +228,7 @@ class FirecrawlApp:
         json_data = {'url': url}
         if params:
             json_data.update(params)
-        
+
         # Make the POST request with the prepared headers and JSON data
         response = requests.post(
             f'{self.api_url}{endpoint}',
@@ -239,7 +238,7 @@ class FirecrawlApp:
         if response.status_code == 200:
             response = response.json()
             if response['success'] and 'links' in response:
-                return response['links']
+                return response
             else:
                 raise Exception(f'Failed to map URL. Error: {response["error"]}')
         else:

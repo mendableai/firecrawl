@@ -1,11 +1,11 @@
 import request from "supertest";
-import dotenv from "dotenv";
+import { configDotenv } from "dotenv";
 import {
   ScrapeRequest,
   ScrapeResponseRequestTest,
 } from "../../controllers/v1/types";
 
-dotenv.config();
+configDotenv();
 const TEST_URL = "http://127.0.0.1:3002";
 
 describe("E2E Tests for v1 API Routes", () => {
@@ -22,6 +22,13 @@ describe("E2E Tests for v1 API Routes", () => {
       const response: ScrapeResponseRequestTest = await request(TEST_URL).get(
         "/is-production"
       );
+
+      console.log('process.env.USE_DB_AUTHENTICATION', process.env.USE_DB_AUTHENTICATION);
+      console.log('?', process.env.USE_DB_AUTHENTICATION === 'true');
+      const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+      console.log('!!useDbAuthentication', !!useDbAuthentication);
+      console.log('!useDbAuthentication', !useDbAuthentication);
+
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("isProduction");
     });

@@ -6,7 +6,7 @@ const RATE_LIMITS = {
   crawl: {
     default: 3,
     free: 2,
-    starter: 3,
+    starter: 10,
     standard: 5,
     standardOld: 40,
     scale: 50,
@@ -19,9 +19,9 @@ const RATE_LIMITS = {
   scrape: {
     default: 20,
     free: 10,
-    starter: 20,
+    starter: 100,
     standard: 100,
-    standardOld: 40,
+    standardOld: 100,
     scale: 500,
     hobby: 20,
     standardNew: 100,
@@ -32,8 +32,8 @@ const RATE_LIMITS = {
   search: {
     default: 20,
     free: 5,
-    starter: 20,
-    standard: 40,
+    starter: 50,
+    standard: 50,
     standardOld: 40,
     scale: 500,
     hobby: 10,
@@ -45,9 +45,9 @@ const RATE_LIMITS = {
   map:{
     default: 20,
     free: 5,
-    starter: 20,
-    standard: 40,
-    standardOld: 40,
+    starter: 50,
+    standard: 50,
+    standardOld: 50,
     scale: 500,
     hobby: 10,
     standardNew: 50,
@@ -104,6 +104,13 @@ export const devBRateLimiter = new RateLimiterRedis({
   duration: 60, // Duration in seconds
 });
 
+export const manualRateLimiter = new RateLimiterRedis({
+  storeClient: redisRateLimitClient,
+  keyPrefix: "manual",
+  points: 2000,
+  duration: 60, // Duration in seconds
+});
+
 
 export const scrapeStatusRateLimiter = new RateLimiterRedis({
   storeClient: redisRateLimitClient,
@@ -112,19 +119,27 @@ export const scrapeStatusRateLimiter = new RateLimiterRedis({
   duration: 60, // Duration in seconds
 });
 
+const testSuiteTokens = ["a01ccae", "6254cf9", "0f96e673", "23befa1b", "69141c4"];
+
+const manual = ["69be9e74-7624-4990-b20d-08e0acc70cf6"];
+
 export function getRateLimiter(
   mode: RateLimiterMode,
   token: string,
   plan?: string,
   teamId?: string
 ) {
-
-  if (token.includes("a01ccae") || token.includes("6254cf9") || token.includes("0f96e673") || token.includes("23befa1b")) {
+  
+  if (testSuiteTokens.some(testToken => token.includes(testToken))) {
     return testSuiteRateLimiter;
   }
 
   if(teamId && teamId === process.env.DEV_B_TEAM_ID) {
     return devBRateLimiter;
+  }
+
+  if(teamId && manual.includes(teamId)) {
+    return manualRateLimiter;
   }
 
   const rateLimitConfig = RATE_LIMITS[mode]; // {default : 5}
