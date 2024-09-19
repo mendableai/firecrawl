@@ -351,6 +351,9 @@ export async function scrapSingleUrl(
     pageStatusCode: 200,
     pageError: undefined,
   };
+
+  const errors: Record<string, string> = {};
+
   try {
     let urlKey = urlToScrap;
     try {
@@ -390,6 +393,12 @@ export async function scrapSingleUrl(
         pageError = attempt.pageError;
       } else if (attempt && attempt.pageStatusCode && attempt.pageStatusCode < 400) {
         pageError = undefined;
+      }
+
+      if (attempt.pageError) {
+        errors[scraper] = attempt.pageError;
+      } else {
+        errors[scraper] = null;
       }
 
       if ((text && text.trim().length >= 100) || (typeof screenshot === "string" && screenshot.length > 0)) {
@@ -443,12 +452,17 @@ export async function scrapSingleUrl(
 
     return document;
   } catch (error) {
-    Logger.debug(`⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrap}`);
+    Logger.error(`⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrap}`);
     ScrapeEvents.insert(jobId, {
       type: "error",
       message: typeof error === "string" ? error : typeof error.message === "string" ? error.message : JSON.stringify(error),
       stack: error.stack,
     });
+
+    if (error instanceof Error && error.message.startsWith("All scraping methods failed")) {
+      throw new Error(JSON.stringify({"type": "all", "errors": Object.values(errors)}));
+    }
+
     return {
       content: "",
       markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? "" : undefined,
