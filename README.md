@@ -494,6 +494,17 @@ const scrapeResult = await app.scrapeUrl("https://news.ycombinator.com", {
 console.log(scrapeResult.data["llm_extraction"]);
 ```
 
+## Open Source vs Cloud Offering
+
+Firecrawl is open source available under the AGPL-3.0 license. 
+
+To deliver the best possible product, we offer a hosted version of Firecrawl alongside our open-source offering. The cloud solution allows us to continuously innovate and maintain a high-quality, sustainable service for all users.
+
+Firecrawl Cloud is available at [firecrawl.dev](https://firecrawl.dev) and offers a range of features that are not available in the open source version:
+
+![Open Source vs Cloud Offering](https://raw.githubusercontent.com/mendableai/firecrawl/main/img/open-source-cloud.png)
+
+
 ## Contributing
 
 We love contributions! Please read our [contributing guide](CONTRIBUTING.md) before submitting a pull request.
