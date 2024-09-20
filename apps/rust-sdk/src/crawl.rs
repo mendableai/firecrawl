@@ -48,8 +48,8 @@ impl From<CrawlScrapeFormats> for ScrapeFormats {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Default, Clone)]
 #[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CrawlScrapeOptions {
     /// Formats to extract from the page. (default: `[ Markdown ]`)
@@ -93,8 +93,8 @@ impl From<CrawlScrapeOptions> for ScrapeOptions {
     }
 }
 
-#[derive(Deserialize, Serialize, Debug, Default, Clone)]
 #[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CrawlOptions {
     /// Options to pass through to the scraper.
@@ -103,12 +103,12 @@ pub struct CrawlOptions {
     /// URL RegEx patterns to (exclusively) include.
     /// 
     /// For example, if you specified `"blog"`, only pages that have `blog` somewhere in the URL would be crawled.
-    pub include_paths: Option<String>,
+    pub include_paths: Option<Vec<String>>,
 
     /// URL RegEx patterns to exclude.
     /// 
     /// For example, if you specified `"blog"`, pages that have `blog` somewhere in the URL would not be crawled.
-    pub exclude_paths: Option<String>,
+    pub exclude_paths: Option<Vec<String>>,
 
     /// Maximum URL depth to crawl, relative to the base URL. (default: `2`)
     pub max_depth: Option<u32>,
@@ -138,7 +138,6 @@ pub struct CrawlOptions {
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
-#[serde_with::skip_serializing_none]
 #[serde(rename_all = "camelCase")]
 struct CrawlRequestBody {
     url: String,
@@ -148,7 +147,6 @@ struct CrawlRequestBody {
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
-#[serde_with::skip_serializing_none]
 #[serde(rename_all = "camelCase")]
 struct CrawlResponse {
     /// This will always be `true` due to `FirecrawlApp::handle_response`.
@@ -175,8 +173,8 @@ pub enum CrawlStatusTypes {
     Cancelled,
 }
 
-#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct CrawlStatus {
     /// The status of the crawl.
@@ -203,7 +201,6 @@ pub struct CrawlStatus {
 }
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
-#[serde_with::skip_serializing_none]
 #[serde(rename_all = "camelCase")]
 pub struct CrawlAsyncResponse {
     success: bool,
@@ -216,6 +213,7 @@ pub struct CrawlAsyncResponse {
 }
 
 impl FirecrawlApp {
+    /// Initiates a crawl job for a URL using the Firecrawl API.
     pub async fn crawl_url_async(
         &self,
         url: impl AsRef<str>,
@@ -235,61 +233,63 @@ impl FirecrawlApp {
             .json(&body)
             .send()
             .await
-            .map_err(|e| FirecrawlError::HttpRequestFailed(e.to_string()))?;
+            .map_err(|e| FirecrawlError::HttpError(format!("Crawling {:?}", url.as_ref()), e))?;
 
         self.handle_response::<CrawlAsyncResponse>(response, "start crawl job").await
     }
 
+    /// Performs a crawl job for a URL using the Firecrawl API, waiting for the end result. This may take a long time depending on the size of the target page and your options (namely `CrawlOptions.limit`).
     pub async fn crawl_url(
         &self,
         url: impl AsRef<str>,
-        options: Option<CrawlOptions>,
-    ) -> Result<Vec<Document>, FirecrawlError> {
+        options: impl Into<Option<CrawlOptions>>,
+    ) -> Result<CrawlStatus, FirecrawlError> {
+        let options = options.into();
         let poll_interval = options.as_ref().and_then(|x| x.poll_interval).unwrap_or(2000);
-
         let res = self.crawl_url_async(url, options).await?;
 
         self.monitor_job_status(&res.id, poll_interval).await
     }
 
-    pub async fn check_crawl_status(&self, id: &str) -> Result<CrawlStatus, FirecrawlError> {
+    /// Checks for the status of a crawl, based on the crawl's ID. To be used in conjunction with `FirecrawlApp::crawl_url_async`.
+    pub async fn check_crawl_status(&self, id: impl AsRef<str>) -> Result<CrawlStatus, FirecrawlError> {
         let response = self
             .client
             .get(&format!(
                 "{}{}/crawl/{}",
-                self.api_url, API_VERSION, id
+                self.api_url, API_VERSION, id.as_ref()
             ))
             .headers(self.prepare_headers(None))
             .send()
             .await
-            .map_err(|e| FirecrawlError::HttpRequestFailed(e.to_string()))?;
+            .map_err(|e| FirecrawlError::HttpError(format!("Checking status of crawl {}", id.as_ref()), e))?;
 
-        self.handle_response(response, "check crawl status").await
+        self.handle_response(response, format!("Checking status of crawl {}", id.as_ref())).await
     }
 
     async fn monitor_job_status(
         &self,
         id: &str,
         poll_interval: u64,
-    ) -> Result<Vec<Document>, FirecrawlError> {
+    ) -> Result<CrawlStatus, FirecrawlError> {
         loop {
             let status_data = self.check_crawl_status(id).await?;
             match status_data.status {
                 CrawlStatusTypes::Completed => {
-                    return Ok(status_data.data);
+                    return Ok(status_data);
                 }
                 CrawlStatusTypes::Scraping => {
-                    tokio::time::sleep(tokio::time::Duration::from_secs(poll_interval)).await;
+                    tokio::time::sleep(tokio::time::Duration::from_millis(poll_interval)).await;
                 }
                 CrawlStatusTypes::Failed => {
                     return Err(FirecrawlError::CrawlJobFailed(format!(
                         "Crawl job failed."
-                    )));
+                    ), status_data));
                 }
                 CrawlStatusTypes::Cancelled => {
                     return Err(FirecrawlError::CrawlJobFailed(format!(
                         "Crawl job was cancelled."
-                    )));
+                    ), status_data));
                 }
             }
         }

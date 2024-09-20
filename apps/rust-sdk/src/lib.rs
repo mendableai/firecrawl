@@ -1,18 +1,18 @@
 use reqwest::{Client, Response};
 use serde::de::DeserializeOwned;
-use serde_json::json;
 use serde_json::Value;
 
 pub mod crawl;
 pub mod document;
 mod error;
+pub mod map;
 pub mod scrape;
 
 pub use error::FirecrawlError;
 
 #[derive(Clone, Debug)]
 pub struct FirecrawlApp {
-    api_key: String,
+    api_key: Option<String>,
     api_url: String,
     client: Client,
 }
@@ -20,15 +20,14 @@ pub struct FirecrawlApp {
 pub(crate) const API_VERSION: &str = "/v1";
 
 impl FirecrawlApp {
-    pub fn new(api_key: Option<String>, api_url: Option<String>) -> Result<Self, FirecrawlError> {
-        let api_key = api_key
-            .ok_or(FirecrawlError::APIKeyNotProvided)?;
-        let api_url = api_url
-            .unwrap_or_else(|| "https://api.firecrawl.dev".to_string());
+    pub fn new(api_key: impl AsRef<str>) -> Result<Self, FirecrawlError> {
+        FirecrawlApp::new_selfhosted("https://api.firecrawl.dev", Some(api_key))
+    }
 
+    pub fn new_selfhosted(api_url: impl AsRef<str>, api_key: Option<impl AsRef<str>>) -> Result<Self, FirecrawlError> {
         Ok(FirecrawlApp {
-            api_key,
-            api_url,
+            api_key: api_key.map(|x| x.as_ref().to_string()),
+            api_url: api_url.as_ref().to_string(),
             client: Client::new(),
         })
     }
@@ -36,10 +35,12 @@ impl FirecrawlApp {
     fn prepare_headers(&self, idempotency_key: Option<&String>) -> reqwest::header::HeaderMap {
         let mut headers = reqwest::header::HeaderMap::new();
         headers.insert("Content-Type", "application/json".parse().unwrap());
-        headers.insert(
-            "Authorization",
-            format!("Bearer {}", self.api_key).parse().unwrap(),
-        );
+        if let Some(api_key) = self.api_key.as_ref() {
+            headers.insert(
+                "Authorization",
+                format!("Bearer {}", api_key).parse().unwrap(),
+            );
+        }
         if let Some(key) = idempotency_key {
             headers.insert("x-idempotency-key", key.parse().unwrap());
         }
@@ -51,48 +52,34 @@ impl FirecrawlApp {
         response: Response,
         action: impl AsRef<str>,
     ) -> Result<T, FirecrawlError> {
-        if response.status().is_success() {
-            let response_json: Value = response
-                .json()
-                .await
-                .map_err(|e| FirecrawlError::ResponseParseError(e.to_string()))?;
-            if response_json["success"].as_bool().unwrap_or(false) {
-                Ok(serde_json::from_value(response_json).map_err(|e| FirecrawlError::ResponseParseError(e.to_string()))?)
-            } else {
-                Err(FirecrawlError::HttpRequestFailed(format!(
-                    "Failed to {}: {}",
-                    action.as_ref(), response_json["error"]
-                )))
-            }
-        } else {
-            let status_code = response.status().as_u16();
-            let error_message = response
-                .json::<Value>()
-                .await
-                .unwrap_or_else(|_| json!({"error": "No additional error details provided."}));
-            let message = match status_code {
-                402 => format!(
-                    "Payment Required: Failed to {}. {}",
-                    action.as_ref(), error_message["error"]
-                ),
-                408 => format!(
-                    "Request Timeout: Failed to {} as the request timed out. {}",
-                    action.as_ref(), error_message["error"]
-                ),
-                409 => format!(
-                    "Conflict: Failed to {} due to a conflict. {}",
-                    action.as_ref(), error_message["error"]
-                ),
-                500 => format!(
-                    "Internal Server Error: Failed to {}. {}",
-                    action.as_ref(), error_message["error"]
-                ),
-                _ => format!(
-                    "Unexpected error during {}: Status code {}. {}",
-                    action.as_ref(), status_code, error_message["error"]
-                ),
-            };
-            Err(FirecrawlError::HttpRequestFailed(message))
+        let (is_success, status) = (response.status().is_success(), response.status());
+
+        let response = response
+            .text()
+            .await
+            .map_err(|e| FirecrawlError::ResponseParseErrorText(e))
+            .and_then(|response_json| serde_json::from_str::<Value>(&response_json).map_err(|e| FirecrawlError::ResponseParseError(e)))
+            .and_then(|response_value| {
+                if response_value["success"].as_bool().unwrap_or(false) {
+                    Ok(serde_json::from_value::<T>(response_value).map_err(|e| FirecrawlError::ResponseParseError(e))?)
+                } else {
+                    Err(FirecrawlError::APIError(
+                        action.as_ref().to_string(),
+                        serde_json::from_value(response_value).map_err(|e| FirecrawlError::ResponseParseError(e))?
+                    ))
+                }
+            });
+
+        match &response {
+            Ok(_) => response,
+            Err(FirecrawlError::ResponseParseError(_)) | Err(FirecrawlError::ResponseParseErrorText(_)) => {
+                if is_success {
+                    response
+                } else {
+                    Err(FirecrawlError::HttpRequestFailed(action.as_ref().to_string(), status.as_u16(), status.as_str().to_string()))
+                }
+            },
+            Err(_) => response,
         }
     }
 }
