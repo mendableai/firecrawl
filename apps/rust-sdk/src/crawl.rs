@@ -276,7 +276,17 @@ impl FirecrawlApp {
             .await
             .map_err(|e| FirecrawlError::HttpError(format!("Checking status of crawl {}", id.as_ref()), e))?;
 
-        self.handle_response(response, format!("Checking status of crawl {}", id.as_ref())).await
+        let mut status: CrawlStatus = self.handle_response(response, format!("Checking status of crawl {}", id.as_ref())).await?;
+
+        if status.status == CrawlStatusTypes::Completed {
+            while let Some(next) = status.next {
+                let new_status = self.check_crawl_status_next(next).await?;
+                status.data.extend_from_slice(&new_status.data);
+                status.next = new_status.next;
+            }
+        }
+
+        Ok(status)
     }
 
     async fn monitor_job_status(
@@ -284,7 +294,7 @@ impl FirecrawlApp {
         id: &str,
         poll_interval: u64,
     ) -> Result<CrawlStatus, FirecrawlError> {
-        let result = loop {
+        loop {
             let status_data = self.check_crawl_status(id).await?;
             match status_data.status {
                 CrawlStatusTypes::Completed => {
@@ -304,20 +314,6 @@ impl FirecrawlApp {
                     ), status_data));
                 }
             }
-        };
-
-        match result {
-            Ok(mut status) => {
-                // Paginate through results
-                while let Some(next) = status.next {
-                    let new_status = self.check_crawl_status_next(next).await?;
-                    status.data.extend_from_slice(&new_status.data);
-                    status.next = new_status.next;
-                }
-
-                Ok(status)
-            },
-            Err(_) => result,
         }
     }
 }
