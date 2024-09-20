@@ -71,11 +71,11 @@ export const actionsSchema = z.array(z.union([
     fullPage: z.boolean().default(false),
   }),
   z.object({
-    type: z.literal("typeText"),
+    type: z.literal("write"),
     text: z.string(),
   }),
   z.object({
-    type: z.literal("pressKey"),
+    type: z.literal("press"),
     key: z.string(),
   }),
   z.object({

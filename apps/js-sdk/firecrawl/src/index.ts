@@ -94,10 +94,10 @@ export type Action = {
   type: "screenshot",
   fullPage?: boolean,
 } | {
-  type: "typeText",
+  type: "write",
   text: string,
 } | {
-  type: "pressKey",
+  type: "press",
   key: string,
 } | {
   type: "scroll",
