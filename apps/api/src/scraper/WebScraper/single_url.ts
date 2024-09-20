@@ -210,26 +210,10 @@ export async function scrapSingleUrl(
                   type: "wait" as const,
                   milliseconds: pageOptions.waitFor,
                 }] : []),
-                ...(pageOptions.fullPageScreenshot ? [
-                  {
-                    type: "scroll" as const,
-                    direction: "down" as const,
-                  },
-                  {
-                    type: "wait" as const,
-                    milliseconds: 300,
-                  },
-                ] : []),
                 ...((pageOptions.screenshot || pageOptions.fullPageScreenshot) ? [{
                   type: "screenshot" as const,
                   fullPage: !!pageOptions.fullPageScreenshot,
                 }] : []),
-                ...(pageOptions.fullPageScreenshot ? [
-                  {
-                    type: "scroll" as const,
-                    direction: "up" as const,
-                  }
-                ] : []),
                 ...(pageOptions.actions ?? []),
               ],
             }) : ({
