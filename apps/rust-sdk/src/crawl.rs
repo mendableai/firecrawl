@@ -251,6 +251,18 @@ impl FirecrawlApp {
         self.monitor_job_status(&res.id, poll_interval).await
     }
 
+    async fn check_crawl_status_next(&self, next: impl AsRef<str>) -> Result<CrawlStatus, FirecrawlError> {
+        let response = self
+            .client
+            .get(next.as_ref())
+            .headers(self.prepare_headers(None))
+            .send()
+            .await
+            .map_err(|e| FirecrawlError::HttpError(format!("Paginating crawl using URL {:?}", next.as_ref()), e))?;
+
+        self.handle_response(response, format!("Paginating crawl using URL {:?}", next.as_ref())).await
+    }
+
     /// Checks for the status of a crawl, based on the crawl's ID. To be used in conjunction with `FirecrawlApp::crawl_url_async`.
     pub async fn check_crawl_status(&self, id: impl AsRef<str>) -> Result<CrawlStatus, FirecrawlError> {
         let response = self
@@ -272,26 +284,40 @@ impl FirecrawlApp {
         id: &str,
         poll_interval: u64,
     ) -> Result<CrawlStatus, FirecrawlError> {
-        loop {
+        let result = loop {
             let status_data = self.check_crawl_status(id).await?;
             match status_data.status {
                 CrawlStatusTypes::Completed => {
-                    return Ok(status_data);
+                    break Ok(status_data);
                 }
                 CrawlStatusTypes::Scraping => {
                     tokio::time::sleep(tokio::time::Duration::from_millis(poll_interval)).await;
                 }
                 CrawlStatusTypes::Failed => {
-                    return Err(FirecrawlError::CrawlJobFailed(format!(
+                    break Err(FirecrawlError::CrawlJobFailed(format!(
                         "Crawl job failed."
                     ), status_data));
                 }
                 CrawlStatusTypes::Cancelled => {
-                    return Err(FirecrawlError::CrawlJobFailed(format!(
+                    break Err(FirecrawlError::CrawlJobFailed(format!(
                         "Crawl job was cancelled."
                     ), status_data));
                 }
             }
+        };
+
+        match result {
+            Ok(mut status) => {
+                // Paginate through results
+                while let Some(next) = status.next {
+                    let new_status = self.check_crawl_status_next(next).await?;
+                    status.data.extend_from_slice(&new_status.data);
+                    status.next = new_status.next;
+                }
+
+                Ok(status)
+            },
+            Err(_) => result,
         }
     }
 }
