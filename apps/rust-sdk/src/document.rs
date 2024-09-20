@@ -1,8 +1,8 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-#[derive(Deserialize, Serialize, Debug, Default, Clone)]
 #[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct DocumentMetadata {
     // firecrawl specific
@@ -12,8 +12,8 @@ pub struct DocumentMetadata {
     pub error: Option<String>,
 
     // basic meta tags
-    pub title: String,
-    pub description: String,
+    pub title: Option<String>,
+    pub description: Option<String>,
     pub language: Option<String>,
     pub keywords: Option<String>,
     pub robots: Option<String>,
@@ -26,7 +26,7 @@ pub struct DocumentMetadata {
     pub og_audio: Option<String>,
     pub og_determiner: Option<String>,
     pub og_locale: Option<String>,
-    pub og_locale_alternate: Option<String>,
+    pub og_locale_alternate: Option<Vec<String>>,
     pub og_site_name: Option<String>,
     pub og_video: Option<String>,
 
@@ -49,8 +49,8 @@ pub struct DocumentMetadata {
     pub dcterms_created: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Default, Clone)]
 #[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Document {
     /// A list of the links on the page, present if `ScrapeFormats::Markdown` is present in `ScrapeOptions.formats`. (default)

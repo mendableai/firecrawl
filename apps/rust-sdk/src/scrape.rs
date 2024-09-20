@@ -42,21 +42,21 @@ pub enum ScrapeFormats {
     Extract,
 }
 
-#[derive(Deserialize, Serialize, Debug, Default)]
 #[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtractOptions {
     /// Schema the output should adhere to, provided in JSON Schema format.
     pub schema: Option<Value>,
 
-    pub system_prompt: Option<Value>,
+    pub system_prompt: Option<String>,
 
     /// Extraction prompt to send to the LLM agent along with the page content.
-    pub prompt: Option<Value>,
+    pub prompt: Option<String>,
 }
 
-#[derive(Deserialize, Serialize, Debug, Default)]
 #[serde_with::skip_serializing_none]
+#[derive(Deserialize, Serialize, Debug, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ScrapeOptions {
     /// Formats to extract from the page. (default: `[ Markdown ]`)
@@ -89,7 +89,6 @@ pub struct ScrapeOptions {
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
-#[serde_with::skip_serializing_none]
 #[serde(rename_all = "camelCase")]
 struct ScrapeRequestBody {
     url: String,
@@ -99,7 +98,6 @@ struct ScrapeRequestBody {
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
-#[serde_with::skip_serializing_none]
 #[serde(rename_all = "camelCase")]
 struct ScrapeResponse {
     /// This will always be `true` due to `FirecrawlApp::handle_response`.
@@ -111,14 +109,15 @@ struct ScrapeResponse {
 }
 
 impl FirecrawlApp {
+    /// Scrapes a URL using the Firecrawl API.
     pub async fn scrape_url(
         &self,
         url: impl AsRef<str>,
-        options: Option<ScrapeOptions>,
+        options: impl Into<Option<ScrapeOptions>>,
     ) -> Result<Document, FirecrawlError> {
         let body = ScrapeRequestBody {
             url: url.as_ref().to_string(),
-            options: options.unwrap_or_default(),
+            options: options.into().unwrap_or_default(),
         };
 
         let headers = self.prepare_headers(None);
@@ -130,7 +129,7 @@ impl FirecrawlApp {
             .json(&body)
             .send()
             .await
-            .map_err(|e| FirecrawlError::HttpRequestFailed(e.to_string()))?;
+            .map_err(|e| FirecrawlError::HttpError(format!("Scraping {:?}", url.as_ref()), e))?;
 
         let response = self.handle_response::<ScrapeResponse>(response, "scrape URL").await?;
 
