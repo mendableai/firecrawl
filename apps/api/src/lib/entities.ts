@@ -19,6 +19,12 @@ export type Action = {
 } | {
   type: "screenshot",
   fullPage?: boolean,
+} | {
+  type: "typeText",
+  text: string,
+} | {
+  type: "pressKey",
+  key: string,
 };
 
 export type PageOptions = {

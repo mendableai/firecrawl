@@ -21,6 +21,9 @@ import * as Sentry from "@sentry/node";
 export async function scrapWithFireEngine({
   url,
   actions,
+  waitFor = 0,
+  screenshot = false,
+  fullPageScreenshot = false,
   pageOptions = { parsePDF: true, atsv: false, useFastMode: false, disableJsDom: false },
   fireEngineOptions = {},
   headers,
@@ -30,6 +33,9 @@ export async function scrapWithFireEngine({
 }: {
   url: string;
   actions?: Action[];
+  waitFor?: number;
+  screenshot?: boolean;
+  fullPageScreenshot?: boolean;
   pageOptions?: { scrollXPaths?: string[]; parsePDF?: boolean, atsv?: boolean, useFastMode?: boolean, disableJsDom?: boolean };
   fireEngineOptions?: FireEngineOptions;
   headers?: Record<string, string>;
@@ -50,7 +56,10 @@ export async function scrapWithFireEngine({
 
   try {
     const reqParams = await generateRequestParams(url);
+    let waitParam = reqParams["params"]?.wait ?? waitFor;
     let engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "chrome-cdp";
+    let screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
+    let fullPageScreenshotParam = reqParams["params"]?.fullPageScreenshot ?? fullPageScreenshot;
     let fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
 
 
@@ -95,6 +104,9 @@ export async function scrapWithFireEngine({
         {
           url: url,
           headers: headers,
+          wait: waitParam,
+          screenshot: screenshotParam,
+          fullPageScreenshot: fullPageScreenshotParam,
           disableJsDom: pageOptions?.disableJsDom ?? false,
           priority,
           engine,

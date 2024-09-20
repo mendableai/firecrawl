@@ -70,6 +70,14 @@ export const actionsSchema = z.array(z.union([
     type: z.literal("screenshot"),
     fullPage: z.boolean().default(false),
   }),
+  z.object({
+    type: z.literal("typeText"),
+    text: z.string(),
+  }),
+  z.object({
+    type: z.literal("pressKey"),
+    key: z.string(),
+  }),
 ]));
 
 export const scrapeOptions = z.object({

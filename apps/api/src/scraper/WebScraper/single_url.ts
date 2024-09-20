@@ -204,17 +204,23 @@ export async function scrapSingleUrl(
         if (process.env.FIRE_ENGINE_BETA_URL) {
           const response = await scrapWithFireEngine({
             url,
-            actions: [
-              ...(pageOptions.waitFor ? [{
-                type: "wait" as const,
-                milliseconds: pageOptions.waitFor,
-              }] : []),
-              ...((pageOptions.screenshot || pageOptions.fullPageScreenshot) ? [{
-                type: "screenshot" as const,
-                fullPage: !!pageOptions.fullPageScreenshot,
-              }] : []),
-              ...(pageOptions.actions ?? []),
-            ],
+            ...(engine === "chrome-cdp" ? ({
+              actions: [
+                ...(pageOptions.waitFor ? [{
+                  type: "wait" as const,
+                  milliseconds: pageOptions.waitFor,
+                }] : []),
+                ...((pageOptions.screenshot || pageOptions.fullPageScreenshot) ? [{
+                  type: "screenshot" as const,
+                  fullPage: !!pageOptions.fullPageScreenshot,
+                }] : []),
+                ...(pageOptions.actions ?? []),
+              ],
+            }) : ({
+              waitFor: pageOptions.waitFor,
+              screenshot: pageOptions.screenshot,
+              fullPageScreenshot: pageOptions.fullPageScreenshot,
+            })),
             pageOptions: pageOptions,
             headers: pageOptions.headers,
             fireEngineOptions: {
