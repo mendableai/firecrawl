@@ -1,0 +1,823 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Firecrawl API",
+    "version": "v1",
+    "description": "API for interacting with Firecrawl services to perform web scraping and crawling tasks.",
+    "contact": {
+      "name": "Firecrawl Support",
+      "url": "https://firecrawl.dev",
+      "email": "support@firecrawl.dev"
+    }
+  },
+  "servers": [
+    {
+      "url": "https://api.firecrawl.dev/v1"
+    }
+  ],
+  "paths": {
+    "/scrape": {
+      "post": {
+        "summary": "Scrape a single URL and optionally extract information using an LLM",
+        "operationId": "scrapeAndExtractFromUrl",
+        "tags": ["Scraping"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "The URL to scrape"
+                  },
+                  "formats": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": ["markdown", "html", "rawHtml", "links", "screenshot", "extract", "screenshot@fullPage"]
+                    },
+                    "description": "Formats to include in the output.",
+                    "default": ["markdown"]
+                  },
+                  "onlyMainContent": {
+                    "type": "boolean",
+                    "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
+                    "default": true
+                  },
+                  "includeTags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Tags to include in the output."
+                  },
+                  "excludeTags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Tags to exclude from the output."
+                  },
+                  "headers": {
+                    "type": "object",
+                    "description": "Headers to send with the request. Can be used to send cookies, user-agent, etc."
+                  },
+                  "waitFor": {
+                    "type": "integer",
+                    "description": "Specify a delay in milliseconds before fetching the content, allowing the page sufficient time to load.",
+                    "default": 0
+                  },
+                  "timeout": {
+                    "type": "integer",
+                    "description": "Timeout in milliseconds for the request",
+                    "default": 30000
+                  },
+                  "extract": {
+                    "type": "object",
+                    "description": "Extract object",
+                    "properties": {
+                      "schema": {
+                        "type": "object",
+                        "description": "The schema to use for the extraction (Optional)"
+                      },
+                      "systemPrompt": {
+                        "type": "string",
+                        "description": "The system prompt to use for the extraction (Optional)"
+                      },
+                      "prompt": {
+                        "type": "string",
+                        "description": "The prompt to use for the extraction without a schema (Optional)"
+                      }
+                    }
+                  }
+                },
+                "required": ["url"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScrapeResponse"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Payment required to access this resource."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Request rate limit exceeded. Please wait and try again later."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crawl/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "The ID of the crawl job",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Get the status of a crawl job",
+        "operationId": "getCrawlStatus",
+        "tags": ["Crawling"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrawlStatusResponseObj"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Payment required to access this resource."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Request rate limit exceeded. Please wait and try again later."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Cancel a crawl job",
+        "operationId": "cancelCrawl",
+        "tags": ["Crawling"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful cancellation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Crawl job successfully cancelled."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Crawl job not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Crawl job not found."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/crawl": {
+      "post": {
+        "summary": "Crawl multiple URLs based on options",
+        "operationId": "crawlUrls",
+        "tags": ["Crawling"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "The base URL to start crawling from"
+                  },
+                  "excludePaths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "URL patterns to exclude"
+                  },
+                  "includePaths": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "URL patterns to include"
+                  },
+                  "maxDepth": {
+                    "type": "integer",
+                    "description": "Maximum depth to crawl relative to the entered URL.",
+                    "default": 2
+                  },
+                  "ignoreSitemap": {
+                    "type": "boolean",
+                    "description": "Ignore the website sitemap when crawling",
+                    "default": true
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of pages to crawl",
+                    "default": 10
+                  },
+                  "allowBackwardLinks": {
+                    "type": "boolean",
+                    "description": "Enables the crawler to navigate from a specific URL to previously linked pages.",
+                    "default": false
+                  },
+                  "allowExternalLinks": {
+                    "type": "boolean",
+                    "description": "Allows the crawler to follow links to external websites.",
+                    "default": false
+                  },
+                  "webhook": {
+                    "type": "string",
+                    "description": "The URL to send the webhook to. This will trigger for crawl started (crawl.started) ,every page crawled (crawl.page) and when the crawl is completed (crawl.completed or crawl.failed). The response will be the same as the `/scrape` endpoint."
+                  },
+                  "scrapeOptions": {
+                    "type": "object",
+                    "properties": {
+                      "formats": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "enum": ["markdown", "html", "rawHtml", "links", "screenshot"]
+                        },
+                        "description": "Formats to include in the output.",
+                        "default": ["markdown"]
+                      },
+                      "headers": {
+                        "type": "object",
+                        "description": "Headers to send with the request. Can be used to send cookies, user-agent, etc."
+                      },
+                      "includeTags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Tags to include in the output."
+                      },
+                      "excludeTags": {
+                        "type": "array",
+                        "items": {
+                          "type": "string"
+                        },
+                        "description": "Tags to exclude from the output."
+                      },
+                      "onlyMainContent": {
+                        "type": "boolean",
+                        "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
+                        "default": true
+                      },
+                      "waitFor": {
+                        "type": "integer",
+                        "description": "Wait x amount of milliseconds for the page to load to fetch content",
+                        "default": 123
+                      }
+                    }
+                  }
+                },
+                "required": ["url"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CrawlResponse"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Payment required to access this resource."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Request rate limit exceeded. Please wait and try again later."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/map": {
+      "post": {
+          "summary": "Map multiple URLs based on options",
+          "operationId": "mapUrls",
+          "tags": ["Mapping"],
+          "security": [
+            {
+              "bearerAuth": []
+            }
+          ],
+          "requestBody": {
+            "required": true,
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "The base URL to start crawling from"
+                    },
+                    "search": {
+                      "type": "string",
+                      "description": "Search query to use for mapping. During the Alpha phase, the 'smart' part of the search functionality is limited to 100 search results. However, if map finds more results, there is no limit applied."
+                    },
+                    "ignoreSitemap": {
+                      "type": "boolean",
+                      "description": "Ignore the website sitemap when crawling",
+                      "default": true
+                    },
+                    "includeSubdomains": {
+                      "type": "boolean",
+                      "description": "Include subdomains of the website",
+                      "default": false
+                    },
+                    "limit": {
+                      "type": "integer",
+                      "description": "Maximum number of links to return",
+                      "default": 5000,
+                      "maximum": 5000
+                    }
+                  },
+                  "required": ["url"]
+                }
+              }
+            }
+          },
+          "responses": {
+            "200": {
+              "description": "Successful response",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "$ref": "#/components/schemas/MapResponse"
+                  }
+                }
+              }
+            },
+            "402": {
+              "description": "Payment required",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "error": {
+                        "type": "string",
+                        "example": "Payment required to access this resource."
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "429": {
+              "description": "Too many requests",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "error": {
+                        "type": "string",
+                        "example": "Request rate limit exceeded. Please wait and try again later."
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "500": {
+              "description": "Server error",
+              "content": {
+                "application/json": {
+                  "schema": {
+                    "type": "object",
+                    "properties": {
+                      "error": {
+                        "type": "string",
+                        "example": "An unexpected error occurred on the server."
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer"
+      }
+    },
+    "schemas": {
+      "ScrapeResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "markdown": {
+                "type": "string"
+              },
+              "html": {
+                "type": "string",
+                "nullable": true,
+                "description": "HTML version of the content on page if `html` is in `formats`"
+              },
+              "rawHtml": {
+                "type": "string",
+                "nullable": true,
+                "description": "Raw HTML content of the page if `rawHtml` is in `formats`"
+              },
+              "screenshot": {
+                "type": "string",
+                "nullable": true,
+                "description": "Screenshot of the page if `screenshot` is in `formats`"
+              },
+              "links": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                },
+                "description": "List of links on the page if `links` is in `formats`"
+              },
+              "metadata": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string"
+                  },
+                  "description": {
+                    "type": "string"
+                  },
+                  "language": {
+                    "type": "string",
+                    "nullable": true
+                  },
+                  "sourceURL": {
+                    "type": "string",
+                    "format": "uri"
+                  },
+                  "<any other metadata> ": {
+                    "type": "string"
+                  },
+                  "statusCode": {
+                    "type": "integer",
+                    "description": "The status code of the page"
+                  },
+                  "error": {
+                    "type": "string",
+                    "nullable": true,
+                    "description": "The error message of the page"
+                  }
+                  
+                }
+              },
+              "llm_extraction": {
+                "type": "object",
+                "description": "Displayed when using LLM Extraction. Extracted data from the page following the schema defined.",
+                "nullable": true
+              },
+              "warning": {
+                "type": "string",
+                "nullable": true,
+                "description": "Can be displayed when using LLM Extraction. Warning message will let you know any issues with the extraction."
+              }
+            }
+          }
+        }
+      },
+      "CrawlStatusResponseObj": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "The current status of the crawl. Can be `scraping`, `completed`, or `failed`."
+          },
+          "total": {
+            "type": "integer",
+            "description": "The total number of pages that were attempted to be crawled."
+          },
+          "completed": {
+            "type": "integer",
+            "description": "The number of pages that have been successfully crawled."
+          },
+          "creditsUsed": {
+            "type": "integer",
+            "description": "The number of credits used for the crawl."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time when the crawl will expire."
+          },
+          "next": {
+            "type": "string",
+            "nullable": true,
+            "description": "The URL to retrieve the next 10MB of data. Returned if the crawl is not completed or if the response is larger than 10MB."
+          },
+          "data": {
+            "type": "array",
+            "description": "The data of the crawl.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "markdown": {
+                  "type": "string"
+                },
+                "html": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "HTML version of the content on page if `includeHtml`  is true"
+                },
+                "rawHtml": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Raw HTML content of the page if `includeRawHtml`  is true"
+                },
+                "links": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of links on the page if `includeLinks` is true"
+                },
+                "screenshot": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Screenshot of the page if `includeScreenshot` is true"
+                },
+                "metadata": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "language": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "sourceURL": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "<any other metadata> ": {
+                      "type": "string"
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "The status code of the page"
+                    },
+                    "error": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "The error message of the page"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "CrawlResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          }
+        }
+      },
+      "MapResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "links": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  },
+  "security": [
+    {
+      "bearerAuth": []
+    }
+  ]
+}

@@ -176,4 +176,4 @@ By addressing these common issues, you can ensure a smoother setup and operation
 
 ## Install Firecrawl on a Kubernetes Cluster (Simple Version)
 
-Read the [examples/kubernetes-cluster-install/README.md](https://github.com/mendableai/firecrawl/blob/main/examples/kubernetes-cluster-install/README.md) for instructions on how to install Firecrawl on a Kubernetes Cluster.
+Read the [examples/kubernetes/cluster-install/README.md](https://github.com/mendableai/firecrawl/blob/main/examples/kubernetes/cluster-install/README.md) for instructions on how to install Firecrawl on a Kubernetes Cluster.
