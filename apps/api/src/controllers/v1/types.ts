@@ -78,6 +78,10 @@ export const actionsSchema = z.array(z.union([
     type: z.literal("pressKey"),
     key: z.string(),
   }),
+  z.object({
+    type: z.literal("scroll"),
+    direction: z.enum(["up", "down"]),
+  }),
 ]));
 
 export const scrapeOptions = z.object({

@@ -25,6 +25,9 @@ export type Action = {
 } | {
   type: "pressKey",
   key: string,
+} | {
+  type: "scroll",
+  direction: "up" | "down"
 };
 
 export type PageOptions = {

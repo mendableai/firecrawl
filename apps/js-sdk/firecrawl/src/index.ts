@@ -99,7 +99,10 @@ export type Action = {
 } | {
   type: "pressKey",
   key: string,
-};;
+} | {
+  type: "scroll",
+  direction: "up" | "down",
+};
 
 export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchema extends (Action[] | undefined) = undefined> extends CrawlScrapeOptions {
   extract?: {
