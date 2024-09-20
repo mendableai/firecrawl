@@ -70,7 +70,7 @@ Check out the following resources to get started:
 - [x] [Zapier Integration](https://zapier.com/apps/firecrawl/integrations)
 - [x] [Cargo Integration](https://docs.getcargo.io/integration/firecrawl)
 - [x] [Pipedream Integration](https://pipedream.com/apps/firecrawl/)
-- [x] [Pabbly Integration](https://www.pabbly.com/connect/integrations/firecrawl/)
+- [x] [Pabbly Connect Integration](https://www.pabbly.com/connect/integrations/firecrawl/)
 - [ ] Want an SDK or Integration? Let us know by opening an issue.
 
 To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/blob/main/CONTRIBUTING.md).
