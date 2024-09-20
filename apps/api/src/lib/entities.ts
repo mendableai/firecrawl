@@ -10,6 +10,26 @@ export interface Progress {
   currentDocument?: Document;
 }
 
+export type Action = {
+  type: "wait",
+  milliseconds: number,
+} | {
+  type: "click",
+  selector: string,
+} | {
+  type: "screenshot",
+  fullPage?: boolean,
+} | {
+  type: "typeText",
+  text: string,
+} | {
+  type: "pressKey",
+  key: string,
+} | {
+  type: "scroll",
+  direction: "up" | "down"
+};
+
 export type PageOptions = {
   includeMarkdown?: boolean;
   includeExtract?: boolean;
@@ -29,7 +49,8 @@ export type PageOptions = {
   includeLinks?: boolean;
   useFastMode?: boolean; // beta
   disableJsDom?: boolean; // beta
-  atsv?: boolean; // beta
+  atsv?: boolean; // anti-bot solver, beta
+  actions?: Action[]; // beta
 };
 
 export type ExtractorOptions = {
@@ -98,6 +119,9 @@ export class Document {
   childrenLinks?: string[];
   provider?: string;
   warning?: string;
+  actions?: {
+    screenshots: string[];
+  }
 
   index?: number;
   linksOnPage?: string[]; // Add this new field as a separate property
@@ -137,7 +161,7 @@ export class SearchResult {
 
 export interface FireEngineResponse {
   html: string;
-  screenshot: string;
+  screenshots?: string[];
   pageStatusCode?: number;
   pageError?: string;
 }

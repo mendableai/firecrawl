@@ -1,5 +1,5 @@
 import axios from "axios";
-import { FireEngineOptions, FireEngineResponse } from "../../../lib/entities";
+import { Action, FireEngineOptions, FireEngineResponse } from "../../../lib/entities";
 import { logScrape } from "../../../services/logging/scrape_log";
 import { generateRequestParams } from "../single_url";
 import { fetchAndProcessPdf } from "../utils/pdfProcessor";
@@ -20,6 +20,7 @@ import * as Sentry from "@sentry/node";
  */
 export async function scrapWithFireEngine({
   url,
+  actions,
   waitFor = 0,
   screenshot = false,
   fullPageScreenshot = false,
@@ -31,6 +32,7 @@ export async function scrapWithFireEngine({
   teamId,
 }: {
   url: string;
+  actions?: Action[];
   waitFor?: number;
   screenshot?: boolean;
   fullPageScreenshot?: boolean;
@@ -75,7 +77,7 @@ export async function scrapWithFireEngine({
     }
 
     Logger.info(
-      `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { wait: ${waitParam}, screenshot: ${screenshotParam}, fullPageScreenshot: ${fullPageScreenshot}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
+      `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { actions: ${JSON.stringify((actions ?? []).map(x => x.type))}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
     );
 
     // atsv is only available for beta customers
@@ -101,10 +103,10 @@ export async function scrapWithFireEngine({
         process.env.FIRE_ENGINE_BETA_URL + endpoint,
         {
           url: url,
+          headers: headers,
           wait: waitParam,
           screenshot: screenshotParam,
           fullPageScreenshot: fullPageScreenshotParam,
-          headers: headers,
           disableJsDom: pageOptions?.disableJsDom ?? false,
           priority,
           engine,
@@ -112,6 +114,7 @@ export async function scrapWithFireEngine({
           ...fireEngineOptionsParam,
           atsv: pageOptions?.atsv ?? false,
           scrollXPaths: pageOptions?.scrollXPaths ?? [],
+          actions: actions,
         },
         {
           headers: {
@@ -125,8 +128,10 @@ export async function scrapWithFireEngine({
       );
     });
 
+    const waitTotal = (actions ?? []).filter(x => x.type === "wait").reduce((a, x) => (x as { type: "wait"; milliseconds: number; }).milliseconds + a, 0);
+
     let checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
-    while (checkStatusResponse.data.processing && Date.now() - startTime < universalTimeout + waitParam) {
+    while (checkStatusResponse.data.processing && Date.now() - startTime < universalTimeout + waitTotal) {
       await new Promise(resolve => setTimeout(resolve, 250)); // wait 0.25 seconds
       checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
     }
@@ -143,12 +148,12 @@ export async function scrapWithFireEngine({
       
       Logger.debug(`⛏️ Fire-Engine (${engine}): Request timed out for ${url}`);
       logParams.error_message = "Request timed out";
-      return { html: "", screenshot: "", pageStatusCode: null, pageError: "" };
+      return { html: "", pageStatusCode: null, pageError: "" };
     }
 
     if (checkStatusResponse.status !== 200 || checkStatusResponse.data.error) {
       Logger.debug(
-        `⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${checkStatusResponse.status}`
+        `⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${checkStatusResponse.status}\t ${checkStatusResponse.data.error}`
       );
       
       logParams.error_message = checkStatusResponse.data?.pageError ?? checkStatusResponse.data?.error;
@@ -162,7 +167,6 @@ export async function scrapWithFireEngine({
 
       return {
         html: "",
-        screenshot: "",
         pageStatusCode,
         pageError: checkStatusResponse.data?.pageError ?? checkStatusResponse.data?.error,
       };
@@ -178,7 +182,7 @@ export async function scrapWithFireEngine({
       logParams.success = true;
       logParams.response_code = pageStatusCode;
       logParams.error_message = pageError;
-      return { html: content, screenshot: "", pageStatusCode, pageError };
+      return { html: content, pageStatusCode, pageError };
     } else {
       const data = checkStatusResponse.data;
       
@@ -190,7 +194,7 @@ export async function scrapWithFireEngine({
       logParams.error_message = data.pageError ?? data.error;
       return {
         html: data.content ?? "",
-        screenshot: data.screenshot ?? "",
+        screenshots: data.screenshots,
         pageStatusCode: data.pageStatusCode,
         pageError: data.pageError ?? data.error,
       };
@@ -203,7 +207,7 @@ export async function scrapWithFireEngine({
       Logger.debug(`⛏️ Fire-Engine: Failed to fetch url: ${url} | Error: ${error}`);
       logParams.error_message = error.message || error;
     }
-    return { html: "", screenshot: "", pageStatusCode: null, pageError: logParams.error_message };
+    return { html: "", pageStatusCode: null, pageError: logParams.error_message };
   } finally {
     const endTime = Date.now();
     logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;

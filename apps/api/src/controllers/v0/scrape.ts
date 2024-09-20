@@ -285,11 +285,19 @@ export async function scrapeController(req: Request, res: Response) {
   } catch (error) {
     Sentry.captureException(error);
     Logger.error(error);
-    return res.status(500).json({
-      error:
+    if (typeof error === "string" && error.startsWith("{\"type\":\"all\",")) {
+      return res.status(500).json({
+        success: false,
+        error: "All scraping methods failed for URL: " + req.body.url,
+        details: JSON.parse(error).errors as string[],
+      });
+    } else {
+      return res.status(500).json({
+        error:
         typeof error === "string"
           ? error
           : error?.message ?? "Internal Server Error",
-    });
+      });
+    }
   }
 }
