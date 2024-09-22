@@ -194,7 +194,7 @@ export async function scrapWithFireEngine({
       logParams.error_message = data.pageError ?? data.error;
       return {
         html: data.content ?? "",
-        screenshots: data.screenshots,
+        screenshots: data.screenshots ?? [data.screenshot] ?? [],
         pageStatusCode: data.pageStatusCode,
         pageError: data.pageError ?? data.error,
       };

@@ -289,7 +289,7 @@ export default class FirecrawlApp {
     query: string,
     params?: any
   ): Promise<any> {
-    throw new Error("Search is not supported in v1, please update FirecrawlApp() initialization to use v0.");
+    throw new Error("Search is not supported in v1, please downgrade Firecrawl to 0.0.36.");
   }
 
   /**
