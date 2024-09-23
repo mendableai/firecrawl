@@ -283,8 +283,6 @@ export async function scrapeController(req: Request, res: Response) {
 
     return res.status(result.returnCode).json(result);
   } catch (error) {
-    Sentry.captureException(error);
-    Logger.error(error);
     if (typeof error === "string" && error.startsWith("{\"type\":\"all\",")) {
       return res.status(500).json({
         success: false,
@@ -292,6 +290,8 @@ export async function scrapeController(req: Request, res: Response) {
         details: JSON.parse(error).errors as string[],
       });
     } else {
+      Sentry.captureException(error);
+      Logger.error(error);
       return res.status(500).json({
         error:
         typeof error === "string"
