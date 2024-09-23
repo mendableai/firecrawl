@@ -448,7 +448,7 @@ async function processJob(job: Job, token: string) {
   } catch (error) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);
 
-    if (!(error instanceof Error && error.message.includes("JSON parsing error(s): "))) {
+    if (!(error instanceof Error && (error.message.includes("JSON parsing error(s): ") || error.message.startsWith('{"type":"all",')))) {
       Sentry.captureException(error, {
         data: {
           job: job.id,
