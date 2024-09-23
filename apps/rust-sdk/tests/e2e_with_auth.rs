@@ -114,7 +114,7 @@ async fn test_should_return_error_for_blocklisted_url() {
 
     assert_matches!(
         result,
-        Err(e) if e.to_string().contains("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.")
+        Err(e) if e.to_string().contains("Firecrawl currently does not support social media scraping due to policy restrictions.")
     );
 }
 
