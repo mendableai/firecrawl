@@ -196,7 +196,9 @@ export async function searchController(req: Request, res: Response) {
       return res.status(408).json({ error: "Request timed out" });
     }
 
-    Sentry.captureException(error);
+    if (!(error instanceof Error && error.message.startsWith('{"type":"all",'))) {
+      Sentry.captureException(error);
+    }
     Logger.error(error);
     return res.status(500).json({ error: error.message });
   }
