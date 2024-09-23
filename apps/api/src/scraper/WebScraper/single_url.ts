@@ -421,7 +421,9 @@ export async function scrapSingleUrl(
       // }
     }
 
-    if (!text) {
+    // NOTE: This exception for status codes may only work with fire-engine. In lieu of better error management,
+    // it's the best we can do. - mogery
+    if (!text && !Object.values(errors).some(x => x.startsWith("Request failed with status code "))) {
       throw new Error(`All scraping methods failed for URL: ${urlToScrap}`);
     }
 
