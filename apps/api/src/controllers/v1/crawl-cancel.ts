@@ -1,25 +1,15 @@
-import { Request, Response } from "express";
-import { authenticateUser } from "../auth";
-import { RateLimiterMode } from "../../types";
+import { Response } from "express";
 import { supabase_service } from "../../services/supabase";
 import { Logger } from "../../lib/logger";
 import { getCrawl, saveCrawl } from "../../lib/crawl-redis";
 import * as Sentry from "@sentry/node";
 import { configDotenv } from "dotenv";
+import { RequestWithAuth } from "./types";
 configDotenv();
 
-export async function crawlCancelController(req: Request, res: Response) {
+export async function crawlCancelController(req: RequestWithAuth<{ jobId: string }>, res: Response) {
   try {
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
-
-    const { success, team_id, error, status } = await authenticateUser(
-      req,
-      res,
-      RateLimiterMode.CrawlStatus
-    );
-    if (!success) {
-      return res.status(status).json({ error });
-    }
 
     const sc = await getCrawl(req.params.jobId);
     if (!sc) {
@@ -32,7 +22,7 @@ export async function crawlCancelController(req: Request, res: Response) {
         .from("bulljobs_teams")
         .select("*")
         .eq("job_id", req.params.jobId)
-        .eq("team_id", team_id);
+        .eq("team_id", req.auth.team_id);
       if (supaError) {
         return res.status(500).json({ error: supaError.message });
       }

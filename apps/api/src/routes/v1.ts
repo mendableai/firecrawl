@@ -148,7 +148,7 @@ v1Router.ws(
 
 v1Router.delete(
   "/crawl/:jobId",
-  authMiddleware(RateLimiterMode.Crawl),
+  authMiddleware(RateLimiterMode.CrawlStatus),
   crawlCancelController
 );
 // v1Router.get("/checkJobStatus/:jobId", crawlJobStatusPreviewController);
