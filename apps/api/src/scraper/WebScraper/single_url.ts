@@ -392,8 +392,12 @@ export async function scrapSingleUrl(
       if (attempt.pageStatusCode) {
         pageStatusCode = attempt.pageStatusCode;
       }
-      if (attempt.pageError && attempt.pageStatusCode >= 400) {
+      if (attempt.pageError && (attempt.pageStatusCode >= 400 || scrapersInOrder.indexOf(scraper) === scrapersInOrder.length - 1)) { // force pageError if it's the last scraper and it failed too
         pageError = attempt.pageError;
+        
+        if (attempt.pageStatusCode < 400 || !attempt.pageStatusCode) {
+          pageStatusCode = 500;
+        }
       } else if (attempt && attempt.pageStatusCode && attempt.pageStatusCode < 400) {
         pageError = undefined;
       }
