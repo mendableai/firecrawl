@@ -20,8 +20,8 @@
     "mongo-docker": "docker run -d -p 2717:27017 -v ./mongo-data:/data/db --name mongodb mongo:latest",
     "mongo-docker-console": "docker exec -it mongodb mongosh",
     "run-example": "npx ts-node src/example.ts",
-    "deploy:fly": "flyctl deploy --build-secret SENTRY_AUTH_TOKEN=$(dotenv -p SENTRY_AUTH_TOKEN)",
-    "deploy:fly:staging": "fly deploy -c fly.staging.toml",
+    "deploy:fly": "flyctl deploy --build-secret SENTRY_AUTH_TOKEN=$(dotenv -p SENTRY_AUTH_TOKEN) --depot=false",
+    "deploy:fly:staging": "fly deploy -c fly.staging.toml --depot=false",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org caleb-peffer --project firecrawl-scraper-js ./dist && sentry-cli sourcemaps upload --org caleb-peffer --project firecrawl-scraper-js ./dist"
   },
   "author": "",
