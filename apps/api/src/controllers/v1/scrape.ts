@@ -54,9 +54,11 @@ export async function scrapeController(
     jobPriority
   );
 
+  const totalWait = (req.body.waitFor ?? 0) + (req.body.actions ?? []).reduce((a,x) => (x.type === "wait" ? x.milliseconds : 0) + a, 0);
+
   let doc: any | undefined;
   try {
-    doc = (await waitForJob(job.id, timeout))[0];
+    doc = (await waitForJob(job.id, timeout + totalWait))[0];
   } catch (e) {
     Logger.error(`Error in scrapeController: ${e}`);
     if (e instanceof Error && e.message.startsWith("Job wait")) {
