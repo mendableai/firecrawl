@@ -357,9 +357,6 @@ export async function scrapSingleUrl(
     pageStatusCode: 200,
     pageError: undefined,
   };
-
-  const errors: Record<string, string> = {};
-
   try {
     let urlKey = urlToScrap;
     try {
@@ -401,12 +398,6 @@ export async function scrapSingleUrl(
         pageError = undefined;
       }
 
-      if (attempt.pageError) {
-        errors[scraper] = attempt.pageError;
-      } else {
-        errors[scraper] = null;
-      }
-
       if ((text && text.trim().length >= 100) || (typeof screenshot === "string" && screenshot.length > 0)) {
         Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100 or screenshot, breaking`);
         break;
@@ -421,9 +412,7 @@ export async function scrapSingleUrl(
       // }
     }
 
-    // NOTE: This exception for status codes may only work with fire-engine. In lieu of better error management,
-    // it's the best we can do. - mogery
-    if (!text && !Object.values(errors).some(x => x.startsWith("Request failed with status code ") || x === "NOT FOUND")) {
+    if (!text) {
       throw new Error(`All scraping methods failed for URL: ${urlToScrap}`);
     }
 
@@ -460,17 +449,12 @@ export async function scrapSingleUrl(
 
     return document;
   } catch (error) {
-    Logger.error(`⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrap}`);
+    Logger.debug(`⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrap}`);
     ScrapeEvents.insert(jobId, {
       type: "error",
       message: typeof error === "string" ? error : typeof error.message === "string" ? error.message : JSON.stringify(error),
       stack: error.stack,
     });
-
-    if (error instanceof Error && error.message.startsWith("All scraping methods failed")) {
-      throw new Error(JSON.stringify({"type": "all", "errors": Object.values(errors)}));
-    }
-
     return {
       content: "",
       markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? "" : undefined,

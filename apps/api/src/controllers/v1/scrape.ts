@@ -64,21 +64,22 @@ export async function scrapeController(
         success: false,
         error: "Request timed out",
       });
-    } else if (typeof e === "string" && e.startsWith("{\"type\":\"all\",")) {
+    } else {
       return res.status(500).json({
         success: false,
-        error: "All scraping methods failed for URL: " + req.body.url,
-        details: JSON.parse(e).errors as string[],
+        error: `(Internal server error) - ${e && e?.message ? e.message : e} ${
+          extractorOptions && extractorOptions.mode !== "markdown"
+            ? " - Could be due to LLM parsing issues"
+            : ""
+        }`,
       });
-    } else {
-      throw e;
     }
   }
 
   await job.remove();
 
   if (!doc) {
-    // console.error("!!! PANIC DOC IS", doc, job);
+    console.error("!!! PANIC DOC IS", doc, job);
     return res.status(200).json({
       success: true,
       warning: "No page found",
