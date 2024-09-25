@@ -37,7 +37,7 @@ function normalizedApiIsUuid(potentialUuid: string): boolean {
   return validate(potentialUuid);
 }
 
-export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk) {
+export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk)) { 
   const cacheKeyACUC = `acuc_${api_key}`;
   const redLockKey = `lock_${cacheKeyACUC}`;
   const lockTTL = 10000; // 10 seconds
@@ -46,6 +46,15 @@ export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk)
     const lock = await redlock.acquire([redLockKey], lockTTL);
 
     try {
+      if (typeof acuc === "function") {
+        acuc = acuc(JSON.parse(await getValue(cacheKeyACUC)));
+
+        if (acuc === null) {
+          await lock.release();
+          return;
+        }
+      }
+
       // Cache for 10 minutes. This means that changing subscription tier could have
       // a maximum of 10 minutes of a delay. - mogery
       await setValue(cacheKeyACUC, JSON.stringify(acuc), 600);

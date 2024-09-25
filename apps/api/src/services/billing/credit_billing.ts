@@ -32,16 +32,12 @@ export async function supaBillTeam(team_id: string, subscription_id: string, cre
 
   (async () => {
     for (const apiKey of (data ?? []).map(x => x.api_key)) {
-      const acuc = await getACUC(apiKey, true);
-  
-      if (acuc !== null) {
-        await setCachedACUC(apiKey, {
-          ...acuc,
-          credits_used: acuc.credits_used + credits,
-          adjusted_credits_used: acuc.adjusted_credits_used + credits,
-          remaining_credits: acuc.remaining_credits - credits,
-        });
-      }
+      await setCachedACUC(apiKey, acuc => (acuc ? {
+        ...acuc,
+        credits_used: acuc.credits_used + credits,
+        adjusted_credits_used: acuc.adjusted_credits_used + credits,
+        remaining_credits: acuc.remaining_credits - credits,
+      } : null));
     }
   })();
 }
