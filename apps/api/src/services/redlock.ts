@@ -11,7 +11,7 @@ export const redlock = new Redlock(
     driftFactor: 0.01, // multiplied by lock ttl to determine drift time
 
     retryCount: 200,
-    
+
     retryDelay: 100,
 
     // the max time in ms randomly added to retries

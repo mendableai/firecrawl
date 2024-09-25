@@ -40,27 +40,29 @@ function normalizedApiIsUuid(potentialUuid: string): boolean {
 export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk)) { 
   const cacheKeyACUC = `acuc_${api_key}`;
   const redLockKey = `lock_${cacheKeyACUC}`;
-  const lockTTL = 10000; // 10 seconds
 
   try {
-    const lock = await redlock.acquire([redLockKey], lockTTL);
-
-    try {
+    await redlock.using([redLockKey], 10000, {}, async signal => {
       if (typeof acuc === "function") {
         acuc = acuc(JSON.parse(await getValue(cacheKeyACUC)));
 
         if (acuc === null) {
-          await lock.release();
+          if (signal.aborted) {
+            throw signal.error;
+          }
+
           return;
         }
+      }
+
+      if (signal.aborted) {
+        throw signal.error;
       }
 
       // Cache for 10 minutes. This means that changing subscription tier could have
       // a maximum of 10 minutes of a delay. - mogery
       await setValue(cacheKeyACUC, JSON.stringify(acuc), 600);
-    } finally {
-      await lock.release();
-    }
+    });
   } catch (error) {
     Logger.error(`Error updating cached ACUC: ${error}`);
     Sentry.captureException(error);
