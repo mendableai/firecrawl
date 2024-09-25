@@ -318,10 +318,10 @@ type Account = {
 export type AuthCreditUsageChunk = {
   api_key: string;
   team_id: string;
-  sub_id: string;
-  sub_current_period_start: string;
-  sub_current_period_end: string;
-  price_id: string;
+  sub_id: string | null;
+  sub_current_period_start: string | null;
+  sub_current_period_end: string | null;
+  price_id: string | null;
   price_credits: number; // credit limit with assoicated price, or free_credits (500) if free plan
   credits_used: number;
   coupon_credits: number;
