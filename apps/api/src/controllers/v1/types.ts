@@ -324,7 +324,7 @@ export type AuthCreditUsageChunk = {
   price_id: string | null;
   price_credits: number; // credit limit with assoicated price, or free_credits (500) if free plan
   credits_used: number;
-  coupon_credits: number;
+  coupon_credits: number; // do not rely on this number to be up to date after calling a billTeam
   coupons: any[];
   adjusted_credits_used: number; // credits this period minus coupons used
   remaining_credits: number;
