@@ -43,7 +43,10 @@ export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk 
   const lockTTL = 10000; // 10 seconds
 
   try {
-    const lock = await redlock.acquire([redLockKey], lockTTL);
+    const lock = await redlock.acquire([redLockKey], lockTTL, {
+      retryCount: 200,
+      retryDelay: 100,
+    });
 
     try {
       if (typeof acuc === "function") {
