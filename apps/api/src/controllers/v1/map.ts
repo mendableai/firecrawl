@@ -152,7 +152,7 @@ export async function mapController(
   // remove duplicates that could be due to http/https or www
   links = removeDuplicateUrls(links);
 
-  billTeam(req.auth.team_id, 1).catch((error) => {
+  billTeam(req.auth.team_id, req.acuc.sub_id, 1).catch((error) => {
     Logger.error(
       `Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`
     );

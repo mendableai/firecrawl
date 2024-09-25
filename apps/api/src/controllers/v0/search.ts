@@ -18,6 +18,7 @@ export async function searchHelper(
   jobId: string,
   req: Request,
   team_id: string,
+  subscription_id: string,
   crawlerOptions: any,
   pageOptions: PageOptions,
   searchOptions: SearchOptions,
@@ -54,7 +55,7 @@ export async function searchHelper(
   
 
   if (justSearch) {
-    billTeam(team_id, res.length).catch(error => {
+    billTeam(team_id, subscription_id, res.length).catch(error => {
       Logger.error(`Failed to bill team ${team_id} for ${res.length} credits: ${error}`);
       // Optionally, you could notify an admin or add to a retry queue here
     });
@@ -169,6 +170,7 @@ export async function searchController(req: Request, res: Response) {
       jobId,
       req,
       team_id,
+      chunk.sub_id,
       crawlerOptions,
       pageOptions,
       searchOptions,
