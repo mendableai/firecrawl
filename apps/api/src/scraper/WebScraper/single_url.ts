@@ -6,6 +6,7 @@ import {
   PageOptions,
   FireEngineResponse,
   ExtractorOptions,
+  Action,
 } from "../../lib/entities";
 import { parseMarkdown } from "../../lib/html-to-markdown";
 import { urlSpecificParams } from "./utils/custom/website_params";
@@ -202,6 +203,23 @@ export async function scrapSingleUrl(
         }
 
         if (process.env.FIRE_ENGINE_BETA_URL) {
+          const processedActions: Action[] = pageOptions.actions?.flatMap((action: Action, index: number, array: Action[]) => {
+            if (action.type === "click" || action.type === "write" || action.type === "press") {
+              const result: Action[] = [];
+              // Don't add a wait if the previous action is a wait
+              if (index === 0 || array[index - 1].type !== "wait") {
+                result.push({ type: "wait", milliseconds: 1200 } as Action);
+              }
+              result.push(action);
+              // Don't add a wait if the next action is a wait
+              if (index === array.length - 1 || array[index + 1].type !== "wait") {
+                result.push({ type: "wait", milliseconds: 1200 } as Action);
+              }
+              return result;
+            }
+            return [action as Action];
+          }) ?? [] as Action[];
+          
           const response = await scrapWithFireEngine({
             url,
             ...(engine === "chrome-cdp" ? ({
@@ -214,7 +232,7 @@ export async function scrapSingleUrl(
                   type: "screenshot" as const,
                   fullPage: !!pageOptions.fullPageScreenshot,
                 }] : []),
-                ...(pageOptions.actions ?? []),
+                ...processedActions,
               ],
             }) : ({
               waitFor: pageOptions.waitFor,
