@@ -4,7 +4,7 @@ import { crawlController } from "../controllers/v1/crawl";
 import { scrapeController } from "../../src/controllers/v1/scrape";
 import { crawlStatusController } from "../controllers/v1/crawl-status";
 import { mapController } from "../controllers/v1/map";
-import { ErrorResponse, RequestWithAuth, RequestWithMaybeAuth } from "../controllers/v1/types";
+import { ErrorResponse, RequestWithACUC, RequestWithAuth, RequestWithMaybeAuth } from "../controllers/v1/types";
 import { RateLimiterMode } from "../types";
 import { authenticateUser } from "../controllers/auth";
 import { createIdempotencyKey } from "../services/idempotency/create";
@@ -30,14 +30,15 @@ function checkCreditsMiddleware(minimum?: number): (req: RequestWithAuth, res: R
             if (!minimum && req.body) {
                 minimum = (req.body as any)?.limit ?? 1;
             }
-            const { success, message, remainingCredits } = await checkTeamCredits(req.auth.team_id, minimum);
+            const { success, remainingCredits, chunk } = await checkTeamCredits(req.acuc, req.auth.team_id, minimum);
+            req.acuc = chunk;
             if (!success) {
                 Logger.error(`Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`);
                 if (!res.headersSent) {
                     return res.status(402).json({ success: false, error: "Insufficient credits" });
                 }
             }
-            req.account = { remainingCredits }
+            req.account = { remainingCredits };
             next();
         })()
             .catch(err => next(err));
@@ -47,7 +48,7 @@ function checkCreditsMiddleware(minimum?: number): (req: RequestWithAuth, res: R
 export function authMiddleware(rateLimiterMode: RateLimiterMode): (req: RequestWithMaybeAuth, res: Response, next: NextFunction) => void {
     return (req, res, next) => {
         (async () => {
-            const { success, team_id, error, status, plan } = await authenticateUser(
+            const { success, team_id, error, status, plan, chunk } = await authenticateUser(
                 req,
                 res,
                 rateLimiterMode,
@@ -60,6 +61,7 @@ export function authMiddleware(rateLimiterMode: RateLimiterMode): (req: RequestW
             }
 
             req.auth = { team_id, plan };
+            req.acuc = chunk;
             next();
         })()
             .catch(err => next(err));
