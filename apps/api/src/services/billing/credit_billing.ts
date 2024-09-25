@@ -191,7 +191,7 @@ export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk, team_id:
       chunk.sub_current_period_start,
       chunk.sub_current_period_end
     );
-    return { success: false, message: "Insufficient credits, please upgrade!", remainingCredits: chunk.price_credits - chunk.adjusted_credits_used, chunk };
+    return { success: false, message: "Insufficient credits, please upgrade!", remainingCredits: chunk.remaining_credits, chunk };
   } else if (creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
     // Send email notification for approaching credit limit
     sendNotification(
@@ -202,7 +202,7 @@ export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk, team_id:
     );
   }
 
-  return { success: true, message: "Sufficient credits available", remainingCredits: chunk.price_credits - chunk.adjusted_credits_used, chunk };
+  return { success: true, message: "Sufficient credits available", remainingCredits: chunk.remaining_credits, chunk };
 }
 
 // Count the total credits used by a team within the current billing period and return the remaining credits.
