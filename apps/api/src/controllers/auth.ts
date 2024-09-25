@@ -37,7 +37,7 @@ function normalizedApiIsUuid(potentialUuid: string): boolean {
   return validate(potentialUuid);
 }
 
-async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk) {
+export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk) {
   const cacheKeyACUC = `acuc_${api_key}`;
   const redLockKey = `lock_${cacheKeyACUC}`;
   const lockTTL = 10000; // 10 seconds
@@ -58,14 +58,14 @@ async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk) {
   }
 }
 
-async function getACUC(api_key: string): Promise<AuthCreditUsageChunk | null> {
+export async function getACUC(api_key: string, cacheOnly = false): Promise<AuthCreditUsageChunk | null> {
   const cacheKeyACUC = `acuc_${api_key}`;
 
   const cachedACUC = await getValue(cacheKeyACUC);
 
   if (cachedACUC !== null) {
     return JSON.parse(cachedACUC);
-  } else {
+  } else if (!cacheOnly) {
     const { data, error } =
       await supabase_service.rpc("auth_credit_usage_chunk", { input_key: api_key });
     
@@ -85,6 +85,8 @@ async function getACUC(api_key: string): Promise<AuthCreditUsageChunk | null> {
     }
 
     return chunk;
+  } else {
+    return null;
   }
 }
 

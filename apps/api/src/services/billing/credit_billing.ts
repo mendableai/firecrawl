@@ -5,6 +5,7 @@ import { supabase_service } from "../supabase";
 import { Logger } from "../../lib/logger";
 import * as Sentry from "@sentry/node";
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
+import { getACUC, setCachedACUC } from "../../controllers/auth";
 
 const FREE_CREDITS = 500;
 
@@ -20,13 +21,29 @@ export async function supaBillTeam(team_id: string, subscription_id: string, cre
   }
   Logger.info(`Billing team ${team_id} for ${credits} credits`);
 
-  const { error } =
+  const { data, error } =
     await supabase_service.rpc("bill_team", { _team_id: team_id, sub_id: subscription_id ?? null, fetch_subscription: subscription_id === undefined, credits });
   
   if (error) {
     Sentry.captureException(error);
     Logger.error("Failed to bill team: " + JSON.stringify(error));
+    return;
   }
+
+  (async () => {
+    for (const apiKey of (data ?? []).map(x => x.api_key)) {
+      const acuc = await getACUC(apiKey, true);
+  
+      if (acuc !== null) {
+        await setCachedACUC(apiKey, {
+          ...acuc,
+          credits_used: acuc.credits_used + credits,
+          adjusted_credits_used: acuc.adjusted_credits_used + credits,
+          remaining_credits: acuc.remaining_credits - credits,
+        });
+      }
+    }
+  })();
 }
 
 export async function checkTeamCredits(chunk: AuthCreditUsageChunk, team_id: string, credits: number) {
