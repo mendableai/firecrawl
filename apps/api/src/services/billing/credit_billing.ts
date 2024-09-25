@@ -63,7 +63,7 @@ export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk, team_id:
   const creditUsagePercentage = creditsWillBeUsed / chunk.price_credits;
 
   // Compare the adjusted total credits used with the credits allowed by the plan
-  if (creditsWillBeUsed >= chunk.price_credits) {
+  if (creditsWillBeUsed > chunk.price_credits) {
     sendNotification(
       team_id,
       NotificationType.LIMIT_REACHED,
