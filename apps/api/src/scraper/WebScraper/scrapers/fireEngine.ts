@@ -131,7 +131,9 @@ export async function scrapWithFireEngine({
     const waitTotal = (actions ?? []).filter(x => x.type === "wait").reduce((a, x) => (x as { type: "wait"; milliseconds: number; }).milliseconds + a, 0);
 
     let checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
-    while (checkStatusResponse.data.processing && Date.now() - startTime < universalTimeout + waitTotal) {
+
+    // added 5 seconds to the timeout to account for 'smart wait'
+    while (checkStatusResponse.data.processing && Date.now() - startTime < universalTimeout + waitTotal + 5000) {
       await new Promise(resolve => setTimeout(resolve, 250)); // wait 0.25 seconds
       checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
     }
