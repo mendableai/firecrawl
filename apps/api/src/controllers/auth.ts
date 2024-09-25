@@ -64,7 +64,7 @@ async function getACUC(api_key: string): Promise<AuthCreditUsageChunk | null> {
   const cachedACUC = await getValue(cacheKeyACUC);
 
   if (cachedACUC !== null) {
-    return JSON.parse(cacheKeyACUC);
+    return JSON.parse(cachedACUC);
   } else {
     const { data, error } =
       await supabase_service.rpc("auth_credit_usage_chunk", { input_key: api_key });
