@@ -157,7 +157,7 @@ export async function scrapeController(req: Request, res: Response) {
   try {
     let earlyReturn = false;
     // make sure to authenticate user first, Bearer <token>
-    const { success, team_id, error, status, plan } = await authenticateUser(
+    const { success, team_id, error, status, plan, chunk } = await authenticateUser(
       req,
       res,
       RateLimiterMode.Scrape
@@ -193,7 +193,7 @@ export async function scrapeController(req: Request, res: Response) {
     // checkCredits
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
-        await checkTeamCredits(team_id, 1);
+        await checkTeamCredits(chunk, team_id, 1);
       if (!creditsCheckSuccess) {
         earlyReturn = true;
         return res.status(402).json({ error: "Insufficient credits" });

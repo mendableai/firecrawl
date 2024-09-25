@@ -315,11 +315,51 @@ type Account = {
   remainingCredits: number;
 };
 
-export interface RequestWithMaybeAuth<
+export type AuthCreditUsageChunk = {
+  api_key: string;
+  team_id: string;
+  sub_id: string;
+  sub_current_period_start: string;
+  sub_current_period_end: string;
+  price_id: string;
+  price_credits: number; // credit limit with assoicated price, or free_credits (500) if free plan
+  credits_used: number;
+  coupon_credits: number;
+  coupons: any[];
+  adjusted_credits_used: number; // credits this period minus coupons used
+  remaining_credits: number;
+};
+
+export interface RequestWithMaybeACUC<
   ReqParams = {},
   ReqBody = undefined,
   ResBody = undefined
 > extends Request<ReqParams, ReqBody, ResBody> {
+  acuc?: AuthCreditUsageChunk,
+}
+
+export interface RequestWithACUC<
+  ReqParams = {},
+  ReqBody = undefined,
+  ResBody = undefined
+> extends Request<ReqParams, ReqBody, ResBody> {
+  acuc: AuthCreditUsageChunk,
+}
+
+export interface RequestWithAuth<
+  ReqParams = {},
+  ReqBody = undefined,
+  ResBody = undefined,
+> extends Request<ReqParams, ReqBody, ResBody> {
+  auth: AuthObject;
+  account?: Account;
+}
+
+export interface RequestWithMaybeAuth<
+  ReqParams = {},
+  ReqBody = undefined,
+  ResBody = undefined
+> extends RequestWithMaybeACUC<ReqParams, ReqBody, ResBody> {
   auth?: AuthObject;
   account?: Account;
 }
@@ -328,7 +368,7 @@ export interface RequestWithAuth<
   ReqParams = {},
   ReqBody = undefined,
   ResBody = undefined,
-> extends Request<ReqParams, ReqBody, ResBody> {
+> extends RequestWithACUC<ReqParams, ReqBody, ResBody> {
   auth: AuthObject;
   account?: Account;
 }

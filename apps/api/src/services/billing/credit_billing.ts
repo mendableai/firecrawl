@@ -6,6 +6,7 @@ import { Logger } from "../../lib/logger";
 import { getValue, setValue } from "../redis";
 import { redlock } from "../redlock";
 import * as Sentry from "@sentry/node";
+import { AuthCreditUsageChunk } from "../../controllers/v1/types";
 
 const FREE_CREDITS = 500;
 
@@ -166,264 +167,42 @@ export async function supaBillTeam(team_id: string, credits: number) {
   });
 }
 
-export async function checkTeamCredits(team_id: string, credits: number) {
-  return withAuth(supaCheckTeamCredits)(team_id, credits);
+export async function checkTeamCredits(chunk: AuthCreditUsageChunk, team_id: string, credits: number) {
+  return withAuth(supaCheckTeamCredits)(chunk, team_id, credits);
 }
 
 // if team has enough credits for the operation, return true, else return false
-export async function supaCheckTeamCredits(team_id: string, credits: number) {
+export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk, team_id: string, credits: number) {
+  // WARNING: chunk will be null if team_id is preview -- do not perform operations on it under ANY circumstances - mogery
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used", remainingCredits: Infinity };
   }
 
-
-  let cacheKeySubscription = `subscription_${team_id}`;
-  let cacheKeyCoupons = `coupons_${team_id}`;
-
-  // Try to get data from cache first
-  const [cachedSubscription, cachedCoupons] = await Promise.all([
-    getValue(cacheKeySubscription),
-    getValue(cacheKeyCoupons)
-  ]);
-
-  let subscription, subscriptionError;
-  let coupons : {credits: number}[];
-
-  if (cachedSubscription && cachedCoupons) {
-    subscription = JSON.parse(cachedSubscription);
-    coupons = JSON.parse(cachedCoupons);
-  } else {
-    // If not in cache, retrieve from database
-    const [subscriptionResult, couponsResult] = await Promise.all([
-      supabase_service
-        .from("subscriptions")
-        .select("id, price_id, current_period_start, current_period_end")
-        .eq("team_id", team_id)
-        .eq("status", "active")
-        .single(),
-      supabase_service
-        .from("coupons")
-        .select("credits")
-        .eq("team_id", team_id)
-        .eq("status", "active"),
-    ]);
-
-    subscription = subscriptionResult.data;
-    subscriptionError = subscriptionResult.error;
-    coupons = couponsResult.data;
-
-    // Cache the results for a minute, sub can be null and that's fine
-    await setValue(cacheKeySubscription, JSON.stringify(subscription), 60); // Cache for 1 minute, even if null
-    await setValue(cacheKeyCoupons, JSON.stringify(coupons), 60); // Cache for 1 minute
-  
-  }
-
-  let couponCredits = 0;
-  if (coupons && coupons.length > 0) {
-    couponCredits = coupons.reduce(
-      (total, coupon) => total + coupon.credits,
-      0
-    );
-  }
-
-
-  // If there are available coupons and they are enough for the operation
-  if (couponCredits >= credits) {
-    return { success: true, message: "Sufficient credits available", remainingCredits: couponCredits };
-  }
-  
-
-  // Free credits, no coupons
-  if (!subscription || subscriptionError) {
-
-    let creditUsages;
-    let creditUsageError;
-    let totalCreditsUsed = 0;
-    const cacheKeyCreditUsage = `credit_usage_${team_id}`;
-
-    // Try to get credit usage from cache
-    const cachedCreditUsage = await getValue(cacheKeyCreditUsage);
-
-    if (cachedCreditUsage) {
-      totalCreditsUsed = parseInt(cachedCreditUsage);
-    } else {
-      let retries = 0;
-      const maxRetries = 3;
-      const retryInterval = 2000; // 2 seconds
-
-      while (retries < maxRetries) {
-        // Reminder, this has an 1000 limit.
-        const result = await supabase_service
-          .from("credit_usage")
-          .select("credits_used")
-          .is("subscription_id", null)
-          .eq("team_id", team_id);
-
-        creditUsages = result.data;
-        creditUsageError = result.error;
-
-        if (!creditUsageError) {
-          break;
-        }
-
-        retries++;
-        if (retries < maxRetries) {
-          await new Promise(resolve => setTimeout(resolve, retryInterval));
-        }
-      }
-
-      if (creditUsageError) {
-        Logger.error(`Credit usage error after ${maxRetries} attempts: ${creditUsageError}`);
-        throw new Error(
-          `Failed to retrieve credit usage for team_id: ${team_id}`
-        );
-      }
-
-      totalCreditsUsed = creditUsages.reduce(
-        (acc, usage) => acc + usage.credits_used,
-        0
-      );
-
-      // Cache the result for 30 seconds
-      await setValue(cacheKeyCreditUsage, totalCreditsUsed.toString(), 30);
-    }
-
-    Logger.info(`totalCreditsUsed: ${totalCreditsUsed}`);
-
-    const end = new Date();
-    end.setDate(end.getDate() + 30);
-    // check if usage is within 80% of the limit
-    const creditLimit = FREE_CREDITS;
-    const creditUsagePercentage = totalCreditsUsed / creditLimit;
-
-    // Add a check to ensure totalCreditsUsed is greater than 0
-    if (totalCreditsUsed > 0 && creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
-      Logger.info(`Sending notification for team ${team_id}. Total credits used: ${totalCreditsUsed}, Credit usage percentage: ${creditUsagePercentage}`);
-      await sendNotification(
-        team_id,
-        NotificationType.APPROACHING_LIMIT,
-        new Date().toISOString(),
-        end.toISOString()
-      );
-    }
-
-    // 5. Compare the total credits used with the credits allowed by the plan.
-    if (totalCreditsUsed >= FREE_CREDITS) {
-      // Send email notification for insufficient credits
-      await sendNotification(
-        team_id,
-        NotificationType.LIMIT_REACHED,
-        new Date().toISOString(),
-        end.toISOString()
-      );
-      return {
-        success: false,
-        message: "Insufficient credits, please upgrade!",
-        remainingCredits: FREE_CREDITS - totalCreditsUsed
-      };
-    }
-    return { success: true, message: "Sufficient credits available", remainingCredits: FREE_CREDITS - totalCreditsUsed };
-  }
-
-  let totalCreditsUsed = 0;
-  const cacheKey = `credit_usage_${subscription.id}_${subscription.current_period_start}_${subscription.current_period_end}_lc`;
-  const redLockKey = `lock_${cacheKey}`;
-  const lockTTL = 10000; // 10 seconds
-
-  try {
-    const lock = await redlock.acquire([redLockKey], lockTTL);
-
-    try {
-      const cachedCreditUsage = await getValue(cacheKey);
-
-      if (cachedCreditUsage) {
-        totalCreditsUsed = parseInt(cachedCreditUsage);
-      } else {
-        const { data: creditUsages, error: creditUsageError } =
-          await supabase_service.rpc("get_credit_usage_2", {
-            sub_id: subscription.id,
-            start_time: subscription.current_period_start,
-            end_time: subscription.current_period_end,
-          });
-
-        if (creditUsageError) {
-          Logger.error(`Error calculating credit usage: ${creditUsageError}`);
-        }
-
-        if (creditUsages && creditUsages.length > 0) {
-          totalCreditsUsed = creditUsages[0].total_credits_used;
-          await setValue(cacheKey, totalCreditsUsed.toString(), 500); // Cache for 8 minutes
-          // Logger.info(`Cache set for credit usage: ${totalCreditsUsed}`);
-        }
-      }
-    } finally {
-      await lock.release();
-    }
-  } catch (error) {
-    Logger.error(`Error acquiring lock or calculating credit usage: ${error}`);
-  }
-
-  // Adjust total credits used by subtracting coupon value
-  const adjustedCreditsUsed = Math.max(0, totalCreditsUsed - couponCredits);
-
-  // Get the price details from cache or database
-  const priceCacheKey = `price_${subscription.price_id}`;
-  let price : {credits: number};
-
-  try {
-    const cachedPrice = await getValue(priceCacheKey);
-    if (cachedPrice) {
-      price = JSON.parse(cachedPrice);
-    } else {
-      const { data, error: priceError } = await supabase_service
-        .from("prices")
-        .select("credits")
-        .eq("id", subscription.price_id)
-        .single();
-
-      if (priceError) {
-        throw new Error(
-          `Failed to retrieve price for price_id: ${subscription.price_id}`
-        );
-      }
-
-      price = data;
-      // There are only 21 records, so this is super fine
-      // Cache the price for a long time (e.g., 1 day)
-      await setValue(priceCacheKey, JSON.stringify(price), 86400);
-    }
-  } catch (error) {
-    Logger.error(`Error retrieving or caching price: ${error}`);
-    Sentry.captureException(error);
-    // If errors, just assume it's a big number so user don't get an error
-    price = { credits: 10000000 };
-  }
-
-  const creditLimit = price.credits;
+  const creditsWillBeUsed = chunk.adjusted_credits_used + credits;
 
   // Removal of + credits
-  const creditUsagePercentage = adjustedCreditsUsed / creditLimit;
+  const creditUsagePercentage = creditsWillBeUsed / chunk.price_credits;
 
   // Compare the adjusted total credits used with the credits allowed by the plan
-  if (adjustedCreditsUsed >= price.credits) {
-    await sendNotification(
+  if (creditsWillBeUsed >= chunk.price_credits) {
+    sendNotification(
       team_id,
       NotificationType.LIMIT_REACHED,
-      subscription.current_period_start,
-      subscription.current_period_end
+      chunk.sub_current_period_start,
+      chunk.sub_current_period_end
     );
-    return { success: false, message: "Insufficient credits, please upgrade!", remainingCredits: creditLimit - adjustedCreditsUsed };
+    return { success: false, message: "Insufficient credits, please upgrade!", remainingCredits: chunk.price_credits - chunk.adjusted_credits_used, chunk };
   } else if (creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
     // Send email notification for approaching credit limit
-    await sendNotification(
+    sendNotification(
       team_id,
       NotificationType.APPROACHING_LIMIT,
-      subscription.current_period_start,
-      subscription.current_period_end
+      chunk.sub_current_period_start,
+      chunk.sub_current_period_end
     );
   }
 
-  return { success: true, message: "Sufficient credits available", remainingCredits: creditLimit - adjustedCreditsUsed };
+  return { success: true, message: "Sufficient credits available", remainingCredits: chunk.price_credits - chunk.adjusted_credits_used, chunk };
 }
 
 // Count the total credits used by a team within the current billing period and return the remaining credits.

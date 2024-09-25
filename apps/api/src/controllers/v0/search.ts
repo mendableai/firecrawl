@@ -131,7 +131,7 @@ export async function searchHelper(
 export async function searchController(req: Request, res: Response) {
   try {
     // make sure to authenticate user first, Bearer <token>
-    const { success, team_id, error, status, plan } = await authenticateUser(
+    const { success, team_id, error, status, plan, chunk } = await authenticateUser(
       req,
       res,
       RateLimiterMode.Search
@@ -155,7 +155,7 @@ export async function searchController(req: Request, res: Response) {
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
-        await checkTeamCredits(team_id, 1);
+        await checkTeamCredits(chunk, team_id, 1);
       if (!creditsCheckSuccess) {
         return res.status(402).json({ error: "Insufficient credits" });
       }

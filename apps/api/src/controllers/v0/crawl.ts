@@ -18,7 +18,7 @@ import { getJobPriority } from "../../lib/job-priority";
 
 export async function crawlController(req: Request, res: Response) {
   try {
-    const { success, team_id, error, status, plan } = await authenticateUser(
+    const { success, team_id, error, status, plan, chunk } = await authenticateUser(
       req,
       res,
       RateLimiterMode.Crawl
@@ -68,7 +68,7 @@ export async function crawlController(req: Request, res: Response) {
 
     const limitCheck = req.body?.crawlerOptions?.limit ?? 1;
     const { success: creditsCheckSuccess, message: creditsCheckMessage, remainingCredits } =
-      await checkTeamCredits(team_id, limitCheck);
+      await checkTeamCredits(chunk, team_id, limitCheck);
 
     if (!creditsCheckSuccess) {
       return res.status(402).json({ error: "Insufficient credits. You may be requesting with a higher limit than the amount of credits you have left. If not, upgrade your plan at https://firecrawl.dev/pricing or contact us at hello@firecrawl.com" });

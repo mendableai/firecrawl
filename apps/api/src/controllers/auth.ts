@@ -17,6 +17,7 @@ import { getValue } from "../services/redis";
 import { setValue } from "../services/redis";
 import { validate } from "uuid";
 import * as Sentry from "@sentry/node";
+import { AuthCreditUsageChunk } from "./v1/types";
 // const { data, error } = await supabase_service
 //     .from('api_keys')
 //     .select(`
@@ -35,6 +36,58 @@ function normalizedApiIsUuid(potentialUuid: string): boolean {
   // Check if the string is a valid UUID
   return validate(potentialUuid);
 }
+
+async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk) {
+  const cacheKeyACUC = `acuc_${api_key}`;
+  const redLockKey = `lock_${cacheKeyACUC}`;
+  const lockTTL = 10000; // 10 seconds
+
+  try {
+    const lock = await redlock.acquire([redLockKey], lockTTL);
+
+    try {
+      // Cache for 10 minutes. This means that changing subscription tier could have
+      // a maximum of 10 minutes of a delay. - mogery
+      await setValue(cacheKeyACUC, JSON.stringify(acuc), 600);
+    } finally {
+      await lock.release();
+    }
+  } catch (error) {
+    Logger.error(`Error updating cached ACUC: ${error}`);
+    Sentry.captureException(error);
+  }
+}
+
+async function getACUC(api_key: string): Promise<AuthCreditUsageChunk | null> {
+  const cacheKeyACUC = `acuc_${api_key}`;
+
+  const cachedACUC = await getValue(cacheKeyACUC);
+
+  if (cachedACUC !== null) {
+    return JSON.parse(cacheKeyACUC);
+  } else {
+    const { data, error } =
+      await supabase_service.rpc("auth_credit_usage_chunk", { input_key: api_key });
+    
+    if (error) {
+      throw new Error("Failed to retrieve authentication and credit usage data: " + JSON.stringify(error));
+    }
+
+    const chunk: AuthCreditUsageChunk | null = data.length === 0
+      ? null
+      : data[0].team_id === null
+      ? null
+      : data[0];
+
+    // NOTE: Should we cache null chunks? - mogery
+    if (chunk !== null) {
+      setCachedACUC(api_key, chunk);
+    }
+
+    return chunk;
+  }
+}
+
 export async function authenticateUser(
   req,
   res,
@@ -42,6 +95,7 @@ export async function authenticateUser(
 ): Promise<AuthResponse> {
   return withAuth(supaAuthenticateUser)(req, res, mode);
 }
+
 function setTrace(team_id: string, api_key: string) {
   try {
     setTraceAttributes({
@@ -54,45 +108,6 @@ function setTrace(team_id: string, api_key: string) {
   }
 }
 
-async function getKeyAndPriceId(normalizedApi: string): Promise<{
-  success: boolean;
-  teamId?: string;
-  priceId?: string;
-  error?: string;
-  status?: number;
-}> {
-  const { data, error } = await supabase_service.rpc("get_key_and_price_id_2", {
-    api_key: normalizedApi,
-  });
-  if (error) {
-    Sentry.captureException(error);
-    Logger.error(`RPC ERROR (get_key_and_price_id_2): ${error.message}`);
-    return {
-      success: false,
-      error:
-        "The server seems overloaded. Please contact hello@firecrawl.com if you aren't sending too many requests at once.",
-      status: 500,
-    };
-  }
-  if (!data || data.length === 0) {
-    if (error) {
-      Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
-      Sentry.captureException(error);
-    }
-    // TODO: change this error code ?
-    return {
-      success: false,
-      error: "Unauthorized: Invalid token",
-      status: 401,
-    };
-  } else {
-    return {
-      success: true,
-      teamId: data[0].team_id,
-      priceId: data[0].price_id,
-    };
-  }
-}
 export async function supaAuthenticateUser(
   req,
   res,
@@ -103,8 +118,8 @@ export async function supaAuthenticateUser(
   error?: string;
   status?: number;
   plan?: PlanType;
+  chunk?: AuthCreditUsageChunk;
 }> {
-
   const authHeader = req.headers.authorization ?? (req.headers["sec-websocket-protocol"] ? `Bearer ${req.headers["sec-websocket-protocol"]}` : null);
   if (!authHeader) {
     return { success: false, error: "Unauthorized", status: 401 };
@@ -126,11 +141,9 @@ export async function supaAuthenticateUser(
   let subscriptionData: { team_id: string; plan: string } | null = null;
   let normalizedApi: string;
 
-  let cacheKey = "";
-  let redLockKey = "";
-  const lockTTL = 15000; // 10 seconds
   let teamId: string | null = null;
   let priceId: string | null = null;
+  let chunk: AuthCreditUsageChunk;
 
   if (token == "this_is_just_a_preview_token") {
     if (mode == RateLimiterMode.CrawlStatus) {
@@ -149,85 +162,25 @@ export async function supaAuthenticateUser(
       };
     }
 
-    cacheKey = `api_key:${normalizedApi}`;
+    chunk = await getACUC(normalizedApi);
 
-    try {
-      const teamIdPriceId = await getValue(cacheKey);
-      if (teamIdPriceId) {
-        const { team_id, price_id } = JSON.parse(teamIdPriceId);
-        teamId = team_id;
-        priceId = price_id;
-      } else {
-        const {
-          success,
-          teamId: tId,
-          priceId: pId,
-          error,
-          status,
-        } = await getKeyAndPriceId(normalizedApi);
-        if (!success) {
-          return { success, error, status };
-        }
-        teamId = tId;
-        priceId = pId;
-        await setValue(
-          cacheKey,
-          JSON.stringify({ team_id: teamId, price_id: priceId }),
-          60
-        );
-      }
-    } catch (error) {
-      Sentry.captureException(error);
-      Logger.error(`Error with auth function: ${error}`);
-      // const {
-      //   success,
-      //   teamId: tId,
-      //   priceId: pId,
-      //   error: e,
-      //   status,
-      // } = await getKeyAndPriceId(normalizedApi);
-      // if (!success) {
-      //   return { success, error: e, status };
-      // }
-      // teamId = tId;
-      // priceId = pId;
-      // const {
-      //   success,
-      //   teamId: tId,
-      //   priceId: pId,
-      //   error: e,
-      //   status,
-      // } = await getKeyAndPriceId(normalizedApi);
-      // if (!success) {
-      //   return { success, error: e, status };
-      // }
-      // teamId = tId;
-      // priceId = pId;
+    if (chunk === null) {
+      return {
+        success: false,
+        error: "Unauthorized: Invalid token",
+        status: 401,
+      };
     }
 
-    // get_key_and_price_id_2 rpc definition:
-    // create or replace function get_key_and_price_id_2(api_key uuid)
-    //   returns table(key uuid, team_id uuid, price_id text) as $$
-    //   begin
-    //     if api_key is null then
-    //       return query
-    //       select null::uuid as key, null::uuid as team_id, null::text as price_id;
-    //     end if;
-
-    //     return query
-    //     select ak.key, ak.team_id, s.price_id
-    //     from api_keys ak
-    //     left join subscriptions s on ak.team_id = s.team_id
-    //     where ak.key = api_key;
-    //   end;
-    //   $$ language plpgsql;
+    teamId = chunk.team_id;
+    priceId = chunk.price_id;
 
     const plan = getPlanByPriceId(priceId);
     // HyperDX Logging
     setTrace(teamId, normalizedApi);
     subscriptionData = {
       team_id: teamId,
-      plan: plan,
+      plan,
     };
     switch (mode) {
       case RateLimiterMode.Crawl:
@@ -291,14 +244,6 @@ export async function supaAuthenticateUser(
     endDate.setDate(endDate.getDate() + 7);
 
     // await sendNotification(team_id, NotificationType.RATE_LIMIT_REACHED, startDate.toISOString(), endDate.toISOString());
-    // Cache longer for 429s
-    if (teamId && priceId && mode !== RateLimiterMode.Preview) {
-      await setValue(
-        cacheKey,
-        JSON.stringify({ team_id: teamId, price_id: priceId }),
-        60 // 10 seconds, cache for everything
-      );
-    }
 
     return {
       success: false,
@@ -329,34 +274,11 @@ export async function supaAuthenticateUser(
     // return { success: false, error: "Unauthorized: Invalid token", status: 401 };
   }
 
-  // make sure api key is valid, based on the api_keys table in supabase
-  if (!subscriptionData) {
-    normalizedApi = parseApi(token);
-
-    const { data, error } = await supabase_service
-      .from("api_keys")
-      .select("*")
-      .eq("key", normalizedApi);
-
-    if (error || !data || data.length === 0) {
-      if (error) {
-        Sentry.captureException(error);
-        Logger.warn(`Error fetching api key: ${error.message} or data is empty`);
-      }
-      return {
-        success: false,
-        error: "Unauthorized: Invalid token",
-        status: 401,
-      };
-    }
-
-    subscriptionData = data[0];
-  }
-
   return {
     success: true,
     team_id: subscriptionData.team_id,
     plan: (subscriptionData.plan ?? "") as PlanType,
+    chunk,
   };
 }
 function getPlanByPriceId(price_id: string): PlanType {
