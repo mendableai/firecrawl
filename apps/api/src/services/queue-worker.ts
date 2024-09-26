@@ -132,18 +132,25 @@ const workerFun = async (
       const concurrencyLimiterKey = "concurrency-limiter:" + job.data?.team_id;
 
       if (job.data && job.data.team_id) {
+        const concurrencyLimiterThrottledKey = "concurrency-limiter:" + job.data.team_id + ":throttled";
         const concurrencyLimit = 10; // TODO: determine based on price id
         const now = Date.now();
         const stalledJobTimeoutMs = 2 * 60 * 1000;
+        const throttledJobTimeoutMs = 10 * 60 * 1000;
 
+        redisConnection.zremrangebyscore(concurrencyLimiterThrottledKey, -Infinity, now);
         redisConnection.zremrangebyscore(concurrencyLimiterKey, -Infinity, now);
         const activeJobsOfTeam = await redisConnection.zrangebyscore(concurrencyLimiterKey, now, Infinity);
         if (activeJobsOfTeam.length >= concurrencyLimit) {
           Logger.info("Moving job " + job.id + " back the queue -- concurrency limit hit");
           // Concurrency limit hit
+          await redisConnection.zadd(concurrencyLimiterThrottledKey, now + throttledJobTimeoutMs, job.id);
           await job.moveToFailed(new Error("Concurrency limit hit"), token, false);
           await job.remove();
-          await queue.add(job.name, job.data, {
+          await queue.add(job.name, {
+            ...job.data,
+            concurrencyLimitHit: true,
+          }, {
             ...job.opts,
             jobId: job.id,
             priority: Math.round((job.opts.priority ?? 10) * 1.25), // exponential backoff for stuck jobs
@@ -153,6 +160,7 @@ const workerFun = async (
           continue;
         } else {
           await redisConnection.zadd(concurrencyLimiterKey, now + stalledJobTimeoutMs, job.id);
+          await redisConnection.zrem(concurrencyLimiterThrottledKey, job.id);
         }
       }
 
@@ -294,7 +302,10 @@ async function processJob(job: Job, token: string) {
       },
       project_id: job.data.project_id,
       error: message /* etc... */,
-      docs,
+      docs: job.data.concurrencyLimitHit ? docs.map(x => ({
+        ...x,
+        warning: "This scrape was throttled because you hit you concurrency limit." + (x.warning ? " " + x.warning : ""),
+      })) : docs,
     };
 
     // No idea what this does and when it is called.

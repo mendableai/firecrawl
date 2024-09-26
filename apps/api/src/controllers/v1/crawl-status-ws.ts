@@ -5,7 +5,7 @@ import { CrawlStatusParams, CrawlStatusResponse, Document, ErrorResponse, legacy
 import { WebSocket } from "ws";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../lib/logger";
-import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength, isCrawlFinished, isCrawlFinishedLocked } from "../../lib/crawl-redis";
+import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength, getThrottledJobs, isCrawlFinished, isCrawlFinishedLocked } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
 import { getJob, getJobs } from "./crawl-status";
 import * as Sentry from "@sentry/node";
@@ -95,8 +95,10 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
   doneJobIDs = await getDoneJobsOrdered(req.params.jobId);
 
   const jobIDs = await getCrawlJobs(req.params.jobId);
-  const jobStatuses = await Promise.all(jobIDs.map(x => getScrapeQueue().getJobState(x)));
-  const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] = sc.cancelled ? "cancelled" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "scraping";
+  let jobStatuses = await Promise.all(jobIDs.map(async x => [x, await getScrapeQueue().getJobState(x)] as const));
+  const throttledJobs = new Set(...await getThrottledJobs(req.auth.team_id));
+  jobStatuses = jobStatuses.filter(x => !throttledJobs.has(x[0])); // throttled jobs can have a failed status, but they are not actually failed
+  const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] = sc.cancelled ? "cancelled" : jobStatuses.every(x => x[1] === "completed") ? "completed" : jobStatuses.some(x => x[1] === "failed") ? "failed" : "scraping";
   const doneJobs = await getJobs(doneJobIDs);
   const data = doneJobs.map(x => x.returnvalue);
 

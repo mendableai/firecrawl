@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { CrawlStatusParams, CrawlStatusResponse, ErrorResponse, legacyDocumentConverter, RequestWithAuth } from "./types";
-import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength } from "../../lib/crawl-redis";
+import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength, getThrottledJobs } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
 import { supabaseGetJobById, supabaseGetJobsById } from "../../lib/supabase-jobs";
 import { configDotenv } from "dotenv";
@@ -58,8 +58,10 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
   const end = typeof req.query.limit === "string" ? (start + parseInt(req.query.limit, 10) - 1) : undefined;
 
   const jobIDs = await getCrawlJobs(req.params.jobId);
-  const jobStatuses = await Promise.all(jobIDs.map(x => getScrapeQueue().getJobState(x)));
-  const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] = sc.cancelled ? "cancelled" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "scraping";
+  let jobStatuses = await Promise.all(jobIDs.map(async x => [x, await getScrapeQueue().getJobState(x)] as const));
+  const throttledJobs = new Set(...await getThrottledJobs(req.auth.team_id));
+  jobStatuses = jobStatuses.filter(x => !throttledJobs.has(x[0])); // throttled jobs can have a failed status, but they are not actually failed
+  const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] = sc.cancelled ? "cancelled" : jobStatuses.every(x => x[1] === "completed") ? "completed" : jobStatuses.some(x => x[1] === "failed") ? "failed" : "scraping";
   const doneJobsLength = await getDoneJobsOrderedLength(req.params.jobId);
   const doneJobsOrder = await getDoneJobsOrdered(req.params.jobId, start, end ?? -1);
 
