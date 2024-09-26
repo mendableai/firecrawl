@@ -410,12 +410,11 @@ export async function scrapSingleUrl(
       if (attempt.pageStatusCode) {
         pageStatusCode = attempt.pageStatusCode;
       }
+      // force pageError if it's the last scraper and it failed too
       if (attempt.pageError && (attempt.pageStatusCode >= 400 || scrapersInOrder.indexOf(scraper) === scrapersInOrder.length - 1)) { // force pageError if it's the last scraper and it failed too
         pageError = attempt.pageError;
-        
-        if (attempt.pageStatusCode < 400 || !attempt.pageStatusCode) {
-          pageStatusCode = 500;
-        }
+        pageStatusCode = attempt.pageStatusCode ?? 500;
+
       } else if (attempt && attempt.pageStatusCode && attempt.pageStatusCode < 400) {
         pageError = undefined;
       }
@@ -424,8 +423,8 @@ export async function scrapSingleUrl(
         Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100 or screenshot, breaking`);
         break;
       }
-      if (pageStatusCode && (pageStatusCode == 404 || pageStatusCode == 500)) {
-        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code 404, breaking`);
+      if (pageStatusCode && (pageStatusCode === 404)) {
+        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code ${pageStatusCode}, breaking`);
         break;
       }
       // const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;

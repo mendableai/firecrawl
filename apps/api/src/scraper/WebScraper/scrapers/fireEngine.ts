@@ -95,62 +95,77 @@ export async function scrapWithFireEngine({
     });
 
     const startTime = Date.now();
-    const _response = await Sentry.startSpan({
-      name: "Call to fire-engine"
-    }, async span => {
-      
-      return await axiosInstance.post(
-        process.env.FIRE_ENGINE_BETA_URL + endpoint,
-        {
-          url: url,
-          headers: headers,
-          wait: waitParam,
-          screenshot: screenshotParam,
-          fullPageScreenshot: fullPageScreenshotParam,
-          disableJsDom: pageOptions?.disableJsDom ?? false,
-          priority,
-          engine,
-          instantReturn: true,
-          ...fireEngineOptionsParam,
-          atsv: pageOptions?.atsv ?? false,
-          scrollXPaths: pageOptions?.scrollXPaths ?? [],
-          actions: actions,
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            ...(Sentry.isInitialized() ? ({
-                "sentry-trace": Sentry.spanToTraceHeader(span),
-                "baggage": Sentry.spanToBaggageHeader(span),
-            }) : {}),
+    const maxRetries = 3;
+    let retryCount = 0;
+    let _response;
+    let checkStatusResponse;
+
+    while (retryCount <= maxRetries) {
+      _response = await Sentry.startSpan({
+        name: "Call to fire-engine"
+      }, async span => {
+        return await axiosInstance.post(
+          process.env.FIRE_ENGINE_BETA_URL + endpoint,
+          {
+            url: url,
+            headers: headers,
+            wait: waitParam,
+            screenshot: screenshotParam,
+            fullPageScreenshot: fullPageScreenshotParam,
+            disableJsDom: pageOptions?.disableJsDom ?? false,
+            priority,
+            engine,
+            instantReturn: true,
+            ...fireEngineOptionsParam,
+            atsv: pageOptions?.atsv ?? false,
+            scrollXPaths: pageOptions?.scrollXPaths ?? [],
+            actions: actions,
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              ...(Sentry.isInitialized() ? ({
+                  "sentry-trace": Sentry.spanToTraceHeader(span),
+                  "baggage": Sentry.spanToBaggageHeader(span),
+              }) : {}),
+            }
           }
-        }
-      );
-    });
-
-    const waitTotal = (actions ?? []).filter(x => x.type === "wait").reduce((a, x) => (x as { type: "wait"; milliseconds: number; }).milliseconds + a, 0);
-
-    let checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
-
-    // added 5 seconds to the timeout to account for 'smart wait'
-    while (checkStatusResponse.data.processing && Date.now() - startTime < universalTimeout + waitTotal + 5000) {
-      await new Promise(resolve => setTimeout(resolve, 250)); // wait 0.25 seconds
-      checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
-    }
-
-    if (checkStatusResponse.data.processing) {
-      Logger.debug(`⛏️ Fire-Engine (${engine}): deleting request - jobId: ${_response.data.jobId}`);
-      axiosInstance.delete(
-        process.env.FIRE_ENGINE_BETA_URL + `/scrape/${_response.data.jobId}`, {
-          validateStatus: (status) => true
-        }
-      ).catch((error) => {
-        Logger.debug(`⛏️ Fire-Engine (${engine}): Failed to delete request - jobId: ${_response.data.jobId} | error: ${error}`);        
+        );
       });
-      
-      Logger.debug(`⛏️ Fire-Engine (${engine}): Request timed out for ${url}`);
-      logParams.error_message = "Request timed out";
-      return { html: "", pageStatusCode: null, pageError: "" };
+
+      const waitTotal = (actions ?? []).filter(x => x.type === "wait").reduce((a, x) => (x as { type: "wait"; milliseconds: number; }).milliseconds + a, 0);
+
+      checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
+
+      // added 5 seconds to the timeout to account for 'smart wait'
+      while (checkStatusResponse.data.processing && Date.now() - startTime < universalTimeout + waitTotal + 5000) {
+        await new Promise(resolve => setTimeout(resolve, 250)); // wait 0.25 seconds
+        checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
+      }
+
+      if (checkStatusResponse.data.processing) {
+        Logger.debug(`⛏️ Fire-Engine (${engine}): deleting request - jobId: ${_response.data.jobId}`);
+        axiosInstance.delete(
+          process.env.FIRE_ENGINE_BETA_URL + `/scrape/${_response.data.jobId}`, {
+            validateStatus: (status) => true
+          }
+        ).catch((error) => {
+          Logger.debug(`⛏️ Fire-Engine (${engine}): Failed to delete request - jobId: ${_response.data.jobId} | error: ${error}`);        
+        });
+        
+        Logger.debug(`⛏️ Fire-Engine (${engine}): Request timed out for ${url}`);
+        logParams.error_message = "Request timed out";
+        return { html: "", pageStatusCode: null, pageError: "" };
+      }
+
+      if (!checkStatusResponse.data.processing && (checkStatusResponse.status === 200 && (checkStatusResponse.data.pageStatusCode >= 200 && checkStatusResponse.data.pageStatusCode < 300 || checkStatusResponse.data.pageStatusCode === 404))) {
+        break;
+      }
+
+      retryCount++;
+      if (retryCount <= maxRetries) {
+        Logger.debug(`⛏️ Fire-Engine (${engine}): Retrying request for ${url}. Attempt ${retryCount} of ${maxRetries}`);
+      }
     }
 
     if (checkStatusResponse.status !== 200 || checkStatusResponse.data.error) {
