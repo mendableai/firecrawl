@@ -108,7 +108,7 @@ export async function scrapeController(
     creditsToBeBilled = 5;
   }
 
-  billTeam(req.auth.team_id, req.acuc.sub_id, creditsToBeBilled).catch(error => {
+  billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(error => {
     Logger.error(`Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`);
     // Optionally, you could notify an admin or add to a retry queue here
   });

@@ -170,7 +170,7 @@ export async function searchController(req: Request, res: Response) {
       jobId,
       req,
       team_id,
-      chunk.sub_id,
+      chunk?.sub_id,
       crawlerOptions,
       pageOptions,
       searchOptions,
