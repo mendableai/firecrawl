@@ -35,7 +35,7 @@ function checkCreditsMiddleware(minimum?: number): (req: RequestWithAuth, res: R
             if (!success) {
                 Logger.error(`Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`);
                 if (!res.headersSent) {
-                    return res.status(402).json({ success: false, error: "Insufficient credits" });
+                    return res.status(402).json({ success: false, error: "Insufficient credits. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing." });
                 }
             }
             req.account = { remainingCredits };
