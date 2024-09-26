@@ -216,6 +216,7 @@ export type Document = {
   actions?: {
     screenshots: string[];
   };
+  warning?: string;
   metadata: {
     title?: string;
     description?: string;
@@ -443,6 +444,7 @@ export function legacyDocumentConverter(doc: any): Document {
     extract: doc.llm_extraction,
     screenshot: doc.screenshot ?? doc.fullPageScreenshot,
     actions: doc.actions ?? undefined,
+    warning: doc.warning,
     metadata: {
       ...doc.metadata,
       pageError: undefined,
