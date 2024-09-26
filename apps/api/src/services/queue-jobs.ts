@@ -64,7 +64,7 @@ export function waitForJob(jobId: string, timeout: number) {
         } else if (state === "failed") {
           // console.log("failed", (await getScrapeQueue().getJob(jobId)).failedReason);
           const job = await getScrapeQueue().getJob(jobId);
-          if (job.failedReason !== "Concurrency limit hit") {
+          if (job && job.failedReason !== "Concurrency limit hit") {
             clearInterval(int);
             reject(job.failedReason);
           }
