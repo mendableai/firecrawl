@@ -132,7 +132,7 @@ const workerFun = async (
       const concurrencyLimiterKey = "concurrency-limiter:" + job.data?.team_id;
 
       if (job.data && job.data.team_id) {
-        const concurrencyLimit = 100; // TODO: determine based on price id
+        const concurrencyLimit = 10; // TODO: determine based on price id
         const now = Date.now();
         const stalledJobTimeoutMs = 2 * 60 * 1000;
 
@@ -142,11 +142,15 @@ const workerFun = async (
           Logger.info("Moving job " + job.id + " back the queue -- concurrency limit hit");
           // Concurrency limit hit
           await job.moveToFailed(new Error("Concurrency limit hit"), token, false);
+          await job.remove();
           await queue.add(job.name, job.data, {
             ...job.opts,
             jobId: job.id,
             priority: Math.round((job.opts.priority ?? 10) * 1.25), // exponential backoff for stuck jobs
-          })
+          });
+
+          await sleep(gotJobInterval);
+          continue;
         } else {
           await redisConnection.zadd(concurrencyLimiterKey, now + stalledJobTimeoutMs, job.id);
         }
