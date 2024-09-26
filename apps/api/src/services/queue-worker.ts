@@ -214,7 +214,9 @@ const workerFun = async (
           () => {
             processJobInternal(token, job)
               .finally(() => {
-
+                if (job.id && job.data && job.data.team_id) {
+                  redisConnection.zrem(concurrencyLimiterKey, job.id);
+                }
               });
           }
         );
