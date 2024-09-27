@@ -19,7 +19,7 @@ export class Logger {
   };
 
   static log (message: string, level: LogLevel) {
-    const logLevel: LogLevel = LogLevel[process.env.LOGGING_LEVEL as keyof typeof LogLevel] || LogLevel.INFO;
+    const logLevel: LogLevel = LogLevel[process.env.LOGGING_LEVEL as keyof typeof LogLevel] || LogLevel.TRACE;
     const levels = [LogLevel.NONE, LogLevel.ERROR, LogLevel.WARN, LogLevel.INFO, LogLevel.DEBUG, LogLevel.TRACE];
     const currentLevelIndex = levels.indexOf(logLevel);
     const messageLevelIndex = levels.indexOf(level);
