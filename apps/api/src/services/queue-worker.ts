@@ -34,9 +34,10 @@ import {
   deleteJobPriority,
   getJobPriority,
 } from "../../src/lib/job-priority";
-import { PlanType } from "../types";
+import { PlanType, RateLimiterMode } from "../types";
 import { getJobs } from "../../src/controllers/v1/crawl-status";
 import { configDotenv } from "dotenv";
+import { getRateLimiterPoints } from "./rate-limiter";
 configDotenv();
 
 if (process.env.ENV === "production") {
@@ -131,9 +132,9 @@ const workerFun = async (
     if (job) {
       const concurrencyLimiterKey = "concurrency-limiter:" + job.data?.team_id;
 
-      if (job.data && job.data.team_id) {
+      if (job.data && job.data.team_id && job.data.plan) {
         const concurrencyLimiterThrottledKey = "concurrency-limiter:" + job.data.team_id + ":throttled";
-        const concurrencyLimit = 10; // TODO: determine based on price id
+        const concurrencyLimit = getRateLimiterPoints(RateLimiterMode.Scrape, undefined, job.data.plan);
         const now = Date.now();
         const stalledJobTimeoutMs = 2 * 60 * 1000;
         const throttledJobTimeoutMs = 10 * 60 * 1000;
@@ -382,6 +383,7 @@ async function processJob(job: Job, token: string) {
                   mode: "single_urls",
                   crawlerOptions: sc.crawlerOptions,
                   team_id: sc.team_id,
+                  plan: job.data.plan,
                   pageOptions: sc.pageOptions,
                   origin: job.data.origin,
                   crawl_id: job.data.crawl_id,

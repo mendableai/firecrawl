@@ -60,6 +60,7 @@ export async function scrapeHelper(
       mode: "single_urls",
       crawlerOptions,
       team_id,
+      plan,
       pageOptions,
       extractorOptions,
       origin: req.body.origin ?? defaultOrigin,
