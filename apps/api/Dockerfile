@@ -39,4 +39,4 @@ COPY --from=go-base /app/src/lib/go-html-to-md/html-to-markdown.so /app/dist/src
 EXPOSE 8080
 ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
 
-ENTRYPOINT "/app/docker-entrypoint.sh"
+# ENTRYPOINT "/app/docker-entrypoint.sh"
