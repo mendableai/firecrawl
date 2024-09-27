@@ -84,8 +84,8 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
       }
     }
 
-    // if we ran over the bytes limit, remove the last document
-    if (bytes > bytesLimit) {
+    // if we ran over the bytes limit, remove the last document, except if it's the only document
+    if (bytes > bytesLimit && doneJobs.length !== 1) {
       doneJobs.splice(doneJobs.length - 1, 1);
     }
   } else {
