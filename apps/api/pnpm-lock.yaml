@@ -65,6 +65,9 @@ importers:
       axios:
         specifier: ^1.3.4
         version: 1.7.2
+      axios-retry:
+        specifier: ^4.5.0
+        version: 4.5.0(axios@1.7.2)
       bottleneck:
         specifier: ^2.19.5
         version: 2.19.5
@@ -1902,6 +1905,11 @@ packages:
 
   axios-retry@3.9.1:
     resolution: {integrity: sha512-8PJDLJv7qTTMMwdnbMvrLYuvB47M81wRtxQmEdV5w4rgbTXTt+vtPkXwajOfOdSyv/wZICJOC+/UhXH4aQ/R+w==}
+
+  axios-retry@4.5.0:
+    resolution: {integrity: sha512-aR99oXhpEDGo0UuAlYcn2iGRds30k366Zfa05XWScR9QaQD4JYiP3/1Qt1u7YlefUOK+cn0CcwoL1oefavQUlQ==}
+    peerDependencies:
+      axios: 0.x || 1.x
 
   axios@0.26.1:
     resolution: {integrity: sha512-fPwcX4EvnSHuInCMItEhAGnaSEXRBjtzh9fOtsE6E1G6p7vl7edEeZe11QHf18+6+9gR5PbKV/sGKNaD8YaMeA==}
@@ -4518,8 +4526,8 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  typescript@5.5.4:
-    resolution: {integrity: sha512-Mtq29sKDAEYP7aljRgtPOpTvOfbwRWlS6dPRzwjdE+C0R4brX/GUyhHSecbHMFLNBLcJIPt9nl9yG5TZ1weH+Q==}
+  typescript@5.6.2:
+    resolution: {integrity: sha512-NW8ByodCSNCwZeghjN3o+JX5OFH0Ojg6sadjEKY4huZ52TqbJTJnDo5+Tw98lSy63NZvi4n+ez5m2u5d4PkZyw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -6950,6 +6958,11 @@ snapshots:
       '@babel/runtime': 7.24.6
       is-retry-allowed: 2.2.0
 
+  axios-retry@4.5.0(axios@1.7.2):
+    dependencies:
+      axios: 1.7.2
+      is-retry-allowed: 2.2.0
+
   axios@0.26.1:
     dependencies:
       follow-redirects: 1.15.6
@@ -9195,7 +9208,7 @@ snapshots:
       csv-parse: 5.5.6
       gpt3-tokenizer: 1.1.5
       openai: 3.3.0
-      typescript: 5.5.4
+      typescript: 5.6.2
       uuid: 9.0.1
       zod: 3.23.8
     transitivePeerDependencies:
@@ -9793,7 +9806,7 @@ snapshots:
 
   typescript@5.4.5: {}
 
-  typescript@5.5.4: {}
+  typescript@5.6.2: {}
 
   typesense@1.8.2(@babel/runtime@7.24.6):
     dependencies:
