@@ -9,6 +9,7 @@ import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobs
 import { getScrapeQueue } from "../../services/queue-service";
 import { getJob, getJobs } from "./crawl-status";
 import * as Sentry from "@sentry/node";
+import { Job } from "bullmq";
 
 type ErrorMessage = {
   type: "error",
@@ -56,7 +57,7 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
     return close(ws, 3003, { type: "error", error: "Forbidden" });
   }
 
-  let doneJobIDs = [];
+  let doneJobIDs: string[] = [];
   let finished = false;
 
   const loop = async () => {
@@ -70,11 +71,10 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
 
     const notDoneJobIDs = jobIDs.filter(x => !doneJobIDs.includes(x));
     const jobStatuses = await Promise.all(notDoneJobIDs.map(async x => [x, await getScrapeQueue().getJobState(x)]));
-    const newlyDoneJobIDs = jobStatuses.filter(x => x[1] === "completed" || x[1] === "failed").map(x => x[0]);
+    const newlyDoneJobIDs: string[] = jobStatuses.filter(x => x[1] === "completed" || x[1] === "failed").map(x => x[0]);
+    const newlyDoneJobs: Job[] = (await Promise.all(newlyDoneJobIDs.map(x => getJob(x)))).filter(x => x !== undefined) as Job[]
 
-    for (const jobID of newlyDoneJobIDs) {
-      const job = await getJob(jobID);
-
+    for (const job of newlyDoneJobs) {
       if (job.returnvalue) {
         send(ws, {
           type: "document",
@@ -122,18 +122,20 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
 // Basically just middleware and error wrapping
 export async function crawlStatusWSController(ws: WebSocket, req: RequestWithAuth<CrawlStatusParams, undefined, undefined>) {
   try {
-    const { success, team_id, error, status, plan } = await authenticateUser(
+    const auth = await authenticateUser(
       req,
       null,
       RateLimiterMode.CrawlStatus,
     );
 
-    if (!success) {
+    if (!auth.success) {
       return close(ws, 3000, {
         type: "error",
-        error,
+        error: auth.error,
       });
     }
+
+    const { team_id, plan } = auth;
 
     req.auth = { team_id, plan };
 

@@ -80,7 +80,7 @@ export async function scrapeHelper(
     },
     async (span) => {
       try {
-        doc = (await waitForJob(job.id, timeout))[0];
+        doc = (await waitForJob<any[]>(job.id, timeout))[0]; // TODO: better types for this
       } catch (e) {
         if (e instanceof Error && e.message.startsWith("Job wait")) {
           span.setAttribute("timedOut", true);
@@ -157,14 +157,16 @@ export async function scrapeController(req: Request, res: Response) {
   try {
     let earlyReturn = false;
     // make sure to authenticate user first, Bearer <token>
-    const { success, team_id, error, status, plan, chunk } = await authenticateUser(
+    const auth = await authenticateUser(
       req,
       res,
       RateLimiterMode.Scrape
     );
-    if (!success) {
-      return res.status(status).json({ error });
+    if (!auth.success) {
+      return res.status(auth.status).json({ error: auth.error });
     }
+
+    const { team_id, plan, chunk } = auth;
 
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = { ...defaultPageOptions, ...req.body.pageOptions };

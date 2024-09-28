@@ -23,9 +23,9 @@ export async function scrapWithPlaywright(
     url,
     scraper: "playwright",
     success: false,
-    response_code: null,
-    time_taken_seconds: null,
-    error_message: null,
+    response_code: undefined as number | undefined,
+    time_taken_seconds: undefined as number | undefined,
+    error_message: undefined as string | undefined,
     html: "",
     startTime: Date.now(),
   };
@@ -36,7 +36,7 @@ export async function scrapWithPlaywright(
     const waitParam = reqParams["params"]?.wait ?? waitFor;
 
     const response = await axios.post(
-      process.env.PLAYWRIGHT_MICROSERVICE_URL,
+      process.env.PLAYWRIGHT_MICROSERVICE_URL!,
       {
         url: url,
         wait_after_load: waitParam,
@@ -67,7 +67,7 @@ export async function scrapWithPlaywright(
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
       logParams.success = true;
-      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF ?? true);
       logParams.response_code = pageStatusCode;
       logParams.error_message = pageError;
       return { content, pageStatusCode, pageError };
@@ -90,7 +90,7 @@ export async function scrapWithPlaywright(
         Logger.debug(
           `⛏️ Playwright: Error parsing JSON response for url: ${url} | Error: ${jsonError}`
         );
-        return { content: "", pageStatusCode: null, pageError: logParams.error_message };
+        return { content: "", pageStatusCode: undefined, pageError: logParams.error_message };
       }
     }
   } catch (error) {
@@ -101,7 +101,7 @@ export async function scrapWithPlaywright(
       logParams.error_message = error.message || error;
       Logger.debug(`⛏️ Playwright: Failed to fetch url: ${url} | Error: ${error}`);
     }
-    return { content: "", pageStatusCode: null, pageError: logParams.error_message };
+    return { content: "", pageStatusCode: undefined, pageError: logParams.error_message };
   } finally {
     const endTime = Date.now();
     logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;

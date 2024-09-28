@@ -34,7 +34,7 @@ export async function crawlController(
 
   await logCrawl(id, req.auth.team_id);
 
-  const { remainingCredits } = req.account;
+  const remainingCredits = req.account?.remainingCredits ?? 0;
 
   const crawlerOptions = legacyCrawlerOptions(req.body);
   const pageOptions = legacyScrapeOptions(req.body.scrapeOptions);

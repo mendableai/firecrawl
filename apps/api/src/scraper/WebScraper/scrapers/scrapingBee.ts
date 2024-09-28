@@ -23,14 +23,14 @@ export async function scrapWithScrapingBee(
       url,
       scraper: wait_browser === "networkidle2" ? "scrapingBeeLoad" : "scrapingBee",
       success: false,
-      response_code: null,
-      time_taken_seconds: null,
-      error_message: null,
+      response_code: undefined as number | undefined,
+      time_taken_seconds: undefined as number | undefined,
+      error_message: undefined as string | undefined,
       html: "",
       startTime: Date.now(),
     };
     try {
-      const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY);
+      const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY!);
       const clientParams = await generateRequestParams(
         url,
         wait_browser,
@@ -49,7 +49,7 @@ export async function scrapWithScrapingBee(
       const contentType = response.headers["content-type"];
       if (contentType && contentType.includes("application/pdf")) {
         logParams.success = true;
-        const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+        const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF ?? true);
         logParams.response_code = pageStatusCode;
         logParams.error_message = pageError;
         return { content, pageStatusCode, pageError };

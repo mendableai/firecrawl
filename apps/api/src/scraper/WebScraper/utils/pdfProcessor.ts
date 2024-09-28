@@ -72,14 +72,14 @@ export async function processPdfToText(filePath: string, parsePDF: boolean): Pro
       const resultType = "text";
       const resultUrl = `${base_url}/job/${jobId}/result/${resultType}`;
 
-      let resultResponse: AxiosResponse;
+      let resultResponse: AxiosResponse | undefined = undefined;
       let attempt = 0;
       const maxAttempts = 10; // Maximum number of attempts
       let resultAvailable = false;
       while (attempt < maxAttempts && !resultAvailable) {
         try {
           resultResponse = await axios.get(resultUrl, { headers, timeout: (axiosTimeout * 2) });
-          if (resultResponse.status === 200) {
+          if (resultResponse?.status === 200) {
             resultAvailable = true; // Exit condition met
           } else {
             // If the status code is not 200, increment the attempt counter and wait
@@ -106,7 +106,7 @@ export async function processPdfToText(filePath: string, parsePDF: boolean): Pro
           content = "";
         }
       }
-      content = resultResponse.data[resultType];
+      content = resultResponse?.data[resultType];
     } catch (error) {
       Logger.debug("Error processing pdf document w/ LlamaIndex(2)");
       content = await processPdf(filePath);

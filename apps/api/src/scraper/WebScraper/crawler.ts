@@ -207,7 +207,7 @@ export class WebCrawler {
 
   private async crawlUrls(
     urls: string[],
-    pageOptions: PageOptions,
+    pageOptions: PageOptions | undefined,
     concurrencyLimit: number,
     inProgress?: (progress: Progress) => void,
   ): Promise<{ url: string, html: string }[]> {
@@ -326,7 +326,7 @@ export class WebCrawler {
     return links;
   }
 
-  async crawl(url: string, pageOptions: PageOptions): Promise<{url: string, html: string, pageStatusCode?: number, pageError?: string}[]> {
+  async crawl(url: string, pageOptions?: PageOptions): Promise<{url: string, html: string, pageStatusCode?: number, pageError?: string}[]> {
     if (this.visited.has(url) || !this.robots.isAllowed(url, "FireCrawlAgent")) {
       return [];
     }

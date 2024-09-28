@@ -33,7 +33,7 @@ export async function getJobPriority({
   team_id,
   basePriority = 10,
 }: {
-  plan: PlanType;
+  plan: PlanType | undefined;
   team_id: string;
   basePriority?: number;
 }): Promise<number> {

@@ -23,7 +23,6 @@ import { ScrapeEvents } from "../../lib/scrape-events";
 
 export class WebScraperDataProvider {
   private jobId: string;
-  private bullJobId: string;
   private urls: string[] = [""];
   private mode: "single_urls" | "sitemap" | "crawl" = "single_urls";
   private includes: string | string[];
@@ -156,7 +155,7 @@ export class WebScraperDataProvider {
   private async handleCrawlMode(
     inProgress?: (progress: Progress) => void
   ): Promise<Document[]> {
-    let includes: string[];
+    let includes: string[] | undefined = undefined;
     if (Array.isArray(this.includes)) {
       if (this.includes[0] != "") {
         includes = this.includes;
@@ -165,7 +164,7 @@ export class WebScraperDataProvider {
       includes = this.includes.split(',');
     }
 
-    let excludes: string[];
+    let excludes: string[] | undefined = undefined;
     if (Array.isArray(this.excludes)) {
       if (this.excludes[0] != "") {
         excludes = this.excludes;
@@ -205,7 +204,7 @@ export class WebScraperDataProvider {
       return this.returnOnlyUrlsResponse(allLinks, inProgress);
     }
 
-    let documents = [];
+    let documents: Document[] = [];
     // check if fast mode is enabled and there is html inside the links
     if (this.crawlerMode === "fast" && links.some((link) => link.html)) {
       documents = await this.processLinks(allLinks, inProgress, allHtmls);
@@ -294,18 +293,18 @@ export class WebScraperDataProvider {
       documents = await this.getSitemapData(this.urls[0], documents);
     }
 
-    if (this.pageOptions.includeMarkdown) {
+    if (this.pageOptions?.includeMarkdown) {
       documents = this.applyPathReplacements(documents);
     }
 
-    if (!this.pageOptions.includeHtml) {
+    if (!this.pageOptions?.includeHtml) {
       for (let document of documents) {
         delete document.html;
       }
     }
     
     // documents = await this.applyImgAltText(documents);
-    if (this.mode === "single_urls" && this.pageOptions.includeExtract) {
+    if (this.mode === "single_urls" && this.pageOptions?.includeExtract) {
       const extractionMode = this.extractorOptions?.mode ?? "markdown";
       const completionMode = extractionMode === "llm-extraction-from-raw-html" ? "raw-html" : "markdown";
 
@@ -338,7 +337,7 @@ export class WebScraperDataProvider {
 
         const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(
           pdfLink,
-          this.pageOptions.parsePDF
+          this.pageOptions?.parsePDF ?? true
         );
 
         const insertedLogId = await logInsertPromise;
@@ -441,8 +440,8 @@ export class WebScraperDataProvider {
       if (
         !existingDocuments.some(
           (d) =>
-            this.normalizeUrl(d.metadata.sourceURL) ===
-            this.normalizeUrl(doc.metadata?.sourceURL)
+            this.normalizeUrl(d.metadata.sourceURL ?? "") ===
+            this.normalizeUrl(doc.metadata.sourceURL ?? "")
         )
       ) {
         existingDocuments.push(doc);
@@ -453,6 +452,10 @@ export class WebScraperDataProvider {
 
   private filterDocsExcludeInclude(documents: Document[]): Document[] {
     return documents.filter((document) => {
+      if (!document.metadata.sourceURL) {
+        return false;
+      }
+
       const url = new URL(document.metadata.sourceURL);
       const path = url.pathname;
 
@@ -503,7 +506,7 @@ export class WebScraperDataProvider {
 
   async setCachedDocuments(documents: Document[], childrenLinks?: string[]) {
     for (const document of documents) {
-      if (document.content.trim().length === 0) {
+      if (document.content.trim().length === 0 || !document.metadata.sourceURL) {
         continue;
       }
       const normalizedUrl = this.normalizeUrl(document.metadata.sourceURL);
@@ -562,7 +565,6 @@ export class WebScraperDataProvider {
     }
 
     this.jobId = options.jobId;
-    this.bullJobId = options.bullJobId;
     this.urls = options.urls;
     this.mode = options.mode;
     this.concurrentRequests = options.concurrentRequests ?? 20;
@@ -615,7 +617,7 @@ export class WebScraperDataProvider {
     this.allowExternalContentLinks =
       options.crawlerOptions?.allowExternalContentLinks ?? false;
     this.priority = options.priority;
-    this.teamId = options.teamId ?? null;
+    this.teamId = options.teamId ?? undefined;
 
 
 
@@ -632,10 +634,13 @@ export class WebScraperDataProvider {
     const sitemapData = await fetchSitemapData(baseUrl);
     if (sitemapData) {
       for (let i = 0; i < documents.length; i++) {
+        const sourceURL = documents[i].metadata.sourceURL;
+        if (!sourceURL) continue;
+        
         const docInSitemapData = sitemapData.find(
           (data) =>
             this.normalizeUrl(data.loc) ===
-            this.normalizeUrl(documents[i].metadata.sourceURL)
+            this.normalizeUrl(sourceURL)
         );
         if (docInSitemapData) {
           let sitemapDocData: Partial<SitemapEntry> = {};
@@ -691,11 +696,11 @@ export class WebScraperDataProvider {
 
         await Promise.all(
           images.map(async (image: string) => {
-            let imageUrl = image.match(/\(([^)]+)\)/)[1];
-            let altText = image.match(/\[(.*?)\]/)[1];
+            let imageUrl = (image.match(/\(([^)]+)\)/) ?? [])[1];
+            let altText = (image.match(/\[(.*?)\]/) ?? [])[1];
 
             if (
-              !altText &&
+              !altText && imageUrl &&
               !imageUrl.startsWith("data:image") &&
               /\.(png|jpeg|gif|webp)$/.test(imageUrl)
             ) {
@@ -732,7 +737,9 @@ export class WebScraperDataProvider {
 
   filterDepth(documents: Document[]): Document[] {
     return documents.filter((document) => {
-      const url = new URL(document.metadata.sourceURL);
+      const sourceURL = document.metadata.sourceURL;
+      if (!sourceURL) return false;
+      const url = new URL(sourceURL);
       return getURLDepth(url.toString()) <= this.maxCrawledDepth;
     });
   }

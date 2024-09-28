@@ -18,14 +18,16 @@ import { getJobPriority } from "../../lib/job-priority";
 
 export async function crawlController(req: Request, res: Response) {
   try {
-    const { success, team_id, error, status, plan, chunk } = await authenticateUser(
+    const auth = await authenticateUser(
       req,
       res,
       RateLimiterMode.Crawl
     );
-    if (!success) {
-      return res.status(status).json({ error });
+    if (!auth.success) {
+      return res.status(auth.status).json({ error: auth.error });
     }
+
+    const { team_id, plan, chunk } = auth;
 
     if (req.headers["x-idempotency-key"]) {
       const isIdempotencyValid = await validateIdempotencyKey(req);

@@ -19,7 +19,7 @@ export async function startWebScraperPipeline({
   job,
   token,
 }: {
-  job: Job<WebScraperOptions>;
+  job: Job<WebScraperOptions> & { id: string };
   token: string;
 }) {
   let partialDocs: Document[] = [];
@@ -116,7 +116,7 @@ export async function runWebScraper({
           if (doc.metadata.sourceURL) {
             return { url: doc.metadata.sourceURL };
           }
-        })
+        }).filter(x => x !== undefined) as DocumentUrl[]
       : docs;
 
     if(is_scrape === false) {

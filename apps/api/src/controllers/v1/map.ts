@@ -22,7 +22,7 @@ import { Logger } from "../../lib/logger";
 import Redis from "ioredis";
 
 configDotenv();
-const redis = new Redis(process.env.REDIS_URL);
+const redis = new Redis(process.env.REDIS_URL!);
 
 // Max Links that /map can return
 const MAX_MAP_LIMIT = 5000;
@@ -65,8 +65,8 @@ export async function mapController(
   const cacheKey = `fireEngineMap:${mapUrl}`;
   const cachedResult = await redis.get(cacheKey);
 
-  let allResults: any[];
-  let pagePromises: Promise<any>[];
+  let allResults: any[] = [];
+  let pagePromises: Promise<any>[] = [];
 
   if (cachedResult) {
     allResults = JSON.parse(cachedResult);
@@ -139,7 +139,7 @@ export async function mapController(
         return null;
       }
     })
-    .filter((x) => x !== null);
+    .filter((x) => x !== null) as string[];
 
   // allows for subdomains to be included
   links = links.filter((x) => isSameDomain(x, req.body.url));

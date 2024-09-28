@@ -60,7 +60,7 @@ export interface RunWebScraperResult {
 export interface FirecrawlJob {
   job_id?: string;
   success: boolean;
-  message: string;
+  message?: string;
   num_docs: number;
   docs: any[];
   time_taken: number;
@@ -114,14 +114,16 @@ export enum RateLimiterMode {
 
 }
 
-export interface AuthResponse {
-  success: boolean;
-  team_id?: string;
-  error?: string;
-  status?: number;
+export type AuthResponse = {
+  success: true;
+  team_id: string;
   api_key?: string;
   plan?: PlanType;
-  chunk?: AuthCreditUsageChunk;
+  chunk: AuthCreditUsageChunk | null;
+} | {
+  success: false;
+  error: string;
+  status: number;
 }
   
 

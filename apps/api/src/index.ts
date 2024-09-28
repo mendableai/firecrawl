@@ -133,6 +133,7 @@ if (cluster.isMaster) {
 
   app.get("/serverHealthCheck/notify", async (req, res) => {
     if (process.env.SLACK_WEBHOOK_URL) {
+      const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
       const treshold = 1; // The treshold value for the active jobs
       const timeout = 60000; // 1 minute // The timeout value for the check in milliseconds
 
@@ -155,7 +156,6 @@ if (cluster.isMaster) {
               // Re-check the waiting jobs count after the timeout
               waitingJobsCount = await getWaitingJobsCount();
               if (waitingJobsCount >= treshold) {
-                const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
                 const message = {
                   text: `⚠️ Warning: The number of active jobs (${waitingJobsCount}) has exceeded the threshold (${treshold}) for more than ${
                     timeout / 60000

@@ -131,32 +131,34 @@ function getScrapingFallbackOrder(
 export async function scrapSingleUrl(
   jobId: string,
   urlToScrap: string,
-  pageOptions: PageOptions,
+  _pageOptions?: PageOptions,
   extractorOptions?: ExtractorOptions,
   existingHtml?: string,
   priority?: number,
   teamId?: string
 ): Promise<Document> {
-  pageOptions = {
-    includeMarkdown: pageOptions.includeMarkdown ?? true,
-    includeExtract: pageOptions.includeExtract ?? false,
-    onlyMainContent: pageOptions.onlyMainContent ?? false,
-    includeHtml: pageOptions.includeHtml ?? false,
-    includeRawHtml: pageOptions.includeRawHtml ?? false,
-    waitFor: pageOptions.waitFor ?? undefined,
-    screenshot: pageOptions.screenshot ?? false,
-    fullPageScreenshot: pageOptions.fullPageScreenshot ?? false,
-    headers: pageOptions.headers ?? undefined,
-    includeLinks: pageOptions.includeLinks ?? true,
-    replaceAllPathsWithAbsolutePaths: pageOptions.replaceAllPathsWithAbsolutePaths ?? true,
-    parsePDF: pageOptions.parsePDF ?? true,
-    removeTags: pageOptions.removeTags ?? [],
-    onlyIncludeTags: pageOptions.onlyIncludeTags ?? [],
-    useFastMode: pageOptions.useFastMode ?? false,
-    disableJsDom: pageOptions.disableJsDom ?? false,
-    atsv: pageOptions.atsv ?? false,
-    actions: pageOptions.actions ?? undefined,
-  }
+  const pageOptions: Required<Omit<PageOptions, "waitFor" | "headers" | "actions">> & Pick<PageOptions, "waitFor" | "headers" | "actions"> = {
+    includeMarkdown: _pageOptions?.includeMarkdown ?? true,
+    includeExtract: _pageOptions?.includeExtract ?? false,
+    onlyMainContent: _pageOptions?.onlyMainContent ?? false,
+    includeHtml: _pageOptions?.includeHtml ?? false,
+    includeRawHtml: _pageOptions?.includeRawHtml ?? false,
+    waitFor: _pageOptions?.waitFor ?? undefined,
+    screenshot: _pageOptions?.screenshot ?? false,
+    fullPageScreenshot: _pageOptions?.fullPageScreenshot ?? false,
+    headers: _pageOptions?.headers ?? undefined,
+    includeLinks: _pageOptions?.includeLinks ?? true,
+    replaceAllPathsWithAbsolutePaths: _pageOptions?.replaceAllPathsWithAbsolutePaths ?? true,
+    parsePDF: _pageOptions?.parsePDF ?? true,
+    removeTags: _pageOptions?.removeTags ?? [],
+    onlyIncludeTags: _pageOptions?.onlyIncludeTags ?? [],
+    useFastMode: _pageOptions?.useFastMode ?? false,
+    disableJsDom: _pageOptions?.disableJsDom ?? false,
+    atsv: _pageOptions?.atsv ?? false,
+    actions: _pageOptions?.actions ?? undefined,
+    fallback: _pageOptions?.fallback ?? false,
+    fetchPageContent: _pageOptions?.fetchPageContent ?? true,
+  };
 
   if (extractorOptions) {
     extractorOptions = {
@@ -350,7 +352,7 @@ export async function scrapSingleUrl(
     ScrapeEvents.updateScrapeResult(insertedLogId, {
       response_size: scraperResponse.text.length,
       success: !(scraperResponse.metadata.pageStatusCode && scraperResponse.metadata.pageStatusCode >= 400) && !!text && (text.trim().length >= 100),
-      error: scraperResponse.metadata.pageError,
+      error: scraperResponse.metadata.pageError ?? undefined,
       response_code: scraperResponse.metadata.pageStatusCode,
       time_taken: Date.now() - timer,
     });
@@ -371,9 +373,9 @@ export async function scrapSingleUrl(
     html: "",
     rawHtml: "",
     screenshot: "",
-    actions: undefined,
+    actions: undefined as { screenshots: string[] } | undefined,
     pageStatusCode: 200,
-    pageError: undefined,
+    pageError: undefined as string | undefined,
   };
   try {
     let urlKey = urlToScrap;
@@ -385,7 +387,7 @@ export async function scrapSingleUrl(
     const defaultScraper = urlSpecificParams[urlKey]?.defaultScraper ?? "";
     const scrapersInOrder = getScrapingFallbackOrder(
       defaultScraper,
-      pageOptions && pageOptions.waitFor && pageOptions.waitFor > 0,
+      pageOptions.waitFor ? pageOptions.waitFor > 0 : false,
       pageOptions && (pageOptions.screenshot || pageOptions.fullPageScreenshot) && (pageOptions.screenshot === true || pageOptions.fullPageScreenshot === true),
       pageOptions && pageOptions.headers && pageOptions.headers !== undefined,
       pageOptions && Array.isArray(pageOptions.actions) && pageOptions.actions.length > 0,
@@ -410,10 +412,10 @@ export async function scrapSingleUrl(
       if (attempt.pageStatusCode) {
         pageStatusCode = attempt.pageStatusCode;
       }
-      if (attempt.pageError && (attempt.pageStatusCode >= 400 || scrapersInOrder.indexOf(scraper) === scrapersInOrder.length - 1)) { // force pageError if it's the last scraper and it failed too
+      if (attempt.pageError && (!attempt.pageStatusCode || attempt.pageStatusCode >= 400 || scrapersInOrder.indexOf(scraper) === scrapersInOrder.length - 1)) { // force pageError if it's the last scraper and it failed too
         pageError = attempt.pageError;
         
-        if (attempt.pageStatusCode < 400 || !attempt.pageStatusCode) {
+        if (!attempt.pageStatusCode || attempt.pageStatusCode < 400) {
           pageStatusCode = 500;
         }
       } else if (attempt && attempt.pageStatusCode && attempt.pageStatusCode < 400) {

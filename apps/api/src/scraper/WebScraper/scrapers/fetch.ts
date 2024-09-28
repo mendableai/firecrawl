@@ -18,9 +18,9 @@ export async function scrapWithFetch(
     url,
     scraper: "fetch",
     success: false,
-    response_code: null,
-    time_taken_seconds: null,
-    error_message: null,
+    response_code: undefined as undefined | number,
+    time_taken_seconds: undefined as undefined | number,
+    error_message: undefined as undefined | string,
     html: "",
     startTime: Date.now(),
   };
@@ -48,7 +48,7 @@ export async function scrapWithFetch(
     const contentType = response.headers["content-type"];
     if (contentType && contentType.includes("application/pdf")) {
       logParams.success = true;
-      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF ?? true);
       logParams.response_code = pageStatusCode;
       logParams.error_message = pageError;
       return { content, pageStatusCode, pageError };
@@ -57,7 +57,7 @@ export async function scrapWithFetch(
       logParams.success = true;
       logParams.html = text;
       logParams.response_code = response.status;
-      return { content: text, pageStatusCode: response.status, pageError: null };
+      return { content: text, pageStatusCode: response.status, pageError: undefined };
     }
   } catch (error) {
     if (error.code === "ECONNABORTED") {
@@ -67,7 +67,7 @@ export async function scrapWithFetch(
       logParams.error_message = error.message || error;
       Logger.debug(`⛏️ Axios: Failed to fetch url: ${url} | Error: ${error}`);
     }
-    return { content: "", pageStatusCode: null, pageError: logParams.error_message };
+    return { content: "", pageStatusCode: undefined, pageError: logParams.error_message };
   } finally {
     const endTime = Date.now();
     logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;

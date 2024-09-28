@@ -17,8 +17,8 @@ export const parseTablesToMarkdown = async (html: string): Promise<string> => {
 
   if (tables.length) {
     tables.each((_, tableElement) => {
-      const start: number = tableElement.startIndex;
-      const end: number = tableElement.endIndex + 1; // Include the closing tag properly
+      const start: number = tableElement.startIndex as number;
+      const end: number = tableElement.endIndex as number + 1; // Include the closing tag properly
       let markdownTable: string = convertTableElementToMarkdown(cheerio.load(tableElement));
       const isTableEmpty: boolean = markdownTable.replace(/[|\- \n]/g, '').length === 0;
       if (isTableEmpty) {

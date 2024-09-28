@@ -17,7 +17,7 @@ export async function redisHealthController(req: Request, res: Response) {
   };
 
   try {
-    const queueRedis = new Redis(process.env.REDIS_URL);
+    const queueRedis = new Redis(process.env.REDIS_URL!);
 
     const testKey = "test";
     const testValue = "test";

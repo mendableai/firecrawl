@@ -61,7 +61,7 @@ const connectionMonitorInterval =
   Number(process.env.CONNECTION_MONITOR_INTERVAL) || 10;
 const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 
-const processJobInternal = async (token: string, job: Job) => {
+const processJobInternal = async (token: string, job: Job & { id: string }) => {
   const extendLockInterval = setInterval(async () => {
     Logger.info(`🐂 Worker extending lock on job ${job.id}`);
     await job.extendLock(token, jobLockExtensionTime);
@@ -195,7 +195,7 @@ const workerFun = async (
 
 workerFun(scrapeQueueName, processJobInternal);
 
-async function processJob(job: Job, token: string) {
+async function processJob(job: Job & { id: string }, token: string) {
   Logger.info(`🐂 Worker taking job ${job.id}`);
 
   // Check if the job URL is researchhub and block it immediately

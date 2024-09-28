@@ -12,14 +12,16 @@ export async function crawlCancelController(req: Request, res: Response) {
   try {
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
 
-    const { success, team_id, error, status } = await authenticateUser(
+    const auth = await authenticateUser(
       req,
       res,
       RateLimiterMode.CrawlStatus
     );
-    if (!success) {
-      return res.status(status).json({ error });
+    if (!auth.success) {
+      return res.status(auth.status).json({ error: auth.error });
     }
+
+    const { team_id } = auth;
 
     const sc = await getCrawl(req.params.jobId);
     if (!sc) {

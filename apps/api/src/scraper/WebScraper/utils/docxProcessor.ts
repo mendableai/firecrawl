@@ -6,10 +6,10 @@ import os from "os";
 import mammoth from "mammoth";
 import { Logger } from "../../../lib/logger";
 
-export async function fetchAndProcessDocx(url: string): Promise<{ content: string; pageStatusCode: number; pageError: string }> {
+export async function fetchAndProcessDocx(url: string): Promise<{ content: string; pageStatusCode: number; pageError: string | undefined }> {
   let tempFilePath = '';
   let pageStatusCode = 200;
-  let pageError = '';
+  let pageError: string | undefined = '';
   let content = '';
 
   try {
@@ -32,7 +32,7 @@ export async function fetchAndProcessDocx(url: string): Promise<{ content: strin
   return { content, pageStatusCode, pageError };
 }
 
-async function downloadDocx(url: string): Promise<{ tempFilePath: string; pageStatusCode: number; pageError: string }> {
+async function downloadDocx(url: string): Promise<{ tempFilePath: string; pageStatusCode: number; pageError: string | undefined }> {
   try {
     const response = await axios({
       url,

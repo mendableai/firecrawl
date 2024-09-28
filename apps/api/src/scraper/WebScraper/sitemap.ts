@@ -17,7 +17,7 @@ export async function getLinksFromSitemap(
   }
 ): Promise<string[]> {
   try {
-    let content: string;
+    let content: string = "";
     try {
       if (mode === 'axios' || process.env.FIRE_ENGINE_BETA_URL === '') {
         const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });

@@ -9,12 +9,12 @@ async function addScrapeJobRaw(
   options: any,
   jobId: string,
   jobPriority: number = 10
-): Promise<Job> {
+): Promise<Job & { id: string }> {
   return await getScrapeQueue().add(jobId, webScraperOptions, {
     ...options,
     priority: jobPriority,
     jobId,
-  });
+  }) as Job & { id: string };
 }
 
 export async function addScrapeJob(
@@ -22,7 +22,7 @@ export async function addScrapeJob(
   options: any = {},
   jobId: string = uuidv4(),
   jobPriority: number = 10
-): Promise<Job> {
+): Promise<Job & { id: string }> {
   
   if (Sentry.isInitialized()) {
     const size = JSON.stringify(webScraperOptions).length;
@@ -49,7 +49,7 @@ export async function addScrapeJob(
   }
 }
 
-export function waitForJob(jobId: string, timeout: number) {
+export function waitForJob<JobReturnType>(jobId: string, timeout: number): Promise<JobReturnType> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
     const int = setInterval(async () => {
@@ -60,11 +60,11 @@ export function waitForJob(jobId: string, timeout: number) {
         const state = await getScrapeQueue().getJobState(jobId);
         if (state === "completed") {
           clearInterval(int);
-          resolve((await getScrapeQueue().getJob(jobId)).returnvalue);
+          resolve((await getScrapeQueue().getJob(jobId))!.returnvalue);
         } else if (state === "failed") {
           // console.log("failed", (await getScrapeQueue().getJob(jobId)).failedReason);
           clearInterval(int);
-          reject((await getScrapeQueue().getJob(jobId)).failedReason);
+          reject((await getScrapeQueue().getJob(jobId))!.failedReason);
         }
       }
     }, 500);

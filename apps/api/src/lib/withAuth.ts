@@ -6,8 +6,9 @@ configDotenv();
 
 let warningCount = 0;
 
-export function withAuth<T extends AuthResponse, U extends any[]>(
-  originalFunction: (...args: U) => Promise<T>
+export function withAuth<T, U extends any[]>(
+  originalFunction: (...args: U) => Promise<T>,
+  mockSuccess: T,
 ) {
   return async function (...args: U): Promise<T> {
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
@@ -18,13 +19,7 @@ export function withAuth<T extends AuthResponse, U extends any[]>(
       }
       return { success: true } as T;
     } else {
-      try {
-        return await originalFunction(...args);
-      } catch (error) {
-        Sentry.captureException(error);
-        Logger.error(`Error in withAuth function: ${error}`);
-        return { success: false, error: error.message } as T;
-      }
+      return await originalFunction(...args);
     }
   };
 }

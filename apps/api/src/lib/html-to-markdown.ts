@@ -40,7 +40,7 @@ class GoMarkdownConverter {
   }
 }
 
-export async function parseMarkdown(html: string): Promise<string> {
+export async function parseMarkdown(html: string | null | undefined): Promise<string> {
   if (!html) {
     return '';
   }

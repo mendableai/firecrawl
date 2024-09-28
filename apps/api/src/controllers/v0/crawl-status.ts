@@ -7,10 +7,11 @@ import { getCrawl, getCrawlJobs } from "../../../src/lib/crawl-redis";
 import { supabaseGetJobsByCrawlId } from "../../../src/lib/supabase-jobs";
 import * as Sentry from "@sentry/node";
 import { configDotenv } from "dotenv";
+import { Job } from "bullmq";
 configDotenv();
 
 export async function getJobs(crawlId: string, ids: string[]) {
-  const jobs = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x);
+  const jobs = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x) as Job[];
   
   if (process.env.USE_DB_AUTHENTICATION === "true") {
     const supabaseData = await supabaseGetJobsByCrawlId(crawlId);
@@ -32,14 +33,16 @@ export async function getJobs(crawlId: string, ids: string[]) {
 
 export async function crawlStatusController(req: Request, res: Response) {
   try {
-    const { success, team_id, error, status } = await authenticateUser(
+    const auth = await authenticateUser(
       req,
       res,
       RateLimiterMode.CrawlStatus
     );
-    if (!success) {
-      return res.status(status).json({ error });
+    if (!auth.success) {
+      return res.status(auth.status).json({ error: auth.error });
     }
+
+    const { team_id } = auth;
 
     const sc = await getCrawl(req.params.jobId);
     if (!sc) {

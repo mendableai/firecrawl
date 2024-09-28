@@ -13,9 +13,9 @@ const FREE_CREDITS = 500;
  * If you do not know the subscription_id in the current context, pass subscription_id as undefined.
  */
 export async function billTeam(team_id: string, subscription_id: string | null | undefined, credits: number) {
-  return withAuth(supaBillTeam)(team_id, subscription_id, credits);
+  return withAuth(supaBillTeam, { success: true, message: "No DB, bypassed." })(team_id, subscription_id, credits);
 }
-export async function supaBillTeam(team_id: string, subscription_id: string, credits: number) {
+export async function supaBillTeam(team_id: string, subscription_id: string | null | undefined, credits: number) {
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
   }
@@ -42,15 +42,24 @@ export async function supaBillTeam(team_id: string, subscription_id: string, cre
   })();
 }
 
-export async function checkTeamCredits(chunk: AuthCreditUsageChunk, team_id: string, credits: number) {
-  return withAuth(supaCheckTeamCredits)(chunk, team_id, credits);
+export type CheckTeamCreditsResponse = {
+  success: boolean,
+  message: string,
+  remainingCredits: number,
+  chunk?: AuthCreditUsageChunk,
+}
+
+export async function checkTeamCredits(chunk: AuthCreditUsageChunk | null, team_id: string, credits: number): Promise<CheckTeamCreditsResponse> {
+  return withAuth(supaCheckTeamCredits, { success: true, message: "No DB, bypassed", remainingCredits: Infinity })(chunk, team_id, credits);
 }
 
 // if team has enough credits for the operation, return true, else return false
-export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk, team_id: string, credits: number) {
+export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk | null, team_id: string, credits: number): Promise<CheckTeamCreditsResponse> {
   // WARNING: chunk will be null if team_id is preview -- do not perform operations on it under ANY circumstances - mogery
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used", remainingCredits: Infinity };
+  } else if (chunk === null) {
+    throw new Error("NULL ACUC passed to supaCheckTeamCredits");
   }
 
   const creditsWillBeUsed = chunk.adjusted_credits_used + credits;

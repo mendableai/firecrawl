@@ -51,9 +51,9 @@ export async function scrapWithFireEngine({
     url,
     scraper: "fire-engine",
     success: false,
-    response_code: null,
-    time_taken_seconds: null,
-    error_message: null,
+    response_code: undefined as number | undefined,
+    time_taken_seconds: undefined as number | undefined,
+    error_message: undefined as string | undefined,
     html: "",
     startTime: Date.now(),
   };
@@ -88,7 +88,7 @@ export async function scrapWithFireEngine({
     const betaCustomersString = process.env.BETA_CUSTOMERS;
     const betaCustomers = betaCustomersString ? betaCustomersString.split(",") : [];
 
-    if (pageOptions?.atsv && betaCustomers.includes(teamId)) {
+    if (pageOptions?.atsv && teamId && betaCustomers.includes(teamId)) {
       fireEngineOptionsParam.atsv = true;
     } else {
       pageOptions.atsv = false;
@@ -154,7 +154,7 @@ export async function scrapWithFireEngine({
       
       Logger.debug(`⛏️ Fire-Engine (${engine}): Request timed out for ${url}`);
       logParams.error_message = "Request timed out";
-      return { html: "", pageStatusCode: null, pageError: "" };
+      return { html: "", pageStatusCode: undefined, pageError: "" };
     }
 
     if (checkStatusResponse.status !== 200 || checkStatusResponse.data.error) {
@@ -183,7 +183,7 @@ export async function scrapWithFireEngine({
     if (contentType && contentType.includes("application/pdf")) {
       const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(
         url,
-        pageOptions?.parsePDF
+        pageOptions?.parsePDF ?? true
       );
       logParams.success = true;
       logParams.response_code = pageStatusCode;
@@ -213,7 +213,7 @@ export async function scrapWithFireEngine({
       Logger.debug(`⛏️ Fire-Engine(catch block): Failed to fetch url: ${url} | Error: ${error}`);
       logParams.error_message = error.message || error;
     }
-    return { html: "", pageStatusCode: null, pageError: logParams.error_message };
+    return { html: "", pageStatusCode: undefined, pageError: logParams.error_message };
   } finally {
     const endTime = Date.now();
     logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;

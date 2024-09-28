@@ -9,14 +9,14 @@ import { Logger } from "../logger";
 // Generate completion using OpenAI
 export async function generateCompletions(
   documents: Document[],
-  extractionOptions: ExtractorOptions,
+  extractionOptions: ExtractorOptions | undefined,
   mode: "markdown" | "raw-html"
 ): Promise<Document[]> {
   // const schema = zodToJsonSchema(options.schema)
 
-  const schema = extractionOptions.extractionSchema;
-  const systemPrompt = extractionOptions.extractionPrompt;
-  const prompt = extractionOptions.userPrompt;
+  const schema = extractionOptions?.extractionSchema;
+  const systemPrompt = extractionOptions?.extractionPrompt;
+  const prompt = extractionOptions?.userPrompt;
 
   const switchVariable = "openAI"; // Placholder, want to think more about how we abstract the model provider
 

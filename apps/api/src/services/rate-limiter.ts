@@ -74,7 +74,7 @@ const RATE_LIMITS = {
 };
 
 export const redisRateLimitClient = new Redis(
-  process.env.REDIS_RATE_LIMIT_URL
+  process.env.REDIS_RATE_LIMIT_URL!
 )
 
 const createRateLimiter = (keyPrefix, points) =>

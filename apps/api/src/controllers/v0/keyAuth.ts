@@ -8,13 +8,14 @@ import { authenticateUser } from "../auth";
 export const keyAuthController = async (req: Request, res: Response) => {
   try {
     // make sure to authenticate user first, Bearer <token>
-    const { success, team_id, error, status } = await authenticateUser(
+    const auth = await authenticateUser(
       req,
       res
     );
-    if (!success) {
-      return res.status(status).json({ error });
+    if (!auth.success) {
+      return res.status(auth.status).json({ error: auth.error });
     }
+
     // if success, return success: true
     return res.status(200).json({ success: true });
   } catch (error) {

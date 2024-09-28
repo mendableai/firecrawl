@@ -26,10 +26,10 @@ const emailTemplates: Record<
 export async function sendNotification(
   team_id: string,
   notificationType: NotificationType,
-  startDateString: string,
-  endDateString: string
+  startDateString: string | null,
+  endDateString: string | null
 ) {
-  return withAuth(sendNotificationInternal)(
+  return withAuth(sendNotificationInternal, undefined)(
     team_id,
     notificationType,
     startDateString,
@@ -65,8 +65,8 @@ async function sendEmailNotification(
 export async function sendNotificationInternal(
   team_id: string,
   notificationType: NotificationType,
-  startDateString: string,
-  endDateString: string
+  startDateString: string | null,
+  endDateString: string | null,
 ): Promise<{ success: boolean }> {
   if (team_id === "preview") {
     return { success: true };

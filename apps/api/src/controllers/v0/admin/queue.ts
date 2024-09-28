@@ -31,7 +31,7 @@ export async function cleanBefore24hCompleteJobsController(
     ).flat();
     const before24hJobs =
       completedJobs.filter(
-        (job) => job.finishedOn < Date.now() - 24 * 60 * 60 * 1000
+        (job) => job.finishedOn !== undefined && job.finishedOn < Date.now() - 24 * 60 * 60 * 1000
       ) || [];
 
     let count = 0;

@@ -58,7 +58,7 @@ export async function scrapeController(
 
   let doc: any | undefined;
   try {
-    doc = (await waitForJob(job.id, timeout + totalWait))[0];
+    doc = (await waitForJob<any[]>(job.id, timeout + totalWait))[0]; // TODO: better types for this
   } catch (e) {
     Logger.error(`Error in scrapeController: ${e}`);
     if (e instanceof Error && e.message.startsWith("Job wait")) {
