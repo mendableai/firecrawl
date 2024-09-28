@@ -110,6 +110,13 @@ export async function scrapeURL(
                     };
                 } else if (error instanceof TimeoutError) {
                     meta.logger.debug("Engine " + engine + " timed out while scraping.", { error });
+                } else {
+                    meta.logger.debug("An unexpected error happened while scraping with " + engine + ".", { error });
+                    results[engine] = {
+                        state: "error",
+                        error,
+                        unexpected: true,
+                    }
                 }
             }
         }
