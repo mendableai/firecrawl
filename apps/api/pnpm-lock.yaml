@@ -209,6 +209,12 @@ importers:
       winston:
         specifier: ^3.14.2
         version: 3.14.2
+      winston-array-transport:
+        specifier: ^1.1.11
+        version: 1.1.11
+      winston-transport:
+        specifier: ^4.8.0
+        version: 4.8.0
       wordpos:
         specifier: ^2.1.0
         version: 2.1.0
@@ -252,6 +258,9 @@ importers:
       body-parser:
         specifier: ^1.20.1
         version: 1.20.2
+      debugging-aid:
+        specifier: ^0.6.8
+        version: 0.6.8
       express:
         specifier: ^4.18.2
         version: 4.19.2
@@ -1997,6 +2006,9 @@ packages:
   bl@4.1.0:
     resolution: {integrity: sha512-1W07cM9gS6DcLperZfFSj+bWLtaPGSOHWhPiGzXmvVJbRLdG82sH/Kn8EtW1VqWVA54AKf2h5k5BbnIbwF3h6w==}
 
+  blocked-at@1.2.0:
+    resolution: {integrity: sha512-Ba9yhK4KcFrgqEPgsU0qVGiMimf+VrD9QJo9pgwjg4yl0GXwgOJS8IRx2rPepQjalrmUdGTqX47bSuJLUMLX7w==}
+
   bluebird@3.4.7:
     resolution: {integrity: sha512-iD3898SR7sWVRHbiQv+sHUtHnMvC1o3nW5rAcqnq3uOn07DSAppZYUkIGslDz6gXC7HfunPe7YVBgoEJASPcHA==}
 
@@ -2317,6 +2329,9 @@ packages:
     peerDependenciesMeta:
       supports-color:
         optional: true
+
+  debugging-aid@0.6.8:
+    resolution: {integrity: sha512-pY+CH4eSPDPfw/O3PEviqwYyZoAMGBVrxJOH9x07KonbMHbopPGWOv6vg/4NB2YflmnQEHQjj3rRO0f5QEXihQ==}
 
   decamelize@1.2.0:
     resolution: {integrity: sha512-z2S+W9X73hAUUki+N+9Za2lBlun89zigOyGrsax+KUQ6wKW4ZoWpEYBkGhQjwAjjDCkWxhY0VKEhk8wzY7F5cA==}
@@ -2792,6 +2807,9 @@ packages:
   http-errors@2.0.0:
     resolution: {integrity: sha512-FtwrG/euBzaEjYeRqOgly7G0qviiXoJWnvEH2Z1plBdXgbyjv34pHTSb9zoeHMyDy33+DWy5Wt9Wo+TURtOYSQ==}
     engines: {node: '>= 0.8'}
+
+  http-parser-js@0.5.8:
+    resolution: {integrity: sha512-SGeBX54F94Wgu5RH3X5jsDtf4eHyRogWX1XGT3b4HuW3tQPM4AaBzoUji/4AAJNXCEOWZ5O0DgZmJw1947gD5Q==}
 
   http-proxy-agent@7.0.2:
     resolution: {integrity: sha512-T1gkAiYYDWYx3V5Bmyu7HcfcvL7mUrTWiM6yOfa3PIphViJ/gFPbvidQ+veqSOHci/PxBcDabeUNCzpOODJZig==}
@@ -3443,6 +3461,10 @@ packages:
     resolution: {integrity: sha512-1ulHeNPp6k/LD8H91o7VYFBng5i1BDE7HoKxVbZiGFidS1Rj65qcywLxX+pVfAPoQJEjRdvKcusKwOupHCVOVQ==}
     engines: {node: '>= 12.0.0'}
 
+  logform@2.6.1:
+    resolution: {integrity: sha512-CdaO738xRapbKIMVn2m4F6KTj4j7ooJ8POVnebSgKo3KBz5axNXRAL7ZdRjIV6NOr2Uf4vjtRkxrFETOioCqSA==}
+    engines: {node: '>= 12.0.0'}
+
   loglevel@1.9.1:
     resolution: {integrity: sha512-hP3I3kCrDIMuRwAwHltphhDM1r8i55H33GgqjXbrisuJhF4kRhW1dNuxsRklp4bXl8DSdLaNLuiL4A/LWRfxvg==}
     engines: {node: '>= 0.6.0'}
@@ -3569,6 +3591,10 @@ packages:
   minizlib@3.0.1:
     resolution: {integrity: sha512-umcy022ILvb5/3Djuu8LWeqUa8D68JaBzlttKeMWen48SjabqS3iY5w/vzeMzMUNhLDifyhbOwKDSznB1vvrwg==}
     engines: {node: '>= 18'}
+
+  mitm@1.7.3:
+    resolution: {integrity: sha512-linie/mGisDH73C7aiW6JmstA5XskXd15JBJAEeNQBdH3/L0dJdE/yZ+rw/y2zT7Fcib5KAnL5OvxYOOFQbsgw==}
+    engines: {node: '>= 0.10.24'}
 
   mitt@3.0.1:
     resolution: {integrity: sha512-vKivATfr97l2/QBCYAkXYDbrIWPM2IIKEl7YPhjCvKlG3kE2gm+uBo6nEXK3M5/Ffh/FLpKExzOQ3JJoJGFKBw==}
@@ -4130,6 +4156,9 @@ packages:
   regenerator-runtime@0.14.1:
     resolution: {integrity: sha512-dYnhHh0nJoMfnkZs6GmmhFknAGRrLznOu5nc9ML+EJxGvrx6H7teuevqVqCuPcPK//3eDrrjQhehXVx9cnkGdw==}
 
+  request-to-curl@0.1.6:
+    resolution: {integrity: sha512-bdFayFhQqLb+Z1YIOxQ4pOXLsSRJ0HUxolkjSZKKaGcajlxuf8ac2dRGaczz+eoCPbQ55B6xoJTSvPbyG85elQ==}
+
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
     engines: {node: '>=0.10.0'}
@@ -4688,8 +4717,16 @@ packages:
     engines: {node: '>= 8'}
     hasBin: true
 
-  winston-transport@4.7.0:
-    resolution: {integrity: sha512-ajBj65K5I7denzer2IYW6+2bNIVqLGDHqDw3Ow8Ohh+vdW+rv4MZ6eiDvHoKhfJFZ2auyN8byXieDDJ96ViONg==}
+  winston-array-transport@1.1.11:
+    resolution: {integrity: sha512-S1r/92WnIh7n5qRUPq6hkeL7eEQGeUi29c+Vf0eAaRRoW87j8LaTSdqPLw6Rtg/k8XpASId10fHnE2+uYw1u/Q==}
+    engines: {node: '>=10'}
+
+  winston-transport@4.5.0:
+    resolution: {integrity: sha512-YpZzcUzBedhlTAfJg6vJDlyEai/IFMIVcaEZZyl3UXIl4gmqRpU7AE89AHLkbzLUsv0NVmw7ts+iztqKxxPW1Q==}
+    engines: {node: '>= 6.4.0'}
+
+  winston-transport@4.8.0:
+    resolution: {integrity: sha512-qxSTKswC6llEMZKgCQdaWgDuMJQnhuvF5f2Nk3SNXc4byfQ+voo2mX1Px9dkNOuR8p0KAjfPG29PuYUSIb+vSA==}
     engines: {node: '>= 12.0.0'}
 
   winston@3.14.2:
@@ -5168,7 +5205,7 @@ snapshots:
       semver: 7.6.2
       shimmer: 1.2.1
       tslib: 2.6.3
-      winston-transport: 4.7.0
+      winston-transport: 4.8.0
     transitivePeerDependencies:
       - encoding
       - supports-color
@@ -7129,6 +7166,8 @@ snapshots:
       inherits: 2.0.4
       readable-stream: 3.6.2
 
+  blocked-at@1.2.0: {}
+
   bluebird@3.4.7: {}
 
   body-parser@1.20.2:
@@ -7459,6 +7498,12 @@ snapshots:
   debug@4.3.5:
     dependencies:
       ms: 2.1.2
+
+  debugging-aid@0.6.8:
+    dependencies:
+      blocked-at: 1.2.0
+      mitm: 1.7.3
+      request-to-curl: 0.1.6
 
   decamelize@1.2.0: {}
 
@@ -7947,6 +7992,8 @@ snapshots:
       setprototypeof: 1.2.0
       statuses: 2.0.1
       toidentifier: 1.0.1
+
+  http-parser-js@0.5.8: {}
 
   http-proxy-agent@7.0.2:
     dependencies:
@@ -8682,6 +8729,15 @@ snapshots:
       safe-stable-stringify: 2.4.3
       triple-beam: 1.4.1
 
+  logform@2.6.1:
+    dependencies:
+      '@colors/colors': 1.6.0
+      '@types/triple-beam': 1.3.5
+      fecha: 4.2.3
+      ms: 2.1.3
+      safe-stable-stringify: 2.4.3
+      triple-beam: 1.4.1
+
   loglevel@1.9.1: {}
 
   logsnag@1.0.0:
@@ -8798,6 +8854,10 @@ snapshots:
     dependencies:
       minipass: 7.1.2
       rimraf: 5.0.7
+
+  mitm@1.7.3:
+    dependencies:
+      semver: 5.7.2
 
   mitt@3.0.1: {}
 
@@ -9456,6 +9516,10 @@ snapshots:
 
   regenerator-runtime@0.14.1: {}
 
+  request-to-curl@0.1.6:
+    dependencies:
+      http-parser-js: 0.5.8
+
   require-directory@2.1.1: {}
 
   require-from-string@2.0.2: {}
@@ -9991,10 +10055,20 @@ snapshots:
     dependencies:
       isexe: 2.0.0
 
-  winston-transport@4.7.0:
+  winston-array-transport@1.1.11:
+    dependencies:
+      winston-transport: 4.5.0
+
+  winston-transport@4.5.0:
     dependencies:
       logform: 2.6.0
       readable-stream: 3.6.2
+      triple-beam: 1.4.1
+
+  winston-transport@4.8.0:
+    dependencies:
+      logform: 2.6.1
+      readable-stream: 4.5.2
       triple-beam: 1.4.1
 
   winston@3.14.2:
@@ -10009,7 +10083,7 @@ snapshots:
       safe-stable-stringify: 2.4.3
       stack-trace: 0.0.10
       triple-beam: 1.4.1
-      winston-transport: 4.7.0
+      winston-transport: 4.8.0
 
   wordnet-db@3.1.14: {}
 

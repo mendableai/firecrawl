@@ -17,7 +17,7 @@ export async function sendSlackWebhook(
         "Content-Type": "application/json",
       },
     });
-    logger.log("Webhook sent successfully:", response.data);
+    logger.info("Webhook sent successfully:", response.data);
   } catch (error) {
     logger.debug(`Error sending webhook: ${error}`);
   }
