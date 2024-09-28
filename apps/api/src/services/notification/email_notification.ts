@@ -2,7 +2,7 @@ import { supabase_service } from "../supabase";
 import { withAuth } from "../../lib/withAuth";
 import { Resend } from "resend";
 import { NotificationType } from "../../types";
-import { Logger } from "../../../src/lib/logger";
+import { logger } from "../../../src/lib/logger";
 
 const emailTemplates: Record<
   NotificationType,
@@ -53,11 +53,11 @@ async function sendEmailNotification(
     });
 
     if (error) {
-      Logger.debug(`Error sending email: ${error}`);
+      logger.debug(`Error sending email: ${error}`);
       return { success: false };
     }
   } catch (error) {
-    Logger.debug(`Error sending email (2): ${error}`);
+    logger.debug(`Error sending email (2): ${error}`);
     return { success: false };
   }
 }
@@ -83,12 +83,12 @@ export async function sendNotificationInternal(
     .gte("sent_date", fifteenDaysAgo.toISOString());
 
   if (error) {
-    Logger.debug(`Error fetching notifications: ${error}`);
+    logger.debug(`Error fetching notifications: ${error}`);
     return { success: false };
   }
 
   if (data.length !== 0) {
-    // Logger.debug(`Notification already sent for team_id: ${team_id} and notificationType: ${notificationType} in the last 15 days`);
+    // logger.debug(`Notification already sent for team_id: ${team_id} and notificationType: ${notificationType} in the last 15 days`);
     return { success: false };
   }
 
@@ -101,12 +101,12 @@ export async function sendNotificationInternal(
     .lte("sent_date", endDateString);
 
   if (recentError) {
-    Logger.debug(`Error fetching recent notifications: ${recentError}`);
+    logger.debug(`Error fetching recent notifications: ${recentError}`);
     return { success: false };
   }
 
   if (recentData.length !== 0) {
-    // Logger.debug(`Notification already sent for team_id: ${team_id} and notificationType: ${notificationType} within the specified date range`);
+    // logger.debug(`Notification already sent for team_id: ${team_id} and notificationType: ${notificationType} within the specified date range`);
     return { success: false };
   } else {
     console.log(`Sending notification for team_id: ${team_id} and notificationType: ${notificationType}`);
@@ -117,7 +117,7 @@ export async function sendNotificationInternal(
       .eq("team_id", team_id);
 
     if (emailsError) {
-      Logger.debug(`Error fetching emails: ${emailsError}`);
+      logger.debug(`Error fetching emails: ${emailsError}`);
       return { success: false };
     }
 
@@ -136,7 +136,7 @@ export async function sendNotificationInternal(
       ]);
 
     if (insertError) {
-      Logger.debug(`Error inserting notification record: ${insertError}`);
+      logger.debug(`Error inserting notification record: ${insertError}`);
       return { success: false };
     }
 

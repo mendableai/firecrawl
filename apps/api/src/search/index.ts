@@ -1,4 +1,4 @@
-import { Logger } from "../../src/lib/logger";
+import { logger } from "../../src/lib/logger";
 import { SearchResult } from "../../src/lib/entities";
 import { googleSearch } from "./googlesearch";
 import { fireEngineMap } from "./fireEngine";
@@ -54,7 +54,7 @@ export async function search({
       timeout
     );
   } catch (error) {
-    Logger.error(`Error in search function: ${error}`);
+    logger.error(`Error in search function: ${error}`);
     return [];
   }
 }

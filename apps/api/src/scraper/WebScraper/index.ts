@@ -18,7 +18,7 @@ import {
 import { generateCompletions } from "../../lib/LLM-extraction";
 import { fetchAndProcessDocx } from "./utils/docxProcessor";
 import { getAdjustedMaxDepth, getURLDepth } from "./utils/maxDepthUtils";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import { ScrapeEvents } from "../../lib/scrape-events";
 
 export class WebScraperDataProvider {
@@ -280,7 +280,7 @@ export class WebScraperDataProvider {
       this.mode === "single_urls" && links.length > 0
         ? this.getSitemapDataForSingleUrl(this.urls[0], links[0], 1500).catch(
             (error) => {
-              Logger.debug(`Failed to fetch sitemap data: ${error}`);
+              logger.debug(`Failed to fetch sitemap data: ${error}`);
               return null;
             }
           )
@@ -525,7 +525,7 @@ export class WebScraperDataProvider {
     let documents: Document[] = [];
     for (const url of urls) {
       const normalizedUrl = this.normalizeUrl(url);
-      Logger.debug(
+      logger.debug(
         "Getting cached document for web-scraper-cache:" + normalizedUrl
       );
       const cachedDocumentString = await getValue(

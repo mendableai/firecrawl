@@ -10,7 +10,7 @@ import { DocumentUrl, Progress } from "../lib/entities";
 import { billTeam } from "../services/billing/credit_billing";
 import { Document } from "../lib/entities";
 import { supabase_service } from "../services/supabase";
-import { Logger } from "../lib/logger";
+import { logger } from "../lib/logger";
 import { ScrapeEvents } from "../lib/scrape-events";
 import { configDotenv } from "dotenv";
 configDotenv();
@@ -35,7 +35,7 @@ export async function startWebScraperPipeline({
       }): {}),
     },
     inProgress: (progress) => {
-      Logger.debug(`🐂 Job in progress ${job.id}`);
+      logger.debug(`🐂 Job in progress ${job.id}`);
       if (progress.currentDocument) {
         partialDocs.push(progress.currentDocument);
         if (partialDocs.length > 50) {
@@ -45,11 +45,11 @@ export async function startWebScraperPipeline({
       }
     },
     onSuccess: (result, mode) => {
-      Logger.debug(`🐂 Job completed ${job.id}`);
+      logger.debug(`🐂 Job completed ${job.id}`);
       saveJob(job, result, token, mode);
     },
     onError: (error) => {
-      Logger.error(`🐂 Job failed ${job.id}`);
+      logger.error(`🐂 Job failed ${job.id}`);
       ScrapeEvents.logJobEvent(job, "failed");
       job.moveToFailed(error, token, false);
     },
@@ -121,7 +121,7 @@ export async function runWebScraper({
 
     if(is_scrape === false) {
       billTeam(team_id, undefined, filteredDocs.length).catch(error => {
-        Logger.error(`Failed to bill team ${team_id} for ${filteredDocs.length} credits: ${error}`);
+        logger.error(`Failed to bill team ${team_id} for ${filteredDocs.length} credits: ${error}`);
         // Optionally, you could notify an admin or add to a retry queue here
       });
     }
@@ -167,6 +167,6 @@ const saveJob = async (job: Job, result: any, token: string, mode: string) => {
     }
     ScrapeEvents.logJobEvent(job, "completed");
   } catch (error) {
-    Logger.error(`🐂 Failed to update job status: ${error}`);
+    logger.error(`🐂 Failed to update job status: ${error}`);
   }
 };

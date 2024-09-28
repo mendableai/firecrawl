@@ -18,7 +18,7 @@ import { scrapWithFireEngine } from "./scrapers/fireEngine";
 import { scrapWithPlaywright } from "./scrapers/playwright";
 import { scrapWithScrapingBee } from "./scrapers/scrapingBee";
 import { extractLinks } from "./utils/utils";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import { ScrapeEvents } from "../../lib/scrape-events";
 import { clientSideError } from "../../strings";
 
@@ -55,7 +55,7 @@ export async function generateRequestParams(
       return defaultParams;
     }
   } catch (error) {
-    Logger.error(`Error generating URL key: ${error}`);
+    logger.error(`Error generating URL key: ${error}`);
     return defaultParams;
   }
 }
@@ -382,7 +382,7 @@ export async function scrapSingleUrl(
     try {
       urlKey = new URL(urlToScrap).hostname.replace(/^www\./, "");
     } catch (error) {
-      Logger.error(`Invalid URL key, trying: ${urlToScrap}`);
+      logger.error(`Invalid URL key, trying: ${urlToScrap}`);
     }
     const defaultScraper = urlSpecificParams[urlKey]?.defaultScraper ?? "";
     const scrapersInOrder = getScrapingFallbackOrder(
@@ -423,16 +423,16 @@ export async function scrapSingleUrl(
       }
 
       if ((text && text.trim().length >= 100) || (typeof screenshot === "string" && screenshot.length > 0)) {
-        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100 or screenshot, breaking`);
+        logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100 or screenshot, breaking`);
         break;
       }
       if (pageStatusCode && (pageStatusCode == 404)) {
-        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code 404, breaking`);
+        logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code 404, breaking`);
         break;
       }
       // const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;
       // if (nextScraperIndex < scrapersInOrder.length) {
-      //   Logger.debug(`⛏️ ${scraper} Failed to fetch URL: ${urlToScrap} with status: ${pageStatusCode}, error: ${pageError} | Falling back to ${scrapersInOrder[nextScraperIndex]}`);
+      //   logger.debug(`⛏️ ${scraper} Failed to fetch URL: ${urlToScrap} with status: ${pageStatusCode}, error: ${pageError} | Falling back to ${scrapersInOrder[nextScraperIndex]}`);
       // }
     }
 
@@ -473,7 +473,7 @@ export async function scrapSingleUrl(
 
     return document;
   } catch (error) {
-    Logger.debug(`⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrap}`);
+    logger.debug(`⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrap}`);
     ScrapeEvents.insert(jobId, {
       type: "error",
       message: typeof error === "string" ? error : typeof error.message === "string" ? error.message : JSON.stringify(error),

@@ -7,7 +7,7 @@ import pdf from "pdf-parse";
 import path from "path";
 import os from "os";
 import { axiosTimeout } from "../../../lib/timeout";
-import { Logger } from "../../../lib/logger";
+import { logger } from "../../../lib/logger";
 
 dotenv.config();
 
@@ -18,7 +18,7 @@ export async function fetchAndProcessPdf(url: string, parsePDF: boolean): Promis
     fs.unlinkSync(tempFilePath); // Clean up the temporary file
     return { content, pageStatusCode, pageError };
   } catch (error) {
-    Logger.error(`Failed to fetch and process PDF: ${error.message}`);
+    logger.error(`Failed to fetch and process PDF: ${error.message}`);
     return { content: "", pageStatusCode: 500, pageError: error.message };
   }
 }
@@ -45,7 +45,7 @@ export async function processPdfToText(filePath: string, parsePDF: boolean): Pro
   let content = "";
 
   if (process.env.LLAMAPARSE_API_KEY && parsePDF) {
-    Logger.debug("Processing pdf document w/ LlamaIndex");
+    logger.debug("Processing pdf document w/ LlamaIndex");
     const apiKey = process.env.LLAMAPARSE_API_KEY;
     const headers = {
       Authorization: `Bearer ${apiKey}`,
@@ -87,10 +87,10 @@ export async function processPdfToText(filePath: string, parsePDF: boolean): Pro
             await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 0.5 seconds
           }
         } catch (error) {
-          Logger.debug("Error fetching result w/ LlamaIndex");
+          logger.debug("Error fetching result w/ LlamaIndex");
           attempt++;
           if (attempt >= maxAttempts) {
-            Logger.error("Max attempts reached, unable to fetch result.");
+            logger.error("Max attempts reached, unable to fetch result.");
             break; // Exit the loop if max attempts are reached
           }
           await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 0.5 seconds before retrying
@@ -102,27 +102,27 @@ export async function processPdfToText(filePath: string, parsePDF: boolean): Pro
         try {
           content = await processPdf(filePath);
         } catch (error) {
-          Logger.error(`Failed to process PDF: ${error}`);
+          logger.error(`Failed to process PDF: ${error}`);
           content = "";
         }
       }
       content = resultResponse?.data[resultType];
     } catch (error) {
-      Logger.debug("Error processing pdf document w/ LlamaIndex(2)");
+      logger.debug("Error processing pdf document w/ LlamaIndex(2)");
       content = await processPdf(filePath);
     }
   } else if (parsePDF) {
     try {
       content = await processPdf(filePath);
     } catch (error) {
-      Logger.error(`Failed to process PDF: ${error}`);
+      logger.error(`Failed to process PDF: ${error}`);
       content = "";
     }
   } else {
     try {
       content = fs.readFileSync(filePath, "utf-8");
     } catch (error) {
-      Logger.error(`Failed to read PDF file: ${error}`);
+      logger.error(`Failed to read PDF file: ${error}`);
       content = "";
     }
   }

@@ -9,7 +9,7 @@ import { v0Router } from "./routes/v0";
 import { initSDK } from "@hyperdx/node-opentelemetry";
 import cluster from "cluster";
 import os from "os";
-import { Logger } from "./lib/logger";
+import { logger } from "./lib/logger";
 import { adminRouter } from "./routes/admin";
 import { ScrapeEvents } from "./lib/scrape-events";
 import http from 'node:http';
@@ -27,7 +27,7 @@ const { BullAdapter } = require("@bull-board/api/bullAdapter");
 const { ExpressAdapter } = require("@bull-board/express");
 
 const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
-Logger.info(`Number of CPUs: ${numCPUs} available`);
+logger.info(`Number of CPUs: ${numCPUs} available`);
 
 const cacheable = new CacheableLookup({
   // this is important to avoid querying local hostnames see https://github.com/szmarczak/cacheable-lookup readme
@@ -38,7 +38,7 @@ cacheable.install(http.globalAgent);
 cacheable.install(https.globalAgent)
 
 if (cluster.isMaster) {
-  Logger.info(`Master ${process.pid} is running`);
+  logger.info(`Master ${process.pid} is running`);
 
   // Fork workers.
   for (let i = 0; i < numCPUs; i++) {
@@ -47,8 +47,8 @@ if (cluster.isMaster) {
 
   cluster.on("exit", (worker, code, signal) => {
     if (code !== null) {
-      Logger.info(`Worker ${worker.process.pid} exited`);
-      Logger.info("Starting a new worker");
+      logger.info(`Worker ${worker.process.pid} exited`);
+      logger.info("Starting a new worker");
       cluster.fork();
     }
   });
@@ -100,8 +100,8 @@ if (cluster.isMaster) {
 
   function startServer(port = DEFAULT_PORT) {
     const server = app.listen(Number(port), HOST, () => {
-      Logger.info(`Worker ${process.pid} listening on port ${port}`);
-      Logger.info(
+      logger.info(`Worker ${process.pid} listening on port ${port}`);
+      logger.info(
         `For the Queue UI, open: http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`
       );
     });
@@ -126,7 +126,7 @@ if (cluster.isMaster) {
       });
     } catch (error) {
       Sentry.captureException(error);
-      Logger.error(error);
+      logger.error(error);
       return res.status(500).json({ error: error.message });
     }
   });
@@ -171,14 +171,14 @@ if (cluster.isMaster) {
                 });
 
                 if (!response.ok) {
-                  Logger.error("Failed to send Slack notification");
+                  logger.error("Failed to send Slack notification");
                 }
               }
             }, timeout);
           }
         } catch (error) {
           Sentry.captureException(error);
-          Logger.debug(error);
+          logger.debug(error);
         }
       };
 
@@ -217,11 +217,11 @@ if (cluster.isMaster) {
       }
     }
 
-    Logger.error("Error occurred in request! (" + req.path + ") -- ID " + id  + " -- " + verbose);
+    logger.error("Error occurred in request! (" + req.path + ") -- ID " + id  + " -- " + verbose);
     res.status(500).json({ success: false, error: "An unexpected error occurred. Please contact hello@firecrawl.com for help. Your exception ID is " + id });
   });
 
-  Logger.info(`Worker ${process.pid} started`);
+  logger.info(`Worker ${process.pid} started`);
 }
 
 

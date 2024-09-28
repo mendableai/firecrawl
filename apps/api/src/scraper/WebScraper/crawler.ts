@@ -8,7 +8,7 @@ import { scrapSingleUrl } from "./single_url";
 import robotsParser from "robots-parser";
 import { getURLDepth } from "./utils/maxDepthUtils";
 import { axiosTimeout } from "../../../src/lib/timeout";
-import { Logger } from "../../../src/lib/logger";
+import { logger } from "../../../src/lib/logger";
 
 export class WebCrawler {
   private jobId: string;
@@ -73,7 +73,7 @@ export class WebCrawler {
         try {
           url = new URL(link.trim(), this.baseUrl);
         } catch (error) {
-          Logger.debug(`Error processing link: ${link} | Error: ${error.message}`);
+          logger.debug(`Error processing link: ${link} | Error: ${error.message}`);
           return false;
         }
         const path = url.pathname;
@@ -132,7 +132,7 @@ export class WebCrawler {
         const isAllowed = this.robots.isAllowed(link, "FireCrawlAgent") ?? true;
         // Check if the link is disallowed by robots.txt
         if (!isAllowed) {
-          Logger.debug(`Link disallowed by robots.txt: ${link}`);
+          logger.debug(`Link disallowed by robots.txt: ${link}`);
           return false;
         }
 
@@ -151,7 +151,7 @@ export class WebCrawler {
   }
 
   public async tryGetSitemap(): Promise<{ url: string; html: string; }[] | null> {
-    Logger.debug(`Fetching sitemap links from ${this.initialUrl}`);
+    logger.debug(`Fetching sitemap links from ${this.initialUrl}`);
     const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
     if (sitemapLinks.length > 0) {
       let filteredLinks = this.filterLinks(sitemapLinks, this.limit, this.maxCrawledDepth);
@@ -169,14 +169,14 @@ export class WebCrawler {
     maxDepth: number = 10
   ): Promise<{ url: string, html: string }[]> {
 
-    Logger.debug(`Crawler starting with ${this.initialUrl}`);
+    logger.debug(`Crawler starting with ${this.initialUrl}`);
     // Fetch and parse robots.txt
     try {
       const txt = await this.getRobotsTxt();
       this.importRobotsTxt(txt);
-      Logger.debug(`Crawler robots.txt fetched with ${this.robotsTxtUrl}`);
+      logger.debug(`Crawler robots.txt fetched with ${this.robotsTxtUrl}`);
     } catch (error) {
-      Logger.debug(`Failed to fetch robots.txt from ${this.robotsTxtUrl}`);
+      logger.debug(`Failed to fetch robots.txt from ${this.robotsTxtUrl}`);
     }
 
     if (!crawlerOptions?.ignoreSitemap){
@@ -212,7 +212,7 @@ export class WebCrawler {
     inProgress?: (progress: Progress) => void,
   ): Promise<{ url: string, html: string }[]> {
     const queue = async.queue(async (task: string, callback) => {
-      Logger.debug(`Crawling ${task}`);
+      logger.debug(`Crawling ${task}`);
       if (this.crawledUrls.size >= Math.min(this.maxCrawledLinks, this.limit)) {
         if (callback && typeof callback === "function") {
           callback();
@@ -254,18 +254,18 @@ export class WebCrawler {
       }
     }, concurrencyLimit);
 
-    Logger.debug(`🐂 Pushing ${urls.length} URLs to the queue`);
+    logger.debug(`🐂 Pushing ${urls.length} URLs to the queue`);
     queue.push(
       urls.filter(
         (url) =>
           !this.visited.has(url) && this.robots.isAllowed(url, "FireCrawlAgent")
       ),
       (err) => {
-        if (err) Logger.error(`🐂 Error pushing URLs to the queue: ${err}`);
+        if (err) logger.error(`🐂 Error pushing URLs to the queue: ${err}`);
       }
     );
     await queue.drain();
-    Logger.debug(`🐂 Crawled ${this.crawledUrls.size} URLs, Queue drained.`);
+    logger.debug(`🐂 Crawled ${this.crawledUrls.size} URLs, Queue drained.`);
     return Array.from(this.crawledUrls.entries()).map(([url, html]) => ({ url, html }));
   }
 
@@ -519,7 +519,7 @@ export class WebCrawler {
         sitemapLinks = await getLinksFromSitemap({ sitemapUrl });
       }
     } catch (error) { 
-      Logger.debug(`Failed to fetch sitemap with axios from ${sitemapUrl}: ${error}`);
+      logger.debug(`Failed to fetch sitemap with axios from ${sitemapUrl}: ${error}`);
       if (error instanceof AxiosError && error.response?.status === 404) {
         // ignore 404
       } else {
@@ -538,7 +538,7 @@ export class WebCrawler {
           sitemapLinks = await getLinksFromSitemap({ sitemapUrl: baseUrlSitemap, mode: 'fire-engine' });
         }
       } catch (error) {
-        Logger.debug(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);
+        logger.debug(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);
         if (error instanceof AxiosError && error.response?.status === 404) {
           // ignore 404
         } else {

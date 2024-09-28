@@ -11,7 +11,7 @@ import { withAuth } from "../lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import { setTraceAttributes } from "@hyperdx/node-opentelemetry";
 import { sendNotification } from "../services/notification/email_notification";
-import { Logger } from "../lib/logger";
+import { logger } from "../lib/logger";
 import { redlock } from "../services/redlock";
 import { getValue } from "../services/redis";
 import { setValue } from "../services/redis";
@@ -64,7 +64,7 @@ export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk 
       await setValue(cacheKeyACUC, JSON.stringify(acuc), 600, true);
     });
   } catch (error) {
-    Logger.error(`Error updating cached ACUC ${cacheKeyACUC}: ${error}`);
+    logger.error(`Error updating cached ACUC ${cacheKeyACUC}: ${error}`);
     Sentry.captureException(error);
   }
 }
@@ -117,7 +117,7 @@ function setTrace(team_id: string, api_key: string) {
     });
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(`Error setting trace attributes: ${error.message}`);
+    logger.error(`Error setting trace attributes: ${error.message}`);
   }
 }
 
@@ -240,7 +240,7 @@ export async function supaAuthenticateUser(
   try {
     await rateLimiter.consume(team_endpoint_token);
   } catch (rateLimiterRes) {
-    Logger.error(`Rate limit exceeded: ${rateLimiterRes}`);
+    logger.error(`Rate limit exceeded: ${rateLimiterRes}`);
     const secs = Math.round(rateLimiterRes.msBeforeNext / 1000) || 1;
     const retryDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
 

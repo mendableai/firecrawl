@@ -2,7 +2,7 @@ import { NotificationType } from "../../types";
 import { withAuth } from "../../lib/withAuth";
 import { sendNotification } from "../notification/email_notification";
 import { supabase_service } from "../supabase";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import * as Sentry from "@sentry/node";
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
 import { getACUC, setCachedACUC } from "../../controllers/auth";
@@ -19,14 +19,14 @@ export async function supaBillTeam(team_id: string, subscription_id: string | nu
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
   }
-  Logger.info(`Billing team ${team_id} for ${credits} credits`);
+  logger.info(`Billing team ${team_id} for ${credits} credits`);
 
   const { data, error } =
     await supabase_service.rpc("bill_team", { _team_id: team_id, sub_id: subscription_id ?? null, fetch_subscription: subscription_id === undefined, credits });
   
   if (error) {
     Sentry.captureException(error);
-    Logger.error("Failed to bill team: " + JSON.stringify(error));
+    logger.error("Failed to bill team: " + JSON.stringify(error));
     return;
   }
 

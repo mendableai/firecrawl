@@ -4,7 +4,7 @@ import { logScrape } from "../../../services/logging/scrape_log";
 import { generateRequestParams } from "../single_url";
 import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 import { universalTimeout } from "../global";
-import { Logger } from "../../../lib/logger";
+import { logger } from "../../../lib/logger";
 import * as Sentry from "@sentry/node";
 import axiosRetry from 'axios-retry';
 
@@ -80,7 +80,7 @@ export async function scrapWithFireEngine({
       engine = "tlsclient";
     }
 
-    Logger.info(
+    logger.info(
       `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { actions: ${JSON.stringify((actions ?? []).map(x => x.type))}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
     );
 
@@ -143,22 +143,22 @@ export async function scrapWithFireEngine({
     }
 
     if (checkStatusResponse.data.processing) {
-      Logger.debug(`⛏️ Fire-Engine (${engine}): deleting request - jobId: ${_response.data.jobId}`);
+      logger.debug(`⛏️ Fire-Engine (${engine}): deleting request - jobId: ${_response.data.jobId}`);
       axiosInstance.delete(
         process.env.FIRE_ENGINE_BETA_URL + `/scrape/${_response.data.jobId}`, {
           validateStatus: (status) => true
         }
       ).catch((error) => {
-        Logger.debug(`⛏️ Fire-Engine (${engine}): Failed to delete request - jobId: ${_response.data.jobId} | error: ${error}`);        
+        logger.debug(`⛏️ Fire-Engine (${engine}): Failed to delete request - jobId: ${_response.data.jobId} | error: ${error}`);        
       });
       
-      Logger.debug(`⛏️ Fire-Engine (${engine}): Request timed out for ${url}`);
+      logger.debug(`⛏️ Fire-Engine (${engine}): Request timed out for ${url}`);
       logParams.error_message = "Request timed out";
       return { html: "", pageStatusCode: undefined, pageError: "" };
     }
 
     if (checkStatusResponse.status !== 200 || checkStatusResponse.data.error) {
-      Logger.debug(
+      logger.debug(
         `⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${checkStatusResponse.status}\t ${checkStatusResponse.data.error}`
       );
       
@@ -166,7 +166,7 @@ export async function scrapWithFireEngine({
       logParams.response_code = checkStatusResponse.data?.pageStatusCode;
 
       if(checkStatusResponse.data && checkStatusResponse.data?.pageStatusCode !== 200) {
-        Logger.debug(`⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${checkStatusResponse.data?.pageStatusCode}`);
+        logger.debug(`⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${checkStatusResponse.data?.pageStatusCode}`);
       }
 
       const pageStatusCode = checkStatusResponse.data?.pageStatusCode ? checkStatusResponse.data?.pageStatusCode : checkStatusResponse.data?.error && checkStatusResponse.data?.error.includes("Dns resolution error for hostname") ? 404 : undefined;
@@ -207,10 +207,10 @@ export async function scrapWithFireEngine({
     }
   } catch (error) {
     if (error.code === "ECONNABORTED") {
-      Logger.debug(`⛏️ Fire-Engine (catch block): Request timed out for ${url}`);
+      logger.debug(`⛏️ Fire-Engine (catch block): Request timed out for ${url}`);
       logParams.error_message = "Request timed out";
     } else {
-      Logger.debug(`⛏️ Fire-Engine(catch block): Failed to fetch url: ${url} | Error: ${error}`);
+      logger.debug(`⛏️ Fire-Engine(catch block): Failed to fetch url: ${url} | Error: ${error}`);
       logParams.error_message = error.message || error;
     }
     return { html: "", pageStatusCode: undefined, pageError: logParams.error_message };

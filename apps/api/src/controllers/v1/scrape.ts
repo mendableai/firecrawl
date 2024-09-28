@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import {
   Document,
   legacyDocumentConverter,
@@ -60,7 +60,7 @@ export async function scrapeController(
   try {
     doc = (await waitForJob<any[]>(job.id, timeout + totalWait))[0]; // TODO: better types for this
   } catch (e) {
-    Logger.error(`Error in scrapeController: ${e}`);
+    logger.error(`Error in scrapeController: ${e}`);
     if (e instanceof Error && e.message.startsWith("Job wait")) {
       return res.status(408).json({
         success: false,
@@ -109,7 +109,7 @@ export async function scrapeController(
   }
 
   billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(error => {
-    Logger.error(`Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`);
+    logger.error(`Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`);
     // Optionally, you could notify an admin or add to a retry queue here
   });
 

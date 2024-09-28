@@ -13,7 +13,7 @@ import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
 import { initSDK } from "@hyperdx/node-opentelemetry";
 import { Job } from "bullmq";
-import { Logger } from "../lib/logger";
+import { logger } from "../lib/logger";
 import { Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
 import { v4 as uuidv4 } from "uuid";
@@ -63,7 +63,7 @@ const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 
 const processJobInternal = async (token: string, job: Job & { id: string }) => {
   const extendLockInterval = setInterval(async () => {
-    Logger.info(`🐂 Worker extending lock on job ${job.id}`);
+    logger.info(`🐂 Worker extending lock on job ${job.id}`);
     await job.extendLock(token, jobLockExtensionTime);
   }, jobLockExtendInterval);
 
@@ -196,7 +196,7 @@ const workerFun = async (
 workerFun(scrapeQueueName, processJobInternal);
 
 async function processJob(job: Job & { id: string }, token: string) {
-  Logger.info(`🐂 Worker taking job ${job.id}`);
+  logger.info(`🐂 Worker taking job ${job.id}`);
 
   // Check if the job URL is researchhub and block it immediately
   // TODO: remove this once solve the root issue
@@ -207,7 +207,7 @@ async function processJob(job: Job & { id: string }, token: string) {
       job.data.url.includes("youtube.com") ||
       job.data.url.includes("microsoft.com"))
   ) {
-    Logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
+    logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
     const data = {
       success: false,
       docs: [],
@@ -443,10 +443,10 @@ async function processJob(job: Job & { id: string }, token: string) {
       }
     }
 
-    Logger.info(`🐂 Job done ${job.id}`);
+    logger.info(`🐂 Job done ${job.id}`);
     return data;
   } catch (error) {
-    Logger.error(`🐂 Job errored ${job.id} - ${error}`);
+    logger.error(`🐂 Job errored ${job.id} - ${error}`);
 
     if (!(error instanceof Error && error.message.includes("JSON parsing error(s): "))) {
       Sentry.captureException(error, {
@@ -458,7 +458,7 @@ async function processJob(job: Job & { id: string }, token: string) {
 
     if (error instanceof CustomError) {
       // Here we handle the error, then save the failed job
-      Logger.error(error.message); // or any other error handling
+      logger.error(error.message); // or any other error handling
 
       logtail.error("Custom error while ingesting", {
         job_id: job.id,
@@ -466,9 +466,9 @@ async function processJob(job: Job & { id: string }, token: string) {
         dataIngestionJob: error.dataIngestionJob,
       });
     }
-    Logger.error(error);
+    logger.error(error);
     if (error.stack) {
-      Logger.error(error.stack);
+      logger.error(error.stack);
     }
 
     logtail.error("Overall error ingesting", {

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 
 import { Job } from "bullmq";
-import { Logger } from "../../../lib/logger";
+import { logger } from "../../../lib/logger";
 import { getScrapeQueue } from "../../../services/queue-service";
 import { checkAlerts } from "../../../services/alerts";
 import { sendSlackWebhook } from "../../../services/alerts/slack";
@@ -10,7 +10,7 @@ export async function cleanBefore24hCompleteJobsController(
   req: Request,
   res: Response
 ) {
-  Logger.info("🐂 Cleaning jobs older than 24h");
+  logger.info("🐂 Cleaning jobs older than 24h");
   try {
     const scrapeQueue = getScrapeQueue();
     const batchSize = 10;
@@ -45,12 +45,12 @@ export async function cleanBefore24hCompleteJobsController(
         await job.remove();
         count++;
       } catch (jobError) {
-        Logger.error(`🐂 Failed to remove job with ID ${job.id}: ${jobError}`);
+        logger.error(`🐂 Failed to remove job with ID ${job.id}: ${jobError}`);
       }
     }
     return res.status(200).send(`Removed ${count} completed jobs.`);
   } catch (error) {
-    Logger.error(`🐂 Failed to clean last 24h complete jobs: ${error}`);
+    logger.error(`🐂 Failed to clean last 24h complete jobs: ${error}`);
     return res.status(500).send("Failed to clean jobs");
   }
 }
@@ -60,7 +60,7 @@ export async function checkQueuesController(req: Request, res: Response) {
     await checkAlerts();
     return res.status(200).send("Alerts initialized");
   } catch (error) {
-    Logger.debug(`Failed to initialize alerts: ${error}`);
+    logger.debug(`Failed to initialize alerts: ${error}`);
     return res.status(500).send("Failed to initialize alerts");
   }
 }
@@ -81,7 +81,7 @@ export async function queuesController(req: Request, res: Response) {
       noActiveJobs,
     });
   } catch (error) {
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }
@@ -165,7 +165,7 @@ export async function autoscalerController(req: Request, res: Response) {
     }
 
     if (targetMachineCount !== activeMachines) {
-      Logger.info(
+      logger.info(
         `🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting`
       );
 
@@ -193,7 +193,7 @@ export async function autoscalerController(req: Request, res: Response) {
       count: activeMachines,
     });
   } catch (error) {
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).send("Failed to initialize autoscaler");
   }
 }

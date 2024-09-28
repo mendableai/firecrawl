@@ -18,7 +18,7 @@ import { fireEngineMap } from "../../search/fireEngine";
 import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { performCosineSimilarity } from "../../lib/map-cosine";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import Redis from "ioredis";
 
 configDotenv();
@@ -153,7 +153,7 @@ export async function mapController(
   links = removeDuplicateUrls(links);
 
   billTeam(req.auth.team_id, req.acuc?.sub_id, 1).catch((error) => {
-    Logger.error(
+    logger.error(
       `Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`
     );
     // Optionally, you could notify an admin or add to a retry queue here

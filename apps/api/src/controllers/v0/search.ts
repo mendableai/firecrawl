@@ -8,7 +8,7 @@ import { PageOptions, SearchOptions } from "../../lib/entities";
 import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import { getScrapeQueue } from "../../services/queue-service";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import * as Sentry from "@sentry/node";
@@ -57,7 +57,7 @@ export async function searchHelper(
 
   if (justSearch) {
     billTeam(team_id, subscription_id, res.length).catch(error => {
-      Logger.error(`Failed to bill team ${team_id} for ${res.length} credits: ${error}`);
+      logger.error(`Failed to bill team ${team_id} for ${res.length} credits: ${error}`);
       // Optionally, you could notify an admin or add to a retry queue here
     });
     return { success: true, data: res, returnCode: 200 };
@@ -164,7 +164,7 @@ export async function searchController(req: Request, res: Response) {
       }
     } catch (error) {
       Sentry.captureException(error);
-      Logger.error(error);
+      logger.error(error);
       return res.status(500).json({ error: "Internal server error" });
     }
     const startTime = new Date().getTime();
@@ -201,7 +201,7 @@ export async function searchController(req: Request, res: Response) {
     }
 
     Sentry.captureException(error);
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

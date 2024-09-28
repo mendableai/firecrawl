@@ -9,7 +9,7 @@ import { validateIdempotencyKey } from "../../../src/services/idempotency/valida
 import { createIdempotencyKey } from "../../../src/services/idempotency/create";
 import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../../src/lib/default-values";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "../../../src/lib/logger";
+import { logger } from "../../../src/lib/logger";
 import { addCrawlJob, addCrawlJobs, crawlToCrawler, lockURL, lockURLs, saveCrawl, StoredCrawl } from "../../../src/lib/crawl-redis";
 import { getScrapeQueue } from "../../../src/services/queue-service";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
@@ -37,7 +37,7 @@ export async function crawlController(req: Request, res: Response) {
       try {
         createIdempotencyKey(req);
       } catch (error) {
-        Logger.error(error);
+        logger.error(error);
         return res.status(500).json({ error: error.message });
       }
     }
@@ -125,7 +125,7 @@ export async function crawlController(req: Request, res: Response) {
     //       documents: docs,
     //     });
     //   } catch (error) {
-    //     Logger.error(error);
+    //     logger.error(error);
     //     return res.status(500).json({ error: error.message });
     //   }
     // }
@@ -228,7 +228,7 @@ export async function crawlController(req: Request, res: Response) {
     res.json({ jobId: id });
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

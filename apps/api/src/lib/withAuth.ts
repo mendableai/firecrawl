@@ -1,5 +1,5 @@
 import { AuthResponse } from "../../src/types";
-import { Logger } from "./logger";
+import { logger } from "./logger";
 import * as Sentry from "@sentry/node";
 import { configDotenv } from "dotenv";
 configDotenv();
@@ -14,7 +14,7 @@ export function withAuth<T, U extends any[]>(
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
     if (!useDbAuthentication) {
       if (warningCount < 5) {
-        Logger.warn("You're bypassing authentication");
+        logger.warn("You're bypassing authentication");
         warningCount++;
       }
       return { success: true } as T;

@@ -4,7 +4,7 @@ import { createWriteStream } from "node:fs";
 import path from "path";
 import os from "os";
 import mammoth from "mammoth";
-import { Logger } from "../../../lib/logger";
+import { logger } from "../../../lib/logger";
 
 export async function fetchAndProcessDocx(url: string): Promise<{ content: string; pageStatusCode: number; pageError: string | undefined }> {
   let tempFilePath = '';
@@ -19,7 +19,7 @@ export async function fetchAndProcessDocx(url: string): Promise<{ content: strin
     pageError = downloadResult.pageError;
     content = await processDocxToText(tempFilePath);
   } catch (error) {
-    Logger.error(`Failed to fetch and process DOCX: ${error.message}`);
+    logger.error(`Failed to fetch and process DOCX: ${error.message}`);
     pageStatusCode = 500;
     pageError = error.message;
     content = '';
@@ -48,12 +48,12 @@ async function downloadDocx(url: string): Promise<{ tempFilePath: string; pageSt
     return new Promise((resolve, reject) => {
       writer.on("finish", () => resolve({ tempFilePath, pageStatusCode: response.status, pageError: response.statusText != "OK" ? response.statusText : undefined }));
       writer.on("error", () => {
-        Logger.error('Failed to write DOCX file to disk');
+        logger.error('Failed to write DOCX file to disk');
         reject(new Error('Failed to write DOCX file to disk'));
       });
     });
   } catch (error) {
-    Logger.error(`Failed to download DOCX: ${error.message}`);
+    logger.error(`Failed to download DOCX: ${error.message}`);
     return { tempFilePath: "", pageStatusCode: 500, pageError: error.message };
   }
 }
@@ -63,7 +63,7 @@ export async function processDocxToText(filePath: string): Promise<string> {
     const content = await extractTextFromDocx(filePath);
     return content;
   } catch (error) {
-    Logger.error(`Failed to process DOCX to text: ${error.message}`);
+    logger.error(`Failed to process DOCX to text: ${error.message}`);
     return "";
   }
 }
@@ -73,7 +73,7 @@ async function extractTextFromDocx(filePath: string): Promise<string> {
     const result = await mammoth.extractRawText({ path: filePath });
     return result.value;
   } catch (error) {
-    Logger.error(`Failed to extract text from DOCX: ${error.message}`);
+    logger.error(`Failed to extract text from DOCX: ${error.message}`);
     return "";
   }
 }

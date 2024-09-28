@@ -4,7 +4,7 @@ const ajv = new Ajv(); // Initialize AJV for JSON schema validation
 
 import { generateOpenAICompletions } from "./models";
 import { Document, ExtractorOptions } from "../entities";
-import { Logger } from "../logger";
+import { logger } from "../logger";
 
 // Generate completion using OpenAI
 export async function generateCompletions(
@@ -51,7 +51,7 @@ export async function generateCompletions(
 
             return completionResult;
           } catch (error) {
-            Logger.error(`Error generating completions: ${error}`);
+            logger.error(`Error generating completions: ${error}`);
             throw error;
           }
         default:

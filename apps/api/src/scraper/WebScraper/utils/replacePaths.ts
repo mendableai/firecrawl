@@ -1,4 +1,4 @@
-import { Logger } from "../../../lib/logger";
+import { logger } from "../../../lib/logger";
 import { Document } from "../../../lib/entities";
 
 export const replacePathsWithAbsolutePaths = (documents: Document[]): Document[] => {
@@ -43,7 +43,7 @@ export const replacePathsWithAbsolutePaths = (documents: Document[]): Document[]
 
     return documents;
   } catch (error) {
-    Logger.debug(`Error replacing paths with absolute paths: ${error}`);
+    logger.debug(`Error replacing paths with absolute paths: ${error}`);
     return documents;
   }
 };
@@ -83,7 +83,7 @@ export const replaceImgPathsWithAbsolutePaths = (documents: Document[]): Documen
 
     return documents;
   } catch (error) {
-    Logger.error(`Error replacing img paths with absolute paths: ${error}`);
+    logger.error(`Error replacing img paths with absolute paths: ${error}`);
     return documents;
   }
 };

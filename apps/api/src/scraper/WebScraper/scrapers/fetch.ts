@@ -2,7 +2,7 @@ import axios from "axios";
 import { logScrape } from "../../../services/logging/scrape_log";
 import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 import { universalTimeout } from "../global";
-import { Logger } from "../../../lib/logger";
+import { logger } from "../../../lib/logger";
 
 /**
  * Scrapes a URL with Axios
@@ -35,7 +35,7 @@ export async function scrapWithFetch(
     });
 
     if (response.status !== 200) {
-      Logger.debug(`⛏️ Axios: Failed to fetch url: ${url} with status: ${response.status}`);
+      logger.debug(`⛏️ Axios: Failed to fetch url: ${url} with status: ${response.status}`);
       logParams.error_message = response.statusText;
       logParams.response_code = response.status;
       return {
@@ -62,10 +62,10 @@ export async function scrapWithFetch(
   } catch (error) {
     if (error.code === "ECONNABORTED") {
       logParams.error_message = "Request timed out";
-      Logger.debug(`⛏️ Axios: Request timed out for ${url}`);
+      logger.debug(`⛏️ Axios: Request timed out for ${url}`);
     } else {
       logParams.error_message = error.message || error;
-      Logger.debug(`⛏️ Axios: Failed to fetch url: ${url} | Error: ${error}`);
+      logger.debug(`⛏️ Axios: Failed to fetch url: ${url} | Error: ${error}`);
     }
     return { content: "", pageStatusCode: undefined, pageError: logParams.error_message };
   } finally {

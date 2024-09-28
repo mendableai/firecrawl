@@ -1,6 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
 import axios from 'axios';
-import { Logger } from '../../../lib/logger';
+import { logger } from '../../../lib/logger';
 
 export async function getImageDescription(
   imageUrl: string,
@@ -83,7 +83,7 @@ export async function getImageDescription(
       }
     }
   } catch (error) {
-    Logger.error(`Error generating image alt text: ${error}`);
+    logger.error(`Error generating image alt text: ${error}`);
     return "";
   }
 }

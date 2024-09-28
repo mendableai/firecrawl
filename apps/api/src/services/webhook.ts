@@ -1,6 +1,6 @@
 import axios from "axios";
 import { Document, legacyDocumentConverter } from "../../src/controllers/v1/types";
-import { Logger } from "../../src/lib/logger";
+import { logger } from "../../src/lib/logger";
 import { supabase_service } from "./supabase";
 import { WebhookEventType } from "../types";
 import { configDotenv } from "dotenv";
@@ -32,7 +32,7 @@ export const callWebhook = async (
         .eq("team_id", teamId)
         .limit(1);
       if (error) {
-        Logger.error(
+        logger.error(
           `Error fetching webhook URL for team ID: ${teamId}, error: ${error.message}`
         );
         return null;
@@ -98,7 +98,7 @@ export const callWebhook = async (
           }
         );
       } catch (error) {
-        Logger.error(
+        logger.error(
           `Axios error (0) sending webhook for team ID: ${teamId}, error: ${error.message}`
         );
       }
@@ -129,13 +129,13 @@ export const callWebhook = async (
           }
         )
         .catch((error) => {
-          Logger.error(
+          logger.error(
             `Axios error sending webhook for team ID: ${teamId}, error: ${error.message}`
           );
         });
     }
   } catch (error) {
-    Logger.debug(
+    logger.debug(
       `Error sending webhook for team ID: ${teamId}, error: ${error.message}`
     );
   }

@@ -14,7 +14,7 @@ import expressWs from "express-ws";
 import { crawlStatusWSController } from "../controllers/v1/crawl-status-ws";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { crawlCancelController } from "../controllers/v1/crawl-cancel";
-import { Logger } from "../lib/logger";
+import { logger } from "../lib/logger";
 import { scrapeStatusController } from "../controllers/v1/scrape-status";
 // import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
 // import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
@@ -35,7 +35,7 @@ function checkCreditsMiddleware(minimum?: number): (req: RequestWithAuth, res: R
                 req.acuc = chunk;
             }
             if (!success) {
-                Logger.error(`Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`);
+                logger.error(`Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`);
                 if (!res.headersSent) {
                     return res.status(402).json({ success: false, error: "Insufficient credits. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing." });
                 }

@@ -4,7 +4,7 @@ import { authenticateUser } from "../auth";
 import { CrawlStatusParams, CrawlStatusResponse, Document, ErrorResponse, legacyDocumentConverter, RequestWithAuth } from "./types";
 import { WebSocket } from "ws";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength, isCrawlFinished, isCrawlFinishedLocked } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
 import { getJob, getJobs } from "./crawl-status";
@@ -155,7 +155,7 @@ export async function crawlStatusWSController(ws: WebSocket, req: RequestWithAut
       }
     }
 
-    Logger.error("Error occurred in WebSocket! (" + req.path + ") -- ID " + id + " -- " + verbose);
+    logger.error("Error occurred in WebSocket! (" + req.path + ") -- ID " + id + " -- " + verbose);
     return close(ws, 1011, {
       type: "error",
       error: "An unexpected error occurred. Please contact hello@firecrawl.com for help. Your exception ID is " + id

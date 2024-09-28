@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { getScrapeQueue } from "../../../src/services/queue-service";
-import { Logger } from "../../../src/lib/logger";
+import { logger } from "../../../src/lib/logger";
 import { getCrawl, getCrawlJobs } from "../../../src/lib/crawl-redis";
 import { supabaseGetJobsByCrawlId } from "../../../src/lib/supabase-jobs";
 import * as Sentry from "@sentry/node";
@@ -83,7 +83,7 @@ export async function crawlStatusController(req: Request, res: Response) {
     });
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }
