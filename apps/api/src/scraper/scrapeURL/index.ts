@@ -51,6 +51,8 @@ export type EngineResultsTracker = { [E in Engine]?: {
     state: "success",
     result: EngineScrapeResult & { markdown: string },
     factors: Record<string, boolean>,
+} | {
+    state: "timeout",
 } };
 
 export async function scrapeURL(
@@ -110,6 +112,9 @@ export async function scrapeURL(
                     };
                 } else if (error instanceof TimeoutError) {
                     meta.logger.debug("Engine " + engine + " timed out while scraping.", { error });
+                    results[engine] = {
+                        state: "timeout",
+                    };
                 } else {
                     meta.logger.debug("An unexpected error happened while scraping with " + engine + ".", { error });
                     results[engine] = {
