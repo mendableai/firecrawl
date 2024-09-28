@@ -116,6 +116,7 @@ export async function scrapeURL(
                         state: "timeout",
                     };
                 } else {
+                    Sentry.captureException(error);
                     meta.logger.debug("An unexpected error happened while scraping with " + engine + ".", { error });
                     results[engine] = {
                         state: "error",
