@@ -17,6 +17,7 @@ const successSchema = z.object({
     pageStatusCode: z.number(),
     pageError: z.string().optional(),
 
+    // TODO: this needs to be non-optional, might need fixes on f-e side to ensure reliability
     responseHeaders: z.record(z.string(), z.string()).optional(),
 
     // timeTakenCookie: z.number().optional(),
