@@ -55,29 +55,41 @@ export function coerceFieldsToFormats(meta: Meta, document: Document): Document 
 
     if (!formats.has("markdown") && document.markdown !== undefined) {
         delete document.markdown;
+    } else if (formats.has("markdown") && document.markdown === undefined) {
+        meta.logger.warn("Request had format: markdown, but there was no markdown field in the result.");
     }
 
     if (!formats.has("rawHtml") && document.rawHtml !== undefined) {
         delete document.rawHtml;
+    } else if (formats.has("rawHtml") && document.rawHtml === undefined) {
+        meta.logger.warn("Request had format: rawHtml, but there was no rawHtml field in the result.");
     }
 
     if (!formats.has("html") && document.html !== undefined) {
         delete document.html;
+    } else if (formats.has("html") && document.html === undefined) {
+        meta.logger.warn("Request had format: html, but there was no html field in the result.");
     }
 
     if (!formats.has("screenshot") && !formats.has("screenshot@fullPage") && document.screenshot !== undefined) {
         meta.logger.warn("Removed screenshot from Document because it wasn't in formats -- this is very wasteful and indicates a bug.");
         delete document.screenshot;
+    } else if ((formats.has("screenshot") || formats.has("screenshot@fullPage")) && document.screenshot === undefined) {
+        meta.logger.warn("Request had format: screenshot / screenshot@fullPage, but there was no screenshot field in the result.");
     }
 
     if (!formats.has("links") && document.links !== undefined) {
         meta.logger.warn("Removed links from Document because it wasn't in formats -- this is wasteful and indicates a bug.");
         delete document.links;
+    } else if (formats.has("links") && document.links === undefined) {
+        meta.logger.warn("Request had format: links, but there was no links field in the result.");
     }
 
     if (!formats.has("extract") && document.extract !== undefined) {
         meta.logger.warn("Removed extract from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.");
         delete document.extract;
+    } else if (formats.has("extract") && document.extract === undefined) {
+        meta.logger.warn("Request had format: extract, but there was no extract field in the result.");
     }
 
     return document;
