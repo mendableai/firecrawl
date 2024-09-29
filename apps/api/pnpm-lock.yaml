@@ -98,6 +98,9 @@ importers:
       dotenv-cli:
         specifier: ^7.4.2
         version: 7.4.2
+      escape-html:
+        specifier: ^1.0.3
+        version: 1.0.3
       express-rate-limit:
         specifier: ^7.3.1
         version: 7.3.1(express@4.19.2)
@@ -140,6 +143,9 @@ importers:
       luxon:
         specifier: ^3.4.3
         version: 3.4.4
+      marked:
+        specifier: ^14.1.2
+        version: 14.1.2
       md5:
         specifier: ^2.3.0
         version: 2.3.0
@@ -243,6 +249,9 @@ importers:
       '@types/cors':
         specifier: ^2.8.13
         version: 2.8.17
+      '@types/escape-html':
+        specifier: ^1.0.4
+        version: 1.0.4
       '@types/express':
         specifier: ^4.17.17
         version: 4.17.21
@@ -252,6 +261,9 @@ importers:
       '@types/node':
         specifier: ^20.14.1
         version: 20.14.1
+      '@types/pdf-parse':
+        specifier: ^1.1.4
+        version: 1.1.4
       body-parser:
         specifier: ^1.20.1
         version: 1.20.2
@@ -1661,6 +1673,9 @@ packages:
   '@types/cors@2.8.17':
     resolution: {integrity: sha512-8CGDvrBj1zgo2qE+oS3pOCyYNqCPryMWY2bGfwA0dcfopWGgxs+78df0Rs3rc9THP4JkOhLsAa+15VdpAqkcUA==}
 
+  '@types/escape-html@1.0.4':
+    resolution: {integrity: sha512-qZ72SFTgUAZ5a7Tj6kf2SHLetiH5S6f8G5frB2SPQ3EyF02kxdyBFf4Tz4banE3xCgGnKgWLt//a6VuYHKYJTg==}
+
   '@types/express-serve-static-core@4.19.3':
     resolution: {integrity: sha512-KOzM7MhcBFlmnlr/fzISFF5vGWVSvN6fTd4T+ExOt08bA/dA5kpSzY52nMsI1KDFmUREpJelPYyuslLRSjjgCg==}
 
@@ -1720,6 +1735,9 @@ packages:
 
   '@types/node@20.14.1':
     resolution: {integrity: sha512-T2MzSGEu+ysB/FkWfqmhV3PLyQlowdptmmgD20C6QxsS8Fmv5SjpZ1ayXaEC0S21/h5UJ9iA6W/5vSNU5l00OA==}
+
+  '@types/pdf-parse@1.1.4':
+    resolution: {integrity: sha512-+gbBHbNCVGGYw1S9lAIIvrHW47UYOhMIFUsJcMkMrzy1Jf0vulBN3XQIjPgnoOXveMuHnF3b57fXROnY/Or7eg==}
 
   '@types/pg-pool@2.0.4':
     resolution: {integrity: sha512-qZAvkv1K3QbmHHFYSNRYPkRjOWRLBYrL4B9c+wG0GSVGBw0NtJwPcgx/DSddeDJvRGMHCEQ4VMEVfuJ/0gZ3XQ==}
@@ -3499,6 +3517,11 @@ packages:
   mammoth@1.7.2:
     resolution: {integrity: sha512-MqWU2hcLf1I5QMKyAbfJCvrLxnv5WztrAQyorfZ+WPq7Hk82vZFmvfR2/64ajIPpM4jlq0TXp1xZvp/FFaL1Ug==}
     engines: {node: '>=12.0.0'}
+    hasBin: true
+
+  marked@14.1.2:
+    resolution: {integrity: sha512-f3r0yqpz31VXiDB/wj9GaOB0a2PRLQl6vJmXiFrniNwjkKdvakqJRULhjFKJpxOchlCRiG5fcacoUZY5Xa6PEQ==}
+    engines: {node: '>= 18'}
     hasBin: true
 
   md5@2.3.0:
@@ -6741,6 +6764,8 @@ snapshots:
     dependencies:
       '@types/node': 20.14.1
 
+  '@types/escape-html@1.0.4': {}
+
   '@types/express-serve-static-core@4.19.3':
     dependencies:
       '@types/node': 20.14.1
@@ -6827,6 +6852,8 @@ snapshots:
   '@types/node@20.14.1':
     dependencies:
       undici-types: 5.26.5
+
+  '@types/pdf-parse@1.1.4': {}
 
   '@types/pg-pool@2.0.4':
     dependencies:
@@ -8754,6 +8781,8 @@ snapshots:
       path-is-absolute: 1.0.1
       underscore: 1.13.6
       xmlbuilder: 10.1.1
+
+  marked@14.1.2: {}
 
   md5@2.3.0:
     dependencies:

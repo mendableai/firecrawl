@@ -5,7 +5,7 @@ import { scrapeOptions } from "../../controllers/v1/types";
 
 describe("Standalone scrapeURL tests", () => {
     it("Basic scrape", async () => {
-        const out = await scrapeURL("test:scrape-basic", "https://roastmywebsite.ai", scrapeOptions.parse({}));
+        const out = await scrapeURL("test:scrape-basic", "https://www.roastmywebsite.ai/", scrapeOptions.parse({}));
     
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
@@ -37,7 +37,7 @@ describe("Standalone scrapeURL tests", () => {
             expect(out.document.metadata.ogLocaleAlternate).toStrictEqual([]);
             expect(out.document.metadata.ogSiteName).toBe("Roast My Website");
             expect(out.document.metadata.sourceURL).toBe(
-                "https://roastmywebsite.ai"
+                "https://www.roastmywebsite.ai/"
             );
             expect(out.document.metadata.statusCode).toBe(200);
         }
@@ -77,7 +77,7 @@ describe("Standalone scrapeURL tests", () => {
             expect(out.document.markdown).toContain("[FAQ](/faq/)"); // .nav
             expect(out.document.markdown).toContain("Hartley Brody 2023"); // #footer
         }
-    });
+    }, 30000);
 
     it("Scrape with excludeTags", async () => {
         const out = await scrapeURL("test:scrape-excludeTags", "https://www.scrapethissite.com/", scrapeOptions.parse({
@@ -94,7 +94,7 @@ describe("Standalone scrapeURL tests", () => {
             expect(out.document.markdown).not.toContain("Hartley Brody 2023");
             expect(out.document.markdown).not.toContain("[FAQ](/faq/)");
         }
-    });
+    }, 30000);
 
     it("Scrape of a page with 400 status code", async () => {
         const out = await scrapeURL("test:scrape-400", "https://httpstat.us/400", scrapeOptions.parse({}));
@@ -106,7 +106,7 @@ describe("Standalone scrapeURL tests", () => {
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.metadata.statusCode).toBe(400);
         }
-    });
+    }, 30000);
 
     it("Scrape of a page with 401 status code", async () => {
         const out = await scrapeURL("test:scrape-401", "https://httpstat.us/401", scrapeOptions.parse({}));
@@ -118,7 +118,7 @@ describe("Standalone scrapeURL tests", () => {
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.metadata.statusCode).toBe(401);
         }
-    });
+    }, 30000);
 
     it("Scrape of a page with 403 status code", async () => {
         const out = await scrapeURL("test:scrape-403", "https://httpstat.us/403", scrapeOptions.parse({}));
@@ -130,7 +130,7 @@ describe("Standalone scrapeURL tests", () => {
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.metadata.statusCode).toBe(403);
         }
-    });
+    }, 30000);
 
     it("Scrape of a page with 404 status code", async () => {
         const out = await scrapeURL("test:scrape-404", "https://httpstat.us/404", scrapeOptions.parse({}));
@@ -142,7 +142,7 @@ describe("Standalone scrapeURL tests", () => {
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.metadata.statusCode).toBe(404);
         }
-    });
+    }, 30000);
 
     it("Scrape of a page with 405 status code", async () => {
         const out = await scrapeURL("test:scrape-405", "https://httpstat.us/405", scrapeOptions.parse({}));
@@ -154,7 +154,7 @@ describe("Standalone scrapeURL tests", () => {
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.metadata.statusCode).toBe(405);
         }
-    });
+    }, 30000);
 
     it("Scrape of a page with 500 status code", async () => {
         const out = await scrapeURL("test:scrape-500", "https://httpstat.us/500", scrapeOptions.parse({}));
@@ -166,7 +166,55 @@ describe("Standalone scrapeURL tests", () => {
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.metadata.statusCode).toBe(500);
         }
-    });
+    }, 30000);
+
+    it("Scrape with screenshot", async () => {
+        const out = await scrapeURL("test:scrape-screenshot", "https://www.scrapethissite.com/", scrapeOptions.parse({
+            formats: ["screenshot"],
+        }));
+
+        expect(out.logs.length).toBeGreaterThan(0);
+        expect(out.success).toBe(true);
+        if (out.success) {
+            expect(out.document).toHaveProperty('screenshot');
+            expect(typeof out.document.screenshot).toBe("string");
+            expect(out.document).toHaveProperty('metadata');
+            expect(out.document.metadata.statusCode).toBe(200);
+            expect(out.document.metadata.error).toBeUndefined();
+        }
+    }, 30000);
+
+    it("Scrape with full-page screenshot", async () => {
+        const out = await scrapeURL("test:scrape-screenshot-fullPage", "https://www.scrapethissite.com/", scrapeOptions.parse({
+            formats: ["screenshot@fullPage"],
+        }));
+
+        expect(out.logs.length).toBeGreaterThan(0);
+        expect(out.success).toBe(true);
+        if (out.success) {
+            expect(out.document).toHaveProperty('screenshot');
+            expect(typeof out.document.screenshot).toBe("string");
+            expect(out.document).toHaveProperty('metadata');
+            expect(out.document.metadata.statusCode).toBe(200);
+            expect(out.document.metadata.error).toBeUndefined();
+        }
+    }, 30000);
+
+    it("Scrape a redirected page", async () => {
+        const out = await scrapeURL("test:scrape-screenshot-fullPage", "https://scrapethissite.com/", scrapeOptions.parse({}));
+
+        expect(out.logs.length).toBeGreaterThan(0);
+        expect(out.success).toBe(true);
+        if (out.success) {
+            expect(out.document).toHaveProperty('markdown');
+            expect(out.document.markdown).toContain("Explore Sandbox");
+            expect(out.document).toHaveProperty('metadata');
+            expect(out.document.metadata.sourceURL).toBe("https://scrapethissite.com/");
+            expect(out.document.metadata.url).toBe("https://www.scrapethissite.com/");
+            expect(out.document.metadata.statusCode).toBe(200);
+            expect(out.document.metadata.error).toBeUndefined();
+        }
+    }, 30000);
 
     it("Scrape of a PDF file", async () => {
         const out = await scrapeURL("test:scrape-pdf", "https://arxiv.org/pdf/astro-ph/9301001.pdf", scrapeOptions.parse({}));
@@ -180,6 +228,19 @@ describe("Standalone scrapeURL tests", () => {
             expect(out.document.metadata.error).toBeUndefined();
         }
     }, 60000);
+
+    it("Scrape a DOCX file", async () => {
+        const out = await scrapeURL("test:scrape-docx", "https://nvca.org/wp-content/uploads/2019/06/NVCA-Model-Document-Stock-Purchase-Agreement.docx", scrapeOptions.parse({}));
+
+        expect(out.logs.length).toBeGreaterThan(0);
+        expect(out.success).toBe(true);
+        if (out.success) {
+            expect(out.document).toHaveProperty('metadata');
+            expect(out.document.markdown).toContain('SERIES A PREFERRED STOCK PURCHASE AGREEMENT');
+            expect(out.document.metadata.statusCode).toBe(200);
+            expect(out.document.metadata.error).toBeUndefined();
+        }
+    }, 60000)
 
     test.concurrent.each(new Array(100).fill(0).map((_, i) => "https://www.scrapethissite.com/?i=" + i))("Concurrent scrapes", async (url) => {
         const id = "test:concurrent:" + url;
@@ -199,16 +260,20 @@ describe("Standalone scrapeURL tests", () => {
             }
         }
 
+        // verify that log collection works properly while concurrency is happening
         expect(out.logs.length).toBeGreaterThan(0);
-        expect(out.logs.every(x => x.scrapeId == id)).toBe(true); // verify that log collection works properly while concurrency is happening
+        const weirdLogs = out.logs.filter(x => x.scrapeId !== id);
+        if (weirdLogs.length > 0) {
+            console.warn(JSON.stringify(weirdLogs, replacer));
+        }
+        expect(weirdLogs.length).toBe(0); 
+
         if (!out.success) console.error(JSON.stringify(out, replacer));
         expect(out.success).toBe(true);
+        
         if (out.success) {
             expect(out.document).toHaveProperty('markdown');
             expect(out.document).toHaveProperty('metadata');
-            if (out.document.metadata.statusCode === 0) {
-                console.log(JSON.stringify(out, replacer));
-            }
             expect(out.document.metadata.error).toBeUndefined();
             expect(out.document.metadata.statusCode).toBe(200);
         }

@@ -1,5 +1,5 @@
 import { EngineResultsTracker } from "."
-import { Engine } from "./engines"
+import { Engine, FeatureFlag } from "./engines"
 
 export class EngineError extends Error {
     constructor(message?: string, options?: ErrorOptions) {
@@ -21,5 +21,14 @@ export class NoEnginesLeftError extends Error {
         super("All scraping engines failed!");
         this.fallbackList = fallbackList;
         this.results = results;
+    }
+}
+
+export class AddFeatureError extends Error {
+    public featureFlags: FeatureFlag[];
+
+    constructor(featureFlags: FeatureFlag[]) {
+        super("New feature flags have been discovered: " + featureFlags.join(", "));
+        this.featureFlags = featureFlags;
     }
 }

@@ -1,44 +1,171 @@
 import { Meta } from "..";
-import { scrapeURLWithFireEngineChromeCDP } from "./fire-engine";
+import { scrapeDOCX } from "./docx";
+import { scrapeURLWithFireEngineChromeCDP, scrapeURLWithFireEnginePlaywright, scrapeURLWithFireEngineTLSClient } from "./fire-engine";
+import { scrapePDF } from "./pdf";
 
 export const engines = [
     "fire-engine;chrome-cdp",
-    // "fire-engine;playwright",
+    "fire-engine;playwright",
+    "fire-engine;tlsclient",
+    "pdf",
+    "docx",
 ] as const;
 
 export const featureFlags = [
     "actions",
+    "waitFor",
     "screenshot",
+    "screenshot@fullScreen",
+    "pdf",
+    "docx",
 ] as const;
 
+export type FeatureFlag = typeof featureFlags[number];
+
+export const featureFlagOptions: {
+    [F in FeatureFlag]: {
+        priority: number;
+    }
+} = {
+    "actions": { priority: 20 },
+    "waitFor": { priority: 1 },
+    "screenshot": { priority: 10 },
+    "screenshot@fullScreen": { priority: 10 },
+    "pdf": { priority: 100 },
+    "docx": { priority: 100 },
+} as const;
+
 export type Engine = typeof engines[number];
-type FeatureFlag = typeof featureFlags[number];
 
 export type EngineScrapeResult = {
+    url: string;
+
     html: string;
     markdown?: string;
-    error?: string;
     statusCode: number;
+    error?: string;
+
+    screenshot?: string;
+    actions?: {
+        screenshots: string[];
+    };
 }
 
 const engineHandlers: {
     [E in Engine]: (meta: Meta) => Promise<EngineScrapeResult>
 } = {
     "fire-engine;chrome-cdp": scrapeURLWithFireEngineChromeCDP,
+    "fire-engine;playwright": scrapeURLWithFireEnginePlaywright,
+    "fire-engine;tlsclient": scrapeURLWithFireEngineTLSClient,
+    "pdf": scrapePDF,
+    "docx": scrapeDOCX,
 };
 
-const engineFeatures: {
-    [E in Engine]: { [F in FeatureFlag]: boolean }
+export const engineOptions: {
+    [E in Engine]: { 
+        // A list of feature flags the engine supports.
+        features: { [F in FeatureFlag]: boolean },
+
+        // This defines the order of engines in general. The engine with the highest quality will be used the most.
+        // Negative quality numbers are reserved for specialty engines, e.g. PDF and DOCX
+        quality: number,
+    }
 } = {
     "fire-engine;chrome-cdp": {
-        "actions": true,
-        "screenshot": true,
+        features: {
+            "actions": true,
+            "waitFor": true, // through actions transform
+            "screenshot": true, // through actions transform
+            "screenshot@fullScreen": true, // through actions transform
+            "pdf": false,
+            "docx": false,
+        },
+        quality: 50,
+    },
+    "fire-engine;playwright": {
+        features: {
+            "actions": false,
+            "waitFor": true,
+            "screenshot": true,
+            "screenshot@fullScreen": true,
+            "pdf": false,
+            "docx": false,
+        },
+        quality: 40,
+    },
+    "fire-engine;tlsclient": {
+        features: {
+            "actions": false,
+            "waitFor": false,
+            "screenshot": false,
+            "screenshot@fullScreen": false,
+            "pdf": false,
+            "docx": false,
+        },
+        quality: 10,
+    },
+    "pdf": {
+        features: {
+            "actions": false,
+            "waitFor": false,
+            "screenshot": false,
+            "screenshot@fullScreen": false,
+            "pdf": true,
+            "docx": false,
+        },
+        quality: -10,
+    },
+    "docx": {
+        features: {
+            "actions": false,
+            "waitFor": false,
+            "screenshot": false,
+            "screenshot@fullScreen": false,
+            "pdf": false,
+            "docx": true,
+        },
+        quality: -10,
     },
 };
 
-export function buildFallbackList(meta: Meta): Engine[] {
-    // TODO: real logic
-    return [...engines];
+export function buildFallbackList(meta: Meta): {
+    engine: Engine,
+    unsupportedFeatures: Set<FeatureFlag>,
+}[] {
+    const prioritySum = [...meta.featureFlags].reduce((a, x) => a + featureFlagOptions[x].priority, 0);
+    const priorityThreshold = Math.floor(prioritySum / 2);
+    let selectedEngines: {
+        engine: Engine,
+        supportScore: number,
+        unsupportedFeatures: Set<FeatureFlag>,
+    }[] = [];
+
+    for (const engine of engines) {
+        const supportedFlags = new Set([...Object.entries(engineOptions[engine].features).filter(([k, v]) => meta.featureFlags.has(k as FeatureFlag) && v === true).map(([k, _]) => k)]);
+        const supportScore = [...supportedFlags].reduce((a, x) => a + featureFlagOptions[x].priority, 0);
+
+        const unsupportedFeatures = new Set([...meta.featureFlags]);
+            for (const flag of meta.featureFlags) {
+                if (!supportedFlags.has(flag)) {
+                    unsupportedFeatures.delete(flag);
+                }
+            }
+
+        if (supportScore >= priorityThreshold) {
+            selectedEngines.push({ engine, supportScore, unsupportedFeatures });
+            meta.logger.debug(`Engine ${engine} meets feature priority threshold`, { supportScore, prioritySum, priorityThreshold, featureFlags: [...meta.featureFlags], unsupportedFeatures });
+        } else {
+            meta.logger.debug(`Engine ${engine} does not meet feature priority threshold`, { supportScore, prioritySum, priorityThreshold, featureFlags: [...meta.featureFlags], unsupportedFeatures});
+        }
+    }
+
+    if (selectedEngines.some(x => engineOptions[x.engine].quality > 0)) {
+        selectedEngines = selectedEngines.filter(x => engineOptions[x.engine].quality > 0);
+    }
+
+    selectedEngines.sort((a,b) => b.supportScore - a.supportScore || engineOptions[b.engine].quality - engineOptions[a.engine].quality);
+
+    return selectedEngines;
 }
 
 export async function scrapeURLWithEngine(meta: Meta, engine: Engine): Promise<EngineScrapeResult> {

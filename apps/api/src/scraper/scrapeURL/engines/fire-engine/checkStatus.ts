@@ -12,12 +12,12 @@ const successSchema = z.object({
 
     // timeTaken: z.number(),
     content: z.string(),
-    // url: z.string().optional(),
+    url: z.string().optional(),
 
     pageStatusCode: z.number(),
     pageError: z.string().optional(),
 
-    // responseHeaders: z.record(z.string(), z.string()).optional(),
+    responseHeaders: z.record(z.string(), z.string()).optional(),
 
     // timeTakenCookie: z.number().optional(),
     // timeTakenRequest: z.number().optional(),

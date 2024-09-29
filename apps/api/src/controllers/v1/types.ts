@@ -247,6 +247,7 @@ export type Document = {
     publishedTime?: string;
     articleTag?: string;
     articleSection?: string;
+    url?: string;
     sourceURL?: string;
     statusCode?: number;
     error?: string;

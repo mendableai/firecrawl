@@ -5,6 +5,8 @@ import { EngineScrapeResult } from "..";
 import { fireEngineCheckStatus, FireEngineCheckStatusSuccess, StillProcessingError } from "./checkStatus";
 import { EngineError, TimeoutError } from "../../error";
 import * as Sentry from "@sentry/node";
+import { Action } from "../../../../lib/entities";
+import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 
 const defaultTimeout = 20000;
 
@@ -56,7 +58,38 @@ async function performFireEngineScrape<Engine extends FireEngineScrapeRequestChr
 }
 
 export async function scrapeURLWithFireEngineChromeCDP(meta: Meta): Promise<EngineScrapeResult> {
-    // TODO: construct wait, screenshot, fullPageScreenshot actions
+    const actions: Action[] = [
+        // Transform waitFor option into an action (unsupported by chrome-cdp)
+        ...(meta.options.waitFor !== undefined ? [{
+            type: "wait" as const,
+            milliseconds: meta.options.waitFor,
+        }] : []),
+
+        // Transform screenshot format into an action (unsupported by chrome-cdp)
+        ...(meta.options.formats.includes("screenshot") || meta.options.formats.includes("screenshot@fullPage") ? [{
+            type: "screenshot" as const,
+            fullPage: meta.options.formats.includes("screenshot@fullPage"),
+        }] : []),
+
+        // Transform actions: insert waits before and after
+        ...(meta.options.actions ?? []).flatMap((action, i, arr) => {
+            if (["click", "write", "press"].includes(action.type)) {
+                return [
+                    ...(arr[i-1]?.type !== "wait" ? [{
+                        type: "wait" as const,
+                        milliseconds: 1200,
+                    }] : []),
+                    action,
+                    ...(arr[i+1]?.type !== "wait" ? [{
+                        type: "wait" as const,
+                        milliseconds: 1200,
+                    }] : []),
+                ]
+            } else {
+                return [action];
+            }
+        }),
+    ];
 
     const request: FireEngineScrapeRequestCommon & FireEngineScrapeRequestChromeCDP = {
         url: meta.url,
@@ -64,17 +97,107 @@ export async function scrapeURLWithFireEngineChromeCDP(meta: Meta): Promise<Engi
         instantReturn: true,
 
         headers: meta.options.headers,
-        
+        ...(actions.length > 0 ? ({
+            actions,
+        }) : {}),
+
         priority: meta.internalOptions.priority,
-        // TODO: atsv, scrollXPaths, actions, instantReturn, disableJsDom
+        // TODO: atsv, scrollXPaths, disableJsDom
     };
 
-    const response = await performFireEngineScrape(
+    let response = await performFireEngineScrape(
         meta.logger.child({ method: "scrapeURLWithFireEngineChromeCDP/callFireEngine", request }),
         request,
     );
 
+    specialtyScrapeCheck(meta.logger.child({ method: "scrapeURLWithFireEngineChromeCDP/specialtyScrapeCheck" }), response.responseHeaders);
+
+    if (meta.options.formats.includes("screenshot") || meta.options.formats.includes("screenshot@fullPage")) {
+        meta.logger.debug("Transforming screenshots from actions into screenshot field", { screenshots: response.screenshots });
+        response.screenshot = (response.screenshots ?? [])[0];
+        (response.screenshots ?? []).splice(0, 1);
+        meta.logger.debug("Screenshot transformation done", { screenshots: response.screenshots, screenshot: response.screenshot });
+    }
+
+    if (!response.url) {
+        meta.logger.warn("Fire-engine did not return the response's URL", { response, sourceURL: meta.url });
+    }
+
     return {
+        url: response.url ?? meta.url,
+
+        html: response.content,
+        error: response.pageError,
+        statusCode: response.pageStatusCode,
+
+        screenshot: response.screenshot,
+        ...(actions.length > 0 ? {
+            actions: {
+                screenshots: response.screenshots ?? [],
+            }
+        } : {}),
+    };
+}
+
+export async function scrapeURLWithFireEnginePlaywright(meta: Meta): Promise<EngineScrapeResult> {
+    const request: FireEngineScrapeRequestCommon & FireEngineScrapeRequestPlaywright = {
+        url: meta.url,
+        engine: "playwright",
+        instantReturn: true,
+
+        headers: meta.options.headers,
+        priority: meta.internalOptions.priority,
+        screenshot: meta.options.formats.includes("screenshot"),
+        fullPageScreenshot: meta.options.formats.includes("screenshot@fullPage"),
+        wait: meta.options.waitFor,
+    };
+
+    let response = await performFireEngineScrape(
+        meta.logger.child({ method: "scrapeURLWithFireEngineChromeCDP/callFireEngine", request }),
+        request,
+    );
+    
+    specialtyScrapeCheck(meta.logger.child({ method: "scrapeURLWithFireEnginePlaywright/specialtyScrapeCheck" }), response.responseHeaders);
+
+    if (!response.url) {
+        meta.logger.warn("Fire-engine did not return the response's URL", { response, sourceURL: meta.url });
+    }
+
+    return {
+        url: response.url ?? meta.url,
+
+        html: response.content,
+        error: response.pageError,
+        statusCode: response.pageStatusCode,
+
+        screenshot: response.screenshot,
+    };
+}
+
+export async function scrapeURLWithFireEngineTLSClient(meta: Meta): Promise<EngineScrapeResult> {
+    const request: FireEngineScrapeRequestCommon & FireEngineScrapeRequestTLSClient = {
+        url: meta.url,
+        engine: "tlsclient",
+        instantReturn: true,
+
+        headers: meta.options.headers,
+        priority: meta.internalOptions.priority,
+    };
+
+    let response = await performFireEngineScrape(
+        meta.logger.child({ method: "scrapeURLWithFireEngineChromeCDP/callFireEngine", request }),
+        request,
+    );
+
+    specialtyScrapeCheck(meta.logger.child({ method: "scrapeURLWithFireEngineTLSClient/specialtyScrapeCheck" }), response.responseHeaders);
+
+    if (!response.url) {
+        meta.logger.warn("Fire-engine did not return the response's URL", { response, sourceURL: meta.url });
+    }
+
+    return {
+        url: response.url ?? meta.url,
+
         html: response.content,
         error: response.pageError,
         statusCode: response.pageStatusCode,

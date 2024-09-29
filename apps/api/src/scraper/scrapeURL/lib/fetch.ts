@@ -2,6 +2,7 @@ import { Logger } from "winston";
 import { z, ZodError } from "zod";
 import { v4 as uuid } from "uuid";
 import * as Sentry from "@sentry/node";
+import FormData from "form-data";
 
 export type RobustFetchParams<Schema extends z.Schema<any>> = {
     url: string;
@@ -10,6 +11,7 @@ export type RobustFetchParams<Schema extends z.Schema<any>> = {
     body?: any;
     headers?: Record<string, string>;
     schema?: Schema;
+    dontParseResponse?: boolean;
     ignoreResponse?: boolean;
     ignoreFailure?: boolean;
     requestId?: string;
@@ -26,7 +28,7 @@ export async function robustFetch<Schema extends z.Schema<any>, Output = z.infer
     ignoreFailure = false,
     requestId = uuid(),
 }: RobustFetchParams<Schema>): Promise<Output> {
-    const params = { url, logger, method, body, headers, schema, ignoreResponse };
+    const params = { url, logger, method, body, headers, schema, ignoreResponse, ignoreFailure };
 
     logger.debug("Sending request...", { params, requestId });
 
@@ -35,12 +37,16 @@ export async function robustFetch<Schema extends z.Schema<any>, Output = z.infer
         request = await fetch(url, {
             method,
             headers: {
-                ...(body !== undefined ? ({
+                ...(body instanceof FormData
+                ? body.getHeaders()
+                : body !== undefined ? ({
                     "Content-Type": "application/json",
                 }) : {}),
                 ...(headers !== undefined ? headers : {}),
             },
-            ...(body !== undefined ? ({
+            ...(body instanceof FormData ? ({
+                body: body.getBuffer(),
+            }) : body !== undefined ? ({
                 body: JSON.stringify(body),
             }) : {}),
         });

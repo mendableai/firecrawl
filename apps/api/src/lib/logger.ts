@@ -5,7 +5,7 @@ import Transport from "winston-transport";
 configDotenv();
 
 const logFormat = winston.format.printf(info => 
-  `${info.timestamp} ${info.level} [${info.metadata.module ?? ""}:${info.metadata.method ?? ""}]: ${info.message} ${info.message.includes("not matched by any schema") ? JSON.stringify(
+  `${info.timestamp} ${info.level} [${info.metadata.module ?? ""}:${info.metadata.method ?? ""}]: ${info.message} ${info.level.includes("error") || info.level.includes("warn") ? JSON.stringify(
     info.metadata,
     (_, value) => {
       if (value instanceof Error) {
