@@ -4,6 +4,7 @@ import { Document } from "../../../controllers/v1/types";
 import { removeUnwantedElements } from "../lib/removeUnwantedElements";
 import { extractLinks } from "../lib/extractLinks";
 import { extractMetadata } from "../lib/extractMetadata";
+import { performLLMExtract } from "./llmExtract";
 
 export type Transformer = (meta: Meta, document: Document) => Document | Promise<Document>;
 
@@ -100,6 +101,7 @@ export const transformerStack: Transformer[] = [
     deriveMarkdownFromHTML,
     deriveLinksFromHTML,
     deriveMetadataFromRawHTML,
+    performLLMExtract,
     coerceFieldsToFormats,
 ];
 

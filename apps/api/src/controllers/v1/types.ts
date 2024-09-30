@@ -209,7 +209,7 @@ export type MapRequest = z.infer<typeof mapRequestSchema>;
 
 export type Document = {
   markdown?: string;
-  extract?: string;
+  extract?: any;
   html?: string;
   rawHtml?: string;
   links?: string[];
@@ -252,6 +252,7 @@ export type Document = {
     statusCode?: number;
     error?: string;
   };
+  warning?: string;
 };
 
 export type ErrorResponse = {

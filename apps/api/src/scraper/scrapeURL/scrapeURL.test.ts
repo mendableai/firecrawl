@@ -242,6 +242,67 @@ describe("Standalone scrapeURL tests", () => {
         }
     }, 60000)
 
+    it("LLM extract with prompt and schema", async () => {
+        const out = await scrapeURL("test:llm-extract-prompt-schema", "https://firecrawl.dev", scrapeOptions.parse({
+            formats: ["extract"],
+            extract: {
+                prompt: "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source",
+                schema: {
+                    type: "object",
+                    properties: {
+                        company_mission: { type: "string" },
+                        supports_sso: { type: "boolean" },
+                        is_open_source: { type: "boolean" },
+                    },
+                    required: ["company_mission", "supports_sso", "is_open_source"],
+                    additionalProperties: false,
+                },
+            },
+        }));
+
+        expect(out.logs.length).toBeGreaterThan(0);
+        expect(out.success).toBe(true);
+        if (out.success) {
+            expect(out.document).toHaveProperty("extract");
+            expect(out.document.extract).toHaveProperty("company_mission");
+            expect(out.document.extract).toHaveProperty("supports_sso");
+            expect(out.document.extract).toHaveProperty("is_open_source");
+            expect(typeof out.document.extract.company_mission).toBe("string");
+            expect(out.document.extract.supports_sso).toBe(false);
+            expect(out.document.extract.is_open_source).toBe(true);
+        }
+    }, 120000)
+
+    it("LLM extract with schema only", async () => {
+        const out = await scrapeURL("test:llm-extract-schema", "https://firecrawl.dev", scrapeOptions.parse({
+            formats: ["extract"],
+            extract: {
+                schema: {
+                    type: "object",
+                    properties: {
+                        company_mission: { type: "string" },
+                        supports_sso: { type: "boolean" },
+                        is_open_source: { type: "boolean" },
+                    },
+                    required: ["company_mission", "supports_sso", "is_open_source"],
+                    additionalProperties: false,
+                },
+            },
+        }));
+
+        expect(out.logs.length).toBeGreaterThan(0);
+        expect(out.success).toBe(true);
+        if (out.success) {
+            expect(out.document).toHaveProperty("extract");
+            expect(out.document.extract).toHaveProperty("company_mission");
+            expect(out.document.extract).toHaveProperty("supports_sso");
+            expect(out.document.extract).toHaveProperty("is_open_source");
+            expect(typeof out.document.extract.company_mission).toBe("string");
+            expect(out.document.extract.supports_sso).toBe(false);
+            expect(out.document.extract.is_open_source).toBe(true);
+        }
+    }, 120000)
+
     test.concurrent.each(new Array(100).fill(0).map((_, i) => "https://www.scrapethissite.com/?i=" + i))("Concurrent scrapes", async (url) => {
         const id = "test:concurrent:" + url;
         const out = await scrapeURL(id, url, scrapeOptions.parse({}));

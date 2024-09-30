@@ -24,8 +24,8 @@ importers:
         specifier: ^1.0.2
         version: 1.0.2
       '@dqbd/tiktoken':
-        specifier: ^1.0.13
-        version: 1.0.15
+        specifier: ^1.0.16
+        version: 1.0.16
       '@hyperdx/node-opentelemetry':
         specifier: ^0.8.1
         version: 0.8.1
@@ -520,8 +520,8 @@ packages:
     engines: {node: '>=0'}
     deprecated: This package has been renamed to `fast-tag-pos`
 
-  '@dqbd/tiktoken@1.0.15':
-    resolution: {integrity: sha512-a6I67K1xUkuqcuwulobIJiLikkoE7egMaviI1Jg5bxSn2V7QGqXsGE3jTKr8UIOU/o74mAAd5TkeXFNBtaKF4A==}
+  '@dqbd/tiktoken@1.0.16':
+    resolution: {integrity: sha512-4uIrs5qxAwFVFFEP507HZIZhGOsgfaEMEWDXWalr+v+XP+wJwP60EVmkZtQyQe70IsKGVkx5umBxw4NfmU0pPg==}
 
   '@flydotio/dockerfile@0.4.11':
     resolution: {integrity: sha512-L52UAfrOhmAn3T4TxpeRofQOSO+Kctg+uraB4nLzo4mvvh+4Z7HYxSi7Dnq0Kirz+xx6fDIc4OMNT1EdaORecA==}
@@ -5116,7 +5116,7 @@ snapshots:
 
   '@devil7softwares/pos@1.0.2': {}
 
-  '@dqbd/tiktoken@1.0.15': {}
+  '@dqbd/tiktoken@1.0.16': {}
 
   '@flydotio/dockerfile@0.4.11':
     dependencies:
