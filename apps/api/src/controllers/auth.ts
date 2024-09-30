@@ -65,7 +65,6 @@ export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk 
     });
   } catch (error) {
     Logger.error(`Error updating cached ACUC ${cacheKeyACUC}: ${error}`);
-    Sentry.captureException(error);
   }
 }
 
