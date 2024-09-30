@@ -98,7 +98,7 @@ export async function searchHelper(
   if (Sentry.isInitialized()) {
     for (const job of jobDatas) {
       // add with sentry instrumentation
-      jobs.push(await addScrapeJob(job.data as any, {}, job.opts.jobId));
+      jobs.push(await addScrapeJob(job.data as any, {}, job.opts.jobId, job.opts.priority));
     }
   } else {
     jobs = await getScrapeQueue().addBulk(jobDatas);
