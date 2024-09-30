@@ -37,7 +37,12 @@ export async function searchHelper(
 
   const tbs = searchOptions.tbs ?? null;
   const filter = searchOptions.filter ?? null;
-  const num_results = searchOptions.limit ?? 7;
+  let num_results = Math.min(searchOptions.limit ?? 7, 10);
+
+  if (team_id === "d97c4ceb-290b-4957-8432-2b2a02727d95") {
+    num_results = 1;
+  }
+
   const num_results_buffer = Math.floor(num_results * 1.5);
 
   let res = await search({
