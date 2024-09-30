@@ -6,7 +6,7 @@ import { WebSocket } from "ws";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../lib/logger";
 import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength, isCrawlFinished, isCrawlFinishedLocked } from "../../lib/crawl-redis";
-import { getScrapeQueue } from "../../services/queue-service";
+import { getCrawlPreQueue, getScrapeQueue } from "../../services/queue-service";
 import { getJob, getJobs } from "./crawl-status";
 import * as Sentry from "@sentry/node";
 
@@ -94,9 +94,10 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
 
   doneJobIDs = await getDoneJobsOrdered(req.params.jobId);
 
+  const preJobState = await getCrawlPreQueue().getJobState(req.params.jobId);
   const jobIDs = await getCrawlJobs(req.params.jobId);
   const jobStatuses = await Promise.all(jobIDs.map(x => getScrapeQueue().getJobState(x)));
-  const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] = sc.cancelled ? "cancelled" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "scraping";
+  const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] = sc.cancelled ? "cancelled" : preJobState === "failed" ? "failed" : preJobState !== "completed" ? "scraping" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "scraping";
   const doneJobs = await getJobs(doneJobIDs);
   const data = doneJobs.map(x => x.returnvalue);
 

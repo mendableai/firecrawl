@@ -1,7 +1,7 @@
 import { Response } from "express";
 import { CrawlStatusParams, CrawlStatusResponse, ErrorResponse, legacyDocumentConverter, RequestWithAuth } from "./types";
 import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength } from "../../lib/crawl-redis";
-import { getScrapeQueue } from "../../services/queue-service";
+import { getCrawlPreQueue, getScrapeQueue } from "../../services/queue-service";
 import { supabaseGetJobById, supabaseGetJobsById } from "../../lib/supabase-jobs";
 import { configDotenv } from "dotenv";
 configDotenv();
@@ -57,9 +57,10 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
   const start = typeof req.query.skip === "string" ? parseInt(req.query.skip, 10) : 0;
   const end = typeof req.query.limit === "string" ? (start + parseInt(req.query.limit, 10) - 1) : undefined;
 
+  const preJobState = await getCrawlPreQueue().getJobState(req.params.jobId);
   const jobIDs = await getCrawlJobs(req.params.jobId);
   const jobStatuses = await Promise.all(jobIDs.map(x => getScrapeQueue().getJobState(x)));
-  const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] = sc.cancelled ? "cancelled" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "scraping";
+  const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] = sc.cancelled ? "cancelled" : preJobState === "failed" ? "failed" : preJobState !== "completed" ? "scraping" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "scraping";
   const doneJobsLength = await getDoneJobsOrderedLength(req.params.jobId);
   const doneJobsOrder = await getDoneJobsOrdered(req.params.jobId, start, end ?? -1);
 

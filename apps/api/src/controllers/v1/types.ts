@@ -306,7 +306,7 @@ export type CrawlStatusResponse =
       data: Document[];
     };
 
-type AuthObject = {
+export type AuthObject = {
   team_id: string;
   plan: PlanType;
 };
