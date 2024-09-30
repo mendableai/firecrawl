@@ -3,7 +3,7 @@ import { supabase_service } from "../supabase";
 import { FirecrawlJob } from "../../types";
 import { posthog } from "../posthog";
 import "dotenv/config";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import { configDotenv } from "dotenv";
 configDotenv();
 
@@ -73,9 +73,9 @@ export async function logJob(job: FirecrawlJob) {
       posthog.capture(phLog);
     }
     if (error) {
-      Logger.error(`Error logging job: ${error.message}`);
+      logger.error(`Error logging job: ${error.message}`);
     }
   } catch (error) {
-    Logger.error(`Error logging job: ${error.message}`);
+    logger.error(`Error logging job: ${error.message}`);
   }
 }

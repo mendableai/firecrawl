@@ -2,7 +2,7 @@ import { NotificationType } from "../../types";
 import { withAuth } from "../../lib/withAuth";
 import { sendNotification } from "../notification/email_notification";
 import { supabase_service } from "../supabase";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import * as Sentry from "@sentry/node";
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
 import { getACUC, setCachedACUC } from "../../controllers/auth";
@@ -13,20 +13,20 @@ const FREE_CREDITS = 500;
  * If you do not know the subscription_id in the current context, pass subscription_id as undefined.
  */
 export async function billTeam(team_id: string, subscription_id: string | null | undefined, credits: number) {
-  return withAuth(supaBillTeam)(team_id, subscription_id, credits);
+  return withAuth(supaBillTeam, { success: true, message: "No DB, bypassed." })(team_id, subscription_id, credits);
 }
-export async function supaBillTeam(team_id: string, subscription_id: string, credits: number) {
+export async function supaBillTeam(team_id: string, subscription_id: string | null | undefined, credits: number) {
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
   }
-  Logger.info(`Billing team ${team_id} for ${credits} credits`);
+  logger.info(`Billing team ${team_id} for ${credits} credits`);
 
   const { data, error } =
     await supabase_service.rpc("bill_team", { _team_id: team_id, sub_id: subscription_id ?? null, fetch_subscription: subscription_id === undefined, credits });
   
   if (error) {
     Sentry.captureException(error);
-    Logger.error("Failed to bill team: " + JSON.stringify(error));
+    logger.error("Failed to bill team: " + JSON.stringify(error));
     return;
   }
 
@@ -42,15 +42,24 @@ export async function supaBillTeam(team_id: string, subscription_id: string, cre
   })();
 }
 
-export async function checkTeamCredits(chunk: AuthCreditUsageChunk, team_id: string, credits: number) {
-  return withAuth(supaCheckTeamCredits)(chunk, team_id, credits);
+export type CheckTeamCreditsResponse = {
+  success: boolean,
+  message: string,
+  remainingCredits: number,
+  chunk?: AuthCreditUsageChunk,
+}
+
+export async function checkTeamCredits(chunk: AuthCreditUsageChunk | null, team_id: string, credits: number): Promise<CheckTeamCreditsResponse> {
+  return withAuth(supaCheckTeamCredits, { success: true, message: "No DB, bypassed", remainingCredits: Infinity })(chunk, team_id, credits);
 }
 
 // if team has enough credits for the operation, return true, else return false
-export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk, team_id: string, credits: number) {
+export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk | null, team_id: string, credits: number): Promise<CheckTeamCreditsResponse> {
   // WARNING: chunk will be null if team_id is preview -- do not perform operations on it under ANY circumstances - mogery
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used", remainingCredits: Infinity };
+  } else if (chunk === null) {
+    throw new Error("NULL ACUC passed to supaCheckTeamCredits");
   }
 
   const creditsWillBeUsed = chunk.adjusted_credits_used + credits;

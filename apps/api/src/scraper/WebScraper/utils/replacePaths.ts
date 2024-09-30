@@ -1,9 +1,10 @@
-import { Logger } from "../../../lib/logger";
+import { logger } from "../../../lib/logger";
 import { Document } from "../../../lib/entities";
 
 export const replacePathsWithAbsolutePaths = (documents: Document[]): Document[] => {
   try {
     documents.forEach((document) => {
+      if (!document.metadata.sourceURL) return;
       const baseUrl = new URL(document.metadata.sourceURL).origin;
       const paths =
         document.content.match(
@@ -13,8 +14,10 @@ export const replacePathsWithAbsolutePaths = (documents: Document[]): Document[]
       paths.forEach((path: string) => {
         try {
           const isImage = path.startsWith("!");
-        let matchedUrl = path.match(/\((.*?)\)/) || path.match(/href="([^"]+)"/);
+        let matchedUrl = (path.match(/\((.*?)\)/) || path.match(/href="([^"]+)"/)) ?? [];
         let url = matchedUrl[1];
+
+        if (!url) return;
 
         if (!url.startsWith("data:") && !url.startsWith("http")) {
           if (url.startsWith("/")) {
@@ -23,9 +26,9 @@ export const replacePathsWithAbsolutePaths = (documents: Document[]): Document[]
           url = new URL(url, baseUrl).toString();
         }
 
-        const markdownLinkOrImageText = path.match(/(!?\[.*?\])/)[0];
+        const markdownLinkOrImageText = (path.match(/(!?\[.*?\])/) ?? [])[0];
         // Image is handled afterwards
-        if (!isImage) {
+        if (!isImage && markdownLinkOrImageText) {
           document.content = document.content.replace(
             path,
             `${markdownLinkOrImageText}(${url})`
@@ -40,7 +43,7 @@ export const replacePathsWithAbsolutePaths = (documents: Document[]): Document[]
 
     return documents;
   } catch (error) {
-    Logger.debug(`Error replacing paths with absolute paths: ${error}`);
+    logger.debug(`Error replacing paths with absolute paths: ${error}`);
     return documents;
   }
 };
@@ -48,6 +51,7 @@ export const replacePathsWithAbsolutePaths = (documents: Document[]): Document[]
 export const replaceImgPathsWithAbsolutePaths = (documents: Document[]): Document[] => {
   try {
     documents.forEach((document) => {
+      if (!document.metadata.sourceURL) return;
       const baseUrl = new URL(document.metadata.sourceURL).origin;
       const images =
         document.content.match(
@@ -55,10 +59,10 @@ export const replaceImgPathsWithAbsolutePaths = (documents: Document[]): Documen
         ) || [];
 
       images.forEach((image: string) => {
-        let imageUrl = image.match(/\((.*?)\)/)[1];
-        let altText = image.match(/\[(.*?)\]/)[1];
+        let imageUrl = (image.match(/\((.*?)\)/) ?? [])[1];
+        let altText = (image.match(/\[(.*?)\]/) ?? [])[1] ?? "";
 
-        if (!imageUrl.startsWith("data:image")) {
+        if (imageUrl && !imageUrl.startsWith("data:image")) {
           if (!imageUrl.startsWith("http")) {
             if (imageUrl.startsWith("/")) {
               imageUrl = imageUrl.substring(1);
@@ -79,7 +83,7 @@ export const replaceImgPathsWithAbsolutePaths = (documents: Document[]): Documen
 
     return documents;
   } catch (error) {
-    Logger.error(`Error replacing img paths with absolute paths: ${error}`);
+    logger.error(`Error replacing img paths with absolute paths: ${error}`);
     return documents;
   }
 };

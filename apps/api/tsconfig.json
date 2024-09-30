@@ -1,10 +1,10 @@
 {
   "compilerOptions": {
     "rootDir": "./src",
-    "lib": ["es6","DOM"],
+    "lib": ["ES2022", "DOM"],
 
     // or higher
-    "target": "ES2020",
+    "target": "ES2022",
 
     "module": "commonjs",
     "esModuleInterop": true,
@@ -12,6 +12,7 @@
     "outDir": "./dist/src",
     "moduleResolution": "node",
     "baseUrl": ".",
+    "strictNullChecks": true,
 
     "paths": {
       "*": ["node_modules/*", "src/types/*"],

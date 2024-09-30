@@ -4,6 +4,7 @@ import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobs
 import { getScrapeQueue } from "../../services/queue-service";
 import { supabaseGetJobById, supabaseGetJobsById } from "../../lib/supabase-jobs";
 import { configDotenv } from "dotenv";
+import { Job } from "bullmq";
 configDotenv();
 
 export async function getJob(id: string) {
@@ -24,7 +25,7 @@ export async function getJob(id: string) {
 }
 
 export async function getJobs(ids: string[]) {
-  const jobs = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x);
+  const jobs: (Job & { id: string })[] = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x) as (Job & {id: string})[];
   
   if (process.env.USE_DB_AUTHENTICATION === "true") {
     const supabaseData = await supabaseGetJobsById(ids);
@@ -63,7 +64,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
   const doneJobsLength = await getDoneJobsOrderedLength(req.params.jobId);
   const doneJobsOrder = await getDoneJobsOrdered(req.params.jobId, start, end ?? -1);
 
-  let doneJobs = [];
+  let doneJobs: Job[] = [];
 
   if (end === undefined) { // determine 10 megabyte limit
     let bytes = 0;

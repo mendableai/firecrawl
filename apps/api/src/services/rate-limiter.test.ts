@@ -345,7 +345,7 @@ describe("Rate Limiter Service", () => {
     } catch (error) {
       // expect remaining points to be 0
       const res = await limiter.get("test-prefix:someToken");
-      expect(res.remainingPoints).toBe(0);
+      expect(res?.remainingPoints).toBe(0);
     }
   });
 

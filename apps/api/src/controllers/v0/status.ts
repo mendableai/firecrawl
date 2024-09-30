@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { Logger } from "../../../src/lib/logger";
+import { logger } from "../../../src/lib/logger";
 import { getCrawl, getCrawlJobs } from "../../../src/lib/crawl-redis";
 import { getJobs } from "./crawl-status";
 import * as Sentry from "@sentry/node";
@@ -37,7 +37,7 @@ export async function crawlJobStatusPreviewController(req: Request, res: Respons
     });
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

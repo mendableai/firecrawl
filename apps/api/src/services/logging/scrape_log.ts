@@ -2,7 +2,7 @@ import "dotenv/config";
 import { ScrapeLog } from "../../types";
 import { supabase_service } from "../supabase";
 import { PageOptions } from "../../lib/entities";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import { configDotenv } from "dotenv";
 configDotenv();
 
@@ -12,7 +12,7 @@ export async function logScrape(
 ) {
   const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
   if (!useDbAuthentication) {
-    Logger.debug("Skipping logging scrape to Supabase");
+    logger.debug("Skipping logging scrape to Supabase");
     return;
   }
   try {
@@ -47,9 +47,9 @@ export async function logScrape(
     ]);
 
     if (error) {
-      Logger.error(`Error logging proxy:\n${JSON.stringify(error)}`);
+      logger.error(`Error logging proxy:\n${JSON.stringify(error)}`);
     }
   } catch (error) {
-    Logger.error(`Error logging proxy:\n${JSON.stringify(error)}`);
+    logger.error(`Error logging proxy:\n${JSON.stringify(error)}`);
   }
 }

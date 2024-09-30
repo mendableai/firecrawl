@@ -18,11 +18,11 @@ import { fireEngineMap } from "../../search/fireEngine";
 import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { performCosineSimilarity } from "../../lib/map-cosine";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import Redis from "ioredis";
 
 configDotenv();
-const redis = new Redis(process.env.REDIS_URL);
+const redis = new Redis(process.env.REDIS_URL!);
 
 // Max Links that /map can return
 const MAX_MAP_LIMIT = 5000;
@@ -65,8 +65,8 @@ export async function mapController(
   const cacheKey = `fireEngineMap:${mapUrl}`;
   const cachedResult = await redis.get(cacheKey);
 
-  let allResults: any[];
-  let pagePromises: Promise<any>[];
+  let allResults: any[] = [];
+  let pagePromises: Promise<any>[] = [];
 
   if (cachedResult) {
     allResults = JSON.parse(cachedResult);
@@ -139,7 +139,7 @@ export async function mapController(
         return null;
       }
     })
-    .filter((x) => x !== null);
+    .filter((x) => x !== null) as string[];
 
   // allows for subdomains to be included
   links = links.filter((x) => isSameDomain(x, req.body.url));
@@ -153,7 +153,7 @@ export async function mapController(
   links = removeDuplicateUrls(links);
 
   billTeam(req.auth.team_id, req.acuc?.sub_id, 1).catch((error) => {
-    Logger.error(
+    logger.error(
       `Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`
     );
     // Optionally, you could notify an admin or add to a retry queue here

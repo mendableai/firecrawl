@@ -1,4 +1,4 @@
-import { Logger } from '../../../../lib/logger';
+import { logger } from '../../../../lib/logger';
 import { isUrlBlocked } from '../blocklist';
 
 describe('isUrlBlocked', () => {
@@ -19,7 +19,7 @@ describe('isUrlBlocked', () => {
 
     blockedUrls.forEach(url => {
       if (!isUrlBlocked(url)) {
-        Logger.debug(`URL not blocked: ${url}`);
+        logger.debug(`URL not blocked: ${url}`);
       }
       expect(isUrlBlocked(url)).toBe(true);
     });

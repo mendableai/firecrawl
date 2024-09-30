@@ -3,7 +3,7 @@ import { generateRequestParams } from "../single_url";
 import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 import { universalTimeout } from "../global";
 import { ScrapingBeeClient } from "scrapingbee";
-import { Logger } from "../../../lib/logger";
+import { logger } from "../../../lib/logger";
 
 /**
  * Scrapes a URL with ScrapingBee
@@ -23,14 +23,14 @@ export async function scrapWithScrapingBee(
       url,
       scraper: wait_browser === "networkidle2" ? "scrapingBeeLoad" : "scrapingBee",
       success: false,
-      response_code: null,
-      time_taken_seconds: null,
-      error_message: null,
+      response_code: undefined as number | undefined,
+      time_taken_seconds: undefined as number | undefined,
+      error_message: undefined as string | undefined,
       html: "",
       startTime: Date.now(),
     };
     try {
-      const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY);
+      const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY!);
       const clientParams = await generateRequestParams(
         url,
         wait_browser,
@@ -43,13 +43,13 @@ export async function scrapWithScrapingBee(
           transparent_status_code: "True",
         },
       });
-      Logger.info(
+      logger.info(
         `⛏️ ScrapingBee: Scraping ${url}`
       );
       const contentType = response.headers["content-type"];
       if (contentType && contentType.includes("application/pdf")) {
         logParams.success = true;
-        const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
+        const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF ?? true);
         logParams.response_code = pageStatusCode;
         logParams.error_message = pageError;
         return { content, pageStatusCode, pageError };
@@ -60,7 +60,7 @@ export async function scrapWithScrapingBee(
           text = decoder.decode(response.data);
           logParams.success = true;
         } catch (decodeError) {
-          Logger.debug(
+          logger.debug(
             `⛏️ ScrapingBee: Error decoding response data for url: ${url} | Error: ${decodeError}`
           );
           logParams.error_message = decodeError.message || decodeError;
@@ -76,7 +76,7 @@ export async function scrapWithScrapingBee(
         };
       }
     } catch (error) {
-      Logger.debug(`⛏️ ScrapingBee: Error fetching url: ${url} | Error: ${error}`);
+      logger.debug(`⛏️ ScrapingBee: Error fetching url: ${url} | Error: ${error}`);
       logParams.error_message = error.message || error;
       logParams.response_code = error.response?.status;
       return {

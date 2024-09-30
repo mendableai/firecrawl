@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { supabase_service } from "../../../src/services/supabase";
-import { Logger } from "../../../src/lib/logger";
+import { logger } from "../../../src/lib/logger";
 import { getCrawl, saveCrawl } from "../../../src/lib/crawl-redis";
 import * as Sentry from "@sentry/node";
 import { configDotenv } from "dotenv";
@@ -12,14 +12,16 @@ export async function crawlCancelController(req: Request, res: Response) {
   try {
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
 
-    const { success, team_id, error, status } = await authenticateUser(
+    const auth = await authenticateUser(
       req,
       res,
       RateLimiterMode.CrawlStatus
     );
-    if (!success) {
-      return res.status(status).json({ error });
+    if (!auth.success) {
+      return res.status(auth.status).json({ error: auth.error });
     }
+
+    const { team_id } = auth;
 
     const sc = await getCrawl(req.params.jobId);
     if (!sc) {
@@ -46,7 +48,7 @@ export async function crawlCancelController(req: Request, res: Response) {
       sc.cancelled = true;
       await saveCrawl(req.params.jobId, sc);
     } catch (error) {
-      Logger.error(error);
+      logger.error(error);
     }
 
     res.json({
@@ -54,7 +56,7 @@ export async function crawlCancelController(req: Request, res: Response) {
     });
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

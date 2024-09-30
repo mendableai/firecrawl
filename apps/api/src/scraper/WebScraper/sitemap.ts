@@ -3,7 +3,7 @@ import { axiosTimeout } from "../../lib/timeout";
 import { parseStringPromise } from "xml2js";
 import { scrapWithFireEngine } from "./scrapers/fireEngine";
 import { WebCrawler } from "./crawler";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 
 export async function getLinksFromSitemap(
   {
@@ -17,7 +17,7 @@ export async function getLinksFromSitemap(
   }
 ): Promise<string[]> {
   try {
-    let content: string;
+    let content: string = "";
     try {
       if (mode === 'axios' || process.env.FIRE_ENGINE_BETA_URL === '') {
         const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
@@ -27,7 +27,7 @@ export async function getLinksFromSitemap(
         content = response.html;
       }
     } catch (error) {
-      Logger.error(`Request failed for ${sitemapUrl}: ${error.message}`);
+      logger.error(`Request failed for ${sitemapUrl}: ${error.message}`);
 
       return allUrls;
     }
@@ -47,7 +47,7 @@ export async function getLinksFromSitemap(
       allUrls.push(...validUrls);
     }
   } catch (error) {
-    Logger.debug(`Error processing sitemapUrl: ${sitemapUrl} | Error: ${error.message}`);
+    logger.debug(`Error processing sitemapUrl: ${sitemapUrl} | Error: ${error.message}`);
   }
 
   return allUrls;

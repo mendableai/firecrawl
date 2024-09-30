@@ -19,7 +19,7 @@ import {
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getScrapeQueue } from "../../services/queue-service";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
 
@@ -80,7 +80,7 @@ export async function scrapeHelper(
     },
     async (span) => {
       try {
-        doc = (await waitForJob(job.id, timeout))[0];
+        doc = (await waitForJob<any[]>(job.id, timeout))[0]; // TODO: better types for this
       } catch (e) {
         if (e instanceof Error && e.message.startsWith("Job wait")) {
           span.setAttribute("timedOut", true);
@@ -157,14 +157,16 @@ export async function scrapeController(req: Request, res: Response) {
   try {
     let earlyReturn = false;
     // make sure to authenticate user first, Bearer <token>
-    const { success, team_id, error, status, plan, chunk } = await authenticateUser(
+    const auth = await authenticateUser(
       req,
       res,
       RateLimiterMode.Scrape
     );
-    if (!success) {
-      return res.status(status).json({ error });
+    if (!auth.success) {
+      return res.status(auth.status).json({ error: auth.error });
     }
+
+    const { team_id, plan, chunk } = auth;
 
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = { ...defaultPageOptions, ...req.body.pageOptions };
@@ -199,7 +201,7 @@ export async function scrapeController(req: Request, res: Response) {
         return res.status(402).json({ error: "Insufficient credits" });
       }
     } catch (error) {
-      Logger.error(error);
+      logger.error(error);
       earlyReturn = true;
       return res.status(500).json({
         error:
@@ -245,7 +247,7 @@ export async function scrapeController(req: Request, res: Response) {
       if (creditsToBeBilled > 0) {
         // billing for doc done on queue end, bill only for llm extraction
         billTeam(team_id, chunk?.sub_id, creditsToBeBilled).catch(error => {
-          Logger.error(`Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`);
+          logger.error(`Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`);
           // Optionally, you could notify an admin or add to a retry queue here
         });
       }
@@ -284,7 +286,7 @@ export async function scrapeController(req: Request, res: Response) {
     return res.status(result.returnCode).json(result);
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({
       error:
         typeof error === "string"

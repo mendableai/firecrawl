@@ -144,6 +144,7 @@ export const scrapeRequestSchema = scrapeOptions.extend({
 // }
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
+export type ScrapeRequestInput = z.input<typeof scrapeRequestSchema>;
 
 const crawlerOptions = z.object({
   includePaths: z.string().array().default([]),
@@ -196,7 +197,7 @@ export const mapRequestSchema = crawlerOptions.extend({
   includeSubdomains: z.boolean().default(true),
   search: z.string().optional(),
   ignoreSitemap: z.boolean().default(false),
-  limit: z.number().min(1).max(5000).default(5000).optional(),
+  limit: z.number().min(1).max(5000).default(5000),
 }).strict(strictMessage);
 
 // export type MapRequest = {
@@ -246,6 +247,7 @@ export type Document = {
     publishedTime?: string;
     articleTag?: string;
     articleSection?: string;
+    url?: string;
     sourceURL?: string;
     statusCode?: number;
     error?: string;
@@ -308,7 +310,7 @@ export type CrawlStatusResponse =
 
 type AuthObject = {
   team_id: string;
-  plan: PlanType;
+  plan: PlanType | undefined;
 };
 
 type Account = {
@@ -392,7 +394,7 @@ export function legacyCrawlerOptions(x: CrawlerOptions) {
   };
 }
 
-export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
+export function legacyScrapeOptions(x: Omit<ScrapeOptions, "timeout">): PageOptions {
   return {
     includeMarkdown: x.formats.includes("markdown"),
     includeHtml: x.formats.includes("html"),
@@ -420,8 +422,10 @@ export function legacyExtractorOptions(x: ExtractOptions): ExtractorOptions {
   };
 }
 
-export function legacyDocumentConverter(doc: any): Document {
-  if (doc === null || doc === undefined) return null;
+export function legacyDocumentConverter(doc: null | undefined): null
+export function legacyDocumentConverter(doc: any): Document
+export function legacyDocumentConverter(doc: any): Document | null {
+  if (doc === null || doc === undefined) return null as any;
 
   if (doc.metadata) {
     if (doc.metadata.screenshot) {
@@ -435,7 +439,7 @@ export function legacyDocumentConverter(doc: any): Document {
     }
   }
 
-  return {
+  const document: Document = {
     markdown: doc.markdown,
     links: doc.linksOnPage,
     rawHtml: doc.rawHtml,
@@ -451,4 +455,6 @@ export function legacyDocumentConverter(doc: any): Document {
       statusCode: doc.metadata.pageStatusCode,
     },
   };
+
+  return document;
 }

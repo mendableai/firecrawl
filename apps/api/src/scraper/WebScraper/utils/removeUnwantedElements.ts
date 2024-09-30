@@ -24,7 +24,7 @@ export const removeUnwantedElements = (
           newRoot.append(soup(element).clone());
         });
       });
-      return newRoot.html();
+      return newRoot.html() ?? "";
     }
   }
 

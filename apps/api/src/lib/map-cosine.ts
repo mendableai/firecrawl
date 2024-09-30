@@ -1,4 +1,4 @@
-import { Logger } from "./logger";
+import { logger } from "./logger";
 
 export function performCosineSimilarity(links: string[], searchQuery: string) {
   try {
@@ -40,7 +40,7 @@ export function performCosineSimilarity(links: string[], searchQuery: string) {
     links = a.map((item) => item.link);
     return links;
   } catch (error) {
-    Logger.error(`Error performing cosine similarity: ${error}`);
+    logger.error(`Error performing cosine similarity: ${error}`);
     return links;
   }
 }

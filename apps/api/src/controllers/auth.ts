@@ -11,7 +11,7 @@ import { withAuth } from "../lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import { setTraceAttributes } from "@hyperdx/node-opentelemetry";
 import { sendNotification } from "../services/notification/email_notification";
-import { Logger } from "../lib/logger";
+import { logger } from "../lib/logger";
 import { redlock } from "../services/redlock";
 import { getValue } from "../services/redis";
 import { setValue } from "../services/redis";
@@ -37,14 +37,14 @@ function normalizedApiIsUuid(potentialUuid: string): boolean {
   return validate(potentialUuid);
 }
 
-export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk)) { 
+export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk | null | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk | null)) { 
   const cacheKeyACUC = `acuc_${api_key}`;
   const redLockKey = `lock_${cacheKeyACUC}`;
 
   try {
     await redlock.using([redLockKey], 10000, {}, async signal => {
       if (typeof acuc === "function") {
-        acuc = acuc(JSON.parse(await getValue(cacheKeyACUC)));
+        acuc = acuc(JSON.parse(await getValue(cacheKeyACUC) ?? "null"));
 
         if (acuc === null) {
           if (signal.aborted) {
@@ -64,7 +64,7 @@ export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk 
       await setValue(cacheKeyACUC, JSON.stringify(acuc), 600, true);
     });
   } catch (error) {
-    Logger.error(`Error updating cached ACUC ${cacheKeyACUC}: ${error}`);
+    logger.error(`Error updating cached ACUC ${cacheKeyACUC}: ${error}`);
     Sentry.captureException(error);
   }
 }
@@ -106,7 +106,7 @@ export async function authenticateUser(
   res,
   mode?: RateLimiterMode
 ): Promise<AuthResponse> {
-  return withAuth(supaAuthenticateUser)(req, res, mode);
+  return withAuth(supaAuthenticateUser, { success: true, chunk: null, team_id: "bypass" })(req, res, mode);
 }
 
 function setTrace(team_id: string, api_key: string) {
@@ -117,7 +117,7 @@ function setTrace(team_id: string, api_key: string) {
     });
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(`Error setting trace attributes: ${error.message}`);
+    logger.error(`Error setting trace attributes: ${error.message}`);
   }
 }
 
@@ -125,14 +125,7 @@ export async function supaAuthenticateUser(
   req,
   res,
   mode?: RateLimiterMode
-): Promise<{
-  success: boolean;
-  team_id?: string;
-  error?: string;
-  status?: number;
-  plan?: PlanType;
-  chunk?: AuthCreditUsageChunk;
-}> {
+): Promise<AuthResponse> {
   const authHeader = req.headers.authorization ?? (req.headers["sec-websocket-protocol"] ? `Bearer ${req.headers["sec-websocket-protocol"]}` : null);
   if (!authHeader) {
     return { success: false, error: "Unauthorized", status: 401 };
@@ -156,7 +149,7 @@ export async function supaAuthenticateUser(
 
   let teamId: string | null = null;
   let priceId: string | null = null;
-  let chunk: AuthCreditUsageChunk;
+  let chunk: AuthCreditUsageChunk | null = null;
 
   if (token == "this_is_just_a_preview_token") {
     if (mode == RateLimiterMode.CrawlStatus) {
@@ -247,7 +240,7 @@ export async function supaAuthenticateUser(
   try {
     await rateLimiter.consume(team_endpoint_token);
   } catch (rateLimiterRes) {
-    Logger.error(`Rate limit exceeded: ${rateLimiterRes}`);
+    logger.error(`Rate limit exceeded: ${rateLimiterRes}`);
     const secs = Math.round(rateLimiterRes.msBeforeNext / 1000) || 1;
     const retryDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
 
@@ -274,7 +267,7 @@ export async function supaAuthenticateUser(
       mode === RateLimiterMode.CrawlStatus ||
       mode === RateLimiterMode.Search)
   ) {
-    return { success: true, team_id: "preview" };
+    return { success: true, team_id: "preview", chunk: null };
     // check the origin of the request and make sure its from firecrawl.dev
     // const origin = req.headers.origin;
     // if (origin && origin.includes("firecrawl.dev")){
@@ -289,12 +282,12 @@ export async function supaAuthenticateUser(
 
   return {
     success: true,
-    team_id: subscriptionData.team_id,
-    plan: (subscriptionData.plan ?? "") as PlanType,
+    team_id: teamId ?? undefined,
+    plan: (subscriptionData?.plan ?? "") as PlanType,
     chunk,
   };
 }
-function getPlanByPriceId(price_id: string): PlanType {
+function getPlanByPriceId(price_id: string | null): PlanType {
   switch (price_id) {
     case process.env.STRIPE_PRICE_ID_STARTER:
       return "starter";

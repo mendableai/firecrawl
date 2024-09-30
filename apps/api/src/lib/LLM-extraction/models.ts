@@ -95,7 +95,7 @@ export async function generateOpenAICompletions({
 
     try {
       llmExtraction = JSON.parse(
-        jsonCompletion.choices[0].message.content.trim()
+        (jsonCompletion.choices[0].message.content ?? "").trim()
       );
     } catch (e) {
       throw new Error("Invalid JSON");

@@ -3,7 +3,7 @@ export async function batchProcess<T>(
     batchSize: number,
     asyncFunction: (item: T, index: number) => Promise<void>
   ): Promise<void> {
-    const batches = [];
+    const batches: T[][] = [];
     for (let i = 0; i < array.length; i += batchSize) {
       const batch = array.slice(i, i + batchSize);
       batches.push(batch);

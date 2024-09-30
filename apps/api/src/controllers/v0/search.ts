@@ -8,21 +8,22 @@ import { PageOptions, SearchOptions } from "../../lib/entities";
 import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import { getScrapeQueue } from "../../services/queue-service";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
+import { Job } from "bullmq";
 
 export async function searchHelper(
   jobId: string,
   req: Request,
   team_id: string,
-  subscription_id: string,
+  subscription_id: string | null | undefined,
   crawlerOptions: any,
   pageOptions: PageOptions,
   searchOptions: SearchOptions,
-  plan: PlanType
+  plan: PlanType | undefined
 ): Promise<{
   success: boolean;
   error?: string;
@@ -35,8 +36,8 @@ export async function searchHelper(
     return { success: false, error: "Query is required", returnCode: 400 };
   }
 
-  const tbs = searchOptions.tbs ?? null;
-  const filter = searchOptions.filter ?? null;
+  const tbs = searchOptions.tbs ?? undefined;
+  const filter = searchOptions.filter ?? undefined;
   const num_results = searchOptions.limit ?? 7;
   const num_results_buffer = Math.floor(num_results * 1.5);
 
@@ -56,7 +57,7 @@ export async function searchHelper(
 
   if (justSearch) {
     billTeam(team_id, subscription_id, res.length).catch(error => {
-      Logger.error(`Failed to bill team ${team_id} for ${res.length} credits: ${error}`);
+      logger.error(`Failed to bill team ${team_id} for ${res.length} credits: ${error}`);
       // Optionally, you could notify an admin or add to a retry queue here
     });
     return { success: true, data: res, returnCode: 200 };
@@ -94,7 +95,7 @@ export async function searchHelper(
     };
   })
 
-  let jobs = [];
+  let jobs: Job[] = [];
   if (Sentry.isInitialized()) {
     for (const job of jobDatas) {
       // add with sentry instrumentation
@@ -105,7 +106,7 @@ export async function searchHelper(
     await getScrapeQueue().addBulk(jobs);
   }
 
-  const docs = (await Promise.all(jobs.map(x => waitForJob(x.id, 60000)))).map(x => x[0]);
+  const docs = (await Promise.all(jobs.map(x => waitForJob<any[]>(x.id as string, 60000)))).map(x => x[0]); // TODO: better types for this
   
   if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
@@ -132,14 +133,15 @@ export async function searchHelper(
 export async function searchController(req: Request, res: Response) {
   try {
     // make sure to authenticate user first, Bearer <token>
-    const { success, team_id, error, status, plan, chunk } = await authenticateUser(
+    const auth = await authenticateUser(
       req,
       res,
       RateLimiterMode.Search
     );
-    if (!success) {
-      return res.status(status).json({ error });
+    if (!auth.success) {
+      return res.status(auth.status).json({ error: auth.error });
     }
+    const { team_id, plan, chunk } = auth;
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? {
       includeHtml: req.body.pageOptions?.includeHtml ?? false,
@@ -162,7 +164,7 @@ export async function searchController(req: Request, res: Response) {
       }
     } catch (error) {
       Sentry.captureException(error);
-      Logger.error(error);
+      logger.error(error);
       return res.status(500).json({ error: "Internal server error" });
     }
     const startTime = new Date().getTime();
@@ -199,7 +201,7 @@ export async function searchController(req: Request, res: Response) {
     }
 
     Sentry.captureException(error);
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

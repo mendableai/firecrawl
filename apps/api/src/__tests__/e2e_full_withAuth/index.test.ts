@@ -844,7 +844,7 @@ describe("E2E Tests for API Routes", () => {
       expect(crawlInitResponse.statusCode).toBe(200);
       expect(crawlInitResponse.body).toHaveProperty("jobId");
 
-      let crawlStatus: string;
+      let crawlStatus: string = "scraping";
       let crawlData = [];
       while (crawlStatus !== "completed") {
         const statusResponse = await request(TEST_URL)

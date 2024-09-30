@@ -20,7 +20,7 @@ import {
 import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
 import { addScrapeJob } from "../../services/queue-jobs";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import { getJobPriority } from "../../lib/job-priority";
 import { callWebhook } from "../../services/webhook";
 
@@ -34,7 +34,7 @@ export async function crawlController(
 
   await logCrawl(id, req.auth.team_id);
 
-  const { remainingCredits } = req.account;
+  const remainingCredits = req.account?.remainingCredits ?? 0;
 
   const crawlerOptions = legacyCrawlerOptions(req.body);
   const pageOptions = legacyScrapeOptions(req.body.scrapeOptions);
@@ -76,7 +76,7 @@ export async function crawlController(
   try {
     sc.robots = await crawler.getRobotsTxt();
   } catch (e) {
-    Logger.debug(
+    logger.debug(
       `[Crawl] Failed to get robots.txt (this is probably fine!): ${JSON.stringify(
         e
       )}`

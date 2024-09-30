@@ -1,6 +1,6 @@
 import { Response } from "express";
 import { supabase_service } from "../../services/supabase";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import { getCrawl, saveCrawl } from "../../lib/crawl-redis";
 import * as Sentry from "@sentry/node";
 import { configDotenv } from "dotenv";
@@ -36,7 +36,7 @@ export async function crawlCancelController(req: RequestWithAuth<{ jobId: string
       sc.cancelled = true;
       await saveCrawl(req.params.jobId, sc);
     } catch (error) {
-      Logger.error(error);
+      logger.error(error);
     }
 
     res.json({
@@ -44,7 +44,7 @@ export async function crawlCancelController(req: RequestWithAuth<{ jobId: string
     });
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

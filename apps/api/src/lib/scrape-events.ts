@@ -1,7 +1,7 @@
 import { Job } from "bullmq";
 import type { baseScrapers } from "../scraper/WebScraper/single_url";
 import { supabase_service as supabase } from "../services/supabase";
-import { Logger } from "./logger";
+import { logger } from "./logger";
 import { configDotenv } from "dotenv";
 configDotenv();
 
@@ -49,7 +49,7 @@ export class ScrapeEvents {
         }).select().single();
         return (result.data as any).id;
       } catch (error) {
-        // Logger.error(`Error inserting scrape event: ${error}`);
+        // logger.error(`Error inserting scrape event: ${error}`);
         return null;
       }
     }
@@ -69,7 +69,7 @@ export class ScrapeEvents {
         }
       }).eq("id", logId);
     } catch (error) {
-      Logger.error(`Error updating scrape result: ${error}`);
+      logger.error(`Error updating scrape result: ${error}`);
     }
   }
 
@@ -81,7 +81,7 @@ export class ScrapeEvents {
         worker: process.env.FLY_MACHINE_ID,
       });
     } catch (error) {
-      Logger.error(`Error logging job event: ${error}`);
+      logger.error(`Error logging job event: ${error}`);
     }
   }
 }
