@@ -146,7 +146,7 @@ export function buildFallbackList(meta: Meta): {
 
         const unsupportedFeatures = new Set([...meta.featureFlags]);
             for (const flag of meta.featureFlags) {
-                if (!supportedFlags.has(flag)) {
+                if (supportedFlags.has(flag)) {
                     unsupportedFeatures.delete(flag);
                 }
             }

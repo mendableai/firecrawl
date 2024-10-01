@@ -21,4 +21,5 @@ flowchart TD;
  - Built on `v1` definitons, instead of `v0`.
  - PDFs are now converted straight to markdown using LlamaParse, instead of converting to just plaintext.
  - DOCXs are now converted straight to HTML (and then later to markdown) using mammoth, instead of converting to just plaintext.
+ - Using new JSON Schema OpenAI API -- schema fails with LLM Extract will be basically non-existant.
         

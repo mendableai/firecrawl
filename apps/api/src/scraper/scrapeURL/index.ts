@@ -7,6 +7,7 @@ import { buildFallbackList, Engine, EngineScrapeResult, FeatureFlag, scrapeURLWi
 import { parseMarkdown } from "../../lib/html-to-markdown";
 import { AddFeatureError, EngineError, NoEnginesLeftError, TimeoutError } from "./error";
 import { executeTransformers } from "./transformers";
+import { LLMRefusalError } from "./transformers/llmExtract";
 
 type ScrapeUrlResponse = ({
     success: true,
@@ -184,7 +185,11 @@ async function scrapeURLLoop(
         },
     }
 
-    // TODO: add warning when final scraper has feature set mismatch
+    if (result.unsupportedFeatures.size > 0) {
+        const warning = `The engine used does not support the following features: ${[...result.unsupportedFeatures].join(", ")} -- your scrape may be partial.`;
+        document.warning = document.warning !== undefined ? document.warning + " " + warning : warning;
+    }
+
     document = await executeTransformers(meta, document);
 
     return {
@@ -217,6 +222,8 @@ export async function scrapeURL(
     } catch (error) {
         if (error instanceof NoEnginesLeftError) {
             meta.logger.warn("scrapeURL: All scraping engines failed!", { error });
+        } else if (error instanceof LLMRefusalError) {
+            meta.logger.warn("scrapeURL: LLM refused to extract content", { error });
         } else {
             Sentry.captureException(error);
             meta.logger.error("scrapeURL: Unexpected error happened", { error });

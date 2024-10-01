@@ -10,6 +10,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).not.toHaveProperty("content");
             expect(out.document).toHaveProperty("markdown");
             expect(out.document).toHaveProperty("metadata");
@@ -52,6 +53,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty("markdown");
             expect(out.document).toHaveProperty("html");
             expect(out.document).toHaveProperty("metadata");
@@ -71,6 +73,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty("markdown");
             expect(out.document).toHaveProperty("metadata");
             expect(out.document).not.toHaveProperty("html");
@@ -88,6 +91,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty("markdown");
             expect(out.document).toHaveProperty("metadata");
             expect(out.document).not.toHaveProperty("html");
@@ -102,6 +106,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty('markdown');
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.metadata.statusCode).toBe(400);
@@ -114,6 +119,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty('markdown');
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.metadata.statusCode).toBe(401);
@@ -126,6 +132,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty('markdown');
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.metadata.statusCode).toBe(403);
@@ -138,6 +145,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty('markdown');
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.metadata.statusCode).toBe(404);
@@ -150,6 +158,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty('markdown');
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.metadata.statusCode).toBe(405);
@@ -162,6 +171,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty('markdown');
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.metadata.statusCode).toBe(500);
@@ -176,6 +186,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty('screenshot');
             expect(typeof out.document.screenshot).toBe("string");
             expect(out.document).toHaveProperty('metadata');
@@ -192,6 +203,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty('screenshot');
             expect(typeof out.document.screenshot).toBe("string");
             expect(out.document).toHaveProperty('metadata');
@@ -206,6 +218,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty('markdown');
             expect(out.document.markdown).toContain("Explore Sandbox");
             expect(out.document).toHaveProperty('metadata');
@@ -222,6 +235,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.markdown).toContain('Broad Line Radio Galaxy');
             expect(out.document.metadata.statusCode).toBe(200);
@@ -235,6 +249,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.markdown).toContain('SERIES A PREFERRED STOCK PURCHASE AGREEMENT');
             expect(out.document.metadata.statusCode).toBe(200);
@@ -263,6 +278,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty("extract");
             expect(out.document.extract).toHaveProperty("company_mission");
             expect(out.document.extract).toHaveProperty("supports_sso");
@@ -293,6 +309,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty("extract");
             expect(out.document.extract).toHaveProperty("company_mission");
             expect(out.document.extract).toHaveProperty("supports_sso");
@@ -333,6 +350,7 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.success).toBe(true);
         
         if (out.success) {
+            expect(out.document.warning).toBeUndefined();
             expect(out.document).toHaveProperty('markdown');
             expect(out.document).toHaveProperty('metadata');
             expect(out.document.metadata.error).toBeUndefined();
