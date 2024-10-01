@@ -159,7 +159,7 @@ const workerFun = async (
           }, {
             ...job.opts,
             jobId: job.id,
-            priority: Math.round((job.opts.priority ?? 10) * 1.25), // exponential backoff for stuck jobs
+            priority: newJobPriority, // exponential backoff for stuck jobs
           });
 
           await sleep(gotJobInterval);
