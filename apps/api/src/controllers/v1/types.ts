@@ -445,7 +445,7 @@ export function legacyDocumentConverter(doc: any): Document {
     extract: doc.llm_extraction,
     screenshot: doc.screenshot ?? doc.fullPageScreenshot,
     actions: doc.actions ?? undefined,
-    warning: doc.warning,
+    warning: doc.warning ?? undefined,
     metadata: {
       ...doc.metadata,
       pageError: undefined,
