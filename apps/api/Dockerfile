@@ -38,3 +38,5 @@ COPY --from=go-base /app/src/lib/go-html-to-md/html-to-markdown.so /app/dist/src
 # Start the server by default, this can be overwritten at runtime
 EXPOSE 8080
 ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
+
+ENTRYPOINT "/app/docker-entrypoint.sh"

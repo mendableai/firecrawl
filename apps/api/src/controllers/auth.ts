@@ -61,11 +61,10 @@ export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk 
 
       // Cache for 10 minutes. This means that changing subscription tier could have
       // a maximum of 10 minutes of a delay. - mogery
-      await setValue(cacheKeyACUC, JSON.stringify(acuc), 600);
+      await setValue(cacheKeyACUC, JSON.stringify(acuc), 600, true);
     });
   } catch (error) {
-    Logger.error(`Error updating cached ACUC: ${error}`);
-    Sentry.captureException(error);
+    Logger.error(`Error updating cached ACUC ${cacheKeyACUC}: ${error}`);
   }
 }
 

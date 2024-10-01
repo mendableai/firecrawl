@@ -35,11 +35,14 @@ redisRateLimitClient.on("connect", (err) => {
  * @param {string} value The value to store.
  * @param {number} [expire] Optional expiration time in seconds.
  */
-const setValue = async (key: string, value: string, expire?: number) => {
-  if (expire) {
+const setValue = async (key: string, value: string, expire?: number, nx = false) => {
+  if (expire && !nx) {
     await redisRateLimitClient.set(key, value, "EX", expire);
   } else {
     await redisRateLimitClient.set(key, value);
+  }
+  if (expire && nx) {
+    await redisRateLimitClient.expire(key, expire, "NX");
   }
 };
 

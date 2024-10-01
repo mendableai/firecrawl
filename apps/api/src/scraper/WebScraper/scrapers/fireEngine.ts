@@ -6,7 +6,11 @@ import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 import { universalTimeout } from "../global";
 import { Logger } from "../../../lib/logger";
 import * as Sentry from "@sentry/node";
+import axiosRetry from 'axios-retry';
 
+axiosRetry(axios, { retries: 3 , onRetry:()=>{
+  console.log("Retrying (fire-engine)...");
+}, retryDelay: axiosRetry.exponentialDelay});
 /**
  * Scrapes a URL with Fire-Engine
  * @param url The URL to scrape
@@ -203,10 +207,10 @@ export async function scrapWithFireEngine({
     }
   } catch (error) {
     if (error.code === "ECONNABORTED") {
-      Logger.debug(`⛏️ Fire-Engine: Request timed out for ${url}`);
+      Logger.debug(`⛏️ Fire-Engine (catch block): Request timed out for ${url}`);
       logParams.error_message = "Request timed out";
     } else {
-      Logger.debug(`⛏️ Fire-Engine: Failed to fetch url: ${url} | Error: ${error}`);
+      Logger.debug(`⛏️ Fire-Engine(catch block): Failed to fetch url: ${url} | Error: ${error}`);
       logParams.error_message = error.message || error;
     }
     return { html: "", pageStatusCode: null, pageError: logParams.error_message };

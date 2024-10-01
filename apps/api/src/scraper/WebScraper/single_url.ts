@@ -29,8 +29,8 @@ const useFireEngine = process.env.FIRE_ENGINE_BETA_URL !== '' && process.env.FIR
 
 export const baseScrapers = [
   useFireEngine ? "fire-engine;chrome-cdp" : undefined,
-  useScrapingBee ? "scrapingBee" : undefined,
   useFireEngine ? "fire-engine" : undefined,
+  useScrapingBee ? "scrapingBee" : undefined,
   useFireEngine ? undefined : "playwright",
   useScrapingBee ? "scrapingBeeLoad" : undefined,
   "fetch",
@@ -95,8 +95,8 @@ function getScrapingFallbackOrder(
 
   let defaultOrder = [
     useFireEngine ? "fire-engine;chrome-cdp" : undefined,
-    useScrapingBee ? "scrapingBee" : undefined,
     useFireEngine ? "fire-engine" : undefined,
+    useScrapingBee ? "scrapingBee" : undefined,
     useScrapingBee ? "scrapingBeeLoad" : undefined,
     useFireEngine ? undefined : "playwright",
     "fetch",
@@ -424,7 +424,7 @@ export async function scrapSingleUrl(
         Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100 or screenshot, breaking`);
         break;
       }
-      if (pageStatusCode && (pageStatusCode == 404 || pageStatusCode == 500)) {
+      if (pageStatusCode && (pageStatusCode == 404)) {
         Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code 404, breaking`);
         break;
       }

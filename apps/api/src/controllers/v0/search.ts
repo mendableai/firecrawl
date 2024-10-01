@@ -37,7 +37,12 @@ export async function searchHelper(
 
   const tbs = searchOptions.tbs ?? null;
   const filter = searchOptions.filter ?? null;
-  const num_results = searchOptions.limit ?? 7;
+  let num_results = Math.min(searchOptions.limit ?? 7, 10);
+
+  if (team_id === "d97c4ceb-290b-4957-8432-2b2a02727d95") {
+    num_results = 1;
+  }
+
   const num_results_buffer = Math.floor(num_results * 1.5);
 
   let res = await search({
@@ -98,7 +103,7 @@ export async function searchHelper(
   if (Sentry.isInitialized()) {
     for (const job of jobDatas) {
       // add with sentry instrumentation
-      jobs.push(await addScrapeJob(job.data as any, {}, job.opts.jobId));
+      jobs.push(await addScrapeJob(job.data as any, {}, job.opts.jobId, job.opts.priority));
     }
   } else {
     jobs = await getScrapeQueue().addBulk(jobDatas);
@@ -170,7 +175,7 @@ export async function searchController(req: Request, res: Response) {
       jobId,
       req,
       team_id,
-      chunk.sub_id,
+      chunk?.sub_id,
       crawlerOptions,
       pageOptions,
       searchOptions,
