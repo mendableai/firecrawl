@@ -28,6 +28,7 @@ export interface WebScraperOptions {
   pageOptions: any;
   extractorOptions?: any;
   team_id: string;
+  plan: string;
   origin?: string;
   crawl_id?: string;
   sitemapped?: boolean;

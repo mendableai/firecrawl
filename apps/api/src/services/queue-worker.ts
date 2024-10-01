@@ -12,7 +12,7 @@ import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
 import { initSDK } from "@hyperdx/node-opentelemetry";
-import { Job } from "bullmq";
+import { Job, Queue } from "bullmq";
 import { Logger } from "../lib/logger";
 import { Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
@@ -34,9 +34,10 @@ import {
   deleteJobPriority,
   getJobPriority,
 } from "../../src/lib/job-priority";
-import { PlanType } from "../types";
+import { PlanType, RateLimiterMode } from "../types";
 import { getJobs } from "../../src/controllers/v1/crawl-status";
 import { configDotenv } from "dotenv";
+import { getRateLimiterPoints } from "./rate-limiter";
 configDotenv();
 
 if (process.env.ENV === "production") {
@@ -99,10 +100,10 @@ process.on("SIGINT", () => {
 });
 
 const workerFun = async (
-  queueName: string,
+  queue: Queue,
   processJobInternal: (token: string, job: Job) => Promise<any>
 ) => {
-  const worker = new Worker(queueName, null, {
+  const worker = new Worker(queue.name, null, {
     connection: redisConnection,
     lockDuration: 1 * 60 * 1000, // 1 minute
     // lockRenewTime: 15 * 1000, // 15 seconds
@@ -129,6 +130,49 @@ const workerFun = async (
 
     const job = await worker.getNextJob(token);
     if (job) {
+      const concurrencyLimiterKey = "concurrency-limiter:" + job.data?.team_id;
+
+      if (job.data && job.data.team_id && job.data.plan) {
+        const concurrencyLimiterThrottledKey = "concurrency-limiter:" + job.data.team_id + ":throttled";
+        const concurrencyLimit = getRateLimiterPoints(RateLimiterMode.Scrape, undefined, job.data.plan);
+        const now = Date.now();
+        const stalledJobTimeoutMs = 2 * 60 * 1000;
+        const throttledJobTimeoutMs = 10 * 60 * 1000;
+
+        redisConnection.zremrangebyscore(concurrencyLimiterThrottledKey, -Infinity, now);
+        redisConnection.zremrangebyscore(concurrencyLimiterKey, -Infinity, now);
+        const activeJobsOfTeam = await redisConnection.zrangebyscore(concurrencyLimiterKey, now, Infinity);
+        if (activeJobsOfTeam.length >= concurrencyLimit) {
+          // Nick: removed the log because it was too spammy, tested and confirmed that the job is added back to the queue
+          // Logger.info("Moving job " + job.id + " back the queue -- concurrency limit hit");
+          // Concurrency limit hit, throttles the job
+          await redisConnection.zadd(concurrencyLimiterThrottledKey, now + throttledJobTimeoutMs, job.id);
+          // We move to failed with a specific error
+          await job.moveToFailed(new Error("Concurrency limit hit"), token, false);
+          // Remove the job from the queue
+          await job.remove();
+          // Increment the priority of the job exponentially by 5%, Note: max bull priority is 2 million
+          const newJobPriority = Math.min(Math.round((job.opts.priority ?? 10) * 1.05), 20000);
+          // Add the job back to the queue with the new priority
+          await queue.add(job.name, {
+            ...job.data,
+            concurrencyLimitHit: true,
+          }, {
+            ...job.opts,
+            jobId: job.id,
+            priority: newJobPriority, // exponential backoff for stuck jobs
+          });
+
+          // await sleep(gotJobInterval);
+          continue;
+        } else {
+          // If we are not throttled, add the job back to the queue with the new priority
+          await redisConnection.zadd(concurrencyLimiterKey, now + stalledJobTimeoutMs, job.id);
+          // Remove the job from the throttled list
+          await redisConnection.zrem(concurrencyLimiterThrottledKey, job.id);
+        }
+      }
+
       if (job.data && job.data.sentry && Sentry.isInitialized()) {
         Sentry.continueTrace(
           {
@@ -159,7 +203,15 @@ const workerFun = async (
                     },
                   },
                   async () => {
-                    const res = await processJobInternal(token, job);
+                    let res;
+                    try {
+                      res = await processJobInternal(token, job);
+                    } finally { 
+                      if (job.id && job.data && job.data.team_id) {
+                        await redisConnection.zrem(concurrencyLimiterKey, job.id);
+                      }
+                    }
+                    
                     if (res !== null) {
                       span.setStatus({ code: 2 }); // ERROR
                     } else {
@@ -181,7 +233,12 @@ const workerFun = async (
             },
           },
           () => {
-            processJobInternal(token, job);
+            processJobInternal(token, job)
+              .finally(() => {
+                if (job.id && job.data && job.data.team_id) {
+                  redisConnection.zrem(concurrencyLimiterKey, job.id);
+                }
+              });
           }
         );
       }
@@ -193,7 +250,7 @@ const workerFun = async (
   }
 };
 
-workerFun(scrapeQueueName, processJobInternal);
+workerFun(getScrapeQueue(), processJobInternal);
 
 async function processJob(job: Job, token: string) {
   Logger.info(`🐂 Worker taking job ${job.id}`);
@@ -254,7 +311,10 @@ async function processJob(job: Job, token: string) {
       },
       project_id: job.data.project_id,
       error: message /* etc... */,
-      docs,
+      docs: job.data.concurrencyLimitHit ? docs.map(x => ({
+        ...x,
+        warning: "This scrape was throttled because you hit you concurrency limit." + (x.warning ? " " + x.warning : ""),
+      })) : docs,
     };
 
     // No idea what this does and when it is called.
@@ -331,6 +391,7 @@ async function processJob(job: Job, token: string) {
                   mode: "single_urls",
                   crawlerOptions: sc.crawlerOptions,
                   team_id: sc.team_id,
+                  plan: job.data.plan,
                   pageOptions: sc.pageOptions,
                   origin: job.data.origin,
                   crawl_id: job.data.crawl_id,

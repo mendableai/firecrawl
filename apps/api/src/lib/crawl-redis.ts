@@ -83,6 +83,10 @@ export async function getCrawlJobs(id: string): Promise<string[]> {
     return await redisConnection.smembers("crawl:" + id + ":jobs");
 }
 
+export async function getThrottledJobs(teamId: string): Promise<string[]> {
+    return await redisConnection.zrangebyscore("concurrency-limiter:" + teamId + ":throttled", Date.now(), Infinity);
+}
+
 export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise<boolean> {
     if (typeof sc.crawlerOptions?.limit === "number") {
         if (await redisConnection.scard("crawl:" + id + ":visited") >= sc.crawlerOptions.limit) {

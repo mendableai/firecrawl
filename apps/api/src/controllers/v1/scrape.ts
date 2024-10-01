@@ -44,6 +44,7 @@ export async function scrapeController(
       mode: "single_urls",
       crawlerOptions: {},
       team_id: req.auth.team_id,
+      plan: req.auth.plan,
       pageOptions,
       extractorOptions,
       origin: req.body.origin,

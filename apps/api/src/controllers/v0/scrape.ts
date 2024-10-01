@@ -61,6 +61,7 @@ export async function scrapeHelper(
       crawlerOptions,
       team_id,
       pageOptions,
+      plan,
       extractorOptions,
       origin: req.body.origin ?? defaultOrigin,
       is_scrape: true,
@@ -196,7 +197,7 @@ export async function scrapeController(req: Request, res: Response) {
         await checkTeamCredits(chunk, team_id, 1);
       if (!creditsCheckSuccess) {
         earlyReturn = true;
-        return res.status(402).json({ error: "Insufficient credits" });
+        return res.status(402).json({ error: "Insufficient credits. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing" });
       }
     } catch (error) {
       Logger.error(error);
