@@ -294,6 +294,17 @@ export type CrawlStatusParams = {
   jobId: string;
 };
 
+export type ConcurrencyCheckParams = {
+  teamId: string;
+};
+
+export type ConcurrencyCheckResponse =
+  | ErrorResponse
+  | {
+      success: true;
+      concurrency: number;
+    };
+
 export type CrawlStatusResponse =
   | ErrorResponse
   | {

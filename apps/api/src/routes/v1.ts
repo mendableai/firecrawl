@@ -16,6 +16,7 @@ import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { crawlCancelController } from "../controllers/v1/crawl-cancel";
 import { Logger } from "../lib/logger";
 import { scrapeStatusController } from "../controllers/v1/scrape-status";
+import { concurrencyCheckController } from "../controllers/v1/concurrency-check";
 // import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
 // import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
 // import { searchController } from "../../src/controllers/v1/search";
@@ -140,10 +141,18 @@ v1Router.get(
     wrap(scrapeStatusController)
 );
 
+v1Router.get(
+    "/concurrency-check",
+    authMiddleware(RateLimiterMode.CrawlStatus),
+    wrap(concurrencyCheckController)
+);
+
 v1Router.ws(
     "/crawl/:jobId",
     crawlStatusWSController
 );
+
+
 
 // v1Router.post("/crawlWebsitePreview", crawlPreviewController);
 

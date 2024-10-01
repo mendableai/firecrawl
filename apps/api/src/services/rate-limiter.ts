@@ -132,8 +132,22 @@ export function getRateLimiterPoints(
   token?: string,
   plan?: string,
   teamId?: string
-) {
+) : number {
+  const rateLimitConfig = RATE_LIMITS[mode]; // {default : 5}
+
+  if (!rateLimitConfig) return RATE_LIMITS.account.default;
   
+  const points : number =
+    rateLimitConfig[makePlanKey(plan)] || rateLimitConfig.default; // 5
+  return points;
+}
+
+export function getRateLimiter(
+  mode: RateLimiterMode,
+  token?: string,
+  plan?: string,
+  teamId?: string
+ ) : RateLimiterRedis {
   if (token && testSuiteTokens.some(testToken => token.includes(testToken))) {
     return testSuiteRateLimiter;
   }
@@ -145,22 +159,6 @@ export function getRateLimiterPoints(
   if(teamId && manual.includes(teamId)) {
     return manualRateLimiter;
   }
-
-  const rateLimitConfig = RATE_LIMITS[mode]; // {default : 5}
-
-  if (!rateLimitConfig) return serverRateLimiter;
-
-  const points =
-    rateLimitConfig[makePlanKey(plan)] || rateLimitConfig.default || rateLimitConfig; // 5
-
-  return points;
-}
-
-export function getRateLimiter(
-  mode: RateLimiterMode,
-  token?: string,
-  plan?: string,
-  teamId?: string
-) {
+  
   return createRateLimiter(`${mode}-${makePlanKey(plan)}`, getRateLimiterPoints(mode, token, plan, teamId));
 }
