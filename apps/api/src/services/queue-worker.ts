@@ -148,6 +148,11 @@ const workerFun = async (
           await redisConnection.zadd(concurrencyLimiterThrottledKey, now + throttledJobTimeoutMs, job.id);
           await job.moveToFailed(new Error("Concurrency limit hit"), token, false);
           await job.remove();
+          let newJobPriority = Math.round((job.opts.priority ?? 10) * 1.01);
+          // max priority is 200k, limit is 2 million
+          if(newJobPriority > 200000) {
+            newJobPriority = 200000;
+          }
           await queue.add(job.name, {
             ...job.data,
             concurrencyLimitHit: true,
