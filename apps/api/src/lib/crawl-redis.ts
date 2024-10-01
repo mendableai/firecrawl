@@ -1,5 +1,6 @@
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import { redisConnection } from "../services/queue-service";
+import { Logger } from "./logger";
 
 export type StoredCrawl = {
     originUrl: string;
@@ -88,6 +89,16 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
             return false;
         }
     }
+
+    try {
+        const urlO = new URL(url);
+        urlO.search = "";
+        urlO.hash = "";
+        url = urlO.href;
+    } catch (error) {
+        Logger.warn("Failed to normalize URL " + JSON.stringify(url) + ": " + error);
+    }
+
     const res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0
     await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
     return res;
@@ -95,6 +106,19 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
 
 /// NOTE: does not check limit. only use if limit is checked beforehand e.g. with sitemap
 export async function lockURLs(id: string, urls: string[]): Promise<boolean> {
+    urls = urls.map(url => {
+        try {
+            const urlO = new URL(url);
+            urlO.search = "";
+            urlO.hash = "";
+            return urlO.href;
+        } catch (error) {
+            Logger.warn("Failed to normalize URL " + JSON.stringify(url) + ": " + error);
+        }
+
+        return url;
+    });
+    
     const res = (await redisConnection.sadd("crawl:" + id + ":visited", ...urls)) !== 0
     await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
     return res;
