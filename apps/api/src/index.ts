@@ -192,6 +192,10 @@ if (cluster.isMaster) {
 
   app.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: Response<ErrorResponse>, next: NextFunction) => {
     if (err instanceof ZodError) {
+        if (Array.isArray(err.errors) && err.errors.find(x => x.message === "URL uses unsupported protocol")) {
+          Logger.warn("Unsupported protocol error: " + JSON.stringify(req.body));
+        }
+
         res.status(400).json({ success: false, error: "Bad Request", details: err.errors });
     } else {
         next(err);
