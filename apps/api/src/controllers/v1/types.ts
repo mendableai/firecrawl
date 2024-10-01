@@ -389,6 +389,7 @@ export function legacyCrawlerOptions(x: CrawlerOptions) {
     generateImgAltText: false,
     allowBackwardCrawling: x.allowBackwardLinks,
     allowExternalContentLinks: x.allowExternalLinks,
+    ignoreSitemap: x.ignoreSitemap,
   };
 }
 
