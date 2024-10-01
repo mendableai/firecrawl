@@ -300,41 +300,49 @@ async function processJob(job: Job, token: string) {
 
       const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
 
-      if (!sc.cancelled) {
-        const crawler = crawlToCrawler(job.data.crawl_id, sc);
+      if (!job.data.sitemapped) {
+        if (!sc.cancelled) {
+          const crawler = crawlToCrawler(job.data.crawl_id, sc);
 
-        const links = crawler.filterLinks(
-          crawler.extractLinksFromHTML(rawHtml ?? "", sc.originUrl),
-          Infinity,
-          sc.crawlerOptions?.maxDepth ?? 10
-        );
+          const links = crawler.filterLinks(
+            crawler.extractLinksFromHTML(rawHtml ?? "", sc.originUrl),
+            Infinity,
+            sc.crawlerOptions?.maxDepth ?? 10
+          );
 
-        for (const link of links) {
-          if (await lockURL(job.data.crawl_id, sc, link)) {
-            const jobPriority = await getJobPriority({
-              plan: sc.plan as PlanType,
-              team_id: sc.team_id,
-              basePriority: job.data.crawl_id ? 20 : 10,
-            });
-            const jobId = uuidv4();
-
-            const newJob = await addScrapeJob(
-              {
-                url: link,
-                mode: "single_urls",
-                crawlerOptions: sc.crawlerOptions,
+          for (const link of links) {
+            if (await lockURL(job.data.crawl_id, sc, link)) {
+              // This seems to work really welel
+              const jobPriority = await getJobPriority({
+                plan: sc.plan as PlanType,
                 team_id: sc.team_id,
-                pageOptions: sc.pageOptions,
-                origin: job.data.origin,
-                crawl_id: job.data.crawl_id,
-                v1: job.data.v1,
-              },
-              {},
-              jobId,
-              jobPriority
-            );
+                basePriority: job.data.crawl_id ? 20 : 10,
+              });
+              const jobId = uuidv4();
 
-            await addCrawlJob(job.data.crawl_id, newJob.id);
+              // console.log("plan: ",  sc.plan);
+              // console.log("team_id: ", sc.team_id)
+              // console.log("base priority: ", job.data.crawl_id ? 20 : 10)
+              // console.log("job priority: " , jobPriority, "\n\n\n")
+
+              const newJob = await addScrapeJob(
+                {
+                  url: link,
+                  mode: "single_urls",
+                  crawlerOptions: sc.crawlerOptions,
+                  team_id: sc.team_id,
+                  pageOptions: sc.pageOptions,
+                  origin: job.data.origin,
+                  crawl_id: job.data.crawl_id,
+                  v1: job.data.v1,
+                },
+                {},
+                jobId,
+                jobPriority
+              );
+
+              await addCrawlJob(job.data.crawl_id, newJob.id);
+            }
           }
         }
       }
