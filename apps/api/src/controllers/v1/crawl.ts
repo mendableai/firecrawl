@@ -85,7 +85,9 @@ export async function crawlController(
 
   await saveCrawl(id, sc);
 
-  const sitemap = await crawler.tryGetSitemap();
+  const sitemap = sc.crawlerOptions.ignoreSitemap
+    ? null
+    : await crawler.tryGetSitemap();
 
   if (sitemap !== null && sitemap.length > 0) {
     let jobPriority = 20;
