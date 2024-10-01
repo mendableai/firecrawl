@@ -12,7 +12,7 @@ export async function concurrencyCheckController(
   req: RequestWithAuth<ConcurrencyCheckParams, undefined, undefined>,
   res: Response<ConcurrencyCheckResponse>
 ) {
-  const concurrencyLimiterKey = "concurrency-limiter:" + req.params.teamId;
+  const concurrencyLimiterKey = "concurrency-limiter:" + req.auth.team_id;
   const now = Date.now();
   const activeJobsOfTeam = await redisConnection.zrangebyscore(
     concurrencyLimiterKey,

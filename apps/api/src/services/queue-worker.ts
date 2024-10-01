@@ -151,12 +151,8 @@ const workerFun = async (
           await job.moveToFailed(new Error("Concurrency limit hit"), token, false);
           // Remove the job from the queue
           await job.remove();
-          // Increment the priority of the job exponentially by 5%
-          let newJobPriority = Math.round((job.opts.priority ?? 10) * 1.05);
-          // Max priority is 200k, limit is 2 million
-          if(newJobPriority > 200000) {
-            newJobPriority = 200000;
-          }
+          // Increment the priority of the job exponentially by 5%, Note: max bull priority is 2 million
+          const newJobPriority = Math.min(Math.round((job.opts.priority ?? 10) * 1.05), 20000);
           // Add the job back to the queue with the new priority
           await queue.add(job.name, {
             ...job.data,
@@ -167,7 +163,7 @@ const workerFun = async (
             priority: newJobPriority, // exponential backoff for stuck jobs
           });
 
-          await sleep(gotJobInterval);
+          // await sleep(gotJobInterval);
           continue;
         } else {
           // If we are not throttled, add the job back to the queue with the new priority
