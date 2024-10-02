@@ -1,4 +1,4 @@
-version: '3.9'
+name: firecrawl
 
 x-common-service: &common-service
   build: apps/api
@@ -12,8 +12,9 @@ x-common-service: &common-service
     - PORT=${PORT:-3002}
     - NUM_WORKERS_PER_QUEUE=${NUM_WORKERS_PER_QUEUE}
     - OPENAI_API_KEY=${OPENAI_API_KEY}
+    - OPENAI_BASE_URL=${OPENAI_BASE_URL}
+    - MODEL_NAME=${MODEL_NAME:-gpt-4o}
     - SLACK_WEBHOOK_URL=${SLACK_WEBHOOK_URL}
-    - SERPER_API_KEY=${SERPER_API_KEY}
     - LLAMAPARSE_API_KEY=${LLAMAPARSE_API_KEY}
     - LOGTAIL_KEY=${LOGTAIL_KEY}
     - BULL_AUTH_KEY=${BULL_AUTH_KEY}
@@ -26,6 +27,7 @@ x-common-service: &common-service
     - SCRAPING_BEE_API_KEY=${SCRAPING_BEE_API_KEY}
     - HOST=${HOST:-0.0.0.0}
     - SELF_HOSTED_WEBHOOK_URL=${SELF_HOSTED_WEBHOOK_URL}
+    - LOGGING_LEVEL=${LOGGING_LEVEL}
   extra_hosts:
     - "host.docker.internal:host-gateway"
 
@@ -49,13 +51,6 @@ services:
     ports:
       - "30333:3002"
     command: [ "pnpm", "run", "start:production" ]
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "200m"
-        max-file: "10"
-    volumes:
-      - /mnt/media_storage:/mnt/media_storage
 
   worker:
     <<: *common-service
@@ -64,8 +59,6 @@ services:
       - playwright-service
       - api
     command: [ "pnpm", "run", "workers" ]
-    volumes:
-      - /mnt/media_storage:/mnt/media_storage
 
   redis:
     image: redis:alpine
