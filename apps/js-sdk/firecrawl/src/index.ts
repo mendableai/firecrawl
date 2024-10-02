@@ -199,6 +199,19 @@ export interface ErrorResponse {
   error: string;
 }
 
+
+/**
+ * Custom error class for Firecrawl.
+ * Extends the built-in Error class to include a status code.
+ */
+class FirecrawlError extends Error {
+  statusCode: number;
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+
 /**
  * Main class for interacting with the Firecrawl API.
  * Provides methods for scraping, searching, crawling, and mapping web content.
@@ -213,7 +226,7 @@ export default class FirecrawlApp {
    */
   constructor({ apiKey = null, apiUrl = null }: FirecrawlAppConfig) {
     if (typeof apiKey !== "string") {
-      throw new Error("No API key provided");
+      throw new FirecrawlError("No API key provided", 401);
     }
 
     this.apiKey = apiKey;
@@ -268,13 +281,13 @@ export default class FirecrawlApp {
             ...responseData.data
           };
         } else {
-          throw new Error(`Failed to scrape URL. Error: ${responseData.error}`);
+          throw new FirecrawlError(`Failed to scrape URL. Error: ${responseData.error}`, response.status);
         }
       } else {
         this.handleError(response, "scrape URL");
       }
     } catch (error: any) {
-      throw new Error(error.message);
+      throw new FirecrawlError(error.message, 500);
     }
     return { success: false, error: "Internal server error." };
   }
@@ -289,7 +302,7 @@ export default class FirecrawlApp {
     query: string,
     params?: any
   ): Promise<any> {
-    throw new Error("Search is not supported in v1, please downgrade Firecrawl to 0.0.36.");
+    throw new FirecrawlError("Search is not supported in v1, please downgrade Firecrawl to 0.0.36.", 400);
   }
 
   /**
@@ -322,9 +335,9 @@ export default class FirecrawlApp {
       }
     } catch (error: any) {
       if (error.response?.data?.error) {
-        throw new Error(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`);
+        throw new FirecrawlError(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`, error.response.status);
       } else {
-        throw new Error(error.message);
+        throw new FirecrawlError(error.message, 500);
       }
     }
     return { success: false, error: "Internal server error." };
@@ -350,9 +363,9 @@ export default class FirecrawlApp {
       }
     } catch (error: any) {
       if (error.response?.data?.error) {
-        throw new Error(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`);
+        throw new FirecrawlError(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`, error.response.status);
       } else {
-        throw new Error(error.message);
+        throw new FirecrawlError(error.message, 500);
       }
     }
     return { success: false, error: "Internal server error." };
@@ -366,7 +379,7 @@ export default class FirecrawlApp {
    */
   async checkCrawlStatus(id?: string, getAllData = false): Promise<CrawlStatusResponse | ErrorResponse> {
     if (!id) {
-      throw new Error("No crawl ID provided");
+      throw new FirecrawlError("No crawl ID provided", 400);
     }
 
     const headers: AxiosRequestHeaders = this.prepareHeaders();
@@ -403,7 +416,7 @@ export default class FirecrawlApp {
         this.handleError(response, "check crawl status");
       }
     } catch (error: any) {
-      throw new Error(error.message);
+      throw new FirecrawlError(error.message, 500);
     }
     return { success: false, error: "Internal server error." };
   }
@@ -420,7 +433,7 @@ export default class FirecrawlApp {
       return new CrawlWatcher(id, this);
     }
 
-    throw new Error("Crawl job failed to start");
+    throw new FirecrawlError("Crawl job failed to start", 400);
   }
 
   async mapUrl(url: string, params?: MapParams): Promise<MapResponse | ErrorResponse> {
@@ -439,7 +452,7 @@ export default class FirecrawlApp {
         this.handleError(response, "map");
       }
     } catch (error: any) {
-      throw new Error(error.message);
+      throw new FirecrawlError(error.message, 500);
     }
     return { success: false, error: "Internal server error." };
   }
@@ -524,7 +537,7 @@ export default class FirecrawlApp {
               statusData.data = data;
               return statusData;
             } else {
-              throw new Error("Crawl job completed but no data was returned");
+              throw new FirecrawlError("Crawl job completed but no data was returned", 500);
             }
           } else if (
           ["active", "paused", "pending", "queued", "waiting", "scraping"].includes(statusData.status)
@@ -534,8 +547,9 @@ export default class FirecrawlApp {
             setTimeout(resolve, checkInterval * 1000)
           );
         } else {
-          throw new Error(
-            `Crawl job failed or was stopped. Status: ${statusData.status}`
+          throw new FirecrawlError(
+            `Crawl job failed or was stopped. Status: ${statusData.status}`,
+            500
           );
         }
       } else {
@@ -553,12 +567,14 @@ export default class FirecrawlApp {
     if ([402, 408, 409, 500].includes(response.status)) {
       const errorMessage: string =
         response.data.error || "Unknown error occurred";
-      throw new Error(
-        `Failed to ${action}. Status code: ${response.status}. Error: ${errorMessage}`
+      throw new FirecrawlError(
+        `Failed to ${action}. Status code: ${response.status}. Error: ${errorMessage}`,
+        response.status
       );
     } else {
-      throw new Error(
-        `Unexpected error occurred while trying to ${action}. Status code: ${response.status}`
+      throw new FirecrawlError(
+        `Unexpected error occurred while trying to ${action}. Status code: ${response.status}`,
+        response.status
       );
     }
   }
