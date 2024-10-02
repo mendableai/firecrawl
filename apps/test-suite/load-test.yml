@@ -1,5 +1,10 @@
 config:
-  target: "https://staging-firecrawl-scraper-js.fly.dev/v0"
+  processor: "load-test-functions.js"
+  payload:
+    path: "webpages.csv"
+    fields:
+      - "url"
+  target: "http://34.48.86.124:3002/v1"
   http:
     timeout: 30
   phases:
@@ -10,68 +15,61 @@ config:
     #   arrivalRate: 20  # Increased load
     # - duration: 180
     #   arrivalRate: 30  # Peak load
-    # - duration: 60
-    #   arrivalRate: 10  # Cool down
-  # /crawl
-    - duration: 60
-      arrivalRate: 1  # Initial load
-    - duration: 120
-      arrivalRate: 2  # Increased load
-    - duration: 180
-      arrivalRate: 3  # Peak load
-    - duration: 60
+    - duration: 300
       arrivalRate: 1  # Cool down
+    # - duration: 300
+    #   arrivalRate: 10
+    #   rampTo: 100
+    #   name: ramp up
+  # /crawl
+    # - duration: 10
+    #   arrivalRate: 1  # Initial load
+    # - duration: 120
+    #   arrivalRate: 2  # Increased load
+    # - duration: 180
+    #   arrivalRate: 3  # Peak load
+    # - duration: 60
+    #   arrivalRate: 1  # Cool down
   defaults:
     headers:
       Authorization: "Bearer YOUR_API_KEY"
 scenarios:
-  # - name: Scrape a URL
+  - name: Scrape a URL
+    flow:
+      - post:
+          url: "/scrape"
+          json:
+            url: "{{ url }}"
+          capture:
+            - json: "$.data.markdown"
+              as: markdown_content
+          validate:
+            statusCode: 200
+          afterResponse: "removeFailedURL"
+
+  # - name: Crawl a URL
   #   flow:
   #     - post:
-  #         url: "/scrape"
+  #         url: "/crawl"
   #         json:
-  #           url: "https://www.scrapethissite.com"
+  #           url: "https://rsseau.fr"
+  #           crawlerOptions:
+  #             limit: 100
   #           pageOptions:
   #             onlyMainContent: true
   #         capture:
-  #           - json: "$.data.markdown"
-  #             as: markdown_content
-
-  - name: Crawl a URL
-    flow:
-      - post:
-          url: "/crawl"
-          json:
-            url: "https://rsseau.fr"
-            crawlerOptions:
-              limit: 100
-            pageOptions:
-              onlyMainContent: true
-          capture:
-            - json: "$.jobId"
-              as: job_id
-      - think: 10
-      - get:
-          url: "/crawl/status/{{ job_id }}"
-          capture:
-            - json: "$.status"
-              as: crawl_status
-          until: 
-            - condition: "equals"
-              value: "completed"
-              variable: "crawl_status"
-          retry:
-            count: 20
-            wait: 10
-
-  # - name: Search for a query
-  #   flow:
-  #     - post:
-  #         url: "/search"
-  #         json:
-  #           query: "firecrawl"
-  #           pageOptions:
-  #             fetchPageContent: true
+  #           - json: "$.id"
+  #             as: id
+  #     - think: 10
+  #     - get:
+  #         url: "/crawl/{{ job_id }}"
   #         capture:
-  #           - json: "$.data[0].markdown"
-  #             as: search_markdown_content
+  #           - json: "$.status"
+  #             as: crawl_status
+  #         until: 
+  #           - condition: "equals"
+  #             value: "completed"
+  #             variable: "crawl_status"
+  #         retry:
+  #           count: 20
+  #           wait: 10
