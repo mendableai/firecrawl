@@ -425,7 +425,7 @@ export async function scrapSingleUrl(
         Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100 or screenshot, breaking`);
         break;
       }
-      if (pageStatusCode && (pageStatusCode == 404 || pageStatusCode == 400 || pageStatusCode == 401)) {
+      if (pageStatusCode && (pageStatusCode == 404 || pageStatusCode == 400)) {
         Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code ${pageStatusCode}, breaking`);
         break;
       }

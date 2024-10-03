@@ -28,3 +28,4 @@ redis-server $PW_ARG \
   --maxmemory-policy $MAXMEMORY_POLICY \
   --appendonly $APPENDONLY \
   --save "$SAVE"
+  --save "$SAVE" \
