@@ -4,7 +4,7 @@ config:
     path: "webpages.csv"
     fields:
       - "url"
-  target: "http://34.48.86.124:3002/v1"
+  target: # FIRE_ENGINE_URL
   http:
     timeout: 30
   phases:
@@ -40,9 +40,10 @@ scenarios:
           url: "/scrape"
           json:
             url: "{{ url }}"
+            engine: "chrome-cdp"
           capture:
-            - json: "$.data.markdown"
-              as: markdown_content
+            - json: "$.content"
+              as: content
           validate:
             statusCode: 200
           afterResponse: "removeFailedURL"
