@@ -94,6 +94,11 @@ const processJobInternal = async (token: string, job: Job) => {
 
 let isShuttingDown = false;
 
+process.on("SIGINT", () => {
+  console.log("Received SIGTERM. Shutting down gracefully...");
+  isShuttingDown = true;
+});
+
 process.on("SIGTERM", () => {
   console.log("Received SIGTERM. Shutting down gracefully...");
   isShuttingDown = true;
