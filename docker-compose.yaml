@@ -33,7 +33,7 @@ x-common-service: &common-service
 
 services:
   playwright-service:
-    build: apps/playwright-service-ts
+    build: apps/playwright-service
     environment:
       - PORT=3000
       - PROXY_SERVER=${PROXY_SERVER}
@@ -49,7 +49,7 @@ services:
       - redis
       - playwright-service
     ports:
-      - "30333:3002"
+      - "3002:3002"
     command: [ "pnpm", "run", "start:production" ]
 
   worker:
