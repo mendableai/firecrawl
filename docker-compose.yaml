@@ -57,7 +57,6 @@ services:
   worker:
     <<: *common-service
     environment:
-      <<: *common-service.environment
       FLY_PROCESS_GROUP: worker
     depends_on:
       - redis
