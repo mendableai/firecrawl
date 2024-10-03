@@ -51,7 +51,7 @@ export async function scrapWithFetch(
       const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
       logParams.response_code = pageStatusCode;
       logParams.error_message = pageError;
-      return { content, pageStatusCode, pageError };
+      return { content, pageStatusCode: response.status, pageError };
     } else {
       const text = response.data;
       logParams.success = true;
@@ -67,7 +67,7 @@ export async function scrapWithFetch(
       logParams.error_message = error.message || error;
       Logger.debug(`⛏️ Axios: Failed to fetch url: ${url} | Error: ${error}`);
     }
-    return { content: "", pageStatusCode: null, pageError: logParams.error_message };
+    return { content: "", pageStatusCode: error.response?.status ?? null, pageError: logParams.error_message };
   } finally {
     const endTime = Date.now();
     logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;
