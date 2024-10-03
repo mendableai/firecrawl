@@ -46,7 +46,8 @@ services:
   api:
     <<: *common-service
     environment:
-      - FLY_PROCESS_GROUP=app
+      <<: *common-service.environment
+      FLY_PROCESS_GROUP: app
     depends_on:
       - redis
       - playwright-service
@@ -57,7 +58,8 @@ services:
   worker:
     <<: *common-service
     environment:
-      - FLY_PROCESS_GROUP=worker
+      <<: *common-service.environment
+      FLY_PROCESS_GROUP: worker
     depends_on:
       - redis
       - playwright-service
