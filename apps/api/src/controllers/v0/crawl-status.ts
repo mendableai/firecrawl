@@ -49,15 +49,26 @@ export async function crawlStatusController(req: Request, res: Response) {
     if (sc.team_id !== team_id) {
       return res.status(403).json({ error: "Forbidden" });
     }
-
     let jobIDs = await getCrawlJobs(req.params.jobId);
-
-    const jobs = (await getJobs(req.params.jobId, jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
+    let jobs = await getJobs(req.params.jobId, jobIDs);
     let jobStatuses = await Promise.all(jobs.map(x => x.getState()));
-    // filter out failed jobs
-    jobIDs = jobIDs.filter(id => !jobStatuses.some(status => status[0] === id && status[1] === "failed"));
-    // filter the job statues
-  jobStatuses = jobStatuses.filter(x => x[1] !== "failed");
+
+    // Combine jobs and jobStatuses into a single array of objects
+    let jobsWithStatuses = jobs.map((job, index) => ({
+      job,
+      status: jobStatuses[index]
+    }));
+
+    // Filter out failed jobs
+    jobsWithStatuses = jobsWithStatuses.filter(x => x.status !== "failed");
+
+    // Sort jobs by timestamp
+    jobsWithStatuses.sort((a, b) => a.job.timestamp - b.job.timestamp);
+
+    // Extract sorted jobs and statuses
+    jobs = jobsWithStatuses.map(x => x.job);
+    jobStatuses = jobsWithStatuses.map(x => x.status);
+
     const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : "active";
 
     const data = jobs.filter(x => x.failedReason !== "Concurreny limit hit").map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
