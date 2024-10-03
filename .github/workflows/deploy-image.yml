@@ -10,7 +10,7 @@ on:
   workflow_dispatch:
 
 jobs:
-      push-store-image:
+      push-app-image:
         runs-on: ubuntu-latest
         defaults:
           run:
