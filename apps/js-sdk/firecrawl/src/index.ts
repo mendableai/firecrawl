@@ -204,7 +204,7 @@ export interface ErrorResponse {
  * Custom error class for Firecrawl.
  * Extends the built-in Error class to include a status code.
  */
-class FirecrawlError extends Error {
+export class FirecrawlError extends Error {
   statusCode: number;
   constructor(message: string, statusCode: number) {
     super(message);
