@@ -33,7 +33,7 @@ x-common-service: &common-service
 
 services:
   playwright-service:
-    build: apps/playwright-service
+    build: apps/playwright-service-ts
     environment:
       - PORT=3000
       - PROXY_SERVER=${PROXY_SERVER}
