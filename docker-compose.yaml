@@ -45,19 +45,15 @@ services:
 
   api:
     <<: *common-service
-    environment:
-      FLY_PROCESS_GROUP: app
     depends_on:
       - redis
       - playwright-service
     ports:
-      - "3002:3002"
+      - "30333:3002"
     command: [ "pnpm", "run", "start:production" ]
 
   worker:
     <<: *common-service
-    environment:
-      FLY_PROCESS_GROUP: worker
     depends_on:
       - redis
       - playwright-service
