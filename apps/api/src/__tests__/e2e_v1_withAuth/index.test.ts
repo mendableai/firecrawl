@@ -278,23 +278,24 @@ describe("E2E Tests for v1 API Routes", () => {
         expect(response.body.data.metadata.statusCode).toBe(401);
       }, 60000);
 
-      it.concurrent('should return a successful response for a scrape with 403 page', async () => {
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
-          .post('/v1/scrape')
-          .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
-          .set('Content-Type', 'application/json')
-          .send({ url: 'https://httpstat.us/403' });
-        await new Promise((r) => setTimeout(r, 5000));
+      // Removed it as we want to retry fallback to the next scraper
+      // it.concurrent('should return a successful response for a scrape with 403 page', async () => {
+      //   const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      //     .post('/v1/scrape')
+      //     .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+      //     .set('Content-Type', 'application/json')
+      //     .send({ url: 'https://httpstat.us/403' });
+      //   await new Promise((r) => setTimeout(r, 5000));
   
-        expect(response.statusCode).toBe(200);
-        expect(response.body).toHaveProperty('data');
-        if (!("data" in response.body)) {
-          throw new Error("Expected response body to have 'data' property");
-        }
-        expect(response.body.data).toHaveProperty('markdown');
-        expect(response.body.data).toHaveProperty('metadata');
-        expect(response.body.data.metadata.statusCode).toBe(403);
-      }, 60000);
+      //   expect(response.statusCode).toBe(200);
+      //   expect(response.body).toHaveProperty('data');
+      //   if (!("data" in response.body)) {
+      //     throw new Error("Expected response body to have 'data' property");
+      //   }
+      //   expect(response.body.data).toHaveProperty('markdown');
+      //   expect(response.body.data).toHaveProperty('metadata');
+      //   expect(response.body.data.metadata.statusCode).toBe(403);
+      // }, 60000);
 
       it.concurrent('should return a successful response for a scrape with 404 page', async () => {
         const response: ScrapeResponseRequestTest = await request(TEST_URL)
@@ -314,23 +315,23 @@ describe("E2E Tests for v1 API Routes", () => {
         expect(response.body.data.metadata.statusCode).toBe(404);
       }, 60000);
 
-      it.concurrent('should return a successful response for a scrape with 405 page', async () => {
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
-          .post('/v1/scrape')
-          .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
-          .set('Content-Type', 'application/json')
-          .send({ url: 'https://httpstat.us/405' });
-        await new Promise((r) => setTimeout(r, 5000));
+      // it.concurrent('should return a successful response for a scrape with 405 page', async () => {
+      //   const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      //     .post('/v1/scrape')
+      //     .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+      //     .set('Content-Type', 'application/json')
+      //     .send({ url: 'https://httpstat.us/405' });
+      //   await new Promise((r) => setTimeout(r, 5000));
   
-        expect(response.statusCode).toBe(200);
-        expect(response.body).toHaveProperty('data');
-        if (!("data" in response.body)) {
-          throw new Error("Expected response body to have 'data' property");
-        }
-        expect(response.body.data).toHaveProperty('markdown');
-        expect(response.body.data).toHaveProperty('metadata');
-        expect(response.body.data.metadata.statusCode).toBe(405);
-      }, 60000);
+      //   expect(response.statusCode).toBe(200);
+      //   expect(response.body).toHaveProperty('data');
+      //   if (!("data" in response.body)) {
+      //     throw new Error("Expected response body to have 'data' property");
+      //   }
+      //   expect(response.body.data).toHaveProperty('markdown');
+      //   expect(response.body.data).toHaveProperty('metadata');
+      //   expect(response.body.data.metadata.statusCode).toBe(405);
+      // }, 60000);
 
       it.concurrent('should return a successful response for a scrape with 500 page', async () => {
         const response: ScrapeResponseRequestTest = await request(TEST_URL)
@@ -680,7 +681,7 @@ describe("POST /v1/crawl", () => {
         .set("Content-Type", "application/json")
         .send({
           url: "https://firecrawl.dev",
-          limit: 10,
+          limit: 20,
           includePaths: ["blog/*"],
         });
 
@@ -736,7 +737,7 @@ describe("POST /v1/crawl", () => {
         .set("Content-Type", "application/json")
         .send({
           url: "https://firecrawl.dev",
-          limit: 10,
+          limit: 20,
           excludePaths: ["blog/*"],
         });
 
@@ -932,7 +933,7 @@ describe("GET /v1/crawl/:jobId", () => {
 
       expect(crawlResponse.statusCode).toBe(200);
 
-      await new Promise((r) => setTimeout(r, 10000));
+      await new Promise((r) => setTimeout(r, 5000));
 
       const responseCancel = await request(TEST_URL)
         .delete(`/v1/crawl/${crawlResponse.body.id}`)
