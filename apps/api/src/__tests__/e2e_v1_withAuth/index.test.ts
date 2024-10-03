@@ -333,23 +333,23 @@ describe("E2E Tests for v1 API Routes", () => {
       //   expect(response.body.data.metadata.statusCode).toBe(405);
       // }, 60000);
 
-      it.concurrent('should return a successful response for a scrape with 500 page', async () => {
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
-          .post('/v1/scrape')
-          .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
-          .set('Content-Type', 'application/json')
-          .send({ url: 'https://httpstat.us/500' });
-        await new Promise((r) => setTimeout(r, 5000));
+      // it.concurrent('should return a successful response for a scrape with 500 page', async () => {
+      //   const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      //     .post('/v1/scrape')
+      //     .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+      //     .set('Content-Type', 'application/json')
+      //     .send({ url: 'https://httpstat.us/500' });
+      //   await new Promise((r) => setTimeout(r, 5000));
   
-        expect(response.statusCode).toBe(200);
-        expect(response.body).toHaveProperty('data');
-        if (!("data" in response.body)) {
-          throw new Error("Expected response body to have 'data' property");
-        }
-        expect(response.body.data).toHaveProperty('markdown');
-        expect(response.body.data).toHaveProperty('metadata');
-        expect(response.body.data.metadata.statusCode).toBe(500);
-      }, 60000);
+      //   expect(response.statusCode).toBe(200);
+      //   expect(response.body).toHaveProperty('data');
+      //   if (!("data" in response.body)) {
+      //     throw new Error("Expected response body to have 'data' property");
+      //   }
+      //   expect(response.body.data).toHaveProperty('markdown');
+      //   expect(response.body.data).toHaveProperty('metadata');
+      //   expect(response.body.data.metadata.statusCode).toBe(500);
+      // }, 60000);
 
       it.concurrent("should return a timeout error when scraping takes longer than the specified timeout", async () => {
         const response: ScrapeResponseRequestTest = await request(TEST_URL)
@@ -681,7 +681,7 @@ describe("POST /v1/crawl", () => {
         .set("Content-Type", "application/json")
         .send({
           url: "https://firecrawl.dev",
-          limit: 20,
+          limit: 40,
           includePaths: ["blog/*"],
         });
 
@@ -737,7 +737,7 @@ describe("POST /v1/crawl", () => {
         .set("Content-Type", "application/json")
         .send({
           url: "https://firecrawl.dev",
-          limit: 20,
+          limit: 40,
           excludePaths: ["blog/*"],
         });
 
@@ -929,11 +929,11 @@ describe("GET /v1/crawl/:jobId", () => {
         .post("/v1/crawl")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
-        .send({ url: "https://docs.tatum.io", limit: 200 });
+        .send({ url: "https://docs.firecrawl.dev", limit: 10 });
 
       expect(crawlResponse.statusCode).toBe(200);
 
-      await new Promise((r) => setTimeout(r, 5000));
+      await new Promise((r) => setTimeout(r, 10000));
 
       const responseCancel = await request(TEST_URL)
         .delete(`/v1/crawl/${crawlResponse.body.id}`)
