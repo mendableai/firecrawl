@@ -26,7 +26,7 @@ export const url = z.preprocess(
     .url()
     .regex(/^https?:\/\//, "URL uses unsupported protocol")
     .refine(
-      (x) => /\.[a-z]{2,}(\/|$)/i.test(x),
+      (x) => /\.[a-z]{2,}([\/?#]|$)/i.test(x),
       "URL must have a valid top-level domain or be a valid path"
     )
     .refine(
