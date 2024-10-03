@@ -50,11 +50,15 @@ export async function crawlStatusController(req: Request, res: Response) {
       return res.status(403).json({ error: "Forbidden" });
     }
 
-    const jobIDs = await getCrawlJobs(req.params.jobId);
+    let jobIDs = await getCrawlJobs(req.params.jobId);
 
     const jobs = (await getJobs(req.params.jobId, jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
-    const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
-    const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : jobs.some((x, i) => jobStatuses[i] === "failed" && x.failedReason !== "Concurrency limit hit") ? "failed" : "active";
+    let jobStatuses = await Promise.all(jobs.map(x => x.getState()));
+    // filter out failed jobs
+    jobIDs = jobIDs.filter(id => !jobStatuses.some(status => status[0] === id && status[1] === "failed"));
+    // filter the job statues
+  jobStatuses = jobStatuses.filter(x => x[1] !== "failed");
+    const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : "active";
 
     const data = jobs.filter(x => x.failedReason !== "Concurreny limit hit").map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
 
