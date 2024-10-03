@@ -461,8 +461,8 @@ export function legacyDocumentConverter(doc: any): Document {
       ...doc.metadata,
       pageError: undefined,
       pageStatusCode: undefined,
-      error: doc.metadata.pageError,
-      statusCode: doc.metadata.pageStatusCode,
+      error: doc.metadata?.pageError,
+      statusCode: doc.metadata?.pageStatusCode,
     },
   };
 }
