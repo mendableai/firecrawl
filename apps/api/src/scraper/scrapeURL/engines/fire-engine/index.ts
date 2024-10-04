@@ -170,7 +170,9 @@ export async function scrapeURLWithFireEnginePlaywright(meta: Meta): Promise<Eng
         error: response.pageError,
         statusCode: response.pageStatusCode,
 
-        screenshot: response.screenshot,
+        ...(response.screenshots !== undefined && response.screenshots.length > 0 ? ({
+            screenshot: response.screenshots[0],
+        }) : {}),
     };
 }
 
