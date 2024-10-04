@@ -76,6 +76,7 @@ function buildMetaObject(id: string, url: string, options: ScrapeOptions, intern
 
 export type InternalOptions = {
     priority?: number; // Passed along to fire-engine
+    forceEngine?: Engine;
 };
 
 export type EngineResultsTracker = { [E in Engine]?: {
@@ -211,7 +212,7 @@ export async function scrapeURL(
             try {
                 return await scrapeURLLoop(meta);
             } catch (error) {
-                if (error instanceof AddFeatureError) {
+                if (error instanceof AddFeatureError && meta.internalOptions.forceEngine === undefined) {
                     meta.logger.debug("More feature flags requested by scraper: adding " + error.featureFlags.join(", "), { error, existingFlags: meta.featureFlags });
                     meta.featureFlags = new Set([...meta.featureFlags].concat(error.featureFlags));
                 } else {
