@@ -5,6 +5,7 @@ import { removeUnwantedElements } from "../lib/removeUnwantedElements";
 import { extractLinks } from "../lib/extractLinks";
 import { extractMetadata } from "../lib/extractMetadata";
 import { performLLMExtract } from "./llmExtract";
+import { uploadScreenshot } from "./uploadScreenshot";
 
 export type Transformer = (meta: Meta, document: Document) => Document | Promise<Document>;
 
@@ -96,11 +97,13 @@ export function coerceFieldsToFormats(meta: Meta, document: Document): Document 
     return document;
 }
 
+// TODO: allow some of these to run in parallel
 export const transformerStack: Transformer[] = [
     deriveHTMLFromRawHTML,
     deriveMarkdownFromHTML,
     deriveLinksFromHTML,
     deriveMetadataFromRawHTML,
+    uploadScreenshot,
     performLLMExtract,
     coerceFieldsToFormats,
 ];
