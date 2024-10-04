@@ -95,7 +95,12 @@ const processJobInternal = async (token: string, job: Job) => {
 let isShuttingDown = false;
 
 process.on("SIGINT", () => {
-  console.log("Received SIGINT. Shutting down gracefully...");
+  console.log("Received SIGTERM. Shutting down gracefully...");
+  isShuttingDown = true;
+});
+
+process.on("SIGTERM", () => {
+  console.log("Received SIGTERM. Shutting down gracefully...");
   isShuttingDown = true;
 });
 
@@ -395,6 +400,7 @@ async function processJob(job: Job, token: string) {
                   pageOptions: sc.pageOptions,
                   origin: job.data.origin,
                   crawl_id: job.data.crawl_id,
+                  webhook: job.data.webhook,
                   v1: job.data.v1,
                 },
                 {},
@@ -468,9 +474,8 @@ async function processJob(job: Job, token: string) {
           }
         } else {
           const jobIDs = await getCrawlJobs(job.data.crawl_id);
-          const jobStatuses = await Promise.all(jobIDs.map((x) => getScrapeQueue().getJobState(x)));
           const jobStatus =
-            sc.cancelled || jobStatuses.some((x) => x === "failed")
+            sc.cancelled
               ? "failed"
               : "completed";
 
@@ -554,16 +559,16 @@ async function processJob(job: Job, token: string) {
         job.data.v1
       );
     }
-    if (job.data.v1) {
-      callWebhook(
-        job.data.team_id,
-        job.id as string,
-        [],
-        job.data.webhook,
-        job.data.v1,
-        "crawl.failed"
-      );
-    }
+    // if (job.data.v1) {
+    //   callWebhook(
+    //     job.data.team_id,
+    //     job.id as string,
+    //     [],
+    //     job.data.webhook,
+    //     job.data.v1,
+    //     "crawl.failed"
+    //   );
+    // }
 
     if (job.data.crawl_id) {
       await logJob({

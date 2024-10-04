@@ -59,6 +59,7 @@ export async function startWebScraperPipeline({
     is_scrape: job.data.is_scrape ?? false,
   })) as { success: boolean; message: string; docs: Document[] };
 }
+
 export async function runWebScraper({
   url,
   mode,

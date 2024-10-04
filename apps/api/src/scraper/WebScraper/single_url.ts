@@ -410,6 +410,7 @@ export async function scrapSingleUrl(
       if (attempt.pageStatusCode) {
         pageStatusCode = attempt.pageStatusCode;
       }
+      
       if (attempt.pageError && (attempt.pageStatusCode >= 400 || scrapersInOrder.indexOf(scraper) === scrapersInOrder.length - 1)) { // force pageError if it's the last scraper and it failed too
         pageError = attempt.pageError;
         
@@ -424,8 +425,8 @@ export async function scrapSingleUrl(
         Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100 or screenshot, breaking`);
         break;
       }
-      if (pageStatusCode && (pageStatusCode == 404)) {
-        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code 404, breaking`);
+      if (pageStatusCode && (pageStatusCode == 404 || pageStatusCode == 400)) {
+        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code ${pageStatusCode}, breaking`);
         break;
       }
       // const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;
@@ -477,6 +478,7 @@ export async function scrapSingleUrl(
       message: typeof error === "string" ? error : typeof error.message === "string" ? error.message : JSON.stringify(error),
       stack: error.stack,
     });
+
     return {
       content: "",
       markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? "" : undefined,
