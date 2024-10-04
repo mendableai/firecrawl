@@ -2,11 +2,14 @@ import { Meta } from "..";
 import { scrapeDOCX } from "./docx";
 import { scrapeURLWithFireEngineChromeCDP, scrapeURLWithFireEnginePlaywright, scrapeURLWithFireEngineTLSClient } from "./fire-engine";
 import { scrapePDF } from "./pdf";
+import { scrapeURLWithScrapingBee } from "./scrapingbee";
 
 export const engines = [
     "fire-engine;chrome-cdp",
     "fire-engine;playwright",
     "fire-engine;tlsclient",
+    "scrapingbee",
+    "scrapingbeeLoad",
     "pdf",
     "docx",
 ] as const;
@@ -57,6 +60,8 @@ const engineHandlers: {
     "fire-engine;chrome-cdp": scrapeURLWithFireEngineChromeCDP,
     "fire-engine;playwright": scrapeURLWithFireEnginePlaywright,
     "fire-engine;tlsclient": scrapeURLWithFireEngineTLSClient,
+    "scrapingbee": scrapeURLWithScrapingBee("domcontentloaded"),
+    "scrapingbeeLoad": scrapeURLWithScrapingBee("networkidle2"),
     "pdf": scrapePDF,
     "docx": scrapeDOCX,
 };
@@ -92,6 +97,28 @@ export const engineOptions: {
             "docx": false,
         },
         quality: 40,
+    },
+    "scrapingbee": {
+        features: {
+            "actions": false,
+            "waitFor": true,
+            "screenshot": true,
+            "screenshot@fullScreen": true,
+            "pdf": false,
+            "docx": false,
+        },
+        quality: 30,
+    },
+    "scrapingbeeLoad": {
+        features: {
+            "actions": false,
+            "waitFor": true,
+            "screenshot": true,
+            "screenshot@fullScreen": true,
+            "pdf": false,
+            "docx": false,
+        },
+        quality: 29,
     },
     "fire-engine;tlsclient": {
         features: {
@@ -140,7 +167,9 @@ export function buildFallbackList(meta: Meta): {
         unsupportedFeatures: Set<FeatureFlag>,
     }[] = [];
 
-    for (const engine of engines) {
+    const currentEngines = meta.internalOptions.forceEngine !== undefined ? [meta.internalOptions.forceEngine] : engines;
+
+    for (const engine of currentEngines) {
         const supportedFlags = new Set([...Object.entries(engineOptions[engine].features).filter(([k, v]) => meta.featureFlags.has(k as FeatureFlag) && v === true).map(([k, _]) => k)]);
         const supportScore = [...supportedFlags].reduce((a, x) => a + featureFlagOptions[x].priority, 0);
 
