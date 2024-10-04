@@ -56,7 +56,7 @@ export function scrapeURLWithScrapingBee(wait_browser: "domcontentloaded" | "net
             url: body["resolved-url"] ?? meta.url,
 
             html: body.body,
-            error: response.status >= 300 ? "Request failed with error code " + response.status : undefined,
+            error: response.status >= 300 ? response.statusText : undefined,
             statusCode: response.status,
             ...(body.screenshot ? ({
                 screenshot: `data:image/png;base64,${body.screenshot}`,

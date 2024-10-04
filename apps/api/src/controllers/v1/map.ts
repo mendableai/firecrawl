@@ -4,6 +4,7 @@ import {
   legacyCrawlerOptions,
   mapRequestSchema,
   RequestWithAuth,
+  scrapeOptions,
 } from "./types";
 import { crawlToCrawler, StoredCrawl } from "../../lib/crawl-redis";
 import { MapResponse, MapRequest } from "./types";
@@ -45,7 +46,8 @@ export async function mapController(
   const sc: StoredCrawl = {
     originUrl: req.body.url,
     crawlerOptions: legacyCrawlerOptions(req.body),
-    pageOptions: {},
+    scrapeOptions: scrapeOptions.parse({}),
+    internalOptions: {},
     team_id: req.auth.team_id,
     createdAt: Date.now(),
     plan: req.auth.plan,
@@ -175,9 +177,8 @@ export async function mapController(
     mode: "map",
     url: req.body.url,
     crawlerOptions: {},
-    pageOptions: {},
+    scrapeOptions: {},
     origin: req.body.origin,
-    extractor_options: { mode: "markdown" },
     num_tokens: 0,
   });
 

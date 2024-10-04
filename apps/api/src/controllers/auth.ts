@@ -9,7 +9,6 @@ import {
 import { supabase_service } from "../services/supabase";
 import { withAuth } from "../lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
-import { setTraceAttributes } from "@hyperdx/node-opentelemetry";
 import { sendNotification } from "../services/notification/email_notification";
 import { logger } from "../lib/logger";
 import { redlock } from "../services/redlock";
@@ -109,18 +108,6 @@ export async function authenticateUser(
   return withAuth(supaAuthenticateUser, { success: true, chunk: null, team_id: "bypass" })(req, res, mode);
 }
 
-function setTrace(team_id: string, api_key: string) {
-  try {
-    setTraceAttributes({
-      team_id,
-      api_key,
-    });
-  } catch (error) {
-    Sentry.captureException(error);
-    logger.error(`Error setting trace attributes: ${error.message}`);
-  }
-}
-
 export async function supaAuthenticateUser(
   req,
   res,
@@ -182,8 +169,6 @@ export async function supaAuthenticateUser(
     priceId = chunk.price_id;
 
     const plan = getPlanByPriceId(priceId);
-    // HyperDX Logging
-    setTrace(teamId, normalizedApi);
     subscriptionData = {
       team_id: teamId,
       plan,

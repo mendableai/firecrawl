@@ -5,8 +5,7 @@ import express, { NextFunction, Request, Response } from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import { getScrapeQueue } from "./services/queue-service";
-import { v0Router } from "./routes/v0";
-import { initSDK } from "@hyperdx/node-opentelemetry";
+// import { v0Router } from "./routes/v0";
 import cluster from "cluster";
 import os from "os";
 import { logger } from "./lib/logger";
@@ -86,17 +85,12 @@ if (cluster.isMaster) {
   });
 
   // register router
-  app.use(v0Router);
+  // app.use(v0Router);
   app.use("/v1", v1Router);
   app.use(adminRouter);
 
   const DEFAULT_PORT = process.env.PORT ?? 3002;
   const HOST = process.env.HOST ?? "localhost";
-
-  // HyperDX OpenTelemetry
-  if (process.env.ENV === "production") {
-    initSDK({ consoleCapture: true, additionalInstrumentations: [] });
-  }
 
   function startServer(port = DEFAULT_PORT) {
     const server = app.listen(Number(port), HOST, () => {

@@ -327,27 +327,27 @@ export class WebScraperDataProvider {
     return Promise.all(
       pdfLinks.map(async (pdfLink) => {
         const timer = Date.now();
-        const logInsertPromise = ScrapeEvents.insert(this.jobId, {
-          type: "scrape",
-          url: pdfLink,
-          worker: process.env.FLY_MACHINE_ID,
-          method: "pdf-scrape",
-          result: null,
-        });
+        // const logInsertPromise = ScrapeEvents.insert(this.jobId, {
+        //   type: "scrape",
+        //   url: pdfLink,
+        //   worker: process.env.FLY_MACHINE_ID,
+        //   method: "pdf-scrape",
+        //   result: null,
+        // });
 
         const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(
           pdfLink,
           this.pageOptions?.parsePDF ?? true
         );
 
-        const insertedLogId = await logInsertPromise;
-        ScrapeEvents.updateScrapeResult(insertedLogId, {
-          response_size: content.length,
-          success: !(pageStatusCode && pageStatusCode >= 400) && !!content && (content.trim().length >= 100),
-          error: pageError,
-          response_code: pageStatusCode,
-          time_taken: Date.now() - timer,
-        });
+        // const insertedLogId = await logInsertPromise;
+        // ScrapeEvents.updateScrapeResult(insertedLogId, {
+        //   response_size: content.length,
+        //   success: !(pageStatusCode && pageStatusCode >= 400) && !!content && (content.trim().length >= 100),
+        //   error: pageError,
+        //   response_code: pageStatusCode,
+        //   time_taken: Date.now() - timer,
+        // });
         return {
           content: content,
           markdown: content,
@@ -361,26 +361,26 @@ export class WebScraperDataProvider {
     return Promise.all(
       docxLinks.map(async (docxLink) => {
         const timer = Date.now();
-        const logInsertPromise = ScrapeEvents.insert(this.jobId, {
-          type: "scrape",
-          url: docxLink,
-          worker: process.env.FLY_MACHINE_ID,
-          method: "docx-scrape",
-          result: null,
-        });
+        // const logInsertPromise = ScrapeEvents.insert(this.jobId, {
+        //   type: "scrape",
+        //   url: docxLink,
+        //   worker: process.env.FLY_MACHINE_ID,
+        //   method: "docx-scrape",
+        //   result: null,
+        // });
 
         const { content, pageStatusCode, pageError } = await fetchAndProcessDocx(
           docxLink
         );
 
-        const insertedLogId = await logInsertPromise;
-        ScrapeEvents.updateScrapeResult(insertedLogId, {
-          response_size: content.length,
-          success: !(pageStatusCode && pageStatusCode >= 400) && !!content && (content.trim().length >= 100),
-          error: pageError,
-          response_code: pageStatusCode,
-          time_taken: Date.now() - timer,
-        });
+        // const insertedLogId = await logInsertPromise;
+        // ScrapeEvents.updateScrapeResult(insertedLogId, {
+        //   response_size: content.length,
+        //   success: !(pageStatusCode && pageStatusCode >= 400) && !!content && (content.trim().length >= 100),
+        //   error: pageError,
+        //   response_code: pageStatusCode,
+        //   time_taken: Date.now() - timer,
+        // });
 
         return {
           content,

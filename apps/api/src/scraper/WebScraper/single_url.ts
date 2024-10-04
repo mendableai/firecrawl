@@ -187,13 +187,13 @@ export async function scrapSingleUrl(
     let screenshot = "";
 
     const timer = Date.now();
-    const logInsertPromise = ScrapeEvents.insert(jobId, {
-      type: "scrape",
-      url,
-      worker: process.env.FLY_MACHINE_ID,
-      method,
-      result: null,
-    });
+    // const logInsertPromise = ScrapeEvents.insert(jobId, {
+    //   type: "scrape",
+    //   url,
+    //   worker: process.env.FLY_MACHINE_ID,
+    //   method,
+    //   result: null,
+    // });
 
     switch (method) {
       case "fire-engine":
@@ -348,14 +348,14 @@ export async function scrapSingleUrl(
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
     const text = await parseMarkdown(cleanedHtml);
 
-    const insertedLogId = await logInsertPromise;
-    ScrapeEvents.updateScrapeResult(insertedLogId, {
-      response_size: scraperResponse.text.length,
-      success: !(scraperResponse.metadata.pageStatusCode && scraperResponse.metadata.pageStatusCode >= 400) && !!text && (text.trim().length >= 100),
-      error: scraperResponse.metadata.pageError ?? undefined,
-      response_code: scraperResponse.metadata.pageStatusCode,
-      time_taken: Date.now() - timer,
-    });
+    // const insertedLogId = await logInsertPromise;
+    // ScrapeEvents.updateScrapeResult(insertedLogId, {
+    //   response_size: scraperResponse.text.length,
+    //   success: !(scraperResponse.metadata.pageStatusCode && scraperResponse.metadata.pageStatusCode >= 400) && !!text && (text.trim().length >= 100),
+    //   error: scraperResponse.metadata.pageError ?? undefined,
+    //   response_code: scraperResponse.metadata.pageStatusCode,
+    //   time_taken: Date.now() - timer,
+    // });
 
     return {
       text,

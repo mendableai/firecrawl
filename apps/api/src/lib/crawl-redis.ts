@@ -1,10 +1,13 @@
+import { InternalOptions } from "../scraper/scrapeURL";
+import { ScrapeOptions } from "../controllers/v1/types";
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import { redisConnection } from "../services/queue-service";
 
 export type StoredCrawl = {
     originUrl: string;
     crawlerOptions: any;
-    pageOptions: any;
+    scrapeOptions: Omit<ScrapeOptions, "timeout">;
+    internalOptions: InternalOptions;
     team_id: string;
     plan?: string;
     robots?: string;

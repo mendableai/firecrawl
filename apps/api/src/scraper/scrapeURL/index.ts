@@ -9,7 +9,7 @@ import { AddFeatureError, EngineError, NoEnginesLeftError, TimeoutError } from "
 import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
 
-type ScrapeUrlResponse = ({
+export type ScrapeUrlResponse = ({
     success: true,
     document: Document,
 } | {
@@ -104,6 +104,7 @@ async function scrapeURLLoop(
     meta.logger.info(`Scraping URL ${JSON.stringify(meta.url)}...`,);
 
     // TODO: handle sitemap data, see WebScraper/index.ts:280
+    // TODO: ScrapeEvents
 
     const fallbackList = buildFallbackList(meta);
 

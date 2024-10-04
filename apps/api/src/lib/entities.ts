@@ -1,3 +1,5 @@
+import type { Document as V1Document } from "../controllers/v1/types";
+
 export interface Progress {
   current: number;
   total: number;

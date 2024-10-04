@@ -1,5 +1,4 @@
 import axios from "axios";
-import { Document, legacyDocumentConverter } from "../../src/controllers/v1/types";
 import { logger } from "../../src/lib/logger";
 import { supabase_service } from "./supabase";
 import { WebhookEventType } from "../types";
@@ -59,7 +58,7 @@ export const callWebhook = async (
       for (let i = 0; i < data.result.links.length; i++) {
         if (v1) {
           dataToSend.push(
-            legacyDocumentConverter(data.result.links[i].content)
+            data.result.links[i].content
           );
         } else {
           dataToSend.push({

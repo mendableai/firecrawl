@@ -7,11 +7,9 @@ import {
   redisConnection,
   scrapeQueueName,
 } from "./queue-service";
-import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
-import { initSDK } from "@hyperdx/node-opentelemetry";
 import { Job } from "bullmq";
 import { logger } from "../lib/logger";
 import { Worker } from "bullmq";
@@ -28,23 +26,17 @@ import {
 } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
 import { addScrapeJob } from "./queue-jobs";
-import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
 import {
   addJobPriority,
   deleteJobPriority,
   getJobPriority,
 } from "../../src/lib/job-priority";
 import { PlanType } from "../types";
-import { getJobs } from "../../src/controllers/v1/crawl-status";
+import { getJobs } from "..//controllers/v1/crawl-status";
 import { configDotenv } from "dotenv";
+import { scrapeOptions } from "../controllers/v1/types";
 configDotenv();
 
-if (process.env.ENV === "production") {
-  initSDK({
-    consoleCapture: true,
-    additionalInstrumentations: [],
-  });
-}
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const workerLockDuration = Number(process.env.WORKER_LOCK_DURATION) || 60000;
@@ -71,13 +63,18 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
   let err = null;
   try {
     const result = await processJob(job, token);
-    try {
-      if (job.data.crawl_id && process.env.USE_DB_AUTHENTICATION === "true") {
-        await job.moveToCompleted(null, token, false);
-      } else {
-        await job.moveToCompleted(result.docs, token, false);
-      }
-    } catch (e) {}
+    if (result.success) {
+      try {
+        if (job.data.crawl_id && process.env.USE_DB_AUTHENTICATION === "true") {
+          await job.moveToCompleted(null, token, false);
+        } else {
+          await job.moveToCompleted(result.document, token, false);
+        }
+      } catch (e) {}
+    } else {
+      await job.moveToFailed((result as any).error, token, false);
+    }
+    
   } catch (error) {
     console.log("Job failed, error:", error);
     Sentry.captureException(error);
@@ -210,12 +207,11 @@ async function processJob(job: Job & { id: string }, token: string) {
     logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
     const data = {
       success: false,
-      docs: [],
+      document: null,
       project_id: job.data.project_id,
       error:
         "URL is blocked. Suspecious activity detected. Please contact hello@firecrawl.com if you believe this is an error.",
     };
-    await job.moveToCompleted(data.docs, token, false);
     return data;
   }
 
@@ -228,46 +224,36 @@ async function processJob(job: Job & { id: string }, token: string) {
     });
     const start = Date.now();
 
-    const { success, message, docs } = await startWebScraperPipeline({
+    const pipeline = await startWebScraperPipeline({
       job,
       token,
     });
 
-    // Better if we throw here so we capture with the correct error
-    if (!success) {
-      throw new Error(message);
+    if (!pipeline.success) {
+      // TODO: let's Not do this
+      throw pipeline.error;
     }
+
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
-    const rawHtml = docs[0] ? docs[0].rawHtml : "";
+    const doc = pipeline.document;
+
+    const rawHtml = doc.rawHtml ?? "";
 
     const data = {
-      success,
+      success: true,
       result: {
-        links: docs.map((doc) => {
-          return {
-            content: doc,
-            source: doc?.metadata?.sourceURL ?? doc?.url ?? "",
-          };
-        }),
+        links: [{
+          content: doc,
+          source: doc?.metadata?.sourceURL ?? doc?.metadata?.url ?? "",
+        }],
       },
       project_id: job.data.project_id,
-      error: message /* etc... */,
-      docs,
+      document: doc,
     };
 
-    // No idea what this does and when it is called.
-    if (job.data.mode === "crawl" && !job.data.v1) {
-      callWebhook(
-        job.data.team_id,
-        job.id as string,
-        data,
-        job.data.webhook,
-        job.data.v1
-      );
-    }
-    if (job.data.webhook && job.data.mode !== "crawl" && job.data.v1) {
+    if (job.data.webhook && job.data.v1) {
       await callWebhook(
         job.data.team_id,
         job.data.crawl_id,
@@ -280,25 +266,24 @@ async function processJob(job: Job & { id: string }, token: string) {
     }
 
     if (job.data.crawl_id) {
+      const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+
       await logJob({
         job_id: job.id as string,
-        success: success,
-        message: message,
-        num_docs: docs.length,
-        docs: docs,
+        success: true,
+        num_docs: 1,
+        docs: [doc],
         time_taken: timeTakenInSeconds,
         team_id: job.data.team_id,
         mode: job.data.mode,
         url: job.data.url,
-        crawlerOptions: job.data.crawlerOptions,
-        pageOptions: job.data.pageOptions,
+        crawlerOptions: sc.crawlerOptions,
+        scrapeOptions: job.data.scrapeOptions,
         origin: job.data.origin,
         crawl_id: job.data.crawl_id,
       });
 
       await addCrawlJobDone(job.data.crawl_id, job.id);
-
-      const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
 
       if (!job.data.sitemapped) {
         if (!sc.cancelled) {
@@ -329,9 +314,9 @@ async function processJob(job: Job & { id: string }, token: string) {
                 {
                   url: link,
                   mode: "single_urls",
-                  crawlerOptions: sc.crawlerOptions,
                   team_id: sc.team_id,
-                  pageOptions: sc.pageOptions,
+                  scrapeOptions: scrapeOptions.parse(sc.scrapeOptions),
+                  internalOptions: sc.internalOptions,
                   origin: job.data.origin,
                   crawl_id: job.data.crawl_id,
                   v1: job.data.v1,
@@ -367,15 +352,15 @@ async function processJob(job: Job & { id: string }, token: string) {
           await logJob({
             job_id: job.data.crawl_id,
             success: jobStatus === "completed",
-            message: sc.cancelled ? "Cancelled" : message,
+            message: sc.cancelled ? "Cancelled" : undefined,
             num_docs: fullDocs.length,
             docs: [],
             time_taken: (Date.now() - sc.createdAt) / 1000,
             team_id: job.data.team_id,
             mode: "crawl",
             url: sc.originUrl,
+            scrapeOptions: sc.scrapeOptions,
             crawlerOptions: sc.crawlerOptions,
-            pageOptions: sc.pageOptions,
             origin: job.data.origin,
           });
 
@@ -390,7 +375,6 @@ async function processJob(job: Job & { id: string }, token: string) {
               }),
             },
             project_id: job.data.project_id,
-            error: message /* etc... */,
             docs: fullDocs,
           };
 
@@ -428,15 +412,15 @@ async function processJob(job: Job & { id: string }, token: string) {
           await logJob({
             job_id: job.data.crawl_id,
             success: jobStatus === "completed",
-            message: sc.cancelled ? "Cancelled" : message,
+            message: sc.cancelled ? "Cancelled" : undefined,
             num_docs: jobIDs.length,
             docs: [],
             time_taken: (Date.now() - sc.createdAt) / 1000,
             team_id: job.data.team_id,
             mode: "crawl",
             url: sc.originUrl,
+            scrapeOptions: sc.scrapeOptions,
             crawlerOptions: sc.crawlerOptions,
-            pageOptions: sc.pageOptions,
             origin: job.data.origin,
           });
         }
@@ -448,37 +432,24 @@ async function processJob(job: Job & { id: string }, token: string) {
   } catch (error) {
     logger.error(`🐂 Job errored ${job.id} - ${error}`);
 
-    if (!(error instanceof Error && error.message.includes("JSON parsing error(s): "))) {
-      Sentry.captureException(error, {
-        data: {
-          job: job.id,
-        },
-      });
-    }
+    Sentry.captureException(error, {
+      data: {
+        job: job.id,
+      },
+    });
 
     if (error instanceof CustomError) {
       // Here we handle the error, then save the failed job
       logger.error(error.message); // or any other error handling
-
-      logtail.error("Custom error while ingesting", {
-        job_id: job.id,
-        error: error.message,
-        dataIngestionJob: error.dataIngestionJob,
-      });
     }
     logger.error(error);
     if (error.stack) {
       logger.error(error.stack);
     }
 
-    logtail.error("Overall error ingesting", {
-      job_id: job.id,
-      error: error.message,
-    });
-
     const data = {
       success: false,
-      docs: [],
+      document: null,
       project_id: job.data.project_id,
       error:
         "Something went wrong... Contact help@mendable.ai or try again." /* etc... */,
@@ -505,6 +476,8 @@ async function processJob(job: Job & { id: string }, token: string) {
     }
 
     if (job.data.crawl_id) {
+      const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+
       await logJob({
         job_id: job.id as string,
         success: false,
@@ -519,13 +492,11 @@ async function processJob(job: Job & { id: string }, token: string) {
         team_id: job.data.team_id,
         mode: job.data.mode,
         url: job.data.url,
-        crawlerOptions: job.data.crawlerOptions,
-        pageOptions: job.data.pageOptions,
+        crawlerOptions: sc.crawlerOptions,
+        scrapeOptions: job.data.scrapeOptions,
         origin: job.data.origin,
         crawl_id: job.data.crawl_id,
       });
-
-      const sc = await getCrawl(job.data.crawl_id);
 
       await logJob({
         job_id: job.data.crawl_id,
@@ -541,8 +512,8 @@ async function processJob(job: Job & { id: string }, token: string) {
         team_id: job.data.team_id,
         mode: "crawl",
         url: sc ? sc.originUrl : job.data.url,
-        crawlerOptions: sc ? sc.crawlerOptions : job.data.crawlerOptions,
-        pageOptions: sc ? sc.pageOptions : job.data.pageOptions,
+        crawlerOptions: sc ? sc.crawlerOptions : undefined,
+        scrapeOptions: sc ? sc.scrapeOptions : job.data.scrapeOptions,
         origin: job.data.origin,
       });
     }

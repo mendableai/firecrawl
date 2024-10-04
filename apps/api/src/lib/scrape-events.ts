@@ -1,8 +1,8 @@
 import { Job } from "bullmq";
-import type { baseScrapers } from "../scraper/WebScraper/single_url";
 import { supabase_service as supabase } from "../services/supabase";
 import { logger } from "./logger";
 import { configDotenv } from "dotenv";
+import { Engine } from "../scraper/scrapeURL/engines";
 configDotenv();
 
 export type ScrapeErrorEvent = {
@@ -15,7 +15,7 @@ export type ScrapeScrapeEvent = {
   type: "scrape",
   url: string,
   worker?: string,
-  method: (typeof baseScrapers)[number],
+  method: Engine,
   result: null | {
     success: boolean,
     response_code?: number,

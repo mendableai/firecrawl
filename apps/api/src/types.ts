@@ -1,5 +1,6 @@
-import { AuthCreditUsageChunk } from "./controllers/v1/types";
-import { ExtractorOptions, Document, DocumentUrl } from "./lib/entities";
+import { AuthCreditUsageChunk, ScrapeOptions, Document as V1Document } from "./controllers/v1/types";
+import { ExtractorOptions, Document } from "./lib/entities";
+import { InternalOptions } from "./scraper/scrapeURL";
 
 type Mode = "crawl" | "single_urls" | "sitemap";
 
@@ -24,9 +25,8 @@ export interface IngestResult {
 export interface WebScraperOptions {
   url: string;
   mode: Mode;
-  crawlerOptions: any;
-  pageOptions: any;
-  extractorOptions?: any;
+  scrapeOptions: ScrapeOptions;
+  internalOptions?: InternalOptions;
   team_id: string;
   origin?: string;
   crawl_id?: string;
@@ -39,22 +39,22 @@ export interface WebScraperOptions {
 export interface RunWebScraperParams {
   url: string;
   mode: Mode;
-  crawlerOptions: any;
-  pageOptions?: any;
-  extractorOptions?: any;
-  inProgress: (progress: any) => void;
-  onSuccess: (result: any, mode: string) => void;
-  onError: (error: Error) => void;
+  scrapeOptions: ScrapeOptions;
+  internalOptions?: InternalOptions;
+  // onSuccess: (result: V1Document, mode: string) => void;
+  // onError: (error: Error) => void;
   team_id: string;
   bull_job_id: string;
   priority?: number;
   is_scrape?: boolean;
 }
 
-export interface RunWebScraperResult {
-  success: boolean;
-  message: string;
-  docs: Document[] | DocumentUrl[];
+export type RunWebScraperResult = {
+  success: false;
+  error: Error;
+} | {
+  success: true;
+  document: V1Document;
 }
 
 export interface FirecrawlJob {
@@ -68,9 +68,8 @@ export interface FirecrawlJob {
   mode: string;
   url: string;
   crawlerOptions?: any;
-  pageOptions?: any;
+  scrapeOptions?: any;
   origin: string;
-  extractor_options?: ExtractorOptions,
   num_tokens?: number,
   retry?: boolean,
   crawl_id?: string;

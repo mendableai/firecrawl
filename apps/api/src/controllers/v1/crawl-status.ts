@@ -1,5 +1,5 @@
 import { Response } from "express";
-import { CrawlStatusParams, CrawlStatusResponse, ErrorResponse, legacyDocumentConverter, RequestWithAuth } from "./types";
+import { CrawlStatusParams, CrawlStatusResponse, ErrorResponse, RequestWithAuth } from "./types";
 import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
 import { supabaseGetJobById, supabaseGetJobsById } from "../../lib/supabase-jobs";
@@ -81,7 +81,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
       for (let ii = 0; ii < jobs.length && bytes < bytesLimit; ii++) {
         const job = jobs[ii];
         doneJobs.push(job);
-        bytes += JSON.stringify(legacyDocumentConverter(job.returnvalue)).length;
+        bytes += JSON.stringify(job.returnvalue).length;
       }
     }
 
@@ -105,7 +105,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
   }
 
   if (data.length > 0) {
-    if (!doneJobs[0].data.pageOptions.includeRawHtml) {
+    if (!doneJobs[0].data.scrapeOptions.formats.includes("rawHtml")) {
       for (let ii = 0; ii < doneJobs.length; ii++) {
         if (data[ii]) {
           delete data[ii].rawHtml;
@@ -125,7 +125,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
       status !== "scraping" && (start + data.length) === doneJobsLength // if there's not gonna be any documents after this
         ? undefined
         : nextURL.href,
-    data: data.map(x => legacyDocumentConverter(x)),
+    data: data,
   });
 }
 

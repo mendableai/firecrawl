@@ -9,7 +9,6 @@ env:
   FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
   HOST: ${{ secrets.HOST }}
   LLAMAPARSE_API_KEY: ${{ secrets.LLAMAPARSE_API_KEY }}
-  LOGTAIL_KEY: ${{ secrets.LOGTAIL_KEY }}
   POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
   POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
   NUM_WORKERS_PER_QUEUE: ${{ secrets.NUM_WORKERS_PER_QUEUE }}

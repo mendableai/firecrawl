@@ -94,6 +94,10 @@ export function coerceFieldsToFormats(meta: Meta, document: Document): Document 
         meta.logger.warn("Request had format: extract, but there was no extract field in the result.");
     }
 
+    if (meta.options.actions === undefined || meta.options.actions.length === 0) {
+        delete document.actions;
+    }
+
     return document;
 }
 

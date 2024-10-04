@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
-import { Action, ExtractorOptions, PageOptions } from "../../lib/entities";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { PlanType } from "../../types";
 
@@ -393,69 +392,4 @@ export function legacyCrawlerOptions(x: CrawlerOptions) {
     allowBackwardCrawling: x.allowBackwardLinks,
     allowExternalContentLinks: x.allowExternalLinks,
   };
-}
-
-export function legacyScrapeOptions(x: Omit<ScrapeOptions, "timeout">): PageOptions {
-  return {
-    includeMarkdown: x.formats.includes("markdown"),
-    includeHtml: x.formats.includes("html"),
-    includeRawHtml: x.formats.includes("rawHtml"),
-    includeExtract: x.formats.includes("extract"),
-    onlyIncludeTags: x.includeTags,
-    removeTags: x.excludeTags,
-    onlyMainContent: x.onlyMainContent,
-    waitFor: x.waitFor,
-    headers: x.headers,
-    includeLinks: x.formats.includes("links"),
-    screenshot: x.formats.includes("screenshot"),
-    fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
-    parsePDF: x.parsePDF,
-    actions: x.actions as Action[], // no strict null checking grrrr - mogery
-  };
-}
-
-export function legacyExtractorOptions(x: ExtractOptions): ExtractorOptions {
-  return {
-    mode: x.mode ? "llm-extraction" : "markdown",
-    extractionPrompt: x.prompt ?? "Based on the information on the page, extract the information from the schema.",
-    extractionSchema: x.schema,
-    userPrompt: x.prompt ?? "",
-  };
-}
-
-export function legacyDocumentConverter(doc: null | undefined): null
-export function legacyDocumentConverter(doc: any): Document
-export function legacyDocumentConverter(doc: any): Document | null {
-  if (doc === null || doc === undefined) return null as any;
-
-  if (doc.metadata) {
-    if (doc.metadata.screenshot) {
-      doc.screenshot = doc.metadata.screenshot;
-      delete doc.metadata.screenshot;
-    }
-
-    if (doc.metadata.fullPageScreenshot) {
-      doc.fullPageScreenshot = doc.metadata.fullPageScreenshot;
-      delete doc.metadata.fullPageScreenshot;
-    }
-  }
-
-  const document: Document = {
-    markdown: doc.markdown,
-    links: doc.linksOnPage,
-    rawHtml: doc.rawHtml,
-    html: doc.html,
-    extract: doc.llm_extraction,
-    screenshot: doc.screenshot ?? doc.fullPageScreenshot,
-    actions: doc.actions ?? undefined,
-    metadata: {
-      ...doc.metadata,
-      pageError: undefined,
-      pageStatusCode: undefined,
-      error: doc.metadata.pageError,
-      statusCode: doc.metadata.pageStatusCode,
-    },
-  };
-
-  return document;
 }

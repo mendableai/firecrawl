@@ -1,10 +1,7 @@
-import { Request, Response } from "express";
+import { Response } from "express";
 import { logger } from "../../lib/logger";
 import {
   Document,
-  legacyDocumentConverter,
-  legacyExtractorOptions,
-  legacyScrapeOptions,
   RequestWithAuth,
   ScrapeRequest,
   scrapeRequestSchema,
@@ -27,8 +24,6 @@ export async function scrapeController(
 
   const origin = req.body.origin;
   const timeout = req.body.timeout;
-  const pageOptions = legacyScrapeOptions(req.body);
-  const extractorOptions = req.body.extract ? legacyExtractorOptions(req.body.extract) : undefined;
   const jobId = uuidv4();
 
   const startTime = new Date().getTime();
@@ -42,10 +37,9 @@ export async function scrapeController(
     {
       url: req.body.url,
       mode: "single_urls",
-      crawlerOptions: {},
       team_id: req.auth.team_id,
-      pageOptions,
-      extractorOptions,
+      scrapeOptions: req.body,
+      internalOptions: {},
       origin: req.body.origin,
       is_scrape: true,
     },
@@ -56,9 +50,9 @@ export async function scrapeController(
 
   const totalWait = (req.body.waitFor ?? 0) + (req.body.actions ?? []).reduce((a,x) => (x.type === "wait" ? x.milliseconds : 0) + a, 0);
 
-  let doc: any | undefined;
+  let doc: Document;
   try {
-    doc = (await waitForJob<any[]>(job.id, timeout + totalWait))[0]; // TODO: better types for this
+    doc = await waitForJob<Document>(job.id, timeout + totalWait); // TODO: better types for this
   } catch (e) {
     logger.error(`Error in scrapeController: ${e}`);
     if (e instanceof Error && e.message.startsWith("Job wait")) {
@@ -69,34 +63,19 @@ export async function scrapeController(
     } else {
       return res.status(500).json({
         success: false,
-        error: `(Internal server error) - ${e && e?.message ? e.message : e} ${
-          extractorOptions && extractorOptions.mode !== "markdown"
-            ? " - Could be due to LLM parsing issues"
-            : ""
-        }`,
+        error: `(Internal server error) - ${e && e?.message ? e.message : e}`,
       });
     }
   }
 
   await job.remove();
 
-  if (!doc) {
-    console.error("!!! PANIC DOC IS", doc, job);
-    return res.status(200).json({
-      success: true,
-      warning: "No page found",
-      data: doc,
-    });
-  }
-
-  delete doc.index;
-  delete doc.provider;
-
   const endTime = new Date().getTime();
   const timeTakenInSeconds = (endTime - startTime) / 1000;
   const numTokens =
-    doc && doc.markdown
-      ? numTokensFromString(doc.markdown, "gpt-3.5-turbo")
+    doc && doc.extract
+      // ? numTokensFromString(doc.markdown, "gpt-3.5-turbo")
+      ? 0 // TODO: fix
       : 0;
 
   let creditsToBeBilled = 1; // Assuming 1 credit per document
@@ -113,15 +92,9 @@ export async function scrapeController(
     // Optionally, you could notify an admin or add to a retry queue here
   });
 
-  if (!pageOptions || !pageOptions.includeRawHtml) {
+  if (!req.body.formats.includes("rawHtml")) {
     if (doc && doc.rawHtml) {
       delete doc.rawHtml;
-    }
-  }
-
-  if(pageOptions && pageOptions.includeExtract) {
-    if(!pageOptions.includeMarkdown && doc && doc.markdown) {
-      delete doc.markdown;
     }
   }
 
@@ -135,16 +108,14 @@ export async function scrapeController(
     team_id: req.auth.team_id,
     mode: "scrape",
     url: req.body.url,
-    crawlerOptions: {},
-    pageOptions: pageOptions,
+    scrapeOptions: req.body,
     origin: origin,
-    extractor_options: { mode: "markdown" },
     num_tokens: numTokens,
   });
 
   return res.status(200).json({
     success: true,
-    data: legacyDocumentConverter(doc),
+    data: doc,
     scrape_id: origin?.includes("website") ? jobId : undefined,
   });
 }

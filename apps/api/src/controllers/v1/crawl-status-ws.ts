@@ -1,7 +1,7 @@
 import { authMiddleware } from "../../routes/v1";
 import { RateLimiterMode } from "../../types";
 import { authenticateUser } from "../auth";
-import { CrawlStatusParams, CrawlStatusResponse, Document, ErrorResponse, legacyDocumentConverter, RequestWithAuth } from "./types";
+import { CrawlStatusParams, CrawlStatusResponse, Document, ErrorResponse, RequestWithAuth } from "./types";
 import { WebSocket } from "ws";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../lib/logger";
@@ -78,7 +78,7 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
       if (job.returnvalue) {
         send(ws, {
           type: "document",
-          data: legacyDocumentConverter(job.returnvalue),
+          data: job.returnvalue,
         })
       } else {
         return close(ws, 3000, { type: "error", error: job.failedReason });
@@ -109,7 +109,7 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
       completed: doneJobIDs.length,
       creditsUsed: jobIDs.length,
       expiresAt: (await getCrawlExpiry(req.params.jobId)).toISOString(),
-      data: data.map(x => legacyDocumentConverter(x)),
+      data: data,
     }
   });
 

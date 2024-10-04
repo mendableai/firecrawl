@@ -5,7 +5,6 @@ import {
   crawlRequestSchema,
   CrawlResponse,
   legacyCrawlerOptions,
-  legacyScrapeOptions,
   RequestWithAuth,
 } from "./types";
 import {
@@ -23,6 +22,7 @@ import { addScrapeJob } from "../../services/queue-jobs";
 import { logger } from "../../lib/logger";
 import { getJobPriority } from "../../lib/job-priority";
 import { callWebhook } from "../../services/webhook";
+import { scrapeOptions as scrapeOptionsSchema } from "./types";
 
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
@@ -37,7 +37,7 @@ export async function crawlController(
   const remainingCredits = req.account?.remainingCredits ?? 0;
 
   const crawlerOptions = legacyCrawlerOptions(req.body);
-  const pageOptions = legacyScrapeOptions(req.body.scrapeOptions);
+  const scrapeOptions = req.body.scrapeOptions;
 
   // TODO: @rafa, is this right? copied from v0
   if (Array.isArray(crawlerOptions.includes)) {
@@ -65,7 +65,8 @@ export async function crawlController(
   const sc: StoredCrawl = {
     originUrl: req.body.url,
     crawlerOptions,
-    pageOptions,
+    scrapeOptions,
+    internalOptions: {},
     team_id: req.auth.team_id,
     createdAt: Date.now(),
     plan: req.auth.plan,
@@ -107,7 +108,7 @@ export async function crawlController(
           mode: "single_urls",
           team_id: req.auth.team_id,
           crawlerOptions,
-          pageOptions,
+          scrapeOptions,
           origin: "api",
           crawl_id: id,
           sitemapped: true,
@@ -136,9 +137,8 @@ export async function crawlController(
       {
         url: req.body.url,
         mode: "single_urls",
-        crawlerOptions: crawlerOptions,
         team_id: req.auth.team_id,
-        pageOptions: pageOptions,
+        scrapeOptions: scrapeOptionsSchema.parse(scrapeOptions),
         origin: "api",
         crawl_id: id,
         webhook: req.body.webhook,
