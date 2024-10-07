@@ -68,7 +68,7 @@ To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and ge
 
 ### Features
 
-- [**Scrape**](/scraping): scrape a URL and get its content in LLM-ready format (markdown, structured data via LLM Extract, screenshot, html)
+- [**Scrape**](#scraping): scrape a URL and get its content in LLM-ready format (markdown, structured data via LLM Extract, screenshot, html)
 - **Crawl**: scrapes all the URLs of a web page and return content in LLM-ready format
 - **Map**: input a website and get all the website urls - extremly fast
 
