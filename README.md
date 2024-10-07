@@ -66,6 +66,21 @@ To run locally, refer to guide [here](https://github.com/mendableai/firecrawl/bl
 
 To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and get an API key.
 
+### Features
+
+- [**Scrape**](/scraping): scrape a URL and get its content in LLM-ready format (markdown, structured data via LLM Extract, screenshot, html)
+- **Crawl**: scrapes all the URLs of a web page and return content in LLM-ready format
+- **Map**: input a website and get all the website urls - extremly fast
+
+### Powerful Capabilities
+- **LLM-ready formats**: markdown, structured data, screenshot, HTML, links, metadata
+- **The hard stuff**: proxyies, anti-bot mechanisms, dynamic content (js-rendered), output parsing, orchestration
+- **Customizability**: exclude tags, crawl behind authentication walls with custom headers, max crawl depth and more...
+- **Media parsing**: pdfs, docx, images.
+- **Reliability first**: designed to get the data you need - no matter how hard it is.
+- **Actions**: click, scroll, input, wait and more before extracting data
+  
+
 ### Crawling
 
 Used to crawl a URL and all accessible subpages. This submits a crawl job and returns a job ID to check the status of the crawl.
