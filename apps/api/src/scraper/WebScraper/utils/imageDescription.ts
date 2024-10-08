@@ -1,6 +1,10 @@
 import Anthropic from '@anthropic-ai/sdk';
 import axios from 'axios';
 import { Logger } from '../../../lib/logger';
+import { Ollama } from 'ollama';
+
+const OLLAMA_URL = process.env.OLLAMA_URL || "http://localhost:11434";
+const OLLAMA_MODEL = process.env.OLLAMA_MODEL || "llava";
 
 export async function getImageDescription(
   imageUrl: string,
@@ -53,9 +57,28 @@ export async function getImageDescription(
       }
       default: {
         if (!process.env.OPENAI_API_KEY) {
-          throw new Error("No OpenAI API key provided");
+          if (!process.env.OLLAMA_API_URL) {
+            throw new Error("No OpenAI key or Ollama API URL provided");
+          } else {
+            const ollama = new Ollama({
+              host: OLLAMA_URL,
+            });
+            const response = await ollama.chat({
+              model: OLLAMA_MODEL,
+              messages: [
+                {
+                  role: "user",
+                  content: prompt,
+                },
+                {
+                  role: "user",
+                  content: imageUrl,
+                },
+              ],
+            });
+            return response.message.content;
+          }
         }
-
         const { OpenAI } = require("openai");
         const openai = new OpenAI();
       
