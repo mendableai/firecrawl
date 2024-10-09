@@ -318,23 +318,6 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
     }'
 ```
 
-
-### Search (v0) (Beta)
-
-Used to search the web, get the most relevant results, scrape each page and return the markdown.
-
-```bash
-curl -X POST https://api.firecrawl.dev/v0/search \
-    -H 'Content-Type: application/json' \
-    -H 'Authorization: Bearer YOUR_API_KEY' \
-    -d '{
-      "query": "firecrawl",
-      "pageOptions": {
-        "fetchPageContent": true // false for a fast serp api
-      }
-    }'
-```
-
 ```json
 {
   "success": true,

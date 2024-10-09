@@ -5,7 +5,6 @@ import express, { NextFunction, Request, Response } from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
 import { getScrapeQueue } from "./services/queue-service";
-import { v0Router } from "./routes/v0";
 import cluster from "cluster";
 import os from "os";
 import { Logger } from "./lib/logger";
@@ -84,8 +83,6 @@ if (cluster.isMaster) {
     res.send("Hello, world!");
   });
 
-  // register router
-  app.use(v0Router);
   app.use("/v1", v1Router);
   app.use(adminRouter);
 
