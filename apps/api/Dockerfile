@@ -28,9 +28,6 @@ RUN cd /app/src/lib/go-html-to-md && \
     chmod +x html-to-markdown.so
 
 FROM base
-RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y chromium chromium-sandbox && \
-    rm -rf /var/lib/apt/lists /var/cache/apt/archives
 COPY --from=prod-deps /app/node_modules /app/node_modules
 COPY --from=build /app /app
 COPY --from=go-base /app/src/lib/go-html-to-md/html-to-markdown.so /app/dist/src/lib/go-html-to-md/html-to-markdown.so
