@@ -26,5 +26,5 @@ redis-server $PW_ARG \
   --maxmemory "${MAXMEMORY}mb" \
   --maxmemory-policy $MAXMEMORY_POLICY \
   --appendonly $APPENDONLY \
-  --save "$SAVE"
   --save "$SAVE" \
+  --protected-mode no
