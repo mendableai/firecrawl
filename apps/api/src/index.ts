@@ -54,6 +54,7 @@ const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
   serverAdapter: serverAdapter,
 });
 
+
 app.use(
   `/admin/${process.env.BULL_AUTH_KEY}/queues`,
   serverAdapter.getRouter()
