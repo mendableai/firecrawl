@@ -34,7 +34,11 @@ export async function crawlController(
 
   await logCrawl(id, req.auth.team_id);
 
-  const { remainingCredits } = req.account;
+  let { remainingCredits } = req.account;
+  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+  if(!useDbAuthentication){
+    remainingCredits = Infinity;
+  }
 
   const crawlerOptions = legacyCrawlerOptions(req.body);
   const pageOptions = legacyScrapeOptions(req.body.scrapeOptions);
