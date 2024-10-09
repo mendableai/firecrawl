@@ -139,10 +139,27 @@ const workerFun = async (
 
       if (job.data && job.data.team_id && job.data.plan) {
         const concurrencyLimiterThrottledKey = "concurrency-limiter:" + job.data.team_id + ":throttled";
-        const concurrencyLimit = getRateLimiterPoints(RateLimiterMode.Scrape, undefined, job.data.plan);
+        let concurrencyLimit = getRateLimiterPoints(RateLimiterMode.Scrape, undefined, job.data.plan);
         const now = Date.now();
         const stalledJobTimeoutMs = 2 * 60 * 1000;
         const throttledJobTimeoutMs = 10 * 60 * 1000;
+
+        const testTeamIds = [
+          '5a30bfe9-3639-4715-9791-d63fa1c54f16',
+          'cca91fd2-7b7f-4336-b2ad-be065a6786b5',
+          'f69cf2ce-c58b-42df-8a07-e64e9bfd4881',
+          '5e342025-51c9-46db-9095-019ab8ba9ce0',
+          '2c789018-5cd7-49dc-b56e-3d5e87cd6c38',
+          '71e160b6-6b34-4729-8daf-5edcd1788547',
+          '2fd66839-4b30-41c3-9e95-8808a3a45fb8',
+          'f20fb283-02bf-4868-817d-c94b818cb3e1',
+          'fa28a33b-2b28-4169-b81f-ff52b8a91aed',
+          '97722c34-2dd7-46c9-b07e-38bead23a5d8'
+        ]
+
+        if (job.data && job.data.team_id && testTeamIds.includes(job.data.team_id)) {
+          concurrencyLimit = Infinity;
+        }
 
         redisConnection.zremrangebyscore(concurrencyLimiterThrottledKey, -Infinity, now);
         redisConnection.zremrangebyscore(concurrencyLimiterKey, -Infinity, now);
