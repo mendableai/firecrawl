@@ -2,7 +2,6 @@ import axios from "axios";
 import { FireEngineOptions, FireEngineResponse } from "../../../lib/entities";
 import { logScrape } from "../../../services/logging/scrape_log";
 import { generateRequestParams } from "../single_url";
-import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 import { universalTimeout } from "../global";
 import { Logger } from "../../../lib/logger";
 import * as Sentry from "@sentry/node";
@@ -23,7 +22,12 @@ export async function scrapWithFireEngine({
   waitFor = 0,
   screenshot = false,
   fullPageScreenshot = false,
-  pageOptions = { parsePDF: true, atsv: false, useFastMode: false, disableJsDom: false },
+  pageOptions = {
+    parsePDF: true,
+    atsv: false,
+    useFastMode: false,
+    disableJsDom: false,
+  },
   fireEngineOptions = {},
   headers,
   options,
@@ -34,7 +38,13 @@ export async function scrapWithFireEngine({
   waitFor?: number;
   screenshot?: boolean;
   fullPageScreenshot?: boolean;
-  pageOptions?: { scrollXPaths?: string[]; parsePDF?: boolean, atsv?: boolean, useFastMode?: boolean, disableJsDom?: boolean };
+  pageOptions?: {
+    scrollXPaths?: string[];
+    parsePDF?: boolean;
+    atsv?: boolean;
+    useFastMode?: boolean;
+    disableJsDom?: boolean;
+  };
   fireEngineOptions?: FireEngineOptions;
   headers?: Record<string, string>;
   options?: any;
@@ -55,15 +65,20 @@ export async function scrapWithFireEngine({
   try {
     const reqParams = await generateRequestParams(url);
     let waitParam = reqParams["params"]?.wait ?? waitFor;
-    let engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "chrome-cdp";
+    let engineParam =
+      reqParams["params"]?.engine ??
+      reqParams["params"]?.fireEngineOptions?.engine ??
+      fireEngineOptions?.engine ??
+      "chrome-cdp";
     let screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
-    let fullPageScreenshotParam = reqParams["params"]?.fullPageScreenshot ?? fullPageScreenshot;
-    let fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
-
+    let fullPageScreenshotParam =
+      reqParams["params"]?.fullPageScreenshot ?? fullPageScreenshot;
+    let fireEngineOptionsParam: FireEngineOptions =
+      reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
 
     let endpoint = "/scrape";
 
-    if(options?.endpoint === "request") {
+    if (options?.endpoint === "request") {
       endpoint = "/request";
     }
 
@@ -75,12 +90,16 @@ export async function scrapWithFireEngine({
     }
 
     Logger.info(
-      `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { wait: ${waitParam}, screenshot: ${screenshotParam}, fullPageScreenshot: ${fullPageScreenshot}, method: ${fireEngineOptionsParam?.method ?? "null"} }`
+      `⛏️ Fire-Engine (${engine}): Scraping ${url} | params: { wait: ${waitParam}, screenshot: ${screenshotParam}, fullPageScreenshot: ${fullPageScreenshot}, method: ${
+        fireEngineOptionsParam?.method ?? "null"
+      } }`
     );
 
     // atsv is only available for beta customers
     const betaCustomersString = process.env.BETA_CUSTOMERS;
-    const betaCustomers = betaCustomersString ? betaCustomersString.split(",") : [];
+    const betaCustomers = betaCustomersString
+      ? betaCustomersString.split(",")
+      : [];
 
     if (pageOptions?.atsv && betaCustomers.includes(teamId)) {
       fireEngineOptionsParam.atsv = true;
@@ -89,58 +108,76 @@ export async function scrapWithFireEngine({
     }
 
     const axiosInstance = axios.create({
-      headers: { "Content-Type": "application/json" }
+      headers: { "Content-Type": "application/json" },
     });
 
     const startTime = Date.now();
-    const _response = await Sentry.startSpan({
-      name: "Call to fire-engine"
-    }, async span => {
-      
-      return await axiosInstance.post(
-        process.env.FIRE_ENGINE_BETA_URL + endpoint,
-        {
-          url: url,
-          wait: waitParam,
-          screenshot: screenshotParam,
-          fullPageScreenshot: fullPageScreenshotParam,
-          headers: headers,
-          disableJsDom: pageOptions?.disableJsDom ?? false,
-          priority,
-          engine,
-          instantReturn: true,
-          ...fireEngineOptionsParam,
-          atsv: pageOptions?.atsv ?? false,
-          scrollXPaths: pageOptions?.scrollXPaths ?? [],
-        },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            ...(Sentry.isInitialized() ? ({
-                "sentry-trace": Sentry.spanToTraceHeader(span),
-                "baggage": Sentry.spanToBaggageHeader(span),
-            }) : {}),
+    const _response = await Sentry.startSpan(
+      {
+        name: "Call to fire-engine",
+      },
+      async (span) => {
+        return await axiosInstance.post(
+          process.env.FIRE_ENGINE_BETA_URL + endpoint,
+          {
+            url: url,
+            wait: waitParam,
+            screenshot: screenshotParam,
+            fullPageScreenshot: fullPageScreenshotParam,
+            headers: headers,
+            disableJsDom: pageOptions?.disableJsDom ?? false,
+            priority,
+            engine,
+            instantReturn: true,
+            ...fireEngineOptionsParam,
+            atsv: pageOptions?.atsv ?? false,
+            scrollXPaths: pageOptions?.scrollXPaths ?? [],
+          },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              ...(Sentry.isInitialized()
+                ? {
+                    "sentry-trace": Sentry.spanToTraceHeader(span),
+                    baggage: Sentry.spanToBaggageHeader(span),
+                  }
+                : {}),
+            },
           }
-        }
-      );
-    });
+        );
+      }
+    );
 
-    let checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
-    while (checkStatusResponse.data.processing && Date.now() - startTime < universalTimeout + waitParam) {
-      await new Promise(resolve => setTimeout(resolve, 250)); // wait 0.25 seconds
-      checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
+    let checkStatusResponse = await axiosInstance.get(
+      `${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`
+    );
+    while (
+      checkStatusResponse.data.processing &&
+      Date.now() - startTime < universalTimeout + waitParam
+    ) {
+      await new Promise((resolve) => setTimeout(resolve, 250)); // wait 0.25 seconds
+      checkStatusResponse = await axiosInstance.get(
+        `${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`
+      );
     }
 
     if (checkStatusResponse.data.processing) {
-      Logger.debug(`⛏️ Fire-Engine (${engine}): deleting request - jobId: ${_response.data.jobId}`);
-      axiosInstance.delete(
-        process.env.FIRE_ENGINE_BETA_URL + `/scrape/${_response.data.jobId}`, {
-          validateStatus: (status) => true
-        }
-      ).catch((error) => {
-        Logger.debug(`⛏️ Fire-Engine (${engine}): Failed to delete request - jobId: ${_response.data.jobId} | error: ${error}`);        
-      });
-      
+      Logger.debug(
+        `⛏️ Fire-Engine (${engine}): deleting request - jobId: ${_response.data.jobId}`
+      );
+      axiosInstance
+        .delete(
+          process.env.FIRE_ENGINE_BETA_URL + `/scrape/${_response.data.jobId}`,
+          {
+            validateStatus: (status) => true,
+          }
+        )
+        .catch((error) => {
+          Logger.debug(
+            `⛏️ Fire-Engine (${engine}): Failed to delete request - jobId: ${_response.data.jobId} | error: ${error}`
+          );
+        });
+
       Logger.debug(`⛏️ Fire-Engine (${engine}): Request timed out for ${url}`);
       logParams.error_message = "Request timed out";
       return { html: "", screenshot: "", pageStatusCode: null, pageError: "" };
@@ -150,65 +187,72 @@ export async function scrapWithFireEngine({
       Logger.debug(
         `⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${checkStatusResponse.status}`
       );
-      
-      logParams.error_message = checkStatusResponse.data?.pageError ?? checkStatusResponse.data?.error;
+
+      logParams.error_message =
+        checkStatusResponse.data?.pageError ?? checkStatusResponse.data?.error;
       logParams.response_code = checkStatusResponse.data?.pageStatusCode;
 
-      if(checkStatusResponse.data && checkStatusResponse.data?.pageStatusCode !== 200) {
-        Logger.debug(`⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${checkStatusResponse.data?.pageStatusCode}`);
+      if (
+        checkStatusResponse.data &&
+        checkStatusResponse.data?.pageStatusCode !== 200
+      ) {
+        Logger.debug(
+          `⛏️ Fire-Engine (${engine}): Failed to fetch url: ${url} \t status: ${checkStatusResponse.data?.pageStatusCode}`
+        );
       }
 
-      const pageStatusCode = checkStatusResponse.data?.pageStatusCode ? checkStatusResponse.data?.pageStatusCode : checkStatusResponse.data?.error && checkStatusResponse.data?.error.includes("Dns resolution error for hostname") ? 404 : undefined;
+      const pageStatusCode = checkStatusResponse.data?.pageStatusCode
+        ? checkStatusResponse.data?.pageStatusCode
+        : checkStatusResponse.data?.error &&
+          checkStatusResponse.data?.error.includes(
+            "Dns resolution error for hostname"
+          )
+        ? 404
+        : undefined;
 
       return {
         html: "",
         screenshot: "",
         pageStatusCode,
-        pageError: checkStatusResponse.data?.pageError ?? checkStatusResponse.data?.error,
+        pageError:
+          checkStatusResponse.data?.pageError ??
+          checkStatusResponse.data?.error,
       };
     }
 
-    const contentType = checkStatusResponse.data.responseHeaders?.["content-type"];
+    const data = checkStatusResponse.data;
 
-    if (contentType && contentType.includes("application/pdf")) {
-      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(
-        url,
-        pageOptions?.parsePDF
-      );
-      logParams.success = true;
-      logParams.response_code = pageStatusCode;
-      logParams.error_message = pageError;
-      return { html: content, screenshot: "", pageStatusCode, pageError };
-    } else {
-      const data = checkStatusResponse.data;
-      
-      logParams.success =
-        (data.pageStatusCode >= 200 && data.pageStatusCode < 300) ||
-        data.pageStatusCode === 404;
-      logParams.html = data.content ?? "";
-      logParams.response_code = data.pageStatusCode;
-      logParams.error_message = data.pageError ?? data.error;
-      return {
-        html: data.content ?? "",
-        screenshot: data.screenshot ?? "",
-        pageStatusCode: data.pageStatusCode,
-        pageError: data.pageError ?? data.error,
-      };
-    }
+    logParams.success =
+      (data.pageStatusCode >= 200 && data.pageStatusCode < 300) ||
+      data.pageStatusCode === 404;
+    logParams.html = data.content ?? "";
+    logParams.response_code = data.pageStatusCode;
+    logParams.error_message = data.pageError ?? data.error;
+    return {
+      html: data.content ?? "",
+      screenshot: data.screenshot ?? "",
+      pageStatusCode: data.pageStatusCode,
+      pageError: data.pageError ?? data.error,
+    };
   } catch (error) {
     if (error.code === "ECONNABORTED") {
       Logger.debug(`⛏️ Fire-Engine: Request timed out for ${url}`);
       logParams.error_message = "Request timed out";
     } else {
-      Logger.debug(`⛏️ Fire-Engine: Failed to fetch url: ${url} | Error: ${error}`);
+      Logger.debug(
+        `⛏️ Fire-Engine: Failed to fetch url: ${url} | Error: ${error}`
+      );
       logParams.error_message = error.message || error;
     }
-    return { html: "", screenshot: "", pageStatusCode: null, pageError: logParams.error_message };
+    return {
+      html: "",
+      screenshot: "",
+      pageStatusCode: null,
+      pageError: logParams.error_message,
+    };
   } finally {
     const endTime = Date.now();
     logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;
     await logScrape(logParams, pageOptions);
   }
 }
-
-

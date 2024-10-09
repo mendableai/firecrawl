@@ -9,17 +9,12 @@ import { scrapSingleUrl } from "./single_url";
 import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
 import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
-import { getImageDescription } from "./utils/imageDescription";
-import { fetchAndProcessPdf } from "./utils/pdfProcessor";
 import {
   replaceImgPathsWithAbsolutePaths,
   replacePathsWithAbsolutePaths,
 } from "./utils/replacePaths";
-import { generateCompletions } from "../../lib/LLM-extraction";
-import { fetchAndProcessDocx } from "./utils/docxProcessor";
 import { getAdjustedMaxDepth, getURLDepth } from "./utils/maxDepthUtils";
 import { Logger } from "../../lib/logger";
-import { ScrapeEvents } from "../../lib/scrape-events";
 
 export class WebScraperDataProvider {
   private jobId: string;
@@ -75,7 +70,7 @@ export class WebScraperDataProvider {
             this.extractorOptions,
             existingHTML,
             this.priority,
-            this.teamId,
+            this.teamId
           );
           processedUrls++;
           if (inProgress) {
@@ -162,7 +157,7 @@ export class WebScraperDataProvider {
         includes = this.includes;
       }
     } else {
-      includes = this.includes.split(',');
+      includes = this.includes.split(",");
     }
 
     let excludes: string[];
@@ -171,7 +166,7 @@ export class WebScraperDataProvider {
         excludes = this.excludes;
       }
     } else {
-      excludes = this.excludes.split(',');
+      excludes = this.excludes.split(",");
     }
 
     const crawler = new WebCrawler({
@@ -267,11 +262,6 @@ export class WebScraperDataProvider {
       (link) => link.endsWith(".doc") || link.endsWith(".docx")
     );
 
-    const [pdfDocuments, docxDocuments] = await Promise.all([
-      this.fetchPdfDocuments(pdfLinks),
-      this.fetchDocxDocuments(docLinks),
-    ]);
-
     links = links.filter(
       (link) => !pdfLinks.includes(link) && !docLinks.includes(link)
     );
@@ -303,93 +293,12 @@ export class WebScraperDataProvider {
         delete document.html;
       }
     }
-    
+
     // documents = await this.applyImgAltText(documents);
     if (this.mode === "single_urls" && this.pageOptions.includeExtract) {
       const extractionMode = this.extractorOptions?.mode ?? "markdown";
-      const completionMode = extractionMode === "llm-extraction-from-raw-html" ? "raw-html" : "markdown";
-
-      if (
-        extractionMode === "llm-extraction" ||
-        extractionMode === "llm-extraction-from-markdown" ||
-        extractionMode === "llm-extraction-from-raw-html"
-      ) {
-        documents = await generateCompletions(
-          documents,
-          this.extractorOptions,
-          completionMode
-        );
-      }
     }
-    return documents.concat(pdfDocuments).concat(docxDocuments);
-  }
-
-  private async fetchPdfDocuments(pdfLinks: string[]): Promise<Document[]> {
-    return Promise.all(
-      pdfLinks.map(async (pdfLink) => {
-        const timer = Date.now();
-        const logInsertPromise = ScrapeEvents.insert(this.jobId, {
-          type: "scrape",
-          url: pdfLink,
-          worker: process.env.FLY_MACHINE_ID,
-          method: "pdf-scrape",
-          result: null,
-        });
-
-        const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(
-          pdfLink,
-          this.pageOptions.parsePDF
-        );
-
-        const insertedLogId = await logInsertPromise;
-        ScrapeEvents.updateScrapeResult(insertedLogId, {
-          response_size: content.length,
-          success: !(pageStatusCode && pageStatusCode >= 400) && !!content && (content.trim().length >= 100),
-          error: pageError,
-          response_code: pageStatusCode,
-          time_taken: Date.now() - timer,
-        });
-        return {
-          content: content,
-          markdown: content,
-          metadata: { sourceURL: pdfLink, pageStatusCode, pageError },
-          provider: "web-scraper",
-        };
-      })
-    );
-  }
-  private async fetchDocxDocuments(docxLinks: string[]): Promise<Document[]> {
-    return Promise.all(
-      docxLinks.map(async (docxLink) => {
-        const timer = Date.now();
-        const logInsertPromise = ScrapeEvents.insert(this.jobId, {
-          type: "scrape",
-          url: docxLink,
-          worker: process.env.FLY_MACHINE_ID,
-          method: "docx-scrape",
-          result: null,
-        });
-
-        const { content, pageStatusCode, pageError } = await fetchAndProcessDocx(
-          docxLink
-        );
-
-        const insertedLogId = await logInsertPromise;
-        ScrapeEvents.updateScrapeResult(insertedLogId, {
-          response_size: content.length,
-          success: !(pageStatusCode && pageStatusCode >= 400) && !!content && (content.trim().length >= 100),
-          error: pageError,
-          response_code: pageStatusCode,
-          time_taken: Date.now() - timer,
-        });
-
-        return {
-          content,
-          metadata: { sourceURL: docxLink, pageStatusCode, pageError },
-          provider: "web-scraper",
-        };
-      })
-    );
+    return documents;
   }
 
   private applyPathReplacements(documents: Document[]): Document[] {
@@ -400,9 +309,7 @@ export class WebScraperDataProvider {
   }
 
   private async applyImgAltText(documents: Document[]): Promise<Document[]> {
-    return this.generateImgAltText
-      ? this.generatesImgAltText(documents)
-      : documents;
+    return documents;
   }
 
   private async cacheAndFinalizeDocuments(
@@ -457,7 +364,7 @@ export class WebScraperDataProvider {
       const path = url.pathname;
 
       if (!Array.isArray(this.excludes)) {
-        this.excludes = this.excludes.split(',');
+        this.excludes = this.excludes.split(",");
       }
 
       if (this.excludes.length > 0 && this.excludes[0] !== "") {
@@ -472,7 +379,7 @@ export class WebScraperDataProvider {
       }
 
       if (!Array.isArray(this.includes)) {
-        this.includes = this.includes.split(',');
+        this.includes = this.includes.split(",");
       }
 
       if (this.includes.length > 0 && this.includes[0] !== "") {
@@ -577,13 +484,18 @@ export class WebScraperDataProvider {
     this.pageOptions = {
       onlyMainContent: options.pageOptions?.onlyMainContent ?? false,
       includeHtml: options.pageOptions?.includeHtml ?? false,
-      replaceAllPathsWithAbsolutePaths: options.pageOptions?.replaceAllPathsWithAbsolutePaths ?? true,
+      replaceAllPathsWithAbsolutePaths:
+        options.pageOptions?.replaceAllPathsWithAbsolutePaths ?? true,
       parsePDF: options.pageOptions?.parsePDF ?? true,
       onlyIncludeTags: options.pageOptions?.onlyIncludeTags ?? [],
       removeTags: options.pageOptions?.removeTags ?? [],
       includeMarkdown: options.pageOptions?.includeMarkdown ?? true,
       includeRawHtml: options.pageOptions?.includeRawHtml ?? false,
-      includeExtract: options.pageOptions?.includeExtract ?? (options.extractorOptions?.mode && options.extractorOptions?.mode !== "markdown") ?? false, 
+      includeExtract:
+        options.pageOptions?.includeExtract ??
+        (options.extractorOptions?.mode &&
+          options.extractorOptions?.mode !== "markdown") ??
+        false,
       waitFor: options.pageOptions?.waitFor ?? undefined,
       headers: options.pageOptions?.headers ?? undefined,
       includeLinks: options.pageOptions?.includeLinks ?? true,
@@ -591,7 +503,7 @@ export class WebScraperDataProvider {
       screenshot: options.pageOptions?.screenshot ?? false,
       useFastMode: options.pageOptions?.useFastMode ?? false,
       disableJsDom: options.pageOptions?.disableJsDom ?? false,
-      atsv: options.pageOptions?.atsv ?? false
+      atsv: options.pageOptions?.atsv ?? false,
     };
     this.extractorOptions = options.extractorOptions ?? { mode: "markdown" };
     this.replaceAllPathsWithAbsolutePaths =
@@ -599,12 +511,16 @@ export class WebScraperDataProvider {
       options.pageOptions?.replaceAllPathsWithAbsolutePaths ??
       false;
 
-    if (typeof options.crawlerOptions?.excludes === 'string') {
-      this.excludes = options.crawlerOptions?.excludes.split(',').filter((item) => item.trim() !== "");
+    if (typeof options.crawlerOptions?.excludes === "string") {
+      this.excludes = options.crawlerOptions?.excludes
+        .split(",")
+        .filter((item) => item.trim() !== "");
     }
 
-    if (typeof options.crawlerOptions?.includes === 'string') {
-      this.includes = options.crawlerOptions?.includes.split(',').filter((item) => item.trim() !== "");
+    if (typeof options.crawlerOptions?.includes === "string") {
+      this.includes = options.crawlerOptions?.includes
+        .split(",")
+        .filter((item) => item.trim() !== "");
     }
 
     this.crawlerMode = options.crawlerOptions?.mode ?? "default";
@@ -615,8 +531,6 @@ export class WebScraperDataProvider {
       options.crawlerOptions?.allowExternalContentLinks ?? false;
     this.priority = options.priority;
     this.teamId = options.teamId ?? null;
-
-
 
     // make sure all urls start with https://
     this.urls = this.urls.map((url) => {
@@ -683,51 +597,6 @@ export class WebScraperDataProvider {
     }
     return null;
   }
-  generatesImgAltText = async (documents: Document[]): Promise<Document[]> => {
-    await Promise.all(
-      documents.map(async (document) => {
-        const images = document.content.match(/!\[.*?\]\((.*?)\)/g) || [];
-
-        await Promise.all(
-          images.map(async (image: string) => {
-            let imageUrl = image.match(/\(([^)]+)\)/)[1];
-            let altText = image.match(/\[(.*?)\]/)[1];
-
-            if (
-              !altText &&
-              !imageUrl.startsWith("data:image") &&
-              /\.(png|jpeg|gif|webp)$/.test(imageUrl)
-            ) {
-              const imageIndex = document.content.indexOf(image);
-              const contentLength = document.content.length;
-              let backText = document.content.substring(
-                imageIndex + image.length,
-                Math.min(imageIndex + image.length + 1000, contentLength)
-              );
-              let frontTextStartIndex = Math.max(imageIndex - 1000, 0);
-              let frontText = document.content.substring(
-                frontTextStartIndex,
-                imageIndex
-              );
-              altText = await getImageDescription(
-                imageUrl,
-                backText,
-                frontText,
-                this.generateImgAltTextModel
-              );
-            }
-
-            document.content = document.content.replace(
-              image,
-              `![${altText}](${imageUrl})`
-            );
-          })
-        );
-      })
-    );
-
-    return documents;
-  };
 
   filterDepth(documents: Document[]): Document[] {
     return documents.filter((document) => {

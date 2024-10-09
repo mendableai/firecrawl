@@ -350,8 +350,8 @@ export class WebCrawler {
 
       // If it is the first link, fetch with single url
       if (this.visited.size === 1) {
-        const page = await scrapSingleUrl(this.jobId, url, { ...pageOptions, includeHtml: true });
-        content = page.html ?? "";
+        const page = await scrapSingleUrl(this.jobId, url, { ...pageOptions, includeHtml: true, includeRawHtml: true });
+        content = page.rawHtml ?? "";
         pageStatusCode = page.metadata?.pageStatusCode;
         pageError = page.metadata?.pageError || undefined;
       } else {

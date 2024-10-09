@@ -6,7 +6,6 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import { getScrapeQueue } from "./services/queue-service";
 import { v0Router } from "./routes/v0";
-import { initSDK } from "@hyperdx/node-opentelemetry";
 import cluster from "cluster";
 import os from "os";
 import { Logger } from "./lib/logger";
@@ -92,11 +91,6 @@ if (cluster.isMaster) {
 
   const DEFAULT_PORT = process.env.PORT ?? 3002;
   const HOST = process.env.HOST ?? "localhost";
-
-  // HyperDX OpenTelemetry
-  if (process.env.ENV === "production") {
-    initSDK({ consoleCapture: true, additionalInstrumentations: [] });
-  }
 
   function startServer(port = DEFAULT_PORT) {
     const server = app.listen(Number(port), HOST, () => {

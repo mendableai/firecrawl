@@ -1,12 +1,13 @@
 import { AnyNode, Cheerio, load } from "cheerio";
 import { PageOptions } from "../../../lib/entities";
-import { excludeNonMainTags } from "./excludeTags";
 
 export const removeUnwantedElements = (
   html: string,
   pageOptions: PageOptions,
 ) => {
   let soup = load(html);
+
+  soup("script, style, iframe, noscript, meta, head").remove();
 
   if (
     pageOptions.onlyIncludeTags &&
@@ -28,8 +29,6 @@ export const removeUnwantedElements = (
       soup = load(newRoot.html());
     }
   }
-
-  soup("script, style, iframe, noscript, meta, head").remove();
 
   if (
     pageOptions.removeTags &&
@@ -71,12 +70,6 @@ export const removeUnwantedElements = (
     }
   }
 
-  if (pageOptions.onlyMainContent) {
-    excludeNonMainTags.forEach((tag) => {
-      const elementsToRemove = soup(tag);
-      elementsToRemove.remove();
-    });
-  }
   const cleanedHtml = soup.html();
   return cleanedHtml;
 };

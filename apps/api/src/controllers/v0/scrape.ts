@@ -9,7 +9,6 @@ import { PlanType, RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
 import { Document } from "../../lib/entities";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
-import { numTokensFromString } from "../../lib/LLM-extraction/helpers";
 import {
   defaultPageOptions,
   defaultExtractorOptions,
@@ -222,10 +221,7 @@ export async function scrapeController(req: Request, res: Response) {
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
-    const numTokens =
-      result.data && result.data.markdown
-        ? numTokensFromString(result.data.markdown, "gpt-3.5-turbo")
-        : 0;
+    const numTokens = 0;
 
     if (result.success) {
       let creditsToBeBilled = 1;
@@ -244,22 +240,24 @@ export async function scrapeController(req: Request, res: Response) {
       }
       if (creditsToBeBilled > 0) {
         // billing for doc done on queue end, bill only for llm extraction
-        billTeam(team_id, creditsToBeBilled).catch(error => {
-          Logger.error(`Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`);
+        billTeam(team_id, creditsToBeBilled).catch((error) => {
+          Logger.error(
+            `Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`
+          );
           // Optionally, you could notify an admin or add to a retry queue here
         });
       }
     }
-    
+
     let doc = result.data;
     if (!pageOptions || !pageOptions.includeRawHtml) {
       if (doc && doc.rawHtml) {
         delete doc.rawHtml;
       }
     }
-  
-    if(pageOptions && pageOptions.includeExtract) {
-      if(!pageOptions.includeMarkdown && doc && doc.markdown) {
+
+    if (pageOptions && pageOptions.includeExtract) {
+      if (!pageOptions.includeMarkdown && doc && doc.markdown) {
         delete doc.markdown;
       }
     }

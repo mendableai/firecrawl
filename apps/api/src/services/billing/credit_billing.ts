@@ -1,6 +1,4 @@
-import { NotificationType } from "../../types";
 import { withAuth } from "../../lib/withAuth";
-import { sendNotification } from "../notification/email_notification";
 import { supabase_service } from "../supabase";
 import { Logger } from "../../lib/logger";
 import { getValue, setValue } from "../redis";
@@ -299,23 +297,10 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
     // Add a check to ensure totalCreditsUsed is greater than 0
     if (totalCreditsUsed > 0 && creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
       Logger.info(`Sending notification for team ${team_id}. Total credits used: ${totalCreditsUsed}, Credit usage percentage: ${creditUsagePercentage}`);
-      await sendNotification(
-        team_id,
-        NotificationType.APPROACHING_LIMIT,
-        new Date().toISOString(),
-        end.toISOString()
-      );
     }
 
     // 5. Compare the total credits used with the credits allowed by the plan.
     if (totalCreditsUsed >= FREE_CREDITS) {
-      // Send email notification for insufficient credits
-      await sendNotification(
-        team_id,
-        NotificationType.LIMIT_REACHED,
-        new Date().toISOString(),
-        end.toISOString()
-      );
       return {
         success: false,
         message: "Insufficient credits, please upgrade!",
@@ -400,28 +385,6 @@ export async function supaCheckTeamCredits(team_id: string, credits: number) {
   }
 
   const creditLimit = price.credits;
-
-  // Removal of + credits
-  const creditUsagePercentage = adjustedCreditsUsed / creditLimit;
-
-  // Compare the adjusted total credits used with the credits allowed by the plan
-  if (adjustedCreditsUsed >= price.credits) {
-    await sendNotification(
-      team_id,
-      NotificationType.LIMIT_REACHED,
-      subscription.current_period_start,
-      subscription.current_period_end
-    );
-    return { success: false, message: "Insufficient credits, please upgrade!", remainingCredits: creditLimit - adjustedCreditsUsed };
-  } else if (creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
-    // Send email notification for approaching credit limit
-    await sendNotification(
-      team_id,
-      NotificationType.APPROACHING_LIMIT,
-      subscription.current_period_start,
-      subscription.current_period_end
-    );
-  }
 
   return { success: true, message: "Sufficient credits available", remainingCredits: creditLimit - adjustedCreditsUsed };
 }

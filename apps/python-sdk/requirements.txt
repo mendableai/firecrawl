@@ -1,5 +1,0 @@
-requests
-pytest
-python-dotenv
-websockets
-nest-asyncio

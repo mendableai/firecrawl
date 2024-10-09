@@ -11,7 +11,6 @@ import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
-import { initSDK } from "@hyperdx/node-opentelemetry";
 import { Job } from "bullmq";
 import { Logger } from "../lib/logger";
 import { Worker } from "bullmq";
@@ -39,12 +38,6 @@ import { getJobs } from "../../src/controllers/v1/crawl-status";
 import { configDotenv } from "dotenv";
 configDotenv();
 
-if (process.env.ENV === "production") {
-  initSDK({
-    consoleCapture: true,
-    additionalInstrumentations: [],
-  });
-}
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const workerLockDuration = Number(process.env.WORKER_LOCK_DURATION) || 60000;

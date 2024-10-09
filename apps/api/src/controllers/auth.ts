@@ -9,10 +9,7 @@ import {
 import { supabase_service } from "../services/supabase";
 import { withAuth } from "../lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
-import { setTraceAttributes } from "@hyperdx/node-opentelemetry";
-import { sendNotification } from "../services/notification/email_notification";
 import { Logger } from "../lib/logger";
-import { redlock } from "../services/redlock";
 import { getValue } from "../services/redis";
 import { setValue } from "../services/redis";
 import { validate } from "uuid";
@@ -44,10 +41,7 @@ export async function authenticateUser(
 }
 function setTrace(team_id: string, api_key: string) {
   try {
-    setTraceAttributes({
-      team_id,
-      api_key,
-    });
+    console.log("Setting trace attributes");
   } catch (error) {
     Sentry.captureException(error);
     Logger.error(`Error setting trace attributes: ${error.message}`);

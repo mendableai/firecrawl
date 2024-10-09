@@ -1,6 +1,5 @@
 import axios from "axios";
 import { logScrape } from "../../../services/logging/scrape_log";
-import { fetchAndProcessPdf } from "../utils/pdfProcessor";
 import { universalTimeout } from "../global";
 import { Logger } from "../../../lib/logger";
 
@@ -35,7 +34,9 @@ export async function scrapWithFetch(
     });
 
     if (response.status !== 200) {
-      Logger.debug(`⛏️ Axios: Failed to fetch url: ${url} with status: ${response.status}`);
+      Logger.debug(
+        `⛏️ Axios: Failed to fetch url: ${url} with status: ${response.status}`
+      );
       logParams.error_message = response.statusText;
       logParams.response_code = response.status;
       return {
@@ -45,20 +46,11 @@ export async function scrapWithFetch(
       };
     }
 
-    const contentType = response.headers["content-type"];
-    if (contentType && contentType.includes("application/pdf")) {
-      logParams.success = true;
-      const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF);
-      logParams.response_code = pageStatusCode;
-      logParams.error_message = pageError;
-      return { content, pageStatusCode, pageError };
-    } else {
-      const text = response.data;
-      logParams.success = true;
-      logParams.html = text;
-      logParams.response_code = response.status;
-      return { content: text, pageStatusCode: response.status, pageError: null };
-    }
+    const text = response.data;
+    logParams.success = true;
+    logParams.html = text;
+    logParams.response_code = response.status;
+    return { content: text, pageStatusCode: response.status, pageError: null };
   } catch (error) {
     if (error.code === "ECONNABORTED") {
       logParams.error_message = "Request timed out";
@@ -67,7 +59,11 @@ export async function scrapWithFetch(
       logParams.error_message = error.message || error;
       Logger.debug(`⛏️ Axios: Failed to fetch url: ${url} | Error: ${error}`);
     }
-    return { content: "", pageStatusCode: null, pageError: logParams.error_message };
+    return {
+      content: "",
+      pageStatusCode: null,
+      pageError: logParams.error_message,
+    };
   } finally {
     const endTime = Date.now();
     logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;
