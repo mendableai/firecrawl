@@ -156,6 +156,13 @@ export class WebCrawler {
     if (sitemapLinks.length > 0) {
       let filteredLinks = this.filterLinks(sitemapLinks, this.limit, this.maxCrawledDepth);
       return filteredLinks.map(link => ({ url: link, html: "" }));
+    } else {
+      // Yoast SEO sitemap index
+      let sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl, "/sitemap_index.xml");
+      if (sitemapLinks.length > 0) {
+        let filteredLinks = this.filterLinks(sitemapLinks, this.limit, this.maxCrawledDepth);
+        return filteredLinks.map(link => ({ url: link, html: "" }));
+      }
     }
     return null;
   }
@@ -498,7 +505,10 @@ export class WebCrawler {
   }
 
   // 
-  private async tryFetchSitemapLinks(url: string): Promise<string[]> {
+  private async tryFetchSitemapLinks(url: string, sitemapPath?: string): Promise<string[]> {
+    if (!sitemapPath) {
+      sitemapPath = "/sitemap.xml";
+    }
     const normalizeUrl = (url: string) => {
       url = url.replace(/^https?:\/\//, "").replace(/^www\./, "");
       if (url.endsWith("/")) {
@@ -507,9 +517,9 @@ export class WebCrawler {
       return url;
     };
 
-    const sitemapUrl = url.endsWith("/sitemap.xml")
+    const sitemapUrl = url.endsWith(sitemapPath)
       ? url
-      : `${url}/sitemap.xml`;
+      : `${url}${sitemapPath}`;
 
     let sitemapLinks: string[] = [];
 
@@ -531,7 +541,7 @@ export class WebCrawler {
     }
 
     if (sitemapLinks.length === 0) {
-      const baseUrlSitemap = `${this.baseUrl}/sitemap.xml`;
+      const baseUrlSitemap = `${this.baseUrl}${sitemapPath}`;
       try {
         const response = await axios.get(baseUrlSitemap, { timeout: axiosTimeout });
         if (response.status === 200) {
