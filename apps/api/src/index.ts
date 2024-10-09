@@ -60,7 +60,7 @@ app.use(
 );
 
 app.get("/", (req, res) => {
-  res.send("SCRAPERS-JS: Hello, world! Fly.io");
+  res.send("SCRAPERS-JS: Hello, world! K8s!");
 });
 
 //write a simple test function
