@@ -40,7 +40,7 @@ export async function scrapWithPlaywright(
       {
         url: url,
         wait_after_load: waitParam,
-        timeout: universalTimeout;
+        timeout: universalTimeout,
         headers: headers,
       },
       {
