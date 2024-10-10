@@ -36,7 +36,6 @@ crawl_status = app.crawl_url(
     'limit': 100, 
     'scrapeOptions': {'formats': ['markdown', 'html']}
   }, 
-  wait_until_done=True, 
   poll_interval=30
 )
 print(crawl_status)
