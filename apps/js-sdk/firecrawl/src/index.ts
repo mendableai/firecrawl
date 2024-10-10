@@ -287,7 +287,7 @@ export default class FirecrawlApp {
         this.handleError(response, "scrape URL");
       }
     } catch (error: any) {
-      throw new FirecrawlError(error.message, 500);
+      this.handleError(error.response, "scrape URL");
     }
     return { success: false, error: "Internal server error." };
   }
