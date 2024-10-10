@@ -372,11 +372,11 @@ export async function scrapSingleUrl(
       }
 
       if (
-        (text && text.trim().length >= 100) ||
+        (rawHtml && rawHtml.trim().length >= 100) ||
         (typeof screenshot === "string" && screenshot.length > 0)
       ) {
         Logger.debug(
-          `⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100 or screenshot, breaking`
+          `⛏️ ${scraper}: Successfully scraped ${urlToScrap} with rawHtml length >= 100 or screenshot, breaking`
         );
         break;
       }
@@ -386,13 +386,9 @@ export async function scrapSingleUrl(
         );
         break;
       }
-      // const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;
-      // if (nextScraperIndex < scrapersInOrder.length) {
-      //   Logger.debug(`⛏️ ${scraper} Failed to fetch URL: ${urlToScrap} with status: ${pageStatusCode}, error: ${pageError} | Falling back to ${scrapersInOrder[nextScraperIndex]}`);
-      // }
     }
 
-    if (!text) {
+    if (!rawHtml) {
       throw new Error(`All scraping methods failed for URL: ${urlToScrap}`);
     }
 

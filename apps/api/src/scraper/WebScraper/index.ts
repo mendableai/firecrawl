@@ -29,7 +29,7 @@ export class WebScraperDataProvider {
   private limit: number = 10000;
   private concurrentRequests: number = 20;
   private generateImgAltText: boolean = false;
-  private ignoreSitemap: boolean = false;
+  private ignoreSitemap: boolean = true;
   private pageOptions?: PageOptions;
   private extractorOptions?: ExtractorOptions;
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
@@ -524,7 +524,7 @@ export class WebScraperDataProvider {
     }
 
     this.crawlerMode = options.crawlerOptions?.mode ?? "default";
-    this.ignoreSitemap = options.crawlerOptions?.ignoreSitemap ?? false;
+    this.ignoreSitemap = options.crawlerOptions?.ignoreSitemap ?? true;
     this.allowBackwardCrawling =
       options.crawlerOptions?.allowBackwardCrawling ?? false;
     this.allowExternalContentLinks =

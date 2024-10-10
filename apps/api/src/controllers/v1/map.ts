@@ -30,8 +30,7 @@ export async function mapController(
 
   req.body = mapRequestSchema.parse(req.body);
 
-
-  const limit : number = req.body.limit ?? 5000;
+  const limit: number = req.body.limit ?? 5000;
 
   const id = uuidv4();
   let links: string[] = [req.body.url];
@@ -47,7 +46,8 @@ export async function mapController(
 
   const crawler = crawlToCrawler(id, sc);
 
-  const sitemap = req.body.ignoreSitemap ? null : await crawler.tryGetSitemap();
+  const sitemap =
+    req.body.ignoreSitemap ?? true ? null : await crawler.tryGetSitemap();
 
   if (sitemap !== null) {
     sitemap.map((x) => {
@@ -84,17 +84,19 @@ export async function mapController(
   // Perform cosine similarity between the search query and the list of links
   if (req.body.search) {
     const searchQuery = req.body.search.toLowerCase();
-    
+
     links = performCosineSimilarity(links, searchQuery);
   }
 
-  links = links.map((x) => {
-    try {
-      return checkAndUpdateURLForMap(x).url.trim()
-    } catch (_) {
-      return null;
-    }
-  }).filter(x => x !== null);
+  links = links
+    .map((x) => {
+      try {
+        return checkAndUpdateURLForMap(x).url.trim();
+      } catch (_) {
+        return null;
+      }
+    })
+    .filter((x) => x !== null);
 
   // allows for subdomains to be included
   links = links.filter((x) => isSameDomain(x, req.body.url));
@@ -107,8 +109,10 @@ export async function mapController(
   // remove duplicates that could be due to http/https or www
   links = removeDuplicateUrls(links);
 
-  billTeam(req.auth.team_id, 1).catch(error => {
-    Logger.error(`Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`);
+  billTeam(req.auth.team_id, 1).catch((error) => {
+    Logger.error(
+      `Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`
+    );
     // Optionally, you could notify an admin or add to a retry queue here
   });
 
@@ -116,7 +120,7 @@ export async function mapController(
   const timeTakenInSeconds = (endTime - startTime) / 1000;
 
   const linksToReturn = links.slice(0, limit);
-  
+
   logJob({
     job_id: id,
     success: links.length > 0,

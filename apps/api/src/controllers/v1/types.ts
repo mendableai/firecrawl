@@ -29,152 +29,135 @@ export const url = z.preprocess(
       (x) => /\.[a-z]{2,}(\/|$)/i.test(x),
       "URL must have a valid top-level domain or be a valid path"
     )
-    .refine(
-      (x) => {
-        try {
-          checkUrl(x as string)
-          return true;
-        } catch (_) {
-          return false;
-        }
-      },
-      "Invalid URL"
-    )
+    .refine((x) => {
+      try {
+        checkUrl(x as string);
+        return true;
+      } catch (_) {
+        return false;
+      }
+    }, "Invalid URL")
     .refine(
       (x) => !isUrlBlocked(x as string),
       "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
     )
 );
 
-const strictMessage = "Unrecognized key in body -- please review the v1 API documentation for request body changes";
+const strictMessage =
+  "Unrecognized key in body -- please review the v1 API documentation for request body changes";
 
-export const extractOptions = z.object({
-  mode: z.enum(["llm"]).default("llm"),
-  schema: z.any().optional(),
-  systemPrompt: z.string().default("Based on the information on the page, extract all the information from the schema. Try to extract all the fields even those that might not be marked as required."),
-  prompt: z.string().optional()
-}).strict(strictMessage);
+export const extractOptions = z
+  .object({
+    mode: z.enum(["llm"]).default("llm"),
+    schema: z.any().optional(),
+    systemPrompt: z
+      .string()
+      .default(
+        "Based on the information on the page, extract all the information from the schema. Try to extract all the fields even those that might not be marked as required."
+      ),
+    prompt: z.string().optional(),
+  })
+  .strict(strictMessage);
 
 export type ExtractOptions = z.infer<typeof extractOptions>;
 
-export const scrapeOptions = z.object({
-  formats: z
-    .enum([
-      "markdown",
-      "html",
-      "rawHtml",
-      "links",
-      "screenshot",
-      "screenshot@fullPage",
-      "extract"
-    ])
-    .array()
-    .optional()
-    .default(["markdown"])
-    .refine(x => !(x.includes("screenshot") && x.includes("screenshot@fullPage")), "You may only specify either screenshot or screenshot@fullPage"),
-  headers: z.record(z.string(), z.string()).optional(),
-  includeTags: z.string().array().optional(),
-  excludeTags: z.string().array().optional(),
-  onlyMainContent: z.boolean().default(true),
-  timeout: z.number().int().positive().finite().safe().default(30000),
-  waitFor: z.number().int().nonnegative().finite().safe().default(0),
-  extract: extractOptions.optional(),
-  parsePDF: z.boolean().default(true),
-}).strict(strictMessage)
-
+export const scrapeOptions = z
+  .object({
+    formats: z
+      .enum([
+        "markdown",
+        "html",
+        "rawHtml",
+        "links",
+        "screenshot",
+        "screenshot@fullPage",
+        "extract",
+      ])
+      .array()
+      .optional()
+      .default(["markdown"])
+      .refine(
+        (x) => !(x.includes("screenshot") && x.includes("screenshot@fullPage")),
+        "You may only specify either screenshot or screenshot@fullPage"
+      ),
+    headers: z.record(z.string(), z.string()).optional(),
+    includeTags: z.string().array().optional(),
+    excludeTags: z.string().array().optional(),
+    onlyMainContent: z.boolean().default(true),
+    timeout: z.number().int().positive().finite().safe().default(30000),
+    waitFor: z.number().int().nonnegative().finite().safe().default(0),
+    extract: extractOptions.optional(),
+    parsePDF: z.boolean().default(true),
+  })
+  .strict(strictMessage);
 
 export type ScrapeOptions = z.infer<typeof scrapeOptions>;
 
-export const scrapeRequestSchema = scrapeOptions.extend({
-  url,
-  origin: z.string().optional().default("api"),
-}).strict(strictMessage).refine(
-  (obj) => {
-    const hasExtractFormat = obj.formats?.includes("extract");
-    const hasExtractOptions = obj.extract !== undefined;
-    return (hasExtractFormat && hasExtractOptions) || (!hasExtractFormat && !hasExtractOptions);
-  },
-  {
-    message: "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
-  }
-).transform((obj) => {
-  if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
-    return { ...obj, timeout: 60000 };
-  }
-  return obj;
-});
-
-// export type ScrapeRequest = {
-//   url: string;
-//   formats?: Format[];
-//   headers?: { [K: string]: string };
-//   includeTags?: string[];
-//   excludeTags?: string[];
-//   onlyMainContent?: boolean;
-//   timeout?: number;
-//   waitFor?: number;
-// }
+export const scrapeRequestSchema = scrapeOptions
+  .extend({
+    url,
+    origin: z.string().optional().default("api"),
+  })
+  .strict(strictMessage)
+  .refine(
+    (obj) => {
+      const hasExtractFormat = obj.formats?.includes("extract");
+      const hasExtractOptions = obj.extract !== undefined;
+      return (
+        (hasExtractFormat && hasExtractOptions) ||
+        (!hasExtractFormat && !hasExtractOptions)
+      );
+    },
+    {
+      message:
+        "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
+    }
+  )
+  .transform((obj) => {
+    if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
+      return { ...obj, timeout: 60000 };
+    }
+    return obj;
+  });
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
 
-const crawlerOptions = z.object({
-  includePaths: z.string().array().default([]),
-  excludePaths: z.string().array().default([]),
-  maxDepth: z.number().default(10), // default?
-  limit: z.number().default(10000), // default?
-  allowBackwardLinks: z.boolean().default(false), // >> TODO: CHANGE THIS NAME???
-  allowExternalLinks: z.boolean().default(false),
-  ignoreSitemap: z.boolean().default(true),
-}).strict(strictMessage);
-
-// export type CrawlerOptions = {
-//   includePaths?: string[];
-//   excludePaths?: string[];
-//   maxDepth?: number;
-//   limit?: number;
-//   allowBackwardLinks?: boolean; // >> TODO: CHANGE THIS NAME???
-//   allowExternalLinks?: boolean;
-//   ignoreSitemap?: boolean;
-// };
+const crawlerOptions = z
+  .object({
+    includePaths: z.string().array().default([]),
+    excludePaths: z.string().array().default([]),
+    maxDepth: z.number().default(10), // default?
+    limit: z.number().default(10000), // default?
+    allowBackwardLinks: z.boolean().default(false), // >> TODO: CHANGE THIS NAME???
+    allowExternalLinks: z.boolean().default(false),
+    ignoreSitemap: z.boolean().default(true),
+  })
+  .strict(strictMessage);
 
 export type CrawlerOptions = z.infer<typeof crawlerOptions>;
 
-export const crawlRequestSchema = crawlerOptions.extend({
-  url,
-  origin: z.string().optional().default("api"),
-  scrapeOptions: scrapeOptions.omit({ timeout: true }).default({}),
-  webhook: z.string().url().optional(),
-  limit: z.number().default(10000),
-}).strict(strictMessage);
-
-// export type CrawlRequest = {
-//   url: string;
-//   crawlerOptions?: CrawlerOptions;
-//   scrapeOptions?: Exclude<ScrapeRequest, "url">;
-// };
-
-// export type ExtractorOptions = {
-//   mode: "markdown" | "llm-extraction" | "llm-extraction-from-markdown" | "llm-extraction-from-raw-html";
-//   extractionPrompt?: string;
-//   extractionSchema?: Record<string, any>;
-// }
-
+export const crawlRequestSchema = crawlerOptions
+  .extend({
+    url,
+    origin: z.string().optional().default("api"),
+    scrapeOptions: scrapeOptions.omit({ timeout: true }).default({}),
+    webhook: z.string().url().optional(),
+    limit: z.number().default(10000),
+  })
+  .strict(strictMessage);
 
 export type CrawlRequest = z.infer<typeof crawlRequestSchema>;
 
-export const mapRequestSchema = crawlerOptions.extend({
-  url,
-  origin: z.string().optional().default("api"),
-  includeSubdomains: z.boolean().default(true),
-  search: z.string().optional(),
-  ignoreSitemap: z.boolean().default(false),
-  limit: z.number().min(1).max(5000).default(5000).optional(),
-}).strict(strictMessage);
-
-// export type MapRequest = {
-//   url: string;
-//   crawlerOptions?: CrawlerOptions;
-// };
+export const mapRequestSchema = crawlerOptions
+  .extend({
+    url,
+    origin: z.string().optional().default("api"),
+    includeSubdomains: z.boolean().default(true),
+    search: z.string().optional(),
+    ignoreSitemap: z.boolean().default(true),
+    limit: z.number().min(1).max(5000).default(5000).optional(),
+  })
+  .strict(strictMessage);
 
 export type MapRequest = z.infer<typeof mapRequestSchema>;
 
@@ -296,16 +279,15 @@ export interface RequestWithMaybeAuth<
 export interface RequestWithAuth<
   ReqParams = {},
   ReqBody = undefined,
-  ResBody = undefined,
+  ResBody = undefined
 > extends Request<ReqParams, ReqBody, ResBody> {
   auth: AuthObject;
   account?: Account;
 }
 
-export interface ResponseWithSentry<
-  ResBody = undefined,
-> extends Response<ResBody> {
-  sentry?: string,
+export interface ResponseWithSentry<ResBody = undefined>
+  extends Response<ResBody> {
+  sentry?: string;
 }
 
 export function legacyCrawlerOptions(x: CrawlerOptions) {
@@ -342,7 +324,9 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
 export function legacyExtractorOptions(x: ExtractOptions): ExtractorOptions {
   return {
     mode: x.mode ? "llm-extraction" : "markdown",
-    extractionPrompt: x.prompt ?? "Based on the information on the page, extract the information from the schema.",
+    extractionPrompt:
+      x.prompt ??
+      "Based on the information on the page, extract the information from the schema.",
     extractionSchema: x.schema,
     userPrompt: x.prompt ?? "",
   };

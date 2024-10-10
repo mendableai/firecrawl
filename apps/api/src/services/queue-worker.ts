@@ -197,8 +197,7 @@ async function processJob(job: Job, token: string) {
     job.data.url &&
     (job.data.url.includes("researchhub.com") ||
       job.data.url.includes("ebay.com") ||
-      job.data.url.includes("youtube.com") ||
-      job.data.url.includes("microsoft.com"))
+      job.data.url.includes("youtube.com"))
   ) {
     Logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
     const data = {
@@ -250,28 +249,6 @@ async function processJob(job: Job, token: string) {
       docs,
     };
 
-    // No idea what this does and when it is called.
-    if (job.data.mode === "crawl" && !job.data.v1) {
-      callWebhook(
-        job.data.team_id,
-        job.id as string,
-        data,
-        job.data.webhook,
-        job.data.v1
-      );
-    }
-    if (job.data.webhook && job.data.mode !== "crawl" && job.data.v1) {
-      await callWebhook(
-        job.data.team_id,
-        job.data.crawl_id,
-        data,
-        job.data.webhook,
-        job.data.v1,
-        "crawl.page",
-        true
-      );
-    }
-
     if (job.data.crawl_id) {
       await logJob({
         job_id: job.id as string,
@@ -297,8 +274,10 @@ async function processJob(job: Job, token: string) {
         if (!sc.cancelled) {
           const crawler = crawlToCrawler(job.data.crawl_id, sc);
 
+          const rawLinks = crawler.extractLinksFromHTML(rawHtml, sc.originUrl);
+
           const links = crawler.filterLinks(
-            crawler.extractLinksFromHTML(rawHtml ?? "", sc.originUrl),
+            rawLinks,
             Infinity,
             sc.crawlerOptions?.maxDepth ?? 10
           );
@@ -341,12 +320,12 @@ async function processJob(job: Job, token: string) {
       }
 
       if (await finishCrawl(job.data.crawl_id)) {
-        
-
         if (!job.data.v1) {
           const jobIDs = await getCrawlJobs(job.data.crawl_id);
 
-          const jobs = (await getJobs(jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
+          const jobs = (await getJobs(jobIDs)).sort(
+            (a, b) => a.timestamp - b.timestamp
+          );
           const jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
           const jobStatus =
             sc.cancelled || jobStatuses.some((x) => x === "failed")
@@ -400,7 +379,9 @@ async function processJob(job: Job, token: string) {
           }
         } else {
           const jobIDs = await getCrawlJobs(job.data.crawl_id);
-          const jobStatuses = await Promise.all(jobIDs.map((x) => getScrapeQueue().getJobState(x)));
+          const jobStatuses = await Promise.all(
+            jobIDs.map((x) => getScrapeQueue().getJobState(x))
+          );
           const jobStatus =
             sc.cancelled || jobStatuses.some((x) => x === "failed")
               ? "failed"
@@ -415,8 +396,8 @@ async function processJob(job: Job, token: string) {
               job.data.webhook,
               job.data.v1,
               "crawl.completed"
-              );
-            }
+            );
+          }
 
           await logJob({
             job_id: job.data.crawl_id,
@@ -441,7 +422,12 @@ async function processJob(job: Job, token: string) {
   } catch (error) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);
 
-    if (!(error instanceof Error && error.message.includes("JSON parsing error(s): "))) {
+    if (
+      !(
+        error instanceof Error &&
+        error.message.includes("JSON parsing error(s): ")
+      )
+    ) {
       Sentry.captureException(error, {
         data: {
           job: job.id,
