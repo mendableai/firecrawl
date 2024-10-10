@@ -421,6 +421,36 @@ export default class FirecrawlApp {
     return { success: false, error: "Internal server error." };
   }
 
+  /**
+   * Cancels a crawl job using the Firecrawl API.
+   * @param id - The ID of the crawl operation.
+   * @returns The response from the cancel crawl operation.
+   */
+  async cancelCrawl(id: string): Promise<ErrorResponse> {
+    const headers = this.prepareHeaders();
+    try {
+      const response: AxiosResponse = await this.deleteRequest(
+        `${this.apiUrl}/v1/crawl/${id}`,
+        headers
+      );
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "cancel crawl job");
+      }
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500);
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Initiates a crawl job and returns a CrawlWatcher to monitor the job via WebSocket.
+   * @param url - The URL to crawl.
+   * @param params - Additional parameters for the crawl request.
+   * @param idempotencyKey - Optional idempotency key for the request.
+   * @returns A CrawlWatcher instance to monitor the crawl job.
+   */
   async crawlUrlAndWatch(
     url: string,
     params?: CrawlParams,
@@ -436,6 +466,12 @@ export default class FirecrawlApp {
     throw new FirecrawlError("Crawl job failed to start", 400);
   }
 
+  /**
+   * Maps a URL using the Firecrawl API.
+   * @param url - The URL to map.
+   * @param params - Additional parameters for the map request.
+   * @returns The response from the map operation.
+   */
   async mapUrl(url: string, params?: MapParams): Promise<MapResponse | ErrorResponse> {
     const headers = this.prepareHeaders();
     let jsonData: { url: string } & MapParams = { url, ...params };
@@ -497,6 +533,27 @@ export default class FirecrawlApp {
   ): Promise<AxiosResponse> {
     try {
       return await axios.get(url, { headers });
+    } catch (error) {
+      if (error instanceof AxiosError && error.response) {
+        return error.response as AxiosResponse;
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Sends a DELETE request to the specified URL.
+   * @param url - The URL to send the request to.
+   * @param headers - The headers for the request.
+   * @returns The response from the DELETE request.
+   */
+  async deleteRequest(
+    url: string,
+    headers: AxiosRequestHeaders
+  ): Promise<AxiosResponse> {
+    try {
+        return await axios.delete(url, { headers });
     } catch (error) {
       if (error instanceof AxiosError && error.response) {
         return error.response as AxiosResponse;

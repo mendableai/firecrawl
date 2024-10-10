@@ -191,6 +191,23 @@ class FirecrawlApp:
             }
         else:
             self._handle_error(response, 'check crawl status')
+    
+    def cancel_crawl(self, id: str) -> Dict[str, Any]:
+        """
+        Cancel an asynchronous crawl job using the Firecrawl API.
+
+        Args:
+            id (str): The ID of the crawl job to cancel.
+
+        Returns:
+            Dict[str, Any]: The response from the cancel crawl request.
+        """
+        headers = self._prepare_headers()
+        response = self._delete_request(f'{self.api_url}/v1/crawl/{id}', headers)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            self._handle_error(response, "cancel crawl job")
 
     def crawl_url_and_watch(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> 'CrawlWatcher':
         """
@@ -316,6 +333,33 @@ class FirecrawlApp:
         """
         for attempt in range(retries):
             response = requests.get(url, headers=headers)
+            if response.status_code == 502:
+                time.sleep(backoff_factor * (2 ** attempt))
+            else:
+                return response
+        return response
+    
+    def _delete_request(self, url: str,
+                        headers: Dict[str, str],
+                        retries: int = 3,
+                        backoff_factor: float = 0.5) -> requests.Response:
+        """
+        Make a DELETE request with retries.
+
+        Args:
+            url (str): The URL to send the DELETE request to.
+            headers (Dict[str, str]): The headers to include in the DELETE request.
+            retries (int): Number of retries for the request.
+            backoff_factor (float): Backoff factor for retries.
+
+        Returns:
+            requests.Response: The response from the DELETE request.
+
+        Raises:
+            requests.RequestException: If the request fails after the specified retries.
+        """
+        for attempt in range(retries):
+            response = requests.delete(url, headers=headers)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2 ** attempt))
             else:
