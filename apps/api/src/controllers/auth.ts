@@ -77,7 +77,7 @@ export async function getACUC(api_key: string, cacheOnly = false): Promise<AuthC
     return JSON.parse(cachedACUC);
   } else if (!cacheOnly) {
     const { data, error } =
-      await supabase_service.rpc("auth_credit_usage_chunk", { input_key: api_key });
+      await supabase_service.rpc("auth_credit_usage_chunk_test_3", { input_key: api_key });
     
     if (error) {
       throw new Error("Failed to retrieve authentication and credit usage data: " + JSON.stringify(error));
