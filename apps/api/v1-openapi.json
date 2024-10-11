@@ -341,14 +341,14 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "URL patterns to exclude"
+                    "description": "Specifies URL patterns to exclude from the crawl by comparing website paths against the provided regex patterns. For example, if you set \"excludePaths\": [\"blog/*\"] for the base URL firecrawl.dev, any results matching that pattern will be excluded, such as https://www.firecrawl.dev/blog/firecrawl-launch-week-1-recap."
                   },
                   "includePaths": {
                     "type": "array",
                     "items": {
                       "type": "string"
                     },
-                    "description": "URL patterns to include"
+                    "description": "Specifies URL patterns to include in the crawl by comparing website paths against the provided regex patterns. Only the paths that match the specified patterns will be included in the response. For example, if you set \"includePaths\": [\"blog/*\"] for the base URL firecrawl.dev, only results matching that pattern will be included, such as https://www.firecrawl.dev/blog/firecrawl-launch-week-1-recap."
                   },
                   "maxDepth": {
                     "type": "integer",
