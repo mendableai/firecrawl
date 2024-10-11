@@ -6,7 +6,7 @@
     "description": "API for interacting with Firecrawl services to perform web scraping and crawling tasks.",
     "contact": {
       "name": "Firecrawl Support",
-      "url": "https://firecrawl.dev",
+      "url": "https://firecrawl.dev/support",
       "email": "support@firecrawl.dev"
     }
   },
@@ -96,6 +96,127 @@
                         "type": "string",
                         "description": "The prompt to use for the extraction without a schema (Optional)"
                       }
+                    }
+                  },
+                  "actions": {
+                    "type": "array",
+                    "description": "Actions to perform on the page before grabbing the content",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "title": "Wait",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["wait"],
+                              "description": "Wait for a specified amount of milliseconds"
+                            },
+                            "milliseconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "description": "Number of milliseconds to wait"
+                            }
+                          },
+                          "required": ["type", "milliseconds"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Screenshot",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["screenshot"],
+                              "description": "Take a screenshot"
+                            },
+                            "fullPage": {
+                              "type": "boolean",
+                              "description": "Should the screenshot be full-page or viewport sized?",
+                              "default": false
+                            }
+                          },
+                          "required": ["type"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Click",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["click"],
+                              "description": "Click on an element"
+                            },
+                            "selector": {
+                              "type": "string",
+                              "description": "Query selector to find the element by",
+                              "example": "#load-more-button"
+                            }
+                          },
+                          "required": ["type", "selector"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Write text",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["write"],
+                              "description": "Write text into an input field"
+                            },
+                            "text": {
+                              "type": "string",
+                              "description": "Text to type",
+                              "example": "Hello, world!"
+                            },
+                            "selector": {
+                              "type": "string",
+                              "description": "Query selector for the input field",
+                              "example": "#search-input"
+                            }
+                          },
+                          "required": ["type", "text", "selector"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Press a key",
+                          "description": "Press a key on the page. See https://asawicki.info/nosense/doc/devices/keyboard/key_codes.html for key codes.",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["press"],
+                              "description": "Press a key on the page"
+                            },
+                            "key": {
+                              "type": "string",
+                              "description": "Key to press",
+                              "example": "Enter"
+                            }
+                          },
+                          "required": ["type", "key"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Scroll",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["scroll"],
+                              "description": "Scroll the page"
+                            },
+                            "direction": {
+                              "type": "string",
+                              "enum": ["up", "down"],
+                              "description": "Direction to scroll"
+                            },
+                            "amount": {
+                              "type": "integer",
+                              "description": "Amount to scroll in pixels",
+                              "minimum": 1
+                            }
+                          },
+                          "required": ["type", "direction"]
+                        }   
+                      ]
                     }
                   }
                 },
@@ -341,14 +462,14 @@
                     "items": {
                       "type": "string"
                     },
-                    "description": "URL patterns to exclude"
+                    "description": "Specifies URL patterns to exclude from the crawl by comparing website paths against the provided regex patterns. For example, if you set \"excludePaths\": [\"blog/*\"] for the base URL firecrawl.dev, any results matching that pattern will be excluded, such as https://www.firecrawl.dev/blog/firecrawl-launch-week-1-recap."
                   },
                   "includePaths": {
                     "type": "array",
                     "items": {
                       "type": "string"
                     },
-                    "description": "URL patterns to include"
+                    "description": "Specifies URL patterns to include in the crawl by comparing website paths against the provided regex patterns. Only the paths that match the specified patterns will be included in the response. For example, if you set \"includePaths\": [\"blog/*\"] for the base URL firecrawl.dev, only results matching that pattern will be included, such as https://www.firecrawl.dev/blog/firecrawl-launch-week-1-recap."
                   },
                   "maxDepth": {
                     "type": "integer",
@@ -362,7 +483,7 @@
                   },
                   "limit": {
                     "type": "integer",
-                    "description": "Maximum number of pages to crawl",
+                    "description": "Maximum number of pages to crawl. Default limit is 10000.",
                     "default": 10
                   },
                   "allowBackwardLinks": {
@@ -513,7 +634,7 @@
                     },
                     "search": {
                       "type": "string",
-                      "description": "Search query to use for mapping. During the Alpha phase, the 'smart' part of the search functionality is limited to 100 search results. However, if map finds more results, there is no limit applied."
+                      "description": "Search query to use for mapping. During the Alpha phase, the 'smart' part of the search functionality is limited to 1000 search results. However, if map finds more results, there is no limit applied."
                     },
                     "ignoreSitemap": {
                       "type": "boolean",
@@ -642,6 +763,21 @@
                 },
                 "description": "List of links on the page if `links` is in `formats`"
               },
+              "actions": {
+                "type": "object",
+                "nullable": true,
+                "description": "Results of the actions specified in the `actions` parameter. Only present if the `actions` parameter was provided in the request",
+                "properties": {
+                  "screenshots": {
+                    "type": "array",
+                    "description": "Screenshot URLs, in the same order as the screenshot actions provided.",
+                    "items": {
+                      "type": "string",
+                      "format": "url"
+                    }
+                  }
+                }
+              },  
               "metadata": {
                 "type": "object",
                 "properties": {
