@@ -5,7 +5,7 @@ export async function handleCustomScraping(
   url: string
 ): Promise<{ scraper: string; url: string; waitAfterLoad?: number, pageOptions?: { scrollXPaths?: string[] } } | null> {
   // Check for Readme Docs special case
-  if (text.includes('<meta name="readme-deploy"')) {
+  if (text.includes('<meta name="readme-deploy"') && !url.includes('developers.notion.com')) {
     Logger.debug(
       `Special use case detected for ${url}, using Fire Engine with wait time 1000ms`
     );
