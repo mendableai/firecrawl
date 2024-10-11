@@ -70,7 +70,7 @@ To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and ge
 
 - [**Scrape**](#scraping): scrapes a URL and get its content in LLM-ready format (markdown, structured data via [LLM Extract](#llm-extraction-beta), screenshot, html)
 - [**Crawl**](#crawling): scrapes all the URLs of a web page and return content in LLM-ready format
-- [**Map**](#map-alpha): input a website and get all the website urls - extremly fast
+- [**Map**](#map-alpha): input a website and get all the website urls - extremely fast
 
 ### Powerful Capabilities
 - **LLM-ready formats**: markdown, structured data, screenshot, HTML, links, metadata
@@ -80,7 +80,7 @@ To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and ge
 - **Reliability first**: designed to get the data you need - no matter how hard it is.
 - **Actions**: click, scroll, input, wait and more before extracting data
 
-You can find all of Firecrawl's capabilites and how to use them in our [documentation](https://docs.firecrawl.dev)
+You can find all of Firecrawl's capabilities and how to use them in our [documentation](https://docs.firecrawl.dev)
 
 ### Crawling
 
@@ -321,7 +321,7 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
     }'
 ```
 
-### Intracting with the page with Actions (Cloud-only)
+### Interacting with the page with Actions (Cloud-only)
 
 Firecrawl allows you to perform various actions on a web page before scraping its content. This is particularly useful for interacting with dynamic content, navigating through pages, or accessing content that requires user interaction.
 
