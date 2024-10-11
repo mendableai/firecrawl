@@ -101,7 +101,7 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
   // filter out failed jobs
   jobIDs = jobIDs.filter(id => !jobStatuses.some(status => status[0] === id && status[1] === "failed"));
   // filter the job statues
-  jobStatuses = jobStatuses.filter(x => x[1] !== "failed");
+  jobStatuses = jobStatuses.filter(x => x[1] !== "failed" && x[1] !== "unknown");
   const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] = sc.cancelled ? "cancelled" : jobStatuses.every(x => x[1] === "completed") ? "completed" : "scraping";
   const doneJobs = await getJobs(doneJobIDs);
   const data = doneJobs.map(x => x.returnvalue);
