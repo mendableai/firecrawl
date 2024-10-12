@@ -273,13 +273,7 @@ async function processJob(job: Job, token: string) {
         if (!sc.cancelled) {
           const crawler = crawlToCrawler(job.data.crawl_id, sc);
 
-          const rawLinks = crawler.extractLinksFromHTML(rawHtml);
-
-          const links = crawler.filterLinks(
-            rawLinks,
-            Infinity,
-            sc.crawlerOptions?.maxDepth ?? 10
-          );
+          const links = crawler.extractLinksFromHTML(rawHtml);
 
           for (const link of links) {
             if (await lockURL(job.data.crawl_id, sc, link)) {

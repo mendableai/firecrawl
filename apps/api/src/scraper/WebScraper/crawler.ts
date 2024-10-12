@@ -59,78 +59,6 @@ export class WebCrawler {
     this.allowExternalLinks = allowExternalLinks ?? false;
   }
 
-  public filterLinks(
-    sitemapLinks: string[],
-    limit: number,
-    maxDepth: number
-  ): string[] {
-    return sitemapLinks
-      .filter((link) => {
-        let url: URL;
-        try {
-          url = new URL(link.trim(), this.baseUrl);
-        } catch (error) {
-          Logger.debug(
-            `Error processing link: ${link} | Error: ${error.message}`
-          );
-          return false;
-        }
-        const path = url.pathname;
-
-        const depth = getURLDepth(url.toString());
-
-        // Check if the link exceeds the maximum depth allowed
-        if (depth > maxDepth) {
-          return false;
-        }
-
-        // Check if the link should be excluded
-        if (this.excludes.length > 0 && this.excludes[0] !== "") {
-          if (
-            this.excludes.some((excludePattern) =>
-              new RegExp(excludePattern).test(path)
-            )
-          ) {
-            return false;
-          }
-        }
-
-        // Check if the link matches the include patterns, if any are specified
-        if (this.includes.length > 0 && this.includes[0] !== "") {
-          if (
-            !this.includes.some((includePattern) =>
-              new RegExp(includePattern).test(path)
-            )
-          ) {
-            return false;
-          }
-        }
-
-        // Normalize the initial URL and the link to account for www and non-www versions
-        const normalizedInitialUrl = new URL(this.initialUrl);
-        let normalizedLink: URL;
-        try {
-          normalizedLink = new URL(link);
-        } catch (_) {
-          return false;
-        }
-        const initialHostname = normalizedInitialUrl.hostname.replace(
-          /^www\./,
-          ""
-        );
-
-        const isAllowed = this.robots.isAllowed(link, "FireCrawlAgent") ?? true;
-        // Check if the link is disallowed by robots.txt
-        if (!isAllowed) {
-          Logger.debug(`Link disallowed by robots.txt: ${link}`);
-          return false;
-        }
-
-        return true;
-      })
-      .slice(0, limit);
-  }
-
   public async getRobotsTxt(): Promise<string> {
     const response = await axios.get(this.robotsTxtUrl, {
       timeout: axiosTimeout,
@@ -148,11 +76,9 @@ export class WebCrawler {
     Logger.debug(`Fetching sitemap links from ${this.initialUrl}`);
     const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
     if (sitemapLinks.length > 0) {
-      let filteredLinks = this.filterLinks(
-        sitemapLinks,
-        this.limit,
-        this.maxCrawledDepth
-      );
+      let filteredLinks = sitemapLinks
+        .filter((link) => !this.visited.has(link) && this.filterURL(link))
+        .slice(0, this.limit);
       return filteredLinks.map((link) => ({ url: link, html: "" }));
     }
     return null;
@@ -190,23 +116,15 @@ export class WebCrawler {
       inProgress
     );
 
-    if (
-      urls.length === 0 &&
-      this.filterLinks([this.initialUrl], limit, this.maxCrawledDepth).length >
-        0
-    ) {
-      return [{ url: this.initialUrl, html: "" }];
-    }
+    const filteredUrls = urls
+      .filter(
+        (urlObj) => !this.visited.has(urlObj.url) && this.filterURL(urlObj.url)
+      )
+      .slice(0, limit);
 
-    // make sure to run include exclude here again
-    const filteredUrls = this.filterLinks(
-      urls.map((urlObj) => urlObj.url),
-      limit,
-      this.maxCrawledDepth
-    );
-    return filteredUrls.map((url) => ({
-      url,
-      html: urls.find((urlObj) => urlObj.url === url)?.html || "",
+    return filteredUrls.map((filteredUrl) => ({
+      url: filteredUrl.url,
+      html: urls.find((urlObj) => urlObj.url === filteredUrl.url)?.html || "",
     }));
   }
 
@@ -414,12 +332,14 @@ export class WebCrawler {
         }))
       );
 
-      if (this.visited.size === 1) {
-        return links;
-      }
+      const resLinks =
+        this.visited.size === 1
+          ? links
+          : links.filter((link) => !this.visited.has(link.url));
 
-      // Create a new list to return to avoid modifying the visited list
-      return links.filter((link) => !this.visited.has(link.url));
+      Logger.debug(`Crawled ${url} and found ${resLinks.length} links`);
+
+      return resLinks;
     } catch (error) {
       return [];
     }
