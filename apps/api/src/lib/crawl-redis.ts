@@ -110,8 +110,7 @@ export function crawlToCrawler(id: string, sc: StoredCrawl): WebCrawler {
         maxCrawledDepth: sc.crawlerOptions?.maxDepth ?? 10,
         limit: sc.crawlerOptions?.limit ?? 10000,
         generateImgAltText: sc.crawlerOptions?.generateImgAltText ?? false,
-        allowBackwardCrawling: sc.crawlerOptions?.allowBackwardCrawling ?? false,
-        allowExternalContentLinks: sc.crawlerOptions?.allowExternalContentLinks ?? false,
+        allowExternalLinks: sc.crawlerOptions?.allowExternalLinks ?? false,
     });
 
     if (sc.robots !== undefined) {

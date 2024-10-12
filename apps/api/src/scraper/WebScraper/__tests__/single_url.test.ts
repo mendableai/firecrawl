@@ -1,4 +1,4 @@
-import { scrapSingleUrl } from '../single_url';
+import { scrapeSingleUrl } from '../single_url';
 import { PageOptions } from '../../../lib/entities';
 
 
@@ -15,8 +15,8 @@ describe('scrapSingleUrl', () => {
     const pageOptionsWithHtml: PageOptions = { includeHtml: true };
     const pageOptionsWithoutHtml: PageOptions = { includeHtml: false };
 
-    const resultWithHtml = await scrapSingleUrl("TEST", url, pageOptionsWithHtml);
-    const resultWithoutHtml = await scrapSingleUrl("TEST", url, pageOptionsWithoutHtml);
+    const resultWithHtml = await scrapeSingleUrl("TEST", url, pageOptionsWithHtml);
+    const resultWithoutHtml = await scrapeSingleUrl("TEST", url, pageOptionsWithoutHtml);
 
     expect(resultWithHtml.html).toBeDefined();
     expect(resultWithoutHtml.html).toBeUndefined();
@@ -27,7 +27,7 @@ it('should return a list of links on the firecrawl.ai page', async () => {
   const url = 'https://flutterbricks.com';
   const pageOptions: PageOptions = { includeHtml: true };
 
-  const result = await scrapSingleUrl("TEST", url, pageOptions);
+  const result = await scrapeSingleUrl("TEST", url, pageOptions);
 
   // Check if the result contains a list of links
   expect(result.linksOnPage).toBeDefined();

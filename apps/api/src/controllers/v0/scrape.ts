@@ -15,8 +15,7 @@ import {
   defaultTimeout,
   defaultOrigin,
 } from "../../lib/default-values";
-import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
-import { getScrapeQueue } from "../../services/queue-service";
+import { addScrapeJobRaw, waitForJob } from "../../services/queue-jobs";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../lib/logger";
 import * as Sentry from "@sentry/node";
@@ -53,7 +52,7 @@ export async function scrapeHelper(
 
   const jobPriority = await getJobPriority({ plan, team_id, basePriority: 10 });
 
-  const job = await addScrapeJob(
+  const job = await addScrapeJobRaw(
     {
       url,
       mode: "single_urls",
@@ -185,7 +184,6 @@ export async function scrapeController(req: Request, res: Response) {
         });
       }
 
-      pageOptions.onlyMainContent = true;
       timeout = req.body.timeout ?? 90000;
     }
 

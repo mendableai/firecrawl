@@ -26,8 +26,7 @@ import {
   lockURL,
 } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
-import { addScrapeJob } from "./queue-jobs";
-import { supabaseGetJobById } from "../../src/lib/supabase-jobs";
+import { addScrapeJobRaw } from "./queue-jobs";
 import {
   addJobPriority,
   deleteJobPriority,
@@ -274,7 +273,7 @@ async function processJob(job: Job, token: string) {
         if (!sc.cancelled) {
           const crawler = crawlToCrawler(job.data.crawl_id, sc);
 
-          const rawLinks = crawler.extractLinksFromHTML(rawHtml, sc.originUrl);
+          const rawLinks = crawler.extractLinksFromHTML(rawHtml);
 
           const links = crawler.filterLinks(
             rawLinks,
@@ -284,20 +283,13 @@ async function processJob(job: Job, token: string) {
 
           for (const link of links) {
             if (await lockURL(job.data.crawl_id, sc, link)) {
-              // This seems to work really welel
               const jobPriority = await getJobPriority({
                 plan: sc.plan as PlanType,
                 team_id: sc.team_id,
                 basePriority: job.data.crawl_id ? 20 : 10,
               });
-              const jobId = uuidv4();
-
-              // console.log("plan: ",  sc.plan);
-              // console.log("team_id: ", sc.team_id)
-              // console.log("base priority: ", job.data.crawl_id ? 20 : 10)
-              // console.log("job priority: " , jobPriority, "\n\n\n")
-
-              const newJob = await addScrapeJob(
+              Logger.debug(`🐂 Adding scrape job for link ${link}`);
+              const newJob = await addScrapeJobRaw(
                 {
                   url: link,
                   mode: "single_urls",
@@ -309,7 +301,7 @@ async function processJob(job: Job, token: string) {
                   v1: job.data.v1,
                 },
                 {},
-                jobId,
+                uuidv4(),
                 jobPriority
               );
 

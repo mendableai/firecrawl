@@ -12,7 +12,7 @@ import {
 } from "./types";
 import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from "uuid";
-import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
+import { addScrapeJobRaw, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
 import { PlanType } from "../../types";
@@ -37,7 +37,7 @@ export async function scrapeController(
     basePriority: 10,
   });
 
-  const job = await addScrapeJob(
+  const job = await addScrapeJobRaw(
     {
       url: req.body.url,
       mode: "single_urls",

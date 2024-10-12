@@ -5,7 +5,7 @@ import {
   WebScraperOptions,
 } from "../../lib/entities";
 import { Progress } from "../../lib/entities";
-import { scrapSingleUrl } from "./single_url";
+import { scrapeSingleUrl } from "./single_url";
 import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
 import { WebCrawler } from "./crawler";
 import { getValue, setValue } from "../../services/redis";
@@ -36,8 +36,7 @@ export class WebScraperDataProvider {
   private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" =
     "gpt-4-turbo";
   private crawlerMode: string = "default";
-  private allowBackwardCrawling: boolean = false;
-  private allowExternalContentLinks: boolean = false;
+  private allowExternalLinks: boolean = false;
   private priority?: number;
   private teamId?: string;
 
@@ -63,7 +62,7 @@ export class WebScraperDataProvider {
       await Promise.all(
         batchUrls.map(async (url, index) => {
           const existingHTML = allHtmls ? allHtmls[i + index] : "";
-          const result = await scrapSingleUrl(
+          const result = await scrapeSingleUrl(
             this.jobId,
             url,
             this.pageOptions,
@@ -178,8 +177,7 @@ export class WebScraperDataProvider {
       maxCrawledDepth: getAdjustedMaxDepth(this.urls[0], this.maxCrawledDepth),
       limit: this.limit,
       generateImgAltText: this.generateImgAltText,
-      allowBackwardCrawling: this.allowBackwardCrawling,
-      allowExternalContentLinks: this.allowExternalContentLinks,
+      allowExternalLinks: this.allowExternalLinks,
     });
 
     let links = await crawler.start(
@@ -482,7 +480,6 @@ export class WebScraperDataProvider {
     this.generateImgAltText =
       options.crawlerOptions?.generateImgAltText ?? false;
     this.pageOptions = {
-      onlyMainContent: options.pageOptions?.onlyMainContent ?? false,
       includeHtml: options.pageOptions?.includeHtml ?? false,
       replaceAllPathsWithAbsolutePaths:
         options.pageOptions?.replaceAllPathsWithAbsolutePaths ?? true,
@@ -525,10 +522,8 @@ export class WebScraperDataProvider {
 
     this.crawlerMode = options.crawlerOptions?.mode ?? "default";
     this.ignoreSitemap = options.crawlerOptions?.ignoreSitemap ?? true;
-    this.allowBackwardCrawling =
-      options.crawlerOptions?.allowBackwardCrawling ?? false;
-    this.allowExternalContentLinks =
-      options.crawlerOptions?.allowExternalContentLinks ?? false;
+    this.allowExternalLinks =
+      options.crawlerOptions?.allowExternalLinks ?? false;
     this.priority = options.priority;
     this.teamId = options.teamId ?? null;
 

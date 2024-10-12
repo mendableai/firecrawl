@@ -1,6 +1,9 @@
 import { Request, Response } from "express";
 import { WebScraperDataProvider } from "../../scraper/WebScraper";
-import { billTeam, checkTeamCredits } from "../../services/billing/credit_billing";
+import {
+  billTeam,
+  checkTeamCredits,
+} from "../../services/billing/credit_billing";
 import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
@@ -10,7 +13,7 @@ import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../lib/logger";
 import { getScrapeQueue } from "../../services/queue-service";
-import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
+import { addScrapeJobRaw, waitForJob } from "../../services/queue-jobs";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
 
@@ -51,11 +54,12 @@ export async function searchHelper(
   });
 
   let justSearch = pageOptions.fetchPageContent === false;
-  
 
   if (justSearch) {
-    billTeam(team_id, res.length).catch(error => {
-      Logger.error(`Failed to bill team ${team_id} for ${res.length} credits: ${error}`);
+    billTeam(team_id, res.length).catch((error) => {
+      Logger.error(
+        `Failed to bill team ${team_id} for ${res.length} credits: ${error}`
+      );
       // Optionally, you could notify an admin or add to a retry queue here
     });
     return { success: true, data: res, returnCode: 200 };
@@ -70,11 +74,11 @@ export async function searchHelper(
     return { success: true, error: "No search results found", returnCode: 200 };
   }
 
-  const jobPriority = await getJobPriority({plan, team_id, basePriority: 20});
-  
+  const jobPriority = await getJobPriority({ plan, team_id, basePriority: 20 });
+
   // filter out social media links
 
-  const jobDatas = res.map(x => {
+  const jobDatas = res.map((x) => {
     const url = x.url;
     const uuid = uuidv4();
     return {
@@ -89,36 +93,44 @@ export async function searchHelper(
       opts: {
         jobId: uuid,
         priority: jobPriority,
-      }
+      },
     };
-  })
+  });
 
   let jobs = [];
   if (Sentry.isInitialized()) {
     for (const job of jobDatas) {
       // add with sentry instrumentation
-      jobs.push(await addScrapeJob(job.data as any, {}, job.opts.jobId));
+      jobs.push(await addScrapeJobRaw(job.data as any, {}, job.opts.jobId));
     }
   } else {
     jobs = await getScrapeQueue().addBulk(jobDatas);
     await getScrapeQueue().addBulk(jobs);
   }
 
-  const docs = (await Promise.all(jobs.map(x => waitForJob(x.id, 60000)))).map(x => x[0]);
-  
+  const docs = (
+    await Promise.all(jobs.map((x) => waitForJob(x.id, 60000)))
+  ).map((x) => x[0]);
+
   if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
   }
 
-  await Promise.all(jobs.map(x => x.remove()));
+  await Promise.all(jobs.map((x) => x.remove()));
 
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(
-    (doc: { content?: string }) => doc && doc.content && doc.content.trim().length > 0
+    (doc: { content?: string }) =>
+      doc && doc.content && doc.content.trim().length > 0
   );
 
   if (filteredDocs.length === 0) {
-    return { success: true, error: "No page found", returnCode: 200, data: docs };
+    return {
+      success: true,
+      error: "No page found",
+      returnCode: 200,
+      data: docs,
+    };
   }
 
   return {
@@ -142,7 +154,6 @@ export async function searchController(req: Request, res: Response) {
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? {
       includeHtml: req.body.pageOptions?.includeHtml ?? false,
-      onlyMainContent: req.body.pageOptions?.onlyMainContent ?? false,
       fetchPageContent: req.body.pageOptions?.fetchPageContent ?? true,
       removeTags: req.body.pageOptions?.removeTags ?? [],
       fallback: req.body.pageOptions?.fallback ?? false,
@@ -150,7 +161,7 @@ export async function searchController(req: Request, res: Response) {
     const origin = req.body.origin ?? "api";
 
     const searchOptions = req.body.searchOptions ?? { limit: 5 };
-    
+
     const jobId = uuidv4();
 
     try {

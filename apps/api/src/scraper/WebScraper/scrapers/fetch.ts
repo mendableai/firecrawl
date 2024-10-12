@@ -6,12 +6,10 @@ import { Logger } from "../../../lib/logger";
 /**
  * Scrapes a URL with Axios
  * @param url The URL to scrape
- * @param pageOptions The options for the page
  * @returns The scraped content
  */
-export async function scrapWithFetch(
-  url: string,
-  pageOptions: { parsePDF?: boolean } = { parsePDF: true }
+export async function scrapeWithFetch(
+  url: string
 ): Promise<{ content: string; pageStatusCode?: number; pageError?: string }> {
   const logParams = {
     url,

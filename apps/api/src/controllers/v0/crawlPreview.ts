@@ -11,7 +11,7 @@ import {
   saveCrawl,
   StoredCrawl,
 } from "../../../src/lib/crawl-redis";
-import { addScrapeJob } from "../../../src/services/queue-jobs";
+import { addScrapeJobRaw } from "../../../src/services/queue-jobs";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
 
@@ -52,7 +52,6 @@ export async function crawlPreviewController(req: Request, res: Response) {
 
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? {
-      onlyMainContent: false,
       includeHtml: false,
       removeTags: [],
     };
@@ -116,7 +115,27 @@ export async function crawlPreviewController(req: Request, res: Response) {
     if (sitemap !== null) {
       for (const url of sitemap.map((x) => x.url)) {
         await lockURL(id, sc, url);
-        const job = await addScrapeJob({
+        const job = await addScrapeJobRaw(
+          {
+            url,
+            mode: "single_urls",
+            crawlerOptions: crawlerOptions,
+            team_id: team_id,
+            pageOptions: pageOptions,
+            origin: "website-preview",
+            crawl_id: id,
+            sitemapped: true,
+          },
+          {},
+          uuidv4(),
+          10
+        );
+        await addCrawlJob(id, job.id);
+      }
+    } else {
+      await lockURL(id, sc, url);
+      const job = await addScrapeJobRaw(
+        {
           url,
           mode: "single_urls",
           crawlerOptions: crawlerOptions,
@@ -124,21 +143,11 @@ export async function crawlPreviewController(req: Request, res: Response) {
           pageOptions: pageOptions,
           origin: "website-preview",
           crawl_id: id,
-          sitemapped: true,
-        });
-        await addCrawlJob(id, job.id);
-      }
-    } else {
-      await lockURL(id, sc, url);
-      const job = await addScrapeJob({
-        url,
-        mode: "single_urls",
-        crawlerOptions: crawlerOptions,
-        team_id: team_id,
-        pageOptions: pageOptions,
-        origin: "website-preview",
-        crawl_id: id,
-      });
+        },
+        {},
+        uuidv4(),
+        10
+      );
       await addCrawlJob(id, job.id);
     }
 

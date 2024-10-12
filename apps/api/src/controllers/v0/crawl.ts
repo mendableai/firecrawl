@@ -2,7 +2,7 @@ import { Request, Response } from "express";
 import { checkTeamCredits } from "../../../src/services/billing/credit_billing";
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
-import { addScrapeJob } from "../../../src/services/queue-jobs";
+import { addScrapeJobRaw } from "../../../src/services/queue-jobs";
 import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
 import { logCrawl } from "../../../src/services/logging/crawl_log";
 import { validateIdempotencyKey } from "../../../src/services/idempotency/validate";
@@ -152,6 +152,8 @@ export async function crawlController(req: Request, res: Response) {
         jobPriority = await getJobPriority({ plan, team_id, basePriority: 21 });
       }
       const jobs = sitemap.map((x) => {
+        Logger.debug(`Adding job from sitemap for ${x.url}`);
+
         const url = x.url;
         const uuid = uuidv4();
         return {
@@ -181,18 +183,12 @@ export async function crawlController(req: Request, res: Response) {
         id,
         jobs.map((x) => x.opts.jobId)
       );
-      if (Sentry.isInitialized()) {
-        for (const job of jobs) {
-          // add with sentry instrumentation
-          await addScrapeJob(job.data as any, {}, job.opts.jobId);
-        }
-      } else {
-        await getScrapeQueue().addBulk(jobs);
-      }
+
+      await getScrapeQueue().addBulk(jobs);
     } else {
       await lockURL(id, sc, url);
 
-      const job = await addScrapeJob(
+      const job = await addScrapeJobRaw(
         {
           url,
           mode: "single_urls",
@@ -204,7 +200,9 @@ export async function crawlController(req: Request, res: Response) {
         },
         {
           priority: 15, // prioritize request 0 of crawl jobs same as scrape jobs
-        }
+        },
+        uuidv4(),
+        10
       );
       await addCrawlJob(id, job.id);
     }

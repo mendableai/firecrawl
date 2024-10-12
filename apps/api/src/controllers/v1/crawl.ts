@@ -19,7 +19,7 @@ import {
 } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
-import { addScrapeJob } from "../../services/queue-jobs";
+import { addScrapeJobRaw } from "../../services/queue-jobs";
 import { Logger } from "../../lib/logger";
 import { getJobPriority } from "../../lib/job-priority";
 import { callWebhook } from "../../services/webhook";
@@ -29,6 +29,8 @@ export async function crawlController(
   res: Response<CrawlResponse>
 ) {
   req.body = crawlRequestSchema.parse(req.body);
+
+  Logger.debug(`[Crawl] Request: ${JSON.stringify(req.body)}`);
 
   const id = uuidv4();
 
@@ -137,7 +139,7 @@ export async function crawlController(
     await getScrapeQueue().addBulk(jobs);
   } else {
     await lockURL(id, sc, req.body.url);
-    const job = await addScrapeJob(
+    const job = await addScrapeJobRaw(
       {
         url: req.body.url,
         mode: "single_urls",
@@ -151,7 +153,9 @@ export async function crawlController(
       },
       {
         priority: 15,
-      }
+      },
+      uuidv4(),
+      10
     );
     await addCrawlJob(id, job.id);
   }

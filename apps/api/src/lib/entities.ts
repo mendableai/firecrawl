@@ -13,7 +13,6 @@ export interface Progress {
 export type PageOptions = {
   includeMarkdown?: boolean;
   includeExtract?: boolean;
-  onlyMainContent?: boolean;
   includeHtml?: boolean;
   includeRawHtml?: boolean;
   fallback?: boolean;
@@ -59,8 +58,7 @@ export type CrawlerOptions = {
   replaceAllPathsWithAbsolutePaths?: boolean;
   ignoreSitemap?: boolean;
   mode?: "default" | "fast"; // have a mode of some sort
-  allowBackwardCrawling?: boolean;
-  allowExternalContentLinks?: boolean;
+  allowExternalLinks?: boolean;
 }
 
 export type WebScraperOptions = {

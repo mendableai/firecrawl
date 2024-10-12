@@ -65,11 +65,6 @@
                     },
                     "description": "Tags, classes and ids to remove from the page. Use comma separated values. Example: 'script, .ad, #footer'"
                   },
-                  "onlyMainContent": {
-                    "type": "boolean",
-                    "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
-                    "default": true
-                  },
                   "timeout": {
                     "type": "integer",
                     "description": "Timeout in milliseconds for the request",
@@ -217,12 +212,7 @@
                         "description": "Maximum number of pages to crawl",
                         "default": 10000
                       },
-                      "allowBackwardCrawling": {
-                        "type": "boolean",
-                        "description": "Enables the crawler to navigate from a specific URL to previously linked pages. For instance, from 'example.com/product/123' back to 'example.com/product'",
-                        "default": false
-                      },
-                      "allowExternalContentLinks": {
+                      "allowExternalLinks": {
                         "type": "boolean",
                         "description": "Allows the crawler to follow links to external websites.",
                         "default": false
@@ -252,11 +242,6 @@
                           "type": "string"
                         },
                         "description": "Only include tags, classes and ids from the page in the final output. Use comma separated values. Example: 'script, .ad, #footer'"
-                      },
-                      "onlyMainContent": {
-                        "type": "boolean",
-                        "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
-                        "default": false
                       },
                       "removeTags": {
                         "type": "array",
@@ -380,11 +365,6 @@
                   "pageOptions": {
                     "type": "object",
                     "properties": {
-                      "onlyMainContent": {
-                        "type": "boolean",
-                        "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
-                        "default": false
-                      },
                       "fetchPageContent": {
                         "type": "boolean",
                         "description": "Fetch the content of each page. If false, defaults to a basic fast serp API.",

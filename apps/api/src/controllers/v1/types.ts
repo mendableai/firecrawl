@@ -83,7 +83,6 @@ export const scrapeOptions = z
     headers: z.record(z.string(), z.string()).optional(),
     includeTags: z.string().array().optional(),
     excludeTags: z.string().array().optional(),
-    onlyMainContent: z.boolean().default(true),
     timeout: z.number().int().positive().finite().safe().default(30000),
     waitFor: z.number().int().nonnegative().finite().safe().default(0),
     extract: extractOptions.optional(),
@@ -298,8 +297,7 @@ export function legacyCrawlerOptions(x: CrawlerOptions) {
     maxDepth: x.maxDepth,
     limit: x.limit,
     generateImgAltText: false,
-    allowBackwardCrawling: x.allowBackwardLinks,
-    allowExternalContentLinks: x.allowExternalLinks,
+    allowExternalLinks: x.allowExternalLinks,
   };
 }
 
@@ -311,7 +309,6 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     includeExtract: x.formats.includes("extract"),
     onlyIncludeTags: x.includeTags,
     removeTags: x.excludeTags,
-    onlyMainContent: x.onlyMainContent,
     waitFor: x.waitFor,
     headers: x.headers,
     includeLinks: x.formats.includes("links"),

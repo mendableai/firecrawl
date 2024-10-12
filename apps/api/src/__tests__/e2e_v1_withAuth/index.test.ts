@@ -199,7 +199,6 @@ describe("E2E Tests for v1 API Routes", () => {
       it.concurrent("should return a successful response with a valid API key with removeTags option", async () => {
         const scrapeRequest: ScrapeRequest = {
           url: "https://www.scrapethissite.com/",
-          onlyMainContent: false // default is true
         };
         const responseWithoutRemoveTags: ScrapeResponseRequestTest = await request(TEST_URL)
           .post("/v1/scrape")
@@ -221,7 +220,6 @@ describe("E2E Tests for v1 API Routes", () => {
         const scrapeRequestWithRemoveTags: ScrapeRequest = {
             url: "https://www.scrapethissite.com/",
             excludeTags: ['.nav', '#footer', 'strong'],
-            onlyMainContent: false // default is true
         };
         const response: ScrapeResponseRequestTest = await request(TEST_URL)
           .post("/v1/scrape")

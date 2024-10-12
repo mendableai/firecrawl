@@ -11,7 +11,7 @@ import { parseMarkdown } from "../../lib/html-to-markdown";
 import { urlSpecificParams } from "./utils/custom/website_params";
 import { handleCustomScraping } from "./custom/handleCustomScraping";
 import { removeUnwantedElements } from "./utils/removeUnwantedElements";
-import { scrapWithFetch } from "./scrapers/fetch";
+import { scrapeWithFetch } from "./scrapers/fetch";
 import { scrapWithFireEngine } from "./scrapers/fireEngine";
 import { scrapWithPlaywright } from "./scrapers/playwright";
 import { scrapWithScrapingBee } from "./scrapers/scrapingBee";
@@ -99,16 +99,6 @@ function getScrapingFallbackOrder(
     "fetch",
   ].filter(Boolean);
 
-  // if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
-  //   defaultOrder = [
-  //     "fire-engine",
-  //     useFireEngine ? undefined : "playwright",
-  //     ...defaultOrder.filter(
-  //       (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
-  //     ),
-  //   ].filter(Boolean);
-  // }
-
   const filteredDefaultOrder = defaultOrder.filter(
     (scraper: (typeof baseScrapers)[number]) =>
       availableScrapers.includes(scraper)
@@ -123,7 +113,7 @@ function getScrapingFallbackOrder(
   return scrapersInOrder as (typeof baseScrapers)[number][];
 }
 
-export async function scrapSingleUrl(
+export async function scrapeSingleUrl(
   jobId: string,
   urlToScrap: string,
   pageOptions: PageOptions,
@@ -135,7 +125,6 @@ export async function scrapSingleUrl(
   pageOptions = {
     includeMarkdown: pageOptions.includeMarkdown ?? true,
     includeExtract: pageOptions.includeExtract ?? false,
-    onlyMainContent: pageOptions.onlyMainContent ?? false,
     includeHtml: pageOptions.includeHtml ?? false,
     includeRawHtml: pageOptions.includeRawHtml ?? false,
     waitFor: pageOptions.waitFor ?? undefined,
@@ -248,7 +237,7 @@ export async function scrapSingleUrl(
         }
         break;
       case "fetch":
-        const response = await scrapWithFetch(url);
+        const response = await scrapeWithFetch(url);
         scraperResponse.text = response.content;
         scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
         scraperResponse.metadata.pageError = response.pageError;

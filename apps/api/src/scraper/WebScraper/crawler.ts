@@ -4,7 +4,7 @@ import { URL } from "url";
 import { getLinksFromSitemap } from "./sitemap";
 import async from "async";
 import { CrawlerOptions, PageOptions, Progress } from "../../lib/entities";
-import { scrapSingleUrl } from "./single_url";
+import { scrapeSingleUrl } from "./single_url";
 import robotsParser from "robots-parser";
 import { getURLDepth } from "./utils/maxDepthUtils";
 import { axiosTimeout } from "../../../src/lib/timeout";
@@ -23,8 +23,7 @@ export class WebCrawler {
   private limit: number;
   private robotsTxtUrl: string;
   public robots: any;
-  private allowBackwardCrawling: boolean;
-  private allowExternalContentLinks: boolean;
+  private allowExternalLinks: boolean;
 
   constructor({
     jobId,
@@ -34,8 +33,7 @@ export class WebCrawler {
     maxCrawledLinks = 10000,
     limit = 10000,
     maxCrawledDepth = 10,
-    allowBackwardCrawling = false,
-    allowExternalContentLinks = false,
+    allowExternalLinks = false,
   }: {
     jobId: string;
     initialUrl: string;
@@ -45,8 +43,7 @@ export class WebCrawler {
     limit?: number;
     generateImgAltText?: boolean;
     maxCrawledDepth?: number;
-    allowBackwardCrawling?: boolean;
-    allowExternalContentLinks?: boolean;
+    allowExternalLinks?: boolean;
   }) {
     this.jobId = jobId;
     this.initialUrl = initialUrl;
@@ -59,8 +56,7 @@ export class WebCrawler {
     // Deprecated, use limit instead
     this.maxCrawledLinks = maxCrawledLinks ?? limit;
     this.maxCrawledDepth = maxCrawledDepth ?? 10;
-    this.allowBackwardCrawling = allowBackwardCrawling ?? false;
-    this.allowExternalContentLinks = allowExternalContentLinks ?? false;
+    this.allowExternalLinks = allowExternalLinks ?? false;
   }
 
   public filterLinks(
@@ -122,20 +118,6 @@ export class WebCrawler {
           /^www\./,
           ""
         );
-
-        if (!this.allowBackwardCrawling) {
-          if (
-            !normalizedLink.pathname.startsWith(normalizedInitialUrl.pathname)
-          ) {
-            Logger.debug(
-              "Disallowing link due to backward crawling: " +
-                normalizedLink.pathname +
-                "Because it does not start with " +
-                normalizedInitialUrl.pathname
-            );
-            return false;
-          }
-        }
 
         const isAllowed = this.robots.isAllowed(link, "FireCrawlAgent") ?? true;
         // Check if the link is disallowed by robots.txt
@@ -290,7 +272,7 @@ export class WebCrawler {
     }));
   }
 
-  public filterURL(href: string, url: string): string | null {
+  public filterURL(href: string): string | null {
     let fullUrl = href;
     if (!href.startsWith("http")) {
       try {
@@ -305,45 +287,57 @@ export class WebCrawler {
     } catch (_) {
       return null;
     }
-    const path = urlObj.pathname;
 
-    if (this.isInternalLink(fullUrl)) {
-      // INTERNAL LINKS
-      if (
-        this.noSections(fullUrl) &&
-        !this.matchesExcludes(path) &&
-        this.isRobotsAllowed(fullUrl)
-      ) {
-        return fullUrl;
-      }
-    } else {
-      // EXTERNAL LINKS
-      if (
-        this.allowExternalContentLinks &&
-        !this.isSocialMediaOrEmail(fullUrl) &&
-        !this.matchesExcludes(fullUrl, true)
-      ) {
-        return fullUrl;
-      }
+    if (fullUrl.includes("#")) return null;
+    if (this.isFile(fullUrl)) return null;
+
+    // INTERNAL LINKS
+    if (
+      this.isInternalLink(fullUrl) &&
+      !this.matchesExcludes(fullUrl) &&
+      this.matchesIncludes(fullUrl)
+    ) {
+      return fullUrl;
+    }
+    // EXTERNAL LINKS
+    else if (
+      this.allowExternalLinks &&
+      !this.isSocialMediaOrEmail(fullUrl) &&
+      !this.matchesExcludes(fullUrl) &&
+      this.matchesIncludes(fullUrl)
+    ) {
+      return fullUrl;
     }
 
-    Logger.debug(`Link filtered out: ${fullUrl}`);
+    Logger.debug(
+      `Link filtered out: ${fullUrl} with tests: isInternalLink: ${this.isInternalLink(
+        fullUrl
+      )}, allowExternalLinks: ${
+        this.allowExternalLinks
+      }, isSocialMediaOrEmail: ${this.isSocialMediaOrEmail(
+        fullUrl
+      )}, matchesExcludes: ${this.matchesExcludes(
+        fullUrl
+      )}, matchesIncludes: ${this.matchesIncludes(fullUrl)}`
+    );
     return null;
   }
 
-  public extractLinksFromHTML(html: string, url: string) {
+  public extractLinksFromHTML(html: string) {
     let links: string[] = [];
 
     const $ = load(html || "");
     $("a").each((_, element) => {
       const href = $(element).attr("href");
       if (href) {
-        const u = this.filterURL(href, url);
+        const u = this.filterURL(href);
         if (u !== null) {
           links.push(u);
         }
       }
     });
+
+    Logger.debug(`Extracted ${links.length} links from HTML`);
 
     return links;
   }
@@ -374,29 +368,31 @@ export class WebCrawler {
     }
 
     try {
-      let content: string = "";
+      let rawHtml: string = "";
       let pageStatusCode: number;
       let pageError: string | undefined = undefined;
 
       // If it is the first link, fetch with single url
       if (this.visited.size === 1) {
-        const page = await scrapSingleUrl(this.jobId, url, {
+        Logger.debug(`Scraping single URL: ${url}`);
+        const page = await scrapeSingleUrl(this.jobId, url, {
           ...pageOptions,
           includeHtml: true,
           includeRawHtml: true,
         });
-        content = page.rawHtml ?? "";
+        rawHtml = page.rawHtml ?? "";
         pageStatusCode = page.metadata?.pageStatusCode;
         pageError = page.metadata?.pageError || undefined;
       } else {
+        Logger.debug(`Axios getting URL: ${url}`);
         const response = await axios.get(url, { timeout: axiosTimeout });
-        content = response.data ?? "";
+        rawHtml = response.data ?? "";
         pageStatusCode = response.status;
         pageError =
           response.statusText != "OK" ? response.statusText : undefined;
       }
 
-      const $ = load(content);
+      const $ = load(rawHtml);
       let links: {
         url: string;
         html: string;
@@ -406,13 +402,13 @@ export class WebCrawler {
 
       // Add the initial URL to the list of links
       if (this.visited.size === 1) {
-        links.push({ url, html: content, pageStatusCode, pageError });
+        links.push({ url, html: rawHtml, pageStatusCode, pageError });
       }
 
       links.push(
-        ...this.extractLinksFromHTML(content, url).map((url) => ({
+        ...this.extractLinksFromHTML(rawHtml).map((url) => ({
           url,
-          html: content,
+          html: rawHtml,
           pageStatusCode,
           pageError,
         }))
@@ -429,49 +425,16 @@ export class WebCrawler {
     }
   }
 
-  private isRobotsAllowed(url: string): boolean {
-    return this.robots
-      ? this.robots.isAllowed(url, "FireCrawlAgent") ?? true
-      : true;
+  private matchesExcludes(url: string): boolean {
+    return this.excludes.some((pattern) => new RegExp(pattern).test(url));
   }
 
-  private matchesExcludes(url: string, onlyDomains: boolean = false): boolean {
-    return this.excludes.some((pattern) => {
-      if (onlyDomains) return this.matchesExcludesExternalDomains(url);
-
-      return this.excludes.some((pattern) => new RegExp(pattern).test(url));
-    });
-  }
-
-  // supported formats: "example.com/blog", "https://example.com", "blog.example.com", "example.com"
-  private matchesExcludesExternalDomains(url: string) {
-    try {
-      const urlObj = new URL(url);
-      const hostname = urlObj.hostname;
-      const pathname = urlObj.pathname;
-
-      for (let domain of this.excludes) {
-        let domainObj = new URL("http://" + domain.replace(/^https?:\/\//, ""));
-        let domainHostname = domainObj.hostname;
-        let domainPathname = domainObj.pathname;
-
-        if (
-          hostname === domainHostname ||
-          hostname.endsWith(`.${domainHostname}`)
-        ) {
-          if (pathname.startsWith(domainPathname)) {
-            return true;
-          }
-        }
-      }
-      return false;
-    } catch (e) {
-      return false;
+  private matchesIncludes(url: string): boolean {
+    if (this.includes.length === 0) {
+      return true;
     }
-  }
 
-  private noSections(link: string): boolean {
-    return !link.includes("#");
+    return this.includes.some((pattern) => new RegExp(pattern).test(url));
   }
 
   private isInternalLink(link: string): boolean {
@@ -496,14 +459,14 @@ export class WebCrawler {
       ".ico",
       ".svg",
       ".tiff",
-      // ".pdf",
+      ".pdf",
       ".zip",
       ".exe",
       ".dmg",
       ".mp4",
       ".mp3",
       ".pptx",
-      // ".docx",
+      ".docx",
       ".xlsx",
       ".xml",
       ".avi",
@@ -513,6 +476,7 @@ export class WebCrawler {
       ".woff2",
       ".webp",
       ".inc",
+      ".xml",
     ];
     return fileExtensions.some((ext) => url.toLowerCase().endsWith(ext));
   }
@@ -529,6 +493,10 @@ export class WebCrawler {
       "calendly.com",
       "discord.gg",
       "discord.com",
+      "x.com",
+      "youtube.com",
+      "tiktok.com",
+      "tel:",
     ];
     return socialMediaOrEmail.some((ext) => url.includes(ext));
   }
