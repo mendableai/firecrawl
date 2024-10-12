@@ -33,8 +33,6 @@ export class WebScraperDataProvider {
   private pageOptions?: PageOptions;
   private extractorOptions?: ExtractorOptions;
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
-  private generateImgAltTextModel: "gpt-4-turbo" | "claude-3-opus" =
-    "gpt-4-turbo";
   private crawlerMode: string = "default";
   private allowExternalLinks: boolean = false;
   private priority?: number;
@@ -304,10 +302,6 @@ export class WebScraperDataProvider {
       documents = replacePathsWithAbsolutePaths(documents);
     }
     return replaceImgPathsWithAbsolutePaths(documents);
-  }
-
-  private async applyImgAltText(documents: Document[]): Promise<Document[]> {
-    return documents;
   }
 
   private async cacheAndFinalizeDocuments(

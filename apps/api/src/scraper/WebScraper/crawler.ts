@@ -192,13 +192,6 @@ export class WebCrawler {
 
   public filterURL(href: string): string | null {
     let fullUrl = href;
-    if (!href.startsWith("http")) {
-      try {
-        fullUrl = new URL(href, this.baseUrl).toString();
-      } catch (_) {
-        return null;
-      }
-    }
     let urlObj: URL;
     try {
       urlObj = new URL(fullUrl);
@@ -241,23 +234,31 @@ export class WebCrawler {
     return null;
   }
 
-  public extractLinksFromHTML(html: string) {
+  public extractLinksFromHTML(html: string, pageUrl: string) {
     let links: string[] = [];
 
     const $ = load(html || "");
     $("a").each((_, element) => {
       const href = $(element).attr("href");
       if (href) {
-        const u = this.filterURL(href);
-        if (u !== null) {
+        let u = href;
+        if (href.startsWith("/")) {
+          u = new URL(href, pageUrl).href;
+        } else if (!href.startsWith("#") && !href.startsWith("mailto:")) {
+          u = new URL(href, pageUrl).href;
+        }
+
+        if (this.filterURL(u)) {
           links.push(u);
         }
       }
     });
 
-    Logger.debug(`Extracted ${links.length} links from HTML`);
+    const dedupedLinks = [...new Set(links)];
 
-    return links;
+    Logger.debug(`WebCrawler extracted ${dedupedLinks.length} links from HTML`);
+
+    return dedupedLinks;
   }
 
   async crawl(
@@ -324,7 +325,7 @@ export class WebCrawler {
       }
 
       links.push(
-        ...this.extractLinksFromHTML(rawHtml).map((url) => ({
+        ...this.extractLinksFromHTML(rawHtml, url).map((url) => ({
           url,
           html: rawHtml,
           pageStatusCode,
