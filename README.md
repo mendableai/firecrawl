@@ -1,4 +1,5 @@
 <h3 align="center">
+  <a name="readme-top"></a>
   <img
     src="https://raw.githubusercontent.com/mendableai/firecrawl/main/img/firecrawl_logo.png"
     height="200"
@@ -541,6 +542,12 @@ We love contributions! Please read our [contributing guide](CONTRIBUTING.md) bef
 
 _It is the sole responsibility of the end users to respect websites' policies when scraping, searching and crawling with Firecrawl. Users are advised to adhere to the applicable privacy policies and terms of use of the websites prior to initiating any scraping activities. By default, Firecrawl respects the directives specified in the websites' robots.txt files when crawling. By utilizing Firecrawl, you expressly agree to comply with these conditions._
 
+## Contributors
+
+<a href="https://github.com/mendableai/firecrawl/graphs/contributors">
+  <img alt="contributors" src="https://contrib.rocks/image?repo=mendableai/firecrawl"/>
+</a>
+
 ## License Disclaimer
 
 This project is primarily licensed under the GNU Affero General Public License v3.0 (AGPL-3.0), as specified in the LICENSE file in the root directory of this repository. However, certain components of this project are licensed under the MIT License. Refer to the LICENSE files in these specific directories for details.
@@ -552,3 +559,10 @@ Please note:
 - When using or contributing to this project, ensure you comply with the appropriate license terms for the specific component you are working with.
 
 For more details on the licensing of specific components, please refer to the LICENSE files in the respective directories or contact the project maintainers.
+
+
+<p align="right" style="font-size: 14px; color: #555; margin-top: 20px;">
+    <a href="#readme-top" style="text-decoration: none; color: #007bff; font-weight: bold;">
+        ↑ Back to Top ↑
+    </a>
+</p>
