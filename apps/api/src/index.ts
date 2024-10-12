@@ -29,7 +29,6 @@ const { ExpressAdapter } = require("@bull-board/express");
 const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
 Logger.info(`Number of CPUs: ${numCPUs} available`);
 
-// Disable CacheableLookup for VPC fire-engine-api
 const cacheable = new CacheableLookup()
 
 
