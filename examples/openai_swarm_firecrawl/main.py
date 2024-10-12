@@ -19,38 +19,43 @@ def scrape_website(url):
     )
     return scrape_status
 
-def analyze_website_content(content):
-    """Analyze the scraped website content using OpenAI."""
+def generate_completion(role, task, content):
+    """Generate a completion using OpenAI."""
     response = client.chat.completions.create(
         model="gpt-4o-mini",
         messages=[
-            {"role": "system", "content": "You are a marketing analyst. Analyze the following website content and provide key insights for marketing strategy."},
+            {"role": "system", "content": f"You are a {role}. {task}"},
             {"role": "user", "content": content}
         ]
     )
-    return {"analysis": response.choices[0].message.content}
+    return response.choices[0].message.content
+
+def analyze_website_content(content):
+    """Analyze the scraped website content using OpenAI."""
+    analysis = generate_completion(
+        "marketing analyst",
+        "Analyze the following website content and provide key insights for marketing strategy.",
+        content
+    )
+    return {"analysis": analysis}
 
 def generate_copy(brief):
     """Generate marketing copy based on a brief using OpenAI."""
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a copywriter. Create compelling marketing copy based on the following brief."},
-            {"role": "user", "content": brief}
-        ]
+    copy = generate_completion(
+        "copywriter",
+        "Create compelling marketing copy based on the following brief.",
+        brief
     )
-    return {"copy": response.choices[0].message.content}
+    return {"copy": copy}
 
 def create_campaign_idea(target_audience, goals):
     """Create a campaign idea based on target audience and goals using OpenAI."""
-    response = client.chat.completions.create(
-        model="gpt-4o-mini",
-        messages=[
-            {"role": "system", "content": "You are a marketing strategist. Create an innovative campaign idea based on the target audience and goals provided."},
-            {"role": "user", "content": f"Target Audience: {target_audience}\nGoals: {goals}"}
-        ]
+    campaign_idea = generate_completion(
+        "marketing strategist",
+        "Create an innovative campaign idea based on the target audience and goals provided.",
+        f"Target Audience: {target_audience}\nGoals: {goals}"
     )
-    return {"campaign_idea": response.choices[0].message.content}
+    return {"campaign_idea": campaign_idea}
 
 def handoff_to_copywriter():
     """Hand off the campaign idea to the copywriter agent."""
