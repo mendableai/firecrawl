@@ -117,7 +117,14 @@ class FirecrawlApp:
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
 
         Returns:
-            Any: The crawl job ID or the crawl results if waiting until completion.
+            Dict[str, Any]: A dictionary containing the crawl results. The structure includes:
+                - 'success' (bool): Indicates if the crawl was successful.
+                - 'status' (str): The final status of the crawl job (e.g., 'completed').
+                - 'completed' (int): Number of scraped pages that completed.
+                - 'total' (int): Total number of scraped pages.
+                - 'creditsUsed' (int): Estimated number of API credits used for this crawl.
+                - 'expiresAt' (str): ISO 8601 formatted date-time string indicating when the crawl data expires.
+                - 'data' (List[Dict]): List of all the scraped pages.
 
         Raises:
             Exception: If the crawl job initiation or monitoring fails.
@@ -146,7 +153,10 @@ class FirecrawlApp:
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
 
         Returns:
-            Dict[str, Any]: The response from the crawl initiation request.
+            Dict[str, Any]: A dictionary containing the crawl initiation response. The structure includes:
+                - 'success' (bool): Indicates if the crawl initiation was successful.
+                - 'id' (str): The unique identifier for the crawl job.
+                - 'url' (str): The URL to check the status of the crawl job.
         """
         endpoint = f'/v1/crawl'
         headers = self._prepare_headers(idempotency_key)
@@ -236,7 +246,7 @@ class FirecrawlApp:
             params (Optional[Dict[str, Any]]): Additional parameters for the map search.
 
         Returns:
-            Any: The result of the map search, typically a dictionary containing mapping data.
+            List[str]: A list of URLs discovered during the map search.
         """
         endpoint = f'/v1/map'
         headers = self._prepare_headers()
