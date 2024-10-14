@@ -55,7 +55,7 @@ export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk, team_id:
 
   const creditsWillBeUsed = chunk.adjusted_credits_used + credits;
 
-  // In case chunk.price_credits is undefined, set it to a large number to avoid division by zero
+  // In case chunk.price_credits is undefined, set it to a large number to avoid mistakes
   const totalPriceCredits = chunk.price_credits ?? 100000000;
   // Removal of + credits
   const creditUsagePercentage = creditsWillBeUsed / totalPriceCredits;
