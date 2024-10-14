@@ -11,9 +11,8 @@ import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
-import { Job } from "bullmq";
 import { Logger } from "../lib/logger";
-import { Worker } from "bullmq";
+import { Job, Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
 import { v4 as uuidv4 } from "uuid";
 import {
