@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from "axios";
-import fs from "fs";
+import fs from "fs/promises";
 import { createReadStream, createWriteStream } from "node:fs";
 import FormData from "form-data";
 import dotenv from "dotenv";
@@ -15,7 +15,7 @@ export async function fetchAndProcessPdf(url: string, parsePDF: boolean): Promis
   try {
     const { tempFilePath, pageStatusCode, pageError } = await downloadPdf(url);
     const content = await processPdfToText(tempFilePath, parsePDF);
-    fs.unlinkSync(tempFilePath); // Clean up the temporary file
+    await fs.unlink(tempFilePath); // Clean up the temporary file
     return { content, pageStatusCode, pageError };
   } catch (error) {
     Logger.error(`Failed to fetch and process PDF: ${error.message}`);
@@ -120,7 +120,7 @@ export async function processPdfToText(filePath: string, parsePDF: boolean): Pro
     }
   } else {
     try {
-      content = fs.readFileSync(filePath, "utf-8");
+      content = await fs.readFile(filePath, "utf-8");
     } catch (error) {
       Logger.error(`Failed to read PDF file: ${error}`);
       content = "";
@@ -131,7 +131,7 @@ export async function processPdfToText(filePath: string, parsePDF: boolean): Pro
 
 async function processPdf(file: string) {
   try {
-    const fileContent = fs.readFileSync(file);
+    const fileContent = await fs.readFile(file);
     const data = await pdf(fileContent);
     return data.text;
   } catch (error) {
