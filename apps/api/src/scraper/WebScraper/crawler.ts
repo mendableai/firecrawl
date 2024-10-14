@@ -136,6 +136,10 @@ export class WebCrawler {
           return false;
         }
 
+        if (this.isFile(link)) {
+          return false;
+        }
+
         return true;
       })
       .slice(0, limit);
@@ -478,7 +482,14 @@ export class WebCrawler {
       ".webp",
       ".inc"
     ];
-    return fileExtensions.some((ext) => url.toLowerCase().endsWith(ext));
+
+    try {
+      const urlWithoutQuery = url.split('?')[0].toLowerCase();
+      return fileExtensions.some((ext) => urlWithoutQuery.endsWith(ext));
+    } catch (error) {
+      Logger.error(`Error processing URL in isFile: ${error}`);
+      return false;
+    }
   }
 
   private isSocialMediaOrEmail(url: string): boolean {
