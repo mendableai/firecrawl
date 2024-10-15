@@ -87,7 +87,7 @@ describe("Scraping Checkup (E2E)", () => {
               while (!msg && attempts < maxRetries) {
                 try {
                   msg = await openai.chat.completions.create({
-                    model: "gpt-4-turbo",
+                    model: "gpt-4o-mini",
                     max_tokens: 100,
                     temperature: 0,
                     messages: [
@@ -169,9 +169,9 @@ describe("Scraping Checkup (E2E)", () => {
       const score = (passedTests / websitesData.length) * 100;
       const endTime = new Date().getTime();
       const timeTaken = (endTime - startTime) / 1000;
-      console.log(`Score: ${score}%`);
-      console.log(`Total tokens: ${totalTokens}`);
-      console.log(`Total time taken: ${totalTimeTaken} miliseconds`);
+      // console.log(`Score: ${score}%`);
+      // console.log(`Total tokens: ${totalTokens}`);
+      // console.log(`Total time taken: ${totalTimeTaken} miliseconds`);
 
       await logErrors(errorLog, timeTaken, totalTokens, score, websitesData.length);
       
