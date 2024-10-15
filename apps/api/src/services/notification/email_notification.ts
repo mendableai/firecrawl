@@ -3,6 +3,9 @@ import { withAuth } from "../../lib/withAuth";
 import { Resend } from "resend";
 import { NotificationType } from "../../types";
 import { Logger } from "../../../src/lib/logger";
+import { sendSlackWebhook } from "../alerts/slack";
+import { getNotificationString } from "./notification_string";
+import { AuthCreditUsageChunk } from "../../controllers/v1/types";
 
 const emailTemplates: Record<
   NotificationType,
@@ -27,19 +30,21 @@ export async function sendNotification(
   team_id: string,
   notificationType: NotificationType,
   startDateString: string,
-  endDateString: string
+  endDateString: string,
+  chunk: AuthCreditUsageChunk
 ) {
   return withAuth(sendNotificationInternal)(
     team_id,
     notificationType,
     startDateString,
-    endDateString
+    endDateString,
+    chunk
   );
 }
 
 async function sendEmailNotification(
   email: string,
-  notificationType: NotificationType
+  notificationType: NotificationType,
 ) {
   const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -66,7 +71,8 @@ export async function sendNotificationInternal(
   team_id: string,
   notificationType: NotificationType,
   startDateString: string,
-  endDateString: string
+  endDateString: string,
+  chunk: AuthCreditUsageChunk
 ): Promise<{ success: boolean }> {
   if (team_id === "preview") {
     return { success: true };
@@ -134,6 +140,16 @@ export async function sendNotificationInternal(
           sent_date: new Date().toISOString(),
         },
       ]);
+
+    if (process.env.SLACK_ADMIN_WEBHOOK_URL && emails.length > 0) {
+      sendSlackWebhook(
+        `${getNotificationString(notificationType)}: Team ${team_id}, with email ${emails[0].email}. Number of credits used: ${chunk.adjusted_credits_used} | Number of credits in the plan: ${chunk.price_credits}`,
+        false,
+        process.env.SLACK_ADMIN_WEBHOOK_URL
+      ).catch((error) => {
+        Logger.debug(`Error sending slack notification: ${error}`);
+      });
+    }
 
     if (insertError) {
       Logger.debug(`Error inserting notification record: ${insertError}`);
