@@ -70,11 +70,12 @@ export function extractMetadata(soup: CheerioAPI, url: string): Metadata {
   let pageStatusCode: number | null = null;
   let pageError: string | null = null;
 
+  const customMetadata: Record<string, string | string[]> = {};
+
   try {
     title = soup("title").text() || null;
     description = soup('meta[name="description"]').attr("content") || null;
     
-    // Assuming the language is part of the URL as per the regex pattern
     language = soup('html').attr('lang') || null;
 
     keywords = soup('meta[name="keywords"]').attr("content") || null;
@@ -103,6 +104,22 @@ export function extractMetadata(soup: CheerioAPI, url: string): Metadata {
     dcDate = soup('meta[name="dc.date"]').attr("content") || null;
     dcDateCreated = soup('meta[name="dc.date.created"]').attr("content") || null;
     dctermsCreated = soup('meta[name="dcterms.created"]').attr("content") || null;
+
+    // Extract all meta tags for custom metadata
+    soup("meta").each((i, elem) => {
+      const name = soup(elem).attr("name") || soup(elem).attr("property");
+      const content = soup(elem).attr("content");
+
+      if (name && content) {
+        if (customMetadata[name] === undefined) {
+          customMetadata[name] = content;
+        } else if (Array.isArray(customMetadata[name])) {
+          (customMetadata[name] as string[]).push(content);
+        } else {
+          customMetadata[name] = [customMetadata[name] as string, content];
+        }
+      }
+    });
 
   } catch (error) {
     Logger.error(`Error extracting metadata: ${error}`);
@@ -141,5 +158,6 @@ export function extractMetadata(soup: CheerioAPI, url: string): Metadata {
     ...(sourceURL ? { sourceURL } : {}),
     ...(pageStatusCode ? { pageStatusCode } : {}),
     ...(pageError ? { pageError } : {}),
+    ...customMetadata,
   };
 }
