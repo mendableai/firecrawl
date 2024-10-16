@@ -156,6 +156,7 @@ export async function scrapSingleUrl(
     disableJsDom: pageOptions.disableJsDom ?? false,
     atsv: pageOptions.atsv ?? false,
     actions: pageOptions.actions ?? undefined,
+    geolocation: pageOptions.geolocation ?? undefined,
   }
 
   if (extractorOptions) {
