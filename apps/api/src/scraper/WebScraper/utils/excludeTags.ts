@@ -3,7 +3,6 @@ export const excludeNonMainTags = [
   "footer",
   "nav",
   "aside",
-  ".header",
   ".top",
   ".navbar",
   ".footer",
