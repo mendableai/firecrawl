@@ -28,7 +28,7 @@ export async function scrapWithFireEngine({
   waitFor = 0,
   screenshot = false,
   fullPageScreenshot = false,
-  pageOptions = { parsePDF: true, atsv: false, useFastMode: false, disableJsDom: false },
+  pageOptions = { parsePDF: true, atsv: false, useFastMode: false, disableJsDom: false, geolocation: { country: "US" } },
   fireEngineOptions = {},
   headers,
   options,
@@ -40,7 +40,7 @@ export async function scrapWithFireEngine({
   waitFor?: number;
   screenshot?: boolean;
   fullPageScreenshot?: boolean;
-  pageOptions?: { scrollXPaths?: string[]; parsePDF?: boolean, atsv?: boolean, useFastMode?: boolean, disableJsDom?: boolean };
+  pageOptions?: { scrollXPaths?: string[]; parsePDF?: boolean, atsv?: boolean, useFastMode?: boolean, disableJsDom?: boolean, geolocation?: { country?: string } };
   fireEngineOptions?: FireEngineOptions;
   headers?: Record<string, string>;
   options?: any;
@@ -118,6 +118,7 @@ export async function scrapWithFireEngine({
           ...fireEngineOptionsParam,
           atsv: pageOptions?.atsv ?? false,
           scrollXPaths: pageOptions?.scrollXPaths ?? [],
+          geolocation: pageOptions?.geolocation,
           actions: actions,
         },
         {

@@ -4,6 +4,7 @@ import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { Action, ExtractorOptions, PageOptions } from "../../lib/entities";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { PlanType } from "../../types";
+import { countries } from "../../lib/validate-country";
 
 export type Format =
   | "markdown"
@@ -108,6 +109,14 @@ export const scrapeOptions = z.object({
   extract: extractOptions.optional(),
   parsePDF: z.boolean().default(true),
   actions: actionsSchema.optional(),
+  geolocation: z.object({
+    country: z.string().optional().refine(
+      (val) => !val || Object.keys(countries).includes(val.toUpperCase()),
+      {
+        message: "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
+      }
+    ).transform(val => val ? val.toUpperCase() : 'US')
+  }).optional(),
 }).strict(strictMessage)
 
 
@@ -421,6 +430,7 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
     parsePDF: x.parsePDF,
     actions: x.actions as Action[], // no strict null checking grrrr - mogery
+    geolocation: x.geolocation,
   };
 }
 
