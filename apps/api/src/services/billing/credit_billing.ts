@@ -72,7 +72,7 @@ export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk, team_id:
       chunk
     );
   }
-    return { success: false, message: "Insufficient credits. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing.", remainingCredits: chunk.remaining_credits, chunk };
+    return { success: false, message: "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing.", remainingCredits: chunk.remaining_credits, chunk };
   } else if (creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
     // Send email notification for approaching credit limit
     sendNotification(
