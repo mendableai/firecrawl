@@ -34,6 +34,7 @@ interface Metadata {
   sourceURL?: string;
   pageStatusCode?: number;
   pageError?: string;
+  [key: string]: string | string[] | number | undefined;
 }
 
 export function extractMetadata(soup: CheerioAPI, url: string): Metadata {
@@ -70,40 +71,78 @@ export function extractMetadata(soup: CheerioAPI, url: string): Metadata {
   let pageStatusCode: number | null = null;
   let pageError: string | null = null;
 
+  const customMetadata: Record<string, string | string[]> = {};
+
   try {
+    // TODO: remove this as it is redundant with the below implementation
     title = soup("title").text() || null;
     description = soup('meta[name="description"]').attr("content") || null;
-    
-    // Assuming the language is part of the URL as per the regex pattern
-    language = soup('html').attr('lang') || null;
+
+    language = soup("html").attr("lang") || null;
 
     keywords = soup('meta[name="keywords"]').attr("content") || null;
     robots = soup('meta[name="robots"]').attr("content") || null;
     ogTitle = soup('meta[property="og:title"]').attr("content") || null;
-    ogDescription = soup('meta[property="og:description"]').attr("content") || null;
+    ogDescription =
+      soup('meta[property="og:description"]').attr("content") || null;
     ogUrl = soup('meta[property="og:url"]').attr("content") || null;
     ogImage = soup('meta[property="og:image"]').attr("content") || null;
     ogAudio = soup('meta[property="og:audio"]').attr("content") || null;
-    ogDeterminer = soup('meta[property="og:determiner"]').attr("content") || null;
+    ogDeterminer =
+      soup('meta[property="og:determiner"]').attr("content") || null;
     ogLocale = soup('meta[property="og:locale"]').attr("content") || null;
-    ogLocaleAlternate = soup('meta[property="og:locale:alternate"]').map((i, el) => soup(el).attr("content")).get() || null;
+    ogLocaleAlternate =
+      soup('meta[property="og:locale:alternate"]')
+        .map((i, el) => soup(el).attr("content"))
+        .get() || null;
     ogSiteName = soup('meta[property="og:site_name"]').attr("content") || null;
     ogVideo = soup('meta[property="og:video"]').attr("content") || null;
-    articleSection = soup('meta[name="article:section"]').attr("content") || null;
+    articleSection =
+      soup('meta[name="article:section"]').attr("content") || null;
     articleTag = soup('meta[name="article:tag"]').attr("content") || null;
-    publishedTime = soup('meta[property="article:published_time"]').attr("content") || null;
-    modifiedTime = soup('meta[property="article:modified_time"]').attr("content") || null;
-    dctermsKeywords = soup('meta[name="dcterms.keywords"]').attr("content") || null;
+    publishedTime =
+      soup('meta[property="article:published_time"]').attr("content") || null;
+    modifiedTime =
+      soup('meta[property="article:modified_time"]').attr("content") || null;
+    dctermsKeywords =
+      soup('meta[name="dcterms.keywords"]').attr("content") || null;
     dcDescription = soup('meta[name="dc.description"]').attr("content") || null;
     dcSubject = soup('meta[name="dc.subject"]').attr("content") || null;
-    dctermsSubject = soup('meta[name="dcterms.subject"]').attr("content") || null;
-    dctermsAudience = soup('meta[name="dcterms.audience"]').attr("content") || null;
+    dctermsSubject =
+      soup('meta[name="dcterms.subject"]').attr("content") || null;
+    dctermsAudience =
+      soup('meta[name="dcterms.audience"]').attr("content") || null;
     dcType = soup('meta[name="dc.type"]').attr("content") || null;
     dctermsType = soup('meta[name="dcterms.type"]').attr("content") || null;
     dcDate = soup('meta[name="dc.date"]').attr("content") || null;
-    dcDateCreated = soup('meta[name="dc.date.created"]').attr("content") || null;
-    dctermsCreated = soup('meta[name="dcterms.created"]').attr("content") || null;
+    dcDateCreated =
+      soup('meta[name="dc.date.created"]').attr("content") || null;
+    dctermsCreated =
+      soup('meta[name="dcterms.created"]').attr("content") || null;
 
+    try {
+      // Extract all meta tags for custom metadata
+      soup("meta").each((i, elem) => {
+        try {
+          const name = soup(elem).attr("name") || soup(elem).attr("property");
+          const content = soup(elem).attr("content");
+
+          if (name && content) {
+            if (customMetadata[name] === undefined) {
+              customMetadata[name] = content;
+            } else if (Array.isArray(customMetadata[name])) {
+              (customMetadata[name] as string[]).push(content);
+            } else {
+              customMetadata[name] = [customMetadata[name] as string, content];
+            }
+          }
+        } catch (error) {
+          Logger.error(`Error extracting custom metadata (in): ${error}`);
+        }
+      });
+    } catch (error) {
+      Logger.error(`Error extracting custom metadata: ${error}`);
+    }
   } catch (error) {
     Logger.error(`Error extracting metadata: ${error}`);
   }
@@ -141,5 +180,6 @@ export function extractMetadata(soup: CheerioAPI, url: string): Metadata {
     ...(sourceURL ? { sourceURL } : {}),
     ...(pageStatusCode ? { pageStatusCode } : {}),
     ...(pageError ? { pageError } : {}),
+    ...customMetadata,
   };
 }

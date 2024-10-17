@@ -121,6 +121,49 @@ describe("E2E Tests for v1 API Routes", () => {
       },
       30000
     ); // 30 seconds timeout
+
+    it.concurrent(
+      "should return a successful response with a valid API key",
+      async () => {
+        const scrapeRequest: ScrapeRequest = {
+          url: "https://arxiv.org/abs/2410.04840",
+        };
+
+        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+          .post("/v1/scrape")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send(scrapeRequest);
+
+        expect(response.statusCode).toBe(200);
+
+        if (!("data" in response.body)) {
+          throw new Error("Expected response body to have 'data' property");
+        }
+        expect(response.body.data).not.toHaveProperty("content");
+        expect(response.body.data).toHaveProperty("markdown");
+        expect(response.body.data).toHaveProperty("metadata");
+        expect(response.body.data).not.toHaveProperty("html");
+        expect(response.body.data.markdown).toContain("Strong Model Collapse");
+        expect(response.body.data.metadata.error).toBeUndefined();
+        expect(response.body.data.metadata.description).toContain("Abstract page for arXiv paper 2410.04840: Strong Model Collapse");
+        expect(response.body.data.metadata.citation_title).toBe("Strong Model Collapse");
+        expect(response.body.data.metadata.citation_author).toEqual([
+          "Dohmatob, Elvis",
+          "Feng, Yunzhen",
+          "Subramonian, Arjun",
+          "Kempe, Julia"
+        ]);
+        expect(response.body.data.metadata.citation_date).toBe("2024/10/07");
+        expect(response.body.data.metadata.citation_online_date).toBe("2024/10/08");
+        expect(response.body.data.metadata.citation_pdf_url).toBe("http://arxiv.org/pdf/2410.04840");
+        expect(response.body.data.metadata.citation_arxiv_id).toBe("2410.04840");
+        expect(response.body.data.metadata.citation_abstract).toContain("Within the scaling laws paradigm");
+        expect(response.body.data.metadata.sourceURL).toBe("https://arxiv.org/abs/2410.04840");
+        expect(response.body.data.metadata.statusCode).toBe(200);
+      },
+      30000
+    );
     it.concurrent(
       "should return a successful response with a valid API key and includeHtml set to true",
       async () => {
