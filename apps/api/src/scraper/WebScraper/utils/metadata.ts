@@ -74,6 +74,7 @@ export function extractMetadata(soup: CheerioAPI, url: string): Metadata {
   const customMetadata: Record<string, string | string[]> = {};
 
   try {
+    // TODO: remove this as it is redundant with the below implementation
     title = soup("title").text() || null;
     description = soup('meta[name="description"]').attr("content") || null;
 
