@@ -139,7 +139,7 @@ export async function scrapeController(
     crawlerOptions: {},
     pageOptions: pageOptions,
     origin: origin,
-    extractor_options: { mode: "markdown" },
+    extractor_options: extractorOptions,
     num_tokens: numTokens,
   });
 
