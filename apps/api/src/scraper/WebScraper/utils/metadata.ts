@@ -34,6 +34,7 @@ interface Metadata {
   sourceURL?: string;
   pageStatusCode?: number;
   pageError?: string;
+  [key: string]: string | string[] | number | undefined;
 }
 
 export function extractMetadata(soup: CheerioAPI, url: string): Metadata {
