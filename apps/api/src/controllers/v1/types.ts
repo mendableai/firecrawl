@@ -250,6 +250,8 @@ export type Document = {
     sourceURL?: string;
     statusCode?: number;
     error?: string;
+    [key: string]: string | string[] | number | undefined;
+
   };
 };
 
