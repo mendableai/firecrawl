@@ -3,7 +3,7 @@ import { redisConnection } from "../services/queue-service";
 import { Logger } from "./logger";
 
 export type StoredCrawl = {
-    originUrl: string;
+    originUrl?: string;
     crawlerOptions: any;
     pageOptions: any;
     team_id: string;
