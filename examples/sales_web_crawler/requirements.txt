@@ -1,0 +1,4 @@
+firecrawl-py
+openai
+google-search-results
+tqdm

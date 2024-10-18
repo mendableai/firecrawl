@@ -1,0 +1,630 @@
+[
+    {
+        "contacts": [
+            {
+                "name": "Canan Dagdeviren",
+                "email": null,
+                "title": null,
+                "company": null
+            },
+            {
+                "name": "Media Lab Communications",
+                "email": "press@media.mit.edu",
+                "title": null,
+                "company": "MIT Media Lab"
+            }
+        ]
+    },
+    {
+        "people": [
+            {
+                "name": "Xan Foote",
+                "title": "Group Contact",
+                "email": "fluidadmin@media.mit.edu"
+            }
+        ],
+        "companies": [
+            {
+                "name": "MIT Media Lab",
+                "title": "Fluid Interfaces"
+            }
+        ]
+    },
+    {
+        "emails": [],
+        "people": [
+            {
+                "name": "Personal Robots",
+                "title": "Group",
+                "company": "MIT Media Lab"
+            }
+        ],
+        "companies": [
+            {
+                "name": "MIT Media Lab",
+                "title": "Personal Robots group"
+            }
+        ]
+    },
+    {
+        "people": [
+            {
+                "name": "David Sweeney",
+                "title": "Author"
+            },
+            {
+                "name": "Rosalind W. Picard",
+                "title": "Professor of Media Arts and Sciences; Grover M. Hermann Professor in Health Sciences and Technology"
+            },
+            {
+                "name": "Pattie Maes",
+                "title": "Professor of Media Technology; Germeshausen Professor"
+            },
+            {
+                "name": "Hugh Herr",
+                "title": "Professor of Media Arts and Sciences"
+            },
+            {
+                "name": "Deblina Sarkar",
+                "title": "Assistant Professor of Media Arts and Sciences; AT&T Career Development Professor"
+            },
+            {
+                "name": "Canan Dagdeviren",
+                "title": "Associate Professor of Media Arts and Sciences; LG Career Development Professor of Media Arts and Sciences"
+            },
+            {
+                "name": "Dava Newman",
+                "title": "Director; Apollo Professor of Astronautics"
+            },
+            {
+                "name": "Cynthia Breazeal",
+                "title": "Professor of Media Arts and Sciences; MIT Dean for Digital Learning"
+            },
+            {
+                "name": "Susan Blumenthal, MD",
+                "title": "Visiting Professor; Director's Circle Member"
+            }
+        ],
+        "emails": [],
+        "companies": []
+    },
+    {
+        "people": [
+            {
+                "name": "Dan Blondell",
+                "title": "I2"
+            }
+        ],
+        "companies": [],
+        "emails": []
+    },
+    {
+        "people": [
+            {
+                "name": "Canan Dagdeviren",
+                "title": "Copyright Holder"
+            },
+            {
+                "name": "Jonathan Williams",
+                "title": "Copyright Holder"
+            },
+            {
+                "name": "Sara V. Fernandez",
+                "title": "Courtesy of"
+            },
+            {
+                "name": "Irmandy Wicaksono",
+                "title": "Courtesy of"
+            }
+        ],
+        "companies": [
+            {
+                "name": "MIT Media Lab",
+                "title": "Interdisciplinary Research Institution"
+            }
+        ],
+        "emails": []
+    },
+    {
+        "people": [
+            {
+                "name": "David Sweeney",
+                "title": null
+            },
+            {
+                "name": "Sarah Beckmann",
+                "title": null
+            },
+            {
+                "name": "Behnaz Farahi",
+                "title": "Assistant Professor, Transformative Design"
+            },
+            {
+                "name": "Paul Liang",
+                "title": "Assistant Professor, AI + Human Experience"
+            },
+            {
+                "name": "Rosalind W. Picard",
+                "title": null
+            },
+            {
+                "name": "Guillermo Herrera-Arcos",
+                "title": null
+            },
+            {
+                "name": "Christine Higgins",
+                "title": null
+            },
+            {
+                "name": "Patrick Chwalek",
+                "title": null
+            },
+            {
+                "name": "Sarra Shubart",
+                "title": null
+            },
+            {
+                "name": "Amanda Diehl",
+                "title": null
+            },
+            {
+                "name": "Chia Evers",
+                "title": null
+            },
+            {
+                "name": "Matthew Groh",
+                "title": null
+            },
+            {
+                "name": "Cl\u00e9mence Taillandier",
+                "title": null
+            },
+            {
+                "name": "Cody Paige",
+                "title": null
+            },
+            {
+                "name": "Minoo Rathnasabapathy",
+                "title": null
+            },
+            {
+                "name": "Alex Berke",
+                "title": null
+            }
+        ],
+        "emails": [
+            "web-admin@media.mit.edu"
+        ],
+        "companies": [
+            {
+                "name": "MIT Media Lab"
+            },
+            {
+                "name": "Samsung"
+            },
+            {
+                "name": "Castrol"
+            }
+        ]
+    },
+    {
+        "people": [
+            {
+                "name": "Tod Machover",
+                "title": "Opera Composer"
+            }
+        ],
+        "companies": [
+            {
+                "name": "Future Worlds",
+                "title": "Design and action for the future we want to live in"
+            },
+            {
+                "name": "NOAA",
+                "title": "The Challenge: To secure a sustainable future for all living things"
+            },
+            {
+                "name": "MIT Media Lab",
+                "title": "Research and development in interdisciplinary expertise"
+            }
+        ]
+    },
+    {
+        "emails": [
+            "r-admin@media.mit.edu"
+        ],
+        "people": [
+            {
+                "name": "Affective Computing group",
+                "title": "MIT Media Lab"
+            }
+        ],
+        "companies": []
+    },
+    {
+        "people": [
+            {
+                "name": "David Sweeney",
+                "email": null,
+                "title": "Author at Samsung Newsroom"
+            },
+            {
+                "name": "Pattie Maes",
+                "email": null,
+                "title": "Professor of Media Technology; Germeshausen Professor"
+            },
+            {
+                "name": "Rosalind W. Picard",
+                "email": null,
+                "title": "Professor of Media Arts and Sciences; Grover M. Hermann Professor in Health Sciences and Technology"
+            }
+        ],
+        "companies": [
+            {
+                "name": "Samsung",
+                "email": null,
+                "title": "Collaborator"
+            },
+            {
+                "name": "MIT Media Lab",
+                "email": null,
+                "title": "Collaborator"
+            }
+        ]
+    },
+    {
+        "people": [
+            {
+                "name": "Canan Dagdeviren",
+                "title": null
+            },
+            {
+                "name": "Jonathan Williams",
+                "title": null
+            },
+            {
+                "name": "Sara V. Fernandez",
+                "title": null
+            },
+            {
+                "name": "Irmandy Wicaksono",
+                "title": null
+            }
+        ],
+        "companies": [
+            {
+                "name": "MIT Media Lab",
+                "title": null
+            }
+        ],
+        "emails": []
+    },
+    {
+        "people": [],
+        "emails": [],
+        "companies": [],
+        "titles": []
+    },
+    {
+        "emails": [],
+        "people": [
+            {
+                "name": "Andy Ryan",
+                "title": "Photographer",
+                "company": "MIT Media Lab"
+            }
+        ],
+        "companies": [
+            {
+                "name": "MIT Media Lab",
+                "department": "Program in Media Arts and Sciences"
+            },
+            {
+                "name": "MIT",
+                "department": "Center for Bits and Atoms"
+            }
+        ]
+    },
+    {
+        "people": [
+            {
+                "name": "Dan Allen",
+                "title": "Media Lab"
+            }
+        ],
+        "companies": [
+            {
+                "name": "MIT Media Lab"
+            },
+            {
+                "name": "Castrol"
+            }
+        ],
+        "emails": []
+    },
+    {
+        "people": [
+            {
+                "name": "Pat Pataranutaporn",
+                "title": "Former Graduate Student"
+            },
+            {
+                "name": "Pattie Maes",
+                "title": "Professor of Media Technology; Germeshausen Professor"
+            },
+            {
+                "name": "Kavin Winson",
+                "title": "Researcher at KASIKORN Labs"
+            },
+            {
+                "name": "Peggy Yin",
+                "title": "Harvard University Undergraduate"
+            },
+            {
+                "name": "Auttasak Lapapirojn",
+                "title": "KASIKORN Labs"
+            },
+            {
+                "name": "Pichayoot Ouppaphan",
+                "title": "KASIKORN Labs"
+            },
+            {
+                "name": "Monchai Lertsutthiwong",
+                "title": "Head of AI Research at KASIKORN Business-Technology Group"
+            },
+            {
+                "name": "Hal Hershfield",
+                "title": "Professor of Marketing, Behavioral Decision Making, and Psychology at the University of California at Los Angeles"
+            },
+            {
+                "name": "Jeremy Bailenson",
+                "title": "Thomas More Storke Professor of Communication at Stanford University"
+            },
+            {
+                "name": "Thanawit Prasongpongchai",
+                "title": "Designer at KBTG and Visiting Scientist at the Media Lab"
+            }
+        ],
+        "companies": [
+            {
+                "name": "MIT",
+                "role": "AI and simulation research"
+            },
+            {
+                "name": "KASIKORN Labs",
+                "role": "Research and co-authorship"
+            },
+            {
+                "name": "KASIKORN Business-Technology Group",
+                "role": "AI research support"
+            }
+        ]
+    },
+    {
+        "people": [
+            {
+                "name": "Andy Ryan",
+                "title": "Copyright"
+            }
+        ],
+        "companies": [
+            {
+                "name": "MIT Media Lab",
+                "collaborator": "Castrol",
+                "project": "Space Research"
+            }
+        ],
+        "emails": []
+    },
+    {
+        "people": [
+            {
+                "name": "Fadel Adib",
+                "title": "Associate Professor of Media Arts and Sciences"
+            },
+            {
+                "name": "Edward Boyden",
+                "title": "Professor of Media Arts and Sciences; Y. Eva Tan Professor in Neurotechnology"
+            },
+            {
+                "name": "Cynthia Breazeal",
+                "title": "Professor of Media Arts and Sciences; MIT Dean for Digital Learning"
+            },
+            {
+                "name": "Canan Dagdeviren",
+                "title": "Associate Professor of Media Arts and Sciences; LG Career Development Professor of Media Arts and Sciences"
+            },
+            {
+                "name": "Kevin Esvelt",
+                "title": "Associate Professor of Media Arts and Sciences; NEC Career Development Professor of Computer and Communications"
+            },
+            {
+                "name": "Behnaz Farahi",
+                "title": "Assistant Professor of Media Arts and Sciences; Asahi Broadcast Corp Career Development Assistant Professor"
+            },
+            {
+                "name": "Hugh Herr",
+                "title": "Professor of Media Arts and Sciences"
+            },
+            {
+                "name": "Hiroshi Ishii",
+                "title": "Jerome B. Wiesner Professor of Media Arts and Sciences; Associate Director, MIT Media Lab"
+            },
+            {
+                "name": "Joseph M. Jacobson",
+                "title": "Associate Professor of Media Arts and Sciences"
+            },
+            {
+                "name": "Kent Larson",
+                "title": "Professor of the Practice"
+            },
+            {
+                "name": "Paul Pu Liang",
+                "title": "Assistant Professor of Media Arts and Sciences; Assistant Professor of Electrical Engineering and Computer Science"
+            },
+            {
+                "name": "Zach Lieberman",
+                "title": "Adjunct Associate Professor of Media Arts and Sciences"
+            },
+            {
+                "name": "Andrew Lippman",
+                "title": "Senior Research Scientist"
+            },
+            {
+                "name": "Tod Machover",
+                "title": "Muriel R. Cooper Professor of Music and Media; Academic Head, Program in Media Arts and Sciences"
+            },
+            {
+                "name": "Pattie Maes",
+                "title": "Professor of Media Technology; Germeshausen Professor"
+            },
+            {
+                "name": "Dava Newman",
+                "title": "Director; Apollo Professor of Astronautics"
+            },
+            {
+                "name": "Joseph A. Paradiso",
+                "title": "Alexander W Dreyfoos (1954) Professor; Associate Academic Head, Program in Media Arts and Sciences"
+            },
+            {
+                "name": "Alex 'Sandy' Pentland",
+                "title": "Professor Post Tenure of Media Arts and Sciences"
+            },
+            {
+                "name": "Rosalind W. Picard",
+                "title": "Professor of Media Arts and Sciences; Grover M. Hermann Professor in Health Sciences and Technology"
+            },
+            {
+                "name": "Ramesh Raskar",
+                "title": "Associate Professor of Media Arts and Sciences"
+            },
+            {
+                "name": "Mitchel Resnick",
+                "title": "LEGO Papert Professor of Learning Research"
+            },
+            {
+                "name": "Deb Roy",
+                "title": "Professor of Media Arts and Sciences"
+            },
+            {
+                "name": "Deblina Sarkar",
+                "title": "Assistant Professor of Media Arts and Sciences; AT&T Career Development Professor"
+            },
+            {
+                "name": "Danielle Wood",
+                "title": "Associate Professor of Media Arts and Sciences; Associate Professor (Joint) of Aeronautics and Astronautics"
+            }
+        ],
+        "emails": [],
+        "companies": []
+    },
+    {
+        "people": [
+            {
+                "name": "Canan Dagdeviren",
+                "title": "Individual",
+                "email": null
+            },
+            {
+                "name": "Jonathan Williams",
+                "title": "Individual",
+                "email": null
+            }
+        ],
+        "companies": [],
+        "emails": []
+    },
+    {
+        "people": [
+            {
+                "name": "Dava Newman",
+                "title": "Media Lab Director"
+            },
+            {
+                "name": "Xin Liu",
+                "title": "Media Lab Alum"
+            }
+        ],
+        "companies": [
+            {
+                "name": "MIT Media Lab"
+            },
+            {
+                "name": "Boston Museum of Science"
+            }
+        ],
+        "emails": []
+    },
+    {
+        "people": [
+            {
+                "name": "Behnaz Farahi",
+                "title": "Assistant Professor, Transformative Design",
+                "affiliation": "MIT Media Lab's Program in Media Arts and Sciences (MAS)"
+            },
+            {
+                "name": "Paul Liang",
+                "title": "Assistant Professor, AI + Human Experience",
+                "affiliation": "MIT Media Lab's Program in Media Arts and Sciences (MAS) and MIT Schwarzman College of Computing"
+            },
+            {
+                "name": "Barmak Heshmat",
+                "title": "Co-founder",
+                "company": "Brelyon"
+            },
+            {
+                "name": "Mohammad Tariqul Islam",
+                "title": "MIT-Novo Nordisk Artificial Intelligence Postdoctoral Fellow"
+            },
+            {
+                "name": "Hao-Tung Yang",
+                "title": "Recipient of the T.S. Lin Fellowship Award"
+            },
+            {
+                "name": "Deblina Sarkar",
+                "title": "Recipient of NSF CAREER Award and ChadTough New Investigator Award"
+            },
+            {
+                "name": "Danielle Wood",
+                "title": "2024 Just Tech Fellow"
+            },
+            {
+                "name": "Baju Joy",
+                "title": "Whitaker Health Sciences Fellowship Award Recipient"
+            },
+            {
+                "name": "Max Addae",
+                "title": "2024 Guthman Musical Instrument Competition Winner"
+            },
+            {
+                "name": "Tod Machover",
+                "title": "Head of Opera of the Future",
+                "affiliation": "MIT"
+            },
+            {
+                "name": "Sharif Islam",
+                "title": "ESIP Community Fellow and Future Earth Coasts Fellow",
+                "affiliation": "Postdoctoral associate in the Space Enabled research group"
+            }
+        ],
+        "companies": [
+            {
+                "name": "Samsung",
+                "collaboration": "MIT Media Lab"
+            },
+            {
+                "name": "Brelyon",
+                "co_founder": "Barmak Heshmat"
+            },
+            {
+                "name": "Castrol",
+                "collaboration": "AstroAnt Payload Program"
+            },
+            {
+                "name": "Augmental",
+                "product": "Mouth-based touchpad"
+            }
+        ],
+        "email_addresses": []
+    }
+]
