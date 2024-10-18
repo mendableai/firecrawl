@@ -17,6 +17,7 @@ import { crawlCancelController } from "../controllers/v1/crawl-cancel";
 import { Logger } from "../lib/logger";
 import { scrapeStatusController } from "../controllers/v1/scrape-status";
 import { concurrencyCheckController } from "../controllers/v1/concurrency-check";
+import { bulkScrapeController } from "../controllers/v1/bulk-scrape";
 // import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
 // import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
 // import { searchController } from "../../src/controllers/v1/search";
@@ -123,6 +124,15 @@ v1Router.post(
 );
 
 v1Router.post(
+    "/bulk/scrape",
+    authMiddleware(RateLimiterMode.Crawl),
+    checkCreditsMiddleware(),
+    blocklistMiddleware,
+    idempotencyMiddleware,
+    wrap(bulkScrapeController)
+);
+
+v1Router.post(
     "/map",
     authMiddleware(RateLimiterMode.Map),
     checkCreditsMiddleware(1),
@@ -132,6 +142,12 @@ v1Router.post(
 
 v1Router.get(
     "/crawl/:jobId",
+    authMiddleware(RateLimiterMode.CrawlStatus),
+    wrap(crawlStatusController)
+);
+
+v1Router.get(
+    "/bulk/scrape/:jobId",
     authMiddleware(RateLimiterMode.CrawlStatus),
     wrap(crawlStatusController)
 );
