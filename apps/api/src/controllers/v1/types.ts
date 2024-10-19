@@ -478,3 +478,11 @@ export function legacyDocumentConverter(doc: any): Document {
     },
   };
 }
+
+
+
+export interface LinkInfo {
+  url: string;
+  title?: string;
+  description?: string;
+}
