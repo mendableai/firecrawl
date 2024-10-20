@@ -1,4 +1,4 @@
 firecrawl-py
 openai
 google-search-results
-tqdm
+git+https://github.com/openai/swarm.git
