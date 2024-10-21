@@ -6,7 +6,13 @@ export function numTokensFromString(message: string, model: string): number {
   const encoder = encoding_for_model(model as TiktokenModel);
 
   // Encode the message into tokens
-  const tokens = encoder.encode(message);
+  let tokens: Uint32Array;
+  try {
+    tokens = encoder.encode(message);
+  } catch (error) {
+    message = message.replace("<|endoftext|>", "");
+    tokens = encoder.encode(message);
+  }
 
   // Free the encoder resources after use
   encoder.free();
