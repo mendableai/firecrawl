@@ -1,6 +1,7 @@
 import { Logger } from "./logger";
+import { LinkInfo } from "../controllers/v1/types";
 
-export function performCosineSimilarity(links: string[], searchQuery: string) {
+export function performCosineSimilarity(links: LinkInfo[], searchQuery: string) {
   try {
     // Function to calculate cosine similarity
     const cosineSimilarity = (vec1: number[], vec2: number[]): number => {
@@ -27,20 +28,20 @@ export function performCosineSimilarity(links: string[], searchQuery: string) {
 
     // Calculate similarity scores
     const similarityScores = links.map((link) => {
-      const linkVector = textToVector(link);
+      const linkText = `${link.url} ${link.title || ''} ${link.description || ''}`.trim();
+      const linkVector = textToVector(linkText);
       const searchVector = textToVector(searchQuery);
       return cosineSimilarity(linkVector, searchVector);
     });
 
-    // Sort links based on similarity scores and print scores
-    const a = links
+    // Sort links based on similarity scores
+    const sortedLinks = links
       .map((link, index) => ({ link, score: similarityScores[index] }))
       .sort((a, b) => b.score - a.score);
 
-    links = a.map((item) => item.link);
-    return links;
+    return sortedLinks.map((item) => item.link.url);
   } catch (error) {
     Logger.error(`Error performing cosine similarity: ${error}`);
-    return links;
+    return links.map(link => link.url);
   }
 }
