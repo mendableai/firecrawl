@@ -81,8 +81,10 @@ class FirecrawlApp:
             response = response.json()
             if response['success'] and 'data' in response:
                 return response['data']
-            else:
+            elif "error" in response:
                 raise Exception(f'Failed to scrape URL. Error: {response["error"]}')
+            else:
+                raise Exception(f'Failed to scrape URL. Error: {response}')
         else:
             self._handle_error(response, 'scrape URL')
 
@@ -266,8 +268,10 @@ class FirecrawlApp:
             response = response.json()
             if response['success'] and 'links' in response:
                 return response
-            else:
+            elif 'error' in response:
                 raise Exception(f'Failed to map URL. Error: {response["error"]}')
+            else:
+                raise Exception(f'Failed to map URL. Error: {response}')
         else:
             self._handle_error(response, 'map')
 
