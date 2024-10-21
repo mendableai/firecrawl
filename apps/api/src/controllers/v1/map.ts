@@ -2,7 +2,6 @@ import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import {
   legacyCrawlerOptions,
-  LinkInfo,
   mapRequestSchema,
   RequestWithAuth,
 } from "./types";
@@ -110,10 +109,6 @@ export async function mapController(
     mapResults = mapResults.slice(0, minumumCutoff);
   }
 
-
-
-  let linkInfos: LinkInfo[] = [];
-
   if (mapResults.length > 0) {
     if (req.body.search) {
       // Ensure all map results are first, maintaining their order
@@ -122,12 +117,6 @@ export async function mapController(
         ...mapResults.slice(1).map((x) => x.url),
         ...links,
       ];
-      
-      linkInfos = [
-        mapResults[0],
-        ...mapResults.slice(1),
-        ...links.map((x) => ({ url: x })),
-      ]
     } else {
       mapResults.map((x) => {
         links.push(x.url);
@@ -139,7 +128,7 @@ export async function mapController(
   if (req.body.search) {
     const searchQuery = req.body.search.toLowerCase();
 
-    links = performCosineSimilarity(linkInfos, searchQuery);
+    links = performCosineSimilarity(links, searchQuery);
   }
 
   links = links
