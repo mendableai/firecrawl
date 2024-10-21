@@ -13,7 +13,7 @@ class FirecrawlApp {
     public const SCRAP_URL = "/".self::API_VERSION."/scrape/";
     private $apiKey;
     private $apiUrl;
-    private $client;
+    public $client;
     private $logger;
 
     /**
@@ -126,7 +126,7 @@ class FirecrawlApp {
      *
      * @throws FirecrawlException If the job fails.
      */
-    private function monitorJobStatus(int $jobId, int $pollInterval): mixed {
+    public function monitorJobStatus(int $jobId, int $pollInterval): mixed {
         $this->logger->info("Monitoring crawl job: $jobId");
 
         while (true) {
