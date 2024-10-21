@@ -59,7 +59,7 @@ SUPABASE_SERVICE_TOKEN=
 
 # Other Optionals
 TEST_API_KEY= # use if you've set up authentication and want to test with a real API key
-SCRAPING_BEE_API_KEY= # use if you'd like to use ScrapingBee to handle JS blocking
+SCRAPING_BEE_API_KEY= # use if you'd like to use as a fallback scraper
 OPENAI_API_KEY= # add for LLM-dependent features (e.g., image alt generation)
 BULL_AUTH_KEY= @
 LOGTAIL_KEY= # Use if you're configuring basic logging with logtail
