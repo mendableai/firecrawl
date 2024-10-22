@@ -347,6 +347,10 @@ export class WebCrawler {
   }
 
   private matchesExcludes(url: string): boolean {
+    if (this.excludes.length === 0) {
+      return false;
+    }
+
     return this.excludes.some((pattern) => new RegExp(pattern).test(url));
   }
 
@@ -404,22 +408,50 @@ export class WebCrawler {
 
   private isSocialMediaOrEmail(url: string): boolean {
     const socialMediaOrEmail = [
-      "facebook.com",
-      "twitter.com",
-      "linkedin.com",
-      "instagram.com",
-      "pinterest.com",
+      "https://facebook.com",
+      "https://www.facebook.com",
+      "https://twitter.com",
+      "https://www.twitter.com",
+      "https://linkedin.com",
+      "https://www.linkedin.com",
+      "https://instagram.com",
+      "https://www.instagram.com",
+      "https://pinterest.com",
+      "https://www.pinterest.com",
       "mailto:",
-      "github.com",
-      "calendly.com",
-      "discord.gg",
-      "discord.com",
-      "x.com",
-      "youtube.com",
-      "tiktok.com",
+      "https://github.com",
+      "https://www.github.com",
+      "https://calendly.com",
+      "https://www.calendly.com",
+      "https://discord.gg",
+      "https://www.discord.gg",
+      "https://discord.com",
+      "https://www.discord.com",
+      "https://slack.com",
+      "https://www.slack.com",
+      "https://whatsapp.com",
+      "https://www.whatsapp.com",
+      "https://telegram.com",
+      "https://www.telegram.com",
+      "https://t.me",
+      "https://www.t.me",
+      "https://twitter.com",
+      "https://www.twitter.com",
+      "https://x.com",
+      "https://www.x.com",
+      "https://youtube.com",
+      "https://www.youtube.com",
+      "https://tiktok.com",
+      "https://www.tiktok.com",
+      "https://googletagmanager.com",
+      "https://www.googletagmanager.com",
       "tel:",
     ];
-    return socialMediaOrEmail.some((ext) => url.includes(ext));
+    return socialMediaOrEmail.some((ext) => {
+      const urlIncludesExt = url.includes(ext);
+
+      return urlIncludesExt;
+    });
   }
 
   //
