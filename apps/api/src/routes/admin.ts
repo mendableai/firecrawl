@@ -6,6 +6,8 @@ import {
   cleanBefore24hCompleteJobsController,
   queuesController,
 } from "../controllers/v0/admin/queue";
+import { acucCacheClearController } from "../controllers/v0/admin/acuc-cache-clear";
+import { wrap } from "./v1";
 
 export const adminRouter = express.Router();
 
@@ -32,4 +34,9 @@ adminRouter.get(
 adminRouter.get(
   `/admin/${process.env.BULL_AUTH_KEY}/autoscaler`,
   autoscalerController
+);
+
+adminRouter.post(
+  `/admin/${process.env.BULL_AUTH_KEY}/acuc-cache-clear`,
+  wrap(acucCacheClearController),
 );
