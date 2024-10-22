@@ -145,6 +145,46 @@ watch.addEventListener("done", state => {
 });
 ```
 
+### Bulk scraping multiple URLs
+
+To bulk scrape multiple URLs with error handling, use the `bulkScrapeUrls` method. It takes the starting URLs and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the output formats.
+
+```js
+const bulkScrapeResponse = await app.bulkScrapeUrls(['https://firecrawl.dev', 'https://mendable.ai'], {
+  formats: ['markdown', 'html'],
+})
+```
+
+
+#### Asynchronous bulk scrape
+
+To initiate an asynchronous bulk scrape, utilize the `asyncBulkScrapeUrls` method. This method requires the starting URLs and optional parameters as inputs. The params argument enables you to define various settings for the scrape, such as the output formats. Upon successful initiation, this method returns an ID, which is essential for subsequently checking the status of the bulk scrape.
+
+```js
+const asyncBulkScrapeResult = await app.asyncBulkScrapeUrls(['https://firecrawl.dev', 'https://mendable.ai'], { formats: ['markdown', 'html'] });
+```
+
+#### Bulk scrape with WebSockets
+
+To use bulk scrape with WebSockets, use the `bulkScrapeUrlsAndWatch` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the bulk scrape job, such as the output formats.
+
+```js
+// Bulk scrape multiple URLs with WebSockets:
+const watch = await app.bulkScrapeUrlsAndWatch(['https://firecrawl.dev', 'https://mendable.ai'], { formats: ['markdown', 'html'] });
+
+watch.addEventListener("document", doc => {
+ console.log("DOC", doc.detail);
+});
+
+watch.addEventListener("error", err => {
+ console.error("ERR", err.detail.error);
+});
+
+watch.addEventListener("done", state => {
+ console.log("DONE", state.detail.status);
+});
+```
+
 ## Error Handling
 
 The SDK handles errors returned by the Firecrawl API and raises appropriate exceptions. If an error occurs during a request, an exception will be raised with a descriptive error message. The examples above demonstrate how to handle these errors using `try/catch` blocks.
