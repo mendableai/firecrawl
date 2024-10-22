@@ -157,6 +157,7 @@ export async function scrapSingleUrl(
     atsv: pageOptions.atsv ?? false,
     actions: pageOptions.actions ?? undefined,
     geolocation: pageOptions.geolocation ?? undefined,
+    skipTlsVerification: pageOptions.skipTlsVerification ?? false,
   }
 
   if (extractorOptions) {
