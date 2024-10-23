@@ -329,7 +329,8 @@ async function processJob(job: Job, token: string) {
         job.id as string,
         data,
         job.data.webhook,
-        job.data.v1
+        job.data.v1,
+        job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
       );
     }
     if (job.data.webhook && job.data.mode !== "crawl" && job.data.v1) {
@@ -339,7 +340,7 @@ async function processJob(job: Job, token: string) {
         data,
         job.data.webhook,
         job.data.v1,
-        "crawl.page",
+        job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
         true
       );
     }
@@ -353,7 +354,7 @@ async function processJob(job: Job, token: string) {
         docs: docs,
         time_taken: timeTakenInSeconds,
         team_id: job.data.team_id,
-        mode: job.data.crawlerOptions === null ? "batch_scrape" : job.data.mode,
+        mode: job.data.mode,
         url: job.data.url,
         crawlerOptions: job.data.crawlerOptions,
         pageOptions: job.data.pageOptions,
@@ -414,7 +415,7 @@ async function processJob(job: Job, token: string) {
         }
       }
 
-      if (await finishCrawl(job.data.crawl_id) && job.data.crawlerOptions !== null) {
+      if (await finishCrawl(job.data.crawl_id)) {
         if (!job.data.v1) {
           const jobIDs = await getCrawlJobs(job.data.crawl_id);
 
@@ -437,7 +438,7 @@ async function processJob(job: Job, token: string) {
             docs: [],
             time_taken: (Date.now() - sc.createdAt) / 1000,
             team_id: job.data.team_id,
-            mode: "crawl",
+            mode: job.data.crawlerOptions !== null ? "crawl" : "batch_scrape",
             url: sc.originUrl,
             crawlerOptions: sc.crawlerOptions,
             pageOptions: sc.pageOptions,
@@ -467,7 +468,7 @@ async function processJob(job: Job, token: string) {
               data,
               job.data.webhook,
               job.data.v1,
-              "crawl.completed"
+              job.data.crawlerOptions !== null ? "crawl.completed" : "batch_scrape.completed"
             );
           }
         } else {
@@ -485,7 +486,7 @@ async function processJob(job: Job, token: string) {
               [],
               job.data.webhook,
               job.data.v1,
-              "crawl.completed"
+              job.data.crawlerOptions !== null ? "crawl.completed" : "batch_scrape.completed"
               );
             }
 
@@ -497,7 +498,7 @@ async function processJob(job: Job, token: string) {
             docs: [],
             time_taken: (Date.now() - sc.createdAt) / 1000,
             team_id: job.data.team_id,
-            mode: "crawl",
+            mode: job.data.crawlerOptions !== null ? "crawl" : "batch_scrape",
             url: sc.originUrl,
             crawlerOptions: sc.crawlerOptions,
             pageOptions: sc.pageOptions,
@@ -554,7 +555,8 @@ async function processJob(job: Job, token: string) {
         job.data.crawl_id ?? (job.id as string),
         data,
         job.data.webhook,
-        job.data.v1
+        job.data.v1,
+        job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
       );
     }
     // if (job.data.v1) {
@@ -603,7 +605,7 @@ async function processJob(job: Job, token: string) {
         docs: [],
         time_taken: 0,
         team_id: job.data.team_id,
-        mode: "crawl",
+        mode: job.data.crawlerOptions !== null ? "crawl" : "batch_scrape",
         url: sc ? sc.originUrl : job.data.url,
         crawlerOptions: sc ? sc.crawlerOptions : job.data.crawlerOptions,
         pageOptions: sc ? sc.pageOptions : job.data.pageOptions,
