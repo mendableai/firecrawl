@@ -30,7 +30,7 @@ function checkCreditsMiddleware(minimum?: number): (req: RequestWithAuth, res: R
     return (req, res, next) => {
         (async () => {
             if (!minimum && req.body) {
-                minimum = (req.body as any)?.limit ?? 1;
+                minimum = (req.body as any)?.limit ?? (req.body as any)?.urls?.length ?? 1;
             }
             const { success, remainingCredits, chunk } = await checkTeamCredits(req.acuc, req.auth.team_id, minimum);
             req.acuc = chunk;
