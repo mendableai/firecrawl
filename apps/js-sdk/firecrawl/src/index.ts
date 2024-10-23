@@ -155,7 +155,7 @@ export interface CrawlResponse {
 }
 
 /**
- * Response interface for crawling operations.
+ * Response interface for batch scrape operations.
  * Defines the structure of the response received after initiating a crawl.
  */
 export interface BatchScrapeResponse {
@@ -181,8 +181,8 @@ export interface CrawlStatusResponse {
 };
 
 /**
- * Response interface for job status checks.
- * Provides detailed status of a crawl job including progress and results.
+ * Response interface for batch scrape job status checks.
+ * Provides detailed status of a batch scrape job including progress and results.
  */
 export interface BatchScrapeStatusResponse {
   success: true;
