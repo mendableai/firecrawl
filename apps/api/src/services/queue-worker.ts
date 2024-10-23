@@ -353,7 +353,7 @@ async function processJob(job: Job, token: string) {
         docs: docs,
         time_taken: timeTakenInSeconds,
         team_id: job.data.team_id,
-        mode: job.data.mode,
+        mode: job.data.crawlerOptions === null ? "batch_scrape" : job.data.mode,
         url: job.data.url,
         crawlerOptions: job.data.crawlerOptions,
         pageOptions: job.data.pageOptions,
