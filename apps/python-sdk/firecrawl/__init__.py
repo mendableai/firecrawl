@@ -13,7 +13,7 @@ import os
 
 from .firecrawl import FirecrawlApp
 
-__version__ = "1.3.1"
+__version__ = "1.4.0"
 
 # Define the logger for the Firecrawl project
 logger: logging.Logger = logging.getLogger("firecrawl")

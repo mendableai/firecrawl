@@ -149,6 +149,69 @@ async def start_crawl_and_watch():
 await start_crawl_and_watch()
 ```
 
+### Scraping multiple URLs in batch
+
+To batch scrape multiple URLs, use the `batch_scrape_urls` method. It takes the URLs and optional parameters as arguments. The `params` argument allows you to specify additional options for the scraper such as the output formats.
+
+```python
+idempotency_key = str(uuid.uuid4()) # optional idempotency key
+batch_scrape_result = app.batch_scrape_urls(['firecrawl.dev', 'mendable.ai'], {'formats': ['markdown', 'html']}, 2, idempotency_key)
+print(batch_scrape_result)
+```
+
+### Asynchronous batch scrape
+
+To run a batch scrape asynchronously, use the `async_batch_scrape_urls` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the scraper, such as the output formats.
+
+```python
+batch_scrape_result = app.async_batch_scrape_urls(['firecrawl.dev', 'mendable.ai'], {'formats': ['markdown', 'html']})
+print(batch_scrape_result)
+```
+
+### Checking batch scrape status
+
+To check the status of an asynchronous batch scrape job, use the `check_batch_scrape_job` method. It takes the job ID as a parameter and returns the current status of the batch scrape job.
+
+```python
+id = batch_scrape_result['id']
+status = app.check_batch_scrape_job(id)
+```
+
+### Batch scrape with WebSockets
+
+To use batch scrape with WebSockets, use the `batch_scrape_urls_and_watch` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the scraper, such as the output formats.
+
+```python
+# inside an async function...
+nest_asyncio.apply()
+
+# Define event handlers
+def on_document(detail):
+    print("DOC", detail)
+
+def on_error(detail):
+    print("ERR", detail['error'])
+
+def on_done(detail):
+    print("DONE", detail['status'])
+
+# Function to start the crawl and watch process
+async def start_crawl_and_watch():
+    # Initiate the crawl job and get the watcher
+    watcher = app.batch_scrape_urls_and_watch(['firecrawl.dev', 'mendable.ai'], {'formats': ['markdown', 'html']})
+
+    # Add event listeners
+    watcher.add_event_listener("document", on_document)
+    watcher.add_event_listener("error", on_error)
+    watcher.add_event_listener("done", on_done)
+
+    # Start the watcher
+    await watcher.connect()
+
+# Run the event loop
+await start_crawl_and_watch()
+```
+
 ## Error Handling
 
 The SDK handles errors returned by the Firecrawl API and raises appropriate exceptions. If an error occurs during a request, an exception will be raised with a descriptive error message.

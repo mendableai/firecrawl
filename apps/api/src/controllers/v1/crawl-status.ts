@@ -44,7 +44,7 @@ export async function getJobs(ids: string[]) {
   return jobs;
 }
 
-export async function crawlStatusController(req: RequestWithAuth<CrawlStatusParams, undefined, CrawlStatusResponse>, res: Response<CrawlStatusResponse>) {
+export async function crawlStatusController(req: RequestWithAuth<CrawlStatusParams, undefined, CrawlStatusResponse>, res: Response<CrawlStatusResponse>, isBatch = false) {
   const sc = await getCrawl(req.params.jobId);
   if (!sc) {
     return res.status(404).json({ success: false, error: "Job not found" });
@@ -113,7 +113,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
   const data = doneJobs.map(x => x.returnvalue);
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";
-  const nextURL = new URL(`${protocol}://${req.get("host")}/v1/crawl/${req.params.jobId}`);
+  const nextURL = new URL(`${protocol}://${req.get("host")}/v1/${isBatch ? "batch/scrape" : "crawl"}/${req.params.jobId}`);
 
   nextURL.searchParams.set("skip", (start + data.length).toString());
 
