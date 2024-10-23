@@ -78,7 +78,7 @@ export async function crawlController(
   const crawler = crawlToCrawler(id, sc);
 
   try {
-    sc.robots = await crawler.getRobotsTxt();
+    sc.robots = await crawler.getRobotsTxt(pageOptions.skipTlsVerification);
   } catch (e) {
     Logger.debug(
       `[Crawl] Failed to get robots.txt (this is probably fine!): ${JSON.stringify(

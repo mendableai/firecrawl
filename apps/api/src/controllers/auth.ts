@@ -13,7 +13,7 @@ import { setTraceAttributes } from "@hyperdx/node-opentelemetry";
 import { sendNotification } from "../services/notification/email_notification";
 import { Logger } from "../lib/logger";
 import { redlock } from "../services/redlock";
-import { getValue } from "../services/redis";
+import { deleteKey, getValue } from "../services/redis";
 import { setValue } from "../services/redis";
 import { validate } from "uuid";
 import * as Sentry from "@sentry/node";
@@ -126,6 +126,13 @@ export async function getACUC(
   } else {
     return null;
   }
+}
+
+export async function clearACUC(
+  api_key: string,
+): Promise<void> {
+  const cacheKeyACUC = `acuc_${api_key}`;
+  await deleteKey(cacheKeyACUC);
 }
 
 export async function authenticateUser(

@@ -117,6 +117,7 @@ export const scrapeOptions = z.object({
       }
     ).transform(val => val ? val.toUpperCase() : 'US')
   }).optional(),
+  skipTlsVerification: z.boolean().default(false),
 }).strict(strictMessage)
 
 
@@ -443,6 +444,7 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     parsePDF: x.parsePDF,
     actions: x.actions as Action[], // no strict null checking grrrr - mogery
     geolocation: x.geolocation,
+    skipTlsVerification: x.skipTlsVerification
   };
 }
 
