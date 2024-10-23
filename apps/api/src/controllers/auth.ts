@@ -75,15 +75,19 @@ export async function setCachedACUC(
 
 export async function getACUC(
   api_key: string,
-  cacheOnly = false
+  cacheOnly = false,
+  useCache = true
 ): Promise<AuthCreditUsageChunk | null> {
   const cacheKeyACUC = `acuc_${api_key}`;
 
-  const cachedACUC = await getValue(cacheKeyACUC);
+  if (useCache) {
+    const cachedACUC = await getValue(cacheKeyACUC);
+    if (cachedACUC !== null) {
+      return JSON.parse(cachedACUC);
+    }
+  }
 
-  if (cachedACUC !== null) {
-    return JSON.parse(cachedACUC);
-  } else if (!cacheOnly) {
+  if (!cacheOnly) {
     let data;
     let error;
     let retries = 0;
@@ -91,7 +95,7 @@ export async function getACUC(
 
     while (retries < maxRetries) {
       ({ data, error } = await supabase_service.rpc(
-        "auth_credit_usage_chunk_test_3",
+        "auth_credit_usage_chunk_test_17_credit_pack",
         { input_key: api_key }
       ));
 
@@ -118,9 +122,11 @@ export async function getACUC(
       data.length === 0 ? null : data[0].team_id === null ? null : data[0];
 
     // NOTE: Should we cache null chunks? - mogery
-    if (chunk !== null) {
+    if (chunk !== null && useCache) {
       setCachedACUC(api_key, chunk);
     }
+    // Log the chunk for now
+    console.log(chunk);
 
     return chunk;
   } else {

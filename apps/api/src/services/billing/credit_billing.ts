@@ -6,24 +6,40 @@ import { Logger } from "../../lib/logger";
 import * as Sentry from "@sentry/node";
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
 import { getACUC, setCachedACUC } from "../../controllers/auth";
+import { issueCredits } from "./issue_credits";
+import { redlock } from "../redlock";
+import { autoCharge } from "./auto_charge";
+import { getValue, setValue } from "../redis";
 
 const FREE_CREDITS = 500;
 
 /**
  * If you do not know the subscription_id in the current context, pass subscription_id as undefined.
  */
-export async function billTeam(team_id: string, subscription_id: string | null | undefined, credits: number) {
+export async function billTeam(
+  team_id: string,
+  subscription_id: string | null | undefined,
+  credits: number
+) {
   return withAuth(supaBillTeam)(team_id, subscription_id, credits);
 }
-export async function supaBillTeam(team_id: string, subscription_id: string, credits: number) {
+export async function supaBillTeam(
+  team_id: string,
+  subscription_id: string,
+  credits: number
+) {
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
   }
   Logger.info(`Billing team ${team_id} for ${credits} credits`);
 
-  const { data, error } =
-    await supabase_service.rpc("bill_team", { _team_id: team_id, sub_id: subscription_id ?? null, fetch_subscription: subscription_id === undefined, credits });
-  
+  const { data, error } = await supabase_service.rpc("bill_team", {
+    _team_id: team_id,
+    sub_id: subscription_id ?? null,
+    fetch_subscription: subscription_id === undefined,
+    credits,
+  });
+
   if (error) {
     Sentry.captureException(error);
     Logger.error("Failed to bill team: " + JSON.stringify(error));
@@ -31,48 +47,109 @@ export async function supaBillTeam(team_id: string, subscription_id: string, cre
   }
 
   (async () => {
-    for (const apiKey of (data ?? []).map(x => x.api_key)) {
-      await setCachedACUC(apiKey, acuc => (acuc ? {
-        ...acuc,
-        credits_used: acuc.credits_used + credits,
-        adjusted_credits_used: acuc.adjusted_credits_used + credits,
-        remaining_credits: acuc.remaining_credits - credits,
-      } : null));
+    for (const apiKey of (data ?? []).map((x) => x.api_key)) {
+      await setCachedACUC(apiKey, (acuc) =>
+        acuc
+          ? {
+              ...acuc,
+              credits_used: acuc.credits_used + credits,
+              adjusted_credits_used: acuc.adjusted_credits_used + credits,
+              remaining_credits: acuc.remaining_credits - credits,
+            }
+          : null
+      );
     }
   })();
 }
 
-export async function checkTeamCredits(chunk: AuthCreditUsageChunk, team_id: string, credits: number) {
-  return withAuth(supaCheckTeamCredits)(chunk, team_id, credits);
+export async function checkTeamCredits(
+  chunk: AuthCreditUsageChunk,
+  team_id: string,
+  credits: number
+): Promise<{ success: boolean; message: string; remainingCredits: number; chunk: AuthCreditUsageChunk }> {
+  const result = await withAuth(supaCheckTeamCredits)(chunk, team_id, credits);
+  return {
+    success: result.success,
+    message: result.message,
+    remainingCredits: result.remainingCredits,
+    chunk: chunk // Ensure chunk is always returned
+  };
 }
 
 // if team has enough credits for the operation, return true, else return false
-export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk, team_id: string, credits: number) {
+export async function supaCheckTeamCredits(
+  chunk: AuthCreditUsageChunk,
+  team_id: string,
+  credits: number
+) {
   // WARNING: chunk will be null if team_id is preview -- do not perform operations on it under ANY circumstances - mogery
   if (team_id === "preview") {
-    return { success: true, message: "Preview team, no credits used", remainingCredits: Infinity };
+    return {
+      success: true,
+      message: "Preview team, no credits used",
+      remainingCredits: Infinity,
+    };
   }
 
   const creditsWillBeUsed = chunk.adjusted_credits_used + credits;
 
   // In case chunk.price_credits is undefined, set it to a large number to avoid mistakes
-  const totalPriceCredits = chunk.price_credits ?? 100000000;
+  const totalPriceCredits = chunk.total_credits_sum ?? 100000000;
   // Removal of + credits
   const creditUsagePercentage = chunk.adjusted_credits_used / totalPriceCredits;
+
+  let isAutoRechargeEnabled = false, autoRechargeThreshold = 1000;
+  const cacheKey = `team_auto_recharge_${team_id}`;
+  let cachedData = await getValue(cacheKey);
+  if (cachedData) {
+    const parsedData = JSON.parse(cachedData);
+    isAutoRechargeEnabled = parsedData.auto_recharge;
+    autoRechargeThreshold = parsedData.auto_recharge_threshold;
+  } else {
+    const { data, error } = await supabase_service
+      .from("teams")
+      .select("auto_recharge, auto_recharge_threshold")
+      .eq("id", team_id)
+      .single();
+
+    if (data) {
+      isAutoRechargeEnabled = data.auto_recharge;
+      autoRechargeThreshold = data.auto_recharge_threshold;
+      await setValue(cacheKey, JSON.stringify(data), 300); // Cache for 5 minutes (300 seconds)
+    }
+  }
+
+  if (isAutoRechargeEnabled && chunk.remaining_credits < autoRechargeThreshold) {
+    const autoChargeResult = await autoCharge(chunk, autoRechargeThreshold);
+    if (autoChargeResult.success) {
+      return {
+        success: true,
+      message: autoChargeResult.message,
+      remainingCredits: autoChargeResult.remainingCredits,
+      chunk: autoChargeResult.chunk,
+    };
+  }
+  }
 
   // Compare the adjusted total credits used with the credits allowed by the plan
   if (creditsWillBeUsed > totalPriceCredits) {
     // Only notify if their actual credits (not what they will use) used is greater than the total price credits
-    if(chunk.adjusted_credits_used > totalPriceCredits) {
+    if (chunk.adjusted_credits_used > totalPriceCredits) {
       sendNotification(
         team_id,
-      NotificationType.LIMIT_REACHED,
-      chunk.sub_current_period_start,
-      chunk.sub_current_period_end,
-      chunk
-    );
-  }
-    return { success: false, message: "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing.", remainingCredits: chunk.remaining_credits, chunk };
+        NotificationType.LIMIT_REACHED,
+        chunk.sub_current_period_start,
+        chunk.sub_current_period_end,
+        chunk
+      );
+    }
+    return {
+      success: false,
+      message:
+        "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing.",
+      remainingCredits: chunk.remaining_credits,
+      chunk,
+    };
   } else if (creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
     // Send email notification for approaching credit limit
     sendNotification(
@@ -84,7 +161,12 @@ export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk, team_id:
     );
   }
 
-  return { success: true, message: "Sufficient credits available", remainingCredits: chunk.remaining_credits, chunk };
+  return {
+    success: true,
+    message: "Sufficient credits available",
+    remainingCredits: chunk.remaining_credits,
+    chunk,
+  };
 }
 
 // Count the total credits used by a team within the current billing period and return the remaining credits.
