@@ -155,10 +155,36 @@ export interface CrawlResponse {
 }
 
 /**
+ * Response interface for crawling operations.
+ * Defines the structure of the response received after initiating a crawl.
+ */
+export interface BatchScrapeResponse {
+  id?: string;
+  url?: string;
+  success: true;
+  error?: string;
+}
+
+/**
  * Response interface for job status checks.
  * Provides detailed status of a crawl job including progress and results.
  */
 export interface CrawlStatusResponse {
+  success: true;
+  status: "scraping" | "completed" | "failed" | "cancelled";
+  completed: number;
+  total: number;
+  creditsUsed: number;
+  expiresAt: Date;
+  next?: string;
+  data: FirecrawlDocument<undefined>[];
+};
+
+/**
+ * Response interface for job status checks.
+ * Provides detailed status of a crawl job including progress and results.
+ */
+export interface BatchScrapeStatusResponse {
   success: true;
   status: "scraping" | "completed" | "failed" | "cancelled";
   completed: number;
@@ -506,7 +532,7 @@ export default class FirecrawlApp {
     params?: ScrapeParams,
     pollInterval: number = 2,
     idempotencyKey?: string
-  ): Promise<CrawlStatusResponse | ErrorResponse> {
+  ): Promise<BatchScrapeStatusResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
     let jsonData: any = { urls, ...(params ?? {}) };
     try {
@@ -535,7 +561,7 @@ export default class FirecrawlApp {
     urls: string[],
     params?: ScrapeParams,
     idempotencyKey?: string
-  ): Promise<CrawlResponse | ErrorResponse> {
+  ): Promise<BatchScrapeResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
     let jsonData: any = { urls, ...(params ?? {}) };
     try {
@@ -587,7 +613,7 @@ export default class FirecrawlApp {
    * @param getAllData - Paginate through all the pages of documents, returning the full list of all documents. (default: `false`)
    * @returns The response containing the job status.
    */
-  async checkBatchScrapeStatus(id?: string, getAllData = false): Promise<CrawlStatusResponse | ErrorResponse> {
+  async checkBatchScrapeStatus(id?: string, getAllData = false): Promise<BatchScrapeStatusResponse | ErrorResponse> {
     if (!id) {
       throw new FirecrawlError("No batch scrape ID provided", 400);
     }
