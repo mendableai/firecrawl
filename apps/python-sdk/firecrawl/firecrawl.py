@@ -275,12 +275,12 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'map')
 
-    def bulk_scrape_urls(self, urls: list[str],
+    def batch_scrape_urls(self, urls: list[str],
                   params: Optional[Dict[str, Any]] = None,
                   poll_interval: Optional[int] = 2,
                   idempotency_key: Optional[str] = None) -> Any:
         """
-        Initiate a bulk scrape job for the specified URLs using the Firecrawl API.
+        Initiate a batch scrape job for the specified URLs using the Firecrawl API.
 
         Args:
             urls (list[str]): The URLs to scrape.
@@ -290,18 +290,18 @@ class FirecrawlApp:
 
         Returns:
             Dict[str, Any]: A dictionary containing the scrape results. The structure includes:
-                - 'success' (bool): Indicates if the bulk scrape was successful.
-                - 'status' (str): The final status of the bulk scrape job (e.g., 'completed').
+                - 'success' (bool): Indicates if the batch scrape was successful.
+                - 'status' (str): The final status of the batch scrape job (e.g., 'completed').
                 - 'completed' (int): Number of scraped pages that completed.
                 - 'total' (int): Total number of scraped pages.
-                - 'creditsUsed' (int): Estimated number of API credits used for this bulk scrape.
-                - 'expiresAt' (str): ISO 8601 formatted date-time string indicating when the bulk scrape data expires.
+                - 'creditsUsed' (int): Estimated number of API credits used for this batch scrape.
+                - 'expiresAt' (str): ISO 8601 formatted date-time string indicating when the batch scrape data expires.
                 - 'data' (List[Dict]): List of all the scraped pages.
 
         Raises:
-            Exception: If the bulk scrape job initiation or monitoring fails.
+            Exception: If the batch scrape job initiation or monitoring fails.
         """
-        endpoint = f'/v1/bulk/scrape'
+        endpoint = f'/v1/batch/scrape'
         headers = self._prepare_headers(idempotency_key)
         json_data = {'urls': urls}
         if params:
@@ -312,10 +312,10 @@ class FirecrawlApp:
             return self._monitor_job_status(id, headers, poll_interval)
 
         else:
-            self._handle_error(response, 'start bulk scrape job')
+            self._handle_error(response, 'start batch scrape job')
 
 
-    def async_bulk_scrape_urls(self, urls: list[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+    def async_batch_scrape_urls(self, urls: list[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
         """
         Initiate a crawl job asynchronously.
 
@@ -325,12 +325,12 @@ class FirecrawlApp:
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
 
         Returns:
-            Dict[str, Any]: A dictionary containing the bulk scrape initiation response. The structure includes:
-                - 'success' (bool): Indicates if the bulk scrape initiation was successful.
-                - 'id' (str): The unique identifier for the bulk scrape job.
-                - 'url' (str): The URL to check the status of the bulk scrape job.
+            Dict[str, Any]: A dictionary containing the batch scrape initiation response. The structure includes:
+                - 'success' (bool): Indicates if the batch scrape initiation was successful.
+                - 'id' (str): The unique identifier for the batch scrape job.
+                - 'url' (str): The URL to check the status of the batch scrape job.
         """
-        endpoint = f'/v1/bulk/scrape'
+        endpoint = f'/v1/batch/scrape'
         headers = self._prepare_headers(idempotency_key)
         json_data = {'urls': urls}
         if params:
@@ -339,11 +339,11 @@ class FirecrawlApp:
         if response.status_code == 200:
             return response.json()
         else:
-            self._handle_error(response, 'start bulk scrape job')
+            self._handle_error(response, 'start batch scrape job')
     
-    def bulk_scrape_urls_and_watch(self, urls: list[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> 'CrawlWatcher':
+    def batch_scrape_urls_and_watch(self, urls: list[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> 'CrawlWatcher':
         """
-        Initiate a bulk scrape job and return a CrawlWatcher to monitor the job via WebSocket.
+        Initiate a batch scrape job and return a CrawlWatcher to monitor the job via WebSocket.
 
         Args:
             urls (list[str]): The URLs to scrape.
@@ -351,28 +351,28 @@ class FirecrawlApp:
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
 
         Returns:
-            CrawlWatcher: An instance of CrawlWatcher to monitor the bulk scrape job.
+            CrawlWatcher: An instance of CrawlWatcher to monitor the batch scrape job.
         """
-        crawl_response = self.async_bulk_scrape_urls(urls, params, idempotency_key)
+        crawl_response = self.async_batch_scrape_urls(urls, params, idempotency_key)
         if crawl_response['success'] and 'id' in crawl_response:
             return CrawlWatcher(crawl_response['id'], self)
         else:
-            raise Exception("Bulk scrape job failed to start")
+            raise Exception("Batch scrape job failed to start")
     
-    def check_bulk_scrape_status(self, id: str) -> Any:
+    def check_batch_scrape_status(self, id: str) -> Any:
         """
-        Check the status of a bulk scrape job using the Firecrawl API.
+        Check the status of a batch scrape job using the Firecrawl API.
 
         Args:
-            id (str): The ID of the bulk scrape job.
+            id (str): The ID of the batch scrape job.
 
         Returns:
-            Any: The status of the bulk scrape job.
+            Any: The status of the batch scrape job.
 
         Raises:
             Exception: If the status check request fails.
         """
-        endpoint = f'/v1/bulk/scrape/{id}'
+        endpoint = f'/v1/batch/scrape/{id}'
 
         headers = self._prepare_headers()
         response = self._get_request(f'{self.api_url}{endpoint}', headers)
@@ -390,7 +390,7 @@ class FirecrawlApp:
                 'error': data.get('error')
             }
         else:
-            self._handle_error(response, 'check bulk scrape status')
+            self._handle_error(response, 'check batch scrape status')
 
     def _prepare_headers(self, idempotency_key: Optional[str] = None) -> Dict[str, str]:
         """

@@ -144,7 +144,7 @@ export const scrapeRequestSchema = scrapeOptions.extend({
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
 
-export const bulkScrapeRequestSchema = scrapeOptions.extend({
+export const batchScrapeRequestSchema = scrapeOptions.extend({
   urls: url.array(),
   origin: z.string().optional().default("api"),
 }).strict(strictMessage).refine(
@@ -163,7 +163,7 @@ export const bulkScrapeRequestSchema = scrapeOptions.extend({
   return obj;
 });
 
-export type BulkScrapeRequest = z.infer<typeof bulkScrapeRequestSchema>;
+export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
 
 const crawlerOptions = z.object({
   includePaths: z.string().array().default([]),

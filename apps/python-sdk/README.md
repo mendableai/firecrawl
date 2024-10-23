@@ -149,37 +149,37 @@ async def start_crawl_and_watch():
 await start_crawl_and_watch()
 ```
 
-### Scraping multiple URLs in bulk
+### Scraping multiple URLs in batch
 
-To bulk scrape multiple URLs, use the `bulk_scrape_urls` method. It takes the URLs and optional parameters as arguments. The `params` argument allows you to specify additional options for the scraper such as the output formats.
+To batch scrape multiple URLs, use the `batch_scrape_urls` method. It takes the URLs and optional parameters as arguments. The `params` argument allows you to specify additional options for the scraper such as the output formats.
 
 ```python
 idempotency_key = str(uuid.uuid4()) # optional idempotency key
-bulk_scrape_result = app.bulk_scrape_urls(['firecrawl.dev', 'mendable.ai'], {'formats': ['markdown', 'html']}, 2, idempotency_key)
-print(bulk_scrape_result)
+batch_scrape_result = app.batch_scrape_urls(['firecrawl.dev', 'mendable.ai'], {'formats': ['markdown', 'html']}, 2, idempotency_key)
+print(batch_scrape_result)
 ```
 
-### Asynchronous bulk scrape
+### Asynchronous batch scrape
 
-To run a bulk scrape asynchronously, use the `async_bulk_scrape_urls` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the scraper, such as the output formats.
+To run a batch scrape asynchronously, use the `async_batch_scrape_urls` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the scraper, such as the output formats.
 
 ```python
-bulk_scrape_result = app.async_bulk_scrape_urls(['firecrawl.dev', 'mendable.ai'], {'formats': ['markdown', 'html']})
-print(bulk_scrape_result)
+batch_scrape_result = app.async_batch_scrape_urls(['firecrawl.dev', 'mendable.ai'], {'formats': ['markdown', 'html']})
+print(batch_scrape_result)
 ```
 
-### Checking bulk scrape status
+### Checking batch scrape status
 
-To check the status of an asynchronous bulk scrape job, use the `check_bulk_scrape_job` method. It takes the job ID as a parameter and returns the current status of the bulk scrape job.
+To check the status of an asynchronous batch scrape job, use the `check_batch_scrape_job` method. It takes the job ID as a parameter and returns the current status of the batch scrape job.
 
 ```python
-id = bulk_scrape_result['id']
-status = app.check_bulk_scrape_job(id)
+id = batch_scrape_result['id']
+status = app.check_batch_scrape_job(id)
 ```
 
-### Bulk scrape with WebSockets
+### Batch scrape with WebSockets
 
-To use bulk scrape with WebSockets, use the `bulk_scrape_urls_and_watch` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the scraper, such as the output formats.
+To use batch scrape with WebSockets, use the `batch_scrape_urls_and_watch` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the scraper, such as the output formats.
 
 ```python
 # inside an async function...
@@ -198,7 +198,7 @@ def on_done(detail):
 # Function to start the crawl and watch process
 async def start_crawl_and_watch():
     # Initiate the crawl job and get the watcher
-    watcher = app.bulk_scrape_urls_and_watch(['firecrawl.dev', 'mendable.ai'], {'formats': ['markdown', 'html']})
+    watcher = app.batch_scrape_urls_and_watch(['firecrawl.dev', 'mendable.ai'], {'formats': ['markdown', 'html']})
 
     # Add event listeners
     watcher.add_event_listener("document", on_document)

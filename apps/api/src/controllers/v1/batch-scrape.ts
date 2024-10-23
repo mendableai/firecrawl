@@ -1,8 +1,8 @@
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import {
-  BulkScrapeRequest,
-  bulkScrapeRequestSchema,
+  BatchScrapeRequest,
+  batchScrapeRequestSchema,
   CrawlResponse,
   legacyScrapeOptions,
   RequestWithAuth,
@@ -17,11 +17,11 @@ import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
 import { getJobPriority } from "../../lib/job-priority";
 
-export async function bulkScrapeController(
-  req: RequestWithAuth<{}, CrawlResponse, BulkScrapeRequest>,
+export async function batchScrapeController(
+  req: RequestWithAuth<{}, CrawlResponse, BatchScrapeRequest>,
   res: Response<CrawlResponse>
 ) {
-  req.body = bulkScrapeRequestSchema.parse(req.body);
+  req.body = batchScrapeRequestSchema.parse(req.body);
 
   const id = uuidv4();
 
@@ -92,7 +92,7 @@ export async function bulkScrapeController(
   return res.status(200).json({
     success: true,
     id,
-    url: `${protocol}://${req.get("host")}/v1/bulk/scrape/${id}`,
+    url: `${protocol}://${req.get("host")}/v1/batch/scrape/${id}`,
   });
 }
 

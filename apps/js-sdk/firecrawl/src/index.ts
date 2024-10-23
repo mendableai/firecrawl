@@ -494,14 +494,14 @@ export default class FirecrawlApp {
   }
 
   /**
-   * Initiates a bulk scrape job for multiple URLs using the Firecrawl API.
+   * Initiates a batch scrape job for multiple URLs using the Firecrawl API.
    * @param url - The URLs to scrape.
    * @param params - Additional parameters for the scrape request.
    * @param pollInterval - Time in seconds for job status checks.
    * @param idempotencyKey - Optional idempotency key for the request.
    * @returns The response from the crawl operation.
    */
-  async bulkScrapeUrls(
+  async batchScrapeUrls(
     urls: string[],
     params?: ScrapeParams,
     pollInterval: number = 2,
@@ -511,7 +511,7 @@ export default class FirecrawlApp {
     let jsonData: any = { urls, ...(params ?? {}) };
     try {
       const response: AxiosResponse = await this.postRequest(
-        this.apiUrl + `/v1/bulk/scrape`,
+        this.apiUrl + `/v1/batch/scrape`,
         jsonData,
         headers
       );
@@ -519,7 +519,7 @@ export default class FirecrawlApp {
         const id: string = response.data.id;
         return this.monitorJobStatus(id, headers, pollInterval);
       } else {
-        this.handleError(response, "start bulk scrape job");
+        this.handleError(response, "start batch scrape job");
       }
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -531,7 +531,7 @@ export default class FirecrawlApp {
     return { success: false, error: "Internal server error." };
   }
 
-  async asyncBulkScrapeUrls(
+  async asyncBatchScrapeUrls(
     urls: string[],
     params?: ScrapeParams,
     idempotencyKey?: string
@@ -540,14 +540,14 @@ export default class FirecrawlApp {
     let jsonData: any = { urls, ...(params ?? {}) };
     try {
       const response: AxiosResponse = await this.postRequest(
-        this.apiUrl + `/v1/bulk/scrape`,
+        this.apiUrl + `/v1/batch/scrape`,
         jsonData,
         headers
       );
       if (response.status === 200) {
         return response.data;
       } else {
-        this.handleError(response, "start bulk scrape job");
+        this.handleError(response, "start batch scrape job");
       }
     } catch (error: any) {
       if (error.response?.data?.error) {
@@ -560,42 +560,42 @@ export default class FirecrawlApp {
   }
 
   /**
-   * Initiates a bulk scrape job and returns a CrawlWatcher to monitor the job via WebSocket.
+   * Initiates a batch scrape job and returns a CrawlWatcher to monitor the job via WebSocket.
    * @param urls - The URL to scrape.
    * @param params - Additional parameters for the scrape request.
    * @param idempotencyKey - Optional idempotency key for the request.
    * @returns A CrawlWatcher instance to monitor the crawl job.
    */
-  async bulkScrapeUrlsAndWatch(
+  async batchScrapeUrlsAndWatch(
     urls: string[],
     params?: ScrapeParams,
     idempotencyKey?: string,
   ) {
-    const crawl = await this.asyncBulkScrapeUrls(urls, params, idempotencyKey);
+    const crawl = await this.asyncBatchScrapeUrls(urls, params, idempotencyKey);
 
     if (crawl.success && crawl.id) {
       const id = crawl.id;
       return new CrawlWatcher(id, this);
     }
 
-    throw new FirecrawlError("Bulk scrape job failed to start", 400);
+    throw new FirecrawlError("Batch scrape job failed to start", 400);
   }
 
   /**
-   * Checks the status of a bulk scrape job using the Firecrawl API.
-   * @param id - The ID of the bulk scrape operation.
+   * Checks the status of a batch scrape job using the Firecrawl API.
+   * @param id - The ID of the batch scrape operation.
    * @param getAllData - Paginate through all the pages of documents, returning the full list of all documents. (default: `false`)
    * @returns The response containing the job status.
    */
-  async checkBulkScrapeStatus(id?: string, getAllData = false): Promise<CrawlStatusResponse | ErrorResponse> {
+  async checkBatchScrapeStatus(id?: string, getAllData = false): Promise<CrawlStatusResponse | ErrorResponse> {
     if (!id) {
-      throw new FirecrawlError("No bulk scrape ID provided", 400);
+      throw new FirecrawlError("No batch scrape ID provided", 400);
     }
 
     const headers: AxiosRequestHeaders = this.prepareHeaders();
     try {
       const response: AxiosResponse = await this.getRequest(
-        `${this.apiUrl}/v1/bulk/scrape/${id}`,
+        `${this.apiUrl}/v1/batch/scrape/${id}`,
         headers
       );
       if (response.status === 200) {
@@ -623,7 +623,7 @@ export default class FirecrawlApp {
           error: response.data.error,
         })
       } else {
-        this.handleError(response, "check bulk scrape status");
+        this.handleError(response, "check batch scrape status");
       }
     } catch (error: any) {
       throw new FirecrawlError(error.message, 500);

@@ -17,7 +17,7 @@ import { crawlCancelController } from "../controllers/v1/crawl-cancel";
 import { Logger } from "../lib/logger";
 import { scrapeStatusController } from "../controllers/v1/scrape-status";
 import { concurrencyCheckController } from "../controllers/v1/concurrency-check";
-import { bulkScrapeController } from "../controllers/v1/bulk-scrape";
+import { batchScrapeController } from "../controllers/v1/batch-scrape";
 // import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
 // import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
 // import { searchController } from "../../src/controllers/v1/search";
@@ -124,12 +124,12 @@ v1Router.post(
 );
 
 v1Router.post(
-    "/bulk/scrape",
+    "/batch/scrape",
     authMiddleware(RateLimiterMode.Crawl),
     checkCreditsMiddleware(),
     blocklistMiddleware,
     idempotencyMiddleware,
-    wrap(bulkScrapeController)
+    wrap(batchScrapeController)
 );
 
 v1Router.post(
@@ -147,9 +147,10 @@ v1Router.get(
 );
 
 v1Router.get(
-    "/bulk/scrape/:jobId",
+    "/batch/scrape/:jobId",
     authMiddleware(RateLimiterMode.CrawlStatus),
-    wrap(crawlStatusController)
+    // Yes, it uses the same controller as the normal crawl status controller
+    wrap((req:any, res):any => crawlStatusController(req, res, true))
 );
 
 v1Router.get(
