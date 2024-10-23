@@ -20,7 +20,6 @@ env:
   TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
   HYPERDX_API_KEY: ${{ secrets.HYPERDX_API_KEY }}
   HDX_NODE_BETA_MODE: 1
-  FIRE_ENGINE_BETA_URL: ${{ secrets.FIRE_ENGINE_BETA_URL }}
   ENV: ${{ secrets.ENV }}
 
 jobs:

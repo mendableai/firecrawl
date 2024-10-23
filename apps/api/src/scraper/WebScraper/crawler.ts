@@ -464,17 +464,6 @@ export class WebCrawler {
       Logger.debug(
         `Failed to fetch sitemap with axios from ${sitemapUrl}: ${error}`
       );
-      if (error instanceof AxiosError && error.response?.status === 404) {
-        // ignore 404
-      } else {
-        const response = await getLinksFromSitemap({
-          sitemapUrl,
-          mode: "fire-engine",
-        });
-        if (response) {
-          sitemapLinks = response;
-        }
-      }
     }
 
     if (sitemapLinks.length === 0) {
@@ -486,21 +475,12 @@ export class WebCrawler {
         if (response.status === 200) {
           sitemapLinks = await getLinksFromSitemap({
             sitemapUrl: baseUrlSitemap,
-            mode: "fire-engine",
           });
         }
       } catch (error) {
         Logger.debug(
           `Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`
         );
-        if (error instanceof AxiosError && error.response?.status === 404) {
-          // ignore 404
-        } else {
-          sitemapLinks = await getLinksFromSitemap({
-            sitemapUrl: baseUrlSitemap,
-            mode: "fire-engine",
-          });
-        }
       }
     }
 

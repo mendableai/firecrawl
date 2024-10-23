@@ -1,115 +1,111 @@
 export const urlSpecificParams = {
   "platform.openai.com": {
-    defaultScraper: "fire-engine",
-    params:{
+    defaultScraper: "scrapingBee",
+    params: {
       wait: 3000,
-      fireEngineOptions:{
-        engine: "chrome-cdp"
-      },
     },
   },
-  "support.greenpay.me":{
-    defaultScraper: "fire-engine",
+  "support.greenpay.me": {
+    defaultScraper: "scrapingBee",
     params: {
-        wait_browser: "networkidle2",
-        block_resources: false,
-        wait: 2000,
-
-      },
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "sec-fetch-site": "same-origin",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-dest": "empty",
-        referer: "https://www.google.com/",
-        "accept-language": "en-US,en;q=0.9",
-        "accept-encoding": "gzip, deflate, br",
-        accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-      },
+      wait_browser: "networkidle2",
+      block_resources: false,
+      wait: 2000,
+    },
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "sec-fetch-site": "same-origin",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-dest": "empty",
+      referer: "https://www.google.com/",
+      "accept-language": "en-US,en;q=0.9",
+      "accept-encoding": "gzip, deflate, br",
+      accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+    },
   },
-  "docs.pdw.co":{
-    defaultScraper: "fire-engine",
+  "docs.pdw.co": {
+    defaultScraper: "scrapingBee",
     params: {
-        wait_browser: "networkidle2",
-        block_resources: false,
-        wait: 3000,
-      },
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "sec-fetch-site": "same-origin",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-dest": "empty",
-        referer: "https://www.google.com/",
-        "accept-language": "en-US,en;q=0.9",
-        "accept-encoding": "gzip, deflate, br",
-        accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-      },
+      wait_browser: "networkidle2",
+      block_resources: false,
+      wait: 3000,
+    },
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "sec-fetch-site": "same-origin",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-dest": "empty",
+      referer: "https://www.google.com/",
+      "accept-language": "en-US,en;q=0.9",
+      "accept-encoding": "gzip, deflate, br",
+      accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+    },
   },
-  "ycombinator.com":{
-    defaultScraper: "fire-engine",
+  "ycombinator.com": {
+    defaultScraper: "scrapingBee",
     params: {
-        wait_browser: "networkidle2",
-        block_resources: false,
-        wait: 3000,
-      },
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "sec-fetch-site": "same-origin",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-dest": "empty",
-        referer: "https://www.google.com/",
-        "accept-language": "en-US,en;q=0.9",
-        "accept-encoding": "gzip, deflate, br",
-        accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-      },
+      wait_browser: "networkidle2",
+      block_resources: false,
+      wait: 3000,
+    },
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "sec-fetch-site": "same-origin",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-dest": "empty",
+      referer: "https://www.google.com/",
+      "accept-language": "en-US,en;q=0.9",
+      "accept-encoding": "gzip, deflate, br",
+      accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+    },
   },
-  "developers.notion.com":{
-    defaultScraper: "fire-engine",
+  "developers.notion.com": {
+    defaultScraper: "scrapingBee",
     params: {
-        wait_browser: "networkidle2",
-        block_resources: false,
-        wait: 2000,
-      },
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "sec-fetch-site": "same-origin",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-dest": "empty",
-        referer: "https://www.google.com/",
-        "accept-language": "en-US,en;q=0.9",
-        "accept-encoding": "gzip, deflate, br",
-        accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-      },
+      wait_browser: "networkidle2",
+      block_resources: false,
+      wait: 2000,
+    },
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "sec-fetch-site": "same-origin",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-dest": "empty",
+      referer: "https://www.google.com/",
+      "accept-language": "en-US,en;q=0.9",
+      "accept-encoding": "gzip, deflate, br",
+      accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+    },
   },
-  "docs2.hubitat.com":{
-    defaultScraper: "fire-engine",
+  "docs2.hubitat.com": {
+    defaultScraper: "scrapingBee",
     params: {
-        wait_browser: "networkidle2",
-        block_resources: false,
-        wait: 2000,
-      },
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "sec-fetch-site": "same-origin",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-dest": "empty",
-        referer: "https://www.google.com/",
-        "accept-language": "en-US,en;q=0.9",
-        "accept-encoding": "gzip, deflate, br",
-        accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-      },
+      wait_browser: "networkidle2",
+      block_resources: false,
+      wait: 2000,
+    },
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "sec-fetch-site": "same-origin",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-dest": "empty",
+      referer: "https://www.google.com/",
+      "accept-language": "en-US,en;q=0.9",
+      "accept-encoding": "gzip, deflate, br",
+      accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+    },
   },
-  "scrapethissite.com":{
+  "scrapethissite.com": {
     defaultScraper: "fetch",
     headers: {
       "User-Agent":
@@ -124,7 +120,7 @@ export const urlSpecificParams = {
         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
     },
   },
-  "rsseau.fr":{
+  "rsseau.fr": {
     defaultScraper: "fetch",
     headers: {
       "User-Agent":
@@ -139,28 +135,28 @@ export const urlSpecificParams = {
         "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
     },
   },
-  "help.salesforce.com":{
-    defaultScraper: "fire-engine",
+  "help.salesforce.com": {
+    defaultScraper: "scrapingBee",
     params: {
-        wait_browser: "networkidle2",
-        block_resources: false,
-        wait: 2000,
-      },
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
-        "sec-fetch-site": "same-origin",
-        "sec-fetch-mode": "cors",
-        "sec-fetch-dest": "empty",
-        referer: "https://www.google.com/",
-        "accept-language": "en-US,en;q=0.9",
-        "accept-encoding": "gzip, deflate, br",
-        accept:
-          "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
-      },
+      wait_browser: "networkidle2",
+      block_resources: false,
+      wait: 2000,
+    },
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+      "sec-fetch-site": "same-origin",
+      "sec-fetch-mode": "cors",
+      "sec-fetch-dest": "empty",
+      referer: "https://www.google.com/",
+      "accept-language": "en-US,en;q=0.9",
+      "accept-encoding": "gzip, deflate, br",
+      accept:
+        "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9",
+    },
   },
-  "firecrawl.dev":{
-    defaultScraper: "fire-engine",
+  "firecrawl.dev": {
+    defaultScraper: "scrapingBee",
     params: {
       engine: "playwright",
       headers: {
@@ -177,78 +173,35 @@ export const urlSpecificParams = {
       },
     },
   },
-  "ir.veeva.com":{
-    defaultScraper: "fire-engine",
+  "ir.veeva.com": {
+    defaultScraper: "scrapingBee",
   },
-  "eonhealth.com":{
-    defaultScraper: "fire-engine",
-    params:{
-      fireEngineOptions:{
-        mobileProxy: true,
-        method: "get",
-        engine: "request",
-      },
-    },
+  "eonhealth.com": {
+    defaultScraper: "scrapingBee",
   },
-  "notion.com":{
-    defaultScraper: "fire-engine",
+  "notion.com": {
+    defaultScraper: "scrapingBee",
+  },
+  "mendable.ai": {
+    defaultScraper: "scrapingBee",
+  },
+  "developer.apple.com": {
+    defaultScraper: "scrapingBee",
     params: {
-        wait_browser: "networkidle2",
-        block_resources: false,
-        wait: 2000,
-        engine: "playwright",
-      }
-  },
-  "mendable.ai":{
-    defaultScraper: "fire-engine",
-    params:{
-      fireEngineOptions:{
-        mobileProxy: true,
-        method: "get",
-        engine: "chrome-cdp",
-      },
-    },
-  },
-  "developer.apple.com":{
-    defaultScraper: "fire-engine",
-    params:{
       engine: "playwright",
       wait: 2000,
-      fireEngineOptions: {
-        blockMedia: false,
-      }
     },
   },
-  "amazon.com":{
-    defaultScraper: "fire-engine",
-    params:{
-      fireEngineOptions:{
-        engine: "chrome-cdp",
-      },
-    },
+  "amazon.com": {
+    defaultScraper: "scrapingBee",
   },
-  "digikey.com":{
-    defaultScraper: "fire-engine",
-    params:{
-      fireEngineOptions:{
-        engine: "tlsclient",
-      },
-    },
+  "digikey.com": {
+    defaultScraper: "scrapingBee",
   },
-  "zoopla.co.uk":{
-    defaultScraper: "fire-engine",
-    params:{
-      fireEngineOptions:{
-        engine: "chrome-cdp",
-      },
-    },
+  "zoopla.co.uk": {
+    defaultScraper: "scrapingBee",
   },
-  "lorealparis.hu":{
-    defaultScraper: "fire-engine",
-    params:{
-      fireEngineOptions:{
-        engine: "tlsclient",
-      },
-    },
-  }
+  "lorealparis.hu": {
+    defaultScraper: "scrapingBee",
+  },
 };

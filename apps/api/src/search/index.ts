@@ -1,7 +1,6 @@
 import { Logger } from "../../src/lib/logger";
 import { SearchResult } from "../../src/lib/entities";
 import { googleSearch } from "./googlesearch";
-import { fireEngineMap } from "./fireEngine";
 import { serper_search } from "./serper";
 
 export async function search({

@@ -4,15 +4,12 @@ import dotenv from "dotenv";
 import {
   Document,
   PageOptions,
-  FireEngineResponse,
   ExtractorOptions,
 } from "../../lib/entities";
 import { parseMarkdown } from "../../lib/html-to-markdown";
 import { urlSpecificParams } from "./utils/custom/website_params";
-import { handleCustomScraping } from "./custom/handleCustomScraping";
 import { removeUnwantedElements } from "./utils/removeUnwantedElements";
 import { scrapeWithFetch } from "./scrapers/fetch";
-import { scrapWithFireEngine } from "./scrapers/fireEngine";
 import { scrapWithPlaywright } from "./scrapers/playwright";
 import { scrapWithScrapingBee } from "./scrapers/scrapingBee";
 import { extractLinks } from "./utils/utils";
@@ -24,15 +21,10 @@ dotenv.config();
 const useScrapingBee =
   process.env.SCRAPING_BEE_API_KEY !== "" &&
   process.env.SCRAPING_BEE_API_KEY !== undefined;
-const useFireEngine =
-  process.env.FIRE_ENGINE_BETA_URL !== "" &&
-  process.env.FIRE_ENGINE_BETA_URL !== undefined;
 
 export const baseScrapers = [
-  useFireEngine ? "fire-engine;chrome-cdp" : undefined,
   useScrapingBee ? "scrapingBee" : undefined,
-  useFireEngine ? "fire-engine" : undefined,
-  useFireEngine ? undefined : "playwright",
+  "playwright",
   useScrapingBee ? "scrapingBeeLoad" : undefined,
   "fetch",
 ].filter(Boolean);
@@ -44,7 +36,11 @@ export async function generateRequestParams(
 ): Promise<any> {
   const defaultParams = {
     url: url,
-    params: { timeout: timeout, wait_browser: wait_browser },
+    params: {
+      timeout: timeout,
+      wait_browser: wait_browser,
+      stealth_proxy: true,
+    },
     headers: { "ScrapingService-Request": "TRUE" },
   };
 
@@ -78,10 +74,6 @@ function getScrapingFallbackOrder(
       case "scrapingBee":
       case "scrapingBeeLoad":
         return !!process.env.SCRAPING_BEE_API_KEY;
-      case "fire-engine":
-        return !!process.env.FIRE_ENGINE_BETA_URL;
-      case "fire-engine;chrome-cdp":
-        return !!process.env.FIRE_ENGINE_BETA_URL;
       case "playwright":
         return !!process.env.PLAYWRIGHT_MICROSERVICE_URL;
       default:
@@ -90,11 +82,9 @@ function getScrapingFallbackOrder(
   });
 
   let defaultOrder = [
-    useFireEngine ? "fire-engine;chrome-cdp" : undefined,
     useScrapingBee ? "scrapingBee" : undefined,
-    useFireEngine ? "fire-engine" : undefined,
     useScrapingBee ? "scrapingBeeLoad" : undefined,
-    useFireEngine ? undefined : "playwright",
+    "playwright",
     "fetch",
   ].filter(Boolean);
 
@@ -164,38 +154,7 @@ export async function scrapeSingleUrl(
     } = { text: "", screenshot: "", metadata: {} };
     let screenshot = "";
 
-    const timer = Date.now();
-
     switch (method) {
-      case "fire-engine":
-      case "fire-engine;chrome-cdp":
-        let engine: "playwright" | "chrome-cdp" | "tlsclient" = "playwright";
-        if (method === "fire-engine;chrome-cdp") {
-          engine = "chrome-cdp";
-        }
-
-        if (process.env.FIRE_ENGINE_BETA_URL) {
-          const response = await scrapWithFireEngine({
-            url,
-            waitFor: pageOptions.waitFor,
-            screenshot: pageOptions.screenshot,
-            fullPageScreenshot: pageOptions.fullPageScreenshot,
-            pageOptions: pageOptions,
-            headers: pageOptions.headers,
-            fireEngineOptions: {
-              engine: engine,
-              atsv: pageOptions.atsv,
-              disableJsDom: pageOptions.disableJsDom,
-            },
-            priority,
-            teamId,
-          });
-          scraperResponse.text = response.html;
-          scraperResponse.screenshot = response.screenshot;
-          scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
-          scraperResponse.metadata.pageError = response.pageError;
-        }
-        break;
       case "scrapingBee":
         if (process.env.SCRAPING_BEE_API_KEY) {
           const response = await scrapWithScrapingBee(
@@ -236,35 +195,6 @@ export async function scrapeSingleUrl(
         break;
     }
 
-    let customScrapedContent: FireEngineResponse | null = null;
-
-    // Check for custom scraping conditions
-    const customScraperResult = await handleCustomScraping(
-      scraperResponse.text,
-      url
-    );
-
-    if (customScraperResult) {
-      switch (customScraperResult.scraper) {
-        case "fire-engine":
-          customScrapedContent = await scrapWithFireEngine({
-            url: customScraperResult.url,
-            waitFor: customScraperResult.waitAfterLoad,
-            screenshot: false,
-            pageOptions: customScraperResult.pageOptions,
-          });
-          if (screenshot) {
-            customScrapedContent.screenshot = screenshot;
-          }
-          break;
-      }
-    }
-
-    if (customScrapedContent) {
-      scraperResponse.text = customScrapedContent.html;
-      screenshot = customScrapedContent.screenshot;
-    }
-    //* TODO: add an optional to return markdown or structured/extracted content
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
     const text = await parseMarkdown(cleanedHtml);
 

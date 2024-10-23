@@ -14,7 +14,6 @@ import {
   isSameSubdomain,
   removeDuplicateUrls,
 } from "../../lib/validateUrl";
-import { fireEngineMap } from "../../search/fireEngine";
 import { billTeam } from "../../services/billing/credit_billing";
 import { performCosineSimilarity } from "../../lib/map-cosine";
 import { Logger } from "../../lib/logger";
@@ -52,32 +51,6 @@ export async function mapController(
     sitemap.map((x) => {
       links.push(x.url);
     });
-  }
-
-  let urlWithoutWww = req.body.url.replace("www.", "");
-
-  let mapUrl = req.body.search
-    ? `"${req.body.search}" site:${urlWithoutWww}`
-    : `site:${req.body.url}`;
-  // www. seems to exclude subdomains in some cases
-  const mapResults = await fireEngineMap(mapUrl, {
-    // limit to 100 results (beta)
-    numResults: Math.min(limit, 100),
-  });
-
-  if (mapResults.length > 0) {
-    if (req.body.search) {
-      // Ensure all map results are first, maintaining their order
-      links = [
-        mapResults[0].url,
-        ...mapResults.slice(1).map((x) => x.url),
-        ...links,
-      ];
-    } else {
-      mapResults.map((x) => {
-        links.push(x.url);
-      });
-    }
   }
 
   // Perform cosine similarity between the search query and the list of links

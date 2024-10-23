@@ -132,21 +132,3 @@ export class SearchResult {
       return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description})`;
   }
 }
-
-export interface FireEngineResponse {
-  html: string;
-  screenshot: string;
-  pageStatusCode?: number;
-  pageError?: string;
-}
-
-
-export interface FireEngineOptions{
-  mobileProxy?: boolean;
-  method?: string;
-  engine?: string;
-  blockMedia?: boolean;
-  blockAds?: boolean;
-  disableJsDom?: boolean;
-  atsv?: boolean; // beta
-}

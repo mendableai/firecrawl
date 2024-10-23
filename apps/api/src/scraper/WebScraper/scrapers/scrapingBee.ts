@@ -15,7 +15,6 @@ export async function scrapWithScrapingBee(
   url: string,
   wait_browser: string = "domcontentloaded",
   timeout: number = universalTimeout,
-  pageOptions: { parsePDF?: boolean } = { parsePDF: true }
 ): Promise<{ content: string; pageStatusCode?: number; pageError?: string }> {
   const logParams = {
     url,
