@@ -9,6 +9,23 @@ app = FirecrawlApp(api_key="fc-")
 scrape_result = app.scrape_url('firecrawl.dev')
 print(scrape_result['markdown'])
 
+
+# Test batch scrape
+urls = ['https://example.com', 'https://docs.firecrawl.dev']
+batch_scrape_params = {
+    'formats': ['markdown', 'html'],
+}
+
+# Synchronous batch scrape
+batch_result = app.batch_scrape_urls(urls, batch_scrape_params)
+print("Synchronous Batch Scrape Result:")
+print(batch_result['data'][0]['markdown'])
+
+# Asynchronous batch scrape
+async_batch_result = app.async_batch_scrape_urls(urls, batch_scrape_params)
+print("\nAsynchronous Batch Scrape Result:")
+print(async_batch_result)
+
 # Crawl a website:
 idempotency_key = str(uuid.uuid4()) # optional idempotency key
 crawl_result = app.crawl_url('firecrawl.dev', {'excludePaths': ['blog/*']}, 2, idempotency_key)
