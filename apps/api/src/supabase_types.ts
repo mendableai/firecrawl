@@ -447,7 +447,6 @@ export interface Database {
           created_at: string | null;
           custom_prompt: string | null;
           id: number;
-          model_name: string | null;
           project_id: number;
           suggested_questions: string | null;
           support_link: string | null;
@@ -457,7 +456,6 @@ export interface Database {
           created_at?: string | null;
           custom_prompt?: string | null;
           id?: number;
-          model_name?: string | null;
           project_id: number;
           suggested_questions?: string | null;
           support_link?: string | null;
@@ -467,7 +465,6 @@ export interface Database {
           created_at?: string | null;
           custom_prompt?: string | null;
           id?: number;
-          model_name?: string | null;
           project_id?: number;
           suggested_questions?: string | null;
           support_link?: string | null;

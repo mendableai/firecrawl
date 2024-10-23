@@ -1,11 +1,9 @@
 import { Logger } from "../../../src/lib/logger";
 import { getScrapeQueue } from "../queue-service";
-import { sendSlackWebhook } from "./slack";
 
 export async function checkAlerts() {
   try {
     if (
-      process.env.SLACK_WEBHOOK_URL &&
       process.env.ENV === "production" &&
       process.env.ALERT_NUM_ACTIVE_JOBS &&
       process.env.ALERT_NUM_WAITING_JOBS
@@ -18,10 +16,6 @@ export async function checkAlerts() {
           if (activeJobs > Number(process.env.ALERT_NUM_ACTIVE_JOBS)) {
             Logger.warn(
               `Alert: Number of active jobs is over ${process.env.ALERT_NUM_ACTIVE_JOBS}. Current active jobs: ${activeJobs}.`
-            );
-            sendSlackWebhook(
-              `Alert: Number of active jobs is over ${process.env.ALERT_NUM_ACTIVE_JOBS}. Current active jobs: ${activeJobs}`,
-              true
             );
           } else {
             Logger.info(
@@ -40,10 +34,6 @@ export async function checkAlerts() {
         if (waitingJobs > Number(process.env.ALERT_NUM_WAITING_JOBS)) {
           Logger.warn(
             `Alert: Number of waiting jobs is over ${process.env.ALERT_NUM_WAITING_JOBS}. Current waiting jobs: ${waitingJobs}.`
-          );
-          sendSlackWebhook(
-            `Alert: Number of waiting jobs is over ${process.env.ALERT_NUM_WAITING_JOBS}. Current waiting jobs: ${waitingJobs}. Scale up the number of workers with fly scale count worker=20`,
-            true
           );
         }
       };

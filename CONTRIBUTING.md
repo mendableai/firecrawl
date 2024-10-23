@@ -34,8 +34,6 @@ SCRAPING_BEE_API_KEY= #Set if you'd like to use scraping Be to handle JS blockin
 BULL_AUTH_KEY= @
 LOGTAIL_KEY= # Use if you're configuring basic logging with logtail
 PLAYWRIGHT_MICROSERVICE_URL=  # set if you'd like to run a playwright fallback
-LLAMAPARSE_API_KEY= #Set if you have a llamaparse key you'd like to use to parse pdfs
-SLACK_WEBHOOK_URL= # set if you'd like to send slack server health status messages
 ```
 
 ### Installing dependencies

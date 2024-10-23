@@ -19,7 +19,6 @@ describe("E2E Tests for API Routes with No Authentication", () => {
     process.env.BULL_AUTH_KEY = "";
     process.env.LOGTAIL_KEY = "";
     process.env.PLAYWRIGHT_MICROSERVICE_URL = "";
-    process.env.LLAMAPARSE_API_KEY = "";
     process.env.TEST_API_KEY = "";
   });
 

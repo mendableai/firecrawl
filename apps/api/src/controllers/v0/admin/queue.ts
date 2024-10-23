@@ -4,7 +4,6 @@ import { Job } from "bullmq";
 import { Logger } from "../../../lib/logger";
 import { getScrapeQueue } from "../../../services/queue-service";
 import { checkAlerts } from "../../../services/alerts";
-import { sendSlackWebhook } from "../../../services/alerts/slack";
 
 export async function cleanBefore24hCompleteJobsController(
   req: Request,
@@ -169,19 +168,6 @@ export async function autoscalerController(req: Request, res: Response) {
         `🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting`
       );
 
-      if (targetMachineCount > activeMachines) {
-        sendSlackWebhook(
-          `🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting - Current DateTime: ${new Date().toISOString()}`,
-          false,
-          process.env.SLACK_AUTOSCALER ?? ""
-        );
-      } else {
-        sendSlackWebhook(
-          `🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting - Current DateTime: ${new Date().toISOString()}`,
-          false,
-          process.env.SLACK_AUTOSCALER ?? ""
-        );
-      }
       return res.status(200).json({
         mode: "scale-descale",
         count: targetMachineCount,
