@@ -2,21 +2,12 @@ import { Response } from "express";
 import { CrawlStatusParams, CrawlStatusResponse, ErrorResponse, legacyDocumentConverter, RequestWithAuth } from "./types";
 import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
-import { supabaseGetJobById, supabaseGetJobsById } from "../../lib/supabase-jobs";
 import { configDotenv } from "dotenv";
 configDotenv();
 
 export async function getJob(id: string) {
   const job = await getScrapeQueue().getJob(id);
   if (!job) return job;
-  
-  if (process.env.USE_DB_AUTHENTICATION === "true") {
-    const supabaseData = await supabaseGetJobById(id);
-
-    if (supabaseData) {
-      job.returnvalue = supabaseData.docs;
-    }
-  }
 
   job.returnvalue = Array.isArray(job.returnvalue) ? job.returnvalue[0] : job.returnvalue;
 
@@ -25,17 +16,6 @@ export async function getJob(id: string) {
 
 export async function getJobs(ids: string[]) {
   const jobs = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x);
-  
-  if (process.env.USE_DB_AUTHENTICATION === "true") {
-    const supabaseData = await supabaseGetJobsById(ids);
-
-    supabaseData.forEach(x => {
-      const job = jobs.find(y => y.id === x.job_id);
-      if (job) {
-        job.returnvalue = x.docs;
-      }
-    })
-  }
 
   jobs.forEach(job => {
     job.returnvalue = Array.isArray(job.returnvalue) ? job.returnvalue[0] : job.returnvalue;

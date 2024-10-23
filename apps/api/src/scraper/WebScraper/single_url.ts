@@ -17,7 +17,6 @@ import { scrapWithPlaywright } from "./scrapers/playwright";
 import { scrapWithScrapingBee } from "./scrapers/scrapingBee";
 import { extractLinks } from "./utils/utils";
 import { Logger } from "../../lib/logger";
-import { ScrapeEvents } from "../../lib/scrape-events";
 import { clientSideError } from "../../strings";
 
 dotenv.config();
@@ -115,7 +114,7 @@ function getScrapingFallbackOrder(
 
 export async function scrapeSingleUrl(
   jobId: string,
-  urlToScrap: string,
+  urlToScrape: string,
   pageOptions: PageOptions,
   extractorOptions?: ExtractorOptions,
   existingHtml?: string,
@@ -152,7 +151,7 @@ export async function scrapeSingleUrl(
     existingHtml = "";
   }
 
-  urlToScrap = urlToScrap.trim();
+  urlToScrape = urlToScrape.trim();
 
   const attemptScraping = async (
     url: string,
@@ -166,13 +165,6 @@ export async function scrapeSingleUrl(
     let screenshot = "";
 
     const timer = Date.now();
-    const logInsertPromise = ScrapeEvents.insert(jobId, {
-      type: "scrape",
-      url,
-      worker: process.env.FLY_MACHINE_ID,
-      method,
-      result: null,
-    });
 
     switch (method) {
       case "fire-engine":
@@ -276,21 +268,6 @@ export async function scrapeSingleUrl(
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
     const text = await parseMarkdown(cleanedHtml);
 
-    const insertedLogId = await logInsertPromise;
-    ScrapeEvents.updateScrapeResult(insertedLogId, {
-      response_size: scraperResponse.text.length,
-      success:
-        !(
-          scraperResponse.metadata.pageStatusCode &&
-          scraperResponse.metadata.pageStatusCode >= 400
-        ) &&
-        !!text &&
-        text.trim().length >= 100,
-      error: scraperResponse.metadata.pageError,
-      response_code: scraperResponse.metadata.pageStatusCode,
-      time_taken: Date.now() - timer,
-    });
-
     return {
       text,
       html: cleanedHtml,
@@ -310,11 +287,11 @@ export async function scrapeSingleUrl(
     pageError: undefined,
   };
   try {
-    let urlKey = urlToScrap;
+    let urlKey = urlToScrape;
     try {
-      urlKey = new URL(urlToScrap).hostname.replace(/^www\./, "");
+      urlKey = new URL(urlToScrape).hostname.replace(/^www\./, "");
     } catch (error) {
-      Logger.error(`Invalid URL key, trying: ${urlToScrap}`);
+      Logger.error(`Invalid URL key, trying: ${urlToScrape}`);
     }
     const defaultScraper = urlSpecificParams[urlKey]?.defaultScraper ?? "";
     const scrapersInOrder = getScrapingFallbackOrder(
@@ -341,7 +318,7 @@ export async function scrapeSingleUrl(
         break;
       }
 
-      const attempt = await attemptScraping(urlToScrap, scraper);
+      const attempt = await attemptScraping(urlToScrape, scraper);
       text = attempt.text ?? "";
       html = attempt.html ?? "";
       rawHtml = attempt.rawHtml ?? "";
@@ -365,29 +342,33 @@ export async function scrapeSingleUrl(
         (typeof screenshot === "string" && screenshot.length > 0)
       ) {
         Logger.debug(
-          `⛏️ ${scraper}: Successfully scraped ${urlToScrap} with rawHtml length >= 100 or screenshot, breaking`
+          `⛏️ ${scraper}: Successfully scraped ${urlToScrape} with rawHtml length >= 100 or screenshot, breaking`
         );
         break;
       }
       if (pageStatusCode && (pageStatusCode == 404 || pageStatusCode == 500)) {
         Logger.debug(
-          `⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code 404, breaking`
+          `⛏️ ${scraper}: Successfully scraped ${urlToScrape} with status code 404, breaking`
         );
         break;
       }
+
+      Logger.debug(
+        `⛏️ ${scraper}: Failed to scrape ${urlToScrape}, trying next scraper`
+      );
     }
 
     if (!rawHtml) {
-      throw new Error(`All scraping methods failed for URL: ${urlToScrap}`);
+      throw new Error(`All scraping methods failed for URL: ${urlToScrape}`);
     }
 
     const soup = cheerio.load(rawHtml);
-    const metadata = extractMetadata(soup, urlToScrap);
+    const metadata = extractMetadata(soup, urlToScrape);
 
     let linksOnPage: string[] | undefined;
 
     if (pageOptions.includeLinks) {
-      linksOnPage = extractLinks(rawHtml, urlToScrap);
+      linksOnPage = extractLinks(rawHtml, urlToScrape);
     }
 
     let document: Document;
@@ -404,7 +385,7 @@ export async function scrapeSingleUrl(
         metadata: {
           ...metadata,
           screenshot: screenshot,
-          sourceURL: urlToScrap,
+          sourceURL: urlToScrape,
           pageStatusCode: pageStatusCode,
           pageError: pageError,
         },
@@ -420,7 +401,7 @@ export async function scrapeSingleUrl(
         rawHtml: rawHtml,
         metadata: {
           ...metadata,
-          sourceURL: urlToScrap,
+          sourceURL: urlToScrape,
           pageStatusCode: pageStatusCode,
           pageError: pageError,
         },
@@ -431,18 +412,9 @@ export async function scrapeSingleUrl(
     return document;
   } catch (error) {
     Logger.debug(
-      `⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrap}`
+      `⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrape}`
     );
-    ScrapeEvents.insert(jobId, {
-      type: "error",
-      message:
-        typeof error === "string"
-          ? error
-          : typeof error.message === "string"
-          ? error.message
-          : JSON.stringify(error),
-      stack: error.stack,
-    });
+
     return {
       content: "",
       markdown:
@@ -452,7 +424,7 @@ export async function scrapeSingleUrl(
       html: "",
       linksOnPage: pageOptions.includeLinks ? [] : undefined,
       metadata: {
-        sourceURL: urlToScrap,
+        sourceURL: urlToScrape,
         pageStatusCode: pageStatusCode,
         pageError: pageError,
       },

@@ -13,7 +13,6 @@ import {
 import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from "uuid";
 import { addScrapeJobRaw, waitForJob } from "../../services/queue-jobs";
-import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
 import { PlanType } from "../../types";
 
@@ -117,23 +116,6 @@ export async function scrapeController(
       delete doc.markdown;
     }
   }
-
-  logJob({
-    job_id: jobId,
-    success: true,
-    message: "Scrape completed",
-    num_docs: 1,
-    docs: [doc],
-    time_taken: timeTakenInSeconds,
-    team_id: req.auth.team_id,
-    mode: "scrape",
-    url: req.body.url,
-    crawlerOptions: {},
-    pageOptions: pageOptions,
-    origin: origin,
-    extractor_options: { mode: "markdown" },
-    num_tokens: 0,
-  });
 
   return res.status(200).json({
     success: true,

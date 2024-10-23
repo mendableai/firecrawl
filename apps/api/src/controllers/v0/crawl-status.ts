@@ -4,24 +4,12 @@ import { RateLimiterMode } from "../../../src/types";
 import { getScrapeQueue } from "../../../src/services/queue-service";
 import { Logger } from "../../../src/lib/logger";
 import { getCrawl, getCrawlJobs } from "../../../src/lib/crawl-redis";
-import { supabaseGetJobsByCrawlId } from "../../../src/lib/supabase-jobs";
 import * as Sentry from "@sentry/node";
 import { configDotenv } from "dotenv";
 configDotenv();
 
 export async function getJobs(crawlId: string, ids: string[]) {
   const jobs = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x);
-  
-  if (process.env.USE_DB_AUTHENTICATION === "true") {
-    const supabaseData = await supabaseGetJobsByCrawlId(crawlId);
-
-    supabaseData.forEach(x => {
-      const job = jobs.find(y => y.id === x.job_id);
-      if (job) {
-        job.returnvalue = x.docs;
-      }
-    })
-  }
 
   jobs.forEach(job => {
     job.returnvalue = Array.isArray(job.returnvalue) ? job.returnvalue[0] : job.returnvalue;

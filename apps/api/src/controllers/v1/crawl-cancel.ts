@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../types";
-import { supabase_service } from "../../services/supabase";
 import { Logger } from "../../lib/logger";
 import { getCrawl, saveCrawl } from "../../lib/crawl-redis";
 import * as Sentry from "@sentry/node";
@@ -10,8 +9,6 @@ configDotenv();
 
 export async function crawlCancelController(req: Request, res: Response) {
   try {
-    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
-
     const { success, team_id, error, status } = await authenticateUser(
       req,
       res,
@@ -24,22 +21,6 @@ export async function crawlCancelController(req: Request, res: Response) {
     const sc = await getCrawl(req.params.jobId);
     if (!sc) {
       return res.status(404).json({ error: "Job not found" });
-    }
-
-    // check if the job belongs to the team
-    if (useDbAuthentication) {
-      const { data, error: supaError } = await supabase_service
-        .from("bulljobs_teams")
-        .select("*")
-        .eq("job_id", req.params.jobId)
-        .eq("team_id", team_id);
-      if (supaError) {
-        return res.status(500).json({ error: supaError.message });
-      }
-
-      if (data.length === 0) {
-        return res.status(403).json({ error: "Unauthorized" });
-      }
     }
 
     try {

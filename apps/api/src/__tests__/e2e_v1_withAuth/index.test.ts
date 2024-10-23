@@ -9,25 +9,11 @@ configDotenv();
 const TEST_URL = "http://127.0.0.1:3002";
 
 describe("E2E Tests for v1 API Routes", () => {
-  beforeAll(() => {
-    process.env.USE_DB_AUTHENTICATION = "true";
-  });
-
-  afterAll(() => {
-    delete process.env.USE_DB_AUTHENTICATION;
-  });
-
   describe("GET /is-production", () => {
     it.concurrent("should return the production status", async () => {
       const response: ScrapeResponseRequestTest = await request(TEST_URL).get(
         "/is-production"
       );
-
-      console.log('process.env.USE_DB_AUTHENTICATION', process.env.USE_DB_AUTHENTICATION);
-      console.log('?', process.env.USE_DB_AUTHENTICATION === 'true');
-      const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
-      console.log('!!useDbAuthentication', !!useDbAuthentication);
-      console.log('!useDbAuthentication', !useDbAuthentication);
 
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("isProduction");

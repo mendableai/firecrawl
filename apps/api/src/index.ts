@@ -9,7 +9,6 @@ import cluster from "cluster";
 import os from "os";
 import { Logger } from "./lib/logger";
 import { adminRouter } from "./routes/admin";
-import { ScrapeEvents } from "./lib/scrape-events";
 import http from 'node:http';
 import https from 'node:https';
 import CacheableLookup  from 'cacheable-lookup';

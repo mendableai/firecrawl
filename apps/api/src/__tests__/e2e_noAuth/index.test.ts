@@ -13,9 +13,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
   // save original process.env
   beforeAll(() => {
     originalEnv = { ...process.env };
-    process.env.USE_DB_AUTHENTICATION = "false";
     process.env.SUPABASE_ANON_TOKEN = "";
-    process.env.SUPABASE_URL = "";
     process.env.SUPABASE_SERVICE_TOKEN = "";
     process.env.SCRAPING_BEE_API_KEY = "";
     process.env.BULL_AUTH_KEY = "";

@@ -1,6 +1,5 @@
 import { crawlController } from '../v0/crawl'
 import { Request, Response } from 'express';
-import { validateIdempotencyKey } from '../../services/idempotency/validate';
 import { v4 as uuidv4 } from 'uuid';
 
 jest.mock('../auth', () => ({
@@ -29,9 +28,6 @@ describe('crawlController', () => {
       status: jest.fn().mockReturnThis(),
       json: jest.fn()
     } as unknown as Response;
-
-    // Mock the idempotency key validation to return false for the second call
-    (validateIdempotencyKey as jest.Mock).mockResolvedValueOnce(true).mockResolvedValueOnce(false);
 
     // First request should succeed
     await crawlController(req, res);

@@ -13,15 +13,6 @@ export async function crawlJobStatusPreviewController(req: Request, res: Respons
 
     const jobIDs = await getCrawlJobs(req.params.jobId);
 
-    // let data = job.returnvalue;
-    // if (process.env.USE_DB_AUTHENTICATION === "true") {
-    //   const supabaseData = await supabaseGetJobById(req.params.jobId);
-
-    //   if (supabaseData) {
-    //     data = supabaseData.docs;
-    //   }
-    // }
-
     const jobs = (await getJobs(req.params.jobId, jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
     const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
     const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "active";

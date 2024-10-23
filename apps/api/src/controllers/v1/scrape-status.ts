@@ -1,5 +1,3 @@
-import { Response } from "express";
-import { supabaseGetJobByIdOnlyData } from "../../lib/supabase-jobs";
 import { scrapeStatusRateLimiter } from "../../services/rate-limiter";
 
 export async function scrapeStatusController(req: any, res: any) {
@@ -10,17 +8,9 @@ export async function scrapeStatusController(req: any, res: any) {
     const iptoken = incomingIP;
     await rateLimiter.consume(iptoken);
 
-    const job = await supabaseGetJobByIdOnlyData(req.params.jobId);
-
-    if(job.team_id !== "41bdbfe1-0579-4d9b-b6d5-809f16be12f5"){
-      return res.status(403).json({
-        success: false,
-        error: "You are not allowed to access this resource.",
-      });
-    }
     return res.status(200).json({
       success: true,
-      data: job?.docs[0],
+      data: null,
     });
   } catch (error) {
     if (error instanceof Error && error.message == "Too Many Requests") {

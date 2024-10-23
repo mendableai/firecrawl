@@ -4,8 +4,6 @@ import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { addScrapeJobRaw } from "../../../src/services/queue-jobs";
 import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
-import { logCrawl } from "../../../src/services/logging/crawl_log";
-import { validateIdempotencyKey } from "../../../src/services/idempotency/validate";
 import { createIdempotencyKey } from "../../../src/services/idempotency/create";
 import {
   defaultCrawlPageOptions,
@@ -40,10 +38,6 @@ export async function crawlController(req: Request, res: Response) {
     }
 
     if (req.headers["x-idempotency-key"]) {
-      const isIdempotencyValid = await validateIdempotencyKey(req);
-      if (!isIdempotencyValid) {
-        return res.status(409).json({ error: "Idempotency key already used" });
-      }
       try {
         createIdempotencyKey(req);
       } catch (error) {
@@ -118,8 +112,6 @@ export async function crawlController(req: Request, res: Response) {
     }
 
     const id = uuidv4();
-
-    await logCrawl(id, team_id);
 
     const sc: StoredCrawl = {
       originUrl: url,

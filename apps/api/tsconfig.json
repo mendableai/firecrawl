@@ -19,5 +19,5 @@
 
     "inlineSources": true
   },
-  "include": ["src/","src/**/*", "services/db/supabase.ts", "utils/utils.ts", "services/db/supabaseEmbeddings.ts", "utils/EventEmmitter.ts", "src/services/queue-service.ts"]
+  "include": ["src/","src/**/*", "utils/utils.ts", "services/db/supabaseEmbeddings.ts", "utils/EventEmmitter.ts", "src/services/queue-service.ts"]
 }

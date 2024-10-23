@@ -26,15 +26,7 @@ HOST=0.0.0.0
 REDIS_URL=redis://localhost:6379
 REDIS_RATE_LIMIT_URL=redis://localhost:6379
 
-## To turn on DB authentication, you need to set up supabase.
-USE_DB_AUTHENTICATION=false
-
 # ===== Optional ENVS ======
-
-# Supabase Setup (used to support DB authentication, advanced logging, etc.)
-SUPABASE_ANON_TOKEN=
-SUPABASE_URL=
-SUPABASE_SERVICE_TOKEN=
 
 # Other Optionals
 TEST_API_KEY= # use if you've set up authentication and want to test with a real API key

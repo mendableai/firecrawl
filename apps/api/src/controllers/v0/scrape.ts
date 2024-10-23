@@ -6,7 +6,6 @@ import {
 } from "../../services/billing/credit_billing";
 import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
-import { logJob } from "../../services/logging/log_job";
 import { Document } from "../../lib/entities";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import {
@@ -259,23 +258,6 @@ export async function scrapeController(req: Request, res: Response) {
         delete doc.markdown;
       }
     }
-
-    logJob({
-      job_id: jobId,
-      success: result.success,
-      message: result.error,
-      num_docs: 1,
-      docs: [doc],
-      time_taken: timeTakenInSeconds,
-      team_id: team_id,
-      mode: "scrape",
-      url: req.body.url,
-      crawlerOptions: crawlerOptions,
-      pageOptions: pageOptions,
-      origin: origin,
-      extractor_options: extractorOptions,
-      num_tokens: numTokens,
-    });
 
     return res.status(result.returnCode).json(result);
   } catch (error) {

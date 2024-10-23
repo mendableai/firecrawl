@@ -8,13 +8,6 @@ dotenv.config();
 const TEST_URL = "http://127.0.0.1:3002";
 
 describe("E2E Tests for API Routes", () => {
-  beforeAll(() => {
-    process.env.USE_DB_AUTHENTICATION = "true";
-  });
-
-  afterAll(() => {
-    delete process.env.USE_DB_AUTHENTICATION;
-  });
   describe("GET /", () => {
     it.concurrent("should return Hello, world! message", async () => {
       const response = await request(TEST_URL).get("/");

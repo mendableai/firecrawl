@@ -1,7 +1,6 @@
 import axios from "axios";
 import { legacyDocumentConverter } from "../../src/controllers/v1/types";
 import { Logger } from "../../src/lib/logger";
-import { supabase_service } from "./supabase";
 import { WebhookEventType } from "../types";
 import { configDotenv } from "dotenv";
 configDotenv();
@@ -20,30 +19,7 @@ export const callWebhook = async (
       "{{JOB_ID}}",
       id
     );
-    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
     let webhookUrl = specified ?? selfHostedUrl;
-
-    // Only fetch the webhook URL from the database if the self-hosted webhook URL and specified webhook are not set
-    // and the USE_DB_AUTHENTICATION environment variable is set to true
-    if (!webhookUrl && useDbAuthentication) {
-      const { data: webhooksData, error } = await supabase_service
-        .from("webhooks")
-        .select("url")
-        .eq("team_id", teamId)
-        .limit(1);
-      if (error) {
-        Logger.error(
-          `Error fetching webhook URL for team ID: ${teamId}, error: ${error.message}`
-        );
-        return null;
-      }
-
-      if (!webhooksData || webhooksData.length === 0) {
-        return null;
-      }
-
-      webhookUrl = webhooksData[0].url;
-    }
 
     let dataToSend = [];
     if (

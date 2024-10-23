@@ -17,7 +17,6 @@ import {
   saveCrawl,
   StoredCrawl,
 } from "../../lib/crawl-redis";
-import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
 import { addScrapeJobRaw } from "../../services/queue-jobs";
 import { Logger } from "../../lib/logger";
@@ -33,8 +32,6 @@ export async function crawlController(
   Logger.debug(`[Crawl] Request: ${JSON.stringify(req.body)}`);
 
   const id = uuidv4();
-
-  await logCrawl(id, req.auth.team_id);
 
   const { remainingCredits } = req.account;
 

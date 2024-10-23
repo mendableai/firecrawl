@@ -10,7 +10,6 @@ import {
 import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
-import { logJob } from "./logging/log_job";
 import { Logger } from "../lib/logger";
 import { Job, Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
@@ -63,11 +62,7 @@ const processJobInternal = async (token: string, job: Job) => {
   try {
     const result = await processJob(job, token);
     try {
-      if (job.data.crawl_id && process.env.USE_DB_AUTHENTICATION === "true") {
-        await job.moveToCompleted(null, token, false);
-      } else {
-        await job.moveToCompleted(result.docs, token, false);
-      }
+      await job.moveToCompleted(result.docs, token, false);
     } catch (e) {}
   } catch (error) {
     console.log("Job failed, error:", error);
@@ -248,22 +243,6 @@ async function processJob(job: Job, token: string) {
     };
 
     if (job.data.crawl_id) {
-      await logJob({
-        job_id: job.id as string,
-        success: success,
-        message: message,
-        num_docs: docs.length,
-        docs: docs,
-        time_taken: timeTakenInSeconds,
-        team_id: job.data.team_id,
-        mode: job.data.mode,
-        url: job.data.url,
-        crawlerOptions: job.data.crawlerOptions,
-        pageOptions: job.data.pageOptions,
-        origin: job.data.origin,
-        crawl_id: job.data.crawl_id,
-      });
-
       await addCrawlJobDone(job.data.crawl_id, job.id);
 
       const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
@@ -324,21 +303,6 @@ async function processJob(job: Job, token: string) {
             Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue
           );
 
-          await logJob({
-            job_id: job.data.crawl_id,
-            success: jobStatus === "completed",
-            message: sc.cancelled ? "Cancelled" : message,
-            num_docs: fullDocs.length,
-            docs: [],
-            time_taken: (Date.now() - sc.createdAt) / 1000,
-            team_id: job.data.team_id,
-            mode: "crawl",
-            url: sc.originUrl,
-            crawlerOptions: sc.crawlerOptions,
-            pageOptions: sc.pageOptions,
-            origin: job.data.origin,
-          });
-
           const data = {
             success: jobStatus !== "failed",
             result: {
@@ -386,21 +350,6 @@ async function processJob(job: Job, token: string) {
               "crawl.completed"
             );
           }
-
-          await logJob({
-            job_id: job.data.crawl_id,
-            success: jobStatus === "completed",
-            message: sc.cancelled ? "Cancelled" : message,
-            num_docs: jobIDs.length,
-            docs: [],
-            time_taken: (Date.now() - sc.createdAt) / 1000,
-            team_id: job.data.team_id,
-            mode: "crawl",
-            url: sc.originUrl,
-            crawlerOptions: sc.crawlerOptions,
-            pageOptions: sc.pageOptions,
-            origin: job.data.origin,
-          });
         }
       }
     }
@@ -471,61 +420,7 @@ async function processJob(job: Job, token: string) {
       );
     }
 
-    if (job.data.crawl_id) {
-      await logJob({
-        job_id: job.id as string,
-        success: false,
-        message:
-          typeof error === "string"
-            ? error
-            : error.message ??
-              "Something went wrong... Contact help@mendable.ai",
-        num_docs: 0,
-        docs: [],
-        time_taken: 0,
-        team_id: job.data.team_id,
-        mode: job.data.mode,
-        url: job.data.url,
-        crawlerOptions: job.data.crawlerOptions,
-        pageOptions: job.data.pageOptions,
-        origin: job.data.origin,
-        crawl_id: job.data.crawl_id,
-      });
-
-      const sc = await getCrawl(job.data.crawl_id);
-
-      await logJob({
-        job_id: job.data.crawl_id,
-        success: false,
-        message:
-          typeof error === "string"
-            ? error
-            : error.message ??
-              "Something went wrong... Contact help@mendable.ai",
-        num_docs: 0,
-        docs: [],
-        time_taken: 0,
-        team_id: job.data.team_id,
-        mode: "crawl",
-        url: sc ? sc.originUrl : job.data.url,
-        crawlerOptions: sc ? sc.crawlerOptions : job.data.crawlerOptions,
-        pageOptions: sc ? sc.pageOptions : job.data.pageOptions,
-        origin: job.data.origin,
-      });
-    }
     // done(null, data);
     return data;
   }
 }
-
-// wsq.process(
-//   Math.floor(Number(process.env.NUM_WORKERS_PER_QUEUE ?? 8)),
-//   processJob
-// );
-
-// wsq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
-// wsq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
-// wsq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
-// wsq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
-// wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
-// wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));

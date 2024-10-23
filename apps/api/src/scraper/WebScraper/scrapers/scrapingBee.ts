@@ -1,4 +1,3 @@
-import { logScrape } from "../../../services/logging/scrape_log";
 import { generateRequestParams } from "../single_url";
 import { universalTimeout } from "../global";
 import { ScrapingBeeClient } from "scrapingbee";
@@ -82,6 +81,5 @@ export async function scrapWithScrapingBee(
   } finally {
     const endTime = Date.now();
     logParams.time_taken_seconds = (endTime - logParams.startTime) / 1000;
-    await logScrape(logParams);
   }
 }

@@ -6,7 +6,6 @@ import {
 } from "../../services/billing/credit_billing";
 import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
-import { logJob } from "../../services/logging/log_job";
 import { PageOptions, SearchOptions } from "../../lib/entities";
 import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
@@ -185,22 +184,6 @@ export async function searchController(req: Request, res: Response) {
       searchOptions,
       plan
     );
-    const endTime = new Date().getTime();
-    const timeTakenInSeconds = (endTime - startTime) / 1000;
-    logJob({
-      job_id: jobId,
-      success: result.success,
-      message: result.error,
-      num_docs: result.data ? result.data.length : 0,
-      docs: result.data,
-      time_taken: timeTakenInSeconds,
-      team_id: team_id,
-      mode: "search",
-      url: req.body.query,
-      crawlerOptions: crawlerOptions,
-      pageOptions: pageOptions,
-      origin: origin,
-    });
     return res.status(result.returnCode).json(result);
   } catch (error) {
     if (error instanceof Error && error.message.startsWith("Job wait")) {

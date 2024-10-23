@@ -16,7 +16,6 @@ import {
 } from "../../lib/validateUrl";
 import { fireEngineMap } from "../../search/fireEngine";
 import { billTeam } from "../../services/billing/credit_billing";
-import { logJob } from "../../services/logging/log_job";
 import { performCosineSimilarity } from "../../lib/map-cosine";
 import { Logger } from "../../lib/logger";
 
@@ -120,23 +119,6 @@ export async function mapController(
   const timeTakenInSeconds = (endTime - startTime) / 1000;
 
   const linksToReturn = links.slice(0, limit);
-
-  logJob({
-    job_id: id,
-    success: links.length > 0,
-    message: "Map completed",
-    num_docs: linksToReturn.length,
-    docs: linksToReturn,
-    time_taken: timeTakenInSeconds,
-    team_id: req.auth.team_id,
-    mode: "map",
-    url: req.body.url,
-    crawlerOptions: {},
-    pageOptions: {},
-    origin: req.body.origin,
-    extractor_options: { mode: "markdown" },
-    num_tokens: 0,
-  });
 
   return res.status(200).json({
     success: true,

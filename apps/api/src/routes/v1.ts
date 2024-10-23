@@ -7,7 +7,6 @@ import { RequestWithAuth, RequestWithMaybeAuth } from "../controllers/v1/types";
 import { RateLimiterMode } from "../types";
 import { authenticateUser } from "../controllers/auth";
 import { createIdempotencyKey } from "../services/idempotency/create";
-import { validateIdempotencyKey } from "../services/idempotency/validate";
 import { checkTeamCredits } from "../services/billing/credit_billing";
 import expressWs from "express-ws";
 import { crawlStatusWSController } from "../controllers/v1/crawl-status-ws";
@@ -80,14 +79,6 @@ function idempotencyMiddleware(
 ) {
   (async () => {
     if (req.headers["x-idempotency-key"]) {
-      const isIdempotencyValid = await validateIdempotencyKey(req);
-      if (!isIdempotencyValid) {
-        if (!res.headersSent) {
-          return res
-            .status(409)
-            .json({ success: false, error: "Idempotency key already used" });
-        }
-      }
       createIdempotencyKey(req);
     }
     next();
