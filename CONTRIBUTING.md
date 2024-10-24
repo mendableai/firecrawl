@@ -32,7 +32,6 @@ REDIS_RATE_LIMIT_URL=redis://localhost:6379
 TEST_API_KEY= # use if you've set up authentication and want to test with a real API key
 SCRAPING_BEE_API_KEY= #Set if you'd like to use scraping Be to handle JS blocking
 BULL_AUTH_KEY= @
-LOGTAIL_KEY= # Use if you're configuring basic logging with logtail
 PLAYWRIGHT_MICROSERVICE_URL=  # set if you'd like to run a playwright fallback
 ```
 

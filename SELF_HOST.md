@@ -52,7 +52,6 @@ REDIS_RATE_LIMIT_URL=redis://redis:6379
 TEST_API_KEY= # use if you've set up authentication and want to test with a real API key
 SCRAPING_BEE_API_KEY= #Set if you'd like to use scraping Be to handle JS blocking
 BULL_AUTH_KEY= @
-LOGTAIL_KEY= # Use if you're configuring basic logging with logtail
 PLAYWRIGHT_MICROSERVICE_URL=  # set if you'd like to run a playwright fallback
 ```
 
@@ -101,28 +100,7 @@ If you’d like to test the crawl endpoint, you can run this:
 
 ## Troubleshooting
 
-This section provides solutions to common issues you might encounter while setting up or running your self-hosted instance of Firecrawl.
-
-### Supabase client is not configured
-
-**Symptom:**
-```bash
-[YYYY-MM-DDTHH:MM:SS.SSSz]ERROR - Attempted to access Supabase client when it's not configured.
-[YYYY-MM-DDTHH:MM:SS.SSSz]ERROR - Error inserting scrape event: Error: Supabase client is not configured.
-```
-
-**Explanation:**
-This error occurs because the Supabase client setup is not completed. You should be able to scrape and crawl with no problems. Right now it's not possible to configure Supabase in self-hosted instances.
-
-### You're bypassing authentication
-
-**Symptom:**
-```bash
-[YYYY-MM-DDTHH:MM:SS.SSSz]WARN - You're bypassing authentication
-```
-
-**Explanation:**
-This error occurs because the Supabase client setup is not completed. You should be able to scrape and crawl with no problems. Right now it's not possible to configure Supabase in self-hosted instances.
+This section provides solutions to common issues you might encounter while setting up or running your 
 
 ### Docker containers fail to start
 

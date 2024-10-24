@@ -41,6 +41,7 @@ describe("WebCrawler", () => {
       "https://facebook.com",
       "https://test.facebook.com",
       "https://en.wikipedia.com/barman",
+      "https://docs.mux.com/guides/player"
     ];
 
     crawler = new WebCrawler({
@@ -56,6 +57,7 @@ describe("WebCrawler", () => {
       !crawler.isSocialMediaOrEmail(url)
     );
 
-    expect(filteredLinks.length).toBe(0);
+    expect(filteredLinks).toContain("https://docs.mux.com/guides/player");
+    expect(filteredLinks.length).toBe(1);
   });
 });
