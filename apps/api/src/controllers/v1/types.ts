@@ -195,7 +195,8 @@ export const crawlRequestSchema = crawlerOptions.extend({
   secretKey: z
     .string()
     .min(32, "The secret key must be at least 32 characters long.")
-    .max(64, "The secret key must not exceed 64 characters."),
+    .max(64, "The secret key must not exceed 64 characters.")
+    .optional(),
   limit: z.number().default(10000),
 }).strict(strictMessage);
 
