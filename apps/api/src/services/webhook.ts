@@ -4,6 +4,7 @@ import { Logger } from "../../src/lib/logger";
 import { supabase_service } from "./supabase";
 import { WebhookEventType } from "../types";
 import { configDotenv } from "dotenv";
+import crypto from "crypto";
 configDotenv();
 
 export const callWebhook = async (
@@ -11,6 +12,7 @@ export const callWebhook = async (
   id: string,
   data: any | null,
   specified?: string,
+  secretKey?: string,
   v1 = false,
   eventType: WebhookEventType = "crawl.page",
   awaitWebhook: boolean = false
@@ -22,6 +24,7 @@ export const callWebhook = async (
     );
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
     let webhookUrl = specified ?? selfHostedUrl;
+    let webhookSecret = secretKey ?? process.env.SELF_HOSTED_WEBHOOK_SECRET
 
     // Only fetch the webhook URL from the database if the self-hosted webhook URL and specified webhook are not set
     // and the USE_DB_AUTHENTICATION environment variable is set to true
@@ -67,28 +70,32 @@ export const callWebhook = async (
       }
     }
 
+    let webhookBody = {
+      success: !v1
+        ? data.success
+        : eventType === "crawl.page"
+        ? data.success
+        : true,
+      type: eventType,
+      [v1 ? "id" : "jobId"]: id,
+      data: dataToSend,
+      error: !v1
+        ? data?.error || undefined
+        : eventType === "crawl.page"
+        ? data?.error || undefined
+        : undefined,
+    }
+    let sha256Signature = secretKey ? createSHA256Hash(JSON.stringify(webhookBody), webhookSecret) : null;
+
     if (awaitWebhook) {
       try {
         await axios.post(
           webhookUrl,
-          {
-            success: !v1
-              ? data.success
-              : eventType === "crawl.page"
-              ? data.success
-              : true,
-            type: eventType,
-            [v1 ? "id" : "jobId"]: id,
-            data: dataToSend,
-            error: !v1
-              ? data?.error || undefined
-              : eventType === "crawl.page"
-              ? data?.error || undefined
-              : undefined,
-          },
+          webhookBody,
           {
             headers: {
               "Content-Type": "application/json",
+              "Webhook-Signature": sha256Signature,
             },
             timeout: v1 ? 10000 : 30000, // 10 seconds timeout (v1)
           }
@@ -102,24 +109,11 @@ export const callWebhook = async (
       axios
         .post(
           webhookUrl,
-          {
-            success: !v1
-              ? data.success
-              : eventType === "crawl.page"
-              ? data.success
-              : true,
-            type: eventType,
-            [v1 ? "id" : "jobId"]: id,
-            data: dataToSend,
-            error: !v1
-              ? data?.error || undefined
-              : eventType === "crawl.page"
-              ? data?.error || undefined
-              : undefined,
-          },
+          webhookBody,
           {
             headers: {
               "Content-Type": "application/json",
+              "Webhook-Signature": sha256Signature,
             },
             timeout: v1 ? 10000 : 30000, // 10 seconds timeout (v1)
           }
@@ -136,3 +130,10 @@ export const callWebhook = async (
     );
   }
 };
+
+function createSHA256Hash(stringToHash: string, secretKey: string) {
+  const hmac = crypto.createHmac("sha256", secretKey);
+  hmac.update(stringToHash);
+  const digest = hmac.digest("hex");
+  return "sha256=" + digest;
+}

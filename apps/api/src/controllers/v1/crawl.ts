@@ -117,6 +117,7 @@ export async function crawlController(
           crawl_id: id,
           sitemapped: true,
           webhook: req.body.webhook,
+          secretKey: req.body.secretKey,
           v1: true,
         },
         opts: {
@@ -148,6 +149,7 @@ export async function crawlController(
         origin: "api",
         crawl_id: id,
         webhook: req.body.webhook,
+        secretKey: req.body.secretKey,
         v1: true,
       },
       {
@@ -158,7 +160,7 @@ export async function crawlController(
   }
 
   if(req.body.webhook) {
-    await callWebhook(req.auth.team_id, id, null, req.body.webhook, true, "crawl.started");
+    await callWebhook(req.auth.team_id, id, null, req.body.webhook, req.body.secretKey, true, "crawl.started");
   }
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";

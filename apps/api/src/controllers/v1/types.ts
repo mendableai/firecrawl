@@ -192,6 +192,10 @@ export const crawlRequestSchema = crawlerOptions.extend({
   origin: z.string().optional().default("api"),
   scrapeOptions: scrapeOptions.omit({ timeout: true }).default({}),
   webhook: z.string().url().optional(),
+  secretKey: z
+    .string()
+    .min(32, "The secret key must be at least 32 characters long.")
+    .max(64, "The secret key must not exceed 64 characters."),
   limit: z.number().default(10000),
 }).strict(strictMessage);
 
