@@ -177,7 +177,10 @@ export async function mapController(
     crawlerOptions: {},
     pageOptions: {},
     origin: req.body.origin,
-    extractor_options: { mode: "markdown" },
+    extractor_options: {
+      mode: "markdown",
+      llmOptions: { provider: "openai", model: "gpt-4o-mini" },
+    },
     num_tokens: 0,
   });
 

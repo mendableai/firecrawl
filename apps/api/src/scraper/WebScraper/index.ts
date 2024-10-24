@@ -59,6 +59,9 @@ export class WebScraperDataProvider {
     inProgress?: (progress: Progress) => void,
     allHtmls?: string[]
   ): Promise<Document[]> {
+    Logger.info(
+      `Converting ${urls.length}, url: ${JSON.stringify(urls)}URLs to documents`
+    );
     const totalUrls = urls.length;
     let processedUrls = 0;
 
@@ -75,8 +78,9 @@ export class WebScraperDataProvider {
             this.extractorOptions,
             existingHTML,
             this.priority,
-            this.teamId,
+            this.teamId
           );
+          Logger.info(`Scraped ${url} with result: ${JSON.stringify(result)}`);
           processedUrls++;
           if (inProgress) {
             inProgress({
@@ -303,7 +307,7 @@ export class WebScraperDataProvider {
         delete document.html;
       }
     }
-    
+
     // documents = await this.applyImgAltText(documents);
     if (this.mode === "single_urls" && this.pageOptions.includeExtract) {
       const extractionMode = this.extractorOptions?.mode ?? "markdown";
@@ -596,7 +600,10 @@ export class WebScraperDataProvider {
       geolocation: options.pageOptions?.geolocation ?? undefined,
       skipTlsVerification: options.pageOptions?.skipTlsVerification ?? false,
     };
-    this.extractorOptions = options.extractorOptions ?? { mode: "markdown" };
+    this.extractorOptions = options.extractorOptions ?? {
+      mode: "markdown",
+      llmOptions: { provider: "openai", model: "gpt-4o-mini" },
+    };
     this.replaceAllPathsWithAbsolutePaths =
       options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ??
       options.pageOptions?.replaceAllPathsWithAbsolutePaths ??

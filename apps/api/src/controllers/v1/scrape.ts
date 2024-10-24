@@ -23,6 +23,7 @@ export async function scrapeController(
   res: Response<ScrapeResponse>
 ) {
   req.body = scrapeRequestSchema.parse(req.body);
+  Logger.info(`Scrape request: ${JSON.stringify(req.body)}`);
   let earlyReturn = false;
 
   const origin = req.body.origin;
@@ -111,7 +112,7 @@ export async function scrapeController(
 
   billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(error => {
     Logger.error(`Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`);
-    // Optionally, you could notify an admin or add to a retry queue here
+      // Optionally, you could notify an admin or add to a retry queue here
   });
 
   if (!pageOptions || !pageOptions.includeRawHtml) {

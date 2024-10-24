@@ -24,5 +24,9 @@ export const defaultCrawlPageOptions = {
 }
 
 export const defaultExtractorOptions = {
-  mode: "markdown"
-}
+  mode: "markdown",
+  llmOptions: {
+    provider: "openai",
+    model: "gpt-4o-mini",
+  },
+};

@@ -22,6 +22,9 @@ export async function startWebScraperPipeline({
   job: Job<WebScraperOptions>;
   token: string;
 }) {
+  Logger.info(
+    `starting startWebScraperPipeline for job: ${JSON.stringify(job)}`
+  );
   let partialDocs: Document[] = [];
   return (await runWebScraper({
     url: job.data.url,
@@ -31,7 +34,7 @@ export async function startWebScraperPipeline({
     pageOptions: {
       ...job.data.pageOptions,
       ...(job.data.crawl_id ? ({
-        includeRawHtml: true,
+            includeRawHtml: true,
       }): {}),
     },
     inProgress: (progress) => {
@@ -72,8 +75,17 @@ export async function runWebScraper({
   team_id,
   bull_job_id,
   priority,
-  is_scrape=false,
+  is_scrape = false,
 }: RunWebScraperParams): Promise<RunWebScraperResult> {
+  Logger.info(
+    `Running web scraper with params: ${JSON.stringify({
+      url,
+      mode,
+      crawlerOptions,
+      pageOptions,
+      extractorOptions,
+    })}`
+  );
   try {
     const provider = new WebScraperDataProvider();
     if (mode === "crawl") {
@@ -159,12 +171,12 @@ const saveJob = async (job: Job, result: any, token: string, mode: string) => {
       // } catch (error) {
       //   // I think the job won't exist here anymore
       // }
-    // } else {
-    //   try {
-    //     await job.moveToCompleted(result, token, false);
-    //   } catch (error) {
-    //     // I think the job won't exist here anymore
-    //   }
+      // } else {
+      //   try {
+      //     await job.moveToCompleted(result, token, false);
+      //   } catch (error) {
+      //     // I think the job won't exist here anymore
+      //   }
     }
     ScrapeEvents.logJobEvent(job, "completed");
   } catch (error) {
