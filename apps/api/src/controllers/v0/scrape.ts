@@ -7,7 +7,6 @@ import {
 import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
 import { Document } from "../../lib/entities";
-import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import {
   defaultPageOptions,
   defaultExtractorOptions,
@@ -38,15 +37,6 @@ export async function scrapeHelper(
   const url = req.body.url;
   if (typeof url !== "string") {
     return { success: false, error: "Url is required", returnCode: 400 };
-  }
-
-  if (isUrlBlocked(url)) {
-    return {
-      success: false,
-      error:
-        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-      returnCode: 403,
-    };
   }
 
   const jobPriority = await getJobPriority({ plan, team_id, basePriority: 10 });

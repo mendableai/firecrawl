@@ -3,7 +3,6 @@ import { checkTeamCredits } from "../../../src/services/billing/credit_billing";
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { addScrapeJobRaw } from "../../../src/services/queue-jobs";
-import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
 import { createIdempotencyKey } from "../../../src/services/idempotency/create";
 import {
   defaultCrawlPageOptions,
@@ -102,13 +101,6 @@ export async function crawlController(req: Request, res: Response) {
       return res
         .status(e instanceof Error && e.message === "Invalid URL" ? 400 : 500)
         .json({ error: e.message ?? e });
-    }
-
-    if (isUrlBlocked(url)) {
-      return res.status(403).json({
-        error:
-          "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-      });
     }
 
     const id = uuidv4();

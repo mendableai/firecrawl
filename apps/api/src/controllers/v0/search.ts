@@ -8,7 +8,6 @@ import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
 import { PageOptions, SearchOptions } from "../../lib/entities";
 import { search } from "../../search";
-import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../lib/logger";
 import { getScrapeQueue } from "../../services/queue-service";
@@ -64,7 +63,6 @@ export async function searchHelper(
     return { success: true, data: res, returnCode: 200 };
   }
 
-  res = res.filter((r) => !isUrlBlocked(r.url));
   if (res.length > num_results) {
     res = res.slice(0, num_results);
   }

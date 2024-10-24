@@ -1,7 +1,6 @@
 import { Request, Response } from "express";
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
-import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../../src/lib/logger";
 import {
@@ -43,47 +42,11 @@ export async function crawlPreviewController(req: Request, res: Response) {
         .json({ error: e.message ?? e });
     }
 
-    if (isUrlBlocked(url)) {
-      return res.status(403).json({
-        error:
-          "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-      });
-    }
-
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? {
       includeHtml: false,
       removeTags: [],
     };
-
-    // if (mode === "single_urls" && !url.includes(",")) { // NOTE: do we need this?
-    //   try {
-    //     const a = new WebScraperDataProvider();
-    //     await a.setOptions({
-    //       jobId: uuidv4(),
-    //       mode: "single_urls",
-    //       urls: [url],
-    //       crawlerOptions: { ...crawlerOptions, returnOnlyUrls: true },
-    //       pageOptions: pageOptions,
-    //     });
-
-    //     const docs = await a.getDocuments(false, (progress) => {
-    //       job.updateProgress({
-    //         current: progress.current,
-    //         total: progress.total,
-    //         current_step: "SCRAPING",
-    //         current_url: progress.currentDocumentUrl,
-    //       });
-    //     });
-    //     return res.json({
-    //       success: true,
-    //       documents: docs,
-    //     });
-    //   } catch (error) {
-    //     Logger.error(error);
-    //     return res.status(500).json({ error: error.message });
-    //   }
-    // }
 
     const id = uuidv4();
 

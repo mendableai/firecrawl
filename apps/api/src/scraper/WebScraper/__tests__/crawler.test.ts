@@ -41,7 +41,9 @@ describe("WebCrawler", () => {
       "https://facebook.com",
       "https://test.facebook.com",
       "https://en.wikipedia.com/barman",
-      "https://docs.mux.com/guides/player"
+      "https://docs.mux.com/guides/player",
+      "https://mux.com",
+      "https://x.com"
     ];
 
     crawler = new WebCrawler({
@@ -53,11 +55,11 @@ describe("WebCrawler", () => {
       maxCrawledDepth: 10,
     });
 
-    const filteredLinks = urlsWhichShouldGetBlocked.filter((url) =>
-      !crawler.isSocialMediaOrEmail(url)
+    const filteredLinks = urlsWhichShouldGetBlocked.filter(
+      (url) => !crawler.isSocialMediaOrEmail(url)
     );
 
     expect(filteredLinks).toContain("https://docs.mux.com/guides/player");
-    expect(filteredLinks.length).toBe(1);
+    expect(filteredLinks.length).toBe(2);
   });
 });

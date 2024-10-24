@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { ExtractorOptions, PageOptions } from "../../lib/entities";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { PlanType } from "../../types";
@@ -37,10 +36,6 @@ export const url = z.preprocess(
         return false;
       }
     }, "Invalid URL")
-    .refine(
-      (x) => !isUrlBlocked(x as string),
-      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
-    )
 );
 
 const strictMessage =
