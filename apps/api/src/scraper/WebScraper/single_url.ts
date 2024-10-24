@@ -1,6 +1,7 @@
 import * as cheerio from "cheerio";
 import { extractMetadata } from "./utils/metadata";
 import dotenv from "dotenv";
+import fs from "fs/promises";
 import {
   Document,
   PageOptions,
@@ -17,7 +18,7 @@ import { scrapWithFetch } from "./scrapers/fetch";
 import { scrapWithFireEngine } from "./scrapers/fireEngine";
 import { scrapWithPlaywright } from "./scrapers/playwright";
 import { scrapWithScrapingBee } from "./scrapers/scrapingBee";
-import { extractLinks } from "./utils/utils";
+import { downloadFile, extractLinks } from "./utils/utils";
 import { Logger } from "../../lib/logger";
 import { ScrapeEvents } from "../../lib/scrape-events";
 import { clientSideError } from "../../strings";
@@ -85,7 +86,7 @@ function getScrapingFallbackOrder(
       case "fire-engine":
         return !!process.env.FIRE_ENGINE_BETA_URL;
       case "fire-engine;chrome-cdp":
-        return !!process.env.FIRE_ENGINE_BETA_URL;  
+        return !!process.env.FIRE_ENGINE_BETA_URL;
       case "playwright":
         return !!process.env.PLAYWRIGHT_MICROSERVICE_URL;
       default:
@@ -197,7 +198,7 @@ export async function scrapSingleUrl(
 
     switch (method) {
       case "fire-engine":
-      case "fire-engine;chrome-cdp":  
+      case "fire-engine;chrome-cdp":
 
         let engine: "playwright" | "chrome-cdp" | "tlsclient" = "playwright";
         if (method === "fire-engine;chrome-cdp") {
@@ -221,7 +222,7 @@ export async function scrapSingleUrl(
             }
             return [action as Action];
           }) ?? [] as Action[];
-          
+
           const response = await scrapWithFireEngine({
             url,
             ...(engine === "chrome-cdp" ? ({
@@ -338,6 +339,18 @@ export async function scrapSingleUrl(
             pageError,
           };
           break;
+        case "text": {
+          const { tempFilePath, pageStatusCode, pageError } = await downloadFile(customScraperResult.url, "txt");
+          const file = await fs.readFile(tempFilePath);
+          await fs.unlink(tempFilePath);
+          const content = file.toString();
+          customScrapedContent = {
+            html: content,
+            pageStatusCode,
+            pageError,
+          };
+          break;
+        }
       }
     }
 
@@ -412,10 +425,10 @@ export async function scrapSingleUrl(
       if (attempt.pageStatusCode) {
         pageStatusCode = attempt.pageStatusCode;
       }
-      
+
       if (attempt.pageError && (attempt.pageStatusCode >= 400 || scrapersInOrder.indexOf(scraper) === scrapersInOrder.length - 1)) { // force pageError if it's the last scraper and it failed too
         pageError = attempt.pageError;
-        
+
         if (attempt.pageStatusCode < 400 || !attempt.pageStatusCode) {
           pageStatusCode = 500;
         }

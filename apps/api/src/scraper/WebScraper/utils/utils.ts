@@ -1,6 +1,10 @@
 import axios from "axios";
 import * as cheerio from "cheerio";
 import { Logger } from "../../../lib/logger";
+import path from "path";
+import os from "os";
+import { createWriteStream } from "fs";
+
 
 
 export async function attemptScrapWithRequests(
@@ -55,4 +59,22 @@ export function extractLinks(html: string, baseUrl: string): string[] {
 
   // Remove duplicates and return
   return [...new Set(links)];
+}
+
+export async function downloadFile(url: string, extension: string): Promise<{ tempFilePath: string, pageStatusCode?: number, pageError?: string }> {
+  const response = await axios({
+    url,
+    method: "GET",
+    responseType: "stream",
+  });
+
+  const tempFilePath = path.join(os.tmpdir(), `tempFile-${Date.now()}.${extension}`);
+  const writer = createWriteStream(tempFilePath);
+
+  response.data.pipe(writer);
+
+  return new Promise((resolve, reject) => {
+    writer.on("finish", () => resolve({ tempFilePath, pageStatusCode: response.status, pageError: response.statusText != "OK" ? response.statusText : undefined }));
+    writer.on("error", reject);
+  });
 }
