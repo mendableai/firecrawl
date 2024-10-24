@@ -85,7 +85,7 @@ function getScrapingFallbackOrder(
       case "fire-engine":
         return !!process.env.FIRE_ENGINE_BETA_URL;
       case "fire-engine;chrome-cdp":
-        return !!process.env.FIRE_ENGINE_BETA_URL;  
+        return !!process.env.FIRE_ENGINE_BETA_URL;
       case "playwright":
         return !!process.env.PLAYWRIGHT_MICROSERVICE_URL;
       default:
@@ -160,18 +160,24 @@ export async function scrapSingleUrl(
     skipTlsVerification: pageOptions.skipTlsVerification ?? false,
   }
 
+  Logger.info(`Scraping single URL: ${urlToScrap}`);
+  Logger.info(`Extractor options: ${JSON.stringify(extractorOptions)}`);
   if (extractorOptions) {
     extractorOptions = {
       mode: extractorOptions?.mode ?? "llm-extraction-from-markdown",
-    }
+      llmOptions: extractorOptions?.llmOptions ?? {
+        provider: "openai",
+        model: "gpt-4o-mini",
+      },
+    };
   }
-
+  Logger.info(`Extractor options: ${JSON.stringify(extractorOptions)}`);
   if (!existingHtml) {
     existingHtml = "";
   }
 
   urlToScrap = urlToScrap.trim();
-
+  Logger.info("Now attempting scraping");
   const attemptScraping = async (
     url: string,
     method: (typeof baseScrapers)[number]
@@ -197,8 +203,7 @@ export async function scrapSingleUrl(
 
     switch (method) {
       case "fire-engine":
-      case "fire-engine;chrome-cdp":  
-
+      case "fire-engine;chrome-cdp":
         let engine: "playwright" | "chrome-cdp" | "tlsclient" = "playwright";
         if (method === "fire-engine;chrome-cdp") {
           engine = "chrome-cdp";
@@ -207,39 +212,39 @@ export async function scrapSingleUrl(
         if (process.env.FIRE_ENGINE_BETA_URL) {
           const processedActions: Action[] = pageOptions.actions?.flatMap((action: Action, index: number, array: Action[]) => {
             if (action.type === "click" || action.type === "write" || action.type === "press") {
-              const result: Action[] = [];
-              // Don't add a wait if the previous action is a wait
-              if (index === 0 || array[index - 1].type !== "wait") {
-                result.push({ type: "wait", milliseconds: 1200 } as Action);
-              }
-              result.push(action);
-              // Don't add a wait if the next action is a wait
+                  const result: Action[] = [];
+                  // Don't add a wait if the previous action is a wait
+                  if (index === 0 || array[index - 1].type !== "wait") {
+                    result.push({ type: "wait", milliseconds: 1200 } as Action);
+                  }
+                  result.push(action);
+                  // Don't add a wait if the next action is a wait
               if (index === array.length - 1 || array[index + 1].type !== "wait") {
-                result.push({ type: "wait", milliseconds: 1200 } as Action);
-              }
-              return result;
-            }
-            return [action as Action];
+                    result.push({ type: "wait", milliseconds: 1200 } as Action);
+                  }
+                  return result;
+                }
+                return [action as Action];
           }) ?? [] as Action[];
-          
+
           const response = await scrapWithFireEngine({
             url,
             ...(engine === "chrome-cdp" ? ({
-              actions: [
+                  actions: [
                 ...(pageOptions.waitFor ? [{
-                  type: "wait" as const,
-                  milliseconds: pageOptions.waitFor,
+                            type: "wait" as const,
+                            milliseconds: pageOptions.waitFor,
                 }] : []),
                 ...((pageOptions.screenshot || pageOptions.fullPageScreenshot) ? [{
-                  type: "screenshot" as const,
-                  fullPage: !!pageOptions.fullPageScreenshot,
+                            type: "screenshot" as const,
+                            fullPage: !!pageOptions.fullPageScreenshot,
                 }] : []),
-                ...processedActions,
-              ],
+                    ...processedActions,
+                  ],
             }) : ({
-              waitFor: pageOptions.waitFor,
-              screenshot: pageOptions.screenshot,
-              fullPageScreenshot: pageOptions.fullPageScreenshot,
+                  waitFor: pageOptions.waitFor,
+                  screenshot: pageOptions.screenshot,
+                  fullPageScreenshot: pageOptions.fullPageScreenshot,
             })),
             pageOptions: pageOptions,
             headers: pageOptions.headers,
@@ -318,9 +323,9 @@ export async function scrapSingleUrl(
           customScrapedContent = await scrapWithFireEngine({
             url: customScraperResult.url,
             actions: customScraperResult.waitAfterLoad ? ([
-              {
-                type: "wait",
-                milliseconds: customScraperResult.waitAfterLoad,
+                  {
+                    type: "wait",
+                    milliseconds: customScraperResult.waitAfterLoad,
               }
             ]) : ([]),
             pageOptions: customScraperResult.pageOptions,
@@ -369,14 +374,14 @@ export async function scrapSingleUrl(
   };
 
   let { text, html, rawHtml, screenshot, actions, pageStatusCode, pageError } = {
-    text: "",
-    html: "",
-    rawHtml: "",
-    screenshot: "",
-    actions: undefined,
-    pageStatusCode: 200,
-    pageError: undefined,
-  };
+      text: "",
+      html: "",
+      rawHtml: "",
+      screenshot: "",
+      actions: undefined,
+      pageStatusCode: 200,
+      pageError: undefined,
+    };
   try {
     let urlKey = urlToScrap;
     try {
@@ -412,10 +417,10 @@ export async function scrapSingleUrl(
       if (attempt.pageStatusCode) {
         pageStatusCode = attempt.pageStatusCode;
       }
-      
+
       if (attempt.pageError && (attempt.pageStatusCode >= 400 || scrapersInOrder.indexOf(scraper) === scrapersInOrder.length - 1)) { // force pageError if it's the last scraper and it failed too
         pageError = attempt.pageError;
-        
+
         if (attempt.pageStatusCode < 400 || !attempt.pageStatusCode) {
           pageStatusCode = 500;
         }
@@ -464,7 +469,7 @@ export async function scrapSingleUrl(
       metadata: {
         ...metadata,
         ...(screenshot && screenshot.length > 0 ? ({
-          screenshot,
+              screenshot,
         }) : {}),
         sourceURL: urlToScrap,
         pageStatusCode: pageStatusCode,
