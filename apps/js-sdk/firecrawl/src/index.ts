@@ -141,6 +141,7 @@ export interface CrawlParams {
   ignoreSitemap?: boolean;
   scrapeOptions?: CrawlScrapeOptions;
   webhook?: string;
+  verification_token?: string;
 }
 
 /**
