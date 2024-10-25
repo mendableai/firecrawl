@@ -362,6 +362,8 @@ export type AuthCreditUsageChunk = {
   coupons: any[];
   adjusted_credits_used: number; // credits this period minus coupons used
   remaining_credits: number;
+  sub_user_id: string | null;
+  total_credits_sum: number;
 };
 
 export interface RequestWithMaybeACUC<
