@@ -26,7 +26,7 @@ const emailTemplates: Record<
   },
   [NotificationType.AUTO_RECHARGE_SUCCESS]: {
     subject: "Auto recharge successful - Firecrawl",
-    html: "Hey there,<br/><p>Your account was successfully recharged with 1000 credits because your remaining credits were below the threshold.</p><br/>Thanks,<br/>Firecrawl Team<br/>",
+    html: "Hey there,<br/><p>Your account was successfully recharged with 1000 credits because your remaining credits were below the threshold. Consider upgrading your plan at <a href='https://firecrawl.dev/pricing'>firecrawl.dev/pricing</a> to avoid hitting the limit.</p><br/>Thanks,<br/>Firecrawl Team<br/>",
   },
   [NotificationType.AUTO_RECHARGE_FAILED]: {
     subject: "Auto recharge failed - Firecrawl",
