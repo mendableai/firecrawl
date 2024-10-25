@@ -499,7 +499,7 @@ async function processJob(job: Job, token: string) {
             time_taken: (Date.now() - sc.createdAt) / 1000,
             team_id: job.data.team_id,
             mode: job.data.crawlerOptions !== null ? "crawl" : "batch_scrape",
-            url: sc.originUrl,
+            url: sc?.originUrl ?? (job.data.crawlerOptions === null ? "Batch Scrape" : "Unknown"),
             crawlerOptions: sc.crawlerOptions,
             pageOptions: sc.pageOptions,
             origin: job.data.origin,
