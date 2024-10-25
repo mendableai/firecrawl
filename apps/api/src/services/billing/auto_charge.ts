@@ -7,12 +7,13 @@ import { createPaymentIntent } from "./stripe";
 import { issueCredits } from "./issue_credits";
 import { sendNotification } from "../notification/email_notification";
 import { NotificationType } from "../../types";
-import { deleteKey } from "../redis";
+import { deleteKey, getValue, setValue } from "../redis";
 import { sendSlackWebhook } from "../alerts/slack";
 import { Logger } from "../../lib/logger";
 
 // Define the number of credits to be added during auto-recharge
 const AUTO_RECHARGE_CREDITS = 1000;
+const AUTO_RECHARGE_COOLDOWN = 600; // 10 minutes in seconds
 
 /**
  * Attempt to automatically charge a user's account when their credit balance falls below a threshold
@@ -24,7 +25,22 @@ export async function autoCharge(
   autoRechargeThreshold: number
 ): Promise<{ success: boolean; message: string; remainingCredits: number; chunk: AuthCreditUsageChunk }> {
   const resource = `auto-recharge:${chunk.team_id}`;
+  const cooldownKey = `auto-recharge-cooldown:${chunk.team_id}`;
+
   try {
+    // Check if the team is in the cooldown period
+    // Another check to prevent race conditions, double charging - cool down of 10 minutes
+    const cooldownValue = await getValue(cooldownKey);
+    if (cooldownValue) {
+      Logger.info(`Auto-recharge for team ${chunk.team_id} is in cooldown period`);
+      return {
+        success: false,
+        message: "Auto-recharge is in cooldown period",
+        remainingCredits: chunk.remaining_credits,
+        chunk,
+      };
+    }
+
     // Use a distributed lock to prevent concurrent auto-charge attempts
     return await redlock.using([resource], 5000, async (signal) : Promise<{ success: boolean; message: string; remainingCredits: number; chunk: AuthCreditUsageChunk }> => {
       // Recheck the condition inside the lock to prevent race conditions
@@ -89,6 +105,9 @@ export async function autoCharge(
                 chunk, 
                 true
               );
+
+              // Set cooldown period
+              await setValue(cooldownKey, 'true', AUTO_RECHARGE_COOLDOWN);
             } 
 
             // Reset ACUC cache to reflect the new credit balance
