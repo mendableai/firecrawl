@@ -128,6 +128,9 @@ pub struct CrawlOptions {
     /// URL to send Webhook crawl events to.
     pub webhook: Option<String>,
 
+    /// A token that can be verified when webhooks are received
+    pub verification_token: Option<String>,
+
     /// Idempotency key to send to the crawl endpoint.
     #[serde(skip)]
     pub idempotency_key: Option<String>,
