@@ -13,7 +13,7 @@ import { Logger } from "../../lib/logger";
 
 // Define the number of credits to be added during auto-recharge
 const AUTO_RECHARGE_CREDITS = 1000;
-const AUTO_RECHARGE_COOLDOWN = 600; // 10 minutes in seconds
+const AUTO_RECHARGE_COOLDOWN = 300; // 5 minutes in seconds
 
 /**
  * Attempt to automatically charge a user's account when their credit balance falls below a threshold
@@ -29,7 +29,7 @@ export async function autoCharge(
 
   try {
     // Check if the team is in the cooldown period
-    // Another check to prevent race conditions, double charging - cool down of 10 minutes
+    // Another check to prevent race conditions, double charging - cool down of 5 minutes
     const cooldownValue = await getValue(cooldownKey);
     if (cooldownValue) {
       Logger.info(`Auto-recharge for team ${chunk.team_id} is in cooldown period`);
