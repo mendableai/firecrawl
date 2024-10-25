@@ -95,7 +95,7 @@ export async function getACUC(
 
     while (retries < maxRetries) {
       ({ data, error } = await supabase_service.rpc(
-        "auth_credit_usage_chunk_test_17_credit_pack",
+        "auth_credit_usage_chunk_test_21_credit_pack",
         { input_key: api_key }
       ));
 
@@ -125,8 +125,8 @@ export async function getACUC(
     if (chunk !== null && useCache) {
       setCachedACUC(api_key, chunk);
     }
-    // Log the chunk for now
-    console.log(chunk);
+    
+    // console.log(chunk);
 
     return chunk;
   } else {

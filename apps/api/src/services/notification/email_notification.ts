@@ -109,6 +109,8 @@ export async function sendNotificationInternal(
       return { success: false };
     }
 
+    // TODO: observation: Free credits people are not receiving notifications
+
     const { data: recentData, error: recentError } = await supabase_service
       .from("user_notifications")
       .select("*")
@@ -118,7 +120,7 @@ export async function sendNotificationInternal(
       .lte("sent_date", endDateString);
 
     if (recentError) {
-      Logger.debug(`Error fetching recent notifications: ${recentError}`);
+      Logger.debug(`Error fetching recent notifications: ${recentError.message}`);
       return { success: false };
     }
 
