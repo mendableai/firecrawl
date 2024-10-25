@@ -54,6 +54,7 @@ export type PageOptions = {
   geolocation?: {
     country?: string;
   };
+  skipTlsVerification?: boolean;
 };
 
 export type ExtractorOptions = {

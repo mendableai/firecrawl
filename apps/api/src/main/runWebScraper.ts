@@ -112,7 +112,7 @@ export async function runWebScraper({
     }
 
     // remove docs with empty content
-    const filteredDocs = crawlerOptions.returnOnlyUrls
+    const filteredDocs = crawlerOptions?.returnOnlyUrls
       ? docs.map((doc) => {
           if (doc.metadata.sourceURL) {
             return { url: doc.metadata.sourceURL };

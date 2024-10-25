@@ -17,6 +17,7 @@ import { crawlCancelController } from "../controllers/v1/crawl-cancel";
 import { Logger } from "../lib/logger";
 import { scrapeStatusController } from "../controllers/v1/scrape-status";
 import { concurrencyCheckController } from "../controllers/v1/concurrency-check";
+import { batchScrapeController } from "../controllers/v1/batch-scrape";
 // import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
 // import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
 // import { searchController } from "../../src/controllers/v1/search";
@@ -29,7 +30,7 @@ function checkCreditsMiddleware(minimum?: number): (req: RequestWithAuth, res: R
     return (req, res, next) => {
         (async () => {
             if (!minimum && req.body) {
-                minimum = (req.body as any)?.limit ?? 1;
+                minimum = (req.body as any)?.limit ?? (req.body as any)?.urls?.length ?? 1;
             }
             const { success, remainingCredits, chunk } = await checkTeamCredits(req.acuc, req.auth.team_id, minimum);
             req.acuc = chunk;
@@ -94,7 +95,7 @@ function blocklistMiddleware(req: Request, res: Response, next: NextFunction) {
     next();
 }
 
-function wrap(controller: (req: Request, res: Response) => Promise<any>): (req: Request, res: Response, next: NextFunction) => any {
+export function wrap(controller: (req: Request, res: Response) => Promise<any>): (req: Request, res: Response, next: NextFunction) => any {
     return (req, res, next) => {
         controller(req, res)
             .catch(err => next(err))
@@ -123,6 +124,15 @@ v1Router.post(
 );
 
 v1Router.post(
+    "/batch/scrape",
+    authMiddleware(RateLimiterMode.Crawl),
+    checkCreditsMiddleware(),
+    blocklistMiddleware,
+    idempotencyMiddleware,
+    wrap(batchScrapeController)
+);
+
+v1Router.post(
     "/map",
     authMiddleware(RateLimiterMode.Map),
     checkCreditsMiddleware(1),
@@ -134,6 +144,13 @@ v1Router.get(
     "/crawl/:jobId",
     authMiddleware(RateLimiterMode.CrawlStatus),
     wrap(crawlStatusController)
+);
+
+v1Router.get(
+    "/batch/scrape/:jobId",
+    authMiddleware(RateLimiterMode.CrawlStatus),
+    // Yes, it uses the same controller as the normal crawl status controller
+    wrap((req:any, res):any => crawlStatusController(req, res, true))
 );
 
 v1Router.get(

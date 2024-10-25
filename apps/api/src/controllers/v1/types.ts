@@ -117,6 +117,7 @@ export const scrapeOptions = z.object({
       }
     ).transform(val => val ? val.toUpperCase() : 'US')
   }).optional(),
+  skipTlsVerification: z.boolean().default(false),
 }).strict(strictMessage)
 
 
@@ -141,18 +142,28 @@ export const scrapeRequestSchema = scrapeOptions.extend({
   return obj;
 });
 
-// export type ScrapeRequest = {
-//   url: string;
-//   formats?: Format[];
-//   headers?: { [K: string]: string };
-//   includeTags?: string[];
-//   excludeTags?: string[];
-//   onlyMainContent?: boolean;
-//   timeout?: number;
-//   waitFor?: number;
-// }
-
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
+
+export const batchScrapeRequestSchema = scrapeOptions.extend({
+  urls: url.array(),
+  origin: z.string().optional().default("api"),
+}).strict(strictMessage).refine(
+  (obj) => {
+    const hasExtractFormat = obj.formats?.includes("extract");
+    const hasExtractOptions = obj.extract !== undefined;
+    return (hasExtractFormat && hasExtractOptions) || (!hasExtractFormat && !hasExtractOptions);
+  },
+  {
+    message: "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
+  }
+).transform((obj) => {
+  if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
+    return { ...obj, timeout: 60000 };
+  }
+  return obj;
+});
+
+export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
 
 const crawlerOptions = z.object({
   includePaths: z.string().array().default([]),
@@ -433,6 +444,7 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     parsePDF: x.parsePDF,
     actions: x.actions as Action[], // no strict null checking grrrr - mogery
     geolocation: x.geolocation,
+    skipTlsVerification: x.skipTlsVerification
   };
 }
 

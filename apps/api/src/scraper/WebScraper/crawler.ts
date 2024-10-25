@@ -9,7 +9,7 @@ import robotsParser from "robots-parser";
 import { getURLDepth } from "./utils/maxDepthUtils";
 import { axiosTimeout } from "../../../src/lib/timeout";
 import { Logger } from "../../../src/lib/logger";
-
+import https from "https";
 export class WebCrawler {
   private jobId: string;
   private initialUrl: string;
@@ -145,8 +145,14 @@ export class WebCrawler {
       .slice(0, limit);
   }
 
-  public async getRobotsTxt(): Promise<string> {
-    const response = await axios.get(this.robotsTxtUrl, { timeout: axiosTimeout });
+  public async getRobotsTxt(skipTlsVerification = false): Promise<string> {
+    let extraArgs = {};
+    if(skipTlsVerification) {
+      extraArgs["httpsAgent"] = new https.Agent({
+        rejectUnauthorized: false
+      });
+    }
+    const response = await axios.get(this.robotsTxtUrl, { timeout: axiosTimeout, ...extraArgs });
     return response.data;
   }
 

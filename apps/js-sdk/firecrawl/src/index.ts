@@ -155,10 +155,36 @@ export interface CrawlResponse {
 }
 
 /**
+ * Response interface for batch scrape operations.
+ * Defines the structure of the response received after initiating a crawl.
+ */
+export interface BatchScrapeResponse {
+  id?: string;
+  url?: string;
+  success: true;
+  error?: string;
+}
+
+/**
  * Response interface for job status checks.
  * Provides detailed status of a crawl job including progress and results.
  */
 export interface CrawlStatusResponse {
+  success: true;
+  status: "scraping" | "completed" | "failed" | "cancelled";
+  completed: number;
+  total: number;
+  creditsUsed: number;
+  expiresAt: Date;
+  next?: string;
+  data: FirecrawlDocument<undefined>[];
+};
+
+/**
+ * Response interface for batch scrape job status checks.
+ * Provides detailed status of a batch scrape job including progress and results.
+ */
+export interface BatchScrapeStatusResponse {
   success: true;
   status: "scraping" | "completed" | "failed" | "cancelled";
   completed: number;
@@ -486,6 +512,144 @@ export default class FirecrawlApp {
         return response.data as MapResponse;
       } else {
         this.handleError(response, "map");
+      }
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500);
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Initiates a batch scrape job for multiple URLs using the Firecrawl API.
+   * @param url - The URLs to scrape.
+   * @param params - Additional parameters for the scrape request.
+   * @param pollInterval - Time in seconds for job status checks.
+   * @param idempotencyKey - Optional idempotency key for the request.
+   * @returns The response from the crawl operation.
+   */
+  async batchScrapeUrls(
+    urls: string[],
+    params?: ScrapeParams,
+    pollInterval: number = 2,
+    idempotencyKey?: string
+  ): Promise<BatchScrapeStatusResponse | ErrorResponse> {
+    const headers = this.prepareHeaders(idempotencyKey);
+    let jsonData: any = { urls, ...(params ?? {}) };
+    try {
+      const response: AxiosResponse = await this.postRequest(
+        this.apiUrl + `/v1/batch/scrape`,
+        jsonData,
+        headers
+      );
+      if (response.status === 200) {
+        const id: string = response.data.id;
+        return this.monitorJobStatus(id, headers, pollInterval);
+      } else {
+        this.handleError(response, "start batch scrape job");
+      }
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new FirecrawlError(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`, error.response.status);
+      } else {
+        throw new FirecrawlError(error.message, 500);
+      }
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  async asyncBatchScrapeUrls(
+    urls: string[],
+    params?: ScrapeParams,
+    idempotencyKey?: string
+  ): Promise<BatchScrapeResponse | ErrorResponse> {
+    const headers = this.prepareHeaders(idempotencyKey);
+    let jsonData: any = { urls, ...(params ?? {}) };
+    try {
+      const response: AxiosResponse = await this.postRequest(
+        this.apiUrl + `/v1/batch/scrape`,
+        jsonData,
+        headers
+      );
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "start batch scrape job");
+      }
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new FirecrawlError(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`, error.response.status);
+      } else {
+        throw new FirecrawlError(error.message, 500);
+      }
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Initiates a batch scrape job and returns a CrawlWatcher to monitor the job via WebSocket.
+   * @param urls - The URL to scrape.
+   * @param params - Additional parameters for the scrape request.
+   * @param idempotencyKey - Optional idempotency key for the request.
+   * @returns A CrawlWatcher instance to monitor the crawl job.
+   */
+  async batchScrapeUrlsAndWatch(
+    urls: string[],
+    params?: ScrapeParams,
+    idempotencyKey?: string,
+  ) {
+    const crawl = await this.asyncBatchScrapeUrls(urls, params, idempotencyKey);
+
+    if (crawl.success && crawl.id) {
+      const id = crawl.id;
+      return new CrawlWatcher(id, this);
+    }
+
+    throw new FirecrawlError("Batch scrape job failed to start", 400);
+  }
+
+  /**
+   * Checks the status of a batch scrape job using the Firecrawl API.
+   * @param id - The ID of the batch scrape operation.
+   * @param getAllData - Paginate through all the pages of documents, returning the full list of all documents. (default: `false`)
+   * @returns The response containing the job status.
+   */
+  async checkBatchScrapeStatus(id?: string, getAllData = false): Promise<BatchScrapeStatusResponse | ErrorResponse> {
+    if (!id) {
+      throw new FirecrawlError("No batch scrape ID provided", 400);
+    }
+
+    const headers: AxiosRequestHeaders = this.prepareHeaders();
+    try {
+      const response: AxiosResponse = await this.getRequest(
+        `${this.apiUrl}/v1/batch/scrape/${id}`,
+        headers
+      );
+      if (response.status === 200) {
+        let allData = response.data.data;
+        if (getAllData && response.data.status === "completed") {
+          let statusData = response.data
+          if ("data" in statusData) {
+            let data = statusData.data;
+            while ('next' in statusData) {
+              statusData = (await this.getRequest(statusData.next, headers)).data;
+              data = data.concat(statusData.data);
+            }
+            allData = data;
+          }
+        }
+        return ({
+          success: response.data.success,
+          status: response.data.status,
+          total: response.data.total,
+          completed: response.data.completed,
+          creditsUsed: response.data.creditsUsed,
+          expiresAt: new Date(response.data.expiresAt),
+          next: response.data.next,
+          data: allData,
+          error: response.data.error,
+        })
+      } else {
+        this.handleError(response, "check batch scrape status");
       }
     } catch (error: any) {
       throw new FirecrawlError(error.message, 500);
