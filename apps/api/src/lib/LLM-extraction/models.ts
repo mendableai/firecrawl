@@ -74,7 +74,7 @@ export async function generateLlmCompletions({
 
   let llmExtraction;
   Logger.info(
-    `Now extracting with LLM: ${clientType} ${model} ${schema} ${systemPrompt} ${prompt} ${temperature} ${mode}`
+    `Now extracting with LLM: client:${clientType} model:${model} schema:${schema} systemPrompt:${systemPrompt} prompt:${prompt} temperature:${temperature} mode:${mode}`
   );
 
   if (clientType === "anthropic") {
@@ -93,7 +93,7 @@ export async function generateLlmCompletions({
               },
               {
                 role: "user" as const,
-                content: `Transform the above content into structured json output based on the following user request: ${prompt}`,
+                content: `Transform the above content into structured JSON output based on the following user request: ${prompt}`,
               },
             ],
           })
@@ -130,7 +130,7 @@ export async function generateLlmCompletions({
     try {
       switch (response.content[0].type) {
         case "text":
-          llmExtraction = JSON.parse(response.content[0].text);
+          llmExtraction = JSON.parse(response.content[0].text.trim());
           Logger.info(`LLM extraction: ${JSON.stringify(llmExtraction)}`);
           break;
         case "tool_use":
