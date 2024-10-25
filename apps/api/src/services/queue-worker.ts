@@ -38,6 +38,7 @@ import { PlanType, RateLimiterMode } from "../types";
 import { getJobs } from "../../src/controllers/v1/crawl-status";
 import { configDotenv } from "dotenv";
 import { getRateLimiterPoints } from "./rate-limiter";
+import { cleanOldConcurrencyLimitEntries, pushConcurrencyLimitActiveJob, removeConcurrencyLimitActiveJob, takeConcurrencyLimitedJob } from "../lib/concurrency-limit";
 configDotenv();
 
 if (process.env.ENV === "production") {
@@ -135,46 +136,27 @@ const workerFun = async (
 
     const job = await worker.getNextJob(token);
     if (job) {
-      const concurrencyLimiterKey = "concurrency-limiter:" + job.data?.team_id;
+      async function afterJobDone(job: Job<any, any, string>) {
+        if (job.id && job.data && job.data.team_id && job.data.plan) {
+          await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
+          cleanOldConcurrencyLimitEntries(job.data.team_id);
 
-      if (job.data && job.data.team_id && job.data.plan) {
-        const concurrencyLimiterThrottledKey = "concurrency-limiter:" + job.data.team_id + ":throttled";
-        const concurrencyLimit = getRateLimiterPoints(RateLimiterMode.Scrape, undefined, job.data.plan);
-        const now = Date.now();
-        const stalledJobTimeoutMs = 2 * 60 * 1000;
-        const throttledJobTimeoutMs = 10 * 60 * 1000;
+          // Queue up next job, if it exists
+          // No need to check if we're under the limit here -- if the current job is finished,
+          // we are 1 under the limit, assuming the job insertion logic never over-inserts. - MG
+          const nextJob = await takeConcurrencyLimitedJob(job.data.team_id);
+          if (nextJob !== null) {
+            await pushConcurrencyLimitActiveJob(job.data.team_id, nextJob.id);
 
-        redisConnection.zremrangebyscore(concurrencyLimiterThrottledKey, -Infinity, now);
-        redisConnection.zremrangebyscore(concurrencyLimiterKey, -Infinity, now);
-        const activeJobsOfTeam = await redisConnection.zrangebyscore(concurrencyLimiterKey, now, Infinity);
-        if (activeJobsOfTeam.length >= concurrencyLimit) {
-          // Nick: removed the log because it was too spammy, tested and confirmed that the job is added back to the queue
-          // Logger.info("Moving job " + job.id + " back the queue -- concurrency limit hit");
-          // Concurrency limit hit, throttles the job
-          await redisConnection.zadd(concurrencyLimiterThrottledKey, now + throttledJobTimeoutMs, job.id);
-          // We move to failed with a specific error
-          await job.moveToFailed(new Error("Concurrency limit hit"), token, false);
-          // Remove the job from the queue
-          await job.remove();
-          // Increment the priority of the job exponentially by 5%, Note: max bull priority is 2 million
-          const newJobPriority = Math.min(Math.round((job.opts.priority ?? 10) * 1.05), 20000);
-          // Add the job back to the queue with the new priority
-          await queue.add(job.name, {
-            ...job.data,
-            concurrencyLimitHit: true,
-          }, {
-            ...job.opts,
-            jobId: job.id,
-            priority: newJobPriority, // exponential backoff for stuck jobs
-          });
-
-          // await sleep(gotJobInterval);
-          continue;
-        } else {
-          // If we are not throttled, add the job back to the queue with the new priority
-          await redisConnection.zadd(concurrencyLimiterKey, now + stalledJobTimeoutMs, job.id);
-          // Remove the job from the throttled list
-          await redisConnection.zrem(concurrencyLimiterThrottledKey, job.id);
+            await queue.add(nextJob.id, {
+              ...nextJob.data,
+              concurrencyLimitHit: true,
+            }, {
+              ...nextJob.opts,
+              jobId: nextJob.id,
+              priority: nextJob.priority,
+            });
+          }
         }
       }
 
@@ -212,9 +194,7 @@ const workerFun = async (
                     try {
                       res = await processJobInternal(token, job);
                     } finally { 
-                      if (job.id && job.data && job.data.team_id) {
-                        await redisConnection.zrem(concurrencyLimiterKey, job.id);
-                      }
+                      await afterJobDone(job)
                     }
                     
                     if (res !== null) {
@@ -239,11 +219,7 @@ const workerFun = async (
           },
           () => {
             processJobInternal(token, job)
-              .finally(() => {
-                if (job.id && job.data && job.data.team_id) {
-                  redisConnection.zrem(concurrencyLimiterKey, job.id);
-                }
-              });
+              .finally(() => afterJobDone(job));
           }
         );
       }
@@ -391,7 +367,7 @@ async function processJob(job: Job, token: string) {
               // console.log("base priority: ", job.data.crawl_id ? 20 : 10)
               // console.log("job priority: " , jobPriority, "\n\n\n")
 
-              const newJob = await addScrapeJob(
+              await addScrapeJob(
                 {
                   url: link,
                   mode: "single_urls",
@@ -409,7 +385,7 @@ async function processJob(job: Job, token: string) {
                 jobPriority
               );
 
-              await addCrawlJob(job.data.crawl_id, newJob.id);
+              await addCrawlJob(job.data.crawl_id, jobId);
             }
           }
         }

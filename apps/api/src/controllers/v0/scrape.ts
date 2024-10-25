@@ -54,7 +54,7 @@ export async function scrapeHelper(
 
   const jobPriority = await getJobPriority({ plan, team_id, basePriority: 10 });
 
-  const job = await addScrapeJob(
+  await addScrapeJob(
     {
       url,
       mode: "single_urls",
@@ -81,7 +81,7 @@ export async function scrapeHelper(
     },
     async (span) => {
       try {
-        doc = (await waitForJob(job.id, timeout))[0];
+        doc = (await waitForJob(jobId, timeout))[0];
       } catch (e) {
         if (e instanceof Error && e.message.startsWith("Job wait")) {
           span.setAttribute("timedOut", true);
@@ -116,10 +116,10 @@ export async function scrapeHelper(
     return err;
   }
 
-  await job.remove();
+  await getScrapeQueue().remove(jobId);
 
   if (!doc) {
-    console.error("!!! PANIC DOC IS", doc, job);
+    console.error("!!! PANIC DOC IS", doc);
     return {
       success: true,
       error: "No page found",

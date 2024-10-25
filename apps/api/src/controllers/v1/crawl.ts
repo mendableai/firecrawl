@@ -137,7 +137,8 @@ export async function crawlController(
     await getScrapeQueue().addBulk(jobs);
   } else {
     await lockURL(id, sc, req.body.url);
-    const job = await addScrapeJob(
+    const jobId = uuidv4();
+    await addScrapeJob(
       {
         url: req.body.url,
         mode: "single_urls",
@@ -152,9 +153,10 @@ export async function crawlController(
       },
       {
         priority: 15,
-      }
+      },
+      jobId,
     );
-    await addCrawlJob(id, job.id);
+    await addCrawlJob(id, jobId);
   }
 
   if(req.body.webhook) {

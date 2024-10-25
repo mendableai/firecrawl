@@ -103,7 +103,8 @@ export async function crawlPreviewController(req: Request, res: Response) {
     if (sitemap !== null) {
       for (const url of sitemap.map(x => x.url)) {
         await lockURL(id, sc, url);
-        const job = await addScrapeJob({
+        const jobId = uuidv4();
+        await addScrapeJob({
           url,
           mode: "single_urls",
           crawlerOptions: crawlerOptions,
@@ -113,12 +114,13 @@ export async function crawlPreviewController(req: Request, res: Response) {
           origin: "website-preview",
           crawl_id: id,
           sitemapped: true,
-        });
-        await addCrawlJob(id, job.id);
+        }, {}, jobId);
+        await addCrawlJob(id, jobId);
       }
     } else {
       await lockURL(id, sc, url);
-      const job = await addScrapeJob({
+      const jobId = uuidv4();
+      await addScrapeJob({
         url,
         mode: "single_urls",
         crawlerOptions: crawlerOptions,
@@ -127,8 +129,8 @@ export async function crawlPreviewController(req: Request, res: Response) {
         pageOptions: pageOptions,
         origin: "website-preview",
         crawl_id: id,
-      });
-      await addCrawlJob(id, job.id);
+      }, {}, jobId);
+      await addCrawlJob(id, jobId);
     }
 
     res.json({ jobId: id });
