@@ -170,11 +170,11 @@ print(batch_scrape_result)
 
 ### Checking batch scrape status
 
-To check the status of an asynchronous batch scrape job, use the `check_batch_scrape_job` method. It takes the job ID as a parameter and returns the current status of the batch scrape job.
+To check the status of an asynchronous batch scrape job, use the `check_batch_scrape_status` method. It takes the job ID as a parameter and returns the current status of the batch scrape job.
 
 ```python
 id = batch_scrape_result['id']
-status = app.check_batch_scrape_job(id)
+status = app.check_batch_scrape_status(id)
 ```
 
 ### Batch scrape with WebSockets
