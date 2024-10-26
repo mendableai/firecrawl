@@ -113,15 +113,24 @@ export async function autoCharge(
             // Reset ACUC cache to reflect the new credit balance
             const cacheKeyACUC = `acuc_${chunk.api_key}`;
             await deleteKey(cacheKeyACUC);
-            if (process.env.SLACK_ADMIN_WEBHOOK_URL ) {
+            
+            if (process.env.SLACK_ADMIN_WEBHOOK_URL) {
+              const webhookCooldownKey = `webhook_cooldown_${chunk.team_id}`;
+              const isInCooldown = await getValue(webhookCooldownKey);
+              
+              if (!isInCooldown) {
                 sendSlackWebhook(
-                  `Auto-recharge successful: Team ${chunk.team_id}. ${AUTO_RECHARGE_CREDITS} credits added. Payment status: ${paymentStatus.return_status}. User was notified via email.`,
+                  `Auto-recharge: Team ${chunk.team_id}. ${AUTO_RECHARGE_CREDITS} credits added. Payment status: ${paymentStatus.return_status}.`,
                   false,
                   process.env.SLACK_ADMIN_WEBHOOK_URL
                 ).catch((error) => {
                   Logger.debug(`Error sending slack notification: ${error}`);
                 });
+                
+                // Set cooldown for 1 hour
+                await setValue(webhookCooldownKey, 'true', 60 * 60);
               }
+            }
             return {
               success: true,
               message: "Auto-recharge successful",
