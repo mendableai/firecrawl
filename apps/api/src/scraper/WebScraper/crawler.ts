@@ -9,7 +9,7 @@ import robotsParser from "robots-parser";
 import { getURLDepth } from "./utils/maxDepthUtils";
 import { axiosTimeout } from "../../../src/lib/timeout";
 import { logger } from "../../../src/lib/logger";
-
+import https from "https";
 export class WebCrawler {
   private jobId: string;
   private initialUrl: string;
@@ -136,13 +136,23 @@ export class WebCrawler {
           return false;
         }
 
+        if (this.isFile(link)) {
+          return false;
+        }
+
         return true;
       })
       .slice(0, limit);
   }
 
-  public async getRobotsTxt(): Promise<string> {
-    const response = await axios.get(this.robotsTxtUrl, { timeout: axiosTimeout });
+  public async getRobotsTxt(skipTlsVerification = false): Promise<string> {
+    let extraArgs = {};
+    if(skipTlsVerification) {
+      extraArgs["httpsAgent"] = new https.Agent({
+        rejectUnauthorized: false
+      });
+    }
+    const response = await axios.get(this.robotsTxtUrl, { timeout: axiosTimeout, ...extraArgs });
     return response.data;
   }
 
@@ -478,7 +488,14 @@ export class WebCrawler {
       ".webp",
       ".inc"
     ];
-    return fileExtensions.some((ext) => url.toLowerCase().endsWith(ext));
+
+    try {
+      const urlWithoutQuery = url.split('?')[0].toLowerCase();
+      return fileExtensions.some((ext) => urlWithoutQuery.endsWith(ext));
+    } catch (error) {
+      logger.error(`Error processing URL in isFile: ${error}`);
+      return false;
+    }
   }
 
   private isSocialMediaOrEmail(url: string): boolean {

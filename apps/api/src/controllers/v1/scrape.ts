@@ -9,7 +9,6 @@ import {
 } from "./types";
 import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from "uuid";
-import { numTokensFromString } from "../../lib/LLM-extraction/helpers";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
@@ -40,6 +39,7 @@ export async function scrapeController(
       team_id: req.auth.team_id,
       scrapeOptions: req.body,
       internalOptions: {},
+      plan: req.auth.plan!,
       origin: req.body.origin,
       is_scrape: true,
     },

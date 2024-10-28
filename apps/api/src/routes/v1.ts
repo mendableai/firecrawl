@@ -16,6 +16,8 @@ import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { crawlCancelController } from "../controllers/v1/crawl-cancel";
 import { logger } from "../lib/logger";
 import { scrapeStatusController } from "../controllers/v1/scrape-status";
+import { concurrencyCheckController } from "../controllers/v1/concurrency-check";
+import { batchScrapeController } from "../controllers/v1/batch-scrape";
 // import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
 // import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
 // import { searchController } from "../../src/controllers/v1/search";
@@ -28,7 +30,7 @@ function checkCreditsMiddleware(minimum?: number): (req: RequestWithAuth, res: R
     return (req, res, next) => {
         (async () => {
             if (!minimum && req.body) {
-                minimum = (req.body as any)?.limit ?? 1;
+                minimum = (req.body as any)?.limit ?? (req.body as any)?.urls?.length ?? 1;
             }
             const { success, remainingCredits, chunk } = await checkTeamCredits(req.acuc, req.auth.team_id, minimum ?? 1);
             if (chunk) {
@@ -37,7 +39,7 @@ function checkCreditsMiddleware(minimum?: number): (req: RequestWithAuth, res: R
             if (!success) {
                 logger.error(`Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`);
                 if (!res.headersSent) {
-                    return res.status(402).json({ success: false, error: "Insufficient credits. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing." });
+                    return res.status(402).json({ success: false, error: "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing or try changing the request limit to a lower value." });
                 }
             }
             req.account = { remainingCredits };
@@ -102,7 +104,7 @@ function blocklistMiddleware(req: Request, res: Response, next: NextFunction) {
     next();
 }
 
-function wrap(controller: (req: Request, res: Response) => Promise<any>): (req: Request, res: Response, next: NextFunction) => any {
+export function wrap(controller: (req: Request, res: Response) => Promise<any>): (req: Request, res: Response, next: NextFunction) => any {
     return (req, res, next) => {
         controller(req, res)
             .catch(err => next(err))
@@ -131,6 +133,15 @@ v1Router.post(
 );
 
 v1Router.post(
+    "/batch/scrape",
+    authMiddleware(RateLimiterMode.Crawl),
+    checkCreditsMiddleware(),
+    blocklistMiddleware,
+    idempotencyMiddleware,
+    wrap(batchScrapeController)
+);
+
+v1Router.post(
     "/map",
     authMiddleware(RateLimiterMode.Map),
     checkCreditsMiddleware(1),
@@ -145,14 +156,29 @@ v1Router.get(
 );
 
 v1Router.get(
+    "/batch/scrape/:jobId",
+    authMiddleware(RateLimiterMode.CrawlStatus),
+    // Yes, it uses the same controller as the normal crawl status controller
+    wrap((req:any, res):any => crawlStatusController(req, res, true))
+);
+
+v1Router.get(
     "/scrape/:jobId",
     wrap(scrapeStatusController)
+);
+
+v1Router.get(
+    "/concurrency-check",
+    authMiddleware(RateLimiterMode.CrawlStatus),
+    wrap(concurrencyCheckController)
 );
 
 v1Router.ws(
     "/crawl/:jobId",
     crawlStatusWSController
 );
+
+
 
 // v1Router.post("/crawlWebsitePreview", crawlPreviewController);
 

@@ -34,7 +34,11 @@ export async function crawlController(
 
   await logCrawl(id, req.auth.team_id);
 
-  const remainingCredits = req.account?.remainingCredits ?? 0;
+  let { remainingCredits } = req.account!;
+  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+  if(!useDbAuthentication){
+    remainingCredits = Infinity;
+  }
 
   const crawlerOptions = legacyCrawlerOptions(req.body);
   const scrapeOptions = req.body.scrapeOptions;
@@ -75,7 +79,7 @@ export async function crawlController(
   const crawler = crawlToCrawler(id, sc);
 
   try {
-    sc.robots = await crawler.getRobotsTxt();
+    sc.robots = await crawler.getRobotsTxt(scrapeOptions.skipTlsVerification);
   } catch (e) {
     logger.debug(
       `[Crawl] Failed to get robots.txt (this is probably fine!): ${JSON.stringify(
@@ -107,6 +111,7 @@ export async function crawlController(
           url,
           mode: "single_urls",
           team_id: req.auth.team_id,
+          plan: req.auth.plan,
           crawlerOptions,
           scrapeOptions,
           origin: "api",
@@ -139,6 +144,7 @@ export async function crawlController(
         mode: "single_urls",
         team_id: req.auth.team_id,
         scrapeOptions: scrapeOptionsSchema.parse(scrapeOptions),
+        plan: req.auth.plan!,
         origin: "api",
         crawl_id: id,
         webhook: req.body.webhook,

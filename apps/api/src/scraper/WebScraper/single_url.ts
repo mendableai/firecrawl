@@ -158,6 +158,8 @@ export async function scrapSingleUrl(
     actions: _pageOptions?.actions ?? undefined,
     fallback: _pageOptions?.fallback ?? false,
     fetchPageContent: _pageOptions?.fetchPageContent ?? true,
+    geolocation: _pageOptions?.geolocation ?? { country: undefined },
+    skipTlsVerification: _pageOptions?.skipTlsVerification ?? false,
   };
 
   if (extractorOptions) {
@@ -426,8 +428,8 @@ export async function scrapSingleUrl(
         logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100 or screenshot, breaking`);
         break;
       }
-      if (pageStatusCode && (pageStatusCode == 404)) {
-        logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code 404, breaking`);
+      if (pageStatusCode && (pageStatusCode == 404 || pageStatusCode == 400)) {
+        logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code ${pageStatusCode}, breaking`);
         break;
       }
       // const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;
@@ -479,6 +481,7 @@ export async function scrapSingleUrl(
       message: typeof error === "string" ? error : typeof error.message === "string" ? error.message : JSON.stringify(error),
       stack: error.stack,
     });
+
     return {
       content: "",
       markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? "" : undefined,

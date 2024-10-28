@@ -51,7 +51,7 @@ export async function scrapWithFetch(
       const { content, pageStatusCode, pageError } = await fetchAndProcessPdf(url, pageOptions?.parsePDF ?? true);
       logParams.response_code = pageStatusCode;
       logParams.error_message = pageError;
-      return { content, pageStatusCode, pageError };
+      return { content, pageStatusCode: response.status, pageError };
     } else {
       const text = response.data;
       logParams.success = true;

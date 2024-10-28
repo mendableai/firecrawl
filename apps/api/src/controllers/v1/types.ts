@@ -3,6 +3,7 @@ import { z } from "zod";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { PlanType } from "../../types";
+import { countries } from "../../lib/validate-country";
 
 export type Format =
   | "markdown"
@@ -25,7 +26,7 @@ export const url = z.preprocess(
     .url()
     .regex(/^https?:\/\//, "URL uses unsupported protocol")
     .refine(
-      (x) => /\.[a-z]{2,}(\/|$)/i.test(x),
+      (x) => /\.[a-z]{2,}([\/?#]|$)/i.test(x),
       "URL must have a valid top-level domain or be a valid path"
     )
     .refine(
@@ -107,6 +108,15 @@ export const scrapeOptions = z.object({
   extract: extractOptions.optional(),
   parsePDF: z.boolean().default(true),
   actions: actionsSchema.optional(),
+  geolocation: z.object({
+    country: z.string().optional().refine(
+      (val) => !val || Object.keys(countries).includes(val.toUpperCase()),
+      {
+        message: "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
+      }
+    ).transform(val => val ? val.toUpperCase() : 'US')
+  }).optional(),
+  skipTlsVerification: z.boolean().default(false),
 }).strict(strictMessage)
 
 
@@ -131,19 +141,29 @@ export const scrapeRequestSchema = scrapeOptions.extend({
   return obj;
 });
 
-// export type ScrapeRequest = {
-//   url: string;
-//   formats?: Format[];
-//   headers?: { [K: string]: string };
-//   includeTags?: string[];
-//   excludeTags?: string[];
-//   onlyMainContent?: boolean;
-//   timeout?: number;
-//   waitFor?: number;
-// }
-
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
 export type ScrapeRequestInput = z.input<typeof scrapeRequestSchema>;
+
+export const batchScrapeRequestSchema = scrapeOptions.extend({
+  urls: url.array(),
+  origin: z.string().optional().default("api"),
+}).strict(strictMessage).refine(
+  (obj) => {
+    const hasExtractFormat = obj.formats?.includes("extract");
+    const hasExtractOptions = obj.extract !== undefined;
+    return (hasExtractFormat && hasExtractOptions) || (!hasExtractFormat && !hasExtractOptions);
+  },
+  {
+    message: "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
+  }
+).transform((obj) => {
+  if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
+    return { ...obj, timeout: 60000 };
+  }
+  return obj;
+});
+
+export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
 
 const crawlerOptions = z.object({
   includePaths: z.string().array().default([]),
@@ -216,6 +236,7 @@ export type Document = {
   actions?: {
     screenshots: string[];
   };
+  warning?: string;
   metadata: {
     title?: string;
     description?: string;
@@ -250,8 +271,8 @@ export type Document = {
     sourceURL?: string;
     statusCode?: number;
     error?: string;
+    [key: string]: string | string[] | number | undefined;
   };
-  warning?: string;
 };
 
 export type ErrorResponse = {
@@ -295,6 +316,17 @@ export type CrawlStatusParams = {
   jobId: string;
 };
 
+export type ConcurrencyCheckParams = {
+  teamId: string;
+};
+
+export type ConcurrencyCheckResponse =
+  | ErrorResponse
+  | {
+      success: true;
+      concurrency: number;
+    };
+
 export type CrawlStatusResponse =
   | ErrorResponse
   | {
@@ -330,6 +362,8 @@ export type AuthCreditUsageChunk = {
   coupons: any[];
   adjusted_credits_used: number; // credits this period minus coupons used
   remaining_credits: number;
+  sub_user_id: string | null;
+  total_credits_sum: number;
 };
 
 export interface RequestWithMaybeACUC<
@@ -391,5 +425,6 @@ export function legacyCrawlerOptions(x: CrawlerOptions) {
     generateImgAltText: false,
     allowBackwardCrawling: x.allowBackwardLinks,
     allowExternalContentLinks: x.allowExternalLinks,
+    ignoreSitemap: x.ignoreSitemap,
   };
 }

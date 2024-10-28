@@ -53,6 +53,10 @@ export type PageOptions = {
   disableJsDom?: boolean; // beta
   atsv?: boolean; // anti-bot solver, beta
   actions?: Action[]; // beta
+  geolocation?: {
+    country?: string;
+  };
+  skipTlsVerification?: boolean;
 };
 
 export type ExtractorOptions = {

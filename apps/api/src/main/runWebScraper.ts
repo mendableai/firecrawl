@@ -44,6 +44,7 @@ export async function startWebScraperPipeline({
     is_scrape: job.data.is_scrape ?? false,
   }));
 }
+
 export async function runWebScraper({
   url,
   mode,

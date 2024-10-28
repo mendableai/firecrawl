@@ -10,14 +10,13 @@ if [[ ! -z "${REDIS_PASSWORD}" ]]; then
   PW_ARG="--requirepass $REDIS_PASSWORD"
 fi
 
-# Set maxmemory-policy to 'allkeys-lru' for caching servers that should always evict old keys
-: ${MAXMEMORY_POLICY:="volatile-lru"}
+: ${MAXMEMORY_POLICY:="noeviction"}
 : ${APPENDONLY:="no"}
-: ${FLY_VM_MEMORY_MB:=512}
+: ${FLY_VM_MEMORY_MB:=$(($(grep MemTotal /proc/meminfo | awk '{print $2}') / 1024))}
 if [ "${NOSAVE}" = "" ] ; then
   : ${SAVE:="3600 1 300 100 60 10000"}
 fi
-# Set maxmemory to 10% of available memory
+# Set maxmemory to 80% of RAM
 MAXMEMORY=$(($FLY_VM_MEMORY_MB*80/100))
 
 mkdir /data/redis
@@ -27,4 +26,5 @@ redis-server $PW_ARG \
   --maxmemory "${MAXMEMORY}mb" \
   --maxmemory-policy $MAXMEMORY_POLICY \
   --appendonly $APPENDONLY \
-  --save "$SAVE"
+  --save "$SAVE" \
+  --protected-mode no
