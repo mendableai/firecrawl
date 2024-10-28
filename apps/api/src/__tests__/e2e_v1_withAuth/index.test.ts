@@ -1,6 +1,7 @@
 import request from "supertest";
 import { configDotenv } from "dotenv";
 import {
+  BatchScrapeRequest,
   ScrapeRequest,
   ScrapeResponseRequestTest,
 } from "../../controllers/v1/types";
@@ -1001,5 +1002,119 @@ describe("E2E Tests for v1 API Routes", () => {
       },
       60000
     ); // 60 seconds
+  });
+
+  describe("POST /v1/batch/scrape", () => {
+    it.concurrent("should require authorization", async () => {
+      const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        .post("/v1/batch/scrape")
+        .send({ urls: ["https://firecrawl.dev"] });
+      expect(response.statusCode).toBe(401);
+    });
+
+    it.concurrent("should throw error for blocklisted URL", async () => {
+      const scrapeRequest: BatchScrapeRequest = {
+        urls: ["https://firecrawl.dev", "https://scrapethissite.com", "https://facebook.com/fake-test"],
+      };
+      const response = await request(TEST_URL)
+        .post("/v1/batch/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send(scrapeRequest);
+
+      expect(response.statusCode).toBe(400);
+      expect(response.body.details[0].message).toContain("does not support social media scraping")
+    });
+
+    it.concurrent("should return a successful response with a valid API key", async () => {
+      const scrapeRequest: BatchScrapeRequest = {
+        urls: ["https://mendable.ai", "https://www.google.com", "https://example.com"],
+      };
+      const response = await request(TEST_URL)
+        .post("/v1/batch/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send(scrapeRequest);
+
+      expect(response.statusCode).toBe(200);
+    });
+  });
+
+  describe("GET /v1/batch/scrape/:jobId:", () => {
+    it.concurrent("should require authorization", async () => {
+      const response = await request(TEST_URL).get("/v1/batch/scrape/123");
+      expect(response.statusCode).toBe(401);
+    });
+
+    it.concurrent("should return an error response with an invalid API key", async () => {
+      const response = await request(TEST_URL)
+        .get("/v1/batch/scrape/123")
+        .set("Authorization", `Bearer invalid-api-key`);
+      expect(response.statusCode).toBe(401);
+    });
+
+    it.concurrent(
+      "should return Job not found for invalid job ID",
+      async () => {
+        const response = await request(TEST_URL)
+          .get("/v1/batch/scrape/invalidJobId")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+        expect(response.statusCode).toBe(404);
+      }
+    );
+
+    it.concurrent(
+      "should return successful data for a valid batch scrape",
+      async () => {
+        const batchScrapeRequest: BatchScrapeRequest = {
+          urls: ["https://firecrawl.dev", "https://www.scrapethissite.com", "https://example.com"],
+        };
+        const batchResponse = await request(TEST_URL)
+          .post("/v1/batch/scrape")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send(batchScrapeRequest);
+        expect(batchResponse.statusCode).toBe(200);
+
+        let isCompleted = false;
+
+        while (!isCompleted) {
+          const response = await request(TEST_URL)
+            .get(`/v1/batch/scrape/${batchResponse.body.id}`)
+            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          expect(response.statusCode).toBe(200);
+          expect(response.body).toHaveProperty("status");
+
+          if (response.body.status === "completed") {
+            isCompleted = true;
+          } else {
+            await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
+          }
+        }
+
+        await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
+        const completedResponse = await request(TEST_URL)
+          .get(`/v1/batch/scrape/${batchResponse.body.id}`)
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          
+        expect(completedResponse.body).toHaveProperty("status");
+        expect(completedResponse.body.status).toBe("completed");
+        expect(completedResponse.body).toHaveProperty("data");
+
+        completedResponse.body.data.forEach(data => {
+          expect(data).toHaveProperty("markdown");
+          expect(data).toHaveProperty("metadata");
+          expect(data.metadata.statusCode).toBe(200);
+          expect(data.metadata.error).toBeUndefined();
+        })
+
+        const phrases = ["Scrape This Site", "Firecrawl", "Example Domain"];
+        phrases.forEach(phrase =>
+          expect(completedResponse.body.data.some(item => item.markdown && item.markdown.includes(phrase))).toBe(true)
+        );
+
+      },
+      180000
+    );
   });
 });
