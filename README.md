@@ -80,6 +80,7 @@ To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and ge
 - **Media parsing**: pdfs, docx, images.
 - **Reliability first**: designed to get the data you need - no matter how hard it is.
 - **Actions**: click, scroll, input, wait and more before extracting data
+- **Batching (New)**: scrape thousands of URLs at the same time with a new async endpoint
 
 You can find all of Firecrawl's capabilities and how to use them in our [documentation](https://docs.firecrawl.dev)
 
@@ -350,6 +351,19 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
     }'
 ```
 
+### Batch Scraping Multiple URLs (New)
+
+You can now batch scrape multiple URLs at the same time. It is very similar to how the /crawl endpoint works. It submits a batch scrape job and returns a job ID to check the status of the batch scrape.
+
+```bash
+curl -X POST https://api.firecrawl.dev/v1/batch/scrape \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer YOUR_API_KEY' \
+    -d '{
+      "urls": ["https://docs.firecrawl.dev", "https://docs.firecrawl.dev/sdks/overview"],
+      "formats" : ["markdown", "html"]
+    }'
+```
 
 ### Search (v0) (Beta)
 
@@ -483,7 +497,7 @@ const crawlResponse = await app.crawlUrl('https://firecrawl.dev', {
   scrapeOptions: {
     formats: ['markdown', 'html'],
   }
-} as CrawlParams, true, 30) as CrawlStatusResponse;
+} satisfies CrawlParams, true, 30) satisfies CrawlStatusResponse;
 
 if (crawlResponse) {
   console.log(crawlResponse)

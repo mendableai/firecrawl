@@ -121,8 +121,13 @@ export async function runWebScraper({
       : docs;
 
     if(is_scrape === false) {
-      billTeam(team_id, undefined, filteredDocs.length).catch(error => {
-        Logger.error(`Failed to bill team ${team_id} for ${filteredDocs.length} credits: ${error}`);
+      let creditsToBeBilled = 1; // Assuming 1 credit per document
+      if (extractorOptions && (extractorOptions.mode === "llm-extraction" || extractorOptions.mode === "extract")) {
+        creditsToBeBilled = 5;
+      }
+
+      billTeam(team_id, undefined, creditsToBeBilled * filteredDocs.length).catch(error => {
+        Logger.error(`Failed to bill team ${team_id} for ${creditsToBeBilled * filteredDocs.length} credits: ${error}`);
         // Optionally, you could notify an admin or add to a retry queue here
       });
     }

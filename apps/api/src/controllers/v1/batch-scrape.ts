@@ -4,6 +4,7 @@ import {
   BatchScrapeRequest,
   batchScrapeRequestSchema,
   CrawlResponse,
+  legacyExtractorOptions,
   legacyScrapeOptions,
   RequestWithAuth,
 } from "./types";
@@ -34,6 +35,8 @@ export async function batchScrapeController(
   }
 
   const pageOptions = legacyScrapeOptions(req.body);
+  const extractorOptions = req.body.extract ? legacyExtractorOptions(req.body.extract) : undefined;
+
 
   const sc: StoredCrawl = {
     crawlerOptions: null,
@@ -65,6 +68,7 @@ export async function batchScrapeController(
         plan: req.auth.plan,
         crawlerOptions: null,
         pageOptions,
+        extractorOptions,
         origin: "api",
         crawl_id: id,
         sitemapped: true,
