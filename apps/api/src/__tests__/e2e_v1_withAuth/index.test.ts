@@ -1,7 +1,6 @@
 import request from "supertest";
 import { configDotenv } from "dotenv";
 import {
-  ScrapeRequest,
   ScrapeRequestInput,
   ScrapeResponseRequestTest,
 } from "../../controllers/v1/types";
@@ -126,7 +125,7 @@ describe("E2E Tests for v1 API Routes", () => {
     it.concurrent(
       "should return a successful response with a valid API key",
       async () => {
-        const scrapeRequest: ScrapeRequest = {
+        const scrapeRequest: ScrapeRequestInput = {
           url: "https://arxiv.org/abs/2410.04840",
         };
 
