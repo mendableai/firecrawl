@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { WebScraperDataProvider } from "../../scraper/WebScraper";
 import { billTeam, checkTeamCredits } from "../../services/billing/credit_billing";
 import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";

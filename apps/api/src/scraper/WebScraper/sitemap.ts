@@ -1,9 +1,10 @@
 import axios from "axios";
 import { axiosTimeout } from "../../lib/timeout";
 import { parseStringPromise } from "xml2js";
-import { scrapWithFireEngine } from "./scrapers/fireEngine";
 import { WebCrawler } from "./crawler";
 import { logger } from "../../lib/logger";
+import { scrapeURL } from "../scrapeURL";
+import { scrapeOptions } from "../../controllers/v1/types";
 
 export async function getLinksFromSitemap(
   {
@@ -23,8 +24,11 @@ export async function getLinksFromSitemap(
         const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
         content = response.data;
       } else if (mode === 'fire-engine') {
-        const response = await scrapWithFireEngine({ url: sitemapUrl, fireEngineOptions: { engine:"playwright" } });
-        content = response.html;
+        const response = await scrapeURL("sitemap", sitemapUrl, scrapeOptions.parse({ formats: ["rawHtml"] }), { forceEngine: "fire-engine;playwright" });;
+        if (!response.success) {
+          throw response.error;
+        }
+        content = response.document.rawHtml!;
       }
     } catch (error) {
       logger.error(`Request failed for ${sitemapUrl}: ${error.message}`);

@@ -2,7 +2,7 @@ import { InternalOptions } from "../scraper/scrapeURL";
 import { ScrapeOptions } from "../controllers/v1/types";
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import { redisConnection } from "../services/queue-service";
-import { Logger } from "./logger";
+import { logger } from "./logger";
 
 export type StoredCrawl = {
     originUrl?: string;
@@ -103,7 +103,7 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
         urlO.hash = "";
         url = urlO.href;
     } catch (error) {
-        Logger.warn("Failed to normalize URL " + JSON.stringify(url) + ": " + error);
+        logger.warn("Failed to normalize URL " + JSON.stringify(url) + ": " + error);
     }
 
     const res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0
@@ -120,7 +120,7 @@ export async function lockURLs(id: string, urls: string[]): Promise<boolean> {
             urlO.hash = "";
             return urlO.href;
         } catch (error) {
-            Logger.warn("Failed to normalize URL " + JSON.stringify(url) + ": " + error);
+            logger.warn("Failed to normalize URL " + JSON.stringify(url) + ": " + error);
         }
 
         return url;
@@ -134,7 +134,7 @@ export async function lockURLs(id: string, urls: string[]): Promise<boolean> {
 export function crawlToCrawler(id: string, sc: StoredCrawl): WebCrawler {
     const crawler = new WebCrawler({
         jobId: id,
-        initialUrl: sc.originUrl,
+        initialUrl: sc.originUrl!,
         includes: sc.crawlerOptions?.includes ?? [],
         excludes: sc.crawlerOptions?.excludes ?? [],
         maxCrawledLinks: sc.crawlerOptions?.maxCrawledLinks ?? 1000,
