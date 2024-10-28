@@ -28,7 +28,7 @@ export type Action = {
 } | {
   type: "scroll",
   direction: "up" | "down"
-};
+    };
 
 export type PageOptions = {
   includeMarkdown?: boolean;
@@ -59,6 +59,15 @@ export type PageOptions = {
 
 export type ExtractorOptions = {
   mode: "markdown" | "llm-extraction" | "llm-extraction-from-markdown" | "llm-extraction-from-raw-html";
+  llmOptions?:
+    | {
+        provider?: "openai";
+        model?: "gpt-4o" | "gpt-4o-mini";
+      }
+    | {
+        provider?: "anthropic";
+        model?: "claude-3-5-sonnet-20241022";
+      }; // "provider" and "model" were made optional due to a type error on line 506 in src/controllers/v1/types.ts, but should be required I think
   extractionPrompt?: string;
   extractionSchema?: Record<string, any>;
   userPrompt?: string;
@@ -129,7 +138,7 @@ export class Document {
 
   index?: number;
   linksOnPage?: string[]; // Add this new field as a separate property
-  
+
   constructor(data: Partial<Document>) {
     if (!data.content) {
       throw new Error("Missing required fields");
@@ -153,13 +162,13 @@ export class SearchResult {
   description: string;
 
   constructor(url: string, title: string, description: string) {
-      this.url = url;
-      this.title = title;
-      this.description = description;
+    this.url = url;
+    this.title = title;
+    this.description = description;
   }
 
   toString(): string {
-      return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description})`;
+    return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description})`;
   }
 }
 
