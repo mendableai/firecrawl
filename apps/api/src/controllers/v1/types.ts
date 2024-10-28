@@ -121,7 +121,20 @@ export const scrapeOptions = z.object({
 }).strict(strictMessage)
 
 
+
 export type ScrapeOptions = z.infer<typeof scrapeOptions>;
+
+export const extractV1Options = z.object({
+  urls: url.array(),
+  prompt: z.string().optional(),
+  schema: z.any().optional(),
+  origin: z.string().optional().default("api"),
+  timeout: z.number().int().positive().finite().safe().default(60000),
+}).strict(strictMessage)
+
+export type ExtractV1Options = z.infer<typeof extractV1Options>;
+export const extractRequestSchema = extractV1Options;
+export type ExtractRequest = z.infer<typeof extractRequestSchema>;
 
 export const scrapeRequestSchema = scrapeOptions.extend({
   url,
@@ -141,6 +154,8 @@ export const scrapeRequestSchema = scrapeOptions.extend({
   }
   return obj;
 });
+
+
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
 
@@ -293,6 +308,21 @@ export type ScrapeResponse =
 export interface ScrapeResponseRequestTest {
   statusCode: number;
   body: ScrapeResponse;
+  error?: string;
+}
+
+export type ExtractResponse =
+  | ErrorResponse
+  | {
+      success: true;
+      warning?: string;
+      data: Document;
+      scrape_id?: string;
+    };
+
+export interface ExtractResponseRequestTest {
+  statusCode: number;
+  body: ExtractResponse;
   error?: string;
 }
 
@@ -492,3 +522,11 @@ export function legacyDocumentConverter(doc: any): Document {
     },
   };
 }
+
+
+
+export interface MapDocument {
+  url: string;
+  title?: string;
+  description?: string;
+}   

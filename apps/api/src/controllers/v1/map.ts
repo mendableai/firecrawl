@@ -15,11 +15,11 @@ import {
   removeDuplicateUrls,
 } from "../../lib/validateUrl";
 import { fireEngineMap } from "../../search/fireEngine";
-import { billTeam } from "../../services/billing/credit_billing";
-import { logJob } from "../../services/logging/log_job";
 import { performCosineSimilarity } from "../../lib/map-cosine";
 import { Logger } from "../../lib/logger";
 import Redis from "ioredis";
+import { billTeam } from "../../services/billing/credit_billing";
+import { logJob } from "../../services/logging/log_job";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL);
@@ -29,35 +29,50 @@ const MAX_MAP_LIMIT = 5000;
 // Max Links that "Smart /map" can return
 const MAX_FIRE_ENGINE_RESULTS = 1000;
 
-export async function mapController(
-  req: RequestWithAuth<{}, MapResponse, MapRequest>,
-  res: Response<MapResponse>
-) {
+interface MapOptions {
+  url: string;
+  search?: string;
+  limit?: number;
+  ignoreSitemap?: boolean;
+  includeSubdomains?: boolean;
+  crawlerOptions?: any;
+  teamId: string;
+  plan: string;
+  origin?: string;
+  subId?: string;
+  includeMetadata?: boolean;
+}
+
+export async function getMapResults({
+  url,
+  search,
+  limit = MAX_MAP_LIMIT,
+  ignoreSitemap = false,
+  includeSubdomains = false,
+  crawlerOptions = {},
+  teamId,
+  plan,
+  origin,
+  subId,
+  includeMetadata = false,
+}: MapOptions) {
   const startTime = new Date().getTime();
-
-  req.body = mapRequestSchema.parse(req.body);
-
-  const limit: number = req.body.limit ?? MAX_MAP_LIMIT;
-
   const id = uuidv4();
-  let links: string[] = [req.body.url];
+  let links: { url: string; title?: string; description?: string }[] = [{ url }];
 
   const sc: StoredCrawl = {
-    originUrl: req.body.url,
-    crawlerOptions: legacyCrawlerOptions(req.body),
+    originUrl: url,
+    crawlerOptions,
     pageOptions: {},
-    team_id: req.auth.team_id,
+    team_id: teamId,
     createdAt: Date.now(),
-    plan: req.auth.plan,
+    plan,
   };
 
   const crawler = crawlToCrawler(id, sc);
 
-  let urlWithoutWww = req.body.url.replace("www.", "");
-
-  let mapUrl = req.body.search
-    ? `"${req.body.search}" site:${urlWithoutWww}`
-    : `site:${req.body.url}`;
+  let urlWithoutWww = url.replace("www.", "");
+  let mapUrl = search ? `"${search}" site:${urlWithoutWww}` : `site:${url}`;
 
   const resultsPerPage = 100;
   const maxPages = Math.ceil(Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage);
@@ -81,12 +96,11 @@ export async function mapController(
     pagePromises = Array.from({ length: maxPages }, (_, i) => fetchPage(i + 1));
     allResults = await Promise.all(pagePromises);
 
-    await redis.set(cacheKey, JSON.stringify(allResults), "EX", 24 * 60 * 60); // Cache for 24 hours
+    await redis.set(cacheKey, JSON.stringify(allResults), "EX", 24 * 60 * 60);
   }
 
-  // Parallelize sitemap fetch with serper search
   const [sitemap, ...searchResults] = await Promise.all([
-    req.body.ignoreSitemap ? null : crawler.tryGetSitemap(),
+    ignoreSitemap ? null : crawler.tryGetSitemap(),
     ...(cachedResult ? [] : pagePromises),
   ]);
 
@@ -96,7 +110,7 @@ export async function mapController(
 
   if (sitemap !== null) {
     sitemap.forEach((x) => {
-      links.push(x.url);
+      links.push({ url: x.url });
     });
   }
 
@@ -110,67 +124,96 @@ export async function mapController(
   }
 
   if (mapResults.length > 0) {
-    if (req.body.search) {
-      // Ensure all map results are first, maintaining their order
+    if (search) {
       links = [
-        mapResults[0].url,
-        ...mapResults.slice(1).map((x) => x.url),
+        { url: mapResults[0].url, title: mapResults[0].title, description: mapResults[0].description },
+        ...mapResults.slice(1).map((x) => ({ 
+          url: x.url,
+          title: x.title,
+          description: x.description
+        })),
         ...links,
       ];
     } else {
-      mapResults.map((x) => {
-        links.push(x.url);
+      mapResults.forEach((x) => {
+        links.push({ 
+          url: x.url,
+          title: x.title,
+          description: x.description
+        });
       });
     }
   }
 
-  // Perform cosine similarity between the search query and the list of links
-  if (req.body.search) {
-    const searchQuery = req.body.search.toLowerCase();
-
-    links = performCosineSimilarity(links, searchQuery);
+  if (search) {
+    const filteredLinks = performCosineSimilarity(links.map(l => l.url), search.toLowerCase());
+    links = links.filter(l => filteredLinks.includes(l.url));
   }
 
   links = links
     .map((x) => {
       try {
-        return checkAndUpdateURLForMap(x).url.trim();
+        return { ...x, url: checkAndUpdateURLForMap(x.url).url.trim() };
       } catch (_) {
         return null;
       }
     })
     .filter((x) => x !== null);
 
-  // allows for subdomains to be included
-  links = links.filter((x) => isSameDomain(x, req.body.url));
+  links = links.filter((x) => isSameDomain(x.url, url));
 
-  // if includeSubdomains is false, filter out subdomains
-  if (!req.body.includeSubdomains) {
-    links = links.filter((x) => isSameSubdomain(x, req.body.url));
+  if (!includeSubdomains) {
+    links = links.filter((x) => isSameSubdomain(x.url, url));
   }
 
-  // remove duplicates that could be due to http/https or www
-  links = removeDuplicateUrls(links);
-
-  billTeam(req.auth.team_id, req.acuc?.sub_id, 1).catch((error) => {
-    Logger.error(
-      `Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`
-    );
-    // Optionally, you could notify an admin or add to a retry queue here
-  });
+  links = removeDuplicateUrls(links.map(l => l.url)).map(url => links.find(l => l.url === url));
 
   const endTime = new Date().getTime();
   const timeTakenInSeconds = (endTime - startTime) / 1000;
 
   const linksToReturn = links.slice(0, limit);
 
-  logJob({
-    job_id: id,
-    success: links.length > 0,
+  return {
+    links: includeMetadata ? linksToReturn : linksToReturn.map(l => l.url),
+    scrapeId: origin?.includes("website") ? id : undefined,
+    timeTakenInSeconds,
+    id,
+    linksLength: links.length,
+    linksToReturnLength: linksToReturn.length,
+    docs: linksToReturn.map(l => l.url),
+  };
+}
+
+export async function mapController(
+  req: RequestWithAuth<{}, MapResponse, MapRequest>,
+  res: Response<MapResponse>
+) {
+  req.body = mapRequestSchema.parse(req.body);
+
+  const results = await getMapResults({
+    url: req.body.url,
+    search: req.body.search,
+    limit: req.body.limit,
+    ignoreSitemap: req.body.ignoreSitemap,
+    includeSubdomains: req.body.includeSubdomains,
+    crawlerOptions: legacyCrawlerOptions(req.body),
+    teamId: req.auth.team_id,
+    plan: req.auth.plan,
+    origin: req.body.origin,
+    subId: req.acuc?.sub_id,
+  });
+
+  await billTeam(req.auth.team_id, req.acuc?.sub_id, 1).catch((error) => {
+    Logger.error(`Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`);
+  });
+
+  await logJob({
+    job_id: results.id,
+    success: results.linksLength > 0,
     message: "Map completed",
-    num_docs: linksToReturn.length,
-    docs: linksToReturn,
-    time_taken: timeTakenInSeconds,
+    num_docs: results.linksToReturnLength,
+    docs: results.docs,
+    time_taken: results.timeTakenInSeconds,
     team_id: req.auth.team_id,
     mode: "map",
     url: req.body.url,
@@ -183,55 +226,7 @@ export async function mapController(
 
   return res.status(200).json({
     success: true,
-    links: linksToReturn,
-    scrape_id: req.body.origin?.includes("website") ? id : undefined,
+    links: results.links.map(l => l.url),
+    scrape_id: results.scrapeId,
   });
 }
-
-// Subdomain sitemap url checking
-
-// // For each result, check for subdomains, get their sitemaps and add them to the links
-// const processedUrls = new Set();
-// const processedSubdomains = new Set();
-
-// for (const result of links) {
-//   let url;
-//   let hostParts;
-//   try {
-//     url = new URL(result);
-//     hostParts = url.hostname.split('.');
-//   } catch (e) {
-//     continue;
-//   }
-
-//   console.log("hostParts", hostParts);
-//   // Check if it's a subdomain (more than 2 parts, and not 'www')
-//   if (hostParts.length > 2 && hostParts[0] !== 'www') {
-//     const subdomain = hostParts[0];
-//     console.log("subdomain", subdomain);
-//     const subdomainUrl = `${url.protocol}//${subdomain}.${hostParts.slice(-2).join('.')}`;
-//     console.log("subdomainUrl", subdomainUrl);
-
-//     if (!processedSubdomains.has(subdomainUrl)) {
-//       processedSubdomains.add(subdomainUrl);
-
-//       const subdomainCrawl = crawlToCrawler(id, {
-//         originUrl: subdomainUrl,
-//         crawlerOptions: legacyCrawlerOptions(req.body),
-//         pageOptions: {},
-//         team_id: req.auth.team_id,
-//         createdAt: Date.now(),
-//         plan: req.auth.plan,
-//       });
-//       const subdomainSitemap = await subdomainCrawl.tryGetSitemap();
-//       if (subdomainSitemap) {
-//         subdomainSitemap.forEach((x) => {
-//           if (!processedUrls.has(x.url)) {
-//             processedUrls.add(x.url);
-//             links.push(x.url);
-//           }
-//         });
-//       }
-//     }
-//   }
-// }
