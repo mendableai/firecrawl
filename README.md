@@ -497,7 +497,7 @@ const crawlResponse = await app.crawlUrl('https://firecrawl.dev', {
   scrapeOptions: {
     formats: ['markdown', 'html'],
   }
-} as CrawlParams, true, 30) as CrawlStatusResponse;
+} satisfies CrawlParams, true, 30) satisfies CrawlStatusResponse;
 
 if (crawlResponse) {
   console.log(crawlResponse)
