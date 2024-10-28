@@ -3,6 +3,7 @@ from firecrawl import FirecrawlApp
 import json
 from dotenv import load_dotenv
 import anthropic
+import agentops
 
 # ANSI color codes
 class Colors:
@@ -161,4 +162,5 @@ def main():
         print(f"{Colors.RED}No relevant pages identified. Consider refining the search parameters or trying a different website.{Colors.RESET}")
 
 if __name__ == "__main__":
+    agentops.init(os.getenv("AGENTOPS_API_KEY"))
     main()
