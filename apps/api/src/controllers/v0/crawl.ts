@@ -213,9 +213,9 @@ export async function crawlController(req: Request, res: Response) {
         {
           url,
           mode: "single_urls",
-          crawlerOptions: crawlerOptions,
+          crawlerOptions,
           team_id,
-          plan,
+          plan: plan!,
           pageOptions: pageOptions,
           origin: req.body.origin ?? defaultOrigin,
           crawl_id: id,

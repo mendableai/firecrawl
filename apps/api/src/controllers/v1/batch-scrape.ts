@@ -4,7 +4,6 @@ import {
   BatchScrapeRequest,
   batchScrapeRequestSchema,
   CrawlResponse,
-  legacyScrapeOptions,
   RequestWithAuth,
 } from "./types";
 import {
@@ -27,17 +26,16 @@ export async function batchScrapeController(
 
   await logCrawl(id, req.auth.team_id);
 
-  let { remainingCredits } = req.account;
+  let { remainingCredits } = req.account!;
   const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
   if(!useDbAuthentication){
     remainingCredits = Infinity;
   }
 
-  const pageOptions = legacyScrapeOptions(req.body);
-
   const sc: StoredCrawl = {
     crawlerOptions: null,
-    pageOptions,
+    scrapeOptions: req.body,
+    internalOptions: {},
     team_id: req.auth.team_id,
     createdAt: Date.now(),
     plan: req.auth.plan,
@@ -64,7 +62,7 @@ export async function batchScrapeController(
         team_id: req.auth.team_id,
         plan: req.auth.plan,
         crawlerOptions: null,
-        pageOptions,
+        scrapeOptions: req.body,
         origin: "api",
         crawl_id: id,
         sitemapped: true,
