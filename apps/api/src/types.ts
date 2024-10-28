@@ -33,7 +33,7 @@ export interface WebScraperOptions {
   crawl_id?: string;
   sitemapped?: boolean;
   webhook?: string;
-  verification_token?: string,
+  verificationToken?: string,
   v1?: boolean;
   is_scrape?: boolean;
 }

@@ -117,7 +117,7 @@ export async function crawlController(
           crawl_id: id,
           sitemapped: true,
           webhook: req.body.webhook,
-          verification_token: req.body.verification_token,
+          verificationToken: req.body.verificationToken,
           v1: true,
         },
         opts: {
@@ -149,7 +149,7 @@ export async function crawlController(
         origin: "api",
         crawl_id: id,
         webhook: req.body.webhook,
-        verification_token: req.body.verification_token,
+        verificationToken: req.body.verificationToken,
         v1: true,
       },
       {
@@ -160,7 +160,7 @@ export async function crawlController(
   }
 
   if(req.body.webhook) {
-    await callWebhook(req.auth.team_id, id, null, req.body.webhook, req.body.verification_token, true, "crawl.started");
+    await callWebhook(req.auth.team_id, id, null, req.body.webhook, req.body.verificationToken, true, "crawl.started");
   }
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";

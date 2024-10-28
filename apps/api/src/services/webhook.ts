@@ -12,7 +12,7 @@ export const callWebhook = async (
   id: string,
   data: any | null,
   specified?: string,
-  verification_token?: string,
+  verificationToken?: string,
   v1 = false,
   eventType: WebhookEventType = "crawl.page",
   awaitWebhook: boolean = false
@@ -24,7 +24,7 @@ export const callWebhook = async (
     );
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
     let webhookUrl = specified ?? selfHostedUrl;
-    verification_token = verification_token ?? process.env.SELF_HOSTED_WEBHOOK_VERIFICATION_TOKEN
+    verificationToken = verificationToken ?? process.env.SELF_HOSTED_WEBHOOK_VERIFICATION_TOKEN
 
     // Only fetch the webhook URL from the database if the self-hosted webhook URL and specified webhook are not set
     // and the USE_DB_AUTHENTICATION environment variable is set to true
@@ -79,7 +79,7 @@ export const callWebhook = async (
       type: eventType,
       [v1 ? "id" : "jobId"]: id,
       data: dataToSend,
-      verification_token,
+      verificationToken,
       error: !v1
         ? data?.error || undefined
         : eventType === "crawl.page"
