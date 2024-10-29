@@ -19,7 +19,7 @@ describe('crawlController', () => {
   it('should prevent duplicate requests using the same idempotency key', async () => {
     const req = {
       headers: {
-        'x-idempotency-key': await crypto.randomUUID(),
+        'x-idempotency-key': crypto.randomUUID(),
         'Authorization': `Bearer ${process.env.TEST_API_KEY}`
       },
       body: {
