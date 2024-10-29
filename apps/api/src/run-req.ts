@@ -1,6 +1,7 @@
 import axios from "axios";
 import { promises as fs } from "fs";
 import { v4 as uuidV4 } from "uuid";
+import { setTimeout } from 'timers/promises'
 
 interface Result {
   start_url: string;
@@ -64,7 +65,7 @@ async function getContent(result: Result): Promise<boolean> {
       console.error("Error getting content:", error);
     }
     const randomSleep = Math.floor(Math.random() * 15000) + 5000;
-    await new Promise((resolve) => setTimeout(resolve, randomSleep)); // Reduce sleep time to 1.5 seconds
+    await setTimeout(randomSleep); // Reduce sleep time to 1.5 seconds
     attempts++;
   }
   // Set result as null if timed out
@@ -143,7 +144,7 @@ async function processResults(results: Result[]): Promise<void> {
       .catch((error) => {
         console.error(`Error processing batch starting at index ${i}:`, error);
       });
-    await new Promise((resolve) => setTimeout(resolve, 60 * 1000)); // Wait for 1 minute
+    await setTimeout(60 * 1000); // Wait for 1 minute
   }
 }
 
