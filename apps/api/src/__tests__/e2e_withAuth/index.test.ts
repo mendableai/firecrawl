@@ -675,7 +675,7 @@ describe("E2E Tests for v0 API Routes", () => {
           if (response.body.status === "completed") {
             isCompleted = true;
           } else {
-            await setTimeout(1000)); // Wait for 1 second before checking agan
+            await setTimeout(1000)); // Wait for 1 second before checking again
           }
         }
 
@@ -735,7 +735,7 @@ describe("E2E Tests for v0 API Routes", () => {
     //       isCompleted = true;
     //       completedResponse = response;
     //     } else {
-    //       await setTimeout(1000)); // Wait for 1 second before checking agan
+    //       await setTimeout(1000)); // Wait for 1 second before checking again
     //     }
     //   }
     //     expect(completedResponse.body.status).toBe('completed');
