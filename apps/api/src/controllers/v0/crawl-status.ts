@@ -60,7 +60,7 @@ export async function crawlStatusController(req: Request, res: Response) {
     }));
 
     // Filter out failed jobs
-    jobsWithStatuses = jobsWithStatuses.filter(x => x.status !== "failed");
+    jobsWithStatuses = jobsWithStatuses.filter(x => x.status !== "failed" && x.status !== "unknown");
 
     // Sort jobs by timestamp
     jobsWithStatuses.sort((a, b) => a.job.timestamp - b.job.timestamp);

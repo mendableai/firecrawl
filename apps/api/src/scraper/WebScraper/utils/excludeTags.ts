@@ -3,10 +3,8 @@ export const excludeNonMainTags = [
   "footer",
   "nav",
   "aside",
-  ".header",
   ".top",
   ".navbar",
-  "#header",
   ".footer",
   ".bottom",
   "#footer",
@@ -39,8 +37,6 @@ export const excludeNonMainTags = [
   "#search",
   ".share",
   "#share",
-  ".widget",
-  "#widget",
   ".cookie",
   "#cookie"
 ];

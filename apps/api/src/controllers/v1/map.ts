@@ -63,7 +63,7 @@ export async function mapController(
   const maxPages = Math.ceil(Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage);
 
   const cacheKey = `fireEngineMap:${mapUrl}`;
-  const cachedResult = await redis.get(cacheKey);
+  const cachedResult = null;
 
   let allResults: any[];
   let pagePromises: Promise<any>[];

@@ -4,6 +4,7 @@ import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { Action, ExtractorOptions, PageOptions } from "../../lib/entities";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { PlanType } from "../../types";
+import { countries } from "../../lib/validate-country";
 
 export type Format =
   | "markdown"
@@ -108,6 +109,28 @@ export const scrapeOptions = z.object({
   extract: extractOptions.optional(),
   parsePDF: z.boolean().default(true),
   actions: actionsSchema.optional(),
+  // New
+  location: z.object({
+    country: z.string().optional().refine(
+      (val) => !val || Object.keys(countries).includes(val.toUpperCase()),
+      {
+        message: "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
+      }
+    ).transform(val => val ? val.toUpperCase() : 'US'),
+    languages: z.string().array().optional(),
+  }).optional(),
+  
+  // Deprecated
+  geolocation: z.object({
+    country: z.string().optional().refine(
+      (val) => !val || Object.keys(countries).includes(val.toUpperCase()),
+      {
+        message: "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
+      }
+    ).transform(val => val ? val.toUpperCase() : 'US'),
+    languages: z.string().array().optional(),
+  }).optional(),
+  skipTlsVerification: z.boolean().default(false),
 }).strict(strictMessage)
 
 
@@ -132,18 +155,28 @@ export const scrapeRequestSchema = scrapeOptions.extend({
   return obj;
 });
 
-// export type ScrapeRequest = {
-//   url: string;
-//   formats?: Format[];
-//   headers?: { [K: string]: string };
-//   includeTags?: string[];
-//   excludeTags?: string[];
-//   onlyMainContent?: boolean;
-//   timeout?: number;
-//   waitFor?: number;
-// }
-
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
+
+export const batchScrapeRequestSchema = scrapeOptions.extend({
+  urls: url.array(),
+  origin: z.string().optional().default("api"),
+}).strict(strictMessage).refine(
+  (obj) => {
+    const hasExtractFormat = obj.formats?.includes("extract");
+    const hasExtractOptions = obj.extract !== undefined;
+    return (hasExtractFormat && hasExtractOptions) || (!hasExtractFormat && !hasExtractOptions);
+  },
+  {
+    message: "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
+  }
+).transform((obj) => {
+  if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
+    return { ...obj, timeout: 60000 };
+  }
+  return obj;
+});
+
+export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
 
 const crawlerOptions = z.object({
   includePaths: z.string().array().default([]),
@@ -250,6 +283,8 @@ export type Document = {
     sourceURL?: string;
     statusCode?: number;
     error?: string;
+    [key: string]: string | string[] | number | undefined;
+
   };
 };
 
@@ -340,6 +375,8 @@ export type AuthCreditUsageChunk = {
   coupons: any[];
   adjusted_credits_used: number; // credits this period minus coupons used
   remaining_credits: number;
+  sub_user_id: string | null;
+  total_credits_sum: number;
 };
 
 export interface RequestWithMaybeACUC<
@@ -421,6 +458,8 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
     parsePDF: x.parsePDF,
     actions: x.actions as Action[], // no strict null checking grrrr - mogery
+    geolocation: x.location ?? x.geolocation,
+    skipTlsVerification: x.skipTlsVerification
   };
 }
 

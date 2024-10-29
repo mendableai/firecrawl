@@ -44,7 +44,7 @@ export async function getJobs(ids: string[]) {
   return jobs;
 }
 
-export async function crawlStatusController(req: RequestWithAuth<CrawlStatusParams, undefined, CrawlStatusResponse>, res: Response<CrawlStatusResponse>) {
+export async function crawlStatusController(req: RequestWithAuth<CrawlStatusParams, undefined, CrawlStatusResponse>, res: Response<CrawlStatusResponse>, isBatch = false) {
   const sc = await getCrawl(req.params.jobId);
   if (!sc) {
     return res.status(404).json({ success: false, error: "Job not found" });
@@ -60,12 +60,24 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
   let jobIDs = await getCrawlJobs(req.params.jobId);
   let jobStatuses = await Promise.all(jobIDs.map(async x => [x, await getScrapeQueue().getJobState(x)] as const));
   const throttledJobs = new Set(...await getThrottledJobs(req.auth.team_id));
-  jobStatuses = jobStatuses.filter(x => !throttledJobs.has(x[0])); // throttled jobs can have a failed status, but they are not actually failed
-  // filter out failed jobs
-  jobIDs = jobIDs.filter(id => !jobStatuses.some(status => status[0] === id && status[1] === "failed"));
-  // filter the job statues
-  jobStatuses = jobStatuses.filter(x => x[1] !== "failed");
-  const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] = sc.cancelled ? "cancelled" : jobStatuses.every(x => x[1] === "completed") ? "completed" : "scraping";
+
+  const throttledJobsSet = new Set(throttledJobs);
+
+  const validJobStatuses = [];
+  const validJobIDs = [];
+
+  for (const [id, status] of jobStatuses) {
+    if (!throttledJobsSet.has(id) && status !== "failed" && status !== "unknown") {
+      validJobStatuses.push([id, status]);
+      validJobIDs.push(id);
+    }
+  }
+
+  const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] = sc.cancelled ? "cancelled" : validJobStatuses.every(x => x[1] === "completed") ? "completed" : "scraping";
+
+  // Use validJobIDs instead of jobIDs for further processing
+  jobIDs = validJobIDs;
+
   const doneJobsLength = await getDoneJobsOrderedLength(req.params.jobId);
   const doneJobsOrder = await getDoneJobsOrdered(req.params.jobId, start, end ?? -1);
 
@@ -100,7 +112,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
 
   const data = doneJobs.map(x => x.returnvalue);
 
-  const nextURL = new URL(`${req.protocol}://${req.get("host")}/v1/crawl/${req.params.jobId}`);
+  const nextURL = new URL(`${req.protocol}://${req.get("host")}/v1/${isBatch ? "batch/scrape" : "crawl"}/${req.params.jobId}`);
 
   nextURL.searchParams.set("skip", (start + data.length).toString());
 

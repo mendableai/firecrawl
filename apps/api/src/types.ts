@@ -130,6 +130,8 @@ export enum NotificationType {
   APPROACHING_LIMIT = "approachingLimit",
   LIMIT_REACHED = "limitReached",
   RATE_LIMIT_REACHED = "rateLimitReached",
+  AUTO_RECHARGE_SUCCESS = "autoRechargeSuccess",
+  AUTO_RECHARGE_FAILED = "autoRechargeFailed",
 }
 
 export type ScrapeLog = {
@@ -159,4 +161,4 @@ export type PlanType =
   | "";
 
 
-export type WebhookEventType = "crawl.page" | "crawl.started" | "crawl.completed" | "crawl.failed";
+export type WebhookEventType = "crawl.page" | "batch_scrape.page" | "crawl.started" | "crawl.completed" | "batch_scrape.completed" | "crawl.failed";

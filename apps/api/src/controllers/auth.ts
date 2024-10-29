@@ -13,7 +13,7 @@ import { setTraceAttributes } from "@hyperdx/node-opentelemetry";
 import { sendNotification } from "../services/notification/email_notification";
 import { Logger } from "../lib/logger";
 import { redlock } from "../services/redlock";
-import { getValue } from "../services/redis";
+import { deleteKey, getValue } from "../services/redis";
 import { setValue } from "../services/redis";
 import { validate } from "uuid";
 import * as Sentry from "@sentry/node";
@@ -37,12 +37,17 @@ function normalizedApiIsUuid(potentialUuid: string): boolean {
   return validate(potentialUuid);
 }
 
-export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk)) { 
+export async function setCachedACUC(
+  api_key: string,
+  acuc:
+    | AuthCreditUsageChunk
+    | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk)
+) {
   const cacheKeyACUC = `acuc_${api_key}`;
   const redLockKey = `lock_${cacheKeyACUC}`;
 
   try {
-    await redlock.using([redLockKey], 10000, {}, async signal => {
+    await redlock.using([redLockKey], 10000, {}, async (signal) => {
       if (typeof acuc === "function") {
         acuc = acuc(JSON.parse(await getValue(cacheKeyACUC)));
 
@@ -68,36 +73,72 @@ export async function setCachedACUC(api_key: string, acuc: AuthCreditUsageChunk 
   }
 }
 
-export async function getACUC(api_key: string, cacheOnly = false): Promise<AuthCreditUsageChunk | null> {
+export async function getACUC(
+  api_key: string,
+  cacheOnly = false,
+  useCache = true
+): Promise<AuthCreditUsageChunk | null> {
   const cacheKeyACUC = `acuc_${api_key}`;
 
-  const cachedACUC = await getValue(cacheKeyACUC);
+  if (useCache) {
+    const cachedACUC = await getValue(cacheKeyACUC);
+    if (cachedACUC !== null) {
+      return JSON.parse(cachedACUC);
+    }
+  }
 
-  if (cachedACUC !== null) {
-    return JSON.parse(cachedACUC);
-  } else if (!cacheOnly) {
-    const { data, error } =
-      await supabase_service.rpc("auth_credit_usage_chunk", { input_key: api_key });
-    
-    if (error) {
-      throw new Error("Failed to retrieve authentication and credit usage data: " + JSON.stringify(error));
+  if (!cacheOnly) {
+    let data;
+    let error;
+    let retries = 0;
+    const maxRetries = 5;
+
+    while (retries < maxRetries) {
+      ({ data, error } = await supabase_service.rpc(
+        "auth_credit_usage_chunk_test_21_credit_pack",
+        { input_key: api_key }
+      ));
+
+      if (!error) {
+        break;
+      }
+
+      Logger.warn(
+        `Failed to retrieve authentication and credit usage data after ${retries}, trying again...`
+      );
+      retries++;
+      if (retries === maxRetries) {
+        throw new Error(
+          "Failed to retrieve authentication and credit usage data after 3 attempts: " +
+            JSON.stringify(error)
+        );
+      }
+
+      // Wait for a short time before retrying
+      await new Promise((resolve) => setTimeout(resolve, 200));
     }
 
-    const chunk: AuthCreditUsageChunk | null = data.length === 0
-      ? null
-      : data[0].team_id === null
-      ? null
-      : data[0];
+    const chunk: AuthCreditUsageChunk | null =
+      data.length === 0 ? null : data[0].team_id === null ? null : data[0];
 
     // NOTE: Should we cache null chunks? - mogery
-    if (chunk !== null) {
+    if (chunk !== null && useCache) {
       setCachedACUC(api_key, chunk);
     }
+    
+    // console.log(chunk);
 
     return chunk;
   } else {
     return null;
   }
+}
+
+export async function clearACUC(
+  api_key: string,
+): Promise<void> {
+  const cacheKeyACUC = `acuc_${api_key}`;
+  await deleteKey(cacheKeyACUC);
 }
 
 export async function authenticateUser(
@@ -132,7 +173,11 @@ export async function supaAuthenticateUser(
   plan?: PlanType;
   chunk?: AuthCreditUsageChunk;
 }> {
-  const authHeader = req.headers.authorization ?? (req.headers["sec-websocket-protocol"] ? `Bearer ${req.headers["sec-websocket-protocol"]}` : null);
+  const authHeader =
+    req.headers.authorization ??
+    (req.headers["sec-websocket-protocol"]
+      ? `Bearer ${req.headers["sec-websocket-protocol"]}`
+      : null);
   if (!authHeader) {
     return { success: false, error: "Unauthorized", status: 401 };
   }
@@ -162,7 +207,7 @@ export async function supaAuthenticateUser(
       rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
     } else {
       rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
-    }      
+    }
     teamId = "preview";
   } else {
     normalizedApi = parseApi(token);

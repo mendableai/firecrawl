@@ -2,6 +2,7 @@ import { Logger } from "../../src/lib/logger";
 import { SearchResult } from "../../src/lib/entities";
 import { googleSearch } from "./googlesearch";
 import { fireEngineMap } from "./fireEngine";
+import { searchapi_search } from "./searchapi";
 import { serper_search } from "./serper";
 
 export async function search({
@@ -30,7 +31,16 @@ export async function search({
   timeout?: number;
 }): Promise<SearchResult[]> {
   try {
-    
+    if (process.env.SEARCHAPI_API_KEY) {
+      return await searchapi_search(query, {
+        num_results,
+        tbs,
+        filter,
+        lang,
+        country,
+        location
+      });
+    }
     if (process.env.SERPER_API_KEY) {
       return await serper_search(query, {
         num_results,

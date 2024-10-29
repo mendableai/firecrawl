@@ -81,8 +81,10 @@ class FirecrawlApp:
             response = response.json()
             if response['success'] and 'data' in response:
                 return response['data']
-            else:
+            elif "error" in response:
                 raise Exception(f'Failed to scrape URL. Error: {response["error"]}')
+            else:
+                raise Exception(f'Failed to scrape URL. Error: {response}')
         else:
             self._handle_error(response, 'scrape URL')
 
@@ -117,7 +119,14 @@ class FirecrawlApp:
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
 
         Returns:
-            Any: The crawl job ID or the crawl results if waiting until completion.
+            Dict[str, Any]: A dictionary containing the crawl results. The structure includes:
+                - 'success' (bool): Indicates if the crawl was successful.
+                - 'status' (str): The final status of the crawl job (e.g., 'completed').
+                - 'completed' (int): Number of scraped pages that completed.
+                - 'total' (int): Total number of scraped pages.
+                - 'creditsUsed' (int): Estimated number of API credits used for this crawl.
+                - 'expiresAt' (str): ISO 8601 formatted date-time string indicating when the crawl data expires.
+                - 'data' (List[Dict]): List of all the scraped pages.
 
         Raises:
             Exception: If the crawl job initiation or monitoring fails.
@@ -146,7 +155,10 @@ class FirecrawlApp:
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
 
         Returns:
-            Dict[str, Any]: The response from the crawl initiation request.
+            Dict[str, Any]: A dictionary containing the crawl initiation response. The structure includes:
+                - 'success' (bool): Indicates if the crawl initiation was successful.
+                - 'id' (str): The unique identifier for the crawl job.
+                - 'url' (str): The URL to check the status of the crawl job.
         """
         endpoint = f'/v1/crawl'
         headers = self._prepare_headers(idempotency_key)
@@ -236,7 +248,7 @@ class FirecrawlApp:
             params (Optional[Dict[str, Any]]): Additional parameters for the map search.
 
         Returns:
-            Any: The result of the map search, typically a dictionary containing mapping data.
+            List[str]: A list of URLs discovered during the map search.
         """
         endpoint = f'/v1/map'
         headers = self._prepare_headers()
@@ -256,10 +268,129 @@ class FirecrawlApp:
             response = response.json()
             if response['success'] and 'links' in response:
                 return response
-            else:
+            elif 'error' in response:
                 raise Exception(f'Failed to map URL. Error: {response["error"]}')
+            else:
+                raise Exception(f'Failed to map URL. Error: {response}')
         else:
             self._handle_error(response, 'map')
+
+    def batch_scrape_urls(self, urls: list[str],
+                  params: Optional[Dict[str, Any]] = None,
+                  poll_interval: Optional[int] = 2,
+                  idempotency_key: Optional[str] = None) -> Any:
+        """
+        Initiate a batch scrape job for the specified URLs using the Firecrawl API.
+
+        Args:
+            urls (list[str]): The URLs to scrape.
+            params (Optional[Dict[str, Any]]): Additional parameters for the scraper.
+            poll_interval (Optional[int]): Time in seconds between status checks when waiting for job completion. Defaults to 2 seconds.
+            idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the scrape results. The structure includes:
+                - 'success' (bool): Indicates if the batch scrape was successful.
+                - 'status' (str): The final status of the batch scrape job (e.g., 'completed').
+                - 'completed' (int): Number of scraped pages that completed.
+                - 'total' (int): Total number of scraped pages.
+                - 'creditsUsed' (int): Estimated number of API credits used for this batch scrape.
+                - 'expiresAt' (str): ISO 8601 formatted date-time string indicating when the batch scrape data expires.
+                - 'data' (List[Dict]): List of all the scraped pages.
+
+        Raises:
+            Exception: If the batch scrape job initiation or monitoring fails.
+        """
+        endpoint = f'/v1/batch/scrape'
+        headers = self._prepare_headers(idempotency_key)
+        json_data = {'urls': urls}
+        if params:
+            json_data.update(params)
+        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
+        if response.status_code == 200:
+            id = response.json().get('id')
+            return self._monitor_job_status(id, headers, poll_interval)
+
+        else:
+            self._handle_error(response, 'start batch scrape job')
+
+
+    def async_batch_scrape_urls(self, urls: list[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Initiate a crawl job asynchronously.
+
+        Args:
+            urls (list[str]): The URLs to scrape.
+            params (Optional[Dict[str, Any]]): Additional parameters for the scraper.
+            idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the batch scrape initiation response. The structure includes:
+                - 'success' (bool): Indicates if the batch scrape initiation was successful.
+                - 'id' (str): The unique identifier for the batch scrape job.
+                - 'url' (str): The URL to check the status of the batch scrape job.
+        """
+        endpoint = f'/v1/batch/scrape'
+        headers = self._prepare_headers(idempotency_key)
+        json_data = {'urls': urls}
+        if params:
+            json_data.update(params)
+        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
+        if response.status_code == 200:
+            return response.json()
+        else:
+            self._handle_error(response, 'start batch scrape job')
+    
+    def batch_scrape_urls_and_watch(self, urls: list[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> 'CrawlWatcher':
+        """
+        Initiate a batch scrape job and return a CrawlWatcher to monitor the job via WebSocket.
+
+        Args:
+            urls (list[str]): The URLs to scrape.
+            params (Optional[Dict[str, Any]]): Additional parameters for the scraper.
+            idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+
+        Returns:
+            CrawlWatcher: An instance of CrawlWatcher to monitor the batch scrape job.
+        """
+        crawl_response = self.async_batch_scrape_urls(urls, params, idempotency_key)
+        if crawl_response['success'] and 'id' in crawl_response:
+            return CrawlWatcher(crawl_response['id'], self)
+        else:
+            raise Exception("Batch scrape job failed to start")
+    
+    def check_batch_scrape_status(self, id: str) -> Any:
+        """
+        Check the status of a batch scrape job using the Firecrawl API.
+
+        Args:
+            id (str): The ID of the batch scrape job.
+
+        Returns:
+            Any: The status of the batch scrape job.
+
+        Raises:
+            Exception: If the status check request fails.
+        """
+        endpoint = f'/v1/batch/scrape/{id}'
+
+        headers = self._prepare_headers()
+        response = self._get_request(f'{self.api_url}{endpoint}', headers)
+        if response.status_code == 200:
+            data = response.json()
+            return {
+                'success': True,
+                'status': data.get('status'),
+                'total': data.get('total'),
+                'completed': data.get('completed'),
+                'creditsUsed': data.get('creditsUsed'),
+                'expiresAt': data.get('expiresAt'),
+                'next': data.get('next'),
+                'data': data.get('data'),
+                'error': data.get('error')
+            }
+        else:
+            self._handle_error(response, 'check batch scrape status')
 
     def _prepare_headers(self, idempotency_key: Optional[str] = None) -> Dict[str, str]:
         """

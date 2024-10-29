@@ -6,6 +6,7 @@ import { Logger } from "../lib/logger";
 
 dotenv.config();
 
+
 export async function fireEngineMap(
   q: string,
   options: {
@@ -41,11 +42,12 @@ export async function fireEngineMap(
       url: `${process.env.FIRE_ENGINE_BETA_URL}/search`,
       headers: {
         "Content-Type": "application/json",
+        "X-Disable-Cache": "true"
       },
       data: data,
     };
     const response = await axios(config);
-    if (response && response) {
+    if (response && response.data) {
       return response.data;
     } else {
       return [];

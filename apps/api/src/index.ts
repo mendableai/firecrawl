@@ -20,6 +20,7 @@ import { crawlStatusWSController } from "./controllers/v1/crawl-status-ws";
 import { ErrorResponse, ResponseWithSentry } from "./controllers/v1/types";
 import { ZodError } from "zod";
 import { v4 as uuidv4 } from "uuid";
+import dns from 'node:dns';
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -28,13 +29,13 @@ const { ExpressAdapter } = require("@bull-board/express");
 const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
 Logger.info(`Number of CPUs: ${numCPUs} available`);
 
-const cacheable = new CacheableLookup({
-  // this is important to avoid querying local hostnames see https://github.com/szmarczak/cacheable-lookup readme
-  lookup:false
-});
+const cacheable = new CacheableLookup()
 
+
+// Install cacheable lookup for all other requests
 cacheable.install(http.globalAgent);
-cacheable.install(https.globalAgent)
+cacheable.install(https.globalAgent);
+
 
 const ws = expressWs(express());
 const app = ws.app;
