@@ -1,5 +1,6 @@
 import request from "supertest";
 import { configDotenv } from "dotenv";
+import { setTimeout } from 'timers/promises';
 import {
   ScrapeRequest,
   ScrapeResponseRequestTest,
@@ -203,7 +204,7 @@ describe("E2E Tests for v1 API Routes", () => {
           .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
           .set('Content-Type', 'application/json')
           .send(scrapeRequest);
-        await new Promise((r) => setTimeout(r, 6000));
+        await setTimeout(6000);
   
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty('data');
@@ -225,7 +226,7 @@ describe("E2E Tests for v1 API Routes", () => {
           .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
           .set('Content-Type', 'application/json')
           .send(scrapeRequest);
-        await new Promise((r) => setTimeout(r, 6000));
+        await setTimeout(6000);
   
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty('data');
@@ -290,7 +291,7 @@ describe("E2E Tests for v1 API Routes", () => {
           .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
           .set('Content-Type', 'application/json')
           .send({ url: 'https://httpstat.us/400' });
-        await new Promise((r) => setTimeout(r, 5000));
+        await setTimeout(5000);
   
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty('data');
@@ -309,7 +310,7 @@ describe("E2E Tests for v1 API Routes", () => {
           .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
           .set('Content-Type', 'application/json')
           .send({ url: 'https://httpstat.us/401' });
-        await new Promise((r) => setTimeout(r, 5000));
+        await setTimeout(5000);
   
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty('data');
@@ -328,7 +329,7 @@ describe("E2E Tests for v1 API Routes", () => {
       //     .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
       //     .set('Content-Type', 'application/json')
       //     .send({ url: 'https://httpstat.us/403' });
-      //   await new Promise((r) => setTimeout(r, 5000));
+      //   await setTimeout(5000);
   
       //   expect(response.statusCode).toBe(200);
       //   expect(response.body).toHaveProperty('data');
@@ -346,7 +347,7 @@ describe("E2E Tests for v1 API Routes", () => {
           .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
           .set('Content-Type', 'application/json')
           .send({ url: 'https://httpstat.us/404' });
-        await new Promise((r) => setTimeout(r, 5000));
+        await setTimeout(5000);
   
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty('data');
@@ -364,7 +365,7 @@ describe("E2E Tests for v1 API Routes", () => {
       //     .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
       //     .set('Content-Type', 'application/json')
       //     .send({ url: 'https://httpstat.us/405' });
-      //   await new Promise((r) => setTimeout(r, 5000));
+      //   await setTimeout(5000);
   
       //   expect(response.statusCode).toBe(200);
       //   expect(response.body).toHaveProperty('data');
@@ -382,7 +383,7 @@ describe("E2E Tests for v1 API Routes", () => {
       //     .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
       //     .set('Content-Type', 'application/json')
       //     .send({ url: 'https://httpstat.us/500' });
-      //   await new Promise((r) => setTimeout(r, 5000));
+      //   await setTimeout(5000);
   
       //   expect(response.statusCode).toBe(200);
       //   expect(response.body).toHaveProperty('data');
@@ -741,11 +742,11 @@ describe("POST /v1/crawl", () => {
         isFinished = response.body.status === "completed";
 
         if (!isFinished) {
-          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+          await setTimeout(1000); // Wait for 1 second before checking again
         }
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
+      await setTimeout(1000); // wait for data to be saved on the database
       const completedResponse = await request(TEST_URL)
         .get(`/v1/crawl/${crawlResponse.body.id}`)
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
@@ -797,11 +798,11 @@ describe("POST /v1/crawl", () => {
         isFinished = response.body.status === "completed";
 
         if (!isFinished) {
-          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+          await setTimeout(1000); // Wait for 1 second before checking again
         }
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
+      await setTimeout(1000); // wait for data to be saved on the database
       const completedResponse = await request(
         TEST_URL
       )
@@ -847,7 +848,7 @@ describe("POST /v1/crawl", () => {
         expect(statusCheckResponse.statusCode).toBe(200);
         isCompleted = statusCheckResponse.body.status === "completed";
         if (!isCompleted) {
-          await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+          await setTimeout(1000); // Wait for 1 second before checking again
         }
       }
       const completedResponse = await request(
@@ -934,11 +935,11 @@ describe("GET /v1/crawl/:jobId", () => {
         if (response.body.status === "completed") {
           isCompleted = true;
         } else {
-          await new Promise((r) => setTimeout(r, 1000)); // Wait for 1 second before checking again
+          await setTimeout(1000)); // Wait for 1 second before checking agan
         }
       }
 
-      await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
+      await setTimeout(1000); // wait for data to be saved on the database
       const completedResponse = await request(TEST_URL)
         .get(`/v1/crawl/${crawlResponse.body.id}`)
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
@@ -976,7 +977,7 @@ describe("GET /v1/crawl/:jobId", () => {
 
       expect(crawlResponse.statusCode).toBe(200);
 
-      await new Promise((r) => setTimeout(r, 10000));
+      await setTimeout(10000);
 
       const responseCancel = await request(TEST_URL)
         .delete(`/v1/crawl/${crawlResponse.body.id}`)
@@ -985,7 +986,7 @@ describe("GET /v1/crawl/:jobId", () => {
       expect(responseCancel.body).toHaveProperty("status");
       expect(responseCancel.body.status).toBe("cancelled");
 
-      await new Promise((r) => setTimeout(r, 10000));
+      await setTimeout(10000);
       const completedResponse = await request(TEST_URL)
         .get(`/v1/crawl/${crawlResponse.body.id}`)
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
