@@ -69,8 +69,13 @@ export async function runWebScraper({
     }
 
     if(is_scrape === false) {
-      billTeam(team_id, undefined, 1).catch(error => {
-        logger.error(`Failed to bill team ${team_id} for 1 credits: ${error}`);
+      let creditsToBeBilled = 1; // Assuming 1 credit per document
+      if (scrapeOptions.extract) {
+        creditsToBeBilled = 5;
+      }
+
+      billTeam(team_id, undefined, creditsToBeBilled).catch(error => {
+        logger.error(`Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`);
         // Optionally, you could notify an admin or add to a retry queue here
       });
     }

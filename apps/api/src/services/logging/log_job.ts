@@ -68,7 +68,9 @@ export async function logJob(job: FirecrawlJob) {
           retry: job.retry,
         },
       };
-      posthog.capture(phLog);
+      if(job.mode !== "single_urls") {
+        posthog.capture(phLog);
+      }
     }
     if (error) {
       logger.error(`Error logging job: ${error.message}`);

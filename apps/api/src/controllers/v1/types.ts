@@ -108,13 +108,26 @@ export const scrapeOptions = z.object({
   extract: extractOptions.optional(),
   parsePDF: z.boolean().default(true),
   actions: actionsSchema.optional(),
+  // New
+  location: z.object({
+    country: z.string().optional().refine(
+      (val) => !val || Object.keys(countries).includes(val.toUpperCase()),
+      {
+        message: "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
+      }
+    ).transform(val => val ? val.toUpperCase() : 'US'),
+    languages: z.string().array().optional(),
+  }).optional(),
+  
+  // Deprecated
   geolocation: z.object({
     country: z.string().optional().refine(
       (val) => !val || Object.keys(countries).includes(val.toUpperCase()),
       {
         message: "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
       }
-    ).transform(val => val ? val.toUpperCase() : 'US')
+    ).transform(val => val ? val.toUpperCase() : 'US'),
+    languages: z.string().array().optional(),
   }).optional(),
   skipTlsVerification: z.boolean().default(false),
 }).strict(strictMessage)
