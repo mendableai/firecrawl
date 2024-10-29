@@ -1,6 +1,7 @@
 import axios from 'axios';
 import * as cheerio from 'cheerio';
 import * as querystring from 'querystring';
+import { setTimeout } from 'timers/promises';
 import { SearchResult } from '../../src/lib/entities';
 import { Logger } from '../../src/lib/logger';
 
@@ -94,7 +95,7 @@ export async function googleSearch(term: string, advanced = false, num_results =
                     }
                 }
             });
-            await new Promise(resolve => setTimeout(resolve, sleep_interval * 1000));
+            await setTimeout(sleep_interval * 1000);
         } catch (error) {
             if (error.message === 'Too many requests') {
                 Logger.warn('Too many requests, breaking the loop');

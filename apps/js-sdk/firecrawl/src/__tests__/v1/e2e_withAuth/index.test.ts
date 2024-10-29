@@ -1,5 +1,6 @@
 import FirecrawlApp, { type CrawlParams, type CrawlResponse, type CrawlStatusResponse, type MapResponse, type ScrapeResponse } from '../../../index';
 import { v4 as uuidv4 } from 'uuid';
+import { setTimeout } from 'timers/promises';
 import dotenv from 'dotenv';
 import { describe, test, expect } from '@jest/globals';
 
@@ -276,7 +277,7 @@ describe('FirecrawlApp E2E Tests', () => {
 
     expect(statusResponse.success).toBe(true);
     while ((statusResponse as any).status === 'scraping' && checks < maxChecks) {
-      await new Promise(resolve => setTimeout(resolve, 5000));
+      await setTimeout(5000);
       expect(statusResponse).not.toHaveProperty("partial_data"); // v0
       expect(statusResponse).not.toHaveProperty("current"); // v0
       expect(statusResponse).toHaveProperty("data");

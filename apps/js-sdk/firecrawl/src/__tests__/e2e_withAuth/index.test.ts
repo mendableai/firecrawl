@@ -6,6 +6,7 @@ import FirecrawlApp, {
   ScrapeResponseV0,
   SearchResponseV0,
 } from "../../index";
+import { setTimeout } from "timers/promises";
 import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
 import { describe, test, expect } from "@jest/globals";
@@ -243,7 +244,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       let checks = 0;
 
       while (statusResponse.status === "active" && checks < maxChecks) {
-        await new Promise((resolve) => setTimeout(resolve, 5000));
+        await setTimeout(5000);
         expect(statusResponse.partial_data).not.toBeNull();
         // expect(statusResponse.current).toBeGreaterThanOrEqual(1);
         statusResponse = (await app.checkCrawlStatus(

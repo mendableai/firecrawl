@@ -1,4 +1,5 @@
 import FirecrawlApp from 'firecrawl';
+import { setTimeout } from 'timers/promises';
 
 const app = new FirecrawlApp({apiKey: "fc-YOUR_API_KEY"});
 
@@ -29,7 +30,7 @@ const main = async () => {
         if (checkStatus.success && checkStatus.status === 'completed') {
           break;
         }
-        await new Promise(resolve => setTimeout(resolve, 1000)); // wait 1 second
+        await setTimeout(1000); // wait 1 second
       }
 
       if (checkStatus.success && checkStatus.data) {

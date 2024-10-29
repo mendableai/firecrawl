@@ -1,3 +1,4 @@
+import { setTimeout } from "timers/promises";
 import request from "supertest";
 import dotenv from "dotenv";
 import { numTokensFromString } from "../utils/tokens";
@@ -46,7 +47,7 @@ describe("Scraping Checkup (E2E)", () => {
       
       for (let i = 0; i < websitesData.length; i += batchSize) {
         // Introducing delay to respect the rate limit of 15 requests per minute
-        await new Promise(resolve => setTimeout(resolve, 10000)); 
+        await setTimeout(10000); 
 
         const batch = websitesData.slice(i, i + batchSize);
         const batchPromise = Promise.all(
@@ -102,7 +103,7 @@ describe("Scraping Checkup (E2E)", () => {
                   attempts++;
                   if (attempts < maxRetries) {
                     console.log(`Retrying... Attempt ${attempts + 1}`);
-                    await new Promise(resolve => setTimeout(resolve, 2000)); // Wait for 2 seconds before retrying
+                    await setTimeout(2000); // Wait for 2 seconds before retrying
                   }
                 }
               }

@@ -7,6 +7,7 @@ import { universalTimeout } from "../global";
 import { Logger } from "../../../lib/logger";
 import * as Sentry from "@sentry/node";
 import axiosRetry from 'axios-retry';
+import { setTimeout } from "timers/promises";
 
 axiosRetry(axios, { retries: 3 , onRetry:()=>{
   console.log("Retrying (fire-engine)...");
@@ -140,7 +141,7 @@ export async function scrapWithFireEngine({
 
     // added 5 seconds to the timeout to account for 'smart wait'
     while (checkStatusResponse.data.processing && Date.now() - startTime < universalTimeout + waitTotal + 5000) {
-      await new Promise(resolve => setTimeout(resolve, 250)); // wait 0.25 seconds
+      await setTimeout(250); // wait 0.25 seconds
       checkStatusResponse = await axiosInstance.get(`${process.env.FIRE_ENGINE_BETA_URL}/scrape/${_response.data.jobId}`);
     }
 

@@ -1,3 +1,4 @@
+import { setTimeout } from "timers/promises";
 import axios, { type AxiosResponse, type AxiosRequestHeaders, AxiosError } from "axios";
 import type * as zt from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
@@ -768,9 +769,7 @@ export default class FirecrawlApp {
           ["active", "paused", "pending", "queued", "waiting", "scraping"].includes(statusData.status)
         ) {
           checkInterval = Math.max(checkInterval, 2);
-          await new Promise((resolve) =>
-            setTimeout(resolve, checkInterval * 1000)
-          );
+          await setTimeout(resolve, checkInterval * 1000);
         } else {
           throw new FirecrawlError(
             `Crawl job failed or was stopped. Status: ${statusData.status}`,

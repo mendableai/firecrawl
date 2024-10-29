@@ -6,6 +6,7 @@ import dotenv from "dotenv";
 import pdf from "pdf-parse";
 import path from "path";
 import os from "os";
+import { setTimeout } from "timers/promises";
 import { axiosTimeout } from "../../../lib/timeout";
 import { Logger } from "../../../lib/logger";
 
@@ -84,7 +85,7 @@ export async function processPdfToText(filePath: string, parsePDF: boolean): Pro
           } else {
             // If the status code is not 200, increment the attempt counter and wait
             attempt++;
-            await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 0.5 seconds
+            await setTimeout(500); // Wait for 0.5 seconds
           }
         } catch (error) {
           Logger.debug("Error fetching result w/ LlamaIndex");
@@ -93,7 +94,7 @@ export async function processPdfToText(filePath: string, parsePDF: boolean): Pro
             Logger.error("Max attempts reached, unable to fetch result.");
             break; // Exit the loop if max attempts are reached
           }
-          await new Promise((resolve) => setTimeout(resolve, 500)); // Wait for 0.5 seconds before retrying
+          await setTimeout(500); // Wait for 0.5 seconds before retrying
           // You may want to handle specific errors differently
         }
       }

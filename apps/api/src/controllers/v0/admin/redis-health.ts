@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import Redis from "ioredis";
+import { setTimeout } from "timers/promises";
 import { Logger } from "../../../lib/logger";
 import { redisRateLimitClient } from "../../../services/rate-limiter";
 
@@ -11,7 +12,7 @@ export async function redisHealthController(req: Request, res: Response) {
       } catch (error) {
         if (attempt === retries) throw error;
         Logger.warn(`Attempt ${attempt} failed: ${error.message}. Retrying...`);
-        await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds before retrying
+        await setTimeout(2000); // Wait 2 seconds before retrying
       }
     }
   };

@@ -1,3 +1,4 @@
+import { setTimeout } from "timers/promises";
 import request from "supertest";
 import dotenv from "dotenv";
 import { WebsiteScrapeError } from "../utils/types";
@@ -54,7 +55,7 @@ describe("Crawling Checkup (E2E)", () => {
             isFinished = completedResponse.body.status === "completed";
 
             if (!isFinished) {
-              await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
+              await setTimeout(1000); // Wait for 1 second before checking again
             }
           }
 

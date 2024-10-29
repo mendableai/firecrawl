@@ -4,6 +4,7 @@ import {
   testSuiteRateLimiter,
   redisRateLimitClient,
 } from "./rate-limiter";
+import { setTimeout } from "timers/promises";
 import { RateLimiterMode } from "../../src/types";
 import { RateLimiterRedis } from "rate-limiter-flexible";
 
@@ -362,7 +363,7 @@ describe("Rate Limiter Service", () => {
 
     const consumePoints = 5;
     await limiter.consume("test-prefix:someToken", consumePoints);
-    await new Promise((resolve) => setTimeout(resolve, duration * 1000 + 100)); // Wait for duration + 100ms
+    await setTimeout(duration * 1000 + 100); // Wait for duration + 100ms
 
     const res = await limiter.consume("test-prefix:someToken", consumePoints);
     expect(res.remainingPoints).toBe(points - consumePoints);

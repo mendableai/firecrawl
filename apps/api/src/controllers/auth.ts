@@ -16,6 +16,7 @@ import { redlock } from "../services/redlock";
 import { deleteKey, getValue } from "../services/redis";
 import { setValue } from "../services/redis";
 import { validate } from "uuid";
+import { setTimeout } from "timers/promises";
 import * as Sentry from "@sentry/node";
 import { AuthCreditUsageChunk } from "./v1/types";
 // const { data, error } = await supabase_service
@@ -115,7 +116,7 @@ export async function getACUC(
       }
 
       // Wait for a short time before retrying
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      await setTimeout(200);
     }
 
     const chunk: AuthCreditUsageChunk | null =
