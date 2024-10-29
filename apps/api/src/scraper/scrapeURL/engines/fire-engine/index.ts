@@ -71,24 +71,8 @@ export async function scrapeURLWithFireEngineChromeCDP(meta: Meta): Promise<Engi
             fullPage: meta.options.formats.includes("screenshot@fullPage"),
         }] : []),
 
-        // Transform actions: insert waits before and after
-        ...(meta.options.actions ?? []).flatMap((action, i, arr) => {
-            if (["click", "write", "press"].includes(action.type)) {
-                return [
-                    ...(arr[i-1]?.type !== "wait" ? [{
-                        type: "wait" as const,
-                        milliseconds: 1200,
-                    }] : []),
-                    action,
-                    ...(arr[i+1]?.type !== "wait" ? [{
-                        type: "wait" as const,
-                        milliseconds: 1200,
-                    }] : []),
-                ]
-            } else {
-                return [action];
-            }
-        }),
+        // Include specified actions
+        ...(meta.options.actions ?? []),
     ];
 
     const request: FireEngineScrapeRequestCommon & FireEngineScrapeRequestChromeCDP = {
