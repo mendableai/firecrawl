@@ -24,7 +24,7 @@ const logFormat = winston.format.printf(info =>
 )
 
 export const logger = winston.createLogger({
-  level: process.env.LOGGING_LEVEL?.toLowerCase() ?? "trace",
+  level: process.env.LOGGING_LEVEL?.toLowerCase() ?? "debug",
   format: winston.format.json({
     replacer(key, value) {
       if (value instanceof Error) {
@@ -46,8 +46,7 @@ export const logger = winston.createLogger({
       format: winston.format.combine(
         winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
         winston.format.metadata({ fillExcept: ["message", "level", "timestamp"] }),
-        winston.format.colorize(),
-        logFormat,
+        ...(process.env.ENVIRONMENT === "production" && process.env.SENTRY_ENVIRONMENT !== "dev" ? [winston.format.colorize(), logFormat] : []),
       ),
     }),
   ],
