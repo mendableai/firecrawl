@@ -354,6 +354,7 @@ function getPlanByPriceId(price_id: string): PlanType {
       return "standardnew";
     case process.env.STRIPE_PRICE_ID_GROWTH:
     case process.env.STRIPE_PRICE_ID_GROWTH_YEARLY:
+    case price_id:
       return "growth";
     case process.env.STRIPE_PRICE_ID_GROWTH_DOUBLE_MONTHLY:
       return "growthdouble";
