@@ -7,7 +7,7 @@ import {
 import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
-import { Document } from "../../lib/entities";
+import { Document, toLegacyDocument } from "../v1/types";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from "../../lib/LLM-extraction/helpers";
 import {
@@ -22,6 +22,7 @@ import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../lib/logger";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
+import { fromLegacyScrapeOptions } from "../v1/types";
 
 export async function scrapeHelper(
   jobId: string,
@@ -54,15 +55,16 @@ export async function scrapeHelper(
 
   const jobPriority = await getJobPriority({ plan, team_id, basePriority: 10 });
 
+  const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(pageOptions, extractorOptions, timeout);
+
   const job = await addScrapeJob(
     {
       url,
       mode: "single_urls",
-      crawlerOptions,
       team_id,
-      pageOptions,
-      plan,
-      extractorOptions,
+      scrapeOptions,
+      internalOptions,
+      plan: plan!,
       origin: req.body.origin ?? defaultOrigin,
       is_scrape: true,
     },
@@ -81,7 +83,7 @@ export async function scrapeHelper(
     },
     async (span) => {
       try {
-        doc = (await waitForJob<any[]>(job.id, timeout))[0]; // TODO: better types for this
+        doc = (await waitForJob<Document>(job.id, timeout)); // TODO: better types for this
       } catch (e) {
         if (e instanceof Error && e.message.startsWith("Job wait")) {
           span.setAttribute("timedOut", true);
@@ -149,7 +151,7 @@ export async function scrapeHelper(
 
   return {
     success: true,
-    data: doc,
+    data: toLegacyDocument(doc),
     returnCode: 200,
   };
 }
@@ -267,6 +269,8 @@ export async function scrapeController(req: Request, res: Response) {
       }
     }
 
+    const { scrapeOptions } = fromLegacyScrapeOptions(pageOptions, extractorOptions, timeout);
+
     logJob({
       job_id: jobId,
       success: result.success,
@@ -278,9 +282,8 @@ export async function scrapeController(req: Request, res: Response) {
       mode: "scrape",
       url: req.body.url,
       crawlerOptions: crawlerOptions,
-      pageOptions: pageOptions,
+      scrapeOptions,
       origin: origin,
-      extractor_options: extractorOptions,
       num_tokens: numTokens,
     });
 

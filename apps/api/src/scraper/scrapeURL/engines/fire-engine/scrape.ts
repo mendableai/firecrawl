@@ -12,7 +12,6 @@ export type FireEngineScrapeRequestCommon = {
 
     blockMedia?: boolean; // default: true
     blockAds?: boolean; // default: true
-    // atsv?: boolean; // v0 only, default: false
     // pageOptions?: any; // unused, .scrollXPaths is considered on FE side
 
     // useProxy?: boolean; // unused, default: true
@@ -32,6 +31,7 @@ export type FireEngineScrapeRequestChromeCDP = {
     
     actions?: Action[];
     blockMedia?: true; // cannot be false
+    geolocation?: { country?: string; languages?: string[]; };
 };
 
 export type FireEngineScrapeRequestPlaywright = {
@@ -47,6 +47,8 @@ export type FireEngineScrapeRequestPlaywright = {
 
 export type FireEngineScrapeRequestTLSClient = {
     engine: "tlsclient";
+    atsv?: boolean; // v0 only, default: false
+    geolocation?: { country?: string; languages?: string[]; };
     // blockAds?: boolean; // default: true
 };
 

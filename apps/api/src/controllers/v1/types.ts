@@ -4,6 +4,8 @@ import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { PlanType } from "../../types";
 import { countries } from "../../lib/validate-country";
+import { ExtractorOptions, PageOptions, Document as V0Document } from "../../lib/entities";
+import { InternalOptions } from "../../scraper/scrapeURL";
 
 export type Format =
   | "markdown"
@@ -428,16 +430,70 @@ export interface ResponseWithSentry<
   sentry?: string,
 }
 
-export function legacyCrawlerOptions(x: CrawlerOptions) {
-  return {
-    includes: x.includePaths,
-    excludes: x.excludePaths,
-    maxCrawledLinks: x.limit,
+export function fromLegacyCrawlerOptions(x: any): CrawlerOptions {
+  return crawlerOptions.parse({
+    includePaths: x.includes,
+    excludePaths: x.excludes,
+    limit: x.maxCrawledLinks ?? x.limit,
     maxDepth: x.maxDepth,
-    limit: x.limit,
-    generateImgAltText: false,
-    allowBackwardCrawling: x.allowBackwardLinks,
-    allowExternalContentLinks: x.allowExternalLinks,
+    allowBackwardLinks: x.allowBackwardCrawling,
+    allowExternalLinks: x.allowExternalContentLinks,
     ignoreSitemap: x.ignoreSitemap,
-  };
+    // TODO: returnOnlyUrls support
+  });
+}
+
+export function fromLegacyScrapeOptions(pageOptions: PageOptions, extractorOptions: ExtractorOptions | undefined, timeout: number | undefined): { scrapeOptions: ScrapeOptions, internalOptions: InternalOptions } {
+  return {
+    scrapeOptions: scrapeOptions.parse({
+      formats: [
+        (pageOptions.includeMarkdown ?? true) ? "markdown" as const : null,
+        (pageOptions.includeHtml ?? false) ? "html" as const : null,
+        (pageOptions.includeRawHtml ?? false) ? "rawHtml" as const : null,
+        (pageOptions.screenshot ?? false) ? "screenshot" as const : null,
+        (pageOptions.fullPageScreenshot ?? false) ? "screenshot@fullPage" as const : null,
+        "links"
+      ].filter(x => x !== null),
+      waitFor: pageOptions.waitFor,
+      headers: pageOptions.headers,
+      includeTags: (typeof pageOptions.onlyIncludeTags === "string" ? [pageOptions.onlyIncludeTags] : pageOptions.onlyIncludeTags),
+      excludeTags: (typeof pageOptions.removeTags === "string" ? [pageOptions.removeTags] : pageOptions.removeTags),
+      onlyMainContent: pageOptions.onlyMainContent ?? false,
+      timeout: timeout,
+      parsePDF: pageOptions.parsePDF,
+      actions: pageOptions.actions,
+      location: pageOptions.geolocation,
+      skipTlsVerification: pageOptions.skipTlsVerification,
+      extract: extractorOptions !== undefined && extractorOptions.mode.includes("llm-extraction") ? {
+        systemPrompt: extractorOptions.extractionPrompt,
+        prompt: extractorOptions.userPrompt,
+        schema: extractorOptions.extractionSchema,
+      } : undefined,
+    }),
+    internalOptions: {
+      atsv: pageOptions.atsv,
+    },
+    // TODO: fallback, fetchPage  Content, replaceAllPathsWithAbsolutePaths, includeLinks, useFastMode, disableJsDom
+  }
+}
+
+export function toLegacyDocument(document: Document): V0Document {
+  return {
+    content: document.markdown!,
+    markdown: document.markdown!,
+    html: document.html,
+    rawHtml: document.rawHtml,
+    linksOnPage: document.links,
+    llm_extraction: document.extract,
+    metadata: {
+      ...document.metadata,
+      error: undefined,
+      statusCode: undefined,
+      pageError: document.metadata.error,
+      pageStatusCode: document.metadata.statusCode,
+      screenshot: document.screenshot,
+    },
+    actions: document.actions,
+    warning: document.warning,
+  }
 }

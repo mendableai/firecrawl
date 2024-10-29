@@ -8,6 +8,7 @@ import { addCrawlJob, crawlToCrawler, lockURL, saveCrawl, StoredCrawl } from "..
 import { addScrapeJob } from "../../../src/services/queue-jobs";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
+import { fromLegacyCrawlerOptions, fromLegacyScrapeOptions } from "../v1/types";
 
 export async function crawlPreviewController(req: Request, res: Response) {
   try {
@@ -86,10 +87,13 @@ export async function crawlPreviewController(req: Request, res: Response) {
       robots = await this.getRobotsTxt();
     } catch (_) {}
 
+    const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(pageOptions, undefined, undefined);
+
     const sc: StoredCrawl = {
       originUrl: url,
-      crawlerOptions,
-      pageOptions,
+      crawlerOptions: fromLegacyCrawlerOptions(crawlerOptions),
+      scrapeOptions,
+      internalOptions,
       team_id,
       plan,
       robots,
@@ -108,10 +112,10 @@ export async function crawlPreviewController(req: Request, res: Response) {
         const job = await addScrapeJob({
           url,
           mode: "single_urls",
-          crawlerOptions: crawlerOptions,
           team_id,
-          plan,
-          pageOptions: pageOptions,
+          plan: plan!,
+          scrapeOptions,
+          internalOptions,
           origin: "website-preview",
           crawl_id: id,
           sitemapped: true,
@@ -123,10 +127,10 @@ export async function crawlPreviewController(req: Request, res: Response) {
       const job = await addScrapeJob({
         url,
         mode: "single_urls",
-        crawlerOptions: crawlerOptions,
         team_id,
-        plan,
-        pageOptions: pageOptions,
+        plan: plan!,
+        scrapeOptions,
+        internalOptions,
         origin: "website-preview",
         crawl_id: id,
       });

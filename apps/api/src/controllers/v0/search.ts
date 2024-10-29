@@ -13,6 +13,7 @@ import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
 import { Job } from "bullmq";
+import { Document, fromLegacyScrapeOptions, toLegacyDocument } from "../v1/types";
 
 export async function searchHelper(
   jobId: string,
@@ -57,7 +58,8 @@ export async function searchHelper(
   });
 
   let justSearch = pageOptions.fetchPageContent === false;
-  
+
+  const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(pageOptions, undefined, 60000);
 
   if (justSearch) {
     billTeam(team_id, subscription_id, res.length).catch(error => {
@@ -88,9 +90,9 @@ export async function searchHelper(
       data: {
         url,
         mode: "single_urls",
-        crawlerOptions: crawlerOptions,
         team_id: team_id,
-        pageOptions: pageOptions,
+        scrapeOptions,
+        internalOptions,
       },
       opts: {
         jobId: uuid,
@@ -110,7 +112,7 @@ export async function searchHelper(
     await getScrapeQueue().addBulk(jobs);
   }
 
-  const docs = (await Promise.all(jobs.map(x => waitForJob<any[]>(x.id as string, 60000)))).map(x => x[0]); // TODO: better types for this
+  const docs = (await Promise.all(jobs.map(x => waitForJob<Document>(x.id as string, 60000)))).map(x => toLegacyDocument(x)); // TODO: better types for this
   
   if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };

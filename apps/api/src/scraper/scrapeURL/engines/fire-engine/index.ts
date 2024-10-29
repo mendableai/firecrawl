@@ -86,7 +86,8 @@ export async function scrapeURLWithFireEngineChromeCDP(meta: Meta): Promise<Engi
         }) : {}),
 
         priority: meta.internalOptions.priority,
-        // TODO: atsv, scrollXPaths, disableJsDom
+        geolocation: meta.options.geolocation,
+        // TODO: scrollXPaths, disableJsDom
     };
 
     let response = await performFireEngineScrape(
@@ -168,6 +169,9 @@ export async function scrapeURLWithFireEngineTLSClient(meta: Meta): Promise<Engi
 
         headers: meta.options.headers,
         priority: meta.internalOptions.priority,
+
+        atsv: meta.internalOptions.atsv,
+        geolocation: meta.options.geolocation,
     };
 
     let response = await performFireEngineScrape(

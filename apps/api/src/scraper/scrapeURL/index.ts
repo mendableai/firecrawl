@@ -48,6 +48,14 @@ function buildFeatureFlags(url: string, options: ScrapeOptions, internalOptions:
         flags.add("waitFor");
     }
 
+    if (internalOptions.atsv) {
+        flags.add("atsv");
+    }
+
+    if (options.location || options.geolocation) {
+        flags.add("location");
+    }
+
     const urlO = new URL(url);
 
     if (urlO.pathname.endsWith(".pdf")) {
@@ -77,6 +85,7 @@ function buildMetaObject(id: string, url: string, options: ScrapeOptions, intern
 export type InternalOptions = {
     priority?: number; // Passed along to fire-engine
     forceEngine?: Engine;
+    atsv?: boolean; // anti-bot solver, beta
 };
 
 export type EngineResultsTracker = { [E in Engine]?: {
@@ -113,6 +122,7 @@ async function scrapeURLLoop(
 
     for (const { engine, unsupportedFeatures } of fallbackList) {
         try {
+            meta.logger.info("Scraping via " + engine + "...");
             const _engineResult = await scrapeURLWithEngine(meta, engine);
             if (_engineResult.markdown === undefined) { // Some engines emit Markdown directly.
                 _engineResult.markdown = await parseMarkdown(_engineResult.html);
@@ -145,14 +155,14 @@ async function scrapeURLLoop(
             }
         } catch (error) {
             if (error instanceof EngineError) {
-                meta.logger.debug("Engine " + engine + " could not scrape the page.", { error });
+                meta.logger.info("Engine " + engine + " could not scrape the page.", { error });
                 results[engine] = {
                     state: "error",
                     error,
                     unexpected: false,
                 };
             } else if (error instanceof TimeoutError) {
-                meta.logger.debug("Engine " + engine + " timed out while scraping.", { error });
+                meta.logger.info("Engine " + engine + " timed out while scraping.", { error });
                 results[engine] = {
                     state: "timeout",
                 };
@@ -160,7 +170,7 @@ async function scrapeURLLoop(
                 throw error;
             } else {
                 Sentry.captureException(error);
-                meta.logger.error("An unexpected error happened while scraping with " + engine + ".", { error });
+                meta.logger.info("An unexpected error happened while scraping with " + engine + ".", { error });
                 results[engine] = {
                     state: "error",
                     error,

@@ -21,6 +21,8 @@ export const featureFlags = [
     "screenshot@fullScreen",
     "pdf",
     "docx",
+    "atsv",
+    "location",
 ] as const;
 
 export type FeatureFlag = typeof featureFlags[number];
@@ -36,6 +38,8 @@ export const featureFlagOptions: {
     "screenshot@fullScreen": { priority: 10 },
     "pdf": { priority: 100 },
     "docx": { priority: 100 },
+    "atsv": { priority: 90 }, // NOTE: should atsv force to tlsclient? adjust priority if not
+    "location": { priority: 10 },
 } as const;
 
 export type Engine = typeof engines[number];
@@ -84,8 +88,10 @@ export const engineOptions: {
             "screenshot@fullScreen": true, // through actions transform
             "pdf": false,
             "docx": false,
+            "atsv": false,       
+            "location": true,
         },
-        quality: 50,
+        quality: 50,    
     },
     "fire-engine;playwright": {
         features: {
@@ -95,6 +101,8 @@ export const engineOptions: {
             "screenshot@fullScreen": true,
             "pdf": false,
             "docx": false,
+            "atsv": false,
+            "location": false,
         },
         quality: 40,
     },
@@ -106,6 +114,8 @@ export const engineOptions: {
             "screenshot@fullScreen": true,
             "pdf": false,
             "docx": false,
+            "atsv": false,
+            "location": false,
         },
         quality: 30,
     },
@@ -117,6 +127,8 @@ export const engineOptions: {
             "screenshot@fullScreen": true,
             "pdf": false,
             "docx": false,
+            "atsv": false,
+            "location": false,
         },
         quality: 29,
     },
@@ -128,6 +140,8 @@ export const engineOptions: {
             "screenshot@fullScreen": false,
             "pdf": false,
             "docx": false,
+            "atsv": true,
+            "location": true,
         },
         quality: 10,
     },
@@ -139,6 +153,8 @@ export const engineOptions: {
             "screenshot@fullScreen": false,
             "pdf": true,
             "docx": false,
+            "atsv": false,
+            "location": false,
         },
         quality: -10,
     },
@@ -150,6 +166,8 @@ export const engineOptions: {
             "screenshot@fullScreen": false,
             "pdf": false,
             "docx": true,
+            "atsv": false,
+            "location": false,
         },
         quality: -10,
     },

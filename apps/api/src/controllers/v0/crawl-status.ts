@@ -8,6 +8,7 @@ import { supabaseGetJobsByCrawlId } from "../../../src/lib/supabase-jobs";
 import * as Sentry from "@sentry/node";
 import { configDotenv } from "dotenv";
 import { Job } from "bullmq";
+import { toLegacyDocument } from "../v1/types";
 configDotenv();
 
 export async function getJobs(crawlId: string, ids: string[]) {
@@ -93,8 +94,8 @@ export async function crawlStatusController(req: Request, res: Response) {
       status: jobStatus,
       current: jobStatuses.filter(x => x === "completed" || x === "failed").length,
       total: jobs.length,
-      data: jobStatus === "completed" ? data : null,
-      partial_data: jobStatus === "completed" ? [] : data.filter(x => x !== null),
+      data: jobStatus === "completed" ? data.map(x => toLegacyDocument(x)) : null,
+      partial_data: jobStatus === "completed" ? [] : data.filter(x => x !== null).map(x => toLegacyDocument(x)),
     });
   } catch (error) {
     Sentry.captureException(error);

@@ -4,7 +4,6 @@ import {
   CrawlRequest,
   crawlRequestSchema,
   CrawlResponse,
-  legacyCrawlerOptions,
   RequestWithAuth,
 } from "./types";
 import {
@@ -40,12 +39,15 @@ export async function crawlController(
     remainingCredits = Infinity;
   }
 
-  const crawlerOptions = legacyCrawlerOptions(req.body);
+  const crawlerOptions = {
+    ...req.body,
+    scrapeOptions: undefined,
+  };
   const scrapeOptions = req.body.scrapeOptions;
 
   // TODO: @rafa, is this right? copied from v0
-  if (Array.isArray(crawlerOptions.includes)) {
-    for (const x of crawlerOptions.includes) {
+  if (Array.isArray(crawlerOptions.includePaths)) {
+    for (const x of crawlerOptions.includePaths) {
       try {
         new RegExp(x);
       } catch (e) {
@@ -54,8 +56,8 @@ export async function crawlController(
     }
   }
 
-  if (Array.isArray(crawlerOptions.excludes)) {
-    for (const x of crawlerOptions.excludes) {
+  if (Array.isArray(crawlerOptions.excludePaths)) {
+    for (const x of crawlerOptions.excludePaths) {
       try {
         new RegExp(x);
       } catch (e) {

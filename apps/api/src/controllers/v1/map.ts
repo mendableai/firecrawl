@@ -1,7 +1,6 @@
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import {
-  legacyCrawlerOptions,
   mapRequestSchema,
   RequestWithAuth,
   scrapeOptions,
@@ -45,7 +44,10 @@ export async function mapController(
 
   const sc: StoredCrawl = {
     originUrl: req.body.url,
-    crawlerOptions: legacyCrawlerOptions(req.body),
+    crawlerOptions: {
+      ...req.body,
+      scrapeOptions: undefined,
+    },
     scrapeOptions: scrapeOptions.parse({}),
     internalOptions: {},
     team_id: req.auth.team_id,

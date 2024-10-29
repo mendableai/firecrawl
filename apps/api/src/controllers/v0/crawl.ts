@@ -15,6 +15,7 @@ import { getScrapeQueue } from "../../../src/services/queue-service";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
+import { fromLegacyCrawlerOptions, fromLegacyScrapeOptions } from "../v1/types";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -134,10 +135,13 @@ export async function crawlController(req: Request, res: Response) {
 
     await logCrawl(id, team_id);
 
+    const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(pageOptions, undefined, undefined);
+
     const sc: StoredCrawl = {
       originUrl: url,
-      crawlerOptions,
-      pageOptions,
+      crawlerOptions: fromLegacyCrawlerOptions(crawlerOptions),
+      scrapeOptions,
+      internalOptions,
       team_id,
       plan,
       createdAt: Date.now(),
@@ -213,10 +217,10 @@ export async function crawlController(req: Request, res: Response) {
         {
           url,
           mode: "single_urls",
-          crawlerOptions,
+          scrapeOptions,
+          internalOptions,
           team_id,
           plan: plan!,
-          pageOptions: pageOptions,
           origin: req.body.origin ?? defaultOrigin,
           crawl_id: id,
         },
