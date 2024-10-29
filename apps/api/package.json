@@ -113,7 +113,6 @@
     "turndown-plugin-gfm": "^1.0.2",
     "typesense": "^1.5.4",
     "unstructured-client": "^0.11.3",
-    "uuid": "^10.0.0",
     "wordpos": "^2.1.0",
     "ws": "^8.18.0",
     "xml2js": "^0.6.2",
