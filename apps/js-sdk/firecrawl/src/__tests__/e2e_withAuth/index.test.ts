@@ -7,10 +7,8 @@ import FirecrawlApp, {
   SearchResponseV0,
 } from "../../index";
 import { v4 as uuidv4 } from "uuid";
-import dotenv from "dotenv";
+import dotenv from "dotenv/config";
 import { describe, test, expect } from "@jest/globals";
-
-dotenv.config();
 
 const TEST_API_KEY = process.env.TEST_API_KEY;
 const API_URL = "http://127.0.0.1:3002";

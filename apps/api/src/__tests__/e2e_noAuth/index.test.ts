@@ -1,9 +1,7 @@
 import request from "supertest";
-import dotenv from "dotenv";
+import dotenv from "dotenv/config";
 const fs = require("fs");
 const path = require("path");
-
-dotenv.config();
 
 const TEST_URL = "http://127.0.0.1:3002";
 

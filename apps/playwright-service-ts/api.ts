@@ -1,11 +1,9 @@
 import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import { chromium, Browser, BrowserContext, Route, Request as PlaywrightRequest } from 'playwright';
-import dotenv from 'dotenv';
+import dotenv from 'dotenv/config';
 import randomUseragent from 'random-useragent';
 import { getError } from './helpers/get_error';
-
-dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3003;

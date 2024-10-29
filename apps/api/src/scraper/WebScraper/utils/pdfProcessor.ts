@@ -2,14 +2,12 @@ import axios, { AxiosResponse } from "axios";
 import fs from "fs/promises";
 import { createReadStream, createWriteStream } from "node:fs";
 import FormData from "form-data";
-import dotenv from "dotenv";
+import dotenv from "dotenv/config";
 import pdf from "pdf-parse";
 import path from "path";
 import os from "os";
 import { axiosTimeout } from "../../../lib/timeout";
 import { Logger } from "../../../lib/logger";
-
-dotenv.config();
 
 export async function fetchAndProcessPdf(url: string, parsePDF: boolean): Promise<{ content: string, pageStatusCode?: number, pageError?: string }> {
   try {

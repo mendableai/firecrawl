@@ -1,9 +1,7 @@
 import FirecrawlApp, { type CrawlParams, type CrawlResponse, type CrawlStatusResponse, type MapResponse, type ScrapeResponse } from '../../../index';
 import { v4 as uuidv4 } from 'uuid';
-import dotenv from 'dotenv';
+import dotenv from 'dotenv/config';
 import { describe, test, expect } from '@jest/globals';
-
-dotenv.config();
 
 const TEST_API_KEY = process.env.TEST_API_KEY;
 const API_URL = process.env.API_URL ?? "https://api.firecrawl.dev";
