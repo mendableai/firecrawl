@@ -7,7 +7,6 @@ import { logJob } from "../../services/logging/log_job";
 import { PageOptions, SearchOptions } from "../../lib/entities";
 import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
-import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../lib/logger";
 import { getScrapeQueue } from "../../services/queue-service";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
@@ -82,7 +81,7 @@ export async function searchHelper(
 
   const jobDatas = res.map(x => {
     const url = x.url;
-    const uuid = uuidv4();
+    const uuid = crypto.randomUUID();
     return {
       name: uuid,
       data: {
@@ -157,7 +156,7 @@ export async function searchController(req: Request, res: Response) {
 
     const searchOptions = req.body.searchOptions ?? { limit: 5 };
     
-    const jobId = uuidv4();
+    const jobId = crypto.randomUUID();
 
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =

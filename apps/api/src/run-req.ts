@@ -1,6 +1,5 @@
 import axios from "axios";
 import { promises as fs } from "fs";
-import { v4 as uuidV4 } from "uuid";
 
 interface Result {
   start_url: string;
@@ -10,7 +9,7 @@ interface Result {
 }
 
 async function sendCrawl(result: Result): Promise<string | undefined> {
-  const idempotencyKey = uuidV4();
+  const idempotencyKey = crypto.randomUUID();
   const url = result.start_url;
   try {
     const response = await axios.post(

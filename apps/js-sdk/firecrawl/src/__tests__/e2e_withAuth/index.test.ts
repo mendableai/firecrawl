@@ -6,7 +6,6 @@ import FirecrawlApp, {
   ScrapeResponseV0,
   SearchResponseV0,
 } from "../../index";
-import { v4 as uuidv4 } from "uuid";
 import dotenv from "dotenv";
 import { describe, test, expect } from "@jest/globals";
 
@@ -200,7 +199,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       apiUrl: API_URL,
       version: "v0",
     });
-    const uniqueIdempotencyKey = uuidv4();
+    const uniqueIdempotencyKey = crypto.randomUUID();
     const response = (await app.crawlUrl(
       "https://roastmywebsite.ai",
       { crawlerOptions: { excludes: ["blog/*"] } },

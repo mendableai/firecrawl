@@ -18,7 +18,6 @@ import {
 } from "../../lib/default-values";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getScrapeQueue } from "../../services/queue-service";
-import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../lib/logger";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
@@ -208,7 +207,7 @@ export async function scrapeController(req: Request, res: Response) {
       });
     }
 
-    const jobId = uuidv4();
+    const jobId = crypto.randomUUID();
 
     const startTime = new Date().getTime();
     const result = await scrapeHelper(

@@ -16,7 +16,6 @@ import { Job, Queue } from "bullmq";
 import { Logger } from "../lib/logger";
 import { Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
-import { v4 as uuidv4 } from "uuid";
 import {
   addCrawlJob,
   addCrawlJobDone,
@@ -125,7 +124,7 @@ const workerFun = async (
       console.log("No longer accepting new jobs. SIGINT");
       break;
     }
-    const token = uuidv4();
+    const token = crypto.randomUUID();
     const canAcceptConnection = await monitor.acceptConnection();
     if (!canAcceptConnection) {
       console.log("Cant accept connection");
@@ -384,7 +383,7 @@ async function processJob(job: Job, token: string) {
                 team_id: sc.team_id,
                 basePriority: job.data.crawl_id ? 20 : 10,
               });
-              const jobId = uuidv4();
+              const jobId = crypto.randomUUID();
 
               // console.log("plan: ",  sc.plan);
               // console.log("team_id: ", sc.team_id)

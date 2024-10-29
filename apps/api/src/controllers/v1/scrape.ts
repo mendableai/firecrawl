@@ -11,7 +11,6 @@ import {
   ScrapeResponse,
 } from "./types";
 import { billTeam } from "../../services/billing/credit_billing";
-import { v4 as uuidv4 } from "uuid";
 import { numTokensFromString } from "../../lib/LLM-extraction/helpers";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
@@ -29,7 +28,7 @@ export async function scrapeController(
   const timeout = req.body.timeout;
   const pageOptions = legacyScrapeOptions(req.body);
   const extractorOptions = req.body.extract ? legacyExtractorOptions(req.body.extract) : undefined;
-  const jobId = uuidv4();
+  const jobId = crypto.randomUUID();
 
   const startTime = new Date().getTime();
   const jobPriority = await getJobPriority({

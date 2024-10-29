@@ -3,7 +3,6 @@ import { RateLimiterMode } from "../../types";
 import { authenticateUser } from "../auth";
 import { CrawlStatusParams, CrawlStatusResponse, Document, ErrorResponse, legacyDocumentConverter, RequestWithAuth } from "./types";
 import { WebSocket } from "ws";
-import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../lib/logger";
 import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength, getThrottledJobs, isCrawlFinished, isCrawlFinishedLocked } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
@@ -158,7 +157,7 @@ export async function crawlStatusWSController(ws: WebSocket, req: RequestWithAut
   } catch (err) {
     Sentry.captureException(err);
 
-    const id = uuidv4();
+    const id = crypto.randomUUID();
     let verbose = JSON.stringify(err);
     if (verbose === "{}") {
       if (err instanceof Error) {

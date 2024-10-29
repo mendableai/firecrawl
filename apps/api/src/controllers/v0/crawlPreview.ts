@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
-import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../../src/lib/logger";
 import { addCrawlJob, crawlToCrawler, lockURL, saveCrawl, StoredCrawl } from "../../../src/lib/crawl-redis";
 import { addScrapeJob } from "../../../src/services/queue-jobs";
@@ -51,7 +50,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
     //   try {
     //     const a = new WebScraperDataProvider();
     //     await a.setOptions({
-    //       jobId: uuidv4(),
+    //       jobId: crypto.randomUUID(),
     //       mode: "single_urls",
     //       urls: [url],
     //       crawlerOptions: { ...crawlerOptions, returnOnlyUrls: true },
@@ -76,7 +75,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
     //   }
     // }
 
-    const id = uuidv4();
+    const id = crypto.randomUUID();
 
     let robots;
 

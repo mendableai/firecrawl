@@ -19,7 +19,6 @@ import expressWs from "express-ws";
 import { crawlStatusWSController } from "./controllers/v1/crawl-status-ws";
 import { ErrorResponse, ResponseWithSentry } from "./controllers/v1/types";
 import { ZodError } from "zod";
-import { v4 as uuidv4 } from "uuid";
 import dns from 'node:dns';
 
 const { createBullBoard } = require("@bull-board/api");
@@ -194,7 +193,7 @@ app.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: Response
     return res.status(400).json({ success: false, error: 'Bad request, malformed JSON' });
   }
 
-  const id = res.sentry ?? uuidv4();
+  const id = res.sentry ?? crypto.randomUUID();
   let verbose = JSON.stringify(err);
   if (verbose === "{}") {
     if (err instanceof Error) {

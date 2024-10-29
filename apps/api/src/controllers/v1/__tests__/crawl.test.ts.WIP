@@ -3,7 +3,6 @@ import { Request, Response } from 'express';
 import { authenticateUser } from '../auth'; // Ensure this import is correct
 import { createIdempotencyKey } from '../../services/idempotency/create';
 import { validateIdempotencyKey } from '../../services/idempotency/validate';
-import { v4 as uuidv4 } from 'uuid';
 
 jest.mock('../auth', () => ({
   authenticateUser: jest.fn().mockResolvedValue({
@@ -20,7 +19,7 @@ describe('crawlController', () => {
   it('should prevent duplicate requests using the same idempotency key', async () => {
     const req = {
       headers: {
-        'x-idempotency-key': await uuidv4(),
+        'x-idempotency-key': await crypto.randomUUID(),
         'Authorization': `Bearer ${process.env.TEST_API_KEY}`
       },
       body: {

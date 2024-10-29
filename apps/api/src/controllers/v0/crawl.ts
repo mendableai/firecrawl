@@ -8,7 +8,6 @@ import { logCrawl } from "../../../src/services/logging/crawl_log";
 import { validateIdempotencyKey } from "../../../src/services/idempotency/validate";
 import { createIdempotencyKey } from "../../../src/services/idempotency/create";
 import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../../src/lib/default-values";
-import { v4 as uuidv4 } from "uuid";
 import { Logger } from "../../../src/lib/logger";
 import { addCrawlJob, addCrawlJobs, crawlToCrawler, lockURL, lockURLs, saveCrawl, StoredCrawl } from "../../../src/lib/crawl-redis";
 import { getScrapeQueue } from "../../../src/services/queue-service";
@@ -103,7 +102,7 @@ export async function crawlController(req: Request, res: Response) {
     //   try {
     //     const a = new WebScraperDataProvider();
     //     await a.setOptions({
-    //       jobId: uuidv4(),
+    //       jobId: crypto.randomUUID(),
     //       mode: "single_urls",
     //       urls: [url],
     //       crawlerOptions: { ...crawlerOptions, returnOnlyUrls: true },
@@ -128,7 +127,7 @@ export async function crawlController(req: Request, res: Response) {
     //   }
     // }
 
-    const id = uuidv4();
+    const id = crypto.randomUUID();
 
     await logCrawl(id, team_id);
 
@@ -164,7 +163,7 @@ export async function crawlController(req: Request, res: Response) {
       }
       const jobs = sitemap.map((x) => {
         const url = x.url;
-        const uuid = uuidv4();
+        const uuid = crypto.randomUUID();
         return {
           name: uuid,
           data: {

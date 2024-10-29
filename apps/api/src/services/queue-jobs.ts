@@ -1,6 +1,5 @@
 import { Job, Queue } from "bullmq";
 import { getScrapeQueue } from "./queue-service";
-import { v4 as uuidv4 } from "uuid";
 import { WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
 
@@ -20,7 +19,7 @@ async function addScrapeJobRaw(
 export async function addScrapeJob(
   webScraperOptions: WebScraperOptions,
   options: any = {},
-  jobId: string = uuidv4(),
+  jobId: string = crypto.randomUUID(),
   jobPriority: number = 10
 ): Promise<Job> {
   
