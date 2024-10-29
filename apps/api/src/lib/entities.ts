@@ -19,6 +19,7 @@ export type Action = {
 } | {
   type: "screenshot",
   fullPage?: boolean,
+  mobile?: boolean,
 } | {
   type: "write",
   text: string,
@@ -41,6 +42,7 @@ export type PageOptions = {
   waitFor?: number;
   screenshot?: boolean;
   fullPageScreenshot?: boolean;
+  mobileScreenshot?: boolean;
   headers?: Record<string, string>;
   replaceAllPathsWithAbsolutePaths?: boolean;
   parsePDF?: boolean;

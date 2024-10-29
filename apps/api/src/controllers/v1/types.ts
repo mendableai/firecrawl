@@ -13,6 +13,7 @@ export type Format =
   | "links"
   | "screenshot"
   | "screenshot@fullPage"
+  | "screenshot@mobile"
   | "extract";
 
 export const url = z.preprocess(
@@ -94,12 +95,13 @@ export const scrapeOptions = z.object({
       "links",
       "screenshot",
       "screenshot@fullPage",
+      "screenshot@mobile",
       "extract"
     ])
     .array()
     .optional()
     .default(["markdown"])
-    .refine(x => !(x.includes("screenshot") && x.includes("screenshot@fullPage")), "You may only specify either screenshot or screenshot@fullPage"),
+    .refine(x => x.filter(format => format.startsWith("screenshot")).length <= 1, "You may only specify one screenshot format: screenshot, screenshot@fullPage, or screenshot@mobile"),
   headers: z.record(z.string(), z.string()).optional(),
   includeTags: z.string().array().optional(),
   excludeTags: z.string().array().optional(),
@@ -456,6 +458,7 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     includeLinks: x.formats.includes("links"),
     screenshot: x.formats.includes("screenshot"),
     fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
+    mobileScreenshot: x.formats.includes("screenshot@mobile"),
     parsePDF: x.parsePDF,
     actions: x.actions as Action[], // no strict null checking grrrr - mogery
     geolocation: x.location ?? x.geolocation,
@@ -485,6 +488,11 @@ export function legacyDocumentConverter(doc: any): Document {
       doc.fullPageScreenshot = doc.metadata.fullPageScreenshot;
       delete doc.metadata.fullPageScreenshot;
     }
+
+    if (doc.metadata.mobileScreenshot) {
+      doc.mobileScreenshot = doc.metadata.mobileScreenshot;
+      delete doc.metadata.mobileScreenshot;
+    }
   }
 
   return {
@@ -493,7 +501,7 @@ export function legacyDocumentConverter(doc: any): Document {
     rawHtml: doc.rawHtml,
     html: doc.html,
     extract: doc.llm_extraction,
-    screenshot: doc.screenshot ?? doc.fullPageScreenshot,
+    screenshot: doc.screenshot ?? doc.fullPageScreenshot ?? doc.mobileScreenshot,
     actions: doc.actions ?? undefined,
     warning: doc.warning ?? undefined,
     metadata: {

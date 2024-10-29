@@ -146,6 +146,7 @@ export async function scrapSingleUrl(
     waitFor: pageOptions.waitFor ?? undefined,
     screenshot: pageOptions.screenshot ?? false,
     fullPageScreenshot: pageOptions.fullPageScreenshot ?? false,
+    mobileScreenshot: pageOptions.mobileScreenshot ?? false,
     headers: pageOptions.headers ?? undefined,
     includeLinks: pageOptions.includeLinks ?? true,
     replaceAllPathsWithAbsolutePaths: pageOptions.replaceAllPathsWithAbsolutePaths ?? true,
@@ -223,6 +224,7 @@ export async function scrapSingleUrl(
             return [action as Action];
           }) ?? [] as Action[];
           
+          console.log("pageOptions", pageOptions);
           const response = await scrapWithFireEngine({
             url,
             ...(engine === "chrome-cdp" ? ({
@@ -231,9 +233,10 @@ export async function scrapSingleUrl(
                   type: "wait" as const,
                   milliseconds: pageOptions.waitFor,
                 }] : []),
-                ...((pageOptions.screenshot || pageOptions.fullPageScreenshot) ? [{
+                ...((pageOptions.screenshot || pageOptions.fullPageScreenshot || pageOptions.mobileScreenshot) ? [{
                   type: "screenshot" as const,
                   fullPage: !!pageOptions.fullPageScreenshot,
+                  mobile: !!pageOptions.mobileScreenshot,
                 }] : []),
                 ...processedActions,
               ],
@@ -241,7 +244,9 @@ export async function scrapSingleUrl(
               waitFor: pageOptions.waitFor,
               screenshot: pageOptions.screenshot,
               fullPageScreenshot: pageOptions.fullPageScreenshot,
+              mobileScreenshot: pageOptions.mobileScreenshot,
             })),
+            mobileScreenshot:pageOptions.mobileScreenshot,
             pageOptions: pageOptions,
             headers: pageOptions.headers,
             fireEngineOptions: {
@@ -253,7 +258,7 @@ export async function scrapSingleUrl(
             teamId,
           });
           scraperResponse.text = response.html;
-          if (pageOptions.screenshot || pageOptions.fullPageScreenshot) {
+          if (pageOptions.screenshot || pageOptions.fullPageScreenshot || pageOptions.mobileScreenshot) {
             scraperResponse.screenshot = (response.screenshots ?? []).splice(0, 1)[0] ?? "";
           }
           if (pageOptions.actions) {
@@ -389,7 +394,7 @@ export async function scrapSingleUrl(
     const scrapersInOrder = getScrapingFallbackOrder(
       defaultScraper,
       pageOptions && pageOptions.waitFor && pageOptions.waitFor > 0,
-      pageOptions && (pageOptions.screenshot || pageOptions.fullPageScreenshot) && (pageOptions.screenshot === true || pageOptions.fullPageScreenshot === true),
+      pageOptions && (pageOptions.screenshot || pageOptions.fullPageScreenshot || pageOptions.mobileScreenshot) && (pageOptions.screenshot === true || pageOptions.fullPageScreenshot === true || pageOptions.mobileScreenshot === true),
       pageOptions && pageOptions.headers && pageOptions.headers !== undefined,
       pageOptions && Array.isArray(pageOptions.actions) && pageOptions.actions.length > 0,
     );

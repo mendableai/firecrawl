@@ -8,6 +8,7 @@ export const defaultPageOptions = {
   waitFor: 0,
   screenshot: false,
   fullPageScreenshot: false,
+  mobileScreenshot: false,
   parsePDF: true
 };
 

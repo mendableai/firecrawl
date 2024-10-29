@@ -28,6 +28,7 @@ export async function scrapWithFireEngine({
   waitFor = 0,
   screenshot = false,
   fullPageScreenshot = false,
+  mobileScreenshot = false,
   pageOptions = { parsePDF: true, atsv: false, useFastMode: false, disableJsDom: false, geolocation: { country: "US" }, skipTlsVerification: false },
   fireEngineOptions = {},
   headers,
@@ -40,6 +41,7 @@ export async function scrapWithFireEngine({
   waitFor?: number;
   screenshot?: boolean;
   fullPageScreenshot?: boolean;
+  mobileScreenshot?: boolean;
   pageOptions?: { scrollXPaths?: string[]; parsePDF?: boolean, atsv?: boolean, useFastMode?: boolean, disableJsDom?: boolean, geolocation?: { country?: string }, skipTlsVerification?: boolean };
   fireEngineOptions?: FireEngineOptions;
   headers?: Record<string, string>;
@@ -64,9 +66,12 @@ export async function scrapWithFireEngine({
     let engineParam = reqParams["params"]?.engine ?? reqParams["params"]?.fireEngineOptions?.engine ?? fireEngineOptions?.engine  ?? "chrome-cdp";
     let screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
     let fullPageScreenshotParam = reqParams["params"]?.fullPageScreenshot ?? fullPageScreenshot;
+    let mobileScreenshotParam = reqParams["params"]?.mobileScreenshot ?? mobileScreenshot;
     let fireEngineOptionsParam : FireEngineOptions = reqParams["params"]?.fireEngineOptions ?? fireEngineOptions;
 
 
+    console.log("fullPageScreenshotParam", fullPageScreenshotParam);
+    console.log("mobileScreenshotParam", mobileScreenshotParam);
     let endpoint = "/scrape";
 
     if(options?.endpoint === "request") {
@@ -103,6 +108,8 @@ export async function scrapWithFireEngine({
       name: "Call to fire-engine"
     }, async span => {
       
+      console.log("mobileScreenshotParam", mobileScreenshotParam);
+      console.log("pageOptions", pageOptions);
       return await axiosInstance.post(
         process.env.FIRE_ENGINE_BETA_URL + endpoint,
         {
@@ -111,6 +118,7 @@ export async function scrapWithFireEngine({
           wait: waitParam,
           screenshot: screenshotParam,
           fullPageScreenshot: fullPageScreenshotParam,
+          mobile: mobileScreenshotParam,
           disableJsDom: pageOptions?.disableJsDom ?? false,
           priority,
           engine,

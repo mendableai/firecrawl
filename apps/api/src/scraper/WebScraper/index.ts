@@ -588,6 +588,7 @@ export class WebScraperDataProvider {
       headers: options.pageOptions?.headers ?? undefined,
       includeLinks: options.pageOptions?.includeLinks ?? true,
       fullPageScreenshot: options.pageOptions?.fullPageScreenshot ?? false,
+      mobileScreenshot: options.pageOptions?.mobileScreenshot ?? false,
       screenshot: options.pageOptions?.screenshot ?? false,
       useFastMode: options.pageOptions?.useFastMode ?? false,
       disableJsDom: options.pageOptions?.disableJsDom ?? false,
