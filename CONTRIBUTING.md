@@ -6,7 +6,7 @@ If you're contributing, note that the process is similar to other open source re
 
 ## Running the project locally
 
-First, start by installing dependencies
+First, start by installing dependencies:
 
 1. node.js [instructions](https://nodejs.org/en/learn/getting-started/how-to-install-nodejs)
 2. pnpm [instructions](https://pnpm.io/installation)
@@ -56,12 +56,13 @@ POSTHOG_HOST= # set if you'd like to send posthog events like job logs
 First, install the dependencies using pnpm.
 
 ```bash
-pnpm install
+# cd apps/api # to make sure you're in the right folder
+pnpm install # make sure you have pnpm version 9+!
 ```
 
 ### Running the project
 
-You're going to need to open 3 terminals.
+You're going to need to open 3 terminals. Here is [a video guide accurate as of Oct 2024](https://youtu.be/LHqg5QNI4UY).
 
 ### Terminal 1 - setting up redis
 
