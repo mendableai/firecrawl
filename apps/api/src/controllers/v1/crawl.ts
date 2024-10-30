@@ -1,5 +1,4 @@
 import { Response } from "express";
-import { v4 as uuidv4 } from "uuid";
 import {
   CrawlRequest,
   crawlRequestSchema,
@@ -30,7 +29,7 @@ export async function crawlController(
 ) {
   req.body = crawlRequestSchema.parse(req.body);
 
-  const id = uuidv4();
+  const id = crypto.randomUUID();
 
   await logCrawl(id, req.auth.team_id);
 
@@ -103,7 +102,7 @@ export async function crawlController(
       }
     const jobs = sitemap.map((x) => {
       const url = x.url;
-      const uuid = uuidv4();
+      const uuid = crypto.randomUUID();
       return {
         name: uuid,
         data: {

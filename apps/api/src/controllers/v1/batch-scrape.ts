@@ -1,5 +1,4 @@
 import { Response } from "express";
-import { v4 as uuidv4 } from "uuid";
 import {
   BatchScrapeRequest,
   batchScrapeRequestSchema,
@@ -24,7 +23,7 @@ export async function batchScrapeController(
 ) {
   req.body = batchScrapeRequestSchema.parse(req.body);
 
-  const id = uuidv4();
+  const id = crypto.randomUUID();
 
   await logCrawl(id, req.auth.team_id);
 
@@ -58,7 +57,7 @@ export async function batchScrapeController(
   }
 
   const jobs = req.body.urls.map((x) => {
-    const uuid = uuidv4();
+    const uuid = crypto.randomUUID();
     return {
       name: uuid,
       data: {

@@ -32,9 +32,11 @@ import { AuthCreditUsageChunk } from "./v1/types";
 //     .eq('key', normalizedApi)
 //     .limit(1)
 //     .single();
+const UUID_REGEX = /^(?:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$/i;
+
 function normalizedApiIsUuid(potentialUuid: string): boolean {
   // Check if the string is a valid UUID
-  return validate(potentialUuid);
+  return typeof potentialUuid === 'string' && UUID_REGEX.test(potentialUuid);
 }
 
 export async function setCachedACUC(

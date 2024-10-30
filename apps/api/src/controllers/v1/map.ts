@@ -1,5 +1,4 @@
 import { Response } from "express";
-import { v4 as uuidv4 } from "uuid";
 import {
   legacyCrawlerOptions,
   mapRequestSchema,
@@ -39,7 +38,7 @@ export async function mapController(
 
   const limit: number = req.body.limit ?? MAX_MAP_LIMIT;
 
-  const id = uuidv4();
+  const id = crypto.randomUUID();
   let links: string[] = [req.body.url];
 
   const sc: StoredCrawl = {

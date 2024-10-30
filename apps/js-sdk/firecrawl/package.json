@@ -36,7 +36,6 @@
   },
   "homepage": "https://github.com/mendableai/firecrawl#readme",
   "devDependencies": {
-    "uuid": "^9.0.1",
     "dotenv": "^16.4.5",
     "@jest/globals": "^29.7.0",
     "@types/axios": "^0.14.0",

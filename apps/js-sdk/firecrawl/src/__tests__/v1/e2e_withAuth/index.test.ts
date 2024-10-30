@@ -1,5 +1,4 @@
 import FirecrawlApp, { type CrawlParams, type CrawlResponse, type CrawlStatusResponse, type MapResponse, type ScrapeResponse } from '../../../index';
-import { v4 as uuidv4 } from 'uuid';
 import dotenv from 'dotenv';
 import { describe, test, expect } from '@jest/globals';
 
@@ -256,7 +255,7 @@ describe('FirecrawlApp E2E Tests', () => {
 
   test.concurrent('should handle idempotency key for crawl', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
-    const uniqueIdempotencyKey = uuidv4();
+    const uniqueIdempotencyKey = crypto.randomUUID();
     const response = await app.asyncCrawlUrl('https://roastmywebsite.ai', {}, uniqueIdempotencyKey) as CrawlResponse;
     expect(response).not.toBeNull();
     expect(response.id).toBeDefined();
