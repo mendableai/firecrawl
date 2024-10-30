@@ -82,6 +82,10 @@ export interface CrawlScrapeOptions {
   onlyMainContent?: boolean;
   waitFor?: number;
   timeout?: number;
+  location?: {
+    country?: string;
+    languages?: string[];
+  };
 }
 
 export type Action = {

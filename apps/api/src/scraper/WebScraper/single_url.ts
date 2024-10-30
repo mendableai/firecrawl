@@ -209,14 +209,15 @@ export async function scrapSingleUrl(
             if (action.type === "click" || action.type === "write" || action.type === "press") {
               const result: Action[] = [];
               // Don't add a wait if the previous action is a wait
-              if (index === 0 || array[index - 1].type !== "wait") {
-                result.push({ type: "wait", milliseconds: 1200 } as Action);
-              }
+              // if (index === 0 || array[index - 1].type !== "wait") {
+              //   result.push({ type: "wait", milliseconds: 1200 } as Action);
+              // }
+              // Fire-engine now handles wait times automatically, leaving the code here for now
               result.push(action);
               // Don't add a wait if the next action is a wait
-              if (index === array.length - 1 || array[index + 1].type !== "wait") {
-                result.push({ type: "wait", milliseconds: 1200 } as Action);
-              }
+              // if (index === array.length - 1 || array[index + 1].type !== "wait") {
+              //   result.push({ type: "wait", milliseconds: 1200 } as Action);
+              // }
               return result;
             }
             return [action as Action];

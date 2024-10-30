@@ -147,7 +147,7 @@ watch.addEventListener("done", state => {
 
 ### Batch scraping multiple URLs
 
-To batch scrape multiple URLs with error handling, use the `batchScrapeUrls` method. It takes the starting URLs and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the output formats.
+To batch scrape multiple URLs with error handling, use the `batchScrapeUrls` method. It takes the starting URLs and optional parameters as arguments. The `params` argument allows you to specify additional options for the batch scrape job, such as the output formats.
 
 ```js
 const batchScrapeResponse = await app.batchScrapeUrls(['https://firecrawl.dev', 'https://mendable.ai'], {
@@ -158,10 +158,10 @@ const batchScrapeResponse = await app.batchScrapeUrls(['https://firecrawl.dev', 
 
 #### Asynchronous batch scrape
 
-To initiate an asynchronous batch scrape, utilize the `asyncBulkScrapeUrls` method. This method requires the starting URLs and optional parameters as inputs. The params argument enables you to define various settings for the scrape, such as the output formats. Upon successful initiation, this method returns an ID, which is essential for subsequently checking the status of the batch scrape.
+To initiate an asynchronous batch scrape, utilize the `asyncBatchScrapeUrls` method. This method requires the starting URLs and optional parameters as inputs. The params argument enables you to define various settings for the scrape, such as the output formats. Upon successful initiation, this method returns an ID, which is essential for subsequently checking the status of the batch scrape.
 
 ```js
-const asyncBulkScrapeResult = await app.asyncBulkScrapeUrls(['https://firecrawl.dev', 'https://mendable.ai'], { formats: ['markdown', 'html'] });
+const asyncBatchScrapeResult = await app.asyncBatchScrapeUrls(['https://firecrawl.dev', 'https://mendable.ai'], { formats: ['markdown', 'html'] });
 ```
 
 #### Batch scrape with WebSockets

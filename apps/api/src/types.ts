@@ -130,6 +130,8 @@ export enum NotificationType {
   APPROACHING_LIMIT = "approachingLimit",
   LIMIT_REACHED = "limitReached",
   RATE_LIMIT_REACHED = "rateLimitReached",
+  AUTO_RECHARGE_SUCCESS = "autoRechargeSuccess",
+  AUTO_RECHARGE_FAILED = "autoRechargeFailed",
 }
 
 export type ScrapeLog = {
@@ -155,6 +157,7 @@ export type PlanType =
   | "standardnew"
   | "growth"
   | "growthdouble"
+  | "etier2c"
   | "free"
   | "";
 
