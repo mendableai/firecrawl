@@ -157,6 +157,7 @@ export type PlanType =
   | "standardnew"
   | "growth"
   | "growthdouble"
+  | "etier2c"
   | "free"
   | "";
 
