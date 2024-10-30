@@ -17,6 +17,7 @@ import {
 import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
 import { getJobPriority } from "../../lib/job-priority";
+import { addScrapeJobs } from "../../services/queue-jobs";
 
 export async function batchScrapeController(
   req: RequestWithAuth<{}, CrawlResponse, BatchScrapeRequest>,
@@ -58,12 +59,10 @@ export async function batchScrapeController(
   }
 
   const jobs = req.body.urls.map((x) => {
-    const uuid = uuidv4();
     return {
-      name: uuid,
       data: {
         url: x,
-        mode: "single_urls",
+        mode: "single_urls" as const,
         team_id: req.auth.team_id,
         plan: req.auth.plan,
         crawlerOptions: null,
@@ -75,7 +74,7 @@ export async function batchScrapeController(
         v1: true,
       },
       opts: {
-        jobId: uuid,
+        jobId: uuidv4(),
         priority: 20,
       },
     };
@@ -89,7 +88,7 @@ export async function batchScrapeController(
     id,
     jobs.map((x) => x.opts.jobId)
   );
-  await getScrapeQueue().addBulk(jobs);
+  await addScrapeJobs(jobs);
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";
   

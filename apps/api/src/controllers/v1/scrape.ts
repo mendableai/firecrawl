@@ -17,6 +17,7 @@ import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
 import { PlanType } from "../../types";
+import { getScrapeQueue } from "../../services/queue-service";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -38,7 +39,7 @@ export async function scrapeController(
     basePriority: 10,
   });
 
-  const job = await addScrapeJob(
+  await addScrapeJob(
     {
       url: req.body.url,
       mode: "single_urls",
@@ -59,7 +60,7 @@ export async function scrapeController(
 
   let doc: any | undefined;
   try {
-    doc = (await waitForJob(job.id, timeout + totalWait))[0];
+    doc = (await waitForJob(jobId, timeout + totalWait))[0];
   } catch (e) {
     Logger.error(`Error in scrapeController: ${e}`);
     if (e instanceof Error && e.message.startsWith("Job wait")) {
@@ -79,10 +80,10 @@ export async function scrapeController(
     }
   }
 
-  await job.remove();
+  await getScrapeQueue().remove(jobId);
 
   if (!doc) {
-    console.error("!!! PANIC DOC IS", doc, job);
+    console.error("!!! PANIC DOC IS", doc);
     return res.status(200).json({
       success: true,
       warning: "No page found",
