@@ -19,10 +19,10 @@ RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN \
 
 # Install Go
 FROM golang:1.19 AS go-base
-COPY src/lib/go-html-to-md /app/src/lib/go-html-to-md
+COPY sharedLibs/go-html-to-md /app/sharedLibs/go-html-to-md
 
 # Install Go dependencies and build parser lib
-RUN cd /app/src/lib/go-html-to-md && \
+RUN cd /app/sharedLibs/go-html-to-md && \
     go mod tidy && \
     go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go && \
     chmod +x html-to-markdown.so
