@@ -333,6 +333,16 @@ export class WebCrawler {
       }
     });
 
+    // Extract links from iframes with inline src
+    $("iframe").each((_, element) => {
+      const src = $(element).attr("src");
+      if (src && src.startsWith("data:text/html")) {
+        const iframeHtml = decodeURIComponent(src.split(",")[1]);
+        const iframeLinks = this.extractLinksFromHTML(iframeHtml, url);
+        links = links.concat(iframeLinks);
+      }
+    });
+
     return links;
   }
 

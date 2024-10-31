@@ -29,7 +29,7 @@ export const removeUnwantedElements = (
     }
   }
 
-  soup("script, style, iframe, noscript, meta, head").remove();
+  soup("script, style, noscript, meta, head").remove();
 
   if (
     pageOptions.removeTags &&
