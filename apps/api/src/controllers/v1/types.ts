@@ -62,6 +62,7 @@ export const actionsSchema = z.array(z.union([
   z.object({
     type: z.literal("wait"),
     milliseconds: z.number().int().positive().finite(),
+    selector: z.string().optional(),
   }),
   z.object({
     type: z.literal("click"),
@@ -82,6 +83,9 @@ export const actionsSchema = z.array(z.union([
   z.object({
     type: z.literal("scroll"),
     direction: z.enum(["up", "down"]),
+  }),
+  z.object({
+    type: z.literal("scrape"),
   }),
 ]));
 
