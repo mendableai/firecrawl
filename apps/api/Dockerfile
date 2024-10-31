@@ -30,7 +30,7 @@ RUN cd /app/sharedLibs/go-html-to-md && \
 FROM base
 COPY --from=prod-deps /app/node_modules /app/node_modules
 COPY --from=build /app /app
-COPY --from=go-base /app/src/lib/go-html-to-md/html-to-markdown.so /app/dist/src/lib/go-html-to-md/html-to-markdown.so
+# COPY --from=go-base /app/src/lib/go-html-to-md/html-to-markdown.so /app/dist/src/lib/go-html-to-md/html-to-markdown.so
 
 # Start the server by default, this can be overwritten at runtime
 EXPOSE 8080
