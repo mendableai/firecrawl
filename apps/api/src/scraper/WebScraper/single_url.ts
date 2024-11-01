@@ -21,6 +21,7 @@ import { extractLinks } from "./utils/utils";
 import { Logger } from "../../lib/logger";
 import { ScrapeEvents } from "../../lib/scrape-events";
 import { clientSideError } from "../../strings";
+import { ScrapeActionContent } from "../../lib/entities";
 
 dotenv.config();
 
@@ -180,7 +181,8 @@ export async function scrapSingleUrl(
       text: string;
       screenshot: string;
       actions?: {
-        screenshots: string[];
+        screenshots?: string[];
+        scrapes?: ScrapeActionContent[];
       };
       metadata: { pageStatusCode?: number; pageError?: string | null };
     } = { text: "", screenshot: "", metadata: {} };
@@ -259,6 +261,7 @@ export async function scrapSingleUrl(
           if (pageOptions.actions) {
             scraperResponse.actions = {
               screenshots: response.screenshots ?? [],
+              scrapes: response.scrapeActionContent ?? [],
             };
           }
           scraperResponse.metadata.pageStatusCode = response.pageStatusCode;

@@ -200,11 +200,13 @@ export async function scrapWithFireEngine({
       logParams.html = data.content ?? "";
       logParams.response_code = data.pageStatusCode;
       logParams.error_message = data.pageError ?? data.error;
+
       return {
         html: data.content ?? "",
         screenshots: data.screenshots ?? [data.screenshot] ?? [],
         pageStatusCode: data.pageStatusCode,
         pageError: data.pageError ?? data.error,
+        scrapeActionContent: data?.actionContent ?? [],
       };
     }
   } catch (error) {
