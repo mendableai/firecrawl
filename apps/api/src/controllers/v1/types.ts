@@ -61,9 +61,14 @@ export type ExtractOptions = z.infer<typeof extractOptions>;
 export const actionsSchema = z.array(z.union([
   z.object({
     type: z.literal("wait"),
-    milliseconds: z.number().int().positive().finite(),
+    milliseconds: z.number().int().positive().finite().optional(),
     selector: z.string().optional(),
-  }),
+  }).refine(
+    (data) => (data.milliseconds !== undefined || data.selector !== undefined) && !(data.milliseconds !== undefined && data.selector !== undefined),
+    {
+      message: "Either 'milliseconds' or 'selector' must be provided, but not both.",
+    }
+  ),
   z.object({
     type: z.literal("click"),
     selector: z.string(),
