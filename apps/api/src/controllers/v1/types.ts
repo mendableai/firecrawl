@@ -116,6 +116,7 @@ export const scrapeOptions = z.object({
   timeout: z.number().int().positive().finite().safe().default(30000),
   waitFor: z.number().int().nonnegative().finite().safe().default(0),
   extract: extractOptions.optional(),
+  mobile: z.boolean().default(false),
   parsePDF: z.boolean().default(true),
   actions: actionsSchema.optional(),
   // New
@@ -468,7 +469,8 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     parsePDF: x.parsePDF,
     actions: x.actions as Action[], // no strict null checking grrrr - mogery
     geolocation: x.location ?? x.geolocation,
-    skipTlsVerification: x.skipTlsVerification
+    skipTlsVerification: x.skipTlsVerification,
+    mobile: x.mobile,
   };
 }
 

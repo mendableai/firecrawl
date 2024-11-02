@@ -58,6 +58,7 @@ export type PageOptions = {
     country?: string;
   };
   skipTlsVerification?: boolean;
+  mobile?: boolean;
 };
 
 export type ExtractorOptions = {
