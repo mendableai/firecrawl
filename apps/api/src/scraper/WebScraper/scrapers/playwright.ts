@@ -15,7 +15,6 @@ export async function scrapWithPlaywright(
   url: string,
   waitFor: number = 0,
   headers?: Record<string, string>,
-  pageOptions: { parsePDF?: boolean } = { parsePDF: true }
 ): Promise<{ content: string; pageStatusCode?: number; pageError?: string }> {
   const logParams = {
     url,

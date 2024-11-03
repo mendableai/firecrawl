@@ -15,7 +15,6 @@ import {
   removeDuplicateUrls,
 } from "../../lib/validateUrl";
 import { billTeam } from "../../services/billing/credit_billing";
-import { performCosineSimilarity } from "../../lib/map-cosine";
 import { Logger } from "../../lib/logger";
 
 configDotenv();
@@ -51,13 +50,6 @@ export async function mapController(
     sitemap.map((x) => {
       links.push(x.url);
     });
-  }
-
-  // Perform cosine similarity between the search query and the list of links
-  if (req.body.search) {
-    const searchQuery = req.body.search.toLowerCase();
-
-    links = performCosineSimilarity(links, searchQuery);
   }
 
   links = links
