@@ -1,9 +1,15 @@
-import express, { Request, Response } from 'express';
-import bodyParser from 'body-parser';
-import { chromium, Browser, BrowserContext, Route, Request as PlaywrightRequest } from 'playwright';
-import dotenv from 'dotenv';
-import randomUseragent from 'random-useragent';
-import { getError } from './helpers/get_error';
+import express, { Request, Response } from "express";
+import bodyParser from "body-parser";
+import dotenv from "dotenv";
+import randomUseragent from "random-useragent";
+import { getError } from "./helpers/get_error";
+import { Cluster } from "puppeteer-cluster";
+import vanillaPuppeteer, { PuppeteerNodeLaunchOptions } from "puppeteer";
+import { addExtra } from "puppeteer-extra";
+import Stealth from "puppeteer-extra-plugin-stealth";
+import Recaptcha from "puppeteer-extra-plugin-recaptcha";
+import AdBlocker from "puppeteer-extra-plugin-adblocker";
+import AnonymizeUA from "puppeteer-extra-plugin-anonymize-ua";
 
 dotenv.config();
 
@@ -12,27 +18,10 @@ const port = process.env.PORT || 3003;
 
 app.use(bodyParser.json());
 
-const BLOCK_MEDIA = (process.env.BLOCK_MEDIA || 'False').toUpperCase() === 'TRUE';
-
 const PROXY_SERVER = process.env.PROXY_SERVER || null;
 const PROXY_USERNAME = process.env.PROXY_USERNAME || null;
 const PROXY_PASSWORD = process.env.PROXY_PASSWORD || null;
-
-const AD_SERVING_DOMAINS = [
-  'doubleclick.net',
-  'adservice.google.com',
-  'googlesyndication.com',
-  'googletagservices.com',
-  'googletagmanager.com',
-  'google-analytics.com',
-  'adsystem.com',
-  'adservice.com',
-  'adnxs.com',
-  'ads-twitter.com',
-  'facebook.net',
-  'fbcdn.net',
-  'amazon-adsystem.com'
-];
+const TWOCAPTCHA_TOKEN = process.env.TWOCAPTCHA_TOKEN || null;
 
 interface UrlModel {
   url: string;
@@ -42,22 +31,36 @@ interface UrlModel {
   check_selector?: string;
 }
 
-let browser: Browser;
-let context: BrowserContext;
+let cluster: Cluster;
 
 const initializeBrowser = async () => {
-  browser = await chromium.launch({
-    headless: true,
-    args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-accelerated-2d-canvas',
-      '--no-first-run',
-      '--no-zygote',
-      '--single-process',
-      '--disable-gpu'
-    ]
+  const puppeteer = addExtra(vanillaPuppeteer);
+  puppeteer.use(Stealth());
+  puppeteer.use(AdBlocker());
+  puppeteer.use(AnonymizeUA());
+
+  if (TWOCAPTCHA_TOKEN) {
+    puppeteer.use(
+      Recaptcha({
+        provider: {
+          id: "2captcha",
+          token: TWOCAPTCHA_TOKEN,
+        },
+        visualFeedback: true,
+      })
+    );
+  }
+
+  let puppeteerOptions: PuppeteerNodeLaunchOptions = {};
+  if (PROXY_SERVER && PROXY_USERNAME && PROXY_PASSWORD) {
+    puppeteerOptions.args = [`--proxy-server=${PROXY_SERVER}`];
+  }
+
+  cluster = await Cluster.launch({
+    concurrency: Cluster.CONCURRENCY_CONTEXT,
+    maxConcurrency: 2,
+    puppeteerOptions,
+    puppeteer,
   });
 
   const userAgent = randomUseragent.getRandom();
@@ -79,35 +82,10 @@ const initializeBrowser = async () => {
       server: PROXY_SERVER,
     };
   }
-
-  context = await browser.newContext(contextOptions);
-
-  if (BLOCK_MEDIA) {
-    await context.route('**/*.{png,jpg,jpeg,gif,svg,mp3,mp4,avi,flac,ogg,wav,webm}', async (route: Route, request: PlaywrightRequest) => {
-      await route.abort();
-    });
-  }
-
-  // Intercept all requests to avoid loading ads
-  await context.route('**/*', (route: Route, request: PlaywrightRequest) => {
-    const requestUrl = new URL(request.url());
-    const hostname = requestUrl.hostname;
-
-    if (AD_SERVING_DOMAINS.some(domain => hostname.includes(domain))) {
-      console.log(hostname);
-      return route.abort();
-    }
-    return route.continue();
-  });
 };
 
 const shutdownBrowser = async () => {
-  if (context) {
-    await context.close();
-  }
-  if (browser) {
-    await browser.close();
-  }
+  cluster.close();
 };
 
 const isValidUrl = (urlString: string): boolean => {
@@ -119,8 +97,17 @@ const isValidUrl = (urlString: string): boolean => {
   }
 };
 
-const scrapePage = async (page: any, url: string, waitUntil: 'load' | 'networkidle', waitAfterLoad: number, timeout: number, checkSelector: string | undefined) => {
-  console.log(`Navigating to ${url} with waitUntil: ${waitUntil} and timeout: ${timeout}ms`);
+const scrapePage = async (
+  page: any,
+  url: string,
+  waitUntil: "load" | "networkidle",
+  waitAfterLoad: number,
+  timeout: number,
+  checkSelector: string | undefined
+) => {
+  console.log(
+    `Navigating to ${url} with waitUntil: ${waitUntil} and timeout: ${timeout}ms`
+  );
   const response = await page.goto(url, { waitUntil, timeout });
 
   if (waitAfterLoad > 0) {
@@ -131,7 +118,7 @@ const scrapePage = async (page: any, url: string, waitUntil: 'load' | 'networkid
     try {
       await page.waitForSelector(checkSelector, { timeout });
     } catch (error) {
-      throw new Error('Required selector not found');
+      throw new Error("Required selector not found");
     }
   }
 
@@ -141,30 +128,38 @@ const scrapePage = async (page: any, url: string, waitUntil: 'load' | 'networkid
   };
 };
 
-app.post('/scrape', async (req: Request, res: Response) => {
-  const { url, wait_after_load = 0, timeout = 15000, headers, check_selector }: UrlModel = req.body;
+app.post("/scrape", async (req: Request, res: Response) => {
+  const {
+    url,
+    wait_after_load = 0,
+    timeout = 15000,
+    headers,
+    check_selector,
+  }: UrlModel = req.body;
 
   console.log(`================= Scrape Request =================`);
   console.log(`URL: ${url}`);
   console.log(`Wait After Load: ${wait_after_load}`);
   console.log(`Timeout: ${timeout}`);
-  console.log(`Headers: ${headers ? JSON.stringify(headers) : 'None'}`);
-  console.log(`Check Selector: ${check_selector ? check_selector : 'None'}`);
+  console.log(`Headers: ${headers ? JSON.stringify(headers) : "None"}`);
+  console.log(`Check Selector: ${check_selector ? check_selector : "None"}`);
   console.log(`==================================================`);
 
   if (!url) {
-    return res.status(400).json({ error: 'URL is required' });
+    return res.status(400).json({ error: "URL is required" });
   }
 
   if (!isValidUrl(url)) {
-    return res.status(400).json({ error: 'Invalid URL' });
+    return res.status(400).json({ error: "Invalid URL" });
   }
 
   if (!PROXY_SERVER) {
-    console.warn('⚠️ WARNING: No proxy server provided. Your IP address may be blocked.');
+    console.warn(
+      "⚠️ WARNING: No proxy server provided. Your IP address may be blocked."
+    );
   }
 
-  if (!browser || !context) {
+  if (!cluster) {
     await initializeBrowser();
   }
 
@@ -179,20 +174,38 @@ app.post('/scrape', async (req: Request, res: Response) => {
   let pageStatusCode: number | null = null;
   try {
     // Strategy 1: Normal
-    console.log('Attempting strategy 1: Normal load');
-    const result = await scrapePage(page, url, 'load', wait_after_load, timeout, check_selector);
+    console.log("Attempting strategy 1: Normal load");
+    const result = await scrapePage(
+      page,
+      url,
+      "load",
+      wait_after_load,
+      timeout,
+      check_selector
+    );
     pageContent = result.content;
     pageStatusCode = result.status;
   } catch (error) {
-    console.log('Strategy 1 failed, attempting strategy 2: Wait until networkidle');
+    console.log(
+      "Strategy 1 failed, attempting strategy 2: Wait until networkidle"
+    );
     try {
       // Strategy 2: Wait until networkidle
-      const result = await scrapePage(page, url, 'networkidle', wait_after_load, timeout, check_selector);
+      const result = await scrapePage(
+        page,
+        url,
+        "networkidle",
+        wait_after_load,
+        timeout,
+        check_selector
+      );
       pageContent = result.content;
       pageStatusCode = result.status;
     } catch (finalError) {
       await page.close();
-      return res.status(500).json({ error: 'An error occurred while fetching the page.' });
+      return res
+        .status(500)
+        .json({ error: "An error occurred while fetching the page." });
     }
   }
 
@@ -201,7 +214,9 @@ app.post('/scrape', async (req: Request, res: Response) => {
   if (!pageError) {
     console.log(`✅ Scrape successful!`);
   } else {
-    console.log(`🚨 Scrape failed with status code: ${pageStatusCode} ${pageError}`);
+    console.log(
+      `🚨 Scrape failed with status code: ${pageStatusCode} ${pageError}`
+    );
   }
 
   await page.close();
@@ -209,7 +224,7 @@ app.post('/scrape', async (req: Request, res: Response) => {
   res.json({
     content: pageContent,
     pageStatusCode,
-    pageError
+    pageError,
   });
 });
 
@@ -219,9 +234,9 @@ app.listen(port, () => {
   });
 });
 
-process.on('SIGINT', () => {
+process.on("SIGINT", () => {
   shutdownBrowser().then(() => {
-    console.log('Browser closed');
+    console.log("Browser closed");
     process.exit(0);
   });
 });

@@ -11,19 +11,23 @@ This is a simple web scraping service built with Express and Playwright.
 - Strategy to ensure the page is fully rendered.
 
 ## Install
+
 ```bash
-npm install
+pnpm install
 npx playwright install
 ```
 
 ## RUN
+
 ```bash
-npm run build
-npm start
+pnpm run build
+pnpm start
 ```
+
 OR
+
 ```bash
-npm run dev
+pnpm run dev
 ```
 
 ## USE

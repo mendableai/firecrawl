@@ -26,6 +26,7 @@
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.12",
     "@types/node": "^20.14.1",
+    "@types/uuid": "^10.0.0",
     "body-parser": "^1.20.1",
     "express": "^4.18.2",
     "jest": "^29.6.3",

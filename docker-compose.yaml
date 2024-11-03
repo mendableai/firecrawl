@@ -27,7 +27,6 @@ services:
       - PROXY_SERVER=${PROXY_SERVER}
       - PROXY_USERNAME=${PROXY_USERNAME}
       - PROXY_PASSWORD=${PROXY_PASSWORD}
-      - BLOCK_MEDIA=${BLOCK_MEDIA}
     networks:
       - backend
 

@@ -1,5 +1,5 @@
 import "dotenv/config";
-import "./services/sentry"
+import "./services/sentry";
 import * as Sentry from "@sentry/node";
 import express, { NextFunction, Request, Response } from "express";
 import bodyParser from "body-parser";
@@ -9,40 +9,38 @@ import cluster from "cluster";
 import os from "os";
 import { Logger } from "./lib/logger";
 import { adminRouter } from "./routes/admin";
-import http from 'node:http';
-import https from 'node:https';
-import CacheableLookup  from 'cacheable-lookup';
+import http from "node:http";
+import https from "node:https";
+import CacheableLookup from "cacheable-lookup";
 import { v1Router } from "./routes/v1";
 import expressWs from "express-ws";
-import { crawlStatusWSController } from "./controllers/v1/crawl-status-ws";
 import { ErrorResponse, ResponseWithSentry } from "./controllers/v1/types";
 import { ZodError } from "zod";
 import { v4 as uuidv4 } from "uuid";
-
-const { createBullBoard } = require("@bull-board/api");
-const { BullAdapter } = require("@bull-board/api/bullAdapter");
-const { ExpressAdapter } = require("@bull-board/express");
+import { createBullBoard } from "@bull-board/api";
+import { BullAdapter } from "@bull-board/api/bullAdapter";
+import { ExpressAdapter } from "@bull-board/express";
 
 const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
 Logger.info(`Number of CPUs: ${numCPUs} available`);
 
 const cacheable = new CacheableLookup({
   // this is important to avoid querying local hostnames see https://github.com/szmarczak/cacheable-lookup readme
-  lookup:false
+  lookup: false,
 });
 
 cacheable.install(http.globalAgent);
-cacheable.install(https.globalAgent)
+cacheable.install(https.globalAgent);
 
-if (cluster.isMaster) {
-  Logger.info(`Master ${process.pid} is running`);
+if (cluster.isPrimary) {
+  Logger.info(`Primary ${process.pid} is running`);
 
   // Fork workers.
   for (let i = 0; i < numCPUs; i++) {
     cluster.fork();
   }
 
-  cluster.on("exit", (worker, code, signal) => {
+  cluster.on("exit", (worker, code) => {
     if (code !== null) {
       Logger.info(`Worker ${worker.process.pid} exited`);
       Logger.info("Starting a new worker");
@@ -73,15 +71,6 @@ if (cluster.isMaster) {
     serverAdapter.getRouter()
   );
 
-  app.get("/", (req, res) => {
-    res.send("SCRAPERS-JS: Hello, world! Fly.io");
-  });
-
-  //write a simple test function
-  app.get("/test", async (req, res) => {
-    res.send("Hello, world!");
-  });
-
   app.use("/v1", v1Router);
   app.use(adminRouter);
 
@@ -105,9 +94,7 @@ if (cluster.isMaster) {
   app.get(`/serverHealthCheck`, async (req, res) => {
     try {
       const scrapeQueue = getScrapeQueue();
-      const [waitingJobs] = await Promise.all([
-        scrapeQueue.getWaitingCount(),
-      ]);
+      const [waitingJobs] = await Promise.all([scrapeQueue.getWaitingCount()]);
 
       const noWaitingJobs = waitingJobs === 0;
       // 200 if no active jobs, 503 if there are active jobs
@@ -125,50 +112,71 @@ if (cluster.isMaster) {
     res.send({ isProduction: global.isProduction });
   });
 
-  app.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: Response<ErrorResponse>, next: NextFunction) => {
-    if (err instanceof ZodError) {
-        res.status(400).json({ success: false, error: "Bad Request", details: err.errors });
-    } else {
+  app.use(
+    (
+      err: unknown,
+      req: Request<{}, ErrorResponse, undefined>,
+      res: Response<ErrorResponse>,
+      next: NextFunction
+    ) => {
+      if (err instanceof ZodError) {
+        res
+          .status(400)
+          .json({ success: false, error: "Bad Request", details: err.errors });
+      } else {
         next(err);
+      }
     }
-  });
+  );
 
   Sentry.setupExpressErrorHandler(app);
 
-  app.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: ResponseWithSentry<ErrorResponse>, next: NextFunction) => {
-    if (err instanceof SyntaxError && 'status' in err && err.status === 400 && 'body' in err) {
-      return res.status(400).json({ success: false, error: 'Bad request, malformed JSON' });
-    }
-
-    const id = res.sentry ?? uuidv4();
-    let verbose = JSON.stringify(err);
-    if (verbose === "{}") {
-      if (err instanceof Error) {
-        verbose = JSON.stringify({
-          message: err.message,
-          name: err.name,
-          stack: err.stack,
-        });
+  app.use(
+    (
+      err: unknown,
+      req: Request<{}, ErrorResponse, undefined>,
+      res: ResponseWithSentry<ErrorResponse>,
+      next: NextFunction
+    ) => {
+      if (
+        err instanceof SyntaxError &&
+        "status" in err &&
+        err.status === 400 &&
+        "body" in err
+      ) {
+        return res
+          .status(400)
+          .json({ success: false, error: "Bad request, malformed JSON" });
       }
-    }
 
-    Logger.error("Error occurred in request! (" + req.path + ") -- ID " + id  + " -- " + verbose);
-    res.status(500).json({ success: false, error: "An unexpected error occurred. Please contact hello@firecrawl.com for help. Your exception ID is " + id });
-  });
+      const id = res.sentry ?? uuidv4();
+      let verbose = JSON.stringify(err);
+      if (verbose === "{}") {
+        if (err instanceof Error) {
+          verbose = JSON.stringify({
+            message: err.message,
+            name: err.name,
+            stack: err.stack,
+          });
+        }
+      }
+
+      Logger.error(
+        "Error occurred in request! (" +
+          req.path +
+          ") -- ID " +
+          id +
+          " -- " +
+          verbose
+      );
+      res.status(500).json({
+        success: false,
+        error:
+          "An unexpected error occurred. Please contact hello@firecrawl.com for help. Your exception ID is " +
+          id,
+      });
+    }
+  );
 
   Logger.info(`Worker ${process.pid} started`);
 }
-
-
-
-// const sq = getScrapeQueue();
-
-// sq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
-// sq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
-// sq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
-// sq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
-// sq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
-// sq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
-
-
-
