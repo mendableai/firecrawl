@@ -4,7 +4,6 @@ on: []
 
 env:
   BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}
-  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
   HOST: ${{ secrets.HOST }}
   NUM_WORKERS_PER_QUEUE: ${{ secrets.NUM_WORKERS_PER_QUEUE }}
   PLAYWRIGHT_MICROSERVICE_URL: ${{ secrets.PLAYWRIGHT_MICROSERVICE_URL }}

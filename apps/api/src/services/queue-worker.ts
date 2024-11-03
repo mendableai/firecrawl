@@ -127,7 +127,7 @@ const workerFun = async (
                 name: "Scrape job",
                 attributes: {
                   job: job.id,
-                  worker: process.env.FLY_MACHINE_ID ?? worker.id,
+                  worker: worker.id,
                 },
               },
               async (span) => {
@@ -163,7 +163,7 @@ const workerFun = async (
             name: "Scrape job",
             attributes: {
               job: job.id,
-              worker: process.env.FLY_MACHINE_ID ?? worker.id,
+              worker: worker.id,
             },
           },
           () => {

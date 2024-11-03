@@ -1,7 +1,6 @@
 import express from "express";
 import { redisHealthController } from "../controllers/v0/admin/redis-health";
 import {
-  autoscalerController,
   checkQueuesController,
   cleanBefore24hCompleteJobsController,
   queuesController,
@@ -24,12 +23,4 @@ adminRouter.get(
   checkQueuesController
 );
 
-adminRouter.get(
-  `/admin/${process.env.BULL_AUTH_KEY}/queues`,
-  queuesController
-);
-
-adminRouter.get(
-  `/admin/${process.env.BULL_AUTH_KEY}/autoscaler`,
-  autoscalerController
-);
+adminRouter.get(`/admin/${process.env.BULL_AUTH_KEY}/queues`, queuesController);
