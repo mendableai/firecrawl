@@ -360,6 +360,8 @@ function getPlanByPriceId(price_id: string): PlanType {
       return "growthdouble";
     case process.env.STRIPE_PRICE_ID_ETIER2C:
       return "etier2c";
+    case process.env.STRIPE_PRICE_ID_ETIER1A_MONTHLY: //ocqh
+      return "etier1a";
     default:
       return "free";
   }
