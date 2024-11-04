@@ -106,7 +106,6 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
       status,
       total: jobIDs.length,
       completed: doneJobIDs.length,
-      creditsUsed: jobIDs.length,
       expiresAt: (await getCrawlExpiry(req.params.jobId)).toISOString(),
       data: data.map(x => legacyDocumentConverter(x)),
     }

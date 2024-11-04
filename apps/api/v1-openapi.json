@@ -693,10 +693,6 @@
             "type": "integer",
             "description": "The number of pages that have been successfully crawled."
           },
-          "creditsUsed": {
-            "type": "integer",
-            "description": "The number of credits used for the crawl."
-          },
           "expiresAt": {
             "type": "string",
             "format": "date-time",

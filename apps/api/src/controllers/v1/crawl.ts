@@ -1,3 +1,4 @@
+
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -33,8 +34,6 @@ export async function crawlController(
 
   const id = uuidv4();
 
-  const { remainingCredits } = req.account;
-
   const crawlerOptions = legacyCrawlerOptions(req.body);
   const pageOptions = legacyScrapeOptions(req.body.scrapeOptions);
 
@@ -58,8 +57,6 @@ export async function crawlController(
       }
     }
   }
-
-  crawlerOptions.limit = Math.min(remainingCredits, crawlerOptions.limit);
 
   const sc: StoredCrawl = {
     originUrl: req.body.url,

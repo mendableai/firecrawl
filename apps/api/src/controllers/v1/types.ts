@@ -246,7 +246,6 @@ export type CrawlStatusResponse =
       status: "scraping" | "completed" | "failed" | "cancelled";
       completed: number;
       total: number;
-      creditsUsed: number;
       expiresAt: string;
       next?: string;
       data: Document[];
@@ -257,17 +256,12 @@ type AuthObject = {
   plan: PlanType;
 };
 
-type Account = {
-  remainingCredits: number;
-};
-
 export interface RequestWithMaybeAuth<
   ReqParams = {},
   ReqBody = undefined,
   ResBody = undefined
 > extends Request<ReqParams, ReqBody, ResBody> {
   auth?: AuthObject;
-  account?: Account;
 }
 
 export interface RequestWithAuth<
@@ -276,7 +270,6 @@ export interface RequestWithAuth<
   ResBody = undefined
 > extends Request<ReqParams, ReqBody, ResBody> {
   auth: AuthObject;
-  account?: Account;
 }
 
 export interface ResponseWithSentry<ResBody = undefined>

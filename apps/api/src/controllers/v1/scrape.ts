@@ -88,15 +88,10 @@ export async function scrapeController(
   delete doc.provider;
 
   const endTime = new Date().getTime();
-  const timeTakenInSeconds = (endTime - startTime) / 1000;
 
-  let creditsToBeBilled = 1; // Assuming 1 credit per document
   if (earlyReturn) {
     // Don't bill if we're early returning
     return;
-  }
-  if(req.body.extract && req.body.formats.includes("extract")) {
-    creditsToBeBilled = 5;
   }
 
   if (!pageOptions || !pageOptions.includeRawHtml) {

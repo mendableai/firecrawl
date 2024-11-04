@@ -120,7 +120,6 @@ curl -X GET https://api.firecrawl.dev/v1/crawl/123-456-789 \
 {
   "status": "completed",
   "total": 36,
-  "creditsUsed": 36,
   "expiresAt": "2024-00-00T00:00:00.000Z",
   "data": [
     {

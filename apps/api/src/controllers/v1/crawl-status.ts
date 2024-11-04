@@ -98,7 +98,6 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
     status,
     completed: doneJobsLength,
     total: jobIDs.length,
-    creditsUsed: jobIDs.length,
     expiresAt: (await getCrawlExpiry(req.params.jobId)).toISOString(),
     next:
       status !== "scraping" && (start + data.length) === doneJobsLength // if there's not gonna be any documents after this
