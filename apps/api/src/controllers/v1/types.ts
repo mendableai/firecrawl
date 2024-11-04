@@ -141,6 +141,7 @@ export const scrapeOptions = z.object({
     languages: z.string().array().optional(),
   }).optional(),
   skipTlsVerification: z.boolean().default(false),
+  removeBase64Images: z.boolean().default(true),
 }).strict(strictMessage)
 
 
@@ -470,6 +471,7 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     actions: x.actions as Action[], // no strict null checking grrrr - mogery
     geolocation: x.location ?? x.geolocation,
     skipTlsVerification: x.skipTlsVerification,
+    removeBase64Images: x.removeBase64Images,
     mobile: x.mobile,
   };
 }
