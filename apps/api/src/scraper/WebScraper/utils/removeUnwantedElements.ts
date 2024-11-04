@@ -1,9 +1,9 @@
-import { AnyNode, Cheerio, load } from "cheerio";
+import { load } from "cheerio";
 import { PageOptions } from "../../../lib/entities";
 
 export const removeUnwantedElements = (
   html: string,
-  pageOptions: PageOptions,
+  pageOptions: PageOptions
 ) => {
   let soup = load(html);
 
@@ -41,7 +41,7 @@ export const removeUnwantedElements = (
 
     if (Array.isArray(pageOptions.removeTags)) {
       pageOptions.removeTags.forEach((tag) => {
-        let elementsToRemove: Cheerio<AnyNode>;
+        let elementsToRemove: any;
         if (tag.startsWith("*") && tag.endsWith("*")) {
           let classMatch = false;
 
@@ -51,11 +51,11 @@ export const removeUnwantedElements = (
               const attributes = element.attribs;
               const tagNameMatches = regexPattern.test(element.name);
               const attributesMatch = Object.keys(attributes).some((attr) =>
-                regexPattern.test(`${attr}="${attributes[attr]}"`),
+                regexPattern.test(`${attr}="${attributes[attr]}"`)
               );
               if (tag.startsWith("*.")) {
                 classMatch = Object.keys(attributes).some((attr) =>
-                  regexPattern.test(`class="${attributes[attr]}"`),
+                  regexPattern.test(`class="${attributes[attr]}"`)
                 );
               }
               return tagNameMatches || attributesMatch || classMatch;

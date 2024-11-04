@@ -15,9 +15,6 @@ import expressWs from "express-ws";
 import { ErrorResponse, ResponseWithSentry } from "./controllers/v1/types";
 import { ZodError } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import { createBullBoard } from "@bull-board/api";
-import { BullAdapter } from "@bull-board/api/bullAdapter";
-import { ExpressAdapter } from "@bull-board/express";
 
 const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
 Logger.info(`Number of CPUs: ${numCPUs} available`);
@@ -55,19 +52,6 @@ if (cluster.isPrimary) {
   app.use(bodyParser.json({ limit: "10mb" }));
 
   app.use(cors()); // Add this line to enable CORS
-
-  const serverAdapter = new ExpressAdapter();
-  serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
-
-  const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
-    queues: [new BullAdapter(getScrapeQueue())],
-    serverAdapter: serverAdapter,
-  });
-
-  app.use(
-    `/admin/${process.env.BULL_AUTH_KEY}/queues`,
-    serverAdapter.getRouter()
-  );
 
   app.use("/v1", v1Router);
   app.use(adminRouter);
