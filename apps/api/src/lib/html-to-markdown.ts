@@ -1,23 +1,20 @@
-
-import koffi from 'koffi';
-import { join } from 'path';
-import "../services/sentry"
-import * as Sentry from "@sentry/node";
-
-import dotenv from 'dotenv';
-import { Logger } from './logger';
+import koffi from "koffi";
+import { join } from "path";
+import dotenv from "dotenv";
+import { Logger } from "./logger";
 dotenv.config();
-
-// TODO: add a timeout to the Go parser
 
 class GoMarkdownConverter {
   private static instance: GoMarkdownConverter;
   private convert: any;
 
   private constructor() {
-    const goExecutablePath = join(__dirname, 'go-html-to-md/html-to-markdown.so');
+    const goExecutablePath = join(
+      __dirname,
+      "go-html-to-md/html-to-markdown.so"
+    );
     const lib = koffi.load(goExecutablePath);
-    this.convert = lib.func('ConvertHTMLToMarkdown', 'string', ['string']);
+    this.convert = lib.func("ConvertHTMLToMarkdown", "string", ["string"]);
   }
 
   public static getInstance(): GoMarkdownConverter {
@@ -42,7 +39,7 @@ class GoMarkdownConverter {
 
 export async function parseMarkdown(html: string): Promise<string> {
   if (!html) {
-    return '';
+    return "";
   }
 
   try {
@@ -56,13 +53,12 @@ export async function parseMarkdown(html: string): Promise<string> {
       return markdownContent;
     }
   } catch (error) {
-    Sentry.captureException(error);
     Logger.error(`Error converting HTML to Markdown with Go parser: ${error}`);
   }
 
   // Fallback to TurndownService if Go parser fails or is not enabled
   var TurndownService = require("turndown");
-  var turndownPluginGfm = require('joplin-turndown-plugin-gfm');
+  var turndownPluginGfm = require("joplin-turndown-plugin-gfm");
 
   const turndownService = new TurndownService();
   turndownService.addRule("inlineLink", {

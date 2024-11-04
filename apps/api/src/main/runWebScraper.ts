@@ -6,8 +6,7 @@ import {
   RunWebScraperResult,
 } from "../types";
 import { WebScraperDataProvider } from "../scraper/WebScraper";
-import {  Progress } from "../lib/entities";
-import { billTeam } from "../services/billing/credit_billing";
+import { Progress } from "../lib/entities";
 import { Document } from "../lib/entities";
 import { Logger } from "../lib/logger";
 import { configDotenv } from "dotenv";
@@ -28,9 +27,11 @@ export async function startWebScraperPipeline({
     extractorOptions: job.data.extractorOptions,
     pageOptions: {
       ...job.data.pageOptions,
-      ...(job.data.crawl_id ? ({
-        includeRawHtml: true,
-      }): {}),
+      ...(job.data.crawl_id
+        ? {
+            includeRawHtml: true,
+          }
+        : {}),
     },
     inProgress: (progress) => {
       Logger.debug(`🐂 Job in progress ${job.id}`);
@@ -67,7 +68,7 @@ export async function runWebScraper({
   team_id,
   bull_job_id,
   priority,
-  is_scrape=false,
+  is_scrape = false,
 }: RunWebScraperParams): Promise<RunWebScraperResult> {
   try {
     const provider = new WebScraperDataProvider();
@@ -91,7 +92,7 @@ export async function runWebScraper({
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
         priority,
-        teamId: team_id
+        teamId: team_id,
       });
     }
     const docs = (await provider.getDocuments(false, (progress: Progress) => {
@@ -114,15 +115,6 @@ export async function runWebScraper({
           }
         })
       : docs;
-
-    if(is_scrape === false) {
-      billTeam(team_id, filteredDocs.length).catch(error => {
-        Logger.error(`Failed to bill team ${team_id} for ${filteredDocs.length} credits: ${error}`);
-        // Optionally, you could notify an admin or add to a retry queue here
-      });
-    }
-
-    
 
     // This is where the returnvalue from the job is set
     onSuccess(filteredDocs, mode);

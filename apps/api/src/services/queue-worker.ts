@@ -1,6 +1,4 @@
 import "dotenv/config";
-import "./sentry";
-import * as Sentry from "@sentry/node";
 import { CustomError } from "../lib/custom-error";
 import {
   getScrapeQueue,
@@ -37,9 +35,6 @@ configDotenv();
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const workerLockDuration = Number(process.env.WORKER_LOCK_DURATION) || 60000;
-const workerStalledCheckInterval =
-  Number(process.env.WORKER_STALLED_CHECK_INTERVAL) || 30000;
 const jobLockExtendInterval =
   Number(process.env.JOB_LOCK_EXTEND_INTERVAL) || 15000;
 const jobLockExtensionTime =
@@ -66,7 +61,6 @@ const processJobInternal = async (token: string, job: Job) => {
     } catch (e) {}
   } catch (error) {
     console.log("Job failed, error:", error);
-    Sentry.captureException(error);
     err = error;
     await job.moveToFailed(error, token, false);
   } finally {
@@ -115,62 +109,7 @@ const workerFun = async (
 
     const job = await worker.getNextJob(token);
     if (job) {
-      if (job.data && job.data.sentry && Sentry.isInitialized()) {
-        Sentry.continueTrace(
-          {
-            sentryTrace: job.data.sentry.trace,
-            baggage: job.data.sentry.baggage,
-          },
-          () => {
-            Sentry.startSpan(
-              {
-                name: "Scrape job",
-                attributes: {
-                  job: job.id,
-                  worker: worker.id,
-                },
-              },
-              async (span) => {
-                await Sentry.startSpan(
-                  {
-                    name: "Process scrape job",
-                    op: "queue.process",
-                    attributes: {
-                      "messaging.message.id": job.id,
-                      "messaging.destination.name": getScrapeQueue().name,
-                      "messaging.message.body.size": job.data.sentry.size,
-                      "messaging.message.receive.latency":
-                        Date.now() - (job.processedOn ?? job.timestamp),
-                      "messaging.message.retry.count": job.attemptsMade,
-                    },
-                  },
-                  async () => {
-                    const res = await processJobInternal(token, job);
-                    if (res !== null) {
-                      span.setStatus({ code: 2 }); // ERROR
-                    } else {
-                      span.setStatus({ code: 1 }); // OK
-                    }
-                  }
-                );
-              }
-            );
-          }
-        );
-      } else {
-        Sentry.startSpan(
-          {
-            name: "Scrape job",
-            attributes: {
-              job: job.id,
-              worker: worker.id,
-            },
-          },
-          () => {
-            processJobInternal(token, job);
-          }
-        );
-      }
+      processJobInternal(token, job);
 
       await sleep(gotJobInterval);
     } else {
@@ -358,19 +297,6 @@ async function processJob(job: Job, token: string) {
     return data;
   } catch (error) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);
-
-    if (
-      !(
-        error instanceof Error &&
-        error.message.includes("JSON parsing error(s): ")
-      )
-    ) {
-      Sentry.captureException(error, {
-        data: {
-          job: job.id,
-        },
-      });
-    }
 
     if (error instanceof CustomError) {
       // Here we handle the error, then save the failed job

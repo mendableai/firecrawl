@@ -10,7 +10,7 @@ export const redisConnection = new IORedis(process.env.REDIS_URL, {
 
 export const scrapeQueueName = "{scrapeQueue}";
 
-export function getScrapeQueue() {
+export function getScrapeQueue(): Queue<any> {
   if (!scrapeQueue) {
     scrapeQueue = new Queue(scrapeQueueName, {
       connection: redisConnection,

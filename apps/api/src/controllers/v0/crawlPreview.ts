@@ -12,7 +12,6 @@ import {
 } from "../../../src/lib/crawl-redis";
 import { addScrapeJobRaw } from "../../../src/services/queue-jobs";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
-import * as Sentry from "@sentry/node";
 
 export async function crawlPreviewController(req: Request, res: Response) {
   try {
@@ -116,7 +115,6 @@ export async function crawlPreviewController(req: Request, res: Response) {
 
     res.json({ jobId: id });
   } catch (error) {
-    Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });
   }

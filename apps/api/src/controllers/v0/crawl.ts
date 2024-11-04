@@ -1,5 +1,4 @@
 import { Request, Response } from "express";
-import { checkTeamCredits } from "../../../src/services/billing/credit_billing";
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { addScrapeJobRaw } from "../../../src/services/queue-jobs";
@@ -22,7 +21,6 @@ import {
 } from "../../../src/lib/crawl-redis";
 import { getScrapeQueue } from "../../../src/services/queue-service";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
-import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
 
 export async function crawlController(req: Request, res: Response) {
@@ -70,23 +68,6 @@ export async function crawlController(req: Request, res: Response) {
         }
       }
     }
-
-    const limitCheck = req.body?.crawlerOptions?.limit ?? 1;
-    const {
-      success: creditsCheckSuccess,
-      message: creditsCheckMessage,
-      remainingCredits,
-    } = await checkTeamCredits(team_id, limitCheck);
-
-    if (!creditsCheckSuccess) {
-      return res.status(402).json({
-        error:
-          "Insufficient credits. You may be requesting with a higher limit than the amount of credits you have left. If not, upgrade your plan at https://firecrawl.dev/pricing or contact us at hello@firecrawl.com",
-      });
-    }
-
-    // TODO: need to do this to v1
-    crawlerOptions.limit = Math.min(remainingCredits, crawlerOptions.limit);
 
     let url = req.body.url;
     if (!url) {
@@ -193,7 +174,6 @@ export async function crawlController(req: Request, res: Response) {
 
     res.json({ jobId: id });
   } catch (error) {
-    Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });
   }

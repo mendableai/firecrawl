@@ -1,6 +1,5 @@
 import { AuthResponse } from "../../src/types";
 import { Logger } from "./logger";
-import * as Sentry from "@sentry/node";
 import { configDotenv } from "dotenv";
 configDotenv();
 
@@ -21,7 +20,6 @@ export function withAuth<T extends AuthResponse, U extends any[]>(
       try {
         return await originalFunction(...args);
       } catch (error) {
-        Sentry.captureException(error);
         Logger.error(`Error in withAuth function: ${error}`);
         return { success: false, error: error.message } as T;
       }

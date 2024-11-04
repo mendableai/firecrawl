@@ -3,7 +3,6 @@ import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../types";
 import { Logger } from "../../lib/logger";
 import { getCrawl, saveCrawl } from "../../lib/crawl-redis";
-import * as Sentry from "@sentry/node";
 import { configDotenv } from "dotenv";
 configDotenv();
 
@@ -34,7 +33,6 @@ export async function crawlCancelController(req: Request, res: Response) {
       status: "cancelled"
     });
   } catch (error) {
-    Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });
   }

@@ -4,7 +4,6 @@ import { RateLimiterMode } from "../../../src/types";
 import { getScrapeQueue } from "../../../src/services/queue-service";
 import { Logger } from "../../../src/lib/logger";
 import { getCrawl, getCrawlJobs } from "../../../src/lib/crawl-redis";
-import * as Sentry from "@sentry/node";
 import { configDotenv } from "dotenv";
 configDotenv();
 
@@ -67,7 +66,6 @@ export async function crawlStatusController(req: Request, res: Response) {
       partial_data: jobStatus === "completed" ? [] : data.filter(x => x !== null),
     });
   } catch (error) {
-    Sentry.captureException(error);
     Logger.error(error);
     return res.status(500).json({ error: error.message });
   }

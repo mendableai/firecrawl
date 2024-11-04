@@ -10,7 +10,6 @@ import {
   scrapeRequestSchema,
   ScrapeResponse,
 } from "./types";
-import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from "uuid";
 import { addScrapeJobRaw, waitForJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
@@ -99,11 +98,6 @@ export async function scrapeController(
   if(req.body.extract && req.body.formats.includes("extract")) {
     creditsToBeBilled = 5;
   }
-
-  billTeam(req.auth.team_id, creditsToBeBilled).catch(error => {
-    Logger.error(`Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`);
-    // Optionally, you could notify an admin or add to a retry queue here
-  });
 
   if (!pageOptions || !pageOptions.includeRawHtml) {
     if (doc && doc.rawHtml) {

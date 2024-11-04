@@ -3,50 +3,16 @@ import { crawlController } from "../controllers/v1/crawl";
 import { scrapeController } from "../../src/controllers/v1/scrape";
 import { crawlStatusController } from "../controllers/v1/crawl-status";
 import { mapController } from "../controllers/v1/map";
-import { RequestWithAuth, RequestWithMaybeAuth } from "../controllers/v1/types";
+import { RequestWithMaybeAuth } from "../controllers/v1/types";
 import { RateLimiterMode } from "../types";
 import { authenticateUser } from "../controllers/auth";
 import { createIdempotencyKey } from "../services/idempotency/create";
-import { checkTeamCredits } from "../services/billing/credit_billing";
 import expressWs from "express-ws";
 import { crawlStatusWSController } from "../controllers/v1/crawl-status-ws";
 import { crawlCancelController } from "../controllers/v1/crawl-cancel";
-import { Logger } from "../lib/logger";
 import { scrapeStatusController } from "../controllers/v1/scrape-status";
 import { livenessController } from "../controllers/v1/liveness";
 import { readinessController } from "../controllers/v1/readiness";
-
-function checkCreditsMiddleware(
-  minimum?: number
-): (req: RequestWithAuth, res: Response, next: NextFunction) => void {
-  return (req, res, next) => {
-    (async () => {
-      if (!minimum && req.body) {
-        minimum = (req.body as any)?.limit ?? 1;
-      }
-      const { success, message, remainingCredits } = await checkTeamCredits(
-        req.auth.team_id,
-        minimum
-      );
-      if (!success) {
-        Logger.error(
-          `Insufficient credits: ${JSON.stringify({
-            team_id: req.auth.team_id,
-            minimum,
-            remainingCredits,
-          })}`
-        );
-        if (!res.headersSent) {
-          return res
-            .status(402)
-            .json({ success: false, error: "Insufficient credits" });
-        }
-      }
-      req.account = { remainingCredits };
-      next();
-    })().catch((err) => next(err));
-  };
-}
 
 export function authMiddleware(
   rateLimiterMode: RateLimiterMode
@@ -99,24 +65,17 @@ export const v1Router = express.Router();
 v1Router.post(
   "/scrape",
   authMiddleware(RateLimiterMode.Scrape),
-  checkCreditsMiddleware(1),
   wrap(scrapeController)
 );
 
 v1Router.post(
   "/crawl",
   authMiddleware(RateLimiterMode.Crawl),
-  checkCreditsMiddleware(),
   idempotencyMiddleware,
   wrap(crawlController)
 );
 
-v1Router.post(
-  "/map",
-  authMiddleware(RateLimiterMode.Map),
-  checkCreditsMiddleware(1),
-  wrap(mapController)
-);
+v1Router.post("/map", authMiddleware(RateLimiterMode.Map), wrap(mapController));
 
 v1Router.get(
   "/crawl/:jobId",

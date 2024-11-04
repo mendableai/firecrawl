@@ -6,7 +6,6 @@ import { RateLimiterRedis } from "rate-limiter-flexible";
 import { Logger } from "../lib/logger";
 import { setValue } from "../services/redis";
 import { validate } from "uuid";
-import * as Sentry from "@sentry/node";
 
 function normalizedApiIsUuid(potentialUuid: string): boolean {
   // Check if the string is a valid UUID
@@ -23,7 +22,6 @@ function setTrace(team_id: string, api_key: string) {
   try {
     console.log("Setting trace attributes");
   } catch (error) {
-    Sentry.captureException(error);
     Logger.error(`Error setting trace attributes: ${error.message}`);
   }
 }

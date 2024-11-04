@@ -1,6 +1,4 @@
 import "dotenv/config";
-import "./services/sentry";
-import * as Sentry from "@sentry/node";
 import express, { NextFunction, Request, Response } from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
@@ -102,7 +100,6 @@ if (cluster.isPrimary) {
         waitingJobs,
       });
     } catch (error) {
-      Sentry.captureException(error);
       Logger.error(error);
       return res.status(500).json({ error: error.message });
     }
@@ -128,8 +125,6 @@ if (cluster.isPrimary) {
       }
     }
   );
-
-  Sentry.setupExpressErrorHandler(app);
 
   app.use(
     (

@@ -8,7 +8,6 @@ import { Logger } from "../../lib/logger";
 import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength, isCrawlFinished, isCrawlFinishedLocked } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
 import { getJob, getJobs } from "./crawl-status";
-import * as Sentry from "@sentry/node";
 
 type ErrorMessage = {
   type: "error",
@@ -139,8 +138,6 @@ export async function crawlStatusWSController(ws: WebSocket, req: RequestWithAut
 
     await crawlStatusWS(ws, req);
   } catch (err) {
-    Sentry.captureException(err);
-
     const id = uuidv4();
     let verbose = JSON.stringify(err);
     if (verbose === "{}") {
