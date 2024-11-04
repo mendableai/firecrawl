@@ -27,6 +27,7 @@ services:
       - PROXY_SERVER=${PROXY_SERVER}
       - PROXY_USERNAME=${PROXY_USERNAME}
       - PROXY_PASSWORD=${PROXY_PASSWORD}
+      - TWOCAPTCHA_TOKEN=${TWOCAPTCHA_TOKEN}
     networks:
       - backend
 
@@ -37,7 +38,7 @@ services:
       - playwright-service
     ports:
       - "3002:3002"
-    command: [ "pnpm", "run", "start:production" ]
+    command: ["pnpm", "run", "start:production"]
 
   worker:
     <<: *common-service
@@ -45,7 +46,7 @@ services:
       - redis
       - playwright-service
       - api
-    command: [ "pnpm", "run", "workers" ]
+    command: ["pnpm", "run", "workers"]
 
   redis:
     image: redis:alpine

@@ -1,7 +1,6 @@
 import express, { Request, Response } from "express";
 import bodyParser from "body-parser";
 import dotenv from "dotenv";
-import randomUseragent from "random-useragent";
 import { getError } from "./helpers/get_error";
 import { Cluster } from "puppeteer-cluster";
 import vanillaPuppeteer, { PuppeteerNodeLaunchOptions } from "puppeteer";
@@ -60,26 +59,6 @@ const initializeBrowser = async () => {
     puppeteerOptions,
     puppeteer,
   });
-
-  const userAgent = randomUseragent.getRandom();
-  const viewport = { width: 1280, height: 800 };
-
-  const contextOptions: any = {
-    userAgent,
-    viewport,
-  };
-
-  if (PROXY_SERVER && PROXY_USERNAME && PROXY_PASSWORD) {
-    contextOptions.proxy = {
-      server: PROXY_SERVER,
-      username: PROXY_USERNAME,
-      password: PROXY_PASSWORD,
-    };
-  } else if (PROXY_SERVER) {
-    contextOptions.proxy = {
-      server: PROXY_SERVER,
-    };
-  }
 };
 
 const shutdownBrowser = async () => {
@@ -127,19 +106,15 @@ app.post("/scrape", async (req: Request, res: Response) => {
   let pageContent;
   let pageStatusCode: number | null = null;
 
-  console.log("Attempting strategy 1: Normal load");
-  await cluster.task(async ({ page }) => {
+  await cluster.task(async ({ page, data }) => {
+    const { url, timeout = 15000, headers, check_selector }: UrlModel = data;
+
     if (PROXY_USERNAME && PROXY_PASSWORD) {
       await page.authenticate({
         username: PROXY_USERNAME,
         password: PROXY_PASSWORD,
       });
     }
-
-    let ua = await page.browser().userAgent();
-    ua = ua.replace("HeadlessChrome/", "Chrome/");
-    ua = ua.replace(/\(([^)]+)\)/, "(Windows NT 10.0; Win64; x64)");
-    await page.setUserAgent(ua);
 
     if (headers) {
       await page.setExtraHTTPHeaders(headers);
@@ -158,30 +133,8 @@ app.post("/scrape", async (req: Request, res: Response) => {
     pageContent = await page.content();
     pageStatusCode = loadResponse ? loadResponse.status() : null;
 
-    await page.close();
-  });
-
-  if (!pageContent) {
-    console.log(
-      "Strategy 1 failed, attempting strategy 2: Wait until networkidle"
-    );
-    await cluster.task(async ({ page }) => {
-      if (PROXY_USERNAME && PROXY_PASSWORD) {
-        await page.authenticate({
-          username: PROXY_USERNAME,
-          password: PROXY_PASSWORD,
-        });
-      }
-
-      let ua = await page.browser().userAgent();
-      ua = ua.replace("HeadlessChrome/", "Chrome/");
-      ua = ua.replace(/\(([^)]+)\)/, "(Windows NT 10.0; Win64; x64)");
-      await page.setUserAgent(ua);
-
-      if (headers) {
-        await page.setExtraHTTPHeaders(headers);
-      }
-
+    if (!pageContent) {
+      console.log("Load strategy failed, trying networkidle2");
       const loadResponse = await page.goto(url, {
         waitUntil: "networkidle2",
         timeout,
@@ -197,9 +150,20 @@ app.post("/scrape", async (req: Request, res: Response) => {
 
       pageContent = await page.content();
       pageStatusCode = loadResponse ? loadResponse.status() : null;
+    }
 
-      await page.close();
-    });
+    await page.close();
+  });
+
+  try {
+    await cluster.execute(req.body);
+  } catch (err) {
+    console.error(
+      "Failed to execute following URL with cluster:",
+      url,
+      "error: ",
+      err
+    );
   }
 
   const pageError = pageStatusCode !== 200 ? getError(pageStatusCode) : false;
