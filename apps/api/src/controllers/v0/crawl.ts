@@ -199,13 +199,9 @@ export async function crawlController(req: Request, res: Response) {
         id,
         jobs.map((x) => x.opts.jobId)
       );
-      if (Sentry.isInitialized()) {
-        for (const job of jobs) {
-          // add with sentry instrumentation
-          await addScrapeJob(job.data as any, {}, job.opts.jobId);
-        }
-      } else {
-        await getScrapeQueue().addBulk(jobs);
+      for (const job of jobs) {
+        // add with sentry instrumentation
+        await addScrapeJob(job.data as any, {}, job.opts.jobId);
       }
     } else {
       await lockURL(id, sc, url);
@@ -213,7 +209,8 @@ export async function crawlController(req: Request, res: Response) {
       // Not needed, first one should be 15.
       // const jobPriority = await getJobPriority({plan, team_id, basePriority: 10})
 
-      const job = await addScrapeJob(
+      const jobId = uuidv4();
+      await addScrapeJob(
         {
           url,
           mode: "single_urls",
@@ -226,9 +223,10 @@ export async function crawlController(req: Request, res: Response) {
         },
         {
           priority: 15, // prioritize request 0 of crawl jobs same as scrape jobs
-        }
+        },
+        jobId,
       );
-      await addCrawlJob(id, job.id);
+      await addCrawlJob(id, jobId);
     }
 
     res.json({ jobId: id });

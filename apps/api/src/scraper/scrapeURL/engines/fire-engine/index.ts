@@ -87,6 +87,7 @@ export async function scrapeURLWithFireEngineChromeCDP(meta: Meta): Promise<Engi
 
         priority: meta.internalOptions.priority,
         geolocation: meta.options.geolocation,
+        mobile: meta.options.mobile,
         // TODO: scrollXPaths, disableJsDom
     };
 
@@ -119,6 +120,7 @@ export async function scrapeURLWithFireEngineChromeCDP(meta: Meta): Promise<Engi
         ...(actions.length > 0 ? {
             actions: {
                 screenshots: response.screenshots ?? [],
+                scrapes: response.actionContent ?? [],
             }
         } : {}),
     };

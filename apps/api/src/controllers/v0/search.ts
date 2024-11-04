@@ -101,24 +101,19 @@ export async function searchHelper(
     };
   })
 
-  let jobs: Job[] = [];
-  if (Sentry.isInitialized()) {
-    for (const job of jobDatas) {
-      // add with sentry instrumentation
-      jobs.push(await addScrapeJob(job.data as any, {}, job.opts.jobId, job.opts.priority));
-    }
-  } else {
-    jobs = await getScrapeQueue().addBulk(jobDatas);
-    await getScrapeQueue().addBulk(jobs);
+  // TODO: addScrapeJobs
+  for (const job of jobDatas) {
+    await addScrapeJob(job.data as any, {}, job.opts.jobId, job.opts.priority)
   }
 
-  const docs = (await Promise.all(jobs.map(x => waitForJob<Document>(x.id as string, 60000)))).map(x => toLegacyDocument(x)); // TODO: better types for this
+  const docs = (await Promise.all(jobDatas.map(x => waitForJob<Document[]>(x.opts.jobId, 60000)))).map(x => toLegacyDocument(x[0]));
   
   if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
   }
 
-  await Promise.all(jobs.map(x => x.remove()));
+  const sq = getScrapeQueue();
+  await Promise.all(jobDatas.map(x => sq.remove(x.opts.jobId)));
 
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(

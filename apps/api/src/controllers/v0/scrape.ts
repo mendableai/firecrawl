@@ -57,7 +57,7 @@ export async function scrapeHelper(
 
   const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(pageOptions, extractorOptions, timeout);
 
-  const job = await addScrapeJob(
+  await addScrapeJob(
     {
       url,
       mode: "single_urls",
@@ -83,7 +83,7 @@ export async function scrapeHelper(
     },
     async (span) => {
       try {
-        doc = (await waitForJob<Document>(job.id, timeout)); // TODO: better types for this
+        doc = (await waitForJob<Document>(jobId, timeout));
       } catch (e) {
         if (e instanceof Error && e.message.startsWith("Job wait")) {
           span.setAttribute("timedOut", true);
@@ -118,10 +118,10 @@ export async function scrapeHelper(
     return err;
   }
 
-  await job.remove();
+  await getScrapeQueue().remove(jobId);
 
   if (!doc) {
-    console.error("!!! PANIC DOC IS", doc, job);
+    console.error("!!! PANIC DOC IS", doc);
     return {
       success: true,
       error: "No page found",

@@ -90,7 +90,8 @@ export interface CrawlScrapeOptions {
 
 export type Action = {
   type: "wait",
-  milliseconds: number,
+  milliseconds?: number,
+  selector?: string,
 } | {
   type: "click",
   selector: string,
@@ -106,6 +107,8 @@ export type Action = {
 } | {
   type: "scroll",
   direction: "up" | "down",
+} | {
+  type: "scrape",
 };
 
 export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchema extends (Action[] | undefined) = undefined> extends CrawlScrapeOptions {

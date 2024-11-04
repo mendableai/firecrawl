@@ -15,7 +15,7 @@ class GoMarkdownConverter {
   private convert: any;
 
   private constructor() {
-    const goExecutablePath = join(__dirname, 'go-html-to-md/html-to-markdown.so');
+    const goExecutablePath = join(process.cwd(), 'sharedLibs', 'go-html-to-md', 'html-to-markdown.so');
     const lib = koffi.load(goExecutablePath);
     this.convert = lib.func('ConvertHTMLToMarkdown', 'string', ['string']);
   }

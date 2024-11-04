@@ -56,6 +56,10 @@ function buildFeatureFlags(url: string, options: ScrapeOptions, internalOptions:
         flags.add("location");
     }
 
+    if (options.mobile) {
+        flags.add("mobile");
+    }
+
     const urlO = new URL(url);
 
     if (urlO.pathname.endsWith(".pdf")) {

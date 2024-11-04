@@ -32,6 +32,7 @@ export type FireEngineScrapeRequestChromeCDP = {
     actions?: Action[];
     blockMedia?: true; // cannot be false
     geolocation?: { country?: string; languages?: string[]; };
+    mobile?: boolean;
 };
 
 export type FireEngineScrapeRequestPlaywright = {

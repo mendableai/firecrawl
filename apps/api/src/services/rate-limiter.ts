@@ -15,6 +15,7 @@ const RATE_LIMITS = {
     standardnew: 10,
     growth: 50,
     growthdouble: 50,
+    etier2c: 300,
   },
   scrape: {
     default: 20,
@@ -28,6 +29,7 @@ const RATE_LIMITS = {
     standardnew: 100,
     growth: 1000,
     growthdouble: 1000,
+    etier2c: 2500,
   },
   search: {
     default: 20,
@@ -41,6 +43,7 @@ const RATE_LIMITS = {
     standardnew: 50,
     growth: 500,
     growthdouble: 500,
+    etier2c: 2500,
   },
   map:{
     default: 20,
@@ -54,6 +57,7 @@ const RATE_LIMITS = {
     standardnew: 50,
     growth: 500,
     growthdouble: 500,
+    etier2c: 2500,
   },
   preview: {
     free: 5,
@@ -134,6 +138,8 @@ const testSuiteTokens = [
   "6c46abb",
   "cb0ff78",
   "fd769b2",
+  "cbb3462", // don't remove (s-ai)
+  "824abcd" // don't remove (s-ai)
 ];
 
 const manual = ["69be9e74-7624-4990-b20d-08e0acc70cf6"];

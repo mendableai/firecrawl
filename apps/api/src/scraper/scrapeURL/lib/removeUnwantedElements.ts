@@ -67,7 +67,7 @@ export const removeUnwantedElements = (
     return newRoot.html() ?? "";
   }
 
-  soup("script, style, iframe, noscript, meta, head").remove();
+  soup("script, style, noscript, meta, head").remove();
 
   if (scrapeOptions.excludeTags && scrapeOptions.excludeTags.length > 0) {
         scrapeOptions.excludeTags.forEach((tag) => {

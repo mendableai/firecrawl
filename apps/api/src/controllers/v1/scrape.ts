@@ -13,6 +13,7 @@ import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
 import { PlanType } from "../../types";
+import { getScrapeQueue } from "../../services/queue-service";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -32,7 +33,7 @@ export async function scrapeController(
     basePriority: 10,
   });
 
-  const job = await addScrapeJob(
+  await addScrapeJob(
     {
       url: req.body.url,
       mode: "single_urls",
@@ -48,11 +49,11 @@ export async function scrapeController(
     jobPriority
   );
 
-  const totalWait = (req.body.waitFor ?? 0) + (req.body.actions ?? []).reduce((a,x) => (x.type === "wait" ? x.milliseconds : 0) + a, 0);
+  const totalWait = (req.body.waitFor ?? 0) + (req.body.actions ?? []).reduce((a,x) => (x.type === "wait" ? x.milliseconds ?? 0 : 0) + a, 0);
 
   let doc: Document;
   try {
-    doc = await waitForJob<Document>(job.id, timeout + totalWait); // TODO: better types for this
+    doc = await waitForJob<Document>(jobId, timeout + totalWait); // TODO: better types for this
   } catch (e) {
     logger.error(`Error in scrapeController: ${e}`);
     if (e instanceof Error && e.message.startsWith("Job wait")) {
@@ -68,7 +69,7 @@ export async function scrapeController(
     }
   }
 
-  await job.remove();
+  await getScrapeQueue().remove(jobId);
 
   const endTime = new Date().getTime();
   const timeTakenInSeconds = (endTime - startTime) / 1000;

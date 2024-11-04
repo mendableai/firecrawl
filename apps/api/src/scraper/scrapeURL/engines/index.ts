@@ -1,3 +1,4 @@
+import { ScrapeActionContent } from "../../../lib/entities";
 import { Meta } from "..";
 import { scrapeDOCX } from "./docx";
 import { scrapeURLWithFireEngineChromeCDP, scrapeURLWithFireEnginePlaywright, scrapeURLWithFireEngineTLSClient } from "./fire-engine";
@@ -23,6 +24,7 @@ export const featureFlags = [
     "docx",
     "atsv",
     "location",
+    "mobile",
 ] as const;
 
 export type FeatureFlag = typeof featureFlags[number];
@@ -40,6 +42,7 @@ export const featureFlagOptions: {
     "docx": { priority: 100 },
     "atsv": { priority: 90 }, // NOTE: should atsv force to tlsclient? adjust priority if not
     "location": { priority: 10 },
+    "mobile": { priority: 10 },
 } as const;
 
 export type Engine = typeof engines[number];
@@ -55,6 +58,7 @@ export type EngineScrapeResult = {
     screenshot?: string;
     actions?: {
         screenshots: string[];
+        scrapes: ScrapeActionContent[];
     };
 }
 
@@ -90,6 +94,7 @@ export const engineOptions: {
             "docx": false,
             "atsv": false,       
             "location": true,
+            "mobile": true,
         },
         quality: 50,    
     },
@@ -103,6 +108,7 @@ export const engineOptions: {
             "docx": false,
             "atsv": false,
             "location": false,
+            "mobile": false,
         },
         quality: 40,
     },
@@ -116,6 +122,7 @@ export const engineOptions: {
             "docx": false,
             "atsv": false,
             "location": false,
+            "mobile": false,
         },
         quality: 30,
     },
@@ -129,6 +136,7 @@ export const engineOptions: {
             "docx": false,
             "atsv": false,
             "location": false,
+            "mobile": false,
         },
         quality: 29,
     },
@@ -142,6 +150,7 @@ export const engineOptions: {
             "docx": false,
             "atsv": true,
             "location": true,
+            "mobile": false,
         },
         quality: 10,
     },
@@ -155,6 +164,7 @@ export const engineOptions: {
             "docx": false,
             "atsv": false,
             "location": false,
+            "mobile": false,
         },
         quality: -10,
     },
@@ -168,6 +178,7 @@ export const engineOptions: {
             "docx": true,
             "atsv": false,
             "location": false,
+            "mobile": false,
         },
         quality: -10,
     },
