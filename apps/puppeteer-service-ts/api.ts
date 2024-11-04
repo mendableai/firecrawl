@@ -9,7 +9,6 @@ import { addExtra } from "puppeteer-extra";
 import Stealth from "puppeteer-extra-plugin-stealth";
 import Recaptcha from "puppeteer-extra-plugin-recaptcha";
 import AdBlocker from "puppeteer-extra-plugin-adblocker";
-import AnonymizeUA from "puppeteer-extra-plugin-anonymize-ua";
 
 dotenv.config();
 
@@ -37,7 +36,6 @@ const initializeBrowser = async () => {
   const puppeteer = addExtra(vanillaPuppeteer);
   puppeteer.use(Stealth());
   puppeteer.use(AdBlocker());
-  puppeteer.use(AnonymizeUA());
 
   if (TWOCAPTCHA_TOKEN) {
     puppeteer.use(
@@ -138,6 +136,11 @@ app.post("/scrape", async (req: Request, res: Response) => {
       });
     }
 
+    let ua = await page.browser().userAgent();
+    ua = ua.replace("HeadlessChrome/", "Chrome/");
+    ua = ua.replace(/\(([^)]+)\)/, "(Windows NT 10.0; Win64; x64)");
+    await page.setUserAgent(ua);
+
     if (headers) {
       await page.setExtraHTTPHeaders(headers);
     }
@@ -169,6 +172,11 @@ app.post("/scrape", async (req: Request, res: Response) => {
           password: PROXY_PASSWORD,
         });
       }
+
+      let ua = await page.browser().userAgent();
+      ua = ua.replace("HeadlessChrome/", "Chrome/");
+      ua = ua.replace(/\(([^)]+)\)/, "(Windows NT 10.0; Win64; x64)");
+      await page.setUserAgent(ua);
 
       if (headers) {
         await page.setExtraHTTPHeaders(headers);

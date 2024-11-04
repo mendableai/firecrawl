@@ -17,6 +17,9 @@ importers:
       express:
         specifier: ^4.19.2
         version: 4.21.1
+      playwright-core:
+        specifier: ^1.48.2
+        version: 1.48.2
       puppeteer:
         specifier: ^23.6.1
         version: 23.6.1(typescript@5.6.3)
@@ -29,9 +32,6 @@ importers:
       puppeteer-extra-plugin-adblocker:
         specifier: ^2.13.6
         version: 2.13.6(puppeteer-core@23.6.1)(puppeteer-extra@3.3.6(puppeteer-core@23.6.1)(puppeteer@23.6.1(typescript@5.6.3)))(puppeteer@23.6.1(typescript@5.6.3))
-      puppeteer-extra-plugin-anonymize-ua:
-        specifier: ^2.4.6
-        version: 2.4.6(puppeteer-extra@3.3.6(puppeteer-core@23.6.1)(puppeteer@23.6.1(typescript@5.6.3)))
       puppeteer-extra-plugin-recaptcha:
         specifier: ^3.6.8
         version: 3.6.8(puppeteer-extra@3.3.6(puppeteer-core@23.6.1)(puppeteer@23.6.1(typescript@5.6.3)))
@@ -45,9 +45,15 @@ importers:
       '@types/body-parser':
         specifier: ^1.19.5
         version: 1.19.5
+      '@types/chrome':
+        specifier: ^0.0.280
+        version: 0.0.280
       '@types/express':
         specifier: ^4.17.21
         version: 4.17.21
+      '@types/firefox-webext-browser':
+        specifier: ^120.0.4
+        version: 120.0.4
       '@types/node':
         specifier: ^20.14.9
         version: 20.17.6
@@ -146,6 +152,9 @@ packages:
 
   '@types/chrome@0.0.278':
     resolution: {integrity: sha512-PDIJodOu7o54PpSOYLybPW/MDZBCjM1TKgf31I3Q/qaEbNpIH09rOM3tSEH3N7Q+FAqb1933LhF8ksUPYeQLNg==}
+
+  '@types/chrome@0.0.280':
+    resolution: {integrity: sha512-AotSmZrL9bcZDDmSI1D9dE7PGbhOur5L0cKxXd7IqbVizQWCY4gcvupPUVsQ4FfDj3V2tt/iOpomT9EY0s+w1g==}
 
   '@types/connect@3.4.38':
     resolution: {integrity: sha512-K6uROf1LD88uDQqJCktA4yzL1YYAK6NgfsI0v/mTgyPKWsX1CnJ0XPSDhViejru1GcRkLWb8RlzFYJRqGUbaug==}
@@ -763,6 +772,11 @@ packages:
   picocolors@1.1.1:
     resolution: {integrity: sha512-xceH2snhtb5M9liqDsmEw56le376mTZkEX/jEb/RxNFyegNul7eNslCXP9FDj/Lcu0X8KEyMceP2ntpaHrDEVA==}
 
+  playwright-core@1.48.2:
+    resolution: {integrity: sha512-sjjw+qrLFlriJo64du+EK0kJgZzoQPsabGF4lBvsid+3CNIZIYLgnMj9V6JY5VhM2Peh20DJWIVpVljLLnlawA==}
+    engines: {node: '>=18'}
+    hasBin: true
+
   progress@2.0.3:
     resolution: {integrity: sha512-7PiHtLll5LdnKIMw100I+8xJXR5gW2QwWYkT6iJva0bXitZKa/XMrSbdmg3r2Xnaidz9Qumd0VPaMrZlF9V9sA==}
     engines: {node: '>=0.4.0'}
@@ -801,18 +815,6 @@ packages:
       puppeteer:
         optional: true
       puppeteer-core:
-        optional: true
-      puppeteer-extra:
-        optional: true
-
-  puppeteer-extra-plugin-anonymize-ua@2.4.6:
-    resolution: {integrity: sha512-EasOjKpPYFn72Yk7/RXM2q/CDrdPzjTnx8GfHPrwVmhcnh8Ull1DnONP73KZFF2bdwhitaQ3zRZ0yI1yFM2rzQ==}
-    engines: {node: '>=8'}
-    peerDependencies:
-      playwright-extra: '*'
-      puppeteer-extra: '*'
-    peerDependenciesMeta:
-      playwright-extra:
         optional: true
       puppeteer-extra:
         optional: true
@@ -1228,6 +1230,11 @@ snapshots:
       '@types/node': 20.17.6
 
   '@types/chrome@0.0.278':
+    dependencies:
+      '@types/filesystem': 0.0.36
+      '@types/har-format': 1.2.16
+
+  '@types/chrome@0.0.280':
     dependencies:
       '@types/filesystem': 0.0.36
       '@types/har-format': 1.2.16
@@ -1862,6 +1869,8 @@ snapshots:
 
   picocolors@1.1.1: {}
 
+  playwright-core@1.48.2: {}
+
   progress@2.0.3: {}
 
   proxy-addr@2.0.7:
@@ -1922,15 +1931,6 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - playwright-extra
-      - supports-color
-
-  puppeteer-extra-plugin-anonymize-ua@2.4.6(puppeteer-extra@3.3.6(puppeteer-core@23.6.1)(puppeteer@23.6.1(typescript@5.6.3))):
-    dependencies:
-      debug: 4.3.7
-      puppeteer-extra-plugin: 3.2.3(puppeteer-extra@3.3.6(puppeteer-core@23.6.1)(puppeteer@23.6.1(typescript@5.6.3)))
-    optionalDependencies:
-      puppeteer-extra: 3.3.6(puppeteer-core@23.6.1)(puppeteer@23.6.1(typescript@5.6.3))
-    transitivePeerDependencies:
       - supports-color
 
   puppeteer-extra-plugin-recaptcha@3.6.8(puppeteer-extra@3.3.6(puppeteer-core@23.6.1)(puppeteer@23.6.1(typescript@5.6.3))):
