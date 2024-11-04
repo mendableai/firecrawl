@@ -30,3 +30,5 @@ apps/js-sdk/firecrawl/dist
 /examples/crm_lead_enrichment/crm_lead_enrichment_env
 /.venv
 /examples/claude_web_crawler/firecrawl_env
+/examples/haiku_web_crawler/firecrawl_env
+/examples/sonnet_web_crawler/firecrawl_env
