@@ -7,7 +7,7 @@ import {
 import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
-import { Document, fromLegacyCombo, toLegacyDocument } from "../v1/types";
+import { Document, fromLegacyCombo, toLegacyDocument, url as urlSchema } from "../v1/types";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from "../../lib/LLM-extraction/helpers";
 import {
@@ -23,6 +23,7 @@ import { logger } from "../../lib/logger";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
 import { fromLegacyScrapeOptions } from "../v1/types";
+import { ZodError } from "zod";
 
 export async function scrapeHelper(
   jobId: string,
@@ -39,7 +40,7 @@ export async function scrapeHelper(
   data?: Document | { url: string };
   returnCode: number;
 }> {
-  const url = req.body.url;
+  const url = urlSchema.parse(req.body.url);
   if (typeof url !== "string") {
     return { success: false, error: "Url is required", returnCode: 400 };
   }
@@ -293,9 +294,11 @@ export async function scrapeController(req: Request, res: Response) {
     logger.error(error);
     return res.status(500).json({
       error:
-        typeof error === "string"
-          ? error
-          : error?.message ?? "Internal Server Error",
+        error instanceof ZodError
+          ? "Invalid URL"
+          : typeof error === "string"
+            ? error
+            : error?.message ?? "Internal Server Error",
     });
   }
 }

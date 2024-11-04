@@ -15,7 +15,8 @@ import { getScrapeQueue } from "../../../src/services/queue-service";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
-import { fromLegacyCrawlerOptions, fromLegacyScrapeOptions } from "../v1/types";
+import { fromLegacyCrawlerOptions, fromLegacyScrapeOptions, url as urlSchema } from "../v1/types";
+import { ZodError } from "zod";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -80,7 +81,7 @@ export async function crawlController(req: Request, res: Response) {
     // TODO: need to do this to v1
     crawlerOptions.limit = Math.min(remainingCredits, crawlerOptions.limit);
     
-    let url = req.body.url;
+    let url = urlSchema.parse(req.body.url);
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
     }
@@ -233,6 +234,8 @@ export async function crawlController(req: Request, res: Response) {
   } catch (error) {
     Sentry.captureException(error);
     logger.error(error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: error instanceof ZodError
+      ? "Invalid URL"
+      : error.message });
   }
 }
