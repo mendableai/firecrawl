@@ -1,12 +1,12 @@
 export const urlSpecificParams = {
   "platform.openai.com": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
     params: {
       wait: 3000,
     },
   },
   "support.greenpay.me": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
     params: {
       wait_browser: "networkidle2",
       block_resources: false,
@@ -26,7 +26,7 @@ export const urlSpecificParams = {
     },
   },
   "docs.pdw.co": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
     params: {
       wait_browser: "networkidle2",
       block_resources: false,
@@ -46,7 +46,7 @@ export const urlSpecificParams = {
     },
   },
   "ycombinator.com": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
     params: {
       wait_browser: "networkidle2",
       block_resources: false,
@@ -66,7 +66,7 @@ export const urlSpecificParams = {
     },
   },
   "developers.notion.com": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
     params: {
       wait_browser: "networkidle2",
       block_resources: false,
@@ -86,7 +86,7 @@ export const urlSpecificParams = {
     },
   },
   "docs2.hubitat.com": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
     params: {
       wait_browser: "networkidle2",
       block_resources: false,
@@ -136,7 +136,7 @@ export const urlSpecificParams = {
     },
   },
   "help.salesforce.com": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
     params: {
       wait_browser: "networkidle2",
       block_resources: false,
@@ -156,7 +156,7 @@ export const urlSpecificParams = {
     },
   },
   "firecrawl.dev": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
     params: {
       engine: "playwright",
       headers: {
@@ -174,34 +174,34 @@ export const urlSpecificParams = {
     },
   },
   "ir.veeva.com": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
   },
   "eonhealth.com": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
   },
   "notion.com": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
   },
   "mendable.ai": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
   },
   "developer.apple.com": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
     params: {
       engine: "playwright",
       wait: 2000,
     },
   },
   "amazon.com": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
   },
   "digikey.com": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
   },
   "zoopla.co.uk": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
   },
   "lorealparis.hu": {
-    defaultScraper: "scrapingBee",
+    defaultScraper: "playwright",
   },
 };

@@ -1,33 +1,19 @@
 import * as cheerio from "cheerio";
 import { extractMetadata } from "./utils/metadata";
 import dotenv from "dotenv";
-import {
-  Document,
-  PageOptions,
-  ExtractorOptions,
-} from "../../lib/entities";
+import { Document, PageOptions, ExtractorOptions } from "../../lib/entities";
 import { parseMarkdown } from "../../lib/html-to-markdown";
 import { urlSpecificParams } from "./utils/custom/website_params";
 import { removeUnwantedElements } from "./utils/removeUnwantedElements";
 import { scrapeWithFetch } from "./scrapers/fetch";
 import { scrapWithPlaywright } from "./scrapers/playwright";
-import { scrapWithScrapingBee } from "./scrapers/scrapingBee";
 import { extractLinks } from "./utils/utils";
 import { Logger } from "../../lib/logger";
 import { clientSideError } from "../../strings";
 
 dotenv.config();
 
-const useScrapingBee =
-  process.env.SCRAPING_BEE_API_KEY !== "" &&
-  process.env.SCRAPING_BEE_API_KEY !== undefined;
-
-export const baseScrapers = [
-  useScrapingBee ? "scrapingBee" : undefined,
-  "playwright",
-  useScrapingBee ? "scrapingBeeLoad" : undefined,
-  "fetch",
-].filter(Boolean);
+export const baseScrapers = ["playwright", "fetch"].filter(Boolean);
 
 export async function generateRequestParams(
   url: string,
@@ -71,9 +57,6 @@ function getScrapingFallbackOrder(
 ) {
   const availableScrapers = baseScrapers.filter((scraper) => {
     switch (scraper) {
-      case "scrapingBee":
-      case "scrapingBeeLoad":
-        return !!process.env.SCRAPING_BEE_API_KEY;
       case "playwright":
         return !!process.env.PLAYWRIGHT_MICROSERVICE_URL;
       default:
@@ -81,12 +64,7 @@ function getScrapingFallbackOrder(
     }
   });
 
-  let defaultOrder = [
-    useScrapingBee ? "scrapingBee" : undefined,
-    useScrapingBee ? "scrapingBeeLoad" : undefined,
-    "playwright",
-    "fetch",
-  ].filter(Boolean);
+  let defaultOrder = ["playwright", "fetch"].filter(Boolean);
 
   const filteredDefaultOrder = defaultOrder.filter(
     (scraper: (typeof baseScrapers)[number]) =>
@@ -155,18 +133,6 @@ export async function scrapeSingleUrl(
     let screenshot = "";
 
     switch (method) {
-      case "scrapingBee":
-        if (process.env.SCRAPING_BEE_API_KEY) {
-          const response = await scrapWithScrapingBee(
-            url,
-            "domcontentloaded",
-            pageOptions.fallback === false ? 7000 : 15000
-          );
-          scraperResponse.text = response.content;
-          scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
-          scraperResponse.metadata.pageError = response.pageError;
-        }
-        break;
       case "playwright":
         if (process.env.PLAYWRIGHT_MICROSERVICE_URL) {
           const response = await scrapWithPlaywright(
@@ -174,14 +140,6 @@ export async function scrapeSingleUrl(
             pageOptions.waitFor,
             pageOptions.headers
           );
-          scraperResponse.text = response.content;
-          scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
-          scraperResponse.metadata.pageError = response.pageError;
-        }
-        break;
-      case "scrapingBeeLoad":
-        if (process.env.SCRAPING_BEE_API_KEY) {
-          const response = await scrapWithScrapingBee(url, "networkidle2");
           scraperResponse.text = response.content;
           scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
           scraperResponse.metadata.pageError = response.pageError;

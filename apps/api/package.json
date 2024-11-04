@@ -61,7 +61,6 @@
     "rate-limiter-flexible": "2.4.2",
     "redlock": "5.0.0-beta.2",
     "robots-parser": "^3.0.1",
-    "scrapingbee": "^1.7.4",
     "stripe": "^16.1.0",
     "systeminformation": "^5.22.11",
     "turndown": "^7.1.3",
