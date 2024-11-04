@@ -22,6 +22,7 @@ import { Logger } from "../../lib/logger";
 import { ScrapeEvents } from "../../lib/scrape-events";
 import { clientSideError } from "../../strings";
 import { ScrapeActionContent } from "../../lib/entities";
+import { removeBase64Images } from "./utils/removeBase64Images";
 
 dotenv.config();
 
@@ -159,6 +160,7 @@ export async function scrapSingleUrl(
     actions: pageOptions.actions ?? undefined,
     geolocation: pageOptions.geolocation ?? undefined,
     skipTlsVerification: pageOptions.skipTlsVerification ?? false,
+    removeBase64Images: pageOptions.removeBase64Images ?? true,
   }
 
   if (extractorOptions) {
@@ -350,7 +352,10 @@ export async function scrapSingleUrl(
     }
     //* TODO: add an optional to return markdown or structured/extracted content
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
-    const text = await parseMarkdown(cleanedHtml);
+    let text = await parseMarkdown(cleanedHtml);
+    if (pageOptions.removeBase64Images) {
+      text = await removeBase64Images(text);
+    }
 
     const insertedLogId = await logInsertPromise;
     ScrapeEvents.updateScrapeResult(insertedLogId, {
