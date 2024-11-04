@@ -97,37 +97,6 @@ const isValidUrl = (urlString: string): boolean => {
   }
 };
 
-const scrapePage = async (
-  page: any,
-  url: string,
-  waitUntil: "load" | "networkidle",
-  waitAfterLoad: number,
-  timeout: number,
-  checkSelector: string | undefined
-) => {
-  console.log(
-    `Navigating to ${url} with waitUntil: ${waitUntil} and timeout: ${timeout}ms`
-  );
-  const response = await page.goto(url, { waitUntil, timeout });
-
-  if (waitAfterLoad > 0) {
-    await page.waitForTimeout(waitAfterLoad);
-  }
-
-  if (checkSelector) {
-    try {
-      await page.waitForSelector(checkSelector, { timeout });
-    } catch (error) {
-      throw new Error("Required selector not found");
-    }
-  }
-
-  return {
-    content: await page.content(),
-    status: response ? response.status() : null,
-  };
-};
-
 app.post("/scrape", async (req: Request, res: Response) => {
   const {
     url,
