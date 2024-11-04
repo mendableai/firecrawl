@@ -59,6 +59,7 @@ export type PageOptions = {
   };
   skipTlsVerification?: boolean;
   removeBase64Images?: boolean;
+  mobile?: boolean;
 };
 
 export type ExtractorOptions = {

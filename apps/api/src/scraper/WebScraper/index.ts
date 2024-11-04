@@ -596,6 +596,7 @@ export class WebScraperDataProvider {
       geolocation: options.pageOptions?.geolocation ?? undefined,
       skipTlsVerification: options.pageOptions?.skipTlsVerification ?? false,
       removeBase64Images: options.pageOptions?.removeBase64Images ?? true,
+      mobile: options.pageOptions?.mobile ?? false,
     };
     this.extractorOptions = options.extractorOptions ?? { mode: "markdown" };
     this.replaceAllPathsWithAbsolutePaths =

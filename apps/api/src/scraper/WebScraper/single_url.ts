@@ -161,6 +161,7 @@ export async function scrapSingleUrl(
     geolocation: pageOptions.geolocation ?? undefined,
     skipTlsVerification: pageOptions.skipTlsVerification ?? false,
     removeBase64Images: pageOptions.removeBase64Images ?? true,
+    mobile: pageOptions.mobile ?? false,
   }
 
   if (extractorOptions) {
