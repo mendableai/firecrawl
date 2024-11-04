@@ -153,60 +153,76 @@ app.post("/scrape", async (req: Request, res: Response) => {
     return res.status(400).json({ error: "Invalid URL" });
   }
 
-  if (!PROXY_SERVER) {
-    console.warn(
-      "⚠️ WARNING: No proxy server provided. Your IP address may be blocked."
-    );
-  }
-
   if (!cluster) {
     await initializeBrowser();
   }
 
-  const page = await context.newPage();
-
-  // Set headers if provided
-  if (headers) {
-    await page.setExtraHTTPHeaders(headers);
-  }
-
   let pageContent;
   let pageStatusCode: number | null = null;
-  try {
-    // Strategy 1: Normal
-    console.log("Attempting strategy 1: Normal load");
-    const result = await scrapePage(
-      page,
-      url,
-      "load",
-      wait_after_load,
-      timeout,
-      check_selector
-    );
-    pageContent = result.content;
-    pageStatusCode = result.status;
-  } catch (error) {
+
+  console.log("Attempting strategy 1: Normal load");
+  await cluster.task(async ({ page }) => {
+    if (PROXY_USERNAME && PROXY_PASSWORD) {
+      await page.authenticate({
+        username: PROXY_USERNAME,
+        password: PROXY_PASSWORD,
+      });
+    }
+
+    if (headers) {
+      await page.setExtraHTTPHeaders(headers);
+    }
+
+    const loadResponse = await page.goto(url, { waitUntil: "load", timeout });
+
+    if (check_selector) {
+      try {
+        await page.waitForSelector(check_selector, { timeout });
+      } catch (error) {
+        throw new Error("Required selector not found");
+      }
+    }
+
+    pageContent = await page.content();
+    pageStatusCode = loadResponse ? loadResponse.status() : null;
+
+    await page.close();
+  });
+
+  if (!pageContent) {
     console.log(
       "Strategy 1 failed, attempting strategy 2: Wait until networkidle"
     );
-    try {
-      // Strategy 2: Wait until networkidle
-      const result = await scrapePage(
-        page,
-        url,
-        "networkidle",
-        wait_after_load,
+    await cluster.task(async ({ page }) => {
+      if (PROXY_USERNAME && PROXY_PASSWORD) {
+        await page.authenticate({
+          username: PROXY_USERNAME,
+          password: PROXY_PASSWORD,
+        });
+      }
+
+      if (headers) {
+        await page.setExtraHTTPHeaders(headers);
+      }
+
+      const loadResponse = await page.goto(url, {
+        waitUntil: "networkidle2",
         timeout,
-        check_selector
-      );
-      pageContent = result.content;
-      pageStatusCode = result.status;
-    } catch (finalError) {
+      });
+
+      if (check_selector) {
+        try {
+          await page.waitForSelector(check_selector, { timeout });
+        } catch (error) {
+          throw new Error("Required selector not found");
+        }
+      }
+
+      pageContent = await page.content();
+      pageStatusCode = loadResponse ? loadResponse.status() : null;
+
       await page.close();
-      return res
-        .status(500)
-        .json({ error: "An error occurred while fetching the page." });
-    }
+    });
   }
 
   const pageError = pageStatusCode !== 200 ? getError(pageStatusCode) : false;
@@ -218,8 +234,6 @@ app.post("/scrape", async (req: Request, res: Response) => {
       `🚨 Scrape failed with status code: ${pageStatusCode} ${pageError}`
     );
   }
-
-  await page.close();
 
   res.json({
     content: pageContent,
