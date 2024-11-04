@@ -7,7 +7,7 @@ import {
 import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
-import { Document, toLegacyDocument } from "../v1/types";
+import { Document, fromLegacyCombo, toLegacyDocument } from "../v1/types";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from "../../lib/LLM-extraction/helpers";
 import {
@@ -36,7 +36,7 @@ export async function scrapeHelper(
 ): Promise<{
   success: boolean;
   error?: string;
-  data?: Document;
+  data?: Document | { url: string };
   returnCode: number;
 }> {
   const url = req.body.url;
@@ -55,7 +55,7 @@ export async function scrapeHelper(
 
   const jobPriority = await getJobPriority({ plan, team_id, basePriority: 10 });
 
-  const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(pageOptions, extractorOptions, timeout);
+  const { scrapeOptions, internalOptions } = fromLegacyCombo(pageOptions, extractorOptions, timeout, crawlerOptions);
 
   await addScrapeJob(
     {
@@ -151,7 +151,7 @@ export async function scrapeHelper(
 
   return {
     success: true,
-    data: toLegacyDocument(doc),
+    data: toLegacyDocument(doc, internalOptions),
     returnCode: 200,
   };
 }
@@ -228,8 +228,8 @@ export async function scrapeController(req: Request, res: Response) {
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
     const numTokens =
-      result.data && result.data.markdown
-        ? numTokensFromString(result.data.markdown, "gpt-3.5-turbo")
+      result.data && (result.data as Document).markdown
+        ? numTokensFromString((result.data as Document).markdown!, "gpt-3.5-turbo")
         : 0;
 
     if (result.success) {
@@ -258,14 +258,14 @@ export async function scrapeController(req: Request, res: Response) {
     
     let doc = result.data;
     if (!pageOptions || !pageOptions.includeRawHtml) {
-      if (doc && doc.rawHtml) {
-        delete doc.rawHtml;
+      if (doc && (doc as Document).rawHtml) {
+        delete (doc as Document).rawHtml;
       }
     }
   
     if(pageOptions && pageOptions.includeExtract) {
-      if(!pageOptions.includeMarkdown && doc && doc.markdown) {
-        delete doc.markdown;
+      if(!pageOptions.includeMarkdown && doc && (doc as Document).markdown) {
+        delete (doc as Document).markdown;
       }
     }
 

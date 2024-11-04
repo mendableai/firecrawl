@@ -440,17 +440,22 @@ export interface ResponseWithSentry<
   sentry?: string,
 }
 
-export function fromLegacyCrawlerOptions(x: any): CrawlerOptions {
-  return crawlerOptions.parse({
-    includePaths: x.includes,
-    excludePaths: x.excludes,
-    limit: x.maxCrawledLinks ?? x.limit,
-    maxDepth: x.maxDepth,
-    allowBackwardLinks: x.allowBackwardCrawling,
-    allowExternalLinks: x.allowExternalContentLinks,
-    ignoreSitemap: x.ignoreSitemap,
-    // TODO: returnOnlyUrls support
-  });
+export function fromLegacyCrawlerOptions(x: any): { crawlOptions: CrawlerOptions; internalOptions: InternalOptions } {
+  return {
+    crawlOptions: crawlerOptions.parse({
+      includePaths: x.includes,
+      excludePaths: x.excludes,
+      limit: x.maxCrawledLinks ?? x.limit,
+      maxDepth: x.maxDepth,
+      allowBackwardLinks: x.allowBackwardCrawling,
+      allowExternalLinks: x.allowExternalContentLinks,
+      ignoreSitemap: x.ignoreSitemap,
+      // TODO: returnOnlyUrls support
+    }),
+    internalOptions: {
+      v0CrawlOnlyUrls: x.returnOnlyUrls,
+    },
+  };
 }
 
 export function fromLegacyScrapeOptions(pageOptions: PageOptions, extractorOptions: ExtractorOptions | undefined, timeout: number | undefined): { scrapeOptions: ScrapeOptions, internalOptions: InternalOptions } {
@@ -488,7 +493,17 @@ export function fromLegacyScrapeOptions(pageOptions: PageOptions, extractorOptio
   }
 }
 
-export function toLegacyDocument(document: Document): V0Document {
+export function fromLegacyCombo(pageOptions: PageOptions, extractorOptions: ExtractorOptions | undefined, timeout: number | undefined, crawlerOptions: any): { scrapeOptions: ScrapeOptions, crawlOptions: CrawlerOptions, internalOptions: InternalOptions} {
+  const { scrapeOptions, internalOptions: i1 } = fromLegacyScrapeOptions(pageOptions, extractorOptions, timeout);
+  const { crawlOptions, internalOptions: i2 } = fromLegacyCrawlerOptions(crawlerOptions);
+  return { scrapeOptions, crawlOptions, internalOptions: Object.assign(i1, i2) };
+}
+
+export function toLegacyDocument(document: Document, internalOptions: InternalOptions): V0Document | { url: string; } {
+  if (internalOptions.v0CrawlOnlyUrls) {
+    return { url: document.metadata.sourceURL! };
+  }
+
   return {
     content: document.markdown!,
     markdown: document.markdown!,

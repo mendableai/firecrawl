@@ -13,7 +13,7 @@ import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
 import { Job } from "bullmq";
-import { Document, fromLegacyScrapeOptions, toLegacyDocument } from "../v1/types";
+import { Document, fromLegacyCombo, fromLegacyScrapeOptions, toLegacyDocument } from "../v1/types";
 
 export async function searchHelper(
   jobId: string,
@@ -59,7 +59,7 @@ export async function searchHelper(
 
   let justSearch = pageOptions.fetchPageContent === false;
 
-  const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(pageOptions, undefined, 60000);
+  const { scrapeOptions, internalOptions } = fromLegacyCombo(pageOptions, undefined, 60000, crawlerOptions);
 
   if (justSearch) {
     billTeam(team_id, subscription_id, res.length).catch(error => {
@@ -106,7 +106,7 @@ export async function searchHelper(
     await addScrapeJob(job.data as any, {}, job.opts.jobId, job.opts.priority)
   }
 
-  const docs = (await Promise.all(jobDatas.map(x => waitForJob<Document[]>(x.opts.jobId, 60000)))).map(x => toLegacyDocument(x[0]));
+  const docs = (await Promise.all(jobDatas.map(x => waitForJob<Document[]>(x.opts.jobId, 60000)))).map(x => toLegacyDocument(x[0], internalOptions));
   
   if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
@@ -117,7 +117,7 @@ export async function searchHelper(
 
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(
-    (doc: { content?: string }) => doc && doc.content && doc.content.trim().length > 0
+    (doc: any) => doc && doc.content && doc.content.trim().length > 0
   );
 
   if (filteredDocs.length === 0) {

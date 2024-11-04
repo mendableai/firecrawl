@@ -94,8 +94,8 @@ export async function crawlStatusController(req: Request, res: Response) {
       status: jobStatus,
       current: jobStatuses.filter(x => x === "completed" || x === "failed").length,
       total: jobs.length,
-      data: jobStatus === "completed" ? data.map(x => toLegacyDocument(x)) : null,
-      partial_data: jobStatus === "completed" ? [] : data.filter(x => x !== null).map(x => toLegacyDocument(x)),
+      data: jobStatus === "completed" ? data.map(x => toLegacyDocument(x, sc.internalOptions)) : null,
+      partial_data: jobStatus === "completed" ? [] : data.filter(x => x !== null).map(x => toLegacyDocument(x, sc.internalOptions)),
     });
   } catch (error) {
     Sentry.captureException(error);

@@ -90,6 +90,8 @@ export type InternalOptions = {
     priority?: number; // Passed along to fire-engine
     forceEngine?: Engine;
     atsv?: boolean; // anti-bot solver, beta
+
+    v0CrawlOnlyUrls?: boolean;
 };
 
 export type EngineResultsTracker = { [E in Engine]?: {
