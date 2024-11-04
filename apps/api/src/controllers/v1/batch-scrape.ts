@@ -59,7 +59,7 @@ export async function batchScrapeController(
         url: x,
         mode: "single_urls" as const,
         team_id: req.auth.team_id,
-        plan: req.auth.plan,
+        plan: req.auth.plan!,
         crawlerOptions: null,
         scrapeOptions: req.body,
         origin: "api",
