@@ -1,9 +1,13 @@
 import { supabase_service } from "../supabase";
-import "dotenv/config";
+import { Logger } from "../../../src/lib/logger";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 export async function logCrawl(job_id: string, team_id: string) {
-  try {
-    const { data, error } = await supabase_service
+  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+  if (useDbAuthentication) {
+    try {
+      const { data, error } = await supabase_service
       .from("bulljobs_teams")
       .insert([
         {
@@ -11,7 +15,8 @@ export async function logCrawl(job_id: string, team_id: string) {
           team_id: team_id,
         },
       ]);
-  } catch (error) {
-    console.error("Error logging crawl job:\n", error);
+    } catch (error) {
+      Logger.error(`Error logging crawl job to supabase:\n${error}`);
+    }
   }
 }

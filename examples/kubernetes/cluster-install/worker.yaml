@@ -1,0 +1,26 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      imagePullSecrets:
+        - name: docker-registry-secret
+      containers:
+        - name: worker
+          image: ghcr.io/winkk-dev/firecrawl:latest
+          imagePullPolicy: Always
+          args: [ "pnpm", "run", "workers" ]
+          envFrom:
+            - configMapRef:
+                name: firecrawl-config
+          #- secretRef:
+          #    name: firecrawl-secret

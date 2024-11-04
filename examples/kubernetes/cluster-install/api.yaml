@@ -1,0 +1,58 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: api
+  template:
+    metadata:
+      labels:
+        app: api
+    spec:
+      imagePullSecrets:
+        - name: docker-registry-secret
+      containers:
+        - name: api
+          image: ghcr.io/winkk-dev/firecrawl:latest
+          imagePullPolicy: Always
+          args: [ "pnpm", "run", "start:production" ]
+          ports:
+            - containerPort: 3002
+          envFrom:
+            - configMapRef:
+                name: firecrawl-config
+          #- secretRef:
+          #    name: firecrawl-secret
+          livenessProbe:
+            httpGet:
+              path: /v0/health/liveness
+              port: 3002
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /v0/health/readiness
+              port: 3002
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: api
+spec:
+  selector:
+    app: api
+  ports:
+    - protocol: TCP
+      port: 3002
+      targetPort: 3002

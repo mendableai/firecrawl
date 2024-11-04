@@ -1,0 +1,66 @@
+# fly.toml app configuration file generated for firecrawl-scraper-js on 2024-04-07T21:09:59-03:00
+#
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+#
+
+app = 'staging-firecrawl-scraper-js'
+primary_region = 'mia'
+kill_signal = 'SIGINT'
+kill_timeout = '30s'
+
+[build]
+
+[processes]
+  app = 'node dist/src/index.js'
+  worker = 'node dist/src/services/queue-worker.js'
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = true
+  auto_start_machines = true
+  min_machines_running = 2
+  processes = ['app']
+
+[http_service.concurrency]
+  type = "requests"
+  # hard_limit = 100
+  soft_limit = 100
+
+[[http_service.checks]]
+  grace_period = "10s"
+  interval = "30s"
+  method = "GET"
+  timeout = "5s"
+  path = "/"
+
+
+[[services]]
+  protocol = 'tcp'
+  internal_port = 8080
+  processes = ['worker']
+
+[[services.ports]]
+    port = 80
+    handlers = ['http']
+    force_https = true
+
+[[services.ports]]
+    port = 443
+    handlers = ['tls', 'http']
+
+  [services.concurrency]
+    type = 'connections'
+    # hard_limit = 25
+    soft_limit = 100
+
+[[vm]]
+  size = 'performance-2x'
+  processes = ['app','worker']
+  memory = 8192
+
+
+
+
+
+  

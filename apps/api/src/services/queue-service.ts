@@ -1,17 +1,48 @@
-import Queue from "bull";
-import { Queue as BullQueue } from "bull";
+import { Queue } from "bullmq";
+import { Logger } from "../lib/logger";
+import IORedis from "ioredis";
 
-let webScraperQueue: BullQueue;
+let scrapeQueue: Queue;
 
-export function getWebScraperQueue() {
-  if (!webScraperQueue) {
-    webScraperQueue = new Queue("web-scraper", process.env.REDIS_URL, {
-      settings: {
-        lockDuration: 4 * 60 * 60 * 1000, // 4 hours in milliseconds,
-        lockRenewTime: 30 * 60 * 1000, // 30 minutes in milliseconds
-      },
-    });
-    console.log("Web scraper queue created");
+export const redisConnection = new IORedis(process.env.REDIS_URL, {
+  maxRetriesPerRequest: null,
+});
+
+export const scrapeQueueName = "{scrapeQueue}";
+
+export function getScrapeQueue() {
+  if (!scrapeQueue) {
+    scrapeQueue = new Queue(
+      scrapeQueueName,
+      {
+        connection: redisConnection,
+        defaultJobOptions: {
+          removeOnComplete: {
+            age: 90000, // 25 hours
+          },
+          removeOnFail: {
+            age: 90000, // 25 hours
+          },
+        },
+      }
+      //   {
+      //   settings: {
+      //     lockDuration: 1 * 60 * 1000, // 1 minute in milliseconds,
+      //     lockRenewTime: 15 * 1000, // 15 seconds in milliseconds
+      //     stalledInterval: 30 * 1000,
+      //     maxStalledCount: 10,
+      //   },
+      //   defaultJobOptions:{
+      //     attempts: 5
+      //   }
+      // }
+    );
+    Logger.info("Web scraper queue created");
   }
-  return webScraperQueue;
+  return scrapeQueue;
 }
+
+
+// === REMOVED IN FAVOR OF POLLING -- NOT RELIABLE
+// import { QueueEvents } from 'bullmq';
+// export const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection.duplicate() });

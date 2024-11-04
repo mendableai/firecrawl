@@ -1,3 +1,4 @@
+import { Logger } from "../../../lib/logger";
 import { Document } from "../../../lib/entities";
 
 export const replacePathsWithAbsolutePaths = (documents: Document[]): Document[] => {
@@ -6,13 +7,13 @@ export const replacePathsWithAbsolutePaths = (documents: Document[]): Document[]
       const baseUrl = new URL(document.metadata.sourceURL).origin;
       const paths =
         document.content.match(
-          /(!?\[.*?\])\(((?:[^()]+|\((?:[^()]+|\([^()]*\))*\))*)\)|href="([^"]+)"/g
+          /!?\[.*?\]\(.*?\)|href=".+?"/g
         ) || [];
 
       paths.forEach((path: string) => {
         try {
           const isImage = path.startsWith("!");
-        let matchedUrl = path.match(/\(([^)]+)\)/) || path.match(/href="([^"]+)"/);
+        let matchedUrl = path.match(/\((.*?)\)/) || path.match(/href="([^"]+)"/);
         let url = matchedUrl[1];
 
         if (!url.startsWith("data:") && !url.startsWith("http")) {
@@ -39,7 +40,7 @@ export const replacePathsWithAbsolutePaths = (documents: Document[]): Document[]
 
     return documents;
   } catch (error) {
-    console.error("Error replacing paths with absolute paths", error);
+    Logger.debug(`Error replacing paths with absolute paths: ${error}`);
     return documents;
   }
 };
@@ -50,11 +51,11 @@ export const replaceImgPathsWithAbsolutePaths = (documents: Document[]): Documen
       const baseUrl = new URL(document.metadata.sourceURL).origin;
       const images =
         document.content.match(
-          /!\[.*?\]\(((?:[^()]+|\((?:[^()]+|\([^()]*\))*\))*)\)/g
+          /!\[.*?\]\(.*?\)/g
         ) || [];
 
       images.forEach((image: string) => {
-        let imageUrl = image.match(/\(([^)]+)\)/)[1];
+        let imageUrl = image.match(/\((.*?)\)/)[1];
         let altText = image.match(/\[(.*?)\]/)[1];
 
         if (!imageUrl.startsWith("data:image")) {
@@ -78,7 +79,7 @@ export const replaceImgPathsWithAbsolutePaths = (documents: Document[]): Documen
 
     return documents;
   } catch (error) {
-    console.error("Error replacing img paths with absolute paths", error);
+    Logger.error(`Error replacing img paths with absolute paths: ${error}`);
     return documents;
   }
 };

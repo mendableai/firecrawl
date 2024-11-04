@@ -1,7 +1,7 @@
-name: Clean Before 24h Completed Jobs
+name: Clean Every 30 Minutes Before 24h Completed Jobs
 on:
   schedule:
-    - cron: '0 0 * * *'
+    - cron: '30 * * * *'
 
 env:
   BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}
@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Send GET request to clean jobs
         run: |
-          response=$(curl --write-out '%{http_code}' --silent --output /dev/null https://api.firecrawl.dev/admin/${{ secrets.BULL_AUTH_KEY }}/clean-before-24h-complete-jobs)
+          response=$(curl --write-out '%{http_code}' --silent --output /dev/null --max-time 180 https://api.firecrawl.dev/admin/${{ secrets.BULL_AUTH_KEY }}/clean-before-24h-complete-jobs)
           if [ "$response" -ne 200 ]; then
             echo "Failed to clean jobs. Response: $response"
             exit 1

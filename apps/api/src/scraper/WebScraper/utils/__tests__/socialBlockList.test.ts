@@ -1,3 +1,4 @@
+import { Logger } from '../../../../lib/logger';
 import { isUrlBlocked } from '../blocklist';
 
 describe('isUrlBlocked', () => {
@@ -7,7 +8,6 @@ describe('isUrlBlocked', () => {
       'https://twitter.com/someuser',
       'https://instagram.com/someuser',
       'https://www.linkedin.com/in/someuser',
-      'https://pinterest.com/someuser',
       'https://snapchat.com/someuser',
       'https://tiktok.com/@someuser',
       'https://reddit.com/r/somesubreddit',
@@ -19,7 +19,7 @@ describe('isUrlBlocked', () => {
 
     blockedUrls.forEach(url => {
       if (!isUrlBlocked(url)) {
-        console.log(`URL not blocked: ${url}`);
+        Logger.debug(`URL not blocked: ${url}`);
       }
       expect(isUrlBlocked(url)).toBe(true);
     });

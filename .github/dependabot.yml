@@ -1,0 +1,45 @@
+version: 2
+updates:
+  # playwright-service
+  - package-ecosystem: "pip"
+    directory: "/apps/playwright-service"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0  # Disable version updates
+    security-updates: "all"
+    commit-message:
+      prefix: "apps/playwright-service"
+      include: "scope"
+
+  # python-sdk
+  - package-ecosystem: "pip"
+    directory: "/apps/python-sdk"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0  # Disable version updates
+    security-updates: "all"
+    commit-message:
+      prefix: "apps/python-sdk"
+      include: "scope"
+
+  # api
+  - package-ecosystem: "npm"
+    directory: "/apps/api"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0  # Disable version updates
+    security-updates: "all"
+    commit-message:
+      prefix: "apps/api"
+      include: "scope"
+
+  # test-suite
+  - package-ecosystem: "npm"
+    directory: "/apps/test-suite"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 0  # Disable version updates
+    security-updates: "all"
+    commit-message:
+      prefix: "apps/test-suite"
+      include: "scope"

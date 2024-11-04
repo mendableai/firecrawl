@@ -4,3 +4,8 @@
 *.csv
 dump.rdb
 /mongo-data
+
+/.next/
+
+.rdb
+.sentryclirc

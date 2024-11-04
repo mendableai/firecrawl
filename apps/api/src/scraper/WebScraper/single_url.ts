@@ -1,26 +1,42 @@
 import * as cheerio from "cheerio";
-import { ScrapingBeeClient } from "scrapingbee";
 import { extractMetadata } from "./utils/metadata";
 import dotenv from "dotenv";
-import { Document, PageOptions, FireEngineResponse } from "../../lib/entities";
+import {
+  Document,
+  PageOptions,
+  FireEngineResponse,
+  ExtractorOptions,
+  Action,
+} from "../../lib/entities";
 import { parseMarkdown } from "../../lib/html-to-markdown";
-import { excludeNonMainTags } from "./utils/excludeTags";
 import { urlSpecificParams } from "./utils/custom/website_params";
 import { fetchAndProcessPdf } from "./utils/pdfProcessor";
 import { handleCustomScraping } from "./custom/handleCustomScraping";
-import axios from "axios";
+import { removeUnwantedElements } from "./utils/removeUnwantedElements";
+import { scrapWithFetch } from "./scrapers/fetch";
+import { scrapWithFireEngine } from "./scrapers/fireEngine";
+import { scrapWithPlaywright } from "./scrapers/playwright";
+import { scrapWithScrapingBee } from "./scrapers/scrapingBee";
+import { extractLinks } from "./utils/utils";
+import { Logger } from "../../lib/logger";
+import { ScrapeEvents } from "../../lib/scrape-events";
+import { clientSideError } from "../../strings";
+import { ScrapeActionContent } from "../../lib/entities";
+import { removeBase64Images } from "./utils/removeBase64Images";
 
 dotenv.config();
 
-const baseScrapers = [
-  "fire-engine",
-  "scrapingBee",
-  "playwright",
-  "scrapingBeeLoad",
-  "fetch",
-] as const;
+const useScrapingBee = process.env.SCRAPING_BEE_API_KEY !== '' && process.env.SCRAPING_BEE_API_KEY !== undefined;
+const useFireEngine = process.env.FIRE_ENGINE_BETA_URL !== '' && process.env.FIRE_ENGINE_BETA_URL !== undefined;
 
-const universalTimeout = 15000;
+export const baseScrapers = [
+  useFireEngine ? "fire-engine;chrome-cdp" : undefined,
+  useFireEngine ? "fire-engine" : undefined,
+  useScrapingBee ? "scrapingBee" : undefined,
+  useFireEngine ? undefined : "playwright",
+  useScrapingBee ? "scrapingBeeLoad" : undefined,
+  "fetch",
+].filter(Boolean);
 
 export async function generateRequestParams(
   url: string,
@@ -41,190 +57,8 @@ export async function generateRequestParams(
       return defaultParams;
     }
   } catch (error) {
-    console.error(`Error generating URL key: ${error}`);
+    Logger.error(`Error generating URL key: ${error}`);
     return defaultParams;
-  }
-}
-export async function scrapWithFireEngine(
-  url: string,
-  waitFor: number = 0,
-  screenshot: boolean = false,
-  pageOptions: { scrollXPaths?: string[] } = {},
-  headers?: Record<string, string>,
-  options?: any
-): Promise<FireEngineResponse> {
-  try {
-    const reqParams = await generateRequestParams(url);
-    // If the user has passed a wait parameter in the request, use that
-    const waitParam = reqParams["params"]?.wait ?? waitFor;
-    const screenshotParam = reqParams["params"]?.screenshot ?? screenshot;
-    console.log(
-      `[Fire-Engine] Scraping ${url} with wait: ${waitParam} and screenshot: ${screenshotParam}`
-    );
-
-    const response = await axios.post(
-      process.env.FIRE_ENGINE_BETA_URL + "/scrape",
-      {
-        url: url,
-        wait: waitParam,
-        screenshot: screenshotParam,
-        headers: headers,
-        pageOptions: pageOptions,
-      },
-      {
-        headers: {
-          "Content-Type": "application/json",
-        },
-        timeout: universalTimeout + waitParam
-      }
-    );
-
-    if (response.status !== 200) {
-      console.error(
-        `[Fire-Engine] Error fetching url: ${url} with status: ${response.status}`
-      );
-      return { html: "", screenshot: "" };
-    }
-
-    const contentType = response.headers["content-type"];
-    if (contentType && contentType.includes("application/pdf")) {
-      return { html: await fetchAndProcessPdf(url), screenshot: "" };
-    } else {
-      const data = response.data;
-      const html = data.content;
-      const screenshot = data.screenshot;
-      return { html: html ?? "", screenshot: screenshot ?? "" };
-    }
-  } catch (error) {
-    if (error.code === 'ECONNABORTED') {
-      console.log(`[Fire-Engine] Request timed out for ${url}`);
-    } else {
-      console.error(`[Fire-Engine][c] Error fetching url: ${url} -> ${error}`);
-    }
-    return { html: "", screenshot: "" };
-  }
-}
-
-export async function scrapWithScrapingBee(
-  url: string,
-  wait_browser: string = "domcontentloaded",
-  timeout: number = universalTimeout
-): Promise<string> {
-  try {
-    const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY);
-    const clientParams = await generateRequestParams(
-      url,
-      wait_browser,
-      timeout
-    );
-
-    const response = await client.get(clientParams);
-
-    if (response.status !== 200 && response.status !== 404) {
-      console.error(
-        `[ScrapingBee] Error fetching url: ${url} with status code ${response.status}`
-      );
-      return "";
-    }
-
-    const contentType = response.headers["content-type"];
-    if (contentType && contentType.includes("application/pdf")) {
-      return fetchAndProcessPdf(url);
-    } else {
-      const decoder = new TextDecoder();
-      const text = decoder.decode(response.data);
-      return text;
-    }
-  } catch (error) {
-    console.error(`[ScrapingBee][c] Error fetching url: ${url} -> ${error}`);
-    return "";
-  }
-}
-
-export async function scrapWithPlaywright(
-  url: string,
-  waitFor: number = 0,
-  headers?: Record<string, string>
-): Promise<string> {
-  try {
-    const reqParams = await generateRequestParams(url);
-    // If the user has passed a wait parameter in the request, use that
-    const waitParam = reqParams["params"]?.wait ?? waitFor;
-
-    const response = await axios.post(process.env.PLAYWRIGHT_MICROSERVICE_URL, {
-      url: url,
-      wait_after_load: waitParam,
-      headers: headers,
-    }, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-      timeout: universalTimeout + waitParam, // Add waitParam to timeout to account for the wait time
-      transformResponse: [(data) => data] // Prevent axios from parsing JSON automatically
-    });
-
-    if (response.status !== 200) {
-      console.error(
-        `[Playwright] Error fetching url: ${url} with status: ${response.status}`
-      );
-      return "";
-    }
-
-    const contentType = response.headers["content-type"];
-    if (contentType && contentType.includes("application/pdf")) {
-      return fetchAndProcessPdf(url);
-    } else {
-      const textData = response.data;
-      try {
-        const data = JSON.parse(textData);
-        const html = data.content;
-        return html ?? "";
-      } catch (jsonError) {
-        console.error(`[Playwright] Error parsing JSON response for url: ${url} -> ${jsonError}`);
-        return "";
-      }
-    }
-  } catch (error) {
-    if (error.code === 'ECONNABORTED') {
-      console.log(`[Playwright] Request timed out for ${url}`);
-    } else {
-      console.error(`[Playwright] Error fetching url: ${url} -> ${error}`);
-    }
-    return "";
-  }
-}
-
-export async function scrapWithFetch(url: string): Promise<string> {
-  try {
-    const response = await axios.get(url, {
-      headers: {
-        "Content-Type": "application/json",
-      },
-      timeout: universalTimeout,
-      transformResponse: [(data) => data] // Prevent axios from parsing JSON automatically
-    });
-
-    if (response.status !== 200) {
-      console.error(
-        `[Axios] Error fetching url: ${url} with status: ${response.status}`
-      );
-      return "";
-    }
-
-    const contentType = response.headers["content-type"];
-    if (contentType && contentType.includes("application/pdf")) {
-      return fetchAndProcessPdf(url);
-    } else {
-      const text = response.data;
-      return text;
-    }
-  } catch (error) {
-    if (error.code === 'ECONNABORTED') {
-      console.log(`[Axios] Request timed out for ${url}`);
-    } else {
-      console.error(`[Axios] Error fetching url: ${url} -> ${error}`);
-    }
-    return "";
   }
 }
 
@@ -238,8 +72,13 @@ function getScrapingFallbackOrder(
   defaultScraper?: string,
   isWaitPresent: boolean = false,
   isScreenshotPresent: boolean = false,
-  isHeadersPresent: boolean = false
+  isHeadersPresent: boolean = false,
+  isActionsPresent: boolean = false,
 ) {
+  if (isActionsPresent) {
+    return useFireEngine ? ["fire-engine;chrome-cdp"] : [];
+  }
+
   const availableScrapers = baseScrapers.filter((scraper) => {
     switch (scraper) {
       case "scrapingBee":
@@ -247,6 +86,8 @@ function getScrapingFallbackOrder(
         return !!process.env.SCRAPING_BEE_API_KEY;
       case "fire-engine":
         return !!process.env.FIRE_ENGINE_BETA_URL;
+      case "fire-engine;chrome-cdp":
+        return !!process.env.FIRE_ENGINE_BETA_URL;  
       case "playwright":
         return !!process.env.PLAYWRIGHT_MICROSERVICE_URL;
       default:
@@ -255,22 +96,23 @@ function getScrapingFallbackOrder(
   });
 
   let defaultOrder = [
-    "scrapingBee",
-    "fire-engine",
-    "playwright",
-    "scrapingBeeLoad",
+    useFireEngine ? "fire-engine;chrome-cdp" : undefined,
+    useFireEngine ? "fire-engine" : undefined,
+    useScrapingBee ? "scrapingBee" : undefined,
+    useScrapingBee ? "scrapingBeeLoad" : undefined,
+    useFireEngine ? undefined : "playwright",
     "fetch",
-  ];
+  ].filter(Boolean);
 
-  if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
-    defaultOrder = [
-      "fire-engine",
-      "playwright",
-      ...defaultOrder.filter(
-        (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
-      ),
-    ];
-  }
+  // if (isWaitPresent || isScreenshotPresent || isHeadersPresent) {
+  //   defaultOrder = [
+  //     "fire-engine",
+  //     useFireEngine ? undefined : "playwright",
+  //     ...defaultOrder.filter(
+  //       (scraper) => scraper !== "fire-engine" && scraper !== "playwright"
+  //     ),
+  //   ].filter(Boolean);
+  // }
 
   const filteredDefaultOrder = defaultOrder.filter(
     (scraper: (typeof baseScrapers)[number]) =>
@@ -281,192 +123,384 @@ function getScrapingFallbackOrder(
       ? [defaultScraper, ...filteredDefaultOrder, ...availableScrapers]
       : [...filteredDefaultOrder, ...availableScrapers]
   );
+
   const scrapersInOrder = Array.from(uniqueScrapers);
   return scrapersInOrder as (typeof baseScrapers)[number][];
 }
 
 
 
-
 export async function scrapSingleUrl(
+  jobId: string,
   urlToScrap: string,
-  pageOptions: PageOptions = {
-    onlyMainContent: true,
-    includeHtml: false,
-    waitFor: 0,
-    screenshot: false,
-    headers: undefined
-  },
-  existingHtml: string = ""
+  pageOptions: PageOptions,
+  extractorOptions?: ExtractorOptions,
+  existingHtml?: string,
+  priority?: number,
+  teamId?: string
 ): Promise<Document> {
+  pageOptions = {
+    includeMarkdown: pageOptions.includeMarkdown ?? true,
+    includeExtract: pageOptions.includeExtract ?? false,
+    onlyMainContent: pageOptions.onlyMainContent ?? false,
+    includeHtml: pageOptions.includeHtml ?? false,
+    includeRawHtml: pageOptions.includeRawHtml ?? false,
+    waitFor: pageOptions.waitFor ?? undefined,
+    screenshot: pageOptions.screenshot ?? false,
+    fullPageScreenshot: pageOptions.fullPageScreenshot ?? false,
+    headers: pageOptions.headers ?? undefined,
+    includeLinks: pageOptions.includeLinks ?? true,
+    replaceAllPathsWithAbsolutePaths: pageOptions.replaceAllPathsWithAbsolutePaths ?? true,
+    parsePDF: pageOptions.parsePDF ?? true,
+    removeTags: pageOptions.removeTags ?? [],
+    onlyIncludeTags: pageOptions.onlyIncludeTags ?? [],
+    useFastMode: pageOptions.useFastMode ?? false,
+    disableJsDom: pageOptions.disableJsDom ?? false,
+    atsv: pageOptions.atsv ?? false,
+    actions: pageOptions.actions ?? undefined,
+    geolocation: pageOptions.geolocation ?? undefined,
+    skipTlsVerification: pageOptions.skipTlsVerification ?? false,
+    removeBase64Images: pageOptions.removeBase64Images ?? true,
+    mobile: pageOptions.mobile ?? false,
+  }
+
+  if (extractorOptions) {
+    extractorOptions = {
+      mode: extractorOptions?.mode ?? "llm-extraction-from-markdown",
+    }
+  }
+
+  if (!existingHtml) {
+    existingHtml = "";
+  }
+
   urlToScrap = urlToScrap.trim();
-
-  const removeUnwantedElements = (html: string, pageOptions: PageOptions) => {
-    const soup = cheerio.load(html);
-    soup("script, style, iframe, noscript, meta, head").remove();
-
-    if (pageOptions.removeTags) {
-      if (typeof pageOptions.removeTags === 'string') {
-        pageOptions.removeTags.split(',').forEach((tag) => {
-          soup(tag.trim()).remove();
-        });
-      } else if (Array.isArray(pageOptions.removeTags)) {
-        pageOptions.removeTags.forEach((tag) => {
-          soup(tag).remove();
-        });
-      }
-    }
-    
-    if (pageOptions.onlyMainContent) {
-      // remove any other tags that are not in the main content
-      excludeNonMainTags.forEach((tag) => {
-        soup(tag).remove();
-      });
-    }
-    return soup.html();
-  };
 
   const attemptScraping = async (
     url: string,
     method: (typeof baseScrapers)[number]
   ) => {
-    let text = "";
+    let scraperResponse: {
+      text: string;
+      screenshot: string;
+      actions?: {
+        screenshots?: string[];
+        scrapes?: ScrapeActionContent[];
+      };
+      metadata: { pageStatusCode?: number; pageError?: string | null };
+    } = { text: "", screenshot: "", metadata: {} };
     let screenshot = "";
+
+    const timer = Date.now();
+    const logInsertPromise = ScrapeEvents.insert(jobId, {
+      type: "scrape",
+      url,
+      worker: process.env.FLY_MACHINE_ID,
+      method,
+      result: null,
+    });
+
     switch (method) {
       case "fire-engine":
+      case "fire-engine;chrome-cdp":  
+
+        let engine: "playwright" | "chrome-cdp" | "tlsclient" = "playwright";
+        if (method === "fire-engine;chrome-cdp") {
+          engine = "chrome-cdp";
+        }
+
         if (process.env.FIRE_ENGINE_BETA_URL) {
-          console.log(`Scraping ${url} with Fire Engine`);
-          const response = await scrapWithFireEngine(
+          const processedActions: Action[] = pageOptions.actions?.flatMap((action: Action, index: number, array: Action[]) => {
+            if (action.type === "click" || action.type === "write" || action.type === "press") {
+              const result: Action[] = [];
+              // Don't add a wait if the previous action is a wait
+              // if (index === 0 || array[index - 1].type !== "wait") {
+              //   result.push({ type: "wait", milliseconds: 1200 } as Action);
+              // }
+              // Fire-engine now handles wait times automatically, leaving the code here for now
+              result.push(action);
+              // Don't add a wait if the next action is a wait
+              // if (index === array.length - 1 || array[index + 1].type !== "wait") {
+              //   result.push({ type: "wait", milliseconds: 1200 } as Action);
+              // }
+              return result;
+            }
+            return [action as Action];
+          }) ?? [] as Action[];
+          
+          const response = await scrapWithFireEngine({
             url,
-            pageOptions.waitFor,
-            pageOptions.screenshot,
-            pageOptions.headers
-          );
-          text = response.html;
-          screenshot = response.screenshot;
+            ...(engine === "chrome-cdp" ? ({
+              actions: [
+                ...(pageOptions.waitFor ? [{
+                  type: "wait" as const,
+                  milliseconds: pageOptions.waitFor,
+                }] : []),
+                ...((pageOptions.screenshot || pageOptions.fullPageScreenshot) ? [{
+                  type: "screenshot" as const,
+                  fullPage: !!pageOptions.fullPageScreenshot,
+                }] : []),
+                ...processedActions,
+              ],
+            }) : ({
+              waitFor: pageOptions.waitFor,
+              screenshot: pageOptions.screenshot,
+              fullPageScreenshot: pageOptions.fullPageScreenshot,
+            })),
+            pageOptions: pageOptions,
+            headers: pageOptions.headers,
+            fireEngineOptions: {
+              engine: engine,
+              atsv: pageOptions.atsv,
+              disableJsDom: pageOptions.disableJsDom,
+            },
+            priority,
+            teamId,
+          });
+          scraperResponse.text = response.html;
+          if (pageOptions.screenshot || pageOptions.fullPageScreenshot) {
+            scraperResponse.screenshot = (response.screenshots ?? []).splice(0, 1)[0] ?? "";
+          }
+          if (pageOptions.actions) {
+            scraperResponse.actions = {
+              screenshots: response.screenshots ?? [],
+              scrapes: response.scrapeActionContent ?? [],
+            };
+          }
+          scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
+          scraperResponse.metadata.pageError = response.pageError;
         }
         break;
       case "scrapingBee":
         if (process.env.SCRAPING_BEE_API_KEY) {
-          text = await scrapWithScrapingBee(
+          const response = await scrapWithScrapingBee(
             url,
             "domcontentloaded",
             pageOptions.fallback === false ? 7000 : 15000
           );
+          scraperResponse.text = response.content;
+          scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
+          scraperResponse.metadata.pageError = response.pageError;
         }
         break;
       case "playwright":
         if (process.env.PLAYWRIGHT_MICROSERVICE_URL) {
-          text = await scrapWithPlaywright(url, pageOptions.waitFor, pageOptions.headers);
+          const response = await scrapWithPlaywright(
+            url,
+            pageOptions.waitFor,
+            pageOptions.headers
+          );
+          scraperResponse.text = response.content;
+          scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
+          scraperResponse.metadata.pageError = response.pageError;
         }
         break;
       case "scrapingBeeLoad":
         if (process.env.SCRAPING_BEE_API_KEY) {
-          text = await scrapWithScrapingBee(url, "networkidle2");
+          const response = await scrapWithScrapingBee(url, "networkidle2");
+          scraperResponse.text = response.content;
+          scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
+          scraperResponse.metadata.pageError = response.pageError;
         }
         break;
       case "fetch":
-        text = await scrapWithFetch(url);
+        const response = await scrapWithFetch(url);
+        scraperResponse.text = response.content;
+        scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
+        scraperResponse.metadata.pageError = response.pageError;
         break;
     }
 
-    let customScrapedContent : FireEngineResponse | null = null;
+    let customScrapedContent: FireEngineResponse | null = null;
 
     // Check for custom scraping conditions
-    const customScraperResult = await handleCustomScraping(text, url);
+    const customScraperResult = await handleCustomScraping(
+      scraperResponse.text,
+      url
+    );
 
-    if (customScraperResult){
+    if (customScraperResult) {
       switch (customScraperResult.scraper) {
         case "fire-engine":
-          customScrapedContent  = await scrapWithFireEngine(customScraperResult.url, customScraperResult.waitAfterLoad, false, customScraperResult.pageOptions)
-          if (screenshot) {
-            customScrapedContent.screenshot = screenshot;
-          }
+          customScrapedContent = await scrapWithFireEngine({
+            url: customScraperResult.url,
+            actions: customScraperResult.waitAfterLoad ? ([
+              {
+                type: "wait",
+                milliseconds: customScraperResult.waitAfterLoad,
+              }
+            ]) : ([]),
+            pageOptions: customScraperResult.pageOptions,
+          });
           break;
         case "pdf":
-          customScrapedContent  = { html: await fetchAndProcessPdf(customScraperResult.url), screenshot }
+          const { content, pageStatusCode, pageError } =
+            await fetchAndProcessPdf(
+              customScraperResult.url,
+              pageOptions?.parsePDF
+            );
+          customScrapedContent = {
+            html: content,
+            pageStatusCode,
+            pageError,
+          };
           break;
       }
     }
 
     if (customScrapedContent) {
-      text = customScrapedContent.html;
-      screenshot = customScrapedContent.screenshot;
+      scraperResponse.text = customScrapedContent.html;
+    }
+    //* TODO: add an optional to return markdown or structured/extracted content
+    let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
+    let text = await parseMarkdown(cleanedHtml);
+    if (pageOptions.removeBase64Images) {
+      text = await removeBase64Images(text);
     }
 
-    //* TODO: add an optional to return markdown or structured/extracted content
-    let cleanedHtml = removeUnwantedElements(text, pageOptions);
+    const insertedLogId = await logInsertPromise;
+    ScrapeEvents.updateScrapeResult(insertedLogId, {
+      response_size: scraperResponse.text.length,
+      success: !(scraperResponse.metadata.pageStatusCode && scraperResponse.metadata.pageStatusCode >= 400) && !!text && (text.trim().length >= 100),
+      error: scraperResponse.metadata.pageError,
+      response_code: scraperResponse.metadata.pageStatusCode,
+      time_taken: Date.now() - timer,
+    });
 
-    return [await parseMarkdown(cleanedHtml), text, screenshot];
+    return {
+      text,
+      html: cleanedHtml,
+      rawHtml: scraperResponse.text,
+      screenshot: scraperResponse.screenshot,
+      actions: scraperResponse.actions,
+      pageStatusCode: scraperResponse.metadata.pageStatusCode,
+      pageError: scraperResponse.metadata.pageError || undefined,
+    };
+  };
+
+  let { text, html, rawHtml, screenshot, actions, pageStatusCode, pageError } = {
+    text: "",
+    html: "",
+    rawHtml: "",
+    screenshot: "",
+    actions: undefined,
+    pageStatusCode: 200,
+    pageError: undefined,
   };
   try {
-    let [text, html, screenshot] = ["", "", ""];
     let urlKey = urlToScrap;
     try {
       urlKey = new URL(urlToScrap).hostname.replace(/^www\./, "");
     } catch (error) {
-      console.error(`Invalid URL key, trying: ${urlToScrap}`);
+      Logger.error(`Invalid URL key, trying: ${urlToScrap}`);
     }
     const defaultScraper = urlSpecificParams[urlKey]?.defaultScraper ?? "";
     const scrapersInOrder = getScrapingFallbackOrder(
       defaultScraper,
       pageOptions && pageOptions.waitFor && pageOptions.waitFor > 0,
-      pageOptions && pageOptions.screenshot && pageOptions.screenshot === true,
-      pageOptions && pageOptions.headers && pageOptions.headers !== undefined
+      pageOptions && (pageOptions.screenshot || pageOptions.fullPageScreenshot) && (pageOptions.screenshot === true || pageOptions.fullPageScreenshot === true),
+      pageOptions && pageOptions.headers && pageOptions.headers !== undefined,
+      pageOptions && Array.isArray(pageOptions.actions) && pageOptions.actions.length > 0,
     );
 
     for (const scraper of scrapersInOrder) {
       // If exists text coming from crawler, use it
-      if (existingHtml && existingHtml.trim().length >= 100) {
+      if (existingHtml && existingHtml.trim().length >= 100 && !existingHtml.includes(clientSideError)) {
         let cleanedHtml = removeUnwantedElements(existingHtml, pageOptions);
         text = await parseMarkdown(cleanedHtml);
-        html = existingHtml;
+        html = cleanedHtml;
         break;
       }
-      [text, html, screenshot] = await attemptScraping(urlToScrap, scraper);
-      if (text && text.trim().length >= 100) break;
-      const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;
-      if (nextScraperIndex < scrapersInOrder.length) {
-        console.info(`Falling back to ${scrapersInOrder[nextScraperIndex]}`);
+
+      const attempt = await attemptScraping(urlToScrap, scraper);
+      text = attempt.text ?? "";
+      html = attempt.html ?? "";
+      rawHtml = attempt.rawHtml ?? "";
+      screenshot = attempt.screenshot ?? "";
+      actions = attempt.actions ?? undefined;
+
+      if (attempt.pageStatusCode) {
+        pageStatusCode = attempt.pageStatusCode;
       }
+      
+      if (attempt.pageError && (attempt.pageStatusCode >= 400 || scrapersInOrder.indexOf(scraper) === scrapersInOrder.length - 1)) { // force pageError if it's the last scraper and it failed too
+        pageError = attempt.pageError;
+        
+        if (attempt.pageStatusCode < 400 || !attempt.pageStatusCode) {
+          pageStatusCode = 500;
+        }
+      } else if (attempt && attempt.pageStatusCode && attempt.pageStatusCode < 400) {
+        pageError = undefined;
+      }
+
+      if ((text && text.trim().length >= 100) || (typeof screenshot === "string" && screenshot.length > 0)) {
+        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with text length >= 100 or screenshot, breaking`);
+        break;
+      }
+      if (pageStatusCode && (pageStatusCode == 404 || pageStatusCode == 400)) {
+        Logger.debug(`⛏️ ${scraper}: Successfully scraped ${urlToScrap} with status code ${pageStatusCode}, breaking`);
+        break;
+      }
+      // const nextScraperIndex = scrapersInOrder.indexOf(scraper) + 1;
+      // if (nextScraperIndex < scrapersInOrder.length) {
+      //   Logger.debug(`⛏️ ${scraper} Failed to fetch URL: ${urlToScrap} with status: ${pageStatusCode}, error: ${pageError} | Falling back to ${scrapersInOrder[nextScraperIndex]}`);
+      // }
     }
 
     if (!text) {
       throw new Error(`All scraping methods failed for URL: ${urlToScrap}`);
     }
 
-    const soup = cheerio.load(html);
+    const soup = cheerio.load(rawHtml);
     const metadata = extractMetadata(soup, urlToScrap);
 
-    let document: Document;
-    if (screenshot && screenshot.length > 0) {
-      document = {
-        content: text,
-        markdown: text,
-        html: pageOptions.includeHtml ? html : undefined,
-        metadata: {
-          ...metadata,
-          screenshot: screenshot,
-          sourceURL: urlToScrap,
-        },
-      };
-    } else {
-      document = {
-        content: text,
-        markdown: text,
-        html: pageOptions.includeHtml ? html : undefined,
-        metadata: { ...metadata, sourceURL: urlToScrap },
-      };
+    let linksOnPage: string[] | undefined;
+
+    if (pageOptions.includeLinks) {
+      linksOnPage = extractLinks(rawHtml, urlToScrap);
     }
+
+    let document: Document = {
+      content: text,
+      markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? text : undefined,
+      html: pageOptions.includeHtml ? html : undefined,
+      rawHtml:
+        pageOptions.includeRawHtml ||
+          (extractorOptions?.mode === "llm-extraction-from-raw-html" && pageOptions.includeExtract)
+          ? rawHtml
+          : undefined,
+      linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
+      actions,
+      metadata: {
+        ...metadata,
+        ...(screenshot && screenshot.length > 0 ? ({
+          screenshot,
+        }) : {}),
+        sourceURL: urlToScrap,
+        pageStatusCode: pageStatusCode,
+        pageError: pageError,
+      },
+    };
 
     return document;
   } catch (error) {
-    console.error(`Error: ${error} - Failed to fetch URL: ${urlToScrap}`);
+    Logger.debug(`⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrap}`);
+    ScrapeEvents.insert(jobId, {
+      type: "error",
+      message: typeof error === "string" ? error : typeof error.message === "string" ? error.message : JSON.stringify(error),
+      stack: error.stack,
+    });
+
     return {
       content: "",
-      markdown: "",
+      markdown: pageOptions.includeMarkdown || pageOptions.includeExtract ? "" : undefined,
       html: "",
-      metadata: { sourceURL: urlToScrap },
+      linksOnPage: pageOptions.includeLinks ? [] : undefined,
+      metadata: {
+        sourceURL: urlToScrap,
+        pageStatusCode: pageStatusCode,
+        pageError: pageError,
+      },
     } as Document;
   }
 }

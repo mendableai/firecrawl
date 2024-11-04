@@ -1,10 +1,11 @@
+import { Logger } from "../../../lib/logger";
+
 const socialMediaBlocklist = [
   'facebook.com',
   'x.com',
   'twitter.com',
   'instagram.com',
   'linkedin.com',
-  'pinterest.com',
   'snapchat.com',
   'tiktok.com',
   'reddit.com',
@@ -13,6 +14,11 @@ const socialMediaBlocklist = [
   'whatsapp.com',
   'wechat.com',
   'telegram.org',
+  'researchhub.com',
+  'youtube.com',
+  'corterix.com',
+  'southwest.com',
+  'ryanair.com'
 ];
 
 const allowedKeywords = [
@@ -23,6 +29,7 @@ const allowedKeywords = [
   'user-agreement',
   'legal',
   'help',
+  'policies',
   'support',
   'contact',
   'about',
@@ -30,25 +37,38 @@ const allowedKeywords = [
   'blog',
   'press',
   'conditions',
+  'tos',
+  '://ads.tiktok.com',
+  '://tiktok.com/business',
+  '://developers.facebook.com'
 ];
 
 export function isUrlBlocked(url: string): boolean {
-  // Check if the URL contains any allowed keywords
-  if (allowedKeywords.some(keyword => url.includes(keyword))) {
+  const lowerCaseUrl = url.toLowerCase();
+
+  // Check if the URL contains any allowed keywords as whole words
+  if (allowedKeywords.some(keyword => new RegExp(`\\b${keyword}\\b`, 'i').test(lowerCaseUrl))) {
     return false;
   }
 
   try {
+    if (!url.startsWith('http://') && !url.startsWith('https://')) {
+      url = 'https://' + url;
+    }
+    
+    const urlObj = new URL(url);
+    const hostname = urlObj.hostname.toLowerCase();
+
     // Check if the URL matches any domain in the blocklist
-    return socialMediaBlocklist.some(domain => {
-      // Create a regular expression to match the exact domain
-      const domainPattern = new RegExp(`(^|\\.)${domain.replace('.', '\\.')}$`);
-      // Test the hostname of the URL against the pattern
-      return domainPattern.test(new URL(url).hostname);
+    const isBlocked = socialMediaBlocklist.some(domain => {
+      const domainPattern = new RegExp(`(^|\\.)${domain.replace('.', '\\.')}(\\.|$)`, 'i');
+      return domainPattern.test(hostname);
     });
+
+    return isBlocked;
   } catch (e) {
     // If an error occurs (e.g., invalid URL), return false
+    Logger.error(`Error parsing the following URL: ${url}`);
     return false;
   }
 }
-

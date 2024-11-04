@@ -31,7 +31,7 @@ describe('the firecrawl JS SDK', () => {
     });
 
     const apiKey = 'YOUR_API_KEY'
-    const app = new FirecrawlApp({ apiKey });
+    const app = new FirecrawlApp<"v0">({ apiKey });
     // Scrape a single URL
     const url = 'https://mendable.ai';
     const scrapedData = await app.scrapeUrl(url);
@@ -43,6 +43,6 @@ describe('the firecrawl JS SDK', () => {
       expect.objectContaining({ headers: expect.objectContaining({'Authorization': `Bearer ${apiKey}`}) }),
     )
     expect(scrapedData.success).toBe(true);
-    expect(scrapedData.data.metadata.title).toEqual('Mendable');
+    expect(scrapedData?.data?.metadata.title).toEqual('Mendable');
   });
 })

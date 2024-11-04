@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: playwright-service-config
+data:
+  PORT: "3000"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: playwright-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: playwright-service
+  template:
+    metadata:
+      labels:
+        app: playwright-service
+    spec:
+      imagePullSecrets:
+        - name: docker-registry-secret
+      containers:
+        - name: playwright-service
+          image: ghcr.io/winkk-dev/firecrawl-playwright:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 3000
+          envFrom:
+            - configMapRef:
+                name: playwright-service-config
+          livenessProbe:
+            httpGet:
+              path: /health/liveness
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: playwright-service
+spec:
+  selector:
+    app: playwright-service
+  ports:
+    - protocol: TCP
+      port: 3000
+      targetPort: 3000

@@ -12,7 +12,7 @@ First, start by installing dependencies
 2. pnpm [instructions](https://pnpm.io/installation)
 3. redis [instructions](https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/)
 
-Set environment variables in a .env in the /apps/api/ directoryyou can copy over the template in .env.example.
+Set environment variables in a .env in the /apps/api/ directory you can copy over the template in .env.example.
 
 To start, we wont set up authentication, or any optional sub services (pdf parsing, JS blocking support, AI features )
 
@@ -24,6 +24,7 @@ NUM_WORKERS_PER_QUEUE=8
 PORT=3002
 HOST=0.0.0.0
 REDIS_URL=redis://localhost:6379
+REDIS_RATE_LIMIT_URL=redis://localhost:6379
 
 ## To turn on DB authentication, you need to set up supabase.
 USE_DB_AUTHENTICATION=false
@@ -43,7 +44,6 @@ BULL_AUTH_KEY= @
 LOGTAIL_KEY= # Use if you're configuring basic logging with logtail
 PLAYWRIGHT_MICROSERVICE_URL=  # set if you'd like to run a playwright fallback
 LLAMAPARSE_API_KEY= #Set if you have a llamaparse key you'd like to use to parse pdfs
-SERPER_API_KEY= #Set if you have a serper key you'd like to use as a search api
 SLACK_WEBHOOK_URL= # set if you'd like to send slack server health status messages
 POSTHOG_API_KEY= # set if you'd like to send posthog events like job logs
 POSTHOG_HOST= # set if you'd like to send posthog events like job logs
@@ -103,7 +103,7 @@ This should return the response Hello, world!
 If you’d like to test the crawl endpoint, you can run this
 
 ```curl
-curl -X POST http://localhost:3002/v0/crawl \
+curl -X POST http://localhost:3002/v1/crawl \
     -H 'Content-Type: application/json' \
     -d '{
       "url": "https://mendable.ai"

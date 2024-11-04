@@ -1,12 +1,14 @@
 import express from "express";
-import { crawlController } from "../../src/controllers/crawl";
-import { crawlStatusController } from "../../src/controllers/crawl-status";
-import { scrapeController } from "../../src/controllers/scrape";
-import { crawlPreviewController } from "../../src/controllers/crawlPreview";
-import { crawlJobStatusPreviewController } from "../../src/controllers/status";
-import { searchController } from "../../src/controllers/search";
-import { crawlCancelController } from "../../src/controllers/crawl-cancel";
-import { keyAuthController } from "../../src/controllers/keyAuth";
+import { crawlController } from "../../src/controllers/v0/crawl";
+import { crawlStatusController } from "../../src/controllers/v0/crawl-status";
+import { scrapeController } from "../../src/controllers/v0/scrape";
+import { crawlPreviewController } from "../../src/controllers/v0/crawlPreview";
+import { crawlJobStatusPreviewController } from "../../src/controllers/v0/status";
+import { searchController } from "../../src/controllers/v0/search";
+import { crawlCancelController } from "../../src/controllers/v0/crawl-cancel";
+import { keyAuthController } from "../../src/controllers/v0/keyAuth";
+import { livenessController } from "../controllers/v0/liveness";
+import { readinessController } from "../controllers/v0/readiness";
 
 export const v0Router = express.Router();
 
@@ -23,3 +25,6 @@ v0Router.get("/v0/keyAuth", keyAuthController);
 // Search routes
 v0Router.post("/v0/search", searchController);
 
+// Health/Probe routes
+v0Router.get("/v0/health/liveness", livenessController);
+v0Router.get("/v0/health/readiness", readinessController);

@@ -10,10 +10,13 @@ readme = {file="README.md", content-type = "text/markdown"}
 requires-python = ">=3.8"
 dependencies = [
     "requests",
+    "python-dotenv",
+    "websockets",
+    "nest-asyncio"
 ]
 authors = [{name = "Mendable.ai",email = "nick@mendable.ai"}]
 maintainers = [{name = "Mendable.ai",email = "nick@mendable.ai"}]
-license = {text = "GNU General Public License v3 (GPLv3)"}
+license = {text = "GNU Affero General Public License v3 (AGPLv3)"}
 
 classifiers = [
     "Development Status :: 5 - Production/Stable",
