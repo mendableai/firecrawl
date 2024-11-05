@@ -74,6 +74,10 @@ export async function getJobPriority({
         bucketLimit = 1000;
         planModifier = 0.05;
         break;
+      case "etier1a":
+        bucketLimit = 1000;
+        planModifier = 0.05;
+        break;
 
       default:
         bucketLimit = 25;

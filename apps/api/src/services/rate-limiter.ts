@@ -16,6 +16,8 @@ const RATE_LIMITS = {
     growth: 50,
     growthdouble: 50,
     etier2c: 300,
+    etier1a: 1000,
+    etier2a: 300,
   },
   scrape: {
     default: 20,
@@ -30,6 +32,8 @@ const RATE_LIMITS = {
     growth: 1000,
     growthdouble: 1000,
     etier2c: 2500,
+    etier1a: 1000,
+    etier2a: 2500,
   },
   search: {
     default: 20,
@@ -44,6 +48,8 @@ const RATE_LIMITS = {
     growth: 500,
     growthdouble: 500,
     etier2c: 2500,
+    etier1a: 1000,
+    etier2a: 2500,
   },
   map:{
     default: 20,
@@ -58,6 +64,8 @@ const RATE_LIMITS = {
     growth: 500,
     growthdouble: 500,
     etier2c: 2500,
+    etier1a: 1000,
+    etier2a: 2500,
   },
   preview: {
     free: 5,
@@ -123,6 +131,20 @@ export const scrapeStatusRateLimiter = new RateLimiterRedis({
   duration: 60, // Duration in seconds
 });
 
+export const etier1aRateLimiter = new RateLimiterRedis({
+  storeClient: redisRateLimitClient,
+  keyPrefix: "etier1a",
+  points: 10000,
+  duration: 60, // Duration in seconds
+});
+
+export const etier2aRateLimiter = new RateLimiterRedis({
+  storeClient: redisRateLimitClient,
+  keyPrefix: "etier2a",
+  points: 2500,
+  duration: 60, // Duration in seconds
+});
+
 const testSuiteTokens = [
   "a01ccae",
   "6254cf9",
@@ -175,6 +197,14 @@ export function getRateLimiter(
 
   if(teamId && teamId === process.env.DEV_B_TEAM_ID) {
     return devBRateLimiter;
+  }
+  
+  if(teamId && teamId === process.env.ETIER1A_TEAM_ID) {
+    return etier1aRateLimiter;
+  }
+
+  if(teamId && teamId === process.env.ETIER2A_TEAM_ID) {
+    return etier2aRateLimiter;
   }
 
   if(teamId && manual.includes(teamId)) {

@@ -60,6 +60,7 @@ export type PageOptions = {
     country?: string;
   };
   skipTlsVerification?: boolean;
+  removeBase64Images?: boolean;
   mobile?: boolean;
 };
 

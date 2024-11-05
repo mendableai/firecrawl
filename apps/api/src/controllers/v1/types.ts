@@ -142,6 +142,7 @@ export const scrapeOptions = z.object({
     languages: z.string().array().optional(),
   }).optional(),
   skipTlsVerification: z.boolean().default(false),
+  removeBase64Images: z.boolean().default(true),
 }).strict(strictMessage)
 
 
@@ -494,6 +495,7 @@ export function fromLegacyScrapeOptions(pageOptions: PageOptions, extractorOptio
       actions: pageOptions.actions,
       location: pageOptions.geolocation,
       skipTlsVerification: pageOptions.skipTlsVerification,
+      removeBase64Images: pageOptions.removeBase64Images,
       extract: extractorOptions !== undefined && extractorOptions.mode.includes("llm-extraction") ? {
         systemPrompt: extractorOptions.extractionPrompt,
         prompt: extractorOptions.userPrompt,

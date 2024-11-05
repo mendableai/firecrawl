@@ -24,6 +24,8 @@ export type FireEngineScrapeRequestCommon = {
     // team_id?: string; // unused
     logRequest?: boolean; // default: true
     instantReturn?: boolean; // default: false
+
+    removeBase64Images?: boolean;
 }
 
 export type FireEngineScrapeRequestChromeCDP = {
