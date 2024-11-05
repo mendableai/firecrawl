@@ -32,3 +32,4 @@ apps/js-sdk/firecrawl/dist
 /examples/claude_web_crawler/firecrawl_env
 /examples/haiku_web_crawler/firecrawl_env
 /examples/sonnet_web_crawler/firecrawl_env
+/examples/internal_link_assitant/firecrawl_env
