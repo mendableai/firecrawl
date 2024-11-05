@@ -32,6 +32,7 @@ export function extractMetadata(meta: Meta, html: string): Document["metadata"] 
   let publishedTime: string | undefined = undefined;
   let articleTag: string | undefined = undefined;
   let articleSection: string | undefined = undefined;
+  const customMetadata: Record<string, string | string[]> = {};
 
   const soup = load(html);
 
@@ -68,6 +69,30 @@ export function extractMetadata(meta: Meta, html: string): Document["metadata"] 
     dcDate = soup('meta[name="dc.date"]').attr("content") || undefined;
     dcDateCreated = soup('meta[name="dc.date.created"]').attr("content") || undefined;
     dcTermsCreated = soup('meta[name="dcterms.created"]').attr("content") || undefined;
+
+    try {
+      // Extract all meta tags for custom metadata
+      soup("meta").each((i, elem) => {
+        try {
+          const name = soup(elem).attr("name") || soup(elem).attr("property");
+          const content = soup(elem).attr("content");
+
+          if (name && content) {
+            if (customMetadata[name] === undefined) {
+              customMetadata[name] = content;
+            } else if (Array.isArray(customMetadata[name])) {
+              (customMetadata[name] as string[]).push(content);
+            } else {
+              customMetadata[name] = [customMetadata[name] as string, content];
+            }
+          }
+        } catch (error) {
+          meta.logger.error(`Error extracting custom metadata (in)`, { error });
+        }
+      });
+    } catch (error) {
+      meta.logger.error(`Error extracting custom metadata`, { error });
+    }
   } catch (error) {
     meta.logger.error(`Error extracting metadata`, { error });
   }
@@ -102,5 +127,6 @@ export function extractMetadata(meta: Meta, html: string): Document["metadata"] 
     publishedTime,
     articleTag,
     articleSection,
+    ...customMetadata,
   };
 }
