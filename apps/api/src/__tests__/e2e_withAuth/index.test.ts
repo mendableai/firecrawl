@@ -776,7 +776,8 @@ describe("E2E Tests for v0 API Routes", () => {
         await new Promise((r) => setTimeout(r, 10000));
         const completedResponse = await request(TEST_URL)
           .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .maxResponseSize(4000000000);
 
         expect(completedResponse.statusCode).toBe(200);
         expect(completedResponse.body).toHaveProperty("status");
