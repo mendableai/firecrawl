@@ -60,7 +60,7 @@ async function performFireEngineScrape<Engine extends FireEngineScrapeRequestChr
 export async function scrapeURLWithFireEngineChromeCDP(meta: Meta): Promise<EngineScrapeResult> {
     const actions: Action[] = [
         // Transform waitFor option into an action (unsupported by chrome-cdp)
-        ...(meta.options.waitFor !== undefined ? [{
+        ...(meta.options.waitFor !== 0 ? [{
             type: "wait" as const,
             milliseconds: meta.options.waitFor,
         }] : []),
