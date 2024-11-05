@@ -9,6 +9,7 @@ export async function scrapeURLWithFetch(meta: Meta): Promise<EngineScrapeResult
     const response = await Promise.race([
         fetch(meta.url, {
             redirect: "follow",
+            headers: meta.options.headers,
         }),
         (async () => {
             await new Promise((resolve) => setTimeout(() => resolve(null), timeout));

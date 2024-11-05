@@ -5,8 +5,9 @@ import { scrapeURLWithFireEngineChromeCDP, scrapeURLWithFireEnginePlaywright, sc
 import { scrapePDF } from "./pdf";
 import { scrapeURLWithScrapingBee } from "./scrapingbee";
 import { scrapeURLWithFetch } from "./fetch";
+import { scrapeURLWithPlaywright } from "./playwright";
 
-export type Engine = "fire-engine;chrome-cdp" | "fire-engine;playwright" | "fire-engine;tlsclient" | "scrapingbee" | "scrapingbeeLoad" | "fetch" | "pdf" | "docx";
+export type Engine = "fire-engine;chrome-cdp" | "fire-engine;playwright" | "fire-engine;tlsclient" | "scrapingbee" | "scrapingbeeLoad" | "playwright" | "fetch" | "pdf" | "docx";
 
 const useScrapingBee = process.env.SCRAPING_BEE_API_KEY !== '' && process.env.SCRAPING_BEE_API_KEY !== undefined;
 const useFireEngine = process.env.FIRE_ENGINE_BETA_URL !== '' && process.env.FIRE_ENGINE_BETA_URL !== undefined;
@@ -15,6 +16,7 @@ const usePlaywright = process.env.PLAYWRIGHT_MICROSERVICE_URL !== '' && process.
 export const engines: Engine[] = [
     ...(useFireEngine ? [ "fire-engine;chrome-cdp" as const, "fire-engine;playwright" as const, "fire-engine;tlsclient" as const ] : []),
     ...(useScrapingBee ? [ "scrapingbee" as const, "scrapingbeeLoad" as const ] : []),
+    ...(usePlaywright ? [ "playwright" as const ] : []),
     "fetch",
     "pdf",
     "docx",
@@ -73,6 +75,7 @@ const engineHandlers: {
     "fire-engine;tlsclient": scrapeURLWithFireEngineTLSClient,
     "scrapingbee": scrapeURLWithScrapingBee("domcontentloaded"),
     "scrapingbeeLoad": scrapeURLWithScrapingBee("networkidle2"),
+    "playwright": scrapeURLWithPlaywright,
     "fetch": scrapeURLWithFetch,
     "pdf": scrapePDF,
     "docx": scrapeDOCX,
@@ -143,6 +146,20 @@ export const engineOptions: {
             "mobile": false,
         },
         quality: 29,
+    },
+    "playwright": {
+        features: {
+            "actions": false,
+            "waitFor": true,
+            "screenshot": false,
+            "screenshot@fullScreen": false,
+            "pdf": false,
+            "docx": false,
+            "atsv": false,
+            "location": false,
+            "mobile": false,
+        },
+        quality: 20,
     },
     "fire-engine;tlsclient": {
         features: {
