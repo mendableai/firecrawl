@@ -4,6 +4,8 @@ import { FirecrawlJob } from "../../types";
 import { posthog } from "../posthog";
 import "dotenv/config";
 import { Logger } from "../../lib/logger";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 export async function logJob(job: FirecrawlJob) {
   try {
@@ -68,7 +70,9 @@ export async function logJob(job: FirecrawlJob) {
           retry: job.retry,
         },
       };
-      posthog.capture(phLog);
+      if(job.mode !== "single_urls") {
+        posthog.capture(phLog);
+      }
     }
     if (error) {
       Logger.error(`Error logging job: ${error.message}`);

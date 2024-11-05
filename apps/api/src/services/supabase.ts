@@ -1,5 +1,7 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { Logger } from "../lib/logger";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 // SupabaseService class initializes the Supabase client conditionally based on environment variables.
 class SupabaseService {

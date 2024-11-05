@@ -1,9 +1,10 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
-import { ExtractorOptions, PageOptions } from "../../lib/entities";
+import { Action, ExtractorOptions, PageOptions } from "../../lib/entities";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { PlanType } from "../../types";
+import { countries } from "../../lib/validate-country";
 
 export type Format =
   | "markdown"
@@ -26,11 +27,18 @@ export const url = z.preprocess(
     .url()
     .regex(/^https?:\/\//, "URL uses unsupported protocol")
     .refine(
-      (x) => /\.[a-z]{2,}(\/|$)/i.test(x),
+      (x) => /\.[a-z]{2,}([\/?#]|$)/i.test(x),
       "URL must have a valid top-level domain or be a valid path"
     )
     .refine(
-      (x) => checkUrl(x as string),
+      (x) => {
+        try {
+          checkUrl(x as string)
+          return true;
+        } catch (_) {
+          return false;
+        }
+      },
       "Invalid URL"
     )
     .refine(
@@ -50,6 +58,42 @@ export const extractOptions = z.object({
 
 export type ExtractOptions = z.infer<typeof extractOptions>;
 
+export const actionsSchema = z.array(z.union([
+  z.object({
+    type: z.literal("wait"),
+    milliseconds: z.number().int().positive().finite().optional(),
+    selector: z.string().optional(),
+  }).refine(
+    (data) => (data.milliseconds !== undefined || data.selector !== undefined) && !(data.milliseconds !== undefined && data.selector !== undefined),
+    {
+      message: "Either 'milliseconds' or 'selector' must be provided, but not both.",
+    }
+  ),
+  z.object({
+    type: z.literal("click"),
+    selector: z.string(),
+  }),
+  z.object({
+    type: z.literal("screenshot"),
+    fullPage: z.boolean().default(false),
+  }),
+  z.object({
+    type: z.literal("write"),
+    text: z.string(),
+  }),
+  z.object({
+    type: z.literal("press"),
+    key: z.string(),
+  }),
+  z.object({
+    type: z.literal("scroll"),
+    direction: z.enum(["up", "down"]),
+  }),
+  z.object({
+    type: z.literal("scrape"),
+  }),
+]));
+
 export const scrapeOptions = z.object({
   formats: z
     .enum([
@@ -63,7 +107,8 @@ export const scrapeOptions = z.object({
     ])
     .array()
     .optional()
-    .default(["markdown"]),
+    .default(["markdown"])
+    .refine(x => !(x.includes("screenshot") && x.includes("screenshot@fullPage")), "You may only specify either screenshot or screenshot@fullPage"),
   headers: z.record(z.string(), z.string()).optional(),
   includeTags: z.string().array().optional(),
   excludeTags: z.string().array().optional(),
@@ -71,7 +116,32 @@ export const scrapeOptions = z.object({
   timeout: z.number().int().positive().finite().safe().default(30000),
   waitFor: z.number().int().nonnegative().finite().safe().default(0),
   extract: extractOptions.optional(),
+  mobile: z.boolean().default(false),
   parsePDF: z.boolean().default(true),
+  actions: actionsSchema.optional(),
+  // New
+  location: z.object({
+    country: z.string().optional().refine(
+      (val) => !val || Object.keys(countries).includes(val.toUpperCase()),
+      {
+        message: "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
+      }
+    ).transform(val => val ? val.toUpperCase() : 'US'),
+    languages: z.string().array().optional(),
+  }).optional(),
+  
+  // Deprecated
+  geolocation: z.object({
+    country: z.string().optional().refine(
+      (val) => !val || Object.keys(countries).includes(val.toUpperCase()),
+      {
+        message: "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
+      }
+    ).transform(val => val ? val.toUpperCase() : 'US'),
+    languages: z.string().array().optional(),
+  }).optional(),
+  skipTlsVerification: z.boolean().default(false),
+  removeBase64Images: z.boolean().default(true),
 }).strict(strictMessage)
 
 
@@ -96,18 +166,28 @@ export const scrapeRequestSchema = scrapeOptions.extend({
   return obj;
 });
 
-// export type ScrapeRequest = {
-//   url: string;
-//   formats?: Format[];
-//   headers?: { [K: string]: string };
-//   includeTags?: string[];
-//   excludeTags?: string[];
-//   onlyMainContent?: boolean;
-//   timeout?: number;
-//   waitFor?: number;
-// }
-
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
+
+export const batchScrapeRequestSchema = scrapeOptions.extend({
+  urls: url.array(),
+  origin: z.string().optional().default("api"),
+}).strict(strictMessage).refine(
+  (obj) => {
+    const hasExtractFormat = obj.formats?.includes("extract");
+    const hasExtractOptions = obj.extract !== undefined;
+    return (hasExtractFormat && hasExtractOptions) || (!hasExtractFormat && !hasExtractOptions);
+  },
+  {
+    message: "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
+  }
+).transform((obj) => {
+  if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
+    return { ...obj, timeout: 60000 };
+  }
+  return obj;
+});
+
+export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
 
 const crawlerOptions = z.object({
   includePaths: z.string().array().default([]),
@@ -177,6 +257,10 @@ export type Document = {
   rawHtml?: string;
   links?: string[];
   screenshot?: string;
+  actions?: {
+    screenshots: string[];
+  };
+  warning?: string;
   metadata: {
     title?: string;
     description?: string;
@@ -210,6 +294,8 @@ export type Document = {
     sourceURL?: string;
     statusCode?: number;
     error?: string;
+    [key: string]: string | string[] | number | undefined;
+
   };
 };
 
@@ -254,9 +340,21 @@ export type CrawlStatusParams = {
   jobId: string;
 };
 
+export type ConcurrencyCheckParams = {
+  teamId: string;
+};
+
+export type ConcurrencyCheckResponse =
+  | ErrorResponse
+  | {
+      success: true;
+      concurrency: number;
+    };
+
 export type CrawlStatusResponse =
   | ErrorResponse
   | {
+      success: true;
       status: "scraping" | "completed" | "failed" | "cancelled";
       completed: number;
       total: number;
@@ -275,11 +373,53 @@ type Account = {
   remainingCredits: number;
 };
 
-export interface RequestWithMaybeAuth<
+export type AuthCreditUsageChunk = {
+  api_key: string;
+  team_id: string;
+  sub_id: string | null;
+  sub_current_period_start: string | null;
+  sub_current_period_end: string | null;
+  price_id: string | null;
+  price_credits: number; // credit limit with assoicated price, or free_credits (500) if free plan
+  credits_used: number;
+  coupon_credits: number; // do not rely on this number to be up to date after calling a billTeam
+  coupons: any[];
+  adjusted_credits_used: number; // credits this period minus coupons used
+  remaining_credits: number;
+  sub_user_id: string | null;
+  total_credits_sum: number;
+};
+
+export interface RequestWithMaybeACUC<
   ReqParams = {},
   ReqBody = undefined,
   ResBody = undefined
 > extends Request<ReqParams, ReqBody, ResBody> {
+  acuc?: AuthCreditUsageChunk,
+}
+
+export interface RequestWithACUC<
+  ReqParams = {},
+  ReqBody = undefined,
+  ResBody = undefined
+> extends Request<ReqParams, ReqBody, ResBody> {
+  acuc: AuthCreditUsageChunk,
+}
+
+export interface RequestWithAuth<
+  ReqParams = {},
+  ReqBody = undefined,
+  ResBody = undefined,
+> extends Request<ReqParams, ReqBody, ResBody> {
+  auth: AuthObject;
+  account?: Account;
+}
+
+export interface RequestWithMaybeAuth<
+  ReqParams = {},
+  ReqBody = undefined,
+  ResBody = undefined
+> extends RequestWithMaybeACUC<ReqParams, ReqBody, ResBody> {
   auth?: AuthObject;
   account?: Account;
 }
@@ -288,7 +428,7 @@ export interface RequestWithAuth<
   ReqParams = {},
   ReqBody = undefined,
   ResBody = undefined,
-> extends Request<ReqParams, ReqBody, ResBody> {
+> extends RequestWithACUC<ReqParams, ReqBody, ResBody> {
   auth: AuthObject;
   account?: Account;
 }
@@ -309,6 +449,7 @@ export function legacyCrawlerOptions(x: CrawlerOptions) {
     generateImgAltText: false,
     allowBackwardCrawling: x.allowBackwardLinks,
     allowExternalContentLinks: x.allowExternalLinks,
+    ignoreSitemap: x.ignoreSitemap,
   };
 }
 
@@ -322,10 +463,16 @@ export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
     removeTags: x.excludeTags,
     onlyMainContent: x.onlyMainContent,
     waitFor: x.waitFor,
+    headers: x.headers,
     includeLinks: x.formats.includes("links"),
     screenshot: x.formats.includes("screenshot"),
     fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
     parsePDF: x.parsePDF,
+    actions: x.actions as Action[], // no strict null checking grrrr - mogery
+    geolocation: x.location ?? x.geolocation,
+    skipTlsVerification: x.skipTlsVerification,
+    removeBase64Images: x.removeBase64Images,
+    mobile: x.mobile,
   };
 }
 
@@ -339,7 +486,7 @@ export function legacyExtractorOptions(x: ExtractOptions): ExtractorOptions {
 }
 
 export function legacyDocumentConverter(doc: any): Document {
-  if (doc === null || doc === undefined) return doc;
+  if (doc === null || doc === undefined) return null;
 
   if (doc.metadata) {
     if (doc.metadata.screenshot) {
@@ -360,12 +507,14 @@ export function legacyDocumentConverter(doc: any): Document {
     html: doc.html,
     extract: doc.llm_extraction,
     screenshot: doc.screenshot ?? doc.fullPageScreenshot,
+    actions: doc.actions ?? undefined,
+    warning: doc.warning ?? undefined,
     metadata: {
       ...doc.metadata,
       pageError: undefined,
       pageStatusCode: undefined,
-      error: doc.metadata.pageError,
-      statusCode: doc.metadata.pageStatusCode,
+      error: doc.metadata?.pageError,
+      statusCode: doc.metadata?.pageStatusCode,
     },
   };
 }

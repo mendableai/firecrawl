@@ -1,8 +1,9 @@
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import { redisConnection } from "../services/queue-service";
+import { Logger } from "./logger";
 
 export type StoredCrawl = {
-    originUrl: string;
+    originUrl?: string;
     crawlerOptions: any;
     pageOptions: any;
     team_id: string;
@@ -82,12 +83,26 @@ export async function getCrawlJobs(id: string): Promise<string[]> {
     return await redisConnection.smembers("crawl:" + id + ":jobs");
 }
 
+export async function getThrottledJobs(teamId: string): Promise<string[]> {
+    return await redisConnection.zrangebyscore("concurrency-limiter:" + teamId + ":throttled", Date.now(), Infinity);
+}
+
 export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise<boolean> {
     if (typeof sc.crawlerOptions?.limit === "number") {
         if (await redisConnection.scard("crawl:" + id + ":visited") >= sc.crawlerOptions.limit) {
             return false;
         }
     }
+
+    try {
+        const urlO = new URL(url);
+        urlO.search = "";
+        urlO.hash = "";
+        url = urlO.href;
+    } catch (error) {
+        Logger.warn("Failed to normalize URL " + JSON.stringify(url) + ": " + error);
+    }
+
     const res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0
     await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
     return res;
@@ -95,6 +110,19 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
 
 /// NOTE: does not check limit. only use if limit is checked beforehand e.g. with sitemap
 export async function lockURLs(id: string, urls: string[]): Promise<boolean> {
+    urls = urls.map(url => {
+        try {
+            const urlO = new URL(url);
+            urlO.search = "";
+            urlO.hash = "";
+            return urlO.href;
+        } catch (error) {
+            Logger.warn("Failed to normalize URL " + JSON.stringify(url) + ": " + error);
+        }
+
+        return url;
+    });
+    
     const res = (await redisConnection.sadd("crawl:" + id + ":visited", ...urls)) !== 0
     await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
     return res;

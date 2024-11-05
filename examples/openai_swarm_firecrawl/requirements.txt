@@ -1,0 +1,2 @@
+firecrawl-py
+openai

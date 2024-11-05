@@ -49,7 +49,7 @@ describe("Rate Limiter Service", () => {
       "nonexistent" as RateLimiterMode,
       "test-prefix:someToken"
     );
-    expect(limiter).toBe(serverRateLimiter);
+    expect(limiter.points).toBe(serverRateLimiter.points);
   });
 
   it("should return the correct rate limiter based on mode and plan", () => {
@@ -210,7 +210,7 @@ describe("Rate Limiter Service", () => {
       "test-prefix:someToken",
       "starter"
     );
-    expect(limiter2.points).toBe(3);
+    expect(limiter2.points).toBe(10);
 
     const limiter3 = getRateLimiter(
       "crawl" as RateLimiterMode,
@@ -233,7 +233,7 @@ describe("Rate Limiter Service", () => {
       "test-prefix:someToken",
       "starter"
     );
-    expect(limiter2.points).toBe(20);
+    expect(limiter2.points).toBe(100);
 
     const limiter3 = getRateLimiter(
       "scrape" as RateLimiterMode,
@@ -263,14 +263,14 @@ describe("Rate Limiter Service", () => {
       "test-prefix:someToken",
       "starter"
     );
-    expect(limiter2.points).toBe(20);
+    expect(limiter2.points).toBe(50);
 
     const limiter3 = getRateLimiter(
       "search" as RateLimiterMode,
       "test-prefix:someToken",
       "standard"
     );
-    expect(limiter3.points).toBe(40);
+    expect(limiter3.points).toBe(50);
   });
 
   it("should return the correct rate limiter for 'preview' mode", () => {

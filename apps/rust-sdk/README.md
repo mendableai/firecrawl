@@ -1,5 +1,4 @@
 # Firecrawl Rust SDK
-
 The Firecrawl Rust SDK is a library that allows you to easily scrape and crawl websites, and output the data in a format ready for use with language models (LLMs). It provides a simple and intuitive interface for interacting with the Firecrawl API.
 
 ## Installation
@@ -10,53 +9,41 @@ To install the Firecrawl Rust SDK, add the following to your `Cargo.toml`:
 [dependencies]
 firecrawl = "^0.1"
 tokio = { version = "^1", features = ["full"] }
-serde = { version = "^1.0", features = ["derive"] }
-serde_json = "^1.0"
-uuid = { version = "^1.10", features = ["v4"] }
-
-[build-dependencies]
-tokio = { version = "1", features = ["full"] }
 ```
 
 To add it in your codebase.
 
 ## Usage
 
-1. Get an API key from [firecrawl.dev](https://firecrawl.dev)
-2. Set the API key as an environment variable named `FIRECRAWL_API_KEY` or pass it as a parameter to the `FirecrawlApp` struct.
+First, you need to obtain an API key from [firecrawl.dev](https://firecrawl.dev). Then, you need to initialize the `FirecrawlApp` like so:
 
-Here's an example of how to use the SDK in [example.rs](./examples/example.rs):
-All below example can start with :
 ```rust
 use firecrawl::FirecrawlApp;
 
 #[tokio::main]
 async fn main() {
     // Initialize the FirecrawlApp with the API key
-    let api_key = ...;
-    let api_url = ...;
-    let app = FirecrawlApp::new(api_key, api_url).expect("Failed to initialize FirecrawlApp");
+    let app = FirecrawlApp::new("fc-YOUR-API-KEY").expect("Failed to initialize FirecrawlApp");
 
-    // your code here...
+    // ...
 }
 ```
 
 ### Scraping a URL
 
-To scrape a single URL, use the `scrape_url` method. It takes the URL as a parameter and returns the scraped data as a `serde_json::Value`.
+To scrape a single URL, use the `scrape_url` method. It takes the URL as a parameter and returns the scraped data as a `Document`.
 
 ```rust
-// Example scrape code...
-let scrape_result = app.scrape_url("https://example.com", None).await;
+let scrape_result = app.scrape_url("https://firecrawl.dev", None).await;
 match scrape_result {
-    Ok(data) => println!("Scrape Result:\n{}", data["markdown"]),
+    Ok(data) => println!("Scrape result:\n{}", data.markdown),
     Err(e) => eprintln!("Scrape failed: {}", e),
 }
 ```
 
-### Extracting structured data from a URL
+### Scraping with Extract
 
-With LLM extraction, you can easily extract structured data from any URL. We support Serde for JSON schema validation to make it easier for you too. Here is how you use it:
+With Extract, you can easily extract structured data from any URL. You need to specify your schema in the JSON Schema format, using the `serde_json::json!` macro.
 
 ```rust
 let json_schema = json!({
@@ -82,83 +69,81 @@ let json_schema = json!({
     "required": ["top"]
 });
 
-let llm_extraction_params = json!({
-    "extractorOptions": {
-        "extractionSchema": json_schema,
-        "mode": "llm-extraction"
-    },
-    "pageOptions": {
-        "onlyMainContent": true
-    }
-});
+let llm_extraction_options = ScrapeOptions {
+    formats: vec![ ScrapeFormats::Extract ].into(),
+    extract: ExtractOptions {
+        schema: json_schema.into(),
+        ..Default::default()
+    }.into(),
+    ..Default::default()
+};
 
-// Example scrape code...
 let llm_extraction_result = app
-    .scrape_url("https://news.ycombinator.com", Some(llm_extraction_params))
+    .scrape_url("https://news.ycombinator.com", llm_extraction_options)
     .await;
+
 match llm_extraction_result {
-    Ok(data) => println!("LLM Extraction Result:\n{}", data["llm_extraction"]),
+    Ok(data) => println!("LLM Extraction Result:\n{:#?}", data.extract.unwrap()),
     Err(e) => eprintln!("LLM Extraction failed: {}", e),
-}
-```
-
-### Search for a query
-
-Used to search the web, get the most relevant results, scrape each page, and return the markdown.
-
-```rust
-// Example query search code...
-let query = "what is mendable?";
-let search_result = app.search(query).await;
-match search_result {
-    Ok(data) => println!("Search Result:\n{}", data),
-    Err(e) => eprintln!("Search failed: {}", e),
 }
 ```
 
 ### Crawling a Website
 
-To crawl a website, use the `crawl_url` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
-
-The `wait_until_done` parameter determines whether the method should wait for the crawl job to complete before returning the result. If set to `true`, the method will periodically check the status of the crawl job until it is completed or the specified `timeout` (in seconds) is reached. If set to `false`, the method will return immediately with the job ID, and you can manually check the status of the crawl job using the `check_crawl_status` method.
+To crawl a website, use the `crawl_url` method. This will wait for the crawl to complete, which may take a long time based on your starting URL and your options.
 
 ```rust
-let random_uuid = String::from(Uuid::new_v4());
-let idempotency_key = Some(random_uuid); // optional idempotency key
-let crawl_params = json!({
-    "crawlerOptions": {
-        "excludes": ["blog/*"]
-    }
-});
+let crawl_options = CrawlOptions {
+    exclude_paths: vec![ "blog/*".into() ].into(),
+    ..Default::default()
+};
 
-// Example crawl code...
 let crawl_result = app
-    .crawl_url("https://example.com", Some(crawl_params), true, 2, idempotency_key)
+    .crawl_url("https://mendable.ai", crawl_options)
     .await;
+
 match crawl_result {
-    Ok(data) => println!("Crawl Result:\n{}", data),
+    Ok(data) => println!("Crawl Result (used {} credits):\n{:#?}", data.credits_used, data.data),
     Err(e) => eprintln!("Crawl failed: {}", e),
 }
 ```
 
-If `wait_until_done` is set to `true`, the `crawl_url` method will return the crawl result once the job is completed. If the job fails or is stopped, an exception will be raised.
+#### Crawling asynchronously
 
-### Checking Crawl Status
-
-To check the status of a crawl job, use the `check_crawl_status` method. It takes the job ID as a parameter and returns the current status of the crawl job.
+To crawl without waiting for the result, use the `crawl_url_async` method. It takes the same parameters, but it returns a `CrawlAsyncRespone` struct, containing the crawl's ID. You can use that ID with the `check_crawl_status` method to check the status at any time. Do note that completed crawls are deleted after 24 hours.
 
 ```rust
-let job_id = crawl_result["jobId"].as_str().expect("Job ID not found");
-let status = app.check_crawl_status(job_id).await;
-match status {
-    Ok(data) => println!("Crawl Status:\n{}", data),
-    Err(e) => eprintln!("Failed to check crawl status: {}", e),
+let crawl_id = app.crawl_url_async("https://mendable.ai", None).await?.id;
+
+// ... later ...
+
+let status = app.check_crawl_status(crawl_id).await?;
+
+if status.status == CrawlStatusTypes::Completed {
+    println!("Crawl is done: {:#?}", status.data);
+} else {
+    // ... wait some more ...
+}
+```
+
+### Map a URL (Alpha)
+
+Map all associated links from a starting URL.
+
+```rust
+let map_result = app
+    .map_url("https://firecrawl.dev", None)
+    .await;
+
+match map_result {
+    Ok(data) => println!("Mapped URLs: {:#?}", data),
+    Err(e) => eprintln!("Map failed: {}", e),
 }
 ```
 
 ## Error Handling
 
-The SDK handles errors returned by the Firecrawl API and raises appropriate exceptions. If an error occurs during a request, an exception will be raised with a descriptive error message.
+The SDK handles errors returned by the Firecrawl API and by our dependencies, and combines them into the `FirecrawlError` enum, implementing `Error`, `Debug` and `Display`. All of our methods return a `Result<T, FirecrawlError>`.
 
 ## Running the Tests with Cargo
 

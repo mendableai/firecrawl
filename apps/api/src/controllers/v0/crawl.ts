@@ -18,7 +18,7 @@ import { getJobPriority } from "../../lib/job-priority";
 
 export async function crawlController(req: Request, res: Response) {
   try {
-    const { success, team_id, error, status, plan } = await authenticateUser(
+    const { success, team_id, error, status, plan, chunk } = await authenticateUser(
       req,
       res,
       RateLimiterMode.Crawl
@@ -68,7 +68,7 @@ export async function crawlController(req: Request, res: Response) {
 
     const limitCheck = req.body?.crawlerOptions?.limit ?? 1;
     const { success: creditsCheckSuccess, message: creditsCheckMessage, remainingCredits } =
-      await checkTeamCredits(team_id, limitCheck);
+      await checkTeamCredits(chunk, team_id, limitCheck);
 
     if (!creditsCheckSuccess) {
       return res.status(402).json({ error: "Insufficient credits. You may be requesting with a higher limit than the amount of credits you have left. If not, upgrade your plan at https://firecrawl.dev/pricing or contact us at hello@firecrawl.com" });
@@ -171,7 +171,8 @@ export async function crawlController(req: Request, res: Response) {
             url,
             mode: "single_urls",
             crawlerOptions: crawlerOptions,
-            team_id: team_id,
+            team_id,
+            plan,
             pageOptions: pageOptions,
             origin: req.body.origin ?? defaultOrigin,
             crawl_id: id,
@@ -192,13 +193,9 @@ export async function crawlController(req: Request, res: Response) {
         id,
         jobs.map((x) => x.opts.jobId)
       );
-      if (Sentry.isInitialized()) {
-        for (const job of jobs) {
-          // add with sentry instrumentation
-          await addScrapeJob(job.data as any, {}, job.opts.jobId);
-        }
-      } else {
-        await getScrapeQueue().addBulk(jobs);
+      for (const job of jobs) {
+        // add with sentry instrumentation
+        await addScrapeJob(job.data as any, {}, job.opts.jobId);
       }
     } else {
       await lockURL(id, sc, url);
@@ -206,21 +203,24 @@ export async function crawlController(req: Request, res: Response) {
       // Not needed, first one should be 15.
       // const jobPriority = await getJobPriority({plan, team_id, basePriority: 10})
 
-      const job = await addScrapeJob(
+      const jobId = uuidv4();
+      await addScrapeJob(
         {
           url,
           mode: "single_urls",
           crawlerOptions: crawlerOptions,
-          team_id: team_id,
+          team_id,
+          plan,
           pageOptions: pageOptions,
           origin: req.body.origin ?? defaultOrigin,
           crawl_id: id,
         },
         {
           priority: 15, // prioritize request 0 of crawl jobs same as scrape jobs
-        }
+        },
+        jobId,
       );
-      await addCrawlJob(id, job.id);
+      await addCrawlJob(id, jobId);
     }
 
     res.json({ jobId: id });

@@ -37,6 +37,10 @@ export async function getJobPriority({
   team_id: string;
   basePriority?: number;
 }): Promise<number> {
+  if (team_id === "d97c4ceb-290b-4957-8432-2b2a02727d95") {
+    return 50;
+  }
+
   try {
     const setKey = SET_KEY_PREFIX + team_id;
 
@@ -65,6 +69,14 @@ export async function getJobPriority({
       case "growthdouble":
         bucketLimit = 400;
         planModifier = 0.1;
+        break;
+      case "etier2c":
+        bucketLimit = 1000;
+        planModifier = 0.05;
+        break;
+      case "etier1a":
+        bucketLimit = 1000;
+        planModifier = 0.05;
         break;
 
       default:

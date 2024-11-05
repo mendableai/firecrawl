@@ -1,5 +1,5 @@
-import axios, { AxiosResponse, AxiosRequestHeaders } from "axios";
-import { z } from "zod";
+import axios, { type AxiosResponse, type AxiosRequestHeaders, AxiosError } from "axios";
+import type * as zt from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WebSocket } from "isows";
 import { TypedEventTarget } from "typescript-event-target";
@@ -58,41 +58,77 @@ export interface FirecrawlDocumentMetadata {
  * Document interface for Firecrawl.
  * Represents a document retrieved or processed by Firecrawl.
  */
-export interface FirecrawlDocument {
+export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult | never) = never> {
   url?: string;
   markdown?: string;
   html?: string;
   rawHtml?: string;
   links?: string[];
-  extract?: Record<any, any>;
+  extract?: T;
   screenshot?: string;
   metadata?: FirecrawlDocumentMetadata;
+  actions: ActionsSchema;
 }
 
 /**
  * Parameters for scraping operations.
  * Defines the options and configurations available for scraping web content.
  */
-export interface ScrapeParams {
-  formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "extract" | "full@scrennshot")[];
+export interface CrawlScrapeOptions {
+  formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "screenshot@fullPage" | "extract")[];
   headers?: Record<string, string>;
   includeTags?: string[];
   excludeTags?: string[];
   onlyMainContent?: boolean;
-  extract?: {
-    prompt?: string;
-    schema?: z.ZodSchema | any;
-    systemPrompt?: string;
-  };
   waitFor?: number;
   timeout?: number;
+  location?: {
+    country?: string;
+    languages?: string[];
+  };
+}
+
+export type Action = {
+  type: "wait",
+  milliseconds?: number,
+  selector?: string,
+} | {
+  type: "click",
+  selector: string,
+} | {
+  type: "screenshot",
+  fullPage?: boolean,
+} | {
+  type: "write",
+  text: string,
+} | {
+  type: "press",
+  key: string,
+} | {
+  type: "scroll",
+  direction: "up" | "down",
+} | {
+  type: "scrape",
+};
+
+export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchema extends (Action[] | undefined) = undefined> extends CrawlScrapeOptions {
+  extract?: {
+    prompt?: string;
+    schema?: LLMSchema;
+    systemPrompt?: string;
+  };
+  actions?: ActionsSchema;
+}
+
+export interface ActionsResult {
+  screenshots: string[];
 }
 
 /**
  * Response interface for scraping operations.
  * Defines the structure of the response received after a scraping operation.
  */
-export interface ScrapeResponse extends FirecrawlDocument {
+export interface ScrapeResponse<LLMResult = any, ActionsSchema extends (ActionsResult | never) = never> extends FirecrawlDocument<LLMResult, ActionsSchema> {
   success: true;
   warning?: string;
   error?: string;
@@ -110,7 +146,7 @@ export interface CrawlParams {
   allowBackwardLinks?: boolean;
   allowExternalLinks?: boolean;
   ignoreSitemap?: boolean;
-  scrapeOptions?: ScrapeParams;
+  scrapeOptions?: CrawlScrapeOptions;
   webhook?: string;
 }
 
@@ -126,20 +162,45 @@ export interface CrawlResponse {
 }
 
 /**
+ * Response interface for batch scrape operations.
+ * Defines the structure of the response received after initiating a crawl.
+ */
+export interface BatchScrapeResponse {
+  id?: string;
+  url?: string;
+  success: true;
+  error?: string;
+}
+
+/**
  * Response interface for job status checks.
  * Provides detailed status of a crawl job including progress and results.
  */
 export interface CrawlStatusResponse {
   success: true;
-  total: number;
+  status: "scraping" | "completed" | "failed" | "cancelled";
   completed: number;
+  total: number;
   creditsUsed: number;
   expiresAt: Date;
-  status: "scraping" | "completed" | "failed";
-  next: string;
-  data?: FirecrawlDocument[];
-  error?: string;
-}
+  next?: string;
+  data: FirecrawlDocument<undefined>[];
+};
+
+/**
+ * Response interface for batch scrape job status checks.
+ * Provides detailed status of a batch scrape job including progress and results.
+ */
+export interface BatchScrapeStatusResponse {
+  success: true;
+  status: "scraping" | "completed" | "failed" | "cancelled";
+  completed: number;
+  total: number;
+  creditsUsed: number;
+  expiresAt: Date;
+  next?: string;
+  data: FirecrawlDocument<undefined>[];
+};
 
 /**
  * Parameters for mapping operations.
@@ -171,6 +232,19 @@ export interface ErrorResponse {
   error: string;
 }
 
+
+/**
+ * Custom error class for Firecrawl.
+ * Extends the built-in Error class to include a status code.
+ */
+export class FirecrawlError extends Error {
+  statusCode: number;
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.statusCode = statusCode;
+  }
+}
+
 /**
  * Main class for interacting with the Firecrawl API.
  * Provides methods for scraping, searching, crawling, and mapping web content.
@@ -184,7 +258,11 @@ export default class FirecrawlApp {
    * @param config - Configuration options for the FirecrawlApp instance.
    */
   constructor({ apiKey = null, apiUrl = null }: FirecrawlAppConfig) {
-    this.apiKey = apiKey || "";
+    if (typeof apiKey !== "string") {
+      throw new FirecrawlError("No API key provided", 401);
+    }
+
+    this.apiKey = apiKey;
     this.apiUrl = apiUrl || "https://api.firecrawl.dev";
   }
 
@@ -194,10 +272,10 @@ export default class FirecrawlApp {
    * @param params - Additional parameters for the scrape request.
    * @returns The response from the scrape operation.
    */
-  async scrapeUrl(
+  async scrapeUrl<T extends zt.ZodSchema, ActionsSchema extends (Action[] | undefined) = undefined>(
     url: string,
-    params?: ScrapeParams
-  ): Promise<ScrapeResponse | ErrorResponse> {
+    params?: ScrapeParams<T, ActionsSchema>
+  ): Promise<ScrapeResponse<zt.infer<T>, ActionsSchema extends Action[] ? ActionsResult : never> | ErrorResponse> {
     const headers: AxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this.apiKey}`,
@@ -236,13 +314,13 @@ export default class FirecrawlApp {
             ...responseData.data
           };
         } else {
-          throw new Error(`Failed to scrape URL. Error: ${responseData.error}`);
+          throw new FirecrawlError(`Failed to scrape URL. Error: ${responseData.error}`, response.status);
         }
       } else {
         this.handleError(response, "scrape URL");
       }
     } catch (error: any) {
-      throw new Error(error.message);
+      this.handleError(error.response, "scrape URL");
     }
     return { success: false, error: "Internal server error." };
   }
@@ -257,7 +335,7 @@ export default class FirecrawlApp {
     query: string,
     params?: any
   ): Promise<any> {
-    throw new Error("Search is not supported in v1, please update FirecrawlApp() initialization to use v0.");
+    throw new FirecrawlError("Search is not supported in v1, please downgrade Firecrawl to 0.0.36.", 400);
   }
 
   /**
@@ -290,9 +368,9 @@ export default class FirecrawlApp {
       }
     } catch (error: any) {
       if (error.response?.data?.error) {
-        throw new Error(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`);
+        throw new FirecrawlError(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`, error.response.status);
       } else {
-        throw new Error(error.message);
+        throw new FirecrawlError(error.message, 500);
       }
     }
     return { success: false, error: "Internal server error." };
@@ -318,9 +396,9 @@ export default class FirecrawlApp {
       }
     } catch (error: any) {
       if (error.response?.data?.error) {
-        throw new Error(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`);
+        throw new FirecrawlError(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`, error.response.status);
       } else {
-        throw new Error(error.message);
+        throw new FirecrawlError(error.message, 500);
       }
     }
     return { success: false, error: "Internal server error." };
@@ -329,11 +407,12 @@ export default class FirecrawlApp {
   /**
    * Checks the status of a crawl job using the Firecrawl API.
    * @param id - The ID of the crawl operation.
+   * @param getAllData - Paginate through all the pages of documents, returning the full list of all documents. (default: `false`)
    * @returns The response containing the job status.
    */
-  async checkCrawlStatus(id?: string): Promise<CrawlStatusResponse | ErrorResponse> {
+  async checkCrawlStatus(id?: string, getAllData = false): Promise<CrawlStatusResponse | ErrorResponse> {
     if (!id) {
-      throw new Error("No crawl ID provided");
+      throw new FirecrawlError("No crawl ID provided", 400);
     }
 
     const headers: AxiosRequestHeaders = this.prepareHeaders();
@@ -343,26 +422,68 @@ export default class FirecrawlApp {
         headers
       );
       if (response.status === 200) {
+        let allData = response.data.data;
+        if (getAllData && response.data.status === "completed") {
+          let statusData = response.data
+          if ("data" in statusData) {
+            let data = statusData.data;
+            while ('next' in statusData) {
+              statusData = (await this.getRequest(statusData.next, headers)).data;
+              data = data.concat(statusData.data);
+            }
+            allData = data;
+          }
+        }
         return ({
-          success: true,
+          success: response.data.success,
           status: response.data.status,
           total: response.data.total,
           completed: response.data.completed,
           creditsUsed: response.data.creditsUsed,
           expiresAt: new Date(response.data.expiresAt),
           next: response.data.next,
-          data: response.data.data,
-          error: response.data.error
+          data: allData,
+          error: response.data.error,
         })
       } else {
         this.handleError(response, "check crawl status");
       }
     } catch (error: any) {
-      throw new Error(error.message);
+      throw new FirecrawlError(error.message, 500);
     }
     return { success: false, error: "Internal server error." };
   }
 
+  /**
+   * Cancels a crawl job using the Firecrawl API.
+   * @param id - The ID of the crawl operation.
+   * @returns The response from the cancel crawl operation.
+   */
+  async cancelCrawl(id: string): Promise<ErrorResponse> {
+    const headers = this.prepareHeaders();
+    try {
+      const response: AxiosResponse = await this.deleteRequest(
+        `${this.apiUrl}/v1/crawl/${id}`,
+        headers
+      );
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "cancel crawl job");
+      }
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500);
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Initiates a crawl job and returns a CrawlWatcher to monitor the job via WebSocket.
+   * @param url - The URL to crawl.
+   * @param params - Additional parameters for the crawl request.
+   * @param idempotencyKey - Optional idempotency key for the request.
+   * @returns A CrawlWatcher instance to monitor the crawl job.
+   */
   async crawlUrlAndWatch(
     url: string,
     params?: CrawlParams,
@@ -375,9 +496,15 @@ export default class FirecrawlApp {
       return new CrawlWatcher(id, this);
     }
 
-    throw new Error("Crawl job failed to start");
+    throw new FirecrawlError("Crawl job failed to start", 400);
   }
 
+  /**
+   * Maps a URL using the Firecrawl API.
+   * @param url - The URL to map.
+   * @param params - Additional parameters for the map request.
+   * @returns The response from the map operation.
+   */
   async mapUrl(url: string, params?: MapParams): Promise<MapResponse | ErrorResponse> {
     const headers = this.prepareHeaders();
     let jsonData: { url: string } & MapParams = { url, ...params };
@@ -394,7 +521,145 @@ export default class FirecrawlApp {
         this.handleError(response, "map");
       }
     } catch (error: any) {
-      throw new Error(error.message);
+      throw new FirecrawlError(error.message, 500);
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Initiates a batch scrape job for multiple URLs using the Firecrawl API.
+   * @param url - The URLs to scrape.
+   * @param params - Additional parameters for the scrape request.
+   * @param pollInterval - Time in seconds for job status checks.
+   * @param idempotencyKey - Optional idempotency key for the request.
+   * @returns The response from the crawl operation.
+   */
+  async batchScrapeUrls(
+    urls: string[],
+    params?: ScrapeParams,
+    pollInterval: number = 2,
+    idempotencyKey?: string
+  ): Promise<BatchScrapeStatusResponse | ErrorResponse> {
+    const headers = this.prepareHeaders(idempotencyKey);
+    let jsonData: any = { urls, ...(params ?? {}) };
+    try {
+      const response: AxiosResponse = await this.postRequest(
+        this.apiUrl + `/v1/batch/scrape`,
+        jsonData,
+        headers
+      );
+      if (response.status === 200) {
+        const id: string = response.data.id;
+        return this.monitorJobStatus(id, headers, pollInterval);
+      } else {
+        this.handleError(response, "start batch scrape job");
+      }
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new FirecrawlError(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`, error.response.status);
+      } else {
+        throw new FirecrawlError(error.message, 500);
+      }
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  async asyncBatchScrapeUrls(
+    urls: string[],
+    params?: ScrapeParams,
+    idempotencyKey?: string
+  ): Promise<BatchScrapeResponse | ErrorResponse> {
+    const headers = this.prepareHeaders(idempotencyKey);
+    let jsonData: any = { urls, ...(params ?? {}) };
+    try {
+      const response: AxiosResponse = await this.postRequest(
+        this.apiUrl + `/v1/batch/scrape`,
+        jsonData,
+        headers
+      );
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "start batch scrape job");
+      }
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new FirecrawlError(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`, error.response.status);
+      } else {
+        throw new FirecrawlError(error.message, 500);
+      }
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Initiates a batch scrape job and returns a CrawlWatcher to monitor the job via WebSocket.
+   * @param urls - The URL to scrape.
+   * @param params - Additional parameters for the scrape request.
+   * @param idempotencyKey - Optional idempotency key for the request.
+   * @returns A CrawlWatcher instance to monitor the crawl job.
+   */
+  async batchScrapeUrlsAndWatch(
+    urls: string[],
+    params?: ScrapeParams,
+    idempotencyKey?: string,
+  ) {
+    const crawl = await this.asyncBatchScrapeUrls(urls, params, idempotencyKey);
+
+    if (crawl.success && crawl.id) {
+      const id = crawl.id;
+      return new CrawlWatcher(id, this);
+    }
+
+    throw new FirecrawlError("Batch scrape job failed to start", 400);
+  }
+
+  /**
+   * Checks the status of a batch scrape job using the Firecrawl API.
+   * @param id - The ID of the batch scrape operation.
+   * @param getAllData - Paginate through all the pages of documents, returning the full list of all documents. (default: `false`)
+   * @returns The response containing the job status.
+   */
+  async checkBatchScrapeStatus(id?: string, getAllData = false): Promise<BatchScrapeStatusResponse | ErrorResponse> {
+    if (!id) {
+      throw new FirecrawlError("No batch scrape ID provided", 400);
+    }
+
+    const headers: AxiosRequestHeaders = this.prepareHeaders();
+    try {
+      const response: AxiosResponse = await this.getRequest(
+        `${this.apiUrl}/v1/batch/scrape/${id}`,
+        headers
+      );
+      if (response.status === 200) {
+        let allData = response.data.data;
+        if (getAllData && response.data.status === "completed") {
+          let statusData = response.data
+          if ("data" in statusData) {
+            let data = statusData.data;
+            while ('next' in statusData) {
+              statusData = (await this.getRequest(statusData.next, headers)).data;
+              data = data.concat(statusData.data);
+            }
+            allData = data;
+          }
+        }
+        return ({
+          success: response.data.success,
+          status: response.data.status,
+          total: response.data.total,
+          completed: response.data.completed,
+          creditsUsed: response.data.creditsUsed,
+          expiresAt: new Date(response.data.expiresAt),
+          next: response.data.next,
+          data: allData,
+          error: response.data.error,
+        })
+      } else {
+        this.handleError(response, "check batch scrape status");
+      }
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500);
     }
     return { success: false, error: "Internal server error." };
   }
@@ -433,11 +698,40 @@ export default class FirecrawlApp {
    * @param headers - The headers for the request.
    * @returns The response from the GET request.
    */
-  getRequest(
+  async getRequest(
     url: string,
     headers: AxiosRequestHeaders
   ): Promise<AxiosResponse> {
-    return axios.get(url, { headers });
+    try {
+      return await axios.get(url, { headers });
+    } catch (error) {
+      if (error instanceof AxiosError && error.response) {
+        return error.response as AxiosResponse;
+      } else {
+        throw error;
+      }
+    }
+  }
+
+  /**
+   * Sends a DELETE request to the specified URL.
+   * @param url - The URL to send the request to.
+   * @param headers - The headers for the request.
+   * @returns The response from the DELETE request.
+   */
+  async deleteRequest(
+    url: string,
+    headers: AxiosRequestHeaders
+  ): Promise<AxiosResponse> {
+    try {
+        return await axios.delete(url, { headers });
+    } catch (error) {
+      if (error instanceof AxiosError && error.response) {
+        return error.response as AxiosResponse;
+      } else {
+        throw error;
+      }
+    }
   }
 
   /**
@@ -452,30 +746,38 @@ export default class FirecrawlApp {
     id: string,
     headers: AxiosRequestHeaders,
     checkInterval: number
-  ): Promise<CrawlStatusResponse> {
+  ): Promise<CrawlStatusResponse | ErrorResponse> {
     while (true) {
-      const statusResponse: AxiosResponse = await this.getRequest(
+      let statusResponse: AxiosResponse = await this.getRequest(
         `${this.apiUrl}/v1/crawl/${id}`,
         headers
       );
       if (statusResponse.status === 200) {
-        const statusData = statusResponse.data;
-        if (statusData.status === "completed") {
-          if ("data" in statusData) {
-            return statusData;
-          } else {
-            throw new Error("Crawl job completed but no data was returned");
-          }
-        } else if (
-          ["active", "paused", "pending", "queued", "scraping"].includes(statusData.status)
+        let statusData = statusResponse.data;
+          if (statusData.status === "completed") {
+            if ("data" in statusData) {
+              let data = statusData.data;
+              while ('next' in statusData) {
+                statusResponse = await this.getRequest(statusData.next, headers);
+                statusData = statusResponse.data;
+                data = data.concat(statusData.data);
+              }
+              statusData.data = data;
+              return statusData;
+            } else {
+              throw new FirecrawlError("Crawl job completed but no data was returned", 500);
+            }
+          } else if (
+          ["active", "paused", "pending", "queued", "waiting", "scraping"].includes(statusData.status)
         ) {
           checkInterval = Math.max(checkInterval, 2);
           await new Promise((resolve) =>
             setTimeout(resolve, checkInterval * 1000)
           );
         } else {
-          throw new Error(
-            `Crawl job failed or was stopped. Status: ${statusData.status}`
+          throw new FirecrawlError(
+            `Crawl job failed or was stopped. Status: ${statusData.status}`,
+            500
           );
         }
       } else {
@@ -493,33 +795,35 @@ export default class FirecrawlApp {
     if ([402, 408, 409, 500].includes(response.status)) {
       const errorMessage: string =
         response.data.error || "Unknown error occurred";
-      throw new Error(
-        `Failed to ${action}. Status code: ${response.status}. Error: ${errorMessage}`
+      throw new FirecrawlError(
+        `Failed to ${action}. Status code: ${response.status}. Error: ${errorMessage}`,
+        response.status
       );
     } else {
-      throw new Error(
-        `Unexpected error occurred while trying to ${action}. Status code: ${response.status}`
+      throw new FirecrawlError(
+        `Unexpected error occurred while trying to ${action}. Status code: ${response.status}`,
+        response.status
       );
     }
   }
 }
 
 interface CrawlWatcherEvents {
-  document: CustomEvent<FirecrawlDocument>,
+  document: CustomEvent<FirecrawlDocument<undefined>>,
   done: CustomEvent<{
     status: CrawlStatusResponse["status"];
-    data: FirecrawlDocument[];
+    data: FirecrawlDocument<undefined>[];
   }>,
   error: CustomEvent<{
     status: CrawlStatusResponse["status"],
-    data: FirecrawlDocument[],
+    data: FirecrawlDocument<undefined>[],
     error: string,
   }>,
 }
 
 export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
   private ws: WebSocket;
-  public data: FirecrawlDocument[];
+  public data: FirecrawlDocument<undefined>[];
   public status: CrawlStatusResponse["status"];
 
   constructor(id: string, app: FirecrawlApp) {
@@ -540,7 +844,7 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
     
     type DocumentMessage = {
       type: "document",
-      data: FirecrawlDocument,
+      data: FirecrawlDocument<undefined>,
     }
     
     type DoneMessage = { type: "done" }

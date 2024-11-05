@@ -39,7 +39,7 @@ export async function scrapeHelper(
   returnCode: number;
 }> {
   const url = req.body.url;
-  if (!url) {
+  if (typeof url !== "string") {
     return { success: false, error: "Url is required", returnCode: 400 };
   }
 
@@ -54,13 +54,14 @@ export async function scrapeHelper(
 
   const jobPriority = await getJobPriority({ plan, team_id, basePriority: 10 });
 
-  const job = await addScrapeJob(
+  await addScrapeJob(
     {
       url,
       mode: "single_urls",
       crawlerOptions,
       team_id,
       pageOptions,
+      plan,
       extractorOptions,
       origin: req.body.origin ?? defaultOrigin,
       is_scrape: true,
@@ -80,7 +81,7 @@ export async function scrapeHelper(
     },
     async (span) => {
       try {
-        doc = (await waitForJob(job.id, timeout))[0];
+        doc = (await waitForJob(jobId, timeout))[0];
       } catch (e) {
         if (e instanceof Error && e.message.startsWith("Job wait")) {
           span.setAttribute("timedOut", true);
@@ -115,10 +116,10 @@ export async function scrapeHelper(
     return err;
   }
 
-  await job.remove();
+  await getScrapeQueue().remove(jobId);
 
   if (!doc) {
-    console.error("!!! PANIC DOC IS", doc, job);
+    console.error("!!! PANIC DOC IS", doc);
     return {
       success: true,
       error: "No page found",
@@ -157,7 +158,7 @@ export async function scrapeController(req: Request, res: Response) {
   try {
     let earlyReturn = false;
     // make sure to authenticate user first, Bearer <token>
-    const { success, team_id, error, status, plan } = await authenticateUser(
+    const { success, team_id, error, status, plan, chunk } = await authenticateUser(
       req,
       res,
       RateLimiterMode.Scrape
@@ -193,10 +194,10 @@ export async function scrapeController(req: Request, res: Response) {
     // checkCredits
     try {
       const { success: creditsCheckSuccess, message: creditsCheckMessage } =
-        await checkTeamCredits(team_id, 1);
+        await checkTeamCredits(chunk, team_id, 1);
       if (!creditsCheckSuccess) {
         earlyReturn = true;
-        return res.status(402).json({ error: "Insufficient credits" });
+        return res.status(402).json({ error: "Insufficient credits. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing" });
       }
     } catch (error) {
       Logger.error(error);
@@ -229,7 +230,7 @@ export async function scrapeController(req: Request, res: Response) {
 
     if (result.success) {
       let creditsToBeBilled = 1;
-      const creditsPerLLMExtract = 49;
+      const creditsPerLLMExtract = 4;
 
       if (extractorOptions.mode.includes("llm-extraction")) {
         // creditsToBeBilled = creditsToBeBilled + (creditsPerLLMExtract * filteredDocs.length);
@@ -244,14 +245,10 @@ export async function scrapeController(req: Request, res: Response) {
       }
       if (creditsToBeBilled > 0) {
         // billing for doc done on queue end, bill only for llm extraction
-        const billingResult = await billTeam(team_id, creditsToBeBilled);
-        if (!billingResult.success) {
-          return res.status(402).json({
-            success: false,
-            error:
-              "Failed to bill team. Insufficient credits or subscription not found.",
-          });
-        }
+        billTeam(team_id, chunk?.sub_id, creditsToBeBilled).catch(error => {
+          Logger.error(`Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`);
+          // Optionally, you could notify an admin or add to a retry queue here
+        });
       }
     }
     

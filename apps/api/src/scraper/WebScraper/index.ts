@@ -589,6 +589,14 @@ export class WebScraperDataProvider {
       includeLinks: options.pageOptions?.includeLinks ?? true,
       fullPageScreenshot: options.pageOptions?.fullPageScreenshot ?? false,
       screenshot: options.pageOptions?.screenshot ?? false,
+      useFastMode: options.pageOptions?.useFastMode ?? false,
+      disableJsDom: options.pageOptions?.disableJsDom ?? false,
+      atsv: options.pageOptions?.atsv ?? false,
+      actions: options.pageOptions?.actions ?? undefined,
+      geolocation: options.pageOptions?.geolocation ?? undefined,
+      skipTlsVerification: options.pageOptions?.skipTlsVerification ?? false,
+      removeBase64Images: options.pageOptions?.removeBase64Images ?? true,
+      mobile: options.pageOptions?.mobile ?? false,
     };
     this.extractorOptions = options.extractorOptions ?? { mode: "markdown" };
     this.replaceAllPathsWithAbsolutePaths =

@@ -1,44 +1,38 @@
-use firecrawl::FirecrawlApp;
+use firecrawl::{crawl::CrawlOptions, scrape::{ExtractOptions, ScrapeFormats, ScrapeOptions}, FirecrawlApp};
 use serde_json::json;
-use uuid::Uuid;
 
 #[tokio::main]
 async fn main() {
     // Initialize the FirecrawlApp with the API key
-    let api_key = Some("fc-YOUR_API_KEY".to_string());
-    let api_url = Some("http://0.0.0.0:3002".to_string());
-    let app = FirecrawlApp::new(api_key, api_url).expect("Failed to initialize FirecrawlApp");
+    let app = FirecrawlApp::new("fc-YOUR-API-KEY").expect("Failed to initialize FirecrawlApp");
+
+    // Or, connect to a self-hosted instance:
+    // let app = FirecrawlApp::new_selfhosted("http://localhost:3002", None).expect("Failed to initialize FirecrawlApp");
 
     // Scrape a website
     let scrape_result = app.scrape_url("https://firecrawl.dev", None).await;
+
     match scrape_result {
-        Ok(data) => println!("Scrape Result:\n{}", data["markdown"]),
-        Err(e) => eprintln!("Scrape failed: {}", e),
+        Ok(data) => println!("Scrape Result:\n{}", data.markdown.unwrap()),
+        Err(e) => eprintln!("Scrape failed: {:#?}", e),
     }
 
     // Crawl a website
-    let random_uuid = String::from(Uuid::new_v4());
-    let idempotency_key = Some(random_uuid); // optional idempotency key
-    let crawl_params = json!({
-        "crawlerOptions": {
-            "excludes": ["blog/*"]
-        }
-    });
+    let crawl_options = CrawlOptions {
+        exclude_paths: vec![ "blog/*".into() ].into(),
+        ..Default::default()
+    };
+    
     let crawl_result = app
-        .crawl_url(
-            "https://mendable.ai",
-            Some(crawl_params),
-            true,
-            2,
-            idempotency_key,
-        )
+        .crawl_url("https://mendable.ai", crawl_options)
         .await;
+
     match crawl_result {
-        Ok(data) => println!("Crawl Result:\n{}", data),
+        Ok(data) => println!("Crawl Result (used {} credits):\n{:#?}", data.credits_used, data.data),
         Err(e) => eprintln!("Crawl failed: {}", e),
     }
-
-    // LLM Extraction with a JSON schema
+    
+    // Scrape with Extract
     let json_schema = json!({
         "type": "object",
         "properties": {
@@ -62,21 +56,31 @@ async fn main() {
         "required": ["top"]
     });
 
-    let llm_extraction_params = json!({
-        "extractorOptions": {
-            "extractionSchema": json_schema,
-            "mode": "llm-extraction"
-        },
-        "pageOptions": {
-            "onlyMainContent": true
-        }
-    });
+    let llm_extraction_options = ScrapeOptions {
+        formats: vec![ ScrapeFormats::Extract ].into(),
+        extract: ExtractOptions {
+            schema: json_schema.into(),
+            ..Default::default()
+        }.into(),
+        ..Default::default()
+    };
 
     let llm_extraction_result = app
-        .scrape_url("https://news.ycombinator.com", Some(llm_extraction_params))
+        .scrape_url("https://news.ycombinator.com", llm_extraction_options)
         .await;
+
     match llm_extraction_result {
-        Ok(data) => println!("LLM Extraction Result:\n{}", data["llm_extraction"]),
+        Ok(data) => println!("LLM Extraction Result:\n{:#?}", data.extract.unwrap()),
         Err(e) => eprintln!("LLM Extraction failed: {}", e),
+    }
+
+    // Map a website (Alpha)
+    let map_result = app
+        .map_url("https://firecrawl.dev", None)
+        .await;
+
+    match map_result {
+        Ok(data) => println!("Mapped URLs: {:#?}", data),
+        Err(e) => eprintln!("Map failed: {}", e),
     }
 }

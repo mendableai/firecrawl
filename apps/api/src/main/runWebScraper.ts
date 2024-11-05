@@ -12,6 +12,8 @@ import { Document } from "../lib/entities";
 import { supabase_service } from "../services/supabase";
 import { Logger } from "../lib/logger";
 import { ScrapeEvents } from "../lib/scrape-events";
+import { configDotenv } from "dotenv";
+configDotenv();
 
 export async function startWebScraperPipeline({
   job,
@@ -57,6 +59,7 @@ export async function startWebScraperPipeline({
     is_scrape: job.data.is_scrape ?? false,
   })) as { success: boolean; message: string; docs: Document[] };
 }
+
 export async function runWebScraper({
   url,
   mode,
@@ -109,7 +112,7 @@ export async function runWebScraper({
     }
 
     // remove docs with empty content
-    const filteredDocs = crawlerOptions.returnOnlyUrls
+    const filteredDocs = crawlerOptions?.returnOnlyUrls
       ? docs.map((doc) => {
           if (doc.metadata.sourceURL) {
             return { url: doc.metadata.sourceURL };
@@ -118,15 +121,15 @@ export async function runWebScraper({
       : docs;
 
     if(is_scrape === false) {
-      const billingResult = await billTeam(team_id, filteredDocs.length);
-      if (!billingResult.success) {
-        // throw new Error("Failed to bill team, no subscription was found");
-        return {
-          success: false,
-          message: "Failed to bill team, no subscription was found",
-          docs: [],
-        };
+      let creditsToBeBilled = 1; // Assuming 1 credit per document
+      if (extractorOptions && (extractorOptions.mode === "llm-extraction" || extractorOptions.mode === "extract")) {
+        creditsToBeBilled = 5;
       }
+
+      billTeam(team_id, undefined, creditsToBeBilled * filteredDocs.length).catch(error => {
+        Logger.error(`Failed to bill team ${team_id} for ${creditsToBeBilled * filteredDocs.length} credits: ${error}`);
+        // Optionally, you could notify an admin or add to a retry queue here
+      });
     }
 
     

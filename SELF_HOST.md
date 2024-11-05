@@ -36,7 +36,7 @@ Self-hosting Firecrawl is ideal for those who need full control over their scrap
 
 Create an `.env` in the root directory you can copy over the template in `apps/api/.env.example`
 
-To start, we wont set up authentication, or any optional sub services (pdf parsing, JS blocking support, AI features)
+To start, we won't set up authentication or any optional subservices (pdf parsing, JS blocking support, AI features)
 
 `.env:`
 ```
@@ -47,7 +47,7 @@ HOST=0.0.0.0
 REDIS_URL=redis://redis:6379
 REDIS_RATE_LIMIT_URL=redis://redis:6379
 
-## To turn on DB authentication, you need to set up supabase.
+## To turn on DB authentication, you need to set up Supabase.
 USE_DB_AUTHENTICATION=false
 
 # ===== Optional ENVS ======
@@ -59,8 +59,8 @@ SUPABASE_SERVICE_TOKEN=
 
 # Other Optionals
 TEST_API_KEY= # use if you've set up authentication and want to test with a real API key
-SCRAPING_BEE_API_KEY= #Set if you'd like to use scraping Be to handle JS blocking
-OPENAI_API_KEY= # add for LLM dependednt features (image alt generation, etc.)
+SCRAPING_BEE_API_KEY= # use if you'd like to use as a fallback scraper
+OPENAI_API_KEY= # add for LLM-dependent features (e.g., image alt generation)
 BULL_AUTH_KEY= @
 LOGTAIL_KEY= # Use if you're configuring basic logging with logtail
 PLAYWRIGHT_MICROSERVICE_URL=  # set if you'd like to run a playwright fallback
@@ -106,7 +106,7 @@ You should be able to see the Bull Queue Manager UI on `http://localhost:3002/ad
 If you’d like to test the crawl endpoint, you can run this:
 
   ```bash
-  curl -X POST http://localhost:3002/v0/crawl \
+  curl -X POST http://localhost:3002/v1/crawl \
       -H 'Content-Type: application/json' \
       -d '{
         "url": "https://mendable.ai"
@@ -176,4 +176,4 @@ By addressing these common issues, you can ensure a smoother setup and operation
 
 ## Install Firecrawl on a Kubernetes Cluster (Simple Version)
 
-Read the [examples/kubernetes-cluster-install/README.md](https://github.com/mendableai/firecrawl/blob/main/examples/kubernetes-cluster-install/README.md) for instructions on how to install Firecrawl on a Kubernetes Cluster.
+Read the [examples/kubernetes/cluster-install/README.md](https://github.com/mendableai/firecrawl/blob/main/examples/kubernetes/cluster-install/README.md) for instructions on how to install Firecrawl on a Kubernetes Cluster.

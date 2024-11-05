@@ -1,6 +1,14 @@
 # Install Firecrawl on a Kubernetes Cluster (Simple Version)
 # Before installing
 1. Set [secret.yaml](secret.yaml) and [configmap.yaml](configmap.yaml) and do not check in secrets
+   - **Note**: If `REDIS_PASSWORD` is configured in the secret, please modify the ConfigMap to reflect the following format for `REDIS_URL` and `REDIS_RATE_LIMIT_URL`:
+     ```yaml
+     REDIS_URL: "redis://:password@host:port"
+     REDIS_RATE_LIMIT_URL: "redis://:password@host:port"
+     ```
+     Replace `password`, `host`, and `port` with the appropriate values.
+
+
 2. Build Docker images, and host it in your Docker Registry (replace the target registry with your own)
    1. API (which is also used as a worker image)
       1. ```bash

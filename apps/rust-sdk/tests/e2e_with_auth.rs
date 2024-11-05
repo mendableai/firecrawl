@@ -1,24 +1,16 @@
 use assert_matches::assert_matches;
-use dotenv::dotenv;
+use dotenvy::dotenv;
+use firecrawl::scrape::{ExtractOptions, ScrapeFormats, ScrapeOptions};
 use firecrawl::FirecrawlApp;
 use serde_json::json;
 use std::env;
-use std::time::Duration;
-use tokio::time::sleep;
-
-#[tokio::test]
-async fn test_no_api_key() {
-    dotenv().ok();
-    let api_url = env::var("API_URL").expect("API_URL environment variable is not set");
-    assert_matches!(FirecrawlApp::new(None, Some(api_url)), Err(e) if e.to_string() == "API key not provided");
-}
 
 #[tokio::test]
 async fn test_blocklisted_url() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("TEST_API_KEY").unwrap();
-    let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
+    let api_key = env::var("TEST_API_KEY").ok();
+    let app = FirecrawlApp::new_selfhosted(api_url, api_key).unwrap();
     let blocklisted_url = "https://facebook.com/fake-test";
     let result = app.scrape_url(blocklisted_url, None).await;
 
@@ -32,74 +24,65 @@ async fn test_blocklisted_url() {
 async fn test_successful_response_with_valid_preview_token() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
-    let app = FirecrawlApp::new(
-        Some("this_is_just_a_preview_token".to_string()),
-        Some(api_url),
+    let app = FirecrawlApp::new_selfhosted(
+        api_url,
+        Some("this_is_just_a_preview_token"),
     )
     .unwrap();
     let result = app
         .scrape_url("https://roastmywebsite.ai", None)
         .await
         .unwrap();
-    assert!(result.as_object().unwrap().contains_key("content"));
-    assert!(result["content"].as_str().unwrap().contains("_Roast_"));
+    assert!(result.markdown.is_some());
+    assert!(result.markdown.unwrap().contains("_Roast_"));
 }
 
 #[tokio::test]
 async fn test_scrape_url_e2e() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("TEST_API_KEY").unwrap();
-    let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
+    let api_key = env::var("TEST_API_KEY").ok();
+    let app = FirecrawlApp::new_selfhosted(api_url, api_key).unwrap();
     let result = app
         .scrape_url("https://roastmywebsite.ai", None)
         .await
         .unwrap();
-    assert!(result.as_object().unwrap().contains_key("content"));
-    assert!(result.as_object().unwrap().contains_key("markdown"));
-    assert!(result.as_object().unwrap().contains_key("metadata"));
-    assert!(!result.as_object().unwrap().contains_key("html"));
-    assert!(result["content"].as_str().unwrap().contains("_Roast_"));
+    assert!(result.markdown.is_some());
+    assert!(result.markdown.unwrap().contains("_Roast_"));
 }
 
 #[tokio::test]
 async fn test_successful_response_with_valid_api_key_and_include_html() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("TEST_API_KEY").unwrap();
-    let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
-    let params = json!({
-        "pageOptions": {
-            "includeHtml": true
-        }
-    });
+    let api_key = env::var("TEST_API_KEY").ok();
+    let app = FirecrawlApp::new_selfhosted(api_url, api_key).unwrap();
+    let params = ScrapeOptions {
+        formats: vec! [ ScrapeFormats::Markdown, ScrapeFormats::HTML ].into(),
+        ..Default::default()
+    };
     let result = app
-        .scrape_url("https://roastmywebsite.ai", Some(params))
+        .scrape_url("https://roastmywebsite.ai", params)
         .await
         .unwrap();
-    assert!(result.as_object().unwrap().contains_key("content"));
-    assert!(result.as_object().unwrap().contains_key("markdown"));
-    assert!(result.as_object().unwrap().contains_key("html"));
-    assert!(result.as_object().unwrap().contains_key("metadata"));
-    assert!(result["content"].as_str().unwrap().contains("_Roast_"));
-    assert!(result["markdown"].as_str().unwrap().contains("_Roast_"));
-    assert!(result["html"].as_str().unwrap().contains("<h1"));
+    assert!(result.markdown.is_some());
+    assert!(result.html.is_some());
+    assert!(result.markdown.unwrap().contains("_Roast_"));
+    assert!(result.html.unwrap().contains("<h1"));
 }
 
 #[tokio::test]
 async fn test_successful_response_for_valid_scrape_with_pdf_file() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("TEST_API_KEY").unwrap();
-    let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
+    let api_key = env::var("TEST_API_KEY").ok();
+    let app = FirecrawlApp::new_selfhosted(api_url, api_key).unwrap();
     let result = app
         .scrape_url("https://arxiv.org/pdf/astro-ph/9301001.pdf", None)
         .await
         .unwrap();
-    assert!(result.as_object().unwrap().contains_key("content"));
-    assert!(result.as_object().unwrap().contains_key("metadata"));
-    assert!(result["content"]
-        .as_str()
+    assert!(result.markdown.is_some());
+    assert!(result.markdown
         .unwrap()
         .contains("We present spectrophotometric observations of the Broad Line Radio Galaxy"));
 }
@@ -108,17 +91,14 @@ async fn test_successful_response_for_valid_scrape_with_pdf_file() {
 async fn test_successful_response_for_valid_scrape_with_pdf_file_without_explicit_extension() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("TEST_API_KEY").unwrap();
-    let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
+    let api_key = env::var("TEST_API_KEY").ok();
+    let app = FirecrawlApp::new_selfhosted(api_url, api_key).unwrap();
     let result = app
         .scrape_url("https://arxiv.org/pdf/astro-ph/9301001", None)
         .await
         .unwrap();
-    sleep(Duration::from_secs(6)).await; // wait for 6 seconds
-    assert!(result.as_object().unwrap().contains_key("content"));
-    assert!(result.as_object().unwrap().contains_key("metadata"));
-    assert!(result["content"]
-        .as_str()
+    assert!(result.markdown.is_some());
+    assert!(result.markdown
         .unwrap()
         .contains("We present spectrophotometric observations of the Broad Line Radio Galaxy"));
 }
@@ -127,14 +107,14 @@ async fn test_successful_response_for_valid_scrape_with_pdf_file_without_explici
 async fn test_should_return_error_for_blocklisted_url() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("TEST_API_KEY").unwrap();
-    let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
+    let api_key = env::var("TEST_API_KEY").ok();
+    let app = FirecrawlApp::new_selfhosted(api_url, api_key).unwrap();
     let blocklisted_url = "https://twitter.com/fake-test";
-    let result = app.crawl_url(blocklisted_url, None, true, 1, None).await;
+    let result = app.crawl_url(blocklisted_url, None).await;
 
     assert_matches!(
         result,
-        Err(e) if e.to_string().contains("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.")
+        Err(e) if e.to_string().contains("Firecrawl currently does not support social media scraping due to policy restrictions.")
     );
 }
 
@@ -142,13 +122,13 @@ async fn test_should_return_error_for_blocklisted_url() {
 async fn test_llm_extraction() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("TEST_API_KEY").unwrap();
-    let app = FirecrawlApp::new(Some(api_key), Some(api_url)).unwrap();
-    let params = json!({
-        "extractorOptions": {
-            "mode": "llm-extraction",
-            "extractionPrompt": "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source",
-            "extractionSchema": {
+    let api_key = env::var("TEST_API_KEY").ok();
+    let app = FirecrawlApp::new_selfhosted(api_url, api_key).unwrap();
+    let options = ScrapeOptions {
+        formats: vec! [ ScrapeFormats::Extract ].into(),
+        extract: ExtractOptions {
+            prompt: "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source".to_string().into(),
+            schema: json!({
                 "type": "object",
                 "properties": {
                     "company_mission": {"type": "string"},
@@ -156,15 +136,17 @@ async fn test_llm_extraction() {
                     "is_open_source": {"type": "boolean"}
                 },
                 "required": ["company_mission", "supports_sso", "is_open_source"]
-            }
-        }
-    });
+            }).into(),
+            ..Default::default()
+        }.into(),
+        ..Default::default()
+    };
     let result = app
-        .scrape_url("https://mendable.ai", Some(params))
+        .scrape_url("https://mendable.ai", options)
         .await
         .unwrap();
-    assert!(result.as_object().unwrap().contains_key("llm_extraction"));
-    let llm_extraction = &result["llm_extraction"];
+    assert!(result.extract.is_some());
+    let llm_extraction = &result.extract.unwrap();
     assert!(llm_extraction
         .as_object()
         .unwrap()

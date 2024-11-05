@@ -17,19 +17,26 @@ RUN pnpm install
 RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN \
     bash -c 'export SENTRY_AUTH_TOKEN="$(cat /run/secrets/SENTRY_AUTH_TOKEN)"; if [ -z $SENTRY_AUTH_TOKEN ]; then pnpm run build:nosentry; else pnpm run build; fi'
 
-# Install packages needed for deployment
+# Install Go
+FROM golang:1.19 AS go-base
+COPY sharedLibs/go-html-to-md /app/sharedLibs/go-html-to-md
 
+# Install Go dependencies and build parser lib
+RUN cd /app/sharedLibs/go-html-to-md && \
+    go mod tidy && \
+    go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go && \
+    chmod +x html-to-markdown.so
 
 FROM base
-RUN apt-get update -qq && \
-    apt-get install --no-install-recommends -y chromium chromium-sandbox && \
-    rm -rf /var/lib/apt/lists /var/cache/apt/archives
 COPY --from=prod-deps /app/node_modules /app/node_modules
 COPY --from=build /app /app
-
-
-
+COPY --from=go-base /app/sharedLibs/go-html-to-md/html-to-markdown.so /app/sharedLibs/go-html-to-md/html-to-markdown.so
 
 # Start the server by default, this can be overwritten at runtime
 EXPOSE 8080
 ENV PUPPETEER_EXECUTABLE_PATH="/usr/bin/chromium"
+
+# Make sure the entrypoint script has the correct line endings
+RUN sed -i 's/\r$//' /app/docker-entrypoint.sh
+
+ENTRYPOINT "/app/docker-entrypoint.sh"

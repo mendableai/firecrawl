@@ -10,12 +10,9 @@ export const redlock = new Redlock(
     // http://redis.io/topics/distlock
     driftFactor: 0.01, // multiplied by lock ttl to determine drift time
 
-    // The max number of times Redlock will attempt to lock a resource
-    // before erroring.
-    retryCount: 5,
+    retryCount: 200,
 
-    // the time in ms between attempts
-    retryDelay: 100, // time in ms
+    retryDelay: 100,
 
     // the max time in ms randomly added to retries
     // to improve performance under high contention
