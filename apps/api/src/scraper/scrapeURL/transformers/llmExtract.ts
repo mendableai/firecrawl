@@ -14,6 +14,18 @@ export class LLMRefusalError extends Error {
     }
 }
 
+function normalizeSchema(x: any): any {
+    if (x && x.type === "object") {
+        return {
+            ...x,
+            properties: Object.fromEntries(Object.entries(x.properties).map(([k, v]) => [k, normalizeSchema(v)])),
+            additionalProperties: false,
+        }
+    } else {
+        return x;
+    }
+}
+
 async function generateOpenAICompletions(logger: Logger, document: Document, options: ExtractOptions): Promise<Document> {
     const openai = new OpenAI();
     const model: TiktokenModel = (process.env.MODEL_NAME as TiktokenModel) ?? "gpt-4o-mini";
@@ -64,6 +76,8 @@ async function generateOpenAICompletions(logger: Logger, document: Document, opt
             additionalProperties: false,
         };
     }
+
+    schema = normalizeSchema(schema);
 
     const jsonCompletion = await openai.beta.chat.completions.parse({
         model,

@@ -481,6 +481,7 @@ export function fromLegacyScrapeOptions(pageOptions: PageOptions, extractorOptio
         (pageOptions.includeRawHtml ?? false) ? "rawHtml" as const : null,
         (pageOptions.screenshot ?? false) ? "screenshot" as const : null,
         (pageOptions.fullPageScreenshot ?? false) ? "screenshot@fullPage" as const : null,
+        (extractorOptions !== undefined && extractorOptions.mode.includes("llm-extraction")) ? "extract" as const : null,
         "links"
       ].filter(x => x !== null),
       waitFor: pageOptions.waitFor,
