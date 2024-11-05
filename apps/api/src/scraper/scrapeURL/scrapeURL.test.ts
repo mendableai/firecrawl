@@ -11,6 +11,7 @@ const testEngines: (Engine | undefined)[] = [
     "fire-engine;tlsclient",
     "scrapingbee",
     "scrapingbeeLoad",
+    "fetch",
 ];
 
 const testEnginesScreenshot: (Engine | undefined)[] = [

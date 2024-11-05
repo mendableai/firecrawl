@@ -4,16 +4,21 @@ import { scrapeDOCX } from "./docx";
 import { scrapeURLWithFireEngineChromeCDP, scrapeURLWithFireEnginePlaywright, scrapeURLWithFireEngineTLSClient } from "./fire-engine";
 import { scrapePDF } from "./pdf";
 import { scrapeURLWithScrapingBee } from "./scrapingbee";
+import { scrapeURLWithFetch } from "./fetch";
 
-export const engines = [
-    "fire-engine;chrome-cdp",
-    "fire-engine;playwright",
-    "fire-engine;tlsclient",
-    "scrapingbee",
-    "scrapingbeeLoad",
+export type Engine = "fire-engine;chrome-cdp" | "fire-engine;playwright" | "fire-engine;tlsclient" | "scrapingbee" | "scrapingbeeLoad" | "fetch" | "pdf" | "docx";
+
+const useScrapingBee = process.env.SCRAPING_BEE_API_KEY !== '' && process.env.SCRAPING_BEE_API_KEY !== undefined;
+const useFireEngine = process.env.FIRE_ENGINE_BETA_URL !== '' && process.env.FIRE_ENGINE_BETA_URL !== undefined;
+const usePlaywright = process.env.PLAYWRIGHT_MICROSERVICE_URL !== '' && process.env.PLAYWRIGHT_MICROSERVICE_URL !== undefined;
+
+export const engines: Engine[] = [
+    ...(useFireEngine ? [ "fire-engine;chrome-cdp" as const, "fire-engine;playwright" as const, "fire-engine;tlsclient" as const ] : []),
+    ...(useScrapingBee ? [ "scrapingbee" as const, "scrapingbeeLoad" as const ] : []),
+    "fetch",
     "pdf",
     "docx",
-] as const;
+];
 
 export const featureFlags = [
     "actions",
@@ -45,8 +50,6 @@ export const featureFlagOptions: {
     "mobile": { priority: 10 },
 } as const;
 
-export type Engine = typeof engines[number];
-
 export type EngineScrapeResult = {
     url: string;
 
@@ -70,12 +73,13 @@ const engineHandlers: {
     "fire-engine;tlsclient": scrapeURLWithFireEngineTLSClient,
     "scrapingbee": scrapeURLWithScrapingBee("domcontentloaded"),
     "scrapingbeeLoad": scrapeURLWithScrapingBee("networkidle2"),
+    "fetch": scrapeURLWithFetch,
     "pdf": scrapePDF,
     "docx": scrapeDOCX,
 };
 
 export const engineOptions: {
-    [E in Engine]: { 
+    [E in Engine]: {
         // A list of feature flags the engine supports.
         features: { [F in FeatureFlag]: boolean },
 
@@ -92,11 +96,11 @@ export const engineOptions: {
             "screenshot@fullScreen": true, // through actions transform
             "pdf": false,
             "docx": false,
-            "atsv": false,       
+            "atsv": false,
             "location": true,
             "mobile": true,
         },
-        quality: 50,    
+        quality: 50,
     },
     "fire-engine;playwright": {
         features: {
@@ -153,6 +157,20 @@ export const engineOptions: {
             "mobile": false,
         },
         quality: 10,
+    },
+    "fetch": {
+        features: {
+            "actions": false,
+            "waitFor": false,
+            "screenshot": false,
+            "screenshot@fullScreen": false,
+            "pdf": false,
+            "docx": false,
+            "atsv": false,
+            "location": false,
+            "mobile": false,
+        },
+        quality: 5,
     },
     "pdf": {
         features: {
@@ -233,6 +251,6 @@ export async function scrapeURLWithEngine(meta: Meta, engine: Engine): Promise<E
         ...meta,
         logger,
     };
-    
+
     return await fn(_meta);
 }
