@@ -48,9 +48,11 @@ const initializeBrowser = async () => {
     );
   }
 
-  let puppeteerOptions: PuppeteerNodeLaunchOptions = {};
+  let puppeteerOptions: PuppeteerNodeLaunchOptions = {
+    args: ["--no-sandbox", "--disable-setuid-sandbox"],
+  };
   if (PROXY_SERVER && PROXY_USERNAME && PROXY_PASSWORD) {
-    puppeteerOptions.args = [`--proxy-server=${PROXY_SERVER}`];
+    puppeteerOptions.args?.push(`--proxy-server=${PROXY_SERVER}`);
   }
 
   cluster = await Cluster.launch({
@@ -106,39 +108,22 @@ app.post("/scrape", async (req: Request, res: Response) => {
   let pageContent;
   let pageStatusCode: number | null = null;
 
-  await cluster.task(async ({ page, data }) => {
-    const { url, timeout = 15000, headers, check_selector }: UrlModel = data;
+  await cluster.task(
+    async ({ page, data }: { page: any; data: UrlModel }): Promise<void> => {
+      const { url, timeout = 15000, headers, check_selector }: UrlModel = data;
 
-    if (PROXY_USERNAME && PROXY_PASSWORD) {
-      await page.authenticate({
-        username: PROXY_USERNAME,
-        password: PROXY_PASSWORD,
-      });
-    }
-
-    if (headers) {
-      await page.setExtraHTTPHeaders(headers);
-    }
-
-    const loadResponse = await page.goto(url, { waitUntil: "load", timeout });
-
-    if (check_selector) {
-      try {
-        await page.waitForSelector(check_selector, { timeout });
-      } catch (error) {
-        throw new Error("Required selector not found");
+      if (PROXY_USERNAME && PROXY_PASSWORD) {
+        await page.authenticate({
+          username: PROXY_USERNAME,
+          password: PROXY_PASSWORD,
+        });
       }
-    }
 
-    pageContent = await page.content();
-    pageStatusCode = loadResponse ? loadResponse.status() : null;
+      if (headers) {
+        await page.setExtraHTTPHeaders(headers);
+      }
 
-    if (!pageContent) {
-      console.log("Load strategy failed, trying networkidle2");
-      const loadResponse = await page.goto(url, {
-        waitUntil: "networkidle2",
-        timeout,
-      });
+      const loadResponse = await page.goto(url, { waitUntil: "load", timeout });
 
       if (check_selector) {
         try {
@@ -150,10 +135,29 @@ app.post("/scrape", async (req: Request, res: Response) => {
 
       pageContent = await page.content();
       pageStatusCode = loadResponse ? loadResponse.status() : null;
-    }
 
-    await page.close();
-  });
+      if (!pageContent) {
+        console.log("Load strategy failed, trying networkidle2");
+        const loadResponse = await page.goto(url, {
+          waitUntil: "networkidle2",
+          timeout,
+        });
+
+        if (check_selector) {
+          try {
+            await page.waitForSelector(check_selector, { timeout });
+          } catch (error) {
+            throw new Error("Required selector not found");
+          }
+        }
+
+        pageContent = await page.content();
+        pageStatusCode = loadResponse ? loadResponse.status() : null;
+      }
+
+      await page.close();
+    }
+  );
 
   try {
     await cluster.execute(req.body);
