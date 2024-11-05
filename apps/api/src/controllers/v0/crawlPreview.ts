@@ -8,7 +8,7 @@ import { addCrawlJob, crawlToCrawler, lockURL, saveCrawl, StoredCrawl } from "..
 import { addScrapeJob } from "../../../src/services/queue-jobs";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
-import { fromLegacyCrawlerOptions, fromLegacyScrapeOptions } from "../v1/types";
+import { fromLegacyScrapeOptions } from "../v1/types";
 
 export async function crawlPreviewController(req: Request, res: Response) {
   try {
@@ -91,7 +91,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
 
     const sc: StoredCrawl = {
       originUrl: url,
-      crawlerOptions: fromLegacyCrawlerOptions(crawlerOptions),
+      crawlerOptions,
       scrapeOptions,
       internalOptions,
       team_id,

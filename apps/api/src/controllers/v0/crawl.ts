@@ -15,7 +15,7 @@ import { getScrapeQueue } from "../../../src/services/queue-service";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
-import { fromLegacyCrawlerOptions, fromLegacyScrapeOptions, url as urlSchema } from "../v1/types";
+import { fromLegacyScrapeOptions, url as urlSchema } from "../v1/types";
 import { ZodError } from "zod";
 
 export async function crawlController(req: Request, res: Response) {
@@ -140,7 +140,7 @@ export async function crawlController(req: Request, res: Response) {
 
     const sc: StoredCrawl = {
       originUrl: url,
-      crawlerOptions: fromLegacyCrawlerOptions(crawlerOptions),
+      crawlerOptions,
       scrapeOptions,
       internalOptions,
       team_id,
@@ -177,7 +177,7 @@ export async function crawlController(req: Request, res: Response) {
           data: {
             url,
             mode: "single_urls",
-            crawlerOptions: crawlerOptions,
+            crawlerOptions,
             team_id,
             plan,
             pageOptions: pageOptions,

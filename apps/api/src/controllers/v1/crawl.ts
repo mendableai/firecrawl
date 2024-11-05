@@ -5,6 +5,7 @@ import {
   crawlRequestSchema,
   CrawlResponse,
   RequestWithAuth,
+  toLegacyCrawlerOptions,
 } from "./types";
 import {
   addCrawlJob,
@@ -70,7 +71,7 @@ export async function crawlController(
   
   const sc: StoredCrawl = {
     originUrl: req.body.url,
-    crawlerOptions,
+    crawlerOptions: toLegacyCrawlerOptions(crawlerOptions),
     scrapeOptions,
     internalOptions: {},
     team_id: req.auth.team_id,

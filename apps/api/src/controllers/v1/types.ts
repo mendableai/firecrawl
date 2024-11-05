@@ -440,6 +440,20 @@ export interface ResponseWithSentry<
   sentry?: string,
 }
 
+export function toLegacyCrawlerOptions(x: CrawlerOptions) {
+  return {
+    includes: x.includePaths,
+    excludes: x.excludePaths,
+    maxCrawledLinks: x.limit,
+    maxDepth: x.maxDepth,
+    limit: x.limit,
+    generateImgAltText: false,
+    allowBackwardCrawling: x.allowBackwardLinks,
+    allowExternalContentLinks: x.allowExternalLinks,
+    ignoreSitemap: x.ignoreSitemap,
+  };
+}
+
 export function fromLegacyCrawlerOptions(x: any): { crawlOptions: CrawlerOptions; internalOptions: InternalOptions } {
   return {
     crawlOptions: crawlerOptions.parse({
@@ -493,10 +507,10 @@ export function fromLegacyScrapeOptions(pageOptions: PageOptions, extractorOptio
   }
 }
 
-export function fromLegacyCombo(pageOptions: PageOptions, extractorOptions: ExtractorOptions | undefined, timeout: number | undefined, crawlerOptions: any): { scrapeOptions: ScrapeOptions, crawlOptions: CrawlerOptions, internalOptions: InternalOptions} {
+export function fromLegacyCombo(pageOptions: PageOptions, extractorOptions: ExtractorOptions | undefined, timeout: number | undefined, crawlerOptions: any): { scrapeOptions: ScrapeOptions, internalOptions: InternalOptions} {
   const { scrapeOptions, internalOptions: i1 } = fromLegacyScrapeOptions(pageOptions, extractorOptions, timeout);
-  const { crawlOptions, internalOptions: i2 } = fromLegacyCrawlerOptions(crawlerOptions);
-  return { scrapeOptions, crawlOptions, internalOptions: Object.assign(i1, i2) };
+  const { internalOptions: i2 } = fromLegacyCrawlerOptions(crawlerOptions);
+  return { scrapeOptions, internalOptions: Object.assign(i1, i2) };
 }
 
 export function toLegacyDocument(document: Document, internalOptions: InternalOptions): V0Document | { url: string; } {
