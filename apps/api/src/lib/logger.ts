@@ -45,7 +45,7 @@ export const logger = winston.createLogger({
       format: winston.format.combine(
         winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
         winston.format.metadata({ fillExcept: ["message", "level", "timestamp"] }),
-        ...(process.env.ENVIRONMENT === "production" && process.env.SENTRY_ENVIRONMENT !== "dev" ? [winston.format.colorize(), logFormat] : []),
+        ...(((process.env.ENV === "production" && process.env.SENTRY_ENVIRONMENT === "dev") || (process.env.ENV !== "production")) ? [winston.format.colorize(), logFormat] : []),
       ),
     }),
   ],

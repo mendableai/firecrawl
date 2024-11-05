@@ -42,6 +42,7 @@ export async function crawlController(
 
   const crawlerOptions = {
     ...req.body,
+    url: undefined,
     scrapeOptions: undefined,
   };
   const scrapeOptions = req.body.scrapeOptions;
@@ -147,6 +148,7 @@ export async function crawlController(
         url: req.body.url,
         mode: "single_urls",
         team_id: req.auth.team_id,
+        crawlerOptions,
         scrapeOptions: scrapeOptionsSchema.parse(scrapeOptions),
         plan: req.auth.plan!,
         origin: "api",

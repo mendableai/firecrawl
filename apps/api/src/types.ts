@@ -25,6 +25,7 @@ export interface IngestResult {
 export interface WebScraperOptions {
   url: string;
   mode: Mode;
+  crawlerOptions?: any;
   scrapeOptions: ScrapeOptions;
   internalOptions?: InternalOptions;
   team_id: string;
