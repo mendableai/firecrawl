@@ -85,6 +85,7 @@ export async function fireEngineScrape<Engine extends FireEngineScrapeRequestChr
                 body: request,
                 logger: logger.child({ method: "fireEngineScrape/robustFetch" }),
                 schema,
+                tryCount: 3,
             }
         );
     });

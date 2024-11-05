@@ -15,6 +15,7 @@ export type RobustFetchParams<Schema extends z.Schema<any>> = {
     ignoreResponse?: boolean;
     ignoreFailure?: boolean;
     requestId?: string;
+    tryCount?: number;
 };
 
 export async function robustFetch<Schema extends z.Schema<any>, Output = z.infer<Schema>>({
@@ -27,8 +28,9 @@ export async function robustFetch<Schema extends z.Schema<any>, Output = z.infer
     ignoreResponse = false,
     ignoreFailure = false,
     requestId = uuid(),
+    tryCount = 1,
 }: RobustFetchParams<Schema>): Promise<Output> {
-    const params = { url, logger, method, body, headers, schema, ignoreResponse, ignoreFailure };
+    const params = { url, logger, method, body, headers, schema, ignoreResponse, ignoreFailure, tryCount };
 
     logger.debug("Sending request...", { params, requestId });
 
@@ -53,12 +55,22 @@ export async function robustFetch<Schema extends z.Schema<any>, Output = z.infer
     } catch (error) {
         if (!ignoreFailure) {
             Sentry.captureException(error);
-            logger.debug("Request failed", { params, error, requestId });
-            throw new Error("Request failed", {
-                cause: {
-                    params, requestId, error,
-                },
-            });
+            if (tryCount > 1) {
+                logger.debug("Request failed, trying " + (tryCount - 1) + " more times", { params, error, requestId });
+                return await robustFetch({
+                    ...params,
+                    requestId,
+                    tryCount: tryCount - 1,
+                });
+            } else {
+                logger.debug("Request failed", { params, error, requestId });
+                throw new Error("Request failed", {
+                    cause: {
+                        params, requestId, error,
+                    },
+                });
+            }
+           
         } else {
             return null as Output;
         }
@@ -75,12 +87,21 @@ export async function robustFetch<Schema extends z.Schema<any>, Output = z.infer
     };
 
     if (request.status >= 300) {
-        logger.debug("Request sent failure status", { params, request, response, requestId });
-        throw new Error("Request sent failure status", {
-            cause: {
-                params, request, response, requestId,
-            },
-        });
+        if (tryCount > 1) {
+            logger.debug("Request sent failure status, trying " + (tryCount - 1) + " more times", { params, request, response, requestId });
+            return await robustFetch({
+                ...params,
+                requestId,
+                tryCount: tryCount - 1,
+            });
+        } else {
+            logger.debug("Request sent failure status", { params, request, response, requestId });
+            throw new Error("Request sent failure status", {
+                cause: {
+                    params, request, response, requestId,
+                },
+            });
+        }
     }
 
     let data: Output;
