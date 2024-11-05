@@ -1,13 +1,13 @@
 {
   "openapi": "3.0.0",
   "info": {
-    "title": "Firecrawl API",
+    "title": "firecrawl-simple API",
     "version": "v1",
-    "description": "API for interacting with Firecrawl services to perform web scraping and crawling tasks.",
+    "description": "API for interacting with firecrawl-simple services to perform web scraping and crawling tasks.",
     "contact": {
-      "name": "Firecrawl Support",
-      "url": "https://firecrawl.dev",
-      "email": "support@firecrawl.dev"
+      "name": "Devflow, Inc. Devs",
+      "url": "https://trieve.ai",
+      "email": "humans@trieve.ai"
     }
   },
   "servers": [
