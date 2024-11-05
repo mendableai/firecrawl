@@ -106,7 +106,7 @@ export async function searchHelper(
     await addScrapeJob(job.data as any, {}, job.opts.jobId, job.opts.priority)
   }
 
-  const docs = (await Promise.all(jobDatas.map(x => waitForJob<Document[]>(x.opts.jobId, 60000)))).map(x => toLegacyDocument(x[0], internalOptions));
+  const docs = (await Promise.all(jobDatas.map(x => waitForJob<Document>(x.opts.jobId, 60000)))).map(x => toLegacyDocument(x, internalOptions));
   
   if (docs.length === 0) {
     return { success: true, error: "No search results found", returnCode: 200 };
@@ -201,7 +201,7 @@ export async function searchController(req: Request, res: Response) {
     }
 
     Sentry.captureException(error);
-    logger.error(error);
+    logger.error("Unhandled error occurred in search", { error });
     return res.status(500).json({ error: error.message });
   }
 }
