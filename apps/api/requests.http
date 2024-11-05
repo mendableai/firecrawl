@@ -1,15 +1,15 @@
 ### Crawl Website
 POST http://localhost:3002/v0/scrape HTTP/1.1
-Authorization: Bearer fc-
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-    "url":"corterix.com"
+    "url":"firecrawl.dev"
 }
 
 ### Check Job Status
 GET http://localhost:3002/v1/crawl/1dd0f924-a36f-4b96-94ea-32ed954dac67 HTTP/1.1
-Authorization: Bearer fc-
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
 
 ### Check Job Status
@@ -18,7 +18,7 @@ GET http://localhost:3002/v0/jobs/active HTTP/1.1
 
 ### Scrape Website
 POST http://localhost:3002/v0/crawl HTTP/1.1
-Authorization: Bearer fc-
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
@@ -45,7 +45,7 @@ content-type: application/json
 
 ### Scrape Website
 POST http://localhost:3002/v0/scrape HTTP/1.1
-Authorization: Bearer 
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
@@ -56,12 +56,12 @@ content-type: application/json
 
 ### Check Job Status
 GET http://localhost:3002/v0/crawl/status/a6053912-d602-4709-841f-3d2cb46fea0a HTTP/1.1
-Authorization: Bearer 
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
 ### Get Job Result
 
 POST https://api.firecrawl.dev/v0/crawl HTTP/1.1
-Authorization: Bearer 
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
@@ -70,7 +70,7 @@ content-type: application/json
 
 ### Check Job Status
 GET https://api.firecrawl.dev/v0/crawl/status/cfcb71ac-23a3-4da5-bd85-d4e58b871d66
-Authorization: Bearer 
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
 ### Get Active Jobs Count
 GET http://localhost:3002/serverHealthCheck
