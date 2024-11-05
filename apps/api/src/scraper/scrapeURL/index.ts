@@ -8,6 +8,7 @@ import { parseMarkdown } from "../../lib/html-to-markdown";
 import { AddFeatureError, EngineError, NoEnginesLeftError, TimeoutError } from "./error";
 import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
+import { urlSpecificParams } from "./lib/urlSpecificParams";
 
 export type ScrapeUrlResponse = ({
     success: true,
@@ -74,6 +75,12 @@ function buildFeatureFlags(url: string, options: ScrapeOptions, internalOptions:
 }
 
 function buildMetaObject(id: string, url: string, options: ScrapeOptions, internalOptions: InternalOptions): Meta {
+    const specParams = urlSpecificParams[new URL(url).hostname.replace(/^www\./, "")];
+    if (specParams !== undefined) {
+        options = Object.assign(options, specParams.scrapeOptions);
+        internalOptions = Object.assign(internalOptions, specParams.internalOptions);
+    }
+
     const _logger = logger.child({ module: "ScrapeURL", scrapeId: id });
     const logs: any[] = [];
     _logger.add(new ArrayTransport({ array: logs, scrapeId: id }));
