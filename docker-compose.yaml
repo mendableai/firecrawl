@@ -27,6 +27,7 @@ services:
       - PROXY_USERNAME=${PROXY_USERNAME}
       - PROXY_PASSWORD=${PROXY_PASSWORD}
       - TWOCAPTCHA_TOKEN=${TWOCAPTCHA_TOKEN}
+      - MAX_CONCURRENCY=${MAX_CONCURRENCY}
     networks:
       - backend
 

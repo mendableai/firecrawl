@@ -20,6 +20,7 @@ const PROXY_SERVER = process.env.PROXY_SERVER || null;
 const PROXY_USERNAME = process.env.PROXY_USERNAME || null;
 const PROXY_PASSWORD = process.env.PROXY_PASSWORD || null;
 const TWOCAPTCHA_TOKEN = process.env.TWOCAPTCHA_TOKEN || null;
+const MAX_CONCURRENCY = Number(process.env.MAX_CONCURRENCY) || 2;
 
 interface UrlModel {
   url: string;
@@ -57,7 +58,7 @@ const initializeBrowser = async () => {
 
   cluster = await Cluster.launch({
     concurrency: Cluster.CONCURRENCY_CONTEXT,
-    maxConcurrency: 2,
+    maxConcurrency: MAX_CONCURRENCY,
     puppeteerOptions,
     puppeteer,
   });
@@ -80,7 +81,7 @@ app.post("/scrape", async (req: Request, res: Response) => {
   const {
     url,
     wait_after_load = 0,
-    timeout = 15000,
+    timeout = 60000,
     headers,
     check_selector,
   }: UrlModel = req.body;
@@ -110,7 +111,7 @@ app.post("/scrape", async (req: Request, res: Response) => {
 
   await cluster.task(
     async ({ page, data }: { page: any; data: UrlModel }): Promise<void> => {
-      const { url, timeout = 15000, headers, check_selector }: UrlModel = data;
+      const { url, timeout = 60000, headers, check_selector }: UrlModel = data;
 
       if (PROXY_USERNAME && PROXY_PASSWORD) {
         await page.authenticate({
@@ -173,10 +174,10 @@ app.post("/scrape", async (req: Request, res: Response) => {
   const pageError = pageStatusCode !== 200 ? getError(pageStatusCode) : false;
 
   if (!pageError) {
-    console.log(`✅ Scrape successful!`);
+    console.log(`✅ Scrape of ${url} successful!`);
   } else {
     console.log(
-      `🚨 Scrape failed with status code: ${pageStatusCode} ${pageError}`
+      `🚨 Scrape of ${url} failed with status code: ${pageStatusCode} ${pageError}`
     );
   }
 

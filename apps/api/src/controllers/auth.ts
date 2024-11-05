@@ -63,8 +63,6 @@ export async function supaAuthenticateUser(
   let normalizedApi: string;
 
   let cacheKey = "";
-  let redLockKey = "";
-  const lockTTL = 15000; // 10 seconds
   let teamId: string | null = null;
   let priceId: string | null = null;
 

@@ -38,7 +38,7 @@ curl -X POST http://localhost:3000/scrape \
 -d '{
   "url": "https://example.com",
   "wait_after_load": 1000,
-  "timeout": 15000,
+  "timeout": 60000,
   "headers": {
     "Custom-Header": "value"
   },

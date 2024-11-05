@@ -85,7 +85,6 @@ const workerFun = async (
   const worker = new Worker(queueName, null, {
     connection: redisConnection,
     lockDuration: 1 * 60 * 1000, // 1 minute
-    // lockRenewTime: 15 * 1000, // 15 seconds
     stalledInterval: 30 * 1000, // 30 seconds
     maxStalledCount: 10, // 10 times
   });

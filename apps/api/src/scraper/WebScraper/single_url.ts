@@ -18,7 +18,7 @@ export const baseScrapers = ["playwright", "fetch"].filter(Boolean);
 export async function generateRequestParams(
   url: string,
   wait_browser: string = "domcontentloaded",
-  timeout: number = 15000
+  timeout: number = 60000
 ): Promise<any> {
   const defaultParams = {
     url: url,
