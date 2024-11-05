@@ -34,7 +34,6 @@ export const logger = winston.createLogger({
           message: value.message,
           stack: value.stack,
           cause: value.cause,
-          this_is_an_error: "haha",
         }
       } else {
         return value;
