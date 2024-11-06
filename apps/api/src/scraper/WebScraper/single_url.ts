@@ -457,7 +457,7 @@ export async function scrapSingleUrl(
     let linksOnPage: string[] | undefined;
 
     if (pageOptions.includeLinks) {
-      linksOnPage = extractLinks(rawHtml, urlToScrap);
+      linksOnPage = extractLinks(html, urlToScrap);
     }
 
     let document: Document = {
