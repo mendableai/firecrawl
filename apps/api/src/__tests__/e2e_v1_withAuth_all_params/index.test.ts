@@ -11,6 +11,23 @@ const E2E_TEST_SERVER_URL = "http://firecrawl-e2e-test.vercel.app"; // @rafaelsi
 
 describe("E2E Tests for v1 API Routes", () => {
 
+  it.concurrent('should return a successful response for a scrape with 403 page', async () => {
+    const response: ScrapeResponseRequestTest = await request(FIRECRAWL_API_URL)
+      .post('/v1/scrape')
+      .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
+      .set('Content-Type', 'application/json')
+      .send({ url: 'https://httpstat.us/403' });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty('data');
+    if (!("data" in response.body)) {
+      throw new Error("Expected response body to have 'data' property");
+    }
+    expect(response.body.data).toHaveProperty('markdown');
+    expect(response.body.data).toHaveProperty('metadata');
+    expect(response.body.data.metadata.statusCode).toBe(403);
+  }, 30000);
+
   it.concurrent("should handle 'formats:markdown (default)' parameter correctly",
     async () => {
       const scrapeRequest = {
