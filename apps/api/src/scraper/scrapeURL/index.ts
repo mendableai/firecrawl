@@ -60,6 +60,10 @@ function buildFeatureFlags(url: string, options: ScrapeOptions, internalOptions:
     if (options.mobile) {
         flags.add("mobile");
     }
+    
+    if (options.skipTlsVerification) {
+        flags.add("skipTlsVerification");
+    }
 
     const urlO = new URL(url);
 

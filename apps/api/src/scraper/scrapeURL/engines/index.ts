@@ -32,6 +32,7 @@ export const featureFlags = [
     "atsv",
     "location",
     "mobile",
+    "skipTlsVerification",
 ] as const;
 
 export type FeatureFlag = typeof featureFlags[number];
@@ -50,6 +51,7 @@ export const featureFlagOptions: {
     "atsv": { priority: 90 }, // NOTE: should atsv force to tlsclient? adjust priority if not
     "location": { priority: 10 },
     "mobile": { priority: 10 },
+    "skipTlsVerification": { priority: 10 },
 } as const;
 
 export type EngineScrapeResult = {
@@ -102,6 +104,7 @@ export const engineOptions: {
             "atsv": false,
             "location": true,
             "mobile": true,
+            "skipTlsVerification": true,
         },
         quality: 50,
     },
@@ -116,6 +119,7 @@ export const engineOptions: {
             "atsv": false,
             "location": false,
             "mobile": false,
+            "skipTlsVerification": false,
         },
         quality: 40,
     },
@@ -130,6 +134,8 @@ export const engineOptions: {
             "atsv": false,
             "location": false,
             "mobile": false,
+            "skipTlsVerification": false,
+
         },
         quality: 30,
     },
@@ -144,6 +150,8 @@ export const engineOptions: {
             "atsv": false,
             "location": false,
             "mobile": false,
+            "skipTlsVerification": false,
+
         },
         quality: 29,
     },
@@ -158,6 +166,8 @@ export const engineOptions: {
             "atsv": false,
             "location": false,
             "mobile": false,
+            "skipTlsVerification": false,
+
         },
         quality: 20,
     },
@@ -172,6 +182,8 @@ export const engineOptions: {
             "atsv": true,
             "location": true,
             "mobile": false,
+            "skipTlsVerification": false,
+
         },
         quality: 10,
     },
@@ -186,6 +198,8 @@ export const engineOptions: {
             "atsv": false,
             "location": false,
             "mobile": false,
+            "skipTlsVerification": false,
+
         },
         quality: 5,
     },
@@ -200,6 +214,8 @@ export const engineOptions: {
             "atsv": false,
             "location": false,
             "mobile": false,
+            "skipTlsVerification": false,
+
         },
         quality: -10,
     },
@@ -214,6 +230,7 @@ export const engineOptions: {
             "atsv": false,
             "location": false,
             "mobile": false,
+            "skipTlsVerification": false,
         },
         quality: -10,
     },
