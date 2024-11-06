@@ -176,6 +176,7 @@ export async function scrapeURLWithFireEngineTLSClient(meta: Meta): Promise<Engi
         atsv: meta.internalOptions.atsv,
         geolocation: meta.options.geolocation,
         removeBase64Images: meta.options.removeBase64Images,
+        disableJsDom: meta.internalOptions.v0DisableJsDom,
     };
 
     let response = await performFireEngineScrape(

@@ -65,6 +65,10 @@ function buildFeatureFlags(url: string, options: ScrapeOptions, internalOptions:
         flags.add("skipTlsVerification");
     }
 
+    if (internalOptions.v0UseFastMode) {
+        flags.add("useFastMode");
+    }
+
     const urlO = new URL(url);
 
     if (urlO.pathname.endsWith(".pdf")) {
@@ -78,6 +82,11 @@ function buildFeatureFlags(url: string, options: ScrapeOptions, internalOptions:
     return flags;
 }
 
+// The meta object contains all required information to perform a scrape.
+// For example, the scrape ID, URL, options, feature flags, logs that occur while scraping.
+// The meta object is usually immutable, except for the logs array, and in edge cases (e.g. a new feature is suddenly required)
+// Having a meta object that is treated as immutable helps the code stay clean and easily tracable,
+// while also retaining the benefits that WebScraper had from its OOP design.
 function buildMetaObject(id: string, url: string, options: ScrapeOptions, internalOptions: InternalOptions): Meta {
     const specParams = urlSpecificParams[new URL(url).hostname.replace(/^www\./, "")];
     if (specParams !== undefined) {
@@ -103,6 +112,8 @@ export type InternalOptions = {
     atsv?: boolean; // anti-bot solver, beta
 
     v0CrawlOnlyUrls?: boolean;
+    v0UseFastMode?: boolean;
+    v0DisableJsDom?: boolean;
 };
 
 export type EngineResultsTracker = { [E in Engine]?: {
@@ -147,8 +158,8 @@ async function scrapeURLLoop(
             const engineResult = _engineResult as EngineScrapeResult & { markdown: string };
 
             // Success factors
-            const isLongEnough = engineResult.markdown.length >= 1;
-            const isGoodStatusCode = engineResult.statusCode < 300;
+            const isLongEnough = engineResult.markdown.length >= 20;
+            const isGoodStatusCode = (engineResult.statusCode >= 200 && engineResult.statusCode < 300) || engineResult.statusCode === 304;
             const hasNoPageError = engineResult.error === undefined;
 
             results[engine] = {

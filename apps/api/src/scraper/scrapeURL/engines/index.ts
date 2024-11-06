@@ -33,6 +33,7 @@ export const featureFlags = [
     "location",
     "mobile",
     "skipTlsVerification",
+    "useFastMode",
 ] as const;
 
 export type FeatureFlag = typeof featureFlags[number];
@@ -49,6 +50,7 @@ export const featureFlagOptions: {
     "pdf": { priority: 100 },
     "docx": { priority: 100 },
     "atsv": { priority: 90 }, // NOTE: should atsv force to tlsclient? adjust priority if not
+    "useFastMode": { priority: 90 },
     "location": { priority: 10 },
     "mobile": { priority: 10 },
     "skipTlsVerification": { priority: 10 },
@@ -105,6 +107,7 @@ export const engineOptions: {
             "location": true,
             "mobile": true,
             "skipTlsVerification": true,
+            "useFastMode": false,
         },
         quality: 50,
     },
@@ -120,6 +123,7 @@ export const engineOptions: {
             "location": false,
             "mobile": false,
             "skipTlsVerification": false,
+            "useFastMode": false,
         },
         quality: 40,
     },
@@ -135,7 +139,7 @@ export const engineOptions: {
             "location": false,
             "mobile": false,
             "skipTlsVerification": false,
-
+            "useFastMode": false,
         },
         quality: 30,
     },
@@ -151,7 +155,7 @@ export const engineOptions: {
             "location": false,
             "mobile": false,
             "skipTlsVerification": false,
-
+            "useFastMode": false,
         },
         quality: 29,
     },
@@ -167,7 +171,7 @@ export const engineOptions: {
             "location": false,
             "mobile": false,
             "skipTlsVerification": false,
-
+            "useFastMode": false,
         },
         quality: 20,
     },
@@ -183,7 +187,7 @@ export const engineOptions: {
             "location": true,
             "mobile": false,
             "skipTlsVerification": false,
-
+            "useFastMode": true,
         },
         quality: 10,
     },
@@ -199,7 +203,7 @@ export const engineOptions: {
             "location": false,
             "mobile": false,
             "skipTlsVerification": false,
-
+            "useFastMode": true,
         },
         quality: 5,
     },
@@ -215,7 +219,7 @@ export const engineOptions: {
             "location": false,
             "mobile": false,
             "skipTlsVerification": false,
-
+            "useFastMode": true,
         },
         quality: -10,
     },
@@ -231,6 +235,7 @@ export const engineOptions: {
             "location": false,
             "mobile": false,
             "skipTlsVerification": false,
+            "useFastMode": true,
         },
         quality: -10,
     },

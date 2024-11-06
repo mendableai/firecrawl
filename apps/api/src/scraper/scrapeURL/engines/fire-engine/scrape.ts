@@ -52,6 +52,7 @@ export type FireEngineScrapeRequestTLSClient = {
     engine: "tlsclient";
     atsv?: boolean; // v0 only, default: false
     geolocation?: { country?: string; languages?: string[]; };
+    disableJsDom?: boolean; // v0 only, default: false
     // blockAds?: boolean; // default: true
 };
 

@@ -505,8 +505,10 @@ export function fromLegacyScrapeOptions(pageOptions: PageOptions, extractorOptio
     }),
     internalOptions: {
       atsv: pageOptions.atsv,
+      v0DisableJsDom: pageOptions.disableJsDom,
+      v0UseFastMode: pageOptions.useFastMode,
     },
-    // TODO: fallback, fetchPage  Content, replaceAllPathsWithAbsolutePaths, includeLinks, useFastMode, disableJsDom
+    // TODO: fallback, fetchPage  Content, replaceAllPathsWithAbsolutePaths, includeLinks
   }
 }
 
