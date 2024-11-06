@@ -109,6 +109,9 @@ export type Action = {
   direction: "up" | "down",
 } | {
   type: "scrape",
+} | {
+  type: "executeJavascript",
+  script: string,
 };
 
 export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchema extends (Action[] | undefined) = undefined> extends CrawlScrapeOptions {
