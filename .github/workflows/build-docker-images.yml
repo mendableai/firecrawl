@@ -1,0 +1,48 @@
+name: Build Docker Images
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build-api:
+    name: Build API Image
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+
+      - name: Setup buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/api/Dockerfile
+          push: false
+          load: true
+          tags: firecrawl:pr-${{ github.event.number }}
+          build-args: |
+            PORT=8080
+
+  build-puppeteer:
+    name: Build Puppeteer Service
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout the repo
+        uses: actions/checkout@v4
+
+      - name: Setup buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./apps/puppeteer-service-ts/Dockerfile
+          push: false
+          load: true
+          tags: puppeteer-service-ts:pr-${{ github.event.number }}
+          build-args: |
+            PORT=3000
