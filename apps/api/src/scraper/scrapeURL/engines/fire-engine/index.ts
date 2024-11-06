@@ -79,12 +79,11 @@ export async function scrapeURLWithFireEngineChromeCDP(meta: Meta): Promise<Engi
         url: meta.url,
         engine: "chrome-cdp",
         instantReturn: true,
-
+        skipTlsVerification: meta.options.skipTlsVerification,
         headers: meta.options.headers,
         ...(actions.length > 0 ? ({
             actions,
         }) : {}),
-
         priority: meta.internalOptions.priority,
         geolocation: meta.options.geolocation,
         mobile: meta.options.mobile,

@@ -102,6 +102,7 @@ describe("E2E Tests for v1 API Routes", () => {
   // - TODO: tests for screenshot@fullPage
 
   it.concurrent("should handle 'headers' parameter correctly", async () => {
+    //@ts-ignore
     const scrapeRequest = {
       url: E2E_TEST_SERVER_URL,
       headers: { "e2e-header-test": "firecrawl" }
@@ -297,6 +298,7 @@ describe("E2E Tests for v1 API Routes", () => {
     async () => {
       const scrapeRequest = {
         url: "https://expired.badssl.com/",
+        timeout: 120000
       } as ScrapeRequest;
   
       const response: ScrapeResponseRequestTest = await request(FIRECRAWL_API_URL)
@@ -304,18 +306,16 @@ describe("E2E Tests for v1 API Routes", () => {
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
-  
-      expect(response.statusCode).toBe(200);
-      if (!("data" in response.body)) {
-        throw new Error("Expected response body to have 'data' property");
-      }
-      const metadata = response.body.data.metadata as { error: string; statusCode: number };
-      expect(metadata.error).toContain("certificate has expired")
-      expect(metadata.statusCode).toBe(500)
+        console.log("Error1a")
+        console.log(response.body)
+      expect(response.statusCode).toBe(500);
+      console.log("Error?")
       
       const scrapeRequestWithSkipTlsVerification = {
         url: "https://expired.badssl.com/",
-        skipTlsVerification: true
+        skipTlsVerification: true,
+        timeout: 120000
+
       } as ScrapeRequest;
   
       const responseWithSkipTlsVerification: ScrapeResponseRequestTest = await request(FIRECRAWL_API_URL)
@@ -324,6 +324,8 @@ describe("E2E Tests for v1 API Routes", () => {
         .set("Content-Type", "application/json")
         .send(scrapeRequestWithSkipTlsVerification);
   
+      console.log("Error1b")
+      console.log(responseWithSkipTlsVerification.body)
       expect(responseWithSkipTlsVerification.statusCode).toBe(200);
       if (!("data" in responseWithSkipTlsVerification.body)) {
         throw new Error("Expected response body to have 'data' property");

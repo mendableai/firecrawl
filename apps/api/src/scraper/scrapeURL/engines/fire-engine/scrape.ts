@@ -30,7 +30,7 @@ export type FireEngineScrapeRequestCommon = {
 
 export type FireEngineScrapeRequestChromeCDP = {
     engine: "chrome-cdp";
-    
+    skipTlsVerification?: boolean;
     actions?: Action[];
     blockMedia?: true; // cannot be false
     geolocation?: { country?: string; languages?: string[]; };
@@ -74,6 +74,7 @@ export async function fireEngineScrape<Engine extends FireEngineScrapeRequestChr
             url: request.url,
         },
     }, async span => {
+        console.log(request)
         return await robustFetch(
             {
                 url: `${fireEngineURL}/scrape`,
