@@ -3,14 +3,18 @@ import { encoding_for_model } from "@dqbd/tiktoken";
 import { TiktokenModel } from "@dqbd/tiktoken";
 import { Document, ExtractOptions } from "../../../controllers/v1/types";
 import { Logger } from "winston";
-import { Meta } from "..";
+import { EngineResultsTracker, Meta } from "..";
 
 const maxTokens = 32000;
 const modifier = 4;
 
 export class LLMRefusalError extends Error {
+    public refusal: string;
+    public results: EngineResultsTracker | undefined;
+
     constructor(refusal: string) {
-        super("LLM refused to extract the website's content", { cause: { refusal } })
+        super("LLM refused to extract the website's content")
+        this.refusal = refusal;
     }
 }
 

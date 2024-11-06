@@ -18,6 +18,7 @@ export type ScrapeUrlResponse = ({
     error: any,
 }) & {
     logs: any[],
+    engines: EngineResultsTracker,
 }
 
 export type Meta = {
@@ -116,7 +117,7 @@ export type InternalOptions = {
     v0DisableJsDom?: boolean;
 };
 
-export type EngineResultsTracker = { [E in Engine]?: {
+export type EngineResultsTracker = { [E in Engine]?: ({
     state: "error",
     error: any,
     unexpected: boolean,
@@ -127,6 +128,9 @@ export type EngineResultsTracker = { [E in Engine]?: {
     unsupportedFeatures: Set<FeatureFlag>,
 } | {
     state: "timeout",
+}) & {
+    startedAt: number,
+    finishedAt: number,
 } };
 
 export type EngineScrapeResultWithContext = {
@@ -134,6 +138,16 @@ export type EngineScrapeResultWithContext = {
     unsupportedFeatures: Set<FeatureFlag>,
     result: (EngineScrapeResult & { markdown: string }),
 };
+
+function safeguardCircularError<T>(error: T): T {
+    if (typeof error === "object" && error !== null && (error as any).results) {
+        const newError = structuredClone(error);
+        delete (newError as any).results;
+        return newError;
+    } else {
+        return error;
+    }
+}
 
 async function scrapeURLLoop(
     meta: Meta
@@ -149,6 +163,7 @@ async function scrapeURLLoop(
     let result: EngineScrapeResultWithContext | null = null;
 
     for (const { engine, unsupportedFeatures } of fallbackList) {
+        const startedAt = Date.now();
         try {
             meta.logger.info("Scraping via " + engine + "...");
             const _engineResult = await scrapeURLWithEngine(meta, engine);
@@ -167,6 +182,8 @@ async function scrapeURLLoop(
                 result: engineResult,
                 factors: { isLongEnough, isGoodStatusCode, hasNoPageError },
                 unsupportedFeatures,
+                startedAt,
+                finishedAt: Date.now(),
             };
 
             // NOTE: TODO: what to do when status code is bad is tough...
@@ -186,23 +203,40 @@ async function scrapeURLLoop(
                 meta.logger.info("Engine " + engine + " could not scrape the page.", { error });
                 results[engine] = {
                     state: "error",
-                    error,
+                    error: safeguardCircularError(error),
                     unexpected: false,
+                    startedAt,
+                    finishedAt: Date.now(),
                 };
             } else if (error instanceof TimeoutError) {
                 meta.logger.info("Engine " + engine + " timed out while scraping.", { error });
                 results[engine] = {
                     state: "timeout",
+                    startedAt,
+                    finishedAt: Date.now(),
                 };
             } else if (error instanceof AddFeatureError) {
+                throw error;
+            } else if (error instanceof LLMRefusalError) {
+                results[engine] = {
+                    state: "error",
+                    error: safeguardCircularError(error),
+                    unexpected: true,
+                    startedAt,
+                    finishedAt: Date.now(),
+                }
+                error.results = results;
+                meta.logger.warn("LLM refusal encountered", { error });
                 throw error;
             } else {
                 Sentry.captureException(error);
                 meta.logger.info("An unexpected error happened while scraping with " + engine + ".", { error });
                 results[engine] = {
                     state: "error",
-                    error,
+                    error: safeguardCircularError(error),
                     unexpected: true,
+                    startedAt,
+                    finishedAt: Date.now(),
                 }
             }
         }
@@ -237,6 +271,7 @@ async function scrapeURLLoop(
         success: true,
         document,
         logs: meta.logs,
+        engines: results,
     };
 }
 
@@ -261,19 +296,25 @@ export async function scrapeURL(
             }
         }
     } catch (error) {
+        let results: EngineResultsTracker = {};
+
         if (error instanceof NoEnginesLeftError) {
             meta.logger.warn("scrapeURL: All scraping engines failed!", { error });
+            results = error.results;
         } else if (error instanceof LLMRefusalError) {
             meta.logger.warn("scrapeURL: LLM refused to extract content", { error });
+            results = error.results!;
         } else {
             Sentry.captureException(error);
             meta.logger.error("scrapeURL: Unexpected error happened", { error });
+            // TODO: results?
         }
 
         return {
             success: false,
             error,
             logs: meta.logs,
+            engines: results,
         }
     }
 }
