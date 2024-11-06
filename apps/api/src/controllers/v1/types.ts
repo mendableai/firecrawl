@@ -216,6 +216,9 @@ export const crawlRequestSchema = crawlerOptions.extend({
   origin: z.string().optional().default("api"),
   scrapeOptions: scrapeOptions.omit({ timeout: true }).default({}),
   webhook: z.string().url().optional(),
+  verificationToken: z
+    .string()
+    .optional(),
   limit: z.number().default(10000),
 }).strict(strictMessage);
 

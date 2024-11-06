@@ -305,6 +305,7 @@ async function processJob(job: Job, token: string) {
         job.id as string,
         data,
         job.data.webhook,
+        job.data.verificationToken,
         job.data.v1,
         job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
       );
@@ -315,6 +316,7 @@ async function processJob(job: Job, token: string) {
         job.data.crawl_id,
         data,
         job.data.webhook,
+        job.data.verificationToken,
         job.data.v1,
         job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
         true
@@ -378,6 +380,7 @@ async function processJob(job: Job, token: string) {
                   origin: job.data.origin,
                   crawl_id: job.data.crawl_id,
                   webhook: job.data.webhook,
+                  verificationToken: job.data.verificationToken,
                   v1: job.data.v1,
                 },
                 {},
@@ -443,6 +446,7 @@ async function processJob(job: Job, token: string) {
               job.data.crawl_id,
               data,
               job.data.webhook,
+              job.data.verificationToken,
               job.data.v1,
               job.data.crawlerOptions !== null ? "crawl.completed" : "batch_scrape.completed"
             );
@@ -461,6 +465,7 @@ async function processJob(job: Job, token: string) {
               job.data.crawl_id,
               [],
               job.data.webhook,
+              job.data.verificationToken,
               job.data.v1,
               job.data.crawlerOptions !== null ? "crawl.completed" : "batch_scrape.completed"
               );
@@ -531,6 +536,7 @@ async function processJob(job: Job, token: string) {
         job.data.crawl_id ?? (job.id as string),
         data,
         job.data.webhook,
+        job.data.verificationToken,
         job.data.v1,
         job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
       );
