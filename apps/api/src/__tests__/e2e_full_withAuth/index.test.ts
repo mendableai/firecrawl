@@ -1,8 +1,6 @@
 import request from "supertest";
-import dotenv from "dotenv";
+import dotenv from "dotenv/config";
 import { v4 as uuidv4 } from "uuid";
-
-dotenv.config();
 
 // const TEST_URL = 'http://localhost:3002'
 const TEST_URL = "http://127.0.0.1:3002";

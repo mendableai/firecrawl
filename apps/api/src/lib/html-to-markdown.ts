@@ -4,9 +4,8 @@ import { join } from 'path';
 import "../services/sentry"
 import * as Sentry from "@sentry/node";
 
-import dotenv from 'dotenv';
+import dotenv from 'dotenv/config';
 import { Logger } from './logger';
-dotenv.config();
 
 // TODO: add a timeout to the Go parser
 

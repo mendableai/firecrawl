@@ -1,12 +1,11 @@
 import request from "supertest";
-import dotenv from "dotenv";
+import dotenv from "dotenv/config";
 import {
   FirecrawlCrawlResponse,
   FirecrawlCrawlStatusResponse,
   FirecrawlScrapeResponse,
 } from "../../types";
 
-dotenv.config();
 const TEST_URL = "http://127.0.0.1:3002";
 
 describe("E2E Tests for v0 API Routes", () => {

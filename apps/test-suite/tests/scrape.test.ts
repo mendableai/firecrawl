@@ -1,5 +1,5 @@
 import request from "supertest";
-import dotenv from "dotenv";
+import dotenv from "dotenv/config";
 import { numTokensFromString } from "../utils/tokens";
 import OpenAI from "openai";
 import { WebsiteScrapeError } from "../utils/types";
@@ -9,7 +9,6 @@ import websitesData from "../data/scrape.json";
 import "dotenv/config";
 
 import fs from 'fs';
-dotenv.config();
 
 interface WebsiteData {
   website: string;

@@ -1,11 +1,8 @@
 import axios from "axios";
-import dotenv from "dotenv";
+import dotenv from "dotenv/config";
 import { SearchResult } from "../../src/lib/entities";
 import * as Sentry from "@sentry/node";
 import { Logger } from "../lib/logger";
-
-dotenv.config();
-
 
 export async function fireEngineMap(
   q: string,

@@ -1,8 +1,6 @@
 import axios from "axios";
-import dotenv from "dotenv";
+import dotenv from "dotenv/config";
 import { SearchResult } from "../../src/lib/entities";
-
-dotenv.config();
 
 export async function serper_search(q, options: {
     tbs?: string;

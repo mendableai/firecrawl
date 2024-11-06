@@ -1,6 +1,6 @@
 import * as cheerio from "cheerio";
 import { extractMetadata } from "./utils/metadata";
-import dotenv from "dotenv";
+import dotenv from "dotenv/config";
 import {
   Document,
   PageOptions,
@@ -23,8 +23,6 @@ import { ScrapeEvents } from "../../lib/scrape-events";
 import { clientSideError } from "../../strings";
 import { ScrapeActionContent } from "../../lib/entities";
 import { removeBase64Images } from "./utils/removeBase64Images";
-
-dotenv.config();
 
 const useScrapingBee = process.env.SCRAPING_BEE_API_KEY !== '' && process.env.SCRAPING_BEE_API_KEY !== undefined;
 const useFireEngine = process.env.FIRE_ENGINE_BETA_URL !== '' && process.env.FIRE_ENGINE_BETA_URL !== undefined;
