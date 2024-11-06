@@ -30,7 +30,7 @@ export type FireEngineScrapeRequestCommon = {
 
 export type FireEngineScrapeRequestChromeCDP = {
     engine: "chrome-cdp";
-    
+    skipTlsVerification?: boolean;
     actions?: Action[];
     blockMedia?: true; // cannot be false
     geolocation?: { country?: string; languages?: string[]; };
