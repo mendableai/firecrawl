@@ -143,7 +143,7 @@ async function scrapeURLLoop(
             const engineResult = _engineResult as EngineScrapeResult & { markdown: string };
 
             // Success factors
-            const isLongEnough = engineResult.markdown.length >= 100;
+            const isLongEnough = engineResult.markdown.length >= 1;
             const isGoodStatusCode = engineResult.statusCode < 300;
             const hasNoPageError = engineResult.error === undefined;
 
