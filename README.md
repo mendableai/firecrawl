@@ -1,5 +1,7 @@
 # ➖ Firecrawl Simple
 
+Crawl and convert any website into LLM-ready markdown.
+
 ## ![](https://trieve.b-cdn.net/firecrawl-simple/loc_chart.png)
 
 <div>
@@ -21,7 +23,7 @@ Posthog, supabase, stripe, langchain, logsnag, sentry, bullboard, and [several o
 
 ## Contributing
 
-This is a lot to maintain by ourselves and we are actively looking for others who would like to help. **There are paid part-time maintainer positions available.** We currently have bounties on a couple of issues, but would like someone intersted in being an active maintainer longer-term.
+This is a lot to maintain by ourselves and we are actively looking for others who would like to help. **There are paid part-time maintainer positions available.** We currently have bounties on a couple of issues, but would like someone interested in being an active maintainer longer-term.
 
 ## Why maintain a fork?
 
