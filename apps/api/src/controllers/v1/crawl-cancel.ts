@@ -6,6 +6,32 @@ import { getCrawl, saveCrawl } from "../../lib/crawl-redis";
 import { configDotenv } from "dotenv";
 configDotenv();
 
+/**
+ * @openapi
+ * /v1/crawl/{jobId}:
+ *   delete:
+ *     tags:
+ *       - Crawling
+ *     summary: Cancel a crawl job
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: jobId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ */
 export async function crawlCancelController(req: Request, res: Response) {
   try {
     const { success, team_id, error, status } = await authenticateUser(

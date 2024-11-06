@@ -17,6 +17,42 @@ import {
 
 configDotenv();
 
+/**
+ * @openapi
+ * /v1/map:
+ *   post:
+ *     tags:
+ *       - Mapping
+ *     summary: Generate sitemap
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - url
+ *             properties:
+ *               url:
+ *                 type: string
+ *                 format: uri
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 urls:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ */
 export async function mapController(
   req: RequestWithAuth<{}, MapResponse, MapRequest>,
   res: Response<MapResponse>

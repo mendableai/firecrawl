@@ -24,6 +24,70 @@ import { Logger } from "../../lib/logger";
 import { getJobPriority } from "../../lib/job-priority";
 import { callWebhook } from "../../services/webhook";
 
+/**
+ * @openapi
+ * /v1/crawl:
+ *   post:
+ *     tags:
+ *       - Crawling
+ *     summary: Start a new web crawling job
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - url
+ *             properties:
+ *               url:
+ *                 type: string
+ *                 format: uri
+ *               maxDepth:
+ *                 type: integer
+ *                 minimum: 1
+ *                 default: 2
+ *               maxPages:
+ *                 type: integer
+ *                 minimum: 1
+ *               timeout:
+ *                 type: integer
+ *                 minimum: 1000
+ *               includeUrls:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               excludeUrls:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *               scrapeOptions:
+ *                 type: object
+ *                 properties:
+ *                   waitUntil:
+ *                     type: string
+ *                     enum: ['load', 'domcontentloaded', 'networkidle0', 'networkidle2']
+ *                   timeout:
+ *                     type: integer
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 id:
+ *                   type: string
+ *                   format: uuid
+ *                 url:
+ *                   type: string
+ *                   format: uri
+ */
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
   res: Response<CrawlResponse>

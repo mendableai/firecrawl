@@ -5,6 +5,42 @@ import { getScrapeQueue } from "../../services/queue-service";
 import { configDotenv } from "dotenv";
 configDotenv();
 
+/**
+ * @openapi
+ * /v1/crawl/{jobId}:
+ *   get:
+ *     tags:
+ *       - Crawling
+ *     summary: Get crawl job status
+ *     security:
+ *       - BearerAuth: []
+ *     parameters:
+ *       - name: jobId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   enum: [completed, failed, in_progress]
+ *                 pages:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       url:
+ *                         type: string
+ *                       content:
+ *                         type: string
+ */
 export async function getJob(id: string) {
   const job = await getScrapeQueue().getJob(id);
   if (!job) return job;

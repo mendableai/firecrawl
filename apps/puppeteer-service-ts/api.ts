@@ -8,11 +8,14 @@ import { addExtra } from "puppeteer-extra";
 import Stealth from "puppeteer-extra-plugin-stealth";
 import Recaptcha from "puppeteer-extra-plugin-recaptcha";
 import AdBlocker from "puppeteer-extra-plugin-adblocker";
+import { setupOpenAPI } from "./openapi";
 
 dotenv.config();
 
 const app = express();
 const port = process.env.PORT || 3003;
+
+setupOpenAPI(app);
 
 app.use(bodyParser.json());
 
@@ -77,6 +80,94 @@ const isValidUrl = (urlString: string): boolean => {
   }
 };
 
+/**
+ * @openapi
+ * components:
+ *   schemas:
+ *     ScrapeRequest:
+ *       type: object
+ *       required:
+ *         - url
+ *       properties:
+ *         url:
+ *           type: string
+ *           format: uri
+ *           description: The URL to scrape
+ *         wait_after_load:
+ *           type: integer
+ *           default: 0
+ *           description: Time to wait after page load in milliseconds
+ *         timeout:
+ *           type: integer
+ *           default: 60000
+ *           description: Maximum time to wait for page load in milliseconds
+ *         headers:
+ *           type: object
+ *           additionalProperties:
+ *             type: string
+ *           description: Custom HTTP headers to send with request
+ *         check_selector:
+ *           type: string
+ *           description: CSS selector to wait for before considering page loaded
+ * 
+ *     ScrapeResponse:
+ *       type: object
+ *       properties:
+ *         content:
+ *           type: string
+ *           description: The HTML content of the page
+ *         pageStatusCode:
+ *           type: integer
+ *           description: HTTP status code of the response
+ *         pageError:
+ *           type: string
+ *           nullable: true
+ *           description: Error message if any occurred
+ * 
+ * /scrape:
+ *   post:
+ *     tags:
+ *       - Scraping
+ *     summary: Scrape a webpage using Puppeteer
+ *     description: |
+ *       Scrapes a webpage using Puppeteer with support for:
+ *       - Custom wait times
+ *       - Custom headers
+ *       - Selector checks
+ *       - Proxy support
+ *       - Recaptcha handling
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ScrapeRequest'
+ *     responses:
+ *       200:
+ *         description: Successfully scraped webpage
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ScrapeResponse'
+ *       400:
+ *         description: Invalid request parameters
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *       408:
+ *         description: Request timeout
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ */
 app.post("/scrape", async (req: Request, res: Response) => {
   const {
     url,

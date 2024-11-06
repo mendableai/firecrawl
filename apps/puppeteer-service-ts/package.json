@@ -21,7 +21,8 @@
     "puppeteer-extra": "^3.3.6",
     "puppeteer-extra-plugin-adblocker": "^2.13.6",
     "puppeteer-extra-plugin-recaptcha": "^3.6.8",
-    "puppeteer-extra-plugin-stealth": "^2.11.2"
+    "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "swagger-jsdoc": "^6.2.8"
   },
   "devDependencies": {
     "@types/body-parser": "^1.19.5",
@@ -30,6 +31,7 @@
     "@types/firefox-webext-browser": "^120.0.4",
     "@types/node": "^20.14.9",
     "@types/random-useragent": "^0.3.3",
+    "@types/swagger-jsdoc": "^6.0.4",
     "ts-node": "^10.9.2",
     "typescript": "^5.5.2"
   }

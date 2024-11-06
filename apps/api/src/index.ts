@@ -15,6 +15,7 @@ import expressWs from "express-ws";
 import { ErrorResponse, ResponseWithSentry } from "./controllers/v1/types";
 import { ZodError } from "zod";
 import { v4 as uuidv4 } from "uuid";
+import { setupOpenAPI } from "./openapi";
 
 const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
 Logger.info(`Number of CPUs: ${numCPUs} available`);
@@ -48,6 +49,8 @@ if (cluster.isPrimary) {
 
   global.isProduction = process.env.IS_PRODUCTION === "true";
 
+  setupOpenAPI(app);
+
   app.use(bodyParser.urlencoded({ extended: true }));
   app.use(bodyParser.json({ limit: "10mb" }));
 
@@ -70,6 +73,25 @@ if (cluster.isPrimary) {
     startServer();
   }
 
+  /**
+   * @openapi
+   * /serverHealthCheck:
+   *   get:
+   *     tags:
+   *       - Health
+   *     summary: Check if the server is healthy
+   *     responses:
+   *       200:
+   *         description: OK
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 waitingJobs:
+   *                   type: number   
+   *                   example: 0
+   */
   app.get(`/serverHealthCheck`, async (req, res) => {
     try {
       const scrapeQueue = getScrapeQueue();
@@ -86,6 +108,25 @@ if (cluster.isPrimary) {
     }
   });
 
+  /*
+   * @openapi
+   * /is-production:
+   *   get:
+   *     tags:
+   *       - Health
+   *     summary: Check if the application is running in production mode
+   *     responses:
+   *       200:
+   *         description: OK
+   *         content:
+   *           application/json:
+   *             schema:
+   *               type: object
+   *               properties:
+   *                 isProduction:
+   *                   type: boolean
+   *                   example: true  
+   */
   app.get("/is-production", (req, res) => {
     res.send({ isProduction: global.isProduction });
   });

@@ -1,5 +1,32 @@
 import { scrapeStatusRateLimiter } from "../../services/rate-limiter";
 
+/**
+ * @openapi
+ * /v1/scrape/{jobId}:
+ *   get:
+ *     tags:
+ *       - Scraping
+ *     summary: Get scrape job status
+ *     parameters:
+ *       - name: jobId
+ *         in: path
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 status:
+ *                   type: string
+ *                   enum: [completed, failed, in_progress]
+ *                 content:
+ *                   type: string
+ */
 export async function scrapeStatusController(req: any, res: any) {
   try {
     const rateLimiter = scrapeStatusRateLimiter;

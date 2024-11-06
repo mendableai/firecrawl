@@ -15,6 +15,46 @@ import { addScrapeJobRaw, waitForJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
 import { PlanType } from "../../types";
 
+/**
+ * @openapi
+ * /v1/scrape:
+ *   post:
+ *     tags:
+ *       - Scraping
+ *     summary: Scrape a single webpage
+ *     security:
+ *       - BearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - url
+ *             properties:
+ *               url:
+ *                 type: string
+ *                 format: uri
+ *               waitUntil:
+ *                 type: string
+ *                 enum: ['load', 'domcontentloaded', 'networkidle0', 'networkidle2']
+ *               timeout:
+ *                 type: integer
+ *                 minimum: 1000
+ *     responses:
+ *       200:
+ *         description: Success
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                 jobId:
+ *                   type: string
+ */
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
   res: Response<ScrapeResponse>

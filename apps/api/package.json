@@ -12,7 +12,8 @@
     "test": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='src/__tests__/e2e_noAuth/*'",
     "test:local-no-auth": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='src/__tests__/e2e_withAuth/*'",
     "workers": "nodemon --exec ts-node src/services/queue-worker.ts",
-    "worker:production": "node dist/src/services/queue-worker.js"
+    "worker:production": "node dist/src/services/queue-worker.js",
+    "generate-openapi": "ts-node src/scripts/generate-openapi.ts"
   },
   "author": "",
   "license": "ISC",
@@ -55,6 +56,7 @@
     "rate-limiter-flexible": "2.4.2",
     "redlock": "5.0.0-beta.2",
     "robots-parser": "^3.0.1",
+    "swagger-jsdoc": "^6.2.8",
     "systeminformation": "^5.22.11",
     "turndown": "^7.1.3",
     "turndown-plugin-gfm": "^1.0.2",
