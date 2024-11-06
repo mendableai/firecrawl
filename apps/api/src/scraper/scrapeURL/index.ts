@@ -227,6 +227,7 @@ async function scrapeURLLoop(
 
     if (result.unsupportedFeatures.size > 0) {
         const warning = `The engine used does not support the following features: ${[...result.unsupportedFeatures].join(", ")} -- your scrape may be partial.`;
+        meta.logger.warn(warning, { engine: result.engine, unsupportedFeatures: result.unsupportedFeatures });
         document.warning = document.warning !== undefined ? document.warning + " " + warning : warning;
     }
 
