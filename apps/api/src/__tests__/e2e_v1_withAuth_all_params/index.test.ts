@@ -406,8 +406,7 @@ describe("E2E Tests for v1 API Routes", () => {
       const scrapeRequest = {
         url: E2E_TEST_SERVER_URL,
         actions: [{
-          type: "wait",
-          milliseconds: 10000
+          type: "screenshot"
         }]
       } as ScrapeRequest;
   
@@ -421,8 +420,38 @@ describe("E2E Tests for v1 API Routes", () => {
       if (!("data" in response.body)) {
         throw new Error("Expected response body to have 'data' property");
       }
-      // expect(response.body.data.markdown).not.toContain("Click me!");
-      // expect(response.body.data.markdown).toContain("Text changed after click!");
+      expect(response.body.data.actions?.screenshots[0].length).toBeGreaterThan(0);
+      expect(response.body.data.actions?.screenshots[0]).toContain("https://service.firecrawl.dev/storage/v1/object/public/media/screenshot-");
+
+      // TODO compare screenshot with expected screenshot
+    },
+  30000);
+
+  it.concurrent("should handle 'action screenshot@fullPage' parameter correctly",
+    async () => {
+      const scrapeRequest = {
+        url: E2E_TEST_SERVER_URL,
+        actions: [{
+          type: "screenshot",
+          fullPage: true
+        }]
+      } as ScrapeRequest;
+  
+      const response: ScrapeResponseRequestTest = await request(FIRECRAWL_API_URL)
+        .post("/v1/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send(scrapeRequest);
+  
+      expect(response.statusCode).toBe(200);
+      if (!("data" in response.body)) {
+        throw new Error("Expected response body to have 'data' property");
+      }
+      console.log(response.body.data.actions?.screenshots[0])
+      expect(response.body.data.actions?.screenshots[0].length).toBeGreaterThan(0);
+      expect(response.body.data.actions?.screenshots[0]).toContain("https://service.firecrawl.dev/storage/v1/object/public/media/screenshot-");
+
+      // TODO compare screenshot with expected full page screenshot
     },
   30000);
 
@@ -500,7 +529,6 @@ describe("E2E Tests for v1 API Routes", () => {
         .set("Content-Type", "application/json")
         .send(scrapeRequest);
   
-      console.log(response.body)
       expect(response.statusCode).toBe(200);
       if (!("data" in response.body)) {
         throw new Error("Expected response body to have 'data' property");
