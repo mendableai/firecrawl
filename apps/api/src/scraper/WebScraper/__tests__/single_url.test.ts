@@ -35,3 +35,23 @@ it('should return a list of links on the firecrawl.ai page', async () => {
   expect(result.linksOnPage.length).toBeGreaterThan(0);
   expect(result.linksOnPage).toContain('https://flutterbricks.com/features')
 }, 15000);
+
+describe('google-drive', () => {
+  it('should work with google drive .txt file', async () => {
+    const url = "https://drive.google.com/file/d/1dQZUPnlNEsK9KYrXunFTK5hEH5fZ0JV0/view";
+    const pageOptions: PageOptions = { includeHtml: true };
+
+    const result = await scrapSingleUrl("TEST", url, pageOptions);
+    
+    expect(result.content).toContain("This is a simple TXT file");
+  });
+
+  it('should work with google drive .pdf file', async () => {
+    const url = "https://drive.google.com/file/d/10mgCo2b9B62kWmcQfXqY-JTYhGgHFa1x/view";
+    const pageOptions: PageOptions = { includeHtml: true };
+
+    const result = await scrapSingleUrl("TEST", url, pageOptions);
+    
+    expect(result.content).toContain("This is a simple PDF file");
+  });
+});

@@ -8,12 +8,13 @@ import path from "path";
 import os from "os";
 import { axiosTimeout } from "../../../lib/timeout";
 import { Logger } from "../../../lib/logger";
+import { downloadFile } from "./utils";
 
 dotenv.config();
 
 export async function fetchAndProcessPdf(url: string, parsePDF: boolean): Promise<{ content: string, pageStatusCode?: number, pageError?: string }> {
   try {
-    const { tempFilePath, pageStatusCode, pageError } = await downloadPdf(url);
+    const { tempFilePath, pageStatusCode, pageError } = await downloadFile(url, "pdf");
     const content = await processPdfToText(tempFilePath, parsePDF);
     await fs.unlink(tempFilePath); // Clean up the temporary file
     return { content, pageStatusCode, pageError };
@@ -21,24 +22,6 @@ export async function fetchAndProcessPdf(url: string, parsePDF: boolean): Promis
     Logger.error(`Failed to fetch and process PDF: ${error.message}`);
     return { content: "", pageStatusCode: 500, pageError: error.message };
   }
-}
-
-async function downloadPdf(url: string): Promise<{ tempFilePath: string, pageStatusCode?: number, pageError?: string }> {
-  const response = await axios({
-    url,
-    method: "GET",
-    responseType: "stream",
-  });
-
-  const tempFilePath = path.join(os.tmpdir(), `tempPdf-${Date.now()}.pdf`);
-  const writer = createWriteStream(tempFilePath);
-
-  response.data.pipe(writer);
-
-  return new Promise((resolve, reject) => {
-    writer.on("finish", () => resolve({ tempFilePath, pageStatusCode: response.status, pageError: response.statusText != "OK" ? response.statusText : undefined }));
-    writer.on("error", reject);
-  });
 }
 
 export async function processPdfToText(filePath: string, parsePDF: boolean): Promise<string> {

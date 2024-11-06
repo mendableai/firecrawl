@@ -31,24 +31,33 @@ export async function handleCustomScraping(
     };
   }
 
-  // Check for Google Drive PDF links in meta tags
+  // Check for Google Drive links in meta tags
   const googleDriveMetaPattern = /<meta itemprop="url" content="(https:\/\/drive\.google\.com\/file\/d\/[^"]+)"/;
   const googleDriveMetaMatch = text.match(googleDriveMetaPattern);
   if (googleDriveMetaMatch) {
+    const driveItemJSON = JSON.parse(text.split("itemJson: ")[1].split("}")[0])
+    const driveContentType = driveItemJSON[11];
     const url = googleDriveMetaMatch[1];
-    Logger.debug(`Google Drive PDF link detected: ${url}`);
+    Logger.debug(`Google Drive link detected: ${url}, type: ${driveContentType}`);
 
     const fileIdMatch = url.match(/https:\/\/drive\.google\.com\/file\/d\/([^\/]+)\/view/);
     if (fileIdMatch) {
       const fileId = fileIdMatch[1];
-      const pdfUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
-
-      return {
-        scraper: "pdf",
-        url: pdfUrl
-      };
+      const fileUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
+      switch (driveContentType) {
+        case "application/pdf":
+          return {
+            scraper: "pdf",
+            url: fileUrl
+          };
+        case "text/plain":
+          return {
+            scraper: "text",
+            url: fileUrl
+          }
+      }
     }
   }
-  
+
   return null;
 }
