@@ -74,7 +74,6 @@ export async function fireEngineScrape<Engine extends FireEngineScrapeRequestChr
             url: request.url,
         },
     }, async span => {
-        console.log(request)
         return await robustFetch(
             {
                 url: `${fireEngineURL}/scrape`,
