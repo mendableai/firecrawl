@@ -35,6 +35,7 @@ describe("E2E Tests for v1 API Routes", () => {
       expect(response.body.data.markdown).toContain("Content with id #content-1");
       expect(response.body.data.markdown).toContain("Loading...");
       expect(response.body.data.markdown).toContain("Click me!");
+      expect(response.body.data.markdown).toContain("Power your AI apps with clean data crawled from any website. It's also open-source."); // firecrawl.dev inside an iframe
       expect(response.body.data.markdown).toContain("This content loads only when you see it. Don't blink! 👼"); // the browser always scroll to the bottom
       expect(response.body.data.markdown).not.toContain("Header"); // Only main content is returned by default
       expect(response.body.data.markdown).not.toContain("footer"); // Only main content is returned by default
@@ -102,6 +103,7 @@ describe("E2E Tests for v1 API Routes", () => {
   // - TODO: tests for screenshot@fullPage
 
   it.concurrent("should handle 'headers' parameter correctly", async () => {
+    // @ts-ignore
     const scrapeRequest = {
       url: E2E_TEST_SERVER_URL,
       headers: { "e2e-header-test": "firecrawl" }
@@ -333,32 +335,28 @@ describe("E2E Tests for v1 API Routes", () => {
     },
   60000);
   
-  // it.concurrent("should handle 'removeBase64Images' parameter correctly",
-  //   async () => {
-  //     const scrapeRequest: ScrapeRequest = {
-  //       url: "",
-  //       removeBase64Images: false
-  //     };
+  it.concurrent("should handle 'removeBase64Images' parameter correctly",
+    async () => {
+      const scrapeRequest = {
+        url: E2E_TEST_SERVER_URL,
+        removeBase64Images: true
+      } as ScrapeRequest;
   
-  //     const response: ScrapeResponseRequestTest = await request(FIRECRAWL_API_URL)
-  //       .post("/v1/scrape")
-  //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-  //       .set("Content-Type", "application/json")
-  //       .send(scrapeRequest);
+      const response: ScrapeResponseRequestTest = await request(FIRECRAWL_API_URL)
+        .post("/v1/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send(scrapeRequest);
   
-  //     expect(response.statusCode).toBe(200);
-  //     // Add assertions to verify removeBase64Images is handled correctly
-  //   },
-  // 30000);
+      expect(response.statusCode).toBe(200);
+      if (!("data" in response.body)) {
+        throw new Error("Expected response body to have 'data' property");
+      }
+      console.log(response.body.data.markdown)
+      // expect(response.body.data.markdown).toContain("Image-Removed");
+    },
+  30000);
 
-  // actions:
-  // -[x] Wait
-  // -[ ] Screenshot
-  // -[x] Click
-  // -[ ] Write text
-  // -[ ] Press a key
-  // -[ ] Scroll
-  // -[ ] Scrape
   it.concurrent("should handle 'action wait' parameter correctly",
     async () => {
       const scrapeRequest = {
@@ -435,20 +433,19 @@ describe("E2E Tests for v1 API Routes", () => {
     },
   30000);
 
-  // -[ ] Write text
   it.concurrent("should handle 'action write' parameter correctly",
     async () => {
       const scrapeRequest = {
         url: E2E_TEST_SERVER_URL,
-        formats: ["markdown", "html"],
+        formats: ["html"],
         actions: [{
-          type: "write",
-          text: "Hello, world!",
+          type: "click",
           selector: "#input-1"
         },
         {
-          type: "screenshot"
-        }  
+          type: "write",
+          text: "Hello, world!"
+        }
       ]} as ScrapeRequest;
   
       const response: ScrapeResponseRequestTest = await request(FIRECRAWL_API_URL)
@@ -461,9 +458,73 @@ describe("E2E Tests for v1 API Routes", () => {
       if (!("data" in response.body)) {
         throw new Error("Expected response body to have 'data' property");
       }
-      console.log(response.body.data)
-      // expect(response.body.data.markdown).not.toContain("Click me!");
-      // expect(response.body.data.markdown).toContain("Text changed after click!");
+      
+      expect(response.body.data.html).toContain("<input id=\"input-1\" type=\"text\" placeholder=\"Enter text here...\" style=\"padding:8px;margin:10px;border:1px solid #ccc;border-radius:4px;background-color:#000\" value=\"Hello, world!\">");
     },
   30000);
+
+  it.concurrent("should handle 'action pressKey' parameter correctly",
+    async () => {
+      const scrapeRequest = {
+        url: E2E_TEST_SERVER_URL,
+        formats: ["markdown"],
+        actions: [
+          {
+            type: "press",
+            key: "ArrowDown"
+          }
+        ]
+      } as ScrapeRequest;
+  
+      const response: ScrapeResponseRequestTest = await request(FIRECRAWL_API_URL)
+        .post("/v1/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send(scrapeRequest);
+  
+      console.log(response.body)
+      expect(response.statusCode).toBe(200);
+      if (!("data" in response.body)) {
+        throw new Error("Expected response body to have 'data' property");
+      }
+      expect(response.body.data.markdown).toContain("Last Key Clicked: ArrowDown")
+    },
+  30000);
+
+  it.concurrent("should handle 'action scroll' parameter correctly",
+    async () => {
+      const scrapeRequest = {
+        url: E2E_TEST_SERVER_URL,
+        formats: ["markdown"],
+        actions: [
+          {
+            type: "click",
+            selector: "#scroll-bottom-loader"
+          },
+          {
+            type: "scroll",
+            direction: "down",
+            amount: 2000
+          }
+        ]
+      } as ScrapeRequest;
+  
+      const response: ScrapeResponseRequestTest = await request(FIRECRAWL_API_URL)
+        .post("/v1/scrape")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send(scrapeRequest);
+  
+      console.log(response.body)
+      expect(response.statusCode).toBe(200);
+      if (!("data" in response.body)) {
+        throw new Error("Expected response body to have 'data' property");
+      }
+      console.log(response.body.data.markdown)
+      expect(response.body.data.markdown).toContain("Last Key Clicked: ArrowDown")
+    },
+  30000);
+
+  // TODO: test scrape action
+
 });
