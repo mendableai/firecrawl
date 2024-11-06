@@ -371,6 +371,7 @@ describe("E2E Tests for v1 API Routes", () => {
         throw new Error("Expected response body to have 'data' property");
       }
       console.log(response.body.data.markdown)
+      // - TODO: not working for every image
       // expect(response.body.data.markdown).toContain("Image-Removed");
     },
   30000);
