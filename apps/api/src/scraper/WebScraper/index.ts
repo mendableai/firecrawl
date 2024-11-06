@@ -393,9 +393,7 @@ export class WebScraperDataProvider {
   }
 
   private applyPathReplacements(documents: Document[]): Document[] {
-    if (this.replaceAllPathsWithAbsolutePaths) {
-      documents = replacePathsWithAbsolutePaths(documents);
-    }
+    documents = replacePathsWithAbsolutePaths(documents);
     return replaceImgPathsWithAbsolutePaths(documents);
   }
 
