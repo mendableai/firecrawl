@@ -5,7 +5,7 @@ import "../services/sentry"
 import * as Sentry from "@sentry/node";
 
 import dotenv from 'dotenv';
-import { Logger } from './logger';
+import { logger } from './logger';
 dotenv.config();
 
 // TODO: add a timeout to the Go parser
@@ -40,7 +40,7 @@ class GoMarkdownConverter {
   }
 }
 
-export async function parseMarkdown(html: string): Promise<string> {
+export async function parseMarkdown(html: string | null | undefined): Promise<string> {
   if (!html) {
     return '';
   }
@@ -52,12 +52,12 @@ export async function parseMarkdown(html: string): Promise<string> {
 
       markdownContent = processMultiLineLinks(markdownContent);
       markdownContent = removeSkipToContentLinks(markdownContent);
-      Logger.info(`HTML to Markdown conversion using Go parser successful`);
+      logger.info(`HTML to Markdown conversion using Go parser successful`);
       return markdownContent;
     }
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(`Error converting HTML to Markdown with Go parser: ${error}`);
+    logger.error(`Error converting HTML to Markdown with Go parser: ${error}`);
   }
 
   // Fallback to TurndownService if Go parser fails or is not enabled

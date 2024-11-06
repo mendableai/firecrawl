@@ -3,7 +3,7 @@ import { supabase_service } from "../supabase";
 import { FirecrawlJob } from "../../types";
 import { posthog } from "../posthog";
 import "dotenv/config";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import { configDotenv } from "dotenv";
 configDotenv();
 
@@ -16,11 +16,11 @@ export async function logJob(job: FirecrawlJob) {
 
     // Redact any pages that have an authorization header
     if (
-      job.pageOptions &&
-      job.pageOptions.headers &&
-      job.pageOptions.headers["Authorization"]
+      job.scrapeOptions &&
+      job.scrapeOptions.headers &&
+      job.scrapeOptions.headers["Authorization"]
     ) {
-      job.pageOptions.headers["Authorization"] = "REDACTED";
+      job.scrapeOptions.headers["Authorization"] = "REDACTED";
       job.docs = [{ content: "REDACTED DUE TO AUTHORIZATION HEADER", html: "REDACTED DUE TO AUTHORIZATION HEADER" }];
     }
 
@@ -38,9 +38,8 @@ export async function logJob(job: FirecrawlJob) {
           mode: job.mode,
           url: job.url,
           crawler_options: job.crawlerOptions,
-          page_options: job.pageOptions,
+          page_options: job.scrapeOptions,
           origin: job.origin,
-          extractor_options: job.extractor_options,
           num_tokens: job.num_tokens,
           retry: !!job.retry,
           crawl_id: job.crawl_id,
@@ -63,9 +62,8 @@ export async function logJob(job: FirecrawlJob) {
           mode: job.mode,
           url: job.url,
           crawler_options: job.crawlerOptions,
-          page_options: job.pageOptions,
+          page_options: job.scrapeOptions,
           origin: job.origin,
-          extractor_options: job.extractor_options,
           num_tokens: job.num_tokens,
           retry: job.retry,
         },
@@ -75,9 +73,9 @@ export async function logJob(job: FirecrawlJob) {
       }
     }
     if (error) {
-      Logger.error(`Error logging job: ${error.message}`);
+      logger.error(`Error logging job: ${error.message}`);
     }
   } catch (error) {
-    Logger.error(`Error logging job: ${error.message}`);
+    logger.error(`Error logging job: ${error.message}`);
   }
 }

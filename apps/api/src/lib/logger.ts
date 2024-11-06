@@ -1,57 +1,82 @@
+import * as winston from "winston";
+
 import { configDotenv } from "dotenv";
+import Transport from "winston-transport";
 configDotenv();
 
-enum LogLevel {
-  NONE = 'NONE',    // No logs will be output.
-  ERROR = 'ERROR',  // For logging error messages that indicate a failure in a specific operation.
-  WARN = 'WARN',    // For logging potentially harmful situations that are not necessarily errors.
-  INFO = 'INFO',    // For logging informational messages that highlight the progress of the application.
-  DEBUG = 'DEBUG',  // For logging detailed information on the flow through the system, primarily used for debugging.
-  TRACE = 'TRACE'   // For logging more detailed information than the DEBUG level.
-}
-export class Logger {
-  static colors = {
-    ERROR: '\x1b[31m%s\x1b[0m', // Red
-    WARN: '\x1b[33m%s\x1b[0m',  // Yellow
-    INFO: '\x1b[34m%s\x1b[0m',  // Blue
-    DEBUG: '\x1b[36m%s\x1b[0m', // Cyan
-    TRACE: '\x1b[35m%s\x1b[0m'  // Magenta
-  };
-
-  static log (message: string, level: LogLevel) {
-    const logLevel: LogLevel = LogLevel[process.env.LOGGING_LEVEL as keyof typeof LogLevel] || LogLevel.TRACE;
-    const levels = [LogLevel.NONE, LogLevel.ERROR, LogLevel.WARN, LogLevel.INFO, LogLevel.DEBUG, LogLevel.TRACE];
-    const currentLevelIndex = levels.indexOf(logLevel);
-    const messageLevelIndex = levels.indexOf(level);
-
-    if (currentLevelIndex >= messageLevelIndex) {
-      const color = Logger.colors[level];
-      console[level.toLowerCase()](color, `[${new Date().toISOString()}]${level} - ${message}`);
-
-      // const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
-      // if (useDbAuthentication) {
-      // save to supabase? another place?
-      // supabase.from('logs').insert({ level: level, message: message, timestamp: new Date().toISOString(), success: boolean });
-      // }
+const logFormat = winston.format.printf(info => 
+  `${info.timestamp} ${info.level} [${info.metadata.module ?? ""}:${info.metadata.method ?? ""}]: ${info.message} ${info.level.includes("error") || info.level.includes("warn") ? JSON.stringify(
+    info.metadata,
+    (_, value) => {
+      if (value instanceof Error) {
+        return {
+          ...value,
+          name: value.name,
+          message: value.message,
+          stack: value.stack,
+          cause: value.cause,
+        }
+      } else {
+        return value;
+      }
     }
-  }
-  static error(message: string | any) {
-    Logger.log(message, LogLevel.ERROR);
+  ) : ""}`
+)
+
+export const logger = winston.createLogger({
+  level: process.env.LOGGING_LEVEL?.toLowerCase() ?? "debug",
+  format: winston.format.json({
+    replacer(key, value) {
+      if (value instanceof Error) {
+        return {
+          ...value,
+          name: value.name,
+          message: value.message,
+          stack: value.stack,
+          cause: value.cause,
+        }
+      } else {
+        return value;
+      }
+    }
+  }),
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
+        winston.format.metadata({ fillExcept: ["message", "level", "timestamp"] }),
+        ...(((process.env.ENV === "production" && process.env.SENTRY_ENVIRONMENT === "dev") || (process.env.ENV !== "production")) ? [winston.format.colorize(), logFormat] : []),
+      ),
+    }),
+  ],
+});
+
+export type ArrayTransportOptions = Transport.TransportStreamOptions & {
+  array: any[];
+  scrapeId?: string;
+};
+
+export class ArrayTransport extends Transport {
+  private array: any[];
+  private scrapeId?: string;
+
+  constructor(opts: ArrayTransportOptions) {
+    super(opts);
+    this.array = opts.array;
+    this.scrapeId = opts.scrapeId;
   }
 
-  static warn(message: string) {
-    Logger.log(message, LogLevel.WARN);
-  }
+  log(info, next) {
+    setImmediate(() => {
+      this.emit("logged", info);
+    });
 
-  static info(message: string) {
-    Logger.log(message, LogLevel.INFO);
-  }
+    if (this.scrapeId !== undefined && info.scrapeId !== this.scrapeId) {
+      return next();
+    }
 
-  static debug(message: string) {
-    Logger.log(message, LogLevel.DEBUG);
-  }
+    this.array.push(info);
 
-  static trace(message: string) {
-    Logger.log(message, LogLevel.TRACE);
+    next();
   }
 }

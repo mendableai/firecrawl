@@ -2,7 +2,7 @@ import axios from 'axios';
 import * as cheerio from 'cheerio';
 import * as querystring from 'querystring';
 import { SearchResult } from '../../src/lib/entities';
-import { Logger } from '../../src/lib/logger';
+import { logger } from '../../src/lib/logger';
 
 const _useragent_list = [
     'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0',
@@ -18,7 +18,7 @@ function get_useragent(): string {
     return _useragent_list[Math.floor(Math.random() * _useragent_list.length)];
 }
 
-async function _req(term: string, results: number, lang: string, country: string, start: number, proxies: any, timeout: number, tbs: string = null, filter: string = null) {
+async function _req(term: string, results: number, lang: string, country: string, start: number, proxies: any, timeout: number, tbs: string | undefined = undefined, filter: string | undefined = undefined) {
     const params = {
         "q": term,
         "num": results,  // Number of results to return
@@ -52,8 +52,8 @@ async function _req(term: string, results: number, lang: string, country: string
 
 
 
-export async function googleSearch(term: string, advanced = false, num_results = 7, tbs = null, filter = null, lang = "en", country = "us", proxy = null, sleep_interval = 0, timeout = 5000, ) :Promise<SearchResult[]> {
-    let proxies = null;
+export async function googleSearch(term: string, advanced = false, num_results = 7, tbs = undefined as string | undefined, filter = undefined as string | undefined, lang = "en", country = "us", proxy = undefined as string | undefined, sleep_interval = 0, timeout = 5000, ) :Promise<SearchResult[]> {
+    let proxies: any = null;
     if (proxy) {
         if (proxy.startsWith("https")) {
             proxies = {"https": proxy};
@@ -97,7 +97,7 @@ export async function googleSearch(term: string, advanced = false, num_results =
             await new Promise(resolve => setTimeout(resolve, sleep_interval * 1000));
         } catch (error) {
             if (error.message === 'Too many requests') {
-                Logger.warn('Too many requests, breaking the loop');
+                logger.warn('Too many requests, breaking the loop');
                 break;
             }
             throw error;
@@ -108,7 +108,7 @@ export async function googleSearch(term: string, advanced = false, num_results =
         }
     }
     if (attempts >= maxAttempts) {
-      Logger.warn('Max attempts reached, breaking the loop');
+      logger.warn('Max attempts reached, breaking the loop');
     }
     return results
 }

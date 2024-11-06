@@ -1,4 +1,4 @@
-import { Logger } from "../../src/lib/logger";
+import { logger } from "../../src/lib/logger";
 import { SearchResult } from "../../src/lib/entities";
 import { googleSearch } from "./googlesearch";
 import { fireEngineMap } from "./fireEngine";
@@ -9,12 +9,12 @@ export async function search({
   query,
   advanced = false,
   num_results = 7,
-  tbs = null,
-  filter = null,
+  tbs = undefined,
+  filter = undefined,
   lang = "en",
   country = "us",
   location = undefined,
-  proxy = null,
+  proxy = undefined,
   sleep_interval = 0,
   timeout = 5000,
 }: {
@@ -64,7 +64,7 @@ export async function search({
       timeout
     );
   } catch (error) {
-    Logger.error(`Error in search function: ${error}`);
+    logger.error(`Error in search function: ${error}`);
     return [];
   }
 }

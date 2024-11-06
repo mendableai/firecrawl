@@ -1,9 +1,10 @@
 import { Response } from "express";
-import { CrawlStatusParams, CrawlStatusResponse, ErrorResponse, legacyDocumentConverter, RequestWithAuth } from "./types";
+import { CrawlStatusParams, CrawlStatusResponse, ErrorResponse, RequestWithAuth } from "./types";
 import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength, getThrottledJobs } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
 import { supabaseGetJobById, supabaseGetJobsById } from "../../lib/supabase-jobs";
 import { configDotenv } from "dotenv";
+import { Job, JobState } from "bullmq";
 configDotenv();
 
 export async function getJob(id: string) {
@@ -24,7 +25,7 @@ export async function getJob(id: string) {
 }
 
 export async function getJobs(ids: string[]) {
-  const jobs = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x);
+  const jobs: (Job & { id: string })[] = (await Promise.all(ids.map(x => getScrapeQueue().getJob(x)))).filter(x => x) as (Job & {id: string})[];
   
   if (process.env.USE_DB_AUTHENTICATION === "true") {
     const supabaseData = await supabaseGetJobsById(ids);
@@ -63,8 +64,8 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
 
   const throttledJobsSet = new Set(throttledJobs);
 
-  const validJobStatuses = [];
-  const validJobIDs = [];
+  const validJobStatuses: [string, JobState | "unknown"][] = [];
+  const validJobIDs: string[] = [];
 
   for (const [id, status] of jobStatuses) {
     if (!throttledJobsSet.has(id) && status !== "failed" && status !== "unknown") {
@@ -81,7 +82,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
   const doneJobsLength = await getDoneJobsOrderedLength(req.params.jobId);
   const doneJobsOrder = await getDoneJobsOrdered(req.params.jobId, start, end ?? -1);
 
-  let doneJobs = [];
+  let doneJobs: Job[] = [];
 
   if (end === undefined) { // determine 10 megabyte limit
     let bytes = 0;
@@ -98,7 +99,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
       for (let ii = 0; ii < jobs.length && bytes < bytesLimit; ii++) {
         const job = jobs[ii];
         doneJobs.push(job);
-        bytes += JSON.stringify(legacyDocumentConverter(job.returnvalue)).length;
+        bytes += JSON.stringify(job.returnvalue).length;
       }
     }
 
@@ -122,7 +123,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
   }
 
   if (data.length > 0) {
-    if (!doneJobs[0].data.pageOptions.includeRawHtml) {
+    if (!doneJobs[0].data.scrapeOptions.formats.includes("rawHtml")) {
       for (let ii = 0; ii < doneJobs.length; ii++) {
         if (data[ii]) {
           delete data[ii].rawHtml;
@@ -142,7 +143,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
       status !== "scraping" && (start + data.length) === doneJobsLength // if there's not gonna be any documents after this
         ? undefined
         : nextURL.href,
-    data: data.map(x => legacyDocumentConverter(x)),
+    data: data,
   });
 }
 

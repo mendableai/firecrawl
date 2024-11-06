@@ -1,5 +1,6 @@
-import { AuthCreditUsageChunk } from "./controllers/v1/types";
-import { ExtractorOptions, Document, DocumentUrl } from "./lib/entities";
+import { AuthCreditUsageChunk, ScrapeOptions, Document as V1Document } from "./controllers/v1/types";
+import { ExtractorOptions, Document } from "./lib/entities";
+import { InternalOptions } from "./scraper/scrapeURL";
 
 type Mode = "crawl" | "single_urls" | "sitemap";
 
@@ -24,9 +25,9 @@ export interface IngestResult {
 export interface WebScraperOptions {
   url: string;
   mode: Mode;
-  crawlerOptions: any;
-  pageOptions: any;
-  extractorOptions?: any;
+  crawlerOptions?: any;
+  scrapeOptions: ScrapeOptions;
+  internalOptions?: InternalOptions;
   team_id: string;
   plan: string;
   origin?: string;
@@ -40,28 +41,28 @@ export interface WebScraperOptions {
 export interface RunWebScraperParams {
   url: string;
   mode: Mode;
-  crawlerOptions: any;
-  pageOptions?: any;
-  extractorOptions?: any;
-  inProgress: (progress: any) => void;
-  onSuccess: (result: any, mode: string) => void;
-  onError: (error: Error) => void;
+  scrapeOptions: ScrapeOptions;
+  internalOptions?: InternalOptions;
+  // onSuccess: (result: V1Document, mode: string) => void;
+  // onError: (error: Error) => void;
   team_id: string;
   bull_job_id: string;
   priority?: number;
   is_scrape?: boolean;
 }
 
-export interface RunWebScraperResult {
-  success: boolean;
-  message: string;
-  docs: Document[] | DocumentUrl[];
+export type RunWebScraperResult = {
+  success: false;
+  error: Error;
+} | {
+  success: true;
+  document: V1Document;
 }
 
 export interface FirecrawlJob {
   job_id?: string;
   success: boolean;
-  message: string;
+  message?: string;
   num_docs: number;
   docs: any[];
   time_taken: number;
@@ -69,9 +70,8 @@ export interface FirecrawlJob {
   mode: string;
   url: string;
   crawlerOptions?: any;
-  pageOptions?: any;
+  scrapeOptions?: any;
   origin: string;
-  extractor_options?: ExtractorOptions,
   num_tokens?: number,
   retry?: boolean,
   crawl_id?: string;
@@ -115,14 +115,16 @@ export enum RateLimiterMode {
 
 }
 
-export interface AuthResponse {
-  success: boolean;
-  team_id?: string;
-  error?: string;
-  status?: number;
+export type AuthResponse = {
+  success: true;
+  team_id: string;
   api_key?: string;
   plan?: PlanType;
-  chunk?: AuthCreditUsageChunk;
+  chunk: AuthCreditUsageChunk | null;
+} | {
+  success: false;
+  error: string;
+  status: number;
 }
   
 

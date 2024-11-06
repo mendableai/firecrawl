@@ -88,7 +88,7 @@ export async function addScrapeJobs(
   await Promise.all(jobs.map(job => addScrapeJob(job.data, job.opts, job.opts.jobId, job.opts.priority)));
 }
 
-export function waitForJob(jobId: string, timeout: number) {
+export function waitForJob<T = unknown>(jobId: string, timeout: number): Promise<T> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
     const int = setInterval(async () => {
@@ -99,7 +99,7 @@ export function waitForJob(jobId: string, timeout: number) {
         const state = await getScrapeQueue().getJobState(jobId);
         if (state === "completed") {
           clearInterval(int);
-          resolve((await getScrapeQueue().getJob(jobId)).returnvalue);
+          resolve((await getScrapeQueue().getJob(jobId))!.returnvalue);
         } else if (state === "failed") {
           // console.log("failed", (await getScrapeQueue().getJob(jobId)).failedReason);
           const job = await getScrapeQueue().getJob(jobId);

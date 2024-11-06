@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import { supabase_service } from "../../../services/supabase";
 import { clearACUC } from "../../auth";
-import { Logger } from "../../../lib/logger";
+import { logger } from "../../../lib/logger";
 
 export async function acucCacheClearController(req: Request, res: Response) {
   try {
@@ -12,11 +12,11 @@ export async function acucCacheClearController(req: Request, res: Response) {
       .select("*")
       .eq("team_id", team_id);
 
-    await Promise.all(keys.data.map((x) => clearACUC(x.key)));
+    await Promise.all((keys.data ?? []).map((x) => clearACUC(x.key)));
 
     res.json({ ok: true });
   } catch (error) {
-    Logger.error(`Error clearing ACUC cache via API route: ${error}`);
+    logger.error(`Error clearing ACUC cache via API route: ${error}`);
     res.status(500).json({ error: "Internal server error" });
   }
 }
