@@ -131,7 +131,8 @@ export class Document {
   provider?: string;
   warning?: string;
   actions?: {
-    screenshots: string[];
+    screenshots?: string[];
+    scrapes?: ScrapeActionContent[];
   }
 
   index?: number;

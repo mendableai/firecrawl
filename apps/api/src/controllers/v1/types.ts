@@ -4,7 +4,7 @@ import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { PlanType } from "../../types";
 import { countries } from "../../lib/validate-country";
-import { ExtractorOptions, PageOptions, Document as V0Document } from "../../lib/entities";
+import { ExtractorOptions, PageOptions, ScrapeActionContent, Document as V0Document } from "../../lib/entities";
 import { InternalOptions } from "../../scraper/scrapeURL";
 
 export type Format =
@@ -260,7 +260,8 @@ export type Document = {
   links?: string[];
   screenshot?: string;
   actions?: {
-    screenshots: string[];
+    screenshots?: string[];
+    scrapes?: ScrapeActionContent[];
   };
   warning?: string;
   metadata: {
@@ -538,7 +539,7 @@ export function toLegacyDocument(document: Document, internalOptions: InternalOp
       pageStatusCode: document.metadata.statusCode,
       screenshot: document.screenshot,
     },
-    actions: document.actions,
+    actions: document.actions ,
     warning: document.warning,
   }
 }

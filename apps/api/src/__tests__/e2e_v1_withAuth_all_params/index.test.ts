@@ -427,8 +427,11 @@ describe("E2E Tests for v1 API Routes", () => {
       if (!("data" in response.body)) {
         throw new Error("Expected response body to have 'data' property");
       }
-      expect(response.body.data.actions?.screenshots[0].length).toBeGreaterThan(0);
-      expect(response.body.data.actions?.screenshots[0]).toContain("https://service.firecrawl.dev/storage/v1/object/public/media/screenshot-");
+      if (!response.body.data.actions?.screenshots) {
+        throw new Error("Expected response body to have screenshots array");
+      }
+      expect(response.body.data.actions.screenshots[0].length).toBeGreaterThan(0);
+      expect(response.body.data.actions.screenshots[0]).toContain("https://service.firecrawl.dev/storage/v1/object/public/media/screenshot-");
 
       // TODO compare screenshot with expected screenshot
     },
@@ -441,7 +444,10 @@ describe("E2E Tests for v1 API Routes", () => {
         actions: [{
           type: "screenshot",
           fullPage: true
-        }]
+        },
+      {
+        type:"scrape"
+      }]
       } as ScrapeRequest;
   
       const response: ScrapeResponseRequestTest = await request(FIRECRAWL_API_URL)
@@ -455,9 +461,17 @@ describe("E2E Tests for v1 API Routes", () => {
         throw new Error("Expected response body to have 'data' property");
       }
       // console.log(response.body.data.actions?.screenshots[0])
-      expect(response.body.data.actions?.screenshots[0].length).toBeGreaterThan(0);
-      expect(response.body.data.actions?.screenshots[0]).toContain("https://service.firecrawl.dev/storage/v1/object/public/media/screenshot-");
+      if (!response.body.data.actions?.screenshots) {
+        throw new Error("Expected response body to have screenshots array");
+      }
+      expect(response.body.data.actions.screenshots[0].length).toBeGreaterThan(0);
+      expect(response.body.data.actions.screenshots[0]).toContain("https://service.firecrawl.dev/storage/v1/object/public/media/screenshot-");
 
+      if (!response.body.data.actions?.scrapes) {
+        throw new Error("Expected response body to have scrapes array"); 
+      }
+      expect(response.body.data.actions.scrapes[0].url).toBe("https://firecrawl-e2e-test.vercel.app/");
+      expect(response.body.data.actions.scrapes[0].html).toContain("This page is used for end-to-end (e2e) testing with Firecrawl.</p>");
       // TODO compare screenshot with expected full page screenshot
     },
   30000);
