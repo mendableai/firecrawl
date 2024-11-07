@@ -23,11 +23,11 @@ jobs:
             uses: docker/setup-buildx-action@v1
 
           # 可选：如果您想要构建并推送针对不同平台的镜像，可以添加如下步骤
-          # - name: 'Build and Push Image for Multiple Platforms'
-          #   run: |
-          #     docker buildx build --platform linux/amd64,linux/arm64 -t zhiyan/firecrawl:latest . --push
+          - name: 'Build and Push Image for Multiple Platforms'
+            run: |
+              acr_image="${{ secrets.ACR_REGISTRY }}/${{ secrets.ACR_SPACE }}/firecrawl:latest"
+              docker buildx build --platform linux/amd64,linux/arm64 -t $acr_image . --push
 
-            
           # - name: 'Build Inventory Image'
           #   run: |
           #     docker build . --tag zhiyan/firecrawl:latest
