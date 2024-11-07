@@ -56,7 +56,7 @@ export const removeUnwantedElements = (
 ) => {
   const soup = load(html);
 
-  if (scrapeOptions.includeTags && scrapeOptions.includeTags.length > 0) {
+  if (scrapeOptions.includeTags && scrapeOptions.includeTags.filter(x => x.trim().length !== 0).length > 0) {
     // Create a new root element to hold the tags to keep
     const newRoot = load("<div></div>")("div");
     scrapeOptions.includeTags.forEach((tag) => {
@@ -69,7 +69,7 @@ export const removeUnwantedElements = (
 
   soup("script, style, noscript, meta, head").remove();
 
-  if (scrapeOptions.excludeTags && scrapeOptions.excludeTags.length > 0) {
+  if (scrapeOptions.excludeTags && scrapeOptions.excludeTags.filter(x => x.trim().length !== 0).length > 0) {
         scrapeOptions.excludeTags.forEach((tag) => {
             let elementsToRemove: Cheerio<AnyNode>;
             if (tag.startsWith("*") && tag.endsWith("*")) {
