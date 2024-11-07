@@ -508,7 +508,7 @@ export function fromLegacyScrapeOptions(pageOptions: PageOptions, extractorOptio
       v0DisableJsDom: pageOptions.disableJsDom,
       v0UseFastMode: pageOptions.useFastMode,
     },
-    // TODO: fallback, fetchPage  Content, replaceAllPathsWithAbsolutePaths, includeLinks
+    // TODO: fallback, fetchPageContent, replaceAllPathsWithAbsolutePaths, includeLinks
   }
 }
 
