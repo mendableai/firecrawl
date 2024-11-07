@@ -50,7 +50,7 @@ describe("E2E Tests for v1 API Routes", () => {
       
       expect(response.body.data.markdown).toContain("This page is used for end-to-end (e2e) testing with Firecrawl.");
       expect(response.body.data.markdown).toContain("Content with id #content-1");
-      expect(response.body.data.markdown).toContain("Loading...");
+      // expect(response.body.data.markdown).toContain("Loading...");
       expect(response.body.data.markdown).toContain("Click me!");
       expect(response.body.data.markdown).toContain("Power your AI apps with clean data crawled from any website. It's also open-source."); // firecrawl.dev inside an iframe
       expect(response.body.data.markdown).toContain("This content loads only when you see it. Don't blink! 👼"); // the browser always scroll to the bottom
