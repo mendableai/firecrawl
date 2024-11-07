@@ -31,16 +31,6 @@ export async function search({
   timeout?: number;
 }): Promise<SearchResult[]> {
   try {
-    if (process.env.SEARCHAPI_API_KEY) {
-      return await searchapi_search(query, {
-        num_results,
-        tbs,
-        filter,
-        lang,
-        country,
-        location
-      });
-    }
     if (process.env.SERPER_API_KEY) {
       return await serper_search(query, {
         num_results,
@@ -49,6 +39,16 @@ export async function search({
         lang,
         country,
         location,
+      });
+    }
+    if (process.env.SEARCHAPI_API_KEY) {
+      return await searchapi_search(query, {
+        num_results,
+        tbs,
+        filter,
+        lang,
+        country,
+        location
       });
     }
     return await googleSearch(
