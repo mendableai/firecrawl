@@ -328,7 +328,11 @@ describe("E2E Tests for v1 API Routes", () => {
         .send(scrapeRequest);
         console.log("Error1a")
         // console.log(response.body)
-      expect(response.statusCode).toBe(500);
+      expect(response.statusCode).toBe(200);
+      if (!("data" in response.body)) {
+        throw new Error("Expected response body to have 'data' property");
+      }
+      expect(response.body.data.metadata.pageStatusCode).toBe(500);
       console.log("Error?")
       
       const scrapeRequestWithSkipTlsVerification = {
