@@ -64,7 +64,7 @@ export async function scrapeController(
     } else {
       return res.status(500).json({
         success: false,
-        error: `(Internal server error) - ${e && e?.message ? e.message : e}`,
+        error: `(Internal server error) - ${(e && e.message) ? e.message : e}`,
       });
     }
   }

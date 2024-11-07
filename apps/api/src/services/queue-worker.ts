@@ -488,8 +488,7 @@ async function processJob(job: Job & { id: string }, token: string) {
       success: false,
       document: null,
       project_id: job.data.project_id,
-      error:
-        "Something went wrong... Contact help@mendable.ai or try again." /* etc... */,
+      error: error instanceof Error ? error : typeof error === "string" ? new Error(error) : new Error(JSON.stringify(error)),
     };
 
     if (!job.data.v1 && (job.data.mode === "crawl" || job.data.crawl_id)) {
