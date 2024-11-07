@@ -88,7 +88,7 @@ export async function scrapeURLWithFireEngineChromeCDP(meta: Meta): Promise<Engi
         geolocation: meta.options.geolocation,
         mobile: meta.options.mobile,
         removeBase64Images: meta.options.removeBase64Images,
-        // TODO: scrollXPaths, disableJsDom
+        // TODO: scrollXPaths
     };
 
     let response = await performFireEngineScrape(
