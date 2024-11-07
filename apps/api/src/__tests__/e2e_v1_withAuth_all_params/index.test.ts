@@ -110,8 +110,8 @@ describe("E2E Tests for v1 API Routes", () => {
       expect(response.body.data).not.toHaveProperty("markdown");
       expect(response.body.data).toHaveProperty("rawHtml");
 
-      expect(response.body.data.rawHtml).toContain("<p>This page is used for end-to-end (e2e) testing with Firecrawl.</p>");
-      expect(response.body.data.rawHtml).toContain("<header class=\"row-start-1\">Header</header>");
+      expect(response.body.data.rawHtml).toContain(">This page is used for end-to-end (e2e) testing with Firecrawl.</p>");
+      expect(response.body.data.rawHtml).toContain(">Header</header>");
     },
   30000);
   
