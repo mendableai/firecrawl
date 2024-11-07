@@ -304,6 +304,9 @@ export async function scrapeURL(
         } else if (error instanceof LLMRefusalError) {
             meta.logger.warn("scrapeURL: LLM refused to extract content", { error });
             results = error.results!;
+        } else if (error instanceof Error && error.message.includes("Invalid schema for response_format")) { // TODO: seperate into custom error
+            meta.logger.warn("scrapeURL: LLM schema error", { error });
+            // TODO: results?
         } else {
             Sentry.captureException(error);
             meta.logger.error("scrapeURL: Unexpected error happened", { error });
