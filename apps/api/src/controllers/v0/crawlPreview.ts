@@ -3,15 +3,16 @@ import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
 import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "../../../src/lib/logger";
+import { logger } from "../../../src/lib/logger";
 import { addCrawlJob, crawlToCrawler, lockURL, saveCrawl, StoredCrawl } from "../../../src/lib/crawl-redis";
 import { addScrapeJob } from "../../../src/services/queue-jobs";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
+import { fromLegacyScrapeOptions } from "../v1/types";
 
 export async function crawlPreviewController(req: Request, res: Response) {
   try {
-    const { success, error, status, team_id:a, plan } = await authenticateUser(
+    const auth = await authenticateUser(
       req,
       res,
       RateLimiterMode.Preview
@@ -19,9 +20,11 @@ export async function crawlPreviewController(req: Request, res: Response) {
 
     const team_id = "preview";
 
-    if (!success) {
-      return res.status(status).json({ error });
+    if (!auth.success) {
+      return res.status(auth.status).json({ error: auth.error });
     }
+
+    const { plan } = auth;
 
     let url = req.body.url;
     if (!url) {
@@ -71,7 +74,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
     //       documents: docs,
     //     });
     //   } catch (error) {
-    //     Logger.error(error);
+    //     logger.error(error);
     //     return res.status(500).json({ error: error.message });
     //   }
     // }
@@ -84,10 +87,13 @@ export async function crawlPreviewController(req: Request, res: Response) {
       robots = await this.getRobotsTxt();
     } catch (_) {}
 
+    const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(pageOptions, undefined, undefined);
+
     const sc: StoredCrawl = {
       originUrl: url,
       crawlerOptions,
-      pageOptions,
+      scrapeOptions,
+      internalOptions,
       team_id,
       plan,
       robots,
@@ -107,10 +113,11 @@ export async function crawlPreviewController(req: Request, res: Response) {
         await addScrapeJob({
           url,
           mode: "single_urls",
-          crawlerOptions: crawlerOptions,
           team_id,
-          plan,
-          pageOptions: pageOptions,
+          plan: plan!,
+          crawlerOptions,
+          scrapeOptions,
+          internalOptions,
           origin: "website-preview",
           crawl_id: id,
           sitemapped: true,
@@ -123,10 +130,11 @@ export async function crawlPreviewController(req: Request, res: Response) {
       await addScrapeJob({
         url,
         mode: "single_urls",
-        crawlerOptions: crawlerOptions,
         team_id,
-        plan,
-        pageOptions: pageOptions,
+        plan: plan!,
+        crawlerOptions,
+        scrapeOptions,
+        internalOptions,
         origin: "website-preview",
         crawl_id: id,
       }, {}, jobId);
@@ -136,7 +144,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
     res.json({ jobId: id });
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }

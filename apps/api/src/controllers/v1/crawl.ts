@@ -4,9 +4,8 @@ import {
   CrawlRequest,
   crawlRequestSchema,
   CrawlResponse,
-  legacyCrawlerOptions,
-  legacyScrapeOptions,
   RequestWithAuth,
+  toLegacyCrawlerOptions,
 } from "./types";
 import {
   addCrawlJob,
@@ -20,9 +19,10 @@ import {
 import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
 import { addScrapeJob } from "../../services/queue-jobs";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import { getJobPriority } from "../../lib/job-priority";
 import { callWebhook } from "../../services/webhook";
+import { scrapeOptions as scrapeOptionsSchema } from "./types";
 
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
@@ -34,18 +34,22 @@ export async function crawlController(
 
   await logCrawl(id, req.auth.team_id);
 
-  let { remainingCredits } = req.account;
+  let { remainingCredits } = req.account!;
   const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
   if(!useDbAuthentication){
     remainingCredits = Infinity;
   }
 
-  const crawlerOptions = legacyCrawlerOptions(req.body);
-  const pageOptions = legacyScrapeOptions(req.body.scrapeOptions);
+  const crawlerOptions = {
+    ...req.body,
+    url: undefined,
+    scrapeOptions: undefined,
+  };
+  const scrapeOptions = req.body.scrapeOptions;
 
   // TODO: @rafa, is this right? copied from v0
-  if (Array.isArray(crawlerOptions.includes)) {
-    for (const x of crawlerOptions.includes) {
+  if (Array.isArray(crawlerOptions.includePaths)) {
+    for (const x of crawlerOptions.includePaths) {
       try {
         new RegExp(x);
       } catch (e) {
@@ -54,8 +58,8 @@ export async function crawlController(
     }
   }
 
-  if (Array.isArray(crawlerOptions.excludes)) {
-    for (const x of crawlerOptions.excludes) {
+  if (Array.isArray(crawlerOptions.excludePaths)) {
+    for (const x of crawlerOptions.excludePaths) {
       try {
         new RegExp(x);
       } catch (e) {
@@ -68,8 +72,9 @@ export async function crawlController(
   
   const sc: StoredCrawl = {
     originUrl: req.body.url,
-    crawlerOptions,
-    pageOptions,
+    crawlerOptions: toLegacyCrawlerOptions(crawlerOptions),
+    scrapeOptions,
+    internalOptions: {},
     team_id: req.auth.team_id,
     createdAt: Date.now(),
     plan: req.auth.plan,
@@ -78,9 +83,9 @@ export async function crawlController(
   const crawler = crawlToCrawler(id, sc);
 
   try {
-    sc.robots = await crawler.getRobotsTxt(pageOptions.skipTlsVerification);
+    sc.robots = await crawler.getRobotsTxt(scrapeOptions.skipTlsVerification);
   } catch (e) {
-    Logger.debug(
+    logger.debug(
       `[Crawl] Failed to get robots.txt (this is probably fine!): ${JSON.stringify(
         e
       )}`
@@ -112,7 +117,7 @@ export async function crawlController(
           team_id: req.auth.team_id,
           plan: req.auth.plan,
           crawlerOptions,
-          pageOptions,
+          scrapeOptions,
           origin: "api",
           crawl_id: id,
           sitemapped: true,
@@ -142,10 +147,10 @@ export async function crawlController(
       {
         url: req.body.url,
         mode: "single_urls",
-        crawlerOptions: crawlerOptions,
         team_id: req.auth.team_id,
-        plan: req.auth.plan,
-        pageOptions: pageOptions,
+        crawlerOptions,
+        scrapeOptions: scrapeOptionsSchema.parse(scrapeOptions),
+        plan: req.auth.plan!,
         origin: "api",
         crawl_id: id,
         webhook: req.body.webhook,

@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { Logger } from "../lib/logger";
+import { logger } from "../lib/logger";
 import { configDotenv } from "dotenv";
 configDotenv();
 
@@ -14,12 +14,12 @@ class SupabaseService {
     // Only initialize the Supabase client if both URL and Service Token are provided.
     if (!useDbAuthentication) {
       // Warn the user that Authentication is disabled by setting the client to null
-      Logger.warn(
+      logger.warn(
         "Authentication is disabled. Supabase client will not be initialized."
       );
       this.client = null;
     } else if (!supabaseUrl || !supabaseServiceToken) {
-      Logger.error(
+      logger.error(
         "Supabase environment variables aren't configured correctly. Supabase client will not be initialized. Fix ENV configuration or disable DB authentication with USE_DB_AUTHENTICATION env variable"
       );
     } else {

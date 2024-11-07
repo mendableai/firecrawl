@@ -9,23 +9,27 @@ import { validateIdempotencyKey } from "../../../src/services/idempotency/valida
 import { createIdempotencyKey } from "../../../src/services/idempotency/create";
 import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../../src/lib/default-values";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "../../../src/lib/logger";
+import { logger } from "../../../src/lib/logger";
 import { addCrawlJob, addCrawlJobs, crawlToCrawler, lockURL, lockURLs, saveCrawl, StoredCrawl } from "../../../src/lib/crawl-redis";
 import { getScrapeQueue } from "../../../src/services/queue-service";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
+import { fromLegacyScrapeOptions, url as urlSchema } from "../v1/types";
+import { ZodError } from "zod";
 
 export async function crawlController(req: Request, res: Response) {
   try {
-    const { success, team_id, error, status, plan, chunk } = await authenticateUser(
+    const auth = await authenticateUser(
       req,
       res,
       RateLimiterMode.Crawl
     );
-    if (!success) {
-      return res.status(status).json({ error });
+    if (!auth.success) {
+      return res.status(auth.status).json({ error: auth.error });
     }
+
+    const { team_id, plan, chunk } = auth;
 
     if (req.headers["x-idempotency-key"]) {
       const isIdempotencyValid = await validateIdempotencyKey(req);
@@ -35,7 +39,7 @@ export async function crawlController(req: Request, res: Response) {
       try {
         createIdempotencyKey(req);
       } catch (error) {
-        Logger.error(error);
+        logger.error(error);
         return res.status(500).json({ error: error.message });
       }
     }
@@ -77,7 +81,7 @@ export async function crawlController(req: Request, res: Response) {
     // TODO: need to do this to v1
     crawlerOptions.limit = Math.min(remainingCredits, crawlerOptions.limit);
     
-    let url = req.body.url;
+    let url = urlSchema.parse(req.body.url);
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
     }
@@ -123,7 +127,7 @@ export async function crawlController(req: Request, res: Response) {
     //       documents: docs,
     //     });
     //   } catch (error) {
-    //     Logger.error(error);
+    //     logger.error(error);
     //     return res.status(500).json({ error: error.message });
     //   }
     // }
@@ -132,10 +136,13 @@ export async function crawlController(req: Request, res: Response) {
 
     await logCrawl(id, team_id);
 
+    const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(pageOptions, undefined, undefined);
+
     const sc: StoredCrawl = {
       originUrl: url,
       crawlerOptions,
-      pageOptions,
+      scrapeOptions,
+      internalOptions,
       team_id,
       plan,
       createdAt: Date.now(),
@@ -170,10 +177,11 @@ export async function crawlController(req: Request, res: Response) {
           data: {
             url,
             mode: "single_urls",
-            crawlerOptions: crawlerOptions,
+            crawlerOptions,
+            scrapeOptions,
+            internalOptions,
             team_id,
             plan,
-            pageOptions: pageOptions,
             origin: req.body.origin ?? defaultOrigin,
             crawl_id: id,
             sitemapped: true,
@@ -208,10 +216,11 @@ export async function crawlController(req: Request, res: Response) {
         {
           url,
           mode: "single_urls",
-          crawlerOptions: crawlerOptions,
+          crawlerOptions,
+          scrapeOptions,
+          internalOptions,
           team_id,
-          plan,
-          pageOptions: pageOptions,
+          plan: plan!,
           origin: req.body.origin ?? defaultOrigin,
           crawl_id: id,
         },
@@ -226,7 +235,9 @@ export async function crawlController(req: Request, res: Response) {
     res.json({ jobId: id });
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(error);
-    return res.status(500).json({ error: error.message });
+    logger.error(error);
+    return res.status(500).json({ error: error instanceof ZodError
+      ? "Invalid URL"
+      : error.message });
   }
 }

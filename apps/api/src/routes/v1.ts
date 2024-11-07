@@ -14,7 +14,7 @@ import expressWs from "express-ws";
 import { crawlStatusWSController } from "../controllers/v1/crawl-status-ws";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { crawlCancelController } from "../controllers/v1/crawl-cancel";
-import { Logger } from "../lib/logger";
+import { logger } from "../lib/logger";
 import { scrapeStatusController } from "../controllers/v1/scrape-status";
 import { concurrencyCheckController } from "../controllers/v1/concurrency-check";
 import { batchScrapeController } from "../controllers/v1/batch-scrape";
@@ -32,10 +32,12 @@ function checkCreditsMiddleware(minimum?: number): (req: RequestWithAuth, res: R
             if (!minimum && req.body) {
                 minimum = (req.body as any)?.limit ?? (req.body as any)?.urls?.length ?? 1;
             }
-            const { success, remainingCredits, chunk } = await checkTeamCredits(req.acuc, req.auth.team_id, minimum);
-            req.acuc = chunk;
+            const { success, remainingCredits, chunk } = await checkTeamCredits(req.acuc, req.auth.team_id, minimum ?? 1);
+            if (chunk) {
+                req.acuc = chunk;
+            }
             if (!success) {
-                Logger.error(`Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`);
+                logger.error(`Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`);
                 if (!res.headersSent) {
                     return res.status(402).json({ success: false, error: "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing or try changing the request limit to a lower value." });
                 }
@@ -50,20 +52,27 @@ function checkCreditsMiddleware(minimum?: number): (req: RequestWithAuth, res: R
 export function authMiddleware(rateLimiterMode: RateLimiterMode): (req: RequestWithMaybeAuth, res: Response, next: NextFunction) => void {
     return (req, res, next) => {
         (async () => {
-            const { success, team_id, error, status, plan, chunk } = await authenticateUser(
+            const auth = await authenticateUser(
                 req,
                 res,
                 rateLimiterMode,
             );
 
-            if (!success) {
+            if (!auth.success) {
                 if (!res.headersSent) {
-                    return res.status(status).json({ success: false, error });
+                    return res.status(auth.status).json({ success: false, error: auth.error });
+                } else {
+                    return;
                 }
             }
 
+            const { team_id, plan, chunk } = auth;
+
             req.auth = { team_id, plan };
-            req.acuc = chunk;
+            req.acuc = chunk ?? undefined;
+            if (chunk) {
+                req.account = { remainingCredits: chunk.remaining_credits };
+            }
             next();
         })()
             .catch(err => next(err));

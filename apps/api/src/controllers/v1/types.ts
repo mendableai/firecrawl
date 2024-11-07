@@ -1,10 +1,11 @@
 import { Request, Response } from "express";
 import { z } from "zod";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
-import { Action, ExtractorOptions, PageOptions } from "../../lib/entities";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { PlanType } from "../../types";
 import { countries } from "../../lib/validate-country";
+import { ExtractorOptions, PageOptions, ScrapeActionContent, Document as V0Document } from "../../lib/entities";
+import { InternalOptions } from "../../scraper/scrapeURL";
 
 export type Format =
   | "markdown"
@@ -167,6 +168,7 @@ export const scrapeRequestSchema = scrapeOptions.extend({
 });
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
+export type ScrapeRequestInput = z.input<typeof scrapeRequestSchema>;
 
 export const batchScrapeRequestSchema = scrapeOptions.extend({
   urls: url.array(),
@@ -240,7 +242,7 @@ export const mapRequestSchema = crawlerOptions.extend({
   includeSubdomains: z.boolean().default(true),
   search: z.string().optional(),
   ignoreSitemap: z.boolean().default(false),
-  limit: z.number().min(1).max(5000).default(5000).optional(),
+  limit: z.number().min(1).max(5000).default(5000),
 }).strict(strictMessage);
 
 // export type MapRequest = {
@@ -252,13 +254,14 @@ export type MapRequest = z.infer<typeof mapRequestSchema>;
 
 export type Document = {
   markdown?: string;
-  extract?: string;
+  extract?: any;
   html?: string;
   rawHtml?: string;
   links?: string[];
   screenshot?: string;
   actions?: {
-    screenshots: string[];
+    screenshots?: string[];
+    scrapes?: ScrapeActionContent[];
   };
   warning?: string;
   metadata: {
@@ -291,11 +294,11 @@ export type Document = {
     publishedTime?: string;
     articleTag?: string;
     articleSection?: string;
+    url?: string;
     sourceURL?: string;
     statusCode?: number;
     error?: string;
     [key: string]: string | string[] | number | undefined;
-
   };
 };
 
@@ -366,7 +369,7 @@ export type CrawlStatusResponse =
 
 type AuthObject = {
   team_id: string;
-  plan: PlanType;
+  plan: PlanType | undefined;
 };
 
 type Account = {
@@ -439,7 +442,7 @@ export interface ResponseWithSentry<
   sentry?: string,
 }
 
-export function legacyCrawlerOptions(x: CrawlerOptions) {
+export function toLegacyCrawlerOptions(x: CrawlerOptions) {
   return {
     includes: x.includePaths,
     excludes: x.excludePaths,
@@ -453,68 +456,90 @@ export function legacyCrawlerOptions(x: CrawlerOptions) {
   };
 }
 
-export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
+export function fromLegacyCrawlerOptions(x: any): { crawlOptions: CrawlerOptions; internalOptions: InternalOptions } {
   return {
-    includeMarkdown: x.formats.includes("markdown"),
-    includeHtml: x.formats.includes("html"),
-    includeRawHtml: x.formats.includes("rawHtml"),
-    includeExtract: x.formats.includes("extract"),
-    onlyIncludeTags: x.includeTags,
-    removeTags: x.excludeTags,
-    onlyMainContent: x.onlyMainContent,
-    waitFor: x.waitFor,
-    headers: x.headers,
-    includeLinks: x.formats.includes("links"),
-    screenshot: x.formats.includes("screenshot"),
-    fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
-    parsePDF: x.parsePDF,
-    actions: x.actions as Action[], // no strict null checking grrrr - mogery
-    geolocation: x.location ?? x.geolocation,
-    skipTlsVerification: x.skipTlsVerification,
-    removeBase64Images: x.removeBase64Images,
-    mobile: x.mobile,
+    crawlOptions: crawlerOptions.parse({
+      includePaths: x.includes,
+      excludePaths: x.excludes,
+      limit: x.maxCrawledLinks ?? x.limit,
+      maxDepth: x.maxDepth,
+      allowBackwardLinks: x.allowBackwardCrawling,
+      allowExternalLinks: x.allowExternalContentLinks,
+      ignoreSitemap: x.ignoreSitemap,
+      // TODO: returnOnlyUrls support
+    }),
+    internalOptions: {
+      v0CrawlOnlyUrls: x.returnOnlyUrls,
+    },
   };
 }
 
-export function legacyExtractorOptions(x: ExtractOptions): ExtractorOptions {
+export function fromLegacyScrapeOptions(pageOptions: PageOptions, extractorOptions: ExtractorOptions | undefined, timeout: number | undefined): { scrapeOptions: ScrapeOptions, internalOptions: InternalOptions } {
   return {
-    mode: x.mode ? "llm-extraction" : "markdown",
-    extractionPrompt: x.prompt ?? "Based on the information on the page, extract the information from the schema.",
-    extractionSchema: x.schema,
-    userPrompt: x.prompt ?? "",
-  };
+    scrapeOptions: scrapeOptions.parse({
+      formats: [
+        (pageOptions.includeMarkdown ?? true) ? "markdown" as const : null,
+        (pageOptions.includeHtml ?? false) ? "html" as const : null,
+        (pageOptions.includeRawHtml ?? false) ? "rawHtml" as const : null,
+        (pageOptions.screenshot ?? false) ? "screenshot" as const : null,
+        (pageOptions.fullPageScreenshot ?? false) ? "screenshot@fullPage" as const : null,
+        (extractorOptions !== undefined && extractorOptions.mode.includes("llm-extraction")) ? "extract" as const : null,
+        "links"
+      ].filter(x => x !== null),
+      waitFor: pageOptions.waitFor,
+      headers: pageOptions.headers,
+      includeTags: (typeof pageOptions.onlyIncludeTags === "string" ? [pageOptions.onlyIncludeTags] : pageOptions.onlyIncludeTags),
+      excludeTags: (typeof pageOptions.removeTags === "string" ? [pageOptions.removeTags] : pageOptions.removeTags),
+      onlyMainContent: pageOptions.onlyMainContent ?? false,
+      timeout: timeout,
+      parsePDF: pageOptions.parsePDF,
+      actions: pageOptions.actions,
+      location: pageOptions.geolocation,
+      skipTlsVerification: pageOptions.skipTlsVerification,
+      removeBase64Images: pageOptions.removeBase64Images,
+      extract: extractorOptions !== undefined && extractorOptions.mode.includes("llm-extraction") ? {
+        systemPrompt: extractorOptions.extractionPrompt,
+        prompt: extractorOptions.userPrompt,
+        schema: extractorOptions.extractionSchema,
+      } : undefined,
+      mobile: pageOptions.mobile,
+    }),
+    internalOptions: {
+      atsv: pageOptions.atsv,
+      v0DisableJsDom: pageOptions.disableJsDom,
+      v0UseFastMode: pageOptions.useFastMode,
+    },
+    // TODO: fallback, fetchPageContent, replaceAllPathsWithAbsolutePaths, includeLinks
+  }
 }
 
-export function legacyDocumentConverter(doc: any): Document {
-  if (doc === null || doc === undefined) return null;
+export function fromLegacyCombo(pageOptions: PageOptions, extractorOptions: ExtractorOptions | undefined, timeout: number | undefined, crawlerOptions: any): { scrapeOptions: ScrapeOptions, internalOptions: InternalOptions} {
+  const { scrapeOptions, internalOptions: i1 } = fromLegacyScrapeOptions(pageOptions, extractorOptions, timeout);
+  const { internalOptions: i2 } = fromLegacyCrawlerOptions(crawlerOptions);
+  return { scrapeOptions, internalOptions: Object.assign(i1, i2) };
+}
 
-  if (doc.metadata) {
-    if (doc.metadata.screenshot) {
-      doc.screenshot = doc.metadata.screenshot;
-      delete doc.metadata.screenshot;
-    }
-
-    if (doc.metadata.fullPageScreenshot) {
-      doc.fullPageScreenshot = doc.metadata.fullPageScreenshot;
-      delete doc.metadata.fullPageScreenshot;
-    }
+export function toLegacyDocument(document: Document, internalOptions: InternalOptions): V0Document | { url: string; } {
+  if (internalOptions.v0CrawlOnlyUrls) {
+    return { url: document.metadata.sourceURL! };
   }
 
   return {
-    markdown: doc.markdown,
-    links: doc.linksOnPage,
-    rawHtml: doc.rawHtml,
-    html: doc.html,
-    extract: doc.llm_extraction,
-    screenshot: doc.screenshot ?? doc.fullPageScreenshot,
-    actions: doc.actions ?? undefined,
-    warning: doc.warning ?? undefined,
+    content: document.markdown!,
+    markdown: document.markdown!,
+    html: document.html,
+    rawHtml: document.rawHtml,
+    linksOnPage: document.links,
+    llm_extraction: document.extract,
     metadata: {
-      ...doc.metadata,
-      pageError: undefined,
-      pageStatusCode: undefined,
-      error: doc.metadata?.pageError,
-      statusCode: doc.metadata?.pageStatusCode,
+      ...document.metadata,
+      error: undefined,
+      statusCode: undefined,
+      pageError: document.metadata.error,
+      pageStatusCode: document.metadata.statusCode,
+      screenshot: document.screenshot,
     },
-  };
+    actions: document.actions ,
+    warning: document.warning,
+  }
 }

@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import Redis from "ioredis";
-import { Logger } from "../../../lib/logger";
+import { logger } from "../../../lib/logger";
 import { redisRateLimitClient } from "../../../services/rate-limiter";
 
 export async function redisHealthController(req: Request, res: Response) {
@@ -10,14 +10,14 @@ export async function redisHealthController(req: Request, res: Response) {
         return await operation();
       } catch (error) {
         if (attempt === retries) throw error;
-        Logger.warn(`Attempt ${attempt} failed: ${error.message}. Retrying...`);
+        logger.warn(`Attempt ${attempt} failed: ${error.message}. Retrying...`);
         await new Promise((resolve) => setTimeout(resolve, 2000)); // Wait 2 seconds before retrying
       }
     }
   };
 
   try {
-    const queueRedis = new Redis(process.env.REDIS_URL);
+    const queueRedis = new Redis(process.env.REDIS_URL!);
 
     const testKey = "test";
     const testValue = "test";
@@ -29,7 +29,7 @@ export async function redisHealthController(req: Request, res: Response) {
       queueRedisHealth = await retryOperation(() => queueRedis.get(testKey));
       await retryOperation(() => queueRedis.del(testKey));
     } catch (error) {
-      Logger.error(`queueRedis health check failed: ${error}`);
+      logger.error(`queueRedis health check failed: ${error}`);
       queueRedisHealth = null;
     }
 
@@ -42,7 +42,7 @@ export async function redisHealthController(req: Request, res: Response) {
       );
       await retryOperation(() => redisRateLimitClient.del(testKey));
     } catch (error) {
-      Logger.error(`redisRateLimitClient health check failed: ${error}`);
+      logger.error(`redisRateLimitClient health check failed: ${error}`);
       redisRateLimitHealth = null;
     }
 
@@ -56,10 +56,10 @@ export async function redisHealthController(req: Request, res: Response) {
       healthStatus.queueRedis === "healthy" &&
       healthStatus.redisRateLimitClient === "healthy"
     ) {
-      Logger.info("Both Redis instances are healthy");
+      logger.info("Both Redis instances are healthy");
       return res.status(200).json({ status: "healthy", details: healthStatus });
     } else {
-      Logger.info(
+      logger.info(
         `Redis instances health check: ${JSON.stringify(healthStatus)}`
       );
       // await sendSlackWebhook(
@@ -73,7 +73,7 @@ export async function redisHealthController(req: Request, res: Response) {
         .json({ status: "unhealthy", details: healthStatus });
     }
   } catch (error) {
-    Logger.error(`Redis health check failed: ${error}`);
+    logger.error(`Redis health check failed: ${error}`);
     // await sendSlackWebhook(
     //   `[REDIS DOWN] Redis instances health check: ${error.message}`,
     //   true

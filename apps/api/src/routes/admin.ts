@@ -6,8 +6,8 @@ import {
   cleanBefore24hCompleteJobsController,
   queuesController,
 } from "../controllers/v0/admin/queue";
-import { acucCacheClearController } from "../controllers/v0/admin/acuc-cache-clear";
 import { wrap } from "./v1";
+import { acucCacheClearController } from "../controllers/v0/admin/acuc-cache-clear";
 
 export const adminRouter = express.Router();
 

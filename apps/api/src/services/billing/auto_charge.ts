@@ -1,6 +1,6 @@
 // Import necessary dependencies and types
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
-import { getACUC, setCachedACUC } from "../../controllers/auth";
+import { getACUC } from "../../controllers/auth";
 import { redlock } from "../redlock";
 import { supabase_service } from "../supabase";
 import { createPaymentIntent } from "./stripe";
@@ -9,7 +9,7 @@ import { sendNotification } from "../notification/email_notification";
 import { NotificationType } from "../../types";
 import { deleteKey, getValue, setValue } from "../redis";
 import { sendSlackWebhook } from "../alerts/slack";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 
 // Define the number of credits to be added during auto-recharge
 const AUTO_RECHARGE_CREDITS = 1000;
@@ -32,7 +32,7 @@ export async function autoCharge(
     // Another check to prevent race conditions, double charging - cool down of 5 minutes
     const cooldownValue = await getValue(cooldownKey);
     if (cooldownValue) {
-      Logger.info(`Auto-recharge for team ${chunk.team_id} is in cooldown period`);
+      logger.info(`Auto-recharge for team ${chunk.team_id} is in cooldown period`);
       return {
         success: false,
         message: "Auto-recharge is in cooldown period",
@@ -59,7 +59,7 @@ export async function autoCharge(
               .single();
           
           if (customersError) {
-            Logger.error(`Error fetching customer data: ${customersError}`);
+            logger.error(`Error fetching customer data: ${customersError}`);
             return {
               success: false,
               message: "Error fetching customer data",
@@ -124,7 +124,7 @@ export async function autoCharge(
                   false,
                   process.env.SLACK_ADMIN_WEBHOOK_URL
                 ).catch((error) => {
-                  Logger.debug(`Error sending slack notification: ${error}`);
+                  logger.debug(`Error sending slack notification: ${error}`);
                 });
                 
                 // Set cooldown for 1 hour
@@ -138,7 +138,7 @@ export async function autoCharge(
               chunk: {...chunk, remaining_credits: chunk.remaining_credits + AUTO_RECHARGE_CREDITS},
             };
           } else {
-            Logger.error("No Stripe customer ID found for user");
+            logger.error("No Stripe customer ID found for user");
             return {
               success: false,
               message: "No Stripe customer ID found for user",
@@ -147,7 +147,7 @@ export async function autoCharge(
             };
           }
         } else {
-            Logger.error("No sub_user_id found in chunk");
+          logger.error("No sub_user_id found in chunk");
           return {
             success: false,
             message: "No sub_user_id found in chunk",
@@ -165,7 +165,7 @@ export async function autoCharge(
 
     });
   } catch (error) {
-    Logger.error(`Failed to acquire lock for auto-recharge: ${error}`);
+    logger.error(`Failed to acquire lock for auto-recharge: ${error}`);
     return {
       success: false,
       message: "Failed to acquire lock for auto-recharge",

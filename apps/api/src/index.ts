@@ -6,28 +6,24 @@ import bodyParser from "body-parser";
 import cors from "cors";
 import { getScrapeQueue } from "./services/queue-service";
 import { v0Router } from "./routes/v0";
-import { initSDK } from "@hyperdx/node-opentelemetry";
 import os from "os";
-import { Logger } from "./lib/logger";
+import { logger } from "./lib/logger";
 import { adminRouter } from "./routes/admin";
-import { ScrapeEvents } from "./lib/scrape-events";
 import http from 'node:http';
 import https from 'node:https';
 import CacheableLookup  from 'cacheable-lookup';
 import { v1Router } from "./routes/v1";
 import expressWs from "express-ws";
-import { crawlStatusWSController } from "./controllers/v1/crawl-status-ws";
 import { ErrorResponse, ResponseWithSentry } from "./controllers/v1/types";
 import { ZodError } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import dns from 'node:dns';
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
 const { ExpressAdapter } = require("@bull-board/express");
 
 const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
-Logger.info(`Number of CPUs: ${numCPUs} available`);
+logger.info(`Number of CPUs: ${numCPUs} available`);
 
 const cacheable = new CacheableLookup()
 
@@ -55,7 +51,6 @@ const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
   serverAdapter: serverAdapter,
 });
 
-
 app.use(
   `/admin/${process.env.BULL_AUTH_KEY}/queues`,
   serverAdapter.getRouter()
@@ -78,15 +73,10 @@ app.use(adminRouter);
 const DEFAULT_PORT = process.env.PORT ?? 3002;
 const HOST = process.env.HOST ?? "localhost";
 
-// HyperDX OpenTelemetry
-if (process.env.ENV === "production") {
-  initSDK({ consoleCapture: true, additionalInstrumentations: [] });
-}
-
 function startServer(port = DEFAULT_PORT) {
   const server = app.listen(Number(port), HOST, () => {
-    Logger.info(`Worker ${process.pid} listening on port ${port}`);
-    Logger.info(
+    logger.info(`Worker ${process.pid} listening on port ${port}`);
+    logger.info(
       `For the Queue UI, open: http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`
     );
   });
@@ -103,7 +93,6 @@ app.get(`/serverHealthCheck`, async (req, res) => {
     const [waitingJobs] = await Promise.all([
       scrapeQueue.getWaitingCount(),
     ]);
-
     const noWaitingJobs = waitingJobs === 0;
     // 200 if no active jobs, 503 if there are active jobs
     return res.status(noWaitingJobs ? 200 : 500).json({
@@ -111,7 +100,7 @@ app.get(`/serverHealthCheck`, async (req, res) => {
     });
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 });
@@ -140,7 +129,7 @@ app.get("/serverHealthCheck/notify", async (req, res) => {
             // Re-check the waiting jobs count after the timeout
             waitingJobsCount = await getWaitingJobsCount();
             if (waitingJobsCount >= treshold) {
-              const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL;
+              const slackWebhookUrl = process.env.SLACK_WEBHOOK_URL!;
               const message = {
                 text: `⚠️ Warning: The number of active jobs (${waitingJobsCount}) has exceeded the threshold (${treshold}) for more than ${
                   timeout / 60000
@@ -156,14 +145,14 @@ app.get("/serverHealthCheck/notify", async (req, res) => {
               });
 
               if (!response.ok) {
-                Logger.error("Failed to send Slack notification");
+                logger.error("Failed to send Slack notification");
               }
             }
           }, timeout);
         }
       } catch (error) {
         Sentry.captureException(error);
-        Logger.debug(error);
+        logger.debug(error);
       }
     };
 
@@ -178,7 +167,7 @@ app.get("/is-production", (req, res) => {
 app.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: Response<ErrorResponse>, next: NextFunction) => {
   if (err instanceof ZodError) {
       if (Array.isArray(err.errors) && err.errors.find(x => x.message === "URL uses unsupported protocol")) {
-        Logger.warn("Unsupported protocol error: " + JSON.stringify(req.body));
+        logger.warn("Unsupported protocol error: " + JSON.stringify(req.body));
       }
 
       res.status(400).json({ success: false, error: "Bad Request", details: err.errors });
@@ -206,11 +195,11 @@ app.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: Response
     }
   }
 
-  Logger.error("Error occurred in request! (" + req.path + ") -- ID " + id  + " -- " + verbose);
+  logger.error("Error occurred in request! (" + req.path + ") -- ID " + id  + " -- " + verbose);
   res.status(500).json({ success: false, error: "An unexpected error occurred. Please contact hello@firecrawl.com for help. Your exception ID is " + id });
 });
 
-Logger.info(`Worker ${process.pid} started`);
+logger.info(`Worker ${process.pid} started`);
 
 // const sq = getScrapeQueue();
 

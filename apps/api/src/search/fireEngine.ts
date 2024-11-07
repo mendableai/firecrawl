@@ -2,7 +2,7 @@ import axios from "axios";
 import dotenv from "dotenv";
 import { SearchResult } from "../../src/lib/entities";
 import * as Sentry from "@sentry/node";
-import { Logger } from "../lib/logger";
+import { logger } from "../lib/logger";
 
 dotenv.config();
 
@@ -53,7 +53,7 @@ export async function fireEngineMap(
       return [];
     }
   } catch (error) {
-    Logger.error(error);
+    logger.error(error);
     Sentry.captureException(error);
     return [];
   }
