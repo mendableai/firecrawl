@@ -24,8 +24,7 @@ export type FireEngineScrapeRequestCommon = {
     // team_id?: string; // unused
     logRequest?: boolean; // default: true
     instantReturn?: boolean; // default: false
-
-    removeBase64Images?: boolean;
+    geolocation?: { country?: string; languages?: string[]; };
 }
 
 export type FireEngineScrapeRequestChromeCDP = {
@@ -33,7 +32,6 @@ export type FireEngineScrapeRequestChromeCDP = {
     skipTlsVerification?: boolean;
     actions?: Action[];
     blockMedia?: true; // cannot be false
-    geolocation?: { country?: string; languages?: string[]; };
     mobile?: boolean;
 };
 
@@ -51,7 +49,6 @@ export type FireEngineScrapeRequestPlaywright = {
 export type FireEngineScrapeRequestTLSClient = {
     engine: "tlsclient";
     atsv?: boolean; // v0 only, default: false
-    geolocation?: { country?: string; languages?: string[]; };
     disableJsDom?: boolean; // v0 only, default: false
     // blockAds?: boolean; // default: true
 };

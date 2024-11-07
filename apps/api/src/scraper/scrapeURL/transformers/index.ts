@@ -6,6 +6,7 @@ import { extractLinks } from "../lib/extractLinks";
 import { extractMetadata } from "../lib/extractMetadata";
 import { performLLMExtract } from "./llmExtract";
 import { uploadScreenshot } from "./uploadScreenshot";
+import { removeBase64Images } from "./removeBase64Images";
 
 export type Transformer = (meta: Meta, document: Document) => Document | Promise<Document>;
 
@@ -110,6 +111,7 @@ export const transformerStack: Transformer[] = [
     uploadScreenshot,
     performLLMExtract,
     coerceFieldsToFormats,
+    removeBase64Images, 
 ];
 
 export async function executeTransformers(meta: Meta, document: Document): Promise<Document> {
