@@ -25,6 +25,11 @@ function normalizeSchema(x: any): any {
             properties: Object.fromEntries(Object.entries(x.properties).map(([k, v]) => [k, normalizeSchema(v)])),
             additionalProperties: false,
         }
+    } else if (x && x.type === "array") {
+        return {
+            ...x,
+            items: normalizeSchema(x.items),
+        }
     } else {
         return x;
     }
