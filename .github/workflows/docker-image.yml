@@ -1,0 +1,34 @@
+name: Deploy Images to GHCR
+
+env:
+  DOTNET_VERSION: '6.0.x'
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+      push-app-image:
+        runs-on: ubuntu-latest
+        defaults:
+          run:
+            working-directory: './apps/api'
+        steps:
+          - name: Log in to Alibaba Cloud ACR'
+              run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_REGISTRY }} --username ${{ secrets.ACR_USERNAME }} --password-stdin
+
+          - name: 'Set up Docker Buildx'
+            uses: docker/setup-buildx-action@v1
+
+          # 可选：如果您想要构建并推送针对不同平台的镜像，可以添加如下步骤
+          - name: 'Build and Push Image for Multiple Platforms'
+            run: |
+              docker buildx build --platform linux/amd64,linux/arm64 -t zhiyan/firecrawl:latest . --push
+
+            
+          # - name: 'Build Inventory Image'
+          #   run: |
+          #     docker build . --tag zhiyan/firecrawl:latest
+          #     docker push zhiyan/firecrawl:latest
