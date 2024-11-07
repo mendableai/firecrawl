@@ -16,6 +16,9 @@ jobs:
           run:
             working-directory: './apps/api'
         steps:
+          - name: 'Check out the repository'
+            uses: actions/checkout@v2  # 这一步是确保您的仓库代码被检出到运行器上
+
           - name: 'Log in to Alibaba Cloud ACR'
             run: echo "${{ secrets.ACR_PASSWORD }}" | docker login ${{ secrets.ACR_REGISTRY }} --username ${{ secrets.ACR_USERNAME }} --password-stdin
 
