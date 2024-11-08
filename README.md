@@ -15,7 +15,7 @@ Crawl and convert any website into LLM-ready markdown.
 
 Firecrawl Simple is a stripped down and stable version of firecrawl optimized for self-hosting and ease of contribution. Billing logic and AI features are completely removed.
 
-`playwright` is replaced with `puppeteer-cluster` and `puppeteer-extra`'s stealth plugins such that `fire-engine` and `scrapingbee` are not required for guarded pages. Further, a [2captcha](https://2captcha.com/) token and proxy credentials may be included as ENV's for maximum stealthiness. In the near-term future, the goal is to switch over to [hero](https://github.com/ulixee/hero) since puppeteer-extra is no longer maintained
+`playwright` is replaced with [hero](https://github.com/ulixee/hero)s such that `fire-engine` and `scrapingbee` are not required for guarded pages.
 
 Only the v1 `/scrape`, `/crawl/{id}`, and `/crawl` routes are supprted in firecrawl simple, see the [openapi spec here](/apps/api/v1-openapi.json). Also, `creditsUsed` has been removed from the API response on the `/crawl/{id}` route.
 

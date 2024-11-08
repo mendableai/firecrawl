@@ -1,14 +1,27 @@
 {
   "compilerOptions": {
     "target": "es2022",
-    "module": "NodeNext",
-    "rootDir": "./",
+    "module": "CommonJS",
+    "moduleResolution": "node",
     "outDir": "./dist",
+    "rootDir": "./",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strict": true,
-    "moduleResolution": "NodeNext"
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "allowJs": true,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": {
+      "@ulixee/*": ["node_modules/@ulixee/*"]
+    }
   },
-  "include": ["**/*"],
-  "exclude": ["node_modules", "**/*.spec.ts"]
+  "include": [
+    "**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }
