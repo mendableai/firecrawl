@@ -97,7 +97,9 @@ function buildMetaObject(id: string, url: string, options: ScrapeOptions, intern
 
     const _logger = logger.child({ module: "ScrapeURL", scrapeId: id });
     const logs: any[] = [];
-    _logger.add(new ArrayTransport({ array: logs, scrapeId: id }));
+    if (process.env.ENV !== "test") {
+        _logger.add(new ArrayTransport({ array: logs, scrapeId: id }));
+    }
 
     return {
         id, url, options, internalOptions,
