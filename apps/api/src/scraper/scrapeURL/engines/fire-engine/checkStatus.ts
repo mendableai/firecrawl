@@ -38,7 +38,7 @@ export type FireEngineCheckStatusSuccess = z.infer<typeof successSchema>;
 
 const processingSchema = z.object({
     jobId: z.string(),
-    state: z.enum(["delayed", "active", "waiting", "waiting-children", "unknown"]),
+    state: z.enum(["delayed", "active", "waiting", "waiting-children", "unknown", "prioritized"]),
     processing: z.boolean(),
 });
 
