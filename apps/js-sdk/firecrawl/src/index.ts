@@ -86,6 +86,9 @@ export interface CrawlScrapeOptions {
     country?: string;
     languages?: string[];
   };
+  skipTlsVerification?: boolean;
+  removeBase64Images?: boolean;
+  deduplicateSimilarURLs?: boolean;
 }
 
 export type Action = {

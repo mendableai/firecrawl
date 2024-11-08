@@ -90,6 +90,13 @@ export async function getThrottledJobs(teamId: string): Promise<string[]> {
     return await redisConnection.zrangebyscore("concurrency-limiter:" + teamId + ":throttled", Date.now(), Infinity);
 }
 
+export function normalizeURL(url: string): string {
+    const urlO = new URL(url);
+    urlO.search = "";
+    urlO.hash = "";
+    return urlO.href;
+}
+
 export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise<boolean> {
     if (typeof sc.crawlerOptions?.limit === "number") {
         if (await redisConnection.scard("crawl:" + id + ":visited") >= sc.crawlerOptions.limit) {
@@ -97,16 +104,42 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
         }
     }
 
-    try {
+    url = normalizeURL(url);
+
+    let res: boolean;
+    if (!sc.scrapeOptions.deduplicateSimilarURLs) {
+        res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0
+    } else {
         const urlO = new URL(url);
-        urlO.search = "";
-        urlO.hash = "";
-        url = urlO.href;
-    } catch (error) {
-        logger.warn("Failed to normalize URL " + JSON.stringify(url) + ": " + error);
+
+        // Construct two versions, one with www., one without
+        const urlWithWWW = new URL(urlO);
+        const urlWithoutWWW = new URL(urlO);
+        if (urlO.hostname.startsWith("www.")) {
+            urlWithoutWWW.hostname = urlWithWWW.hostname.slice(4);
+        } else {
+            urlWithWWW.hostname = "www." + urlWithoutWWW.hostname;
+        }
+
+        let permutations = [urlWithWWW, urlWithoutWWW];
+
+        // Construct more versions for http/https
+        permutations = permutations.flatMap(urlO => {
+            if (!["http:", "https:"].includes(urlO.protocol)) {
+                return [urlO];
+            }
+
+            const urlWithHTTP = new URL(urlO);
+            const urlWithHTTPS = new URL(urlO);
+            urlWithHTTP.protocol = "http:";
+            urlWithHTTPS.protocol = "https:";
+
+            return [urlWithHTTP, urlWithHTTPS];
+        });
+
+        res = (await redisConnection.sadd("crawl:" + id + ":visited", ...permutations.map(x => x.href))) === permutations.length;
     }
 
-    const res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0
     await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
     return res;
 }
