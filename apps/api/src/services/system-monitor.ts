@@ -40,7 +40,7 @@ class SystemMonitor {
         return SystemMonitor.instance;
     }
 
-    private async checkMemoryUsage() {
+    public async checkMemoryUsage() {
         if (IS_KUBERNETES) {
             return this._checkMemoryUsageKubernetes();
         }
@@ -102,7 +102,7 @@ class SystemMonitor {
         return usedMemoryPercentage;
     }
 
-    private async checkCpuUsage() {
+    public async checkCpuUsage() {
         if (IS_KUBERNETES) {
             return this._checkCpuUsageKubernetes();
         }

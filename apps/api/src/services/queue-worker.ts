@@ -102,6 +102,8 @@ process.on("SIGTERM", () => {
   isShuttingDown = true;
 });
 
+let cantAcceptConnectionCount = 0;
+
 const workerFun = async (
   queue: Queue,
   processJobInternal: (token: string, job: Job) => Promise<any>
@@ -127,8 +129,19 @@ const workerFun = async (
     const canAcceptConnection = await monitor.acceptConnection();
     if (!canAcceptConnection) {
       console.log("Cant accept connection");
+      cantAcceptConnectionCount++;
+
+      if (cantAcceptConnectionCount >= 25) {
+        logger.error("WORKER STALLED", {
+          cpuUsage: await monitor.checkCpuUsage(),
+          memoryUsage: await monitor.checkMemoryUsage(),
+        });
+      }
+
       await sleep(cantAcceptConnectionInterval); // more sleep
       continue;
+    } else {
+      cantAcceptConnectionCount = 0;
     }
 
     const job = await worker.getNextJob(token);
