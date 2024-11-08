@@ -200,6 +200,7 @@ const crawlerOptions = z.object({
   allowExternalLinks: z.boolean().default(false),
   ignoreSitemap: z.boolean().default(true),
   deduplicateSimilarURLs: z.boolean().default(true),
+  ignoreQueryParameters: z.boolean().default(false),
 }).strict(strictMessage);
 
 // export type CrawlerOptions = {
