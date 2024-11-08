@@ -107,7 +107,7 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
     url = normalizeURL(url);
 
     let res: boolean;
-    if (!sc.scrapeOptions.deduplicateSimilarURLs) {
+    if (!sc.crawlerOptions.deduplicateSimilarURLs) {
         res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0
     } else {
         const urlO = new URL(url);

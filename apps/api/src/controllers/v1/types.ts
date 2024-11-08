@@ -143,7 +143,6 @@ export const scrapeOptions = z.object({
   }).optional(),
   skipTlsVerification: z.boolean().default(false),
   removeBase64Images: z.boolean().default(true),
-  deduplicateSimilarURLs: z.boolean().default(true),
 }).strict(strictMessage)
 
 
@@ -200,6 +199,7 @@ const crawlerOptions = z.object({
   allowBackwardLinks: z.boolean().default(false), // >> TODO: CHANGE THIS NAME???
   allowExternalLinks: z.boolean().default(false),
   ignoreSitemap: z.boolean().default(true),
+  deduplicateSimilarURLs: z.boolean().default(true),
 }).strict(strictMessage);
 
 // export type CrawlerOptions = {
