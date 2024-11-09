@@ -33,6 +33,9 @@ export type Action = {
   direction: "up" | "down"
 } | {
   type: "scrape",
+} | {
+  type: "executeJavascript",
+  script: string,
 }
 
 export type PageOptions = {

@@ -93,6 +93,10 @@ export const actionsSchema = z.array(z.union([
   z.object({
     type: z.literal("scrape"),
   }),
+  z.object({
+    type: z.literal("executeJavascript"),
+    script: z.string()
+  }),
 ]));
 
 export const scrapeOptions = z.object({
