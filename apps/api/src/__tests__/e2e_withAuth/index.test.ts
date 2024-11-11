@@ -538,7 +538,7 @@ describe("E2E Tests for v0 API Routes", () => {
         const urls = completedResponse.body.data.map(
           (item: any) => item.metadata?.sourceURL
         );
-        expect(urls.length).toBeGreaterThanOrEqual(1);
+        expect(urls.length).toBeGreaterThan(1);
 
         // Check if all URLs have a maximum depth of 1
         urls.forEach((url: string) => {
