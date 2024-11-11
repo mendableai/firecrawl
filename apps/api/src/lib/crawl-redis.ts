@@ -97,6 +97,37 @@ export function normalizeURL(url: string): string {
     return urlO.href;
 }
 
+export function generateURLPermutations(url: string | URL): URL[] {
+    const urlO = new URL(url);
+
+    // Construct two versions, one with www., one without
+    const urlWithWWW = new URL(urlO);
+    const urlWithoutWWW = new URL(urlO);
+    if (urlO.hostname.startsWith("www.")) {
+        urlWithoutWWW.hostname = urlWithWWW.hostname.slice(4);
+    } else {
+        urlWithWWW.hostname = "www." + urlWithoutWWW.hostname;
+    }
+
+    let permutations = [urlWithWWW, urlWithoutWWW];
+
+    // Construct more versions for http/https
+    permutations = permutations.flatMap(urlO => {
+        if (!["http:", "https:"].includes(urlO.protocol)) {
+            return [urlO];
+        }
+
+        const urlWithHTTP = new URL(urlO);
+        const urlWithHTTPS = new URL(urlO);
+        urlWithHTTP.protocol = "http:";
+        urlWithHTTPS.protocol = "https:";
+
+        return [urlWithHTTP, urlWithHTTPS];
+    });
+
+    return permutations;
+}
+
 export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise<boolean> {
     if (typeof sc.crawlerOptions?.limit === "number") {
         if (await redisConnection.scard("crawl:" + id + ":visited") >= sc.crawlerOptions.limit) {
@@ -110,33 +141,7 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
     if (!sc.crawlerOptions.deduplicateSimilarURLs) {
         res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0
     } else {
-        const urlO = new URL(url);
-
-        // Construct two versions, one with www., one without
-        const urlWithWWW = new URL(urlO);
-        const urlWithoutWWW = new URL(urlO);
-        if (urlO.hostname.startsWith("www.")) {
-            urlWithoutWWW.hostname = urlWithWWW.hostname.slice(4);
-        } else {
-            urlWithWWW.hostname = "www." + urlWithoutWWW.hostname;
-        }
-
-        let permutations = [urlWithWWW, urlWithoutWWW];
-
-        // Construct more versions for http/https
-        permutations = permutations.flatMap(urlO => {
-            if (!["http:", "https:"].includes(urlO.protocol)) {
-                return [urlO];
-            }
-
-            const urlWithHTTP = new URL(urlO);
-            const urlWithHTTPS = new URL(urlO);
-            urlWithHTTP.protocol = "http:";
-            urlWithHTTPS.protocol = "https:";
-
-            return [urlWithHTTP, urlWithHTTPS];
-        });
-
+        const permutations = generateURLPermutations(url);
         res = (await redisConnection.sadd("crawl:" + id + ":visited", ...permutations.map(x => x.href))) === permutations.length;
     }
 
