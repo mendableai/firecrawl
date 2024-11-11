@@ -320,7 +320,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     if (job.data.crawl_id) {
       const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
     
-      if (doc.metadata.url !== undefined && doc.metadata.sourceURL !== undefined && normalizeURL(doc.metadata.url) !== normalizeURL(doc.metadata.sourceURL)) {
+      if (doc.metadata.url !== undefined && doc.metadata.sourceURL !== undefined && normalizeURL(doc.metadata.url, sc) !== normalizeURL(doc.metadata.sourceURL, sc)) {
         logger.debug("Was redirected, locking new URL...");
         await lockURL(job.data.crawl_id, sc, doc.metadata.url);
       }

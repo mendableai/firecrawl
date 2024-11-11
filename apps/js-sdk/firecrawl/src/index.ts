@@ -155,6 +155,7 @@ export interface CrawlParams {
   scrapeOptions?: CrawlScrapeOptions;
   webhook?: string;
   deduplicateSimilarURLs?: boolean;
+  ignoreQueryParameters?: boolean;
 }
 
 /**

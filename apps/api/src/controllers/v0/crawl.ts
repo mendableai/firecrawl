@@ -195,6 +195,7 @@ export async function crawlController(req: Request, res: Response) {
 
       await lockURLs(
         id,
+        sc,
         jobs.map((x) => x.data.url)
       );
       await addCrawlJobs(

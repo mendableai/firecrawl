@@ -205,6 +205,7 @@ const crawlerOptions = z.object({
   allowExternalLinks: z.boolean().default(false),
   ignoreSitemap: z.boolean().default(true),
   deduplicateSimilarURLs: z.boolean().default(true),
+  ignoreQueryParameters: z.boolean().default(false),
 }).strict(strictMessage);
 
 // export type CrawlerOptions = {
@@ -460,6 +461,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     allowExternalContentLinks: x.allowExternalLinks,
     ignoreSitemap: x.ignoreSitemap,
     deduplicateSimilarURLs: x.deduplicateSimilarURLs,
+    ignoreQueryParameters: x.ignoreQueryParameters,
   };
 }
 
@@ -474,6 +476,7 @@ export function fromLegacyCrawlerOptions(x: any): { crawlOptions: CrawlerOptions
       allowExternalLinks: x.allowExternalContentLinks,
       ignoreSitemap: x.ignoreSitemap,
       deduplicateSimilarURLs: x.deduplicateSimilarURLs,
+      ignoreQueryParameters: x.ignoreQueryParameters,
     }),
     internalOptions: {
       v0CrawlOnlyUrls: x.returnOnlyUrls,
