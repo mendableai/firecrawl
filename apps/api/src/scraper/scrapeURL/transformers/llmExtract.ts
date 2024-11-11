@@ -144,6 +144,16 @@ async function generateOpenAICompletions(logger: Logger, document: Document, opt
     }
 
     document.extract = jsonCompletion.choices[0].message.parsed;
+
+    if (document.extract === null && jsonCompletion.choices[0].message.content !== null) {
+        try {
+            document.extract = JSON.parse(jsonCompletion.choices[0].message.content);
+        } catch (e) {
+            logger.error("Failed to parse returned JSON, no schema specified.", { error: e });
+            throw new LLMRefusalError("Failed to parse returned JSON. Please specify a schema in the extract object.");
+        }
+    }
+
     if (options.schema && options.schema.type === "array") {
         document.extract = document.extract?.items;
     }
