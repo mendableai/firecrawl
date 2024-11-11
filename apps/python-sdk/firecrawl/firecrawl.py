@@ -36,13 +36,15 @@ class FirecrawlApp:
           raise ValueError('No API key provided')
       logger.debug(f"Initialized FirecrawlApp with API key: {self.api_key}")
 
-    def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None,
+                    timeout: Optional[float] = None) -> Any:
         """
         Scrape the specified URL using the Firecrawl API.
 
         Args:
             url (str): The URL to scrape.
             params (Optional[Dict[str, Any]]): Additional parameters for the scrape request.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
 
         Returns:
             Any: The scraped data if the request is successful.
@@ -76,6 +78,7 @@ class FirecrawlApp:
             f'{self.api_url}{endpoint}',
             headers=headers,
             json=scrape_params,
+            timeout=timeout
         )
         if response.status_code == 200:
             response = response.json()
@@ -108,7 +111,9 @@ class FirecrawlApp:
     def crawl_url(self, url: str,
                   params: Optional[Dict[str, Any]] = None,
                   poll_interval: Optional[int] = 2,
-                  idempotency_key: Optional[str] = None) -> Any:
+                  idempotency_key: Optional[str] = None,
+                  timeout: Optional[float] = None
+                  ) -> Any:
         """
         Initiate a crawl job for the specified URL using the Firecrawl API.
 
@@ -117,6 +122,7 @@ class FirecrawlApp:
             params (Optional[Dict[str, Any]]): Additional parameters for the crawl request.
             poll_interval (Optional[int]): Time in seconds between status checks when waiting for job completion. Defaults to 2 seconds.
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
 
         Returns:
             Dict[str, Any]: A dictionary containing the crawl results. The structure includes:
@@ -136,7 +142,7 @@ class FirecrawlApp:
         json_data = {'url': url}
         if params:
             json_data.update(params)
-        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
+        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers, timeout=timeout)
         if response.status_code == 200:
             id = response.json().get('id')
             return self._monitor_job_status(id, headers, poll_interval)
@@ -145,7 +151,8 @@ class FirecrawlApp:
             self._handle_error(response, 'start crawl job')
 
 
-    def async_crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+    def async_crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None,
+                          timeout: Optional[float] = None) -> Dict[str, Any]:
         """
         Initiate a crawl job asynchronously.
 
@@ -153,6 +160,7 @@ class FirecrawlApp:
             url (str): The URL to crawl.
             params (Optional[Dict[str, Any]]): Additional parameters for the crawl request.
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
 
         Returns:
             Dict[str, Any]: A dictionary containing the crawl initiation response. The structure includes:
@@ -165,18 +173,19 @@ class FirecrawlApp:
         json_data = {'url': url}
         if params:
             json_data.update(params)
-        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
+        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers, timeout=timeout)
         if response.status_code == 200:
             return response.json()
         else:
             self._handle_error(response, 'start crawl job')
 
-    def check_crawl_status(self, id: str) -> Any:
+    def check_crawl_status(self, id: str, timeout: Optional[float] = None) -> Any:
         """
         Check the status of a crawl job using the Firecrawl API.
 
         Args:
             id (str): The ID of the crawl job.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
 
         Returns:
             Any: The status of the crawl job.
@@ -187,7 +196,7 @@ class FirecrawlApp:
         endpoint = f'/v1/crawl/{id}'
 
         headers = self._prepare_headers()
-        response = self._get_request(f'{self.api_url}{endpoint}', headers)
+        response = self._get_request(f'{self.api_url}{endpoint}', headers, timeout=timeout)
         if response.status_code == 200:
             data = response.json()
             return {
@@ -204,24 +213,27 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'check crawl status')
     
-    def cancel_crawl(self, id: str) -> Dict[str, Any]:
+    def cancel_crawl(self, id: str, timeout: Optional[float] = None) -> Dict[str, Any]:
         """
         Cancel an asynchronous crawl job using the Firecrawl API.
 
         Args:
             id (str): The ID of the crawl job to cancel.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
 
         Returns:
             Dict[str, Any]: The response from the cancel crawl request.
         """
         headers = self._prepare_headers()
-        response = self._delete_request(f'{self.api_url}/v1/crawl/{id}', headers)
+        response = self._delete_request(f'{self.api_url}/v1/crawl/{id}', headers, timeout=timeout)
         if response.status_code == 200:
             return response.json()
         else:
             self._handle_error(response, "cancel crawl job")
 
-    def crawl_url_and_watch(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> 'CrawlWatcher':
+    def crawl_url_and_watch(self, url: str, params: Optional[Dict[str, Any]] = None,
+                             idempotency_key: Optional[str] = None,
+                             timeout: Optional[float] = None) -> 'CrawlWatcher':
         """
         Initiate a crawl job and return a CrawlWatcher to monitor the job via WebSocket.
 
@@ -229,23 +241,25 @@ class FirecrawlApp:
             url (str): The URL to crawl.
             params (Optional[Dict[str, Any]]): Additional parameters for the crawl request.
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
 
         Returns:
             CrawlWatcher: An instance of CrawlWatcher to monitor the crawl job.
         """
-        crawl_response = self.async_crawl_url(url, params, idempotency_key)
+        crawl_response = self.async_crawl_url(url, params, idempotency_key, timeout=timeout)
         if crawl_response['success'] and 'id' in crawl_response:
             return CrawlWatcher(crawl_response['id'], self)
         else:
             raise Exception("Crawl job failed to start")
 
-    def map_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def map_url(self, url: str, params: Optional[Dict[str, Any]] = None, timeout: Optional[float] = None) -> Any:
         """
         Perform a map search using the Firecrawl API.
 
         Args:
             url (str): The URL to perform the map search on.
             params (Optional[Dict[str, Any]]): Additional parameters for the map search.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
 
         Returns:
             List[str]: A list of URLs discovered during the map search.
@@ -263,6 +277,7 @@ class FirecrawlApp:
             f'{self.api_url}{endpoint}',
             headers=headers,
             json=json_data,
+            timeout=timeout
         )
         if response.status_code == 200:
             response = response.json()
@@ -278,7 +293,9 @@ class FirecrawlApp:
     def batch_scrape_urls(self, urls: list[str],
                   params: Optional[Dict[str, Any]] = None,
                   poll_interval: Optional[int] = 2,
-                  idempotency_key: Optional[str] = None) -> Any:
+                  idempotency_key: Optional[str] = None,
+                  timeout: Optional[float] = None
+                  ) -> Any:
         """
         Initiate a batch scrape job for the specified URLs using the Firecrawl API.
 
@@ -287,6 +304,7 @@ class FirecrawlApp:
             params (Optional[Dict[str, Any]]): Additional parameters for the scraper.
             poll_interval (Optional[int]): Time in seconds between status checks when waiting for job completion. Defaults to 2 seconds.
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+            timeout: Optional[float] = None
 
         Returns:
             Dict[str, Any]: A dictionary containing the scrape results. The structure includes:
@@ -306,7 +324,7 @@ class FirecrawlApp:
         json_data = {'urls': urls}
         if params:
             json_data.update(params)
-        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
+        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers, timeout=timeout)
         if response.status_code == 200:
             id = response.json().get('id')
             return self._monitor_job_status(id, headers, poll_interval)
@@ -315,7 +333,9 @@ class FirecrawlApp:
             self._handle_error(response, 'start batch scrape job')
 
 
-    def async_batch_scrape_urls(self, urls: list[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+    def async_batch_scrape_urls(self, urls: list[str], params: Optional[Dict[str, Any]] = None,
+                                 idempotency_key: Optional[str] = None,
+                                 timeout: Optional[float] = None) -> Dict[str, Any]:
         """
         Initiate a crawl job asynchronously.
 
@@ -323,6 +343,8 @@ class FirecrawlApp:
             urls (list[str]): The URLs to scrape.
             params (Optional[Dict[str, Any]]): Additional parameters for the scraper.
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
+            
 
         Returns:
             Dict[str, Any]: A dictionary containing the batch scrape initiation response. The structure includes:
@@ -335,13 +357,15 @@ class FirecrawlApp:
         json_data = {'urls': urls}
         if params:
             json_data.update(params)
-        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
+        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers, timeout=timeout)
         if response.status_code == 200:
             return response.json()
         else:
             self._handle_error(response, 'start batch scrape job')
     
-    def batch_scrape_urls_and_watch(self, urls: list[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> 'CrawlWatcher':
+    def batch_scrape_urls_and_watch(self, urls: list[str], params: Optional[Dict[str, Any]] = None, 
+                                    idempotency_key: Optional[str] = None,
+                                    timeout: Optional[float] = None) -> 'CrawlWatcher':
         """
         Initiate a batch scrape job and return a CrawlWatcher to monitor the job via WebSocket.
 
@@ -349,22 +373,24 @@ class FirecrawlApp:
             urls (list[str]): The URLs to scrape.
             params (Optional[Dict[str, Any]]): Additional parameters for the scraper.
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
 
         Returns:
             CrawlWatcher: An instance of CrawlWatcher to monitor the batch scrape job.
         """
-        crawl_response = self.async_batch_scrape_urls(urls, params, idempotency_key)
+        crawl_response = self.async_batch_scrape_urls(urls, params, idempotency_key, timeout=timeout)
         if crawl_response['success'] and 'id' in crawl_response:
             return CrawlWatcher(crawl_response['id'], self)
         else:
             raise Exception("Batch scrape job failed to start")
     
-    def check_batch_scrape_status(self, id: str) -> Any:
+    def check_batch_scrape_status(self, id: str, timeout: Optional[float] = None) -> Any:
         """
         Check the status of a batch scrape job using the Firecrawl API.
 
         Args:
             id (str): The ID of the batch scrape job.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
 
         Returns:
             Any: The status of the batch scrape job.
@@ -375,7 +401,7 @@ class FirecrawlApp:
         endpoint = f'/v1/batch/scrape/{id}'
 
         headers = self._prepare_headers()
-        response = self._get_request(f'{self.api_url}{endpoint}', headers)
+        response = self._get_request(f'{self.api_url}{endpoint}', headers, timeout=timeout)
         if response.status_code == 200:
             data = response.json()
             return {
@@ -418,7 +444,9 @@ class FirecrawlApp:
                       data: Dict[str, Any],
                       headers: Dict[str, str],
                       retries: int = 3,
-                      backoff_factor: float = 0.5) -> requests.Response:
+                      backoff_factor: float = 0.5,
+                      timeout: Optional[float] = None
+                      ) -> requests.Response:
         """
         Make a POST request with retries.
 
@@ -428,6 +456,7 @@ class FirecrawlApp:
             headers (Dict[str, str]): The headers to include in the POST request.
             retries (int): Number of retries for the request.
             backoff_factor (float): Backoff factor for retries.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
 
         Returns:
             requests.Response: The response from the POST request.
@@ -436,7 +465,7 @@ class FirecrawlApp:
             requests.RequestException: If the request fails after the specified retries.
         """
         for attempt in range(retries):
-            response = requests.post(url, headers=headers, json=data)
+            response = requests.post(url, headers=headers, json=data, timeout=timeout)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2 ** attempt))
             else:
@@ -446,7 +475,8 @@ class FirecrawlApp:
     def _get_request(self, url: str,
                      headers: Dict[str, str],
                      retries: int = 3,
-                     backoff_factor: float = 0.5) -> requests.Response:
+                     backoff_factor: float = 0.5,
+                     timeout: Optional[float] = None) -> requests.Response:
         """
         Make a GET request with retries.
 
@@ -455,6 +485,7 @@ class FirecrawlApp:
             headers (Dict[str, str]): The headers to include in the GET request.
             retries (int): Number of retries for the request.
             backoff_factor (float): Backoff factor for retries.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
 
         Returns:
             requests.Response: The response from the GET request.
@@ -463,7 +494,7 @@ class FirecrawlApp:
             requests.RequestException: If the request fails after the specified retries.
         """
         for attempt in range(retries):
-            response = requests.get(url, headers=headers)
+            response = requests.get(url, headers=headers, timeout=timeout)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2 ** attempt))
             else:
@@ -473,7 +504,8 @@ class FirecrawlApp:
     def _delete_request(self, url: str,
                         headers: Dict[str, str],
                         retries: int = 3,
-                        backoff_factor: float = 0.5) -> requests.Response:
+                        backoff_factor: float = 0.5,
+                        timeout: Optional[float] = None) -> requests.Response:
         """
         Make a DELETE request with retries.
 
@@ -482,6 +514,7 @@ class FirecrawlApp:
             headers (Dict[str, str]): The headers to include in the DELETE request.
             retries (int): Number of retries for the request.
             backoff_factor (float): Backoff factor for retries.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
 
         Returns:
             requests.Response: The response from the DELETE request.
@@ -490,21 +523,24 @@ class FirecrawlApp:
             requests.RequestException: If the request fails after the specified retries.
         """
         for attempt in range(retries):
-            response = requests.delete(url, headers=headers)
+            response = requests.delete(url, headers=headers, timeout=timeout)
             if response.status_code == 502:
                 time.sleep(backoff_factor * (2 ** attempt))
             else:
                 return response
         return response
 
-    def _monitor_job_status(self, id: str, headers: Dict[str, str], poll_interval: int) -> Any:
+    def _monitor_job_status(self, id: str, headers: Dict[str, str],
+                             poll_interval: int,
+                             timeout: Optional[float] = None) -> Any:
         """
         Monitor the status of a crawl job until completion.
 
         Args:
             id (str): The ID of the crawl job.
             headers (Dict[str, str]): The headers to include in the status check requests.
-            poll_interval (int): Secounds between status checks.
+            poll_interval (int): Seconds between status checks.
+            timeout (Optional[float]): Timeout in seconds for the request. Defaults to None.
         Returns:
             Any: The crawl results if the job is completed successfully.
 
@@ -513,15 +549,14 @@ class FirecrawlApp:
         """
         while True:
             api_url = f'{self.api_url}/v1/crawl/{id}'
-
-            status_response = self._get_request(api_url, headers)
+            status_response = self._get_request(api_url, headers, timeout=timeout)
             if status_response.status_code == 200:
                 status_data = status_response.json()
                 if status_data['status'] == 'completed':
                     if 'data' in status_data:
                         data = status_data['data']
                         while 'next' in status_data:
-                          status_response = self._get_request(status_data['next'], headers)
+                          status_response = self._get_request(status_data['next'], headers, timeout=timeout)
                           status_data = status_response.json()
                           data.extend(status_data['data'])
                         status_data['data'] = data
