@@ -189,17 +189,38 @@ class FirecrawlApp:
         headers = self._prepare_headers()
         response = self._get_request(f'{self.api_url}{endpoint}', headers)
         if response.status_code == 200:
-            data = response.json()
+            status_data = response.json()
+            if status_data['status'] == 'completed':
+                if 'data' in status_data:
+                    data = status_data['data']
+                    while 'next' in status_data:
+                        next_url = status_data.get('next')
+                        if not next_url:
+                            logger.warning("Expected 'next' URL is missing.")
+                            break
+                        try:
+                            status_response = self._get_request(next_url, headers)
+                            if status_response.status_code != 200:
+                                logger.error(f"Failed to fetch next page: {status_response.status_code}")
+                                break
+                            status_data = status_response.json()
+                            data.extend(status_data.get('data', []))
+                        except Exception as e:
+                            logger.error(f"Error during pagination request: {e}")
+                            break
+                        status_data.pop('next', None)
+                    status_data['data'] = data
+                    
             return {
                 'success': True,
-                'status': data.get('status'),
-                'total': data.get('total'),
-                'completed': data.get('completed'),
-                'creditsUsed': data.get('creditsUsed'),
-                'expiresAt': data.get('expiresAt'),
-                'next': data.get('next'),
-                'data': data.get('data'),
-                'error': data.get('error')
+                'status': status_data.get('status'),
+                'total': status_data.get('total'),
+                'completed': status_data.get('completed'),
+                'creditsUsed': status_data.get('creditsUsed'),
+                'expiresAt': status_data.get('expiresAt'),
+                'data': status_data.get('data'),
+                'error': status_data.get('error'),
+                'next': status_data.get('next', None)
             }
         else:
             self._handle_error(response, 'check crawl status')
@@ -377,17 +398,38 @@ class FirecrawlApp:
         headers = self._prepare_headers()
         response = self._get_request(f'{self.api_url}{endpoint}', headers)
         if response.status_code == 200:
-            data = response.json()
+            status_data = response.json()
+            if status_data['status'] == 'completed':
+                if 'data' in status_data:
+                    data = status_data['data']
+                    while 'next' in status_data:
+                        next_url = status_data.get('next')
+                        if not next_url:
+                            logger.warning("Expected 'next' URL is missing.")
+                            break
+                        try:
+                            status_response = self._get_request(next_url, headers)
+                            if status_response.status_code != 200:
+                                logger.error(f"Failed to fetch next page: {status_response.status_code}")
+                                break
+                            status_data = status_response.json()
+                            data.extend(status_data.get('data', []))
+                        except Exception as e:
+                            logger.error(f"Error during pagination request: {e}")
+                            break
+                        status_data.pop('next', None)
+                    status_data['data'] = data
+
             return {
                 'success': True,
-                'status': data.get('status'),
-                'total': data.get('total'),
-                'completed': data.get('completed'),
-                'creditsUsed': data.get('creditsUsed'),
-                'expiresAt': data.get('expiresAt'),
-                'next': data.get('next'),
-                'data': data.get('data'),
-                'error': data.get('error')
+                'status': status_data.get('status'),
+                'total': status_data.get('total'),
+                'completed': status_data.get('completed'),
+                'creditsUsed': status_data.get('creditsUsed'),
+                'expiresAt': status_data.get('expiresAt'),
+                'data': status_data.get('data'),
+                'error': status_data.get('error'),
+                'next': status_data.get('next', None)
             }
         else:
             self._handle_error(response, 'check batch scrape status')
