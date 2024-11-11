@@ -19,6 +19,28 @@ export class LLMRefusalError extends Error {
 }
 
 function normalizeSchema(x: any): any {
+    if (typeof x !== "object" || x === null) return x;
+
+    if (x["$defs"] !== null && typeof x["$defs"] === "object") {
+        x["$defs"] = Object.fromEntries(Object.entries(x["$defs"]).map(([name, schema]) => [name, normalizeSchema(schema)]));
+    }
+
+    if (x && x.anyOf) {
+        x.anyOf = x.anyOf.map(x => normalizeSchema(x));
+    }
+
+    if (x && x.oneOf) {
+        x.oneOf = x.oneOf.map(x => normalizeSchema(x));
+    }
+
+    if (x && x.allOf) {
+        x.allOf = x.allOf.map(x => normalizeSchema(x));
+    }
+
+    if (x && x.not) {
+        x.not = normalizeSchema(x.not);
+    }
+
     if (x && x.type === "object") {
         return {
             ...x,
