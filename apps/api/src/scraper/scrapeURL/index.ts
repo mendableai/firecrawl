@@ -2,7 +2,7 @@ import { Logger } from "winston";
 import * as Sentry from "@sentry/node";
 
 import { Document, ScrapeOptions } from "../../controllers/v1/types";
-import { logger, ArrayTransport } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import { buildFallbackList, Engine, EngineScrapeResult, FeatureFlag, scrapeURLWithEngine } from "./engines";
 import { parseMarkdown } from "../../lib/html-to-markdown";
 import { AddFeatureError, EngineError, NoEnginesLeftError, TimeoutError } from "./error";
@@ -97,9 +97,6 @@ function buildMetaObject(id: string, url: string, options: ScrapeOptions, intern
 
     const _logger = logger.child({ module: "ScrapeURL", scrapeId: id });
     const logs: any[] = [];
-    if (process.env.ENV !== "test") {
-        _logger.add(new ArrayTransport({ array: logs, scrapeId: id }));
-    }
 
     return {
         id, url, options, internalOptions,

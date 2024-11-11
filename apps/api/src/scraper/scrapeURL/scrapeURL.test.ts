@@ -29,7 +29,7 @@ describe("Standalone scrapeURL tests", () => {
         it("Basic scrape", async () => {
             const out = await scrapeURL("test:scrape-basic", "https://www.roastmywebsite.ai/", scrapeOptions.parse({}), { forceEngine });
         
-            expect(out.logs.length).toBeGreaterThan(0);
+            // expect(out.logs.length).toBeGreaterThan(0);
             expect(out.success).toBe(true);
             if (out.success) {
                 expect(out.document.warning).toBeUndefined();
@@ -72,7 +72,7 @@ describe("Standalone scrapeURL tests", () => {
                 formats: ["markdown", "html"],
             }), { forceEngine });
         
-            expect(out.logs.length).toBeGreaterThan(0);
+            // expect(out.logs.length).toBeGreaterThan(0);
             expect(out.success).toBe(true);
             if (out.success) {
                 expect(out.document.warning).toBeUndefined();
@@ -92,7 +92,7 @@ describe("Standalone scrapeURL tests", () => {
                 onlyMainContent: false,
             }), { forceEngine });
     
-            expect(out.logs.length).toBeGreaterThan(0);
+            // expect(out.logs.length).toBeGreaterThan(0);
             expect(out.success).toBe(true);
             if (out.success) {
                 expect(out.document.warning).toBeUndefined();
@@ -110,7 +110,7 @@ describe("Standalone scrapeURL tests", () => {
                 excludeTags: ['.nav', '#footer', 'strong'],
             }), { forceEngine });
     
-            expect(out.logs.length).toBeGreaterThan(0);
+            // expect(out.logs.length).toBeGreaterThan(0);
             expect(out.success).toBe(true);
             if (out.success) {
                 expect(out.document.warning).toBeUndefined();
@@ -125,7 +125,7 @@ describe("Standalone scrapeURL tests", () => {
         it("Scrape of a page with 400 status code", async () => {
             const out = await scrapeURL("test:scrape-400", "https://httpstat.us/400", scrapeOptions.parse({}), { forceEngine });
     
-            expect(out.logs.length).toBeGreaterThan(0);
+            // expect(out.logs.length).toBeGreaterThan(0);
             expect(out.success).toBe(true);
             if (out.success) {
                 expect(out.document.warning).toBeUndefined();
@@ -138,7 +138,7 @@ describe("Standalone scrapeURL tests", () => {
         it("Scrape of a page with 401 status code", async () => {
             const out = await scrapeURL("test:scrape-401", "https://httpstat.us/401", scrapeOptions.parse({}), { forceEngine });
     
-            expect(out.logs.length).toBeGreaterThan(0);
+            // expect(out.logs.length).toBeGreaterThan(0);
             expect(out.success).toBe(true);
             if (out.success) {
                 expect(out.document.warning).toBeUndefined();
@@ -151,7 +151,7 @@ describe("Standalone scrapeURL tests", () => {
         it("Scrape of a page with 403 status code", async () => {
             const out = await scrapeURL("test:scrape-403", "https://httpstat.us/403", scrapeOptions.parse({}), { forceEngine });
     
-            expect(out.logs.length).toBeGreaterThan(0);
+            // expect(out.logs.length).toBeGreaterThan(0);
             expect(out.success).toBe(true);
             if (out.success) {
                 expect(out.document.warning).toBeUndefined();
@@ -164,7 +164,7 @@ describe("Standalone scrapeURL tests", () => {
         it("Scrape of a page with 404 status code", async () => {
             const out = await scrapeURL("test:scrape-404", "https://httpstat.us/404", scrapeOptions.parse({}), { forceEngine });
     
-            expect(out.logs.length).toBeGreaterThan(0);
+            // expect(out.logs.length).toBeGreaterThan(0);
             expect(out.success).toBe(true);
             if (out.success) {
                 expect(out.document.warning).toBeUndefined();
@@ -177,7 +177,7 @@ describe("Standalone scrapeURL tests", () => {
         it("Scrape of a page with 405 status code", async () => {
             const out = await scrapeURL("test:scrape-405", "https://httpstat.us/405", scrapeOptions.parse({}), { forceEngine });
     
-            expect(out.logs.length).toBeGreaterThan(0);
+            // expect(out.logs.length).toBeGreaterThan(0);
             expect(out.success).toBe(true);
             if (out.success) {
                 expect(out.document.warning).toBeUndefined();
@@ -190,7 +190,7 @@ describe("Standalone scrapeURL tests", () => {
         it("Scrape of a page with 500 status code", async () => {
             const out = await scrapeURL("test:scrape-500", "https://httpstat.us/500", scrapeOptions.parse({}), { forceEngine });
     
-            expect(out.logs.length).toBeGreaterThan(0);
+            // expect(out.logs.length).toBeGreaterThan(0);
             expect(out.success).toBe(true);
             if (out.success) {
                 expect(out.document.warning).toBeUndefined();
@@ -203,7 +203,7 @@ describe("Standalone scrapeURL tests", () => {
         it("Scrape a redirected page", async () => {
             const out = await scrapeURL("test:scrape-redirect", "https://scrapethissite.com/", scrapeOptions.parse({}), { forceEngine });
     
-            expect(out.logs.length).toBeGreaterThan(0);
+            // expect(out.logs.length).toBeGreaterThan(0);
             expect(out.success).toBe(true);
             if (out.success) {
                 expect(out.document.warning).toBeUndefined();
@@ -224,7 +224,7 @@ describe("Standalone scrapeURL tests", () => {
                 formats: ["screenshot"],
             }), { forceEngine });
     
-            expect(out.logs.length).toBeGreaterThan(0);
+            // expect(out.logs.length).toBeGreaterThan(0);
             expect(out.success).toBe(true);
             if (out.success) {
                 expect(out.document.warning).toBeUndefined();
@@ -243,7 +243,7 @@ describe("Standalone scrapeURL tests", () => {
                 formats: ["screenshot@fullPage"],
             }), { forceEngine });
     
-            expect(out.logs.length).toBeGreaterThan(0);
+            // expect(out.logs.length).toBeGreaterThan(0);
             expect(out.success).toBe(true);
             if (out.success) {
                 expect(out.document.warning).toBeUndefined();
@@ -261,7 +261,7 @@ describe("Standalone scrapeURL tests", () => {
     it("Scrape of a PDF file", async () => {
         const out = await scrapeURL("test:scrape-pdf", "https://arxiv.org/pdf/astro-ph/9301001.pdf", scrapeOptions.parse({}));
 
-        expect(out.logs.length).toBeGreaterThan(0);
+        // expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
             expect(out.document.warning).toBeUndefined();
@@ -275,7 +275,7 @@ describe("Standalone scrapeURL tests", () => {
     it("Scrape a DOCX file", async () => {
         const out = await scrapeURL("test:scrape-docx", "https://nvca.org/wp-content/uploads/2019/06/NVCA-Model-Document-Stock-Purchase-Agreement.docx", scrapeOptions.parse({}));
 
-        expect(out.logs.length).toBeGreaterThan(0);
+        // expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
             expect(out.document.warning).toBeUndefined();
@@ -304,7 +304,7 @@ describe("Standalone scrapeURL tests", () => {
             },
         }));
 
-        expect(out.logs.length).toBeGreaterThan(0);
+        // expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
             expect(out.document.warning).toBeUndefined();
@@ -335,7 +335,7 @@ describe("Standalone scrapeURL tests", () => {
             },
         }));
 
-        expect(out.logs.length).toBeGreaterThan(0);
+        // expect(out.logs.length).toBeGreaterThan(0);
         expect(out.success).toBe(true);
         if (out.success) {
             expect(out.document.warning).toBeUndefined();
@@ -369,7 +369,7 @@ describe("Standalone scrapeURL tests", () => {
         }
 
         // verify that log collection works properly while concurrency is happening
-        expect(out.logs.length).toBeGreaterThan(0);
+        // expect(out.logs.length).toBeGreaterThan(0);
         const weirdLogs = out.logs.filter(x => x.scrapeId !== id);
         if (weirdLogs.length > 0) {
             console.warn(JSON.stringify(weirdLogs, replacer));

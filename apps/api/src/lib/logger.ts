@@ -1,7 +1,6 @@
 import * as winston from "winston";
 
 import { configDotenv } from "dotenv";
-import Transport from "winston-transport";
 configDotenv();
 
 const logFormat = winston.format.printf(info => 
@@ -50,33 +49,3 @@ export const logger = winston.createLogger({
     }),
   ],
 });
-
-export type ArrayTransportOptions = Transport.TransportStreamOptions & {
-  array: any[];
-  scrapeId?: string;
-};
-
-export class ArrayTransport extends Transport {
-  private array: any[];
-  private scrapeId?: string;
-
-  constructor(opts: ArrayTransportOptions) {
-    super(opts);
-    this.array = opts.array;
-    this.scrapeId = opts.scrapeId;
-  }
-
-  log(info, next) {
-    setImmediate(() => {
-      this.emit("logged", info);
-    });
-
-    if (this.scrapeId !== undefined && info.scrapeId !== this.scrapeId) {
-      return next();
-    }
-
-    this.array.push(info);
-
-    next();
-  }
-}
