@@ -203,6 +203,7 @@ const crawlerOptions = z.object({
   allowBackwardLinks: z.boolean().default(false), // >> TODO: CHANGE THIS NAME???
   allowExternalLinks: z.boolean().default(false),
   ignoreSitemap: z.boolean().default(true),
+  deduplicateSimilarURLs: z.boolean().default(true),
 }).strict(strictMessage);
 
 // export type CrawlerOptions = {
@@ -457,6 +458,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     allowBackwardCrawling: x.allowBackwardLinks,
     allowExternalContentLinks: x.allowExternalLinks,
     ignoreSitemap: x.ignoreSitemap,
+    deduplicateSimilarURLs: x.deduplicateSimilarURLs,
   };
 }
 
@@ -470,7 +472,7 @@ export function fromLegacyCrawlerOptions(x: any): { crawlOptions: CrawlerOptions
       allowBackwardLinks: x.allowBackwardCrawling,
       allowExternalLinks: x.allowExternalContentLinks,
       ignoreSitemap: x.ignoreSitemap,
-      // TODO: returnOnlyUrls support
+      deduplicateSimilarURLs: x.deduplicateSimilarURLs,
     }),
     internalOptions: {
       v0CrawlOnlyUrls: x.returnOnlyUrls,

@@ -86,6 +86,8 @@ export interface CrawlScrapeOptions {
     country?: string;
     languages?: string[];
   };
+  skipTlsVerification?: boolean;
+  removeBase64Images?: boolean;
 }
 
 export type Action = {
@@ -151,6 +153,7 @@ export interface CrawlParams {
   ignoreSitemap?: boolean;
   scrapeOptions?: CrawlScrapeOptions;
   webhook?: string;
+  deduplicateSimilarURLs?: boolean;
 }
 
 /**
