@@ -90,21 +90,26 @@ export async function getThrottledJobs(teamId: string): Promise<string[]> {
     return await redisConnection.zrangebyscore("concurrency-limiter:" + teamId + ":throttled", Date.now(), Infinity);
 }
 
-export function normalizeURL(url: string): string {
+export function normalizeURL(url: string, sc: StoredCrawl): string {
     const urlO = new URL(url);
-    urlO.search = "";
+    if (!sc.crawlerOptions || sc.crawlerOptions.ignoreQueryParameters) {
+        urlO.search = "";
+    }
     urlO.hash = "";
     return urlO.href;
 }
 
 export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise<boolean> {
     if (typeof sc.crawlerOptions?.limit === "number") {
-        if (await redisConnection.scard("crawl:" + id + ":visited") >= sc.crawlerOptions.limit) {
+        if (await redisConnection.scard("crawl:" + id + ":visited_unique") >= sc.crawlerOptions.limit) {
             return false;
         }
     }
 
-    url = normalizeURL(url);
+    url = normalizeURL(url, sc);
+
+    await redisConnection.sadd("crawl:" + id + ":visited_unique", url);
+    await redisConnection.expire("crawl:" + id + ":visited_unique", 24 * 60 * 60, "NX");
 
     let res: boolean;
     if (!sc.crawlerOptions.deduplicateSimilarURLs) {
@@ -145,18 +150,9 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
 }
 
 /// NOTE: does not check limit. only use if limit is checked beforehand e.g. with sitemap
-export async function lockURLs(id: string, urls: string[]): Promise<boolean> {
+export async function lockURLs(id: string, sc: StoredCrawl, urls: string[]): Promise<boolean> {
     urls = urls.map(url => {
-        try {
-            const urlO = new URL(url);
-            urlO.search = "";
-            urlO.hash = "";
-            return urlO.href;
-        } catch (error) {
-            logger.warn("Failed to normalize URL " + JSON.stringify(url) + ": " + error);
-        }
-
-        return url;
+        return normalizeURL(url, sc);
     });
     
     const res = (await redisConnection.sadd("crawl:" + id + ":visited", ...urls)) !== 0

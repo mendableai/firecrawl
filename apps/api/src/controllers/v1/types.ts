@@ -456,6 +456,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     allowExternalContentLinks: x.allowExternalLinks,
     ignoreSitemap: x.ignoreSitemap,
     deduplicateSimilarURLs: x.deduplicateSimilarURLs,
+    ignoreQueryParameters: x.ignoreQueryParameters,
   };
 }
 
@@ -470,6 +471,7 @@ export function fromLegacyCrawlerOptions(x: any): { crawlOptions: CrawlerOptions
       allowExternalLinks: x.allowExternalContentLinks,
       ignoreSitemap: x.ignoreSitemap,
       deduplicateSimilarURLs: x.deduplicateSimilarURLs,
+      ignoreQueryParameters: x.ignoreQueryParameters,
     }),
     internalOptions: {
       v0CrawlOnlyUrls: x.returnOnlyUrls,

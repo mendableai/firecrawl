@@ -133,6 +133,7 @@ export async function crawlController(
 
     await lockURLs(
       id,
+      sc,
       jobs.map((x) => x.data.url)
     );
     await addCrawlJobs(
