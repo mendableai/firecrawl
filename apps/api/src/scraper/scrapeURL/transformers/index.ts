@@ -115,16 +115,19 @@ export const transformerStack: Transformer[] = [
 ];
 
 export async function executeTransformers(meta: Meta, document: Document): Promise<Document> {
+    const executions: [string, number][] = [];
+
     for (const transformer of transformerStack) {
         const _meta = {
             ...meta,
             logger: meta.logger.child({ method: "executeTransformers/" + transformer.name }),
         };
-        meta.logger.debug("Executing transformer " + transformer.name + "...", { document });
         const start = Date.now();
         document = await transformer(_meta, document);
-        meta.logger.debug("Finished executing transformer " + transformer.name + " (" + (Date.now() - start) + "ms)", { document });
+        executions.push([transformer.name, Date.now() - start]);
     }
+
+    meta.logger.debug("Executed transformers.", { executions });
 
     return document;
 }

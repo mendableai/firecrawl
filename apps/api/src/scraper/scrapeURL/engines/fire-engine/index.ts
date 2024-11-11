@@ -40,7 +40,7 @@ async function performFireEngineScrape<Engine extends FireEngineScrapeRequestChr
             status = await fireEngineCheckStatus(logger.child({ method: "fireEngineCheckStatus" }), scrape.jobId)
         } catch (error) {
             if (error instanceof StillProcessingError) {
-                logger.debug("Scrape is still processing...");
+                // nop
             } else if (error instanceof EngineError) {
                 logger.debug("Fire-engine scrape job failed.", { error, jobId: scrape.jobId });
                 throw error;

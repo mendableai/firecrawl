@@ -87,7 +87,6 @@ export async function fireEngineCheckStatus(logger: Logger, jobId: string): Prom
         logger.debug("Scrape succeeded!", { jobId });
         return successParse.data;
     } else if (processingParse.success) {
-        logger.debug("Scrape is still processing", { jobId });
         throw new StillProcessingError(jobId);
     } else if (failedParse.success) {
         logger.debug("Scrape job failed", { status, jobId });
