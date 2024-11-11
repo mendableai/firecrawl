@@ -108,7 +108,8 @@ export type Action = {
   key: string,
 } | {
   type: "scroll",
-  direction: "up" | "down",
+  direction?: "up" | "down",
+  selector?: string,
 } | {
   type: "scrape",
 } | {
