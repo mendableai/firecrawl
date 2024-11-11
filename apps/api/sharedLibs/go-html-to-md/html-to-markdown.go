@@ -2,7 +2,7 @@ package main
 
 import (
 	"C"
-	"log"
+	// "log"
 
 	md "github.com/tomkosm/html-to-markdown"
 	"github.com/tomkosm/html-to-markdown/plugin"
