@@ -15,7 +15,7 @@ func ConvertHTMLToMarkdown(html *C.char) *C.char {
 
 	markdown, err := converter.ConvertString(C.GoString(html))
 	if err != nil {
-		log.Fatal(err)
+		// log.Fatal(err)
 	}
 	return C.CString(markdown)
 }
