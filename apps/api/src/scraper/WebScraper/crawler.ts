@@ -171,7 +171,7 @@ export class WebCrawler {
     let fullUrl = href;
     if (!href.startsWith("http")) {
       try {
-        fullUrl = new URL(href, this.baseUrl).toString();
+        fullUrl = new URL(href, url).toString();
       } catch (_) {
         return null;
       }
