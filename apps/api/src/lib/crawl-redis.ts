@@ -3,6 +3,7 @@ import { ScrapeOptions } from "../controllers/v1/types";
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import { redisConnection } from "../services/queue-service";
 import { logger } from "./logger";
+import { getAdjustedMaxDepth } from "../scraper/WebScraper/utils/maxDepthUtils";
 
 export type StoredCrawl = {
     originUrl?: string;
@@ -172,7 +173,7 @@ export function crawlToCrawler(id: string, sc: StoredCrawl): WebCrawler {
         includes: sc.crawlerOptions?.includes ?? [],
         excludes: sc.crawlerOptions?.excludes ?? [],
         maxCrawledLinks: sc.crawlerOptions?.maxCrawledLinks ?? 1000,
-        maxCrawledDepth: sc.crawlerOptions?.maxDepth ?? 10,
+        maxCrawledDepth: getAdjustedMaxDepth(sc.originUrl!, sc.crawlerOptions?.maxDepth ?? 10),
         limit: sc.crawlerOptions?.limit ?? 10000,
         generateImgAltText: sc.crawlerOptions?.generateImgAltText ?? false,
         allowBackwardCrawling: sc.crawlerOptions?.allowBackwardCrawling ?? false,
