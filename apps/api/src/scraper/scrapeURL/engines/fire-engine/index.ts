@@ -8,7 +8,7 @@ import * as Sentry from "@sentry/node";
 import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 
-const defaultTimeout = 10000;
+export const defaultTimeout = 10000;
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -90,9 +90,12 @@ export async function scrapeURLWithFireEngineChromeCDP(meta: Meta): Promise<Engi
         // TODO: scrollXPaths
     };
 
+    const totalWait = actions.reduce((a,x) => x.type === "wait" ? (x.milliseconds ?? 1000) + a : a, 0);
+
     let response = await performFireEngineScrape(
         meta.logger.child({ method: "scrapeURLWithFireEngineChromeCDP/callFireEngine", request }),
         request,
+        defaultTimeout + totalWait,
     );
 
     specialtyScrapeCheck(meta.logger.child({ method: "scrapeURLWithFireEngineChromeCDP/specialtyScrapeCheck" }), response.responseHeaders);
@@ -142,6 +145,7 @@ export async function scrapeURLWithFireEnginePlaywright(meta: Meta): Promise<Eng
     let response = await performFireEngineScrape(
         meta.logger.child({ method: "scrapeURLWithFireEngineChromeCDP/callFireEngine", request }),
         request,
+        defaultTimeout + meta.options.waitFor
     );
     
     specialtyScrapeCheck(meta.logger.child({ method: "scrapeURLWithFireEnginePlaywright/specialtyScrapeCheck" }), response.responseHeaders);
