@@ -18,6 +18,7 @@ import { logger } from "../lib/logger";
 import { scrapeStatusController } from "../controllers/v1/scrape-status";
 import { concurrencyCheckController } from "../controllers/v1/concurrency-check";
 import { batchScrapeController } from "../controllers/v1/batch-scrape";
+import { extractController } from "../controllers/v1/extract";
 // import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
 // import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
 // import { searchController } from "../../src/controllers/v1/search";
@@ -178,6 +179,14 @@ v1Router.ws(
     crawlStatusWSController
 );
 
+v1Router.post(
+    "/extract",
+    authMiddleware(RateLimiterMode.Scrape),
+    checkCreditsMiddleware(1),
+    blocklistMiddleware,
+    wrap(extractController)
+);
+
 
 
 // v1Router.post("/crawlWebsitePreview", crawlPreviewController);
@@ -199,3 +208,4 @@ v1Router.delete(
 // Health/Probe routes
 // v1Router.get("/health/liveness", livenessController);
 // v1Router.get("/health/readiness", readinessController);
+

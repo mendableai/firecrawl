@@ -82,7 +82,7 @@ export async function generateFinalExtraction({
   const jsonCompletion = await openai.beta.chat.completions.parse({
     model,
     messages: [
-      { role: "system", content: systemPrompt },
+      { role: "system", content: systemPrompt ?? "" },
       { role: "user", content: [{ type: "text", text: extractionContent }] },
       {
         role: "user",
@@ -108,9 +108,8 @@ export async function generateFinalExtraction({
   }
 
   const extraction = jsonCompletion.choices[0].message.parsed;
-
   return {
-    content: extraction,
+    content: extraction ?? "",
     metadata: {
       numTokens,
       warning,
