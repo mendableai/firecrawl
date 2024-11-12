@@ -504,17 +504,17 @@ async function processJob(job: Job & { id: string }, token: string) {
           job: job.id,
         },
       });
+
+      if (error instanceof CustomError) {
+        // Here we handle the error, then save the failed job
+        logger.error(error.message); // or any other error handling
+      }
+      logger.error(error);
+      if (error.stack) {
+        logger.error(error.stack);
+      }
     } else {
       logger.error(`🐂 Job timed out ${job.id}`);
-    }
-
-    if (error instanceof CustomError) {
-      // Here we handle the error, then save the failed job
-      logger.error(error.message); // or any other error handling
-    }
-    logger.error(error);
-    if (error.stack) {
-      logger.error(error.stack);
     }
 
     const data = {
