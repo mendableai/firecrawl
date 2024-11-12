@@ -1,5 +1,8 @@
-### Crawl Website
-POST http://localhost:3002/v0/scrape HTTP/1.1
+@baseUrl = https://api.firecrawl.dev
+
+### Scrape Website
+# @name scrape
+POST {{baseUrl}}/v1/scrape HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
@@ -7,17 +10,9 @@ content-type: application/json
     "url":"firecrawl.dev"
 }
 
-### Check Job Status
-GET http://localhost:3002/v1/crawl/1dd0f924-a36f-4b96-94ea-32ed954dac67 HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
-
-
-### Check Job Status
-GET http://localhost:3002/v0/jobs/active HTTP/1.1
-
-
-### Scrape Website
-POST http://localhost:3002/v0/crawl HTTP/1.1
+### Crawl Website
+# @name crawl
+POST {{baseUrl}}/v1/crawl HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
@@ -25,58 +20,28 @@ content-type: application/json
   "url": "firecrawl.dev"
 }
 
-## "reoveTags": [],
-  # "mode": "crawl",
-  # "crawlerOptions": {
-  #     "allowBackwardCrawling": false
-  # },
-  # "pageOptions": {
-  #   "onlyMainContent": false,
-  #   "includeHtml": false,
-  #   "parsePDF": true
-  # }
+### Check Crawl Status
+@crawlId = {{crawl.response.body.$.id}}
+# @name crawlStatus
+GET {{baseUrl}}/v1/crawl/{{crawlId}} HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
 
-
-
-
-
-
-
-### Scrape Website
-POST http://localhost:3002/v0/scrape HTTP/1.1
+### Batch Scrape Websites
+# @name batchScrape
+POST {{baseUrl}}/v1/batch/scrape HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-    "url":"https://mendable.ai"
+  "urls": [
+    "firecrawl.dev",
+    "mendable.ai"
+  ]
 }
 
-
-
-### Check Job Status
-GET http://localhost:3002/v0/crawl/status/a6053912-d602-4709-841f-3d2cb46fea0a HTTP/1.1
+### Check Batch Scrape Status
+@batchScrapeId = {{batchScrape.response.body.$.id}}
+# @name batchScrapeStatus
+GET {{baseUrl}}/v1/crawl/{{batchScrapeId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
-
-### Get Job Result
-
-POST https://api.firecrawl.dev/v0/crawl HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
-content-type: application/json
-
-{
-    "url":"https://mendable.ai"
-}
-
-### Check Job Status
-GET https://api.firecrawl.dev/v0/crawl/status/cfcb71ac-23a3-4da5-bd85-d4e58b871d66
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
-
-### Get Active Jobs Count
-GET http://localhost:3002/serverHealthCheck
-content-type: application/json
-
-### Notify Server Health Check
-GET http://localhost:3002/serverHealthCheck/notify
-content-type: application/json
-
