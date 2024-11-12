@@ -166,10 +166,10 @@ export async function lockURLs(id: string, sc: StoredCrawl, urls: string[]): Pro
     return res;
 }
 
-export function crawlToCrawler(id: string, sc: StoredCrawl, initialUrl?: string): WebCrawler {
+export function crawlToCrawler(id: string, sc: StoredCrawl): WebCrawler {
     const crawler = new WebCrawler({
         jobId: id,
-        initialUrl: initialUrl ?? sc.originUrl!,
+        initialUrl: sc.originUrl!,
         includes: sc.crawlerOptions?.includes ?? [],
         excludes: sc.crawlerOptions?.excludes ?? [],
         maxCrawledLinks: sc.crawlerOptions?.maxCrawledLinks ?? 1000,
