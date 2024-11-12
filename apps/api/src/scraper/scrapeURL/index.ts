@@ -95,7 +95,7 @@ function buildMetaObject(id: string, url: string, options: ScrapeOptions, intern
         internalOptions = Object.assign(internalOptions, specParams.internalOptions);
     }
 
-    const _logger = logger.child({ module: "ScrapeURL", scrapeId: id });
+    const _logger = logger.child({ module: "ScrapeURL", scrapeId: id, scrapeURL: url });
     const logs: any[] = [];
 
     return {
