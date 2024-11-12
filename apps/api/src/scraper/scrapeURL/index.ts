@@ -189,7 +189,7 @@ async function scrapeURLLoop(
             // we cannot just rely on text because error messages can be brief and not hit the limit
             // should we just use all the fallbacks and pick the one with the longest text? - mogery
             if (isLongEnough || !isGoodStatusCode) {
-                meta.logger.info("Scrape via " + engine + " deemed successful.", { factors: { isLongEnough, isGoodStatusCode, hasNoPageError }, engineResult });
+                meta.logger.info("Scrape via " + engine + " deemed successful.", { factors: { isLongEnough, isGoodStatusCode, hasNoPageError } });
                 result = {
                     engine,
                     unsupportedFeatures,
