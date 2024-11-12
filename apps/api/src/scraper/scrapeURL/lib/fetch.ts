@@ -32,8 +32,6 @@ export async function robustFetch<Schema extends z.Schema<any>, Output = z.infer
 }: RobustFetchParams<Schema>): Promise<Output> {
     const params = { url, logger, method, body, headers, schema, ignoreResponse, ignoreFailure, tryCount };
 
-    logger.debug("Sending request...", { params, requestId });
-
     let request: Response;
     try {
         request = await fetch(url, {
