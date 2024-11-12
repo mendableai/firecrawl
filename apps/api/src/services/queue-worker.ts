@@ -581,7 +581,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         time_taken: 0,
         team_id: job.data.team_id,
         mode: job.data.crawlerOptions !== null ? "crawl" : "batch_scrape",
-        url: sc ? sc.originUrl : job.data.url,
+        url: sc ? sc.originUrl ?? job.data.url : job.data.url,
         crawlerOptions: sc ? sc.crawlerOptions : undefined,
         scrapeOptions: sc ? sc.scrapeOptions : job.data.scrapeOptions,
         origin: job.data.origin,
