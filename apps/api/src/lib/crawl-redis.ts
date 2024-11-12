@@ -144,7 +144,7 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
     await redisConnection.expire("crawl:" + id + ":visited_unique", 24 * 60 * 60, "NX");
 
     let res: boolean;
-    if (!sc.crawlerOptions.deduplicateSimilarURLs) {
+    if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
         res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0
     } else {
         const permutations = generateURLPermutations(url);
