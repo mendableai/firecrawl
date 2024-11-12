@@ -86,7 +86,7 @@ export async function scrapeHelper(
       try {
         doc = (await waitForJob<Document>(jobId, timeout));
       } catch (e) {
-        if (e instanceof Error && e.message.startsWith("Job wait")) {
+        if (e instanceof Error && (e.message.startsWith("Job wait") || e.message === "timeout")) {
           span.setAttribute("timedOut", true);
           return {
             success: false,

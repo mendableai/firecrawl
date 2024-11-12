@@ -196,7 +196,7 @@ export async function searchController(req: Request, res: Response) {
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {
-    if (error instanceof Error && error.message.startsWith("Job wait")) {
+    if (error instanceof Error && (error.message.startsWith("Job wait") || error.message === "timeout")) {
       return res.status(408).json({ error: "Request timed out" });
     }
 

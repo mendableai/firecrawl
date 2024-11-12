@@ -56,7 +56,7 @@ export async function scrapeController(
     doc = await waitForJob<Document>(jobId, timeout + totalWait); // TODO: better types for this
   } catch (e) {
     logger.error(`Error in scrapeController: ${e}`);
-    if (e instanceof Error && e.message.startsWith("Job wait")) {
+    if (e instanceof Error && (e.message.startsWith("Job wait") || e.message === "timeout")) {
       return res.status(408).json({
         success: false,
         error: "Request timed out",
