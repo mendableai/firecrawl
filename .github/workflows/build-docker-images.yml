@@ -22,7 +22,7 @@ jobs:
           file: ./apps/api/Dockerfile
           push: false
           load: true
-          tags: firecrawl:pr-${{ github.event.number }}
+          tags: trieve/firecrawl:pr-${{ github.event.number }}
           build-args: |
             PORT=8080
 
@@ -43,6 +43,6 @@ jobs:
           file: ./apps/puppeteer-service-ts/Dockerfile
           push: false
           load: true
-          tags: puppeteer-service-ts:pr-${{ github.event.number }}
+          tags: trieve/puppeteer-service-ts:pr-${{ github.event.number }}
           build-args: |
             PORT=3000
