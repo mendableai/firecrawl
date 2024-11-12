@@ -352,10 +352,10 @@ async function processJob(job: Job & { id: string }, token: string) {
 
       if (!job.data.sitemapped && job.data.crawlerOptions !== null) {
         if (!sc.cancelled) {
-          const crawler = crawlToCrawler(job.data.crawl_id, sc);
+          const crawler = crawlToCrawler(job.data.crawl_id, sc, doc.metadata?.url ?? doc.metadata?.sourceURL ?? undefined);
 
           const links = crawler.filterLinks(
-            crawler.extractLinksFromHTML(rawHtml ?? "", sc.originUrl as string),
+            crawler.extractLinksFromHTML(rawHtml ?? "", doc.metadata?.url ?? doc.metadata?.sourceURL ?? sc.originUrl as string),
             Infinity,
             sc.crawlerOptions?.maxDepth ?? 10
           );
@@ -504,17 +504,17 @@ async function processJob(job: Job & { id: string }, token: string) {
           job: job.id,
         },
       });
+
+      if (error instanceof CustomError) {
+        // Here we handle the error, then save the failed job
+        logger.error(error.message); // or any other error handling
+      }
+      logger.error(error);
+      if (error.stack) {
+        logger.error(error.stack);
+      }
     } else {
       logger.error(`🐂 Job timed out ${job.id}`);
-    }
-
-    if (error instanceof CustomError) {
-      // Here we handle the error, then save the failed job
-      logger.error(error.message); // or any other error handling
-    }
-    logger.error(error);
-    if (error.stack) {
-      logger.error(error.stack);
     }
 
     const data = {

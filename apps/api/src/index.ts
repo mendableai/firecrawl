@@ -80,6 +80,17 @@ function startServer(port = DEFAULT_PORT) {
       `For the Queue UI, open: http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`
     );
   });
+
+  const exitHandler = () => {
+    logger.info('SIGTERM signal received: closing HTTP server')
+    server.close(() => {
+      logger.info("Server closed.");
+      process.exit(0);
+    });
+  };
+
+  process.on('SIGTERM', exitHandler);
+  process.on('SIGINT', exitHandler);
   return server;
 }
 
