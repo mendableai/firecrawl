@@ -1,9 +1,9 @@
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import {
-  legacyCrawlerOptions,
   mapRequestSchema,
   RequestWithAuth,
+  scrapeOptions,
 } from "./types";
 import { crawlToCrawler, StoredCrawl } from "../../lib/crawl-redis";
 import { MapResponse, MapRequest } from "./types";
@@ -15,21 +15,33 @@ import {
   removeDuplicateUrls,
 } from "../../lib/validateUrl";
 import { fireEngineMap } from "../../search/fireEngine";
-import { performCosineSimilarity } from "../../lib/map-cosine";
-import { Logger } from "../../lib/logger";
-import Redis from "ioredis";
 import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
+import { performCosineSimilarity } from "../../lib/map-cosine";
+import { logger } from "../../lib/logger";
+import Redis from "ioredis";
 
 configDotenv();
-const redis = new Redis(process.env.REDIS_URL);
+const redis = new Redis(process.env.REDIS_URL!);
 
 // Max Links that /map can return
 const MAX_MAP_LIMIT = 5000;
 // Max Links that "Smart /map" can return
 const MAX_FIRE_ENGINE_RESULTS = 1000;
 
-interface MapOptions {
+export async function getMapResults({
+  url,
+  search,
+  limit = MAX_MAP_LIMIT,
+  ignoreSitemap = false,
+  includeSubdomains = true,
+  crawlerOptions = {},
+  teamId,
+  plan,
+  origin,
+  subId,
+  includeMetadata = false
+}: {
   url: string;
   search?: string;
   limit?: number;
@@ -37,42 +49,34 @@ interface MapOptions {
   includeSubdomains?: boolean;
   crawlerOptions?: any;
   teamId: string;
-  plan: string;
+  plan?: string;
   origin?: string;
-  subId?: string;
+  subId: string | null;
   includeMetadata?: boolean;
-}
-
-export async function getMapResults({
-  url,
-  search,
-  limit = MAX_MAP_LIMIT,
-  ignoreSitemap = false,
-  includeSubdomains = false,
-  crawlerOptions = {},
-  teamId,
-  plan,
-  origin,
-  subId,
-  includeMetadata = false,
-}: MapOptions) {
-  const startTime = new Date().getTime();
+}) {
   const id = uuidv4();
-  let links: { url: string; title?: string; description?: string }[] = [{ url }];
+  let links: string[] = [url];
 
   const sc: StoredCrawl = {
     originUrl: url,
-    crawlerOptions,
-    pageOptions: {},
+    crawlerOptions: {
+      ...crawlerOptions,
+      scrapeOptions: undefined,
+    },
+    scrapeOptions: scrapeOptions.parse({}),
+    internalOptions: {},
     team_id: teamId,
     createdAt: Date.now(),
-    plan,
+    plan: plan,
   };
 
   const crawler = crawlToCrawler(id, sc);
 
   let urlWithoutWww = url.replace("www.", "");
-  let mapUrl = search ? `"${search}" site:${urlWithoutWww}` : `site:${url}`;
+
+  let mapUrl = search
+    ? `"${search}" site:${urlWithoutWww}`
+    : `site:${url}`;
 
   const resultsPerPage = 100;
   const maxPages = Math.ceil(Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage);
@@ -80,8 +84,8 @@ export async function getMapResults({
   const cacheKey = `fireEngineMap:${mapUrl}`;
   const cachedResult = null;
 
-  let allResults: any[];
-  let pagePromises: Promise<any>[];
+  let allResults: any[] = [];
+  let pagePromises: Promise<any>[] = [];
 
   if (cachedResult) {
     allResults = JSON.parse(cachedResult);
@@ -96,9 +100,11 @@ export async function getMapResults({
     pagePromises = Array.from({ length: maxPages }, (_, i) => fetchPage(i + 1));
     allResults = await Promise.all(pagePromises);
 
-    await redis.set(cacheKey, JSON.stringify(allResults), "EX", 24 * 60 * 60);
+    await redis.set(cacheKey, JSON.stringify(allResults), "EX", 24 * 60 * 60); // Cache for 24 hours
   }
 
+  console.log("allResults", allResults);
+  // Parallelize sitemap fetch with serper search
   const [sitemap, ...searchResults] = await Promise.all([
     ignoreSitemap ? null : crawler.tryGetSitemap(),
     ...(cachedResult ? [] : pagePromises),
@@ -110,7 +116,7 @@ export async function getMapResults({
 
   if (sitemap !== null) {
     sitemap.forEach((x) => {
-      links.push({ url: x.url });
+      links.push(x.url);
     });
   }
 
@@ -125,62 +131,74 @@ export async function getMapResults({
 
   if (mapResults.length > 0) {
     if (search) {
+      // Ensure all map results are first, maintaining their order
       links = [
-        { url: mapResults[0].url, title: mapResults[0].title, description: mapResults[0].description },
-        ...mapResults.slice(1).map((x) => ({ 
-          url: x.url,
-          title: x.title,
-          description: x.description
-        })),
+        mapResults[0].url,
+        ...mapResults.slice(1).map((x) => x.url),
         ...links,
       ];
     } else {
-      mapResults.forEach((x) => {
-        links.push({ 
-          url: x.url,
-          title: x.title,
-          description: x.description
-        });
+      mapResults.map((x) => {
+        links.push(x.url);
       });
     }
   }
 
+  // Perform cosine similarity between the search query and the list of links
   if (search) {
-    const filteredLinks = performCosineSimilarity(links.map(l => l.url), search.toLowerCase());
-    links = links.filter(l => filteredLinks.includes(l.url));
+    const searchQuery = search.toLowerCase();
+    links = performCosineSimilarity(links, searchQuery);
   }
 
   links = links
     .map((x) => {
       try {
-        return { ...x, url: checkAndUpdateURLForMap(x.url).url.trim() };
+        return checkAndUpdateURLForMap(x).url.trim();
       } catch (_) {
         return null;
       }
     })
-    .filter((x) => x !== null);
+    .filter((x) => x !== null) as string[];
 
-  links = links.filter((x) => isSameDomain(x.url, url));
+  // allows for subdomains to be included
+  links = links.filter((x) => isSameDomain(x, url));
 
+  // if includeSubdomains is false, filter out subdomains
   if (!includeSubdomains) {
-    links = links.filter((x) => isSameSubdomain(x.url, url));
+    links = links.filter((x) => isSameSubdomain(x, url));
   }
 
-  links = removeDuplicateUrls(links.map(l => l.url)).map(url => links.find(l => l.url === url));
+  // remove duplicates that could be due to http/https or www
+  links = removeDuplicateUrls(links);
 
-  const endTime = new Date().getTime();
-  const timeTakenInSeconds = (endTime - startTime) / 1000;
+  billTeam(teamId, subId, 1).catch((error) => {
+    logger.error(
+      `Failed to bill team ${teamId} for 1 credit: ${error}`
+    );
+  });
 
   const linksToReturn = links.slice(0, limit);
 
+  logJob({
+    job_id: id,
+    success: links.length > 0,
+    message: "Map completed", 
+    num_docs: linksToReturn.length,
+    docs: linksToReturn,
+    time_taken: (new Date().getTime() - Date.now()) / 1000,
+    team_id: teamId,
+    mode: "map",
+    url: url,
+    crawlerOptions: {},
+    scrapeOptions: {},
+    origin: origin ?? "api",
+    num_tokens: 0,
+  });
+
   return {
-    links: includeMetadata ? linksToReturn : linksToReturn.map(l => l.url),
-    scrapeId: origin?.includes("website") ? id : undefined,
-    timeTakenInSeconds,
-    id,
-    linksLength: links.length,
-    linksToReturnLength: linksToReturn.length,
-    docs: linksToReturn.map(l => l.url),
+    success: true,
+    links: includeMetadata ? mapResults : linksToReturn,
+    scrape_id: origin?.includes("website") ? id : undefined,
   };
 }
 
@@ -190,43 +208,73 @@ export async function mapController(
 ) {
   req.body = mapRequestSchema.parse(req.body);
 
-  const results = await getMapResults({
+  console.log("req.body", req.body);
+  const result = await getMapResults({
     url: req.body.url,
     search: req.body.search,
     limit: req.body.limit,
     ignoreSitemap: req.body.ignoreSitemap,
     includeSubdomains: req.body.includeSubdomains,
-    crawlerOptions: legacyCrawlerOptions(req.body),
+    crawlerOptions: req.body,
     teamId: req.auth.team_id,
     plan: req.auth.plan,
     origin: req.body.origin,
-    subId: req.acuc?.sub_id,
+    subId: req.acuc?.sub_id
   });
 
-  await billTeam(req.auth.team_id, req.acuc?.sub_id, 1).catch((error) => {
-    Logger.error(`Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`);
-  });
+  const response = {
+    success: true as const,
+    links: result.links,
+    scrape_id: result.scrape_id
+  };
 
-  await logJob({
-    job_id: results.id,
-    success: results.linksLength > 0,
-    message: "Map completed",
-    num_docs: results.linksToReturnLength,
-    docs: results.docs,
-    time_taken: results.timeTakenInSeconds,
-    team_id: req.auth.team_id,
-    mode: "map",
-    url: req.body.url,
-    crawlerOptions: {},
-    pageOptions: {},
-    origin: req.body.origin,
-    extractor_options: { mode: "markdown" },
-    num_tokens: 0,
-  });
-
-  return res.status(200).json({
-    success: true,
-    links: results.links.map(l => l.url),
-    scrape_id: results.scrapeId,
-  });
+  return res.status(200).json(response);
 }
+
+// Subdomain sitemap url checking
+
+// // For each result, check for subdomains, get their sitemaps and add them to the links
+// const processedUrls = new Set();
+// const processedSubdomains = new Set();
+
+// for (const result of links) {
+//   let url;
+//   let hostParts;
+//   try {
+//     url = new URL(result);
+//     hostParts = url.hostname.split('.');
+//   } catch (e) {
+//     continue;
+//   }
+
+//   console.log("hostParts", hostParts);
+//   // Check if it's a subdomain (more than 2 parts, and not 'www')
+//   if (hostParts.length > 2 && hostParts[0] !== 'www') {
+//     const subdomain = hostParts[0];
+//     console.log("subdomain", subdomain);
+//     const subdomainUrl = `${url.protocol}//${subdomain}.${hostParts.slice(-2).join('.')}`;
+//     console.log("subdomainUrl", subdomainUrl);
+
+//     if (!processedSubdomains.has(subdomainUrl)) {
+//       processedSubdomains.add(subdomainUrl);
+
+//       const subdomainCrawl = crawlToCrawler(id, {
+//         originUrl: subdomainUrl,
+//         crawlerOptions: legacyCrawlerOptions(req.body),
+//         pageOptions: {},
+//         team_id: req.auth.team_id,
+//         createdAt: Date.now(),
+//         plan: req.auth.plan,
+//       });
+//       const subdomainSitemap = await subdomainCrawl.tryGetSitemap();
+//       if (subdomainSitemap) {
+//         subdomainSitemap.forEach((x) => {
+//           if (!processedUrls.has(x.url)) {
+//             processedUrls.add(x.url);
+//             links.push(x.url);
+//           }
+//         });
+//       }
+//     }
+//   }
+// }

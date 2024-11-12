@@ -56,7 +56,7 @@ We provide an easy to use API with our hosted version. You can find the playgrou
 Check out the following resources to get started:
 - [x] **API**: [Documentation](https://docs.firecrawl.dev/api-reference/introduction)
 - [x] **SDKs**: [Python](https://docs.firecrawl.dev/sdks/python), [Node](https://docs.firecrawl.dev/sdks/node), [Go](https://docs.firecrawl.dev/sdks/go), [Rust](https://docs.firecrawl.dev/sdks/rust)
-- [x] **LLM Frameworks**: [Langchain (python)](https://python.langchain.com/docs/integrations/document_loaders/firecrawl/), [Langchain (js)](https://js.langchain.com/docs/integrations/document_loaders/web_loaders/firecrawl), [Llama Index](https://docs.llamaindex.ai/en/latest/examples/data_connectors/WebPageDemo/#using-firecrawl-reader), [Crew.ai](https://docs.crewai.com/), [Composio](https://composio.dev/tools/firecrawl/all), [PraisonAI](https://docs.praison.ai/firecrawl/)
+- [x] **LLM Frameworks**: [Langchain (python)](https://python.langchain.com/docs/integrations/document_loaders/firecrawl/), [Langchain (js)](https://js.langchain.com/docs/integrations/document_loaders/web_loaders/firecrawl), [Llama Index](https://docs.llamaindex.ai/en/latest/examples/data_connectors/WebPageDemo/#using-firecrawl-reader), [Crew.ai](https://docs.crewai.com/), [Composio](https://composio.dev/tools/firecrawl/all), [PraisonAI](https://docs.praison.ai/firecrawl/), [Superinterface](https://superinterface.ai/docs/assistants/functions/firecrawl), [Vectorize](https://docs.vectorize.io/integrations/source-connectors/firecrawl)
 - [x] **Low-code Frameworks**: [Dify](https://dify.ai/blog/dify-ai-blog-integrated-with-firecrawl), [Langflow](https://docs.langflow.org/), [Flowise AI](https://docs.flowiseai.com/integrations/langchain/document-loaders/firecrawl), [Cargo](https://docs.getcargo.io/integration/firecrawl), [Pipedream](https://pipedream.com/apps/firecrawl/)
 - [x] **Others**: [Zapier](https://zapier.com/apps/firecrawl/integrations), [Pabbly Connect](https://www.pabbly.com/connect/integrations/firecrawl/)
 - [ ] Want an SDK or Integration? Let us know by opening an issue.
@@ -80,6 +80,7 @@ To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and ge
 - **Media parsing**: pdfs, docx, images.
 - **Reliability first**: designed to get the data you need - no matter how hard it is.
 - **Actions**: click, scroll, input, wait and more before extracting data
+- **Batching (New)**: scrape thousands of URLs at the same time with a new async endpoint
 
 You can find all of Firecrawl's capabilities and how to use them in our [documentation](https://docs.firecrawl.dev)
 
@@ -350,6 +351,19 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
     }'
 ```
 
+### Batch Scraping Multiple URLs (New)
+
+You can now batch scrape multiple URLs at the same time. It is very similar to how the /crawl endpoint works. It submits a batch scrape job and returns a job ID to check the status of the batch scrape.
+
+```bash
+curl -X POST https://api.firecrawl.dev/v1/batch/scrape \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer YOUR_API_KEY' \
+    -d '{
+      "urls": ["https://docs.firecrawl.dev", "https://docs.firecrawl.dev/sdks/overview"],
+      "formats" : ["markdown", "html"]
+    }'
+```
 
 ### Search (v0) (Beta)
 
@@ -483,7 +497,7 @@ const crawlResponse = await app.crawlUrl('https://firecrawl.dev', {
   scrapeOptions: {
     formats: ['markdown', 'html'],
   }
-} as CrawlParams, true, 30) as CrawlStatusResponse;
+} satisfies CrawlParams, true, 30) satisfies CrawlStatusResponse;
 
 if (crawlResponse) {
   console.log(crawlResponse)

@@ -1,5 +1,5 @@
 import { supabase_service } from "../supabase";
-import { Logger } from "../../../src/lib/logger";
+import { logger } from "../../../src/lib/logger";
 import { configDotenv } from "dotenv";
 configDotenv();
 
@@ -16,7 +16,7 @@ export async function logCrawl(job_id: string, team_id: string) {
         },
       ]);
     } catch (error) {
-      Logger.error(`Error logging crawl job to supabase:\n${error}`);
+      logger.error(`Error logging crawl job to supabase:\n${error}`);
     }
   }
 }

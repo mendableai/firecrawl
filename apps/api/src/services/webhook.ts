@@ -1,6 +1,5 @@
 import axios from "axios";
-import { legacyDocumentConverter } from "../../src/controllers/v1/types";
-import { Logger } from "../../src/lib/logger";
+import { logger } from "../../src/lib/logger";
 import { supabase_service } from "./supabase";
 import { WebhookEventType } from "../types";
 import { configDotenv } from "dotenv";
@@ -32,7 +31,7 @@ export const callWebhook = async (
         .eq("team_id", teamId)
         .limit(1);
       if (error) {
-        Logger.error(
+        logger.error(
           `Error fetching webhook URL for team ID: ${teamId}, error: ${error.message}`
         );
         return null;
@@ -45,7 +44,11 @@ export const callWebhook = async (
       webhookUrl = webhooksData[0].url;
     }
 
-    let dataToSend = [];
+    if (!webhookUrl) {
+      return null;
+    }
+
+    let dataToSend: any[] = [];
     if (
       data &&
       data.result &&
@@ -55,7 +58,7 @@ export const callWebhook = async (
       for (let i = 0; i < data.result.links.length; i++) {
         if (v1) {
           dataToSend.push(
-            legacyDocumentConverter(data.result.links[i].content)
+            data.result.links[i].content
           );
         } else {
           dataToSend.push({
@@ -94,7 +97,7 @@ export const callWebhook = async (
           }
         );
       } catch (error) {
-        Logger.error(
+        logger.error(
           `Axios error (0) sending webhook for team ID: ${teamId}, error: ${error.message}`
         );
       }
@@ -125,13 +128,13 @@ export const callWebhook = async (
           }
         )
         .catch((error) => {
-          Logger.error(
+          logger.error(
             `Axios error sending webhook for team ID: ${teamId}, error: ${error.message}`
           );
         });
     }
   } catch (error) {
-    Logger.debug(
+    logger.debug(
       `Error sending webhook for team ID: ${teamId}, error: ${error.message}`
     );
   }

@@ -4,7 +4,6 @@ import {
   BatchScrapeRequest,
   batchScrapeRequestSchema,
   CrawlResponse,
-  legacyScrapeOptions,
   RequestWithAuth,
 } from "./types";
 import {
@@ -16,6 +15,7 @@ import {
 import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
 import { getJobPriority } from "../../lib/job-priority";
+import { addScrapeJobs } from "../../services/queue-jobs";
 
 export async function batchScrapeController(
   req: RequestWithAuth<{}, CrawlResponse, BatchScrapeRequest>,
@@ -27,17 +27,16 @@ export async function batchScrapeController(
 
   await logCrawl(id, req.auth.team_id);
 
-  let { remainingCredits } = req.account;
+  let { remainingCredits } = req.account!;
   const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
   if(!useDbAuthentication){
     remainingCredits = Infinity;
   }
 
-  const pageOptions = legacyScrapeOptions(req.body);
-
   const sc: StoredCrawl = {
     crawlerOptions: null,
-    pageOptions,
+    scrapeOptions: req.body,
+    internalOptions: {},
     team_id: req.auth.team_id,
     createdAt: Date.now(),
     plan: req.auth.plan,
@@ -55,23 +54,21 @@ export async function batchScrapeController(
   }
 
   const jobs = req.body.urls.map((x) => {
-    const uuid = uuidv4();
     return {
-      name: uuid,
       data: {
         url: x,
-        mode: "single_urls",
+        mode: "single_urls" as const,
         team_id: req.auth.team_id,
-        plan: req.auth.plan,
+        plan: req.auth.plan!,
         crawlerOptions: null,
-        pageOptions,
+        scrapeOptions: req.body,
         origin: "api",
         crawl_id: id,
         sitemapped: true,
         v1: true,
       },
       opts: {
-        jobId: uuid,
+        jobId: uuidv4(),
         priority: 20,
       },
     };
@@ -79,13 +76,14 @@ export async function batchScrapeController(
 
   await lockURLs(
     id,
+    sc,
     jobs.map((x) => x.data.url)
   );
   await addCrawlJobs(
     id,
     jobs.map((x) => x.opts.jobId)
   );
-  await getScrapeQueue().addBulk(jobs);
+  await addScrapeJobs(jobs);
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";
   

@@ -2,7 +2,7 @@ import axios from "axios";
 import dotenv from "dotenv";
 import { SearchResult } from "../../src/lib/entities";
 import * as Sentry from "@sentry/node";
-import { Logger } from "../lib/logger";
+import { logger } from "../lib/logger";
 
 dotenv.config();
 
@@ -30,12 +30,15 @@ export async function fireEngineMap(
       page: options.page ?? 1,
     });
 
+    console.log("data", data);
+
     if (!process.env.FIRE_ENGINE_BETA_URL) {
       console.warn(
         "(v1/map Beta) Results might differ from cloud offering currently."
       );
       return [];
     }
+    console.log("process.env.FIRE_ENGINE_BETA_URL", process.env.FIRE_ENGINE_BETA_URL);
 
     let config = {
       method: "POST",
@@ -48,12 +51,13 @@ export async function fireEngineMap(
     };
     const response = await axios(config);
     if (response && response.data) {
+      console.log("response", response.data);
       return response.data;
     } else {
       return [];
     }
   } catch (error) {
-    Logger.error(error);
+    logger.error(error);
     Sentry.captureException(error);
     return [];
   }

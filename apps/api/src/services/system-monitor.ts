@@ -2,7 +2,7 @@ import si from 'systeminformation';
 import { Mutex } from "async-mutex";
 import os from 'os';
 import fs from 'fs';
-import { Logger } from '../lib/logger';
+import { logger } from '../lib/logger';
 
 const IS_KUBERNETES = process.env.IS_KUBERNETES === "true";
 
@@ -40,7 +40,7 @@ class SystemMonitor {
         return SystemMonitor.instance;
     }
 
-    private async checkMemoryUsage() {
+    public async checkMemoryUsage() {
         if (IS_KUBERNETES) {
             return this._checkMemoryUsageKubernetes();
         }
@@ -79,7 +79,7 @@ class SystemMonitor {
 
             return memoryUsagePercentage;
         } catch (error) {
-            Logger.error(`Error calculating memory usage: ${error}`);
+            logger.error(`Error calculating memory usage: ${error}`);
             return 0; // Fallback to 0% usage
         }
     }
@@ -102,7 +102,7 @@ class SystemMonitor {
         return usedMemoryPercentage;
     }
 
-    private async checkCpuUsage() {
+    public async checkCpuUsage() {
         if (IS_KUBERNETES) {
             return this._checkCpuUsageKubernetes();
         }
@@ -134,7 +134,7 @@ class SystemMonitor {
                 throw new Error('No CPUs found in cpuset.cpus.effective');
             }
         } catch (error) {
-            Logger.warn(`Unable to read cpuset.cpus.effective, defaulting to OS CPUs: ${error}`);
+            logger.warn(`Unable to read cpuset.cpus.effective, defaulting to OS CPUs: ${error}`);
             cpus = os.cpus().map((cpu, index) => index);
         }
         return cpus.length;
@@ -184,7 +184,7 @@ class SystemMonitor {
 
             return cpuUsagePercentage;
         } catch (error) {
-            Logger.error(`Error calculating CPU usage: ${error}`);
+            logger.error(`Error calculating CPU usage: ${error}`);
             return 0; // Fallback to 0% usage
         }
     }

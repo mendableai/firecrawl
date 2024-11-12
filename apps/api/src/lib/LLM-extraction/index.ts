@@ -4,19 +4,19 @@ const ajv = new Ajv(); // Initialize AJV for JSON schema validation
 
 import { generateOpenAICompletions } from "./models";
 import { Document, ExtractorOptions } from "../entities";
-import { Logger } from "../logger";
+import { logger } from "../logger";
 
 // Generate completion using OpenAI
 export async function generateCompletions(
   documents: Document[],
-  extractionOptions: ExtractorOptions,
+  extractionOptions: ExtractorOptions | undefined,
   mode: "markdown" | "raw-html"
 ): Promise<Document[]> {
   // const schema = zodToJsonSchema(options.schema)
 
-  const schema = extractionOptions.extractionSchema;
-  const systemPrompt = extractionOptions.extractionPrompt;
-  const prompt = extractionOptions.userPrompt;
+  const schema = extractionOptions?.extractionSchema;
+  const systemPrompt = extractionOptions?.extractionPrompt;
+  const prompt = extractionOptions?.userPrompt;
 
   const switchVariable = "openAI"; // Placholder, want to think more about how we abstract the model provider
 
@@ -51,7 +51,7 @@ export async function generateCompletions(
 
             return completionResult;
           } catch (error) {
-            Logger.error(`Error generating completions: ${error}`);
+            logger.error(`Error generating completions: ${error}`);
             throw error;
           }
         default:

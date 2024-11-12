@@ -2,7 +2,7 @@ import { supabase_service } from "../supabase";
 import { withAuth } from "../../lib/withAuth";
 import { Resend } from "resend";
 import { NotificationType } from "../../types";
-import { Logger } from "../../../src/lib/logger";
+import { logger } from "../../../src/lib/logger";
 import { sendSlackWebhook } from "../alerts/slack";
 import { getNotificationString } from "./notification_string";
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
@@ -37,12 +37,12 @@ const emailTemplates: Record<
 export async function sendNotification(
   team_id: string,
   notificationType: NotificationType,
-  startDateString: string,
-  endDateString: string,
+  startDateString: string | null,
+  endDateString: string | null,
   chunk: AuthCreditUsageChunk,
   bypassRecentChecks: boolean = false
 ) {
-  return withAuth(sendNotificationInternal)(
+  return withAuth(sendNotificationInternal, undefined)(
     team_id,
     notificationType,
     startDateString,
@@ -68,11 +68,11 @@ export async function sendEmailNotification(
     });
 
     if (error) {
-      Logger.debug(`Error sending email: ${error}`);
+      logger.debug(`Error sending email: ${error}`);
       return { success: false };
     }
   } catch (error) {
-    Logger.debug(`Error sending email (2): ${error}`);
+    logger.debug(`Error sending email (2): ${error}`);
     return { success: false };
   }
 }
@@ -80,8 +80,8 @@ export async function sendEmailNotification(
 export async function sendNotificationInternal(
   team_id: string,
   notificationType: NotificationType,
-  startDateString: string,
-  endDateString: string,
+  startDateString: string | null,
+  endDateString: string | null,
   chunk: AuthCreditUsageChunk,
   bypassRecentChecks: boolean = false
 ): Promise<{ success: boolean }> {
@@ -101,7 +101,7 @@ export async function sendNotificationInternal(
       .gte("sent_date", fifteenDaysAgo.toISOString());
 
     if (error) {
-      Logger.debug(`Error fetching notifications: ${error}`);
+      logger.debug(`Error fetching notifications: ${error}`);
       return { success: false };
     }
 
@@ -120,7 +120,7 @@ export async function sendNotificationInternal(
       .lte("sent_date", endDateString);
 
     if (recentError) {
-      Logger.debug(`Error fetching recent notifications: ${recentError.message}`);
+      logger.debug(`Error fetching recent notifications: ${recentError.message}`);
       return { success: false };
     }
 
@@ -138,7 +138,7 @@ export async function sendNotificationInternal(
     .eq("team_id", team_id);
 
   if (emailsError) {
-    Logger.debug(`Error fetching emails: ${emailsError}`);
+    logger.debug(`Error fetching emails: ${emailsError}`);
     return { success: false };
   }
 
@@ -162,12 +162,12 @@ export async function sendNotificationInternal(
       false,
       process.env.SLACK_ADMIN_WEBHOOK_URL
     ).catch((error) => {
-      Logger.debug(`Error sending slack notification: ${error}`);
+      logger.debug(`Error sending slack notification: ${error}`);
     });
   }
 
   if (insertError) {
-    Logger.debug(`Error inserting notification record: ${insertError}`);
+    logger.debug(`Error inserting notification record: ${insertError}`);
     return { success: false };
   }
 

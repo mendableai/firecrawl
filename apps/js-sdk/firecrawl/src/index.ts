@@ -82,11 +82,18 @@ export interface CrawlScrapeOptions {
   onlyMainContent?: boolean;
   waitFor?: number;
   timeout?: number;
+  location?: {
+    country?: string;
+    languages?: string[];
+  };
+  skipTlsVerification?: boolean;
+  removeBase64Images?: boolean;
 }
 
 export type Action = {
   type: "wait",
-  milliseconds: number,
+  milliseconds?: number,
+  selector?: string,
 } | {
   type: "click",
   selector: string,
@@ -101,7 +108,13 @@ export type Action = {
   key: string,
 } | {
   type: "scroll",
-  direction: "up" | "down",
+  direction?: "up" | "down",
+  selector?: string,
+} | {
+  type: "scrape",
+} | {
+  type: "executeJavascript",
+  script: string,
 };
 
 export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchema extends (Action[] | undefined) = undefined> extends CrawlScrapeOptions {
@@ -141,6 +154,8 @@ export interface CrawlParams {
   ignoreSitemap?: boolean;
   scrapeOptions?: CrawlScrapeOptions;
   webhook?: string;
+  deduplicateSimilarURLs?: boolean;
+  ignoreQueryParameters?: boolean;
 }
 
 /**

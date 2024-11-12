@@ -1,13 +1,17 @@
+import { InternalOptions } from "../scraper/scrapeURL";
+import { ScrapeOptions } from "../controllers/v1/types";
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import { redisConnection } from "../services/queue-service";
-import { Logger } from "./logger";
+import { logger } from "./logger";
+import { getAdjustedMaxDepth } from "../scraper/WebScraper/utils/maxDepthUtils";
 
 export type StoredCrawl = {
     originUrl?: string;
     crawlerOptions: any;
-    pageOptions: any;
+    scrapeOptions: Omit<ScrapeOptions, "timeout">;
+    internalOptions: InternalOptions;
     team_id: string;
-    plan: string;
+    plan?: string;
     robots?: string;
     cancelled?: boolean;
     createdAt: number;
@@ -87,40 +91,74 @@ export async function getThrottledJobs(teamId: string): Promise<string[]> {
     return await redisConnection.zrangebyscore("concurrency-limiter:" + teamId + ":throttled", Date.now(), Infinity);
 }
 
+export function normalizeURL(url: string, sc: StoredCrawl): string {
+    const urlO = new URL(url);
+    if (!sc.crawlerOptions || sc.crawlerOptions.ignoreQueryParameters) {
+        urlO.search = "";
+    }
+    urlO.hash = "";
+    return urlO.href;
+}
+
+export function generateURLPermutations(url: string | URL): URL[] {
+    const urlO = new URL(url);
+
+    // Construct two versions, one with www., one without
+    const urlWithWWW = new URL(urlO);
+    const urlWithoutWWW = new URL(urlO);
+    if (urlO.hostname.startsWith("www.")) {
+        urlWithoutWWW.hostname = urlWithWWW.hostname.slice(4);
+    } else {
+        urlWithWWW.hostname = "www." + urlWithoutWWW.hostname;
+    }
+
+    let permutations = [urlWithWWW, urlWithoutWWW];
+
+    // Construct more versions for http/https
+    permutations = permutations.flatMap(urlO => {
+        if (!["http:", "https:"].includes(urlO.protocol)) {
+            return [urlO];
+        }
+
+        const urlWithHTTP = new URL(urlO);
+        const urlWithHTTPS = new URL(urlO);
+        urlWithHTTP.protocol = "http:";
+        urlWithHTTPS.protocol = "https:";
+
+        return [urlWithHTTP, urlWithHTTPS];
+    });
+
+    return permutations;
+}
+
 export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise<boolean> {
     if (typeof sc.crawlerOptions?.limit === "number") {
-        if (await redisConnection.scard("crawl:" + id + ":visited") >= sc.crawlerOptions.limit) {
+        if (await redisConnection.scard("crawl:" + id + ":visited_unique") >= sc.crawlerOptions.limit) {
             return false;
         }
     }
 
-    try {
-        const urlO = new URL(url);
-        urlO.search = "";
-        urlO.hash = "";
-        url = urlO.href;
-    } catch (error) {
-        Logger.warn("Failed to normalize URL " + JSON.stringify(url) + ": " + error);
+    url = normalizeURL(url, sc);
+
+    await redisConnection.sadd("crawl:" + id + ":visited_unique", url);
+    await redisConnection.expire("crawl:" + id + ":visited_unique", 24 * 60 * 60, "NX");
+
+    let res: boolean;
+    if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
+        res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0
+    } else {
+        const permutations = generateURLPermutations(url);
+        res = (await redisConnection.sadd("crawl:" + id + ":visited", ...permutations.map(x => x.href))) === permutations.length;
     }
 
-    const res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0
     await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
     return res;
 }
 
 /// NOTE: does not check limit. only use if limit is checked beforehand e.g. with sitemap
-export async function lockURLs(id: string, urls: string[]): Promise<boolean> {
+export async function lockURLs(id: string, sc: StoredCrawl, urls: string[]): Promise<boolean> {
     urls = urls.map(url => {
-        try {
-            const urlO = new URL(url);
-            urlO.search = "";
-            urlO.hash = "";
-            return urlO.href;
-        } catch (error) {
-            Logger.warn("Failed to normalize URL " + JSON.stringify(url) + ": " + error);
-        }
-
-        return url;
+        return normalizeURL(url, sc);
     });
     
     const res = (await redisConnection.sadd("crawl:" + id + ":visited", ...urls)) !== 0
@@ -131,11 +169,11 @@ export async function lockURLs(id: string, urls: string[]): Promise<boolean> {
 export function crawlToCrawler(id: string, sc: StoredCrawl): WebCrawler {
     const crawler = new WebCrawler({
         jobId: id,
-        initialUrl: sc.originUrl,
+        initialUrl: sc.originUrl!,
         includes: sc.crawlerOptions?.includes ?? [],
         excludes: sc.crawlerOptions?.excludes ?? [],
         maxCrawledLinks: sc.crawlerOptions?.maxCrawledLinks ?? 1000,
-        maxCrawledDepth: sc.crawlerOptions?.maxDepth ?? 10,
+        maxCrawledDepth: getAdjustedMaxDepth(sc.originUrl!, sc.crawlerOptions?.maxDepth ?? 10),
         limit: sc.crawlerOptions?.limit ?? 10000,
         generateImgAltText: sc.crawlerOptions?.generateImgAltText ?? false,
         allowBackwardCrawling: sc.crawlerOptions?.allowBackwardCrawling ?? false,
