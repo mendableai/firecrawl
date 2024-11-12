@@ -75,7 +75,7 @@ export async function crawlStatusController(req: Request, res: Response) {
 
     const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : "active";
 
-    const data = jobs.filter(x => x.failedReason !== "Concurreny limit hit").map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
+    const data = jobs.filter(x => x.failedReason !== "Concurreny limit hit" && x.returnvalue !== null).map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
 
     if (
       jobs.length > 0 &&

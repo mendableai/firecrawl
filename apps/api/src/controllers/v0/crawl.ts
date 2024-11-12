@@ -138,6 +138,8 @@ export async function crawlController(req: Request, res: Response) {
 
     const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(pageOptions, undefined, undefined);
 
+    delete (scrapeOptions as any).timeout;
+
     const sc: StoredCrawl = {
       originUrl: url,
       crawlerOptions,
