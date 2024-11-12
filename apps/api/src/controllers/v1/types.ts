@@ -158,6 +158,9 @@ export const extractV1Options = z.object({
   urls: url.array(),
   prompt: z.string().optional(),
   schema: z.any().optional(),
+  limit: z.number().int().positive().finite().safe().optional(),
+  ignoreSitemap: z.boolean().default(false),
+  includeSubdomains: z.boolean().default(true),
   origin: z.string().optional().default("api"),
   timeout: z.number().int().positive().finite().safe().default(60000),
 }).strict(strictMessage)
