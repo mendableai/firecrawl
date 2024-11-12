@@ -197,6 +197,9 @@ importers:
       typesense:
         specifier: ^1.5.4
         version: 1.8.2(@babel/runtime@7.24.6)
+      undici:
+        specifier: ^6.20.1
+        version: 6.20.1
       unstructured-client:
         specifier: ^0.11.3
         version: 0.11.3(zod@3.23.8)
@@ -3956,6 +3959,10 @@ packages:
 
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
+
+  undici@6.20.1:
+    resolution: {integrity: sha512-AjQF1QsmqfJys+LXfGTNum+qw4S88CojRInG/6t31W/1fk6G59s92bnAvGz5Cmur+kQv2SURXEvvudLmbrE8QA==}
+    engines: {node: '>=18.17'}
 
   union@0.5.0:
     resolution: {integrity: sha512-N6uOhuW6zO95P3Mel2I2zMsbsanvvtgn6jVqJv4vbVcz/JN0OkL9suomjQGmWtxJQXOCqUJvquc1sMeNz/IwlA==}
@@ -8340,6 +8347,8 @@ snapshots:
   underscore@1.13.6: {}
 
   undici-types@5.26.5: {}
+
+  undici@6.20.1: {}
 
   union@0.5.0:
     dependencies:

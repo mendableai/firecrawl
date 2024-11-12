@@ -1,6 +1,6 @@
 import { Meta } from "../..";
 import { EngineScrapeResult } from "..";
-import { downloadFile, fetchFileToBuffer } from "../utils/downloadFile";
+import { downloadFile } from "../utils/downloadFile";
 import mammoth from "mammoth";
 
 export async function scrapeDOCX(meta: Meta): Promise<EngineScrapeResult> {
