@@ -568,24 +568,24 @@ async function processJob(job: Job & { id: string }, token: string) {
         crawl_id: job.data.crawl_id,
       });
 
-      await logJob({
-        job_id: job.data.crawl_id,
-        success: false,
-        message:
-          typeof error === "string"
-            ? error
-            : error.message ??
-              "Something went wrong... Contact help@mendable.ai",
-        num_docs: 0,
-        docs: [],
-        time_taken: 0,
-        team_id: job.data.team_id,
-        mode: job.data.crawlerOptions !== null ? "crawl" : "batch_scrape",
-        url: sc ? sc.originUrl ?? job.data.url : job.data.url,
-        crawlerOptions: sc ? sc.crawlerOptions : undefined,
-        scrapeOptions: sc ? sc.scrapeOptions : job.data.scrapeOptions,
-        origin: job.data.origin,
-      });
+      // await logJob({
+      //   job_id: job.data.crawl_id,
+      //   success: false,
+      //   message:
+      //     typeof error === "string"
+      //       ? error
+      //       : error.message ??
+      //         "Something went wrong... Contact help@mendable.ai",
+      //   num_docs: 0,
+      //   docs: [],
+      //   time_taken: 0,
+      //   team_id: job.data.team_id,
+      //   mode: job.data.crawlerOptions !== null ? "crawl" : "batch_scrape",
+      //   url: sc ? sc.originUrl ?? job.data.url : job.data.url,
+      //   crawlerOptions: sc ? sc.crawlerOptions : undefined,
+      //   scrapeOptions: sc ? sc.scrapeOptions : job.data.scrapeOptions,
+      //   origin: job.data.origin,
+      // });
     }
     // done(null, data);
     return data;
