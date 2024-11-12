@@ -276,10 +276,18 @@ async function processJob(job: Job & { id: string }, token: string) {
     });
     const start = Date.now();
 
-    const pipeline = await startWebScraperPipeline({
-      job,
-      token,
-    });
+    const pipeline = await Promise.race([
+      startWebScraperPipeline({
+        job,
+        token,
+      }),
+      ...(job.data.scrapeOptions.timeout !== undefined ? [
+        (async () => {
+          await sleep(job.data.scrapeOptions.timeout);
+          throw new Error("timeout")
+        })(),
+      ] : [])
+    ]);
 
     if (!pipeline.success) {
       // TODO: let's Not do this
@@ -486,13 +494,19 @@ async function processJob(job: Job & { id: string }, token: string) {
     logger.info(`🐂 Job done ${job.id}`);
     return data;
   } catch (error) {
-    logger.error(`🐂 Job errored ${job.id} - ${error}`);
+    const isEarlyTimeout = error instanceof Error && error.message === "timeout";
 
-    Sentry.captureException(error, {
-      data: {
-        job: job.id,
-      },
-    });
+    if (!isEarlyTimeout) {
+      logger.error(`🐂 Job errored ${job.id} - ${error}`);
+
+      Sentry.captureException(error, {
+        data: {
+          job: job.id,
+        },
+      });
+    } else {
+      logger.error(`🐂 Job timed out ${job.id}`);
+    }
 
     if (error instanceof CustomError) {
       // Here we handle the error, then save the failed job
