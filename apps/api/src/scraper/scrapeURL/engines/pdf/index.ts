@@ -62,6 +62,8 @@ async function scrapePDFWithLlamaParse(meta: Meta, tempFilePath: string): Promis
         schema: z.object({
             markdown: z.string(),
         }),
+        tryCount: 16,
+        tryCooldown: 250,
     });
     
     return {
