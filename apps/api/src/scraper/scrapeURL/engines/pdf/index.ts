@@ -1,5 +1,4 @@
 import { createReadStream, promises as fs } from "node:fs";
-import FormData from "form-data";
 import { Meta } from "../..";
 import { EngineScrapeResult } from "..";
 import * as marked from "marked";
@@ -16,10 +15,26 @@ async function scrapePDFWithLlamaParse(meta: Meta, tempFilePath: string): Promis
     meta.logger.debug("Processing PDF document with LlamaIndex", { tempFilePath });
 
     const uploadForm = new FormData();
-    uploadForm.append("file", createReadStream(tempFilePath), {
-        filename: tempFilePath,
-        contentType: "application/pdf", // NOTE: request.headers["Content-Type"]?
-    });
+
+    // This is utterly stupid but it works! - mogery
+    uploadForm.append("file", {
+        [Symbol.toStringTag]: "Blob",
+        name: tempFilePath,
+        stream() {
+            return createReadStream(tempFilePath) as unknown as ReadableStream<Uint8Array>
+        },
+        arrayBuffer() {
+            throw Error("Unimplemented in mock Blob: arrayBuffer")
+        },
+        size: (await fs.stat(tempFilePath)).size,
+        text() {
+            throw Error("Unimplemented in mock Blob: text")
+        },
+        slice(start, end, contentType) {
+            throw Error("Unimplemented in mock Blob: slice")
+        },
+        type: "application/pdf",
+    } as Blob);
 
     const upload = await robustFetch({
         url: "https://api.cloud.llamaindex.ai/api/parsing/upload",

@@ -101,9 +101,6 @@ importers:
       express-ws:
         specifier: ^5.0.2
         version: 5.0.2(express@4.19.2)
-      form-data:
-        specifier: ^4.0.0
-        version: 4.0.0
       glob:
         specifier: ^10.4.2
         version: 10.4.2
@@ -3932,8 +3929,8 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  typescript@5.6.2:
-    resolution: {integrity: sha512-NW8ByodCSNCwZeghjN3o+JX5OFH0Ojg6sadjEKY4huZ52TqbJTJnDo5+Tw98lSy63NZvi4n+ez5m2u5d4PkZyw==}
+  typescript@5.6.3:
+    resolution: {integrity: sha512-hjcS1mhfuyi4WW8IWtjP7brDrG2cuDZukyrYrSauoXGNgx0S7zceP07adYkJycEr56BOUTNPzbInooiN3fn1qw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -7742,7 +7739,7 @@ snapshots:
       csv-parse: 5.5.6
       gpt3-tokenizer: 1.1.5
       openai: 3.3.0
-      typescript: 5.6.2
+      typescript: 5.6.3
       uuid: 9.0.1
       zod: 3.23.8
     transitivePeerDependencies:
@@ -8320,7 +8317,7 @@ snapshots:
 
   typescript@5.4.5: {}
 
-  typescript@5.6.2: {}
+  typescript@5.6.3: {}
 
   typesense@1.8.2(@babel/runtime@7.24.6):
     dependencies:

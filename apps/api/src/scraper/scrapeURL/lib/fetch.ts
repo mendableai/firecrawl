@@ -2,7 +2,6 @@ import { Logger } from "winston";
 import { z, ZodError } from "zod";
 import { v4 as uuid } from "uuid";
 import * as Sentry from "@sentry/node";
-import FormData from "form-data";
 
 export type RobustFetchParams<Schema extends z.Schema<any>> = {
     url: string;
@@ -38,14 +37,14 @@ export async function robustFetch<Schema extends z.Schema<any>, Output = z.infer
             method,
             headers: {
                 ...(body instanceof FormData
-                ? body.getHeaders()
+                ? ({})
                 : body !== undefined ? ({
                     "Content-Type": "application/json",
                 }) : {}),
                 ...(headers !== undefined ? headers : {}),
             },
             ...(body instanceof FormData ? ({
-                body: body.getBuffer(),
+                body,
             }) : body !== undefined ? ({
                 body: JSON.stringify(body),
             }) : {}),
