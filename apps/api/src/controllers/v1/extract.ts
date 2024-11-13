@@ -89,7 +89,7 @@ export async function extractController(
     await redis.set(cacheKey, JSON.stringify(allResults), "EX", 24 * 60 * 60); // Cache for 24 hours
   }
 
-  console.log("allResults", allResults);
+  // console.log("allResults", allResults);
   // Parallelize sitemap fetch with serper search
   const [sitemap, ...searchResults] = await Promise.all([
     req.body.ignoreSitemap ? null : crawler.tryGetSitemap(),
@@ -138,7 +138,7 @@ export async function extractController(
     linksAndScores = await performRanking(links, searchQuery);
   }
 
-  console.log("linksAndScores", linksAndScores);
+  // console.log("linksAndScores", linksAndScores);
 
   links = links
     .map((x) => {
@@ -218,8 +218,8 @@ export async function extractController(
 
     await getScrapeQueue().remove(jobId);
 
-    const endTime = new Date().getTime();
-    const timeTakenInSeconds = (endTime - startTime) / 1000;
+    // const endTime = new Date().getTime();
+    // const timeTakenInSeconds = (endTime - startTime) / 1000;
     // const numTokens =
     //   doc && doc.extract
     //     // ? numTokensFromString(doc.markdown, "gpt-3.5-turbo")
@@ -235,7 +235,7 @@ export async function extractController(
   }
 
 
-  console.log("docs", docs);
+  // console.log("docs", docs);
 
   // {"message":"Missing required parameter: 'response_format.json_schema.schema'.","type":"invalid_request_error","param":"response_format.json_schema.schema","code":"missing_required_parameter"},"code":"missing_required_parameter","param":"response_format.json_schema.schema","type":"invalid_request_error"}
   const completions = await generateFinalExtraction({
@@ -245,7 +245,7 @@ export async function extractController(
     schema: req.body.schema,
   });
 
-  console.log("completions", completions);
+  // console.log("completions", completions);
 
   // if(req.body.extract && req.body.formats.includes("extract")) {
   //   creditsToBeBilled = 5;
@@ -317,7 +317,7 @@ export async function extractController(
 
   return res.status(200).json({
     success: true,
-    data: {}, // includeMetadata ? mapResults : linksToReturn,
+    data: completions.content, // includeMetadata ? mapResults : linksToReturn,
     scrape_id: id, //origin?.includes("website") ? id : undefined,
   });
 }

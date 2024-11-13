@@ -49,10 +49,10 @@ async function performRanking(links: string[], searchQuery: string) {
     const linksAndScores = await Promise.all(links.map(async (link) => {
       const linkEmbedding = await getEmbedding(link);
 
-      console.log("linkEmbedding", linkEmbedding);
+      // console.log("linkEmbedding", linkEmbedding);
       // const linkVector = textToVector(searchQuery, link);
       const score = cosineSimilarity(queryEmbedding, linkEmbedding);
-      console.log("score", score);
+      // console.log("score", score);
       return { link, score };
     }));
 

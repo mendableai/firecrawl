@@ -77,6 +77,9 @@ export async function generateFinalExtraction({
       required: ["items"],
       additionalProperties: false,
     };
+  } else if (schema) {
+    schema.additionalProperties = false;
+    schema.required = Object.keys(schema.properties);
   }
 
   const jsonCompletion = await openai.beta.chat.completions.parse({
@@ -96,7 +99,7 @@ export async function generateFinalExtraction({
           type: "json_schema",
           json_schema: {
             name: "websiteContent",
-            schema: schema.shape,
+            schema: schema,
             strict: true,
           },
         }
