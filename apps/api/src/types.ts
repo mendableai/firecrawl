@@ -1,4 +1,5 @@
-import { AuthCreditUsageChunk, ScrapeOptions, Document as V1Document } from "./controllers/v1/types";
+import { z } from "zod";
+import { AuthCreditUsageChunk, ScrapeOptions, Document as V1Document, webhookSchema } from "./controllers/v1/types";
 import { ExtractorOptions, Document } from "./lib/entities";
 import { InternalOptions } from "./scraper/scrapeURL";
 
@@ -33,7 +34,7 @@ export interface WebScraperOptions {
   origin?: string;
   crawl_id?: string;
   sitemapped?: boolean;
-  webhook?: string;
+  webhook?: z.infer<typeof webhookSchema>;
   v1?: boolean;
   is_scrape?: boolean;
 }

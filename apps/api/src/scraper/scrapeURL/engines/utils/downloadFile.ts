@@ -4,6 +4,7 @@ import { createWriteStream, promises as fs } from "node:fs";
 import { EngineError } from "../../error";
 import { Writable } from "stream";
 import { v4 as uuid } from "uuid";
+import * as undici from "undici";
 
 export async function fetchFileToBuffer(url: string): Promise<{
     response: Response,
@@ -17,13 +18,21 @@ export async function fetchFileToBuffer(url: string): Promise<{
 }
 
 export async function downloadFile(id: string, url: string): Promise<{
-    response: Response
+    response: undici.Response
     tempFilePath: string
 }> {
     const tempFilePath = path.join(os.tmpdir(), `tempFile-${id}--${uuid()}`);
     const tempFileWrite = createWriteStream(tempFilePath);
 
-    const response = await fetch(url); // TODO: maybe we could use tlsclient for this? for proxying
+    // TODO: maybe we could use tlsclient for this? for proxying
+    // use undici to ignore SSL for now
+    const response = await undici.fetch(url, {
+        dispatcher: new undici.Agent({
+            connect: {
+                rejectUnauthorized: false,
+            },
+        })
+    });
 
     // This should never happen in the current state of JS (2024), but let's check anyways.
     if (response.body === null) {

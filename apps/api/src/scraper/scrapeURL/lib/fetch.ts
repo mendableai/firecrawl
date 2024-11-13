@@ -2,7 +2,6 @@ import { Logger } from "winston";
 import { z, ZodError } from "zod";
 import { v4 as uuid } from "uuid";
 import * as Sentry from "@sentry/node";
-import FormData from "form-data";
 
 export type RobustFetchParams<Schema extends z.Schema<any>> = {
     url: string;
@@ -16,6 +15,7 @@ export type RobustFetchParams<Schema extends z.Schema<any>> = {
     ignoreFailure?: boolean;
     requestId?: string;
     tryCount?: number;
+    tryCooldown?: number;
 };
 
 export async function robustFetch<Schema extends z.Schema<any>, Output = z.infer<Schema>>({
@@ -29,8 +29,9 @@ export async function robustFetch<Schema extends z.Schema<any>, Output = z.infer
     ignoreFailure = false,
     requestId = uuid(),
     tryCount = 1,
+    tryCooldown,
 }: RobustFetchParams<Schema>): Promise<Output> {
-    const params = { url, logger, method, body, headers, schema, ignoreResponse, ignoreFailure, tryCount };
+    const params = { url, logger, method, body, headers, schema, ignoreResponse, ignoreFailure, tryCount, tryCooldown };
 
     let request: Response;
     try {
@@ -38,14 +39,14 @@ export async function robustFetch<Schema extends z.Schema<any>, Output = z.infer
             method,
             headers: {
                 ...(body instanceof FormData
-                ? body.getHeaders()
+                ? ({})
                 : body !== undefined ? ({
                     "Content-Type": "application/json",
                 }) : {}),
                 ...(headers !== undefined ? headers : {}),
             },
             ...(body instanceof FormData ? ({
-                body: body.getBuffer(),
+                body,
             }) : body !== undefined ? ({
                 body: JSON.stringify(body),
             }) : {}),
@@ -87,6 +88,9 @@ export async function robustFetch<Schema extends z.Schema<any>, Output = z.infer
     if (request.status >= 300) {
         if (tryCount > 1) {
             logger.debug("Request sent failure status, trying " + (tryCount - 1) + " more times", { params, request, response, requestId });
+            if (tryCooldown !== undefined) {
+                await new Promise((resolve) => setTimeout(() => resolve(null), tryCooldown));
+            }
             return await robustFetch({
                 ...params,
                 requestId,

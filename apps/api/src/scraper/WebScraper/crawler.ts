@@ -27,6 +27,7 @@ export class WebCrawler {
   constructor({
     jobId,
     initialUrl,
+    baseUrl,
     includes,
     excludes,
     maxCrawledLinks = 10000,
@@ -38,6 +39,7 @@ export class WebCrawler {
   }: {
     jobId: string;
     initialUrl: string;
+    baseUrl?: string;
     includes?: string[];
     excludes?: string[];
     maxCrawledLinks?: number;
@@ -49,7 +51,7 @@ export class WebCrawler {
   }) {
     this.jobId = jobId;
     this.initialUrl = initialUrl;
-    this.baseUrl = new URL(initialUrl).origin;
+    this.baseUrl = baseUrl ?? new URL(initialUrl).origin;
     this.includes = Array.isArray(includes) ? includes : [];
     this.excludes = Array.isArray(excludes) ? excludes : [];
     this.limit = limit;
