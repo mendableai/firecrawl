@@ -26,7 +26,7 @@ import { waitForJob } from "../../services/queue-jobs";
 import { addScrapeJob } from "../../services/queue-jobs";
 import { PlanType } from "../../types";
 import { getJobPriority } from "../../lib/job-priority";
-import { generateCompletions } from "../../lib/LLM-extraction";
+import { generateFinalExtraction } from "../../lib/extract/completions";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -237,18 +237,15 @@ export async function extractController(
 
   console.log("docs", docs);
 
-  // reduce to 1 document
-  const completions = await generateCompletions(
-    docs, {
-      extractionSchema: req.body.schema,
-      extractionPrompt: req.body.prompt,
-      userPrompt: req.body.prompt,
-      mode: "markdown"
-    },
-    "markdown"
-  );
+  // {"message":"Missing required parameter: 'response_format.json_schema.schema'.","type":"invalid_request_error","param":"response_format.json_schema.schema","code":"missing_required_parameter"},"code":"missing_required_parameter","param":"response_format.json_schema.schema","type":"invalid_request_error"}
+  const completions = await generateFinalExtraction({
+    pagesContent: docs.map(x => x.markdown).join('\n'),
+    systemPrompt: '',
+    prompt: req.body.prompt,
+    schema: req.body.schema,
+  });
 
-  console.log("completions", completions.map(x => x.llm_extraction));
+  console.log("completions", completions);
 
   // if(req.body.extract && req.body.formats.includes("extract")) {
   //   creditsToBeBilled = 5;
