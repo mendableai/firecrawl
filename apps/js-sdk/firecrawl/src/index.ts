@@ -153,7 +153,10 @@ export interface CrawlParams {
   allowExternalLinks?: boolean;
   ignoreSitemap?: boolean;
   scrapeOptions?: CrawlScrapeOptions;
-  webhook?: string;
+  webhook?: string | {
+    url: string;
+    headers?: Record<string, string>;
+  };
   deduplicateSimilarURLs?: boolean;
   ignoreQueryParameters?: boolean;
 }
