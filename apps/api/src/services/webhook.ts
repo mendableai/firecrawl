@@ -1,15 +1,17 @@
 import axios from "axios";
-import { logger } from "../../src/lib/logger";
+import { logger } from "../lib/logger";
 import { supabase_service } from "./supabase";
 import { WebhookEventType } from "../types";
 import { configDotenv } from "dotenv";
+import { z } from "zod";
+import { webhookSchema } from "../controllers/v1/types";
 configDotenv();
 
 export const callWebhook = async (
   teamId: string,
   id: string,
   data: any | null,
-  specified?: string,
+  specified?: z.infer<typeof webhookSchema>,
   v1 = false,
   eventType: WebhookEventType = "crawl.page",
   awaitWebhook: boolean = false
@@ -20,7 +22,7 @@ export const callWebhook = async (
       id
     );
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
-    let webhookUrl = specified ?? selfHostedUrl;
+    let webhookUrl = specified ?? (selfHostedUrl ? webhookSchema.parse({ url: selfHostedUrl }) : undefined);
 
     // Only fetch the webhook URL from the database if the self-hosted webhook URL and specified webhook are not set
     // and the USE_DB_AUTHENTICATION environment variable is set to true
@@ -73,7 +75,7 @@ export const callWebhook = async (
     if (awaitWebhook) {
       try {
         await axios.post(
-          webhookUrl,
+          webhookUrl.url,
           {
             success: !v1
               ? data.success
@@ -92,6 +94,7 @@ export const callWebhook = async (
           {
             headers: {
               "Content-Type": "application/json",
+              ...webhookUrl.headers,
             },
             timeout: v1 ? 10000 : 30000, // 10 seconds timeout (v1)
           }
@@ -104,7 +107,7 @@ export const callWebhook = async (
     } else {
       axios
         .post(
-          webhookUrl,
+          webhookUrl.url,
           {
             success: !v1
               ? data.success
@@ -123,6 +126,7 @@ export const callWebhook = async (
           {
             headers: {
               "Content-Type": "application/json",
+              ...webhookUrl.headers,
             },
             timeout: v1 ? 10000 : 30000, // 10 seconds timeout (v1)
           }
