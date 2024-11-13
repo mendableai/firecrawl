@@ -26,22 +26,24 @@ import { waitForJob } from "../../services/queue-jobs";
 import { addScrapeJob } from "../../services/queue-jobs";
 import { PlanType } from "../../types";
 import { getJobPriority } from "../../lib/job-priority";
-import { generateFinalExtraction } from "../../lib/extract/completions";
+import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
+import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
 
 const MAX_EXTRACT_LIMIT = 100;
-const MAX_RANKING_LIMIT = 3;
+const MAX_RANKING_LIMIT = 5;
+const SCORE_THRESHOLD = 0.75;
 
 export async function extractController(
   req: RequestWithAuth<{}, ExtractResponse, ExtractRequest>,
-  res: Response<any> //ExtractResponse>
+  res: Response<ExtractResponse>
 ) {
   req.body = extractRequestSchema.parse(req.body);
 
   const id = crypto.randomUUID();
-  let links: string[] = req.body.urls;
+  let links: string[]; //= req.body.urls;
 
   const sc: StoredCrawl = {
     originUrl: req.body.urls[0],
@@ -59,10 +61,14 @@ export async function extractController(
   const crawler = crawlToCrawler(id, sc);
 
   let urlWithoutWww = req.body.urls[0].replace("www.", "");
+  console.log("urlWithoutWww", urlWithoutWww);
 
-  let mapUrl = req.body.prompt
-    ? `"${req.body.prompt}" site:${urlWithoutWww}`
-    : `site:${req.body.urls[0]}`;
+  const allowExternalLinks = req.body.allowExternalLinks ?? false;
+
+  let mapUrl = req.body.prompt && allowExternalLinks
+    ? `${req.body.prompt} ${urlWithoutWww}`
+    : req.body.prompt ? `${req.body.prompt} site:${urlWithoutWww}`
+    : `site:${urlWithoutWww}`;
 
   const resultsPerPage = 100;
   const maxPages = Math.ceil(MAX_EXTRACT_LIMIT / resultsPerPage);
@@ -84,82 +90,103 @@ export async function extractController(
     };
 
     pagePromises = Array.from({ length: maxPages }, (_, i) => fetchPage(i + 1));
-    allResults = await Promise.all(pagePromises);
+    allResults = (await Promise.all(pagePromises)).flat();
+    // console.log("allResults", allResults);
+    // if allResults is empty, return an error
+    if (allResults.length === 0) {
+      return res.status(400).json({
+        success: false,
+        error: "No results found",
+      });
+    }
 
     await redis.set(cacheKey, JSON.stringify(allResults), "EX", 24 * 60 * 60); // Cache for 24 hours
   }
 
   // console.log("allResults", allResults);
   // Parallelize sitemap fetch with serper search
-  const [sitemap, ...searchResults] = await Promise.all([
-    req.body.ignoreSitemap ? null : crawler.tryGetSitemap(),
-    ...(cachedResult ? [] : pagePromises),
-  ]);
+  // const [sitemap, ...searchResults] = await Promise.all([
+  //   req.body.ignoreSitemap ? null : null, // crawler.tryGetSitemap(),
+  //   ...(cachedResult ? [] : pagePromises),
+  // ]);
 
-  if (!cachedResult) {
-    allResults = searchResults;
-  }
+  // if (!cachedResult) {
+  //   allResults = searchResults;
+  // }
 
-  if (sitemap !== null) {
-    sitemap.forEach((x) => {
-      links.push(x.url);
-    });
-  }
+  links = allResults.map(x => `url: ${x.url}, title: ${x.title}, description: ${x.description}`);
+  console.log("links", links);
+  // if (sitemap !== null) {
+  //   sitemap.forEach((x) => {
+  //     links.push(x.url);
+  //   });
+  // }
 
-  let mapResults = allResults
-    .flat()
-    .filter((result) => result !== null && result !== undefined);
+  // let mapResults = allResults
+  //   .flat()
+  //   .filter((result) => result !== null && result !== undefined);
 
-  const minumumCutoff = Math.min(MAX_EXTRACT_LIMIT, req.body.limit ?? MAX_EXTRACT_LIMIT);
-  if (mapResults.length > minumumCutoff) {
-    mapResults = mapResults.slice(0, minumumCutoff);
-  }
+  // const minumumCutoff = Math.min(MAX_EXTRACT_LIMIT, req.body.limit ?? MAX_EXTRACT_LIMIT);
+  // if (mapResults.length > minumumCutoff) {
+  //   mapResults = mapResults.slice(0, minumumCutoff);
+  // }
 
-  if (mapResults.length > 0) {
-    if (req.body.prompt) {
-      // Ensure all map results are first, maintaining their order
-      links = [
-        mapResults[0].url,
-        ...mapResults.slice(1).map((x) => x.url),
-        ...links,
-      ];
-    } else {
-      mapResults.map((x) => {
-        links.push(x.url);
-      });
-    }
-  }
+  // if (mapResults.length > 0) {
+  //   if (req.body.prompt) {
+  //     // Ensure all map results are first, maintaining their order
+  //     links = [
+  //       mapResults[0].url,
+  //       ...mapResults.slice(1).map((x) => x.url),
+  //       ...links,
+  //     ];
+  //   } else {
+  //     mapResults.map((x) => {
+  //       links.push(x.url);
+  //     });
+  //   }
+  // }
+
+  // console.log("mapResults", mapResults);
 
   // console.log("links", links);
   let linksAndScores: { link: string; score: number }[] = [];
   // Perform cosine similarity between the search query and the list of links
   if (req.body.prompt) {
-    const searchQuery = req.body.prompt.toLowerCase();
+    const searchQuery = mapUrl; //req.body.prompt.toLowerCase();
     linksAndScores = await performRanking(links, searchQuery);
   }
+  console.log("linksAndScores", linksAndScores);
+  links = linksAndScores
+    .filter(x => x.score > SCORE_THRESHOLD)
+    .map(x => x.link.split("url: ")[1].split(",")[0])
+    .filter(x => !isUrlBlocked(x))
+
+  console.log("links:", links.length);
+
+  // should we use some sort of llm to determine the best links?
 
   // console.log("linksAndScores", linksAndScores);
 
-  links = links
-    .map((x) => {
-      try {
-        return checkAndUpdateURLForMap(x).url.trim();
-      } catch (_) {
-        return null;
-      }
-    })
-    .filter((x) => x !== null) as string[];
+  // links = links
+  //   .map((x) => {
+  //     try {
+  //       return checkAndUpdateURLForMap(x).url.trim();
+  //     } catch (_) {
+  //       return null;
+  //     }
+  //   })
+  //   .filter((x) => x !== null) as string[];
 
   // allows for subdomains to be included
-  links = links.filter((x) => isSameDomain(x, req.body.urls[0]));
+  // links = links.filter((x) => isSameDomain(x, req.body.urls[0]));
 
   // if includeSubdomains is false, filter out subdomains
-  if (!req.body.includeSubdomains) {
-    links = links.filter((x) => isSameSubdomain(x, req.body.urls[0]));
-  }
+  // if (!req.body.includeSubdomains) {
+  //   links = links.filter((x) => isSameSubdomain(x, req.body.urls[0]));
+  // z}
 
   // remove duplicates that could be due to http/https or www
-  links = removeDuplicateUrls(links);
+  // links = removeDuplicateUrls(links);
 
   // get top N links
   links = links.slice(0, MAX_RANKING_LIMIT);
@@ -170,7 +197,7 @@ export async function extractController(
 
   for (const url of links) {
     const origin = req.body.origin || "api";
-    const timeout = req.body.timeout;
+    const timeout = req.body.timeout ?? 30000;
     const jobId = crypto.randomUUID();
 
     const startTime = new Date().getTime();
@@ -196,7 +223,7 @@ export async function extractController(
       jobPriority
     );
 
-    const totalWait = 60000 // (req.body.waitFor ?? 0) + (req.body.actions ?? []).reduce((a,x) => (x.type === "wait" ? x.milliseconds ?? 0 : 0) + a, 0);
+    const totalWait = 0 //60000 // (req.body.waitFor ?? 0) + (req.body.actions ?? []).reduce((a,x) => (x.type === "wait" ? x.milliseconds ?? 0 : 0) + a, 0);
 
     let doc: Document;
     try {
@@ -234,18 +261,20 @@ export async function extractController(
     docs.push(doc);
   }
 
+  console.log(docs)
 
-  // console.log("docs", docs);
+  const completions = await generateOpenAICompletions(
+    logger.child({ method: "extractController/generateOpenAICompletions" }),
+    {
+      mode: "llm",
+      systemPrompt: "Only use the provided content to answer the question.",
+      prompt: mapUrl,
+      schema: req.body.schema,
+    },
+    docs.map(x => x.markdown).join('\n')
+  );
 
-  // {"message":"Missing required parameter: 'response_format.json_schema.schema'.","type":"invalid_request_error","param":"response_format.json_schema.schema","code":"missing_required_parameter"},"code":"missing_required_parameter","param":"response_format.json_schema.schema","type":"invalid_request_error"}
-  const completions = await generateFinalExtraction({
-    pagesContent: docs.map(x => x.markdown).join('\n'),
-    systemPrompt: '',
-    prompt: req.body.prompt,
-    schema: req.body.schema,
-  });
-
-  // console.log("completions", completions);
+  console.log("completions", completions);
 
   // if(req.body.extract && req.body.formats.includes("extract")) {
   //   creditsToBeBilled = 5;
@@ -315,9 +344,18 @@ export async function extractController(
   //   scrape_id: result.scrape_id
   // };
 
+  console.log("completions.extract", completions.extract);
+
+  let data: any;
+  try {
+    data = JSON.parse(completions.extract);
+  } catch (e) {
+    data = completions.extract;
+  }
+
   return res.status(200).json({
     success: true,
-    data: completions.content, // includeMetadata ? mapResults : linksToReturn,
+    data: data, // includeMetadata ? mapResults : linksToReturn,
     scrape_id: id, //origin?.includes("website") ? id : undefined,
   });
 }

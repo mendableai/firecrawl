@@ -37,7 +37,6 @@ export async function fireEngineMap(
       );
       return [];
     }
-    console.log("process.env.FIRE_ENGINE_BETA_URL", process.env.FIRE_ENGINE_BETA_URL);
 
     const response = await fetch(`${process.env.FIRE_ENGINE_BETA_URL}/search`, {
       method: "POST",

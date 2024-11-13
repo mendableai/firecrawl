@@ -58,32 +58,33 @@ function normalizeSchema(x: any): any {
     }
 }
 
-async function generateOpenAICompletions(logger: Logger, document: Document, options: ExtractOptions): Promise<Document> {
+export async function generateOpenAICompletions(logger: Logger, options: ExtractOptions, markdown?: string, previousWarning?: string): Promise<{ extract: any, warning: string | undefined }> {
+    let extract: any;
+    let warning: string | undefined;
+
     const openai = new OpenAI();
     const model: TiktokenModel = (process.env.MODEL_NAME as TiktokenModel) ?? "gpt-4o-mini";
 
-    if (document.markdown === undefined) {
+    if (markdown === undefined) {
         throw new Error("document.markdown is undefined -- this is unexpected");
     }
-
-    let extractionContent = document.markdown;
 
     // count number of tokens
     let numTokens = 0;
     const encoder = encoding_for_model(model as TiktokenModel);
     try {
         // Encode the message into tokens
-        const tokens = encoder.encode(extractionContent);
+        const tokens = encoder.encode(markdown);
     
         // Return the number of tokens
         numTokens = tokens.length;
     } catch (error) {
-        logger.warn("Calculating num tokens of string failed", { error, extractionContent });
+        logger.warn("Calculating num tokens of string failed", { error, markdown });
 
-        extractionContent = extractionContent.slice(0, maxTokens * modifier);
+        markdown = markdown.slice(0, maxTokens * modifier);
 
-        const warning = "Failed to derive number of LLM tokens the extraction might use -- the input has been automatically trimmed to the maximum number of tokens (" + maxTokens + ") we support.";
-        document.warning = document.warning === undefined ? warning : " " + warning;
+        let w = "Failed to derive number of LLM tokens the extraction might use -- the input has been automatically trimmed to the maximum number of tokens (" + maxTokens + ") we support.";
+        warning = previousWarning === undefined ? w : w + " " + previousWarning;
     } finally {
         // Free the encoder resources after use
         encoder.free();
@@ -91,10 +92,10 @@ async function generateOpenAICompletions(logger: Logger, document: Document, opt
 
     if (numTokens > maxTokens) {
         // trim the document to the maximum number of tokens, tokens != characters
-        extractionContent = extractionContent.slice(0, maxTokens * modifier);
+        markdown = markdown.slice(0, maxTokens * modifier);
 
-        const warning = "The extraction content would have used more tokens (" + numTokens + ") than the maximum we allow (" + maxTokens + "). -- the input has been automatically trimmed.";
-        document.warning = document.warning === undefined ? warning : " " + warning;
+        const w = "The extraction content would have used more tokens (" + numTokens + ") than the maximum we allow (" + maxTokens + "). -- the input has been automatically trimmed.";
+        warning = previousWarning === undefined ? w : w + " " + previousWarning;
     }
 
     let schema = options.schema;
@@ -120,7 +121,7 @@ async function generateOpenAICompletions(logger: Logger, document: Document, opt
             },
             {
                 role: "user",
-                content: [{ type: "text", text: extractionContent }],
+                content: [{ type: "text", text: markdown }],
             },
             {
                 role: "user",
@@ -143,11 +144,11 @@ async function generateOpenAICompletions(logger: Logger, document: Document, opt
         throw new LLMRefusalError(jsonCompletion.choices[0].message.refusal);
     }
 
-    document.extract = jsonCompletion.choices[0].message.parsed;
+    extract = jsonCompletion.choices[0].message.parsed;
 
-    if (document.extract === null && jsonCompletion.choices[0].message.content !== null) {
+    if (extract === null && jsonCompletion.choices[0].message.content !== null) {
         try {
-            document.extract = JSON.parse(jsonCompletion.choices[0].message.content);
+            extract = JSON.parse(jsonCompletion.choices[0].message.content);
         } catch (e) {
             logger.error("Failed to parse returned JSON, no schema specified.", { error: e });
             throw new LLMRefusalError("Failed to parse returned JSON. Please specify a schema in the extract object.");
@@ -155,14 +156,21 @@ async function generateOpenAICompletions(logger: Logger, document: Document, opt
     }
 
     if (options.schema && options.schema.type === "array") {
-        document.extract = document.extract?.items;
+        extract = extract?.items;
     }
-    return document;
+    return { extract, warning };
 }
 
 export async function performLLMExtract(meta: Meta, document: Document): Promise<Document> {
     if (meta.options.formats.includes("extract")) {
-        document = await generateOpenAICompletions(meta.logger.child({ method: "performLLMExtract/generateOpenAICompletions" }), document, meta.options.extract!);
+        const { extract, warning } = await generateOpenAICompletions(
+          meta.logger.child({ method: "performLLMExtract/generateOpenAICompletions" }),
+          meta.options.extract!,
+          document.markdown,
+          document.warning,
+        );
+        document.extract = extract;
+        document.warning = warning;
     }
 
     return document;
