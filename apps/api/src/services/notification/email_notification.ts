@@ -6,6 +6,7 @@ import { logger } from "../../../src/lib/logger";
 import { sendSlackWebhook } from "../alerts/slack";
 import { getNotificationString } from "./notification_string";
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
+import { redlock } from "../redlock";
 
 const emailTemplates: Record<
   NotificationType,
@@ -88,6 +89,7 @@ export async function sendNotificationInternal(
   if (team_id === "preview") {
     return { success: true };
   }
+  return await redlock.using([`notification-lock:${team_id}:${notificationType}`], 5000, async () => {
 
   if (!bypassRecentChecks) {
     const fifteenDaysAgo = new Date();
@@ -171,5 +173,6 @@ export async function sendNotificationInternal(
     return { success: false };
   }
 
-  return { success: true };
+    return { success: true };
+  });
 }
