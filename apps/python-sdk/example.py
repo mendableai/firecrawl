@@ -2,6 +2,8 @@ import time
 import nest_asyncio
 import uuid
 from firecrawl.firecrawl import FirecrawlApp
+from pydantic import BaseModel, Field
+from typing import List
 
 app = FirecrawlApp(api_key="fc-")
 
@@ -50,9 +52,6 @@ print(crawl_status)
 
 # LLM Extraction:
 # Define schema to extract contents into using pydantic
-from pydantic import BaseModel, Field
-from typing import List
-
 class ArticleSchema(BaseModel):
     title: str
     points: int 
@@ -114,6 +113,22 @@ llm_extraction_result = app2.scrape_url('https://news.ycombinator.com', {
 # Map a website:
 map_result = app.map_url('https://firecrawl.dev', { 'search': 'blog' })
 print(map_result)
+
+# Extract URLs:
+class ExtractSchema(BaseModel):
+    title: str
+    description: str
+    links: List[str]
+
+# Define the schema using Pydantic
+extract_schema = ExtractSchema.schema()
+
+# Perform the extraction
+extract_result = app.extract_urls(['https://firecrawl.dev'], {
+    'prompt': "Extract the title, description, and links from the website",
+    'schema': extract_schema
+})
+print(extract_result)
 
 # Crawl a website with WebSockets:
 # inside an async function...

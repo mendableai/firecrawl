@@ -12,15 +12,39 @@ Classes:
 import logging
 import os
 import time
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Union
 import json
 
 import requests
+import pydantic
 import websockets
 
 logger : logging.Logger = logging.getLogger("firecrawl")
 
 class FirecrawlApp:
+    class ExtractParams(pydantic.BaseModel):
+        """
+        Parameters for the extract operation.
+        """
+        prompt: str
+        schema: Optional[Any] = None
+        system_prompt: Optional[str] = None
+
+    class ExtractResponse(pydantic.BaseModel):
+        """
+        Response from the extract operation.
+        """
+        success: bool
+        data: Optional[Any] = None
+        error: Optional[str] = None
+
+    class ErrorResponse(pydantic.BaseModel):
+        """
+        Error response.
+        """
+        success: bool
+        error: str
+
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
       """
       Initialize the FirecrawlApp instance with API key, API URL.
@@ -433,6 +457,44 @@ class FirecrawlApp:
             }
         else:
             self._handle_error(response, 'check batch scrape status')
+
+
+    def extract_urls(self, urls: List[str], params: Optional[ExtractParams] = None) -> Union[ExtractResponse, ErrorResponse]:
+        """
+        Extracts information from a URL using the Firecrawl API.
+
+        Args:
+            urls (List[str]): The URLs to extract information from.
+            params (Optional[ExtractParams]): Additional parameters for the extract request.
+
+        Returns:
+            Union[ExtractResponse, ErrorResponse]: The response from the extract operation.
+        """
+        headers = self._prepare_headers()
+
+        if not params or not params.get('prompt'):
+            raise ValueError("Prompt is required")
+
+        if not params.get('schema'):
+            raise ValueError("Schema is required for extraction")
+
+        jsonData = {'urls': urls, **params}
+        jsonSchema = params['schema'].schema() if hasattr(params['schema'], 'schema') else None
+
+        try:
+            response = self._post_request(
+                f'{self.api_url}/v1/extract',
+                {**jsonData, 'schema': jsonSchema},
+                headers
+            )
+            if response.status_code == 200:
+                return response.json()
+            else:
+                self._handle_error(response, "extract")
+        except Exception as e:
+            raise ValueError(str(e), 500)
+
+        return {'success': False, 'error': "Internal server error."}
 
     def _prepare_headers(self, idempotency_key: Optional[str] = None) -> Dict[str, str]:
         """
