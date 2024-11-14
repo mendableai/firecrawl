@@ -16,7 +16,7 @@ describe("E2E Tests for Extract API Routes", () => {
       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
       .set("Content-Type", "application/json")
       .send({
-        urls: ["https://firecrawl.dev"],
+        urls: ["https://firecrawl.dev/*"],
         prompt: "Who are the authors of the blog posts?",
         schema: {
           type: "object",
@@ -46,7 +46,7 @@ describe("E2E Tests for Extract API Routes", () => {
       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
       .set("Content-Type", "application/json")
       .send({
-        urls: ["mendable.ai"],
+        urls: ["mendable.ai/*"],
         prompt: "Who are the founders of the company?",
         allowExternalLinks: true,
         schema: {
@@ -74,7 +74,7 @@ describe("E2E Tests for Extract API Routes", () => {
       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
       .set("Content-Type", "application/json")
       .send({
-        urls: ["https://firecrawl.dev"],
+        urls: ["https://firecrawl.dev/*"],
         prompt: "What are they hiring for?",
         allowExternalLinks: true,
         schema: {
@@ -107,7 +107,7 @@ describe("E2E Tests for Extract API Routes", () => {
       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
       .set("Content-Type", "application/json")
       .send({
-        urls: ["fivetran.com"],
+        urls: ["fivetran.com/*"],
         prompt: "Does Fivetran have PCI DSS compliance?",
         allowExternalLinks: true,
         schema: {
@@ -128,7 +128,7 @@ describe("E2E Tests for Extract API Routes", () => {
       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
       .set("Content-Type", "application/json")
       .send({
-        urls: ["fivetran.com"],
+        urls: ["fivetran.com/*"],
         prompt: "What are the Azure Data Connectors they offer?",
         schema: {
           type: "array",
