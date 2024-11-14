@@ -28,8 +28,8 @@ configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
 
 const MAX_EXTRACT_LIMIT = 100;
-const MAX_RANKING_LIMIT = 5;
-const SCORE_THRESHOLD = 0.75;
+const MAX_RANKING_LIMIT = 10;
+const SCORE_THRESHOLD = 0.70;
 
 export async function extractController(
   req: RequestWithAuth<{}, ExtractResponse, ExtractRequest>,
@@ -64,28 +64,34 @@ export async function extractController(
         allowExternalLinks,
         origin: req.body.origin,
         limit: req.body.limit,
-        ignoreSitemap: false,
+        ignoreSitemap: true,
         includeMetadata: true,
         includeSubdomains: req.body.includeSubdomains,
       });
 
-      let mappedLinks = mapResults.links.map(x => `url: ${x.url}, title: ${x.title}, description: ${x.description}`);
+      let mappedLinks = mapResults.links as MapDocument[];
+      // Limit number of links to MAX_EXTRACT_LIMIT
+      mappedLinks = mappedLinks.slice(0, MAX_EXTRACT_LIMIT);
+
+      let mappedLinksRerank = mappedLinks.map(x => `url: ${x.url}, title: ${x.title}, description: ${x.description}`);
       
       // Filter by path prefix if present
       if (pathPrefix) {
-        mappedLinks = mappedLinks.filter(x => x.includes(`/${pathPrefix}/`));
+        mappedLinks = mappedLinks.filter(x => x.url && x.url.includes(`/${pathPrefix}/`));
       }
 
       if (req.body.prompt) {
-        const linksAndScores = await performRanking(mappedLinks, mapUrl);
+        const linksAndScores : { link: string, linkWithContext: string, score: number, originalIndex: number }[] = await performRanking(mappedLinksRerank, mappedLinks.map(l => l.url), mapUrl);
         mappedLinks = linksAndScores
           .filter(x => x.score > SCORE_THRESHOLD)
-          .map(x => x.link.split("url: ")[1].split(",")[0])
-          .filter(x => !isUrlBlocked(x))
+          .map(x => mappedLinks.find(link => link.url === x.link))
+          .filter((x): x is MapDocument => x !== undefined && x.url !== undefined && !isUrlBlocked(x.url))
           .slice(0, MAX_RANKING_LIMIT);
+        console.log("linksAndScores", linksAndScores);
+        console.log("linksAndScores", linksAndScores.length);
       }
 
-      return mappedLinks;
+      return mappedLinks.map(x => x.url) as string[];
 
     } else {
       // Handle direct URLs without glob pattern
@@ -100,6 +106,8 @@ export async function extractController(
   const processedUrls = await Promise.all(urlPromises);
   links.push(...processedUrls.flat());
 
+  console.log("links", links.length);
+  console
   // Scrape all links in parallel
   const scrapePromises = links.map(async (url) => {
     const origin = req.body.origin || "api";

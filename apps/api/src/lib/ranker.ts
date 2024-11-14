@@ -40,24 +40,33 @@ const textToVector = (searchQuery: string, text: string): number[] => {
   });
 };
 
-async function performRanking(links: string[], searchQuery: string) {
+async function performRanking(linksWithContext: string[], links: string[], searchQuery: string) {
   try {
     // Generate embeddings for the search query
     const queryEmbedding = await getEmbedding(searchQuery);
 
     // Generate embeddings for each link and calculate similarity
-    const linksAndScores = await Promise.all(links.map(async (link) => {
-      const linkEmbedding = await getEmbedding(link);
+    const linksAndScores = await Promise.all(linksWithContext.map(async (linkWithContext, index) => {
+      const linkEmbedding = await getEmbedding(linkWithContext);
 
       // console.log("linkEmbedding", linkEmbedding);
-      // const linkVector = textToVector(searchQuery, link);
+      // const linkVector = textToVector(searchQuery, linkWithContext);
       const score = cosineSimilarity(queryEmbedding, linkEmbedding);
       // console.log("score", score);
-      return { link, score };
+      return { 
+        link: links[index], // Use corresponding link from links array
+        linkWithContext,
+        score,
+        originalIndex: index // Store original position
+      };
     }));
 
-    // Sort links based on similarity scores
-    linksAndScores.sort((a, b) => b.score - a.score);
+    // Sort links based on similarity scores while preserving original order for equal scores
+    linksAndScores.sort((a, b) => {
+      const scoreDiff = b.score - a.score;
+      // If scores are equal, maintain original order
+      return scoreDiff === 0 ? a.originalIndex - b.originalIndex : scoreDiff;
+    });
 
     return linksAndScores;
   } catch (error) {

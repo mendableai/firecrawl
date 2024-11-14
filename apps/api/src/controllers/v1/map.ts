@@ -1,6 +1,7 @@
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import {
+  MapDocument,
   mapRequestSchema,
   RequestWithAuth,
   scrapeOptions,
@@ -86,7 +87,7 @@ export async function getMapResults({
     ? `${search} ${urlWithoutWww}`
     : search ? `${search} site:${urlWithoutWww}`
     : `site:${url}`;
-    
+
   const resultsPerPage = 100;
   const maxPages = Math.ceil(Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage);
 
@@ -129,7 +130,7 @@ export async function getMapResults({
     });
   }
 
-  let mapResults = allResults
+  let mapResults : MapDocument[] = allResults
     .flat()
     .filter((result) => result !== null && result !== undefined);
 
