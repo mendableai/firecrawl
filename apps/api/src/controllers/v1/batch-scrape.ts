@@ -66,6 +66,7 @@ export async function batchScrapeController(
         crawl_id: id,
         sitemapped: true,
         v1: true,
+        webhook: req.body.webhook,
       },
       opts: {
         jobId: uuidv4(),

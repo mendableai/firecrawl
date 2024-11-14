@@ -175,9 +175,21 @@ export const scrapeRequestSchema = scrapeOptions.extend({
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
 export type ScrapeRequestInput = z.input<typeof scrapeRequestSchema>;
 
+export const webhookSchema = z.preprocess(x => {
+  if (typeof x === "string") {
+    return { url: x };
+  } else {
+    return x;
+  }
+}, z.object({
+  url: z.string().url(),
+  headers: z.record(z.string(), z.string()).default({}),
+}).strict(strictMessage))
+
 export const batchScrapeRequestSchema = scrapeOptions.extend({
   urls: url.array(),
   origin: z.string().optional().default("api"),
+  webhook: webhookSchema.optional(),
 }).strict(strictMessage).refine(
   (obj) => {
     const hasExtractFormat = obj.formats?.includes("extract");
@@ -219,17 +231,6 @@ const crawlerOptions = z.object({
 // };
 
 export type CrawlerOptions = z.infer<typeof crawlerOptions>;
-
-export const webhookSchema = z.preprocess(x => {
-  if (typeof x === "string") {
-    return { url: x };
-  } else {
-    return x;
-  }
-}, z.object({
-  url: z.string().url(),
-  headers: z.record(z.string(), z.string()).default({}),
-}).strict(strictMessage))
 
 export const crawlRequestSchema = crawlerOptions.extend({
   url,
