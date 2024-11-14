@@ -65,7 +65,12 @@ export class WebCrawler {
     this.allowExternalContentLinks = allowExternalContentLinks ?? false;
   }
 
-  public filterLinks(sitemapLinks: string[], limit: number, maxDepth: number): string[] {
+  public filterLinks(sitemapLinks: string[], limit: number, maxDepth: number, fromMap: boolean = false): string[] {
+    // If the initial URL is a sitemap.xml, skip filtering
+    if (this.initialUrl.endsWith('sitemap.xml') && fromMap) {
+      return sitemapLinks.slice(0, limit);
+    }
+
     return sitemapLinks
       .filter((link) => {
         let url: URL;
@@ -159,11 +164,14 @@ export class WebCrawler {
     this.robots = robotsParser(this.robotsTxtUrl, txt);
   }
 
-  public async tryGetSitemap(): Promise<{ url: string; html: string; }[] | null> {
+  public async tryGetSitemap(fromMap: boolean = false, onlySitemap: boolean = false): Promise<{ url: string; html: string; }[] | null> {
     logger.debug(`Fetching sitemap links from ${this.initialUrl}`);
     const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
+    if(fromMap && onlySitemap) {
+      return sitemapLinks.map(link => ({ url: link, html: "" }));
+    }
     if (sitemapLinks.length > 0) {
-      let filteredLinks = this.filterLinks(sitemapLinks, this.limit, this.maxCrawledDepth);
+      let filteredLinks = this.filterLinks(sitemapLinks, this.limit, this.maxCrawledDepth, fromMap);
       return filteredLinks.map(link => ({ url: link, html: "" }));
     }
     return null;
@@ -352,6 +360,7 @@ export class WebCrawler {
       }
       return url;
     };
+
 
     const sitemapUrl = url.endsWith("/sitemap.xml")
       ? url
