@@ -94,8 +94,8 @@ export async function extractController(
     }
   }
 
-  // Scrape each link
-  for (const url of links) {
+  // Scrape all links in parallel
+  const scrapePromises = links.map(async (url) => {
     const origin = req.body.origin || "api";
     const timeout = req.body.timeout ?? 30000;
     const jobId = crypto.randomUUID();
@@ -109,7 +109,7 @@ export async function extractController(
     await addScrapeJob(
       {
         url,
-        mode: "single_urls",
+        mode: "single_urls", 
         team_id: req.auth.team_id,
         scrapeOptions: scrapeOptions.parse({}),
         internalOptions: {},
@@ -124,30 +124,37 @@ export async function extractController(
 
     const totalWait = 0;
 
-    let doc: Document;
     try {
-      doc = await waitForJob<Document>(jobId, timeout + totalWait);
+      const doc = await waitForJob<Document>(jobId, timeout + totalWait);
+      await getScrapeQueue().remove(jobId);
+      if (earlyReturn) {
+        return null;
+      }
+      return doc;
     } catch (e) {
       logger.error(`Error in scrapeController: ${e}`);
       if (e instanceof Error && (e.message.startsWith("Job wait") || e.message === "timeout")) {
-        return res.status(408).json({
-          success: false,
-          error: "Request timed out",
-        });
+        throw {
+          status: 408,
+          error: "Request timed out"
+        };
       } else {
-        return res.status(500).json({
-          success: false,
-          error: `(Internal server error) - ${(e && e.message) ? e.message : e}`,
-        });
+        throw {
+          status: 500,
+          error: `(Internal server error) - ${(e && e.message) ? e.message : e}`
+        };
       }
     }
+  });
 
-    await getScrapeQueue().remove(jobId);
-
-    if (earlyReturn) {
-      return;
-    }
-    docs.push(doc);
+  try {
+    const results = await Promise.all(scrapePromises);
+    docs.push(...results.filter(doc => doc !== null).map(x => x!));
+  } catch (e) {
+    return res.status(e.status).json({
+      success: false,
+      error: e.error
+    });
   }
 
   const completions = await generateOpenAICompletions(
