@@ -109,6 +109,6 @@ export function waitForJob<T = unknown>(jobId: string, timeout: number): Promise
           }
         }
       }
-    }, 500);
+    }, 100);
   })
 }

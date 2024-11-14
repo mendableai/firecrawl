@@ -6,14 +6,17 @@ import { scrapePDF } from "./pdf";
 import { scrapeURLWithScrapingBee } from "./scrapingbee";
 import { scrapeURLWithFetch } from "./fetch";
 import { scrapeURLWithPlaywright } from "./playwright";
+import { scrapeCache } from "./cache";
 
-export type Engine = "fire-engine;chrome-cdp" | "fire-engine;playwright" | "fire-engine;tlsclient" | "scrapingbee" | "scrapingbeeLoad" | "playwright" | "fetch" | "pdf" | "docx";
+export type Engine = "fire-engine;chrome-cdp" | "fire-engine;playwright" | "fire-engine;tlsclient" | "scrapingbee" | "scrapingbeeLoad" | "playwright" | "fetch" | "pdf" | "docx" | "cache";
 
 const useScrapingBee = process.env.SCRAPING_BEE_API_KEY !== '' && process.env.SCRAPING_BEE_API_KEY !== undefined;
 const useFireEngine = process.env.FIRE_ENGINE_BETA_URL !== '' && process.env.FIRE_ENGINE_BETA_URL !== undefined;
 const usePlaywright = process.env.PLAYWRIGHT_MICROSERVICE_URL !== '' && process.env.PLAYWRIGHT_MICROSERVICE_URL !== undefined;
+const useCache = process.env.CACHE_REDIS_URL !== '' && process.env.CACHE_REDIS_URL !== undefined;
 
 export const engines: Engine[] = [
+    ...(useCache ? [ "cache" as const ] : []),
     ...(useFireEngine ? [ "fire-engine;chrome-cdp" as const, "fire-engine;playwright" as const, "fire-engine;tlsclient" as const ] : []),
     ...(useScrapingBee ? [ "scrapingbee" as const, "scrapingbeeLoad" as const ] : []),
     ...(usePlaywright ? [ "playwright" as const ] : []),
@@ -74,6 +77,7 @@ export type EngineScrapeResult = {
 const engineHandlers: {
     [E in Engine]: (meta: Meta) => Promise<EngineScrapeResult>
 } = {
+    "cache": scrapeCache,
     "fire-engine;chrome-cdp": scrapeURLWithFireEngineChromeCDP,
     "fire-engine;playwright": scrapeURLWithFireEnginePlaywright,
     "fire-engine;tlsclient": scrapeURLWithFireEngineTLSClient,
@@ -95,6 +99,22 @@ export const engineOptions: {
         quality: number,
     }
 } = {
+    "cache": {
+        features: {
+            "actions": false,
+            "waitFor": true,
+            "screenshot": false,
+            "screenshot@fullScreen": false,
+            "pdf": false, // TODO: figure this out
+            "docx": false, // TODO: figure this out
+            "atsv": false,
+            "location": false,
+            "mobile": false,
+            "skipTlsVerification": false,
+            "useFastMode": false,
+        },
+        quality: 1000, // cache should always be tried first
+    },
     "fire-engine;chrome-cdp": {
         features: {
             "actions": true,
