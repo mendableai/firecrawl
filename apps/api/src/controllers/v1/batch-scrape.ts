@@ -16,6 +16,7 @@ import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
 import { getJobPriority } from "../../lib/job-priority";
 import { addScrapeJobs } from "../../services/queue-jobs";
+import { callWebhook } from "../../services/webhook";
 
 export async function batchScrapeController(
   req: RequestWithAuth<{}, CrawlResponse, BatchScrapeRequest>,
@@ -85,6 +86,10 @@ export async function batchScrapeController(
     jobs.map((x) => x.opts.jobId)
   );
   await addScrapeJobs(jobs);
+
+  if(req.body.webhook) {
+    await callWebhook(req.auth.team_id, id, null, req.body.webhook, true, "batch_scrape.started");
+  }
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";
   
