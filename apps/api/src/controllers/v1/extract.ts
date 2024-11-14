@@ -42,7 +42,8 @@ export async function extractController(
   let docs: Document[] = [];
   const earlyReturn = false;
 
-  for (const url of req.body.urls) {
+  // Process all URLs in parallel
+  const urlPromises = req.body.urls.map(async (url) => {
     if (url.includes('/*')) {
       // Handle glob pattern URLs
       const baseUrl = url.replace('/*', '');
@@ -84,15 +85,20 @@ export async function extractController(
           .slice(0, MAX_RANKING_LIMIT);
       }
 
-      links.push(...mappedLinks);
+      return mappedLinks;
 
     } else {
       // Handle direct URLs without glob pattern
       if (!isUrlBlocked(url)) {
-        links.push(url);
+        return [url];
       }
+      return [];
     }
-  }
+  });
+
+  // Wait for all URL processing to complete and flatten results
+  const processedUrls = await Promise.all(urlPromises);
+  links.push(...processedUrls.flat());
 
   // Scrape all links in parallel
   const scrapePromises = links.map(async (url) => {
