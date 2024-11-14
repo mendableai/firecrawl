@@ -229,7 +229,7 @@ async function scrapeURLLoop(
                 throw error;
             } else {
                 Sentry.captureException(error);
-                meta.logger.info("An unexpected error happened while scraping with " + engine + ".", { error });
+                meta.logger.warn("An unexpected error happened while scraping with " + engine + ".", { error });
                 results[engine] = {
                     state: "error",
                     error: safeguardCircularError(error),
