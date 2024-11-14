@@ -29,6 +29,7 @@ class FirecrawlApp:
         prompt: str
         schema: Optional[Any] = None
         system_prompt: Optional[str] = None
+        allow_external_links: Optional[bool] = False
 
     class ExtractResponse(pydantic.BaseModel):
         """
@@ -484,7 +485,11 @@ class FirecrawlApp:
         try:
             response = self._post_request(
                 f'{self.api_url}/v1/extract',
-                {**jsonData, 'schema': jsonSchema},
+                {
+                    **jsonData,
+                    'allowExternalLinks': params.get('allow_external_links', False),
+                    'schema': jsonSchema
+                },
                 headers
             )
             if response.status_code == 200:

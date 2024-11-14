@@ -242,6 +242,7 @@ export interface ExtractParams {
   prompt: string;
   schema?: zt.ZodSchema;
   systemPrompt?: string;
+  allowExternalLinks?: boolean;
 }
 
 /**
