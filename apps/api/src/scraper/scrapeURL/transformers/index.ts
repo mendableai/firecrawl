@@ -7,6 +7,7 @@ import { extractMetadata } from "../lib/extractMetadata";
 import { performLLMExtract } from "./llmExtract";
 import { uploadScreenshot } from "./uploadScreenshot";
 import { removeBase64Images } from "./removeBase64Images";
+import { saveToCache } from "./cache";
 
 export type Transformer = (meta: Meta, document: Document) => Document | Promise<Document>;
 
@@ -104,6 +105,7 @@ export function coerceFieldsToFormats(meta: Meta, document: Document): Document 
 
 // TODO: allow some of these to run in parallel
 export const transformerStack: Transformer[] = [
+    saveToCache,
     deriveHTMLFromRawHTML,
     deriveMarkdownFromHTML,
     deriveLinksFromHTML,
