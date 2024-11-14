@@ -18,7 +18,7 @@ export class NoEnginesLeftError extends Error {
     public results: EngineResultsTracker;
 
     constructor(fallbackList: Engine[], results: EngineResultsTracker) {
-        super("All scraping engines failed!");
+        super("All scraping engines failed! -- Double check the URL to make sure it's not broken. If the issue persists, contact us at help@firecrawl.com.");
         this.fallbackList = fallbackList;
         this.results = results;
     }
