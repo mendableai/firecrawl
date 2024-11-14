@@ -47,3 +47,12 @@ content-type: application/json
 # @name batchScrapeStatus
 GET {{baseUrl}}/v1/crawl/{{batchScrapeId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
+
+### URL Doctor
+# @name urlDoctor
+POST {{baseUrl}}/admin/{{$dotenv BULL_AUTH_KEY}}/doctor HTTP/1.1
+Content-Type: application/json
+
+{
+  "url": "https://firecrawl.dev"
+}

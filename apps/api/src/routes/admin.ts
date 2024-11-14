@@ -8,6 +8,8 @@ import {
 } from "../controllers/v0/admin/queue";
 import { wrap } from "./v1";
 import { acucCacheClearController } from "../controllers/v0/admin/acuc-cache-clear";
+import { doctorController } from "../controllers/v1/admin/doctor";
+import { doctorStatusController } from "../controllers/v1/admin/doctor-status";
 
 export const adminRouter = express.Router();
 
@@ -39,4 +41,14 @@ adminRouter.get(
 adminRouter.post(
   `/admin/${process.env.BULL_AUTH_KEY}/acuc-cache-clear`,
   wrap(acucCacheClearController),
+);
+
+adminRouter.post(
+  `/admin/${process.env.BULL_AUTH_KEY}/doctor`,
+  wrap(doctorController),
+);
+
+adminRouter.get(
+  `/admin/${process.env.BULL_AUTH_KEY}/doctor/:id`,
+  wrap(doctorStatusController),
 );

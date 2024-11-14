@@ -29,8 +29,8 @@ export interface WebScraperOptions {
   crawlerOptions?: any;
   scrapeOptions: ScrapeOptions;
   internalOptions?: InternalOptions;
-  team_id: string;
-  plan: string;
+  team_id: string | null;
+  plan: string | null;
   origin?: string;
   crawl_id?: string;
   sitemapped?: boolean;
@@ -46,7 +46,7 @@ export interface RunWebScraperParams {
   internalOptions?: InternalOptions;
   // onSuccess: (result: V1Document, mode: string) => void;
   // onError: (error: Error) => void;
-  team_id: string;
+  team_id: string | null;
   bull_job_id: string;
   priority?: number;
   is_scrape?: boolean;
