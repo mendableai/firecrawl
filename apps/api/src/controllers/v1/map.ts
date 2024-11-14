@@ -1,10 +1,6 @@
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-import {
-  mapRequestSchema,
-  RequestWithAuth,
-  scrapeOptions,
-} from "./types";
+import { mapRequestSchema, RequestWithAuth, scrapeOptions } from "./types";
 import { crawlToCrawler, StoredCrawl } from "../../lib/crawl-redis";
 import { MapResponse, MapRequest } from "./types";
 import { configDotenv } from "dotenv";
@@ -46,6 +42,7 @@ export async function mapController(
     originUrl: req.body.url,
     crawlerOptions: {
       ...req.body,
+      limit: req.body.sitemapOnly ? 10000000 : limit,
       scrapeOptions: undefined,
     },
     scrapeOptions: scrapeOptions.parse({}),
@@ -57,77 +54,92 @@ export async function mapController(
 
   const crawler = crawlToCrawler(id, sc);
 
-  let urlWithoutWww = req.body.url.replace("www.", "");
-
-  let mapUrl = req.body.search
-    ? `"${req.body.search}" site:${urlWithoutWww}`
-    : `site:${req.body.url}`;
-
-  const resultsPerPage = 100;
-  const maxPages = Math.ceil(Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage);
-
-  const cacheKey = `fireEngineMap:${mapUrl}`;
-  const cachedResult = null;
-
-  let allResults: any[] = [];
-  let pagePromises: Promise<any>[] = [];
-
-  if (cachedResult) {
-    allResults = JSON.parse(cachedResult);
-  } else {
-    const fetchPage = async (page: number) => {
-      return fireEngineMap(mapUrl, {
-        numResults: resultsPerPage,
-        page: page,
-      });
-    };
-
-    pagePromises = Array.from({ length: maxPages }, (_, i) => fetchPage(i + 1));
-    allResults = await Promise.all(pagePromises);
-
-    await redis.set(cacheKey, JSON.stringify(allResults), "EX", 24 * 60 * 60); // Cache for 24 hours
-  }
-
-  // Parallelize sitemap fetch with serper search
-  const [sitemap, ...searchResults] = await Promise.all([
-    req.body.ignoreSitemap ? null : crawler.tryGetSitemap(),
-    ...(cachedResult ? [] : pagePromises),
-  ]);
-
-  if (!cachedResult) {
-    allResults = searchResults;
-  }
-
-  if (sitemap !== null) {
-    sitemap.forEach((x) => {
-      links.push(x.url);
-    });
-  }
-
-  let mapResults = allResults
-    .flat()
-    .filter((result) => result !== null && result !== undefined);
-
-  const minumumCutoff = Math.min(MAX_MAP_LIMIT, limit);
-  if (mapResults.length > minumumCutoff) {
-    mapResults = mapResults.slice(0, minumumCutoff);
-  }
-
-  if (mapResults.length > 0) {
-    if (req.body.search) {
-      // Ensure all map results are first, maintaining their order
-      links = [
-        mapResults[0].url,
-        ...mapResults.slice(1).map((x) => x.url),
-        ...links,
-      ];
-    } else {
-      mapResults.map((x) => {
+  // If sitemapOnly is true, only get links from sitemap
+  if (req.body.sitemapOnly) {
+    const sitemap = await crawler.tryGetSitemap();
+    if (sitemap !== null) {
+      sitemap.forEach((x) => {
         links.push(x.url);
       });
     }
-  }
+  } else {
+    let urlWithoutWww = req.body.url.replace("www.", "");
 
+    let mapUrl = req.body.search
+      ? `"${req.body.search}" site:${urlWithoutWww}`
+      : `site:${req.body.url}`;
+
+    const resultsPerPage = 100;
+    const maxPages = Math.ceil(
+      Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage
+    );
+
+    const cacheKey = `fireEngineMap:${mapUrl}`;
+    const cachedResult = null;
+
+    let allResults: any[] = [];
+    let pagePromises: Promise<any>[] = [];
+
+    if (cachedResult) {
+      allResults = JSON.parse(cachedResult);
+    } else {
+      const fetchPage = async (page: number) => {
+        return fireEngineMap(mapUrl, {
+          numResults: resultsPerPage,
+          page: page,
+        });
+      };
+
+      pagePromises = Array.from({ length: maxPages }, (_, i) =>
+        fetchPage(i + 1)
+      );
+      allResults = await Promise.all(pagePromises);
+
+      await redis.set(cacheKey, JSON.stringify(allResults), "EX", 24 * 60 * 60); // Cache for 24 hours
+    }
+
+    // Parallelize sitemap fetch with serper search
+    const [sitemap, ...searchResults] = await Promise.all([
+      req.body.ignoreSitemap ? null : crawler.tryGetSitemap(),
+      ...(cachedResult ? [] : pagePromises),
+    ]);
+
+    if (!cachedResult) {
+      allResults = searchResults;
+    }
+
+    if (sitemap !== null) {
+      sitemap.forEach((x) => {
+        links.push(x.url);
+      });
+    }
+
+    let mapResults = allResults
+      .flat()
+      .filter((result) => result !== null && result !== undefined);
+
+    const minumumCutoff = Math.min(MAX_MAP_LIMIT, limit);
+    if (mapResults.length > minumumCutoff) {
+      mapResults = mapResults.slice(0, minumumCutoff);
+    }
+
+    if (mapResults.length > 0) {
+      if (req.body.search) {
+        // Ensure all map results are first, maintaining their order
+        links = [
+          mapResults[0].url,
+          ...mapResults.slice(1).map((x) => x.url),
+          ...links,
+        ];
+      } else {
+        mapResults.map((x) => {
+          links.push(x.url);
+        });
+      }
+    }
+
+    
+  }
   // Perform cosine similarity between the search query and the list of links
   if (req.body.search) {
     const searchQuery = req.body.search.toLowerCase();

@@ -221,6 +221,7 @@ export interface MapParams {
   search?: string;
   ignoreSitemap?: boolean;
   includeSubdomains?: boolean;
+  sitemapOnly?: boolean;
   limit?: number;
 }
 
