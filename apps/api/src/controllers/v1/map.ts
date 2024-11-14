@@ -29,6 +29,14 @@ const MAX_MAP_LIMIT = 5000;
 // Max Links that "Smart /map" can return
 const MAX_FIRE_ENGINE_RESULTS = 1000;
 
+interface MapResult {
+  success: boolean;
+  links: string[] | any[];
+  scrape_id?: string;
+  job_id: string;
+  time_taken: number;
+}
+
 export async function getMapResults({
   url,
   search,
@@ -39,8 +47,8 @@ export async function getMapResults({
   teamId,
   plan,
   origin,
-  subId,
-  includeMetadata = false
+  includeMetadata = false,
+  allowExternalLinks
 }: {
   url: string;
   search?: string;
@@ -51,9 +59,9 @@ export async function getMapResults({
   teamId: string;
   plan?: string;
   origin?: string;
-  subId: string | null;
   includeMetadata?: boolean;
-}) {
+  allowExternalLinks?: boolean;
+}): Promise<MapResult> {
   const id = uuidv4();
   let links: string[] = [url];
 
@@ -74,10 +82,11 @@ export async function getMapResults({
 
   let urlWithoutWww = url.replace("www.", "");
 
-  let mapUrl = search
-    ? `"${search}" site:${urlWithoutWww}`
+  let mapUrl = search && allowExternalLinks
+    ? `${search} ${urlWithoutWww}`
+    : search ? `${search} site:${urlWithoutWww}`
     : `site:${url}`;
-
+    
   const resultsPerPage = 100;
   const maxPages = Math.ceil(Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage);
 
@@ -171,34 +180,14 @@ export async function getMapResults({
   // remove duplicates that could be due to http/https or www
   links = removeDuplicateUrls(links);
 
-  billTeam(teamId, subId, 1).catch((error) => {
-    logger.error(
-      `Failed to bill team ${teamId} for 1 credit: ${error}`
-    );
-  });
-
   const linksToReturn = links.slice(0, limit);
-
-  logJob({
-    job_id: id,
-    success: links.length > 0,
-    message: "Map completed", 
-    num_docs: linksToReturn.length,
-    docs: linksToReturn,
-    time_taken: (new Date().getTime() - Date.now()) / 1000,
-    team_id: teamId,
-    mode: "map",
-    url: url,
-    crawlerOptions: {},
-    scrapeOptions: {},
-    origin: origin ?? "api",
-    num_tokens: 0,
-  });
 
   return {
     success: true,
     links: includeMetadata ? mapResults : linksToReturn,
     scrape_id: origin?.includes("website") ? id : undefined,
+    job_id: id,
+    time_taken: (new Date().getTime() - Date.now()) / 1000,
   };
 }
 
@@ -208,7 +197,6 @@ export async function mapController(
 ) {
   req.body = mapRequestSchema.parse(req.body);
 
-  console.log("req.body", req.body);
   const result = await getMapResults({
     url: req.body.url,
     search: req.body.search,
@@ -216,10 +204,33 @@ export async function mapController(
     ignoreSitemap: req.body.ignoreSitemap,
     includeSubdomains: req.body.includeSubdomains,
     crawlerOptions: req.body,
+    origin: req.body.origin,
     teamId: req.auth.team_id,
     plan: req.auth.plan,
-    origin: req.body.origin,
-    subId: req.acuc?.sub_id
+  });
+
+  // Bill the team
+  billTeam(req.auth.team_id, req.acuc?.sub_id, 1).catch((error) => {
+    logger.error(
+      `Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`
+    );
+  });
+
+  // Log the job
+  logJob({
+    job_id: result.job_id,
+    success: result.links.length > 0,
+    message: "Map completed",
+    num_docs: result.links.length,
+    docs: result.links,
+    time_taken: result.time_taken,
+    team_id: req.auth.team_id,
+    mode: "map", 
+    url: req.body.url,
+    crawlerOptions: {},
+    scrapeOptions: {},
+    origin: req.body.origin ?? "api",
+    num_tokens: 0,
   });
 
   const response = {
