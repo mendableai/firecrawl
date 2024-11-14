@@ -61,6 +61,7 @@ export async function mapController(
       sitemap.forEach((x) => {
         links.push(x.url);
       });
+      links = links.slice(1, limit);
     }
   } else {
     let urlWithoutWww = req.body.url.replace("www.", "");
