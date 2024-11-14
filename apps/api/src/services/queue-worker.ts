@@ -262,7 +262,7 @@ async function processJob(job: Job & { id: string }, token: string) {
       document: null,
       project_id: job.data.project_id,
       error:
-        "URL is blocked. Suspecious activity detected. Please contact hello@firecrawl.com if you believe this is an error.",
+        "URL is blocked. Suspecious activity detected. Please contact help@firecrawl.com if you believe this is an error.",
     };
     return data;
   }
