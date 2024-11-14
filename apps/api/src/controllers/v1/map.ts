@@ -56,7 +56,7 @@ export async function mapController(
 
   // If sitemapOnly is true, only get links from sitemap
   if (req.body.sitemapOnly) {
-    const sitemap = await crawler.tryGetSitemap();
+    const sitemap = await crawler.tryGetSitemap(true, true);
     if (sitemap !== null) {
       sitemap.forEach((x) => {
         links.push(x.url);
@@ -100,7 +100,7 @@ export async function mapController(
 
     // Parallelize sitemap fetch with serper search
     const [sitemap, ...searchResults] = await Promise.all([
-      req.body.ignoreSitemap ? null : crawler.tryGetSitemap(),
+      req.body.ignoreSitemap ? null : crawler.tryGetSitemap(true),
       ...(cachedResult ? [] : pagePromises),
     ]);
 
