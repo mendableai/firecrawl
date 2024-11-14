@@ -44,7 +44,7 @@ export async function extractController(
 
   // Process all URLs in parallel
   const urlPromises = req.body.urls.map(async (url) => {
-    if (url.includes('/*')) {
+    if (url.includes('/*') || req.body.allowExternalLinks) {
       // Handle glob pattern URLs
       const baseUrl = url.replace('/*', '');
       const pathPrefix = baseUrl.split('/').slice(3).join('/'); // Get path after domain if any
