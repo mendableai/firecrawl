@@ -3,6 +3,8 @@ import { Meta } from "..";
 import { CacheEntry, cacheKey, saveEntryToCache } from "../../../lib/cache";
 
 export function saveToCache(meta: Meta, document: Document): Document {
+    if (document.metadata.statusCode! < 200 || document.metadata.statusCode! >= 300) return document;
+
     if (document.rawHtml === undefined) {
         throw new Error("rawHtml is undefined -- this transformer is being called out of order");
     }
