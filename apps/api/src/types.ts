@@ -106,6 +106,15 @@ export interface FirecrawlCrawlStatusResponse {
   error?: string;
 }
 
+export interface FirecrawlExtractResponse {
+  statusCode: number;
+  body: {
+    success: boolean;
+    data: any[];
+  };
+  error?: string;
+}
+
 export enum RateLimiterMode {
   Crawl = "crawl",
   CrawlStatus = "crawlStatus",
