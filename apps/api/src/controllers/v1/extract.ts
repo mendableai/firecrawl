@@ -29,7 +29,7 @@ const redis = new Redis(process.env.REDIS_URL!);
 
 const MAX_EXTRACT_LIMIT = 100;
 const MAX_RANKING_LIMIT = 10;
-const SCORE_THRESHOLD = 0.70;
+const SCORE_THRESHOLD = 0.75;
 
 export async function extractController(
   req: RequestWithAuth<{}, ExtractResponse, ExtractRequest>,
@@ -107,7 +107,6 @@ export async function extractController(
   links.push(...processedUrls.flat());
 
   console.log("links", links.length);
-  console
   // Scrape all links in parallel
   const scrapePromises = links.map(async (url) => {
     const origin = req.body.origin || "api";
