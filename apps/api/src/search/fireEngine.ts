@@ -1,4 +1,3 @@
-import axios from "axios";
 import dotenv from "dotenv";
 import { SearchResult } from "../../src/lib/entities";
 import * as Sentry from "@sentry/node";
@@ -37,18 +36,18 @@ export async function fireEngineMap(
       return [];
     }
 
-    let config = {
+    const response = await fetch(`${process.env.FIRE_ENGINE_BETA_URL}/search`, {
       method: "POST",
-      url: `${process.env.FIRE_ENGINE_BETA_URL}/search`,
       headers: {
         "Content-Type": "application/json",
         "X-Disable-Cache": "true"
       },
-      data: data,
-    };
-    const response = await axios(config);
-    if (response && response.data) {
-      return response.data;
+      body: data
+    });
+
+    if (response.ok) {
+      const responseData = await response.json();
+      return responseData;
     } else {
       return [];
     }
