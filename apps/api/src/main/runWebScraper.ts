@@ -70,7 +70,7 @@ export async function runWebScraper({
       }
     }
 
-    if(is_scrape === false) {
+    if(is_scrape === false && team_id) {
       let creditsToBeBilled = 1; // Assuming 1 credit per document
       if (scrapeOptions.extract) {
         creditsToBeBilled = 5;

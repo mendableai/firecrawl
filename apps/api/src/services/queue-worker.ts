@@ -38,6 +38,7 @@ import { configDotenv } from "dotenv";
 import { scrapeOptions } from "../controllers/v1/types";
 import { getRateLimiterPoints } from "./rate-limiter";
 import { cleanOldConcurrencyLimitEntries, pushConcurrencyLimitActiveJob, removeConcurrencyLimitActiveJob, takeConcurrencyLimitedJob } from "../lib/concurrency-limit";
+import { ScrapeUrlResponse } from "../scraper/scrapeURL";
 configDotenv();
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -289,17 +290,12 @@ async function processJob(job: Job & { id: string }, token: string) {
       ] : [])
     ]);
 
-    if (!pipeline.success) {
-      // TODO: let's Not do this
-      throw pipeline.error;
-    }
-
     const end = Date.now();
     const timeTakenInSeconds = (end - start) / 1000;
 
-    const doc = pipeline.document;
+    const doc = (pipeline as ScrapeUrlResponse & { success: true }).document;
 
-    const rawHtml = doc.rawHtml ?? "";
+    const rawHtml = doc?.rawHtml ?? "";
 
     const data = {
       success: true,
@@ -312,6 +308,16 @@ async function processJob(job: Job & { id: string }, token: string) {
       project_id: job.data.project_id,
       document: doc,
     };
+
+    if (job.data.doctor) { 
+      (data.document as any) = pipeline as unknown as Document; // force it in there
+      return data;
+    }
+
+    if (!pipeline.success) {
+      // TODO: let's Not do this
+      throw pipeline.error;
+    }
 
     if (job.data.webhook && job.data.mode !== "crawl" && job.data.v1) {
       await callWebhook(
