@@ -87,6 +87,7 @@ export async function scrapeURLWithFireEngineChromeCDP(meta: Meta): Promise<Engi
         priority: meta.internalOptions.priority,
         geolocation: meta.options.geolocation,
         mobile: meta.options.mobile,
+        timeout: meta.options.timeout === undefined ? 300000 : undefined, // TODO: better timeout logic
         // TODO: scrollXPaths
     };
 
@@ -140,6 +141,8 @@ export async function scrapeURLWithFireEnginePlaywright(meta: Meta): Promise<Eng
         fullPageScreenshot: meta.options.formats.includes("screenshot@fullPage"),
         wait: meta.options.waitFor,
         geolocation: meta.options.geolocation,
+
+        timeout: meta.options.timeout === undefined ? 300000 : undefined, // TODO: better timeout logic
     };
 
     let response = await performFireEngineScrape(
@@ -179,6 +182,8 @@ export async function scrapeURLWithFireEngineTLSClient(meta: Meta): Promise<Engi
         atsv: meta.internalOptions.atsv,
         geolocation: meta.options.geolocation,
         disableJsDom: meta.internalOptions.v0DisableJsDom,
+        
+        timeout: meta.options.timeout === undefined ? 300000 : undefined, // TODO: better timeout logic
     };
 
     let response = await performFireEngineScrape(
