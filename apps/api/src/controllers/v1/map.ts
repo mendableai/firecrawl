@@ -61,6 +61,15 @@ export async function mapController(
       sitemap.forEach((x) => {
         links.push(x.url);
       });
+      links = links.slice(1)
+        .map((x) => {
+          try {
+            return checkAndUpdateURLForMap(x).url.trim();
+          } catch (_) {
+            return null;
+          }
+        })
+        .filter((x) => x !== null) as string[];
       // links = links.slice(1, limit); // don't slice, unnecessary
     }
   } else {
@@ -139,35 +148,35 @@ export async function mapController(
       }
     }
 
-    
+    // Perform cosine similarity between the search query and the list of links
+    if (req.body.search) {
+      const searchQuery = req.body.search.toLowerCase();
+
+      links = performCosineSimilarity(links, searchQuery);
+    }
+
+    links = links
+      .map((x) => {
+        try {
+          return checkAndUpdateURLForMap(x).url.trim();
+        } catch (_) {
+          return null;
+        }
+      })
+      .filter((x) => x !== null) as string[];
+
+    // allows for subdomains to be included
+    links = links.filter((x) => isSameDomain(x, req.body.url));
+
+    // if includeSubdomains is false, filter out subdomains
+    if (!req.body.includeSubdomains) {
+      links = links.filter((x) => isSameSubdomain(x, req.body.url));
+    }
+
+    // remove duplicates that could be due to http/https or www
+    links = removeDuplicateUrls(links);
+    links.slice(0, limit);
   }
-  // Perform cosine similarity between the search query and the list of links
-  if (req.body.search) {
-    const searchQuery = req.body.search.toLowerCase();
-
-    links = performCosineSimilarity(links, searchQuery);
-  }
-
-  links = links
-    .map((x) => {
-      try {
-        return checkAndUpdateURLForMap(x).url.trim();
-      } catch (_) {
-        return null;
-      }
-    })
-    .filter((x) => x !== null) as string[];
-
-  // allows for subdomains to be included
-  links = links.filter((x) => isSameDomain(x, req.body.url));
-
-  // if includeSubdomains is false, filter out subdomains
-  if (!req.body.includeSubdomains) {
-    links = links.filter((x) => isSameSubdomain(x, req.body.url));
-  }
-
-  // remove duplicates that could be due to http/https or www
-  links = removeDuplicateUrls(links);
 
   billTeam(req.auth.team_id, req.acuc?.sub_id, 1).catch((error) => {
     logger.error(
@@ -179,14 +188,12 @@ export async function mapController(
   const endTime = new Date().getTime();
   const timeTakenInSeconds = (endTime - startTime) / 1000;
 
-  const linksToReturn = links.slice(0, limit);
-
   logJob({
     job_id: id,
     success: links.length > 0,
     message: "Map completed",
-    num_docs: linksToReturn.length,
-    docs: linksToReturn,
+    num_docs: links.length,
+    docs: links,
     time_taken: timeTakenInSeconds,
     team_id: req.auth.team_id,
     mode: "map",
@@ -199,7 +206,7 @@ export async function mapController(
 
   return res.status(200).json({
     success: true,
-    links: linksToReturn,
+    links: links,
     scrape_id: req.body.origin?.includes("website") ? id : undefined,
   });
 }
