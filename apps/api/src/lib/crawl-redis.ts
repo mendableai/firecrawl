@@ -52,7 +52,7 @@ export async function addCrawlJobs(id: string, job_ids: string[]) {
 
 export async function addCrawlJobDone(id: string, job_id: string) {
     await redisConnection.sadd("crawl:" + id + ":jobs_done", job_id);
-    await redisConnection.lpush("crawl:" + id + ":jobs_done_ordered", job_id);
+    await redisConnection.rpush("crawl:" + id + ":jobs_done_ordered", job_id);
     await redisConnection.expire("crawl:" + id + ":jobs_done", 24 * 60 * 60, "NX");
     await redisConnection.expire("crawl:" + id + ":jobs_done_ordered", 24 * 60 * 60, "NX");
 }
