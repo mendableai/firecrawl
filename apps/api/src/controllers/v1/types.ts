@@ -186,9 +186,10 @@ export const webhookSchema = z.preprocess(x => {
   headers: z.record(z.string(), z.string()).default({}),
 }).strict(strictMessage))
 
-export const batchScrapeRequestSchema = scrapeOptions.extend({
+export const batchScrapeRequestSchema = scrapeOptions.omit({ timeout: true }).extend({
   urls: url.array(),
   origin: z.string().optional().default("api"),
+  timeout: z.number().int().positive().finite().safe().default(60000),
   webhook: webhookSchema.optional(),
 }).strict(strictMessage).refine(
   (obj) => {
@@ -199,12 +200,7 @@ export const batchScrapeRequestSchema = scrapeOptions.extend({
   {
     message: "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
   }
-).transform((obj) => {
-  if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
-    return { ...obj, timeout: 60000 };
-  }
-  return obj;
-});
+);
 
 export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
 
