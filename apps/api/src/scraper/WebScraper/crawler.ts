@@ -362,7 +362,7 @@ export class WebCrawler {
     };
 
 
-    const sitemapUrl = url.endsWith("/sitemap.xml")
+    const sitemapUrl = url.endsWith(".xml")
       ? url
       : `${url}/sitemap.xml`;
 
