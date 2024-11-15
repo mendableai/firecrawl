@@ -119,7 +119,7 @@ export const scrapeOptions = z.object({
   includeTags: z.string().array().optional(),
   excludeTags: z.string().array().optional(),
   onlyMainContent: z.boolean().default(true),
-  timeout: z.number().int().positive().finite().safe().default(30000),
+  timeout: z.number().int().positive().finite().safe().optional(),
   waitFor: z.number().int().nonnegative().finite().safe().default(0),
   extract: extractOptions.optional(),
   mobile: z.boolean().default(false),
@@ -153,9 +153,10 @@ export const scrapeOptions = z.object({
 
 export type ScrapeOptions = z.infer<typeof scrapeOptions>;
 
-export const scrapeRequestSchema = scrapeOptions.extend({
+export const scrapeRequestSchema = scrapeOptions.omit({ timeout: true }).extend({
   url,
   origin: z.string().optional().default("api"),
+  timeout: z.number().int().positive().finite().safe().default(30000),
 }).strict(strictMessage).refine(
   (obj) => {
     const hasExtractFormat = obj.formats?.includes("extract");
@@ -186,10 +187,9 @@ export const webhookSchema = z.preprocess(x => {
   headers: z.record(z.string(), z.string()).default({}),
 }).strict(strictMessage))
 
-export const batchScrapeRequestSchema = scrapeOptions.omit({ timeout: true }).extend({
+export const batchScrapeRequestSchema = scrapeOptions.extend({
   urls: url.array(),
   origin: z.string().optional().default("api"),
-  timeout: z.number().int().positive().finite().safe().default(60000),
   webhook: webhookSchema.optional(),
 }).strict(strictMessage).refine(
   (obj) => {
@@ -231,7 +231,7 @@ export type CrawlerOptions = z.infer<typeof crawlerOptions>;
 export const crawlRequestSchema = crawlerOptions.extend({
   url,
   origin: z.string().optional().default("api"),
-  scrapeOptions: scrapeOptions.omit({ timeout: true }).default({}),
+  scrapeOptions: scrapeOptions.default({}),
   webhook: webhookSchema.optional(),
   limit: z.number().default(10000),
 }).strict(strictMessage);
