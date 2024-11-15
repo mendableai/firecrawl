@@ -96,7 +96,9 @@ export async function scrapeURLWithFireEngineChromeCDP(meta: Meta): Promise<Engi
     let response = await performFireEngineScrape(
         meta.logger.child({ method: "scrapeURLWithFireEngineChromeCDP/callFireEngine", request }),
         request,
-        defaultTimeout + totalWait,
+        meta.options.timeout !== undefined
+            ? defaultTimeout + totalWait
+            : Infinity, // TODO: better timeout handling
     );
 
     specialtyScrapeCheck(meta.logger.child({ method: "scrapeURLWithFireEngineChromeCDP/specialtyScrapeCheck" }), response.responseHeaders);
@@ -148,7 +150,9 @@ export async function scrapeURLWithFireEnginePlaywright(meta: Meta): Promise<Eng
     let response = await performFireEngineScrape(
         meta.logger.child({ method: "scrapeURLWithFireEngineChromeCDP/callFireEngine", request }),
         request,
-        defaultTimeout + meta.options.waitFor
+        meta.options.timeout !== undefined
+            ? defaultTimeout + meta.options.waitFor
+            : Infinity, // TODO: better timeout handling
     );
     
     specialtyScrapeCheck(meta.logger.child({ method: "scrapeURLWithFireEnginePlaywright/specialtyScrapeCheck" }), response.responseHeaders);
@@ -182,13 +186,16 @@ export async function scrapeURLWithFireEngineTLSClient(meta: Meta): Promise<Engi
         atsv: meta.internalOptions.atsv,
         geolocation: meta.options.geolocation,
         disableJsDom: meta.internalOptions.v0DisableJsDom,
-        
+
         timeout: meta.options.timeout === undefined ? 300000 : undefined, // TODO: better timeout logic
     };
 
     let response = await performFireEngineScrape(
         meta.logger.child({ method: "scrapeURLWithFireEngineChromeCDP/callFireEngine", request }),
         request,
+        meta.options.timeout !== undefined
+            ? defaultTimeout
+            : Infinity, // TODO: better timeout handling
     );
 
     specialtyScrapeCheck(meta.logger.child({ method: "scrapeURLWithFireEngineTLSClient/specialtyScrapeCheck" }), response.responseHeaders);
