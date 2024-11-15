@@ -25,6 +25,8 @@ export type FireEngineScrapeRequestCommon = {
     logRequest?: boolean; // default: true
     instantReturn?: boolean; // default: false
     geolocation?: { country?: string; languages?: string[]; };
+
+    timeout?: number;
 }
 
 export type FireEngineScrapeRequestChromeCDP = {
