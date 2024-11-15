@@ -13,12 +13,12 @@ export async function scrapeURLWithPlaywright(meta: Meta): Promise<EngineScrapeR
             headers: {
                 "Content-Type": "application/json",
             },
-            body: JSON.stringify({
+            body: {
                 url: meta.url,
                 wait_after_load: meta.options.waitFor,
                 timeout,
                 headers: meta.options.headers,
-            }),
+            },
             method: "POST",
             logger: meta.logger.child("scrapeURLWithPlaywright/robustFetch"),
             schema: z.object({
