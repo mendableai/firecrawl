@@ -77,10 +77,10 @@ To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and ge
 - **LLM-ready formats**: markdown, structured data, screenshot, HTML, links, metadata
 - **The hard stuff**: proxies, anti-bot mechanisms, dynamic content (js-rendered), output parsing, orchestration
 - **Customizability**: exclude tags, crawl behind auth walls with custom headers, max crawl depth, etc...
-- **Media parsing**: pdfs, docx, images.
-- **Reliability first**: designed to get the data you need - no matter how hard it is.
+- **Media parsing**: pdfs, docx, images
+- **Reliability first**: designed to get the data you need - no matter how hard it is
 - **Actions**: click, scroll, input, wait and more before extracting data
-- **Batching (New)**: scrape thousands of URLs at the same time with a new async endpoint
+- **Batching (New)**: scrape thousands of URLs at the same time with a new async endpoint.
 
 You can find all of Firecrawl's capabilities and how to use them in our [documentation](https://docs.firecrawl.dev)
 
