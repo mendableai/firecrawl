@@ -179,6 +179,7 @@ export function crawlToCrawler(id: string, sc: StoredCrawl, newBase?: string): W
         generateImgAltText: sc.crawlerOptions?.generateImgAltText ?? false,
         allowBackwardCrawling: sc.crawlerOptions?.allowBackwardCrawling ?? false,
         allowExternalContentLinks: sc.crawlerOptions?.allowExternalContentLinks ?? false,
+        allowSubdomains: sc.crawlerOptions?.allowSubdomains ?? false,
     });
 
     if (sc.robots !== undefined) {

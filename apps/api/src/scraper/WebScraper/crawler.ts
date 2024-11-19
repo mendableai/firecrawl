@@ -23,6 +23,7 @@ export class WebCrawler {
   private generateImgAltText: boolean;
   private allowBackwardCrawling: boolean;
   private allowExternalContentLinks: boolean;
+  private allowSubdomains: boolean;
 
   constructor({
     jobId,
@@ -35,7 +36,8 @@ export class WebCrawler {
     generateImgAltText = false,
     maxCrawledDepth = 10,
     allowBackwardCrawling = false,
-    allowExternalContentLinks = false
+    allowExternalContentLinks = false,
+    allowSubdomains = false,
   }: {
     jobId: string;
     initialUrl: string;
@@ -48,6 +50,7 @@ export class WebCrawler {
     maxCrawledDepth?: number;
     allowBackwardCrawling?: boolean;
     allowExternalContentLinks?: boolean;
+    allowSubdomains?: boolean;
   }) {
     this.jobId = jobId;
     this.initialUrl = initialUrl;
@@ -63,6 +66,7 @@ export class WebCrawler {
     this.generateImgAltText = generateImgAltText ?? false;
     this.allowBackwardCrawling = allowBackwardCrawling ?? false;
     this.allowExternalContentLinks = allowExternalContentLinks ?? false;
+    this.allowSubdomains = allowSubdomains ?? false;
   }
 
   public filterLinks(sitemapLinks: string[], limit: number, maxDepth: number, fromMap: boolean = false): string[] {
@@ -214,6 +218,10 @@ export class WebCrawler {
       }
     }
 
+    if (this.allowSubdomains && !this.isSocialMediaOrEmail(fullUrl) && this.isSubdomain(fullUrl)) {
+      return fullUrl;
+    }
+
     return null;
   }
 
@@ -295,6 +303,10 @@ export class WebCrawler {
     const linkDomain = urlObj.hostname.replace(/^www\./, "").trim();
     
     return linkDomain === baseDomain;
+  }
+
+  private isSubdomain(link: string): boolean {
+    return new URL(link, this.baseUrl).hostname.endsWith("." + new URL(this.baseUrl).hostname.split(".").slice(-2).join("."));
   }
 
   public isFile(url: string): boolean {

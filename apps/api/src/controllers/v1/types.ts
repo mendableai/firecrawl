@@ -211,6 +211,7 @@ const crawlerOptions = z.object({
   limit: z.number().default(10000), // default?
   allowBackwardLinks: z.boolean().default(false), // >> TODO: CHANGE THIS NAME???
   allowExternalLinks: z.boolean().default(false),
+  allowSubdomains: z.boolean().default(false),
   ignoreSitemap: z.boolean().default(true),
   deduplicateSimilarURLs: z.boolean().default(true),
   ignoreQueryParameters: z.boolean().default(false),
@@ -468,6 +469,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     generateImgAltText: false,
     allowBackwardCrawling: x.allowBackwardLinks,
     allowExternalContentLinks: x.allowExternalLinks,
+    allowSubdomains: x.allowSubdomains,
     ignoreSitemap: x.ignoreSitemap,
     deduplicateSimilarURLs: x.deduplicateSimilarURLs,
     ignoreQueryParameters: x.ignoreQueryParameters,
@@ -483,6 +485,7 @@ export function fromLegacyCrawlerOptions(x: any): { crawlOptions: CrawlerOptions
       maxDepth: x.maxDepth,
       allowBackwardLinks: x.allowBackwardCrawling,
       allowExternalLinks: x.allowExternalContentLinks,
+      allowSubdomains: x.allowSubdomains,
       ignoreSitemap: x.ignoreSitemap,
       deduplicateSimilarURLs: x.deduplicateSimilarURLs,
       ignoreQueryParameters: x.ignoreQueryParameters,
