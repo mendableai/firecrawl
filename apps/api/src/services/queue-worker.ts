@@ -262,7 +262,7 @@ async function processJob(job: Job & { id: string }, token: string) {
       document: null,
       project_id: job.data.project_id,
       error:
-        "URL is blocked. Suspecious activity detected. Please contact hello@firecrawl.com if you believe this is an error.",
+        "URL is blocked. Suspecious activity detected. Please contact help@firecrawl.com if you believe this is an error.",
     };
     return data;
   }
@@ -346,7 +346,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         scrapeOptions: job.data.scrapeOptions,
         origin: job.data.origin,
         crawl_id: job.data.crawl_id,
-      });
+      }, true);
 
       await addCrawlJobDone(job.data.crawl_id, job.id);
 
@@ -486,7 +486,7 @@ async function processJob(job: Job & { id: string }, token: string) {
             url: sc?.originUrl ?? (job.data.crawlerOptions === null ? "Batch Scrape" : "Unknown"),
             crawlerOptions: sc.crawlerOptions,
             origin: job.data.origin,
-          });
+          }, true);
         }
       }
     }
@@ -566,7 +566,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         scrapeOptions: job.data.scrapeOptions,
         origin: job.data.origin,
         crawl_id: job.data.crawl_id,
-      });
+      }, true);
 
       // await logJob({
       //   job_id: job.data.crawl_id,

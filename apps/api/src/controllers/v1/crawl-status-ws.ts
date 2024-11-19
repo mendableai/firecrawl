@@ -175,7 +175,7 @@ export async function crawlStatusWSController(ws: WebSocket, req: RequestWithAut
     logger.error("Error occurred in WebSocket! (" + req.path + ") -- ID " + id + " -- " + verbose);
     return close(ws, 1011, {
       type: "error",
-      error: "An unexpected error occurred. Please contact hello@firecrawl.com for help. Your exception ID is " + id
+      error: "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " + id
     });
   }
 }

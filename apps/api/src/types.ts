@@ -175,4 +175,4 @@ export type PlanType =
   | "";
 
 
-export type WebhookEventType = "crawl.page" | "batch_scrape.page" | "crawl.started" | "crawl.completed" | "batch_scrape.completed" | "crawl.failed";
+export type WebhookEventType = "crawl.page" | "batch_scrape.page" | "crawl.started" | "batch_scrape.started" | "crawl.completed" | "batch_scrape.completed" | "crawl.failed";

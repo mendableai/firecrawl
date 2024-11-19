@@ -23,7 +23,7 @@ const emailTemplates: Record<
   },
   [NotificationType.RATE_LIMIT_REACHED]: {
     subject: "Rate Limit Reached - Firecrawl",
-    html: "Hey there,<br/><p>You've hit one of the Firecrawl endpoint's rate limit! Take a breather and try again in a few moments. If you need higher rate limits, consider upgrading your plan. Check out our <a href='https://firecrawl.dev/pricing'>pricing page</a> for more info.</p><p>If you have any questions, feel free to reach out to us at <a href='mailto:hello@firecrawl.com'>hello@firecrawl.com</a></p><br/>Thanks,<br/>Firecrawl Team<br/><br/>Ps. this email is only sent once every 7 days if you reach a rate limit.",
+    html: "Hey there,<br/><p>You've hit one of the Firecrawl endpoint's rate limit! Take a breather and try again in a few moments. If you need higher rate limits, consider upgrading your plan. Check out our <a href='https://firecrawl.dev/pricing'>pricing page</a> for more info.</p><p>If you have any questions, feel free to reach out to us at <a href='mailto:help@firecrawl.com'>help@firecrawl.com</a></p><br/>Thanks,<br/>Firecrawl Team<br/><br/>Ps. this email is only sent once every 7 days if you reach a rate limit.",
   },
   [NotificationType.AUTO_RECHARGE_SUCCESS]: {
     subject: "Auto recharge successful - Firecrawl",
@@ -31,7 +31,7 @@ const emailTemplates: Record<
   },
   [NotificationType.AUTO_RECHARGE_FAILED]: {
     subject: "Auto recharge failed - Firecrawl",
-    html: "Hey there,<br/><p>Your auto recharge failed. Please try again manually. If the issue persists, please reach out to us at <a href='mailto:hello@firecrawl.com'>hello@firecrawl.com</a></p><br/>Thanks,<br/>Firecrawl Team<br/>",
+    html: "Hey there,<br/><p>Your auto recharge failed. Please try again manually. If the issue persists, please reach out to us at <a href='mailto:help@firecrawl.com'>help@firecrawl.com</a></p><br/>Thanks,<br/>Firecrawl Team<br/>",
   },
 };
 
@@ -63,7 +63,7 @@ export async function sendEmailNotification(
     const { data, error } = await resend.emails.send({
       from: "Firecrawl <firecrawl@getmendableai.com>",
       to: [email],
-      reply_to: "hello@firecrawl.com",
+      reply_to: "help@firecrawl.com",
       subject: emailTemplates[notificationType].subject,
       html: emailTemplates[notificationType].html,
     });

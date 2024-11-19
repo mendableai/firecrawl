@@ -5,7 +5,6 @@ import { logger } from "../lib/logger";
 
 dotenv.config();
 
-
 export async function fireEngineMap(
   q: string,
   options: {
@@ -40,14 +39,13 @@ export async function fireEngineMap(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Disable-Cache": "true"
+        "X-Disable-Cache": "true",
       },
-      body: data
+      body: data,
     });
 
     if (response.ok) {
       const responseData = await response.json();
-      console.log("response", responseData);
       return responseData;
     } else {
       return [];

@@ -46,6 +46,8 @@ export const callWebhook = async (
       webhookUrl = webhooksData[0].url;
     }
 
+    logger.debug("Calling webhook...", { webhookUrl, teamId, specified, v1, eventType, awaitWebhook });
+
     if (!webhookUrl) {
       return null;
     }
@@ -128,7 +130,6 @@ export const callWebhook = async (
               "Content-Type": "application/json",
               ...webhookUrl.headers,
             },
-            timeout: v1 ? 10000 : 30000, // 10 seconds timeout (v1)
           }
         )
         .catch((error) => {

@@ -119,7 +119,7 @@ export const scrapeOptions = z.object({
   includeTags: z.string().array().optional(),
   excludeTags: z.string().array().optional(),
   onlyMainContent: z.boolean().default(true),
-  timeout: z.number().int().positive().finite().safe().default(30000),
+  timeout: z.number().int().positive().finite().safe().optional(),
   waitFor: z.number().int().nonnegative().finite().safe().default(0),
   extract: extractOptions.optional(),
   mobile: z.boolean().default(false),
@@ -170,9 +170,10 @@ export type ExtractV1Options = z.infer<typeof extractV1Options>;
 export const extractRequestSchema = extractV1Options;
 export type ExtractRequest = z.infer<typeof extractRequestSchema>;
 
-export const scrapeRequestSchema = scrapeOptions.extend({
+export const scrapeRequestSchema = scrapeOptions.omit({ timeout: true }).extend({
   url,
   origin: z.string().optional().default("api"),
+  timeout: z.number().int().positive().finite().safe().default(30000),
 }).strict(strictMessage).refine(
   (obj) => {
     const hasExtractFormat = obj.formats?.includes("extract");
@@ -194,9 +195,21 @@ export const scrapeRequestSchema = scrapeOptions.extend({
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
 export type ScrapeRequestInput = z.input<typeof scrapeRequestSchema>;
 
+export const webhookSchema = z.preprocess(x => {
+  if (typeof x === "string") {
+    return { url: x };
+  } else {
+    return x;
+  }
+}, z.object({
+  url: z.string().url(),
+  headers: z.record(z.string(), z.string()).default({}),
+}).strict(strictMessage))
+
 export const batchScrapeRequestSchema = scrapeOptions.extend({
   urls: url.array(),
   origin: z.string().optional().default("api"),
+  webhook: webhookSchema.optional(),
 }).strict(strictMessage).refine(
   (obj) => {
     const hasExtractFormat = obj.formats?.includes("extract");
@@ -206,12 +219,7 @@ export const batchScrapeRequestSchema = scrapeOptions.extend({
   {
     message: "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
   }
-).transform((obj) => {
-  if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
-    return { ...obj, timeout: 60000 };
-  }
-  return obj;
-});
+);
 
 export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
 
@@ -239,21 +247,10 @@ const crawlerOptions = z.object({
 
 export type CrawlerOptions = z.infer<typeof crawlerOptions>;
 
-export const webhookSchema = z.preprocess(x => {
-  if (typeof x === "string") {
-    return { url: x };
-  } else {
-    return x;
-  }
-}, z.object({
-  url: z.string().url(),
-  headers: z.record(z.string(), z.string()).default({}),
-}).strict(strictMessage))
-
 export const crawlRequestSchema = crawlerOptions.extend({
   url,
   origin: z.string().optional().default("api"),
-  scrapeOptions: scrapeOptions.omit({ timeout: true }).default({}),
+  scrapeOptions: scrapeOptions.default({}),
   webhook: webhookSchema.optional(),
   limit: z.number().default(10000),
 }).strict(strictMessage);
@@ -279,6 +276,7 @@ export const mapRequestSchema = crawlerOptions.extend({
   includeSubdomains: z.boolean().default(true),
   search: z.string().optional(),
   ignoreSitemap: z.boolean().default(false),
+  sitemapOnly: z.boolean().default(false),
   limit: z.number().min(1).max(5000).default(5000),
 }).strict(strictMessage);
 

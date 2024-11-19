@@ -1,11 +1,6 @@
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-import {
-  MapDocument,
-  mapRequestSchema,
-  RequestWithAuth,
-  scrapeOptions,
-} from "./types";
+import { MapDocument, mapRequestSchema, RequestWithAuth, scrapeOptions } from "./types";
 import { crawlToCrawler, StoredCrawl } from "../../lib/crawl-redis";
 import { MapResponse, MapRequest } from "./types";
 import { configDotenv } from "dotenv";
@@ -65,11 +60,13 @@ export async function getMapResults({
 }): Promise<MapResult> {
   const id = uuidv4();
   let links: string[] = [url];
+  let mapResults: MapDocument[] = [];
 
   const sc: StoredCrawl = {
     originUrl: url,
     crawlerOptions: {
       ...crawlerOptions,
+      limit: crawlerOptions.sitemapOnly ? 10000000 : limit,
       scrapeOptions: undefined,
     },
     scrapeOptions: scrapeOptions.parse({}),
@@ -81,105 +78,130 @@ export async function getMapResults({
 
   const crawler = crawlToCrawler(id, sc);
 
-  let urlWithoutWww = url.replace("www.", "");
+  // If sitemapOnly is true, only get links from sitemap
+  if (crawlerOptions.sitemapOnly) {
+    if (includeMetadata) {
+      throw new Error("includeMetadata is not supported with sitemapOnly");
+    }
 
-  let mapUrl = search && allowExternalLinks
-    ? `${search} ${urlWithoutWww}`
-    : search ? `${search} site:${urlWithoutWww}`
-    : `site:${url}`;
-
-  const resultsPerPage = 100;
-  const maxPages = Math.ceil(Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage);
-
-  const cacheKey = `fireEngineMap:${mapUrl}`;
-  const cachedResult = null;
-
-  let allResults: any[] = [];
-  let pagePromises: Promise<any>[] = [];
-
-  if (cachedResult) {
-    allResults = JSON.parse(cachedResult);
-  } else {
-    const fetchPage = async (page: number) => {
-      return fireEngineMap(mapUrl, {
-        numResults: resultsPerPage,
-        page: page,
+    const sitemap = await crawler.tryGetSitemap(true, true);
+    if (sitemap !== null) {
+      sitemap.forEach((x) => {
+        links.push(x.url);
       });
-    };
+      links = links.slice(1)
+        .map((x) => {
+          try {
+            return checkAndUpdateURLForMap(x).url.trim();
+          } catch (_) {
+            return null;
+          }
+        })
+        .filter((x) => x !== null) as string[];
+      // links = links.slice(1, limit); // don't slice, unnecessary
+    }
+  } else {
+    let urlWithoutWww = url.replace("www.", "");
 
-    pagePromises = Array.from({ length: maxPages }, (_, i) => fetchPage(i + 1));
-    allResults = await Promise.all(pagePromises);
+    let mapUrl = search && allowExternalLinks
+      ? `${search} ${urlWithoutWww}`
+      : search ? `${search} site:${urlWithoutWww}`
+      : `site:${url}`;
 
-    await redis.set(cacheKey, JSON.stringify(allResults), "EX", 24 * 60 * 60); // Cache for 24 hours
-  }
+    const resultsPerPage = 100;
+    const maxPages = Math.ceil(Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage);
 
-  console.log("allResults", allResults);
-  // Parallelize sitemap fetch with serper search
-  const [sitemap, ...searchResults] = await Promise.all([
-    ignoreSitemap ? null : crawler.tryGetSitemap(),
-    ...(cachedResult ? [] : pagePromises),
-  ]);
+    const cacheKey = `fireEngineMap:${mapUrl}`;
+    const cachedResult = null;
 
-  if (!cachedResult) {
-    allResults = searchResults;
-  }
+    let allResults: any[] = [];
+    let pagePromises: Promise<any>[] = [];
 
-  if (sitemap !== null) {
-    sitemap.forEach((x) => {
-      links.push(x.url);
-    });
-  }
-
-  let mapResults : MapDocument[] = allResults
-    .flat()
-    .filter((result) => result !== null && result !== undefined);
-
-  const minumumCutoff = Math.min(MAX_MAP_LIMIT, limit);
-  if (mapResults.length > minumumCutoff) {
-    mapResults = mapResults.slice(0, minumumCutoff);
-  }
-
-  if (mapResults.length > 0) {
-    if (search) {
-      // Ensure all map results are first, maintaining their order
-      links = [
-        mapResults[0].url,
-        ...mapResults.slice(1).map((x) => x.url),
-        ...links,
-      ];
+    if (cachedResult) {
+      allResults = JSON.parse(cachedResult);
     } else {
-      mapResults.map((x) => {
+      const fetchPage = async (page: number) => {
+        return fireEngineMap(mapUrl, {
+          numResults: resultsPerPage,
+          page: page,
+        });
+      };
+
+      pagePromises = Array.from({ length: maxPages }, (_, i) =>
+        fetchPage(i + 1)
+      );
+      allResults = await Promise.all(pagePromises);
+
+      await redis.set(cacheKey, JSON.stringify(allResults), "EX", 24 * 60 * 60); // Cache for 24 hours
+    }
+
+    // Parallelize sitemap fetch with serper search
+    const [sitemap, ...searchResults] = await Promise.all([
+      ignoreSitemap ? null : crawler.tryGetSitemap(),
+      ...(cachedResult ? [] : pagePromises),
+    ]);
+
+    if (!cachedResult) {
+      allResults = searchResults;
+    }
+
+    if (sitemap !== null) {
+      sitemap.forEach((x) => {
         links.push(x.url);
       });
     }
-  }
 
-  // Perform cosine similarity between the search query and the list of links
-  if (search) {
-    const searchQuery = search.toLowerCase();
-    links = performCosineSimilarity(links, searchQuery);
-  }
+    mapResults = allResults
+      .flat()
+      .filter((result) => result !== null && result !== undefined);
 
-  links = links
-    .map((x) => {
-      try {
-        return checkAndUpdateURLForMap(x).url.trim();
-      } catch (_) {
-        return null;
+    const minumumCutoff = Math.min(MAX_MAP_LIMIT, limit);
+    if (mapResults.length > minumumCutoff) {
+      mapResults = mapResults.slice(0, minumumCutoff);
+    }
+
+    if (mapResults.length > 0) {
+      if (search) {
+        // Ensure all map results are first, maintaining their order
+        links = [
+          mapResults[0].url,
+          ...mapResults.slice(1).map((x) => x.url),
+          ...links,
+        ];
+      } else {
+        mapResults.map((x) => {
+          links.push(x.url);
+        });
       }
-    })
-    .filter((x) => x !== null) as string[];
+    }
 
-  // allows for subdomains to be included
-  links = links.filter((x) => isSameDomain(x, url));
+    // Perform cosine similarity between the search query and the list of links
+    if (search) {
+      const searchQuery = search.toLowerCase();
+      links = performCosineSimilarity(links, searchQuery);
+    }
 
-  // if includeSubdomains is false, filter out subdomains
-  if (!includeSubdomains) {
-    links = links.filter((x) => isSameSubdomain(x, url));
+    links = links
+      .map((x) => {
+        try {
+          return checkAndUpdateURLForMap(x).url.trim();
+        } catch (_) {
+          return null;
+        }
+      })
+      .filter((x) => x !== null) as string[];
+
+    // allows for subdomains to be included
+    links = links.filter((x) => isSameDomain(x, url));
+
+    // if includeSubdomains is false, filter out subdomains
+    if (!includeSubdomains) {
+      links = links.filter((x) => isSameSubdomain(x, url));
+    }
+
+    // remove duplicates that could be due to http/https or www
+    links = removeDuplicateUrls(links);
   }
-
-  // remove duplicates that could be due to http/https or www
-  links = removeDuplicateUrls(links);
 
   const linksToReturn = links.slice(0, limit);
 
@@ -242,51 +264,3 @@ export async function mapController(
 
   return res.status(200).json(response);
 }
-
-// Subdomain sitemap url checking
-
-// // For each result, check for subdomains, get their sitemaps and add them to the links
-// const processedUrls = new Set();
-// const processedSubdomains = new Set();
-
-// for (const result of links) {
-//   let url;
-//   let hostParts;
-//   try {
-//     url = new URL(result);
-//     hostParts = url.hostname.split('.');
-//   } catch (e) {
-//     continue;
-//   }
-
-//   console.log("hostParts", hostParts);
-//   // Check if it's a subdomain (more than 2 parts, and not 'www')
-//   if (hostParts.length > 2 && hostParts[0] !== 'www') {
-//     const subdomain = hostParts[0];
-//     console.log("subdomain", subdomain);
-//     const subdomainUrl = `${url.protocol}//${subdomain}.${hostParts.slice(-2).join('.')}`;
-//     console.log("subdomainUrl", subdomainUrl);
-
-//     if (!processedSubdomains.has(subdomainUrl)) {
-//       processedSubdomains.add(subdomainUrl);
-
-//       const subdomainCrawl = crawlToCrawler(id, {
-//         originUrl: subdomainUrl,
-//         crawlerOptions: legacyCrawlerOptions(req.body),
-//         pageOptions: {},
-//         team_id: req.auth.team_id,
-//         createdAt: Date.now(),
-//         plan: req.auth.plan,
-//       });
-//       const subdomainSitemap = await subdomainCrawl.tryGetSitemap();
-//       if (subdomainSitemap) {
-//         subdomainSitemap.forEach((x) => {
-//           if (!processedUrls.has(x.url)) {
-//             processedUrls.add(x.url);
-//             links.push(x.url);
-//           }
-//         });
-//       }
-//     }
-//   }
-// }
