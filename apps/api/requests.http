@@ -59,3 +59,19 @@ content-type: application/json
   "url": "firecrawl.dev",
   "sitemapOnly": true
 }
+
+### Extract
+# @name extract
+POST {{baseUrl}}/v1/extract HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json
+
+{
+  "urls": ["firecrawl.dev"],
+  "prompt": "What is the title, description and main product of the page?",
+  "schema": {
+    "title": "string",
+    "description": "string",
+    "mainProduct": "string"
+  }
+}

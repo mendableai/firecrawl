@@ -108,6 +108,15 @@ export async function generateOpenAICompletions(logger: Logger, options: Extract
             required: ["items"],
             additionalProperties: false,
         };
+    } else if (schema && typeof schema === 'object' && !schema.type) {
+      schema = {
+          type: "object",
+          properties: Object.fromEntries(
+              Object.entries(schema).map(([key, value]) => [key, { type: value }])
+          ),
+          required: Object.keys(schema),
+          additionalProperties: false
+      };
     }
 
     schema = normalizeSchema(schema);
