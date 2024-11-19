@@ -50,7 +50,7 @@ const main = async () => {
     links: z.array(z.string())
   });
 
-  const extractResult = await app.extractUrls(['https://firecrawl.dev'], {
+  const extractResult = await app.extract(['https://firecrawl.dev'], {
     prompt: "Extract the title, description, and links from the website",
     schema: extractSchema
   });

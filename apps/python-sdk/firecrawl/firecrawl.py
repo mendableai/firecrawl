@@ -460,7 +460,7 @@ class FirecrawlApp:
             self._handle_error(response, 'check batch scrape status')
 
 
-    def extract_urls(self, urls: List[str], params: Optional[ExtractParams] = None) -> Union[ExtractResponse, ErrorResponse]:
+    def extract(self, urls: List[str], params: Optional[ExtractParams] = None) -> Union[ExtractResponse, ErrorResponse]:
         """
         Extracts information from a URL using the Firecrawl API.
 

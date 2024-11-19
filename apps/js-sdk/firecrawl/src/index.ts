@@ -699,12 +699,12 @@ export default class FirecrawlApp {
   }
 
   /**
-   * Extracts information from a URL using the Firecrawl API.
+   * Extracts information from URLs using the Firecrawl API.
    * @param url - The URL to extract information from.
    * @param params - Additional parameters for the extract request.
    * @returns The response from the extract operation.
    */
-  async extractUrls(urls: string[], params?: ExtractParams): Promise<ExtractResponse | ErrorResponse> {
+  async extract(urls: string[], params?: ExtractParams): Promise<ExtractResponse | ErrorResponse> {
     const headers = this.prepareHeaders();
 
     if (!params?.prompt) {

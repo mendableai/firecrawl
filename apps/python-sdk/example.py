@@ -124,7 +124,7 @@ class ExtractSchema(BaseModel):
 extract_schema = ExtractSchema.schema()
 
 # Perform the extraction
-extract_result = app.extract_urls(['https://firecrawl.dev'], {
+extract_result = app.extract(['https://firecrawl.dev'], {
     'prompt': "Extract the title, description, and links from the website",
     'schema': extract_schema
 })
