@@ -80,10 +80,6 @@ export async function getMapResults({
 
   // If sitemapOnly is true, only get links from sitemap
   if (crawlerOptions.sitemapOnly) {
-    if (includeMetadata) {
-      throw new Error("includeMetadata is not supported with sitemapOnly");
-    }
-
     const sitemap = await crawler.tryGetSitemap(true, true);
     if (sitemap !== null) {
       sitemap.forEach((x) => {

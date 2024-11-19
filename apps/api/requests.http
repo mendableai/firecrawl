@@ -47,3 +47,15 @@ content-type: application/json
 # @name batchScrapeStatus
 GET {{baseUrl}}/v1/crawl/{{batchScrapeId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
+
+
+### Map Website
+# @name map
+POST {{baseUrl}}/v1/map HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json
+
+{
+  "url": "firecrawl.dev",
+  "sitemapOnly": true
+}
