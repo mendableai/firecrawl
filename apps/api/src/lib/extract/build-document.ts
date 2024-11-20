@@ -4,14 +4,12 @@ export function buildDocument(document: Document): string {
   const metadata = document.metadata;
   const markdown = document.markdown;
 
-  const documentMetadataString = `\nHere is the metadata for the document:\n${JSON.stringify(
-    metadata,
-    null,
-    2
-  )}`;
+  // for each key in the metadata allow up to 250 characters
+  const metadataString = Object.entries(metadata).map(([key, value]) => {
+    return `${key}: ${value?.toString().slice(0, 250)}`;
+  }).join('\n');
 
+  const documentMetadataString = `\n- - - - - Page metadata - - - - -\n${metadataString}`;
   const documentString = `${markdown}${documentMetadataString}`;
-
-  console.log("documentString", documentString);
-  return markdown ?? "";
+  return documentString;
 }
