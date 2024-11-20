@@ -173,7 +173,6 @@ export async function extractController(
     });
   }
 
-  console.log("docs", docs.length);
   const completions = await generateOpenAICompletions(
     logger.child({ method: "extractController/generateOpenAICompletions" }),
     {

@@ -67,6 +67,9 @@ describe("E2E Tests for Extract API Routes", () => {
       if (founder.includes("Caleb")) gotItRight++;
       if (founder.includes("Eric")) gotItRight++;
       if (founder.includes("Nicolas")) gotItRight++;
+      if (founder.includes("nick")) gotItRight++;
+      if (founder.includes("eric")) gotItRight++;
+      if (founder.includes("jon-noronha")) gotItRight++;
 
     }
 
@@ -175,5 +178,72 @@ describe("E2E Tests for Extract API Routes", () => {
     expect(response.body).toHaveProperty("data");
     expect(response.body.data?.isGreenhouseATS).toBe(true);
   }, 60000);
+
+  it.concurrent("should return mintlify api components", async () => {
+    const response = await request(TEST_URL)
+      .post("/v1/extract")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send({
+        urls: ["https://mintlify.com/docs/*"],
+        prompt: "what are the 4 API components?",
+        schema: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              component: { type: "string" }
+            }
+          },
+          required: ["items"]
+        },
+        allowExternalLinks: true
+      })
+
+    console.log(response.body.data?.items);
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty("data");
+    expect(response.body.data?.items.length).toBe(4);
+    let gotItRight = 0;
+    for (const component of response.body.data?.items) {
+      if (component.component.toLowerCase().includes("parameter")) gotItRight++;
+      if (component.component.toLowerCase().includes("response")) gotItRight++;
+      if (component.component.toLowerCase().includes("expandable")) gotItRight++;
+      if (component.component.toLowerCase().includes("sticky")) gotItRight++;
+      if (component.component.toLowerCase().includes("examples")) gotItRight++;
+
+    }
+    expect(gotItRight).toBeGreaterThan(2);
+  }, 60000);
+
+  it.concurrent("should return information about Eric Ciarla", async () => {
+    const response = await request(TEST_URL)
+      .post("/v1/extract")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send({
+        urls: ["https://ericciarla.com/"],
+        prompt: "Who is Eric Ciarla? Where does he work? Where did he go to school?",
+        schema: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            work: { type: "string" },
+            education: { type: "string" }
+          },
+          required: ["name", "work", "education"]
+        },
+        allowExternalLinks: true
+      })
+
+    console.log(response.body.data);
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty("data");
+    expect(response.body.data?.name).toBe("Eric Ciarla");
+    expect(response.body.data?.work).toBeDefined();
+    expect(response.body.data?.education).toBeDefined();
+  }, 60000);
+
+  
 
 });

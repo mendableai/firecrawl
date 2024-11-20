@@ -108,7 +108,7 @@ export async function getMapResults({
     const maxPages = Math.ceil(Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage);
 
     const cacheKey = `fireEngineMap:${mapUrl}`;
-    const cachedResult = null;
+    const cachedResult = await redis.get(cacheKey);
 
     let allResults: any[] = [];
     let pagePromises: Promise<any>[] = [];
