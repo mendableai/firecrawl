@@ -23,6 +23,7 @@ import { getJobPriority } from "../../lib/job-priority";
 import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { getMapResults } from "./map";
+import { buildDocument } from "../../lib/extract/build-document";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -47,7 +48,7 @@ export async function extractController(
     if (url.includes('/*') || req.body.allowExternalLinks) {
       // Handle glob pattern URLs
       const baseUrl = url.replace('/*', '');
-      const pathPrefix = baseUrl.split('/').slice(3).join('/'); // Get path after domain if any
+      // const pathPrefix = baseUrl.split('/').slice(3).join('/'); // Get path after domain if any
 
       const allowExternalLinks = req.body.allowExternalLinks ?? true;
       let urlWithoutWww = baseUrl.replace("www.", "");
@@ -76,9 +77,11 @@ export async function extractController(
       let mappedLinksRerank = mappedLinks.map(x => `url: ${x.url}, title: ${x.title}, description: ${x.description}`);
       
       // Filter by path prefix if present
-      if (pathPrefix) {
-        mappedLinks = mappedLinks.filter(x => x.url && x.url.includes(`/${pathPrefix}/`));
-      }
+      // console.log("pathPrefix", pathPrefix);
+      // wrong
+      // if (pathPrefix) {
+      //   mappedLinks = mappedLinks.filter(x => x.url && x.url.includes(`/${pathPrefix}/`));
+      // }
 
       if (req.body.prompt) {
         const linksAndScores : { link: string, linkWithContext: string, score: number, originalIndex: number }[] = await performRanking(mappedLinksRerank, mappedLinks.map(l => l.url), mapUrl);
@@ -170,6 +173,7 @@ export async function extractController(
     });
   }
 
+  console.log("docs", docs.length);
   const completions = await generateOpenAICompletions(
     logger.child({ method: "extractController/generateOpenAICompletions" }),
     {
@@ -178,7 +182,7 @@ export async function extractController(
       prompt: req.body.prompt,
       schema: req.body.schema,
     },
-    docs.map(x => x.markdown).join('\n')
+    docs.map(x => buildDocument(x)).join('\n')
   );
 
   // console.log("completions", completions);
