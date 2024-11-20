@@ -63,7 +63,7 @@ export async function generateOpenAICompletions(logger: Logger, options: Extract
     let warning: string | undefined;
 
     const openai = new OpenAI();
-    const model: TiktokenModel = (process.env.MODEL_NAME as TiktokenModel) ?? "gpt-4o-mini";
+    const model: TiktokenModel = (process.env.MODEL_NAME as TiktokenModel) ?? "gpt-4o";
 
     if (markdown === undefined) {
         throw new Error("document.markdown is undefined -- this is unexpected");

@@ -86,6 +86,7 @@ export interface CrawlScrapeOptions {
     country?: string;
     languages?: string[];
   };
+  mobile?: boolean;
   skipTlsVerification?: boolean;
   removeBase64Images?: boolean;
 }
