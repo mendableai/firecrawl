@@ -230,8 +230,11 @@ export class WebCrawler {
 
     const $ = load(html);
     $("a").each((_, element) => {
-      const href = $(element).attr("href");
+      let href = $(element).attr("href");
       if (href) {
+        if (href.match(/^https?:\/[^\/]/)) {
+          href = href.replace(/^https?:\/[^\/]/, "$&/");
+        }
         const u = this.filterURL(href, url);
         if (u !== null) {
           links.push(u);

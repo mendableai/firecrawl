@@ -352,12 +352,10 @@ async function processJob(job: Job & { id: string }, token: string) {
 
       if (job.data.crawlerOptions !== null) {
         if (!sc.cancelled) {
-          const newURL = new URL(doc.metadata.url ?? doc.metadata.sourceURL ?? sc.originUrl!);
-          const useNewURLAsBase = newURL.hostname.split(".").slice(-2).join(".") === new URL(sc.originUrl!).hostname.split(".").slice(-2).join(".");
-          const crawler = crawlToCrawler(job.data.crawl_id, sc, useNewURLAsBase ? newURL.href : undefined);
+          const crawler = crawlToCrawler(job.data.crawl_id, sc, doc.metadata.url ?? doc.metadata.sourceURL ?? sc.originUrl!);
 
           const links = crawler.filterLinks(
-            crawler.extractLinksFromHTML(rawHtml ?? "", doc.metadata?.url ?? doc.metadata?.sourceURL ?? sc.originUrl as string),
+            crawler.extractLinksFromHTML(rawHtml ?? "", doc.metadata?.url ?? doc.metadata?.sourceURL ?? sc.originUrl!),
             Infinity,
             sc.crawlerOptions?.maxDepth ?? 10
           );
