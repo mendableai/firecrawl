@@ -190,10 +190,12 @@ export async function extractController(
   //   creditsToBeBilled = 5;
   // }
 
-  // billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(error => {
-  //   logger.error(`Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`);
-  //   // Optionally, you could notify an admin or add to a retry queue here
-  // });
+  // TODO: change this later
+  // While on beta, we're billing 5 credits per link discovered/scraped.
+  billTeam(req.auth.team_id, req.acuc?.sub_id, links.length * 5).catch(error => {
+    logger.error(`Failed to bill team ${req.auth.team_id} for ${links.length * 5} credits: ${error}`);
+    // Optionally, you could notify an admin or add to a retry queue here
+  });
 
   // if (!req.body.formats.includes("rawHtml")) {
   //   if (doc && doc.rawHtml) {
@@ -201,20 +203,7 @@ export async function extractController(
   //   }
   // }
 
-  // logJob({
-  //   job_id: jobId,
-  //   success: true,
-  //   message: "Scrape completed",
-  //   num_docs: 1,
-  //   docs: [doc],
-  //   time_taken: timeTakenInSeconds,
-  //   team_id: req.auth.team_id,
-  //   mode: "scrape",
-  //   url: req.body.url,
-  //   scrapeOptions: req.body,
-  //   origin: origin,
-  //   num_tokens: numTokens,
-  // });
+  
 
 
 
@@ -263,6 +252,21 @@ export async function extractController(
     data = completions.extract;
   }
 
+  logJob({
+    job_id: id,
+    success: true,
+    message: "Extract completed",
+    num_docs: 1,
+    docs: data,
+    time_taken: (new Date().getTime() - Date.now()) / 1000,
+    team_id: req.auth.team_id,
+    mode: "extract",
+    url: req.body.urls.join(", "),
+    scrapeOptions: req.body,
+    origin: req.body.origin ?? "api",
+    num_tokens: 0, // TODO: fix
+  });
+  
   return res.status(200).json({
     success: true,
     data: data,
