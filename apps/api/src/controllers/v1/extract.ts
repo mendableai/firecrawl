@@ -197,51 +197,6 @@ export async function extractController(
     // Optionally, you could notify an admin or add to a retry queue here
   });
 
-  // if (!req.body.formats.includes("rawHtml")) {
-  //   if (doc && doc.rawHtml) {
-  //     delete doc.rawHtml;
-  //   }
-  // }
-
-  
-
-
-
-  // billTeam(teamId, subId, 1).catch((error) => {
-  //   logger.error(
-  //     `Failed to bill team ${teamId} for 1 credit: ${error}`
-  //   );
-  // });
-
-  // const linksToReturn = links.slice(0, limit);
-
-  // logJob({
-  //   job_id: id,
-  //   success: links.length > 0,
-  //   message: "Extract completed", 
-  //   num_docs: linksToReturn.length,
-  //   docs: linksToReturn,
-  //   time_taken: (new Date().getTime() - Date.now()) / 1000,
-  //   team_id: teamId,
-  //   mode: "extract",
-  //   url: urls[0],
-  //   crawlerOptions: {},
-  //   scrapeOptions: {},
-  //   origin: origin ?? "api",
-  //   num_tokens: 0,
-  // });
-
-  // return {
-
-  // };
-
-
-
-  // const response = {
-  //   success: true as const,
-  //   data: result.data,
-  //   scrape_id: result.scrape_id
-  // };
 
   console.log("completions.extract", completions.extract);
 
@@ -264,9 +219,9 @@ export async function extractController(
     url: req.body.urls.join(", "),
     scrapeOptions: req.body,
     origin: req.body.origin ?? "api",
-    num_tokens: 0, // TODO: fix
+    num_tokens: completions.numTokens ?? 0
   });
-  
+
   return res.status(200).json({
     success: true,
     data: data,

@@ -58,7 +58,7 @@ function normalizeSchema(x: any): any {
     }
 }
 
-export async function generateOpenAICompletions(logger: Logger, options: ExtractOptions, markdown?: string, previousWarning?: string): Promise<{ extract: any, warning: string | undefined }> {
+export async function generateOpenAICompletions(logger: Logger, options: ExtractOptions, markdown?: string, previousWarning?: string): Promise<{ extract: any, numTokens: number, warning: string | undefined }> {
     let extract: any;
     let warning: string | undefined;
 
@@ -170,7 +170,7 @@ export async function generateOpenAICompletions(logger: Logger, options: Extract
     if (options.schema && options.schema.type === "array" && !schema?.required?.includes("items")) {
         extract = extract?.items;
     }
-    return { extract, warning };
+    return { extract, warning, numTokens };
 }
 
 export async function performLLMExtract(meta: Meta, document: Document): Promise<Document> {
