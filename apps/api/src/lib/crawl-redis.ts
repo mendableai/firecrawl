@@ -148,7 +148,8 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
         res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0
     } else {
         const permutations = generateURLPermutations(url);
-        res = (await redisConnection.sadd("crawl:" + id + ":visited", ...permutations.map(x => x.href))) === permutations.length;
+        const x = (await redisConnection.sadd("crawl:" + id + ":visited", ...permutations.map(x => x.href)));
+        res = x === permutations.length;
     }
 
     await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
