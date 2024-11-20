@@ -32,6 +32,13 @@ const MAX_EXTRACT_LIMIT = 100;
 const MAX_RANKING_LIMIT = 10;
 const SCORE_THRESHOLD = 0.75;
 
+/**
+ * Extracts data from the provided URLs based on the request parameters.
+ * Currently in beta.
+ * @param req - The request object containing authentication and extraction details.
+ * @param res - The response object to send the extraction results.
+ * @returns A promise that resolves when the extraction process is complete.
+ */
 export async function extractController(
   req: RequestWithAuth<{}, ExtractResponse, ExtractRequest>,
   res: Response<ExtractResponse>
