@@ -36,6 +36,8 @@ export async function extractController(
   req: RequestWithAuth<{}, ExtractResponse, ExtractRequest>,
   res: Response<ExtractResponse>
 ) {
+  const selfHosted = process.env.USE_DB_AUTHENTICATION !== "true";
+  
   req.body = extractRequestSchema.parse(req.body);
 
   const id = crypto.randomUUID();
@@ -65,7 +67,8 @@ export async function extractController(
         allowExternalLinks,
         origin: req.body.origin,
         limit: req.body.limit,
-        ignoreSitemap: true,
+        // If we're self-hosted, we don't want to ignore the sitemap, due to our fire-engine mapping
+        ignoreSitemap: !selfHosted ? true : false,
         includeMetadata: true,
         includeSubdomains: req.body.includeSubdomains,
       });
