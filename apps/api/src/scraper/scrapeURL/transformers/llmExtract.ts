@@ -123,6 +123,7 @@ export async function generateOpenAICompletions(logger: Logger, options: Extract
 
     const jsonCompletion = await openai.beta.chat.completions.parse({
         model,
+        temperature: 0,
         messages: [
             {
                 role: "system",

@@ -150,4 +150,29 @@ describe("E2E Tests for Extract API Routes", () => {
     // expect(response.body).toHaveProperty("data");
     // expect(response.body.data?.pciDssCompliance).toBe(true);
   }, 60000);
+
+  it.concurrent("should return Greenhouse Applicant Tracking System for Abnormal Security", async () => {
+    const response = await request(TEST_URL)
+      .post("/v1/extract")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send({
+        urls: ["https://careers.abnormalsecurity.com/jobs/6119456003?gh_jid=6119456003"],
+        prompt: "what applicant tracking system is this company using?",
+        schema: {
+          type: "object",
+          properties: {
+            isGreenhouseATS: { type: "boolean" },
+            answer: { type: "string" }
+          }
+        },
+        allowExternalLinks: true
+      })
+
+    console.log(response.body);
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty("data");
+    expect(response.body.data?.isGreenhouseATS).toBe(true);
+  }, 60000);
+
 });
