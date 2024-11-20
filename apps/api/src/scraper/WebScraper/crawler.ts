@@ -233,7 +233,7 @@ export class WebCrawler {
       let href = $(element).attr("href");
       if (href) {
         if (href.match(/^https?:\/[^\/]/)) {
-          href = href.replace(/^https?:\/[^\/]/, "$&/");
+          href = href.replace(/^https?:\//, "$&/");
         }
         const u = this.filterURL(href, url);
         if (u !== null) {
