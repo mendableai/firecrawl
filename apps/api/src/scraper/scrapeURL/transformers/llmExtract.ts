@@ -165,7 +165,9 @@ export async function generateOpenAICompletions(logger: Logger, options: Extract
         }
     }
 
-    if (options.schema && options.schema.type === "array") {
+    // If the users actually wants the items object, they can specify it as 'required' in the schema
+    // otherwise, we just return the items array
+    if (options.schema && options.schema.type === "array" && !schema?.required?.includes("items")) {
         extract = extract?.items;
     }
     return { extract, warning };

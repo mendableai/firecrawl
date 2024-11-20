@@ -86,7 +86,8 @@ describe("E2E Tests for Extract API Routes", () => {
           type: "array",
           items: {
             type: "string"
-          }
+          },
+          required: ["items"]
         },
       });
     expect(response.statusCode).toBe(200);
