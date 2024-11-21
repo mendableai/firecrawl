@@ -133,7 +133,7 @@ export async function getMapResults({
 
     // Parallelize sitemap fetch with serper search
     const [sitemap, ...searchResults] = await Promise.all([
-      ignoreSitemap ? null : crawler.tryGetSitemap(),
+      ignoreSitemap ? null : crawler.tryGetSitemap(true),
       ...(cachedResult ? [] : pagePromises),
     ]);
 
