@@ -87,7 +87,6 @@ export async function extractController(
       let mappedLinksRerank = mappedLinks.map(x => `url: ${x.url}, title: ${x.title}, description: ${x.description}`);
       
       // Filter by path prefix if present
-      // console.log("pathPrefix", pathPrefix);
       // wrong
       // if (pathPrefix) {
       //   mappedLinks = mappedLinks.filter(x => x.url && x.url.includes(`/${pathPrefix}/`));
@@ -100,8 +99,8 @@ export async function extractController(
           .map(x => mappedLinks.find(link => link.url === x.link))
           .filter((x): x is MapDocument => x !== undefined && x.url !== undefined && !isUrlBlocked(x.url))
           .slice(0, MAX_RANKING_LIMIT);
-        console.log("linksAndScores", linksAndScores);
-        console.log("linksAndScores", linksAndScores.length);
+        // console.log("linksAndScores", linksAndScores);
+        // console.log("linksAndScores", linksAndScores.length);
       }
 
       return mappedLinks.map(x => x.url) as string[];
@@ -119,7 +118,7 @@ export async function extractController(
   const processedUrls = await Promise.all(urlPromises);
   links.push(...processedUrls.flat());
 
-  console.log("links", links.length);
+  // console.log("links", links.length);
   // Scrape all links in parallel
   const scrapePromises = links.map(async (url) => {
     const origin = req.body.origin || "api";
@@ -208,7 +207,7 @@ export async function extractController(
   });
 
 
-  console.log("completions.extract", completions.extract);
+  // console.log("completions.extract", completions.extract);
 
   let data: any;
   try {
