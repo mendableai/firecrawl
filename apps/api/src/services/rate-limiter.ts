@@ -208,6 +208,10 @@ export function getRateLimiter(
     return etier2aRateLimiter;
   }
 
+  if(teamId && teamId === process.env.ETIER2D_TEAM_ID) {
+    return etier2aRateLimiter;
+  }
+
   if(teamId && manual.includes(teamId)) {
     return manualRateLimiter;
   }
