@@ -350,12 +350,12 @@ async function processJob(job: Job & { id: string }, token: string) {
 
       await addCrawlJobDone(job.data.crawl_id, job.id);
 
-      if (!job.data.sitemapped && job.data.crawlerOptions !== null) {
+      if (job.data.crawlerOptions !== null) {
         if (!sc.cancelled) {
-          const crawler = crawlToCrawler(job.data.crawl_id, sc, doc.metadata.url ?? doc.metadata.sourceURL ?? sc.originUrl);
+          const crawler = crawlToCrawler(job.data.crawl_id, sc, doc.metadata.url ?? doc.metadata.sourceURL ?? sc.originUrl!);
 
           const links = crawler.filterLinks(
-            crawler.extractLinksFromHTML(rawHtml ?? "", doc.metadata?.url ?? doc.metadata?.sourceURL ?? sc.originUrl as string),
+            crawler.extractLinksFromHTML(rawHtml ?? "", doc.metadata?.url ?? doc.metadata?.sourceURL ?? sc.originUrl!),
             Infinity,
             sc.crawlerOptions?.maxDepth ?? 10
           );

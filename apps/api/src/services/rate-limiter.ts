@@ -160,6 +160,7 @@ const testSuiteTokens = [
   "6c46abb",
   "cb0ff78",
   "fd769b2",
+  "4c2638d",
   "cbb3462", // don't remove (s-ai)
   "824abcd" // don't remove (s-ai)
 ];
