@@ -199,7 +199,7 @@ export async function getMapResults({
     links = removeDuplicateUrls(links);
   }
 
-  const linksToReturn = links.slice(0, limit);
+  const linksToReturn = crawlerOptions.sitemapOnly ? links : links.slice(0, limit);
 
   return {
     success: true,
