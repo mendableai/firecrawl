@@ -22,6 +22,7 @@
     "puppeteer-extra-plugin-adblocker": "^2.13.6",
     "puppeteer-extra-plugin-recaptcha": "^3.6.8",
     "puppeteer-extra-plugin-stealth": "^2.11.2",
+    "redoc-express": "^2.1.0",
     "swagger-jsdoc": "^6.2.8"
   },
   "devDependencies": {

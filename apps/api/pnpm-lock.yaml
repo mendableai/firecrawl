@@ -62,6 +62,9 @@ importers:
       redlock:
         specifier: 5.0.0-beta.2
         version: 5.0.0-beta.2
+      redoc-express:
+        specifier: ^2.1.0
+        version: 2.1.0
       robots-parser:
         specifier: ^3.0.1
         version: 3.0.1
@@ -111,6 +114,9 @@ importers:
       '@types/node':
         specifier: ^20.17.6
         version: 20.17.6
+      '@types/swagger-jsdoc':
+        specifier: ^6.0.4
+        version: 6.0.4
       '@types/uuid':
         specifier: ^10.0.0
         version: 10.0.0
@@ -576,6 +582,9 @@ packages:
 
   '@types/stack-utils@2.0.3':
     resolution: {integrity: sha512-9aEbYZ3TbYMznPdcdr3SmIrLXwC/AKZXQeCf9Pgao5CKb8CyHuEX5jzWPTkvregvhRJHcpRO6BFoGW9ycaOkYw==}
+
+  '@types/swagger-jsdoc@6.0.4':
+    resolution: {integrity: sha512-W+Xw5epcOZrF/AooUM/PccNMSAFOKWZA5dasNyMujTwsBkU74njSJBpvCCJhHAJ95XRMzQrrW844Btu0uoetwQ==}
 
   '@types/uuid@10.0.0':
     resolution: {integrity: sha512-7gqG38EyHgyP1S+7+xomFtL+ZNHcKv6DwNaCZmJmo1vgMugyF3TCnXVg4t1uk89mLNwnLtnY3TpOpCOyp1/xHQ==}
@@ -1971,6 +1980,9 @@ packages:
     resolution: {integrity: sha512-2RDWXg5jgRptDrB1w9O/JgSZC0j7y4SlaXnor93H/UJm/QyDiFgBKNtrh0TI6oCXqYSaSoXxFh6Sd3VtYfhRXw==}
     engines: {node: '>=12'}
 
+  redoc-express@2.1.0:
+    resolution: {integrity: sha512-gq6FvghNirD3dCJ7w8Z6escXYHnU1Hk50baQsIeGunQQ9YRoy6qR/MjEOJtDEKaPNB2NgkIzQ9ESNX5/27zkDA==}
+
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
     engines: {node: '>=0.10.0'}
@@ -3025,6 +3037,8 @@ snapshots:
       '@types/send': 0.17.4
 
   '@types/stack-utils@2.0.3': {}
+
+  '@types/swagger-jsdoc@6.0.4': {}
 
   '@types/uuid@10.0.0': {}
 
@@ -4687,6 +4701,8 @@ snapshots:
   redlock@5.0.0-beta.2:
     dependencies:
       node-abort-controller: 3.1.1
+
+  redoc-express@2.1.0: {}
 
   require-directory@2.1.1: {}
 
