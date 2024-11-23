@@ -507,7 +507,7 @@ if (crawlResponse) {
 
 ### Extracting structured data from a URL
 
-With LLM extraction, you can easily extract structured data from any URL. We support zod schema to make it easier for you too. Here is how you to use it:
+With LLM extraction, you can easily extract structured data from any URL. We support zod schema to make it easier for you too. Here is how to use it:
 
 ```js
 import FirecrawlApp from "@mendable/firecrawl-js";
