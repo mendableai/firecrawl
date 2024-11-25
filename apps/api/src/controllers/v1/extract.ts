@@ -32,7 +32,7 @@ const MAX_EXTRACT_LIMIT = 100;
 const MAX_RANKING_LIMIT = 10;
 const INITIAL_SCORE_THRESHOLD = 0.75;
 const FALLBACK_SCORE_THRESHOLD = 0.5;
-const MIN_REQUIRED_LINKS = 3;
+const MIN_REQUIRED_LINKS = 1;
 
 /**
  * Extracts data from the provided URLs based on the request parameters.
@@ -103,6 +103,7 @@ export async function extractController(
         
         // If we don't have enough high-quality links, try with lower threshold
         if (filteredLinks.length < MIN_REQUIRED_LINKS) {
+          console.log(`Only found ${filteredLinks.length} links with score > ${INITIAL_SCORE_THRESHOLD}. Trying lower threshold...`);
           logger.info(`Only found ${filteredLinks.length} links with score > ${INITIAL_SCORE_THRESHOLD}. Trying lower threshold...`);
           filteredLinks = filterAndProcessLinks(mappedLinks, linksAndScores, FALLBACK_SCORE_THRESHOLD);
           
@@ -227,15 +228,8 @@ export async function extractController(
     // Optionally, you could notify an admin or add to a retry queue here
   });
 
-  let data: any;
-  let warning = completions.warning ?? "";
-  try {
-    data = JSON.parse(completions.extract);
-  } catch (e) {
-    logger.warn(`ExtractController: Error parsing JSON: ${e}`);
-    data = completions.extract;
-    warning = "JSON could not be parsed correctly. Returning raw LLM output...";
-  }
+  let data = completions.extract ?? {};
+  let warning = completions.warning;
 
   logJob({
     job_id: id,
