@@ -99,7 +99,7 @@ function idempotencyMiddleware(req: Request, res: Response, next: NextFunction) 
 function blocklistMiddleware(req: Request, res: Response, next: NextFunction) {
     if (typeof req.body.url === "string" && isUrlBlocked(req.body.url)) {
         if (!res.headersSent) {
-            return res.status(403).json({ success: false, error: "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." });
+            return res.status(403).json({ success: false, error: "URL is blocked intentionally. Firecrawl currently does not support social media scraping due to policy restrictions." });
         }
     }
     next();
@@ -183,7 +183,6 @@ v1Router.post(
     "/extract",
     authMiddleware(RateLimiterMode.Scrape),
     checkCreditsMiddleware(1),
-    blocklistMiddleware,
     wrap(extractController)
 );
 
