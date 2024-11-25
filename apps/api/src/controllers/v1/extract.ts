@@ -30,7 +30,9 @@ const redis = new Redis(process.env.REDIS_URL!);
 
 const MAX_EXTRACT_LIMIT = 100;
 const MAX_RANKING_LIMIT = 10;
-const SCORE_THRESHOLD = 0.75;
+const INITIAL_SCORE_THRESHOLD = 0.75;
+const FALLBACK_SCORE_THRESHOLD = 0.5;
+const MIN_REQUIRED_LINKS = 3;
 
 /**
  * Extracts data from the provided URLs based on the request parameters.
@@ -94,19 +96,28 @@ export async function extractController(
 
       if (req.body.prompt) {
         // Get similarity scores between the search query and each link's context
-        const linksAndScores : { link: string, linkWithContext: string, score: number, originalIndex: number }[] = await performRanking(mappedLinksRerank, mappedLinks.map(l => l.url), mapUrl);
+        const linksAndScores = await performRanking(mappedLinksRerank, mappedLinks.map(l => l.url), mapUrl);
         
-        mappedLinks = linksAndScores
-          // Only keep links that have a similarity score above the threshold
-          .filter(x => x.score > SCORE_THRESHOLD)
-          // Map back to the original link objects
-          .map(x => mappedLinks.find(link => link.url === x.link))
-          // Remove any undefined links, links without URLs, and blocked URLs
-          .filter((x): x is MapDocument => x !== undefined && x.url !== undefined && !isUrlBlocked(x.url))
-          // Limit the number of results
-          .slice(0, MAX_RANKING_LIMIT);
+        // First try with high threshold
+        let filteredLinks = filterAndProcessLinks(mappedLinks, linksAndScores, INITIAL_SCORE_THRESHOLD);
+        
+        // If we don't have enough high-quality links, try with lower threshold
+        if (filteredLinks.length < MIN_REQUIRED_LINKS) {
+          logger.info(`Only found ${filteredLinks.length} links with score > ${INITIAL_SCORE_THRESHOLD}. Trying lower threshold...`);
+          filteredLinks = filterAndProcessLinks(mappedLinks, linksAndScores, FALLBACK_SCORE_THRESHOLD);
+          
+          if (filteredLinks.length === 0) {
+            // If still no results, take top N results regardless of score
+            logger.warn(`No links found with score > ${FALLBACK_SCORE_THRESHOLD}. Taking top ${MIN_REQUIRED_LINKS} results.`);
+            filteredLinks = linksAndScores
+              .sort((a, b) => b.score - a.score)
+              .slice(0, MIN_REQUIRED_LINKS)
+              .map(x => mappedLinks.find(link => link.url === x.link))
+              .filter((x): x is MapDocument => x !== undefined && x.url !== undefined && !isUrlBlocked(x.url));
+          }
+        }
 
-        // TODO: handle case where no links are returned
+        mappedLinks = filteredLinks.slice(0, MAX_RANKING_LIMIT);
       }
 
       return mappedLinks.map(x => x.url) as string[];
@@ -124,8 +135,14 @@ export async function extractController(
   const processedUrls = await Promise.all(urlPromises);
   links.push(...processedUrls.flat());
 
-  // console.log("links", links.length);
-  // Scrape all links in parallel
+  if (links.length === 0) {
+    return res.status(400).json({
+      success: false,
+      error: "No valid URLs found to scrape. Try adjusting your search criteria or including more URLs."
+    });
+  }
+
+  // Scrape all links in parallel with retries
   const scrapePromises = links.map(async (url) => {
     const origin = req.body.origin || "api";
     const timeout = Math.floor((req.body.timeout || 40000) * 0.7) || 30000; // Use 70% of total timeout for individual scrapes
@@ -210,9 +227,6 @@ export async function extractController(
     // Optionally, you could notify an admin or add to a retry queue here
   });
 
-
-  // console.log("completions.extract", completions.extract);
-
   let data: any;
   let warning = completions.warning ?? "";
   try {
@@ -244,4 +258,15 @@ export async function extractController(
     scrape_id: id,
     warning: warning
   });
+}
+
+function filterAndProcessLinks(
+  mappedLinks: MapDocument[], 
+  linksAndScores: { link: string, linkWithContext: string, score: number, originalIndex: number }[],
+  threshold: number
+): MapDocument[] {
+  return linksAndScores
+    .filter(x => x.score > threshold)
+    .map(x => mappedLinks.find(link => link.url === x.link))
+    .filter((x): x is MapDocument => x !== undefined && x.url !== undefined && !isUrlBlocked(x.url));
 }
