@@ -128,7 +128,7 @@ export async function extractController(
   // Scrape all links in parallel
   const scrapePromises = links.map(async (url) => {
     const origin = req.body.origin || "api";
-    const timeout = req.body.timeout ?? 30000;
+    const timeout = Math.floor((req.body.timeout || 40000) * 0.7) || 30000; // Use 70% of total timeout for individual scrapes
     const jobId = crypto.randomUUID();
 
     const jobPriority = await getJobPriority({
@@ -153,10 +153,8 @@ export async function extractController(
       jobPriority
     );
 
-    const totalWait = 0;
-
     try {
-      const doc = await waitForJob<Document>(jobId, timeout + totalWait);
+      const doc = await waitForJob<Document>(jobId, timeout);
       await getScrapeQueue().remove(jobId);
       if (earlyReturn) {
         return null;
@@ -216,10 +214,13 @@ export async function extractController(
   // console.log("completions.extract", completions.extract);
 
   let data: any;
+  let warning = completions.warning ?? "";
   try {
     data = JSON.parse(completions.extract);
   } catch (e) {
+    logger.warn(`ExtractController: Error parsing JSON: ${e}`);
     data = completions.extract;
+    warning = "JSON could not be parsed correctly. Returning raw LLM output...";
   }
 
   logJob({
@@ -241,5 +242,6 @@ export async function extractController(
     success: true,
     data: data,
     scrape_id: id,
+    warning: warning
   });
 }

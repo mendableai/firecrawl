@@ -163,7 +163,7 @@ export const extractV1Options = z.object({
   includeSubdomains: z.boolean().default(true),
   allowExternalLinks: z.boolean().default(false),
   origin: z.string().optional().default("api"),
-  timeout: z.number().int().positive().finite().safe().default(60000),
+  timeout: z.number().int().positive().finite().safe().default(60000)
 }).strict(strictMessage)
 
 export type ExtractV1Options = z.infer<typeof extractV1Options>;
