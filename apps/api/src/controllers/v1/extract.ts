@@ -93,14 +93,20 @@ export async function extractController(
       // }
 
       if (req.body.prompt) {
+        // Get similarity scores between the search query and each link's context
         const linksAndScores : { link: string, linkWithContext: string, score: number, originalIndex: number }[] = await performRanking(mappedLinksRerank, mappedLinks.map(l => l.url), mapUrl);
+        
         mappedLinks = linksAndScores
+          // Only keep links that have a similarity score above the threshold
           .filter(x => x.score > SCORE_THRESHOLD)
+          // Map back to the original link objects
           .map(x => mappedLinks.find(link => link.url === x.link))
+          // Remove any undefined links, links without URLs, and blocked URLs
           .filter((x): x is MapDocument => x !== undefined && x.url !== undefined && !isUrlBlocked(x.url))
+          // Limit the number of results
           .slice(0, MAX_RANKING_LIMIT);
-        // console.log("linksAndScores", linksAndScores);
-        // console.log("linksAndScores", linksAndScores.length);
+
+        // TODO: handle case where no links are returned
       }
 
       return mappedLinks.map(x => x.url) as string[];
