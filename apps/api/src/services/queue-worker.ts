@@ -404,9 +404,9 @@ async function processJob(job: Job & { id: string }, token: string) {
           const jobIDs = await getCrawlJobs(job.data.crawl_id);
 
           const jobs = (await getJobs(jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
-          const jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
+          // const jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
           const jobStatus =
-            sc.cancelled || jobStatuses.some((x) => x === "failed")
+            sc.cancelled // || jobStatuses.some((x) => x === "failed")
               ? "failed"
               : "completed";
 
