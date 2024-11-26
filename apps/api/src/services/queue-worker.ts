@@ -69,8 +69,8 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           : "completed";
 
       const fullDocs = jobs.map((x) =>
-        Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue
-      );
+        x.returnvalue ? (Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue) : null
+      ).filter(x => x !== null);
 
       await logJob({
         job_id: job.data.crawl_id,
