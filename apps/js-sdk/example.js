@@ -1,4 +1,5 @@
 import FirecrawlApp from 'firecrawl';
+import { z } from 'zod';
 
 const app = new FirecrawlApp({apiKey: "fc-YOUR_API_KEY"});
 
@@ -42,6 +43,18 @@ const main = async () => {
   const mapResult = await app.mapUrl('https://firecrawl.dev');
   console.log(mapResult)
 
+  // Extract information from a website using LLM:
+  const extractSchema = z.object({
+    title: z.string(),
+    description: z.string(),
+    links: z.array(z.string())
+  });
+
+  const extractResult = await app.extract(['https://firecrawl.dev'], {
+    prompt: "Extract the title, description, and links from the website",
+    schema: extractSchema
+  });
+  console.log(extractResult);
 
   // Crawl a website with WebSockets:
   const watch = await app.crawlUrlAndWatch('mendable.ai', { excludePaths: ['blog/*'], limit: 5});

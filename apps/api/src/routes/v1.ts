@@ -18,6 +18,7 @@ import { logger } from "../lib/logger";
 import { scrapeStatusController } from "../controllers/v1/scrape-status";
 import { concurrencyCheckController } from "../controllers/v1/concurrency-check";
 import { batchScrapeController } from "../controllers/v1/batch-scrape";
+import { extractController } from "../controllers/v1/extract";
 // import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
 // import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
 // import { searchController } from "../../src/controllers/v1/search";
@@ -98,7 +99,7 @@ function idempotencyMiddleware(req: Request, res: Response, next: NextFunction) 
 function blocklistMiddleware(req: Request, res: Response, next: NextFunction) {
     if (typeof req.body.url === "string" && isUrlBlocked(req.body.url)) {
         if (!res.headersSent) {
-            return res.status(403).json({ success: false, error: "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." });
+            return res.status(403).json({ success: false, error: "URL is blocked intentionally. Firecrawl currently does not support social media scraping due to policy restrictions." });
         }
     }
     next();
@@ -178,6 +179,13 @@ v1Router.ws(
     crawlStatusWSController
 );
 
+v1Router.post(
+    "/extract",
+    authMiddleware(RateLimiterMode.Scrape),
+    checkCreditsMiddleware(1),
+    wrap(extractController)
+);
+
 
 
 // v1Router.post("/crawlWebsitePreview", crawlPreviewController);
@@ -199,3 +207,4 @@ v1Router.delete(
 // Health/Probe routes
 // v1Router.get("/health/liveness", livenessController);
 // v1Router.get("/health/readiness", readinessController);
+
