@@ -103,7 +103,6 @@ export async function extractController(
         
         // If we don't have enough high-quality links, try with lower threshold
         if (filteredLinks.length < MIN_REQUIRED_LINKS) {
-          console.log(`Only found ${filteredLinks.length} links with score > ${INITIAL_SCORE_THRESHOLD}. Trying lower threshold...`);
           logger.info(`Only found ${filteredLinks.length} links with score > ${INITIAL_SCORE_THRESHOLD}. Trying lower threshold...`);
           filteredLinks = filterAndProcessLinks(mappedLinks, linksAndScores, FALLBACK_SCORE_THRESHOLD);
           
@@ -208,24 +207,17 @@ export async function extractController(
     logger.child({ method: "extractController/generateOpenAICompletions" }),
     {
       mode: "llm",
-      systemPrompt: "Only use the provided content to answer the question.",
+      systemPrompt: "Always prioritize using the provided content to answer the question. Do not make up an answer. Be concise and follow the schema if provided.",
       prompt: req.body.prompt,
       schema: req.body.schema,
     },
     docs.map(x => buildDocument(x)).join('\n')
   );
 
-  // console.log("completions", completions);
-
-  // if(req.body.extract && req.body.formats.includes("extract")) {
-  //   creditsToBeBilled = 5;
-  // }
-
   // TODO: change this later
   // While on beta, we're billing 5 credits per link discovered/scraped.
   billTeam(req.auth.team_id, req.acuc?.sub_id, links.length * 5).catch(error => {
     logger.error(`Failed to bill team ${req.auth.team_id} for ${links.length * 5} credits: ${error}`);
-    // Optionally, you could notify an admin or add to a retry queue here
   });
 
   let data = completions.extract ?? {};
@@ -254,6 +246,13 @@ export async function extractController(
   });
 }
 
+/**
+ * Filters links based on their similarity score to the search query.
+ * @param mappedLinks - The list of mapped links to filter.
+ * @param linksAndScores - The list of links and their similarity scores.
+ * @param threshold - The score threshold to filter by.
+ * @returns The filtered list of links.
+ */
 function filterAndProcessLinks(
   mappedLinks: MapDocument[], 
   linksAndScores: { link: string, linkWithContext: string, score: number, originalIndex: number }[],
