@@ -240,9 +240,9 @@ export interface MapResponse {
  * Parameters for extracting information from URLs.
  * Defines options for extracting information from URLs.
  */
-export interface ExtractParams {
+export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
   prompt: string;
-  schema?: zt.ZodSchema;
+  schema?: LLMSchema;
   systemPrompt?: string;
   allowExternalLinks?: boolean;
 }
@@ -251,10 +251,11 @@ export interface ExtractParams {
  * Response interface for extracting information from URLs.
  * Defines the structure of the response received after extracting information from URLs.
  */
-export interface ExtractResponse {
-  success: true;
-  data: zt.infer<zt.ZodSchema>;
+export interface ExtractResponse<LLMSchema extends zt.ZodSchema = any> {
+  success: boolean;
+  data: LLMSchema;
   error?: string;
+  warning?: string;
 }
 
 /**
@@ -701,18 +702,19 @@ export default class FirecrawlApp {
 
   /**
    * Extracts information from URLs using the Firecrawl API.
+   * Currently in Beta. Expect breaking changes on future minor versions.
    * @param url - The URL to extract information from.
    * @param params - Additional parameters for the extract request.
    * @returns The response from the extract operation.
    */
-  async extract(urls: string[], params?: ExtractParams): Promise<ExtractResponse | ErrorResponse> {
+  async extract<T extends zt.ZodSchema = any>(urls: string[], params?: ExtractParams<T>): Promise<ExtractResponse<zt.infer<T>> | ErrorResponse> {
     const headers = this.prepareHeaders();
 
     if (!params?.prompt) {
       throw new FirecrawlError("Prompt is required", 400);
     }
 
-    let jsonData: { urls: string[] } & ExtractParams= { urls,  ...params };
+    let jsonData: { urls: string[] } & ExtractParams<T> = { urls,  ...params };
     let jsonSchema: any;
     try {
       jsonSchema = params?.schema ? zodToJsonSchema(params.schema) : undefined;
@@ -727,7 +729,17 @@ export default class FirecrawlApp {
         headers
       );
       if (response.status === 200) {
-        return response.data as ExtractResponse;
+        const responseData = response.data as ExtractResponse<T>;
+        if (responseData.success) {
+          return {
+            success: true,
+            data: responseData.data,
+            warning: responseData.warning,
+            error: responseData.error
+          };
+        } else {
+          throw new FirecrawlError(`Failed to scrape URL. Error: ${responseData.error}`, response.status);
+        }
       } else {
         this.handleError(response, "extract");
       }
