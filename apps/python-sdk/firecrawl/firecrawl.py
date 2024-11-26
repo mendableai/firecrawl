@@ -39,13 +39,6 @@ class FirecrawlApp:
         data: Optional[Any] = None
         error: Optional[str] = None
 
-    class ErrorResponse(pydantic.BaseModel):
-        """
-        Error response.
-        """
-        success: bool
-        error: str
-
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
       """
       Initialize the FirecrawlApp instance with API key, API URL.
@@ -460,7 +453,7 @@ class FirecrawlApp:
             self._handle_error(response, 'check batch scrape status')
 
 
-    def extract(self, urls: List[str], params: Optional[ExtractParams] = None) -> Union[ExtractResponse, ErrorResponse]:
+    def extract(self, urls: List[str], params: Optional[ExtractParams] = None) -> Any:
         """
         Extracts information from a URL using the Firecrawl API.
 
@@ -493,7 +486,11 @@ class FirecrawlApp:
                 headers
             )
             if response.status_code == 200:
-                return response.json()
+                data = response.json()
+                if data['success']:
+                    return data
+                else:
+                    raise Exception(f'Failed to extract. Error: {data["error"]}')
             else:
                 self._handle_error(response, "extract")
         except Exception as e:
