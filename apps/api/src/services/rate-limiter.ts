@@ -76,8 +76,8 @@ const RATE_LIMITS = {
     default: 100,
   },
   crawlStatus: {
-    free: 150,
-    default: 250,
+    free: 300,
+    default: 500,
   },
   testSuite: {
     free: 10000,
