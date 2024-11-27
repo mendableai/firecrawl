@@ -38,6 +38,7 @@ const allowedKeywords = [
   'press',
   'conditions',
   'tos',
+  '://library.tiktok.com',
   '://ads.tiktok.com',
   '://tiktok.com/business',
   '://developers.facebook.com'
