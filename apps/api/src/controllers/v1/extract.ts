@@ -211,7 +211,9 @@ export async function extractController(
       prompt: req.body.prompt,
       schema: req.body.schema,
     },
-    docs.map(x => buildDocument(x)).join('\n')
+    docs.map(x => buildDocument(x)).join('\n'),
+    undefined,
+    true // isExtractEndpoint
   );
 
   // TODO: change this later

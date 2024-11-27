@@ -58,7 +58,7 @@ function normalizeSchema(x: any): any {
     }
 }
 
-export async function generateOpenAICompletions(logger: Logger, options: ExtractOptions, markdown?: string, previousWarning?: string): Promise<{ extract: any, numTokens: number, warning: string | undefined }> {
+export async function generateOpenAICompletions(logger: Logger, options: ExtractOptions, markdown?: string, previousWarning?: string, isExtractEndpoint?: boolean): Promise<{ extract: any, numTokens: number, warning: string | undefined }> {
     let extract: any;
     let warning: string | undefined;
 
@@ -158,7 +158,12 @@ export async function generateOpenAICompletions(logger: Logger, options: Extract
 
     if (extract === null && jsonCompletion.choices[0].message.content !== null) {
         try {
-            extract = JSON.parse(jsonCompletion.choices[0].message.content);
+            if (!isExtractEndpoint) {
+                extract = JSON.parse(jsonCompletion.choices[0].message.content);
+            } else {
+                const extractData = JSON.parse(jsonCompletion.choices[0].message.content);
+                extract = extractData.data.extract;
+            }
         } catch (e) {
             logger.error("Failed to parse returned JSON, no schema specified.", { error: e });
             throw new LLMRefusalError("Failed to parse returned JSON. Please specify a schema in the extract object.");
