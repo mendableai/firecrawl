@@ -91,7 +91,7 @@ def save_news_data():
     with open(filename, "w") as f:
         json.dump([item.dict() for item in news_data], f, indent=4)
 
-    return filename
+    print(f"{datetime.now()}: Successfully saved the news data.")
 
 
 if __name__ == "__main__":

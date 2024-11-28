@@ -54,7 +54,7 @@ def save_firecrawl_news_data():
     with open(filename, "w") as f:
         json.dump(data["extract"]["news_items"], f, indent=4)
 
-    return filename
+    print(f"{datetime.now()}: Successfully saved the news data.")
 
 
 if __name__ == "__main__":
