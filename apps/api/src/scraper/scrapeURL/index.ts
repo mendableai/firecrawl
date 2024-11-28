@@ -5,7 +5,7 @@ import { Document, ScrapeOptions } from "../../controllers/v1/types";
 import { logger } from "../../lib/logger";
 import { buildFallbackList, Engine, EngineScrapeResult, FeatureFlag, scrapeURLWithEngine } from "./engines";
 import { parseMarkdown } from "../../lib/html-to-markdown";
-import { AddFeatureError, EngineError, NoEnginesLeftError, TimeoutError } from "./error";
+import { AddFeatureError, EngineError, NoEnginesLeftError, SiteError, TimeoutError } from "./error";
 import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
 import { urlSpecificParams } from "./lib/urlSpecificParams";
@@ -227,6 +227,8 @@ async function scrapeURLLoop(
                 error.results = results;
                 meta.logger.warn("LLM refusal encountered", { error });
                 throw error;
+            } else if (error instanceof SiteError) {
+                throw error;
             } else {
                 Sentry.captureException(error);
                 meta.logger.info("An unexpected error happened while scraping with " + engine + ".", { error });
@@ -306,6 +308,8 @@ export async function scrapeURL(
         } else if (error instanceof Error && error.message.includes("Invalid schema for response_format")) { // TODO: seperate into custom error
             meta.logger.warn("scrapeURL: LLM schema error", { error });
             // TODO: results?
+        } else if (error instanceof SiteError) {
+            meta.logger.warn("scrapeURL: Site failed to load in browser", { error });
         } else {
             Sentry.captureException(error);
             meta.logger.error("scrapeURL: Unexpected error happened", { error });

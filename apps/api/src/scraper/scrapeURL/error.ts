@@ -32,3 +32,11 @@ export class AddFeatureError extends Error {
         this.featureFlags = featureFlags;
     }
 }
+
+export class SiteError extends Error {
+    public code: string;
+    constructor(code: string) {
+        super("Specified URL is failing to load in the browser. Error code: " + code)
+        this.code = code;
+    }
+}

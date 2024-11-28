@@ -3,7 +3,7 @@ import * as Sentry from "@sentry/node";
 import { z } from "zod";
 
 import { robustFetch } from "../../lib/fetch";
-import { EngineError } from "../../error";
+import { EngineError, SiteError } from "../../error";
 
 const successSchema = z.object({
     jobId: z.string(),
@@ -90,11 +90,15 @@ export async function fireEngineCheckStatus(logger: Logger, jobId: string): Prom
         throw new StillProcessingError(jobId);
     } else if (failedParse.success) {
         logger.debug("Scrape job failed", { status, jobId });
-        throw new EngineError("Scrape job failed", {
-            cause: {
-                status, jobId
-            }
-        });
+        if (typeof status.error === "string" && status.error.includes("Chrome error: ")) {
+            throw new SiteError(status.error.split("Chrome error: ")[1]);
+        } else {
+            throw new EngineError("Scrape job failed", {
+                cause: {
+                    status, jobId
+                }
+            });
+        }
     } else {
         logger.debug("Check status returned response not matched by any schema", { status, jobId });
         throw new Error("Check status returned response not matched by any schema", {

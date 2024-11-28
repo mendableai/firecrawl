@@ -3,7 +3,7 @@ import { Meta } from "../..";
 import { fireEngineScrape, FireEngineScrapeRequestChromeCDP, FireEngineScrapeRequestCommon, FireEngineScrapeRequestPlaywright, FireEngineScrapeRequestTLSClient } from "./scrape";
 import { EngineScrapeResult } from "..";
 import { fireEngineCheckStatus, FireEngineCheckStatusSuccess, StillProcessingError } from "./checkStatus";
-import { EngineError, TimeoutError } from "../../error";
+import { EngineError, SiteError, TimeoutError } from "../../error";
 import * as Sentry from "@sentry/node";
 import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
@@ -41,7 +41,7 @@ async function performFireEngineScrape<Engine extends FireEngineScrapeRequestChr
         } catch (error) {
             if (error instanceof StillProcessingError) {
                 // nop
-            } else if (error instanceof EngineError) {
+            } else if (error instanceof EngineError || error instanceof SiteError) {
                 logger.debug("Fire-engine scrape job failed.", { error, jobId: scrape.jobId });
                 throw error;
             } else {
