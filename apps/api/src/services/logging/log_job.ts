@@ -42,7 +42,8 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
     };
 
     if (force) {
-      while (true) {
+      let i = 0, done = false;
+      while (i++ <= 10) {
         try {
           const { error } = await supabase_service
             .from("firecrawl_jobs")
@@ -51,6 +52,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
             logger.error("Failed to log job due to Supabase error -- trying again", { error, scrapeId: job.job_id });
             await new Promise<void>((resolve) => setTimeout(() => resolve(), 75));
           } else {
+            done = true;
             break;
           }
         } catch (error) {
@@ -58,7 +60,11 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
           await new Promise<void>((resolve) => setTimeout(() => resolve(), 75));
         }
       }
-      logger.debug("Job logged successfully!", { scrapeId: job.job_id });
+      if (done) {
+        logger.debug("Job logged successfully!", { scrapeId: job.job_id });
+      } else {
+        logger.error("Failed to log job!", { scrapeId: job.job_id });
+      }
     } else {
       const { error } = await supabase_service
         .from("firecrawl_jobs")
