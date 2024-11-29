@@ -13,6 +13,25 @@ import { getValue, setValue } from "../redis";
 
 const FREE_CREDITS = 500;
 
+// Initialize Stripe with your API key
+const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+
+
+async function trackUsage(customer_id: string, quantity: number): Promise<void> {
+  try {
+    await stripe.billing.meterEvents.create({
+      event_name: 'credits',
+      payload: {
+        value: quantity.toString(),
+        stripe_customer_id: customer_id,
+      },
+    });
+  } catch (error) {
+    console.error('Error creating usage record:', error);
+    // throw new Error('Error creating usage record');
+  }
+}
+
 /**
  * If you do not know the subscription_id in the current context, pass subscription_id as undefined.
  */
@@ -31,6 +50,9 @@ export async function supaBillTeam(team_id: string, subscription_id: string | nu
     fetch_subscription: subscription_id === undefined,
     credits,
   });
+
+  // TODO: figure out a way to get the customer_id from bill_team if usage based tracking
+  // await trackUsage(team_id, credits);
 
   if (error) {
     Sentry.captureException(error);
