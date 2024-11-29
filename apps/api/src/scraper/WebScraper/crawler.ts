@@ -303,7 +303,7 @@ export class WebCrawler {
   private isInternalLink(link: string): boolean {
     const urlObj = new URL(link, this.baseUrl);
     const baseDomain = this.baseUrl.replace(/^https?:\/\//, "").replace(/^www\./, "").trim();
-    const linkDomain = urlObj.hostname.replace(/^www\./, "").trim();
+    const linkDomain = urlObj.host.replace(/^www\./, "").trim();
     
     return linkDomain === baseDomain;
   }
