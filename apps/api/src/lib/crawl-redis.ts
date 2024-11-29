@@ -181,6 +181,7 @@ export function crawlToCrawler(id: string, sc: StoredCrawl, newBase?: string): W
         allowBackwardCrawling: sc.crawlerOptions?.allowBackwardCrawling ?? false,
         allowExternalContentLinks: sc.crawlerOptions?.allowExternalContentLinks ?? false,
         allowSubdomains: sc.crawlerOptions?.allowSubdomains ?? false,
+        ignoreRobotsTxt: sc.crawlerOptions?.ignoreRobotsTxt ?? false,
     });
 
     if (sc.robots !== undefined) {

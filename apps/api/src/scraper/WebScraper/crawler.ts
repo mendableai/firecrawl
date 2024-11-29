@@ -24,6 +24,7 @@ export class WebCrawler {
   private allowBackwardCrawling: boolean;
   private allowExternalContentLinks: boolean;
   private allowSubdomains: boolean;
+  private ignoreRobotsTxt: boolean;
 
   constructor({
     jobId,
@@ -38,6 +39,7 @@ export class WebCrawler {
     allowBackwardCrawling = false,
     allowExternalContentLinks = false,
     allowSubdomains = false,
+    ignoreRobotsTxt = false,
   }: {
     jobId: string;
     initialUrl: string;
@@ -51,6 +53,7 @@ export class WebCrawler {
     allowBackwardCrawling?: boolean;
     allowExternalContentLinks?: boolean;
     allowSubdomains?: boolean;
+    ignoreRobotsTxt?: boolean;
   }) {
     this.jobId = jobId;
     this.initialUrl = initialUrl;
@@ -67,6 +70,7 @@ export class WebCrawler {
     this.allowBackwardCrawling = allowBackwardCrawling ?? false;
     this.allowExternalContentLinks = allowExternalContentLinks ?? false;
     this.allowSubdomains = allowSubdomains ?? false;
+    this.ignoreRobotsTxt = ignoreRobotsTxt ?? false;
   }
 
   public filterLinks(sitemapLinks: string[], limit: number, maxDepth: number, fromMap: boolean = false): string[] {
@@ -137,7 +141,7 @@ export class WebCrawler {
           }
         }
 
-        const isAllowed = this.robots.isAllowed(link, "FireCrawlAgent") ?? true;
+        const isAllowed = this.ignoreRobotsTxt ? true : (this.robots.isAllowed(link, "FireCrawlAgent") ?? true);
         // Check if the link is disallowed by robots.txt
         if (!isAllowed) {
           logger.debug(`Link disallowed by robots.txt: ${link}`);
@@ -202,7 +206,7 @@ export class WebCrawler {
       if (this.isInternalLink(fullUrl) &&
         this.noSections(fullUrl) &&
         !this.matchesExcludes(path) &&
-        this.isRobotsAllowed(fullUrl)
+        this.isRobotsAllowed(fullUrl, this.ignoreRobotsTxt)
       ) {
         return fullUrl;
       }
@@ -255,8 +259,8 @@ export class WebCrawler {
     return links;
   }
 
-  private isRobotsAllowed(url: string): boolean {
-    return (this.robots ? (this.robots.isAllowed(url, "FireCrawlAgent") ?? true) : true)
+  private isRobotsAllowed(url: string, ignoreRobotsTxt: boolean = false): boolean {
+    return (ignoreRobotsTxt ? true : (this.robots ? (this.robots.isAllowed(url, "FireCrawlAgent") ?? true) : true))
   }
 
   private matchesExcludes(url: string, onlyDomains: boolean = false): boolean {
