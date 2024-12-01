@@ -155,7 +155,7 @@ export const scrapeOptions = z.object({
 export type ScrapeOptions = z.infer<typeof scrapeOptions>;
 
 export const extractV1Options = z.object({
-  urls: url.array(),
+  urls: url.array().max(10, "Maximum of 10 URLs allowed per request while in beta."),
   prompt: z.string().optional(),
   schema: z.any().optional(),
   limit: z.number().int().positive().finite().safe().optional(),

@@ -207,7 +207,7 @@ export async function extractController(
     logger.child({ method: "extractController/generateOpenAICompletions" }),
     {
       mode: "llm",
-      systemPrompt: "Always prioritize using the provided content to answer the question. Do not make up an answer. Be concise and follow the schema if provided.",
+      systemPrompt: "Always prioritize using the provided content to answer the question. Do not make up an answer. Be concise and follow the schema if provided. Here are the urls the user provided of which he wants to extract information from: " + links.join(", "),
       prompt: req.body.prompt,
       schema: req.body.schema,
     },
