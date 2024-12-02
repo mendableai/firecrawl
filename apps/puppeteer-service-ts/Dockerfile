@@ -45,13 +45,13 @@ WORKDIR /app
 RUN npm install -g pnpm
 
 # Copy package files
-COPY apps/puppeteer-service-ts/package.json apps/puppeteer-service-ts/pnpm-lock.yaml ./
+COPY ./package.json ./pnpm-lock.yaml ./
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
 
 # Copy the rest of the application
-COPY apps/puppeteer-service-ts .
+COPY . .
 
 # Install Playwright with dependencies
 RUN npx playwright install --with-deps chromium

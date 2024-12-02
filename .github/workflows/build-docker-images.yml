@@ -18,7 +18,7 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./apps/api
           file: ./apps/api/Dockerfile
           push: false
           load: true
@@ -39,7 +39,7 @@ jobs:
       - name: Build Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ./apps/puppeteer-service-ts/
           file: ./apps/puppeteer-service-ts/Dockerfile
           push: false
           load: true

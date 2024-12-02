@@ -6,8 +6,8 @@ WORKDIR /app
 # Install pnpm
 RUN npm install -g pnpm
 
-# Copy package files 
-COPY apps/api/package.json apps/api/pnpm-lock.yaml ./
+# Copy package files
+COPY ./package.json ./pnpm-lock.yaml ./
 
 # Install dependencies
 RUN pnpm install --frozen-lockfile
@@ -21,10 +21,10 @@ RUN apt-get update -qq && \
     && update-ca-certificates
 
 # Copy the rest of the application
-COPY apps/api ./
+COPY . ./
 
 # Build Go module
-COPY apps/api/src/lib/go-html-to-md ./src/lib/go-html-to-md
+COPY ./src/lib/go-html-to-md/ ./src/lib/go-html-to-md/
 RUN cd src/lib/go-html-to-md && \
     go mod tidy && \
     go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go && \

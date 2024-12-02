@@ -19,8 +19,11 @@ x-common-service: &common-service
     - "host.docker.internal:host-gateway"
 
 services:
-  playwright-service:
-    build: apps/playwright-service
+  puppeteer-service:
+    image: trieve/puppeteer-service-ts
+    build:
+      context: ./apps/puppeteer-service-ts/
+      dockerfile: Dockerfile
     environment:
       - PORT=3000
       - PROXY_SERVER=${PROXY_SERVER}
@@ -32,10 +35,11 @@ services:
       - backend
 
   api:
+    image: trieve/firecrawl
     <<: *common-service
     depends_on:
       - redis
-      - playwright-service
+      - puppeteer-service
     ports:
       - "3002:3002"
     command: ["pnpm", "run", "start:production"]
@@ -44,7 +48,7 @@ services:
     <<: *common-service
     depends_on:
       - redis
-      - playwright-service
+      - puppeteer-service
       - api
     command: ["pnpm", "run", "workers"]
 
