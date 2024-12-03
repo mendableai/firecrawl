@@ -244,6 +244,23 @@ describe("E2E Tests for Extract API Routes", () => {
     expect(response.body.data?.education).toBeDefined();
   }, 60000);
 
+  it.concurrent("should extract information without a schema", async () => {
+    const response = await request(TEST_URL)
+      .post("/v1/extract")
+      .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+      .set("Content-Type", "application/json")
+      .send({
+        urls: ["https://docs.firecrawl.dev"],
+        prompt: "What is the title and description of the page?"
+      });
+
+    console.log(response.body.data);
+    expect(response.statusCode).toBe(200);
+    expect(response.body).toHaveProperty("data");
+    expect(typeof response.body.data).toBe("object");
+    expect(Object.keys(response.body.data).length).toBeGreaterThan(0);
+  }, 60000);
+
   
 
 });
