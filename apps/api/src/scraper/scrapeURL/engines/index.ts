@@ -17,7 +17,7 @@ const useCache = process.env.CACHE_REDIS_URL !== '' && process.env.CACHE_REDIS_U
 
 export const engines: Engine[] = [
     // ...(useCache ? [ "cache" as const ] : []),
-    // ...(useFireEngine ? [ "fire-engine;chrome-cdp" as const, "fire-engine;playwright" as const, "fire-engine;tlsclient" as const ] : []),
+    ...(useFireEngine ? [ "fire-engine;chrome-cdp" as const, "fire-engine;playwright" as const, "fire-engine;tlsclient" as const ] : []),
     ...(useScrapingBee ? [ "scrapingbee" as const, "scrapingbeeLoad" as const ] : []),
     ...(usePlaywright ? [ "playwright" as const ] : []),
     "fetch",
