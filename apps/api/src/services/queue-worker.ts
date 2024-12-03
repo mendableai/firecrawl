@@ -20,6 +20,7 @@ import {
   addCrawlJobDone,
   crawlToCrawler,
   finishCrawl,
+  generateURLPermutations,
   getCrawl,
   getCrawlJobs,
   lockURL,
@@ -422,7 +423,16 @@ async function processJob(job: Job & { id: string }, token: string) {
       const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
     
       if (doc.metadata.url !== undefined && doc.metadata.sourceURL !== undefined && normalizeURL(doc.metadata.url, sc) !== normalizeURL(doc.metadata.sourceURL, sc)) {
-        logger.debug("Was redirected, locking new URL...");
+        logger.debug("Was redirected, removing old URL and locking new URL...");
+        // Remove the old URL from visited sets
+        await redisConnection.srem("crawl:" + job.data.crawl_id + ":visited", normalizeURL(doc.metadata.sourceURL, sc));
+        if (sc.crawlerOptions?.deduplicateSimilarURLs) {
+          const permutations = generateURLPermutations(doc.metadata.sourceURL).map(x => x.href);
+          await redisConnection.srem("crawl:" + job.data.crawl_id + ":visited", ...permutations);
+        }
+        await redisConnection.srem("crawl:" + job.data.crawl_id + ":visited_unique", normalizeURL(doc.metadata.sourceURL, sc));
+        
+        // Lock the new URL
         await lockURL(job.data.crawl_id, sc, doc.metadata.url);
       }
 
