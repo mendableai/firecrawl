@@ -162,7 +162,7 @@ export async function generateOpenAICompletions(logger: Logger, options: Extract
                 extract = JSON.parse(jsonCompletion.choices[0].message.content);
             } else {
                 const extractData = JSON.parse(jsonCompletion.choices[0].message.content);
-                extract = extractData.data.extract;
+                extract = options.schema ? extractData.data.extract : extractData;
             }
         } catch (e) {
             logger.error("Failed to parse returned JSON, no schema specified.", { error: e });
