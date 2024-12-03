@@ -158,11 +158,22 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
 
 /// NOTE: does not check limit. only use if limit is checked beforehand e.g. with sitemap
 export async function lockURLs(id: string, sc: StoredCrawl, urls: string[]): Promise<boolean> {
-    urls = urls.map(url => {
-        return normalizeURL(url, sc);
-    });
-    
-    const res = (await redisConnection.sadd("crawl:" + id + ":visited", ...urls)) !== 0
+    urls = urls.map(url => normalizeURL(url, sc));
+
+    // Add to visited_unique set
+    await redisConnection.sadd("crawl:" + id + ":visited_unique", ...urls);
+    await redisConnection.expire("crawl:" + id + ":visited_unique", 24 * 60 * 60, "NX");
+
+    let res: boolean;
+    if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
+        const x = await redisConnection.sadd("crawl:" + id + ":visited", ...urls);
+        res = x === urls.length;
+    } else {
+        const allPermutations = urls.flatMap(url => generateURLPermutations(url).map(x => x.href));
+        const x = await redisConnection.sadd("crawl:" + id + ":visited", ...allPermutations);
+        res = x === allPermutations.length;
+    }
+
     await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
     return res;
 }

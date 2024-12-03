@@ -129,7 +129,7 @@ export async function crawlController(
           priority: 20,
         },
       };
-    });
+    })
 
     await lockURLs(
       id,
