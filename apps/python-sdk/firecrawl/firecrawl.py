@@ -221,12 +221,12 @@ class FirecrawlApp:
                             if status_response.status_code != 200:
                                 logger.error(f"Failed to fetch next page: {status_response.status_code}")
                                 break
-                            status_data = status_response.json()
-                            data.extend(status_data.get('data', []))
+                            next_data = status_response.json()
+                            data.extend(next_data.get('data', []))
+                            status_data = next_data
                         except Exception as e:
                             logger.error(f"Error during pagination request: {e}")
                             break
-                        status_data.pop('next', None)
                     status_data['data'] = data
                     
             return {
@@ -430,12 +430,12 @@ class FirecrawlApp:
                             if status_response.status_code != 200:
                                 logger.error(f"Failed to fetch next page: {status_response.status_code}")
                                 break
-                            status_data = status_response.json()
-                            data.extend(status_data.get('data', []))
+                            next_data = status_response.json()
+                            data.extend(next_data.get('data', []))
+                            status_data = next_data
                         except Exception as e:
                             logger.error(f"Error during pagination request: {e}")
                             break
-                        status_data.pop('next', None)
                     status_data['data'] = data
 
             return {
