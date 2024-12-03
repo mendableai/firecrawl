@@ -14,6 +14,7 @@ export async function acucCacheClearController(req: Request, res: Response) {
 
     await Promise.all((keys.data ?? []).map((x) => clearACUC(x.key)));
 
+    logger.info(`ACUC cache cleared for team ${team_id}`);
     res.json({ ok: true });
   } catch (error) {
     logger.error(`Error clearing ACUC cache via API route: ${error}`);
