@@ -18,6 +18,7 @@ const RATE_LIMITS = {
     etier2c: 300,
     etier1a: 1000,
     etier2a: 300,
+    etierscale1: 150,
   },
   scrape: {
     default: 20,
@@ -34,6 +35,7 @@ const RATE_LIMITS = {
     etier2c: 2500,
     etier1a: 1000,
     etier2a: 2500,
+    etierscale1: 1500,
   },
   search: {
     default: 20,
@@ -50,6 +52,7 @@ const RATE_LIMITS = {
     etier2c: 2500,
     etier1a: 1000,
     etier2a: 2500,
+    etierscale1: 1500,
   },
   map:{
     default: 20,
@@ -66,6 +69,7 @@ const RATE_LIMITS = {
     etier2c: 2500,
     etier1a: 1000,
     etier2a: 2500,
+    etierscale1: 1500,
   },
   preview: {
     free: 5,

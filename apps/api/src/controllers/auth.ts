@@ -340,6 +340,8 @@ function getPlanByPriceId(price_id: string | null): PlanType {
       return "etier2c";
     case process.env.STRIPE_PRICE_ID_ETIER1A_MONTHLY: //ocqh
       return "etier1a";
+    case process.env.STRIPE_PRICE_ID_ETIER_SCALE_1_MONTHLY:
+      return "etierscale1";
     default:
       return "free";
   }
