@@ -232,7 +232,7 @@ const crawlerOptions = z.object({
   allowExternalLinks: z.boolean().default(false),
   allowSubdomains: z.boolean().default(false),
   ignoreRobotsTxt: z.boolean().default(false),
-  ignoreSitemap: z.boolean().default(true),
+  ignoreSitemap: z.boolean().default(false),
   deduplicateSimilarURLs: z.boolean().default(true),
   ignoreQueryParameters: z.boolean().default(false),
 }).strict(strictMessage);
