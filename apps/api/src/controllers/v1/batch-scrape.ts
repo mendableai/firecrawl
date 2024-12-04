@@ -8,6 +8,7 @@ import {
 } from "./types";
 import {
   addCrawlJobs,
+  getCrawl,
   lockURLs,
   saveCrawl,
   StoredCrawl,
@@ -24,9 +25,11 @@ export async function batchScrapeController(
 ) {
   req.body = batchScrapeRequestSchema.parse(req.body);
 
-  const id = uuidv4();
+  const id = req.body.appendToId ?? uuidv4();
 
-  await logCrawl(id, req.auth.team_id);
+  if (!req.body.appendToId) {
+    await logCrawl(id, req.auth.team_id);
+  }
 
   let { remainingCredits } = req.account!;
   const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
@@ -34,7 +37,7 @@ export async function batchScrapeController(
     remainingCredits = Infinity;
   }
 
-  const sc: StoredCrawl = {
+  const sc: StoredCrawl = req.body.appendToId ? await getCrawl(req.body.appendToId) as StoredCrawl : {
     crawlerOptions: null,
     scrapeOptions: req.body,
     internalOptions: {},
@@ -43,7 +46,9 @@ export async function batchScrapeController(
     plan: req.auth.plan,
   };
 
-  await saveCrawl(id, sc);
+  if (!req.body.appendToId) {
+    await saveCrawl(id, sc);
+  }
 
   let jobPriority = 20;
 

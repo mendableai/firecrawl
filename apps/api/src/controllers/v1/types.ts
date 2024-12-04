@@ -210,6 +210,7 @@ export const batchScrapeRequestSchema = scrapeOptions.extend({
   urls: url.array(),
   origin: z.string().optional().default("api"),
   webhook: webhookSchema.optional(),
+  appendToId: z.string().uuid().optional(),
 }).strict(strictMessage).refine(
   (obj) => {
     const hasExtractFormat = obj.formats?.includes("extract");
