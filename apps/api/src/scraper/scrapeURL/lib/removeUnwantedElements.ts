@@ -50,6 +50,10 @@ const excludeNonMainTags = [
     "#cookie"
 ];
 
+const forceIncludeMainTags = [
+    "#main"
+];
+
 export const removeUnwantedElements = (
   html: string,
   scrapeOptions: ScrapeOptions
@@ -101,7 +105,9 @@ export const removeUnwantedElements = (
 
     if (scrapeOptions.onlyMainContent) {
         excludeNonMainTags.forEach((tag) => {
-            const elementsToRemove = soup(tag);
+            const elementsToRemove = soup(tag)
+                .filter(forceIncludeMainTags.map(x => ":not(:has(" + x + "))").join(""));
+            
             elementsToRemove.remove();
         });
     }
