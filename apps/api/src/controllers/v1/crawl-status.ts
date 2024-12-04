@@ -119,7 +119,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
       doneJobs.splice(doneJobs.length - 1, 1);
     }
   } else {
-    doneJobs = (await Promise.all((await getJobs(doneJobsOrder)).map(async x => (await x.getState()) === "failed" ? null : x))).filter(x => x !== null);
+    doneJobs = (await Promise.all((await getJobs(doneJobsOrder)).map(async x => (await x.getState()) === "failed" ? null : x))).filter(x => x !== null) as Job[];
   }
 
   const data = doneJobs.map(x => x.returnvalue);
