@@ -5,6 +5,7 @@ import { getScrapeQueue } from "../../services/queue-service";
 import { supabaseGetJobById, supabaseGetJobsById } from "../../lib/supabase-jobs";
 import { configDotenv } from "dotenv";
 import { Job, JobState } from "bullmq";
+import { logger } from "../../lib/logger";
 configDotenv();
 
 export async function getJob(id: string) {
@@ -98,8 +99,12 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
       // both loops will break once we cross the byte counter
       for (let ii = 0; ii < jobs.length && bytes < bytesLimit; ii++) {
         const job = jobs[ii];
+        if (job.returnvalue === undefined) {
+          logger.warn("Job was considered done, but returnvalue is undefined!", { jobId: job.id });
+          continue;
+        }
         doneJobs.push(job);
-        bytes += JSON.stringify(job.returnvalue).length;
+        bytes += JSON.stringify(job.returnvalue ?? null).length;
       }
     }
 
