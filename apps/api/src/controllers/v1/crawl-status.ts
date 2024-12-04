@@ -99,8 +99,14 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
       // both loops will break once we cross the byte counter
       for (let ii = 0; ii < jobs.length && bytes < bytesLimit; ii++) {
         const job = jobs[ii];
+        const state = await job.getState();
+
+        if (state === "failed") {
+          continue;
+        }
+
         if (job.returnvalue === undefined) {
-          logger.warn("Job was considered done, but returnvalue is undefined!", { jobId: job.id });
+          logger.warn("Job was considered done, but returnvalue is undefined!", { jobId: job.id, state });
           continue;
         }
         doneJobs.push(job);
@@ -113,7 +119,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
       doneJobs.splice(doneJobs.length - 1, 1);
     }
   } else {
-    doneJobs = await getJobs(doneJobsOrder);
+    doneJobs = (await Promise.all((await getJobs(doneJobsOrder)).map(async x => (await x.getState()) === "failed" ? null : x))).filter(x => x !== null);
   }
 
   const data = doneJobs.map(x => x.returnvalue);
