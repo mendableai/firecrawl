@@ -629,7 +629,7 @@ class FirecrawlApp:
                         while 'next' in status_data:
                           status_response = self._get_request(status_data['next'], headers)
                           status_data = status_response.json()
-                          data.extend(status_data['data'])
+                          data.extend(status_data.get('data', []))
                         status_data['data'] = data
                         return status_data
                     else:
