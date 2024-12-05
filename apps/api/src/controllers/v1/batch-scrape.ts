@@ -59,6 +59,10 @@ export async function batchScrapeController(
     jobPriority = await getJobPriority({plan: req.auth.plan, team_id: req.auth.team_id, basePriority: 21})
   }
 
+  const scrapeOptions: ScrapeOptions = { ...req.body };
+  delete (scrapeOptions as any).urls;
+  delete (scrapeOptions as any).appendToId;
+
   const jobs = req.body.urls.map((x) => {
     return {
       data: {
@@ -67,7 +71,7 @@ export async function batchScrapeController(
         team_id: req.auth.team_id,
         plan: req.auth.plan!,
         crawlerOptions: null,
-        scrapeOptions: req.body,
+        scrapeOptions,
         origin: "api",
         crawl_id: id,
         sitemapped: true,
