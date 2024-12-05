@@ -139,7 +139,7 @@ export function generateURLPermutations(url: string | URL): URL[] {
 }
 
 export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise<boolean> {
-    const logger = _logger.child({ crawlId: id, module: "crawl-redis", method: "lockURL", preNormalizedURL: url, teamId: sc.team_id, plan: sc.plan });
+    let logger = _logger.child({ crawlId: id, module: "crawl-redis", method: "lockURL", preNormalizedURL: url, teamId: sc.team_id, plan: sc.plan });
 
     if (typeof sc.crawlerOptions?.limit === "number") {
         if (await redisConnection.scard("crawl:" + id + ":visited_unique") >= sc.crawlerOptions.limit) {
@@ -149,7 +149,7 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
     }
 
     url = normalizeURL(url, sc);
-    logger.defaultMeta.url = url;
+    logger = logger.child({ url });
 
     logger.debug("Locking URL " + JSON.stringify(url) + "...");
     await redisConnection.sadd("crawl:" + id + ":visited_unique", url);
