@@ -5,7 +5,7 @@ import { getLinksFromSitemap } from "./sitemap";
 import robotsParser from "robots-parser";
 import { getURLDepth } from "./utils/maxDepthUtils";
 import { axiosTimeout } from "../../../src/lib/timeout";
-import { logger } from "../../../src/lib/logger";
+import { logger as _logger } from "../../../src/lib/logger";
 import https from "https";
 export class WebCrawler {
   private jobId: string;
@@ -25,6 +25,7 @@ export class WebCrawler {
   private allowExternalContentLinks: boolean;
   private allowSubdomains: boolean;
   private ignoreRobotsTxt: boolean;
+  private logger: typeof _logger;
 
   constructor({
     jobId,
@@ -71,6 +72,7 @@ export class WebCrawler {
     this.allowExternalContentLinks = allowExternalContentLinks ?? false;
     this.allowSubdomains = allowSubdomains ?? false;
     this.ignoreRobotsTxt = ignoreRobotsTxt ?? false;
+    this.logger = _logger.child({ crawlId: this.jobId, module: "WebCrawler" });
   }
 
   public filterLinks(sitemapLinks: string[], limit: number, maxDepth: number, fromMap: boolean = false): string[] {
@@ -85,7 +87,7 @@ export class WebCrawler {
         try {
           url = new URL(link.trim(), this.baseUrl);
         } catch (error) {
-          logger.debug(`Error processing link: ${link} | Error: ${error.message}`);
+          this.logger.debug(`Error processing link: ${link}`, { link, error, method: "filterLinks" });
           return false;
         }
         const path = url.pathname;
@@ -144,7 +146,7 @@ export class WebCrawler {
         const isAllowed = this.ignoreRobotsTxt ? true : (this.robots.isAllowed(link, "FireCrawlAgent") ?? true);
         // Check if the link is disallowed by robots.txt
         if (!isAllowed) {
-          logger.debug(`Link disallowed by robots.txt: ${link}`);
+          this.logger.debug(`Link disallowed by robots.txt: ${link}`, { method: "filterLinks", link });
           return false;
         }
 
@@ -173,7 +175,7 @@ export class WebCrawler {
   }
 
   public async tryGetSitemap(fromMap: boolean = false, onlySitemap: boolean = false): Promise<{ url: string; html: string; }[] | null> {
-    logger.debug(`Fetching sitemap links from ${this.initialUrl}`);
+    this.logger.debug(`Fetching sitemap links from ${this.initialUrl}`, { method: "tryGetSitemap" });
     const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
     if(fromMap && onlySitemap) {
       return sitemapLinks.map(link => ({ url: link, html: "" }));
@@ -350,7 +352,7 @@ export class WebCrawler {
       const urlWithoutQuery = url.split('?')[0].toLowerCase();
       return fileExtensions.some((ext) => urlWithoutQuery.endsWith(ext));
     } catch (error) {
-      logger.error(`Error processing URL in isFile: ${error}`);
+      this.logger.error(`Error processing URL in isFile`, { method: "isFile", error });
       return false;
     }
   }
@@ -390,14 +392,14 @@ export class WebCrawler {
     try {
       const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
       if (response.status === 200) {
-        sitemapLinks = await getLinksFromSitemap({ sitemapUrl });
+        sitemapLinks = await getLinksFromSitemap({ sitemapUrl }, this.logger);
       }
     } catch (error) { 
-      logger.debug(`Failed to fetch sitemap with axios from ${sitemapUrl}: ${error}`);
+      this.logger.debug(`Failed to fetch sitemap with axios from ${sitemapUrl}`, { method: "tryFetchSitemapLinks", sitemapUrl, error });
       if (error instanceof AxiosError && error.response?.status === 404) {
         // ignore 404
       } else {
-        const response = await getLinksFromSitemap({ sitemapUrl, mode: 'fire-engine' });
+        const response = await getLinksFromSitemap({ sitemapUrl, mode: 'fire-engine' }, this.logger);
         if (response) {
           sitemapLinks = response;
         }
@@ -409,14 +411,14 @@ export class WebCrawler {
       try {
         const response = await axios.get(baseUrlSitemap, { timeout: axiosTimeout });
         if (response.status === 200) {
-          sitemapLinks = await getLinksFromSitemap({ sitemapUrl: baseUrlSitemap, mode: 'fire-engine' });
+          sitemapLinks = await getLinksFromSitemap({ sitemapUrl: baseUrlSitemap, mode: 'fire-engine' }, this.logger);
         }
       } catch (error) {
-        logger.debug(`Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`);
+        this.logger.debug(`Failed to fetch sitemap from ${baseUrlSitemap}`, { method: "tryFetchSitemapLinks", sitemapUrl: baseUrlSitemap, error });
         if (error instanceof AxiosError && error.response?.status === 404) {
           // ignore 404
         } else {
-          sitemapLinks = await getLinksFromSitemap({ sitemapUrl: baseUrlSitemap, mode: 'fire-engine' });
+          sitemapLinks = await getLinksFromSitemap({ sitemapUrl: baseUrlSitemap, mode: 'fire-engine' }, this.logger);
         }
       }
     }

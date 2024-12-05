@@ -5,6 +5,7 @@ import {
   batchScrapeRequestSchema,
   CrawlResponse,
   RequestWithAuth,
+  ScrapeOptions,
 } from "./types";
 import {
   addCrawlJobs,
@@ -14,10 +15,10 @@ import {
   StoredCrawl,
 } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
-import { getScrapeQueue } from "../../services/queue-service";
 import { getJobPriority } from "../../lib/job-priority";
 import { addScrapeJobs } from "../../services/queue-jobs";
 import { callWebhook } from "../../services/webhook";
+import { logger as _logger } from "../../lib/logger";
 
 export async function batchScrapeController(
   req: RequestWithAuth<{}, CrawlResponse, BatchScrapeRequest>,
@@ -26,6 +27,8 @@ export async function batchScrapeController(
   req.body = batchScrapeRequestSchema.parse(req.body);
 
   const id = req.body.appendToId ?? uuidv4();
+  const logger = _logger.child({ crawlId: id, batchScrapeId: id, module: "api/v1", method: "batchScrapeController", teamId: req.auth.team_id, plan: req.auth.plan });
+  logger.debug("Batch scrape " + id + " starting", { urlsLength: req.body.urls, appendToId: req.body.appendToId, account: req.account });
 
   if (!req.body.appendToId) {
     await logCrawl(id, req.auth.team_id);
@@ -58,6 +61,7 @@ export async function batchScrapeController(
     // set base to 21
     jobPriority = await getJobPriority({plan: req.auth.plan, team_id: req.auth.team_id, basePriority: 21})
   }
+  logger.debug("Using job priority " + jobPriority, { jobPriority });
 
   const scrapeOptions: ScrapeOptions = { ...req.body };
   delete (scrapeOptions as any).urls;
@@ -85,18 +89,22 @@ export async function batchScrapeController(
     };
   });
 
+  logger.debug("Locking URLs...");
   await lockURLs(
     id,
     sc,
     jobs.map((x) => x.data.url)
   );
+  logger.debug("Adding scrape jobs to Redis...");
   await addCrawlJobs(
     id,
     jobs.map((x) => x.opts.jobId)
   );
+  logger.debug("Adding scrape jobs to BullMQ...");
   await addScrapeJobs(jobs);
 
   if(req.body.webhook) {
+    logger.debug("Calling webhook with batch_scrape.started...", { webhook: req.body.webhook });
     await callWebhook(req.auth.team_id, id, null, req.body.webhook, true, "batch_scrape.started");
   }
 

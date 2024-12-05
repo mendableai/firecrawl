@@ -2,9 +2,9 @@ import axios from "axios";
 import { axiosTimeout } from "../../lib/timeout";
 import { parseStringPromise } from "xml2js";
 import { WebCrawler } from "./crawler";
-import { logger } from "../../lib/logger";
 import { scrapeURL } from "../scrapeURL";
 import { scrapeOptions } from "../../controllers/v1/types";
+import type { Logger } from "winston";
 
 export async function getLinksFromSitemap(
   {
@@ -15,7 +15,8 @@ export async function getLinksFromSitemap(
     sitemapUrl: string,
     allUrls?: string[],
     mode?: 'axios' | 'fire-engine'
-  }
+  },
+  logger: Logger,
 ): Promise<string[]> {
   try {
     let content: string = "";
@@ -31,7 +32,7 @@ export async function getLinksFromSitemap(
         content = response.document.rawHtml!;
       }
     } catch (error) {
-      logger.error(`Request failed for ${sitemapUrl}: ${error.message}`);
+      logger.error(`Request failed for ${sitemapUrl}`, { method: "getLinksFromSitemap", mode, sitemapUrl, error });
 
       return allUrls;
     }
@@ -42,7 +43,7 @@ export async function getLinksFromSitemap(
     if (root && root.sitemap) {
       const sitemapPromises = root.sitemap
         .filter(sitemap => sitemap.loc && sitemap.loc.length > 0)
-        .map(sitemap => getLinksFromSitemap({ sitemapUrl: sitemap.loc[0], allUrls, mode }));
+        .map(sitemap => getLinksFromSitemap({ sitemapUrl: sitemap.loc[0], allUrls, mode }, logger));
       await Promise.all(sitemapPromises);
     } else if (root && root.url) {
       const validUrls = root.url
@@ -51,7 +52,7 @@ export async function getLinksFromSitemap(
       allUrls.push(...validUrls);
     }
   } catch (error) {
-    logger.debug(`Error processing sitemapUrl: ${sitemapUrl} | Error: ${error.message}`);
+    logger.debug(`Error processing sitemapUrl: ${sitemapUrl}`, { method: "getLinksFromSitemap", mode, sitemapUrl, error });
   }
 
   return allUrls;

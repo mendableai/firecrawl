@@ -19,7 +19,7 @@ import {
 import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
 import { addScrapeJob } from "../../services/queue-jobs";
-import { logger } from "../../lib/logger";
+import { logger as _logger } from "../../lib/logger";
 import { getJobPriority } from "../../lib/job-priority";
 import { callWebhook } from "../../services/webhook";
 import { scrapeOptions as scrapeOptionsSchema } from "./types";
@@ -28,9 +28,12 @@ export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
   res: Response<CrawlResponse>
 ) {
+  const preNormalizedBody = req.body;
   req.body = crawlRequestSchema.parse(req.body);
 
   const id = uuidv4();
+  const logger = _logger.child({ crawlId: id, module: "api/v1", method: "crawlController", teamId: req.auth.team_id, plan: req.auth.plan });
+  logger.debug("Crawl " + id + " starting", { request: req.body, originalRequest: preNormalizedBody, account: req.account });
 
   await logCrawl(id, req.auth.team_id);
 
@@ -68,7 +71,9 @@ export async function crawlController(
     }
   }
 
+  const originalLimit = crawlerOptions.limit;
   crawlerOptions.limit = Math.min(remainingCredits, crawlerOptions.limit);
+  logger.debug("Determined limit: " + crawlerOptions.limit, { remainingCredits, bodyLimit: originalLimit, originalBodyLimit: preNormalizedBody.limit });
   
   const sc: StoredCrawl = {
     originUrl: req.body.url,
@@ -85,11 +90,7 @@ export async function crawlController(
   try {
     sc.robots = await crawler.getRobotsTxt(scrapeOptions.skipTlsVerification);
   } catch (e) {
-    logger.debug(
-      `[Crawl] Failed to get robots.txt (this is probably fine!): ${JSON.stringify(
-        e
-      )}`
-    );
+    logger.debug("Failed to get robots.txt (this is probably fine!)", { error: e });
   }
 
   await saveCrawl(id, sc);
@@ -97,15 +98,18 @@ export async function crawlController(
   const sitemap = sc.crawlerOptions.ignoreSitemap
     ? null
     : await crawler.tryGetSitemap();
-
+  
   if (sitemap !== null && sitemap.length > 0) {
+    logger.debug("Using sitemap of length " + sitemap.length, { sitemapLength: sitemap.length });
     let jobPriority = 20;
-      // If it is over 1000, we need to get the job priority,
-      // otherwise we can use the default priority of 20
-      if(sitemap.length > 1000){
-        // set base to 21
-        jobPriority = await getJobPriority({plan: req.auth.plan, team_id: req.auth.team_id, basePriority: 21})
-      }
+    // If it is over 1000, we need to get the job priority,
+    // otherwise we can use the default priority of 20
+    if(sitemap.length > 1000){
+      // set base to 21
+      jobPriority = await getJobPriority({plan: req.auth.plan, team_id: req.auth.team_id, basePriority: 21})
+    }
+    logger.debug("Using job priority " + jobPriority, { jobPriority });
+
     const jobs = sitemap.map((x) => {
       const url = x.url;
       const uuid = uuidv4();
@@ -131,19 +135,26 @@ export async function crawlController(
       };
     })
 
+    logger.debug("Locking URLs...");
     await lockURLs(
       id,
       sc,
       jobs.map((x) => x.data.url)
     );
+    logger.debug("Adding scrape jobs to Redis...");
     await addCrawlJobs(
       id,
       jobs.map((x) => x.opts.jobId)
     );
+    logger.debug("Adding scrape jobs to BullMQ...");
     await getScrapeQueue().addBulk(jobs);
   } else {
+    logger.debug("Sitemap not found or ignored.", { ignoreSitemap: sc.crawlerOptions.ignoreSitemap });
+
+    logger.debug("Locking URL...");
     await lockURL(id, sc, req.body.url);
     const jobId = uuidv4();
+    logger.debug("Adding scrape job to Redis...", { jobId });
     await addScrapeJob(
       {
         url: req.body.url,
@@ -162,10 +173,13 @@ export async function crawlController(
       },
       jobId,
     );
+    logger.debug("Adding scrape job to BullMQ...", { jobId });
     await addCrawlJob(id, jobId);
   }
+  logger.debug("Done queueing jobs!");
 
   if(req.body.webhook) {
+    logger.debug("Calling webhook with crawl.started...", { webhook: req.body.webhook });
     await callWebhook(req.auth.team_id, id, null, req.body.webhook, true, "crawl.started");
   }
 
