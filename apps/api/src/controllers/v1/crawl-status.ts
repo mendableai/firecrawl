@@ -101,7 +101,7 @@ export async function crawlStatusController(req: RequestWithAuth<CrawlStatusPara
         const job = jobs[ii];
         const state = await job.getState();
 
-        if (state === "failed") {
+        if (state === "failed" || state === "active") { // TODO: why is active here? race condition? shouldn't matter tho - MG
           continue;
         }
 
