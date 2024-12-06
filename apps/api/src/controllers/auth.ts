@@ -95,7 +95,8 @@ export async function getACUC(
     while (retries < maxRetries) {
       ({ data, error } = await supabase_service.rpc(
         "auth_credit_usage_chunk_test_21_credit_pack",
-        { input_key: api_key }
+        { input_key: api_key },
+        { get: true }
       ));
 
       if (!error) {
