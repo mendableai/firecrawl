@@ -19,7 +19,7 @@ The challenge is that e-commerce websites run flash sales and temporary discount
 
 That's where automation comes in. In this guide, we'll build a Python application that monitors product prices across any e-commerce website and instantly notifies you when prices drop on items you're actually interested in. Here is a sneak peek of the app:
 
-![Screenshot of a minimalist price tracking application showing product listings, price history charts, and notification controls for monitoring e-commerce deals using Firecrawl](images/sneak-peek.png)
+![Screenshot of a minimalist price tracking application showing product listings, price history charts, and notification controls for monitoring e-commerce deals using Firecrawl](amazon-price-tracking-images/sneak-peek.png)
 
 The app has a simple appearance but provides complete functionality:
 
@@ -96,7 +96,7 @@ git commit -m "Initial commit"
 
 Let's take a look at the final product one more time:
 
-![A screenshot of an Amazon price tracker web application showing a sidebar for adding product URLs and a main dashboard displaying tracked products with price history charts. Created with streamlit and firecrawl](images/sneak-peek.png)
+![A screenshot of an Amazon price tracker web application showing a sidebar for adding product URLs and a main dashboard displaying tracked products with price history charts. Created with streamlit and firecrawl](amazon-price-tracking-images/sneak-peek.png)
 
 It has two sections: the sidebar and the main dashboard. Since the first thing you do when launching this app is adding products, we will start building the sidebar first. Open `ui.py` and paste the following code:
 
@@ -389,7 +389,7 @@ There are many platforms for hosting Postgres instances but the one I find the e
 
 Then, in a few minutes, your free Postgres instance comes online. To connect to this instance, click on Home in the left sidebar and then, "Connect":
 
-![Screenshot of Supabase dashboard showing database connection settings and credentials for connecting to a PostgreSQL database instance](images/supabase_connect.png)
+![Screenshot of Supabase dashboard showing database connection settings and credentials for connecting to a PostgreSQL database instance](amazon-price-tracking-images/supabase_connect.png)
 
 You will be shown your database connection string with a placeholder for the password you copied. You should paste this string in your `.env` file with your password added to the `.env` file:
 
@@ -623,7 +623,7 @@ git commit -m "Add a feature to track product prices after they are added"
 
 Let's take a look at the final product shown in the introduction once again:
 
-![Screenshot of a minimalist price tracking dashboard showing product price history charts, add/remove product controls, and notification settings for monitoring e-commerce deals and price drops](images/sneak-peek.png)
+![Screenshot of a minimalist price tracking dashboard showing product price history charts, add/remove product controls, and notification settings for monitoring e-commerce deals and price drops](amazon-price-tracking-images/sneak-peek.png)
 
 Apart from the sidebar, the main dashboard shows each product's price history visualized with a Plotly line plot where the X axis is the timestamp while the Y axis is the prices. Each line plot is wrapped in a Streamlit component that includes buttons for removing the product from the database or visiting its source URL.
 
@@ -772,7 +772,7 @@ In the right column, we create an interactive line plot using Plotly Express to 
 
 After this step, the UI must be fully functional and ready to track products. For example, here is what mine looks like after adding a couple of products:
 
-![Screenshot of a price tracking dashboard showing multiple product listings with price history charts, product images, and current prices for Amazon items](images/finished.png)
+![Screenshot of a price tracking dashboard showing multiple product listings with price history charts, product images, and current prices for Amazon items](amazon-price-tracking-images/finished.png)
 
 But notice how the price history chart doesn't show anything. That's because we haven't populated it by checking the product price in regular intervals. Let's do that in the next couple of steps. For now, commit the latest changes we've made:
 
@@ -825,7 +825,7 @@ In the function body, we retrieve all products URLs, retrieve their new price da
 
 If you run the function once and refresh the Streamlit app, you must see a line chart appear for each product you are tracking:
 
-![Screenshot of a price tracking dashboard showing a line chart visualization of product price history over time, with price on the y-axis and dates on the x-axis](images/linechart.png)
+![Screenshot of a price tracking dashboard showing a line chart visualization of product price history over time, with price on the y-axis and dates on the x-axis](amazon-price-tracking-images/linechart.png)
 
 Let's commit the changes in this step:
 
@@ -933,7 +933,7 @@ git push origin main
 
 Next, navigate to your GitHub repository again and click on the "Actions" tab:
 
-![Screenshot of GitHub Actions interface showing workflow runs and manual trigger button for automated price tracking application](images/actions.png)
+![Screenshot of GitHub Actions interface showing workflow runs and manual trigger button for automated price tracking application](amazon-price-tracking-images/actions.png)
 
 From there, you can run the workflow manually (click "Run workflow" and refresh the page). If it is executed successfully, you can return to the Streamlit app and refresh to see the new price added to the chart.
 
@@ -1083,7 +1083,7 @@ python notifications.py
 
 If all is well, you should get a Discord message in your server that looks like this:
 
-![Screenshot of a Discord notification showing a price drop alert with product details, original price, new discounted price and percentage savings](images/alert.png)
+![Screenshot of a Discord notification showing a price drop alert with product details, original price, new discounted price and percentage savings](amazon-price-tracking-images/alert.png)
 
 Let's commit the changes we have:
 
@@ -1176,7 +1176,7 @@ Let's examine the key changes in this enhanced version of `check_prices.py`:
 
 When I tested this new version of the script, I immediately got an alert:
 
-![Screenshot of a Discord notification showing a price drop alert for an Amazon product, displaying the original and discounted prices with percentage savings](images/new-alert.png)
+![Screenshot of a Discord notification showing a price drop alert for an Amazon product, displaying the original and discounted prices with percentage savings](amazon-price-tracking-images/new-alert.png)
 
 Before we supercharge our workflow with the new notification system, you should add this line of code to your `check_prices.yml` workflow file to read the Discord webhook URL from your GitHub secrets:
 
