@@ -270,7 +270,7 @@ export async function supaAuthenticateUser(
   try {
     await rateLimiter.consume(team_endpoint_token);
   } catch (rateLimiterRes) {
-    logger.error(`Rate limit exceeded: ${rateLimiterRes}`, { teamId });
+    logger.error(`Rate limit exceeded: ${rateLimiterRes}`, { teamId, priceId, plan: subscriptionData?.plan, mode, rateLimiterRes });
     const secs = Math.round(rateLimiterRes.msBeforeNext / 1000) || 1;
     const retryDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
 
