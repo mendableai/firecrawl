@@ -155,6 +155,7 @@ export async function sendNotificationInternal(
         team_id: team_id,
         notification_type: notificationType,
         sent_date: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
       },
     ]);
 
