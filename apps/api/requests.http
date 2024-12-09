@@ -69,7 +69,6 @@ content-type: application/json
 {
   "urls": ["firecrawl.dev"],
   "prompt": "What is the title, description and main product of the page?",
-    "dev.to",
   "schema": {
     "title": "string",
     "description": "string",
