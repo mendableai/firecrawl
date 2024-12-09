@@ -99,6 +99,10 @@ export async function generateOpenAICompletions(logger: Logger, options: Extract
     }
 
     let schema = options.schema;
+    if (schema) {
+        schema = removeDefaultProperty(schema);
+    }
+
     if (schema && schema.type === "array") {
         schema = {
             type: "object",
@@ -112,7 +116,9 @@ export async function generateOpenAICompletions(logger: Logger, options: Extract
       schema = {
           type: "object",
           properties: Object.fromEntries(
-              Object.entries(schema).map(([key, value]) => [key, { type: value }])
+              Object.entries(schema).map(([key, value]) => {
+                  return [key, removeDefaultProperty(value)];
+              })
           ),
           required: Object.keys(schema),
           additionalProperties: false
@@ -191,4 +197,20 @@ export async function performLLMExtract(meta: Meta, document: Document): Promise
     }
 
     return document;
+}
+
+function removeDefaultProperty(schema: any): any {
+  if (typeof schema !== 'object' || schema === null) return schema;
+
+  const { default: _, ...rest } = schema;
+
+  for (const key in rest) {
+      if (Array.isArray(rest[key])) {
+          rest[key] = rest[key].map((item: any) => removeDefaultProperty(item));
+      } else if (typeof rest[key] === 'object' && rest[key] !== null) {
+          rest[key] = removeDefaultProperty(rest[key]);
+      }
+  }
+
+  return rest;
 }
