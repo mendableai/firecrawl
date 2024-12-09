@@ -577,7 +577,24 @@ export default class FirecrawlApp {
     webhook?: CrawlParams["webhook"],
   ): Promise<BatchScrapeStatusResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
-    let jsonData: any = { urls, ...(params ?? {}), webhook };
+    let jsonData: any = { urls, ...params };
+    if (jsonData?.extract?.schema) {
+      let schema = jsonData.extract.schema;
+
+      // Try parsing the schema as a Zod schema
+      try {
+        schema = zodToJsonSchema(schema);
+      } catch (error) {
+        
+      }
+      jsonData = {
+        ...jsonData,
+        extract: {
+          ...jsonData.extract,
+          schema: schema,
+        },
+      };
+    }
     try {
       const response: AxiosResponse = await this.postRequest(
         this.apiUrl + `/v1/batch/scrape`,
