@@ -27,7 +27,7 @@ class FirecrawlApp:
         Parameters for the extract operation.
         """
         prompt: str
-        schema: Optional[Any] = None
+        schema_: Optional[Any] = pydantic.Field(None, alias='schema')
         system_prompt: Optional[str] = None
         allow_external_links: Optional[bool] = False
 
