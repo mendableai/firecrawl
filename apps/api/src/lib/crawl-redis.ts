@@ -151,7 +151,6 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
     url = normalizeURL(url, sc);
     logger = logger.child({ url });
 
-    logger.debug("Locking URL " + JSON.stringify(url) + "...");
     await redisConnection.sadd("crawl:" + id + ":visited_unique", url);
     await redisConnection.expire("crawl:" + id + ":visited_unique", 24 * 60 * 60, "NX");
 
@@ -160,14 +159,14 @@ export async function lockURL(id: string, sc: StoredCrawl, url: string): Promise
         res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0
     } else {
         const permutations = generateURLPermutations(url).map(x => x.href);
-        logger.debug("Adding URL permutations for URL " + JSON.stringify(url) + "...", { permutations });
+        // logger.debug("Adding URL permutations for URL " + JSON.stringify(url) + "...", { permutations });
         const x = (await redisConnection.sadd("crawl:" + id + ":visited", ...permutations));
         res = x === permutations.length;
     }
 
     await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
 
-    logger.debug("lockURL final result: " + res, { res });
+    logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, { res });
     return res;
 }
 
