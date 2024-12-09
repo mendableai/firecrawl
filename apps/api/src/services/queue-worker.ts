@@ -346,7 +346,7 @@ workerFun(getScrapeQueue(), processJobInternal);
 
 async function processJob(job: Job & { id: string }, token: string) {
   const logger = _logger.child({ module: "queue-worker", method: "processJob", jobId: job.id, scrapeId: job.id, crawlId: job.data?.crawl_id ?? undefined });
-  logger.info(`🐂 Worker taking job ${job.id}`);
+  logger.info(`🐂 Worker taking job ${job.id}`, { url: job.data.url });
 
   // Check if the job URL is researchhub and block it immediately
   // TODO: remove this once solve the root issue
@@ -505,7 +505,7 @@ async function processJob(job: Job & { id: string }, token: string) {
               );
 
               await addCrawlJob(job.data.crawl_id, jobId);
-              logger.debug("Added job for URL " + JSON.stringify(link), { jobPriority, url: link });
+              logger.debug("Added job for URL " + JSON.stringify(link), { jobPriority, url: link, newJobId: jobId });
             } else {
               logger.debug("Could not lock URL " + JSON.stringify(link), { url: link });
             }
