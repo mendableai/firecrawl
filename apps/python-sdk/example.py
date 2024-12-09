@@ -59,7 +59,7 @@ class ArticleSchema(BaseModel):
     commentsURL: str
 
 class TopArticlesSchema(BaseModel):
-    top: List[ArticleSchema] = Field(..., max_items=5, description="Top 5 stories")
+    top: List[ArticleSchema] = Field(..., description="Top 5 stories")
 
 llm_extraction_result = app.scrape_url('https://news.ycombinator.com', {
     'formats': ['extract'],
