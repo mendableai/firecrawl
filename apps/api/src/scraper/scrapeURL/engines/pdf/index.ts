@@ -62,7 +62,7 @@ async function scrapePDFWithLlamaParse(meta: Meta, tempFilePath: string): Promis
         schema: z.object({
             markdown: z.string(),
         }),
-        tryCount: 32,
+        tryCount: meta.options.timeout !== undefined ? 32 : 1200, // 5 minutes if timeout not specified
         tryCooldown: 250,
     });
     
