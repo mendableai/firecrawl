@@ -20,7 +20,6 @@ load_dotenv()
 
 # Retrieve API keys from environment variables
 firecrawl_api_key = os.getenv("FIRECRAWL_API_KEY")
-
 together_api_key = os.getenv("TOGETHER_API_KEY")
 
 # Initialize the FirecrawlApp and OpenAI client
