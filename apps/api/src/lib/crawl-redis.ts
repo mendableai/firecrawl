@@ -53,12 +53,15 @@ export async function addCrawlJobs(id: string, job_ids: string[]) {
     await redisConnection.expire("crawl:" + id + ":jobs", 24 * 60 * 60, "NX");
 }
 
-export async function addCrawlJobDone(id: string, job_id: string) {
+export async function addCrawlJobDone(id: string, job_id: string, success: boolean) {
     _logger.debug("Adding done crawl job to Redis...", { jobId: job_id, module: "crawl-redis", method: "addCrawlJobDone", crawlId: id });
     await redisConnection.sadd("crawl:" + id + ":jobs_done", job_id);
-    await redisConnection.rpush("crawl:" + id + ":jobs_done_ordered", job_id);
     await redisConnection.expire("crawl:" + id + ":jobs_done", 24 * 60 * 60, "NX");
-    await redisConnection.expire("crawl:" + id + ":jobs_done_ordered", 24 * 60 * 60, "NX");
+
+    if (success) {
+        await redisConnection.rpush("crawl:" + id + ":jobs_done_ordered", job_id);
+        await redisConnection.expire("crawl:" + id + ":jobs_done_ordered", 24 * 60 * 60, "NX");
+    }
 }
 
 export async function getDoneJobsOrderedLength(id: string): Promise<number> {
