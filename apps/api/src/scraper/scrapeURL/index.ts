@@ -5,7 +5,7 @@ import { Document, ScrapeOptions } from "../../controllers/v1/types";
 import { logger } from "../../lib/logger";
 import { buildFallbackList, Engine, EngineScrapeResult, FeatureFlag, scrapeURLWithEngine } from "./engines";
 import { parseMarkdown } from "../../lib/html-to-markdown";
-import { AddFeatureError, EngineError, NoEnginesLeftError, SiteError, TimeoutError } from "./error";
+import { AddFeatureError, EngineError, NoEnginesLeftError, RemoveFeatureError, SiteError, TimeoutError } from "./error";
 import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
 import { urlSpecificParams } from "./lib/urlSpecificParams";
@@ -216,7 +216,7 @@ async function scrapeURLLoop(
                     startedAt,
                     finishedAt: Date.now(),
                 };
-            } else if (error instanceof AddFeatureError) {
+            } else if (error instanceof AddFeatureError || error instanceof RemoveFeatureError) {
                 throw error;
             } else if (error instanceof LLMRefusalError) {
                 results[engine] = {
@@ -293,6 +293,9 @@ export async function scrapeURL(
                 if (error instanceof AddFeatureError && meta.internalOptions.forceEngine === undefined) {
                     meta.logger.debug("More feature flags requested by scraper: adding " + error.featureFlags.join(", "), { error, existingFlags: meta.featureFlags });
                     meta.featureFlags = new Set([...meta.featureFlags].concat(error.featureFlags));
+                } else if (error instanceof RemoveFeatureError && meta.internalOptions.forceEngine === undefined) {
+                    meta.logger.debug("Incorrect feature flags reported by scraper: removing " + error.featureFlags.join(","), { error, existingFlags: meta.featureFlags });
+                    meta.featureFlags = new Set([...meta.featureFlags].filter(x => !error.featureFlags.includes(x)));
                 } else {
                     throw error;
                 }

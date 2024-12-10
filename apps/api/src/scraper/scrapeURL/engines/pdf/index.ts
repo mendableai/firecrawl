@@ -8,6 +8,7 @@ import * as Sentry from "@sentry/node";
 import escapeHtml from "escape-html";
 import PdfParse from "pdf-parse";
 import { downloadFile, fetchFileToBuffer } from "../utils/downloadFile";
+import { RemoveFeatureError } from "../../error";
 
 type PDFProcessorResult = {html: string, markdown?: string};
 
@@ -52,24 +53,47 @@ async function scrapePDFWithLlamaParse(meta: Meta, tempFilePath: string): Promis
     const jobId = upload.id;
 
     // TODO: timeout, retries
-    const result = await robustFetch({
-        url: `https://api.cloud.llamaindex.ai/api/parsing/job/${jobId}/result/markdown`,
-        method: "GET",
-        headers: {
-            "Authorization": `Bearer ${process.env.LLAMAPARSE_API_KEY}`,
-        },
-        logger: meta.logger.child({ method: "scrapePDFWithLlamaParse/result/robustFetch" }),
-        schema: z.object({
-            markdown: z.string(),
-        }),
-        tryCount: meta.options.timeout !== undefined ? 32 : 1200, // 5 minutes if timeout not specified
-        tryCooldown: 250,
-    });
-    
-    return {
-        markdown: result.markdown,
-        html: await marked.parse(result.markdown, { async: true }),
-    };
+    const startedAt = Date.now();
+
+    while (Date.now() <= startedAt + (meta.options.timeout ?? 300000)) {
+        try {
+            const result = await robustFetch({
+                url: `https://api.cloud.llamaindex.ai/api/parsing/job/${jobId}/result/markdown`,
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${process.env.LLAMAPARSE_API_KEY}`,
+                },
+                logger: meta.logger.child({ method: "scrapePDFWithLlamaParse/result/robustFetch" }),
+                schema: z.object({
+                    markdown: z.string(),
+                }),
+            });
+            return {
+                markdown: result.markdown,
+                html: await marked.parse(result.markdown, { async: true }),
+            };
+        } catch (e) {
+            if (e instanceof Error && e.message === "Request sent failure status") {
+                if ((e.cause as any).response.status === 404) {
+                    // no-op, result not up yet
+                } else if ((e.cause as any).response.body.includes("PDF_IS_BROKEN")) {
+                    // URL is not a PDF, actually!
+                    meta.logger.debug("URL is not actually a PDF, signalling...");
+                    throw new RemoveFeatureError(["pdf"]);
+                } else {
+                    throw new Error("LlamaParse threw an error", {
+                        cause: e.cause,
+                    });
+                }
+            } else {
+                throw e;
+            }
+        }
+
+        await new Promise<void>((resolve) => setTimeout(() => resolve(), 250));
+    }
+
+    throw new Error("LlamaParse timed out");
 }
 
 async function scrapePDFWithParsePDF(meta: Meta, tempFilePath: string): Promise<PDFProcessorResult> {
@@ -107,8 +131,14 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
                 logger: meta.logger.child({ method: "scrapePDF/scrapePDFWithLlamaParse" }),
             }, tempFilePath);
         } catch (error) {
-            meta.logger.warn("LlamaParse failed to parse PDF -- falling back to parse-pdf", { error });
-            Sentry.captureException(error);
+            if (error instanceof Error && error.message === "LlamaParse timed out") {
+                meta.logger.warn("LlamaParse timed out -- falling back to parse-pdf", { error });
+            } else if (error instanceof RemoveFeatureError) {
+                throw error;
+            } else {
+                meta.logger.warn("LlamaParse failed to parse PDF -- falling back to parse-pdf", { error });
+                Sentry.captureException(error);
+            }
         }
     }
 

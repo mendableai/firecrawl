@@ -33,6 +33,15 @@ export class AddFeatureError extends Error {
     }
 }
 
+export class RemoveFeatureError extends Error {
+    public featureFlags: FeatureFlag[];
+
+    constructor(featureFlags: FeatureFlag[]) {
+        super("Incorrect feature flags have been discovered: " + featureFlags.join(", "));
+        this.featureFlags = featureFlags;
+    }
+}
+
 export class SiteError extends Error {
     public code: string;
     constructor(code: string) {
