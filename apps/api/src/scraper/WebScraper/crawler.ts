@@ -335,6 +335,7 @@ export class WebCrawler {
       ".dmg",
       ".mp4",
       ".mp3",
+      ".wav",
       ".pptx",
       // ".docx",
       ".xlsx",
