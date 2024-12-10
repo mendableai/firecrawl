@@ -354,8 +354,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     job.data.url &&
     (job.data.url.includes("researchhub.com") ||
       job.data.url.includes("ebay.com") ||
-      job.data.url.includes("youtube.com") ||
-      job.data.url.includes("microsoft.com"))
+      job.data.url.includes("youtube.com"))
   ) {
     logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
     const data = {
