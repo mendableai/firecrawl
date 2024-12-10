@@ -137,6 +137,7 @@ export async function crawlController(req: Request, res: Response) {
     await logCrawl(id, team_id);
 
     const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(pageOptions, undefined, undefined);
+    internalOptions.disableSmartWaitCache = true; // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
 
     delete (scrapeOptions as any).timeout;
 

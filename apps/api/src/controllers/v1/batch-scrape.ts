@@ -43,7 +43,7 @@ export async function batchScrapeController(
   const sc: StoredCrawl = req.body.appendToId ? await getCrawl(req.body.appendToId) as StoredCrawl : {
     crawlerOptions: null,
     scrapeOptions: req.body,
-    internalOptions: {},
+    internalOptions: { disableSmartWaitCache: true }, // NOTE: smart wait disabled for batch scrapes to ensure contentful scrape, speed does not matter
     team_id: req.auth.team_id,
     createdAt: Date.now(),
     plan: req.auth.plan,

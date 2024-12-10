@@ -35,6 +35,7 @@ export type FireEngineScrapeRequestChromeCDP = {
     actions?: Action[];
     blockMedia?: true; // cannot be false
     mobile?: boolean;
+    disableSmartWaitCache?: boolean;
 };
 
 export type FireEngineScrapeRequestPlaywright = {

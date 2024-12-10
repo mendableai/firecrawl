@@ -88,6 +88,7 @@ export async function scrapeURLWithFireEngineChromeCDP(meta: Meta): Promise<Engi
         geolocation: meta.options.geolocation,
         mobile: meta.options.mobile,
         timeout: meta.options.timeout === undefined ? 300000 : undefined, // TODO: better timeout logic
+        disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
         // TODO: scrollXPaths
     };
 

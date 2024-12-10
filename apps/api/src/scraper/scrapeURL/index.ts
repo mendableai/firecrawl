@@ -114,6 +114,8 @@ export type InternalOptions = {
     v0CrawlOnlyUrls?: boolean;
     v0UseFastMode?: boolean;
     v0DisableJsDom?: boolean;
+
+    disableSmartWaitCache?: boolean; // Passed along to fire-engine
 };
 
 export type EngineResultsTracker = { [E in Engine]?: ({
