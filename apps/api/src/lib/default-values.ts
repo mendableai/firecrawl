@@ -8,21 +8,21 @@ export const defaultPageOptions = {
   waitFor: 0,
   screenshot: false,
   fullPageScreenshot: false,
-  parsePDF: true
+  parsePDF: true,
 };
 
 export const defaultCrawlerOptions = {
   allowBackwardCrawling: false,
-  limit: 10000
-}
+  limit: 10000,
+};
 
 export const defaultCrawlPageOptions = {
   onlyMainContent: false,
   includeHtml: false,
   removeTags: [],
-  parsePDF: true
-}
+  parsePDF: true,
+};
 
 export const defaultExtractorOptions = {
-  mode: "markdown"
-}
+  mode: "markdown",
+};

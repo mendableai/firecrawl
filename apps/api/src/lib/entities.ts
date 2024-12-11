@@ -87,6 +87,15 @@ export type ExtractorOptions = {
   userPrompt?: string;
 };
 
+export type SearchOptions = {
+  limit?: number;
+  tbs?: string;
+  filter?: string;
+  lang?: string;
+  country?: string;
+  location?: string;
+};
+
 export type CrawlerOptions = {
   returnOnlyUrls?: boolean;
   includes?: string | string[];

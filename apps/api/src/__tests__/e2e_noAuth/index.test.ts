@@ -32,7 +32,6 @@ describe("E2E Tests for API Routes with No Authentication", () => {
     process.env = originalEnv;
   });
 
-
   describe("GET /", () => {
     it("should return Hello, world! message", async () => {
       const response = await request(TEST_URL).get("/");
@@ -62,7 +61,9 @@ describe("E2E Tests for API Routes with No Authentication", () => {
         .set("Content-Type", "application/json")
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
+      expect(response.body.error).toContain(
+        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
+      );
     });
 
     it("should return a successful response", async () => {
@@ -87,7 +88,9 @@ describe("E2E Tests for API Routes with No Authentication", () => {
         .set("Content-Type", "application/json")
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
+      expect(response.body.error).toContain(
+        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
+      );
     });
 
     it("should return a successful response", async () => {
@@ -98,7 +101,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("jobId");
       expect(response.body.jobId).toMatch(
-        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
+        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/,
       );
     });
   });
@@ -116,7 +119,9 @@ describe("E2E Tests for API Routes with No Authentication", () => {
         .set("Content-Type", "application/json")
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain("Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.");
+      expect(response.body.error).toContain(
+        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
+      );
     });
 
     it("should return a successful response", async () => {
@@ -127,7 +132,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("jobId");
       expect(response.body.jobId).toMatch(
-        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
+        /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/,
       );
     });
   });
@@ -167,7 +172,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
 
     it("should return Job not found for invalid job ID", async () => {
       const response = await request(TEST_URL).get(
-        "/v0/crawl/status/invalidJobId"
+        "/v0/crawl/status/invalidJobId",
       );
       expect(response.statusCode).toBe(404);
     });
@@ -180,7 +185,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
       expect(crawlResponse.statusCode).toBe(200);
 
       const response = await request(TEST_URL).get(
-        `/v0/crawl/status/${crawlResponse.body.jobId}`
+        `/v0/crawl/status/${crawlResponse.body.jobId}`,
       );
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("status");
@@ -190,7 +195,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
       await new Promise((r) => setTimeout(r, 30000));
 
       const completedResponse = await request(TEST_URL).get(
-        `/v0/crawl/status/${crawlResponse.body.jobId}`
+        `/v0/crawl/status/${crawlResponse.body.jobId}`,
       );
       expect(completedResponse.statusCode).toBe(200);
       expect(completedResponse.body).toHaveProperty("status");
@@ -199,8 +204,6 @@ describe("E2E Tests for API Routes with No Authentication", () => {
       expect(completedResponse.body.data[0]).toHaveProperty("content");
       expect(completedResponse.body.data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.data[0]).toHaveProperty("metadata");
-   
-      
     }, 60000); // 60 seconds
   });
 

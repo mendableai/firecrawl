@@ -7,9 +7,12 @@ import { configDotenv } from "dotenv";
 import { RequestWithAuth } from "./types";
 configDotenv();
 
-export async function crawlCancelController(req: RequestWithAuth<{ jobId: string }>, res: Response) {
+export async function crawlCancelController(
+  req: RequestWithAuth<{ jobId: string }>,
+  res: Response,
+) {
   try {
-    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
 
     const sc = await getCrawl(req.params.jobId);
     if (!sc) {
@@ -40,7 +43,7 @@ export async function crawlCancelController(req: RequestWithAuth<{ jobId: string
     }
 
     res.json({
-      status: "cancelled"
+      status: "cancelled",
     });
   } catch (error) {
     Sentry.captureException(error);

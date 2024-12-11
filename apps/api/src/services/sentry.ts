@@ -7,9 +7,7 @@ if (process.env.SENTRY_DSN) {
   logger.info("Setting up Sentry...");
   Sentry.init({
     dsn: process.env.SENTRY_DSN,
-    integrations: [
-      nodeProfilingIntegration(),
-    ],
+    integrations: [nodeProfilingIntegration()],
     tracesSampleRate: process.env.SENTRY_ENVIRONMENT === "dev" ? 1.0 : 0.045,
     profilesSampleRate: 1.0,
     serverName: process.env.FLY_MACHINE_ID,
