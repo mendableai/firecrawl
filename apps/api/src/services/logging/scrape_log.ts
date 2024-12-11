@@ -8,9 +8,9 @@ configDotenv();
 
 export async function logScrape(
   scrapeLog: ScrapeLog,
-  pageOptions?: PageOptions
+  pageOptions?: PageOptions,
 ) {
-  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
   if (!useDbAuthentication) {
     logger.debug("Skipping logging scrape to Supabase");
     return;

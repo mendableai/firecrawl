@@ -24,7 +24,7 @@ describe("E2E Tests for Map API Routes", () => {
       expect(response.body.links.length).toBeGreaterThan(0);
       expect(response.body.links[0]).toContain("firecrawl.dev/smart-crawl");
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -45,10 +45,10 @@ describe("E2E Tests for Map API Routes", () => {
       expect(response.body).toHaveProperty("links");
       expect(response.body.links.length).toBeGreaterThan(0);
       expect(response.body.links[response.body.links.length - 1]).toContain(
-        "docs.firecrawl.dev"
+        "docs.firecrawl.dev",
       );
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -68,10 +68,10 @@ describe("E2E Tests for Map API Routes", () => {
       expect(response.body).toHaveProperty("links");
       expect(response.body.links.length).toBeGreaterThan(0);
       expect(response.body.links[response.body.links.length - 1]).not.toContain(
-        "docs.firecrawl.dev"
+        "docs.firecrawl.dev",
       );
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -92,7 +92,7 @@ describe("E2E Tests for Map API Routes", () => {
       expect(response.body).toHaveProperty("links");
       expect(response.body.links.length).toBeLessThanOrEqual(10);
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -112,6 +112,6 @@ describe("E2E Tests for Map API Routes", () => {
       expect(response.body).toHaveProperty("links");
       expect(response.body.links.length).toBeGreaterThan(1900);
     },
-    60000
+    60000,
   );
 });

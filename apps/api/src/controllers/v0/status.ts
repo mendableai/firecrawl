@@ -4,7 +4,10 @@ import { getCrawl, getCrawlJobs } from "../../../src/lib/crawl-redis";
 import { getJobs } from "./crawl-status";
 import * as Sentry from "@sentry/node";
 
-export async function crawlJobStatusPreviewController(req: Request, res: Response) {
+export async function crawlJobStatusPreviewController(
+  req: Request,
+  res: Response,
+) {
   try {
     const sc = await getCrawl(req.params.jobId);
     if (!sc) {
@@ -22,18 +25,30 @@ export async function crawlJobStatusPreviewController(req: Request, res: Respons
     //   }
     // }
 
-    const jobs = (await getJobs(req.params.jobId, jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
-    const jobStatuses = await Promise.all(jobs.map(x => x.getState()));
-    const jobStatus = sc.cancelled ? "failed" : jobStatuses.every(x => x === "completed") ? "completed" : jobStatuses.some(x => x === "failed") ? "failed" : "active";
+    const jobs = (await getJobs(req.params.jobId, jobIDs)).sort(
+      (a, b) => a.timestamp - b.timestamp,
+    );
+    const jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
+    const jobStatus = sc.cancelled
+      ? "failed"
+      : jobStatuses.every((x) => x === "completed")
+        ? "completed"
+        : jobStatuses.some((x) => x === "failed")
+          ? "failed"
+          : "active";
 
-    const data = jobs.map(x => Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue);
+    const data = jobs.map((x) =>
+      Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue,
+    );
 
     res.json({
       status: jobStatus,
-      current: jobStatuses.filter(x => x === "completed" || x === "failed").length,
+      current: jobStatuses.filter((x) => x === "completed" || x === "failed")
+        .length,
       total: jobs.length,
       data: jobStatus === "completed" ? data : null,
-      partial_data: jobStatus === "completed" ? [] : data.filter(x => x !== null),
+      partial_data:
+        jobStatus === "completed" ? [] : data.filter((x) => x !== null),
     });
   } catch (error) {
     Sentry.captureException(error);

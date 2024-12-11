@@ -24,7 +24,7 @@ export function getScrapeQueue() {
             age: 90000, // 25 hours
           },
         },
-      }
+      },
       //   {
       //   settings: {
       //     lockDuration: 1 * 60 * 1000, // 1 minute in milliseconds,
@@ -41,7 +41,6 @@ export function getScrapeQueue() {
   }
   return scrapeQueue;
 }
-
 
 // === REMOVED IN FAVOR OF POLLING -- NOT RELIABLE
 // import { QueueEvents } from 'bullmq';

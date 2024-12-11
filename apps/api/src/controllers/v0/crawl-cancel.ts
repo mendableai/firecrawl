@@ -10,13 +10,9 @@ configDotenv();
 
 export async function crawlCancelController(req: Request, res: Response) {
   try {
-    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
 
-    const auth = await authenticateUser(
-      req,
-      res,
-      RateLimiterMode.CrawlStatus
-    );
+    const auth = await authenticateUser(req, res, RateLimiterMode.CrawlStatus);
     if (!auth.success) {
       return res.status(auth.status).json({ error: auth.error });
     }
@@ -52,7 +48,7 @@ export async function crawlCancelController(req: Request, res: Response) {
     }
 
     res.json({
-      status: "cancelled"
+      status: "cancelled",
     });
   } catch (error) {
     Sentry.captureException(error);

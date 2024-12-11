@@ -2,7 +2,7 @@ import { NotificationType } from "../../types";
 
 // depending on the notification type, return the appropriate string
 export function getNotificationString(
-  notificationType: NotificationType
+  notificationType: NotificationType,
 ): string {
   switch (notificationType) {
     case NotificationType.APPROACHING_LIMIT:
