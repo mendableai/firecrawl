@@ -1,10 +1,5 @@
 import { z } from "zod";
-import {
-  AuthCreditUsageChunk,
-  ScrapeOptions,
-  Document as V1Document,
-  webhookSchema,
-} from "./controllers/v1/types";
+import { AuthCreditUsageChunk, ScrapeOptions, Document as V1Document, webhookSchema } from "./controllers/v1/types";
 import { ExtractorOptions, Document } from "./lib/entities";
 import { InternalOptions } from "./scraper/scrapeURL";
 
@@ -57,15 +52,13 @@ export interface RunWebScraperParams {
   is_scrape?: boolean;
 }
 
-export type RunWebScraperResult =
-  | {
-      success: false;
-      error: Error;
-    }
-  | {
-      success: true;
-      document: V1Document;
-    };
+export type RunWebScraperResult = {
+  success: false;
+  error: Error;
+} | {
+  success: true;
+  document: V1Document;
+}
 
 export interface FirecrawlJob {
   job_id?: string;
@@ -80,8 +73,8 @@ export interface FirecrawlJob {
   crawlerOptions?: any;
   scrapeOptions?: any;
   origin: string;
-  num_tokens?: number;
-  retry?: boolean;
+  num_tokens?: number,
+  retry?: boolean,
   crawl_id?: string;
 }
 
@@ -99,6 +92,7 @@ export interface FirecrawlCrawlResponse {
   body: {
     status: string;
     jobId: string;
+    
   };
   error?: string;
 }
@@ -107,7 +101,7 @@ export interface FirecrawlCrawlStatusResponse {
   statusCode: number;
   body: {
     status: string;
-    data: Document[];
+    data: Document[];    
   };
   error?: string;
 }
@@ -128,21 +122,21 @@ export enum RateLimiterMode {
   Preview = "preview",
   Search = "search",
   Map = "map",
+
 }
 
-export type AuthResponse =
-  | {
-      success: true;
-      team_id: string;
-      api_key?: string;
-      plan?: PlanType;
-      chunk: AuthCreditUsageChunk | null;
-    }
-  | {
-      success: false;
-      error: string;
-      status: number;
-    };
+export type AuthResponse = {
+  success: true;
+  team_id: string;
+  api_key?: string;
+  plan?: PlanType;
+  chunk: AuthCreditUsageChunk | null;
+} | {
+  success: false;
+  error: string;
+  status: number;
+}
+  
 
 export enum NotificationType {
   APPROACHING_LIMIT = "approachingLimit",
@@ -167,7 +161,7 @@ export type ScrapeLog = {
   ipv6_support?: boolean | null;
 };
 
-export type PlanType =
+export type PlanType = 
   | "starter"
   | "standard"
   | "scale"
@@ -181,11 +175,5 @@ export type PlanType =
   | "free"
   | "";
 
-export type WebhookEventType =
-  | "crawl.page"
-  | "batch_scrape.page"
-  | "crawl.started"
-  | "batch_scrape.started"
-  | "crawl.completed"
-  | "batch_scrape.completed"
-  | "crawl.failed";
+
+export type WebhookEventType = "crawl.page" | "batch_scrape.page" | "crawl.started" | "batch_scrape.started" | "crawl.completed" | "batch_scrape.completed" | "crawl.failed";

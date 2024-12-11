@@ -1,12 +1,17 @@
+
 import { AuthResponse, RateLimiterMode } from "../../types";
 
 import { Request, Response } from "express";
 import { authenticateUser } from "../auth";
 
+
 export const keyAuthController = async (req: Request, res: Response) => {
   try {
     // make sure to authenticate user first, Bearer <token>
-    const auth = await authenticateUser(req, res);
+    const auth = await authenticateUser(
+      req,
+      res
+    );
     if (!auth.success) {
       return res.status(auth.status).json({ error: auth.error });
     }
@@ -17,3 +22,4 @@ export const keyAuthController = async (req: Request, res: Response) => {
     return res.status(500).json({ error: error.message });
   }
 };
+

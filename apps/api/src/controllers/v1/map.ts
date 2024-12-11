@@ -1,11 +1,6 @@
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-import {
-  MapDocument,
-  mapRequestSchema,
-  RequestWithAuth,
-  scrapeOptions,
-} from "./types";
+import { MapDocument, mapRequestSchema, RequestWithAuth, scrapeOptions } from "./types";
 import { crawlToCrawler, StoredCrawl } from "../../lib/crawl-redis";
 import { MapResponse, MapRequest } from "./types";
 import { configDotenv } from "dotenv";
@@ -49,7 +44,7 @@ export async function getMapResults({
   plan,
   origin,
   includeMetadata = false,
-  allowExternalLinks,
+  allowExternalLinks
 }: {
   url: string;
   search?: string;
@@ -90,8 +85,7 @@ export async function getMapResults({
       sitemap.forEach((x) => {
         links.push(x.url);
       });
-      links = links
-        .slice(1)
+      links = links.slice(1)
         .map((x) => {
           try {
             return checkAndUpdateURLForMap(x).url.trim();
@@ -105,17 +99,13 @@ export async function getMapResults({
   } else {
     let urlWithoutWww = url.replace("www.", "");
 
-    let mapUrl =
-      search && allowExternalLinks
-        ? `${search} ${urlWithoutWww}`
-        : search
-          ? `${search} site:${urlWithoutWww}`
-          : `site:${url}`;
+    let mapUrl = search && allowExternalLinks
+      ? `${search} ${urlWithoutWww}`
+      : search ? `${search} site:${urlWithoutWww}`
+      : `site:${url}`;
 
     const resultsPerPage = 100;
-    const maxPages = Math.ceil(
-      Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage,
-    );
+    const maxPages = Math.ceil(Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage);
 
     const cacheKey = `fireEngineMap:${mapUrl}`;
     const cachedResult = await redis.get(cacheKey);
@@ -134,7 +124,7 @@ export async function getMapResults({
       };
 
       pagePromises = Array.from({ length: maxPages }, (_, i) =>
-        fetchPage(i + 1),
+        fetchPage(i + 1)
       );
       allResults = await Promise.all(pagePromises);
 
@@ -209,9 +199,7 @@ export async function getMapResults({
     links = removeDuplicateUrls(links);
   }
 
-  const linksToReturn = crawlerOptions.sitemapOnly
-    ? links
-    : links.slice(0, limit);
+  const linksToReturn = crawlerOptions.sitemapOnly ? links : links.slice(0, limit);
 
   return {
     success: true,
@@ -224,7 +212,7 @@ export async function getMapResults({
 
 export async function mapController(
   req: RequestWithAuth<{}, MapResponse, MapRequest>,
-  res: Response<MapResponse>,
+  res: Response<MapResponse>
 ) {
   req.body = mapRequestSchema.parse(req.body);
 
@@ -243,7 +231,7 @@ export async function mapController(
   // Bill the team
   billTeam(req.auth.team_id, req.acuc?.sub_id, 1).catch((error) => {
     logger.error(
-      `Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`,
+      `Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`
     );
   });
 
@@ -256,7 +244,7 @@ export async function mapController(
     docs: result.links,
     time_taken: result.time_taken,
     team_id: req.auth.team_id,
-    mode: "map",
+    mode: "map", 
     url: req.body.url,
     crawlerOptions: {},
     scrapeOptions: {},
@@ -267,7 +255,7 @@ export async function mapController(
   const response = {
     success: true as const,
     links: result.links,
-    scrape_id: result.scrape_id,
+    scrape_id: result.scrape_id
   };
 
   return res.status(200).json(response);

@@ -1,5 +1,5 @@
 import "dotenv/config";
-import "./services/sentry";
+import "./services/sentry"
 import * as Sentry from "@sentry/node";
 import express, { NextFunction, Request, Response } from "express";
 import bodyParser from "body-parser";
@@ -9,9 +9,9 @@ import { v0Router } from "./routes/v0";
 import os from "os";
 import { logger } from "./lib/logger";
 import { adminRouter } from "./routes/admin";
-import http from "node:http";
-import https from "node:https";
-import CacheableLookup from "cacheable-lookup";
+import http from 'node:http';
+import https from 'node:https';
+import CacheableLookup  from 'cacheable-lookup';
 import { v1Router } from "./routes/v1";
 import expressWs from "express-ws";
 import { ErrorResponse, ResponseWithSentry } from "./controllers/v1/types";
@@ -25,11 +25,13 @@ const { ExpressAdapter } = require("@bull-board/express");
 const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
 logger.info(`Number of CPUs: ${numCPUs} available`);
 
-const cacheable = new CacheableLookup();
+const cacheable = new CacheableLookup()
+
 
 // Install cacheable lookup for all other requests
 cacheable.install(http.globalAgent);
 cacheable.install(https.globalAgent);
+
 
 const ws = expressWs(express());
 const app = ws.app;
@@ -51,7 +53,7 @@ const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
 
 app.use(
   `/admin/${process.env.BULL_AUTH_KEY}/queues`,
-  serverAdapter.getRouter(),
+  serverAdapter.getRouter()
 );
 
 app.get("/", (req, res) => {
@@ -75,20 +77,20 @@ function startServer(port = DEFAULT_PORT) {
   const server = app.listen(Number(port), HOST, () => {
     logger.info(`Worker ${process.pid} listening on port ${port}`);
     logger.info(
-      `For the Queue UI, open: http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`,
+      `For the Queue UI, open: http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`
     );
   });
 
   const exitHandler = () => {
-    logger.info("SIGTERM signal received: closing HTTP server");
+    logger.info('SIGTERM signal received: closing HTTP server')
     server.close(() => {
       logger.info("Server closed.");
       process.exit(0);
     });
   };
 
-  process.on("SIGTERM", exitHandler);
-  process.on("SIGINT", exitHandler);
+  process.on('SIGTERM', exitHandler);
+  process.on('SIGINT', exitHandler);
   return server;
 }
 
@@ -99,7 +101,9 @@ if (require.main === module) {
 app.get(`/serverHealthCheck`, async (req, res) => {
   try {
     const scrapeQueue = getScrapeQueue();
-    const [waitingJobs] = await Promise.all([scrapeQueue.getWaitingCount()]);
+    const [waitingJobs] = await Promise.all([
+      scrapeQueue.getWaitingCount(),
+    ]);
     const noWaitingJobs = waitingJobs === 0;
     // 200 if no active jobs, 503 if there are active jobs
     return res.status(noWaitingJobs ? 200 : 500).json({
@@ -171,80 +175,40 @@ app.get("/is-production", (req, res) => {
   res.send({ isProduction: global.isProduction });
 });
 
-app.use(
-  (
-    err: unknown,
-    req: Request<{}, ErrorResponse, undefined>,
-    res: Response<ErrorResponse>,
-    next: NextFunction,
-  ) => {
-    if (err instanceof ZodError) {
-      if (
-        Array.isArray(err.errors) &&
-        err.errors.find((x) => x.message === "URL uses unsupported protocol")
-      ) {
+app.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: Response<ErrorResponse>, next: NextFunction) => {
+  if (err instanceof ZodError) {
+      if (Array.isArray(err.errors) && err.errors.find(x => x.message === "URL uses unsupported protocol")) {
         logger.warn("Unsupported protocol error: " + JSON.stringify(req.body));
       }
 
-      res
-        .status(400)
-        .json({ success: false, error: "Bad Request", details: err.errors });
-    } else {
+      res.status(400).json({ success: false, error: "Bad Request", details: err.errors });
+  } else {
       next(err);
-    }
-  },
-);
+  }
+});
 
 Sentry.setupExpressErrorHandler(app);
 
-app.use(
-  (
-    err: unknown,
-    req: Request<{}, ErrorResponse, undefined>,
-    res: ResponseWithSentry<ErrorResponse>,
-    next: NextFunction,
-  ) => {
-    if (
-      err instanceof SyntaxError &&
-      "status" in err &&
-      err.status === 400 &&
-      "body" in err
-    ) {
-      return res
-        .status(400)
-        .json({ success: false, error: "Bad request, malformed JSON" });
-    }
+app.use((err: unknown, req: Request<{}, ErrorResponse, undefined>, res: ResponseWithSentry<ErrorResponse>, next: NextFunction) => {
+  if (err instanceof SyntaxError && 'status' in err && err.status === 400 && 'body' in err) {
+    return res.status(400).json({ success: false, error: 'Bad request, malformed JSON' });
+  }
 
-    const id = res.sentry ?? uuidv4();
-    let verbose = JSON.stringify(err);
-    if (verbose === "{}") {
-      if (err instanceof Error) {
-        verbose = JSON.stringify({
-          message: err.message,
-          name: err.name,
-          stack: err.stack,
-        });
-      }
-    }
-
-    logger.error(
-      "Error occurred in request! (" +
-        req.path +
-        ") -- ID " +
-        id +
-        " -- " +
-        verbose,
-    );
-    res
-      .status(500)
-      .json({
-        success: false,
-        error:
-          "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " +
-          id,
+  const id = res.sentry ?? uuidv4();
+  let verbose = JSON.stringify(err);
+  if (verbose === "{}") {
+    if (err instanceof Error) {
+      verbose = JSON.stringify({
+        message: err.message,
+        name: err.name,
+        stack: err.stack,
       });
-  },
-);
+    }
+  }
+
+  logger.error("Error occurred in request! (" + req.path + ") -- ID " + id  + " -- " + verbose);
+  res.status(500).json({ success: false, error: "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " + id });
+});
 
 logger.info(`Worker ${process.pid} started`);
 
@@ -256,3 +220,6 @@ logger.info(`Worker ${process.pid} started`);
 // sq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
 // sq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
 // sq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
+
+
+

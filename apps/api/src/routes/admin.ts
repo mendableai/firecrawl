@@ -13,24 +13,27 @@ export const adminRouter = express.Router();
 
 adminRouter.get(
   `/admin/${process.env.BULL_AUTH_KEY}/redis-health`,
-  redisHealthController,
+  redisHealthController
 );
 
 adminRouter.get(
   `/admin/${process.env.BULL_AUTH_KEY}/clean-before-24h-complete-jobs`,
-  cleanBefore24hCompleteJobsController,
+  cleanBefore24hCompleteJobsController
 );
 
 adminRouter.get(
   `/admin/${process.env.BULL_AUTH_KEY}/check-queues`,
-  checkQueuesController,
+  checkQueuesController
 );
 
-adminRouter.get(`/admin/${process.env.BULL_AUTH_KEY}/queues`, queuesController);
+adminRouter.get(
+  `/admin/${process.env.BULL_AUTH_KEY}/queues`,
+  queuesController
+);
 
 adminRouter.get(
   `/admin/${process.env.BULL_AUTH_KEY}/autoscaler`,
-  autoscalerController,
+  autoscalerController
 );
 
 adminRouter.post(

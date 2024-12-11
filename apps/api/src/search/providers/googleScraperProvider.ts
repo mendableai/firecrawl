@@ -84,7 +84,7 @@ export class GoogleScraperProvider implements SearchProvider {
 
     if (tbs) params.tbs = tbs;
     if (filter) params.filter = filter;
-    let proxy: any = null;
+    let proxy: any = null
     if (proxies) {
       proxy = proxies.startsWith("https")
         ? { https: proxies }
