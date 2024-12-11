@@ -16,11 +16,16 @@ async function loadFixture(name: string): Promise<string> {
 
 describe('the firecrawl JS SDK', () => {
 
-  test('Should require an API key to instantiate FirecrawlApp', async () => {
-    const fn = () => {
+  test('Should require an API key only for cloud service', async () => {
+    // Should throw for cloud service without API key
+    expect(() => {
       new FirecrawlApp({ apiKey: undefined });
-    };
-    expect(fn).toThrow('No API key provided');
+    }).toThrow('No API key provided');
+
+    // Should not throw for self-hosted without API key
+    expect(() => {
+      new FirecrawlApp({ apiKey: undefined, apiUrl: 'http://localhost:3000' });
+    }).not.toThrow();
   });
 
   test('Should return scraped data from a /scrape API call', async () => {
