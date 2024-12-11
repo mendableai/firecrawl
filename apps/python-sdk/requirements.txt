@@ -1,5 +1,5 @@
-requests
-pytest
-python-dotenv
-websockets
-nest-asyncio
+requests==2.32.3
+pytest==8.3.3
+python-dotenv==1.0.1
+websockets==13.0
+nest-asyncio==1.6.0
