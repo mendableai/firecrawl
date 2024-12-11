@@ -164,9 +164,6 @@ importers:
       posthog-node:
         specifier: ^4.0.1
         version: 4.0.1
-      prettier:
-        specifier: ^3.4.2
-        version: 3.4.2
       promptable:
         specifier: ^0.0.10
         version: 0.0.10
@@ -282,6 +279,9 @@ importers:
       nodemon:
         specifier: ^2.0.20
         version: 2.0.22
+      prettier:
+        specifier: ^3.4.2
+        version: 3.4.2
       supabase:
         specifier: ^1.77.9
         version: 1.172.2
