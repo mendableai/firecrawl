@@ -6,7 +6,7 @@
   "scripts": {
     "start": "nodemon --exec ts-node src/index.ts",
     "start:production": "tsc && node dist/src/index.js",
-    "format": "npx prettier --write \"src/**/*.(js|ts)\"",
+    "format": "prettier --write \"src/**/*.(js|ts)\"",
     "flyio": "node dist/src/index.js",
     "start:dev": "nodemon --exec ts-node src/index.ts",
     "build": "tsc && pnpm sentry:sourcemaps",
@@ -102,6 +102,7 @@
     "pdf-parse": "^1.1.1",
     "pos": "^0.4.2",
     "posthog-node": "^4.0.1",
+    "prettier": "^3.4.2",
     "promptable": "^0.0.10",
     "puppeteer": "^22.12.1",
     "rate-limiter-flexible": "2.4.2",

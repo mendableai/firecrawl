@@ -54,13 +54,11 @@ function checkCreditsMiddleware(
           `Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`
         );
         if (!res.headersSent) {
-          return res
-            .status(402)
-            .json({
-              success: false,
-              error:
-                "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing or try changing the request limit to a lower value."
-            });
+          return res.status(402).json({
+            success: false,
+            error:
+              "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing or try changing the request limit to a lower value."
+          });
         }
       }
       req.account = { remainingCredits };
@@ -122,13 +120,11 @@ function idempotencyMiddleware(
 function blocklistMiddleware(req: Request, res: Response, next: NextFunction) {
   if (typeof req.body.url === "string" && isUrlBlocked(req.body.url)) {
     if (!res.headersSent) {
-      return res
-        .status(403)
-        .json({
-          success: false,
-          error:
-            "URL is blocked intentionally. Firecrawl currently does not support social media scraping due to policy restrictions."
-        });
+      return res.status(403).json({
+        success: false,
+        error:
+          "URL is blocked intentionally. Firecrawl currently does not support social media scraping due to policy restrictions."
+      });
     }
   }
   next();

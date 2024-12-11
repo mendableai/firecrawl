@@ -235,14 +235,12 @@ app.use(
         " -- " +
         verbose
     );
-    res
-      .status(500)
-      .json({
-        success: false,
-        error:
-          "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " +
-          id
-      });
+    res.status(500).json({
+      success: false,
+      error:
+        "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " +
+        id
+    });
   }
 );
 

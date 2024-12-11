@@ -211,12 +211,10 @@ export async function scrapeController(req: Request, res: Response) {
         await checkTeamCredits(chunk, team_id, 1);
       if (!creditsCheckSuccess) {
         earlyReturn = true;
-        return res
-          .status(402)
-          .json({
-            error:
-              "Insufficient credits. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing"
-          });
+        return res.status(402).json({
+          error:
+            "Insufficient credits. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing"
+        });
       }
     } catch (error) {
       logger.error(error);
