@@ -1,7 +1,7 @@
 import { logger } from "../../src/lib/logger";
 import { SearchResult } from "../../src/lib/entities";
 import { ProviderFactory } from "./providerFactory";
-import { SearchOptions, ProviderType} from "./types";
+import { SearchOptions, ProviderType } from "./types";
 
 export async function search({
   query,

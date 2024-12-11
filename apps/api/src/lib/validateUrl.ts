@@ -58,9 +58,9 @@ export const checkUrl = (url: string) => {
  * Same domain check
  * It checks if the domain of the url is the same as the base url
  * It accounts true for subdomains and www.subdomains
- * @param url 
- * @param baseUrl 
- * @returns 
+ * @param url
+ * @param baseUrl
+ * @returns
  */
 export function isSameDomain(url: string, baseUrl: string) {
   const { urlObj: urlObj1, error: error1 } = getURLobj(url);
@@ -74,15 +74,20 @@ export function isSameDomain(url: string, baseUrl: string) {
   const typedUrlObj2 = urlObj2 as URL;
 
   const cleanHostname = (hostname: string) => {
-    return hostname.startsWith('www.') ? hostname.slice(4) : hostname;
+    return hostname.startsWith("www.") ? hostname.slice(4) : hostname;
   };
 
-  const domain1 = cleanHostname(typedUrlObj1.hostname).split('.').slice(-2).join('.');
-  const domain2 = cleanHostname(typedUrlObj2.hostname).split('.').slice(-2).join('.');
+  const domain1 = cleanHostname(typedUrlObj1.hostname)
+    .split(".")
+    .slice(-2)
+    .join(".");
+  const domain2 = cleanHostname(typedUrlObj2.hostname)
+    .split(".")
+    .slice(-2)
+    .join(".");
 
   return domain1 === domain2;
 }
-
 
 export function isSameSubdomain(url: string, baseUrl: string) {
   const { urlObj: urlObj1, error: error1 } = getURLobj(url);
@@ -96,19 +101,30 @@ export function isSameSubdomain(url: string, baseUrl: string) {
   const typedUrlObj2 = urlObj2 as URL;
 
   const cleanHostname = (hostname: string) => {
-    return hostname.startsWith('www.') ? hostname.slice(4) : hostname;
+    return hostname.startsWith("www.") ? hostname.slice(4) : hostname;
   };
 
-  const domain1 = cleanHostname(typedUrlObj1.hostname).split('.').slice(-2).join('.');
-  const domain2 = cleanHostname(typedUrlObj2.hostname).split('.').slice(-2).join('.');
+  const domain1 = cleanHostname(typedUrlObj1.hostname)
+    .split(".")
+    .slice(-2)
+    .join(".");
+  const domain2 = cleanHostname(typedUrlObj2.hostname)
+    .split(".")
+    .slice(-2)
+    .join(".");
 
-  const subdomain1 = cleanHostname(typedUrlObj1.hostname).split('.').slice(0, -2).join('.');
-  const subdomain2 = cleanHostname(typedUrlObj2.hostname).split('.').slice(0, -2).join('.');
+  const subdomain1 = cleanHostname(typedUrlObj1.hostname)
+    .split(".")
+    .slice(0, -2)
+    .join(".");
+  const subdomain2 = cleanHostname(typedUrlObj2.hostname)
+    .split(".")
+    .slice(0, -2)
+    .join(".");
 
   // Check if the domains are the same and the subdomains are the same
   return domain1 === domain2 && subdomain1 === subdomain2;
 }
-
 
 export const checkAndUpdateURLForMap = (url: string) => {
   if (!protocolIncluded(url)) {
@@ -118,7 +134,6 @@ export const checkAndUpdateURLForMap = (url: string) => {
   if (url.endsWith("/")) {
     url = url.slice(0, -1);
   }
-
 
   const { error, urlObj } = getURLobj(url);
   if (error) {
@@ -137,30 +152,30 @@ export const checkAndUpdateURLForMap = (url: string) => {
   return { urlObj: typedUrlObj, url: url };
 };
 
-
-
-
-
 export function removeDuplicateUrls(urls: string[]): string[] {
   const urlMap = new Map<string, string>();
 
   for (const url of urls) {
     const parsedUrl = new URL(url);
     const protocol = parsedUrl.protocol;
-    const hostname = parsedUrl.hostname.replace(/^www\./, '');
+    const hostname = parsedUrl.hostname.replace(/^www\./, "");
     const path = parsedUrl.pathname + parsedUrl.search + parsedUrl.hash;
-    
+
     const key = `${hostname}${path}`;
-    
+
     if (!urlMap.has(key)) {
       urlMap.set(key, url);
     } else {
       const existingUrl = new URL(urlMap.get(key)!);
       const existingProtocol = existingUrl.protocol;
-      
-      if (protocol === 'https:' && existingProtocol === 'http:') {
+
+      if (protocol === "https:" && existingProtocol === "http:") {
         urlMap.set(key, url);
-      } else if (protocol === existingProtocol && !parsedUrl.hostname.startsWith('www.') && existingUrl.hostname.startsWith('www.')) {
+      } else if (
+        protocol === existingProtocol &&
+        !parsedUrl.hostname.startsWith("www.") &&
+        existingUrl.hostname.startsWith("www.")
+      ) {
         urlMap.set(key, url);
       }
     }

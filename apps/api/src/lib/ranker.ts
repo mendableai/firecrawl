@@ -1,5 +1,5 @@
-import axios from 'axios';
-import { configDotenv } from 'dotenv';
+import axios from "axios";
+import { configDotenv } from "dotenv";
 import OpenAI from "openai";
 
 configDotenv();
@@ -20,12 +20,8 @@ async function getEmbedding(text: string) {
 
 const cosineSimilarity = (vec1: number[], vec2: number[]): number => {
   const dotProduct = vec1.reduce((sum, val, i) => sum + val * vec2[i], 0);
-  const magnitude1 = Math.sqrt(
-    vec1.reduce((sum, val) => sum + val * val, 0)
-  );
-  const magnitude2 = Math.sqrt(
-    vec2.reduce((sum, val) => sum + val * val, 0)
-  );
+  const magnitude1 = Math.sqrt(vec1.reduce((sum, val) => sum + val * val, 0));
+  const magnitude2 = Math.sqrt(vec2.reduce((sum, val) => sum + val * val, 0));
   if (magnitude1 === 0 || magnitude2 === 0) return 0;
   return dotProduct / (magnitude1 * magnitude2);
 };
@@ -40,7 +36,11 @@ const textToVector = (searchQuery: string, text: string): number[] => {
   });
 };
 
-async function performRanking(linksWithContext: string[], links: string[], searchQuery: string) {
+async function performRanking(
+  linksWithContext: string[],
+  links: string[],
+  searchQuery: string,
+) {
   try {
     // Handle invalid inputs
     if (!searchQuery || !linksWithContext.length || !links.length) {
@@ -54,27 +54,29 @@ async function performRanking(linksWithContext: string[], links: string[], searc
     const queryEmbedding = await getEmbedding(sanitizedQuery);
 
     // Generate embeddings for each link and calculate similarity
-    const linksAndScores = await Promise.all(linksWithContext.map(async (linkWithContext, index) => {
-      try {
-        const linkEmbedding = await getEmbedding(linkWithContext);
-        const score = cosineSimilarity(queryEmbedding, linkEmbedding);
-        
-        return { 
-          link: links[index],
-          linkWithContext,
-          score,
-          originalIndex: index
-        };
-      } catch (err) {
-        // If embedding fails for a link, return with score 0
-        return {
-          link: links[index],
-          linkWithContext,
-          score: 0,
-          originalIndex: index
-        };
-      }
-    }));
+    const linksAndScores = await Promise.all(
+      linksWithContext.map(async (linkWithContext, index) => {
+        try {
+          const linkEmbedding = await getEmbedding(linkWithContext);
+          const score = cosineSimilarity(queryEmbedding, linkEmbedding);
+
+          return {
+            link: links[index],
+            linkWithContext,
+            score,
+            originalIndex: index,
+          };
+        } catch (err) {
+          // If embedding fails for a link, return with score 0
+          return {
+            link: links[index],
+            linkWithContext,
+            score: 0,
+            originalIndex: index,
+          };
+        }
+      }),
+    );
 
     // Sort links based on similarity scores while preserving original order for equal scores
     linksAndScores.sort((a, b) => {

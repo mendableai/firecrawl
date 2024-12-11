@@ -26,11 +26,11 @@ describe("Job Priority Tests", () => {
     await addJobPriority(team_id, job_id);
     expect(redisConnection.sadd).toHaveBeenCalledWith(
       `limit_team_id:${team_id}`,
-      job_id
+      job_id,
     );
     expect(redisConnection.expire).toHaveBeenCalledWith(
       `limit_team_id:${team_id}`,
-      60
+      60,
     );
   });
 
@@ -40,7 +40,7 @@ describe("Job Priority Tests", () => {
     await deleteJobPriority(team_id, job_id);
     expect(redisConnection.srem).toHaveBeenCalledWith(
       `limit_team_id:${team_id}`,
-      job_id
+      job_id,
     );
   });
 
@@ -89,7 +89,7 @@ describe("Job Priority Tests", () => {
     await addJobPriority(team_id, job_id1);
     expect(redisConnection.expire).toHaveBeenCalledWith(
       `limit_team_id:${team_id}`,
-      60
+      60,
     );
 
     // Clear the mock calls
@@ -99,7 +99,7 @@ describe("Job Priority Tests", () => {
     await addJobPriority(team_id, job_id2);
     expect(redisConnection.expire).toHaveBeenCalledWith(
       `limit_team_id:${team_id}`,
-      60
+      60,
     );
   });
 
@@ -112,7 +112,7 @@ describe("Job Priority Tests", () => {
     await addJobPriority(team_id, job_id);
     expect(redisConnection.expire).toHaveBeenCalledWith(
       `limit_team_id:${team_id}`,
-      60
+      60,
     );
 
     // Fast-forward time by 59 seconds
