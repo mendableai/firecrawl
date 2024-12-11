@@ -5,14 +5,14 @@ import {
   batchScrapeRequestSchema,
   CrawlResponse,
   RequestWithAuth,
-  ScrapeOptions
+  ScrapeOptions,
 } from "./types";
 import {
   addCrawlJobs,
   getCrawl,
   lockURLs,
   saveCrawl,
-  StoredCrawl
+  StoredCrawl,
 } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
 import { getJobPriority } from "../../lib/job-priority";
@@ -22,7 +22,7 @@ import { logger as _logger } from "../../lib/logger";
 
 export async function batchScrapeController(
   req: RequestWithAuth<{}, CrawlResponse, BatchScrapeRequest>,
-  res: Response<CrawlResponse>
+  res: Response<CrawlResponse>,
 ) {
   req.body = batchScrapeRequestSchema.parse(req.body);
 
@@ -33,12 +33,12 @@ export async function batchScrapeController(
     module: "api/v1",
     method: "batchScrapeController",
     teamId: req.auth.team_id,
-    plan: req.auth.plan
+    plan: req.auth.plan,
   });
   logger.debug("Batch scrape " + id + " starting", {
     urlsLength: req.body.urls,
     appendToId: req.body.appendToId,
-    account: req.account
+    account: req.account,
   });
 
   if (!req.body.appendToId) {
@@ -59,7 +59,7 @@ export async function batchScrapeController(
         internalOptions: { disableSmartWaitCache: true }, // NOTE: smart wait disabled for batch scrapes to ensure contentful scrape, speed does not matter
         team_id: req.auth.team_id,
         createdAt: Date.now(),
-        plan: req.auth.plan
+        plan: req.auth.plan,
       };
 
   if (!req.body.appendToId) {
@@ -75,7 +75,7 @@ export async function batchScrapeController(
     jobPriority = await getJobPriority({
       plan: req.auth.plan,
       team_id: req.auth.team_id,
-      basePriority: 21
+      basePriority: 21,
     });
   }
   logger.debug("Using job priority " + jobPriority, { jobPriority });
@@ -97,12 +97,12 @@ export async function batchScrapeController(
         crawl_id: id,
         sitemapped: true,
         v1: true,
-        webhook: req.body.webhook
+        webhook: req.body.webhook,
       },
       opts: {
         jobId: uuidv4(),
-        priority: 20
-      }
+        priority: 20,
+      },
     };
   });
 
@@ -110,19 +110,19 @@ export async function batchScrapeController(
   await lockURLs(
     id,
     sc,
-    jobs.map((x) => x.data.url)
+    jobs.map((x) => x.data.url),
   );
   logger.debug("Adding scrape jobs to Redis...");
   await addCrawlJobs(
     id,
-    jobs.map((x) => x.opts.jobId)
+    jobs.map((x) => x.opts.jobId),
   );
   logger.debug("Adding scrape jobs to BullMQ...");
   await addScrapeJobs(jobs);
 
   if (req.body.webhook) {
     logger.debug("Calling webhook with batch_scrape.started...", {
-      webhook: req.body.webhook
+      webhook: req.body.webhook,
     });
     await callWebhook(
       req.auth.team_id,
@@ -130,7 +130,7 @@ export async function batchScrapeController(
       null,
       req.body.webhook,
       true,
-      "batch_scrape.started"
+      "batch_scrape.started",
     );
   }
 
@@ -139,6 +139,6 @@ export async function batchScrapeController(
   return res.status(200).json({
     success: true,
     id,
-    url: `${protocol}://${req.get("host")}/v1/batch/scrape/${id}`
+    url: `${protocol}://${req.get("host")}/v1/batch/scrape/${id}`,
   });
 }

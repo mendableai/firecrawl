@@ -19,7 +19,7 @@ export class NoEnginesLeftError extends Error {
 
   constructor(fallbackList: Engine[], results: EngineResultsTracker) {
     super(
-      "All scraping engines failed! -- Double check the URL to make sure it's not broken. If the issue persists, contact us at help@firecrawl.com."
+      "All scraping engines failed! -- Double check the URL to make sure it's not broken. If the issue persists, contact us at help@firecrawl.com.",
     );
     this.fallbackList = fallbackList;
     this.results = results;
@@ -40,7 +40,8 @@ export class RemoveFeatureError extends Error {
 
   constructor(featureFlags: FeatureFlag[]) {
     super(
-      "Incorrect feature flags have been discovered: " + featureFlags.join(", ")
+      "Incorrect feature flags have been discovered: " +
+        featureFlags.join(", "),
     );
     this.featureFlags = featureFlags;
   }
@@ -50,7 +51,7 @@ export class SiteError extends Error {
   public code: string;
   constructor(code: string) {
     super(
-      "Specified URL is failing to load in the browser. Error code: " + code
+      "Specified URL is failing to load in the browser. Error code: " + code,
     );
     this.code = code;
   }

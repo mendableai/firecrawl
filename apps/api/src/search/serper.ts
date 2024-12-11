@@ -14,7 +14,7 @@ export async function serper_search(
     location?: string;
     num_results: number;
     page?: number;
-  }
+  },
 ): Promise<SearchResult[]> {
   let data = JSON.stringify({
     q: q,
@@ -23,7 +23,7 @@ export async function serper_search(
     location: options.location,
     tbs: options.tbs,
     num: options.num_results,
-    page: options.page ?? 1
+    page: options.page ?? 1,
   });
 
   let config = {
@@ -31,16 +31,16 @@ export async function serper_search(
     url: "https://google.serper.dev/search",
     headers: {
       "X-API-KEY": process.env.SERPER_API_KEY,
-      "Content-Type": "application/json"
+      "Content-Type": "application/json",
     },
-    data: data
+    data: data,
   };
   const response = await axios(config);
   if (response && response.data && Array.isArray(response.data.organic)) {
     return response.data.organic.map((a) => ({
       url: a.link,
       title: a.title,
-      description: a.snippet
+      description: a.snippet,
     }));
   } else {
     return [];

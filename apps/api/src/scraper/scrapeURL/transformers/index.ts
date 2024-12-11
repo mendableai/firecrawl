@@ -11,33 +11,33 @@ import { saveToCache } from "./cache";
 
 export type Transformer = (
   meta: Meta,
-  document: Document
+  document: Document,
 ) => Document | Promise<Document>;
 
 export function deriveMetadataFromRawHTML(
   meta: Meta,
-  document: Document
+  document: Document,
 ): Document {
   if (document.rawHtml === undefined) {
     throw new Error(
-      "rawHtml is undefined -- this transformer is being called out of order"
+      "rawHtml is undefined -- this transformer is being called out of order",
     );
   }
 
   document.metadata = {
     ...extractMetadata(meta, document.rawHtml),
-    ...document.metadata
+    ...document.metadata,
   };
   return document;
 }
 
 export function deriveHTMLFromRawHTML(
   meta: Meta,
-  document: Document
+  document: Document,
 ): Document {
   if (document.rawHtml === undefined) {
     throw new Error(
-      "rawHtml is undefined -- this transformer is being called out of order"
+      "rawHtml is undefined -- this transformer is being called out of order",
     );
   }
 
@@ -47,11 +47,11 @@ export function deriveHTMLFromRawHTML(
 
 export async function deriveMarkdownFromHTML(
   _meta: Meta,
-  document: Document
+  document: Document,
 ): Promise<Document> {
   if (document.html === undefined) {
     throw new Error(
-      "html is undefined -- this transformer is being called out of order"
+      "html is undefined -- this transformer is being called out of order",
     );
   }
 
@@ -64,7 +64,7 @@ export function deriveLinksFromHTML(meta: Meta, document: Document): Document {
   if (meta.options.formats.includes("links")) {
     if (document.html === undefined) {
       throw new Error(
-        "html is undefined -- this transformer is being called out of order"
+        "html is undefined -- this transformer is being called out of order",
       );
     }
 
@@ -76,7 +76,7 @@ export function deriveLinksFromHTML(meta: Meta, document: Document): Document {
 
 export function coerceFieldsToFormats(
   meta: Meta,
-  document: Document
+  document: Document,
 ): Document {
   const formats = new Set(meta.options.formats);
 
@@ -84,7 +84,7 @@ export function coerceFieldsToFormats(
     delete document.markdown;
   } else if (formats.has("markdown") && document.markdown === undefined) {
     meta.logger.warn(
-      "Request had format: markdown, but there was no markdown field in the result."
+      "Request had format: markdown, but there was no markdown field in the result.",
     );
   }
 
@@ -92,7 +92,7 @@ export function coerceFieldsToFormats(
     delete document.rawHtml;
   } else if (formats.has("rawHtml") && document.rawHtml === undefined) {
     meta.logger.warn(
-      "Request had format: rawHtml, but there was no rawHtml field in the result."
+      "Request had format: rawHtml, but there was no rawHtml field in the result.",
     );
   }
 
@@ -100,7 +100,7 @@ export function coerceFieldsToFormats(
     delete document.html;
   } else if (formats.has("html") && document.html === undefined) {
     meta.logger.warn(
-      "Request had format: html, but there was no html field in the result."
+      "Request had format: html, but there was no html field in the result.",
     );
   }
 
@@ -110,7 +110,7 @@ export function coerceFieldsToFormats(
     document.screenshot !== undefined
   ) {
     meta.logger.warn(
-      "Removed screenshot from Document because it wasn't in formats -- this is very wasteful and indicates a bug."
+      "Removed screenshot from Document because it wasn't in formats -- this is very wasteful and indicates a bug.",
     );
     delete document.screenshot;
   } else if (
@@ -118,29 +118,29 @@ export function coerceFieldsToFormats(
     document.screenshot === undefined
   ) {
     meta.logger.warn(
-      "Request had format: screenshot / screenshot@fullPage, but there was no screenshot field in the result."
+      "Request had format: screenshot / screenshot@fullPage, but there was no screenshot field in the result.",
     );
   }
 
   if (!formats.has("links") && document.links !== undefined) {
     meta.logger.warn(
-      "Removed links from Document because it wasn't in formats -- this is wasteful and indicates a bug."
+      "Removed links from Document because it wasn't in formats -- this is wasteful and indicates a bug.",
     );
     delete document.links;
   } else if (formats.has("links") && document.links === undefined) {
     meta.logger.warn(
-      "Request had format: links, but there was no links field in the result."
+      "Request had format: links, but there was no links field in the result.",
     );
   }
 
   if (!formats.has("extract") && document.extract !== undefined) {
     meta.logger.warn(
-      "Removed extract from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug."
+      "Removed extract from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
     );
     delete document.extract;
   } else if (formats.has("extract") && document.extract === undefined) {
     meta.logger.warn(
-      "Request had format: extract, but there was no extract field in the result."
+      "Request had format: extract, but there was no extract field in the result.",
     );
   }
 
@@ -161,12 +161,12 @@ export const transformerStack: Transformer[] = [
   uploadScreenshot,
   performLLMExtract,
   coerceFieldsToFormats,
-  removeBase64Images
+  removeBase64Images,
 ];
 
 export async function executeTransformers(
   meta: Meta,
-  document: Document
+  document: Document,
 ): Promise<Document> {
   const executions: [string, number][] = [];
 
@@ -174,8 +174,8 @@ export async function executeTransformers(
     const _meta = {
       ...meta,
       logger: meta.logger.child({
-        method: "executeTransformers/" + transformer.name
-      })
+        method: "executeTransformers/" + transformer.name,
+      }),
     };
     const start = Date.now();
     document = await transformer(_meta, document);

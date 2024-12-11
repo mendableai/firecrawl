@@ -47,14 +47,14 @@ const excludeNonMainTags = [
   ".widget",
   "#widget",
   ".cookie",
-  "#cookie"
+  "#cookie",
 ];
 
 const forceIncludeMainTags = ["#main"];
 
 export const removeUnwantedElements = (
   html: string,
-  scrapeOptions: ScrapeOptions
+  scrapeOptions: ScrapeOptions,
 ) => {
   const soup = load(html);
 
@@ -89,11 +89,11 @@ export const removeUnwantedElements = (
             const attributes = element.attribs;
             const tagNameMatches = regexPattern.test(element.name);
             const attributesMatch = Object.keys(attributes).some((attr) =>
-              regexPattern.test(`${attr}="${attributes[attr]}"`)
+              regexPattern.test(`${attr}="${attributes[attr]}"`),
             );
             if (tag.startsWith("*.")) {
               classMatch = Object.keys(attributes).some((attr) =>
-                regexPattern.test(`class="${attributes[attr]}"`)
+                regexPattern.test(`class="${attributes[attr]}"`),
               );
             }
             return tagNameMatches || attributesMatch || classMatch;
@@ -110,7 +110,7 @@ export const removeUnwantedElements = (
   if (scrapeOptions.onlyMainContent) {
     excludeNonMainTags.forEach((tag) => {
       const elementsToRemove = soup(tag).filter(
-        forceIncludeMainTags.map((x) => ":not(:has(" + x + "))").join("")
+        forceIncludeMainTags.map((x) => ":not(:has(" + x + "))").join(""),
       );
 
       elementsToRemove.remove();

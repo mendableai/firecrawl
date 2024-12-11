@@ -18,7 +18,7 @@ const RATE_LIMITS = {
     etier2c: 300,
     etier1a: 1000,
     etier2a: 300,
-    etierscale1: 150
+    etierscale1: 150,
   },
   scrape: {
     default: 20,
@@ -35,7 +35,7 @@ const RATE_LIMITS = {
     etier2c: 2500,
     etier1a: 1000,
     etier2a: 2500,
-    etierscale1: 1500
+    etierscale1: 1500,
   },
   search: {
     default: 20,
@@ -52,7 +52,7 @@ const RATE_LIMITS = {
     etier2c: 2500,
     etier1a: 1000,
     etier2a: 2500,
-    etierscale1: 1500
+    etierscale1: 1500,
   },
   map: {
     default: 20,
@@ -69,28 +69,28 @@ const RATE_LIMITS = {
     etier2c: 2500,
     etier1a: 1000,
     etier2a: 2500,
-    etierscale1: 1500
+    etierscale1: 1500,
   },
   preview: {
     free: 5,
-    default: 5
+    default: 5,
   },
   account: {
     free: 100,
-    default: 100
+    default: 100,
   },
   crawlStatus: {
     free: 300,
-    default: 500
+    default: 500,
   },
   testSuite: {
     free: 10000,
-    default: 10000
-  }
+    default: 10000,
+  },
 };
 
 export const redisRateLimitClient = new Redis(
-  process.env.REDIS_RATE_LIMIT_URL!
+  process.env.REDIS_RATE_LIMIT_URL!,
 );
 
 const createRateLimiter = (keyPrefix, points) =>
@@ -98,54 +98,54 @@ const createRateLimiter = (keyPrefix, points) =>
     storeClient: redisRateLimitClient,
     keyPrefix,
     points,
-    duration: 60 // Duration in seconds
+    duration: 60, // Duration in seconds
   });
 
 export const serverRateLimiter = createRateLimiter(
   "server",
-  RATE_LIMITS.account.default
+  RATE_LIMITS.account.default,
 );
 
 export const testSuiteRateLimiter = new RateLimiterRedis({
   storeClient: redisRateLimitClient,
   keyPrefix: "test-suite",
   points: 10000,
-  duration: 60 // Duration in seconds
+  duration: 60, // Duration in seconds
 });
 
 export const devBRateLimiter = new RateLimiterRedis({
   storeClient: redisRateLimitClient,
   keyPrefix: "dev-b",
   points: 1200,
-  duration: 60 // Duration in seconds
+  duration: 60, // Duration in seconds
 });
 
 export const manualRateLimiter = new RateLimiterRedis({
   storeClient: redisRateLimitClient,
   keyPrefix: "manual",
   points: 2000,
-  duration: 60 // Duration in seconds
+  duration: 60, // Duration in seconds
 });
 
 export const scrapeStatusRateLimiter = new RateLimiterRedis({
   storeClient: redisRateLimitClient,
   keyPrefix: "scrape-status",
   points: 400,
-  duration: 60 // Duration in seconds
+  duration: 60, // Duration in seconds
 });
 
 export const etier1aRateLimiter = new RateLimiterRedis({
   storeClient: redisRateLimitClient,
   keyPrefix: "etier1a",
   points: 10000,
-  duration: 60 // Duration in seconds
+  duration: 60, // Duration in seconds
 });
 
 export const etier2aRateLimiter = new RateLimiterRedis({
   storeClient: redisRateLimitClient,
   keyPrefix: "etier2a",
   points: 2500,
-  duration: 60 // Duration in seconds
+  duration: 60, // Duration in seconds
 });
 
 const testSuiteTokens = [
@@ -165,7 +165,7 @@ const testSuiteTokens = [
   "fd769b2",
   "4c2638d",
   "cbb3462", // don't remove (s-ai)
-  "824abcd" // don't remove (s-ai)
+  "824abcd", // don't remove (s-ai)
 ];
 
 const manual = ["69be9e74-7624-4990-b20d-08e0acc70cf6"];
@@ -178,7 +178,7 @@ export function getRateLimiterPoints(
   mode: RateLimiterMode,
   token?: string,
   plan?: string,
-  teamId?: string
+  teamId?: string,
 ): number {
   const rateLimitConfig = RATE_LIMITS[mode]; // {default : 5}
 
@@ -193,7 +193,7 @@ export function getRateLimiter(
   mode: RateLimiterMode,
   token?: string,
   plan?: string,
-  teamId?: string
+  teamId?: string,
 ): RateLimiterRedis {
   if (token && testSuiteTokens.some((testToken) => token.includes(testToken))) {
     return testSuiteRateLimiter;
@@ -221,6 +221,6 @@ export function getRateLimiter(
 
   return createRateLimiter(
     `${mode}-${makePlanKey(plan)}`,
-    getRateLimiterPoints(mode, token, plan, teamId)
+    getRateLimiterPoints(mode, token, plan, teamId),
   );
 }

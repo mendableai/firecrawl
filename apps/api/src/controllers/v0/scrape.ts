@@ -2,7 +2,7 @@ import { ExtractorOptions, PageOptions } from "./../../lib/entities";
 import { Request, Response } from "express";
 import {
   billTeam,
-  checkTeamCredits
+  checkTeamCredits,
 } from "../../services/billing/credit_billing";
 import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
@@ -11,7 +11,7 @@ import {
   Document,
   fromLegacyCombo,
   toLegacyDocument,
-  url as urlSchema
+  url as urlSchema,
 } from "../v1/types";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from "../../lib/LLM-extraction/helpers";
@@ -19,7 +19,7 @@ import {
   defaultPageOptions,
   defaultExtractorOptions,
   defaultTimeout,
-  defaultOrigin
+  defaultOrigin,
 } from "../../lib/default-values";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getScrapeQueue } from "../../services/queue-service";
@@ -38,7 +38,7 @@ export async function scrapeHelper(
   pageOptions: PageOptions,
   extractorOptions: ExtractorOptions,
   timeout: number,
-  plan?: PlanType
+  plan?: PlanType,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -55,7 +55,7 @@ export async function scrapeHelper(
       success: false,
       error:
         "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-      returnCode: 403
+      returnCode: 403,
     };
   }
 
@@ -65,7 +65,7 @@ export async function scrapeHelper(
     pageOptions,
     extractorOptions,
     timeout,
-    crawlerOptions
+    crawlerOptions,
   );
 
   await addScrapeJob(
@@ -77,11 +77,11 @@ export async function scrapeHelper(
       internalOptions,
       plan: plan!,
       origin: req.body.origin ?? defaultOrigin,
-      is_scrape: true
+      is_scrape: true,
     },
     {},
     jobId,
-    jobPriority
+    jobPriority,
   );
 
   let doc;
@@ -90,7 +90,7 @@ export async function scrapeHelper(
     {
       name: "Wait for job to finish",
       op: "bullmq.wait",
-      attributes: { job: jobId }
+      attributes: { job: jobId },
     },
     async (span) => {
       try {
@@ -104,20 +104,20 @@ export async function scrapeHelper(
           return {
             success: false,
             error: "Request timed out",
-            returnCode: 408
+            returnCode: 408,
           };
         } else if (
           typeof e === "string" &&
           (e.includes("Error generating completions: ") ||
             e.includes("Invalid schema for function") ||
             e.includes(
-              "LLM extraction did not match the extraction schema you provided."
+              "LLM extraction did not match the extraction schema you provided.",
             ))
         ) {
           return {
             success: false,
             error: e,
-            returnCode: 500
+            returnCode: 500,
           };
         } else {
           throw e;
@@ -125,7 +125,7 @@ export async function scrapeHelper(
       }
       span.setAttribute("result", JSON.stringify(doc));
       return null;
-    }
+    },
   );
 
   if (err !== null) {
@@ -140,7 +140,7 @@ export async function scrapeHelper(
       success: true,
       error: "No page found",
       returnCode: 200,
-      data: doc
+      data: doc,
     };
   }
 
@@ -166,7 +166,7 @@ export async function scrapeHelper(
   return {
     success: true,
     data: toLegacyDocument(doc, internalOptions),
-    returnCode: 200
+    returnCode: 200,
   };
 }
 
@@ -185,7 +185,7 @@ export async function scrapeController(req: Request, res: Response) {
     const pageOptions = { ...defaultPageOptions, ...req.body.pageOptions };
     const extractorOptions = {
       ...defaultExtractorOptions,
-      ...req.body.extractorOptions
+      ...req.body.extractorOptions,
     };
     const origin = req.body.origin ?? defaultOrigin;
     let timeout = req.body.timeout ?? defaultTimeout;
@@ -197,7 +197,7 @@ export async function scrapeController(req: Request, res: Response) {
       ) {
         return res.status(400).json({
           error:
-            "extractorOptions.extractionSchema must be an object if llm-extraction mode is specified"
+            "extractorOptions.extractionSchema must be an object if llm-extraction mode is specified",
         });
       }
 
@@ -213,7 +213,7 @@ export async function scrapeController(req: Request, res: Response) {
         earlyReturn = true;
         return res.status(402).json({
           error:
-            "Insufficient credits. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing"
+            "Insufficient credits. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing",
         });
       }
     } catch (error) {
@@ -221,7 +221,7 @@ export async function scrapeController(req: Request, res: Response) {
       earlyReturn = true;
       return res.status(500).json({
         error:
-          "Error checking team credits. Please contact help@firecrawl.com for help."
+          "Error checking team credits. Please contact help@firecrawl.com for help.",
       });
     }
 
@@ -236,7 +236,7 @@ export async function scrapeController(req: Request, res: Response) {
       pageOptions,
       extractorOptions,
       timeout,
-      plan
+      plan,
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
@@ -244,7 +244,7 @@ export async function scrapeController(req: Request, res: Response) {
       result.data && (result.data as Document).markdown
         ? numTokensFromString(
             (result.data as Document).markdown!,
-            "gpt-3.5-turbo"
+            "gpt-3.5-turbo",
           )
         : 0;
 
@@ -267,7 +267,7 @@ export async function scrapeController(req: Request, res: Response) {
         // billing for doc done on queue end, bill only for llm extraction
         billTeam(team_id, chunk?.sub_id, creditsToBeBilled).catch((error) => {
           logger.error(
-            `Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`
+            `Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`,
           );
           // Optionally, you could notify an admin or add to a retry queue here
         });
@@ -290,7 +290,7 @@ export async function scrapeController(req: Request, res: Response) {
     const { scrapeOptions } = fromLegacyScrapeOptions(
       pageOptions,
       extractorOptions,
-      timeout
+      timeout,
     );
 
     logJob({
@@ -306,7 +306,7 @@ export async function scrapeController(req: Request, res: Response) {
       crawlerOptions: crawlerOptions,
       scrapeOptions,
       origin: origin,
-      num_tokens: numTokens
+      num_tokens: numTokens,
     });
 
     return res.status(result.returnCode).json(result);
@@ -319,7 +319,7 @@ export async function scrapeController(req: Request, res: Response) {
           ? "Invalid URL"
           : typeof error === "string"
             ? error
-            : (error?.message ?? "Internal Server Error")
+            : (error?.message ?? "Internal Server Error"),
     });
   }
 }

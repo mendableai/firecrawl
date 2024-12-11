@@ -5,14 +5,14 @@ import OpenAI from "openai";
 configDotenv();
 
 const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY
+  apiKey: process.env.OPENAI_API_KEY,
 });
 
 async function getEmbedding(text: string) {
   const embedding = await openai.embeddings.create({
     model: "text-embedding-ada-002",
     input: text,
-    encoding_format: "float"
+    encoding_format: "float",
   });
 
   return embedding.data[0].embedding;
@@ -39,7 +39,7 @@ const textToVector = (searchQuery: string, text: string): number[] => {
 async function performRanking(
   linksWithContext: string[],
   links: string[],
-  searchQuery: string
+  searchQuery: string,
 ) {
   try {
     // Handle invalid inputs
@@ -64,7 +64,7 @@ async function performRanking(
             link: links[index],
             linkWithContext,
             score,
-            originalIndex: index
+            originalIndex: index,
           };
         } catch (err) {
           // If embedding fails for a link, return with score 0
@@ -72,10 +72,10 @@ async function performRanking(
             link: links[index],
             linkWithContext,
             score: 0,
-            originalIndex: index
+            originalIndex: index,
           };
         }
-      })
+      }),
     );
 
     // Sort links based on similarity scores while preserving original order for equal scores

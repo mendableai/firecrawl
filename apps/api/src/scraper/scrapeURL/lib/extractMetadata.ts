@@ -4,7 +4,7 @@ import { Meta } from "..";
 
 export function extractMetadata(
   meta: Meta,
-  html: string
+  html: string,
 ): Document["metadata"] {
   let title: string | undefined = undefined;
   let description: string | undefined = undefined;
@@ -148,6 +148,6 @@ export function extractMetadata(
     publishedTime,
     articleTag,
     articleSection,
-    ...customMetadata
+    ...customMetadata,
   };
 }

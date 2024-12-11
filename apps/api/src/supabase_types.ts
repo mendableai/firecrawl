@@ -40,7 +40,7 @@ export interface Database {
             columns: ["project_id"];
             referencedRelation: "mendable_project";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       company: {
@@ -77,7 +77,7 @@ export interface Database {
             columns: ["pricing_plan_id"];
             referencedRelation: "pricing_plan";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       constants: {
@@ -126,7 +126,7 @@ export interface Database {
             columns: ["project_id"];
             referencedRelation: "mendable_project";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       customers: {
@@ -157,7 +157,7 @@ export interface Database {
             columns: ["user_id"];
             referencedRelation: "users";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       data: {
@@ -236,7 +236,7 @@ export interface Database {
             columns: ["project_id"];
             referencedRelation: "mendable_project";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       data_partitioned: {
@@ -390,7 +390,7 @@ export interface Database {
             columns: ["company_id"];
             referencedRelation: "company";
             referencedColumns: ["company_id"];
-          }
+          },
         ];
       };
       message: {
@@ -439,7 +439,7 @@ export interface Database {
             columns: ["conversation_id"];
             referencedRelation: "conversation";
             referencedColumns: ["conversation_id"];
-          }
+          },
         ];
       };
       model_configuration: {
@@ -479,7 +479,7 @@ export interface Database {
             columns: ["project_id"];
             referencedRelation: "mendable_project";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       monthly_message_counts: {
@@ -507,7 +507,7 @@ export interface Database {
             columns: ["project_id"];
             referencedRelation: "mendable_project";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       prices: {
@@ -560,7 +560,7 @@ export interface Database {
             columns: ["product_id"];
             referencedRelation: "products";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       pricing_plan: {
@@ -747,7 +747,7 @@ export interface Database {
             columns: ["user_id"];
             referencedRelation: "users";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       suggested_questions: {
@@ -775,7 +775,7 @@ export interface Database {
             columns: ["project_id"];
             referencedRelation: "mendable_project";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       user_notifications: {
@@ -821,7 +821,7 @@ export interface Database {
             columns: ["user_id"];
             referencedRelation: "users";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       users: {
@@ -864,7 +864,7 @@ export interface Database {
             columns: ["id"];
             referencedRelation: "users";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
       z_testcomp_92511: {
@@ -934,7 +934,7 @@ export interface Database {
             columns: ["project_id"];
             referencedRelation: "mendable_project";
             referencedColumns: ["id"];
-          }
+          },
         ];
       };
     };

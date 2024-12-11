@@ -39,7 +39,7 @@ const setValue = async (
   key: string,
   value: string,
   expire?: number,
-  nx = false
+  nx = false,
 ) => {
   if (expire && !nx) {
     await redisRateLimitClient.set(key, value, "EX", expire);

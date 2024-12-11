@@ -25,8 +25,8 @@ function normalizeSchema(x: any): any {
     x["$defs"] = Object.fromEntries(
       Object.entries(x["$defs"]).map(([name, schema]) => [
         name,
-        normalizeSchema(schema)
-      ])
+        normalizeSchema(schema),
+      ]),
     );
   }
 
@@ -50,15 +50,15 @@ function normalizeSchema(x: any): any {
     return {
       ...x,
       properties: Object.fromEntries(
-        Object.entries(x.properties).map(([k, v]) => [k, normalizeSchema(v)])
+        Object.entries(x.properties).map(([k, v]) => [k, normalizeSchema(v)]),
       ),
       required: Object.keys(x.properties),
-      additionalProperties: false
+      additionalProperties: false,
     };
   } else if (x && x.type === "array") {
     return {
       ...x,
-      items: normalizeSchema(x.items)
+      items: normalizeSchema(x.items),
     };
   } else {
     return x;
@@ -70,7 +70,7 @@ export async function generateOpenAICompletions(
   options: ExtractOptions,
   markdown?: string,
   previousWarning?: string,
-  isExtractEndpoint?: boolean
+  isExtractEndpoint?: boolean,
 ): Promise<{ extract: any; numTokens: number; warning: string | undefined }> {
   let extract: any;
   let warning: string | undefined;
@@ -125,19 +125,19 @@ export async function generateOpenAICompletions(
     schema = {
       type: "object",
       properties: {
-        items: options.schema
+        items: options.schema,
       },
       required: ["items"],
-      additionalProperties: false
+      additionalProperties: false,
     };
   } else if (schema && typeof schema === "object" && !schema.type) {
     schema = {
       type: "object",
       properties: Object.fromEntries(
-        Object.entries(schema).map(([key, value]) => [key, { type: value }])
+        Object.entries(schema).map(([key, value]) => [key, { type: value }]),
       ),
       required: Object.keys(schema),
-      additionalProperties: false
+      additionalProperties: false,
     };
   }
 
@@ -149,19 +149,19 @@ export async function generateOpenAICompletions(
     messages: [
       {
         role: "system",
-        content: options.systemPrompt
+        content: options.systemPrompt,
       },
       {
         role: "user",
-        content: [{ type: "text", text: markdown }]
+        content: [{ type: "text", text: markdown }],
       },
       {
         role: "user",
         content:
           options.prompt !== undefined
             ? `Transform the above content into structured JSON output based on the following user request: ${options.prompt}`
-            : "Transform the above content into structured JSON output."
-      }
+            : "Transform the above content into structured JSON output.",
+      },
     ],
     response_format: options.schema
       ? {
@@ -169,10 +169,10 @@ export async function generateOpenAICompletions(
           json_schema: {
             name: "websiteContent",
             schema: schema,
-            strict: true
-          }
+            strict: true,
+          },
         }
-      : { type: "json_object" }
+      : { type: "json_object" },
   });
 
   if (jsonCompletion.choices[0].message.refusal !== null) {
@@ -187,16 +187,16 @@ export async function generateOpenAICompletions(
         extract = JSON.parse(jsonCompletion.choices[0].message.content);
       } else {
         const extractData = JSON.parse(
-          jsonCompletion.choices[0].message.content
+          jsonCompletion.choices[0].message.content,
         );
         extract = options.schema ? extractData.data.extract : extractData;
       }
     } catch (e) {
       logger.error("Failed to parse returned JSON, no schema specified.", {
-        error: e
+        error: e,
       });
       throw new LLMRefusalError(
-        "Failed to parse returned JSON. Please specify a schema in the extract object."
+        "Failed to parse returned JSON. Please specify a schema in the extract object.",
       );
     }
   }
@@ -215,16 +215,16 @@ export async function generateOpenAICompletions(
 
 export async function performLLMExtract(
   meta: Meta,
-  document: Document
+  document: Document,
 ): Promise<Document> {
   if (meta.options.formats.includes("extract")) {
     const { extract, warning } = await generateOpenAICompletions(
       meta.logger.child({
-        method: "performLLMExtract/generateOpenAICompletions"
+        method: "performLLMExtract/generateOpenAICompletions",
       }),
       meta.options.extract!,
       document.markdown,
-      document.warning
+      document.warning,
     );
     document.extract = extract;
     document.warning = warning;

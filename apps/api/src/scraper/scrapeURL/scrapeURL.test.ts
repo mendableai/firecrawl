@@ -13,7 +13,7 @@ const testEngines: (Engine | undefined)[] = [
   "fire-engine;tlsclient",
   "scrapingbee",
   "scrapingbeeLoad",
-  "fetch"
+  "fetch",
 ];
 
 const testEnginesScreenshot: (Engine | undefined)[] = [
@@ -21,7 +21,7 @@ const testEnginesScreenshot: (Engine | undefined)[] = [
   "fire-engine;chrome-cdp",
   "fire-engine;playwright",
   "scrapingbee",
-  "scrapingbeeLoad"
+  "scrapingbeeLoad",
 ];
 
 describe("Standalone scrapeURL tests", () => {
@@ -31,7 +31,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-basic",
         "https://www.roastmywebsite.ai/",
         scrapeOptions.parse({}),
-        { forceEngine }
+        { forceEngine },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -46,26 +46,26 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.document.metadata.error).toBeUndefined();
         expect(out.document.metadata.title).toBe("Roast My Website");
         expect(out.document.metadata.description).toBe(
-          "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️"
+          "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️",
         );
         expect(out.document.metadata.keywords).toBe(
-          "Roast My Website,Roast,Website,GitHub,Firecrawl"
+          "Roast My Website,Roast,Website,GitHub,Firecrawl",
         );
         expect(out.document.metadata.robots).toBe("follow, index");
         expect(out.document.metadata.ogTitle).toBe("Roast My Website");
         expect(out.document.metadata.ogDescription).toBe(
-          "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️"
+          "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️",
         );
         expect(out.document.metadata.ogUrl).toBe(
-          "https://www.roastmywebsite.ai"
+          "https://www.roastmywebsite.ai",
         );
         expect(out.document.metadata.ogImage).toBe(
-          "https://www.roastmywebsite.ai/og.png"
+          "https://www.roastmywebsite.ai/og.png",
         );
         expect(out.document.metadata.ogLocaleAlternate).toStrictEqual([]);
         expect(out.document.metadata.ogSiteName).toBe("Roast My Website");
         expect(out.document.metadata.sourceURL).toBe(
-          "https://www.roastmywebsite.ai/"
+          "https://www.roastmywebsite.ai/",
         );
         expect(out.document.metadata.statusCode).toBe(200);
       }
@@ -76,9 +76,9 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-formats-markdown-html",
         "https://roastmywebsite.ai",
         scrapeOptions.parse({
-          formats: ["markdown", "html"]
+          formats: ["markdown", "html"],
         }),
-        { forceEngine }
+        { forceEngine },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -100,9 +100,9 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-onlyMainContent-false",
         "https://www.scrapethissite.com/",
         scrapeOptions.parse({
-          onlyMainContent: false
+          onlyMainContent: false,
         }),
-        { forceEngine }
+        { forceEngine },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -123,9 +123,9 @@ describe("Standalone scrapeURL tests", () => {
         "https://www.scrapethissite.com/",
         scrapeOptions.parse({
           onlyMainContent: false,
-          excludeTags: [".nav", "#footer", "strong"]
+          excludeTags: [".nav", "#footer", "strong"],
         }),
-        { forceEngine }
+        { forceEngine },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -145,7 +145,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-400",
         "https://httpstat.us/400",
         scrapeOptions.parse({}),
-        { forceEngine }
+        { forceEngine },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -163,7 +163,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-401",
         "https://httpstat.us/401",
         scrapeOptions.parse({}),
-        { forceEngine }
+        { forceEngine },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -181,7 +181,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-403",
         "https://httpstat.us/403",
         scrapeOptions.parse({}),
-        { forceEngine }
+        { forceEngine },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -199,7 +199,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-404",
         "https://httpstat.us/404",
         scrapeOptions.parse({}),
-        { forceEngine }
+        { forceEngine },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -217,7 +217,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-405",
         "https://httpstat.us/405",
         scrapeOptions.parse({}),
-        { forceEngine }
+        { forceEngine },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -235,7 +235,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-500",
         "https://httpstat.us/500",
         scrapeOptions.parse({}),
-        { forceEngine }
+        { forceEngine },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -253,7 +253,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-redirect",
         "https://scrapethissite.com/",
         scrapeOptions.parse({}),
-        { forceEngine }
+        { forceEngine },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -264,10 +264,10 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.document.markdown).toContain("Explore Sandbox");
         expect(out.document).toHaveProperty("metadata");
         expect(out.document.metadata.sourceURL).toBe(
-          "https://scrapethissite.com/"
+          "https://scrapethissite.com/",
         );
         expect(out.document.metadata.url).toBe(
-          "https://www.scrapethissite.com/"
+          "https://www.scrapethissite.com/",
         );
         expect(out.document.metadata.statusCode).toBe(200);
         expect(out.document.metadata.error).toBeUndefined();
@@ -283,9 +283,9 @@ describe("Standalone scrapeURL tests", () => {
           "test:scrape-screenshot",
           "https://www.scrapethissite.com/",
           scrapeOptions.parse({
-            formats: ["screenshot"]
+            formats: ["screenshot"],
           }),
-          { forceEngine }
+          { forceEngine },
         );
 
         // expect(out.logs.length).toBeGreaterThan(0);
@@ -296,8 +296,8 @@ describe("Standalone scrapeURL tests", () => {
           expect(typeof out.document.screenshot).toBe("string");
           expect(
             out.document.screenshot!.startsWith(
-              "https://service.firecrawl.dev/storage/v1/object/public/media/"
-            )
+              "https://service.firecrawl.dev/storage/v1/object/public/media/",
+            ),
           );
           // TODO: attempt to fetch screenshot
           expect(out.document).toHaveProperty("metadata");
@@ -311,9 +311,9 @@ describe("Standalone scrapeURL tests", () => {
           "test:scrape-screenshot-fullPage",
           "https://www.scrapethissite.com/",
           scrapeOptions.parse({
-            formats: ["screenshot@fullPage"]
+            formats: ["screenshot@fullPage"],
           }),
-          { forceEngine }
+          { forceEngine },
         );
 
         // expect(out.logs.length).toBeGreaterThan(0);
@@ -324,8 +324,8 @@ describe("Standalone scrapeURL tests", () => {
           expect(typeof out.document.screenshot).toBe("string");
           expect(
             out.document.screenshot!.startsWith(
-              "https://service.firecrawl.dev/storage/v1/object/public/media/"
-            )
+              "https://service.firecrawl.dev/storage/v1/object/public/media/",
+            ),
           );
           // TODO: attempt to fetch screenshot
           expect(out.document).toHaveProperty("metadata");
@@ -333,14 +333,14 @@ describe("Standalone scrapeURL tests", () => {
           expect(out.document.metadata.error).toBeUndefined();
         }
       }, 30000);
-    }
+    },
   );
 
   it("Scrape of a PDF file", async () => {
     const out = await scrapeURL(
       "test:scrape-pdf",
       "https://arxiv.org/pdf/astro-ph/9301001.pdf",
-      scrapeOptions.parse({})
+      scrapeOptions.parse({}),
     );
 
     // expect(out.logs.length).toBeGreaterThan(0);
@@ -358,7 +358,7 @@ describe("Standalone scrapeURL tests", () => {
     const out = await scrapeURL(
       "test:scrape-docx",
       "https://nvca.org/wp-content/uploads/2019/06/NVCA-Model-Document-Stock-Purchase-Agreement.docx",
-      scrapeOptions.parse({})
+      scrapeOptions.parse({}),
     );
 
     // expect(out.logs.length).toBeGreaterThan(0);
@@ -367,7 +367,7 @@ describe("Standalone scrapeURL tests", () => {
       expect(out.document.warning).toBeUndefined();
       expect(out.document).toHaveProperty("metadata");
       expect(out.document.markdown).toContain(
-        "SERIES A PREFERRED STOCK PURCHASE AGREEMENT"
+        "SERIES A PREFERRED STOCK PURCHASE AGREEMENT",
       );
       expect(out.document.metadata.statusCode).toBe(200);
       expect(out.document.metadata.error).toBeUndefined();
@@ -388,13 +388,13 @@ describe("Standalone scrapeURL tests", () => {
             properties: {
               company_mission: { type: "string" },
               supports_sso: { type: "boolean" },
-              is_open_source: { type: "boolean" }
+              is_open_source: { type: "boolean" },
             },
             required: ["company_mission", "supports_sso", "is_open_source"],
-            additionalProperties: false
-          }
-        }
-      })
+            additionalProperties: false,
+          },
+        },
+      }),
     );
 
     // expect(out.logs.length).toBeGreaterThan(0);
@@ -423,13 +423,13 @@ describe("Standalone scrapeURL tests", () => {
             properties: {
               company_mission: { type: "string" },
               supports_sso: { type: "boolean" },
-              is_open_source: { type: "boolean" }
+              is_open_source: { type: "boolean" },
             },
             required: ["company_mission", "supports_sso", "is_open_source"],
-            additionalProperties: false
-          }
-        }
-      })
+            additionalProperties: false,
+          },
+        },
+      }),
     );
 
     // expect(out.logs.length).toBeGreaterThan(0);
@@ -460,7 +460,7 @@ describe("Standalone scrapeURL tests", () => {
             message: value.message,
             name: value.name,
             cause: value.cause,
-            stack: value.stack
+            stack: value.stack,
           };
         } else {
           return value;
@@ -486,6 +486,6 @@ describe("Standalone scrapeURL tests", () => {
         expect(out.document.metadata.statusCode).toBe(200);
       }
     },
-    30000
+    30000,
   );
 });

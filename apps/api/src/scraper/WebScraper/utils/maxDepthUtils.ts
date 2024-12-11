@@ -1,6 +1,6 @@
 export function getAdjustedMaxDepth(
   url: string,
-  maxCrawlDepth: number
+  maxCrawlDepth: number,
 ): number {
   const baseURLDepth = getURLDepth(url);
   const adjustedMaxDepth = maxCrawlDepth + baseURLDepth;

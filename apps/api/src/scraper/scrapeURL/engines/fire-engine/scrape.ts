@@ -58,17 +58,17 @@ export type FireEngineScrapeRequestTLSClient = {
 
 const schema = z.object({
   jobId: z.string(),
-  processing: z.boolean()
+  processing: z.boolean(),
 });
 
 export async function fireEngineScrape<
   Engine extends
     | FireEngineScrapeRequestChromeCDP
     | FireEngineScrapeRequestPlaywright
-    | FireEngineScrapeRequestTLSClient
+    | FireEngineScrapeRequestTLSClient,
 >(
   logger: Logger,
-  request: FireEngineScrapeRequestCommon & Engine
+  request: FireEngineScrapeRequestCommon & Engine,
 ): Promise<z.infer<typeof schema>> {
   const fireEngineURL = process.env.FIRE_ENGINE_BETA_URL!;
 
@@ -78,8 +78,8 @@ export async function fireEngineScrape<
     {
       name: "fire-engine: Scrape",
       attributes: {
-        url: request.url
-      }
+        url: request.url,
+      },
     },
     async (span) => {
       return await robustFetch({
@@ -89,16 +89,16 @@ export async function fireEngineScrape<
           ...(Sentry.isInitialized()
             ? {
                 "sentry-trace": Sentry.spanToTraceHeader(span),
-                baggage: Sentry.spanToBaggageHeader(span)
+                baggage: Sentry.spanToBaggageHeader(span),
               }
-            : {})
+            : {}),
         },
         body: request,
         logger: logger.child({ method: "fireEngineScrape/robustFetch" }),
         schema,
-        tryCount: 3
+        tryCount: 3,
       });
-    }
+    },
   );
 
   return scrapeRequest;

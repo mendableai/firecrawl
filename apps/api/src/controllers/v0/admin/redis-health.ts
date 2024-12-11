@@ -38,7 +38,7 @@ export async function redisHealthController(req: Request, res: Response) {
     try {
       await retryOperation(() => redisRateLimitClient.set(testKey, testValue));
       redisRateLimitHealth = await retryOperation(() =>
-        redisRateLimitClient.get(testKey)
+        redisRateLimitClient.get(testKey),
       );
       await retryOperation(() => redisRateLimitClient.del(testKey));
     } catch (error) {
@@ -49,7 +49,7 @@ export async function redisHealthController(req: Request, res: Response) {
     const healthStatus = {
       queueRedis: queueRedisHealth === testValue ? "healthy" : "unhealthy",
       redisRateLimitClient:
-        redisRateLimitHealth === testValue ? "healthy" : "unhealthy"
+        redisRateLimitHealth === testValue ? "healthy" : "unhealthy",
     };
 
     if (
@@ -60,7 +60,7 @@ export async function redisHealthController(req: Request, res: Response) {
       return res.status(200).json({ status: "healthy", details: healthStatus });
     } else {
       logger.info(
-        `Redis instances health check: ${JSON.stringify(healthStatus)}`
+        `Redis instances health check: ${JSON.stringify(healthStatus)}`,
       );
       // await sendSlackWebhook(
       //   `[REDIS DOWN] Redis instances health check: ${JSON.stringify(

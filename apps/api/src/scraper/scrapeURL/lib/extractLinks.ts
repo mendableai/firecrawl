@@ -27,7 +27,7 @@ export function extractLinks(html: string, baseUrl: string): string[] {
       } catch (error) {
         logger.error(
           `Failed to construct URL for href: ${href} with base: ${baseUrl}`,
-          { error }
+          { error },
         );
       }
     }

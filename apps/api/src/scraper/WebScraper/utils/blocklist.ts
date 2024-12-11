@@ -18,7 +18,7 @@ const socialMediaBlocklist = [
   "youtube.com",
   "corterix.com",
   "southwest.com",
-  "ryanair.com"
+  "ryanair.com",
 ];
 
 const allowedKeywords = [
@@ -41,7 +41,7 @@ const allowedKeywords = [
   "://library.tiktok.com",
   "://ads.tiktok.com",
   "://tiktok.com/business",
-  "://developers.facebook.com"
+  "://developers.facebook.com",
 ];
 
 export function isUrlBlocked(url: string): boolean {
@@ -50,7 +50,7 @@ export function isUrlBlocked(url: string): boolean {
   // Check if the URL contains any allowed keywords as whole words
   if (
     allowedKeywords.some((keyword) =>
-      new RegExp(`\\b${keyword}\\b`, "i").test(lowerCaseUrl)
+      new RegExp(`\\b${keyword}\\b`, "i").test(lowerCaseUrl),
     )
   ) {
     return false;
@@ -68,7 +68,7 @@ export function isUrlBlocked(url: string): boolean {
     const isBlocked = socialMediaBlocklist.some((domain) => {
       const domainPattern = new RegExp(
         `(^|\\.)${domain.replace(".", "\\.")}(\\.|$)`,
-        "i"
+        "i",
       );
       return domainPattern.test(hostname);
     });

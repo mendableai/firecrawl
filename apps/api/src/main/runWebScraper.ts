@@ -2,7 +2,7 @@ import { Job } from "bullmq";
 import {
   WebScraperOptions,
   RunWebScraperParams,
-  RunWebScraperResult
+  RunWebScraperResult,
 } from "../types";
 import { billTeam } from "../services/billing/credit_billing";
 import { Document } from "../controllers/v1/types";
@@ -13,14 +13,14 @@ import { configDotenv } from "dotenv";
 import {
   EngineResultsTracker,
   scrapeURL,
-  ScrapeUrlResponse
+  ScrapeUrlResponse,
 } from "../scraper/scrapeURL";
 import { Engine } from "../scraper/scrapeURL/engines";
 configDotenv();
 
 export async function startWebScraperPipeline({
   job,
-  token
+  token,
 }: {
   job: Job<WebScraperOptions> & { id: string };
   token: string;
@@ -32,9 +32,9 @@ export async function startWebScraperPipeline({
       ...job.data.scrapeOptions,
       ...(job.data.crawl_id
         ? {
-            formats: job.data.scrapeOptions.formats.concat(["rawHtml"])
+            formats: job.data.scrapeOptions.formats.concat(["rawHtml"]),
           }
-        : {})
+        : {}),
     },
     internalOptions: job.data.internalOptions,
     // onSuccess: (result, mode) => {
@@ -48,7 +48,7 @@ export async function startWebScraperPipeline({
     team_id: job.data.team_id,
     bull_job_id: job.id.toString(),
     priority: job.opts.priority,
-    is_scrape: job.data.is_scrape ?? false
+    is_scrape: job.data.is_scrape ?? false,
   });
 }
 
@@ -62,14 +62,14 @@ export async function runWebScraper({
   team_id,
   bull_job_id,
   priority,
-  is_scrape = false
+  is_scrape = false,
 }: RunWebScraperParams): Promise<ScrapeUrlResponse> {
   let response: ScrapeUrlResponse | undefined = undefined;
   let engines: EngineResultsTracker = {};
   try {
     response = await scrapeURL(bull_job_id, url, scrapeOptions, {
       priority,
-      ...internalOptions
+      ...internalOptions,
     });
     if (!response.success) {
       if (response.error instanceof Error) {
@@ -81,7 +81,7 @@ export async function runWebScraper({
               ? JSON.stringify(response.error)
               : typeof response.error === "object"
                 ? JSON.stringify({ ...response.error })
-                : response.error)
+                : response.error),
         );
       }
     }
@@ -94,7 +94,7 @@ export async function runWebScraper({
 
       billTeam(team_id, undefined, creditsToBeBilled).catch((error) => {
         logger.error(
-          `Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`
+          `Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`,
         );
         // Optionally, you could notify an admin or add to a retry queue here
       });
@@ -117,14 +117,14 @@ export async function runWebScraper({
       return {
         ...response,
         success: false,
-        error
+        error,
       };
     } else {
       return {
         success: false,
         error,
         logs: ["no logs -- error coming from runWebScraper"],
-        engines
+        engines,
       };
     }
     // onError(error);
@@ -154,8 +154,8 @@ export async function runWebScraper({
               : result.state === "timeout"
                 ? "Timed out"
                 : undefined,
-          time_taken: result.finishedAt - result.startedAt
-        }
+          time_taken: result.finishedAt - result.startedAt,
+        },
       });
     }
   }
@@ -166,7 +166,7 @@ const saveJob = async (
   result: any,
   token: string,
   mode: string,
-  engines?: EngineResultsTracker
+  engines?: EngineResultsTracker,
 ) => {
   try {
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";

@@ -8,7 +8,7 @@ import {
   Engine,
   EngineScrapeResult,
   FeatureFlag,
-  scrapeURLWithEngine
+  scrapeURLWithEngine,
 } from "./engines";
 import { parseMarkdown } from "../../lib/html-to-markdown";
 import {
@@ -17,7 +17,7 @@ import {
   NoEnginesLeftError,
   RemoveFeatureError,
   SiteError,
-  TimeoutError
+  TimeoutError,
 } from "./error";
 import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
@@ -50,7 +50,7 @@ export type Meta = {
 function buildFeatureFlags(
   url: string,
   options: ScrapeOptions,
-  internalOptions: InternalOptions
+  internalOptions: InternalOptions,
 ): Set<FeatureFlag> {
   const flags: Set<FeatureFlag> = new Set();
 
@@ -112,7 +112,7 @@ function buildMetaObject(
   id: string,
   url: string,
   options: ScrapeOptions,
-  internalOptions: InternalOptions
+  internalOptions: InternalOptions,
 ): Meta {
   const specParams =
     urlSpecificParams[new URL(url).hostname.replace(/^www\./, "")];
@@ -120,14 +120,14 @@ function buildMetaObject(
     options = Object.assign(options, specParams.scrapeOptions);
     internalOptions = Object.assign(
       internalOptions,
-      specParams.internalOptions
+      specParams.internalOptions,
     );
   }
 
   const _logger = logger.child({
     module: "ScrapeURL",
     scrapeId: id,
-    scrapeURL: url
+    scrapeURL: url,
   });
   const logs: any[] = [];
 
@@ -138,7 +138,7 @@ function buildMetaObject(
     internalOptions,
     logger: _logger,
     logs,
-    featureFlags: buildFeatureFlags(url, options, internalOptions)
+    featureFlags: buildFeatureFlags(url, options, internalOptions),
   };
 }
 
@@ -229,7 +229,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         factors: { isLongEnough, isGoodStatusCode, hasNoPageError },
         unsupportedFeatures,
         startedAt,
-        finishedAt: Date.now()
+        finishedAt: Date.now(),
       };
 
       // NOTE: TODO: what to do when status code is bad is tough...
@@ -237,35 +237,35 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       // should we just use all the fallbacks and pick the one with the longest text? - mogery
       if (isLongEnough || !isGoodStatusCode) {
         meta.logger.info("Scrape via " + engine + " deemed successful.", {
-          factors: { isLongEnough, isGoodStatusCode, hasNoPageError }
+          factors: { isLongEnough, isGoodStatusCode, hasNoPageError },
         });
         result = {
           engine,
           unsupportedFeatures,
-          result: engineResult as EngineScrapeResult & { markdown: string }
+          result: engineResult as EngineScrapeResult & { markdown: string },
         };
         break;
       }
     } catch (error) {
       if (error instanceof EngineError) {
         meta.logger.info("Engine " + engine + " could not scrape the page.", {
-          error
+          error,
         });
         results[engine] = {
           state: "error",
           error: safeguardCircularError(error),
           unexpected: false,
           startedAt,
-          finishedAt: Date.now()
+          finishedAt: Date.now(),
         };
       } else if (error instanceof TimeoutError) {
         meta.logger.info("Engine " + engine + " timed out while scraping.", {
-          error
+          error,
         });
         results[engine] = {
           state: "timeout",
           startedAt,
-          finishedAt: Date.now()
+          finishedAt: Date.now(),
         };
       } else if (
         error instanceof AddFeatureError ||
@@ -278,7 +278,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
           error: safeguardCircularError(error),
           unexpected: true,
           startedAt,
-          finishedAt: Date.now()
+          finishedAt: Date.now(),
         };
         error.results = results;
         meta.logger.warn("LLM refusal encountered", { error });
@@ -289,14 +289,14 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         Sentry.captureException(error);
         meta.logger.info(
           "An unexpected error happened while scraping with " + engine + ".",
-          { error }
+          { error },
         );
         results[engine] = {
           state: "error",
           error: safeguardCircularError(error),
           unexpected: true,
           startedAt,
-          finishedAt: Date.now()
+          finishedAt: Date.now(),
         };
       }
     }
@@ -305,7 +305,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   if (result === null) {
     throw new NoEnginesLeftError(
       fallbackList.map((x) => x.engine),
-      results
+      results,
     );
   }
 
@@ -318,15 +318,15 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       sourceURL: meta.url,
       url: result.result.url,
       statusCode: result.result.statusCode,
-      error: result.result.error
-    }
+      error: result.result.error,
+    },
   };
 
   if (result.unsupportedFeatures.size > 0) {
     const warning = `The engine used does not support the following features: ${[...result.unsupportedFeatures].join(", ")} -- your scrape may be partial.`;
     meta.logger.warn(warning, {
       engine: result.engine,
-      unsupportedFeatures: result.unsupportedFeatures
+      unsupportedFeatures: result.unsupportedFeatures,
     });
     document.warning =
       document.warning !== undefined
@@ -340,7 +340,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
     success: true,
     document,
     logs: meta.logs,
-    engines: results
+    engines: results,
   };
 }
 
@@ -348,7 +348,7 @@ export async function scrapeURL(
   id: string,
   url: string,
   options: ScrapeOptions,
-  internalOptions: InternalOptions = {}
+  internalOptions: InternalOptions = {},
 ): Promise<ScrapeUrlResponse> {
   const meta = buildMetaObject(id, url, options, internalOptions);
   try {
@@ -363,10 +363,10 @@ export async function scrapeURL(
           meta.logger.debug(
             "More feature flags requested by scraper: adding " +
               error.featureFlags.join(", "),
-            { error, existingFlags: meta.featureFlags }
+            { error, existingFlags: meta.featureFlags },
           );
           meta.featureFlags = new Set(
-            [...meta.featureFlags].concat(error.featureFlags)
+            [...meta.featureFlags].concat(error.featureFlags),
           );
         } else if (
           error instanceof RemoveFeatureError &&
@@ -375,12 +375,12 @@ export async function scrapeURL(
           meta.logger.debug(
             "Incorrect feature flags reported by scraper: removing " +
               error.featureFlags.join(","),
-            { error, existingFlags: meta.featureFlags }
+            { error, existingFlags: meta.featureFlags },
           );
           meta.featureFlags = new Set(
             [...meta.featureFlags].filter(
-              (x) => !error.featureFlags.includes(x)
-            )
+              (x) => !error.featureFlags.includes(x),
+            ),
           );
         } else {
           throw error;
@@ -415,7 +415,7 @@ export async function scrapeURL(
       success: false,
       error,
       logs: meta.logs,
-      engines: results
+      engines: results,
     };
   }
 }

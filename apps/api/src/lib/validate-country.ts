@@ -6,7 +6,7 @@ export const countries = {
     continent: "EU",
     capital: "Andorra la Vella",
     currency: ["EUR"],
-    languages: ["ca"]
+    languages: ["ca"],
   },
   AE: {
     name: "United Arab Emirates",
@@ -15,7 +15,7 @@ export const countries = {
     continent: "AS",
     capital: "Abu Dhabi",
     currency: ["AED"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   AF: {
     name: "Afghanistan",
@@ -24,7 +24,7 @@ export const countries = {
     continent: "AS",
     capital: "Kabul",
     currency: ["AFN"],
-    languages: ["ps", "uz", "tk"]
+    languages: ["ps", "uz", "tk"],
   },
   AG: {
     name: "Antigua and Barbuda",
@@ -33,7 +33,7 @@ export const countries = {
     continent: "NA",
     capital: "Saint John's",
     currency: ["XCD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   AI: {
     name: "Anguilla",
@@ -42,7 +42,7 @@ export const countries = {
     continent: "NA",
     capital: "The Valley",
     currency: ["XCD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   AL: {
     name: "Albania",
@@ -51,7 +51,7 @@ export const countries = {
     continent: "EU",
     capital: "Tirana",
     currency: ["ALL"],
-    languages: ["sq"]
+    languages: ["sq"],
   },
   AM: {
     name: "Armenia",
@@ -60,7 +60,7 @@ export const countries = {
     continent: "AS",
     capital: "Yerevan",
     currency: ["AMD"],
-    languages: ["hy", "ru"]
+    languages: ["hy", "ru"],
   },
   AO: {
     name: "Angola",
@@ -69,7 +69,7 @@ export const countries = {
     continent: "AF",
     capital: "Luanda",
     currency: ["AOA"],
-    languages: ["pt"]
+    languages: ["pt"],
   },
   AQ: {
     name: "Antarctica",
@@ -78,7 +78,7 @@ export const countries = {
     continent: "AN",
     capital: "",
     currency: [],
-    languages: []
+    languages: [],
   },
   AR: {
     name: "Argentina",
@@ -87,7 +87,7 @@ export const countries = {
     continent: "SA",
     capital: "Buenos Aires",
     currency: ["ARS"],
-    languages: ["es", "gn"]
+    languages: ["es", "gn"],
   },
   AS: {
     name: "American Samoa",
@@ -96,7 +96,7 @@ export const countries = {
     continent: "OC",
     capital: "Pago Pago",
     currency: ["USD"],
-    languages: ["en", "sm"]
+    languages: ["en", "sm"],
   },
   AT: {
     name: "Austria",
@@ -105,7 +105,7 @@ export const countries = {
     continent: "EU",
     capital: "Vienna",
     currency: ["EUR"],
-    languages: ["de"]
+    languages: ["de"],
   },
   AU: {
     name: "Australia",
@@ -114,7 +114,7 @@ export const countries = {
     continent: "OC",
     capital: "Canberra",
     currency: ["AUD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   AW: {
     name: "Aruba",
@@ -123,7 +123,7 @@ export const countries = {
     continent: "NA",
     capital: "Oranjestad",
     currency: ["AWG"],
-    languages: ["nl", "pa"]
+    languages: ["nl", "pa"],
   },
   AX: {
     name: "Aland",
@@ -133,7 +133,7 @@ export const countries = {
     capital: "Mariehamn",
     currency: ["EUR"],
     languages: ["sv"],
-    partOf: "FI"
+    partOf: "FI",
   },
   AZ: {
     name: "Azerbaijan",
@@ -143,7 +143,7 @@ export const countries = {
     continents: ["AS", "EU"],
     capital: "Baku",
     currency: ["AZN"],
-    languages: ["az"]
+    languages: ["az"],
   },
   BA: {
     name: "Bosnia and Herzegovina",
@@ -152,7 +152,7 @@ export const countries = {
     continent: "EU",
     capital: "Sarajevo",
     currency: ["BAM"],
-    languages: ["bs", "hr", "sr"]
+    languages: ["bs", "hr", "sr"],
   },
   BB: {
     name: "Barbados",
@@ -161,7 +161,7 @@ export const countries = {
     continent: "NA",
     capital: "Bridgetown",
     currency: ["BBD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   BD: {
     name: "Bangladesh",
@@ -170,7 +170,7 @@ export const countries = {
     continent: "AS",
     capital: "Dhaka",
     currency: ["BDT"],
-    languages: ["bn"]
+    languages: ["bn"],
   },
   BE: {
     name: "Belgium",
@@ -179,7 +179,7 @@ export const countries = {
     continent: "EU",
     capital: "Brussels",
     currency: ["EUR"],
-    languages: ["nl", "fr", "de"]
+    languages: ["nl", "fr", "de"],
   },
   BF: {
     name: "Burkina Faso",
@@ -188,7 +188,7 @@ export const countries = {
     continent: "AF",
     capital: "Ouagadougou",
     currency: ["XOF"],
-    languages: ["fr", "ff"]
+    languages: ["fr", "ff"],
   },
   BG: {
     name: "Bulgaria",
@@ -197,7 +197,7 @@ export const countries = {
     continent: "EU",
     capital: "Sofia",
     currency: ["BGN"],
-    languages: ["bg"]
+    languages: ["bg"],
   },
   BH: {
     name: "Bahrain",
@@ -206,7 +206,7 @@ export const countries = {
     continent: "AS",
     capital: "Manama",
     currency: ["BHD"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   BI: {
     name: "Burundi",
@@ -215,7 +215,7 @@ export const countries = {
     continent: "AF",
     capital: "Bujumbura",
     currency: ["BIF"],
-    languages: ["fr", "rn"]
+    languages: ["fr", "rn"],
   },
   BJ: {
     name: "Benin",
@@ -224,7 +224,7 @@ export const countries = {
     continent: "AF",
     capital: "Porto-Novo",
     currency: ["XOF"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   BL: {
     name: "Saint Barthelemy",
@@ -233,7 +233,7 @@ export const countries = {
     continent: "NA",
     capital: "Gustavia",
     currency: ["EUR"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   BM: {
     name: "Bermuda",
@@ -242,7 +242,7 @@ export const countries = {
     continent: "NA",
     capital: "Hamilton",
     currency: ["BMD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   BN: {
     name: "Brunei",
@@ -251,7 +251,7 @@ export const countries = {
     continent: "AS",
     capital: "Bandar Seri Begawan",
     currency: ["BND"],
-    languages: ["ms"]
+    languages: ["ms"],
   },
   BO: {
     name: "Bolivia",
@@ -260,7 +260,7 @@ export const countries = {
     continent: "SA",
     capital: "Sucre",
     currency: ["BOB", "BOV"],
-    languages: ["es", "ay", "qu"]
+    languages: ["es", "ay", "qu"],
   },
   BQ: {
     name: "Bonaire",
@@ -269,7 +269,7 @@ export const countries = {
     continent: "NA",
     capital: "Kralendijk",
     currency: ["USD"],
-    languages: ["nl"]
+    languages: ["nl"],
   },
   BR: {
     name: "Brazil",
@@ -278,7 +278,7 @@ export const countries = {
     continent: "SA",
     capital: "Brasília",
     currency: ["BRL"],
-    languages: ["pt"]
+    languages: ["pt"],
   },
   BS: {
     name: "Bahamas",
@@ -287,7 +287,7 @@ export const countries = {
     continent: "NA",
     capital: "Nassau",
     currency: ["BSD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   BT: {
     name: "Bhutan",
@@ -296,7 +296,7 @@ export const countries = {
     continent: "AS",
     capital: "Thimphu",
     currency: ["BTN", "INR"],
-    languages: ["dz"]
+    languages: ["dz"],
   },
   BV: {
     name: "Bouvet Island",
@@ -305,7 +305,7 @@ export const countries = {
     continent: "AN",
     capital: "",
     currency: ["NOK"],
-    languages: ["no", "nb", "nn"]
+    languages: ["no", "nb", "nn"],
   },
   BW: {
     name: "Botswana",
@@ -314,7 +314,7 @@ export const countries = {
     continent: "AF",
     capital: "Gaborone",
     currency: ["BWP"],
-    languages: ["en", "tn"]
+    languages: ["en", "tn"],
   },
   BY: {
     name: "Belarus",
@@ -323,7 +323,7 @@ export const countries = {
     continent: "EU",
     capital: "Minsk",
     currency: ["BYN"],
-    languages: ["be", "ru"]
+    languages: ["be", "ru"],
   },
   BZ: {
     name: "Belize",
@@ -332,7 +332,7 @@ export const countries = {
     continent: "NA",
     capital: "Belmopan",
     currency: ["BZD"],
-    languages: ["en", "es"]
+    languages: ["en", "es"],
   },
   CA: {
     name: "Canada",
@@ -341,7 +341,7 @@ export const countries = {
     continent: "NA",
     capital: "Ottawa",
     currency: ["CAD"],
-    languages: ["en", "fr"]
+    languages: ["en", "fr"],
   },
   CC: {
     name: "Cocos (Keeling) Islands",
@@ -350,7 +350,7 @@ export const countries = {
     continent: "AS",
     capital: "West Island",
     currency: ["AUD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   CD: {
     name: "Democratic Republic of the Congo",
@@ -359,7 +359,7 @@ export const countries = {
     continent: "AF",
     capital: "Kinshasa",
     currency: ["CDF"],
-    languages: ["fr", "ln", "kg", "sw", "lu"]
+    languages: ["fr", "ln", "kg", "sw", "lu"],
   },
   CF: {
     name: "Central African Republic",
@@ -368,7 +368,7 @@ export const countries = {
     continent: "AF",
     capital: "Bangui",
     currency: ["XAF"],
-    languages: ["fr", "sg"]
+    languages: ["fr", "sg"],
   },
   CG: {
     name: "Republic of the Congo",
@@ -377,7 +377,7 @@ export const countries = {
     continent: "AF",
     capital: "Brazzaville",
     currency: ["XAF"],
-    languages: ["fr", "ln"]
+    languages: ["fr", "ln"],
   },
   CH: {
     name: "Switzerland",
@@ -386,7 +386,7 @@ export const countries = {
     continent: "EU",
     capital: "Bern",
     currency: ["CHE", "CHF", "CHW"],
-    languages: ["de", "fr", "it"]
+    languages: ["de", "fr", "it"],
   },
   CI: {
     name: "Ivory Coast",
@@ -395,7 +395,7 @@ export const countries = {
     continent: "AF",
     capital: "Yamoussoukro",
     currency: ["XOF"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   CK: {
     name: "Cook Islands",
@@ -404,7 +404,7 @@ export const countries = {
     continent: "OC",
     capital: "Avarua",
     currency: ["NZD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   CL: {
     name: "Chile",
@@ -413,7 +413,7 @@ export const countries = {
     continent: "SA",
     capital: "Santiago",
     currency: ["CLF", "CLP"],
-    languages: ["es"]
+    languages: ["es"],
   },
   CM: {
     name: "Cameroon",
@@ -422,7 +422,7 @@ export const countries = {
     continent: "AF",
     capital: "Yaoundé",
     currency: ["XAF"],
-    languages: ["en", "fr"]
+    languages: ["en", "fr"],
   },
   CN: {
     name: "China",
@@ -431,7 +431,7 @@ export const countries = {
     continent: "AS",
     capital: "Beijing",
     currency: ["CNY"],
-    languages: ["zh"]
+    languages: ["zh"],
   },
   CO: {
     name: "Colombia",
@@ -440,7 +440,7 @@ export const countries = {
     continent: "SA",
     capital: "Bogotá",
     currency: ["COP"],
-    languages: ["es"]
+    languages: ["es"],
   },
   CR: {
     name: "Costa Rica",
@@ -449,7 +449,7 @@ export const countries = {
     continent: "NA",
     capital: "San José",
     currency: ["CRC"],
-    languages: ["es"]
+    languages: ["es"],
   },
   CU: {
     name: "Cuba",
@@ -458,7 +458,7 @@ export const countries = {
     continent: "NA",
     capital: "Havana",
     currency: ["CUC", "CUP"],
-    languages: ["es"]
+    languages: ["es"],
   },
   CV: {
     name: "Cape Verde",
@@ -467,7 +467,7 @@ export const countries = {
     continent: "AF",
     capital: "Praia",
     currency: ["CVE"],
-    languages: ["pt"]
+    languages: ["pt"],
   },
   CW: {
     name: "Curacao",
@@ -476,7 +476,7 @@ export const countries = {
     continent: "NA",
     capital: "Willemstad",
     currency: ["ANG"],
-    languages: ["nl", "pa", "en"]
+    languages: ["nl", "pa", "en"],
   },
   CX: {
     name: "Christmas Island",
@@ -485,7 +485,7 @@ export const countries = {
     continent: "AS",
     capital: "Flying Fish Cove",
     currency: ["AUD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   CY: {
     name: "Cyprus",
@@ -494,7 +494,7 @@ export const countries = {
     continent: "EU",
     capital: "Nicosia",
     currency: ["EUR"],
-    languages: ["el", "tr", "hy"]
+    languages: ["el", "tr", "hy"],
   },
   CZ: {
     name: "Czech Republic",
@@ -503,7 +503,7 @@ export const countries = {
     continent: "EU",
     capital: "Prague",
     currency: ["CZK"],
-    languages: ["cs"]
+    languages: ["cs"],
   },
   DE: {
     name: "Germany",
@@ -512,7 +512,7 @@ export const countries = {
     continent: "EU",
     capital: "Berlin",
     currency: ["EUR"],
-    languages: ["de"]
+    languages: ["de"],
   },
   DJ: {
     name: "Djibouti",
@@ -521,7 +521,7 @@ export const countries = {
     continent: "AF",
     capital: "Djibouti",
     currency: ["DJF"],
-    languages: ["fr", "ar"]
+    languages: ["fr", "ar"],
   },
   DK: {
     name: "Denmark",
@@ -531,7 +531,7 @@ export const countries = {
     continents: ["EU", "NA"],
     capital: "Copenhagen",
     currency: ["DKK"],
-    languages: ["da"]
+    languages: ["da"],
   },
   DM: {
     name: "Dominica",
@@ -540,7 +540,7 @@ export const countries = {
     continent: "NA",
     capital: "Roseau",
     currency: ["XCD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   DO: {
     name: "Dominican Republic",
@@ -549,7 +549,7 @@ export const countries = {
     continent: "NA",
     capital: "Santo Domingo",
     currency: ["DOP"],
-    languages: ["es"]
+    languages: ["es"],
   },
   DZ: {
     name: "Algeria",
@@ -558,7 +558,7 @@ export const countries = {
     continent: "AF",
     capital: "Algiers",
     currency: ["DZD"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   EC: {
     name: "Ecuador",
@@ -567,7 +567,7 @@ export const countries = {
     continent: "SA",
     capital: "Quito",
     currency: ["USD"],
-    languages: ["es"]
+    languages: ["es"],
   },
   EE: {
     name: "Estonia",
@@ -576,7 +576,7 @@ export const countries = {
     continent: "EU",
     capital: "Tallinn",
     currency: ["EUR"],
-    languages: ["et"]
+    languages: ["et"],
   },
   EG: {
     name: "Egypt",
@@ -586,7 +586,7 @@ export const countries = {
     continents: ["AF", "AS"],
     capital: "Cairo",
     currency: ["EGP"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   EH: {
     name: "Western Sahara",
@@ -595,7 +595,7 @@ export const countries = {
     continent: "AF",
     capital: "El Aaiún",
     currency: ["MAD", "DZD", "MRU"],
-    languages: ["es"]
+    languages: ["es"],
   },
   ER: {
     name: "Eritrea",
@@ -604,7 +604,7 @@ export const countries = {
     continent: "AF",
     capital: "Asmara",
     currency: ["ERN"],
-    languages: ["ti", "ar", "en"]
+    languages: ["ti", "ar", "en"],
   },
   ES: {
     name: "Spain",
@@ -613,7 +613,7 @@ export const countries = {
     continent: "EU",
     capital: "Madrid",
     currency: ["EUR"],
-    languages: ["es", "eu", "ca", "gl", "oc"]
+    languages: ["es", "eu", "ca", "gl", "oc"],
   },
   ET: {
     name: "Ethiopia",
@@ -622,7 +622,7 @@ export const countries = {
     continent: "AF",
     capital: "Addis Ababa",
     currency: ["ETB"],
-    languages: ["am"]
+    languages: ["am"],
   },
   FI: {
     name: "Finland",
@@ -631,7 +631,7 @@ export const countries = {
     continent: "EU",
     capital: "Helsinki",
     currency: ["EUR"],
-    languages: ["fi", "sv"]
+    languages: ["fi", "sv"],
   },
   FJ: {
     name: "Fiji",
@@ -640,7 +640,7 @@ export const countries = {
     continent: "OC",
     capital: "Suva",
     currency: ["FJD"],
-    languages: ["en", "fj", "hi", "ur"]
+    languages: ["en", "fj", "hi", "ur"],
   },
   FK: {
     name: "Falkland Islands",
@@ -649,7 +649,7 @@ export const countries = {
     continent: "SA",
     capital: "Stanley",
     currency: ["FKP"],
-    languages: ["en"]
+    languages: ["en"],
   },
   FM: {
     name: "Micronesia",
@@ -658,7 +658,7 @@ export const countries = {
     continent: "OC",
     capital: "Palikir",
     currency: ["USD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   FO: {
     name: "Faroe Islands",
@@ -667,7 +667,7 @@ export const countries = {
     continent: "EU",
     capital: "Tórshavn",
     currency: ["DKK"],
-    languages: ["fo"]
+    languages: ["fo"],
   },
   FR: {
     name: "France",
@@ -676,7 +676,7 @@ export const countries = {
     continent: "EU",
     capital: "Paris",
     currency: ["EUR"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   GA: {
     name: "Gabon",
@@ -685,7 +685,7 @@ export const countries = {
     continent: "AF",
     capital: "Libreville",
     currency: ["XAF"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   GB: {
     name: "United Kingdom",
@@ -694,7 +694,7 @@ export const countries = {
     continent: "EU",
     capital: "London",
     currency: ["GBP"],
-    languages: ["en"]
+    languages: ["en"],
   },
   GD: {
     name: "Grenada",
@@ -703,7 +703,7 @@ export const countries = {
     continent: "NA",
     capital: "St. George's",
     currency: ["XCD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   GE: {
     name: "Georgia",
@@ -713,7 +713,7 @@ export const countries = {
     continents: ["AS", "EU"],
     capital: "Tbilisi",
     currency: ["GEL"],
-    languages: ["ka"]
+    languages: ["ka"],
   },
   GF: {
     name: "French Guiana",
@@ -722,7 +722,7 @@ export const countries = {
     continent: "SA",
     capital: "Cayenne",
     currency: ["EUR"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   GG: {
     name: "Guernsey",
@@ -731,7 +731,7 @@ export const countries = {
     continent: "EU",
     capital: "St. Peter Port",
     currency: ["GBP"],
-    languages: ["en", "fr"]
+    languages: ["en", "fr"],
   },
   GH: {
     name: "Ghana",
@@ -740,7 +740,7 @@ export const countries = {
     continent: "AF",
     capital: "Accra",
     currency: ["GHS"],
-    languages: ["en"]
+    languages: ["en"],
   },
   GI: {
     name: "Gibraltar",
@@ -749,7 +749,7 @@ export const countries = {
     continent: "EU",
     capital: "Gibraltar",
     currency: ["GIP"],
-    languages: ["en"]
+    languages: ["en"],
   },
   GL: {
     name: "Greenland",
@@ -758,7 +758,7 @@ export const countries = {
     continent: "NA",
     capital: "Nuuk",
     currency: ["DKK"],
-    languages: ["kl"]
+    languages: ["kl"],
   },
   GM: {
     name: "Gambia",
@@ -767,7 +767,7 @@ export const countries = {
     continent: "AF",
     capital: "Banjul",
     currency: ["GMD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   GN: {
     name: "Guinea",
@@ -776,7 +776,7 @@ export const countries = {
     continent: "AF",
     capital: "Conakry",
     currency: ["GNF"],
-    languages: ["fr", "ff"]
+    languages: ["fr", "ff"],
   },
   GP: {
     name: "Guadeloupe",
@@ -785,7 +785,7 @@ export const countries = {
     continent: "NA",
     capital: "Basse-Terre",
     currency: ["EUR"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   GQ: {
     name: "Equatorial Guinea",
@@ -794,7 +794,7 @@ export const countries = {
     continent: "AF",
     capital: "Malabo",
     currency: ["XAF"],
-    languages: ["es", "fr"]
+    languages: ["es", "fr"],
   },
   GR: {
     name: "Greece",
@@ -803,7 +803,7 @@ export const countries = {
     continent: "EU",
     capital: "Athens",
     currency: ["EUR"],
-    languages: ["el"]
+    languages: ["el"],
   },
   GS: {
     name: "South Georgia and the South Sandwich Islands",
@@ -812,7 +812,7 @@ export const countries = {
     continent: "AN",
     capital: "King Edward Point",
     currency: ["GBP"],
-    languages: ["en"]
+    languages: ["en"],
   },
   GT: {
     name: "Guatemala",
@@ -821,7 +821,7 @@ export const countries = {
     continent: "NA",
     capital: "Guatemala City",
     currency: ["GTQ"],
-    languages: ["es"]
+    languages: ["es"],
   },
   GU: {
     name: "Guam",
@@ -830,7 +830,7 @@ export const countries = {
     continent: "OC",
     capital: "Hagåtña",
     currency: ["USD"],
-    languages: ["en", "ch", "es"]
+    languages: ["en", "ch", "es"],
   },
   GW: {
     name: "Guinea-Bissau",
@@ -839,7 +839,7 @@ export const countries = {
     continent: "AF",
     capital: "Bissau",
     currency: ["XOF"],
-    languages: ["pt"]
+    languages: ["pt"],
   },
   GY: {
     name: "Guyana",
@@ -848,7 +848,7 @@ export const countries = {
     continent: "SA",
     capital: "Georgetown",
     currency: ["GYD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   HK: {
     name: "Hong Kong",
@@ -857,7 +857,7 @@ export const countries = {
     continent: "AS",
     capital: "City of Victoria",
     currency: ["HKD"],
-    languages: ["zh", "en"]
+    languages: ["zh", "en"],
   },
   HM: {
     name: "Heard Island and McDonald Islands",
@@ -866,7 +866,7 @@ export const countries = {
     continent: "AN",
     capital: "",
     currency: ["AUD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   HN: {
     name: "Honduras",
@@ -875,7 +875,7 @@ export const countries = {
     continent: "NA",
     capital: "Tegucigalpa",
     currency: ["HNL"],
-    languages: ["es"]
+    languages: ["es"],
   },
   HR: {
     name: "Croatia",
@@ -884,7 +884,7 @@ export const countries = {
     continent: "EU",
     capital: "Zagreb",
     currency: ["EUR"],
-    languages: ["hr"]
+    languages: ["hr"],
   },
   HT: {
     name: "Haiti",
@@ -893,7 +893,7 @@ export const countries = {
     continent: "NA",
     capital: "Port-au-Prince",
     currency: ["HTG", "USD"],
-    languages: ["fr", "ht"]
+    languages: ["fr", "ht"],
   },
   HU: {
     name: "Hungary",
@@ -902,7 +902,7 @@ export const countries = {
     continent: "EU",
     capital: "Budapest",
     currency: ["HUF"],
-    languages: ["hu"]
+    languages: ["hu"],
   },
   ID: {
     name: "Indonesia",
@@ -911,7 +911,7 @@ export const countries = {
     continent: "AS",
     capital: "Jakarta",
     currency: ["IDR"],
-    languages: ["id"]
+    languages: ["id"],
   },
   IE: {
     name: "Ireland",
@@ -920,7 +920,7 @@ export const countries = {
     continent: "EU",
     capital: "Dublin",
     currency: ["EUR"],
-    languages: ["ga", "en"]
+    languages: ["ga", "en"],
   },
   IL: {
     name: "Israel",
@@ -929,7 +929,7 @@ export const countries = {
     continent: "AS",
     capital: "Jerusalem",
     currency: ["ILS"],
-    languages: ["he", "ar"]
+    languages: ["he", "ar"],
   },
   IM: {
     name: "Isle of Man",
@@ -938,7 +938,7 @@ export const countries = {
     continent: "EU",
     capital: "Douglas",
     currency: ["GBP"],
-    languages: ["en", "gv"]
+    languages: ["en", "gv"],
   },
   IN: {
     name: "India",
@@ -947,7 +947,7 @@ export const countries = {
     continent: "AS",
     capital: "New Delhi",
     currency: ["INR"],
-    languages: ["hi", "en"]
+    languages: ["hi", "en"],
   },
   IO: {
     name: "British Indian Ocean Territory",
@@ -956,7 +956,7 @@ export const countries = {
     continent: "AS",
     capital: "Diego Garcia",
     currency: ["USD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   IQ: {
     name: "Iraq",
@@ -965,7 +965,7 @@ export const countries = {
     continent: "AS",
     capital: "Baghdad",
     currency: ["IQD"],
-    languages: ["ar", "ku"]
+    languages: ["ar", "ku"],
   },
   IR: {
     name: "Iran",
@@ -974,7 +974,7 @@ export const countries = {
     continent: "AS",
     capital: "Tehran",
     currency: ["IRR"],
-    languages: ["fa"]
+    languages: ["fa"],
   },
   IS: {
     name: "Iceland",
@@ -983,7 +983,7 @@ export const countries = {
     continent: "EU",
     capital: "Reykjavik",
     currency: ["ISK"],
-    languages: ["is"]
+    languages: ["is"],
   },
   IT: {
     name: "Italy",
@@ -992,7 +992,7 @@ export const countries = {
     continent: "EU",
     capital: "Rome",
     currency: ["EUR"],
-    languages: ["it"]
+    languages: ["it"],
   },
   JE: {
     name: "Jersey",
@@ -1001,7 +1001,7 @@ export const countries = {
     continent: "EU",
     capital: "Saint Helier",
     currency: ["GBP"],
-    languages: ["en", "fr"]
+    languages: ["en", "fr"],
   },
   JM: {
     name: "Jamaica",
@@ -1010,7 +1010,7 @@ export const countries = {
     continent: "NA",
     capital: "Kingston",
     currency: ["JMD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   JO: {
     name: "Jordan",
@@ -1019,7 +1019,7 @@ export const countries = {
     continent: "AS",
     capital: "Amman",
     currency: ["JOD"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   JP: {
     name: "Japan",
@@ -1028,7 +1028,7 @@ export const countries = {
     continent: "AS",
     capital: "Tokyo",
     currency: ["JPY"],
-    languages: ["ja"]
+    languages: ["ja"],
   },
   KE: {
     name: "Kenya",
@@ -1037,7 +1037,7 @@ export const countries = {
     continent: "AF",
     capital: "Nairobi",
     currency: ["KES"],
-    languages: ["en", "sw"]
+    languages: ["en", "sw"],
   },
   KG: {
     name: "Kyrgyzstan",
@@ -1046,7 +1046,7 @@ export const countries = {
     continent: "AS",
     capital: "Bishkek",
     currency: ["KGS"],
-    languages: ["ky", "ru"]
+    languages: ["ky", "ru"],
   },
   KH: {
     name: "Cambodia",
@@ -1055,7 +1055,7 @@ export const countries = {
     continent: "AS",
     capital: "Phnom Penh",
     currency: ["KHR"],
-    languages: ["km"]
+    languages: ["km"],
   },
   KI: {
     name: "Kiribati",
@@ -1064,7 +1064,7 @@ export const countries = {
     continent: "OC",
     capital: "South Tarawa",
     currency: ["AUD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   KM: {
     name: "Comoros",
@@ -1073,7 +1073,7 @@ export const countries = {
     continent: "AF",
     capital: "Moroni",
     currency: ["KMF"],
-    languages: ["ar", "fr"]
+    languages: ["ar", "fr"],
   },
   KN: {
     name: "Saint Kitts and Nevis",
@@ -1082,7 +1082,7 @@ export const countries = {
     continent: "NA",
     capital: "Basseterre",
     currency: ["XCD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   KP: {
     name: "North Korea",
@@ -1091,7 +1091,7 @@ export const countries = {
     continent: "AS",
     capital: "Pyongyang",
     currency: ["KPW"],
-    languages: ["ko"]
+    languages: ["ko"],
   },
   KR: {
     name: "South Korea",
@@ -1100,7 +1100,7 @@ export const countries = {
     continent: "AS",
     capital: "Seoul",
     currency: ["KRW"],
-    languages: ["ko"]
+    languages: ["ko"],
   },
   KW: {
     name: "Kuwait",
@@ -1109,7 +1109,7 @@ export const countries = {
     continent: "AS",
     capital: "Kuwait City",
     currency: ["KWD"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   KY: {
     name: "Cayman Islands",
@@ -1118,7 +1118,7 @@ export const countries = {
     continent: "NA",
     capital: "George Town",
     currency: ["KYD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   KZ: {
     name: "Kazakhstan",
@@ -1128,7 +1128,7 @@ export const countries = {
     continents: ["AS", "EU"],
     capital: "Astana",
     currency: ["KZT"],
-    languages: ["kk", "ru"]
+    languages: ["kk", "ru"],
   },
   LA: {
     name: "Laos",
@@ -1137,7 +1137,7 @@ export const countries = {
     continent: "AS",
     capital: "Vientiane",
     currency: ["LAK"],
-    languages: ["lo"]
+    languages: ["lo"],
   },
   LB: {
     name: "Lebanon",
@@ -1146,7 +1146,7 @@ export const countries = {
     continent: "AS",
     capital: "Beirut",
     currency: ["LBP"],
-    languages: ["ar", "fr"]
+    languages: ["ar", "fr"],
   },
   LC: {
     name: "Saint Lucia",
@@ -1155,7 +1155,7 @@ export const countries = {
     continent: "NA",
     capital: "Castries",
     currency: ["XCD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   LI: {
     name: "Liechtenstein",
@@ -1164,7 +1164,7 @@ export const countries = {
     continent: "EU",
     capital: "Vaduz",
     currency: ["CHF"],
-    languages: ["de"]
+    languages: ["de"],
   },
   LK: {
     name: "Sri Lanka",
@@ -1173,7 +1173,7 @@ export const countries = {
     continent: "AS",
     capital: "Colombo",
     currency: ["LKR"],
-    languages: ["si", "ta"]
+    languages: ["si", "ta"],
   },
   LR: {
     name: "Liberia",
@@ -1182,7 +1182,7 @@ export const countries = {
     continent: "AF",
     capital: "Monrovia",
     currency: ["LRD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   LS: {
     name: "Lesotho",
@@ -1191,7 +1191,7 @@ export const countries = {
     continent: "AF",
     capital: "Maseru",
     currency: ["LSL", "ZAR"],
-    languages: ["en", "st"]
+    languages: ["en", "st"],
   },
   LT: {
     name: "Lithuania",
@@ -1200,7 +1200,7 @@ export const countries = {
     continent: "EU",
     capital: "Vilnius",
     currency: ["EUR"],
-    languages: ["lt"]
+    languages: ["lt"],
   },
   LU: {
     name: "Luxembourg",
@@ -1209,7 +1209,7 @@ export const countries = {
     continent: "EU",
     capital: "Luxembourg",
     currency: ["EUR"],
-    languages: ["fr", "de", "lb"]
+    languages: ["fr", "de", "lb"],
   },
   LV: {
     name: "Latvia",
@@ -1218,7 +1218,7 @@ export const countries = {
     continent: "EU",
     capital: "Riga",
     currency: ["EUR"],
-    languages: ["lv"]
+    languages: ["lv"],
   },
   LY: {
     name: "Libya",
@@ -1227,7 +1227,7 @@ export const countries = {
     continent: "AF",
     capital: "Tripoli",
     currency: ["LYD"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   MA: {
     name: "Morocco",
@@ -1236,7 +1236,7 @@ export const countries = {
     continent: "AF",
     capital: "Rabat",
     currency: ["MAD"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   MC: {
     name: "Monaco",
@@ -1245,7 +1245,7 @@ export const countries = {
     continent: "EU",
     capital: "Monaco",
     currency: ["EUR"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   MD: {
     name: "Moldova",
@@ -1254,7 +1254,7 @@ export const countries = {
     continent: "EU",
     capital: "Chișinău",
     currency: ["MDL"],
-    languages: ["ro"]
+    languages: ["ro"],
   },
   ME: {
     name: "Montenegro",
@@ -1263,7 +1263,7 @@ export const countries = {
     continent: "EU",
     capital: "Podgorica",
     currency: ["EUR"],
-    languages: ["sr", "bs", "sq", "hr"]
+    languages: ["sr", "bs", "sq", "hr"],
   },
   MF: {
     name: "Saint Martin",
@@ -1272,7 +1272,7 @@ export const countries = {
     continent: "NA",
     capital: "Marigot",
     currency: ["EUR"],
-    languages: ["en", "fr", "nl"]
+    languages: ["en", "fr", "nl"],
   },
   MG: {
     name: "Madagascar",
@@ -1281,7 +1281,7 @@ export const countries = {
     continent: "AF",
     capital: "Antananarivo",
     currency: ["MGA"],
-    languages: ["fr", "mg"]
+    languages: ["fr", "mg"],
   },
   MH: {
     name: "Marshall Islands",
@@ -1290,7 +1290,7 @@ export const countries = {
     continent: "OC",
     capital: "Majuro",
     currency: ["USD"],
-    languages: ["en", "mh"]
+    languages: ["en", "mh"],
   },
   MK: {
     name: "North Macedonia",
@@ -1299,7 +1299,7 @@ export const countries = {
     continent: "EU",
     capital: "Skopje",
     currency: ["MKD"],
-    languages: ["mk"]
+    languages: ["mk"],
   },
   ML: {
     name: "Mali",
@@ -1308,7 +1308,7 @@ export const countries = {
     continent: "AF",
     capital: "Bamako",
     currency: ["XOF"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   MM: {
     name: "Myanmar (Burma)",
@@ -1317,7 +1317,7 @@ export const countries = {
     continent: "AS",
     capital: "Naypyidaw",
     currency: ["MMK"],
-    languages: ["my"]
+    languages: ["my"],
   },
   MN: {
     name: "Mongolia",
@@ -1326,7 +1326,7 @@ export const countries = {
     continent: "AS",
     capital: "Ulan Bator",
     currency: ["MNT"],
-    languages: ["mn"]
+    languages: ["mn"],
   },
   MO: {
     name: "Macao",
@@ -1335,7 +1335,7 @@ export const countries = {
     continent: "AS",
     capital: "",
     currency: ["MOP"],
-    languages: ["zh", "pt"]
+    languages: ["zh", "pt"],
   },
   MP: {
     name: "Northern Mariana Islands",
@@ -1344,7 +1344,7 @@ export const countries = {
     continent: "OC",
     capital: "Saipan",
     currency: ["USD"],
-    languages: ["en", "ch"]
+    languages: ["en", "ch"],
   },
   MQ: {
     name: "Martinique",
@@ -1353,7 +1353,7 @@ export const countries = {
     continent: "NA",
     capital: "Fort-de-France",
     currency: ["EUR"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   MR: {
     name: "Mauritania",
@@ -1362,7 +1362,7 @@ export const countries = {
     continent: "AF",
     capital: "Nouakchott",
     currency: ["MRU"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   MS: {
     name: "Montserrat",
@@ -1371,7 +1371,7 @@ export const countries = {
     continent: "NA",
     capital: "Plymouth",
     currency: ["XCD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   MT: {
     name: "Malta",
@@ -1380,7 +1380,7 @@ export const countries = {
     continent: "EU",
     capital: "Valletta",
     currency: ["EUR"],
-    languages: ["mt", "en"]
+    languages: ["mt", "en"],
   },
   MU: {
     name: "Mauritius",
@@ -1389,7 +1389,7 @@ export const countries = {
     continent: "AF",
     capital: "Port Louis",
     currency: ["MUR"],
-    languages: ["en"]
+    languages: ["en"],
   },
   MV: {
     name: "Maldives",
@@ -1398,7 +1398,7 @@ export const countries = {
     continent: "AS",
     capital: "Malé",
     currency: ["MVR"],
-    languages: ["dv"]
+    languages: ["dv"],
   },
   MW: {
     name: "Malawi",
@@ -1407,7 +1407,7 @@ export const countries = {
     continent: "AF",
     capital: "Lilongwe",
     currency: ["MWK"],
-    languages: ["en", "ny"]
+    languages: ["en", "ny"],
   },
   MX: {
     name: "Mexico",
@@ -1416,7 +1416,7 @@ export const countries = {
     continent: "NA",
     capital: "Mexico City",
     currency: ["MXN"],
-    languages: ["es"]
+    languages: ["es"],
   },
   MY: {
     name: "Malaysia",
@@ -1425,7 +1425,7 @@ export const countries = {
     continent: "AS",
     capital: "Kuala Lumpur",
     currency: ["MYR"],
-    languages: ["ms"]
+    languages: ["ms"],
   },
   MZ: {
     name: "Mozambique",
@@ -1434,7 +1434,7 @@ export const countries = {
     continent: "AF",
     capital: "Maputo",
     currency: ["MZN"],
-    languages: ["pt"]
+    languages: ["pt"],
   },
   NA: {
     name: "Namibia",
@@ -1443,7 +1443,7 @@ export const countries = {
     continent: "AF",
     capital: "Windhoek",
     currency: ["NAD", "ZAR"],
-    languages: ["en", "af"]
+    languages: ["en", "af"],
   },
   NC: {
     name: "New Caledonia",
@@ -1452,7 +1452,7 @@ export const countries = {
     continent: "OC",
     capital: "Nouméa",
     currency: ["XPF"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   NE: {
     name: "Niger",
@@ -1461,7 +1461,7 @@ export const countries = {
     continent: "AF",
     capital: "Niamey",
     currency: ["XOF"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   NF: {
     name: "Norfolk Island",
@@ -1470,7 +1470,7 @@ export const countries = {
     continent: "OC",
     capital: "Kingston",
     currency: ["AUD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   NG: {
     name: "Nigeria",
@@ -1479,7 +1479,7 @@ export const countries = {
     continent: "AF",
     capital: "Abuja",
     currency: ["NGN"],
-    languages: ["en"]
+    languages: ["en"],
   },
   NI: {
     name: "Nicaragua",
@@ -1488,7 +1488,7 @@ export const countries = {
     continent: "NA",
     capital: "Managua",
     currency: ["NIO"],
-    languages: ["es"]
+    languages: ["es"],
   },
   NL: {
     name: "Netherlands",
@@ -1497,7 +1497,7 @@ export const countries = {
     continent: "EU",
     capital: "Amsterdam",
     currency: ["EUR"],
-    languages: ["nl"]
+    languages: ["nl"],
   },
   NO: {
     name: "Norway",
@@ -1506,7 +1506,7 @@ export const countries = {
     continent: "EU",
     capital: "Oslo",
     currency: ["NOK"],
-    languages: ["no", "nb", "nn"]
+    languages: ["no", "nb", "nn"],
   },
   NP: {
     name: "Nepal",
@@ -1515,7 +1515,7 @@ export const countries = {
     continent: "AS",
     capital: "Kathmandu",
     currency: ["NPR"],
-    languages: ["ne"]
+    languages: ["ne"],
   },
   NR: {
     name: "Nauru",
@@ -1524,7 +1524,7 @@ export const countries = {
     continent: "OC",
     capital: "Yaren",
     currency: ["AUD"],
-    languages: ["en", "na"]
+    languages: ["en", "na"],
   },
   NU: {
     name: "Niue",
@@ -1533,7 +1533,7 @@ export const countries = {
     continent: "OC",
     capital: "Alofi",
     currency: ["NZD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   NZ: {
     name: "New Zealand",
@@ -1542,7 +1542,7 @@ export const countries = {
     continent: "OC",
     capital: "Wellington",
     currency: ["NZD"],
-    languages: ["en", "mi"]
+    languages: ["en", "mi"],
   },
   OM: {
     name: "Oman",
@@ -1551,7 +1551,7 @@ export const countries = {
     continent: "AS",
     capital: "Muscat",
     currency: ["OMR"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   PA: {
     name: "Panama",
@@ -1560,7 +1560,7 @@ export const countries = {
     continent: "NA",
     capital: "Panama City",
     currency: ["PAB", "USD"],
-    languages: ["es"]
+    languages: ["es"],
   },
   PE: {
     name: "Peru",
@@ -1569,7 +1569,7 @@ export const countries = {
     continent: "SA",
     capital: "Lima",
     currency: ["PEN"],
-    languages: ["es"]
+    languages: ["es"],
   },
   PF: {
     name: "French Polynesia",
@@ -1578,7 +1578,7 @@ export const countries = {
     continent: "OC",
     capital: "Papeetē",
     currency: ["XPF"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   PG: {
     name: "Papua New Guinea",
@@ -1587,7 +1587,7 @@ export const countries = {
     continent: "OC",
     capital: "Port Moresby",
     currency: ["PGK"],
-    languages: ["en"]
+    languages: ["en"],
   },
   PH: {
     name: "Philippines",
@@ -1596,7 +1596,7 @@ export const countries = {
     continent: "AS",
     capital: "Manila",
     currency: ["PHP"],
-    languages: ["en"]
+    languages: ["en"],
   },
   PK: {
     name: "Pakistan",
@@ -1605,7 +1605,7 @@ export const countries = {
     continent: "AS",
     capital: "Islamabad",
     currency: ["PKR"],
-    languages: ["en", "ur"]
+    languages: ["en", "ur"],
   },
   PL: {
     name: "Poland",
@@ -1614,7 +1614,7 @@ export const countries = {
     continent: "EU",
     capital: "Warsaw",
     currency: ["PLN"],
-    languages: ["pl"]
+    languages: ["pl"],
   },
   PM: {
     name: "Saint Pierre and Miquelon",
@@ -1623,7 +1623,7 @@ export const countries = {
     continent: "NA",
     capital: "Saint-Pierre",
     currency: ["EUR"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   PN: {
     name: "Pitcairn Islands",
@@ -1632,7 +1632,7 @@ export const countries = {
     continent: "OC",
     capital: "Adamstown",
     currency: ["NZD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   PR: {
     name: "Puerto Rico",
@@ -1641,7 +1641,7 @@ export const countries = {
     continent: "NA",
     capital: "San Juan",
     currency: ["USD"],
-    languages: ["es", "en"]
+    languages: ["es", "en"],
   },
   PS: {
     name: "Palestine",
@@ -1650,7 +1650,7 @@ export const countries = {
     continent: "AS",
     capital: "Ramallah",
     currency: ["ILS"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   PT: {
     name: "Portugal",
@@ -1659,7 +1659,7 @@ export const countries = {
     continent: "EU",
     capital: "Lisbon",
     currency: ["EUR"],
-    languages: ["pt"]
+    languages: ["pt"],
   },
   PW: {
     name: "Palau",
@@ -1668,7 +1668,7 @@ export const countries = {
     continent: "OC",
     capital: "Ngerulmud",
     currency: ["USD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   PY: {
     name: "Paraguay",
@@ -1677,7 +1677,7 @@ export const countries = {
     continent: "SA",
     capital: "Asunción",
     currency: ["PYG"],
-    languages: ["es", "gn"]
+    languages: ["es", "gn"],
   },
   QA: {
     name: "Qatar",
@@ -1686,7 +1686,7 @@ export const countries = {
     continent: "AS",
     capital: "Doha",
     currency: ["QAR"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   RE: {
     name: "Reunion",
@@ -1695,7 +1695,7 @@ export const countries = {
     continent: "AF",
     capital: "Saint-Denis",
     currency: ["EUR"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   RO: {
     name: "Romania",
@@ -1704,7 +1704,7 @@ export const countries = {
     continent: "EU",
     capital: "Bucharest",
     currency: ["RON"],
-    languages: ["ro"]
+    languages: ["ro"],
   },
   RS: {
     name: "Serbia",
@@ -1713,7 +1713,7 @@ export const countries = {
     continent: "EU",
     capital: "Belgrade",
     currency: ["RSD"],
-    languages: ["sr"]
+    languages: ["sr"],
   },
   RU: {
     name: "Russia",
@@ -1723,7 +1723,7 @@ export const countries = {
     continents: ["AS", "EU"],
     capital: "Moscow",
     currency: ["RUB"],
-    languages: ["ru"]
+    languages: ["ru"],
   },
   RW: {
     name: "Rwanda",
@@ -1732,7 +1732,7 @@ export const countries = {
     continent: "AF",
     capital: "Kigali",
     currency: ["RWF"],
-    languages: ["rw", "en", "fr"]
+    languages: ["rw", "en", "fr"],
   },
   SA: {
     name: "Saudi Arabia",
@@ -1741,7 +1741,7 @@ export const countries = {
     continent: "AS",
     capital: "Riyadh",
     currency: ["SAR"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   SB: {
     name: "Solomon Islands",
@@ -1750,7 +1750,7 @@ export const countries = {
     continent: "OC",
     capital: "Honiara",
     currency: ["SBD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   SC: {
     name: "Seychelles",
@@ -1759,7 +1759,7 @@ export const countries = {
     continent: "AF",
     capital: "Victoria",
     currency: ["SCR"],
-    languages: ["fr", "en"]
+    languages: ["fr", "en"],
   },
   SD: {
     name: "Sudan",
@@ -1768,7 +1768,7 @@ export const countries = {
     continent: "AF",
     capital: "Khartoum",
     currency: ["SDG"],
-    languages: ["ar", "en"]
+    languages: ["ar", "en"],
   },
   SE: {
     name: "Sweden",
@@ -1777,7 +1777,7 @@ export const countries = {
     continent: "EU",
     capital: "Stockholm",
     currency: ["SEK"],
-    languages: ["sv"]
+    languages: ["sv"],
   },
   SG: {
     name: "Singapore",
@@ -1786,7 +1786,7 @@ export const countries = {
     continent: "AS",
     capital: "Singapore",
     currency: ["SGD"],
-    languages: ["en", "ms", "ta", "zh"]
+    languages: ["en", "ms", "ta", "zh"],
   },
   SH: {
     name: "Saint Helena",
@@ -1795,7 +1795,7 @@ export const countries = {
     continent: "AF",
     capital: "Jamestown",
     currency: ["SHP"],
-    languages: ["en"]
+    languages: ["en"],
   },
   SI: {
     name: "Slovenia",
@@ -1804,7 +1804,7 @@ export const countries = {
     continent: "EU",
     capital: "Ljubljana",
     currency: ["EUR"],
-    languages: ["sl"]
+    languages: ["sl"],
   },
   SJ: {
     name: "Svalbard and Jan Mayen",
@@ -1813,7 +1813,7 @@ export const countries = {
     continent: "EU",
     capital: "Longyearbyen",
     currency: ["NOK"],
-    languages: ["no"]
+    languages: ["no"],
   },
   SK: {
     name: "Slovakia",
@@ -1822,7 +1822,7 @@ export const countries = {
     continent: "EU",
     capital: "Bratislava",
     currency: ["EUR"],
-    languages: ["sk"]
+    languages: ["sk"],
   },
   SL: {
     name: "Sierra Leone",
@@ -1831,7 +1831,7 @@ export const countries = {
     continent: "AF",
     capital: "Freetown",
     currency: ["SLL"],
-    languages: ["en"]
+    languages: ["en"],
   },
   SM: {
     name: "San Marino",
@@ -1840,7 +1840,7 @@ export const countries = {
     continent: "EU",
     capital: "City of San Marino",
     currency: ["EUR"],
-    languages: ["it"]
+    languages: ["it"],
   },
   SN: {
     name: "Senegal",
@@ -1849,7 +1849,7 @@ export const countries = {
     continent: "AF",
     capital: "Dakar",
     currency: ["XOF"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   SO: {
     name: "Somalia",
@@ -1858,7 +1858,7 @@ export const countries = {
     continent: "AF",
     capital: "Mogadishu",
     currency: ["SOS"],
-    languages: ["so", "ar"]
+    languages: ["so", "ar"],
   },
   SR: {
     name: "Suriname",
@@ -1867,7 +1867,7 @@ export const countries = {
     continent: "SA",
     capital: "Paramaribo",
     currency: ["SRD"],
-    languages: ["nl"]
+    languages: ["nl"],
   },
   SS: {
     name: "South Sudan",
@@ -1876,7 +1876,7 @@ export const countries = {
     continent: "AF",
     capital: "Juba",
     currency: ["SSP"],
-    languages: ["en"]
+    languages: ["en"],
   },
   ST: {
     name: "Sao Tome and Principe",
@@ -1885,7 +1885,7 @@ export const countries = {
     continent: "AF",
     capital: "São Tomé",
     currency: ["STN"],
-    languages: ["pt"]
+    languages: ["pt"],
   },
   SV: {
     name: "El Salvador",
@@ -1894,7 +1894,7 @@ export const countries = {
     continent: "NA",
     capital: "San Salvador",
     currency: ["SVC", "USD"],
-    languages: ["es"]
+    languages: ["es"],
   },
   SX: {
     name: "Sint Maarten",
@@ -1903,7 +1903,7 @@ export const countries = {
     continent: "NA",
     capital: "Philipsburg",
     currency: ["ANG"],
-    languages: ["nl", "en"]
+    languages: ["nl", "en"],
   },
   SY: {
     name: "Syria",
@@ -1912,7 +1912,7 @@ export const countries = {
     continent: "AS",
     capital: "Damascus",
     currency: ["SYP"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   SZ: {
     name: "Eswatini",
@@ -1921,7 +1921,7 @@ export const countries = {
     continent: "AF",
     capital: "Lobamba",
     currency: ["SZL"],
-    languages: ["en", "ss"]
+    languages: ["en", "ss"],
   },
   TC: {
     name: "Turks and Caicos Islands",
@@ -1930,7 +1930,7 @@ export const countries = {
     continent: "NA",
     capital: "Cockburn Town",
     currency: ["USD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   TD: {
     name: "Chad",
@@ -1939,7 +1939,7 @@ export const countries = {
     continent: "AF",
     capital: "N'Djamena",
     currency: ["XAF"],
-    languages: ["fr", "ar"]
+    languages: ["fr", "ar"],
   },
   TF: {
     name: "French Southern Territories",
@@ -1948,7 +1948,7 @@ export const countries = {
     continent: "AN",
     capital: "Port-aux-Français",
     currency: ["EUR"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   TG: {
     name: "Togo",
@@ -1957,7 +1957,7 @@ export const countries = {
     continent: "AF",
     capital: "Lomé",
     currency: ["XOF"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   TH: {
     name: "Thailand",
@@ -1966,7 +1966,7 @@ export const countries = {
     continent: "AS",
     capital: "Bangkok",
     currency: ["THB"],
-    languages: ["th"]
+    languages: ["th"],
   },
   TJ: {
     name: "Tajikistan",
@@ -1975,7 +1975,7 @@ export const countries = {
     continent: "AS",
     capital: "Dushanbe",
     currency: ["TJS"],
-    languages: ["tg", "ru"]
+    languages: ["tg", "ru"],
   },
   TK: {
     name: "Tokelau",
@@ -1984,7 +1984,7 @@ export const countries = {
     continent: "OC",
     capital: "Fakaofo",
     currency: ["NZD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   TL: {
     name: "East Timor",
@@ -1993,7 +1993,7 @@ export const countries = {
     continent: "OC",
     capital: "Dili",
     currency: ["USD"],
-    languages: ["pt"]
+    languages: ["pt"],
   },
   TM: {
     name: "Turkmenistan",
@@ -2002,7 +2002,7 @@ export const countries = {
     continent: "AS",
     capital: "Ashgabat",
     currency: ["TMT"],
-    languages: ["tk", "ru"]
+    languages: ["tk", "ru"],
   },
   TN: {
     name: "Tunisia",
@@ -2011,7 +2011,7 @@ export const countries = {
     continent: "AF",
     capital: "Tunis",
     currency: ["TND"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   TO: {
     name: "Tonga",
@@ -2020,7 +2020,7 @@ export const countries = {
     continent: "OC",
     capital: "Nuku'alofa",
     currency: ["TOP"],
-    languages: ["en", "to"]
+    languages: ["en", "to"],
   },
   TR: {
     name: "Turkey",
@@ -2030,7 +2030,7 @@ export const countries = {
     continents: ["AS", "EU"],
     capital: "Ankara",
     currency: ["TRY"],
-    languages: ["tr"]
+    languages: ["tr"],
   },
   TT: {
     name: "Trinidad and Tobago",
@@ -2039,7 +2039,7 @@ export const countries = {
     continent: "NA",
     capital: "Port of Spain",
     currency: ["TTD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   TV: {
     name: "Tuvalu",
@@ -2048,7 +2048,7 @@ export const countries = {
     continent: "OC",
     capital: "Funafuti",
     currency: ["AUD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   TW: {
     name: "Taiwan",
@@ -2057,7 +2057,7 @@ export const countries = {
     continent: "AS",
     capital: "Taipei",
     currency: ["TWD"],
-    languages: ["zh"]
+    languages: ["zh"],
   },
   TZ: {
     name: "Tanzania",
@@ -2066,7 +2066,7 @@ export const countries = {
     continent: "AF",
     capital: "Dodoma",
     currency: ["TZS"],
-    languages: ["sw", "en"]
+    languages: ["sw", "en"],
   },
   UA: {
     name: "Ukraine",
@@ -2075,7 +2075,7 @@ export const countries = {
     continent: "EU",
     capital: "Kyiv",
     currency: ["UAH"],
-    languages: ["uk"]
+    languages: ["uk"],
   },
   UG: {
     name: "Uganda",
@@ -2084,7 +2084,7 @@ export const countries = {
     continent: "AF",
     capital: "Kampala",
     currency: ["UGX"],
-    languages: ["en", "sw"]
+    languages: ["en", "sw"],
   },
   UM: {
     name: "U.S. Minor Outlying Islands",
@@ -2093,7 +2093,7 @@ export const countries = {
     continent: "OC",
     capital: "",
     currency: ["USD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   US: {
     name: "United States",
@@ -2102,7 +2102,7 @@ export const countries = {
     continent: "NA",
     capital: "Washington D.C.",
     currency: ["USD", "USN", "USS"],
-    languages: ["en"]
+    languages: ["en"],
   },
   UY: {
     name: "Uruguay",
@@ -2111,7 +2111,7 @@ export const countries = {
     continent: "SA",
     capital: "Montevideo",
     currency: ["UYI", "UYU"],
-    languages: ["es"]
+    languages: ["es"],
   },
   UZ: {
     name: "Uzbekistan",
@@ -2120,7 +2120,7 @@ export const countries = {
     continent: "AS",
     capital: "Tashkent",
     currency: ["UZS"],
-    languages: ["uz", "ru"]
+    languages: ["uz", "ru"],
   },
   VA: {
     name: "Vatican City",
@@ -2129,7 +2129,7 @@ export const countries = {
     continent: "EU",
     capital: "Vatican City",
     currency: ["EUR"],
-    languages: ["it", "la"]
+    languages: ["it", "la"],
   },
   VC: {
     name: "Saint Vincent and the Grenadines",
@@ -2138,7 +2138,7 @@ export const countries = {
     continent: "NA",
     capital: "Kingstown",
     currency: ["XCD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   VE: {
     name: "Venezuela",
@@ -2147,7 +2147,7 @@ export const countries = {
     continent: "SA",
     capital: "Caracas",
     currency: ["VES"],
-    languages: ["es"]
+    languages: ["es"],
   },
   VG: {
     name: "British Virgin Islands",
@@ -2156,7 +2156,7 @@ export const countries = {
     continent: "NA",
     capital: "Road Town",
     currency: ["USD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   VI: {
     name: "U.S. Virgin Islands",
@@ -2165,7 +2165,7 @@ export const countries = {
     continent: "NA",
     capital: "Charlotte Amalie",
     currency: ["USD"],
-    languages: ["en"]
+    languages: ["en"],
   },
   VN: {
     name: "Vietnam",
@@ -2174,7 +2174,7 @@ export const countries = {
     continent: "AS",
     capital: "Hanoi",
     currency: ["VND"],
-    languages: ["vi"]
+    languages: ["vi"],
   },
   VU: {
     name: "Vanuatu",
@@ -2183,7 +2183,7 @@ export const countries = {
     continent: "OC",
     capital: "Port Vila",
     currency: ["VUV"],
-    languages: ["bi", "en", "fr"]
+    languages: ["bi", "en", "fr"],
   },
   WF: {
     name: "Wallis and Futuna",
@@ -2192,7 +2192,7 @@ export const countries = {
     continent: "OC",
     capital: "Mata-Utu",
     currency: ["XPF"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   WS: {
     name: "Samoa",
@@ -2201,7 +2201,7 @@ export const countries = {
     continent: "OC",
     capital: "Apia",
     currency: ["WST"],
-    languages: ["sm", "en"]
+    languages: ["sm", "en"],
   },
   XK: {
     name: "Kosovo",
@@ -2211,7 +2211,7 @@ export const countries = {
     capital: "Pristina",
     currency: ["EUR"],
     languages: ["sq", "sr"],
-    userAssigned: true
+    userAssigned: true,
   },
   YE: {
     name: "Yemen",
@@ -2220,7 +2220,7 @@ export const countries = {
     continent: "AS",
     capital: "Sana'a",
     currency: ["YER"],
-    languages: ["ar"]
+    languages: ["ar"],
   },
   YT: {
     name: "Mayotte",
@@ -2229,7 +2229,7 @@ export const countries = {
     continent: "AF",
     capital: "Mamoudzou",
     currency: ["EUR"],
-    languages: ["fr"]
+    languages: ["fr"],
   },
   ZA: {
     name: "South Africa",
@@ -2238,7 +2238,7 @@ export const countries = {
     continent: "AF",
     capital: "Pretoria",
     currency: ["ZAR"],
-    languages: ["af", "en", "nr", "st", "ss", "tn", "ts", "ve", "xh", "zu"]
+    languages: ["af", "en", "nr", "st", "ss", "tn", "ts", "ve", "xh", "zu"],
   },
   ZM: {
     name: "Zambia",
@@ -2247,7 +2247,7 @@ export const countries = {
     continent: "AF",
     capital: "Lusaka",
     currency: ["ZMW"],
-    languages: ["en"]
+    languages: ["en"],
   },
   ZW: {
     name: "Zimbabwe",
@@ -2256,6 +2256,6 @@ export const countries = {
     continent: "AF",
     capital: "Harare",
     currency: ["USD", "ZAR", "BWP", "GBP", "AUD", "CNY", "INR", "JPY"],
-    languages: ["en", "sn", "nd"]
-  }
+    languages: ["en", "sn", "nd"],
+  },
 };

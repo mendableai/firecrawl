@@ -3,15 +3,15 @@ import { AddFeatureError } from "../../error";
 
 export function specialtyScrapeCheck(
   logger: Logger,
-  headers: Record<string, string> | undefined
+  headers: Record<string, string> | undefined,
 ) {
   const contentType = (Object.entries(headers ?? {}).find(
-    (x) => x[0].toLowerCase() === "content-type"
+    (x) => x[0].toLowerCase() === "content-type",
   ) ?? [])[1];
 
   if (contentType === undefined) {
     logger.warn("Failed to check contentType -- was not present in headers", {
-      headers
+      headers,
     });
   } else if (
     contentType === "application/pdf" ||
@@ -23,7 +23,7 @@ export function specialtyScrapeCheck(
     contentType ===
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
     contentType.startsWith(
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document;"
+      "application/vnd.openxmlformats-officedocument.wordprocessingml.document;",
     )
   ) {
     // .docx

@@ -5,7 +5,7 @@ import {
   RequestWithAuth,
   ScrapeRequest,
   scrapeRequestSchema,
-  ScrapeResponse
+  ScrapeResponse,
 } from "./types";
 import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from "uuid";
@@ -17,7 +17,7 @@ import { getScrapeQueue } from "../../services/queue-service";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
-  res: Response<ScrapeResponse>
+  res: Response<ScrapeResponse>,
 ) {
   req.body = scrapeRequestSchema.parse(req.body);
   let earlyReturn = false;
@@ -30,7 +30,7 @@ export async function scrapeController(
   const jobPriority = await getJobPriority({
     plan: req.auth.plan as PlanType,
     team_id: req.auth.team_id,
-    basePriority: 10
+    basePriority: 10,
   });
 
   await addScrapeJob(
@@ -42,18 +42,18 @@ export async function scrapeController(
       internalOptions: {},
       plan: req.auth.plan!,
       origin: req.body.origin,
-      is_scrape: true
+      is_scrape: true,
     },
     {},
     jobId,
-    jobPriority
+    jobPriority,
   );
 
   const totalWait =
     (req.body.waitFor ?? 0) +
     (req.body.actions ?? []).reduce(
       (a, x) => (x.type === "wait" ? (x.milliseconds ?? 0) : 0) + a,
-      0
+      0,
     );
 
   let doc: Document;
@@ -67,12 +67,12 @@ export async function scrapeController(
     ) {
       return res.status(408).json({
         success: false,
-        error: "Request timed out"
+        error: "Request timed out",
       });
     } else {
       return res.status(500).json({
         success: false,
-        error: `(Internal server error) - ${e && e.message ? e.message : e}`
+        error: `(Internal server error) - ${e && e.message ? e.message : e}`,
       });
     }
   }
@@ -99,10 +99,10 @@ export async function scrapeController(
   billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(
     (error) => {
       logger.error(
-        `Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`
+        `Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`,
       );
       // Optionally, you could notify an admin or add to a retry queue here
-    }
+    },
   );
 
   if (!req.body.formats.includes("rawHtml")) {
@@ -123,12 +123,12 @@ export async function scrapeController(
     url: req.body.url,
     scrapeOptions: req.body,
     origin: origin,
-    num_tokens: numTokens
+    num_tokens: numTokens,
   });
 
   return res.status(200).json({
     success: true,
     data: doc,
-    scrape_id: origin?.includes("website") ? jobId : undefined
+    scrape_id: origin?.includes("website") ? jobId : undefined,
   });
 }

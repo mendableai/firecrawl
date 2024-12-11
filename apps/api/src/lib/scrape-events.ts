@@ -56,7 +56,7 @@ export class ScrapeEvents {
           .insert({
             job_id: jobId,
             type: content.type,
-            content: content
+            content: content,
             // created_at
           })
           .select()
@@ -73,7 +73,7 @@ export class ScrapeEvents {
 
   static async updateScrapeResult(
     logId: number | null,
-    result: ScrapeScrapeEvent["result"]
+    result: ScrapeScrapeEvent["result"],
   ) {
     if (logId === null) return;
 
@@ -86,8 +86,8 @@ export class ScrapeEvents {
         .update({
           content: {
             ...previousLog.content,
-            result
-          }
+            result,
+          },
         })
         .eq("id", logId);
     } catch (error) {
@@ -100,7 +100,7 @@ export class ScrapeEvents {
       await this.insert(((job as any).id ? (job as any).id : job) as string, {
         type: "queue",
         event,
-        worker: process.env.FLY_MACHINE_ID
+        worker: process.env.FLY_MACHINE_ID,
       });
     } catch (error) {
       logger.error(`Error logging job event: ${error}`);

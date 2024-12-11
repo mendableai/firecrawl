@@ -6,14 +6,14 @@ const logger = _logger.child({ module: "cache" });
 
 export const cacheRedis = process.env.CACHE_REDIS_URL
   ? new IORedis(process.env.CACHE_REDIS_URL, {
-      maxRetriesPerRequest: null
+      maxRetriesPerRequest: null,
     })
   : null;
 
 export function cacheKey(
   url: string,
   scrapeOptions: ScrapeOptions,
-  internalOptions: InternalOptions
+  internalOptions: InternalOptions,
 ): string | null {
   if (!cacheRedis) return null;
 
@@ -49,7 +49,7 @@ export async function saveEntryToCache(key: string, entry: CacheEntry) {
 }
 
 export async function getEntryFromCache(
-  key: string
+  key: string,
 ): Promise<CacheEntry | null> {
   if (!cacheRedis) return null;
 

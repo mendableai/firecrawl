@@ -14,10 +14,10 @@ type PDFProcessorResult = { html: string; markdown?: string };
 
 async function scrapePDFWithLlamaParse(
   meta: Meta,
-  tempFilePath: string
+  tempFilePath: string,
 ): Promise<PDFProcessorResult> {
   meta.logger.debug("Processing PDF document with LlamaIndex", {
-    tempFilePath
+    tempFilePath,
   });
 
   const uploadForm = new FormData();
@@ -28,7 +28,7 @@ async function scrapePDFWithLlamaParse(
     name: tempFilePath,
     stream() {
       return createReadStream(
-        tempFilePath
+        tempFilePath,
       ) as unknown as ReadableStream<Uint8Array>;
     },
     arrayBuffer() {
@@ -41,22 +41,22 @@ async function scrapePDFWithLlamaParse(
     slice(start, end, contentType) {
       throw Error("Unimplemented in mock Blob: slice");
     },
-    type: "application/pdf"
+    type: "application/pdf",
   } as Blob);
 
   const upload = await robustFetch({
     url: "https://api.cloud.llamaindex.ai/api/parsing/upload",
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.LLAMAPARSE_API_KEY}`
+      Authorization: `Bearer ${process.env.LLAMAPARSE_API_KEY}`,
     },
     body: uploadForm,
     logger: meta.logger.child({
-      method: "scrapePDFWithLlamaParse/upload/robustFetch"
+      method: "scrapePDFWithLlamaParse/upload/robustFetch",
     }),
     schema: z.object({
-      id: z.string()
-    })
+      id: z.string(),
+    }),
   });
 
   const jobId = upload.id;
@@ -70,18 +70,18 @@ async function scrapePDFWithLlamaParse(
         url: `https://api.cloud.llamaindex.ai/api/parsing/job/${jobId}/result/markdown`,
         method: "GET",
         headers: {
-          Authorization: `Bearer ${process.env.LLAMAPARSE_API_KEY}`
+          Authorization: `Bearer ${process.env.LLAMAPARSE_API_KEY}`,
         },
         logger: meta.logger.child({
-          method: "scrapePDFWithLlamaParse/result/robustFetch"
+          method: "scrapePDFWithLlamaParse/result/robustFetch",
         }),
         schema: z.object({
-          markdown: z.string()
-        })
+          markdown: z.string(),
+        }),
       });
       return {
         markdown: result.markdown,
-        html: await marked.parse(result.markdown, { async: true })
+        html: await marked.parse(result.markdown, { async: true }),
       };
     } catch (e) {
       if (e instanceof Error && e.message === "Request sent failure status") {
@@ -93,7 +93,7 @@ async function scrapePDFWithLlamaParse(
           throw new RemoveFeatureError(["pdf"]);
         } else {
           throw new Error("LlamaParse threw an error", {
-            cause: e.cause
+            cause: e.cause,
           });
         }
       } else {
@@ -109,7 +109,7 @@ async function scrapePDFWithLlamaParse(
 
 async function scrapePDFWithParsePDF(
   meta: Meta,
-  tempFilePath: string
+  tempFilePath: string,
 ): Promise<PDFProcessorResult> {
   meta.logger.debug("Processing PDF document with parse-pdf", { tempFilePath });
 
@@ -118,7 +118,7 @@ async function scrapePDFWithParsePDF(
 
   return {
     markdown: escaped,
-    html: escaped
+    html: escaped,
   };
 }
 
@@ -131,7 +131,7 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
       statusCode: file.response.status,
 
       html: content,
-      markdown: content
+      markdown: content,
     };
   }
 
@@ -144,22 +144,22 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
         {
           ...meta,
           logger: meta.logger.child({
-            method: "scrapePDF/scrapePDFWithLlamaParse"
-          })
+            method: "scrapePDF/scrapePDFWithLlamaParse",
+          }),
         },
-        tempFilePath
+        tempFilePath,
       );
     } catch (error) {
       if (error instanceof Error && error.message === "LlamaParse timed out") {
         meta.logger.warn("LlamaParse timed out -- falling back to parse-pdf", {
-          error
+          error,
         });
       } else if (error instanceof RemoveFeatureError) {
         throw error;
       } else {
         meta.logger.warn(
           "LlamaParse failed to parse PDF -- falling back to parse-pdf",
-          { error }
+          { error },
         );
         Sentry.captureException(error);
       }
@@ -170,9 +170,11 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
     result = await scrapePDFWithParsePDF(
       {
         ...meta,
-        logger: meta.logger.child({ method: "scrapePDF/scrapePDFWithParsePDF" })
+        logger: meta.logger.child({
+          method: "scrapePDF/scrapePDFWithParsePDF",
+        }),
       },
-      tempFilePath
+      tempFilePath,
     );
   }
 
@@ -183,6 +185,6 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
     statusCode: response.status,
 
     html: result.html,
-    markdown: result.markdown
+    markdown: result.markdown,
   };
 }

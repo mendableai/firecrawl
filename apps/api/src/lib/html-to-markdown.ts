@@ -13,7 +13,7 @@ const goExecutablePath = join(
   process.cwd(),
   "sharedLibs",
   "go-html-to-md",
-  "html-to-markdown.so"
+  "html-to-markdown.so",
 );
 
 class GoMarkdownConverter {
@@ -51,7 +51,7 @@ class GoMarkdownConverter {
 }
 
 export async function parseMarkdown(
-  html: string | null | undefined
+  html: string | null | undefined,
 ): Promise<string> {
   if (!html) {
     return "";
@@ -74,12 +74,12 @@ export async function parseMarkdown(
     ) {
       Sentry.captureException(error);
       logger.error(
-        `Error converting HTML to Markdown with Go parser: ${error}`
+        `Error converting HTML to Markdown with Go parser: ${error}`,
       );
     } else {
       logger.warn(
         "Tried to use Go parser, but it doesn't exist in the file system.",
-        { goExecutablePath }
+        { goExecutablePath },
       );
     }
   }
@@ -101,7 +101,7 @@ export async function parseMarkdown(
       var href = node.getAttribute("href").trim();
       var title = node.title ? ' "' + node.title + '"' : "";
       return "[" + content.trim() + "](" + href + title + ")\n";
-    }
+    },
   });
   var gfm = turndownPluginGfm.gfm;
   turndownService.use(gfm);
@@ -145,7 +145,7 @@ function removeSkipToContentLinks(markdownContent: string): string {
   // Remove [Skip to Content](#page) and [Skip to content](#skip)
   const newMarkdownContent = markdownContent.replace(
     /\[Skip to Content\]\(#[^\)]*\)/gi,
-    ""
+    "",
   );
   return newMarkdownContent;
 }

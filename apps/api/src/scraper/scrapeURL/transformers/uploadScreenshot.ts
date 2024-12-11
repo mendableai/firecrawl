@@ -23,8 +23,8 @@ export function uploadScreenshot(meta: Meta, document: Document): Document {
         {
           cacheControl: "3600",
           upsert: false,
-          contentType: document.screenshot.split(":")[1].split(";")[0]
-        }
+          contentType: document.screenshot.split(":")[1].split(";")[0],
+        },
       );
 
     document.screenshot = `https://service.firecrawl.dev/storage/v1/object/public/media/${encodeURIComponent(fileName)}`;

@@ -16,7 +16,7 @@ interface SearchOptions {
 
 export async function searchapi_search(
   q: string,
-  options: SearchOptions
+  options: SearchOptions,
 ): Promise<SearchResult[]> {
   const params = {
     q: q,
@@ -25,7 +25,7 @@ export async function searchapi_search(
     location: options.location,
     num: options.num_results,
     page: options.page ?? 1,
-    engine: process.env.SEARCHAPI_ENGINE || "google"
+    engine: process.env.SEARCHAPI_ENGINE || "google",
   };
 
   const url = `https://www.searchapi.io/api/v1/search`;
@@ -35,9 +35,9 @@ export async function searchapi_search(
       headers: {
         Authorization: `Bearer ${process.env.SEARCHAPI_API_KEY}`,
         "Content-Type": "application/json",
-        "X-SearchApi-Source": "Firecrawl"
+        "X-SearchApi-Source": "Firecrawl",
       },
-      params: params
+      params: params,
     });
 
     if (response.status === 401) {
@@ -50,7 +50,7 @@ export async function searchapi_search(
       return data.organic_results.map((a: any) => ({
         url: a.link,
         title: a.title,
-        description: a.snippet
+        description: a.snippet,
       }));
     } else {
       return [];

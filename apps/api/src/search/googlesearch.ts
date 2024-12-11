@@ -11,7 +11,7 @@ const _useragent_list = [
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
   "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36 Edg/111.0.1661.62",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/111.0"
+  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/111.0",
 ];
 
 function get_useragent(): string {
@@ -27,14 +27,14 @@ async function _req(
   proxies: any,
   timeout: number,
   tbs: string | undefined = undefined,
-  filter: string | undefined = undefined
+  filter: string | undefined = undefined,
 ) {
   const params = {
     q: term,
     num: results, // Number of results to return
     hl: lang,
     gl: country,
-    start: start
+    start: start,
   };
   if (tbs) {
     params["tbs"] = tbs;
@@ -45,11 +45,11 @@ async function _req(
   try {
     const resp = await axios.get("https://www.google.com/search", {
       headers: {
-        "User-Agent": get_useragent()
+        "User-Agent": get_useragent(),
       },
       params: params,
       proxy: proxies,
-      timeout: timeout
+      timeout: timeout,
     });
     return resp;
   } catch (error) {
@@ -70,7 +70,7 @@ export async function googleSearch(
   country = "us",
   proxy = undefined as string | undefined,
   sleep_interval = 0,
-  timeout = 5000
+  timeout = 5000,
 ): Promise<SearchResult[]> {
   let proxies: any = null;
   if (proxy) {
@@ -98,7 +98,7 @@ export async function googleSearch(
         proxies,
         timeout,
         tbs,
-        filter
+        filter,
       );
       const $ = cheerio.load(resp.data);
       const result_block = $("div.g");
@@ -117,7 +117,7 @@ export async function googleSearch(
         const title = $(element).find("h3");
         const ogImage = $(element).find("img").eq(1).attr("src");
         const description_box = $(element).find(
-          "div[style='-webkit-line-clamp:2']"
+          "div[style='-webkit-line-clamp:2']",
         );
         const answerBox = $(element).find(".mod").text();
         if (description_box) {
@@ -129,7 +129,7 @@ export async function googleSearch(
         }
       });
       await new Promise((resolve) =>
-        setTimeout(resolve, sleep_interval * 1000)
+        setTimeout(resolve, sleep_interval * 1000),
       );
     } catch (error) {
       if (error.message === "Too many requests") {

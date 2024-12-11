@@ -10,9 +10,9 @@ jest.mock("../auth", () => ({
     success: true,
     team_id: "team123",
     error: null,
-    status: 200
+    status: 200,
   }),
-  reduce: jest.fn()
+  reduce: jest.fn(),
 }));
 jest.mock("../../services/idempotency/validate");
 
@@ -21,15 +21,15 @@ describe("crawlController", () => {
     const req = {
       headers: {
         "x-idempotency-key": await uuidv4(),
-        Authorization: `Bearer ${process.env.TEST_API_KEY}`
+        Authorization: `Bearer ${process.env.TEST_API_KEY}`,
       },
       body: {
-        url: "https://mendable.ai"
-      }
+        url: "https://mendable.ai",
+      },
     } as unknown as Request;
     const res = {
       status: jest.fn().mockReturnThis(),
-      json: jest.fn()
+      json: jest.fn(),
     } as unknown as Response;
 
     // Mock the idempotency key validation to return false for the second call
@@ -45,7 +45,7 @@ describe("crawlController", () => {
     await crawlController(req, res);
     expect(res.status).toHaveBeenCalledWith(409);
     expect(res.json).toHaveBeenCalledWith({
-      error: "Idempotency key already used"
+      error: "Idempotency key already used",
     });
   });
 });

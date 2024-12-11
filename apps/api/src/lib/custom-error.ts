@@ -8,7 +8,7 @@ export class CustomError extends Error {
     statusCode: number,
     status: string,
     message: string = "",
-    dataIngestionJob?: any
+    dataIngestionJob?: any,
   ) {
     super(message);
     this.statusCode = statusCode;

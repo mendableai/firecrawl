@@ -48,7 +48,7 @@ export async function crawlCancelController(req: Request, res: Response) {
     }
 
     res.json({
-      status: "cancelled"
+      status: "cancelled",
     });
   } catch (error) {
     Sentry.captureException(error);

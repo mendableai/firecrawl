@@ -8,7 +8,7 @@ import {
   ErrorResponse,
   RequestWithACUC,
   RequestWithAuth,
-  RequestWithMaybeAuth
+  RequestWithMaybeAuth,
 } from "../controllers/v1/types";
 import { RateLimiterMode } from "../types";
 import { authenticateUser } from "../controllers/auth";
@@ -33,7 +33,7 @@ import { extractController } from "../controllers/v1/extract";
 // import { readinessController } from "../controllers/v1/readiness";
 
 function checkCreditsMiddleware(
-  minimum?: number
+  minimum?: number,
 ): (req: RequestWithAuth, res: Response, next: NextFunction) => void {
   return (req, res, next) => {
     (async () => {
@@ -44,20 +44,20 @@ function checkCreditsMiddleware(
       const { success, remainingCredits, chunk } = await checkTeamCredits(
         req.acuc,
         req.auth.team_id,
-        minimum ?? 1
+        minimum ?? 1,
       );
       if (chunk) {
         req.acuc = chunk;
       }
       if (!success) {
         logger.error(
-          `Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`
+          `Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`,
         );
         if (!res.headersSent) {
           return res.status(402).json({
             success: false,
             error:
-              "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing or try changing the request limit to a lower value."
+              "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing or try changing the request limit to a lower value.",
           });
         }
       }
@@ -68,7 +68,7 @@ function checkCreditsMiddleware(
 }
 
 export function authMiddleware(
-  rateLimiterMode: RateLimiterMode
+  rateLimiterMode: RateLimiterMode,
 ): (req: RequestWithMaybeAuth, res: Response, next: NextFunction) => void {
   return (req, res, next) => {
     (async () => {
@@ -99,7 +99,7 @@ export function authMiddleware(
 function idempotencyMiddleware(
   req: Request,
   res: Response,
-  next: NextFunction
+  next: NextFunction,
 ) {
   (async () => {
     if (req.headers["x-idempotency-key"]) {
@@ -123,7 +123,7 @@ function blocklistMiddleware(req: Request, res: Response, next: NextFunction) {
       return res.status(403).json({
         success: false,
         error:
-          "URL is blocked intentionally. Firecrawl currently does not support social media scraping due to policy restrictions."
+          "URL is blocked intentionally. Firecrawl currently does not support social media scraping due to policy restrictions.",
       });
     }
   }
@@ -131,7 +131,7 @@ function blocklistMiddleware(req: Request, res: Response, next: NextFunction) {
 }
 
 export function wrap(
-  controller: (req: Request, res: Response) => Promise<any>
+  controller: (req: Request, res: Response) => Promise<any>,
 ): (req: Request, res: Response, next: NextFunction) => any {
   return (req, res, next) => {
     controller(req, res).catch((err) => next(err));
@@ -147,7 +147,7 @@ v1Router.post(
   authMiddleware(RateLimiterMode.Scrape),
   checkCreditsMiddleware(1),
   blocklistMiddleware,
-  wrap(scrapeController)
+  wrap(scrapeController),
 );
 
 v1Router.post(
@@ -156,7 +156,7 @@ v1Router.post(
   checkCreditsMiddleware(),
   blocklistMiddleware,
   idempotencyMiddleware,
-  wrap(crawlController)
+  wrap(crawlController),
 );
 
 v1Router.post(
@@ -165,7 +165,7 @@ v1Router.post(
   checkCreditsMiddleware(),
   blocklistMiddleware,
   idempotencyMiddleware,
-  wrap(batchScrapeController)
+  wrap(batchScrapeController),
 );
 
 v1Router.post(
@@ -173,20 +173,20 @@ v1Router.post(
   authMiddleware(RateLimiterMode.Map),
   checkCreditsMiddleware(1),
   blocklistMiddleware,
-  wrap(mapController)
+  wrap(mapController),
 );
 
 v1Router.get(
   "/crawl/:jobId",
   authMiddleware(RateLimiterMode.CrawlStatus),
-  wrap(crawlStatusController)
+  wrap(crawlStatusController),
 );
 
 v1Router.get(
   "/batch/scrape/:jobId",
   authMiddleware(RateLimiterMode.CrawlStatus),
   // Yes, it uses the same controller as the normal crawl status controller
-  wrap((req: any, res): any => crawlStatusController(req, res, true))
+  wrap((req: any, res): any => crawlStatusController(req, res, true)),
 );
 
 v1Router.get("/scrape/:jobId", wrap(scrapeStatusController));
@@ -194,7 +194,7 @@ v1Router.get("/scrape/:jobId", wrap(scrapeStatusController));
 v1Router.get(
   "/concurrency-check",
   authMiddleware(RateLimiterMode.CrawlStatus),
-  wrap(concurrencyCheckController)
+  wrap(concurrencyCheckController),
 );
 
 v1Router.ws("/crawl/:jobId", crawlStatusWSController);
@@ -203,7 +203,7 @@ v1Router.post(
   "/extract",
   authMiddleware(RateLimiterMode.Scrape),
   checkCreditsMiddleware(1),
-  wrap(extractController)
+  wrap(extractController),
 );
 
 // v1Router.post("/crawlWebsitePreview", crawlPreviewController);
@@ -211,7 +211,7 @@ v1Router.post(
 v1Router.delete(
   "/crawl/:jobId",
   authMiddleware(RateLimiterMode.CrawlStatus),
-  crawlCancelController
+  crawlCancelController,
 );
 // v1Router.get("/checkJobStatus/:jobId", crawlJobStatusPreviewController);
 

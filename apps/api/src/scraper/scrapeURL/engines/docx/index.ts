@@ -10,6 +10,6 @@ export async function scrapeDOCX(meta: Meta): Promise<EngineScrapeResult> {
     url: response.url,
     statusCode: response.status,
 
-    html: (await mammoth.convertToHtml({ path: tempFilePath })).value
+    html: (await mammoth.convertToHtml({ path: tempFilePath })).value,
   };
 }

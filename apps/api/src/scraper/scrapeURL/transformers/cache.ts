@@ -11,7 +11,7 @@ export function saveToCache(meta: Meta, document: Document): Document {
 
   if (document.rawHtml === undefined) {
     throw new Error(
-      "rawHtml is undefined -- this transformer is being called out of order"
+      "rawHtml is undefined -- this transformer is being called out of order",
     );
   }
 
@@ -22,7 +22,7 @@ export function saveToCache(meta: Meta, document: Document): Document {
       html: document.rawHtml!,
       statusCode: document.metadata.statusCode!,
       url: document.metadata.url ?? document.metadata.sourceURL!,
-      error: document.metadata.error ?? undefined
+      error: document.metadata.error ?? undefined,
     };
 
     saveEntryToCache(key, entry);

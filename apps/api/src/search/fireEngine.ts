@@ -15,7 +15,7 @@ export async function fireEngineMap(
     location?: string;
     numResults: number;
     page?: number;
-  }
+  },
 ): Promise<SearchResult[]> {
   try {
     let data = JSON.stringify({
@@ -25,12 +25,12 @@ export async function fireEngineMap(
       location: options.location,
       tbs: options.tbs,
       numResults: options.numResults,
-      page: options.page ?? 1
+      page: options.page ?? 1,
     });
 
     if (!process.env.FIRE_ENGINE_BETA_URL) {
       console.warn(
-        "(v1/map Beta) Results might differ from cloud offering currently."
+        "(v1/map Beta) Results might differ from cloud offering currently.",
       );
       return [];
     }
@@ -39,9 +39,9 @@ export async function fireEngineMap(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Disable-Cache": "true"
+        "X-Disable-Cache": "true",
       },
-      body: data
+      body: data,
     });
 
     if (response.ok) {

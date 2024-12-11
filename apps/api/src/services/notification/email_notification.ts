@@ -14,25 +14,25 @@ const emailTemplates: Record<
 > = {
   [NotificationType.APPROACHING_LIMIT]: {
     subject: "You've used 80% of your credit limit - Firecrawl",
-    html: "Hey there,<br/><p>You are approaching your credit limit for this billing period. Your usage right now is around 80% of your total credit limit. Consider upgrading your plan to avoid hitting the limit. Check out our <a href='https://firecrawl.dev/pricing'>pricing page</a> for more info.</p><br/>Thanks,<br/>Firecrawl Team<br/>"
+    html: "Hey there,<br/><p>You are approaching your credit limit for this billing period. Your usage right now is around 80% of your total credit limit. Consider upgrading your plan to avoid hitting the limit. Check out our <a href='https://firecrawl.dev/pricing'>pricing page</a> for more info.</p><br/>Thanks,<br/>Firecrawl Team<br/>",
   },
   [NotificationType.LIMIT_REACHED]: {
     subject:
       "Credit Limit Reached! Take action now to resume usage - Firecrawl",
-    html: "Hey there,<br/><p>You have reached your credit limit for this billing period. To resume usage, please upgrade your plan. Check out our <a href='https://firecrawl.dev/pricing'>pricing page</a> for more info.</p><br/>Thanks,<br/>Firecrawl Team<br/>"
+    html: "Hey there,<br/><p>You have reached your credit limit for this billing period. To resume usage, please upgrade your plan. Check out our <a href='https://firecrawl.dev/pricing'>pricing page</a> for more info.</p><br/>Thanks,<br/>Firecrawl Team<br/>",
   },
   [NotificationType.RATE_LIMIT_REACHED]: {
     subject: "Rate Limit Reached - Firecrawl",
-    html: "Hey there,<br/><p>You've hit one of the Firecrawl endpoint's rate limit! Take a breather and try again in a few moments. If you need higher rate limits, consider upgrading your plan. Check out our <a href='https://firecrawl.dev/pricing'>pricing page</a> for more info.</p><p>If you have any questions, feel free to reach out to us at <a href='mailto:help@firecrawl.com'>help@firecrawl.com</a></p><br/>Thanks,<br/>Firecrawl Team<br/><br/>Ps. this email is only sent once every 7 days if you reach a rate limit."
+    html: "Hey there,<br/><p>You've hit one of the Firecrawl endpoint's rate limit! Take a breather and try again in a few moments. If you need higher rate limits, consider upgrading your plan. Check out our <a href='https://firecrawl.dev/pricing'>pricing page</a> for more info.</p><p>If you have any questions, feel free to reach out to us at <a href='mailto:help@firecrawl.com'>help@firecrawl.com</a></p><br/>Thanks,<br/>Firecrawl Team<br/><br/>Ps. this email is only sent once every 7 days if you reach a rate limit.",
   },
   [NotificationType.AUTO_RECHARGE_SUCCESS]: {
     subject: "Auto recharge successful - Firecrawl",
-    html: "Hey there,<br/><p>Your account was successfully recharged with 1000 credits because your remaining credits were below the threshold. Consider upgrading your plan at <a href='https://firecrawl.dev/pricing'>firecrawl.dev/pricing</a> to avoid hitting the limit.</p><br/>Thanks,<br/>Firecrawl Team<br/>"
+    html: "Hey there,<br/><p>Your account was successfully recharged with 1000 credits because your remaining credits were below the threshold. Consider upgrading your plan at <a href='https://firecrawl.dev/pricing'>firecrawl.dev/pricing</a> to avoid hitting the limit.</p><br/>Thanks,<br/>Firecrawl Team<br/>",
   },
   [NotificationType.AUTO_RECHARGE_FAILED]: {
     subject: "Auto recharge failed - Firecrawl",
-    html: "Hey there,<br/><p>Your auto recharge failed. Please try again manually. If the issue persists, please reach out to us at <a href='mailto:help@firecrawl.com'>help@firecrawl.com</a></p><br/>Thanks,<br/>Firecrawl Team<br/>"
-  }
+    html: "Hey there,<br/><p>Your auto recharge failed. Please try again manually. If the issue persists, please reach out to us at <a href='mailto:help@firecrawl.com'>help@firecrawl.com</a></p><br/>Thanks,<br/>Firecrawl Team<br/>",
+  },
 };
 
 export async function sendNotification(
@@ -41,7 +41,7 @@ export async function sendNotification(
   startDateString: string | null,
   endDateString: string | null,
   chunk: AuthCreditUsageChunk,
-  bypassRecentChecks: boolean = false
+  bypassRecentChecks: boolean = false,
 ) {
   return withAuth(sendNotificationInternal, undefined)(
     team_id,
@@ -49,13 +49,13 @@ export async function sendNotification(
     startDateString,
     endDateString,
     chunk,
-    bypassRecentChecks
+    bypassRecentChecks,
   );
 }
 
 export async function sendEmailNotification(
   email: string,
-  notificationType: NotificationType
+  notificationType: NotificationType,
 ) {
   const resend = new Resend(process.env.RESEND_API_KEY);
 
@@ -65,7 +65,7 @@ export async function sendEmailNotification(
       to: [email],
       reply_to: "help@firecrawl.com",
       subject: emailTemplates[notificationType].subject,
-      html: emailTemplates[notificationType].html
+      html: emailTemplates[notificationType].html,
     });
 
     if (error) {
@@ -84,7 +84,7 @@ export async function sendNotificationInternal(
   startDateString: string | null,
   endDateString: string | null,
   chunk: AuthCreditUsageChunk,
-  bypassRecentChecks: boolean = false
+  bypassRecentChecks: boolean = false,
 ): Promise<{ success: boolean }> {
   if (team_id === "preview") {
     return { success: true };
@@ -125,7 +125,7 @@ export async function sendNotificationInternal(
 
         if (recentError) {
           logger.debug(
-            `Error fetching recent notifications: ${recentError.message}`
+            `Error fetching recent notifications: ${recentError.message}`,
           );
           return { success: false };
         }
@@ -136,7 +136,7 @@ export async function sendNotificationInternal(
       }
 
       console.log(
-        `Sending notification for team_id: ${team_id} and notificationType: ${notificationType}`
+        `Sending notification for team_id: ${team_id} and notificationType: ${notificationType}`,
       );
       // get the emails from the user with the team_id
       const { data: emails, error: emailsError } = await supabase_service
@@ -160,15 +160,15 @@ export async function sendNotificationInternal(
             team_id: team_id,
             notification_type: notificationType,
             sent_date: new Date().toISOString(),
-            timestamp: new Date().toISOString()
-          }
+            timestamp: new Date().toISOString(),
+          },
         ]);
 
       if (process.env.SLACK_ADMIN_WEBHOOK_URL && emails.length > 0) {
         sendSlackWebhook(
           `${getNotificationString(notificationType)}: Team ${team_id}, with email ${emails[0].email}. Number of credits used: ${chunk.adjusted_credits_used} | Number of credits in the plan: ${chunk.price_credits}`,
           false,
-          process.env.SLACK_ADMIN_WEBHOOK_URL
+          process.env.SLACK_ADMIN_WEBHOOK_URL,
         ).catch((error) => {
           logger.debug(`Error sending slack notification: ${error}`);
         });
@@ -180,6 +180,6 @@ export async function sendNotificationInternal(
       }
 
       return { success: true };
-    }
+    },
   );
 }

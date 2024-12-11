@@ -5,7 +5,7 @@ import {
   crawlRequestSchema,
   CrawlResponse,
   RequestWithAuth,
-  toLegacyCrawlerOptions
+  toLegacyCrawlerOptions,
 } from "./types";
 import {
   addCrawlJob,
@@ -14,7 +14,7 @@ import {
   lockURL,
   lockURLs,
   saveCrawl,
-  StoredCrawl
+  StoredCrawl,
 } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
@@ -26,7 +26,7 @@ import { scrapeOptions as scrapeOptionsSchema } from "./types";
 
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
-  res: Response<CrawlResponse>
+  res: Response<CrawlResponse>,
 ) {
   const preNormalizedBody = req.body;
   req.body = crawlRequestSchema.parse(req.body);
@@ -37,12 +37,12 @@ export async function crawlController(
     module: "api/v1",
     method: "crawlController",
     teamId: req.auth.team_id,
-    plan: req.auth.plan
+    plan: req.auth.plan,
   });
   logger.debug("Crawl " + id + " starting", {
     request: req.body,
     originalRequest: preNormalizedBody,
-    account: req.account
+    account: req.account,
   });
 
   await logCrawl(id, req.auth.team_id);
@@ -56,7 +56,7 @@ export async function crawlController(
   const crawlerOptions = {
     ...req.body,
     url: undefined,
-    scrapeOptions: undefined
+    scrapeOptions: undefined,
   };
   const scrapeOptions = req.body.scrapeOptions;
 
@@ -86,7 +86,7 @@ export async function crawlController(
   logger.debug("Determined limit: " + crawlerOptions.limit, {
     remainingCredits,
     bodyLimit: originalLimit,
-    originalBodyLimit: preNormalizedBody.limit
+    originalBodyLimit: preNormalizedBody.limit,
   });
 
   const sc: StoredCrawl = {
@@ -96,7 +96,7 @@ export async function crawlController(
     internalOptions: { disableSmartWaitCache: true }, // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
     team_id: req.auth.team_id,
     createdAt: Date.now(),
-    plan: req.auth.plan
+    plan: req.auth.plan,
   };
 
   const crawler = crawlToCrawler(id, sc);
@@ -105,7 +105,7 @@ export async function crawlController(
     sc.robots = await crawler.getRobotsTxt(scrapeOptions.skipTlsVerification);
   } catch (e) {
     logger.debug("Failed to get robots.txt (this is probably fine!)", {
-      error: e
+      error: e,
     });
   }
 
@@ -117,7 +117,7 @@ export async function crawlController(
 
   if (sitemap !== null && sitemap.length > 0) {
     logger.debug("Using sitemap of length " + sitemap.length, {
-      sitemapLength: sitemap.length
+      sitemapLength: sitemap.length,
     });
     let jobPriority = 20;
     // If it is over 1000, we need to get the job priority,
@@ -127,7 +127,7 @@ export async function crawlController(
       jobPriority = await getJobPriority({
         plan: req.auth.plan,
         team_id: req.auth.team_id,
-        basePriority: 21
+        basePriority: 21,
       });
     }
     logger.debug("Using job priority " + jobPriority, { jobPriority });
@@ -149,12 +149,12 @@ export async function crawlController(
           crawl_id: id,
           sitemapped: true,
           webhook: req.body.webhook,
-          v1: true
+          v1: true,
         },
         opts: {
           jobId: uuid,
-          priority: 20
-        }
+          priority: 20,
+        },
       };
     });
 
@@ -162,18 +162,18 @@ export async function crawlController(
     await lockURLs(
       id,
       sc,
-      jobs.map((x) => x.data.url)
+      jobs.map((x) => x.data.url),
     );
     logger.debug("Adding scrape jobs to Redis...");
     await addCrawlJobs(
       id,
-      jobs.map((x) => x.opts.jobId)
+      jobs.map((x) => x.opts.jobId),
     );
     logger.debug("Adding scrape jobs to BullMQ...");
     await getScrapeQueue().addBulk(jobs);
   } else {
     logger.debug("Sitemap not found or ignored.", {
-      ignoreSitemap: sc.crawlerOptions.ignoreSitemap
+      ignoreSitemap: sc.crawlerOptions.ignoreSitemap,
     });
 
     logger.debug("Locking URL...");
@@ -192,12 +192,12 @@ export async function crawlController(
         origin: "api",
         crawl_id: id,
         webhook: req.body.webhook,
-        v1: true
+        v1: true,
       },
       {
-        priority: 15
+        priority: 15,
       },
-      jobId
+      jobId,
     );
     logger.debug("Adding scrape job to BullMQ...", { jobId });
     await addCrawlJob(id, jobId);
@@ -206,7 +206,7 @@ export async function crawlController(
 
   if (req.body.webhook) {
     logger.debug("Calling webhook with crawl.started...", {
-      webhook: req.body.webhook
+      webhook: req.body.webhook,
     });
     await callWebhook(
       req.auth.team_id,
@@ -214,7 +214,7 @@ export async function crawlController(
       null,
       req.body.webhook,
       true,
-      "crawl.started"
+      "crawl.started",
     );
   }
 
@@ -223,6 +223,6 @@ export async function crawlController(
   return res.status(200).json({
     success: true,
     id,
-    url: `${protocol}://${req.get("host")}/v1/crawl/${id}`
+    url: `${protocol}://${req.get("host")}/v1/crawl/${id}`,
   });
 }

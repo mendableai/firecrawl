@@ -10,7 +10,7 @@ import { createIdempotencyKey } from "../../../src/services/idempotency/create";
 import {
   defaultCrawlPageOptions,
   defaultCrawlerOptions,
-  defaultOrigin
+  defaultOrigin,
 } from "../../../src/lib/default-values";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../../src/lib/logger";
@@ -21,7 +21,7 @@ import {
   lockURL,
   lockURLs,
   saveCrawl,
-  StoredCrawl
+  StoredCrawl,
 } from "../../../src/lib/crawl-redis";
 import { getScrapeQueue } from "../../../src/services/queue-service";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
@@ -54,7 +54,7 @@ export async function crawlController(req: Request, res: Response) {
 
     const crawlerOptions = {
       ...defaultCrawlerOptions,
-      ...req.body.crawlerOptions
+      ...req.body.crawlerOptions,
     };
     const pageOptions = { ...defaultCrawlPageOptions, ...req.body.pageOptions };
 
@@ -82,13 +82,13 @@ export async function crawlController(req: Request, res: Response) {
     const {
       success: creditsCheckSuccess,
       message: creditsCheckMessage,
-      remainingCredits
+      remainingCredits,
     } = await checkTeamCredits(chunk, team_id, limitCheck);
 
     if (!creditsCheckSuccess) {
       return res.status(402).json({
         error:
-          "Insufficient credits. You may be requesting with a higher limit than the amount of credits you have left. If not, upgrade your plan at https://firecrawl.dev/pricing or contact us at help@firecrawl.com"
+          "Insufficient credits. You may be requesting with a higher limit than the amount of credits you have left. If not, upgrade your plan at https://firecrawl.dev/pricing or contact us at help@firecrawl.com",
       });
     }
 
@@ -113,7 +113,7 @@ export async function crawlController(req: Request, res: Response) {
     if (isUrlBlocked(url)) {
       return res.status(403).json({
         error:
-          "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
+          "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
       });
     }
 
@@ -153,7 +153,7 @@ export async function crawlController(req: Request, res: Response) {
     const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(
       pageOptions,
       undefined,
-      undefined
+      undefined,
     );
     internalOptions.disableSmartWaitCache = true; // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
 
@@ -166,7 +166,7 @@ export async function crawlController(req: Request, res: Response) {
       internalOptions,
       team_id,
       plan,
-      createdAt: Date.now()
+      createdAt: Date.now(),
     };
 
     const crawler = crawlToCrawler(id, sc);
@@ -204,23 +204,23 @@ export async function crawlController(req: Request, res: Response) {
             plan,
             origin: req.body.origin ?? defaultOrigin,
             crawl_id: id,
-            sitemapped: true
+            sitemapped: true,
           },
           opts: {
             jobId: uuid,
-            priority: jobPriority
-          }
+            priority: jobPriority,
+          },
         };
       });
 
       await lockURLs(
         id,
         sc,
-        jobs.map((x) => x.data.url)
+        jobs.map((x) => x.data.url),
       );
       await addCrawlJobs(
         id,
-        jobs.map((x) => x.opts.jobId)
+        jobs.map((x) => x.opts.jobId),
       );
       for (const job of jobs) {
         // add with sentry instrumentation
@@ -243,12 +243,12 @@ export async function crawlController(req: Request, res: Response) {
           team_id,
           plan: plan!,
           origin: req.body.origin ?? defaultOrigin,
-          crawl_id: id
+          crawl_id: id,
         },
         {
-          priority: 15 // prioritize request 0 of crawl jobs same as scrape jobs
+          priority: 15, // prioritize request 0 of crawl jobs same as scrape jobs
         },
-        jobId
+        jobId,
       );
       await addCrawlJob(id, jobId);
     }
@@ -258,7 +258,7 @@ export async function crawlController(req: Request, res: Response) {
     Sentry.captureException(error);
     logger.error(error);
     return res.status(500).json({
-      error: error instanceof ZodError ? "Invalid URL" : error.message
+      error: error instanceof ZodError ? "Invalid URL" : error.message,
     });
   }
 }

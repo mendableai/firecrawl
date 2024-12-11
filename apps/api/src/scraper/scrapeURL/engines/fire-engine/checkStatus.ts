@@ -31,10 +31,10 @@ const successSchema = z.object({
   actionContent: z
     .object({
       url: z.string(),
-      html: z.string()
+      html: z.string(),
     })
     .array()
-    .optional()
+    .optional(),
 });
 
 export type FireEngineCheckStatusSuccess = z.infer<typeof successSchema>;
@@ -47,16 +47,16 @@ const processingSchema = z.object({
     "waiting",
     "waiting-children",
     "unknown",
-    "prioritized"
+    "prioritized",
   ]),
-  processing: z.boolean()
+  processing: z.boolean(),
 });
 
 const failedSchema = z.object({
   jobId: z.string(),
   state: z.literal("failed"),
   processing: z.literal(false),
-  error: z.string()
+  error: z.string(),
 });
 
 export class StillProcessingError extends Error {
@@ -67,7 +67,7 @@ export class StillProcessingError extends Error {
 
 export async function fireEngineCheckStatus(
   logger: Logger,
-  jobId: string
+  jobId: string,
 ): Promise<FireEngineCheckStatusSuccess> {
   const fireEngineURL = process.env.FIRE_ENGINE_BETA_URL!;
 
@@ -75,8 +75,8 @@ export async function fireEngineCheckStatus(
     {
       name: "fire-engine: Check status",
       attributes: {
-        jobId
-      }
+        jobId,
+      },
     },
     async (span) => {
       return await robustFetch({
@@ -87,12 +87,12 @@ export async function fireEngineCheckStatus(
           ...(Sentry.isInitialized()
             ? {
                 "sentry-trace": Sentry.spanToTraceHeader(span),
-                baggage: Sentry.spanToBaggageHeader(span)
+                baggage: Sentry.spanToBaggageHeader(span),
               }
-            : {})
-        }
+            : {}),
+        },
       });
-    }
+    },
   );
 
   const successParse = successSchema.safeParse(status);
@@ -115,23 +115,23 @@ export async function fireEngineCheckStatus(
       throw new EngineError("Scrape job failed", {
         cause: {
           status,
-          jobId
-        }
+          jobId,
+        },
       });
     }
   } else {
     logger.debug("Check status returned response not matched by any schema", {
       status,
-      jobId
+      jobId,
     });
     throw new Error(
       "Check status returned response not matched by any schema",
       {
         cause: {
           status,
-          jobId
-        }
-      }
+          jobId,
+        },
+      },
     );
   }
 }

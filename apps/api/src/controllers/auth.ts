@@ -4,7 +4,7 @@ import {
   AuthResponse,
   NotificationType,
   PlanType,
-  RateLimiterMode
+  RateLimiterMode,
 } from "../types";
 import { supabase_service } from "../services/supabase";
 import { withAuth } from "../lib/withAuth";
@@ -41,7 +41,7 @@ export async function setCachedACUC(
   acuc:
     | AuthCreditUsageChunk
     | null
-    | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk | null)
+    | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk | null),
 ) {
   const cacheKeyACUC = `acuc_${api_key}`;
   const redLockKey = `lock_${cacheKeyACUC}`;
@@ -76,7 +76,7 @@ export async function setCachedACUC(
 export async function getACUC(
   api_key: string,
   cacheOnly = false,
-  useCache = true
+  useCache = true,
 ): Promise<AuthCreditUsageChunk | null> {
   const cacheKeyACUC = `acuc_${api_key}`;
 
@@ -97,7 +97,7 @@ export async function getACUC(
       ({ data, error } = await supabase_service.rpc(
         "auth_credit_usage_chunk_test_21_credit_pack",
         { input_key: api_key },
-        { get: true }
+        { get: true },
       ));
 
       if (!error) {
@@ -105,13 +105,13 @@ export async function getACUC(
       }
 
       logger.warn(
-        `Failed to retrieve authentication and credit usage data after ${retries}, trying again...`
+        `Failed to retrieve authentication and credit usage data after ${retries}, trying again...`,
       );
       retries++;
       if (retries === maxRetries) {
         throw new Error(
           "Failed to retrieve authentication and credit usage data after 3 attempts: " +
-            JSON.stringify(error)
+            JSON.stringify(error),
         );
       }
 
@@ -143,19 +143,19 @@ export async function clearACUC(api_key: string): Promise<void> {
 export async function authenticateUser(
   req,
   res,
-  mode?: RateLimiterMode
+  mode?: RateLimiterMode,
 ): Promise<AuthResponse> {
   return withAuth(supaAuthenticateUser, {
     success: true,
     chunk: null,
-    team_id: "bypass"
+    team_id: "bypass",
   })(req, res, mode);
 }
 
 export async function supaAuthenticateUser(
   req,
   res,
-  mode?: RateLimiterMode
+  mode?: RateLimiterMode,
 ): Promise<AuthResponse> {
   const authHeader =
     req.headers.authorization ??
@@ -170,7 +170,7 @@ export async function supaAuthenticateUser(
     return {
       success: false,
       error: "Unauthorized: Token missing",
-      status: 401
+      status: 401,
     };
   }
 
@@ -199,7 +199,7 @@ export async function supaAuthenticateUser(
       return {
         success: false,
         error: "Unauthorized: Invalid token",
-        status: 401
+        status: 401,
       };
     }
 
@@ -209,7 +209,7 @@ export async function supaAuthenticateUser(
       return {
         success: false,
         error: "Unauthorized: Invalid token",
-        status: 401
+        status: 401,
       };
     }
 
@@ -219,14 +219,14 @@ export async function supaAuthenticateUser(
     const plan = getPlanByPriceId(priceId);
     subscriptionData = {
       team_id: teamId,
-      plan
+      plan,
     };
     switch (mode) {
       case RateLimiterMode.Crawl:
         rateLimiter = getRateLimiter(
           RateLimiterMode.Crawl,
           token,
-          subscriptionData.plan
+          subscriptionData.plan,
         );
         break;
       case RateLimiterMode.Scrape:
@@ -234,21 +234,21 @@ export async function supaAuthenticateUser(
           RateLimiterMode.Scrape,
           token,
           subscriptionData.plan,
-          teamId
+          teamId,
         );
         break;
       case RateLimiterMode.Search:
         rateLimiter = getRateLimiter(
           RateLimiterMode.Search,
           token,
-          subscriptionData.plan
+          subscriptionData.plan,
         );
         break;
       case RateLimiterMode.Map:
         rateLimiter = getRateLimiter(
           RateLimiterMode.Map,
           token,
-          subscriptionData.plan
+          subscriptionData.plan,
         );
         break;
       case RateLimiterMode.CrawlStatus:
@@ -278,7 +278,7 @@ export async function supaAuthenticateUser(
       priceId,
       plan: subscriptionData?.plan,
       mode,
-      rateLimiterRes
+      rateLimiterRes,
     });
     const secs = Math.round(rateLimiterRes.msBeforeNext / 1000) || 1;
     const retryDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
@@ -293,7 +293,7 @@ export async function supaAuthenticateUser(
     return {
       success: false,
       error: `Rate limit exceeded. Consumed (req/min): ${rateLimiterRes.consumedPoints}, Remaining (req/min): ${rateLimiterRes.remainingPoints}. Upgrade your plan at https://firecrawl.dev/pricing for increased rate limits or please retry after ${secs}s, resets at ${retryDate}`,
-      status: 429
+      status: 429,
     };
   }
 
@@ -323,7 +323,7 @@ export async function supaAuthenticateUser(
     success: true,
     team_id: teamId ?? undefined,
     plan: (subscriptionData?.plan ?? "") as PlanType,
-    chunk
+    chunk,
   };
 }
 function getPlanByPriceId(price_id: string | null): PlanType {

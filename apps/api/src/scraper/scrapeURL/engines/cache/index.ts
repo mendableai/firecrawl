@@ -14,6 +14,6 @@ export async function scrapeCache(meta: Meta): Promise<EngineScrapeResult> {
     url: entry.url,
     html: entry.html,
     statusCode: entry.statusCode,
-    error: entry.error
+    error: entry.error,
   };
 }

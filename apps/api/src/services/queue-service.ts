@@ -5,7 +5,7 @@ import IORedis from "ioredis";
 let scrapeQueue: Queue;
 
 export const redisConnection = new IORedis(process.env.REDIS_URL!, {
-  maxRetriesPerRequest: null
+  maxRetriesPerRequest: null,
 });
 
 export const scrapeQueueName = "{scrapeQueue}";
@@ -18,13 +18,13 @@ export function getScrapeQueue() {
         connection: redisConnection,
         defaultJobOptions: {
           removeOnComplete: {
-            age: 90000 // 25 hours
+            age: 90000, // 25 hours
           },
           removeOnFail: {
-            age: 90000 // 25 hours
-          }
-        }
-      }
+            age: 90000, // 25 hours
+          },
+        },
+      },
       //   {
       //   settings: {
       //     lockDuration: 1 * 60 * 1000, // 1 minute in milliseconds,

@@ -2,7 +2,7 @@ import request from "supertest";
 import { configDotenv } from "dotenv";
 import {
   ScrapeRequest,
-  ScrapeResponseRequestTest
+  ScrapeResponseRequestTest,
 } from "../../controllers/v1/types";
 
 configDotenv();
@@ -14,7 +14,7 @@ describe("E2E Tests for v1 API Routes", () => {
     "should return a successful response for a scrape with 403 page",
     async () => {
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -30,18 +30,18 @@ describe("E2E Tests for v1 API Routes", () => {
       expect(response.body.data).toHaveProperty("metadata");
       expect(response.body.data.metadata.statusCode).toBe(403);
     },
-    30000
+    30000,
   );
 
   it.concurrent(
     "should handle 'formats:markdown (default)' parameter correctly",
     async () => {
       const scrapeRequest = {
-        url: E2E_TEST_SERVER_URL
+        url: E2E_TEST_SERVER_URL,
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -57,26 +57,26 @@ describe("E2E Tests for v1 API Routes", () => {
       expect(response.body.data).toHaveProperty("markdown");
 
       expect(response.body.data.markdown).toContain(
-        "This page is used for end-to-end (e2e) testing with Firecrawl."
+        "This page is used for end-to-end (e2e) testing with Firecrawl.",
       );
       expect(response.body.data.markdown).toContain(
-        "Content with id #content-1"
+        "Content with id #content-1",
       );
       // expect(response.body.data.markdown).toContain("Loading...");
       expect(response.body.data.markdown).toContain("Click me!");
       expect(response.body.data.markdown).toContain(
-        "Power your AI apps with clean data crawled from any website. It's also open-source."
+        "Power your AI apps with clean data crawled from any website. It's also open-source.",
       ); // firecrawl.dev inside an iframe
       expect(response.body.data.markdown).toContain(
-        "This content loads only when you see it. Don't blink! 👼"
+        "This content loads only when you see it. Don't blink! 👼",
       ); // the browser always scroll to the bottom
       expect(response.body.data.markdown).not.toContain("Header"); // Only main content is returned by default
       expect(response.body.data.markdown).not.toContain("footer"); // Only main content is returned by default
       expect(response.body.data.markdown).not.toContain(
-        "This content is only visible on mobile"
+        "This content is only visible on mobile",
       );
     },
-    30000
+    30000,
   );
 
   it.concurrent(
@@ -84,11 +84,11 @@ describe("E2E Tests for v1 API Routes", () => {
     async () => {
       const scrapeRequest = {
         url: E2E_TEST_SERVER_URL,
-        formats: ["html"]
+        formats: ["html"],
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -105,13 +105,13 @@ describe("E2E Tests for v1 API Routes", () => {
       expect(response.body.data).toHaveProperty("html");
 
       expect(response.body.data.html).not.toContain(
-        '<header class="row-start-1" style="">Header</header>'
+        '<header class="row-start-1" style="">Header</header>',
       );
       expect(response.body.data.html).toContain(
-        '<p style="">This page is used for end-to-end (e2e) testing with Firecrawl.</p>'
+        '<p style="">This page is used for end-to-end (e2e) testing with Firecrawl.</p>',
       );
     },
-    30000
+    30000,
   );
 
   it.concurrent(
@@ -119,11 +119,11 @@ describe("E2E Tests for v1 API Routes", () => {
     async () => {
       const scrapeRequest = {
         url: E2E_TEST_SERVER_URL,
-        formats: ["rawHtml"]
+        formats: ["rawHtml"],
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -140,11 +140,11 @@ describe("E2E Tests for v1 API Routes", () => {
       expect(response.body.data).toHaveProperty("rawHtml");
 
       expect(response.body.data.rawHtml).toContain(
-        ">This page is used for end-to-end (e2e) testing with Firecrawl.</p>"
+        ">This page is used for end-to-end (e2e) testing with Firecrawl.</p>",
       );
       expect(response.body.data.rawHtml).toContain(">Header</header>");
     },
-    30000
+    30000,
   );
 
   // - TODO: tests for links
@@ -157,11 +157,11 @@ describe("E2E Tests for v1 API Routes", () => {
       // @ts-ignore
       const scrapeRequest = {
         url: E2E_TEST_SERVER_URL,
-        headers: { "e2e-header-test": "firecrawl" }
+        headers: { "e2e-header-test": "firecrawl" },
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -175,10 +175,10 @@ describe("E2E Tests for v1 API Routes", () => {
       }
 
       expect(response.body.data.markdown).toContain(
-        "e2e-header-test: firecrawl"
+        "e2e-header-test: firecrawl",
       );
     },
-    30000
+    30000,
   );
 
   it.concurrent(
@@ -186,11 +186,11 @@ describe("E2E Tests for v1 API Routes", () => {
     async () => {
       const scrapeRequest = {
         url: E2E_TEST_SERVER_URL,
-        includeTags: ["#content-1"]
+        includeTags: ["#content-1"],
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -204,13 +204,13 @@ describe("E2E Tests for v1 API Routes", () => {
       }
 
       expect(response.body.data.markdown).not.toContain(
-        "<p>This page is used for end-to-end (e2e) testing with Firecrawl.</p>"
+        "<p>This page is used for end-to-end (e2e) testing with Firecrawl.</p>",
       );
       expect(response.body.data.markdown).toContain(
-        "Content with id #content-1"
+        "Content with id #content-1",
       );
     },
-    30000
+    30000,
   );
 
   it.concurrent(
@@ -218,11 +218,11 @@ describe("E2E Tests for v1 API Routes", () => {
     async () => {
       const scrapeRequest = {
         url: E2E_TEST_SERVER_URL,
-        excludeTags: ["#content-1"]
+        excludeTags: ["#content-1"],
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -236,13 +236,13 @@ describe("E2E Tests for v1 API Routes", () => {
       }
 
       expect(response.body.data.markdown).toContain(
-        "This page is used for end-to-end (e2e) testing with Firecrawl."
+        "This page is used for end-to-end (e2e) testing with Firecrawl.",
       );
       expect(response.body.data.markdown).not.toContain(
-        "Content with id #content-1"
+        "Content with id #content-1",
       );
     },
-    30000
+    30000,
   );
 
   it.concurrent(
@@ -251,11 +251,11 @@ describe("E2E Tests for v1 API Routes", () => {
       const scrapeRequest = {
         url: E2E_TEST_SERVER_URL,
         formats: ["html", "markdown"],
-        onlyMainContent: false
+        onlyMainContent: false,
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -269,13 +269,13 @@ describe("E2E Tests for v1 API Routes", () => {
       }
 
       expect(response.body.data.markdown).toContain(
-        "This page is used for end-to-end (e2e) testing with Firecrawl."
+        "This page is used for end-to-end (e2e) testing with Firecrawl.",
       );
       expect(response.body.data.html).toContain(
-        '<header class="row-start-1" style="">Header</header>'
+        '<header class="row-start-1" style="">Header</header>',
       );
     },
-    30000
+    30000,
   );
 
   it.concurrent(
@@ -283,11 +283,11 @@ describe("E2E Tests for v1 API Routes", () => {
     async () => {
       const scrapeRequest = {
         url: E2E_TEST_SERVER_URL,
-        timeout: 500
+        timeout: 500,
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -302,7 +302,7 @@ describe("E2E Tests for v1 API Routes", () => {
       expect(response.body.error).toBe("Request timed out");
       expect(response.body.success).toBe(false);
     },
-    30000
+    30000,
   );
 
   it.concurrent(
@@ -310,11 +310,11 @@ describe("E2E Tests for v1 API Routes", () => {
     async () => {
       const scrapeRequest = {
         url: E2E_TEST_SERVER_URL,
-        mobile: true
+        mobile: true,
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -327,17 +327,17 @@ describe("E2E Tests for v1 API Routes", () => {
         throw new Error("Expected response body to have 'data' property");
       }
       expect(response.body.data.markdown).toContain(
-        "This content is only visible on mobile"
+        "This content is only visible on mobile",
       );
     },
-    30000
+    30000,
   );
 
   it.concurrent(
     "should handle 'parsePDF' parameter correctly",
     async () => {
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -352,21 +352,21 @@ describe("E2E Tests for v1 API Routes", () => {
       }
 
       expect(response.body.data.markdown).toContain(
-        "arXiv:astro-ph/9301001v1 7 Jan 1993"
+        "arXiv:astro-ph/9301001v1 7 Jan 1993",
       );
       expect(response.body.data.markdown).not.toContain(
-        "h7uKu14adDL6yGfnGf2qycY5uq8kC3OKCWkPxm"
+        "h7uKu14adDL6yGfnGf2qycY5uq8kC3OKCWkPxm",
       );
 
       const responseNoParsePDF: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
         .send({
           url: "https://arxiv.org/pdf/astro-ph/9301001.pdf",
-          parsePDF: false
+          parsePDF: false,
         });
       await new Promise((r) => setTimeout(r, 6000));
 
@@ -376,10 +376,10 @@ describe("E2E Tests for v1 API Routes", () => {
         throw new Error("Expected response body to have 'data' property");
       }
       expect(responseNoParsePDF.body.data.markdown).toContain(
-        "h7uKu14adDL6yGfnGf2qycY5uq8kC3OKCWkPxm"
+        "h7uKu14adDL6yGfnGf2qycY5uq8kC3OKCWkPxm",
       );
     },
-    30000
+    30000,
   );
 
   // it.concurrent("should handle 'location' parameter correctly",
@@ -408,11 +408,11 @@ describe("E2E Tests for v1 API Routes", () => {
     async () => {
       const scrapeRequest = {
         url: "https://expired.badssl.com/",
-        timeout: 120000
+        timeout: 120000,
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -430,7 +430,7 @@ describe("E2E Tests for v1 API Routes", () => {
       const scrapeRequestWithSkipTlsVerification = {
         url: "https://expired.badssl.com/",
         skipTlsVerification: true,
-        timeout: 120000
+        timeout: 120000,
       } as ScrapeRequest;
 
       const responseWithSkipTlsVerification: ScrapeResponseRequestTest =
@@ -448,10 +448,10 @@ describe("E2E Tests for v1 API Routes", () => {
       }
       // console.log(responseWithSkipTlsVerification.body.data)
       expect(responseWithSkipTlsVerification.body.data.markdown).toContain(
-        "badssl.com"
+        "badssl.com",
       );
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -459,11 +459,11 @@ describe("E2E Tests for v1 API Routes", () => {
     async () => {
       const scrapeRequest = {
         url: E2E_TEST_SERVER_URL,
-        removeBase64Images: true
+        removeBase64Images: true,
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -478,7 +478,7 @@ describe("E2E Tests for v1 API Routes", () => {
       // - TODO: not working for every image
       // expect(response.body.data.markdown).toContain("Image-Removed");
     },
-    30000
+    30000,
   );
 
   it.concurrent(
@@ -489,13 +489,13 @@ describe("E2E Tests for v1 API Routes", () => {
         actions: [
           {
             type: "wait",
-            milliseconds: 10000
-          }
-        ]
+            milliseconds: 10000,
+          },
+        ],
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -508,10 +508,10 @@ describe("E2E Tests for v1 API Routes", () => {
       }
       expect(response.body.data.markdown).not.toContain("Loading...");
       expect(response.body.data.markdown).toContain(
-        "Content loaded after 5 seconds!"
+        "Content loaded after 5 seconds!",
       );
     },
-    30000
+    30000,
   );
 
   // screenshot
@@ -522,13 +522,13 @@ describe("E2E Tests for v1 API Routes", () => {
         url: E2E_TEST_SERVER_URL,
         actions: [
           {
-            type: "screenshot"
-          }
-        ]
+            type: "screenshot",
+          },
+        ],
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -543,15 +543,15 @@ describe("E2E Tests for v1 API Routes", () => {
         throw new Error("Expected response body to have screenshots array");
       }
       expect(response.body.data.actions.screenshots[0].length).toBeGreaterThan(
-        0
+        0,
       );
       expect(response.body.data.actions.screenshots[0]).toContain(
-        "https://service.firecrawl.dev/storage/v1/object/public/media/screenshot-"
+        "https://service.firecrawl.dev/storage/v1/object/public/media/screenshot-",
       );
 
       // TODO compare screenshot with expected screenshot
     },
-    30000
+    30000,
   );
 
   it.concurrent(
@@ -562,16 +562,16 @@ describe("E2E Tests for v1 API Routes", () => {
         actions: [
           {
             type: "screenshot",
-            fullPage: true
+            fullPage: true,
           },
           {
-            type: "scrape"
-          }
-        ]
+            type: "scrape",
+          },
+        ],
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -587,24 +587,24 @@ describe("E2E Tests for v1 API Routes", () => {
         throw new Error("Expected response body to have screenshots array");
       }
       expect(response.body.data.actions.screenshots[0].length).toBeGreaterThan(
-        0
+        0,
       );
       expect(response.body.data.actions.screenshots[0]).toContain(
-        "https://service.firecrawl.dev/storage/v1/object/public/media/screenshot-"
+        "https://service.firecrawl.dev/storage/v1/object/public/media/screenshot-",
       );
 
       if (!response.body.data.actions?.scrapes) {
         throw new Error("Expected response body to have scrapes array");
       }
       expect(response.body.data.actions.scrapes[0].url).toBe(
-        "https://firecrawl-e2e-test.vercel.app/"
+        "https://firecrawl-e2e-test.vercel.app/",
       );
       expect(response.body.data.actions.scrapes[0].html).toContain(
-        "This page is used for end-to-end (e2e) testing with Firecrawl.</p>"
+        "This page is used for end-to-end (e2e) testing with Firecrawl.</p>",
       );
       // TODO compare screenshot with expected full page screenshot
     },
-    30000
+    30000,
   );
 
   it.concurrent(
@@ -615,13 +615,13 @@ describe("E2E Tests for v1 API Routes", () => {
         actions: [
           {
             type: "click",
-            selector: "#click-me"
-          }
-        ]
+            selector: "#click-me",
+          },
+        ],
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -634,10 +634,10 @@ describe("E2E Tests for v1 API Routes", () => {
       }
       expect(response.body.data.markdown).not.toContain("Click me!");
       expect(response.body.data.markdown).toContain(
-        "Text changed after click!"
+        "Text changed after click!",
       );
     },
-    30000
+    30000,
   );
 
   it.concurrent(
@@ -649,17 +649,17 @@ describe("E2E Tests for v1 API Routes", () => {
         actions: [
           {
             type: "click",
-            selector: "#input-1"
+            selector: "#input-1",
           },
           {
             type: "write",
-            text: "Hello, world!"
-          }
-        ]
+            text: "Hello, world!",
+          },
+        ],
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -675,7 +675,7 @@ describe("E2E Tests for v1 API Routes", () => {
       // uncomment the following line:
       // expect(response.body.data.html).toContain("<input id=\"input-1\" type=\"text\" placeholder=\"Enter text here...\" style=\"padding:8px;margin:10px;border:1px solid #ccc;border-radius:4px;background-color:#000\" value=\"Hello, world!\">");
     },
-    30000
+    30000,
   );
 
   // TODO: fix this test (need to fix fire-engine first)
@@ -688,13 +688,13 @@ describe("E2E Tests for v1 API Routes", () => {
         actions: [
           {
             type: "press",
-            key: "ArrowDown"
-          }
-        ]
+            key: "ArrowDown",
+          },
+        ],
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -709,7 +709,7 @@ describe("E2E Tests for v1 API Routes", () => {
       // }
       // expect(response.body.data.markdown).toContain("Last Key Clicked: ArrowDown")
     },
-    30000
+    30000,
   );
 
   // TODO: fix this test (need to fix fire-engine first)
@@ -722,18 +722,18 @@ describe("E2E Tests for v1 API Routes", () => {
         actions: [
           {
             type: "click",
-            selector: "#scroll-bottom-loader"
+            selector: "#scroll-bottom-loader",
           },
           {
             type: "scroll",
             direction: "down",
-            amount: 2000
-          }
-        ]
+            amount: 2000,
+          },
+        ],
       } as ScrapeRequest;
 
       const response: ScrapeResponseRequestTest = await request(
-        FIRECRAWL_API_URL
+        FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -748,7 +748,7 @@ describe("E2E Tests for v1 API Routes", () => {
       //
       // expect(response.body.data.markdown).toContain("You have reached the bottom!")
     },
-    30000
+    30000,
   );
 
   // TODO: test scrape action

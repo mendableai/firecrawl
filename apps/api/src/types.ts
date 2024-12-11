@@ -3,7 +3,7 @@ import {
   AuthCreditUsageChunk,
   ScrapeOptions,
   Document as V1Document,
-  webhookSchema
+  webhookSchema,
 } from "./controllers/v1/types";
 import { ExtractorOptions, Document } from "./lib/entities";
 import { InternalOptions } from "./scraper/scrapeURL";
@@ -127,7 +127,7 @@ export enum RateLimiterMode {
   Scrape = "scrape",
   Preview = "preview",
   Search = "search",
-  Map = "map"
+  Map = "map",
 }
 
 export type AuthResponse =
@@ -149,7 +149,7 @@ export enum NotificationType {
   LIMIT_REACHED = "limitReached",
   RATE_LIMIT_REACHED = "rateLimitReached",
   AUTO_RECHARGE_SUCCESS = "autoRechargeSuccess",
-  AUTO_RECHARGE_FAILED = "autoRechargeFailed"
+  AUTO_RECHARGE_FAILED = "autoRechargeFailed",
 }
 
 export type ScrapeLog = {

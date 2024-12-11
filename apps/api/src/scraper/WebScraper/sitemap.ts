@@ -10,13 +10,13 @@ export async function getLinksFromSitemap(
   {
     sitemapUrl,
     allUrls = [],
-    mode = "axios"
+    mode = "axios",
   }: {
     sitemapUrl: string;
     allUrls?: string[];
     mode?: "axios" | "fire-engine";
   },
-  logger: Logger
+  logger: Logger,
 ): Promise<string[]> {
   try {
     let content: string = "";
@@ -29,7 +29,7 @@ export async function getLinksFromSitemap(
           "sitemap",
           sitemapUrl,
           scrapeOptions.parse({ formats: ["rawHtml"] }),
-          { forceEngine: "fire-engine;tlsclient", v0DisableJsDom: true }
+          { forceEngine: "fire-engine;tlsclient", v0DisableJsDom: true },
         );
         if (!response.success) {
           throw response.error;
@@ -41,7 +41,7 @@ export async function getLinksFromSitemap(
         method: "getLinksFromSitemap",
         mode,
         sitemapUrl,
-        error
+        error,
       });
 
       return allUrls;
@@ -56,8 +56,8 @@ export async function getLinksFromSitemap(
         .map((sitemap) =>
           getLinksFromSitemap(
             { sitemapUrl: sitemap.loc[0], allUrls, mode },
-            logger
-          )
+            logger,
+          ),
         );
       await Promise.all(sitemapPromises);
     } else if (root && root.url) {
@@ -66,7 +66,7 @@ export async function getLinksFromSitemap(
           (url) =>
             url.loc &&
             url.loc.length > 0 &&
-            !WebCrawler.prototype.isFile(url.loc[0])
+            !WebCrawler.prototype.isFile(url.loc[0]),
         )
         .map((url) => url.loc[0]);
       allUrls.push(...validUrls);
@@ -76,7 +76,7 @@ export async function getLinksFromSitemap(
       method: "getLinksFromSitemap",
       mode,
       sitemapUrl,
-      error
+      error,
     });
   }
 
@@ -85,12 +85,12 @@ export async function getLinksFromSitemap(
 
 export const fetchSitemapData = async (
   url: string,
-  timeout?: number
+  timeout?: number,
 ): Promise<SitemapEntry[] | null> => {
   const sitemapUrl = url.endsWith("/sitemap.xml") ? url : `${url}/sitemap.xml`;
   try {
     const response = await axios.get(sitemapUrl, {
-      timeout: timeout || axiosTimeout
+      timeout: timeout || axiosTimeout,
     });
     if (response.status === 200) {
       const xml = response.data;

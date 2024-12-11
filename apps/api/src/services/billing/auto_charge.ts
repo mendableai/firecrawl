@@ -22,7 +22,7 @@ const AUTO_RECHARGE_COOLDOWN = 300; // 5 minutes in seconds
  */
 export async function autoCharge(
   chunk: AuthCreditUsageChunk,
-  autoRechargeThreshold: number
+  autoRechargeThreshold: number,
 ): Promise<{
   success: boolean;
   message: string;
@@ -38,13 +38,13 @@ export async function autoCharge(
     const cooldownValue = await getValue(cooldownKey);
     if (cooldownValue) {
       logger.info(
-        `Auto-recharge for team ${chunk.team_id} is in cooldown period`
+        `Auto-recharge for team ${chunk.team_id} is in cooldown period`,
       );
       return {
         success: false,
         message: "Auto-recharge is in cooldown period",
         remainingCredits: chunk.remaining_credits,
-        chunk
+        chunk,
       };
     }
 
@@ -53,7 +53,7 @@ export async function autoCharge(
       [resource],
       5000,
       async (
-        signal
+        signal,
       ): Promise<{
         success: boolean;
         message: string;
@@ -81,7 +81,7 @@ export async function autoCharge(
                 success: false,
                 message: "Error fetching customer data",
                 remainingCredits: chunk.remaining_credits,
-                chunk
+                chunk,
               };
             }
 
@@ -90,7 +90,7 @@ export async function autoCharge(
               // Attempt to create a payment intent
               const paymentStatus = await createPaymentIntent(
                 chunk.team_id,
-                customer.stripe_customer_id
+                customer.stripe_customer_id,
               );
 
               // If payment is successful or requires further action, issue credits
@@ -100,7 +100,7 @@ export async function autoCharge(
               ) {
                 issueCreditsSuccess = await issueCredits(
                   chunk.team_id,
-                  AUTO_RECHARGE_CREDITS
+                  AUTO_RECHARGE_CREDITS,
                 );
               }
 
@@ -109,7 +109,7 @@ export async function autoCharge(
                 team_id: chunk.team_id,
                 initial_payment_status: paymentStatus.return_status,
                 credits_issued: issueCreditsSuccess ? AUTO_RECHARGE_CREDITS : 0,
-                stripe_charge_id: paymentStatus.charge_id
+                stripe_charge_id: paymentStatus.charge_id,
               });
 
               // Send a notification if credits were successfully issued
@@ -120,7 +120,7 @@ export async function autoCharge(
                   chunk.sub_current_period_start,
                   chunk.sub_current_period_end,
                   chunk,
-                  true
+                  true,
                 );
 
                 // Set cooldown period
@@ -139,7 +139,7 @@ export async function autoCharge(
                   sendSlackWebhook(
                     `Auto-recharge: Team ${chunk.team_id}. ${AUTO_RECHARGE_CREDITS} credits added. Payment status: ${paymentStatus.return_status}.`,
                     false,
-                    process.env.SLACK_ADMIN_WEBHOOK_URL
+                    process.env.SLACK_ADMIN_WEBHOOK_URL,
                   ).catch((error) => {
                     logger.debug(`Error sending slack notification: ${error}`);
                   });
@@ -156,8 +156,8 @@ export async function autoCharge(
                 chunk: {
                   ...chunk,
                   remaining_credits:
-                    chunk.remaining_credits + AUTO_RECHARGE_CREDITS
-                }
+                    chunk.remaining_credits + AUTO_RECHARGE_CREDITS,
+                },
               };
             } else {
               logger.error("No Stripe customer ID found for user");
@@ -165,7 +165,7 @@ export async function autoCharge(
                 success: false,
                 message: "No Stripe customer ID found for user",
                 remainingCredits: chunk.remaining_credits,
-                chunk
+                chunk,
               };
             }
           } else {
@@ -174,7 +174,7 @@ export async function autoCharge(
               success: false,
               message: "No sub_user_id found in chunk",
               remainingCredits: chunk.remaining_credits,
-              chunk
+              chunk,
             };
           }
         }
@@ -182,9 +182,9 @@ export async function autoCharge(
           success: false,
           message: "No need to auto-recharge",
           remainingCredits: chunk.remaining_credits,
-          chunk
+          chunk,
         };
-      }
+      },
     );
   } catch (error) {
     logger.error(`Failed to acquire lock for auto-recharge: ${error}`);
@@ -192,7 +192,7 @@ export async function autoCharge(
       success: false,
       message: "Failed to acquire lock for auto-recharge",
       remainingCredits: chunk.remaining_credits,
-      chunk
+      chunk,
     };
   }
 }

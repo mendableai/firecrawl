@@ -24,8 +24,8 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       job.docs = [
         {
           content: "REDACTED DUE TO AUTHORIZATION HEADER",
-          html: "REDACTED DUE TO AUTHORIZATION HEADER"
-        }
+          html: "REDACTED DUE TO AUTHORIZATION HEADER",
+        },
       ];
     }
     const jobColumn = {
@@ -43,7 +43,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       origin: job.origin,
       num_tokens: job.num_tokens,
       retry: !!job.retry,
-      crawl_id: job.crawl_id
+      crawl_id: job.crawl_id,
     };
 
     if (force) {
@@ -57,10 +57,10 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
           if (error) {
             logger.error(
               "Failed to log job due to Supabase error -- trying again",
-              { error, scrapeId: job.job_id }
+              { error, scrapeId: job.job_id },
             );
             await new Promise<void>((resolve) =>
-              setTimeout(() => resolve(), 75)
+              setTimeout(() => resolve(), 75),
             );
           } else {
             done = true;
@@ -69,7 +69,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
         } catch (error) {
           logger.error(
             "Failed to log job due to thrown error -- trying again",
-            { error, scrapeId: job.job_id }
+            { error, scrapeId: job.job_id },
           );
           await new Promise<void>((resolve) => setTimeout(() => resolve(), 75));
         }
@@ -86,7 +86,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       if (error) {
         logger.error(`Error logging job: ${error.message}`, {
           error,
-          scrapeId: job.job_id
+          scrapeId: job.job_id,
         });
       } else {
         logger.debug("Job logged successfully!", { scrapeId: job.job_id });
@@ -97,7 +97,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       let phLog = {
         distinctId: "from-api", //* To identify this on the group level, setting distinctid to a static string per posthog docs: https://posthog.com/docs/product-analytics/group-analytics#advanced-server-side-only-capturing-group-events-without-a-user
         ...(job.team_id !== "preview" && {
-          groups: { team: job.team_id }
+          groups: { team: job.team_id },
         }), //* Identifying event on this team
         event: "job-logged",
         properties: {
@@ -112,8 +112,8 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
           page_options: job.scrapeOptions,
           origin: job.origin,
           num_tokens: job.num_tokens,
-          retry: job.retry
-        }
+          retry: job.retry,
+        },
       };
       if (job.mode !== "single_urls") {
         posthog.capture(phLog);

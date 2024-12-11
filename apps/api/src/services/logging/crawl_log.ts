@@ -12,8 +12,8 @@ export async function logCrawl(job_id: string, team_id: string) {
         .insert([
           {
             job_id: job_id,
-            team_id: team_id
-          }
+            team_id: team_id,
+          },
         ]);
     } catch (error) {
       logger.error(`Error logging crawl job to supabase:\n${error}`);

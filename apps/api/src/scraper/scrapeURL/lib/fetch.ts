@@ -20,7 +20,7 @@ export type RobustFetchParams<Schema extends z.Schema<any>> = {
 
 export async function robustFetch<
   Schema extends z.Schema<any>,
-  Output = z.infer<Schema>
+  Output = z.infer<Schema>,
 >({
   url,
   logger,
@@ -32,7 +32,7 @@ export async function robustFetch<
   ignoreFailure = false,
   requestId = uuid(),
   tryCount = 1,
-  tryCooldown
+  tryCooldown,
 }: RobustFetchParams<Schema>): Promise<Output> {
   const params = {
     url,
@@ -44,7 +44,7 @@ export async function robustFetch<
     ignoreResponse,
     ignoreFailure,
     tryCount,
-    tryCooldown
+    tryCooldown,
   };
 
   let request: Response;
@@ -56,20 +56,20 @@ export async function robustFetch<
           ? {}
           : body !== undefined
             ? {
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
               }
             : {}),
-        ...(headers !== undefined ? headers : {})
+        ...(headers !== undefined ? headers : {}),
       },
       ...(body instanceof FormData
         ? {
-            body
+            body,
           }
         : body !== undefined
           ? {
-              body: JSON.stringify(body)
+              body: JSON.stringify(body),
             }
-          : {})
+          : {}),
     });
   } catch (error) {
     if (!ignoreFailure) {
@@ -77,12 +77,12 @@ export async function robustFetch<
       if (tryCount > 1) {
         logger.debug(
           "Request failed, trying " + (tryCount - 1) + " more times",
-          { params, error, requestId }
+          { params, error, requestId },
         );
         return await robustFetch({
           ...params,
           requestId,
-          tryCount: tryCount - 1
+          tryCount: tryCount - 1,
         });
       } else {
         logger.debug("Request failed", { params, error, requestId });
@@ -90,8 +90,8 @@ export async function robustFetch<
           cause: {
             params,
             requestId,
-            error
-          }
+            error,
+          },
         });
       }
     } else {
@@ -106,39 +106,39 @@ export async function robustFetch<
   const response = {
     status: request.status,
     headers: request.headers,
-    body: await request.text() // NOTE: can this throw an exception?
+    body: await request.text(), // NOTE: can this throw an exception?
   };
 
   if (request.status >= 300) {
     if (tryCount > 1) {
       logger.debug(
         "Request sent failure status, trying " + (tryCount - 1) + " more times",
-        { params, request, response, requestId }
+        { params, request, response, requestId },
       );
       if (tryCooldown !== undefined) {
         await new Promise((resolve) =>
-          setTimeout(() => resolve(null), tryCooldown)
+          setTimeout(() => resolve(null), tryCooldown),
         );
       }
       return await robustFetch({
         ...params,
         requestId,
-        tryCount: tryCount - 1
+        tryCount: tryCount - 1,
       });
     } else {
       logger.debug("Request sent failure status", {
         params,
         request,
         response,
-        requestId
+        requestId,
       });
       throw new Error("Request sent failure status", {
         cause: {
           params,
           request,
           response,
-          requestId
-        }
+          requestId,
+        },
       });
     }
   }
@@ -151,15 +151,15 @@ export async function robustFetch<
       params,
       request,
       response,
-      requestId
+      requestId,
     });
     throw new Error("Request sent malformed JSON", {
       cause: {
         params,
         request,
         response,
-        requestId
-      }
+        requestId,
+      },
     });
   }
 
@@ -174,7 +174,7 @@ export async function robustFetch<
           response,
           requestId,
           error,
-          schema
+          schema,
         });
         throw new Error("Response does not match provided schema", {
           cause: {
@@ -183,8 +183,8 @@ export async function robustFetch<
             response,
             requestId,
             error,
-            schema
-          }
+            schema,
+          },
         });
       } else {
         logger.debug("Parsing response with provided schema failed", {
@@ -193,7 +193,7 @@ export async function robustFetch<
           response,
           requestId,
           error,
-          schema
+          schema,
         });
         throw new Error("Parsing response with provided schema failed", {
           cause: {
@@ -202,8 +202,8 @@ export async function robustFetch<
             response,
             requestId,
             error,
-            schema
-          }
+            schema,
+          },
         });
       }
     }

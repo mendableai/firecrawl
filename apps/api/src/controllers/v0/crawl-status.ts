@@ -60,12 +60,12 @@ export async function crawlStatusController(req: Request, res: Response) {
     // Combine jobs and jobStatuses into a single array of objects
     let jobsWithStatuses = jobs.map((job, index) => ({
       job,
-      status: jobStatuses[index]
+      status: jobStatuses[index],
     }));
 
     // Filter out failed jobs
     jobsWithStatuses = jobsWithStatuses.filter(
-      (x) => x.status !== "failed" && x.status !== "unknown"
+      (x) => x.status !== "failed" && x.status !== "unknown",
     );
 
     // Sort jobs by timestamp
@@ -84,10 +84,10 @@ export async function crawlStatusController(req: Request, res: Response) {
     const data = jobs
       .filter(
         (x) =>
-          x.failedReason !== "Concurreny limit hit" && x.returnvalue !== null
+          x.failedReason !== "Concurreny limit hit" && x.returnvalue !== null,
       )
       .map((x) =>
-        Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue
+        Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue,
       );
 
     if (
@@ -117,7 +117,7 @@ export async function crawlStatusController(req: Request, res: Response) {
           ? []
           : data
               .filter((x) => x !== null)
-              .map((x) => toLegacyDocument(x, sc.internalOptions))
+              .map((x) => toLegacyDocument(x, sc.internalOptions)),
     });
   } catch (error) {
     Sentry.captureException(error);

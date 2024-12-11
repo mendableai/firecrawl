@@ -6,7 +6,7 @@ import * as Sentry from "@sentry/node";
 
 export async function crawlJobStatusPreviewController(
   req: Request,
-  res: Response
+  res: Response,
 ) {
   try {
     const sc = await getCrawl(req.params.jobId);
@@ -26,7 +26,7 @@ export async function crawlJobStatusPreviewController(
     // }
 
     const jobs = (await getJobs(req.params.jobId, jobIDs)).sort(
-      (a, b) => a.timestamp - b.timestamp
+      (a, b) => a.timestamp - b.timestamp,
     );
     const jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
     const jobStatus = sc.cancelled
@@ -38,7 +38,7 @@ export async function crawlJobStatusPreviewController(
           : "active";
 
     const data = jobs.map((x) =>
-      Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue
+      Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue,
     );
 
     res.json({
@@ -48,7 +48,7 @@ export async function crawlJobStatusPreviewController(
       total: jobs.length,
       data: jobStatus === "completed" ? data : null,
       partial_data:
-        jobStatus === "completed" ? [] : data.filter((x) => x !== null)
+        jobStatus === "completed" ? [] : data.filter((x) => x !== null),
     });
   } catch (error) {
     Sentry.captureException(error);

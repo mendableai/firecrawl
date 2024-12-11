@@ -9,7 +9,7 @@ import {
   crawlToCrawler,
   lockURL,
   saveCrawl,
-  StoredCrawl
+  StoredCrawl,
 } from "../../../src/lib/crawl-redis";
 import { addScrapeJob } from "../../../src/services/queue-jobs";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
@@ -43,7 +43,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
     if (isUrlBlocked(url)) {
       return res.status(403).json({
         error:
-          "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
+          "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
       });
     }
 
@@ -51,7 +51,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
     const pageOptions = req.body.pageOptions ?? {
       onlyMainContent: false,
       includeHtml: false,
-      removeTags: []
+      removeTags: [],
     };
 
     // if (mode === "single_urls" && !url.includes(",")) { // NOTE: do we need this?
@@ -94,7 +94,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
     const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(
       pageOptions,
       undefined,
-      undefined
+      undefined,
     );
 
     const sc: StoredCrawl = {
@@ -105,7 +105,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
       team_id,
       plan,
       robots,
-      createdAt: Date.now()
+      createdAt: Date.now(),
     };
 
     await saveCrawl(id, sc);
@@ -131,10 +131,10 @@ export async function crawlPreviewController(req: Request, res: Response) {
             internalOptions,
             origin: "website-preview",
             crawl_id: id,
-            sitemapped: true
+            sitemapped: true,
           },
           {},
-          jobId
+          jobId,
         );
         await addCrawlJob(id, jobId);
       }
@@ -151,10 +151,10 @@ export async function crawlPreviewController(req: Request, res: Response) {
           scrapeOptions,
           internalOptions,
           origin: "website-preview",
-          crawl_id: id
+          crawl_id: id,
         },
         {},
-        jobId
+        jobId,
       );
       await addCrawlJob(id, jobId);
     }

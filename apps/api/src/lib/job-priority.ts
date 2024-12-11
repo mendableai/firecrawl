@@ -31,7 +31,7 @@ export async function deleteJobPriority(team_id, job_id) {
 export async function getJobPriority({
   plan,
   team_id,
-  basePriority = 10
+  basePriority = 10,
 }: {
   plan: PlanType | undefined;
   team_id: string;
@@ -91,12 +91,12 @@ export async function getJobPriority({
     } else {
       // If not, we keep base priority + planModifier
       return Math.ceil(
-        basePriority + Math.ceil((setLength - bucketLimit) * planModifier)
+        basePriority + Math.ceil((setLength - bucketLimit) * planModifier),
       );
     }
   } catch (e) {
     logger.error(
-      `Get job priority failed: ${team_id}, ${plan}, ${basePriority}`
+      `Get job priority failed: ${team_id}, ${plan}, ${basePriority}`,
     );
     return basePriority;
   }

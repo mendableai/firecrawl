@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import {
   FirecrawlCrawlResponse,
   FirecrawlCrawlStatusResponse,
-  FirecrawlScrapeResponse
+  FirecrawlScrapeResponse,
 } from "../../types";
 
 dotenv.config();
@@ -23,9 +23,9 @@ describe("E2E Tests for Extract API Routes", () => {
           schema: {
             type: "object",
             properties: {
-              authors: { type: "array", items: { type: "string" } }
-            }
-          }
+              authors: { type: "array", items: { type: "string" } },
+            },
+          },
         });
 
       console.log(response.body);
@@ -45,7 +45,7 @@ describe("E2E Tests for Extract API Routes", () => {
 
       expect(gotItRight).toBeGreaterThan(1);
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -62,9 +62,9 @@ describe("E2E Tests for Extract API Routes", () => {
           schema: {
             type: "object",
             properties: {
-              founders: { type: "array", items: { type: "string" } }
-            }
-          }
+              founders: { type: "array", items: { type: "string" } },
+            },
+          },
         });
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("data");
@@ -83,7 +83,7 @@ describe("E2E Tests for Extract API Routes", () => {
 
       expect(gotItRight).toBeGreaterThanOrEqual(2);
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -100,10 +100,10 @@ describe("E2E Tests for Extract API Routes", () => {
           schema: {
             type: "array",
             items: {
-              type: "string"
+              type: "string",
             },
-            required: ["items"]
-          }
+            required: ["items"],
+          },
         });
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("data");
@@ -118,7 +118,7 @@ describe("E2E Tests for Extract API Routes", () => {
 
       expect(gotItRight).toBeGreaterThan(2);
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -135,15 +135,15 @@ describe("E2E Tests for Extract API Routes", () => {
           schema: {
             type: "object",
             properties: {
-              pciDssCompliance: { type: "boolean" }
-            }
-          }
+              pciDssCompliance: { type: "boolean" },
+            },
+          },
         });
       expect(response.statusCode).toBe(200);
       expect(response.body).toHaveProperty("data");
       expect(response.body.data?.pciDssCompliance).toBe(true);
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -163,10 +163,10 @@ describe("E2E Tests for Extract API Routes", () => {
               properties: {
                 connector: { type: "string" },
                 description: { type: "string" },
-                supportsCaptureDelete: { type: "boolean" }
-              }
-            }
-          }
+                supportsCaptureDelete: { type: "boolean" },
+              },
+            },
+          },
         });
 
       console.log(response.body);
@@ -174,7 +174,7 @@ describe("E2E Tests for Extract API Routes", () => {
       // expect(response.body).toHaveProperty("data");
       // expect(response.body.data?.pciDssCompliance).toBe(true);
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -186,17 +186,17 @@ describe("E2E Tests for Extract API Routes", () => {
         .set("Content-Type", "application/json")
         .send({
           urls: [
-            "https://careers.abnormalsecurity.com/jobs/6119456003?gh_jid=6119456003"
+            "https://careers.abnormalsecurity.com/jobs/6119456003?gh_jid=6119456003",
           ],
           prompt: "what applicant tracking system is this company using?",
           schema: {
             type: "object",
             properties: {
               isGreenhouseATS: { type: "boolean" },
-              answer: { type: "string" }
-            }
+              answer: { type: "string" },
+            },
           },
-          allowExternalLinks: true
+          allowExternalLinks: true,
         });
 
       console.log(response.body);
@@ -204,7 +204,7 @@ describe("E2E Tests for Extract API Routes", () => {
       expect(response.body).toHaveProperty("data");
       expect(response.body.data?.isGreenhouseATS).toBe(true);
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -222,12 +222,12 @@ describe("E2E Tests for Extract API Routes", () => {
             items: {
               type: "object",
               properties: {
-                component: { type: "string" }
-              }
+                component: { type: "string" },
+              },
             },
-            required: ["items"]
+            required: ["items"],
           },
-          allowExternalLinks: true
+          allowExternalLinks: true,
         });
 
       console.log(response.body.data?.items);
@@ -248,7 +248,7 @@ describe("E2E Tests for Extract API Routes", () => {
       }
       expect(gotItRight).toBeGreaterThan(2);
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -267,11 +267,11 @@ describe("E2E Tests for Extract API Routes", () => {
             properties: {
               name: { type: "string" },
               work: { type: "string" },
-              education: { type: "string" }
+              education: { type: "string" },
             },
-            required: ["name", "work", "education"]
+            required: ["name", "work", "education"],
           },
-          allowExternalLinks: true
+          allowExternalLinks: true,
         });
 
       console.log(response.body.data);
@@ -281,7 +281,7 @@ describe("E2E Tests for Extract API Routes", () => {
       expect(response.body.data?.work).toBeDefined();
       expect(response.body.data?.education).toBeDefined();
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -293,7 +293,7 @@ describe("E2E Tests for Extract API Routes", () => {
         .set("Content-Type", "application/json")
         .send({
           urls: ["https://docs.firecrawl.dev"],
-          prompt: "What is the title and description of the page?"
+          prompt: "What is the title and description of the page?",
         });
 
       console.log(response.body.data);
@@ -302,6 +302,6 @@ describe("E2E Tests for Extract API Routes", () => {
       expect(typeof response.body.data).toBe("object");
       expect(Object.keys(response.body.data).length).toBeGreaterThan(0);
     },
-    60000
+    60000,
   );
 });

@@ -4,7 +4,7 @@ import { scrapeDOCX } from "./docx";
 import {
   scrapeURLWithFireEngineChromeCDP,
   scrapeURLWithFireEnginePlaywright,
-  scrapeURLWithFireEngineTLSClient
+  scrapeURLWithFireEngineTLSClient,
 } from "./fire-engine";
 import { scrapePDF } from "./pdf";
 import { scrapeURLWithScrapingBee } from "./scrapingbee";
@@ -43,7 +43,7 @@ export const engines: Engine[] = [
     ? [
         "fire-engine;chrome-cdp" as const,
         "fire-engine;playwright" as const,
-        "fire-engine;tlsclient" as const
+        "fire-engine;tlsclient" as const,
       ]
     : []),
   ...(useScrapingBee
@@ -52,7 +52,7 @@ export const engines: Engine[] = [
   ...(usePlaywright ? ["playwright" as const] : []),
   "fetch",
   "pdf",
-  "docx"
+  "docx",
 ];
 
 export const featureFlags = [
@@ -66,7 +66,7 @@ export const featureFlags = [
   "location",
   "mobile",
   "skipTlsVerification",
-  "useFastMode"
+  "useFastMode",
 ] as const;
 
 export type FeatureFlag = (typeof featureFlags)[number];
@@ -86,7 +86,7 @@ export const featureFlagOptions: {
   useFastMode: { priority: 90 },
   location: { priority: 10 },
   mobile: { priority: 10 },
-  skipTlsVerification: { priority: 10 }
+  skipTlsVerification: { priority: 10 },
 } as const;
 
 export type EngineScrapeResult = {
@@ -116,7 +116,7 @@ const engineHandlers: {
   playwright: scrapeURLWithPlaywright,
   fetch: scrapeURLWithFetch,
   pdf: scrapePDF,
-  docx: scrapeDOCX
+  docx: scrapeDOCX,
 };
 
 export const engineOptions: {
@@ -141,9 +141,9 @@ export const engineOptions: {
       location: false,
       mobile: false,
       skipTlsVerification: false,
-      useFastMode: false
+      useFastMode: false,
     },
-    quality: 1000 // cache should always be tried first
+    quality: 1000, // cache should always be tried first
   },
   "fire-engine;chrome-cdp": {
     features: {
@@ -157,9 +157,9 @@ export const engineOptions: {
       location: true,
       mobile: true,
       skipTlsVerification: true,
-      useFastMode: false
+      useFastMode: false,
     },
-    quality: 50
+    quality: 50,
   },
   "fire-engine;playwright": {
     features: {
@@ -173,9 +173,9 @@ export const engineOptions: {
       location: false,
       mobile: false,
       skipTlsVerification: false,
-      useFastMode: false
+      useFastMode: false,
     },
-    quality: 40
+    quality: 40,
   },
   scrapingbee: {
     features: {
@@ -189,9 +189,9 @@ export const engineOptions: {
       location: false,
       mobile: false,
       skipTlsVerification: false,
-      useFastMode: false
+      useFastMode: false,
     },
-    quality: 30
+    quality: 30,
   },
   scrapingbeeLoad: {
     features: {
@@ -205,9 +205,9 @@ export const engineOptions: {
       location: false,
       mobile: false,
       skipTlsVerification: false,
-      useFastMode: false
+      useFastMode: false,
     },
-    quality: 29
+    quality: 29,
   },
   playwright: {
     features: {
@@ -221,9 +221,9 @@ export const engineOptions: {
       location: false,
       mobile: false,
       skipTlsVerification: false,
-      useFastMode: false
+      useFastMode: false,
     },
-    quality: 20
+    quality: 20,
   },
   "fire-engine;tlsclient": {
     features: {
@@ -237,9 +237,9 @@ export const engineOptions: {
       location: true,
       mobile: false,
       skipTlsVerification: false,
-      useFastMode: true
+      useFastMode: true,
     },
-    quality: 10
+    quality: 10,
   },
   fetch: {
     features: {
@@ -253,9 +253,9 @@ export const engineOptions: {
       location: false,
       mobile: false,
       skipTlsVerification: false,
-      useFastMode: true
+      useFastMode: true,
     },
-    quality: 5
+    quality: 5,
   },
   pdf: {
     features: {
@@ -269,9 +269,9 @@ export const engineOptions: {
       location: false,
       mobile: false,
       skipTlsVerification: false,
-      useFastMode: true
+      useFastMode: true,
     },
-    quality: -10
+    quality: -10,
   },
   docx: {
     features: {
@@ -285,10 +285,10 @@ export const engineOptions: {
       location: false,
       mobile: false,
       skipTlsVerification: false,
-      useFastMode: true
+      useFastMode: true,
     },
-    quality: -10
-  }
+    quality: -10,
+  },
 };
 
 export function buildFallbackList(meta: Meta): {
@@ -297,7 +297,7 @@ export function buildFallbackList(meta: Meta): {
 }[] {
   const prioritySum = [...meta.featureFlags].reduce(
     (a, x) => a + featureFlagOptions[x].priority,
-    0
+    0,
   );
   const priorityThreshold = Math.floor(prioritySum / 2);
   let selectedEngines: {
@@ -315,13 +315,13 @@ export function buildFallbackList(meta: Meta): {
     const supportedFlags = new Set([
       ...Object.entries(engineOptions[engine].features)
         .filter(
-          ([k, v]) => meta.featureFlags.has(k as FeatureFlag) && v === true
+          ([k, v]) => meta.featureFlags.has(k as FeatureFlag) && v === true,
         )
-        .map(([k, _]) => k)
+        .map(([k, _]) => k),
     ]);
     const supportScore = [...supportedFlags].reduce(
       (a, x) => a + featureFlagOptions[x].priority,
-      0
+      0,
     );
 
     const unsupportedFeatures = new Set([...meta.featureFlags]);
@@ -338,7 +338,7 @@ export function buildFallbackList(meta: Meta): {
         prioritySum,
         priorityThreshold,
         featureFlags: [...meta.featureFlags],
-        unsupportedFeatures
+        unsupportedFeatures,
       });
     } else {
       meta.logger.debug(
@@ -348,22 +348,22 @@ export function buildFallbackList(meta: Meta): {
           prioritySum,
           priorityThreshold,
           featureFlags: [...meta.featureFlags],
-          unsupportedFeatures
-        }
+          unsupportedFeatures,
+        },
       );
     }
   }
 
   if (selectedEngines.some((x) => engineOptions[x.engine].quality > 0)) {
     selectedEngines = selectedEngines.filter(
-      (x) => engineOptions[x.engine].quality > 0
+      (x) => engineOptions[x.engine].quality > 0,
     );
   }
 
   selectedEngines.sort(
     (a, b) =>
       b.supportScore - a.supportScore ||
-      engineOptions[b.engine].quality - engineOptions[a.engine].quality
+      engineOptions[b.engine].quality - engineOptions[a.engine].quality,
   );
 
   return selectedEngines;
@@ -371,16 +371,16 @@ export function buildFallbackList(meta: Meta): {
 
 export async function scrapeURLWithEngine(
   meta: Meta,
-  engine: Engine
+  engine: Engine,
 ): Promise<EngineScrapeResult> {
   const fn = engineHandlers[engine];
   const logger = meta.logger.child({
     method: fn.name ?? "scrapeURLWithEngine",
-    engine
+    engine,
   });
   const _meta = {
     ...meta,
-    logger
+    logger,
   };
 
   return await fn(_meta);

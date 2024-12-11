@@ -3,7 +3,7 @@ import {
   CrawlStatusParams,
   CrawlStatusResponse,
   ErrorResponse,
-  RequestWithAuth
+  RequestWithAuth,
 } from "./types";
 import {
   getCrawl,
@@ -11,12 +11,12 @@ import {
   getCrawlJobs,
   getDoneJobsOrdered,
   getDoneJobsOrderedLength,
-  getThrottledJobs
+  getThrottledJobs,
 } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
 import {
   supabaseGetJobById,
-  supabaseGetJobsById
+  supabaseGetJobsById,
 } from "../../lib/supabase-jobs";
 import { configDotenv } from "dotenv";
 import { Job, JobState } from "bullmq";
@@ -70,7 +70,7 @@ export async function getJobs(ids: string[]) {
 export async function crawlStatusController(
   req: RequestWithAuth<CrawlStatusParams, undefined, CrawlStatusResponse>,
   res: Response<CrawlStatusResponse>,
-  isBatch = false
+  isBatch = false,
 ) {
   const sc = await getCrawl(req.params.jobId);
   if (!sc) {
@@ -90,7 +90,9 @@ export async function crawlStatusController(
 
   let jobIDs = await getCrawlJobs(req.params.jobId);
   let jobStatuses = await Promise.all(
-    jobIDs.map(async (x) => [x, await getScrapeQueue().getJobState(x)] as const)
+    jobIDs.map(
+      async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
+    ),
   );
   const throttledJobs = new Set(...(await getThrottledJobs(req.auth.team_id)));
 
@@ -124,7 +126,7 @@ export async function crawlStatusController(
   const doneJobsOrder = await getDoneJobsOrdered(
     req.params.jobId,
     start,
-    end ?? -1
+    end ?? -1,
   );
 
   let doneJobs: Job[] = [];
@@ -158,7 +160,7 @@ export async function crawlStatusController(
         if (job.returnvalue === undefined) {
           logger.warn(
             "Job was considered done, but returnvalue is undefined!",
-            { jobId: job.id, state }
+            { jobId: job.id, state },
           );
           continue;
         }
@@ -175,8 +177,8 @@ export async function crawlStatusController(
     doneJobs = (
       await Promise.all(
         (await getJobs(doneJobsOrder)).map(async (x) =>
-          (await x.getState()) === "failed" ? null : x
-        )
+          (await x.getState()) === "failed" ? null : x,
+        ),
       )
     ).filter((x) => x !== null) as Job[];
   }
@@ -185,7 +187,7 @@ export async function crawlStatusController(
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";
   const nextURL = new URL(
-    `${protocol}://${req.get("host")}/v1/${isBatch ? "batch/scrape" : "crawl"}/${req.params.jobId}`
+    `${protocol}://${req.get("host")}/v1/${isBatch ? "batch/scrape" : "crawl"}/${req.params.jobId}`,
   );
 
   nextURL.searchParams.set("skip", (start + data.length).toString());
@@ -215,6 +217,6 @@ export async function crawlStatusController(
       status !== "scraping" && start + data.length === doneJobsLength // if there's not gonna be any documents after this
         ? undefined
         : nextURL.href,
-    data: data
+    data: data,
   });
 }

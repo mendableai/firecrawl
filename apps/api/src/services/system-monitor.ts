@@ -137,7 +137,7 @@ class SystemMonitor {
       }
     } catch (error) {
       logger.warn(
-        `Unable to read cpuset.cpus.effective, defaulting to OS CPUs: ${error}`
+        `Unable to read cpuset.cpus.effective, defaulting to OS CPUs: ${error}`,
       );
       cpus = os.cpus().map((cpu, index) => index);
     }

@@ -14,37 +14,37 @@ export function getConcurrencyLimitMax(plan: string): number {
 
 export async function cleanOldConcurrencyLimitEntries(
   team_id: string,
-  now: number = Date.now()
+  now: number = Date.now(),
 ) {
   await redisConnection.zremrangebyscore(constructKey(team_id), -Infinity, now);
 }
 
 export async function getConcurrencyLimitActiveJobs(
   team_id: string,
-  now: number = Date.now()
+  now: number = Date.now(),
 ): Promise<string[]> {
   return await redisConnection.zrangebyscore(
     constructKey(team_id),
     now,
-    Infinity
+    Infinity,
   );
 }
 
 export async function pushConcurrencyLimitActiveJob(
   team_id: string,
   id: string,
-  now: number = Date.now()
+  now: number = Date.now(),
 ) {
   await redisConnection.zadd(
     constructKey(team_id),
     now + stalledJobTimeoutMs,
-    id
+    id,
   );
 }
 
 export async function removeConcurrencyLimitActiveJob(
   team_id: string,
-  id: string
+  id: string,
 ) {
   await redisConnection.zrem(constructKey(team_id), id);
 }
@@ -57,7 +57,7 @@ export type ConcurrencyLimitedJob = {
 };
 
 export async function takeConcurrencyLimitedJob(
-  team_id: string
+  team_id: string,
 ): Promise<ConcurrencyLimitedJob | null> {
   const res = await redisConnection.zmpop(1, constructQueueKey(team_id), "MIN");
   if (res === null || res === undefined) {
@@ -69,11 +69,11 @@ export async function takeConcurrencyLimitedJob(
 
 export async function pushConcurrencyLimitedJob(
   team_id: string,
-  job: ConcurrencyLimitedJob
+  job: ConcurrencyLimitedJob,
 ) {
   await redisConnection.zadd(
     constructQueueKey(team_id),
     job.priority ?? 1,
-    JSON.stringify(job)
+    JSON.stringify(job),
   );
 }

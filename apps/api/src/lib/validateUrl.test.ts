@@ -20,7 +20,7 @@ describe("isSameDomain", () => {
   it("should return true for a subdomain with different protocols", () => {
     const result = isSameDomain(
       "https://sub.example.com",
-      "http://example.com"
+      "http://example.com",
     );
     expect(result).toBe(true);
   });
@@ -35,7 +35,7 @@ describe("isSameDomain", () => {
   it("should return true for a subdomain with www prefix", () => {
     const result = isSameDomain(
       "http://www.sub.example.com",
-      "http://example.com"
+      "http://example.com",
     );
     expect(result).toBe(true);
   });
@@ -43,7 +43,7 @@ describe("isSameDomain", () => {
   it("should return true for the same domain with www prefix", () => {
     const result = isSameDomain(
       "http://docs.s.s.example.com",
-      "http://example.com"
+      "http://example.com",
     );
     expect(result).toBe(true);
   });
@@ -53,7 +53,7 @@ describe("isSameSubdomain", () => {
   it("should return false for a subdomain", () => {
     const result = isSameSubdomain(
       "http://example.com",
-      "http://docs.example.com"
+      "http://docs.example.com",
     );
     expect(result).toBe(false);
   });
@@ -61,7 +61,7 @@ describe("isSameSubdomain", () => {
   it("should return true for the same subdomain", () => {
     const result = isSameSubdomain(
       "http://docs.example.com",
-      "http://docs.example.com"
+      "http://docs.example.com",
     );
     expect(result).toBe(true);
   });
@@ -69,7 +69,7 @@ describe("isSameSubdomain", () => {
   it("should return false for different subdomains", () => {
     const result = isSameSubdomain(
       "http://docs.example.com",
-      "http://blog.example.com"
+      "http://blog.example.com",
     );
     expect(result).toBe(false);
   });
@@ -89,7 +89,7 @@ describe("isSameSubdomain", () => {
   it("should return true for the same subdomain with different protocols", () => {
     const result = isSameSubdomain(
       "https://docs.example.com",
-      "http://docs.example.com"
+      "http://docs.example.com",
     );
     expect(result).toBe(true);
   });
@@ -97,7 +97,7 @@ describe("isSameSubdomain", () => {
   it("should return true for the same subdomain with www prefix", () => {
     const result = isSameSubdomain(
       "http://www.docs.example.com",
-      "http://docs.example.com"
+      "http://docs.example.com",
     );
     expect(result).toBe(true);
   });
@@ -105,7 +105,7 @@ describe("isSameSubdomain", () => {
   it("should return false for a subdomain with www prefix and different subdomain", () => {
     const result = isSameSubdomain(
       "http://www.docs.example.com",
-      "http://blog.example.com"
+      "http://blog.example.com",
     );
     expect(result).toBe(false);
   });
@@ -117,7 +117,7 @@ describe("removeDuplicateUrls", () => {
       "http://example.com",
       "https://example.com",
       "http://www.example.com",
-      "https://www.example.com"
+      "https://www.example.com",
     ];
     const result = removeDuplicateUrls(urls);
     expect(result).toEqual(["https://example.com"]);
@@ -128,14 +128,14 @@ describe("removeDuplicateUrls", () => {
       "https://example.com/page1",
       "https://example.com/page2",
       "https://example.com/page1?param=1",
-      "https://example.com/page1#section1"
+      "https://example.com/page1#section1",
     ];
     const result = removeDuplicateUrls(urls);
     expect(result).toEqual([
       "https://example.com/page1",
       "https://example.com/page2",
       "https://example.com/page1?param=1",
-      "https://example.com/page1#section1"
+      "https://example.com/page1#section1",
     ]);
   });
 

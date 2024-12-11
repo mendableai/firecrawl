@@ -9,7 +9,7 @@ configDotenv();
 
 export async function crawlCancelController(
   req: RequestWithAuth<{ jobId: string }>,
-  res: Response
+  res: Response,
 ) {
   try {
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
@@ -43,7 +43,7 @@ export async function crawlCancelController(
     }
 
     res.json({
-      status: "cancelled"
+      status: "cancelled",
     });
   } catch (error) {
     Sentry.captureException(error);

@@ -5,13 +5,13 @@ describe("performRanking", () => {
     const linksWithContext = [
       "url: https://example.com/dogs, title: All about dogs, description: Learn about different dog breeds",
       "url: https://example.com/cats, title: Cat care guide, description: Everything about cats",
-      "url: https://example.com/pets, title: General pet care, description: Care for all types of pets"
+      "url: https://example.com/pets, title: General pet care, description: Care for all types of pets",
     ];
 
     const links = [
       "https://example.com/dogs",
       "https://example.com/cats",
-      "https://example.com/pets"
+      "https://example.com/pets",
     ];
 
     const searchQuery = "cats training";
@@ -50,7 +50,7 @@ describe("performRanking", () => {
   it("should maintain original order for equal scores", async () => {
     const linksWithContext = [
       "url: https://example.com/1, title: Similar content A, description: test",
-      "url: https://example.com/2, title: Similar content B, description: test"
+      "url: https://example.com/2, title: Similar content B, description: test",
     ];
 
     const links = ["https://example.com/1", "https://example.com/2"];

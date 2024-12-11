@@ -25,13 +25,13 @@ describe("URL Schema Validation", () => {
 
   it("should reject URLs without a valid top-level domain", () => {
     expect(() => url.parse("http://example")).toThrow(
-      "URL must have a valid top-level domain or be a valid path"
+      "URL must have a valid top-level domain or be a valid path",
     );
   });
 
   it("should reject blocked URLs", () => {
     expect(() => url.parse("https://facebook.com")).toThrow(
-      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
+      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
     );
   });
 
@@ -47,28 +47,28 @@ describe("URL Schema Validation", () => {
 
   it("should handle URLs with subdomains that are blocked", () => {
     expect(() => url.parse("https://sub.facebook.com")).toThrow(
-      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
+      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
     );
   });
 
   it("should handle URLs with paths that are blocked", () => {
     expect(() => url.parse("http://facebook.com/path")).toThrow(
-      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
+      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
     );
     expect(() => url.parse("https://facebook.com/another/path")).toThrow(
-      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
+      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
     );
   });
 
   it("should reject malformed URLs starting with 'http://http'", () => {
     expect(() => url.parse("http://http://example.com")).toThrow(
-      "Invalid URL. Invalid protocol."
+      "Invalid URL. Invalid protocol.",
     );
   });
 
   it("should reject malformed URLs containing multiple 'http://'", () => {
     expect(() =>
-      url.parse("http://example.com/http://example.com")
+      url.parse("http://example.com/http://example.com"),
     ).not.toThrow();
   });
 

@@ -1,7 +1,7 @@
 import { Request, Response } from "express";
 import {
   billTeam,
-  checkTeamCredits
+  checkTeamCredits,
 } from "../../services/billing/credit_billing";
 import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
@@ -20,7 +20,7 @@ import {
   Document,
   fromLegacyCombo,
   fromLegacyScrapeOptions,
-  toLegacyDocument
+  toLegacyDocument,
 } from "../v1/types";
 
 export async function searchHelper(
@@ -31,7 +31,7 @@ export async function searchHelper(
   crawlerOptions: any,
   pageOptions: PageOptions,
   searchOptions: SearchOptions,
-  plan: PlanType | undefined
+  plan: PlanType | undefined,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -62,7 +62,7 @@ export async function searchHelper(
     filter: filter,
     lang: searchOptions.lang ?? "en",
     country: searchOptions.country ?? "us",
-    location: searchOptions.location
+    location: searchOptions.location,
   });
 
   let justSearch = pageOptions.fetchPageContent === false;
@@ -71,13 +71,13 @@ export async function searchHelper(
     pageOptions,
     undefined,
     60000,
-    crawlerOptions
+    crawlerOptions,
   );
 
   if (justSearch) {
     billTeam(team_id, subscription_id, res.length).catch((error) => {
       logger.error(
-        `Failed to bill team ${team_id} for ${res.length} credits: ${error}`
+        `Failed to bill team ${team_id} for ${res.length} credits: ${error}`,
       );
       // Optionally, you could notify an admin or add to a retry queue here
     });
@@ -107,12 +107,12 @@ export async function searchHelper(
         mode: "single_urls",
         team_id: team_id,
         scrapeOptions,
-        internalOptions
+        internalOptions,
       },
       opts: {
         jobId: uuid,
-        priority: jobPriority
-      }
+        priority: jobPriority,
+      },
     };
   });
 
@@ -123,7 +123,7 @@ export async function searchHelper(
 
   const docs = (
     await Promise.all(
-      jobDatas.map((x) => waitForJob<Document>(x.opts.jobId, 60000))
+      jobDatas.map((x) => waitForJob<Document>(x.opts.jobId, 60000)),
     )
   ).map((x) => toLegacyDocument(x, internalOptions));
 
@@ -136,7 +136,7 @@ export async function searchHelper(
 
   // make sure doc.content is not empty
   const filteredDocs = docs.filter(
-    (doc: any) => doc && doc.content && doc.content.trim().length > 0
+    (doc: any) => doc && doc.content && doc.content.trim().length > 0,
   );
 
   if (filteredDocs.length === 0) {
@@ -144,14 +144,14 @@ export async function searchHelper(
       success: true,
       error: "No page found",
       returnCode: 200,
-      data: docs
+      data: docs,
     };
   }
 
   return {
     success: true,
     data: filteredDocs,
-    returnCode: 200
+    returnCode: 200,
   };
 }
 
@@ -169,7 +169,7 @@ export async function searchController(req: Request, res: Response) {
       onlyMainContent: req.body.pageOptions?.onlyMainContent ?? false,
       fetchPageContent: req.body.pageOptions?.fetchPageContent ?? true,
       removeTags: req.body.pageOptions?.removeTags ?? [],
-      fallback: req.body.pageOptions?.fallback ?? false
+      fallback: req.body.pageOptions?.fallback ?? false,
     };
     const origin = req.body.origin ?? "api";
 
@@ -197,7 +197,7 @@ export async function searchController(req: Request, res: Response) {
       crawlerOptions,
       pageOptions,
       searchOptions,
-      plan
+      plan,
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
@@ -212,7 +212,7 @@ export async function searchController(req: Request, res: Response) {
       mode: "search",
       url: req.body.query,
       crawlerOptions: crawlerOptions,
-      origin: origin
+      origin: origin,
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {

@@ -3,7 +3,7 @@ import { generateURLPermutations } from "./crawl-redis";
 describe("generateURLPermutations", () => {
   it("generates permutations correctly", () => {
     const bareHttps = generateURLPermutations("https://firecrawl.dev").map(
-      (x) => x.href
+      (x) => x.href,
     );
     expect(bareHttps.length).toBe(4);
     expect(bareHttps.includes("https://firecrawl.dev/")).toBe(true);
@@ -12,7 +12,7 @@ describe("generateURLPermutations", () => {
     expect(bareHttps.includes("http://www.firecrawl.dev/")).toBe(true);
 
     const bareHttp = generateURLPermutations("http://firecrawl.dev").map(
-      (x) => x.href
+      (x) => x.href,
     );
     expect(bareHttp.length).toBe(4);
     expect(bareHttp.includes("https://firecrawl.dev/")).toBe(true);
@@ -21,7 +21,7 @@ describe("generateURLPermutations", () => {
     expect(bareHttp.includes("http://www.firecrawl.dev/")).toBe(true);
 
     const wwwHttps = generateURLPermutations("https://www.firecrawl.dev").map(
-      (x) => x.href
+      (x) => x.href,
     );
     expect(wwwHttps.length).toBe(4);
     expect(wwwHttps.includes("https://firecrawl.dev/")).toBe(true);
@@ -30,7 +30,7 @@ describe("generateURLPermutations", () => {
     expect(wwwHttps.includes("http://www.firecrawl.dev/")).toBe(true);
 
     const wwwHttp = generateURLPermutations("http://www.firecrawl.dev").map(
-      (x) => x.href
+      (x) => x.href,
     );
     expect(wwwHttp.length).toBe(4);
     expect(wwwHttp.includes("https://firecrawl.dev/")).toBe(true);

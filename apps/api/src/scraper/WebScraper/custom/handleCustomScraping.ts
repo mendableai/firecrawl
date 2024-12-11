@@ -2,7 +2,7 @@ import { logger } from "../../../lib/logger";
 
 export async function handleCustomScraping(
   text: string,
-  url: string
+  url: string,
 ): Promise<{
   scraper: string;
   url: string;
@@ -15,7 +15,7 @@ export async function handleCustomScraping(
     !url.includes("developers.notion.com")
   ) {
     logger.debug(
-      `Special use case detected for ${url}, using Fire Engine with wait time 1000ms`
+      `Special use case detected for ${url}, using Fire Engine with wait time 1000ms`,
     );
     return {
       scraper: "fire-engine",
@@ -23,21 +23,21 @@ export async function handleCustomScraping(
       waitAfterLoad: 1000,
       pageOptions: {
         scrollXPaths: [
-          '//*[@id="ReferencePlayground"]/section[3]/div/pre/div/div/div[5]'
-        ]
-      }
+          '//*[@id="ReferencePlayground"]/section[3]/div/pre/div/div/div[5]',
+        ],
+      },
     };
   }
 
   // Check for Vanta security portals
   if (text.includes('<link href="https://static.vanta.com')) {
     logger.debug(
-      `Vanta link detected for ${url}, using Fire Engine with wait time 3000ms`
+      `Vanta link detected for ${url}, using Fire Engine with wait time 3000ms`,
     );
     return {
       scraper: "fire-engine",
       url: url,
-      waitAfterLoad: 3000
+      waitAfterLoad: 3000,
     };
   }
 
@@ -50,7 +50,7 @@ export async function handleCustomScraping(
     logger.debug(`Google Drive PDF link detected: ${url}`);
 
     const fileIdMatch = url.match(
-      /https:\/\/drive\.google\.com\/file\/d\/([^\/]+)\/view/
+      /https:\/\/drive\.google\.com\/file\/d\/([^\/]+)\/view/,
     );
     if (fileIdMatch) {
       const fileId = fileIdMatch[1];
@@ -58,7 +58,7 @@ export async function handleCustomScraping(
 
       return {
         scraper: "pdf",
-        url: pdfUrl
+        url: pdfUrl,
       };
     }
   }

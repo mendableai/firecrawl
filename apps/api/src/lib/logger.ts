@@ -14,14 +14,14 @@ const logFormat = winston.format.printf(
                 name: value.name,
                 message: value.message,
                 stack: value.stack,
-                cause: value.cause
+                cause: value.cause,
               };
             } else {
               return value;
             }
           })
         : ""
-    }`
+    }`,
 );
 
 export const logger = winston.createLogger({
@@ -34,26 +34,26 @@ export const logger = winston.createLogger({
           name: value.name,
           message: value.message,
           stack: value.stack,
-          cause: value.cause
+          cause: value.cause,
         };
       } else {
         return value;
       }
-    }
+    },
   }),
   transports: [
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
         winston.format.metadata({
-          fillExcept: ["message", "level", "timestamp"]
+          fillExcept: ["message", "level", "timestamp"],
         }),
         ...((process.env.ENV === "production" &&
           process.env.SENTRY_ENVIRONMENT === "dev") ||
         process.env.ENV !== "production"
           ? [winston.format.colorize(), logFormat]
-          : [])
-      )
-    })
-  ]
+          : []),
+      ),
+    }),
+  ],
 });

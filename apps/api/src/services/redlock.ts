@@ -21,6 +21,6 @@ export const redlock = new Redlock(
 
     // The minimum remaining time on a lock before an extension is automatically
     // attempted with the `using` API.
-    automaticExtensionThreshold: 500 // time in ms
-  }
+    automaticExtensionThreshold: 500, // time in ms
+  },
 );

@@ -4,7 +4,7 @@ import {
   MapDocument,
   mapRequestSchema,
   RequestWithAuth,
-  scrapeOptions
+  scrapeOptions,
 } from "./types";
 import { crawlToCrawler, StoredCrawl } from "../../lib/crawl-redis";
 import { MapResponse, MapRequest } from "./types";
@@ -13,7 +13,7 @@ import {
   checkAndUpdateURLForMap,
   isSameDomain,
   isSameSubdomain,
-  removeDuplicateUrls
+  removeDuplicateUrls,
 } from "../../lib/validateUrl";
 import { fireEngineMap } from "../../search/fireEngine";
 import { billTeam } from "../../services/billing/credit_billing";
@@ -49,7 +49,7 @@ export async function getMapResults({
   plan,
   origin,
   includeMetadata = false,
-  allowExternalLinks
+  allowExternalLinks,
 }: {
   url: string;
   search?: string;
@@ -72,13 +72,13 @@ export async function getMapResults({
     crawlerOptions: {
       ...crawlerOptions,
       limit: crawlerOptions.sitemapOnly ? 10000000 : limit,
-      scrapeOptions: undefined
+      scrapeOptions: undefined,
     },
     scrapeOptions: scrapeOptions.parse({}),
     internalOptions: {},
     team_id: teamId,
     createdAt: Date.now(),
-    plan: plan
+    plan: plan,
   };
 
   const crawler = crawlToCrawler(id, sc);
@@ -114,7 +114,7 @@ export async function getMapResults({
 
     const resultsPerPage = 100;
     const maxPages = Math.ceil(
-      Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage
+      Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage,
     );
 
     const cacheKey = `fireEngineMap:${mapUrl}`;
@@ -129,12 +129,12 @@ export async function getMapResults({
       const fetchPage = async (page: number) => {
         return fireEngineMap(mapUrl, {
           numResults: resultsPerPage,
-          page: page
+          page: page,
         });
       };
 
       pagePromises = Array.from({ length: maxPages }, (_, i) =>
-        fetchPage(i + 1)
+        fetchPage(i + 1),
       );
       allResults = await Promise.all(pagePromises);
 
@@ -144,7 +144,7 @@ export async function getMapResults({
     // Parallelize sitemap fetch with serper search
     const [sitemap, ...searchResults] = await Promise.all([
       ignoreSitemap ? null : crawler.tryGetSitemap(true),
-      ...(cachedResult ? [] : pagePromises)
+      ...(cachedResult ? [] : pagePromises),
     ]);
 
     if (!cachedResult) {
@@ -172,7 +172,7 @@ export async function getMapResults({
         links = [
           mapResults[0].url,
           ...mapResults.slice(1).map((x) => x.url),
-          ...links
+          ...links,
         ];
       } else {
         mapResults.map((x) => {
@@ -218,13 +218,13 @@ export async function getMapResults({
     links: includeMetadata ? mapResults : linksToReturn,
     scrape_id: origin?.includes("website") ? id : undefined,
     job_id: id,
-    time_taken: (new Date().getTime() - Date.now()) / 1000
+    time_taken: (new Date().getTime() - Date.now()) / 1000,
   };
 }
 
 export async function mapController(
   req: RequestWithAuth<{}, MapResponse, MapRequest>,
-  res: Response<MapResponse>
+  res: Response<MapResponse>,
 ) {
   req.body = mapRequestSchema.parse(req.body);
 
@@ -237,13 +237,13 @@ export async function mapController(
     crawlerOptions: req.body,
     origin: req.body.origin,
     teamId: req.auth.team_id,
-    plan: req.auth.plan
+    plan: req.auth.plan,
   });
 
   // Bill the team
   billTeam(req.auth.team_id, req.acuc?.sub_id, 1).catch((error) => {
     logger.error(
-      `Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`
+      `Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`,
     );
   });
 
@@ -261,13 +261,13 @@ export async function mapController(
     crawlerOptions: {},
     scrapeOptions: {},
     origin: req.body.origin ?? "api",
-    num_tokens: 0
+    num_tokens: 0,
   });
 
   const response = {
     success: true as const,
     links: result.links,
-    scrape_id: result.scrape_id
+    scrape_id: result.scrape_id,
   };
 
   return res.status(200).json(response);

@@ -8,7 +8,7 @@ import {
   ExtractorOptions,
   PageOptions,
   ScrapeActionContent,
-  Document as V0Document
+  Document as V0Document,
 } from "../../lib/entities";
 import { InternalOptions } from "../../scraper/scrapeURL";
 
@@ -34,7 +34,7 @@ export const url = z.preprocess(
     .regex(/^https?:\/\//, "URL uses unsupported protocol")
     .refine(
       (x) => /\.[a-z]{2,}([\/?#]|$)/i.test(x),
-      "URL must have a valid top-level domain or be a valid path"
+      "URL must have a valid top-level domain or be a valid path",
     )
     .refine((x) => {
       try {
@@ -46,8 +46,8 @@ export const url = z.preprocess(
     }, "Invalid URL")
     .refine(
       (x) => !isUrlBlocked(x as string),
-      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
-    )
+      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
+    ),
 );
 
 const strictMessage =
@@ -60,9 +60,9 @@ export const extractOptions = z
     systemPrompt: z
       .string()
       .default(
-        "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required."
+        "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required.",
       ),
-    prompt: z.string().optional()
+    prompt: z.string().optional(),
   })
   .strict(strictMessage);
 
@@ -74,7 +74,7 @@ export const actionsSchema = z.array(
       .object({
         type: z.literal("wait"),
         milliseconds: z.number().int().positive().finite().optional(),
-        selector: z.string().optional()
+        selector: z.string().optional(),
       })
       .refine(
         (data) =>
@@ -82,38 +82,38 @@ export const actionsSchema = z.array(
           !(data.milliseconds !== undefined && data.selector !== undefined),
         {
           message:
-            "Either 'milliseconds' or 'selector' must be provided, but not both."
-        }
+            "Either 'milliseconds' or 'selector' must be provided, but not both.",
+        },
       ),
     z.object({
       type: z.literal("click"),
-      selector: z.string()
+      selector: z.string(),
     }),
     z.object({
       type: z.literal("screenshot"),
-      fullPage: z.boolean().default(false)
+      fullPage: z.boolean().default(false),
     }),
     z.object({
       type: z.literal("write"),
-      text: z.string()
+      text: z.string(),
     }),
     z.object({
       type: z.literal("press"),
-      key: z.string()
+      key: z.string(),
     }),
     z.object({
       type: z.literal("scroll"),
       direction: z.enum(["up", "down"]).optional().default("down"),
-      selector: z.string().optional()
+      selector: z.string().optional(),
     }),
     z.object({
-      type: z.literal("scrape")
+      type: z.literal("scrape"),
     }),
     z.object({
       type: z.literal("executeJavascript"),
-      script: z.string()
-    })
-  ])
+      script: z.string(),
+    }),
+  ]),
 );
 
 export const scrapeOptions = z
@@ -126,14 +126,14 @@ export const scrapeOptions = z
         "links",
         "screenshot",
         "screenshot@fullPage",
-        "extract"
+        "extract",
       ])
       .array()
       .optional()
       .default(["markdown"])
       .refine(
         (x) => !(x.includes("screenshot") && x.includes("screenshot@fullPage")),
-        "You may only specify either screenshot or screenshot@fullPage"
+        "You may only specify either screenshot or screenshot@fullPage",
       ),
     headers: z.record(z.string(), z.string()).optional(),
     includeTags: z.string().array().optional(),
@@ -155,11 +155,11 @@ export const scrapeOptions = z
             (val) => !val || Object.keys(countries).includes(val.toUpperCase()),
             {
               message:
-                "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code."
-            }
+                "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
+            },
           )
           .transform((val) => (val ? val.toUpperCase() : "US")),
-        languages: z.string().array().optional()
+        languages: z.string().array().optional(),
       })
       .optional(),
 
@@ -173,15 +173,15 @@ export const scrapeOptions = z
             (val) => !val || Object.keys(countries).includes(val.toUpperCase()),
             {
               message:
-                "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code."
-            }
+                "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
+            },
           )
           .transform((val) => (val ? val.toUpperCase() : "US")),
-        languages: z.string().array().optional()
+        languages: z.string().array().optional(),
       })
       .optional(),
     skipTlsVerification: z.boolean().default(false),
-    removeBase64Images: z.boolean().default(true)
+    removeBase64Images: z.boolean().default(true),
   })
   .strict(strictMessage);
 
@@ -199,7 +199,7 @@ export const extractV1Options = z
     includeSubdomains: z.boolean().default(true),
     allowExternalLinks: z.boolean().default(false),
     origin: z.string().optional().default("api"),
-    timeout: z.number().int().positive().finite().safe().default(60000)
+    timeout: z.number().int().positive().finite().safe().default(60000),
   })
   .strict(strictMessage);
 
@@ -212,7 +212,7 @@ export const scrapeRequestSchema = scrapeOptions
   .extend({
     url,
     origin: z.string().optional().default("api"),
-    timeout: z.number().int().positive().finite().safe().default(30000)
+    timeout: z.number().int().positive().finite().safe().default(30000),
   })
   .strict(strictMessage)
   .refine(
@@ -226,8 +226,8 @@ export const scrapeRequestSchema = scrapeOptions
     },
     {
       message:
-        "When 'extract' format is specified, 'extract' options must be provided, and vice versa"
-    }
+        "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
+    },
   )
   .transform((obj) => {
     if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
@@ -250,9 +250,9 @@ export const webhookSchema = z.preprocess(
   z
     .object({
       url: z.string().url(),
-      headers: z.record(z.string(), z.string()).default({})
+      headers: z.record(z.string(), z.string()).default({}),
     })
-    .strict(strictMessage)
+    .strict(strictMessage),
 );
 
 export const batchScrapeRequestSchema = scrapeOptions
@@ -260,7 +260,7 @@ export const batchScrapeRequestSchema = scrapeOptions
     urls: url.array(),
     origin: z.string().optional().default("api"),
     webhook: webhookSchema.optional(),
-    appendToId: z.string().uuid().optional()
+    appendToId: z.string().uuid().optional(),
   })
   .strict(strictMessage)
   .refine(
@@ -274,8 +274,8 @@ export const batchScrapeRequestSchema = scrapeOptions
     },
     {
       message:
-        "When 'extract' format is specified, 'extract' options must be provided, and vice versa"
-    }
+        "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
+    },
   );
 
 export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
@@ -292,7 +292,7 @@ const crawlerOptions = z
     ignoreRobotsTxt: z.boolean().default(false),
     ignoreSitemap: z.boolean().default(false),
     deduplicateSimilarURLs: z.boolean().default(true),
-    ignoreQueryParameters: z.boolean().default(false)
+    ignoreQueryParameters: z.boolean().default(false),
   })
   .strict(strictMessage);
 
@@ -314,7 +314,7 @@ export const crawlRequestSchema = crawlerOptions
     origin: z.string().optional().default("api"),
     scrapeOptions: scrapeOptions.default({}),
     webhook: webhookSchema.optional(),
-    limit: z.number().default(10000)
+    limit: z.number().default(10000),
   })
   .strict(strictMessage);
 
@@ -340,7 +340,7 @@ export const mapRequestSchema = crawlerOptions
     search: z.string().optional(),
     ignoreSitemap: z.boolean().default(false),
     sitemapOnly: z.boolean().default(false),
-    limit: z.number().min(1).max(5000).default(5000)
+    limit: z.number().min(1).max(5000).default(5000),
   })
   .strict(strictMessage);
 
@@ -510,7 +510,7 @@ export type AuthCreditUsageChunk = {
 export interface RequestWithMaybeACUC<
   ReqParams = {},
   ReqBody = undefined,
-  ResBody = undefined
+  ResBody = undefined,
 > extends Request<ReqParams, ReqBody, ResBody> {
   acuc?: AuthCreditUsageChunk;
 }
@@ -518,7 +518,7 @@ export interface RequestWithMaybeACUC<
 export interface RequestWithACUC<
   ReqParams = {},
   ReqBody = undefined,
-  ResBody = undefined
+  ResBody = undefined,
 > extends Request<ReqParams, ReqBody, ResBody> {
   acuc: AuthCreditUsageChunk;
 }
@@ -526,7 +526,7 @@ export interface RequestWithACUC<
 export interface RequestWithAuth<
   ReqParams = {},
   ReqBody = undefined,
-  ResBody = undefined
+  ResBody = undefined,
 > extends Request<ReqParams, ReqBody, ResBody> {
   auth: AuthObject;
   account?: Account;
@@ -535,7 +535,7 @@ export interface RequestWithAuth<
 export interface RequestWithMaybeAuth<
   ReqParams = {},
   ReqBody = undefined,
-  ResBody = undefined
+  ResBody = undefined,
 > extends RequestWithMaybeACUC<ReqParams, ReqBody, ResBody> {
   auth?: AuthObject;
   account?: Account;
@@ -544,7 +544,7 @@ export interface RequestWithMaybeAuth<
 export interface RequestWithAuth<
   ReqParams = {},
   ReqBody = undefined,
-  ResBody = undefined
+  ResBody = undefined,
 > extends RequestWithACUC<ReqParams, ReqBody, ResBody> {
   auth: AuthObject;
   account?: Account;
@@ -569,7 +569,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     ignoreRobotsTxt: x.ignoreRobotsTxt,
     ignoreSitemap: x.ignoreSitemap,
     deduplicateSimilarURLs: x.deduplicateSimilarURLs,
-    ignoreQueryParameters: x.ignoreQueryParameters
+    ignoreQueryParameters: x.ignoreQueryParameters,
   };
 }
 
@@ -589,11 +589,11 @@ export function fromLegacyCrawlerOptions(x: any): {
       ignoreRobotsTxt: x.ignoreRobotsTxt,
       ignoreSitemap: x.ignoreSitemap,
       deduplicateSimilarURLs: x.deduplicateSimilarURLs,
-      ignoreQueryParameters: x.ignoreQueryParameters
+      ignoreQueryParameters: x.ignoreQueryParameters,
     }),
     internalOptions: {
-      v0CrawlOnlyUrls: x.returnOnlyUrls
-    }
+      v0CrawlOnlyUrls: x.returnOnlyUrls,
+    },
   };
 }
 
@@ -605,7 +605,7 @@ export interface MapDocument {
 export function fromLegacyScrapeOptions(
   pageOptions: PageOptions,
   extractorOptions: ExtractorOptions | undefined,
-  timeout: number | undefined
+  timeout: number | undefined,
 ): { scrapeOptions: ScrapeOptions; internalOptions: InternalOptions } {
   return {
     scrapeOptions: scrapeOptions.parse({
@@ -621,7 +621,7 @@ export function fromLegacyScrapeOptions(
         extractorOptions.mode.includes("llm-extraction")
           ? ("extract" as const)
           : null,
-        "links"
+        "links",
       ].filter((x) => x !== null),
       waitFor: pageOptions.waitFor,
       headers: pageOptions.headers,
@@ -646,16 +646,16 @@ export function fromLegacyScrapeOptions(
           ? {
               systemPrompt: extractorOptions.extractionPrompt,
               prompt: extractorOptions.userPrompt,
-              schema: extractorOptions.extractionSchema
+              schema: extractorOptions.extractionSchema,
             }
           : undefined,
-      mobile: pageOptions.mobile
+      mobile: pageOptions.mobile,
     }),
     internalOptions: {
       atsv: pageOptions.atsv,
       v0DisableJsDom: pageOptions.disableJsDom,
-      v0UseFastMode: pageOptions.useFastMode
-    }
+      v0UseFastMode: pageOptions.useFastMode,
+    },
     // TODO: fallback, fetchPageContent, replaceAllPathsWithAbsolutePaths, includeLinks
   };
 }
@@ -664,12 +664,12 @@ export function fromLegacyCombo(
   pageOptions: PageOptions,
   extractorOptions: ExtractorOptions | undefined,
   timeout: number | undefined,
-  crawlerOptions: any
+  crawlerOptions: any,
 ): { scrapeOptions: ScrapeOptions; internalOptions: InternalOptions } {
   const { scrapeOptions, internalOptions: i1 } = fromLegacyScrapeOptions(
     pageOptions,
     extractorOptions,
-    timeout
+    timeout,
   );
   const { internalOptions: i2 } = fromLegacyCrawlerOptions(crawlerOptions);
   return { scrapeOptions, internalOptions: Object.assign(i1, i2) };
@@ -677,7 +677,7 @@ export function fromLegacyCombo(
 
 export function toLegacyDocument(
   document: Document,
-  internalOptions: InternalOptions
+  internalOptions: InternalOptions,
 ): V0Document | { url: string } {
   if (internalOptions.v0CrawlOnlyUrls) {
     return { url: document.metadata.sourceURL! };
@@ -696,9 +696,9 @@ export function toLegacyDocument(
       statusCode: undefined,
       pageError: document.metadata.error,
       pageStatusCode: document.metadata.statusCode,
-      screenshot: document.screenshot
+      screenshot: document.screenshot,
     },
     actions: document.actions,
-    warning: document.warning
+    warning: document.warning,
   };
 }

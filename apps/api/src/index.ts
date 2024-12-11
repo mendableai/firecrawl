@@ -46,12 +46,12 @@ serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
 
 const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
   queues: [new BullAdapter(getScrapeQueue())],
-  serverAdapter: serverAdapter
+  serverAdapter: serverAdapter,
 });
 
 app.use(
   `/admin/${process.env.BULL_AUTH_KEY}/queues`,
-  serverAdapter.getRouter()
+  serverAdapter.getRouter(),
 );
 
 app.get("/", (req, res) => {
@@ -75,7 +75,7 @@ function startServer(port = DEFAULT_PORT) {
   const server = app.listen(Number(port), HOST, () => {
     logger.info(`Worker ${process.pid} listening on port ${port}`);
     logger.info(
-      `For the Queue UI, open: http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`
+      `For the Queue UI, open: http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`,
     );
   });
 
@@ -103,7 +103,7 @@ app.get(`/serverHealthCheck`, async (req, res) => {
     const noWaitingJobs = waitingJobs === 0;
     // 200 if no active jobs, 503 if there are active jobs
     return res.status(noWaitingJobs ? 200 : 500).json({
-      waitingJobs
+      waitingJobs,
     });
   } catch (error) {
     Sentry.captureException(error);
@@ -120,7 +120,7 @@ app.get("/serverHealthCheck/notify", async (req, res) => {
     const getWaitingJobsCount = async () => {
       const scrapeQueue = getScrapeQueue();
       const [waitingJobsCount] = await Promise.all([
-        scrapeQueue.getWaitingCount()
+        scrapeQueue.getWaitingCount(),
       ]);
 
       return waitingJobsCount;
@@ -140,15 +140,15 @@ app.get("/serverHealthCheck/notify", async (req, res) => {
               const message = {
                 text: `⚠️ Warning: The number of active jobs (${waitingJobsCount}) has exceeded the threshold (${treshold}) for more than ${
                   timeout / 60000
-                } minute(s).`
+                } minute(s).`,
               };
 
               const response = await fetch(slackWebhookUrl, {
                 method: "POST",
                 headers: {
-                  "Content-Type": "application/json"
+                  "Content-Type": "application/json",
                 },
-                body: JSON.stringify(message)
+                body: JSON.stringify(message),
               });
 
               if (!response.ok) {
@@ -176,7 +176,7 @@ app.use(
     err: unknown,
     req: Request<{}, ErrorResponse, undefined>,
     res: Response<ErrorResponse>,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     if (err instanceof ZodError) {
       if (
@@ -192,7 +192,7 @@ app.use(
     } else {
       next(err);
     }
-  }
+  },
 );
 
 Sentry.setupExpressErrorHandler(app);
@@ -202,7 +202,7 @@ app.use(
     err: unknown,
     req: Request<{}, ErrorResponse, undefined>,
     res: ResponseWithSentry<ErrorResponse>,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     if (
       err instanceof SyntaxError &&
@@ -222,7 +222,7 @@ app.use(
         verbose = JSON.stringify({
           message: err.message,
           name: err.name,
-          stack: err.stack
+          stack: err.stack,
         });
       }
     }
@@ -233,15 +233,15 @@ app.use(
         ") -- ID " +
         id +
         " -- " +
-        verbose
+        verbose,
     );
     res.status(500).json({
       success: false,
       error:
         "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " +
-        id
+        id,
     });
-  }
+  },
 );
 
 logger.info(`Worker ${process.pid} started`);

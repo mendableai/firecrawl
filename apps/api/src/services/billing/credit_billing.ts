@@ -19,18 +19,18 @@ const FREE_CREDITS = 500;
 export async function billTeam(
   team_id: string,
   subscription_id: string | null | undefined,
-  credits: number
+  credits: number,
 ) {
   return withAuth(supaBillTeam, { success: true, message: "No DB, bypassed." })(
     team_id,
     subscription_id,
-    credits
+    credits,
   );
 }
 export async function supaBillTeam(
   team_id: string,
   subscription_id: string | null | undefined,
-  credits: number
+  credits: number,
 ) {
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
@@ -41,7 +41,7 @@ export async function supaBillTeam(
     _team_id: team_id,
     sub_id: subscription_id ?? null,
     fetch_subscription: subscription_id === undefined,
-    credits
+    credits,
   });
 
   if (error) {
@@ -58,9 +58,9 @@ export async function supaBillTeam(
               ...acuc,
               credits_used: acuc.credits_used + credits,
               adjusted_credits_used: acuc.adjusted_credits_used + credits,
-              remaining_credits: acuc.remaining_credits - credits
+              remaining_credits: acuc.remaining_credits - credits,
             }
-          : null
+          : null,
       );
     }
   })();
@@ -76,12 +76,12 @@ export type CheckTeamCreditsResponse = {
 export async function checkTeamCredits(
   chunk: AuthCreditUsageChunk | null,
   team_id: string,
-  credits: number
+  credits: number,
 ): Promise<CheckTeamCreditsResponse> {
   return withAuth(supaCheckTeamCredits, {
     success: true,
     message: "No DB, bypassed",
-    remainingCredits: Infinity
+    remainingCredits: Infinity,
   })(chunk, team_id, credits);
 }
 
@@ -89,14 +89,14 @@ export async function checkTeamCredits(
 export async function supaCheckTeamCredits(
   chunk: AuthCreditUsageChunk | null,
   team_id: string,
-  credits: number
+  credits: number,
 ): Promise<CheckTeamCreditsResponse> {
   // WARNING: chunk will be null if team_id is preview -- do not perform operations on it under ANY circumstances - mogery
   if (team_id === "preview") {
     return {
       success: true,
       message: "Preview team, no credits used",
-      remainingCredits: Infinity
+      remainingCredits: Infinity,
     };
   } else if (chunk === null) {
     throw new Error("NULL ACUC passed to supaCheckTeamCredits");
@@ -141,7 +141,7 @@ export async function supaCheckTeamCredits(
         success: true,
         message: autoChargeResult.message,
         remainingCredits: autoChargeResult.remainingCredits,
-        chunk: autoChargeResult.chunk
+        chunk: autoChargeResult.chunk,
       };
     }
   }
@@ -155,7 +155,7 @@ export async function supaCheckTeamCredits(
         NotificationType.LIMIT_REACHED,
         chunk.sub_current_period_start,
         chunk.sub_current_period_end,
-        chunk
+        chunk,
       );
     }
     return {
@@ -163,7 +163,7 @@ export async function supaCheckTeamCredits(
       message:
         "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing.",
       remainingCredits: chunk.remaining_credits,
-      chunk
+      chunk,
     };
   } else if (creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
     // Send email notification for approaching credit limit
@@ -172,7 +172,7 @@ export async function supaCheckTeamCredits(
       NotificationType.APPROACHING_LIMIT,
       chunk.sub_current_period_start,
       chunk.sub_current_period_end,
-      chunk
+      chunk,
     );
   }
 
@@ -180,13 +180,13 @@ export async function supaCheckTeamCredits(
     success: true,
     message: "Sufficient credits available",
     remainingCredits: chunk.remaining_credits,
-    chunk
+    chunk,
   };
 }
 
 // Count the total credits used by a team within the current billing period and return the remaining credits.
 export async function countCreditsAndRemainingForCurrentBillingPeriod(
-  team_id: string
+  team_id: string,
 ) {
   // 1. Retrieve the team's active subscription based on the team_id.
   const { data: subscription, error: subscriptionError } =
@@ -206,7 +206,7 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
   if (coupons && coupons.length > 0) {
     couponCredits = coupons.reduce(
       (total, coupon) => total + coupon.credits,
-      0
+      0,
     );
   }
 
@@ -221,20 +221,20 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
 
     if (creditUsageError || !creditUsages) {
       throw new Error(
-        `Failed to retrieve credit usage for team_id: ${team_id}`
+        `Failed to retrieve credit usage for team_id: ${team_id}`,
       );
     }
 
     const totalCreditsUsed = creditUsages.reduce(
       (acc, usage) => acc + usage.credits_used,
-      0
+      0,
     );
 
     const remainingCredits = FREE_CREDITS + couponCredits - totalCreditsUsed;
     return {
       totalCreditsUsed: totalCreditsUsed,
       remainingCredits,
-      totalCredits: FREE_CREDITS + couponCredits
+      totalCredits: FREE_CREDITS + couponCredits,
     };
   }
 
@@ -247,13 +247,13 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
 
   if (creditUsageError || !creditUsages) {
     throw new Error(
-      `Failed to retrieve credit usage for subscription_id: ${subscription.id}`
+      `Failed to retrieve credit usage for subscription_id: ${subscription.id}`,
     );
   }
 
   const totalCreditsUsed = creditUsages.reduce(
     (acc, usage) => acc + usage.credits_used,
-    0
+    0,
   );
 
   const { data: price, error: priceError } = await supabase_service
@@ -264,7 +264,7 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
 
   if (priceError || !price) {
     throw new Error(
-      `Failed to retrieve price for price_id: ${subscription.price_id}`
+      `Failed to retrieve price for price_id: ${subscription.price_id}`,
     );
   }
 
@@ -273,6 +273,6 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
   return {
     totalCreditsUsed,
     remainingCredits,
-    totalCredits: price.credits
+    totalCredits: price.credits,
   };
 }

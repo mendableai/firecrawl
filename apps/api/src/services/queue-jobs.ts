@@ -8,14 +8,14 @@ import {
   getConcurrencyLimitActiveJobs,
   getConcurrencyLimitMax,
   pushConcurrencyLimitActiveJob,
-  pushConcurrencyLimitedJob
+  pushConcurrencyLimitedJob,
 } from "../lib/concurrency-limit";
 
 async function addScrapeJobRaw(
   webScraperOptions: any,
   options: any,
   jobId: string,
-  jobPriority: number = 10
+  jobPriority: number = 10,
 ) {
   let concurrencyLimited = false;
 
@@ -39,9 +39,9 @@ async function addScrapeJobRaw(
       opts: {
         ...options,
         priority: jobPriority,
-        jobId: jobId
+        jobId: jobId,
       },
-      priority: jobPriority
+      priority: jobPriority,
     });
   } else {
     if (
@@ -55,7 +55,7 @@ async function addScrapeJobRaw(
     await getScrapeQueue().add(jobId, webScraperOptions, {
       ...options,
       priority: jobPriority,
-      jobId
+      jobId,
     });
   }
 }
@@ -64,7 +64,7 @@ export async function addScrapeJob(
   webScraperOptions: WebScraperOptions,
   options: any = {},
   jobId: string = uuidv4(),
-  jobPriority: number = 10
+  jobPriority: number = 10,
 ) {
   if (Sentry.isInitialized()) {
     const size = JSON.stringify(webScraperOptions).length;
@@ -75,8 +75,8 @@ export async function addScrapeJob(
         attributes: {
           "messaging.message.id": jobId,
           "messaging.destination.name": getScrapeQueue().name,
-          "messaging.message.body.size": size
-        }
+          "messaging.message.body.size": size,
+        },
       },
       async (span) => {
         await addScrapeJobRaw(
@@ -85,14 +85,14 @@ export async function addScrapeJob(
             sentry: {
               trace: Sentry.spanToTraceHeader(span),
               baggage: Sentry.spanToBaggageHeader(span),
-              size
-            }
+              size,
+            },
           },
           options,
           jobId,
-          jobPriority
+          jobPriority,
         );
-      }
+      },
     );
   } else {
     await addScrapeJobRaw(webScraperOptions, options, jobId, jobPriority);
@@ -106,19 +106,19 @@ export async function addScrapeJobs(
       jobId: string;
       priority: number;
     };
-  }[]
+  }[],
 ) {
   // TODO: better
   await Promise.all(
     jobs.map((job) =>
-      addScrapeJob(job.data, job.opts, job.opts.jobId, job.opts.priority)
-    )
+      addScrapeJob(job.data, job.opts, job.opts.jobId, job.opts.priority),
+    ),
   );
 }
 
 export function waitForJob<T = unknown>(
   jobId: string,
-  timeout: number
+  timeout: number,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
     const start = Date.now();

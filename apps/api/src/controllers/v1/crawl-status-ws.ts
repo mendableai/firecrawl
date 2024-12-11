@@ -6,7 +6,7 @@ import {
   CrawlStatusResponse,
   Document,
   ErrorResponse,
-  RequestWithAuth
+  RequestWithAuth,
 } from "./types";
 import { WebSocket } from "ws";
 import { v4 as uuidv4 } from "uuid";
@@ -19,7 +19,7 @@ import {
   getDoneJobsOrderedLength,
   getThrottledJobs,
   isCrawlFinished,
-  isCrawlFinishedLocked
+  isCrawlFinishedLocked,
 } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
 import { getJob, getJobs } from "./crawl-status";
@@ -64,7 +64,7 @@ function close(ws: WebSocket, code: number, msg: Message) {
 
 async function crawlStatusWS(
   ws: WebSocket,
-  req: RequestWithAuth<CrawlStatusParams, undefined, undefined>
+  req: RequestWithAuth<CrawlStatusParams, undefined, undefined>,
 ) {
   const sc = await getCrawl(req.params.jobId);
   if (!sc) {
@@ -89,7 +89,10 @@ async function crawlStatusWS(
 
     const notDoneJobIDs = jobIDs.filter((x) => !doneJobIDs.includes(x));
     const jobStatuses = await Promise.all(
-      notDoneJobIDs.map(async (x) => [x, await getScrapeQueue().getJobState(x)])
+      notDoneJobIDs.map(async (x) => [
+        x,
+        await getScrapeQueue().getJobState(x),
+      ]),
     );
     const newlyDoneJobIDs: string[] = jobStatuses
       .filter((x) => x[1] === "completed" || x[1] === "failed")
@@ -102,7 +105,7 @@ async function crawlStatusWS(
       if (job.returnvalue) {
         send(ws, {
           type: "document",
-          data: job.returnvalue
+          data: job.returnvalue,
         });
       } else {
         return close(ws, 3000, { type: "error", error: job.failedReason });
@@ -120,7 +123,9 @@ async function crawlStatusWS(
 
   let jobIDs = await getCrawlJobs(req.params.jobId);
   let jobStatuses = await Promise.all(
-    jobIDs.map(async (x) => [x, await getScrapeQueue().getJobState(x)] as const)
+    jobIDs.map(
+      async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
+    ),
   );
   const throttledJobs = new Set(...(await getThrottledJobs(req.auth.team_id)));
 
@@ -161,8 +166,8 @@ async function crawlStatusWS(
       completed: doneJobIDs.length,
       creditsUsed: jobIDs.length,
       expiresAt: (await getCrawlExpiry(req.params.jobId)).toISOString(),
-      data: data
-    }
+      data: data,
+    },
   });
 
   if (status !== "scraping") {
@@ -174,7 +179,7 @@ async function crawlStatusWS(
 // Basically just middleware and error wrapping
 export async function crawlStatusWSController(
   ws: WebSocket,
-  req: RequestWithAuth<CrawlStatusParams, undefined, undefined>
+  req: RequestWithAuth<CrawlStatusParams, undefined, undefined>,
 ) {
   try {
     const auth = await authenticateUser(req, null, RateLimiterMode.CrawlStatus);
@@ -182,7 +187,7 @@ export async function crawlStatusWSController(
     if (!auth.success) {
       return close(ws, 3000, {
         type: "error",
-        error: auth.error
+        error: auth.error,
       });
     }
 
@@ -201,7 +206,7 @@ export async function crawlStatusWSController(
         verbose = JSON.stringify({
           message: err.message,
           name: err.name,
-          stack: err.stack
+          stack: err.stack,
         });
       }
     }
@@ -212,13 +217,13 @@ export async function crawlStatusWSController(
         ") -- ID " +
         id +
         " -- " +
-        verbose
+        verbose,
     );
     return close(ws, 1011, {
       type: "error",
       error:
         "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " +
-        id
+        id,
     });
   }
 }

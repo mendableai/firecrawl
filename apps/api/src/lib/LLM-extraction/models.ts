@@ -14,7 +14,7 @@ const defaultPrompt =
 
 function prepareOpenAIDoc(
   document: Document,
-  mode: "markdown" | "raw-html"
+  mode: "markdown" | "raw-html",
 ): [OpenAI.Chat.Completions.ChatCompletionContentPart[], number] | null {
   let markdown = document.markdown;
 
@@ -50,7 +50,7 @@ export async function generateOpenAICompletions({
   systemPrompt = defaultPrompt,
   prompt,
   temperature,
-  mode
+  mode,
 }: {
   client: OpenAI;
   model?: string;
@@ -68,7 +68,7 @@ export async function generateOpenAICompletions({
     return {
       ...document,
       warning:
-        "LLM extraction was not performed since the document's content is empty or missing."
+        "LLM extraction was not performed since the document's content is empty or missing.",
     };
   }
   const [content, numTokens] = preparedDoc;
@@ -81,21 +81,21 @@ export async function generateOpenAICompletions({
       messages: [
         {
           role: "system",
-          content: systemPrompt
+          content: systemPrompt,
         },
         { role: "user", content },
         {
           role: "user",
-          content: `Transform the above content into structured json output based on the following user request: ${prompt}`
-        }
+          content: `Transform the above content into structured json output based on the following user request: ${prompt}`,
+        },
       ],
       response_format: { type: "json_object" },
-      temperature
+      temperature,
     });
 
     try {
       llmExtraction = JSON.parse(
-        (jsonCompletion.choices[0].message.content ?? "").trim()
+        (jsonCompletion.choices[0].message.content ?? "").trim(),
       );
     } catch (e) {
       throw new Error("Invalid JSON");
@@ -106,9 +106,9 @@ export async function generateOpenAICompletions({
       messages: [
         {
           role: "system",
-          content: systemPrompt
+          content: systemPrompt,
         },
-        { role: "user", content }
+        { role: "user", content },
       ],
       tools: [
         {
@@ -116,12 +116,12 @@ export async function generateOpenAICompletions({
           function: {
             name: "extract_content",
             description: "Extracts the content from the given webpage(s)",
-            parameters: schema
-          }
-        }
+            parameters: schema,
+          },
+        },
       ],
       tool_choice: { type: "function", function: { name: "extract_content" } },
-      temperature
+      temperature,
     });
     const c = completion.choices[0].message.tool_calls[0].function.arguments;
 
@@ -140,6 +140,6 @@ export async function generateOpenAICompletions({
     warning:
       numTokens > maxTokens
         ? `Page was trimmed to fit the maximum token limit defined by the LLM model (Max: ${maxTokens} tokens, Attemped: ${numTokens} tokens). If results are not good, email us at help@mendable.ai so we can help you.`
-        : undefined
+        : undefined,
   };
 }

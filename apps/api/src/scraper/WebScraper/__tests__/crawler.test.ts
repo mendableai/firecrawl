@@ -32,7 +32,7 @@ describe("WebCrawler", () => {
       getMatchingLineNumber: jest.fn().mockReturnValue(0),
       getCrawlDelay: jest.fn().mockReturnValue(0),
       getSitemaps: jest.fn().mockReturnValue([]),
-      getPreferredHost: jest.fn().mockReturnValue("example.com")
+      getPreferredHost: jest.fn().mockReturnValue("example.com"),
     });
   });
 
@@ -46,7 +46,7 @@ describe("WebCrawler", () => {
       includes: [],
       excludes: [],
       limit: limit, // Apply the limit
-      maxCrawledDepth: 10
+      maxCrawledDepth: 10,
     });
 
     // Mock sitemap fetching function to return more links than the limit
@@ -56,7 +56,7 @@ describe("WebCrawler", () => {
         initialUrl,
         initialUrl + "/page1",
         initialUrl + "/page2",
-        initialUrl + "/page3"
+        initialUrl + "/page3",
       ]);
 
     const filteredLinks = crawler["filterLinks"](
@@ -64,10 +64,10 @@ describe("WebCrawler", () => {
         initialUrl,
         initialUrl + "/page1",
         initialUrl + "/page2",
-        initialUrl + "/page3"
+        initialUrl + "/page3",
       ],
       limit,
-      10
+      10,
     );
 
     expect(filteredLinks.length).toBe(limit); // Check if the number of results respects the limit

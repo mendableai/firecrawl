@@ -47,7 +47,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({ url: "https://firecrawl.dev" });
         expect(response.statusCode).toBe(401);
-      }
+      },
     );
 
     it.concurrent("should return an error for a blocklisted URL", async () => {
@@ -59,7 +59,7 @@ describe("E2E Tests for API Routes", () => {
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
       expect(response.body.error).toContain(
-        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
+        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
       );
     });
 
@@ -103,30 +103,30 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.data.metadata.pageError).toBeUndefined();
         expect(response.body.data.metadata.title).toBe("Roast My Website");
         expect(response.body.data.metadata.description).toBe(
-          "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️"
+          "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️",
         );
         expect(response.body.data.metadata.keywords).toBe(
-          "Roast My Website,Roast,Website,GitHub,Firecrawl"
+          "Roast My Website,Roast,Website,GitHub,Firecrawl",
         );
         expect(response.body.data.metadata.robots).toBe("follow, index");
         expect(response.body.data.metadata.ogTitle).toBe("Roast My Website");
         expect(response.body.data.metadata.ogDescription).toBe(
-          "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️"
+          "Welcome to Roast My Website, the ultimate tool for putting your website through the wringer! This repository harnesses the power of Firecrawl to scrape and capture screenshots of websites, and then unleashes the latest LLM vision models to mercilessly roast them. 🌶️",
         );
         expect(response.body.data.metadata.ogUrl).toBe(
-          "https://www.roastmywebsite.ai"
+          "https://www.roastmywebsite.ai",
         );
         expect(response.body.data.metadata.ogImage).toBe(
-          "https://www.roastmywebsite.ai/og.png"
+          "https://www.roastmywebsite.ai/og.png",
         );
         expect(response.body.data.metadata.ogLocaleAlternate).toStrictEqual([]);
         expect(response.body.data.metadata.ogSiteName).toBe("Roast My Website");
         expect(response.body.data.metadata.sourceURL).toBe(
-          "https://roastmywebsite.ai"
+          "https://roastmywebsite.ai",
         );
         expect(response.body.data.metadata.pageStatusCode).toBe(200);
       },
-      30000
+      30000,
     ); // 30 seconds timeout
 
     it.concurrent(
@@ -138,7 +138,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({
             url: "https://roastmywebsite.ai",
-            pageOptions: { includeHtml: true }
+            pageOptions: { includeHtml: true },
           });
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("data");
@@ -152,7 +152,7 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.data.metadata.pageStatusCode).toBe(200);
         expect(response.body.data.metadata.pageError).toBeUndefined();
       },
-      30000
+      30000,
     ); // 30 seconds timeout
 
     it.concurrent(
@@ -164,7 +164,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({
             url: "https://roastmywebsite.ai",
-            pageOptions: { includeRawHtml: true }
+            pageOptions: { includeRawHtml: true },
           });
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("data");
@@ -178,7 +178,7 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.data.metadata.pageStatusCode).toBe(200);
         expect(response.body.data.metadata.pageError).toBeUndefined();
       },
-      30000
+      30000,
     ); // 30 seconds timeout
 
     it.concurrent(
@@ -196,12 +196,12 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.data).toHaveProperty("content");
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.content).toContain(
-          "We present spectrophotometric observations of the Broad Line Radio Galaxy"
+          "We present spectrophotometric observations of the Broad Line Radio Galaxy",
         );
         expect(response.body.data.metadata.pageStatusCode).toBe(200);
         expect(response.body.data.metadata.pageError).toBeUndefined();
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
@@ -219,12 +219,12 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.data).toHaveProperty("content");
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.content).toContain(
-          "We present spectrophotometric observations of the Broad Line Radio Galaxy"
+          "We present spectrophotometric observations of the Broad Line Radio Galaxy",
         );
         expect(response.body.data.metadata.pageStatusCode).toBe(200);
         expect(response.body.data.metadata.pageError).toBeUndefined();
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
@@ -236,7 +236,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({
             url: "https://arxiv.org/pdf/astro-ph/9301001.pdf",
-            pageOptions: { parsePDF: false }
+            pageOptions: { parsePDF: false },
           });
         await new Promise((r) => setTimeout(r, 6000));
 
@@ -245,10 +245,10 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.data).toHaveProperty("content");
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.content).toContain(
-          "/Title(arXiv:astro-ph/9301001v1  7 Jan 1993)>>endobj"
+          "/Title(arXiv:astro-ph/9301001v1  7 Jan 1993)>>endobj",
         );
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
@@ -266,16 +266,16 @@ describe("E2E Tests for API Routes", () => {
         expect(responseWithoutRemoveTags.body.data).toHaveProperty("metadata");
         expect(responseWithoutRemoveTags.body.data).not.toHaveProperty("html");
         expect(responseWithoutRemoveTags.body.data.content).toContain(
-          "Scrape This Site"
+          "Scrape This Site",
         );
         expect(responseWithoutRemoveTags.body.data.content).toContain(
-          "Lessons and Videos"
+          "Lessons and Videos",
         ); // #footer
         expect(responseWithoutRemoveTags.body.data.content).toContain(
-          "[Sandbox]("
+          "[Sandbox](",
         ); // .nav
         expect(responseWithoutRemoveTags.body.data.content).toContain(
-          "web scraping"
+          "web scraping",
         ); // strong
 
         const response = await request(TEST_URL)
@@ -284,7 +284,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({
             url: "https://www.scrapethissite.com/",
-            pageOptions: { removeTags: [".nav", "#footer", "strong"] }
+            pageOptions: { removeTags: [".nav", "#footer", "strong"] },
           });
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("data");
@@ -297,7 +297,7 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.data.content).not.toContain("[Sandbox]("); // .nav
         expect(response.body.data.content).not.toContain("web scraping"); // strong
       },
-      30000
+      30000,
     ); // 30 seconds timeout
 
     // TODO: add this test back once we nail the waitFor option to be more deterministic
@@ -337,10 +337,10 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.metadata.pageStatusCode).toBe(400);
         expect(response.body.data.metadata.pageError.toLowerCase()).toContain(
-          "bad request"
+          "bad request",
         );
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
@@ -359,10 +359,10 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.metadata.pageStatusCode).toBe(401);
         expect(response.body.data.metadata.pageError.toLowerCase()).toContain(
-          "unauthorized"
+          "unauthorized",
         );
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
@@ -381,10 +381,10 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.metadata.pageStatusCode).toBe(403);
         expect(response.body.data.metadata.pageError.toLowerCase()).toContain(
-          "forbidden"
+          "forbidden",
         );
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
@@ -403,10 +403,10 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.metadata.pageStatusCode).toBe(404);
         expect(response.body.data.metadata.pageError.toLowerCase()).toContain(
-          "not found"
+          "not found",
         );
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
@@ -425,10 +425,10 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.metadata.pageStatusCode).toBe(405);
         expect(response.body.data.metadata.pageError.toLowerCase()).toContain(
-          "method not allowed"
+          "method not allowed",
         );
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
@@ -447,10 +447,10 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.data).toHaveProperty("metadata");
         expect(response.body.data.metadata.pageStatusCode).toBe(500);
         expect(response.body.data.metadata.pageError.toLowerCase()).toContain(
-          "internal server error"
+          "internal server error",
         );
       },
-      60000
+      60000,
     ); // 60 seconds
   });
 
@@ -469,7 +469,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({ url: "https://firecrawl.dev" });
         expect(response.statusCode).toBe(401);
-      }
+      },
     );
 
     it.concurrent("should return an error for a blocklisted URL", async () => {
@@ -481,7 +481,7 @@ describe("E2E Tests for API Routes", () => {
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
       expect(response.body.error).toContain(
-        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it."
+        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
       );
     });
 
@@ -496,9 +496,9 @@ describe("E2E Tests for API Routes", () => {
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("jobId");
         expect(response.body.jobId).toMatch(
-          /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
+          /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/,
         );
-      }
+      },
     );
     it.concurrent(
       "should prevent duplicate requests using the same idempotency key",
@@ -525,7 +525,7 @@ describe("E2E Tests for API Routes", () => {
 
         expect(secondResponse.statusCode).toBe(409);
         expect(secondResponse.body.error).toBe("Idempotency key already used");
-      }
+      },
     );
 
     it.concurrent(
@@ -539,8 +539,8 @@ describe("E2E Tests for API Routes", () => {
             url: "https://mendable.ai",
             limit: 10,
             crawlerOptions: {
-              includes: ["blog/*"]
-            }
+              includes: ["blog/*"],
+            },
           });
 
         let response;
@@ -563,7 +563,7 @@ describe("E2E Tests for API Routes", () => {
         const completedResponse = response;
 
         const urls = completedResponse.body.data.map(
-          (item: any) => item.metadata?.sourceURL
+          (item: any) => item.metadata?.sourceURL,
         );
         expect(urls.length).toBeGreaterThan(5);
         urls.forEach((url: string) => {
@@ -579,13 +579,13 @@ describe("E2E Tests for API Routes", () => {
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         expect(completedResponse.body.data[0].content).toContain("Mendable");
         expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(
-          200
+          200,
         );
         expect(
-          completedResponse.body.data[0].metadata.pageError
+          completedResponse.body.data[0].metadata.pageError,
         ).toBeUndefined();
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
@@ -599,8 +599,8 @@ describe("E2E Tests for API Routes", () => {
             url: "https://mendable.ai",
             limit: 10,
             crawlerOptions: {
-              excludes: ["blog/*"]
-            }
+              excludes: ["blog/*"],
+            },
           });
 
         let isFinished = false;
@@ -623,14 +623,14 @@ describe("E2E Tests for API Routes", () => {
         const completedResponse = response;
 
         const urls = completedResponse.body.data.map(
-          (item: any) => item.metadata?.sourceURL
+          (item: any) => item.metadata?.sourceURL,
         );
         expect(urls.length).toBeGreaterThan(5);
         urls.forEach((url: string) => {
           expect(url.startsWith("https://wwww.mendable.ai/blog/")).toBeFalsy();
         });
       },
-      90000
+      90000,
     ); // 90 seconds
 
     it.concurrent(
@@ -642,7 +642,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({
             url: "https://mendable.ai",
-            crawlerOptions: { limit: 3 }
+            crawlerOptions: { limit: 3 },
           });
 
         let isFinished = false;
@@ -674,13 +674,13 @@ describe("E2E Tests for API Routes", () => {
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         expect(completedResponse.body.data[0].content).toContain("Mendable");
         expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(
-          200
+          200,
         );
         expect(
-          completedResponse.body.data[0].metadata.pageError
+          completedResponse.body.data[0].metadata.pageError,
         ).toBeUndefined();
       },
-      60000
+      60000,
     ); // 60 seconds
 
     it.concurrent(
@@ -692,7 +692,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({
             url: "https://www.scrapethissite.com",
-            crawlerOptions: { maxDepth: 1 }
+            crawlerOptions: { maxDepth: 1 },
           });
         expect(crawlResponse.statusCode).toBe(200);
 
@@ -726,13 +726,13 @@ describe("E2E Tests for API Routes", () => {
         expect(completedResponse.body.data[0]).toHaveProperty("markdown");
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(
-          200
+          200,
         );
         expect(
-          completedResponse.body.data[0].metadata.pageError
+          completedResponse.body.data[0].metadata.pageError,
         ).toBeUndefined();
         const urls = completedResponse.body.data.map(
-          (item: any) => item.metadata?.sourceURL
+          (item: any) => item.metadata?.sourceURL,
         );
         expect(urls.length).toBeGreaterThan(1);
 
@@ -748,7 +748,7 @@ describe("E2E Tests for API Routes", () => {
           expect(depth).toBeLessThanOrEqual(2);
         });
       },
-      180000
+      180000,
     );
 
     it.concurrent(
@@ -760,7 +760,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({
             url: "https://www.scrapethissite.com/pages/",
-            crawlerOptions: { maxDepth: 1 }
+            crawlerOptions: { maxDepth: 1 },
           });
         expect(crawlResponse.statusCode).toBe(200);
 
@@ -794,7 +794,7 @@ describe("E2E Tests for API Routes", () => {
         expect(completedResponse.body.data[0]).toHaveProperty("markdown");
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         const urls = completedResponse.body.data.map(
-          (item: any) => item.metadata?.sourceURL
+          (item: any) => item.metadata?.sourceURL,
         );
         expect(urls.length).toBeGreaterThan(1);
 
@@ -810,7 +810,7 @@ describe("E2E Tests for API Routes", () => {
           expect(depth).toBeLessThanOrEqual(3);
         });
       },
-      180000
+      180000,
     );
 
     it.concurrent(
@@ -822,7 +822,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({
             url: "https://www.mendable.ai",
-            crawlerOptions: { maxDepth: 0 }
+            crawlerOptions: { maxDepth: 0 },
           });
         expect(crawlResponse.statusCode).toBe(200);
 
@@ -849,7 +849,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
         const testurls = completedResponse.body.data.map(
-          (item: any) => item.metadata?.sourceURL
+          (item: any) => item.metadata?.sourceURL,
         );
         //console.log(testurls)
 
@@ -861,7 +861,7 @@ describe("E2E Tests for API Routes", () => {
         expect(completedResponse.body.data[0]).toHaveProperty("markdown");
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         const urls = completedResponse.body.data.map(
-          (item: any) => item.metadata?.sourceURL
+          (item: any) => item.metadata?.sourceURL,
         );
         expect(urls.length).toBeGreaterThanOrEqual(1);
 
@@ -877,7 +877,7 @@ describe("E2E Tests for API Routes", () => {
           expect(depth).toBeLessThanOrEqual(1);
         });
       },
-      180000
+      180000,
     );
 
     // it.concurrent("should return a successful response with a valid API key and valid limit option", async () => {
@@ -934,7 +934,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({
             url: "https://roastmywebsite.ai",
-            pageOptions: { includeHtml: true }
+            pageOptions: { includeHtml: true },
           });
         expect(crawlResponse.statusCode).toBe(200);
 
@@ -969,10 +969,10 @@ describe("E2E Tests for API Routes", () => {
         expect(completedResponse.body.data[0]).toHaveProperty("markdown");
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(
-          200
+          200,
         );
         expect(
-          completedResponse.body.data[0].metadata.pageError
+          completedResponse.body.data[0].metadata.pageError,
         ).toBeUndefined();
 
         // 120 seconds
@@ -983,13 +983,13 @@ describe("E2E Tests for API Routes", () => {
         expect(completedResponse.body.data[0].html).toContain("<h1");
 
         expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(
-          200
+          200,
         );
         expect(
-          completedResponse.body.data[0].metadata.pageError
+          completedResponse.body.data[0].metadata.pageError,
         ).toBeUndefined();
       },
-      180000
+      180000,
     );
 
     it.concurrent(
@@ -1005,8 +1005,8 @@ describe("E2E Tests for API Routes", () => {
               allowExternalContentLinks: true,
               ignoreSitemap: true,
               returnOnlyUrls: true,
-              limit: 50
-            }
+              limit: 50,
+            },
           });
 
         expect(crawlInitResponse.statusCode).toBe(200);
@@ -1031,19 +1031,19 @@ describe("E2E Tests for API Routes", () => {
           expect.arrayContaining([
             expect.objectContaining({
               url: expect.stringContaining(
-                "https://firecrawl.dev/?ref=mendable+banner"
-              )
+                "https://firecrawl.dev/?ref=mendable+banner",
+              ),
             }),
             expect.objectContaining({
-              url: expect.stringContaining("https://mendable.ai/pricing")
+              url: expect.stringContaining("https://mendable.ai/pricing"),
             }),
             expect.objectContaining({
-              url: expect.stringContaining("https://x.com/CalebPeffer")
-            })
-          ])
+              url: expect.stringContaining("https://x.com/CalebPeffer"),
+            }),
+          ]),
         );
       },
-      180000
+      180000,
     ); // 3 minutes timeout
   });
 
@@ -1062,7 +1062,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({ url: "https://firecrawl.dev" });
         expect(response.statusCode).toBe(401);
-      }
+      },
     );
 
     // it.concurrent("should return an error for a blocklisted URL", async () => {
@@ -1088,7 +1088,7 @@ describe("E2E Tests for API Routes", () => {
 
         expect(response.statusCode).toBe(408);
       },
-      3000
+      3000,
     );
 
     // it.concurrent("should return a successful response with a valid API key for crawlWebsitePreview", async () => {
@@ -1120,7 +1120,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({ query: "test" });
         expect(response.statusCode).toBe(401);
-      }
+      },
     );
 
     it.concurrent(
@@ -1136,7 +1136,7 @@ describe("E2E Tests for API Routes", () => {
         expect(response.body.success).toBe(true);
         expect(response.body).toHaveProperty("data");
       },
-      30000
+      30000,
     ); // 30 seconds timeout
   });
 
@@ -1153,7 +1153,7 @@ describe("E2E Tests for API Routes", () => {
           .get("/v0/crawl/status/123")
           .set("Authorization", `Bearer invalid-api-key`);
         expect(response.statusCode).toBe(401);
-      }
+      },
     );
 
     it.concurrent(
@@ -1163,7 +1163,7 @@ describe("E2E Tests for API Routes", () => {
           .get("/v0/crawl/status/invalidJobId")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
         expect(response.statusCode).toBe(404);
-      }
+      },
     );
 
     it.concurrent(
@@ -1201,22 +1201,22 @@ describe("E2E Tests for API Routes", () => {
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         expect(completedResponse.body.data[0].content).toContain("Mendable");
         expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(
-          200
+          200,
         );
         expect(
-          completedResponse.body.data[0].metadata.pageError
+          completedResponse.body.data[0].metadata.pageError,
         ).toBeUndefined();
 
         const childrenLinks = completedResponse.body.data.filter(
           (doc) =>
             doc.metadata &&
             doc.metadata.sourceURL &&
-            doc.metadata.sourceURL.includes("mendable.ai/blog")
+            doc.metadata.sourceURL.includes("mendable.ai/blog"),
         );
 
         expect(childrenLinks.length).toBe(completedResponse.body.data.length);
       },
-      180000
+      180000,
     ); // 120 seconds
 
     it.concurrent(
@@ -1236,9 +1236,9 @@ describe("E2E Tests for API Routes", () => {
                 "abs/*",
                 "static/*",
                 "about/*",
-                "archive/*"
-              ]
-            }
+                "archive/*",
+              ],
+            },
           });
         expect(crawlResponse.statusCode).toBe(200);
 
@@ -1266,21 +1266,21 @@ describe("E2E Tests for API Routes", () => {
           expect.arrayContaining([
             expect.objectContaining({
               content: expect.stringContaining(
-                "asymmetries might represent, for instance, preferred source orientations to our line of sight."
-              )
-            })
-          ])
+                "asymmetries might represent, for instance, preferred source orientations to our line of sight.",
+              ),
+            }),
+          ]),
         );
 
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(
-          200
+          200,
         );
         expect(
-          completedResponse.body.data[0].metadata.pageError
+          completedResponse.body.data[0].metadata.pageError,
         ).toBeUndefined();
       },
-      180000
+      180000,
     ); // 120 seconds
 
     it.concurrent(
@@ -1292,7 +1292,7 @@ describe("E2E Tests for API Routes", () => {
           .set("Content-Type", "application/json")
           .send({
             url: "https://roastmywebsite.ai",
-            pageOptions: { includeHtml: true }
+            pageOptions: { includeHtml: true },
           });
         expect(crawlResponse.statusCode).toBe(200);
 
@@ -1333,13 +1333,13 @@ describe("E2E Tests for API Routes", () => {
         expect(completedResponse.body.data[0].markdown).toContain("_Roast_");
         expect(completedResponse.body.data[0].html).toContain("<h1");
         expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(
-          200
+          200,
         );
         expect(
-          completedResponse.body.data[0].metadata.pageError
+          completedResponse.body.data[0].metadata.pageError,
         ).toBeUndefined();
       },
-      60000
+      60000,
     );
   }); // 60 seconds
 
@@ -1353,7 +1353,7 @@ describe("E2E Tests for API Routes", () => {
         .send({
           url: "https://mendable.ai/blog",
           pageOptions: { includeHtml: true },
-          crawlerOptions: { allowBackwardCrawling: true }
+          crawlerOptions: { allowBackwardCrawling: true },
         });
       expect(crawlResponse.statusCode).toBe(200);
 
@@ -1397,10 +1397,10 @@ describe("E2E Tests for API Routes", () => {
       });
 
       expect(completedResponse.body.data.length).toBeGreaterThan(
-        onlyChildrenLinks.length
+        onlyChildrenLinks.length,
       );
     },
-    60000
+    60000,
   );
 
   it.concurrent(
@@ -1438,13 +1438,13 @@ describe("E2E Tests for API Routes", () => {
       expect(completedResponse.body.partial_data[0]).toHaveProperty("markdown");
       expect(completedResponse.body.partial_data[0]).toHaveProperty("metadata");
       expect(
-        completedResponse.body.partial_data[0].metadata.pageStatusCode
+        completedResponse.body.partial_data[0].metadata.pageStatusCode,
       ).toBe(200);
       expect(
-        completedResponse.body.partial_data[0].metadata.pageError
+        completedResponse.body.partial_data[0].metadata.pageError,
       ).toBeUndefined();
     },
-    60000
+    60000,
   ); // 60 seconds
 
   describe("POST /v0/scrape with LLM Extraction", () => {
@@ -1458,7 +1458,7 @@ describe("E2E Tests for API Routes", () => {
           .send({
             url: "https://mendable.ai",
             pageOptions: {
-              onlyMainContent: true
+              onlyMainContent: true,
             },
             extractorOptions: {
               mode: "llm-extraction",
@@ -1468,18 +1468,18 @@ describe("E2E Tests for API Routes", () => {
                 type: "object",
                 properties: {
                   company_mission: {
-                    type: "string"
+                    type: "string",
                   },
                   supports_sso: {
-                    type: "boolean"
+                    type: "boolean",
                   },
                   is_open_source: {
-                    type: "boolean"
-                  }
+                    type: "boolean",
+                  },
                 },
-                required: ["company_mission", "supports_sso", "is_open_source"]
-              }
-            }
+                required: ["company_mission", "supports_sso", "is_open_source"],
+              },
+            },
           });
 
         // Ensure that the job was successfully created before proceeding with LLM extraction
@@ -1498,7 +1498,7 @@ describe("E2E Tests for API Routes", () => {
         expect(llmExtraction.is_open_source).toBe(false);
         expect(typeof llmExtraction.is_open_source).toBe("boolean");
       },
-      60000
+      60000,
     ); // 60 secs
 
     it.concurrent(
@@ -1519,15 +1519,15 @@ describe("E2E Tests for API Routes", () => {
                 type: "object",
                 properties: {
                   primary_cta: {
-                    type: "string"
+                    type: "string",
                   },
                   secondary_cta: {
-                    type: "string"
-                  }
+                    type: "string",
+                  },
                 },
-                required: ["primary_cta", "secondary_cta"]
-              }
-            }
+                required: ["primary_cta", "secondary_cta"],
+              },
+            },
           });
 
         // Ensure that the job was successfully created before proceeding with LLM extraction
@@ -1542,7 +1542,7 @@ describe("E2E Tests for API Routes", () => {
         expect(llmExtraction).toHaveProperty("secondary_cta");
         expect(typeof llmExtraction.secondary_cta).toBe("string");
       },
-      60000
+      60000,
     ); // 60 secs
   });
 
@@ -1617,8 +1617,8 @@ describe("E2E Tests for API Routes", () => {
           .send({
             url: "https://flutterbricks.com",
             crawlerOptions: {
-              mode: "fast"
-            }
+              mode: "fast",
+            },
           });
 
         expect(crawlResponse.statusCode).toBe(200);
@@ -1660,7 +1660,7 @@ describe("E2E Tests for API Routes", () => {
         expect(results.length).toBeGreaterThanOrEqual(10);
         expect(results.length).toBeLessThanOrEqual(15);
       },
-      20000
+      20000,
     );
 
     // it.concurrent("should complete the crawl in more than 10 seconds", async () => {
@@ -1741,7 +1741,7 @@ describe("E2E Tests for API Routes", () => {
 
         expect(response.statusCode).toBe(429);
       },
-      90000
+      90000,
     );
   });
 
