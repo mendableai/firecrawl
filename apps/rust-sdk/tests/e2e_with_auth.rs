@@ -24,11 +24,7 @@ async fn test_blocklisted_url() {
 async fn test_successful_response_with_valid_preview_token() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
-    let app = FirecrawlApp::new_selfhosted(
-        api_url,
-        Some("this_is_just_a_preview_token"),
-    )
-    .unwrap();
+    let app = FirecrawlApp::new_selfhosted(api_url, Some("this_is_just_a_preview_token")).unwrap();
     let result = app
         .scrape_url("https://roastmywebsite.ai", None)
         .await
@@ -58,7 +54,7 @@ async fn test_successful_response_with_valid_api_key_and_include_html() {
     let api_key = env::var("TEST_API_KEY").ok();
     let app = FirecrawlApp::new_selfhosted(api_url, api_key).unwrap();
     let params = ScrapeOptions {
-        formats: vec! [ ScrapeFormats::Markdown, ScrapeFormats::HTML ].into(),
+        formats: vec![ScrapeFormats::Markdown, ScrapeFormats::HTML].into(),
         ..Default::default()
     };
     let result = app
@@ -82,7 +78,8 @@ async fn test_successful_response_for_valid_scrape_with_pdf_file() {
         .await
         .unwrap();
     assert!(result.markdown.is_some());
-    assert!(result.markdown
+    assert!(result
+        .markdown
         .unwrap()
         .contains("We present spectrophotometric observations of the Broad Line Radio Galaxy"));
 }
@@ -98,7 +95,8 @@ async fn test_successful_response_for_valid_scrape_with_pdf_file_without_explici
         .await
         .unwrap();
     assert!(result.markdown.is_some());
-    assert!(result.markdown
+    assert!(result
+        .markdown
         .unwrap()
         .contains("We present spectrophotometric observations of the Broad Line Radio Galaxy"));
 }
@@ -153,4 +151,16 @@ async fn test_llm_extraction() {
         .contains_key("company_mission"));
     assert!(llm_extraction["supports_sso"].is_boolean());
     assert!(llm_extraction["is_open_source"].is_boolean());
+}
+
+#[tokio::test]
+async fn test_self_hosted_without_api_key() {
+    dotenv().ok();
+    let api_url = env::var("API_URL").unwrap();
+    let app = FirecrawlApp::new_selfhosted(api_url, None::<String>).unwrap();
+    let result = app
+        .scrape_url("https://roastmywebsite.ai", None)
+        .await
+        .unwrap();
+    assert!(result.markdown.is_some());
 }
