@@ -15,7 +15,7 @@ describe("E2E Tests for Map API Routes", () => {
         .send({
           url: "https://firecrawl.dev",
           sitemapOnly: false,
-          search: "smart-crawl",
+          search: "smart-crawl"
         });
 
       console.log(response.body);
@@ -37,7 +37,7 @@ describe("E2E Tests for Map API Routes", () => {
         .send({
           url: "https://firecrawl.dev",
           sitemapOnly: false,
-          includeSubdomains: true,
+          includeSubdomains: true
         });
 
       console.log(response.body);
@@ -60,7 +60,7 @@ describe("E2E Tests for Map API Routes", () => {
         .set("Content-Type", "application/json")
         .send({
           url: "https://firecrawl.dev",
-          sitemapOnly: true,
+          sitemapOnly: true
         });
 
       console.log(response.body);
@@ -84,7 +84,7 @@ describe("E2E Tests for Map API Routes", () => {
         .send({
           url: "https://firecrawl.dev",
           sitemapOnly: false,
-          limit: 10,
+          limit: 10
         });
 
       console.log(response.body);
@@ -104,7 +104,7 @@ describe("E2E Tests for Map API Routes", () => {
         .set("Content-Type", "application/json")
         .send({
           url: "https://geekflare.com/sitemap_index.xml",
-          sitemapOnly: true,
+          sitemapOnly: true
         });
 
       console.log(response.body);

@@ -31,7 +31,9 @@ export async function cleanBefore24hCompleteJobsController(
     ).flat();
     const before24hJobs =
       completedJobs.filter(
-        (job) => job.finishedOn !== undefined && job.finishedOn < Date.now() - 24 * 60 * 60 * 1000
+        (job) =>
+          job.finishedOn !== undefined &&
+          job.finishedOn < Date.now() - 24 * 60 * 60 * 1000
       ) || [];
 
     let count = 0;
@@ -71,14 +73,14 @@ export async function queuesController(req: Request, res: Response) {
     const scrapeQueue = getScrapeQueue();
 
     const [webScraperActive] = await Promise.all([
-      scrapeQueue.getActiveCount(),
+      scrapeQueue.getActiveCount()
     ]);
 
     const noActiveJobs = webScraperActive === 0;
     // 200 if no active jobs, 503 if there are active jobs
     return res.status(noActiveJobs ? 200 : 500).json({
       webScraperActive,
-      noActiveJobs,
+      noActiveJobs
     });
   } catch (error) {
     logger.error(error);
@@ -97,7 +99,7 @@ export async function autoscalerController(req: Request, res: Response) {
       await Promise.all([
         scrapeQueue.getActiveCount(),
         scrapeQueue.getWaitingCount(),
-        scrapeQueue.getPrioritizedCount(),
+        scrapeQueue.getPrioritizedCount()
       ]);
 
     let waitingAndPriorityCount = webScraperWaiting + webScraperPriority;
@@ -107,8 +109,8 @@ export async function autoscalerController(req: Request, res: Response) {
       "https://api.machines.dev/v1/apps/firecrawl-scraper-js/machines",
       {
         headers: {
-          Authorization: `Bearer ${process.env.FLY_API_TOKEN}`,
-        },
+          Authorization: `Bearer ${process.env.FLY_API_TOKEN}`
+        }
       }
     );
     const machines = await request.json();
@@ -184,13 +186,13 @@ export async function autoscalerController(req: Request, res: Response) {
       }
       return res.status(200).json({
         mode: "scale-descale",
-        count: targetMachineCount,
+        count: targetMachineCount
       });
     }
 
     return res.status(200).json({
       mode: "normal",
-      count: activeMachines,
+      count: activeMachines
     });
   } catch (error) {
     logger.error(error);

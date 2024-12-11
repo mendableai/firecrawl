@@ -8,14 +8,14 @@ export async function sendSlackWebhook(
 ) {
   const messagePrefix = alertEveryone ? "<!channel> " : "";
   const payload = {
-    text: `${messagePrefix} ${message}`,
+    text: `${messagePrefix} ${message}`
   };
 
   try {
     const response = await axios.post(webhookUrl, payload, {
       headers: {
-        "Content-Type": "application/json",
-      },
+        "Content-Type": "application/json"
+      }
     });
     logger.info("Webhook sent successfully:", response.data);
   } catch (error) {

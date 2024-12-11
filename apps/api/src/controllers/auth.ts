@@ -4,7 +4,7 @@ import {
   AuthResponse,
   NotificationType,
   PlanType,
-  RateLimiterMode,
+  RateLimiterMode
 } from "../types";
 import { supabase_service } from "../services/supabase";
 import { withAuth } from "../lib/withAuth";
@@ -39,7 +39,8 @@ function normalizedApiIsUuid(potentialUuid: string): boolean {
 export async function setCachedACUC(
   api_key: string,
   acuc:
-    | AuthCreditUsageChunk | null
+    | AuthCreditUsageChunk
+    | null
     | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk | null)
 ) {
   const cacheKeyACUC = `acuc_${api_key}`;
@@ -48,7 +49,7 @@ export async function setCachedACUC(
   try {
     await redlock.using([redLockKey], 10000, {}, async (signal) => {
       if (typeof acuc === "function") {
-        acuc = acuc(JSON.parse(await getValue(cacheKeyACUC) ?? "null"));
+        acuc = acuc(JSON.parse((await getValue(cacheKeyACUC)) ?? "null"));
 
         if (acuc === null) {
           if (signal.aborted) {
@@ -125,7 +126,7 @@ export async function getACUC(
     if (chunk !== null && useCache) {
       setCachedACUC(api_key, chunk);
     }
-    
+
     // console.log(chunk);
 
     return chunk;
@@ -134,9 +135,7 @@ export async function getACUC(
   }
 }
 
-export async function clearACUC(
-  api_key: string,
-): Promise<void> {
+export async function clearACUC(api_key: string): Promise<void> {
   const cacheKeyACUC = `acuc_${api_key}`;
   await deleteKey(cacheKeyACUC);
 }
@@ -146,7 +145,11 @@ export async function authenticateUser(
   res,
   mode?: RateLimiterMode
 ): Promise<AuthResponse> {
-  return withAuth(supaAuthenticateUser, { success: true, chunk: null, team_id: "bypass" })(req, res, mode);
+  return withAuth(supaAuthenticateUser, {
+    success: true,
+    chunk: null,
+    team_id: "bypass"
+  })(req, res, mode);
 }
 
 export async function supaAuthenticateUser(
@@ -167,7 +170,7 @@ export async function supaAuthenticateUser(
     return {
       success: false,
       error: "Unauthorized: Token missing",
-      status: 401,
+      status: 401
     };
   }
 
@@ -196,7 +199,7 @@ export async function supaAuthenticateUser(
       return {
         success: false,
         error: "Unauthorized: Invalid token",
-        status: 401,
+        status: 401
       };
     }
 
@@ -206,7 +209,7 @@ export async function supaAuthenticateUser(
       return {
         success: false,
         error: "Unauthorized: Invalid token",
-        status: 401,
+        status: 401
       };
     }
 
@@ -216,7 +219,7 @@ export async function supaAuthenticateUser(
     const plan = getPlanByPriceId(priceId);
     subscriptionData = {
       team_id: teamId,
-      plan,
+      plan
     };
     switch (mode) {
       case RateLimiterMode.Crawl:
@@ -270,7 +273,13 @@ export async function supaAuthenticateUser(
   try {
     await rateLimiter.consume(team_endpoint_token);
   } catch (rateLimiterRes) {
-    logger.error(`Rate limit exceeded: ${rateLimiterRes}`, { teamId, priceId, plan: subscriptionData?.plan, mode, rateLimiterRes });
+    logger.error(`Rate limit exceeded: ${rateLimiterRes}`, {
+      teamId,
+      priceId,
+      plan: subscriptionData?.plan,
+      mode,
+      rateLimiterRes
+    });
     const secs = Math.round(rateLimiterRes.msBeforeNext / 1000) || 1;
     const retryDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
 
@@ -284,7 +293,7 @@ export async function supaAuthenticateUser(
     return {
       success: false,
       error: `Rate limit exceeded. Consumed (req/min): ${rateLimiterRes.consumedPoints}, Remaining (req/min): ${rateLimiterRes.remainingPoints}. Upgrade your plan at https://firecrawl.dev/pricing for increased rate limits or please retry after ${secs}s, resets at ${retryDate}`,
-      status: 429,
+      status: 429
     };
   }
 
@@ -314,7 +323,7 @@ export async function supaAuthenticateUser(
     success: true,
     team_id: teamId ?? undefined,
     plan: (subscriptionData?.plan ?? "") as PlanType,
-    chunk,
+    chunk
   };
 }
 function getPlanByPriceId(price_id: string | null): PlanType {

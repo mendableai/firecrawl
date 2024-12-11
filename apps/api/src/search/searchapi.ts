@@ -14,7 +14,10 @@ interface SearchOptions {
   page?: number;
 }
 
-export async function searchapi_search(q: string, options: SearchOptions): Promise<SearchResult[]> {
+export async function searchapi_search(
+  q: string,
+  options: SearchOptions
+): Promise<SearchResult[]> {
   const params = {
     q: q,
     hl: options.lang,
@@ -22,7 +25,7 @@ export async function searchapi_search(q: string, options: SearchOptions): Promi
     location: options.location,
     num: options.num_results,
     page: options.page ?? 1,
-    engine: process.env.SEARCHAPI_ENGINE || "google",
+    engine: process.env.SEARCHAPI_ENGINE || "google"
   };
 
   const url = `https://www.searchapi.io/api/v1/search`;
@@ -30,13 +33,12 @@ export async function searchapi_search(q: string, options: SearchOptions): Promi
   try {
     const response = await axios.get(url, {
       headers: {
-        "Authorization": `Bearer ${process.env.SEARCHAPI_API_KEY}`,
+        Authorization: `Bearer ${process.env.SEARCHAPI_API_KEY}`,
         "Content-Type": "application/json",
-        "X-SearchApi-Source": "Firecrawl",
+        "X-SearchApi-Source": "Firecrawl"
       },
-      params: params,
+      params: params
     });
-
 
     if (response.status === 401) {
       throw new Error("Unauthorized. Please check your API key.");
@@ -48,7 +50,7 @@ export async function searchapi_search(q: string, options: SearchOptions): Promi
       return data.organic_results.map((a: any) => ({
         url: a.link,
         title: a.title,
-        description: a.snippet,
+        description: a.snippet
       }));
     } else {
       return [];

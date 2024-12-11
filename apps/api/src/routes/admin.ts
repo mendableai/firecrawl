@@ -4,7 +4,7 @@ import {
   autoscalerController,
   checkQueuesController,
   cleanBefore24hCompleteJobsController,
-  queuesController,
+  queuesController
 } from "../controllers/v0/admin/queue";
 import { wrap } from "./v1";
 import { acucCacheClearController } from "../controllers/v0/admin/acuc-cache-clear";
@@ -26,10 +26,7 @@ adminRouter.get(
   checkQueuesController
 );
 
-adminRouter.get(
-  `/admin/${process.env.BULL_AUTH_KEY}/queues`,
-  queuesController
-);
+adminRouter.get(`/admin/${process.env.BULL_AUTH_KEY}/queues`, queuesController);
 
 adminRouter.get(
   `/admin/${process.env.BULL_AUTH_KEY}/autoscaler`,
@@ -38,5 +35,5 @@ adminRouter.get(
 
 adminRouter.post(
   `/admin/${process.env.BULL_AUTH_KEY}/acuc-cache-clear`,
-  wrap(acucCacheClearController),
+  wrap(acucCacheClearController)
 );

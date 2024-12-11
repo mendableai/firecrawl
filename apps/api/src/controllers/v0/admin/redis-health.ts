@@ -49,7 +49,7 @@ export async function redisHealthController(req: Request, res: Response) {
     const healthStatus = {
       queueRedis: queueRedisHealth === testValue ? "healthy" : "unhealthy",
       redisRateLimitClient:
-        redisRateLimitHealth === testValue ? "healthy" : "unhealthy",
+        redisRateLimitHealth === testValue ? "healthy" : "unhealthy"
     };
 
     if (

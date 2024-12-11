@@ -10,7 +10,7 @@ export async function logScrape(
   scrapeLog: ScrapeLog,
   pageOptions?: PageOptions
 ) {
-  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
   if (!useDbAuthentication) {
     logger.debug("Skipping logging scrape to Supabase");
     return;
@@ -42,8 +42,8 @@ export async function logScrape(
         date_added: new Date().toISOString(),
         html: "Removed to save db space",
         ipv4_support: scrapeLog.ipv4_support,
-        ipv6_support: scrapeLog.ipv6_support,
-      },
+        ipv6_support: scrapeLog.ipv6_support
+      }
     ]);
 
     if (error) {

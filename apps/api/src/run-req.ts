@@ -18,19 +18,19 @@ async function sendCrawl(result: Result): Promise<string | undefined> {
       {
         url: url,
         crawlerOptions: {
-          limit: 75,
+          limit: 75
         },
         pageOptions: {
           includeHtml: true,
           replaceAllPathsWithAbsolutePaths: true,
-          waitFor: 1000,
-        },
+          waitFor: 1000
+        }
       },
       {
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer `,
-        },
+          Authorization: `Bearer `
+        }
       }
     );
     result.idempotency_key = idempotencyKey;
@@ -51,8 +51,8 @@ async function getContent(result: Result): Promise<boolean> {
         {
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer `,
-          },
+            Authorization: `Bearer `
+          }
         }
       );
       if (response.data.status === "completed") {
@@ -95,9 +95,9 @@ async function processResults(results: Result[]): Promise<void> {
       // Save the result to the file
       try {
         // Save job id along with the start_url
-        const resultWithJobId = results.map(r => ({
+        const resultWithJobId = results.map((r) => ({
           start_url: r.start_url,
-          job_id: r.job_id,
+          job_id: r.job_id
         }));
         await fs.writeFile(
           "results_with_job_id_4000_6000.json",

@@ -1,6 +1,11 @@
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
-import { MapDocument, mapRequestSchema, RequestWithAuth, scrapeOptions } from "./types";
+import {
+  MapDocument,
+  mapRequestSchema,
+  RequestWithAuth,
+  scrapeOptions
+} from "./types";
 import { crawlToCrawler, StoredCrawl } from "../../lib/crawl-redis";
 import { MapResponse, MapRequest } from "./types";
 import { configDotenv } from "dotenv";
@@ -8,7 +13,7 @@ import {
   checkAndUpdateURLForMap,
   isSameDomain,
   isSameSubdomain,
-  removeDuplicateUrls,
+  removeDuplicateUrls
 } from "../../lib/validateUrl";
 import { fireEngineMap } from "../../search/fireEngine";
 import { billTeam } from "../../services/billing/credit_billing";
@@ -67,13 +72,13 @@ export async function getMapResults({
     crawlerOptions: {
       ...crawlerOptions,
       limit: crawlerOptions.sitemapOnly ? 10000000 : limit,
-      scrapeOptions: undefined,
+      scrapeOptions: undefined
     },
     scrapeOptions: scrapeOptions.parse({}),
     internalOptions: {},
     team_id: teamId,
     createdAt: Date.now(),
-    plan: plan,
+    plan: plan
   };
 
   const crawler = crawlToCrawler(id, sc);
@@ -85,7 +90,8 @@ export async function getMapResults({
       sitemap.forEach((x) => {
         links.push(x.url);
       });
-      links = links.slice(1)
+      links = links
+        .slice(1)
         .map((x) => {
           try {
             return checkAndUpdateURLForMap(x).url.trim();
@@ -99,13 +105,17 @@ export async function getMapResults({
   } else {
     let urlWithoutWww = url.replace("www.", "");
 
-    let mapUrl = search && allowExternalLinks
-      ? `${search} ${urlWithoutWww}`
-      : search ? `${search} site:${urlWithoutWww}`
-      : `site:${url}`;
+    let mapUrl =
+      search && allowExternalLinks
+        ? `${search} ${urlWithoutWww}`
+        : search
+          ? `${search} site:${urlWithoutWww}`
+          : `site:${url}`;
 
     const resultsPerPage = 100;
-    const maxPages = Math.ceil(Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage);
+    const maxPages = Math.ceil(
+      Math.min(MAX_FIRE_ENGINE_RESULTS, limit) / resultsPerPage
+    );
 
     const cacheKey = `fireEngineMap:${mapUrl}`;
     const cachedResult = await redis.get(cacheKey);
@@ -119,7 +129,7 @@ export async function getMapResults({
       const fetchPage = async (page: number) => {
         return fireEngineMap(mapUrl, {
           numResults: resultsPerPage,
-          page: page,
+          page: page
         });
       };
 
@@ -134,7 +144,7 @@ export async function getMapResults({
     // Parallelize sitemap fetch with serper search
     const [sitemap, ...searchResults] = await Promise.all([
       ignoreSitemap ? null : crawler.tryGetSitemap(true),
-      ...(cachedResult ? [] : pagePromises),
+      ...(cachedResult ? [] : pagePromises)
     ]);
 
     if (!cachedResult) {
@@ -162,7 +172,7 @@ export async function getMapResults({
         links = [
           mapResults[0].url,
           ...mapResults.slice(1).map((x) => x.url),
-          ...links,
+          ...links
         ];
       } else {
         mapResults.map((x) => {
@@ -199,14 +209,16 @@ export async function getMapResults({
     links = removeDuplicateUrls(links);
   }
 
-  const linksToReturn = crawlerOptions.sitemapOnly ? links : links.slice(0, limit);
+  const linksToReturn = crawlerOptions.sitemapOnly
+    ? links
+    : links.slice(0, limit);
 
   return {
     success: true,
     links: includeMetadata ? mapResults : linksToReturn,
     scrape_id: origin?.includes("website") ? id : undefined,
     job_id: id,
-    time_taken: (new Date().getTime() - Date.now()) / 1000,
+    time_taken: (new Date().getTime() - Date.now()) / 1000
   };
 }
 
@@ -225,7 +237,7 @@ export async function mapController(
     crawlerOptions: req.body,
     origin: req.body.origin,
     teamId: req.auth.team_id,
-    plan: req.auth.plan,
+    plan: req.auth.plan
   });
 
   // Bill the team
@@ -244,12 +256,12 @@ export async function mapController(
     docs: result.links,
     time_taken: result.time_taken,
     team_id: req.auth.team_id,
-    mode: "map", 
+    mode: "map",
     url: req.body.url,
     crawlerOptions: {},
     scrapeOptions: {},
     origin: req.body.origin ?? "api",
-    num_tokens: 0,
+    num_tokens: 0
   });
 
   const response = {

@@ -3,24 +3,26 @@ import * as winston from "winston";
 import { configDotenv } from "dotenv";
 configDotenv();
 
-const logFormat = winston.format.printf(info => 
-  `${info.timestamp} ${info.level} [${info.metadata.module ?? ""}:${info.metadata.method ?? ""}]: ${info.message} ${info.level.includes("error") || info.level.includes("warn") ? JSON.stringify(
-    info.metadata,
-    (_, value) => {
-      if (value instanceof Error) {
-        return {
-          ...value,
-          name: value.name,
-          message: value.message,
-          stack: value.stack,
-          cause: value.cause,
-        }
-      } else {
-        return value;
-      }
-    }
-  ) : ""}`
-)
+const logFormat = winston.format.printf(
+  (info) =>
+    `${info.timestamp} ${info.level} [${info.metadata.module ?? ""}:${info.metadata.method ?? ""}]: ${info.message} ${
+      info.level.includes("error") || info.level.includes("warn")
+        ? JSON.stringify(info.metadata, (_, value) => {
+            if (value instanceof Error) {
+              return {
+                ...value,
+                name: value.name,
+                message: value.message,
+                stack: value.stack,
+                cause: value.cause
+              };
+            } else {
+              return value;
+            }
+          })
+        : ""
+    }`
+);
 
 export const logger = winston.createLogger({
   level: process.env.LOGGING_LEVEL?.toLowerCase() ?? "debug",
@@ -32,8 +34,8 @@ export const logger = winston.createLogger({
           name: value.name,
           message: value.message,
           stack: value.stack,
-          cause: value.cause,
-        }
+          cause: value.cause
+        };
       } else {
         return value;
       }
@@ -43,9 +45,15 @@ export const logger = winston.createLogger({
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),
-        winston.format.metadata({ fillExcept: ["message", "level", "timestamp"] }),
-        ...(((process.env.ENV === "production" && process.env.SENTRY_ENVIRONMENT === "dev") || (process.env.ENV !== "production")) ? [winston.format.colorize(), logFormat] : []),
-      ),
-    }),
-  ],
+        winston.format.metadata({
+          fillExcept: ["message", "level", "timestamp"]
+        }),
+        ...((process.env.ENV === "production" &&
+          process.env.SENTRY_ENVIRONMENT === "dev") ||
+        process.env.ENV !== "production"
+          ? [winston.format.colorize(), logFormat]
+          : [])
+      )
+    })
+  ]
 });

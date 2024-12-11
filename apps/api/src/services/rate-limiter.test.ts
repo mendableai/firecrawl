@@ -2,7 +2,7 @@ import {
   getRateLimiter,
   serverRateLimiter,
   testSuiteRateLimiter,
-  redisRateLimitClient,
+  redisRateLimitClient
 } from "./rate-limiter";
 import { RateLimiterMode } from "../../src/types";
 import { RateLimiterRedis } from "rate-limiter-flexible";
@@ -25,7 +25,7 @@ describe("Rate Limiter Service", () => {
   afterAll(async () => {
     try {
       // if (process.env.REDIS_RATE_LIMIT_URL === "redis://localhost:6379") {
-        await redisRateLimitClient.disconnect();
+      await redisRateLimitClient.disconnect();
       // }
     } catch (error) {}
   });
@@ -103,7 +103,7 @@ describe("Rate Limiter Service", () => {
       storeClient: redisRateLimitClient,
       keyPrefix,
       points,
-      duration: 60,
+      duration: 60
     });
 
     expect(limiter.keyPrefix).toBe(keyPrefix);
@@ -357,7 +357,7 @@ describe("Rate Limiter Service", () => {
       storeClient: redisRateLimitClient,
       keyPrefix,
       points,
-      duration,
+      duration
     });
 
     const consumePoints = 5;

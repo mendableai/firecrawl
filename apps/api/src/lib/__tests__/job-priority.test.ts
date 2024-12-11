@@ -1,7 +1,7 @@
 import {
   getJobPriority,
   addJobPriority,
-  deleteJobPriority,
+  deleteJobPriority
 } from "../job-priority";
 import { redisConnection } from "../../services/queue-service";
 import { PlanType } from "../../types";
@@ -11,8 +11,8 @@ jest.mock("../../services/queue-service", () => ({
     sadd: jest.fn(),
     srem: jest.fn(),
     scard: jest.fn(),
-    expire: jest.fn(),
-  },
+    expire: jest.fn()
+  }
 }));
 
 describe("Job Priority Tests", () => {

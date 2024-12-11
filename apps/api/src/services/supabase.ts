@@ -10,7 +10,7 @@ class SupabaseService {
   constructor() {
     const supabaseUrl = process.env.SUPABASE_URL;
     const supabaseServiceToken = process.env.SUPABASE_SERVICE_TOKEN;
-    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
     // Only initialize the Supabase client if both URL and Service Token are provided.
     if (!useDbAuthentication) {
       // Warn the user that Authentication is disabled by setting the client to null
@@ -52,6 +52,6 @@ export const supabase_service: SupabaseClient = new Proxy(
       }
       // Otherwise, delegate access to the Supabase client.
       return Reflect.get(client, prop, receiver);
-    },
+    }
   }
 ) as unknown as SupabaseClient;

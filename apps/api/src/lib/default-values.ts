@@ -14,15 +14,15 @@ export const defaultPageOptions = {
 export const defaultCrawlerOptions = {
   allowBackwardCrawling: false,
   limit: 10000
-}
+};
 
 export const defaultCrawlPageOptions = {
   onlyMainContent: false,
   includeHtml: false,
   removeTags: [],
   parsePDF: true
-}
+};
 
 export const defaultExtractorOptions = {
   mode: "markdown"
-}
+};

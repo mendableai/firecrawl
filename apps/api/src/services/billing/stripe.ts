@@ -5,7 +5,7 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
 
 async function getCustomerDefaultPaymentMethod(customerId: string) {
   const paymentMethods = await stripe.customers.listPaymentMethods(customerId, {
-    limit: 3,
+    limit: 3
   });
   return paymentMethods.data[0] ?? null;
 }
@@ -16,9 +16,12 @@ export async function createPaymentIntent(
   customer_id: string
 ): Promise<{ return_status: ReturnStatus; charge_id: string }> {
   try {
-    const defaultPaymentMethod = await getCustomerDefaultPaymentMethod(customer_id);
+    const defaultPaymentMethod =
+      await getCustomerDefaultPaymentMethod(customer_id);
     if (!defaultPaymentMethod) {
-      logger.error(`No default payment method found for customer: ${customer_id}`);
+      logger.error(
+        `No default payment method found for customer: ${customer_id}`
+      );
       return { return_status: "failed", charge_id: "" };
     }
     const paymentIntent = await stripe.paymentIntents.create({
@@ -29,7 +32,7 @@ export async function createPaymentIntent(
       payment_method_types: [defaultPaymentMethod?.type ?? "card"],
       payment_method: defaultPaymentMethod?.id,
       off_session: true,
-      confirm: true,
+      confirm: true
     });
 
     if (paymentIntent.status === "succeeded") {

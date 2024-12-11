@@ -54,7 +54,7 @@ export async function checkAlerts() {
       };
 
       await checkAll();
-      // setInterval(checkAll, 10000); // Run every 
+      // setInterval(checkAll, 10000); // Run every
     }
   } catch (error) {
     logger.error(`Failed to initialize alerts: ${error}`);

@@ -25,7 +25,7 @@ export async function fireEngineMap(
       location: options.location,
       tbs: options.tbs,
       numResults: options.numResults,
-      page: options.page ?? 1,
+      page: options.page ?? 1
     });
 
     if (!process.env.FIRE_ENGINE_BETA_URL) {
@@ -39,9 +39,9 @@ export async function fireEngineMap(
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "X-Disable-Cache": "true",
+        "X-Disable-Cache": "true"
       },
-      body: data,
+      body: data
     });
 
     if (response.ok) {

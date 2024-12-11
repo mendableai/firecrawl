@@ -1,7 +1,7 @@
 import { CohereClient } from "cohere-ai";
 import { MapDocument } from "../../controllers/v1/types";
 const cohere = new CohereClient({
-  token: process.env.COHERE_API_KEY,
+  token: process.env.COHERE_API_KEY
 });
 
 export async function rerankDocuments(
@@ -15,8 +15,14 @@ export async function rerankDocuments(
     query,
     topN,
     model,
-    returnDocuments: true,
+    returnDocuments: true
   });
 
-  return rerank.results.sort((a, b) => b.relevanceScore - a.relevanceScore).map(x => ({ document: x.document, index: x.index, relevanceScore: x.relevanceScore }));
+  return rerank.results
+    .sort((a, b) => b.relevanceScore - a.relevanceScore)
+    .map((x) => ({
+      document: x.document,
+      index: x.index,
+      relevanceScore: x.relevanceScore
+    }));
 }

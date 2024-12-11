@@ -16,10 +16,22 @@ const FREE_CREDITS = 500;
 /**
  * If you do not know the subscription_id in the current context, pass subscription_id as undefined.
  */
-export async function billTeam(team_id: string, subscription_id: string | null | undefined, credits: number) {
-  return withAuth(supaBillTeam, { success: true, message: "No DB, bypassed." })(team_id, subscription_id, credits);
+export async function billTeam(
+  team_id: string,
+  subscription_id: string | null | undefined,
+  credits: number
+) {
+  return withAuth(supaBillTeam, { success: true, message: "No DB, bypassed." })(
+    team_id,
+    subscription_id,
+    credits
+  );
 }
-export async function supaBillTeam(team_id: string, subscription_id: string | null | undefined, credits: number) {
+export async function supaBillTeam(
+  team_id: string,
+  subscription_id: string | null | undefined,
+  credits: number
+) {
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
   }
@@ -29,7 +41,7 @@ export async function supaBillTeam(team_id: string, subscription_id: string | nu
     _team_id: team_id,
     sub_id: subscription_id ?? null,
     fetch_subscription: subscription_id === undefined,
-    credits,
+    credits
   });
 
   if (error) {
@@ -46,7 +58,7 @@ export async function supaBillTeam(team_id: string, subscription_id: string | nu
               ...acuc,
               credits_used: acuc.credits_used + credits,
               adjusted_credits_used: acuc.adjusted_credits_used + credits,
-              remaining_credits: acuc.remaining_credits - credits,
+              remaining_credits: acuc.remaining_credits - credits
             }
           : null
       );
@@ -55,21 +67,37 @@ export async function supaBillTeam(team_id: string, subscription_id: string | nu
 }
 
 export type CheckTeamCreditsResponse = {
-  success: boolean,
-  message: string,
-  remainingCredits: number,
-  chunk?: AuthCreditUsageChunk,
-}
+  success: boolean;
+  message: string;
+  remainingCredits: number;
+  chunk?: AuthCreditUsageChunk;
+};
 
-export async function checkTeamCredits(chunk: AuthCreditUsageChunk | null, team_id: string, credits: number): Promise<CheckTeamCreditsResponse> {
-  return withAuth(supaCheckTeamCredits, { success: true, message: "No DB, bypassed", remainingCredits: Infinity })(chunk, team_id, credits);
+export async function checkTeamCredits(
+  chunk: AuthCreditUsageChunk | null,
+  team_id: string,
+  credits: number
+): Promise<CheckTeamCreditsResponse> {
+  return withAuth(supaCheckTeamCredits, {
+    success: true,
+    message: "No DB, bypassed",
+    remainingCredits: Infinity
+  })(chunk, team_id, credits);
 }
 
 // if team has enough credits for the operation, return true, else return false
-export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk | null, team_id: string, credits: number): Promise<CheckTeamCreditsResponse> {
+export async function supaCheckTeamCredits(
+  chunk: AuthCreditUsageChunk | null,
+  team_id: string,
+  credits: number
+): Promise<CheckTeamCreditsResponse> {
   // WARNING: chunk will be null if team_id is preview -- do not perform operations on it under ANY circumstances - mogery
   if (team_id === "preview") {
-    return { success: true, message: "Preview team, no credits used", remainingCredits: Infinity };
+    return {
+      success: true,
+      message: "Preview team, no credits used",
+      remainingCredits: Infinity
+    };
   } else if (chunk === null) {
     throw new Error("NULL ACUC passed to supaCheckTeamCredits");
   }
@@ -81,7 +109,8 @@ export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk | null, t
   // Removal of + credits
   const creditUsagePercentage = chunk.adjusted_credits_used / totalPriceCredits;
 
-  let isAutoRechargeEnabled = false, autoRechargeThreshold = 1000;
+  let isAutoRechargeEnabled = false,
+    autoRechargeThreshold = 1000;
   const cacheKey = `team_auto_recharge_${team_id}`;
   let cachedData = await getValue(cacheKey);
   if (cachedData) {
@@ -102,16 +131,19 @@ export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk | null, t
     }
   }
 
-  if (isAutoRechargeEnabled && chunk.remaining_credits < autoRechargeThreshold) {
+  if (
+    isAutoRechargeEnabled &&
+    chunk.remaining_credits < autoRechargeThreshold
+  ) {
     const autoChargeResult = await autoCharge(chunk, autoRechargeThreshold);
     if (autoChargeResult.success) {
       return {
         success: true,
-      message: autoChargeResult.message,
-      remainingCredits: autoChargeResult.remainingCredits,
-      chunk: autoChargeResult.chunk,
-    };
-  }
+        message: autoChargeResult.message,
+        remainingCredits: autoChargeResult.remainingCredits,
+        chunk: autoChargeResult.chunk
+      };
+    }
   }
 
   // Compare the adjusted total credits used with the credits allowed by the plan
@@ -131,7 +163,7 @@ export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk | null, t
       message:
         "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing.",
       remainingCredits: chunk.remaining_credits,
-      chunk,
+      chunk
     };
   } else if (creditUsagePercentage >= 0.8 && creditUsagePercentage < 1) {
     // Send email notification for approaching credit limit
@@ -148,7 +180,7 @@ export async function supaCheckTeamCredits(chunk: AuthCreditUsageChunk | null, t
     success: true,
     message: "Sufficient credits available",
     remainingCredits: chunk.remaining_credits,
-    chunk,
+    chunk
   };
 }
 
@@ -202,7 +234,7 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
     return {
       totalCreditsUsed: totalCreditsUsed,
       remainingCredits,
-      totalCredits: FREE_CREDITS + couponCredits,
+      totalCredits: FREE_CREDITS + couponCredits
     };
   }
 
@@ -241,6 +273,6 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
   return {
     totalCreditsUsed,
     remainingCredits,
-    totalCredits: price.credits,
+    totalCredits: price.credits
   };
 }

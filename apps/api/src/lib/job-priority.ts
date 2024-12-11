@@ -31,7 +31,7 @@ export async function deleteJobPriority(team_id, job_id) {
 export async function getJobPriority({
   plan,
   team_id,
-  basePriority = 10,
+  basePriority = 10
 }: {
   plan: PlanType | undefined;
   team_id: string;

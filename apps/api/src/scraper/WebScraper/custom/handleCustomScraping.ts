@@ -3,9 +3,17 @@ import { logger } from "../../../lib/logger";
 export async function handleCustomScraping(
   text: string,
   url: string
-): Promise<{ scraper: string; url: string; waitAfterLoad?: number, pageOptions?: { scrollXPaths?: string[] } } | null> {
+): Promise<{
+  scraper: string;
+  url: string;
+  waitAfterLoad?: number;
+  pageOptions?: { scrollXPaths?: string[] };
+} | null> {
   // Check for Readme Docs special case
-  if (text.includes('<meta name="readme-deploy"') && !url.includes('developers.notion.com')) {
+  if (
+    text.includes('<meta name="readme-deploy"') &&
+    !url.includes("developers.notion.com")
+  ) {
     logger.debug(
       `Special use case detected for ${url}, using Fire Engine with wait time 1000ms`
     );
@@ -14,7 +22,9 @@ export async function handleCustomScraping(
       url: url,
       waitAfterLoad: 1000,
       pageOptions: {
-        scrollXPaths: ['//*[@id="ReferencePlayground"]/section[3]/div/pre/div/div/div[5]']
+        scrollXPaths: [
+          '//*[@id="ReferencePlayground"]/section[3]/div/pre/div/div/div[5]'
+        ]
       }
     };
   }
@@ -27,18 +37,21 @@ export async function handleCustomScraping(
     return {
       scraper: "fire-engine",
       url: url,
-      waitAfterLoad: 3000,
+      waitAfterLoad: 3000
     };
   }
 
   // Check for Google Drive PDF links in meta tags
-  const googleDriveMetaPattern = /<meta itemprop="url" content="(https:\/\/drive\.google\.com\/file\/d\/[^"]+)"/;
+  const googleDriveMetaPattern =
+    /<meta itemprop="url" content="(https:\/\/drive\.google\.com\/file\/d\/[^"]+)"/;
   const googleDriveMetaMatch = text.match(googleDriveMetaPattern);
   if (googleDriveMetaMatch) {
     const url = googleDriveMetaMatch[1];
     logger.debug(`Google Drive PDF link detected: ${url}`);
 
-    const fileIdMatch = url.match(/https:\/\/drive\.google\.com\/file\/d\/([^\/]+)\/view/);
+    const fileIdMatch = url.match(
+      /https:\/\/drive\.google\.com\/file\/d\/([^\/]+)\/view/
+    );
     if (fileIdMatch) {
       const fileId = fileIdMatch[1];
       const pdfUrl = `https://drive.google.com/uc?export=download&id=${fileId}`;
@@ -49,6 +62,6 @@ export async function handleCustomScraping(
       };
     }
   }
-  
+
   return null;
 }

@@ -9,7 +9,7 @@ configDotenv();
 
 export async function logJob(job: FirecrawlJob, force: boolean = false) {
   try {
-    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
     if (!useDbAuthentication) {
       return;
     }
@@ -21,7 +21,12 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       job.scrapeOptions.headers["Authorization"]
     ) {
       job.scrapeOptions.headers["Authorization"] = "REDACTED";
-      job.docs = [{ content: "REDACTED DUE TO AUTHORIZATION HEADER", html: "REDACTED DUE TO AUTHORIZATION HEADER" }];
+      job.docs = [
+        {
+          content: "REDACTED DUE TO AUTHORIZATION HEADER",
+          html: "REDACTED DUE TO AUTHORIZATION HEADER"
+        }
+      ];
     }
     const jobColumn = {
       job_id: job.job_id ? job.job_id : null,
@@ -38,25 +43,34 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       origin: job.origin,
       num_tokens: job.num_tokens,
       retry: !!job.retry,
-      crawl_id: job.crawl_id,
+      crawl_id: job.crawl_id
     };
 
     if (force) {
-      let i = 0, done = false;
+      let i = 0,
+        done = false;
       while (i++ <= 10) {
         try {
           const { error } = await supabase_service
             .from("firecrawl_jobs")
             .insert([jobColumn]);
           if (error) {
-            logger.error("Failed to log job due to Supabase error -- trying again", { error, scrapeId: job.job_id });
-            await new Promise<void>((resolve) => setTimeout(() => resolve(), 75));
+            logger.error(
+              "Failed to log job due to Supabase error -- trying again",
+              { error, scrapeId: job.job_id }
+            );
+            await new Promise<void>((resolve) =>
+              setTimeout(() => resolve(), 75)
+            );
           } else {
             done = true;
             break;
           }
         } catch (error) {
-          logger.error("Failed to log job due to thrown error -- trying again", { error, scrapeId: job.job_id });
+          logger.error(
+            "Failed to log job due to thrown error -- trying again",
+            { error, scrapeId: job.job_id }
+          );
           await new Promise<void>((resolve) => setTimeout(() => resolve(), 75));
         }
       }
@@ -70,7 +84,10 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
         .from("firecrawl_jobs")
         .insert([jobColumn]);
       if (error) {
-        logger.error(`Error logging job: ${error.message}`, { error, scrapeId: job.job_id });
+        logger.error(`Error logging job: ${error.message}`, {
+          error,
+          scrapeId: job.job_id
+        });
       } else {
         logger.debug("Job logged successfully!", { scrapeId: job.job_id });
       }
@@ -80,7 +97,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       let phLog = {
         distinctId: "from-api", //* To identify this on the group level, setting distinctid to a static string per posthog docs: https://posthog.com/docs/product-analytics/group-analytics#advanced-server-side-only-capturing-group-events-without-a-user
         ...(job.team_id !== "preview" && {
-          groups: { team: job.team_id },
+          groups: { team: job.team_id }
         }), //* Identifying event on this team
         event: "job-logged",
         properties: {
@@ -95,14 +112,13 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
           page_options: job.scrapeOptions,
           origin: job.origin,
           num_tokens: job.num_tokens,
-          retry: job.retry,
-        },
+          retry: job.retry
+        }
       };
-      if(job.mode !== "single_urls") {
+      if (job.mode !== "single_urls") {
         posthog.capture(phLog);
       }
     }
-    
   } catch (error) {
     logger.error(`Error logging job: ${error.message}`);
   }

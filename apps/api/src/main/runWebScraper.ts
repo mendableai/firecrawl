@@ -2,7 +2,7 @@ import { Job } from "bullmq";
 import {
   WebScraperOptions,
   RunWebScraperParams,
-  RunWebScraperResult,
+  RunWebScraperResult
 } from "../types";
 import { billTeam } from "../services/billing/credit_billing";
 import { Document } from "../controllers/v1/types";
@@ -10,25 +10,31 @@ import { supabase_service } from "../services/supabase";
 import { logger } from "../lib/logger";
 import { ScrapeEvents } from "../lib/scrape-events";
 import { configDotenv } from "dotenv";
-import { EngineResultsTracker, scrapeURL, ScrapeUrlResponse } from "../scraper/scrapeURL";
+import {
+  EngineResultsTracker,
+  scrapeURL,
+  ScrapeUrlResponse
+} from "../scraper/scrapeURL";
 import { Engine } from "../scraper/scrapeURL/engines";
 configDotenv();
 
 export async function startWebScraperPipeline({
   job,
-  token,
+  token
 }: {
   job: Job<WebScraperOptions> & { id: string };
   token: string;
 }) {
-  return (await runWebScraper({
+  return await runWebScraper({
     url: job.data.url,
     mode: job.data.mode,
     scrapeOptions: {
       ...job.data.scrapeOptions,
-      ...(job.data.crawl_id ? ({
-        formats: job.data.scrapeOptions.formats.concat(["rawHtml"]),
-      }): {}),
+      ...(job.data.crawl_id
+        ? {
+            formats: job.data.scrapeOptions.formats.concat(["rawHtml"])
+          }
+        : {})
     },
     internalOptions: job.data.internalOptions,
     // onSuccess: (result, mode) => {
@@ -42,8 +48,8 @@ export async function startWebScraperPipeline({
     team_id: job.data.team_id,
     bull_job_id: job.id.toString(),
     priority: job.opts.priority,
-    is_scrape: job.data.is_scrape ?? false,
-  }));
+    is_scrape: job.data.is_scrape ?? false
+  });
 }
 
 export async function runWebScraper({
@@ -56,28 +62,40 @@ export async function runWebScraper({
   team_id,
   bull_job_id,
   priority,
-  is_scrape=false,
+  is_scrape = false
 }: RunWebScraperParams): Promise<ScrapeUrlResponse> {
   let response: ScrapeUrlResponse | undefined = undefined;
   let engines: EngineResultsTracker = {};
   try {
-    response = await scrapeURL(bull_job_id, url, scrapeOptions, { priority, ...internalOptions });
+    response = await scrapeURL(bull_job_id, url, scrapeOptions, {
+      priority,
+      ...internalOptions
+    });
     if (!response.success) {
       if (response.error instanceof Error) {
         throw response.error;
       } else {
-        throw new Error("scrapeURL error: " + (Array.isArray(response.error) ? JSON.stringify(response.error) : typeof response.error === "object" ? JSON.stringify({ ...response.error }) : response.error));
+        throw new Error(
+          "scrapeURL error: " +
+            (Array.isArray(response.error)
+              ? JSON.stringify(response.error)
+              : typeof response.error === "object"
+                ? JSON.stringify({ ...response.error })
+                : response.error)
+        );
       }
     }
 
-    if(is_scrape === false) {
+    if (is_scrape === false) {
       let creditsToBeBilled = 1; // Assuming 1 credit per document
       if (scrapeOptions.extract) {
         creditsToBeBilled = 5;
       }
 
-      billTeam(team_id, undefined, creditsToBeBilled).catch(error => {
-        logger.error(`Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`);
+      billTeam(team_id, undefined, creditsToBeBilled).catch((error) => {
+        logger.error(
+          `Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`
+        );
         // Optionally, you could notify an admin or add to a retry queue here
       });
     }
@@ -88,42 +106,70 @@ export async function runWebScraper({
     engines = response.engines;
     return response;
   } catch (error) {
-    engines = response !== undefined ? response.engines : ((typeof error === "object" && error !== null ? (error as any).results ?? {} : {}));
+    engines =
+      response !== undefined
+        ? response.engines
+        : typeof error === "object" && error !== null
+          ? ((error as any).results ?? {})
+          : {};
 
     if (response !== undefined) {
       return {
         ...response,
         success: false,
-        error,
-      }
+        error
+      };
     } else {
-      return { success: false, error, logs: ["no logs -- error coming from runWebScraper"], engines };
+      return {
+        success: false,
+        error,
+        logs: ["no logs -- error coming from runWebScraper"],
+        engines
+      };
     }
     // onError(error);
   } finally {
-    const engineOrder = Object.entries(engines).sort((a, b) => a[1].startedAt - b[1].startedAt).map(x => x[0]) as Engine[];
+    const engineOrder = Object.entries(engines)
+      .sort((a, b) => a[1].startedAt - b[1].startedAt)
+      .map((x) => x[0]) as Engine[];
 
     for (const engine of engineOrder) {
-      const result = engines[engine] as Exclude<EngineResultsTracker[Engine], undefined>;
+      const result = engines[engine] as Exclude<
+        EngineResultsTracker[Engine],
+        undefined
+      >;
       ScrapeEvents.insert(bull_job_id, {
         type: "scrape",
         url,
         method: engine,
         result: {
           success: result.state === "success",
-          response_code: (result.state === "success" ? result.result.statusCode : undefined),
-          response_size: (result.state === "success" ? result.result.html.length : undefined),
-          error: (result.state === "error" ? result.error : result.state === "timeout" ? "Timed out" : undefined),
-          time_taken: result.finishedAt - result.startedAt,
-        },
+          response_code:
+            result.state === "success" ? result.result.statusCode : undefined,
+          response_size:
+            result.state === "success" ? result.result.html.length : undefined,
+          error:
+            result.state === "error"
+              ? result.error
+              : result.state === "timeout"
+                ? "Timed out"
+                : undefined,
+          time_taken: result.finishedAt - result.startedAt
+        }
       });
     }
   }
 }
 
-const saveJob = async (job: Job, result: any, token: string, mode: string, engines?: EngineResultsTracker) => {
+const saveJob = async (
+  job: Job,
+  result: any,
+  token: string,
+  mode: string,
+  engines?: EngineResultsTracker
+) => {
   try {
-    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
     if (useDbAuthentication) {
       const { data, error } = await supabase_service
         .from("firecrawl_jobs")
@@ -140,12 +186,12 @@ const saveJob = async (job: Job, result: any, token: string, mode: string, engin
       // } catch (error) {
       //   // I think the job won't exist here anymore
       // }
-    // } else {
-    //   try {
-    //     await job.moveToCompleted(result, token, false);
-    //   } catch (error) {
-    //     // I think the job won't exist here anymore
-    //   }
+      // } else {
+      //   try {
+      //     await job.moveToCompleted(result, token, false);
+      //   } catch (error) {
+      //     // I think the job won't exist here anymore
+      //   }
     }
     ScrapeEvents.logJobEvent(job, "completed");
   } catch (error) {

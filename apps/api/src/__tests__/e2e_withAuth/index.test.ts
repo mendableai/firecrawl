@@ -3,7 +3,7 @@ import dotenv from "dotenv";
 import {
   FirecrawlCrawlResponse,
   FirecrawlCrawlStatusResponse,
-  FirecrawlScrapeResponse,
+  FirecrawlScrapeResponse
 } from "../../types";
 
 dotenv.config();
@@ -28,9 +28,8 @@ describe("E2E Tests for v0 API Routes", () => {
 
   describe("POST /v0/scrape", () => {
     it.concurrent("should require authorization", async () => {
-      const response: FirecrawlScrapeResponse = await request(TEST_URL).post(
-        "/v0/scrape"
-      );
+      const response: FirecrawlScrapeResponse =
+        await request(TEST_URL).post("/v0/scrape");
       expect(response.statusCode).toBe(401);
     });
 
@@ -99,7 +98,7 @@ describe("E2E Tests for v0 API Routes", () => {
           .set("Content-Type", "application/json")
           .send({
             url: "https://roastmywebsite.ai",
-            pageOptions: { includeHtml: true },
+            pageOptions: { includeHtml: true }
           });
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("data");
@@ -196,7 +195,7 @@ describe("E2E Tests for v0 API Routes", () => {
           .set("Content-Type", "application/json")
           .send({
             url: "https://www.scrapethissite.com/",
-            pageOptions: { removeTags: [".nav", "#footer", "strong"] },
+            pageOptions: { removeTags: [".nav", "#footer", "strong"] }
           });
         expect(response.statusCode).toBe(200);
         expect(response.body).toHaveProperty("data");
@@ -338,9 +337,8 @@ describe("E2E Tests for v0 API Routes", () => {
 
   describe("POST /v0/crawl", () => {
     it.concurrent("should require authorization", async () => {
-      const response: FirecrawlCrawlResponse = await request(TEST_URL).post(
-        "/v0/crawl"
-      );
+      const response: FirecrawlCrawlResponse =
+        await request(TEST_URL).post("/v0/crawl");
       expect(response.statusCode).toBe(401);
     });
 
@@ -383,8 +381,8 @@ describe("E2E Tests for v0 API Routes", () => {
             url: "https://mendable.ai",
             limit: 10,
             crawlerOptions: {
-              includes: ["blog/*"],
-            },
+              includes: ["blog/*"]
+            }
           });
 
         let response: FirecrawlCrawlStatusResponse;
@@ -446,8 +444,8 @@ describe("E2E Tests for v0 API Routes", () => {
             url: "https://mendable.ai",
             limit: 10,
             crawlerOptions: {
-              excludes: ["blog/*"],
-            },
+              excludes: ["blog/*"]
+            }
           });
 
         let isFinished = false;
@@ -494,7 +492,7 @@ describe("E2E Tests for v0 API Routes", () => {
           .set("Content-Type", "application/json")
           .send({
             url: "https://www.scrapethissite.com",
-            crawlerOptions: { maxDepth: 1 },
+            crawlerOptions: { maxDepth: 1 }
           });
         expect(crawlResponse.statusCode).toBe(200);
 
@@ -690,7 +688,9 @@ describe("E2E Tests for v0 API Routes", () => {
         expect(completedResponse.body.data[0]).toHaveProperty("markdown");
         expect(completedResponse.body.data[0]).toHaveProperty("metadata");
         expect(completedResponse.body.data[0].content).toContain("Firecrawl");
-        expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(200);
+        expect(completedResponse.body.data[0].metadata.pageStatusCode).toBe(
+          200
+        );
         expect(
           completedResponse.body.data[0].metadata.pageError
         ).toBeUndefined();
@@ -760,7 +760,10 @@ describe("E2E Tests for v0 API Routes", () => {
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
-          .send({ url: "https://docs.tatum.io", crawlerOptions: { limit: 200 } });
+          .send({
+            url: "https://docs.tatum.io",
+            crawlerOptions: { limit: 200 }
+          });
 
         expect(crawlResponse.statusCode).toBe(200);
 
@@ -825,7 +828,7 @@ describe("E2E Tests for v0 API Routes", () => {
           .send({
             url: "https://mendable.ai",
             pageOptions: {
-              onlyMainContent: true,
+              onlyMainContent: true
             },
             extractorOptions: {
               mode: "llm-extraction",
@@ -835,18 +838,18 @@ describe("E2E Tests for v0 API Routes", () => {
                 type: "object",
                 properties: {
                   company_mission: {
-                    type: "string",
+                    type: "string"
                   },
                   supports_sso: {
-                    type: "boolean",
+                    type: "boolean"
                   },
                   is_open_source: {
-                    type: "boolean",
-                  },
+                    type: "boolean"
+                  }
                 },
-                required: ["company_mission", "supports_sso", "is_open_source"],
-              },
-            },
+                required: ["company_mission", "supports_sso", "is_open_source"]
+              }
+            }
           });
 
         // Ensure that the job was successfully created before proceeding with LLM extraction

@@ -8,7 +8,7 @@ export async function issueCredits(team_id: string, credits: number) {
     credits: credits,
     status: "active",
     // indicates that this coupon was issued from auto recharge
-    from_auto_recharge: true,
+    from_auto_recharge: true
   });
 
   if (error) {

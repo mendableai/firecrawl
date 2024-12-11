@@ -5,14 +5,14 @@ import {
   batchScrapeRequestSchema,
   CrawlResponse,
   RequestWithAuth,
-  ScrapeOptions,
+  ScrapeOptions
 } from "./types";
 import {
   addCrawlJobs,
   getCrawl,
   lockURLs,
   saveCrawl,
-  StoredCrawl,
+  StoredCrawl
 } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
 import { getJobPriority } from "../../lib/job-priority";
@@ -27,27 +27,40 @@ export async function batchScrapeController(
   req.body = batchScrapeRequestSchema.parse(req.body);
 
   const id = req.body.appendToId ?? uuidv4();
-  const logger = _logger.child({ crawlId: id, batchScrapeId: id, module: "api/v1", method: "batchScrapeController", teamId: req.auth.team_id, plan: req.auth.plan });
-  logger.debug("Batch scrape " + id + " starting", { urlsLength: req.body.urls, appendToId: req.body.appendToId, account: req.account });
+  const logger = _logger.child({
+    crawlId: id,
+    batchScrapeId: id,
+    module: "api/v1",
+    method: "batchScrapeController",
+    teamId: req.auth.team_id,
+    plan: req.auth.plan
+  });
+  logger.debug("Batch scrape " + id + " starting", {
+    urlsLength: req.body.urls,
+    appendToId: req.body.appendToId,
+    account: req.account
+  });
 
   if (!req.body.appendToId) {
     await logCrawl(id, req.auth.team_id);
   }
 
   let { remainingCredits } = req.account!;
-  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
-  if(!useDbAuthentication){
+  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
+  if (!useDbAuthentication) {
     remainingCredits = Infinity;
   }
 
-  const sc: StoredCrawl = req.body.appendToId ? await getCrawl(req.body.appendToId) as StoredCrawl : {
-    crawlerOptions: null,
-    scrapeOptions: req.body,
-    internalOptions: { disableSmartWaitCache: true }, // NOTE: smart wait disabled for batch scrapes to ensure contentful scrape, speed does not matter
-    team_id: req.auth.team_id,
-    createdAt: Date.now(),
-    plan: req.auth.plan,
-  };
+  const sc: StoredCrawl = req.body.appendToId
+    ? ((await getCrawl(req.body.appendToId)) as StoredCrawl)
+    : {
+        crawlerOptions: null,
+        scrapeOptions: req.body,
+        internalOptions: { disableSmartWaitCache: true }, // NOTE: smart wait disabled for batch scrapes to ensure contentful scrape, speed does not matter
+        team_id: req.auth.team_id,
+        createdAt: Date.now(),
+        plan: req.auth.plan
+      };
 
   if (!req.body.appendToId) {
     await saveCrawl(id, sc);
@@ -57,9 +70,13 @@ export async function batchScrapeController(
 
   // If it is over 1000, we need to get the job priority,
   // otherwise we can use the default priority of 20
-  if(req.body.urls.length > 1000){
+  if (req.body.urls.length > 1000) {
     // set base to 21
-    jobPriority = await getJobPriority({plan: req.auth.plan, team_id: req.auth.team_id, basePriority: 21})
+    jobPriority = await getJobPriority({
+      plan: req.auth.plan,
+      team_id: req.auth.team_id,
+      basePriority: 21
+    });
   }
   logger.debug("Using job priority " + jobPriority, { jobPriority });
 
@@ -80,12 +97,12 @@ export async function batchScrapeController(
         crawl_id: id,
         sitemapped: true,
         v1: true,
-        webhook: req.body.webhook,
+        webhook: req.body.webhook
       },
       opts: {
         jobId: uuidv4(),
-        priority: 20,
-      },
+        priority: 20
+      }
     };
   });
 
@@ -103,18 +120,25 @@ export async function batchScrapeController(
   logger.debug("Adding scrape jobs to BullMQ...");
   await addScrapeJobs(jobs);
 
-  if(req.body.webhook) {
-    logger.debug("Calling webhook with batch_scrape.started...", { webhook: req.body.webhook });
-    await callWebhook(req.auth.team_id, id, null, req.body.webhook, true, "batch_scrape.started");
+  if (req.body.webhook) {
+    logger.debug("Calling webhook with batch_scrape.started...", {
+      webhook: req.body.webhook
+    });
+    await callWebhook(
+      req.auth.team_id,
+      id,
+      null,
+      req.body.webhook,
+      true,
+      "batch_scrape.started"
+    );
   }
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";
-  
+
   return res.status(200).json({
     success: true,
     id,
-    url: `${protocol}://${req.get("host")}/v1/batch/scrape/${id}`,
+    url: `${protocol}://${req.get("host")}/v1/batch/scrape/${id}`
   });
 }
-
-

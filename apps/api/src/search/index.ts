@@ -16,7 +16,7 @@ export async function search({
   location = undefined,
   proxy = undefined,
   sleep_interval = 0,
-  timeout = 5000,
+  timeout = 5000
 }: {
   query: string;
   advanced?: boolean;
@@ -38,7 +38,7 @@ export async function search({
         filter,
         lang,
         country,
-        location,
+        location
       });
     }
     if (process.env.SEARCHAPI_API_KEY) {

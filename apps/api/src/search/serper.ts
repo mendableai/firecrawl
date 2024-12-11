@@ -4,7 +4,9 @@ import { SearchResult } from "../../src/lib/entities";
 
 dotenv.config();
 
-export async function serper_search(q, options: {
+export async function serper_search(
+  q,
+  options: {
     tbs?: string;
     filter?: string;
     lang?: string;
@@ -12,7 +14,8 @@ export async function serper_search(q, options: {
     location?: string;
     num_results: number;
     page?: number;
-}): Promise<SearchResult[]> {
+  }
+): Promise<SearchResult[]> {
   let data = JSON.stringify({
     q: q,
     hl: options.lang,
@@ -20,7 +23,7 @@ export async function serper_search(q, options: {
     location: options.location,
     tbs: options.tbs,
     num: options.num_results,
-    page: options.page ?? 1,
+    page: options.page ?? 1
   });
 
   let config = {
@@ -28,18 +31,18 @@ export async function serper_search(q, options: {
     url: "https://google.serper.dev/search",
     headers: {
       "X-API-KEY": process.env.SERPER_API_KEY,
-      "Content-Type": "application/json",
+      "Content-Type": "application/json"
     },
-    data: data,
+    data: data
   };
   const response = await axios(config);
   if (response && response.data && Array.isArray(response.data.organic)) {
     return response.data.organic.map((a) => ({
       url: a.link,
       title: a.title,
-      description: a.snippet,
+      description: a.snippet
     }));
-  }else{
+  } else {
     return [];
   }
 }

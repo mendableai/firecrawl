@@ -2,19 +2,24 @@ import { ExtractorOptions, PageOptions } from "./../../lib/entities";
 import { Request, Response } from "express";
 import {
   billTeam,
-  checkTeamCredits,
+  checkTeamCredits
 } from "../../services/billing/credit_billing";
 import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
-import { Document, fromLegacyCombo, toLegacyDocument, url as urlSchema } from "../v1/types";
+import {
+  Document,
+  fromLegacyCombo,
+  toLegacyDocument,
+  url as urlSchema
+} from "../v1/types";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist"; // Import the isUrlBlocked function
 import { numTokensFromString } from "../../lib/LLM-extraction/helpers";
 import {
   defaultPageOptions,
   defaultExtractorOptions,
   defaultTimeout,
-  defaultOrigin,
+  defaultOrigin
 } from "../../lib/default-values";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getScrapeQueue } from "../../services/queue-service";
@@ -50,13 +55,18 @@ export async function scrapeHelper(
       success: false,
       error:
         "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-      returnCode: 403,
+      returnCode: 403
     };
   }
 
   const jobPriority = await getJobPriority({ plan, team_id, basePriority: 10 });
 
-  const { scrapeOptions, internalOptions } = fromLegacyCombo(pageOptions, extractorOptions, timeout, crawlerOptions);
+  const { scrapeOptions, internalOptions } = fromLegacyCombo(
+    pageOptions,
+    extractorOptions,
+    timeout,
+    crawlerOptions
+  );
 
   await addScrapeJob(
     {
@@ -67,7 +77,7 @@ export async function scrapeHelper(
       internalOptions,
       plan: plan!,
       origin: req.body.origin ?? defaultOrigin,
-      is_scrape: true,
+      is_scrape: true
     },
     {},
     jobId,
@@ -80,18 +90,21 @@ export async function scrapeHelper(
     {
       name: "Wait for job to finish",
       op: "bullmq.wait",
-      attributes: { job: jobId },
+      attributes: { job: jobId }
     },
     async (span) => {
       try {
-        doc = (await waitForJob<Document>(jobId, timeout));
+        doc = await waitForJob<Document>(jobId, timeout);
       } catch (e) {
-        if (e instanceof Error && (e.message.startsWith("Job wait") || e.message === "timeout")) {
+        if (
+          e instanceof Error &&
+          (e.message.startsWith("Job wait") || e.message === "timeout")
+        ) {
           span.setAttribute("timedOut", true);
           return {
             success: false,
             error: "Request timed out",
-            returnCode: 408,
+            returnCode: 408
           };
         } else if (
           typeof e === "string" &&
@@ -104,7 +117,7 @@ export async function scrapeHelper(
           return {
             success: false,
             error: e,
-            returnCode: 500,
+            returnCode: 500
           };
         } else {
           throw e;
@@ -127,7 +140,7 @@ export async function scrapeHelper(
       success: true,
       error: "No page found",
       returnCode: 200,
-      data: doc,
+      data: doc
     };
   }
 
@@ -153,7 +166,7 @@ export async function scrapeHelper(
   return {
     success: true,
     data: toLegacyDocument(doc, internalOptions),
-    returnCode: 200,
+    returnCode: 200
   };
 }
 
@@ -161,11 +174,7 @@ export async function scrapeController(req: Request, res: Response) {
   try {
     let earlyReturn = false;
     // make sure to authenticate user first, Bearer <token>
-    const auth = await authenticateUser(
-      req,
-      res,
-      RateLimiterMode.Scrape
-    );
+    const auth = await authenticateUser(req, res, RateLimiterMode.Scrape);
     if (!auth.success) {
       return res.status(auth.status).json({ error: auth.error });
     }
@@ -176,7 +185,7 @@ export async function scrapeController(req: Request, res: Response) {
     const pageOptions = { ...defaultPageOptions, ...req.body.pageOptions };
     const extractorOptions = {
       ...defaultExtractorOptions,
-      ...req.body.extractorOptions,
+      ...req.body.extractorOptions
     };
     const origin = req.body.origin ?? defaultOrigin;
     let timeout = req.body.timeout ?? defaultTimeout;
@@ -188,7 +197,7 @@ export async function scrapeController(req: Request, res: Response) {
       ) {
         return res.status(400).json({
           error:
-            "extractorOptions.extractionSchema must be an object if llm-extraction mode is specified",
+            "extractorOptions.extractionSchema must be an object if llm-extraction mode is specified"
         });
       }
 
@@ -202,14 +211,19 @@ export async function scrapeController(req: Request, res: Response) {
         await checkTeamCredits(chunk, team_id, 1);
       if (!creditsCheckSuccess) {
         earlyReturn = true;
-        return res.status(402).json({ error: "Insufficient credits. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing" });
+        return res
+          .status(402)
+          .json({
+            error:
+              "Insufficient credits. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing"
+          });
       }
     } catch (error) {
       logger.error(error);
       earlyReturn = true;
       return res.status(500).json({
         error:
-          "Error checking team credits. Please contact help@firecrawl.com for help.",
+          "Error checking team credits. Please contact help@firecrawl.com for help."
       });
     }
 
@@ -230,7 +244,10 @@ export async function scrapeController(req: Request, res: Response) {
     const timeTakenInSeconds = (endTime - startTime) / 1000;
     const numTokens =
       result.data && (result.data as Document).markdown
-        ? numTokensFromString((result.data as Document).markdown!, "gpt-3.5-turbo")
+        ? numTokensFromString(
+            (result.data as Document).markdown!,
+            "gpt-3.5-turbo"
+          )
         : 0;
 
     if (result.success) {
@@ -250,27 +267,33 @@ export async function scrapeController(req: Request, res: Response) {
       }
       if (creditsToBeBilled > 0) {
         // billing for doc done on queue end, bill only for llm extraction
-        billTeam(team_id, chunk?.sub_id, creditsToBeBilled).catch(error => {
-          logger.error(`Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`);
+        billTeam(team_id, chunk?.sub_id, creditsToBeBilled).catch((error) => {
+          logger.error(
+            `Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`
+          );
           // Optionally, you could notify an admin or add to a retry queue here
         });
       }
     }
-    
+
     let doc = result.data;
     if (!pageOptions || !pageOptions.includeRawHtml) {
       if (doc && (doc as Document).rawHtml) {
         delete (doc as Document).rawHtml;
       }
     }
-  
-    if(pageOptions && pageOptions.includeExtract) {
-      if(!pageOptions.includeMarkdown && doc && (doc as Document).markdown) {
+
+    if (pageOptions && pageOptions.includeExtract) {
+      if (!pageOptions.includeMarkdown && doc && (doc as Document).markdown) {
         delete (doc as Document).markdown;
       }
     }
 
-    const { scrapeOptions } = fromLegacyScrapeOptions(pageOptions, extractorOptions, timeout);
+    const { scrapeOptions } = fromLegacyScrapeOptions(
+      pageOptions,
+      extractorOptions,
+      timeout
+    );
 
     logJob({
       job_id: jobId,
@@ -285,7 +308,7 @@ export async function scrapeController(req: Request, res: Response) {
       crawlerOptions: crawlerOptions,
       scrapeOptions,
       origin: origin,
-      num_tokens: numTokens,
+      num_tokens: numTokens
     });
 
     return res.status(result.returnCode).json(result);
@@ -298,7 +321,7 @@ export async function scrapeController(req: Request, res: Response) {
           ? "Invalid URL"
           : typeof error === "string"
             ? error
-            : error?.message ?? "Internal Server Error",
+            : (error?.message ?? "Internal Server Error")
     });
   }
 }

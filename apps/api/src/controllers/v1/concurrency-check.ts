@@ -2,7 +2,7 @@ import { authenticateUser } from "../auth";
 import {
   ConcurrencyCheckParams,
   ConcurrencyCheckResponse,
-  RequestWithAuth,
+  RequestWithAuth
 } from "./types";
 import { RateLimiterMode } from "../../types";
 import { Response } from "express";

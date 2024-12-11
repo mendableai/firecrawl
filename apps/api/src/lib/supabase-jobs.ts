@@ -58,7 +58,7 @@ export const supabaseGetJobsByCrawlId = async (crawlId: string) => {
   const { data, error } = await supabase_service
     .from("firecrawl_jobs")
     .select()
-    .eq("crawl_id", crawlId)
+    .eq("crawl_id", crawlId);
 
   if (error) {
     logger.error(`Error in supabaseGetJobsByCrawlId: ${error}`);
@@ -72,7 +72,6 @@ export const supabaseGetJobsByCrawlId = async (crawlId: string) => {
 
   return data;
 };
-
 
 export const supabaseGetJobByIdOnlyData = async (jobId: string) => {
   const { data, error } = await supabase_service

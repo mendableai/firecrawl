@@ -32,7 +32,7 @@ export async function generateCompletions(
               schema: schema,
               prompt: prompt,
               systemPrompt: systemPrompt,
-              mode: mode,
+              mode: mode
             });
             // Validate the JSON output against the schema using AJV
             if (schema) {
