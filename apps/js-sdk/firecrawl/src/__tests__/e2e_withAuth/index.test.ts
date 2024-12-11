@@ -6,9 +6,10 @@ import FirecrawlApp, {
   ScrapeResponseV0,
   SearchResponseV0,
 } from "../../index";
-import { v4 as uuidv4 } from "uuid";
+import { describe, expect, test } from "@jest/globals";
+
 import dotenv from "dotenv";
-import { describe, test, expect } from "@jest/globals";
+import { v4 as uuidv4 } from "uuid";
 
 dotenv.config();
 
@@ -16,6 +17,17 @@ const TEST_API_KEY = process.env.TEST_API_KEY;
 const API_URL = "http://127.0.0.1:3002";
 
 describe('FirecrawlApp<"v0"> E2E Tests', () => {
+  test.concurrent("should handle authentication based on deployment type", async () => {
+    // Should throw for cloud service
+    expect(() => {
+      new FirecrawlApp<"v0">({ apiKey: null });
+    }).toThrow("No API key provided");
+
+    // Should not throw for self-hosted
+    const app = new FirecrawlApp<"v0">({ apiKey: null, apiUrl: API_URL });
+    expect(app).toBeDefined();
+  });
+
   test.concurrent("should throw error for no API key", async () => {
     expect(() => {
       new FirecrawlApp<"v0">({ apiKey: null, apiUrl: API_URL, version: "v0" });

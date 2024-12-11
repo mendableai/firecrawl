@@ -19,9 +19,14 @@ spec.loader.exec_module(firecrawl)
 FirecrawlApp = firecrawl.FirecrawlApp
 
 def test_no_api_key():
+    # Should throw for cloud service
     with pytest.raises(Exception) as excinfo:
-      invalid_app = FirecrawlApp(api_url=API_URL, version='v0')
+        invalid_app = FirecrawlApp()
     assert "No API key provided" in str(excinfo.value)
+
+    # Should not throw for self-hosted
+    app = FirecrawlApp(api_url=API_URL)
+    assert app is not None
 
 def test_scrape_url_invalid_api_key():
     invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key", version='v0')

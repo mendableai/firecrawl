@@ -137,6 +137,14 @@ This error occurs because the Supabase client setup is not completed. You should
 **Explanation:**
 This error occurs because the Supabase client setup is not completed. You should be able to scrape and crawl with no problems. Right now it's not possible to configure Supabase in self-hosted instances.
 
+### SDK Authentication
+
+**Note:**
+When using the Firecrawl SDKs (JavaScript, Python, or Rust) with a self-hosted instance:
+- API key is optional for self-hosted instances
+- API key is required only when using the cloud service (firecrawl.dev)
+- Warning messages about missing API key can be safely ignored for self-hosted instances
+
 ### Docker containers fail to start
 
 **Symptom:**

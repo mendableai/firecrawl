@@ -25,9 +25,16 @@ impl FirecrawlApp {
     }
 
     pub fn new_selfhosted(api_url: impl AsRef<str>, api_key: Option<impl AsRef<str>>) -> Result<Self, FirecrawlError> {
+        let api_url = api_url.as_ref().to_string();
+        let is_cloud_service = api_url.contains("firecrawl.dev");
+        
+        if is_cloud_service && api_key.is_none() {
+            return Err(FirecrawlError::InvalidConfiguration("Cloud service requires API key".to_string()));
+        }
+
         Ok(FirecrawlApp {
             api_key: api_key.map(|x| x.as_ref().to_string()),
-            api_url: api_url.as_ref().to_string(),
+            api_url,
             client: Client::new(),
         })
     }
