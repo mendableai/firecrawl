@@ -28,6 +28,8 @@ export async function deleteJobPriority(team_id, job_id) {
   }
 }
 
+export const BASE_TEAM_ID = "d97c4ceb-290b-4957-8432-2b2a02727d95";
+
 export async function getJobPriority({
   plan,
   team_id,
@@ -37,7 +39,7 @@ export async function getJobPriority({
   team_id: string;
   basePriority?: number;
 }): Promise<number> {
-  if (team_id === "d97c4ceb-290b-4957-8432-2b2a02727d95") {
+  if (team_id === BASE_TEAM_ID) {
     return 50;
   }
 
@@ -91,12 +93,12 @@ export async function getJobPriority({
     } else {
       // If not, we keep base priority + planModifier
       return Math.ceil(
-        basePriority + Math.ceil((setLength - bucketLimit) * planModifier)
+        basePriority + Math.ceil((setLength - bucketLimit) * planModifier),
       );
     }
   } catch (e) {
     logger.error(
-      `Get job priority failed: ${team_id}, ${plan}, ${basePriority}`
+      `Get job priority failed: ${team_id}, ${plan}, ${basePriority}`,
     );
     return basePriority;
   }

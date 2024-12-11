@@ -1,13 +1,10 @@
 import { logger } from "../../src/lib/logger";
 import { SearchResult } from "../../src/lib/entities";
-import { googleSearch } from "./googlesearch";
-import { fireEngineMap } from "./fireEngine";
-import { searchapi_search } from "./searchapi";
-import { serper_search } from "./serper";
+import { ProviderFactory } from "./providerFactory";
+import { SearchOptions, ProviderType} from "./types";
 
 export async function search({
   query,
-  advanced = false,
   num_results = 7,
   tbs = undefined,
   filter = undefined,
@@ -19,7 +16,6 @@ export async function search({
   timeout = 5000,
 }: {
   query: string;
-  advanced?: boolean;
   num_results?: number;
   tbs?: string;
   filter?: string;
@@ -31,40 +27,32 @@ export async function search({
   timeout?: number;
 }): Promise<SearchResult[]> {
   try {
+    // TODO: Ideally we should receive the provider type from the request
+    let providerType = ProviderType.GOOGLE; // Default provider
     if (process.env.SERPER_API_KEY) {
-      return await serper_search(query, {
-        num_results,
-        tbs,
-        filter,
-        lang,
-        country,
-        location,
-      });
+      providerType = ProviderType.SERPER;
+    } else if (process.env.SEARCHAPI_API_KEY) {
+      providerType = ProviderType.SEARCHAPI;
     }
-    if (process.env.SEARCHAPI_API_KEY) {
-      return await searchapi_search(query, {
-        num_results,
-        tbs,
-        filter,
-        lang,
-        country,
-        location
-      });
-    }
-    return await googleSearch(
-      query,
-      advanced,
+
+    const provider = ProviderFactory.createProvider(providerType);
+
+    const searchOptions: SearchOptions = {
+      q: query,
       num_results,
-      tbs,
-      filter,
       lang,
       country,
-      proxy,
+      location,
+      tbs,
+      filter,
+      proxies: proxy ? { https: proxy } : undefined,
       sleep_interval,
-      timeout
-    );
+      timeout,
+    };
+
+    return await provider.search(searchOptions);
   } catch (error) {
-    logger.error(`Error in search function: ${error}`);
+    logger.error(`Error in search function: ${error.message}`);
     return [];
   }
 }

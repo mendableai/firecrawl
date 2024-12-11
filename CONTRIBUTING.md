@@ -12,13 +12,13 @@ First, start by installing dependencies:
 2. pnpm [instructions](https://pnpm.io/installation)
 3. redis [instructions](https://redis.io/docs/latest/operate/oss_and_stack/install/install-redis/)
 
-Set environment variables in a .env in the /apps/api/ directory you can copy over the template in .env.example.
+Set environment variables in a .env in the `apps/api/` directory you can copy over the template in .env.example.
 
 To start, we wont set up authentication, or any optional sub services (pdf parsing, JS blocking support, AI features )
 
 .env:
 
-```
+```bash
 # ===== Required ENVS ======
 NUM_WORKERS_PER_QUEUE=8
 PORT=3002
@@ -46,8 +46,6 @@ LLAMAPARSE_API_KEY= #Set if you have a llamaparse key you'd like to use to parse
 SLACK_WEBHOOK_URL= # set if you'd like to send slack server health status messages
 POSTHOG_API_KEY= # set if you'd like to send posthog events like job logs
 POSTHOG_HOST= # set if you'd like to send posthog events like job logs
-
-
 ```
 
 ### Installing dependencies
@@ -55,7 +53,7 @@ POSTHOG_HOST= # set if you'd like to send posthog events like job logs
 First, install the dependencies using pnpm.
 
 ```bash
-# cd apps/api # to make sure you're in the right folder
+# cd apps/api/ # to make sure you're in the right folder
 pnpm install # make sure you have pnpm version 9+!
 ```
 
@@ -73,7 +71,7 @@ redis-server
 
 ### Terminal 2 - setting up workers
 
-Now, navigate to the apps/api/ directory and run:
+Now, navigate to the `apps/api/` directory and run:
 
 ```bash
 pnpm run workers
@@ -84,7 +82,7 @@ This will start the workers who are responsible for processing crawl jobs.
 
 ### Terminal 3 - setting up the main server
 
-To do this, navigate to the apps/api/ directory and run if you don’t have this already, install pnpm here: https://pnpm.io/installation
+To do this, navigate to the `apps/api/` directory and run if you don’t have this already, install pnpm here: https://pnpm.io/installation
 Next, run your server with:
 
 ```bash
@@ -95,7 +93,7 @@ pnpm run start
 
 Alright: now let’s send our first request.
 
-```curl
+```bash
 curl -X GET http://localhost:3002/test
 ```
 
@@ -103,7 +101,7 @@ This should return the response Hello, world!
 
 If you’d like to test the crawl endpoint, you can run this
 
-```curl
+```bash
 curl -X POST http://localhost:3002/v1/crawl \
     -H 'Content-Type: application/json' \
     -d '{
@@ -113,6 +111,6 @@ curl -X POST http://localhost:3002/v1/crawl \
 
 ## Tests:
 
-The best way to do this is run the test with `npm run test:local-no-auth` if you'd like to run the tests without authentication.
+The best way to do this is run the test with `pnpm run test:local-no-auth` if you'd like to run the tests without authentication.
 
-If you'd like to run the tests with authentication, run `npm run test:prod`
+If you'd like to run the tests with authentication, run `pnpm run test:prod`
