@@ -74,17 +74,19 @@ export async function runWebScraper({
   try {
     const provider = new WebScraperDataProvider();
     if (mode === "crawl") {
-      await provider.setOptions({
+      provider.setOptions({
         jobId: bull_job_id,
         mode: mode,
         urls: [url],
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
+        webhookUrl: webhookUrl,
+        webhookMetadata: webhookMetadata,
         bullJobId: bull_job_id,
         priority,
       });
     } else {
-      await provider.setOptions({
+      provider.setOptions({
         jobId: bull_job_id,
         mode: mode,
         urls: url.split(","),

@@ -69,7 +69,6 @@ services:
       - BULL_AUTH_KEY=${BULL_AUTH_KEY}
       - TEST_API_KEY=${TEST_API_KEY}
       - HOST=${HOST:-0.0.0.0}
-      - SELF_HOSTED_WEBHOOK_URL=${SELF_HOSTED_WEBHOOK_URL}
       - LOGGING_LEVEL=${LOGGING_LEVEL}
     extra_hosts:
       - "host.docker.internal:host-gateway"
@@ -93,7 +92,6 @@ services:
       - TEST_API_KEY=${TEST_API_KEY}
       - SCRAPING_BEE_API_KEY=${SCRAPING_BEE_API_KEY}
       - HOST=${HOST:-0.0.0.0}
-      - SELF_HOSTED_WEBHOOK_URL=${SELF_HOSTED_WEBHOOK_URL}
       - LOGGING_LEVEL=${LOGGING_LEVEL}
     extra_hosts:
       - "host.docker.internal:host-gateway"

@@ -20,10 +20,8 @@ export const callWebhook = async (
   metadata: any,
   scrapeId?: string
 ) => {
-  let retries = 0;
-  while (retries < 3) {
-    retries++;
-
+  let retryCount = 0;
+  while (retryCount < 3) {
     try {
       await axios.post(
         webhookUrl,
@@ -44,11 +42,11 @@ export const callWebhook = async (
       break;
     } catch (error) {
       Logger.debug(
-        `Error sending webhook to ${webhookUrl} for scrape ID: ${scrapeId}, retry ${
-          retries + 1
-        }`
+        `Error sending webhook to ${webhookUrl} for scrape ID: ${scrapeId}, retry ${retryCount}`
       );
     }
+
+    retryCount++;
   }
 };
 
@@ -318,7 +316,12 @@ export async function scrapeSingleUrl(
     }
 
     if (webhookUrl) {
+      Logger.debug(
+        `Sending webhook for scrape ID  ${scrapeId} to ${webhookUrl}`
+      );
       await callWebhook(webhookUrl, document, webhookMetadata, scrapeId);
+    } else {
+      Logger.debug(`No webhook URL provided, skipping webhook`);
     }
 
     return document;

@@ -30,14 +30,6 @@ export class WebScraperDataProvider {
   private crawlerMode: string = "default";
   private allowExternalLinks: boolean = false;
 
-  authorize(): void {
-    throw new Error("Method not implemented.");
-  }
-
-  authorizeNango(): Promise<void> {
-    throw new Error("Method not implemented.");
-  }
-
   private async convertUrlsToDocuments(
     urls: string[],
     inProgress?: (progress: Progress) => void,

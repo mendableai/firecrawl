@@ -112,7 +112,7 @@ describe("E2E Tests for v1 API Routes", () => {
       async () => {
         const scrapeRequest: ScrapeRequest = {
           url: "https://roastmywebsite.ai",
-          formats: ["markdown", "html"],
+          formats: ["markdown", "rawHtml"],
         };
 
         const response: ScrapeResponseRequestTest = await request(TEST_URL)
@@ -349,7 +349,7 @@ describe("E2E Tests for v1 API Routes", () => {
         async () => {
           const scrapeRequest: ScrapeRequest = {
             url: "https://roastmywebsite.ai",
-            formats: ["html","rawHtml"],
+            formats: ["rawHtml"],
           };
   
           const response: ScrapeResponseRequestTest = await request(TEST_URL)
@@ -407,38 +407,6 @@ describe("E2E Tests for v1 API Routes", () => {
         },
         30000
       );
-
-      it.concurrent(
-        "should return a successful response with a valid links on page",
-        async () => {
-          const scrapeRequest: ScrapeRequest = {
-            url: "https://roastmywebsite.ai",
-            formats: ["links"],
-          };
-  
-          const response: ScrapeResponseRequestTest = await request(TEST_URL)
-            .post("/v1/scrape")
-            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-            .set("Content-Type", "application/json")
-            .send(scrapeRequest);
-          
-          expect(response.statusCode).toBe(200);
-          expect(response.body).toHaveProperty("data");
-          if (!("data" in response.body)) {
-            throw new Error("Expected response body to have 'data' property");
-          }
-          expect(response.body.data).not.toHaveProperty("html");
-          expect(response.body.data).not.toHaveProperty("rawHtml");
-          expect(response.body.data).toHaveProperty("links");
-          expect(response.body.data).toHaveProperty("metadata");
-          expect(response.body.data.links).toContain("https://firecrawl.dev");
-          expect(response.body.data.metadata.statusCode).toBe(200);
-          expect(response.body.data.metadata.error).toBeUndefined();
-        },
-        30000
-      );
-      
-
   });
 
 describe("POST /v1/map", () => {

@@ -104,7 +104,8 @@ export const crawlRequestSchema = crawlerOptions
     url,
     origin: z.string().optional().default("api"),
     scrapeOptions: scrapeOptions.omit({ timeout: true }).default({}),
-    webhook: z.string().url().optional(),
+    webhookUrl: z.string().url().optional(),
+    webhookMetadata: z.any().optional(),
     limit: z.number().default(10000),
   })
   .strict(strictMessage);

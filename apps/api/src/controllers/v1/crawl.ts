@@ -1,4 +1,3 @@
-
 import { Response } from "express";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -172,10 +171,11 @@ export async function crawlController(
           team_id: req.auth.team_id,
           crawlerOptions,
           pageOptions,
+          webhookUrl: req.body.webhookUrl,
+          webhookMetadata: req.body.webhookMetadata,
           origin: "api",
           crawl_id: id,
           sitemapped: true,
-          webhook: req.body.webhook,
           v1: true,
         },
         opts: {
@@ -203,9 +203,10 @@ export async function crawlController(
         crawlerOptions: crawlerOptions,
         team_id: req.auth.team_id,
         pageOptions: pageOptions,
+        webhookUrl: req.body.webhookUrl,
+        webhookMetadata: req.body.webhookMetadata,
         origin: "api",
         crawl_id: id,
-        webhook: req.body.webhook,
         v1: true,
       },
       {

@@ -218,17 +218,17 @@ export class WebCrawler {
       return fullUrl;
     }
 
-    Logger.debug(
-      `Link filtered out: ${fullUrl} with tests: isInternalLink: ${this.isInternalLink(
-        fullUrl
-      )}, allowExternalLinks: ${
-        this.allowExternalLinks
-      }, isSocialMediaOrEmail: ${this.isSocialMediaOrEmail(
-        fullUrl
-      )}, matchesExcludes: ${this.matchesExcludes(
-        fullUrl
-      )}, matchesIncludes: ${this.matchesIncludes(fullUrl)}`
-    );
+    // Logger.debug(
+    //   `Link filtered out: ${fullUrl} with tests: isInternalLink: ${this.isInternalLink(
+    //     fullUrl
+    //   )}, allowExternalLinks: ${
+    //     this.allowExternalLinks
+    //   }, isSocialMediaOrEmail: ${this.isSocialMediaOrEmail(
+    //     fullUrl
+    //   )}, matchesExcludes: ${this.matchesExcludes(
+    //     fullUrl
+    //   )}, matchesIncludes: ${this.matchesIncludes(fullUrl)}`
+    // );
     return null;
   }
 
