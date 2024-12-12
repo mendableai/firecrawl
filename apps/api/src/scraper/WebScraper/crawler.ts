@@ -294,7 +294,7 @@ export class WebCrawler {
       // If it is the first link, fetch with single url
       if (this.visited.size === 1) {
         Logger.debug(`Scraping single URL: ${url}`);
-        const page = await scrapeSingleUrl(this.jobId, url, {
+        const page = await scrapeSingleUrl(url, {
           ...pageOptions,
           includeHtml: true,
           includeRawHtml: true,

@@ -1,11 +1,10 @@
-import { ExtractorOptions, PageOptions } from "./../../lib/entities";
+import { PageOptions } from "./../../lib/entities";
 import { Request, Response } from "express";
 import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
 import { Document } from "../../lib/entities";
 import {
   defaultPageOptions,
-  defaultExtractorOptions,
   defaultTimeout,
   defaultOrigin,
 } from "../../lib/default-values";
@@ -20,7 +19,6 @@ export async function scrapeHelper(
   team_id: string,
   crawlerOptions: any,
   pageOptions: PageOptions,
-  extractorOptions: ExtractorOptions,
   timeout: number,
   plan?: PlanType
 ): Promise<{
@@ -43,7 +41,6 @@ export async function scrapeHelper(
       crawlerOptions,
       team_id,
       pageOptions,
-      extractorOptions,
       origin: req.body.origin ?? defaultOrigin,
       is_scrape: true,
     },
@@ -103,16 +100,6 @@ export async function scrapeHelper(
   delete doc.index;
   delete doc.provider;
 
-  // Remove rawHtml if pageOptions.rawHtml is false and extractorOptions.mode is llm-extraction-from-raw-html
-  if (
-    !pageOptions.includeRawHtml &&
-    extractorOptions.mode == "llm-extraction-from-raw-html"
-  ) {
-    if (doc.rawHtml) {
-      delete doc.rawHtml;
-    }
-  }
-
   if (!pageOptions.includeHtml) {
     if (doc.html) {
       delete doc.html;
@@ -141,26 +128,7 @@ export async function scrapeController(req: Request, res: Response) {
 
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = { ...defaultPageOptions, ...req.body.pageOptions };
-    const extractorOptions = {
-      ...defaultExtractorOptions,
-      ...req.body.extractorOptions,
-    };
-    const origin = req.body.origin ?? defaultOrigin;
     let timeout = req.body.timeout ?? defaultTimeout;
-
-    if (extractorOptions.mode.includes("llm-extraction")) {
-      if (
-        typeof extractorOptions.extractionSchema !== "object" ||
-        extractorOptions.extractionSchema === null
-      ) {
-        return res.status(400).json({
-          error:
-            "extractorOptions.extractionSchema must be an object if llm-extraction mode is specified",
-        });
-      }
-
-      timeout = req.body.timeout ?? 90000;
-    }
 
     const jobId = uuidv4();
 
@@ -171,7 +139,6 @@ export async function scrapeController(req: Request, res: Response) {
       team_id,
       crawlerOptions,
       pageOptions,
-      extractorOptions,
       timeout,
       plan
     );

@@ -31,13 +31,6 @@ export type PageOptions = {
   atsv?: boolean; // beta
 };
 
-export type ExtractorOptions = {
-  mode: "markdown" | "llm-extraction" | "llm-extraction-from-markdown" | "llm-extraction-from-raw-html";
-  extractionPrompt?: string;
-  extractionSchema?: Record<string, any>;
-  userPrompt?: string;
-}
-
 export type SearchOptions = {
   limit?: number;
   tbs?: string;
@@ -67,7 +60,6 @@ export type WebScraperOptions = {
   mode: "single_urls" | "sitemap" | "crawl";
   crawlerOptions?: CrawlerOptions;
   pageOptions?: PageOptions;
-  extractorOptions?: ExtractorOptions;
   concurrentRequests?: number;
   bullJobId?: string;
   priority?: number;

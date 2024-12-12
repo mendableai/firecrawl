@@ -122,8 +122,6 @@ workerFun(scrapeQueueName, processJobInternal);
 async function processJob(job: Job, token: string) {
   Logger.info(`🐂 Worker taking job ${job.id}`);
 
-  // Check if the job URL is researchhub and block it immediately
-  // TODO: remove this once solve the root issue
   if (
     job.data.url &&
     (job.data.url.includes("researchhub.com") ||
@@ -156,12 +154,10 @@ async function processJob(job: Job, token: string) {
       token,
     });
 
-    // Better if we throw here so we capture with the correct error
     if (!success) {
       throw new Error(message);
     }
     const end = Date.now();
-    const timeTakenInSeconds = (end - start) / 1000;
 
     const rawHtml = docs[0] ? docs[0].rawHtml : "";
 

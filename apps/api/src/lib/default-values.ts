@@ -19,7 +19,3 @@ export const defaultCrawlPageOptions = {
   removeTags: [],
   parsePDF: true
 }
-
-export const defaultExtractorOptions = {
-  mode: "markdown"
-}

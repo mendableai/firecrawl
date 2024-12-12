@@ -1,6 +1,5 @@
 import {
   Document,
-  ExtractorOptions,
   PageOptions,
   WebScraperOptions,
 } from "../../lib/entities";
@@ -31,7 +30,6 @@ export class WebScraperDataProvider {
   private generateImgAltText: boolean = false;
   private ignoreSitemap: boolean = true;
   private pageOptions?: PageOptions;
-  private extractorOptions?: ExtractorOptions;
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
   private crawlerMode: string = "default";
   private allowExternalLinks: boolean = false;
@@ -61,13 +59,9 @@ export class WebScraperDataProvider {
         batchUrls.map(async (url, index) => {
           const existingHTML = allHtmls ? allHtmls[i + index] : "";
           const result = await scrapeSingleUrl(
-            this.jobId,
             url,
             this.pageOptions,
-            this.extractorOptions,
             existingHTML,
-            this.priority,
-            this.teamId
           );
           processedUrls++;
           if (inProgress) {
@@ -290,10 +284,6 @@ export class WebScraperDataProvider {
       }
     }
 
-    // documents = await this.applyImgAltText(documents);
-    if (this.mode === "single_urls" && this.pageOptions.includeExtract) {
-      const extractionMode = this.extractorOptions?.mode ?? "markdown";
-    }
     return documents;
   }
 
@@ -482,11 +472,6 @@ export class WebScraperDataProvider {
       removeTags: options.pageOptions?.removeTags ?? [],
       includeMarkdown: options.pageOptions?.includeMarkdown ?? true,
       includeRawHtml: options.pageOptions?.includeRawHtml ?? false,
-      includeExtract:
-        options.pageOptions?.includeExtract ??
-        (options.extractorOptions?.mode &&
-          options.extractorOptions?.mode !== "markdown") ??
-        false,
       waitFor: options.pageOptions?.waitFor ?? undefined,
       headers: options.pageOptions?.headers ?? undefined,
       includeLinks: options.pageOptions?.includeLinks ?? true,
@@ -496,7 +481,6 @@ export class WebScraperDataProvider {
       disableJsDom: options.pageOptions?.disableJsDom ?? false,
       atsv: options.pageOptions?.atsv ?? false,
     };
-    this.extractorOptions = options.extractorOptions ?? { mode: "markdown" };
     this.replaceAllPathsWithAbsolutePaths =
       options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ??
       options.pageOptions?.replaceAllPathsWithAbsolutePaths ??

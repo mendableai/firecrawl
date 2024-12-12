@@ -1,9 +1,7 @@
 import { Request, Response } from "express";
 import { Logger } from "../../lib/logger";
 import {
-  Document,
   legacyDocumentConverter,
-  legacyExtractorOptions,
   legacyScrapeOptions,
   RequestWithAuth,
   ScrapeRequest,
@@ -60,15 +58,12 @@ export async function scrapeController(
   res: Response<ScrapeResponse>
 ) {
   req.body = scrapeRequestSchema.parse(req.body);
-  let earlyReturn = false;
 
   const origin = req.body.origin;
   const timeout = req.body.timeout;
   const pageOptions = legacyScrapeOptions(req.body);
-  const extractorOptions = req.body.extract ? legacyExtractorOptions(req.body.extract) : undefined;
   const jobId = uuidv4();
 
-  const startTime = new Date().getTime();
   const jobPriority = await getJobPriority({
     plan: req.auth.plan as PlanType,
     team_id: req.auth.team_id,
@@ -82,7 +77,6 @@ export async function scrapeController(
       crawlerOptions: {},
       team_id: req.auth.team_id,
       pageOptions,
-      extractorOptions,
       origin: req.body.origin,
       is_scrape: true,
     },
@@ -104,11 +98,7 @@ export async function scrapeController(
     } else {
       return res.status(500).json({
         success: false,
-        error: `(Internal server error) - ${e && e?.message ? e.message : e} ${
-          extractorOptions && extractorOptions.mode !== "markdown"
-            ? " - Could be due to LLM parsing issues"
-            : ""
-        }`,
+        error: `(Internal server error) - ${e && e?.message ? e.message : e}`,
       });
     }
   }
@@ -127,21 +117,14 @@ export async function scrapeController(
   delete doc.index;
   delete doc.provider;
 
-  const endTime = new Date().getTime();
-
-  if (earlyReturn) {
-    // Don't bill if we're early returning
-    return;
-  }
-
   if (!pageOptions || !pageOptions.includeRawHtml) {
     if (doc && doc.rawHtml) {
       delete doc.rawHtml;
     }
   }
 
-  if(pageOptions && pageOptions.includeExtract) {
-    if(!pageOptions.includeMarkdown && doc && doc.markdown) {
+  if (pageOptions && pageOptions.includeExtract) {
+    if (!pageOptions.includeMarkdown && doc && doc.markdown) {
       delete doc.markdown;
     }
   }

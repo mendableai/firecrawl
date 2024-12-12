@@ -1,7 +1,7 @@
 import * as cheerio from "cheerio";
 import { extractMetadata } from "./utils/metadata";
 import dotenv from "dotenv";
-import { Document, PageOptions, ExtractorOptions } from "../../lib/entities";
+import { Document, PageOptions } from "../../lib/entities";
 import { parseMarkdown } from "../../lib/html-to-markdown";
 import { urlSpecificParams } from "./utils/custom/website_params";
 import { removeUnwantedElements } from "./utils/removeUnwantedElements";
@@ -81,13 +81,9 @@ function getScrapingFallbackOrder(
 }
 
 export async function scrapeSingleUrl(
-  jobId: string,
   urlToScrape: string,
   pageOptions: PageOptions,
-  extractorOptions?: ExtractorOptions,
   existingHtml?: string,
-  priority?: number,
-  teamId?: string
 ): Promise<Document> {
   pageOptions = {
     includeMarkdown: pageOptions.includeMarkdown ?? true,
@@ -108,12 +104,6 @@ export async function scrapeSingleUrl(
     disableJsDom: pageOptions.disableJsDom ?? false,
     atsv: pageOptions.atsv ?? false,
   };
-
-  if (extractorOptions) {
-    extractorOptions = {
-      mode: extractorOptions?.mode ?? "llm-extraction-from-markdown",
-    };
-  }
 
   if (!existingHtml) {
     existingHtml = "";

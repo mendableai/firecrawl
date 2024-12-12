@@ -1,4 +1,4 @@
-import { ExtractorOptions, Document, DocumentUrl } from "./lib/entities";
+import { Document, DocumentUrl } from "./lib/entities";
 
 type Mode = "crawl" | "single_urls" | "sitemap";
 
@@ -25,7 +25,6 @@ export interface WebScraperOptions {
   mode: Mode;
   crawlerOptions: any;
   pageOptions: any;
-  extractorOptions?: any;
   team_id: string;
   origin?: string;
   crawl_id?: string;
@@ -40,7 +39,6 @@ export interface RunWebScraperParams {
   mode: Mode;
   crawlerOptions: any;
   pageOptions?: any;
-  extractorOptions?: any;
   inProgress: (progress: any) => void;
   onSuccess: (result: any, mode: string) => void;
   onError: (error: Error) => void;
@@ -69,7 +67,6 @@ export interface FirecrawlJob {
   crawlerOptions?: any;
   pageOptions?: any;
   origin: string;
-  extractor_options?: ExtractorOptions,
   num_tokens?: number,
   retry?: boolean,
   crawl_id?: string;

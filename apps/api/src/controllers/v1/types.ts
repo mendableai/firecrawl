@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { ExtractorOptions, PageOptions } from "../../lib/entities";
+import { PageOptions } from "../../lib/entities";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { PlanType } from "../../types";
 
@@ -59,29 +59,16 @@ export type ExtractOptions = z.infer<typeof extractOptions>;
 export const scrapeOptions = z
   .object({
     formats: z
-      .enum([
-        "markdown",
-        "html",
-        "rawHtml",
-        "links",
-        "screenshot",
-        "screenshot@fullPage",
-        "extract",
-      ])
+      .enum(["markdown", "rawHtml", "screenshot"])
       .array()
       .optional()
-      .default(["markdown"])
-      .refine(
-        (x) => !(x.includes("screenshot") && x.includes("screenshot@fullPage")),
-        "You may only specify either screenshot or screenshot@fullPage"
-      ),
+      .default(["markdown", "rawHtml"]),
     headers: z.record(z.string(), z.string()).optional(),
     includeTags: z.string().array().optional(),
     excludeTags: z.string().array().optional(),
     timeout: z.number().int().positive().finite().safe().default(30000),
     waitFor: z.number().int().nonnegative().finite().safe().default(0),
     extract: extractOptions.optional(),
-    parsePDF: z.boolean().default(true),
   })
   .strict(strictMessage);
 
@@ -91,28 +78,10 @@ export const scrapeRequestSchema = scrapeOptions
   .extend({
     url,
     origin: z.string().optional().default("api"),
+    webhookUrl: z.string().url().optional(),
+    metadata: z.any().optional(),
   })
-  .strict(strictMessage)
-  .refine(
-    (obj) => {
-      const hasExtractFormat = obj.formats?.includes("extract");
-      const hasExtractOptions = obj.extract !== undefined;
-      return (
-        (hasExtractFormat && hasExtractOptions) ||
-        (!hasExtractFormat && !hasExtractOptions)
-      );
-    },
-    {
-      message:
-        "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
-    }
-  )
-  .transform((obj) => {
-    if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
-      return { ...obj, timeout: 60000 };
-    }
-    return obj;
-  });
+  .strict(strictMessage);
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
 
@@ -120,9 +89,9 @@ const crawlerOptions = z
   .object({
     includePaths: z.string().array().default([]),
     excludePaths: z.string().array().default([]),
-    maxDepth: z.number().default(10), // default?
-    limit: z.number().default(10000), // default?
-    allowBackwardLinks: z.boolean().default(false), // >> TODO: CHANGE THIS NAME???
+    maxDepth: z.number().default(10),
+    limit: z.number().default(10000),
+    allowBackwardLinks: z.boolean().default(false),
     allowExternalLinks: z.boolean().default(false),
     ignoreSitemap: z.boolean().default(true),
   })
@@ -292,28 +261,12 @@ export function legacyCrawlerOptions(x: CrawlerOptions) {
 export function legacyScrapeOptions(x: ScrapeOptions): PageOptions {
   return {
     includeMarkdown: x.formats.includes("markdown"),
-    includeHtml: x.formats.includes("html"),
     includeRawHtml: x.formats.includes("rawHtml"),
-    includeExtract: x.formats.includes("extract"),
     onlyIncludeTags: x.includeTags,
     removeTags: x.excludeTags,
     waitFor: x.waitFor,
     headers: x.headers,
-    includeLinks: x.formats.includes("links"),
     screenshot: x.formats.includes("screenshot"),
-    fullPageScreenshot: x.formats.includes("screenshot@fullPage"),
-    parsePDF: x.parsePDF,
-  };
-}
-
-export function legacyExtractorOptions(x: ExtractOptions): ExtractorOptions {
-  return {
-    mode: x.mode ? "llm-extraction" : "markdown",
-    extractionPrompt:
-      x.prompt ??
-      "Based on the information on the page, extract the information from the schema.",
-    extractionSchema: x.schema,
-    userPrompt: x.prompt ?? "",
   };
 }
 

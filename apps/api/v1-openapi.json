@@ -42,7 +42,15 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "enum": ["markdown", "html", "rawHtml", "links", "screenshot", "extract", "screenshot@fullPage"]
+                      "enum": [
+                        "markdown",
+                        "html",
+                        "rawHtml",
+                        "links",
+                        "screenshot",
+                        "extract",
+                        "screenshot@fullPage"
+                      ]
                     },
                     "description": "Formats to include in the output.",
                     "default": ["markdown"]
@@ -370,9 +378,14 @@
                     "description": "Allows the crawler to follow links to external websites.",
                     "default": false
                   },
-                  "webhook": {
+                  "webhookUrl": {
                     "type": "string",
-                    "description": "The URL to send the webhook to. This will trigger for crawl started (crawl.started) ,every page crawled (crawl.page) and when the crawl is completed (crawl.completed or crawl.failed). The response will be the same as the `/scrape` endpoint."
+                    "format": "uri",
+                    "description": "The URL to send the webhook to. This will trigger for every page crawled and return the specified formats along with the metadata."
+                  },
+                  "webhookMetadata": {
+                    "type": "object",
+                    "description": "Metadata to send with the webhook"
                   },
                   "scrapeOptions": {
                     "type": "object",
@@ -381,10 +394,10 @@
                         "type": "array",
                         "items": {
                           "type": "string",
-                          "enum": ["markdown", "html", "rawHtml", "links", "screenshot"]
+                          "enum": ["markdown", "rawHtml", "screenshot"]
                         },
                         "description": "Formats to include in the output.",
-                        "default": ["markdown"]
+                        "default": ["markdown", "rawHtml"]
                       },
                       "headers": {
                         "type": "object",
@@ -481,106 +494,105 @@
     },
     "/map": {
       "post": {
-          "summary": "Map multiple URLs based on options",
-          "operationId": "mapUrls",
-          "tags": ["Mapping"],
-          "security": [
-            {
-              "bearerAuth": []
+        "summary": "Map multiple URLs based on options",
+        "operationId": "mapUrls",
+        "tags": ["Mapping"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "The base URL to start crawling from"
+                  },
+                  "search": {
+                    "type": "string",
+                    "description": "Search query to use for mapping. During the Alpha phase, the 'smart' part of the search functionality is limited to 100 search results. However, if map finds more results, there is no limit applied."
+                  },
+                  "ignoreSitemap": {
+                    "type": "boolean",
+                    "description": "Ignore the website sitemap when crawling",
+                    "default": true
+                  },
+                  "includeSubdomains": {
+                    "type": "boolean",
+                    "description": "Include subdomains of the website",
+                    "default": false
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of links to return",
+                    "default": 5000,
+                    "maximum": 5000
+                  }
+                },
+                "required": ["url"]
+              }
             }
-          ],
-          "requestBody": {
-            "required": true,
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapResponse"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "url": {
+                    "error": {
                       "type": "string",
-                      "format": "uri",
-                      "description": "The base URL to start crawling from"
-                    },
-                    "search": {
-                      "type": "string",
-                      "description": "Search query to use for mapping. During the Alpha phase, the 'smart' part of the search functionality is limited to 100 search results. However, if map finds more results, there is no limit applied."
-                    },
-                    "ignoreSitemap": {
-                      "type": "boolean",
-                      "description": "Ignore the website sitemap when crawling",
-                      "default": true
-                    },
-                    "includeSubdomains": {
-                      "type": "boolean",
-                      "description": "Include subdomains of the website",
-                      "default": false
-                    },
-                    "limit": {
-                      "type": "integer",
-                      "description": "Maximum number of links to return",
-                      "default": 5000,
-                      "maximum": 5000
+                      "example": "Payment required to access this resource."
                     }
-                  },
-                  "required": ["url"]
+                  }
                 }
               }
             }
           },
-          "responses": {
-            "200": {
-              "description": "Successful response",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "$ref": "#/components/schemas/MapResponse"
-                  }
-                }
-              }
-            },
-            "402": {
-              "description": "Payment required",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "object",
-                    "properties": {
-                      "error": {
-                        "type": "string",
-                        "example": "Payment required to access this resource."
-                      }
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Request rate limit exceeded. Please wait and try again later."
                     }
                   }
                 }
               }
-            },
-            "429": {
-              "description": "Too many requests",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "object",
-                    "properties": {
-                      "error": {
-                        "type": "string",
-                        "example": "Request rate limit exceeded. Please wait and try again later."
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "500": {
-              "description": "Server error",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "object",
-                    "properties": {
-                      "error": {
-                        "type": "string",
-                        "example": "An unexpected error occurred on the server."
-                      }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
                     }
                   }
                 }
@@ -589,6 +601,7 @@
           }
         }
       }
+    }
   },
   "components": {
     "securitySchemes": {
@@ -661,7 +674,6 @@
                     "nullable": true,
                     "description": "The error message of the page"
                   }
-                  
                 }
               },
               "llm_extraction": {
