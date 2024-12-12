@@ -251,6 +251,7 @@ export const webhookSchema = z.preprocess(
     .object({
       url: z.string().url(),
       headers: z.record(z.string(), z.string()).default({}),
+      metadata: z.record(z.string(), z.string()).default({}),
     })
     .strict(strictMessage),
 );

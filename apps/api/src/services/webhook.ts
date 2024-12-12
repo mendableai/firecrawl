@@ -99,6 +99,7 @@ export const callWebhook = async (
               : eventType === "crawl.page"
                 ? data?.error || undefined
                 : undefined,
+            metadata: webhookUrl.metadata || undefined,
           },
           {
             headers: {
@@ -131,6 +132,7 @@ export const callWebhook = async (
               : eventType === "crawl.page"
                 ? data?.error || undefined
                 : undefined,
+            metadata: webhookUrl.metadata || undefined,
           },
           {
             headers: {
