@@ -1,25 +1,50 @@
 import { logger } from "../../../lib/logger";
+import crypto from "crypto";
+import { configDotenv } from "dotenv";
+configDotenv();
 
-const socialMediaBlocklist = [
-  "facebook.com",
-  "x.com",
-  "twitter.com",
-  "instagram.com",
-  "linkedin.com",
-  "snapchat.com",
-  "tiktok.com",
-  "reddit.com",
-  "tumblr.com",
-  "flickr.com",
-  "whatsapp.com",
-  "wechat.com",
-  "telegram.org",
-  "researchhub.com",
-  "youtube.com",
-  "corterix.com",
-  "southwest.com",
-  "ryanair.com",
+const hashKey = Buffer.from(process.env.HASH_KEY || "", "utf-8");
+const algorithm = "aes-256-ecb";
+
+function decryptAES(ciphertext: string, key: Buffer): string {
+  const decipher = crypto.createDecipheriv(algorithm, key, null);
+  const decrypted = Buffer.concat([
+    decipher.update(Buffer.from(ciphertext, "base64")),
+    decipher.final(),
+  ]);
+  return decrypted.toString("utf-8");
+}
+
+const urlBlocklist = [
+  "h8ngAFXUNLO3ZqQufJjGVA==",
+  "fEGiDm/TWDBkXUXejFVICg==",
+  "l6Mei7IGbEmTTFoSudUnqQ==",
+  "4OjallJzXRiZUAWDiC2Xww==",
+  "ReSvkSfx34TNEdecmmSDdQ==",
+  "X1E4WtdmXAv3SAX9xN925Q==",
+  "VTzBQfMtXZzM05mnNkWkjA==",
+  "m/q4Lb2Z8cxwU7/CoztOFg==",
+  "UbVnmRaeG+gKcyVDLAm0vg==",
+  "xNQhczYG22tTVc6lYE3qwg==",
+  "CQfGDydbg4l1swRCru6O6Q==",
+  "l86LQxm2NonTWMauXwEsPw==",
+  "6v4QDUcwjnID80G+uU+tgw==",
+  "pCF/6nrKZAxaYntzEGluZQ==",
+  "r0CRhAmQqSe7V2s3073T00sAh4WcS5779jwuGJ26ows==",
+  "aBOVqRFBM4UVg33usY10NdiF0HCnFH/ImtD0n+zIpc8==",
+  "QV436UZuQ6D0Dqrx9MwaGw==",
+  "OYVvrwILYbzA2mSSqOPPpw==",
+  "xW2i4C0Dzcnp+qu12u0SAw==",
+  "OLHba209l0dfl0MI4EnQonBITK9z8Qwgd/NsuaTkXmA=",
+  "X0VynmNjpL3PrYxpUIG7sFMBt8OlrmQWtxj8oXVu2QM=",
+  "ObdlM5NEkvBJ/sojRW5K/Q==",
+  "C8Th38X0SjsE1vL/OsD8bA==",
+  "PTbGg8PK/h0Seyw4HEpK4Q==",
+  "lZdQMknjHb7+4+sjF3qNTw==",
+  "LsgSq54q5oDysbva29JxnQ==",
 ];
+
+const decryptedBlocklist = hashKey.length > 0 ? urlBlocklist.map((ciphertext) => decryptAES(ciphertext, hashKey)) : [];
 
 const allowedKeywords = [
   "pulse",
@@ -65,7 +90,7 @@ export function isUrlBlocked(url: string): boolean {
     const hostname = urlObj.hostname.toLowerCase();
 
     // Check if the URL matches any domain in the blocklist
-    const isBlocked = socialMediaBlocklist.some((domain) => {
+    const isBlocked = decryptedBlocklist.some((domain) => {
       const domainPattern = new RegExp(
         `(^|\\.)${domain.replace(".", "\\.")}(\\.|$)`,
         "i",
