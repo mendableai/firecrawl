@@ -11,7 +11,7 @@ import { Logger } from "../../../lib/logger";
  * @param pageOptions The options for the page
  * @returns The scraped content
  */
-export async function scrapWithPlaywright(
+export async function scrapeWithPlaywright(
   url: string,
   waitFor: number = 0,
   headers?: Record<string, string>,
@@ -29,7 +29,6 @@ export async function scrapWithPlaywright(
 
   try {
     const reqParams = await generateRequestParams(url);
-    // If the user has passed a wait parameter in the request, use that
     const waitParam = reqParams["params"]?.wait ?? waitFor;
 
     const response = await axios.post(
@@ -43,8 +42,8 @@ export async function scrapWithPlaywright(
         headers: {
           "Content-Type": "application/json",
         },
-        timeout: universalTimeout + waitParam, // Add waitParam to timeout to account for the wait time
-        transformResponse: [(data) => data], // Prevent axios from parsing JSON automatically
+        timeout: universalTimeout + waitParam,
+        transformResponse: [(data) => data],
       }
     );
 

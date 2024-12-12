@@ -47,12 +47,11 @@ export type CrawlerOptions = {
   maxCrawledLinks?: number;
   maxDepth?: number;
   limit?: number;
-  generateImgAltText?: boolean;
   replaceAllPathsWithAbsolutePaths?: boolean;
   ignoreSitemap?: boolean;
   mode?: "default" | "fast"; // have a mode of some sort
   allowExternalLinks?: boolean;
-}
+};
 
 export type WebScraperOptions = {
   jobId: string;
@@ -60,6 +59,8 @@ export type WebScraperOptions = {
   mode: "single_urls" | "sitemap" | "crawl";
   crawlerOptions?: CrawlerOptions;
   pageOptions?: PageOptions;
+  webhookUrl?: string;
+  webhookMetadata?: any;
   concurrentRequests?: number;
   bullJobId?: string;
   priority?: number;
@@ -91,7 +92,7 @@ export class Document {
 
   index?: number;
   linksOnPage?: string[]; // Add this new field as a separate property
-  
+
   constructor(data: Partial<Document>) {
     if (!data.content) {
       throw new Error("Missing required fields");
@@ -108,19 +109,18 @@ export class Document {
   }
 }
 
-
 export class SearchResult {
   url: string;
   title: string;
   description: string;
 
   constructor(url: string, title: string, description: string) {
-      this.url = url;
-      this.title = title;
-      this.description = description;
+    this.url = url;
+    this.title = title;
+    this.description = description;
   }
 
   toString(): string {
-      return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description})`;
+    return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description})`;
   }
 }

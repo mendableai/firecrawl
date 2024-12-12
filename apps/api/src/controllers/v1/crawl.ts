@@ -22,7 +22,6 @@ import { getScrapeQueue } from "../../services/queue-service";
 import { addScrapeJobRaw } from "../../services/queue-jobs";
 import { Logger } from "../../lib/logger";
 import { getJobPriority } from "../../lib/job-priority";
-import { callWebhook } from "../../services/webhook";
 
 /**
  * @openapi
@@ -216,17 +215,6 @@ export async function crawlController(
       10
     );
     await addCrawlJob(id, job.id);
-  }
-
-  if (req.body.webhook) {
-    await callWebhook(
-      req.auth.team_id,
-      id,
-      null,
-      req.body.webhook,
-      true,
-      "crawl.started"
-    );
   }
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";

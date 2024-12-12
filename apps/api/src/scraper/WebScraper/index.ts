@@ -1,8 +1,4 @@
-import {
-  Document,
-  PageOptions,
-  WebScraperOptions,
-} from "../../lib/entities";
+import { Document, PageOptions, WebScraperOptions } from "../../lib/entities";
 import { Progress } from "../../lib/entities";
 import { scrapeSingleUrl } from "./single_url";
 import { SitemapEntry, fetchSitemapData, getLinksFromSitemap } from "./sitemap";
@@ -17,7 +13,6 @@ import { Logger } from "../../lib/logger";
 
 export class WebScraperDataProvider {
   private jobId: string;
-  private bullJobId: string;
   private urls: string[] = [""];
   private mode: "single_urls" | "sitemap" | "crawl" = "single_urls";
   private includes: string | string[];
@@ -27,14 +22,13 @@ export class WebScraperDataProvider {
   private returnOnlyUrls: boolean;
   private limit: number = 10000;
   private concurrentRequests: number = 20;
-  private generateImgAltText: boolean = false;
   private ignoreSitemap: boolean = true;
   private pageOptions?: PageOptions;
+  private webhookUrl?: string;
+  private webhookMetadata?: any;
   private replaceAllPathsWithAbsolutePaths?: boolean = false;
   private crawlerMode: string = "default";
   private allowExternalLinks: boolean = false;
-  private priority?: number;
-  private teamId?: string;
 
   authorize(): void {
     throw new Error("Method not implemented.");
@@ -62,6 +56,9 @@ export class WebScraperDataProvider {
             url,
             this.pageOptions,
             existingHTML,
+            this.webhookUrl,
+            this.webhookMetadata,
+            this.jobId
           );
           processedUrls++;
           if (inProgress) {
@@ -168,7 +165,6 @@ export class WebScraperDataProvider {
       maxCrawledLinks: this.maxCrawledLinks,
       maxCrawledDepth: getAdjustedMaxDepth(this.urls[0], this.maxCrawledDepth),
       limit: this.limit,
-      generateImgAltText: this.generateImgAltText,
       allowExternalLinks: this.allowExternalLinks,
     });
 
@@ -451,7 +447,6 @@ export class WebScraperDataProvider {
     }
 
     this.jobId = options.jobId;
-    this.bullJobId = options.bullJobId;
     this.urls = options.urls;
     this.mode = options.mode;
     this.concurrentRequests = options.concurrentRequests ?? 20;
@@ -461,8 +456,6 @@ export class WebScraperDataProvider {
     this.maxCrawledDepth = options.crawlerOptions?.maxDepth ?? 10;
     this.returnOnlyUrls = options.crawlerOptions?.returnOnlyUrls ?? false;
     this.limit = options.crawlerOptions?.limit ?? 10000;
-    this.generateImgAltText =
-      options.crawlerOptions?.generateImgAltText ?? false;
     this.pageOptions = {
       includeHtml: options.pageOptions?.includeHtml ?? false,
       replaceAllPathsWithAbsolutePaths:
@@ -481,6 +474,8 @@ export class WebScraperDataProvider {
       disableJsDom: options.pageOptions?.disableJsDom ?? false,
       atsv: options.pageOptions?.atsv ?? false,
     };
+    this.webhookUrl = options.webhookUrl;
+    this.webhookMetadata = options.webhookMetadata;
     this.replaceAllPathsWithAbsolutePaths =
       options.crawlerOptions?.replaceAllPathsWithAbsolutePaths ??
       options.pageOptions?.replaceAllPathsWithAbsolutePaths ??
@@ -502,10 +497,7 @@ export class WebScraperDataProvider {
     this.ignoreSitemap = options.crawlerOptions?.ignoreSitemap ?? true;
     this.allowExternalLinks =
       options.crawlerOptions?.allowExternalLinks ?? false;
-    this.priority = options.priority;
-    this.teamId = options.teamId ?? null;
 
-    // make sure all urls start with https://
     this.urls = this.urls.map((url) => {
       if (!url.trim().startsWith("http")) {
         return `https://${url}`;

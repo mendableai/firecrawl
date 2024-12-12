@@ -29,7 +29,8 @@ export interface WebScraperOptions {
   origin?: string;
   crawl_id?: string;
   sitemapped?: boolean;
-  webhook?: string;
+  webhookUrl?: string;
+  webhookMetadata?: any;
   v1?: boolean;
   is_scrape?: boolean;
 }
@@ -39,6 +40,8 @@ export interface RunWebScraperParams {
   mode: Mode;
   crawlerOptions: any;
   pageOptions?: any;
+  webhookUrl?: string;
+  webhookMetadata?: any;
   inProgress: (progress: any) => void;
   onSuccess: (result: any, mode: string) => void;
   onError: (error: Error) => void;
@@ -151,6 +154,3 @@ export type PlanType =
   | "growthdouble"
   | "free"
   | "";
-
-
-export type WebhookEventType = "crawl.page" | "crawl.started" | "crawl.completed" | "crawl.failed";

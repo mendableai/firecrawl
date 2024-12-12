@@ -7,7 +7,6 @@ import {
 } from "./queue-service";
 import { logtail } from "./logtail";
 import { startWebScraperPipeline } from "../main/runWebScraper";
-import { callWebhook } from "./webhook";
 import { Logger } from "../lib/logger";
 import { Job, Worker } from "bullmq";
 import systemMonitor from "./system-monitor";
@@ -84,9 +83,9 @@ const workerFun = async (
 ) => {
   const worker = new Worker(queueName, null, {
     connection: redisConnection,
-    lockDuration: 1 * 60 * 1000, // 1 minute
-    stalledInterval: 30 * 1000, // 30 seconds
-    maxStalledCount: 10, // 10 times
+    lockDuration: 1 * 60 * 1000,
+    stalledInterval: 30 * 1000,
+    maxStalledCount: 10,
   });
 
   worker.startStalledCheckTimer();
@@ -102,7 +101,7 @@ const workerFun = async (
     const canAcceptConnection = await monitor.acceptConnection();
     if (!canAcceptConnection) {
       console.log("Cant accept connection");
-      await sleep(cantAcceptConnectionInterval); // more sleep
+      await sleep(cantAcceptConnectionInterval);
       continue;
     }
 
@@ -251,18 +250,6 @@ async function processJob(job: Job, token: string) {
             error: message /* etc... */,
             docs: fullDocs,
           };
-
-          // v0 web hooks, call when done with all the data
-          if (!job.data.v1) {
-            callWebhook(
-              job.data.team_id,
-              job.data.crawl_id,
-              data,
-              job.data.webhook,
-              job.data.v1,
-              "crawl.completed"
-            );
-          }
         } else {
           const jobIDs = await getCrawlJobs(job.data.crawl_id);
           const jobStatuses = await Promise.all(
@@ -272,18 +259,6 @@ async function processJob(job: Job, token: string) {
             sc.cancelled || jobStatuses.some((x) => x === "failed")
               ? "failed"
               : "completed";
-
-          // v1 web hooks, call when done with no data, but with event completed
-          if (job.data.v1 && job.data.webhook) {
-            callWebhook(
-              job.data.team_id,
-              job.data.crawl_id,
-              [],
-              job.data.webhook,
-              job.data.v1,
-              "crawl.completed"
-            );
-          }
         }
       }
     }
@@ -294,8 +269,7 @@ async function processJob(job: Job, token: string) {
     Logger.error(`🐂 Job errored ${job.id} - ${error}`);
 
     if (error instanceof CustomError) {
-      // Here we handle the error, then save the failed job
-      Logger.error(error.message); // or any other error handling
+      Logger.error(error.message);
 
       logtail.error("Custom error while ingesting", {
         job_id: job.id,
@@ -321,27 +295,6 @@ async function processJob(job: Job, token: string) {
         "Something went wrong... Contact help@mendable.ai or try again." /* etc... */,
     };
 
-    if (!job.data.v1 && (job.data.mode === "crawl" || job.data.crawl_id)) {
-      callWebhook(
-        job.data.team_id,
-        job.data.crawl_id ?? (job.id as string),
-        data,
-        job.data.webhook,
-        job.data.v1
-      );
-    }
-    if (job.data.v1) {
-      callWebhook(
-        job.data.team_id,
-        job.id as string,
-        [],
-        job.data.webhook,
-        job.data.v1,
-        "crawl.failed"
-      );
-    }
-
-    // done(null, data);
     return data;
   }
 }

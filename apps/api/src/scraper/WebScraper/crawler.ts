@@ -1,12 +1,11 @@
-import axios, { AxiosError } from "axios";
-import cheerio, { load } from "cheerio";
+import axios from "axios";
+import { load } from "cheerio";
 import { URL } from "url";
 import { getLinksFromSitemap } from "./sitemap";
 import async from "async";
 import { CrawlerOptions, PageOptions, Progress } from "../../lib/entities";
 import { scrapeSingleUrl } from "./single_url";
 import robotsParser from "robots-parser";
-import { getURLDepth } from "./utils/maxDepthUtils";
 import { axiosTimeout } from "../../../src/lib/timeout";
 import { Logger } from "../../../src/lib/logger";
 
@@ -41,7 +40,6 @@ export class WebCrawler {
     excludes?: string[];
     maxCrawledLinks?: number;
     limit?: number;
-    generateImgAltText?: boolean;
     maxCrawledDepth?: number;
     allowExternalLinks?: boolean;
   }) {
@@ -263,7 +261,9 @@ export class WebCrawler {
 
   async crawl(
     url: string,
-    pageOptions: PageOptions
+    pageOptions: PageOptions,
+    webhookUrl?: string,
+    webhookMetadata?: any
   ): Promise<
     { url: string; html: string; pageStatusCode?: number; pageError?: string }[]
   > {
@@ -294,11 +294,17 @@ export class WebCrawler {
       // If it is the first link, fetch with single url
       if (this.visited.size === 1) {
         Logger.debug(`Scraping single URL: ${url}`);
-        const page = await scrapeSingleUrl(url, {
-          ...pageOptions,
-          includeHtml: true,
-          includeRawHtml: true,
-        });
+        const page = await scrapeSingleUrl(
+          url,
+          {
+            ...pageOptions,
+            includeHtml: true,
+            includeRawHtml: true,
+          },
+          webhookUrl,
+          webhookMetadata,
+          this.jobId
+        );
         rawHtml = page.rawHtml ?? "";
         pageStatusCode = page.metadata?.pageStatusCode;
         pageError = page.metadata?.pageError || undefined;

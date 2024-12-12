@@ -1,6 +1,5 @@
 import { Job } from "bullmq";
 import {
-  CrawlResult,
   WebScraperOptions,
   RunWebScraperParams,
   RunWebScraperResult,
@@ -32,6 +31,8 @@ export async function startWebScraperPipeline({
           }
         : {}),
     },
+    webhookUrl: job.data.webhookUrl,
+    webhookMetadata: job.data.webhookMetadata,
     inProgress: (progress) => {
       Logger.debug(`🐂 Job in progress ${job.id}`);
       if (progress.currentDocument) {
@@ -60,6 +61,8 @@ export async function runWebScraper({
   mode,
   crawlerOptions,
   pageOptions,
+  webhookUrl,
+  webhookMetadata,
   inProgress,
   onSuccess,
   onError,
@@ -87,7 +90,8 @@ export async function runWebScraper({
         urls: url.split(","),
         crawlerOptions: crawlerOptions,
         pageOptions: pageOptions,
-        priority,
+        webhookUrl: webhookUrl,
+        webhookMetadata: webhookMetadata,
         teamId: team_id,
       });
     }

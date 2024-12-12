@@ -253,7 +253,6 @@ export function legacyCrawlerOptions(x: CrawlerOptions) {
     maxCrawledLinks: x.limit,
     maxDepth: x.maxDepth,
     limit: x.limit,
-    generateImgAltText: false,
     allowExternalLinks: x.allowExternalLinks,
   };
 }

@@ -1,18 +1,17 @@
 import express, { NextFunction, Request, Response } from "express";
+import { RateLimiterMode } from "../types";
+import { authenticateUser } from "../controllers/auth";
 import { crawlController } from "../controllers/v1/crawl";
 import { scrapeController } from "../../src/controllers/v1/scrape";
 import { crawlStatusController } from "../controllers/v1/crawl-status";
 import { mapController } from "../controllers/v1/map";
 import { RequestWithMaybeAuth } from "../controllers/v1/types";
-import { RateLimiterMode } from "../types";
-import { authenticateUser } from "../controllers/auth";
 import { createIdempotencyKey } from "../services/idempotency/create";
-import expressWs from "express-ws";
-import { crawlStatusWSController } from "../controllers/v1/crawl-status-ws";
 import { crawlCancelController } from "../controllers/v1/crawl-cancel";
 import { scrapeStatusController } from "../controllers/v1/scrape-status";
 import { livenessController } from "../controllers/v1/liveness";
 import { readinessController } from "../controllers/v1/readiness";
+import expressWs from "express-ws";
 
 export function authMiddleware(
   rateLimiterMode: RateLimiterMode
@@ -84,8 +83,6 @@ v1Router.get(
 );
 
 v1Router.get("/scrape/:jobId", wrap(scrapeStatusController));
-
-v1Router.ws("/crawl/:jobId", crawlStatusWSController);
 
 v1Router.delete(
   "/crawl/:jobId",

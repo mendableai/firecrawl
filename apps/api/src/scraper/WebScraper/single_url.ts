@@ -6,12 +6,51 @@ import { parseMarkdown } from "../../lib/html-to-markdown";
 import { urlSpecificParams } from "./utils/custom/website_params";
 import { removeUnwantedElements } from "./utils/removeUnwantedElements";
 import { scrapeWithFetch } from "./scrapers/fetch";
-import { scrapWithPlaywright } from "./scrapers/playwright";
+import { scrapeWithPlaywright } from "./scrapers/playwright";
 import { extractLinks } from "./utils/utils";
 import { Logger } from "../../lib/logger";
 import { clientSideError } from "../../strings";
+import axios from "axios";
 
 dotenv.config();
+
+export const callWebhook = async (
+  webhookUrl: string,
+  data: any,
+  metadata: any,
+  scrapeId?: string
+) => {
+  let retries = 0;
+  while (retries < 3) {
+    retries++;
+
+    try {
+      await axios.post(
+        webhookUrl,
+        {
+          scrapeId: scrapeId ?? "unknown",
+          data,
+          metadata,
+        },
+        {
+          headers: {
+            "Content-Type": "application/json",
+          },
+          timeout: 10000,
+        }
+      );
+
+      Logger.debug(`Webhook sent for scrape ID: ${scrapeId}`);
+      break;
+    } catch (error) {
+      Logger.debug(
+        `Error sending webhook to ${webhookUrl} for scrape ID: ${scrapeId}, retry ${
+          retries + 1
+        }`
+      );
+    }
+  }
+};
 
 export const baseScrapers = ["playwright", "fetch"].filter(Boolean);
 
@@ -49,12 +88,7 @@ export async function generateRequestParams(
  * @param defaultScraper The default scraper to use if the URL does not have a specific scraper order defined
  * @returns The order of scrapers to be used for scraping a URL
  */
-function getScrapingFallbackOrder(
-  defaultScraper?: string,
-  isWaitPresent: boolean = false,
-  isScreenshotPresent: boolean = false,
-  isHeadersPresent: boolean = false
-) {
+function getScrapingFallbackOrder(defaultScraper?: string) {
   const availableScrapers = baseScrapers.filter((scraper) => {
     switch (scraper) {
       case "playwright":
@@ -84,6 +118,9 @@ export async function scrapeSingleUrl(
   urlToScrape: string,
   pageOptions: PageOptions,
   existingHtml?: string,
+  webhookUrl?: string,
+  webhookMetadata?: any,
+  scrapeId?: string
 ): Promise<Document> {
   pageOptions = {
     includeMarkdown: pageOptions.includeMarkdown ?? true,
@@ -120,12 +157,11 @@ export async function scrapeSingleUrl(
       screenshot: string;
       metadata: { pageStatusCode?: number; pageError?: string | null };
     } = { text: "", screenshot: "", metadata: {} };
-    let screenshot = "";
 
     switch (method) {
       case "playwright":
         if (process.env.PLAYWRIGHT_MICROSERVICE_URL) {
-          const response = await scrapWithPlaywright(
+          const response = await scrapeWithPlaywright(
             url,
             pageOptions.waitFor,
             pageOptions.headers
@@ -145,6 +181,8 @@ export async function scrapeSingleUrl(
 
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
     const text = await parseMarkdown(cleanedHtml);
+
+    // TODO: call webhook here
 
     return {
       text,
@@ -172,15 +210,7 @@ export async function scrapeSingleUrl(
       Logger.error(`Invalid URL key, trying: ${urlToScrape}`);
     }
     const defaultScraper = urlSpecificParams[urlKey]?.defaultScraper ?? "";
-    const scrapersInOrder = getScrapingFallbackOrder(
-      defaultScraper,
-      pageOptions && pageOptions.waitFor && pageOptions.waitFor > 0,
-      pageOptions &&
-        (pageOptions.screenshot || pageOptions.fullPageScreenshot) &&
-        (pageOptions.screenshot === true ||
-          pageOptions.fullPageScreenshot === true),
-      pageOptions && pageOptions.headers && pageOptions.headers !== undefined
-    );
+    const scrapersInOrder = getScrapingFallbackOrder(defaultScraper);
 
     for (const scraper of scrapersInOrder) {
       // If exists text coming from crawler, use it
@@ -285,6 +315,10 @@ export async function scrapeSingleUrl(
         },
         linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
       };
+    }
+
+    if (webhookUrl) {
+      await callWebhook(webhookUrl, document, webhookMetadata, scrapeId);
     }
 
     return document;
