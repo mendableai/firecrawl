@@ -123,7 +123,7 @@ function blocklistMiddleware(req: Request, res: Response, next: NextFunction) {
       return res.status(403).json({
         success: false,
         error:
-          "URL is blocked intentionally. Firecrawl currently does not support social media scraping due to policy restrictions.",
+          "URL is blocked intentionally. Firecrawl currently does not support scraping this site due to policy restrictions.",
       });
     }
   }
