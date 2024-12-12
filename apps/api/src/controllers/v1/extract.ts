@@ -20,7 +20,7 @@ import { waitForJob } from "../../services/queue-jobs";
 import { addScrapeJob } from "../../services/queue-jobs";
 import { PlanType } from "../../types";
 import { getJobPriority } from "../../lib/job-priority";
-import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
+import { generateLLMCompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { getMapResults } from "./map";
 import { buildDocument } from "../../lib/extract/build-document";
@@ -232,8 +232,8 @@ export async function extractController(
     });
   }
 
-  const completions = await generateOpenAICompletions(
-    logger.child({ method: "extractController/generateOpenAICompletions" }),
+  const completions = await generateLLMCompletions(
+    logger.child({ method: "extractController/generateLLMCompletions" }),
     {
       mode: "llm",
       systemPrompt:
