@@ -5,7 +5,7 @@ import { Meta } from "..";
 export function extractMetadata(
   meta: Meta,
   html: string,
-): Document["metadata"] {
+): Partial<Document["metadata"]> {
   let title: string | undefined = undefined;
   let description: string | undefined = undefined;
   let language: string | undefined = undefined;

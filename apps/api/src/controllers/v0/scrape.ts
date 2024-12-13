@@ -8,7 +8,6 @@ import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
 import {
-  Document,
   fromLegacyCombo,
   toLegacyDocument,
   url as urlSchema,
@@ -29,6 +28,7 @@ import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
 import { fromLegacyScrapeOptions } from "../v1/types";
 import { ZodError } from "zod";
+import { Document as V0Document } from "./../../lib/entities";
 
 export async function scrapeHelper(
   jobId: string,
@@ -42,7 +42,7 @@ export async function scrapeHelper(
 ): Promise<{
   success: boolean;
   error?: string;
-  data?: Document | { url: string };
+  data?: V0Document | { url: string };
   returnCode: number;
 }> {
   const url = urlSchema.parse(req.body.url);
@@ -241,9 +241,9 @@ export async function scrapeController(req: Request, res: Response) {
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
     const numTokens =
-      result.data && (result.data as Document).markdown
+      result.data && (result.data as V0Document).markdown
         ? numTokensFromString(
-            (result.data as Document).markdown!,
+            (result.data as V0Document).markdown!,
             "gpt-3.5-turbo",
           )
         : 0;
@@ -276,14 +276,14 @@ export async function scrapeController(req: Request, res: Response) {
 
     let doc = result.data;
     if (!pageOptions || !pageOptions.includeRawHtml) {
-      if (doc && (doc as Document).rawHtml) {
-        delete (doc as Document).rawHtml;
+      if (doc && (doc as V0Document).rawHtml) {
+        delete (doc as V0Document).rawHtml;
       }
     }
 
     if (pageOptions && pageOptions.includeExtract) {
-      if (!pageOptions.includeMarkdown && doc && (doc as Document).markdown) {
-        delete (doc as Document).markdown;
+      if (!pageOptions.includeMarkdown && doc && (doc as V0Document).markdown) {
+        delete (doc as V0Document).markdown;
       }
     }
 

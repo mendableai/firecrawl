@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import {
-  // Document,
+  Document,
   RequestWithAuth,
   ExtractRequest,
   extractRequestSchema,
@@ -8,7 +8,7 @@ import {
   MapDocument,
   scrapeOptions,
 } from "./types";
-import { Document } from "../../lib/entities";
+// import { Document } from "../../lib/entities";
 import Redis from "ioredis";
 import { configDotenv } from "dotenv";
 import { performRanking } from "../../lib/ranker";
