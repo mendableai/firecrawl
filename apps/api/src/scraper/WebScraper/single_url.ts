@@ -42,7 +42,7 @@ export const callWebhook = async (
       break;
     } catch (error) {
       Logger.debug(
-        `Error sending webhook to ${webhookUrl} for scrape ID: ${scrapeId}, retry ${retryCount}`
+        `Error sending webhook to ${webhookUrl} for scrape ID: ${scrapeId}, retry ${retryCount}. Error: ${error}`
       );
     }
 
@@ -293,6 +293,7 @@ export async function scrapeSingleUrl(
           screenshot: screenshot,
           sourceURL: urlToScrape,
           pageStatusCode: pageStatusCode,
+          statusCode: pageStatusCode,
           pageError: pageError,
         },
       };
@@ -309,6 +310,7 @@ export async function scrapeSingleUrl(
           ...metadata,
           sourceURL: urlToScrape,
           pageStatusCode: pageStatusCode,
+          statusCode: pageStatusCode,
           pageError: pageError,
         },
         linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
