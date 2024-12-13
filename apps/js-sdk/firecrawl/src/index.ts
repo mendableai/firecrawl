@@ -157,6 +157,7 @@ export interface CrawlParams {
   webhook?: string | {
     url: string;
     headers?: Record<string, string>;
+    metadata?: Record<string, string>;
   };
   deduplicateSimilarURLs?: boolean;
   ignoreQueryParameters?: boolean;
