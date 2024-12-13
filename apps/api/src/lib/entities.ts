@@ -13,7 +13,6 @@ export interface Progress {
 export type PageOptions = {
   includeMarkdown?: boolean;
   includeExtract?: boolean;
-  includeHtml?: boolean;
   includeRawHtml?: boolean;
   fallback?: boolean;
   fetchPageContent?: boolean;

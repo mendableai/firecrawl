@@ -3,7 +3,6 @@ export const defaultOrigin = "api";
 export const defaultTimeout = 60000; // 60 seconds
 
 export const defaultPageOptions = {
-  includeHtml: false,
   waitFor: 0,
   screenshot: false,
   fullPageScreenshot: false,
@@ -15,7 +14,6 @@ export const defaultCrawlerOptions = {
 }
 
 export const defaultCrawlPageOptions = {
-  includeHtml: false,
   removeTags: [],
   parsePDF: true
 }

@@ -106,35 +106,6 @@ describe("E2E Tests for v1 API Routes", () => {
         expect(response.body.data.metadata.statusCode).toBe(200);
       },
       30000
-    ); // 30 seconds timeout
-    it.concurrent(
-      "should return a successful response with a valid API key and includeHtml set to true",
-      async () => {
-        const scrapeRequest: ScrapeRequest = {
-          url: "https://roastmywebsite.ai",
-          formats: ["markdown", "rawHtml"],
-        };
-
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
-          .post("/v1/scrape")
-          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-          .set("Content-Type", "application/json")
-          .send(scrapeRequest);
-        
-        expect(response.statusCode).toBe(200);
-        expect(response.body).toHaveProperty("data");
-        if (!("data" in response.body)) {
-          throw new Error("Expected response body to have 'data' property");
-        }
-        expect(response.body.data).toHaveProperty("markdown");
-        expect(response.body.data).toHaveProperty("html");
-        expect(response.body.data).toHaveProperty("metadata");
-        expect(response.body.data.markdown).toContain("_Roast_");
-        expect(response.body.data.html).toContain("<h1");
-        expect(response.body.data.metadata.statusCode).toBe(200);
-        expect(response.body.data.metadata.error).toBeUndefined();
-      },
-      30000
     );
     it.concurrent('should return a successful response for a valid scrape with PDF file', async () => {
         const scrapeRequest: ScrapeRequest = {
@@ -343,37 +314,6 @@ describe("E2E Tests for v1 API Routes", () => {
   
         expect(response.statusCode).toBe(408);
       }, 3000);
-
-      it.concurrent(
-        "should return a successful response with a valid API key and includeHtml set to true",
-        async () => {
-          const scrapeRequest: ScrapeRequest = {
-            url: "https://roastmywebsite.ai",
-            formats: ["rawHtml"],
-          };
-  
-          const response: ScrapeResponseRequestTest = await request(TEST_URL)
-            .post("/v1/scrape")
-            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-            .set("Content-Type", "application/json")
-            .send(scrapeRequest);
-          
-          expect(response.statusCode).toBe(200);
-          expect(response.body).toHaveProperty("data");
-          if (!("data" in response.body)) {
-            throw new Error("Expected response body to have 'data' property");
-          }
-          expect(response.body.data).not.toHaveProperty("markdown");
-          expect(response.body.data).toHaveProperty("html");
-          expect(response.body.data).toHaveProperty("rawHtml");
-          expect(response.body.data).toHaveProperty("metadata");
-          expect(response.body.data.html).toContain("<h1");
-          expect(response.body.data.rawHtml).toContain("<html");
-          expect(response.body.data.metadata.statusCode).toBe(200);
-          expect(response.body.data.metadata.error).toBeUndefined();
-        },
-        30000
-      );
 
       it.concurrent(
         "should return a successful response with waitFor",

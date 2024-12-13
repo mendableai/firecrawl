@@ -100,12 +100,6 @@ export async function scrapeHelper(
   delete doc.index;
   delete doc.provider;
 
-  if (!pageOptions.includeHtml) {
-    if (doc.html) {
-      delete doc.html;
-    }
-  }
-
   return {
     success: true,
     data: doc,
@@ -132,7 +126,6 @@ export async function scrapeController(req: Request, res: Response) {
 
     const jobId = uuidv4();
 
-    const startTime = new Date().getTime();
     const result = await scrapeHelper(
       jobId,
       req,

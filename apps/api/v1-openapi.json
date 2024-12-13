@@ -724,11 +724,6 @@
                 "markdown": {
                   "type": "string"
                 },
-                "html": {
-                  "type": "string",
-                  "nullable": true,
-                  "description": "HTML version of the content on page if `includeHtml`  is true"
-                },
                 "rawHtml": {
                   "type": "string",
                   "nullable": true,

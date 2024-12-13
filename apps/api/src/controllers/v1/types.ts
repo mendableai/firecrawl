@@ -4,14 +4,7 @@ import { PageOptions } from "../../lib/entities";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { PlanType } from "../../types";
 
-export type Format =
-  | "markdown"
-  | "html"
-  | "rawHtml"
-  | "links"
-  | "screenshot"
-  | "screenshot@fullPage"
-  | "extract";
+export type Format = "markdown" | "rawHtml" | "screenshot";
 
 export const url = z.preprocess(
   (x) => {

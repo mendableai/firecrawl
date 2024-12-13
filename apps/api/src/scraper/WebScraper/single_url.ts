@@ -123,7 +123,6 @@ export async function scrapeSingleUrl(
   pageOptions = {
     includeMarkdown: pageOptions.includeMarkdown ?? true,
     includeExtract: pageOptions.includeExtract ?? false,
-    includeHtml: pageOptions.includeHtml ?? false,
     includeRawHtml: pageOptions.includeRawHtml ?? false,
     waitFor: pageOptions.waitFor ?? undefined,
     screenshot: pageOptions.screenshot ?? false,
@@ -179,8 +178,6 @@ export async function scrapeSingleUrl(
 
     let cleanedHtml = removeUnwantedElements(scraperResponse.text, pageOptions);
     const text = await parseMarkdown(cleanedHtml);
-
-    // TODO: call webhook here
 
     return {
       text,
@@ -285,8 +282,8 @@ export async function scrapeSingleUrl(
           pageOptions.includeMarkdown || pageOptions.includeExtract
             ? text
             : undefined,
-        html: pageOptions.includeHtml ? html : undefined,
-        rawHtml: rawHtml,
+        html: pageOptions.includeRawHtml ? html : undefined,
+        rawHtml: pageOptions.includeRawHtml ? rawHtml : undefined,
         linksOnPage: pageOptions.includeLinks ? linksOnPage : undefined,
         metadata: {
           ...metadata,
@@ -304,8 +301,8 @@ export async function scrapeSingleUrl(
           pageOptions.includeMarkdown || pageOptions.includeExtract
             ? text
             : undefined,
-        html: pageOptions.includeHtml ? html : undefined,
-        rawHtml: rawHtml,
+        html: pageOptions.includeRawHtml ? html : undefined,
+        rawHtml: pageOptions.includeRawHtml ? rawHtml : undefined,
         metadata: {
           ...metadata,
           sourceURL: urlToScrape,

@@ -298,7 +298,6 @@ export class WebCrawler {
           url,
           {
             ...pageOptions,
-            includeHtml: true,
             includeRawHtml: true,
           },
           webhookUrl,

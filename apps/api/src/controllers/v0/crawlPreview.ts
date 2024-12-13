@@ -43,7 +43,6 @@ export async function crawlPreviewController(req: Request, res: Response) {
 
     const crawlerOptions = req.body.crawlerOptions ?? {};
     const pageOptions = req.body.pageOptions ?? {
-      includeHtml: false,
       removeTags: [],
     };
 

@@ -224,7 +224,7 @@ export class WebScraperDataProvider {
     });
     return links.map((url) => ({
       content: "",
-      html: this.pageOptions?.includeHtml ? "" : undefined,
+      html: this.pageOptions?.includeRawHtml ? "" : undefined,
       markdown: "",
       metadata: { sourceURL: url, pageStatusCode: 200 },
     }));
@@ -264,12 +264,6 @@ export class WebScraperDataProvider {
 
     if (this.pageOptions.includeMarkdown) {
       documents = this.applyPathReplacements(documents);
-    }
-
-    if (!this.pageOptions.includeHtml) {
-      for (let document of documents) {
-        delete document.html;
-      }
     }
 
     return documents;
@@ -449,7 +443,6 @@ export class WebScraperDataProvider {
     this.returnOnlyUrls = options.crawlerOptions?.returnOnlyUrls ?? false;
     this.limit = options.crawlerOptions?.limit ?? 10000;
     this.pageOptions = {
-      includeHtml: options.pageOptions?.includeHtml ?? false,
       replaceAllPathsWithAbsolutePaths:
         options.pageOptions?.replaceAllPathsWithAbsolutePaths ?? true,
       parsePDF: options.pageOptions?.parsePDF ?? true,
