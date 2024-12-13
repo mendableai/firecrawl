@@ -396,7 +396,7 @@ export type Document = {
     articleSection?: string;
     url?: string;
     sourceURL?: string;
-    statusCode?: number;
+    statusCode: number;
     error?: string;
     [key: string]: string | string[] | number | undefined;
   };
