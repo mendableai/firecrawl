@@ -462,7 +462,7 @@ export default class FirecrawlApp {
           let statusData = response.data
           if ("data" in statusData) {
             let data = statusData.data;
-            while ('next' in statusData) {
+            while (typeof statusData === 'object' && 'next' in statusData) {
               statusData = (await this.getRequest(statusData.next, headers)).data;
               data = data.concat(statusData.data);
             }
@@ -691,7 +691,7 @@ export default class FirecrawlApp {
           let statusData = response.data
           if ("data" in statusData) {
             let data = statusData.data;
-            while ('next' in statusData) {
+            while (typeof statusData === 'object' && 'next' in statusData) {
               statusData = (await this.getRequest(statusData.next, headers)).data;
               data = data.concat(statusData.data);
             }
@@ -850,42 +850,46 @@ export default class FirecrawlApp {
     headers: AxiosRequestHeaders,
     checkInterval: number
   ): Promise<CrawlStatusResponse | ErrorResponse> {
-    while (true) {
-      let statusResponse: AxiosResponse = await this.getRequest(
-        `${this.apiUrl}/v1/crawl/${id}`,
-        headers
-      );
-      if (statusResponse.status === 200) {
-        let statusData = statusResponse.data;
-          if (statusData.status === "completed") {
-            if ("data" in statusData) {
-              let data = statusData.data;
-              while ('next' in statusData) {
-                statusResponse = await this.getRequest(statusData.next, headers);
-                statusData = statusResponse.data;
-                data = data.concat(statusData.data);
+    try {
+      while (true) {
+        let statusResponse: AxiosResponse = await this.getRequest(
+          `${this.apiUrl}/v1/crawl/${id}`,
+          headers
+        );
+        if (statusResponse.status === 200) {
+          let statusData = statusResponse.data;
+            if (statusData.status === "completed") {
+              if ("data" in statusData) {
+                let data = statusData.data;
+                while (typeof statusData === 'object' && 'next' in statusData) {
+                  statusResponse = await this.getRequest(statusData.next, headers);
+                  statusData = statusResponse.data;
+                  data = data.concat(statusData.data);
+                }
+                statusData.data = data;
+                return statusData;
+              } else {
+                throw new FirecrawlError("Crawl job completed but no data was returned", 500);
               }
-              statusData.data = data;
-              return statusData;
-            } else {
-              throw new FirecrawlError("Crawl job completed but no data was returned", 500);
-            }
-          } else if (
-          ["active", "paused", "pending", "queued", "waiting", "scraping"].includes(statusData.status)
-        ) {
-          checkInterval = Math.max(checkInterval, 2);
-          await new Promise((resolve) =>
-            setTimeout(resolve, checkInterval * 1000)
-          );
+            } else if (
+            ["active", "paused", "pending", "queued", "waiting", "scraping"].includes(statusData.status)
+          ) {
+            checkInterval = Math.max(checkInterval, 2);
+            await new Promise((resolve) =>
+              setTimeout(resolve, checkInterval * 1000)
+            );
+          } else {
+            throw new FirecrawlError(
+              `Crawl job failed or was stopped. Status: ${statusData.status}`,
+              500
+            );
+          }
         } else {
-          throw new FirecrawlError(
-            `Crawl job failed or was stopped. Status: ${statusData.status}`,
-            500
-          );
+          this.handleError(statusResponse, "check crawl status");
         }
-      } else {
-        this.handleError(statusResponse, "check crawl status");
       }
+    } catch (error: any) {
+      throw new FirecrawlError(error, 500);
     }
   }
 
