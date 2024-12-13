@@ -86,7 +86,7 @@ function buildFeatureFlags(
     flags.add("skipTlsVerification");
   }
 
-  if (internalOptions.v0UseFastMode) {
+  if (options.fastMode) {
     flags.add("useFastMode");
   }
 
@@ -148,7 +148,6 @@ export type InternalOptions = {
   atsv?: boolean; // anti-bot solver, beta
 
   v0CrawlOnlyUrls?: boolean;
-  v0UseFastMode?: boolean;
   v0DisableJsDom?: boolean;
 
   disableSmartWaitCache?: boolean; // Passed along to fire-engine
