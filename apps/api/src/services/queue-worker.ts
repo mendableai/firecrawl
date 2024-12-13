@@ -219,48 +219,7 @@ async function processJob(job: Job, token: string) {
         }
       }
 
-      if (await finishCrawl(job.data.crawl_id)) {
-        if (!job.data.v1) {
-          const jobIDs = await getCrawlJobs(job.data.crawl_id);
-
-          const jobs = (await getJobs(jobIDs)).sort(
-            (a, b) => a.timestamp - b.timestamp
-          );
-          const jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
-          const jobStatus =
-            sc.cancelled || jobStatuses.some((x) => x === "failed")
-              ? "failed"
-              : "completed";
-
-          const fullDocs = jobs.map((x) =>
-            Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue
-          );
-
-          const data = {
-            success: jobStatus !== "failed",
-            result: {
-              links: fullDocs.map((doc) => {
-                return {
-                  content: doc,
-                  source: doc?.metadata?.sourceURL ?? doc?.url ?? "",
-                };
-              }),
-            },
-            project_id: job.data.project_id,
-            error: message /* etc... */,
-            docs: fullDocs,
-          };
-        } else {
-          const jobIDs = await getCrawlJobs(job.data.crawl_id);
-          const jobStatuses = await Promise.all(
-            jobIDs.map((x) => getScrapeQueue().getJobState(x))
-          );
-          const jobStatus =
-            sc.cancelled || jobStatuses.some((x) => x === "failed")
-              ? "failed"
-              : "completed";
-        }
-      }
+      await finishCrawl(job.data.crawl_id)
     }
 
     Logger.info(`🐂 Job done ${job.id}`);

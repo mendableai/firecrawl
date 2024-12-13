@@ -110,6 +110,10 @@ export class WebScraperDataProvider {
 
   private async cleanIrrelevantPath(links: string[]) {
     return links.filter((link) => {
+      if (!link) {
+        return false;
+      }
+
       const normalizedInitialUrl = new URL(this.urls[0]);
       const normalizedLink = new URL(link);
 

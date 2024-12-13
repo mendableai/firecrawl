@@ -57,8 +57,6 @@ export async function mapController(
   req: RequestWithAuth<{}, MapResponse, MapRequest>,
   res: Response<MapResponse>
 ) {
-  const startTime = new Date().getTime();
-
   req.body = mapRequestSchema.parse(req.body);
 
   const limit: number = req.body.limit ?? 5000;
@@ -104,9 +102,7 @@ export async function mapController(
 
   links = removeDuplicateUrls(links);
 
-  const endTime = new Date().getTime();
-
-  const linksToReturn = links.slice(0, limit);
+  const linksToReturn = links.slice(0, limit).filter((x) => x !== null);
 
   return res.status(200).json({
     success: true,

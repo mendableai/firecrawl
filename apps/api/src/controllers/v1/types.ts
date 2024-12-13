@@ -280,7 +280,7 @@ export function legacyDocumentConverter(doc: any): Document {
 
   return {
     markdown: doc.markdown,
-    links: doc.linksOnPage,
+    links: doc.linksOnPage.filter((x: any) => x !== null),
     rawHtml: doc.rawHtml,
     html: doc.html,
     extract: doc.llm_extraction,
