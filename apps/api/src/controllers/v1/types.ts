@@ -182,6 +182,7 @@ export const scrapeOptions = z
       .optional(),
     skipTlsVerification: z.boolean().default(false),
     removeBase64Images: z.boolean().default(true),
+    fastMode: z.boolean().default(false),
   })
   .strict(strictMessage);
 
@@ -685,11 +686,11 @@ export function fromLegacyScrapeOptions(
             }
           : undefined,
       mobile: pageOptions.mobile,
+      fastMode: pageOptions.useFastMode,
     }),
     internalOptions: {
       atsv: pageOptions.atsv,
       v0DisableJsDom: pageOptions.disableJsDom,
-      v0UseFastMode: pageOptions.useFastMode,
     },
     // TODO: fallback, fetchPageContent, replaceAllPathsWithAbsolutePaths, includeLinks
   };
