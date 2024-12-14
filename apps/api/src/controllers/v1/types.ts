@@ -262,6 +262,31 @@ export const batchScrapeRequestSchema = scrapeOptions
     origin: z.string().optional().default("api"),
     webhook: webhookSchema.optional(),
     appendToId: z.string().uuid().optional(),
+    ignoreInvalidURLs: z.boolean().default(false),
+  })
+  .strict(strictMessage)
+  .refine(
+    (obj) => {
+      const hasExtractFormat = obj.formats?.includes("extract");
+      const hasExtractOptions = obj.extract !== undefined;
+      return (
+        (hasExtractFormat && hasExtractOptions) ||
+        (!hasExtractFormat && !hasExtractOptions)
+      );
+    },
+    {
+      message:
+        "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
+    },
+  );
+
+export const batchScrapeRequestSchemaNoURLValidation = scrapeOptions
+  .extend({
+    urls: z.string().array(),
+    origin: z.string().optional().default("api"),
+    webhook: webhookSchema.optional(),
+    appendToId: z.string().uuid().optional(),
+    ignoreInvalidURLs: z.boolean().default(false),
   })
   .strict(strictMessage)
   .refine(
@@ -444,6 +469,15 @@ export type CrawlResponse =
       success: true;
       id: string;
       url: string;
+    };
+
+export type BatchScrapeResponse =
+  | ErrorResponse
+  | {
+      success: true;
+      id: string;
+      url: string;
+      invalidURLs?: string[];
     };
 
 export type MapResponse =

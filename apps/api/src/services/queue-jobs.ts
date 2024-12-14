@@ -108,6 +108,7 @@ export async function addScrapeJobs(
     };
   }[],
 ) {
+  if (jobs.length === 0) return true;
   // TODO: better
   await Promise.all(
     jobs.map((job) =>

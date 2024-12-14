@@ -60,6 +60,8 @@ export async function addCrawlJob(id: string, job_id: string) {
 }
 
 export async function addCrawlJobs(id: string, job_ids: string[]) {
+  if (job_ids.length === 0) return true;
+
   _logger.debug("Adding crawl jobs to Redis...", {
     jobIds: job_ids,
     module: "crawl-redis",
@@ -261,6 +263,8 @@ export async function lockURLs(
   sc: StoredCrawl,
   urls: string[],
 ): Promise<boolean> {
+  if (urls.length === 0) return true;
+
   urls = urls.map((url) => normalizeURL(url, sc));
   const logger = _logger.child({
     crawlId: id,

@@ -3,9 +3,11 @@ import { v4 as uuidv4 } from "uuid";
 import {
   BatchScrapeRequest,
   batchScrapeRequestSchema,
-  CrawlResponse,
+  batchScrapeRequestSchemaNoURLValidation,
+  url as urlSchema,
   RequestWithAuth,
   ScrapeOptions,
+  BatchScrapeResponse,
 } from "./types";
 import {
   addCrawlJobs,
@@ -21,10 +23,14 @@ import { callWebhook } from "../../services/webhook";
 import { logger as _logger } from "../../lib/logger";
 
 export async function batchScrapeController(
-  req: RequestWithAuth<{}, CrawlResponse, BatchScrapeRequest>,
-  res: Response<CrawlResponse>,
+  req: RequestWithAuth<{}, BatchScrapeResponse, BatchScrapeRequest>,
+  res: Response<BatchScrapeResponse>,
 ) {
-  req.body = batchScrapeRequestSchema.parse(req.body);
+  if (req.body?.ignoreInvalidURLs === true) {
+    req.body = batchScrapeRequestSchemaNoURLValidation.parse(req.body);
+  } else {
+    req.body = batchScrapeRequestSchema.parse(req.body);
+  }
 
   const id = req.body.appendToId ?? uuidv4();
   const logger = _logger.child({
@@ -35,8 +41,27 @@ export async function batchScrapeController(
     teamId: req.auth.team_id,
     plan: req.auth.plan,
   });
+
+  let urls = req.body.urls;
+  let invalidURLs: string[] | undefined = undefined;
+
+  if (req.body.ignoreInvalidURLs) {
+    invalidURLs = [];
+
+    let pendingURLs = urls;
+    urls = [];
+    for (const u of pendingURLs) {
+      try {
+        const nu = urlSchema.parse(u);
+        urls.push(nu);
+      } catch (_) {
+        invalidURLs.push(u);
+      }
+    }
+  }
+
   logger.debug("Batch scrape " + id + " starting", {
-    urlsLength: req.body.urls,
+    urlsLength: urls,
     appendToId: req.body.appendToId,
     account: req.account,
   });
@@ -70,7 +95,7 @@ export async function batchScrapeController(
 
   // If it is over 1000, we need to get the job priority,
   // otherwise we can use the default priority of 20
-  if (req.body.urls.length > 1000) {
+  if (urls.length > 1000) {
     // set base to 21
     jobPriority = await getJobPriority({
       plan: req.auth.plan,
@@ -84,7 +109,7 @@ export async function batchScrapeController(
   delete (scrapeOptions as any).urls;
   delete (scrapeOptions as any).appendToId;
 
-  const jobs = req.body.urls.map((x) => {
+  const jobs = urls.map((x) => {
     return {
       data: {
         url: x,
@@ -140,5 +165,6 @@ export async function batchScrapeController(
     success: true,
     id,
     url: `${protocol}://${req.get("host")}/v1/batch/scrape/${id}`,
+    invalidURLs,
   });
 }
