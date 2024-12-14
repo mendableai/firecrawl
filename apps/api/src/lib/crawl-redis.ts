@@ -232,8 +232,8 @@ export async function lockURL(
 
   if (!res) return res;
 
-  return await redlock.using(["crawl:" + id + ":visited_unique:lock"], 1000, {}, async () => {
-    if (typeof sc.crawlerOptions?.limit === "number") {
+  if (typeof sc.crawlerOptions?.limit === "number") {
+    return await redlock.using(["crawl:" + id + ":visited_unique:lock"], 1000, {}, async () => {
       if (
         (await redisConnection.scard("crawl:" + id + ":visited_unique")) >=
         sc.crawlerOptions.limit
@@ -243,73 +243,86 @@ export async function lockURL(
         );
         return false;
       }
-    }
 
-    url = normalizeURL(url, sc);
-    logger = logger.child({ url });
+      url = normalizeURL(url, sc);
+      logger = logger.child({ url });
 
-    await redisConnection.sadd("crawl:" + id + ":visited_unique", url);
-    await redisConnection.expire(
-      "crawl:" + id + ":visited_unique",
-      24 * 60 * 60,
-      "NX",
-    );
+      await redisConnection.sadd("crawl:" + id + ":visited_unique", url);
+      await redisConnection.expire(
+        "crawl:" + id + ":visited_unique",
+        24 * 60 * 60,
+        "NX",
+      );
 
-    logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
-      res,
+      logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
+        res,
+      });
+      return res;
     });
+  } else {
     return res;
-  });
+  }
 }
 
-/// NOTE: does not check limit. only use if limit is checked beforehand e.g. with sitemap
 export async function lockURLs(
   id: string,
   sc: StoredCrawl,
   urls: string[],
-): Promise<boolean> {
-  if (urls.length === 0) return true;
+): Promise<string[]> {
+  if (urls.length === 0) return [];
 
   urls = urls.map((url) => normalizeURL(url, sc));
-    const logger = _logger.child({
-      crawlId: id,
-      module: "crawl-redis",
-      method: "lockURL",
-      teamId: sc.team_id,
-      plan: sc.plan,
-    });
-
-  await redlock.using(["crawl:" + id + ":visited_unique:lock"], 1000, {}, async () => {
-    // Add to visited_unique set
-    logger.debug("Locking " + urls.length + " URLs...");
-    await redisConnection.sadd("crawl:" + id + ":visited_unique", ...urls);
-    await redisConnection.expire(
-      "crawl:" + id + ":visited_unique",
-      24 * 60 * 60,
-      "NX",
-    );
+  const logger = _logger.child({
+    crawlId: id,
+    module: "crawl-redis",
+    method: "lockURL",
+    teamId: sc.team_id,
+    plan: sc.plan,
   });
+  logger.debug("Locking " + urls.length + " URLs...");
 
-  let res: boolean;
-  if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
-    const x = await redisConnection.sadd("crawl:" + id + ":visited", ...urls);
-    res = x === urls.length;
-  } else {
-    const allPermutations = urls.flatMap((url) =>
-      generateURLPermutations(url).map((x) => x.href),
-    );
-    logger.debug("Adding " + allPermutations.length + " URL permutations...");
-    const x = await redisConnection.sadd(
-      "crawl:" + id + ":visited",
-      ...allPermutations,
-    );
-    res = x === allPermutations.length;
+  let goodURLs: string[] = [];
+
+  for (const url of urls) {
+    let res: boolean;
+    if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
+      res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0;
+    } else {
+      const permutations = generateURLPermutations(url).map((x) => x.href);
+      const x = await redisConnection.sadd(
+        "crawl:" + id + ":visited",
+        ...permutations,
+      );
+      res = x === permutations.length;
+    }
+
+    if (res) {
+      goodURLs.push(url);
+    }
   }
-
+  
   await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
 
-  logger.debug("lockURLs final result: " + res, { res });
-  return res;
+  
+
+  if (typeof sc.crawlerOptions?.limit === "number") {
+    await redlock.using(["crawl:" + id + ":visited_unique:lock"], 1000, {}, async () => {
+      const current = await redisConnection.scard("crawl:" + id + ":visited_unique");
+      const remaining = Math.max(sc.crawlerOptions.limit - current, 0);
+
+      goodURLs = goodURLs.slice(0, remaining);
+
+      await redisConnection.sadd("crawl:" + id + ":visited_unique", ...goodURLs);
+      await redisConnection.expire(
+        "crawl:" + id + ":visited_unique",
+        24 * 60 * 60,
+        "NX",
+      );
+    });
+  }
+
+  logger.debug("lockURLs final result: " + goodURLs.length);
+  return goodURLs;
 }
 
 export function crawlToCrawler(

@@ -24,6 +24,7 @@ import {
   getCrawl,
   getCrawlJobs,
   lockURL,
+  lockURLs,
   normalizeURL,
 } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
@@ -553,58 +554,54 @@ async function processJob(job: Job & { id: string }, token: string) {
             linksLength: links.length,
           });
 
-          for (const link of links) {
-            if (await lockURL(job.data.crawl_id, sc, link)) {
-              // This seems to work really welel
-              const jobPriority = await getJobPriority({
-                plan: sc.plan as PlanType,
+          const lockedLinks = await lockURLs(job.data.crawl_id, sc, links);
+
+          for (const link of lockedLinks) {
+            // This seems to work really well
+            const jobPriority = await getJobPriority({
+              plan: sc.plan as PlanType,
+              team_id: sc.team_id,
+              basePriority: job.data.crawl_id ? 20 : 10,
+            });
+            const jobId = uuidv4();
+
+            logger.debug(
+              "Determined job priority " +
+                jobPriority +
+                " for URL " +
+                JSON.stringify(link),
+              { jobPriority, url: link },
+            );
+
+            // console.log("plan: ",  sc.plan);
+            // console.log("team_id: ", sc.team_id)
+            // console.log("base priority: ", job.data.crawl_id ? 20 : 10)
+            // console.log("job priority: " , jobPriority, "\n\n\n")
+
+            await addScrapeJob(
+              {
+                url: link,
+                mode: "single_urls",
                 team_id: sc.team_id,
-                basePriority: job.data.crawl_id ? 20 : 10,
-              });
-              const jobId = uuidv4();
+                scrapeOptions: scrapeOptions.parse(sc.scrapeOptions),
+                internalOptions: sc.internalOptions,
+                plan: job.data.plan,
+                origin: job.data.origin,
+                crawl_id: job.data.crawl_id,
+                webhook: job.data.webhook,
+                v1: job.data.v1,
+              },
+              {},
+              jobId,
+              jobPriority,
+            );
 
-              logger.debug(
-                "Determined job priority " +
-                  jobPriority +
-                  " for URL " +
-                  JSON.stringify(link),
-                { jobPriority, url: link },
-              );
-
-              // console.log("plan: ",  sc.plan);
-              // console.log("team_id: ", sc.team_id)
-              // console.log("base priority: ", job.data.crawl_id ? 20 : 10)
-              // console.log("job priority: " , jobPriority, "\n\n\n")
-
-              await addScrapeJob(
-                {
-                  url: link,
-                  mode: "single_urls",
-                  team_id: sc.team_id,
-                  scrapeOptions: scrapeOptions.parse(sc.scrapeOptions),
-                  internalOptions: sc.internalOptions,
-                  plan: job.data.plan,
-                  origin: job.data.origin,
-                  crawl_id: job.data.crawl_id,
-                  webhook: job.data.webhook,
-                  v1: job.data.v1,
-                },
-                {},
-                jobId,
-                jobPriority,
-              );
-
-              await addCrawlJob(job.data.crawl_id, jobId);
-              logger.debug("Added job for URL " + JSON.stringify(link), {
-                jobPriority,
-                url: link,
-                newJobId: jobId,
-              });
-            } else {
-              logger.debug("Could not lock URL " + JSON.stringify(link), {
-                url: link,
-              });
-            }
+            await addCrawlJob(job.data.crawl_id, jobId);
+            logger.debug("Added job for URL " + JSON.stringify(link), {
+              jobPriority,
+              url: link,
+              newJobId: jobId,
+            });
           }
         }
       }
