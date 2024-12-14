@@ -312,7 +312,10 @@ export async function lockURLs(
 
       goodURLs = goodURLs.slice(0, remaining);
 
-      await redisConnection.sadd("crawl:" + id + ":visited_unique", ...goodURLs);
+      if (goodURLs.length > 0) {
+        await redisConnection.sadd("crawl:" + id + ":visited_unique", ...goodURLs);
+      }
+
       await redisConnection.expire(
         "crawl:" + id + ":visited_unique",
         24 * 60 * 60,
