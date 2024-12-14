@@ -215,7 +215,24 @@ export async function lockURL(
     plan: sc.plan,
   });
 
-  const rRes: boolean | undefined = await redlock.using(["crawl:" + id + ":visited_unique:lock"], 1000, {}, async () => {
+  let res: boolean;
+  if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
+    res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0;
+  } else {
+    const permutations = generateURLPermutations(url).map((x) => x.href);
+    // logger.debug("Adding URL permutations for URL " + JSON.stringify(url) + "...", { permutations });
+    const x = await redisConnection.sadd(
+      "crawl:" + id + ":visited",
+      ...permutations,
+    );
+    res = x === permutations.length;
+  }
+
+  await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
+
+  if (!res) return res;
+
+  return await redlock.using(["crawl:" + id + ":visited_unique:lock"], 1000, {}, async () => {
     if (typeof sc.crawlerOptions?.limit === "number") {
       if (
         (await redisConnection.scard("crawl:" + id + ":visited_unique")) >=
@@ -238,30 +255,11 @@ export async function lockURL(
       "NX",
     );
 
-    return undefined;
+    logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
+      res,
+    });
+    return res;
   });
-
-  if (rRes !== undefined) return rRes;
-
-  let res: boolean;
-  if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
-    res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0;
-  } else {
-    const permutations = generateURLPermutations(url).map((x) => x.href);
-    // logger.debug("Adding URL permutations for URL " + JSON.stringify(url) + "...", { permutations });
-    const x = await redisConnection.sadd(
-      "crawl:" + id + ":visited",
-      ...permutations,
-    );
-    res = x === permutations.length;
-  }
-
-  await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
-
-  logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
-    res,
-  });
-  return res;
 }
 
 /// NOTE: does not check limit. only use if limit is checked beforehand e.g. with sitemap
