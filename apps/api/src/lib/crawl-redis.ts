@@ -4,6 +4,7 @@ import { WebCrawler } from "../scraper/WebScraper/crawler";
 import { redisConnection } from "../services/queue-service";
 import { logger as _logger } from "./logger";
 import { getAdjustedMaxDepth } from "../scraper/WebScraper/utils/maxDepthUtils";
+import { redlock } from "../services/redlock";
 
 export type StoredCrawl = {
   originUrl?: string;
@@ -214,27 +215,33 @@ export async function lockURL(
     plan: sc.plan,
   });
 
-  if (typeof sc.crawlerOptions?.limit === "number") {
-    if (
-      (await redisConnection.scard("crawl:" + id + ":visited_unique")) >=
-      sc.crawlerOptions.limit
-    ) {
-      logger.debug(
-        "Crawl has already hit visited_unique limit, not locking URL.",
-      );
-      return false;
+  const rRes: boolean | undefined = await redlock.using(["crawl:" + id + ":visited_unique:lock"], 30000, { retryCount: 5 }, async () => {
+    if (typeof sc.crawlerOptions?.limit === "number") {
+      if (
+        (await redisConnection.scard("crawl:" + id + ":visited_unique")) >=
+        sc.crawlerOptions.limit
+      ) {
+        logger.debug(
+          "Crawl has already hit visited_unique limit, not locking URL.",
+        );
+        return false;
+      }
     }
-  }
 
-  url = normalizeURL(url, sc);
-  logger = logger.child({ url });
+    url = normalizeURL(url, sc);
+    logger = logger.child({ url });
 
-  await redisConnection.sadd("crawl:" + id + ":visited_unique", url);
-  await redisConnection.expire(
-    "crawl:" + id + ":visited_unique",
-    24 * 60 * 60,
-    "NX",
-  );
+    await redisConnection.sadd("crawl:" + id + ":visited_unique", url);
+    await redisConnection.expire(
+      "crawl:" + id + ":visited_unique",
+      24 * 60 * 60,
+      "NX",
+    );
+
+    return undefined;
+  });
+
+  if (rRes !== undefined) return rRes;
 
   let res: boolean;
   if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
@@ -266,22 +273,24 @@ export async function lockURLs(
   if (urls.length === 0) return true;
 
   urls = urls.map((url) => normalizeURL(url, sc));
-  const logger = _logger.child({
-    crawlId: id,
-    module: "crawl-redis",
-    method: "lockURL",
-    teamId: sc.team_id,
-    plan: sc.plan,
-  });
+    const logger = _logger.child({
+      crawlId: id,
+      module: "crawl-redis",
+      method: "lockURL",
+      teamId: sc.team_id,
+      plan: sc.plan,
+    });
 
-  // Add to visited_unique set
-  logger.debug("Locking " + urls.length + " URLs...");
-  await redisConnection.sadd("crawl:" + id + ":visited_unique", ...urls);
-  await redisConnection.expire(
-    "crawl:" + id + ":visited_unique",
-    24 * 60 * 60,
-    "NX",
-  );
+  await redlock.using(["crawl:" + id + ":visited_unique:lock"], 30000, { retryCount: 5 }, async () => {
+    // Add to visited_unique set
+    logger.debug("Locking " + urls.length + " URLs...");
+    await redisConnection.sadd("crawl:" + id + ":visited_unique", ...urls);
+    await redisConnection.expire(
+      "crawl:" + id + ":visited_unique",
+      24 * 60 * 60,
+      "NX",
+    );
+  });
 
   let res: boolean;
   if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
