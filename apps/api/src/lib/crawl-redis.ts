@@ -215,7 +215,7 @@ export async function lockURL(
     plan: sc.plan,
   });
 
-  const rRes: boolean | undefined = await redlock.using(["crawl:" + id + ":visited_unique:lock"], 30000, { retryCount: 5 }, async () => {
+  const rRes: boolean | undefined = await redlock.using(["crawl:" + id + ":visited_unique:lock"], 5000, {}, async () => {
     if (typeof sc.crawlerOptions?.limit === "number") {
       if (
         (await redisConnection.scard("crawl:" + id + ":visited_unique")) >=
@@ -281,7 +281,7 @@ export async function lockURLs(
       plan: sc.plan,
     });
 
-  await redlock.using(["crawl:" + id + ":visited_unique:lock"], 30000, { retryCount: 5 }, async () => {
+  await redlock.using(["crawl:" + id + ":visited_unique:lock"], 5000, {}, async () => {
     // Add to visited_unique set
     logger.debug("Locking " + urls.length + " URLs...");
     await redisConnection.sadd("crawl:" + id + ":visited_unique", ...urls);
