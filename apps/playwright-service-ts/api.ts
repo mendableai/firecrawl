@@ -196,7 +196,7 @@ app.post('/scrape', async (req: Request, res: Response) => {
     }
   }
 
-  const pageError = pageStatusCode !== 200 ? getError(pageStatusCode) : false;
+  const pageError = pageStatusCode !== 200 ? getError(pageStatusCode) : undefined;
 
   if (!pageError) {
     console.log(`✅ Scrape successful!`);
@@ -209,7 +209,7 @@ app.post('/scrape', async (req: Request, res: Response) => {
   res.json({
     content: pageContent,
     pageStatusCode,
-    pageError
+    ...(pageError && { pageError })
   });
 });
 
