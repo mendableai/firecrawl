@@ -2,7 +2,6 @@ import { logger } from "../../../lib/logger";
 import * as Sentry from "@sentry/node";
 import { Request, Response } from "express";
 
-
 export async function checkFireEngine(req: Request, res: Response) {
   try {
     if (!process.env.FIRE_ENGINE_BETA_URL) {
@@ -17,17 +16,20 @@ export async function checkFireEngine(req: Request, res: Response) {
     const timeout = setTimeout(() => controller.abort(), 30000);
 
     try {
-      const response = await fetch(`${process.env.FIRE_ENGINE_BETA_URL}/scrape`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "X-Disable-Cache": "true",
+      const response = await fetch(
+        `${process.env.FIRE_ENGINE_BETA_URL}/scrape`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "X-Disable-Cache": "true",
+          },
+          body: JSON.stringify({
+            url: "https://example.com",
+          }),
+          signal: controller.signal,
         },
-        body: JSON.stringify({
-          url: "https://example.com",
-        }),
-        signal: controller.signal,
-      });
+      );
 
       clearTimeout(timeout);
 
@@ -43,7 +45,7 @@ export async function checkFireEngine(req: Request, res: Response) {
         });
       }
     } catch (error) {
-      if (error.name === 'AbortError') {
+      if (error.name === "AbortError") {
         return res.status(504).json({
           success: false,
           error: "Request timed out after 30 seconds",

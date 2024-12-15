@@ -10,7 +10,7 @@ function encryptAES(plaintext: string, key: Buffer): string {
   const cipher = crypto.createCipheriv(algorithm, key, null);
   const encrypted = Buffer.concat([
     cipher.update(plaintext, "utf-8"),
-    cipher.final()
+    cipher.final(),
   ]);
   return encrypted.toString("base64");
 }
@@ -68,7 +68,10 @@ const urlBlocklist = [
   "l8GDVI8w/ueHnNzdN1ODuQ==",
 ];
 
-const decryptedBlocklist = hashKey.length > 0 ? urlBlocklist.map((ciphertext) => decryptAES(ciphertext, hashKey)) : [];
+const decryptedBlocklist =
+  hashKey.length > 0
+    ? urlBlocklist.map((ciphertext) => decryptAES(ciphertext, hashKey))
+    : [];
 
 const allowedKeywords = [
   "pulse",
