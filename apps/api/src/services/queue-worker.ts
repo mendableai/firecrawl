@@ -391,22 +391,21 @@ async function processJob(job: Job & { id: string }, token: string) {
 
   // Check if the job URL is researchhub and block it immediately
   // TODO: remove this once solve the root issue
-  if (
-    job.data.url &&
-    (job.data.url.includes("researchhub.com") ||
-      job.data.url.includes("ebay.com") ||
-      job.data.url.includes("youtube.com"))
-  ) {
-    logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
-    const data = {
-      success: false,
-      document: null,
-      project_id: job.data.project_id,
-      error:
-        "URL is blocked. Suspecious activity detected. Please contact help@firecrawl.com if you believe this is an error.",
-    };
-    return data;
-  }
+  // if (
+  //   job.data.url &&
+  //   (job.data.url.includes("researchhub.com") ||
+  //     job.data.url.includes("ebay.com"))
+  // ) {
+  //   logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
+  //   const data = {
+  //     success: false,
+  //     document: null,
+  //     project_id: job.data.project_id,
+  //     error:
+  //       "URL is blocked. Suspecious activity detected. Please contact help@firecrawl.com if you believe this is an error.",
+  //   };
+  //   return data;
+  // }
 
   try {
     job.updateProgress({

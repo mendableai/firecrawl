@@ -6,6 +6,15 @@ configDotenv();
 const hashKey = Buffer.from(process.env.HASH_KEY || "", "utf-8");
 const algorithm = "aes-256-ecb";
 
+function encryptAES(plaintext: string, key: Buffer): string {
+  const cipher = crypto.createCipheriv(algorithm, key, null);
+  const encrypted = Buffer.concat([
+    cipher.update(plaintext, "utf-8"),
+    cipher.final()
+  ]);
+  return encrypted.toString("base64");
+}
+
 function decryptAES(ciphertext: string, key: Buffer): string {
   const decipher = crypto.createDecipheriv(algorithm, key, null);
   const decrypted = Buffer.concat([
@@ -42,6 +51,21 @@ const urlBlocklist = [
   "PTbGg8PK/h0Seyw4HEpK4Q==",
   "lZdQMknjHb7+4+sjF3qNTw==",
   "LsgSq54q5oDysbva29JxnQ==",
+  "KZfBtpwjOpdSoqacRbz7og==",
+  "Indtl4yxJMHCKBGF4KABCQ==",
+  "e3HFXLVgxhaVoadYpwb2BA==",
+  "b+asgLayXQ5Jq+se+q56jA==",
+  "86ZDUI7vmp4MvNq3fvZrGQ==",
+  "sEGFoYZ6GEg4Zocd+TiyfQ==",
+  "6OOL72eXthgnJ1Hj4PfOQQ==",
+  "g/ME+Sh1CAFboKrwkVb+5Q==",
+  "Pw+xawUoX8xBYbX2yqqGWQ==",
+  "k6vBalxYFhAvkPsF19t9gQ==",
+  "e3HFXLVgxhaVoadYpwb2BA==",
+  "b+asgLayXQ5Jq+se+q56jA==",
+  "KKttwRz4w+AMJrZcB828WQ==",
+  "vMdzZ33BXoyWVZnAPOBcrg==",
+  "l8GDVI8w/ueHnNzdN1ODuQ==",
 ];
 
 const decryptedBlocklist = hashKey.length > 0 ? urlBlocklist.map((ciphertext) => decryptAES(ciphertext, hashKey)) : [];
