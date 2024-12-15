@@ -18,8 +18,6 @@ import * as Sentry from "@sentry/node";
 import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 
-export const defaultTimeout = 10000;
-
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
 // `scrapeURLWithFireEngine*` functions.
@@ -31,7 +29,7 @@ async function performFireEngineScrape<
 >(
   logger: Logger,
   request: FireEngineScrapeRequestCommon & Engine,
-  timeout = defaultTimeout,
+  timeout: number,
 ): Promise<FireEngineCheckStatusSuccess> {
   const scrape = await fireEngineScrape(
     logger.child({ method: "fireEngineScrape" }),
@@ -51,11 +49,7 @@ async function performFireEngineScrape<
       });
     }
 
-    const userParam = request.timeout ?? 0;
-    // Use 70% of the user-provided timeout as the timeout for fire-engine check status
-    const fireEngineTimeout = timeout + Math.round(userParam * 0.7);
-    const fullTimeout = Math.max(fireEngineTimeout, timeout);
-    if (Date.now() - startTime > fullTimeout) {
+    if (Date.now() - startTime > timeout) {
       logger.info(
         "Fire-engine was unable to scrape the page before timing out.",
         { errors, timeout },
@@ -98,6 +92,7 @@ async function performFireEngineScrape<
 
 export async function scrapeURLWithFireEngineChromeCDP(
   meta: Meta,
+  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
   const actions: Action[] = [
     // Transform waitFor option into an action (unsupported by chrome-cdp)
@@ -125,7 +120,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     ...(meta.options.actions ?? []),
   ];
   
-  const timeout = (meta.options.timeout === undefined ? 300000 : Math.round(meta.options.timeout / 3));
+  const timeout = timeToRun ?? 300000;
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestChromeCDP = {
@@ -212,8 +207,9 @@ export async function scrapeURLWithFireEngineChromeCDP(
 
 export async function scrapeURLWithFireEnginePlaywright(
   meta: Meta,
+  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  const timeout = meta.options.timeout === undefined ? 300000 : Math.round(meta.options.timeout / 3);
+  const timeout = timeToRun ?? 300000;
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestPlaywright = {
@@ -271,8 +267,9 @@ export async function scrapeURLWithFireEnginePlaywright(
 
 export async function scrapeURLWithFireEngineTLSClient(
   meta: Meta,
+  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  const timeout = meta.options.timeout === undefined ? 30000 : Math.round(meta.options.timeout / 3);
+  const timeout = timeToRun ?? 30000;
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestTLSClient = {

@@ -5,8 +5,9 @@ import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 
 export async function scrapeURLWithFetch(
   meta: Meta,
+  timeToRun: number | undefined
 ): Promise<EngineScrapeResult> {
-  const timeout = 20000;
+  const timeout = timeToRun ?? 300000;
 
   const response = await Promise.race([
     fetch(meta.url, {

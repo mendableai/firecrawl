@@ -105,7 +105,7 @@ export type EngineScrapeResult = {
 };
 
 const engineHandlers: {
-  [E in Engine]: (meta: Meta) => Promise<EngineScrapeResult>;
+  [E in Engine]: (meta: Meta, timeToRun: number | undefined) => Promise<EngineScrapeResult>;
 } = {
   cache: scrapeCache,
   "fire-engine;chrome-cdp": scrapeURLWithFireEngineChromeCDP,
@@ -372,6 +372,7 @@ export function buildFallbackList(meta: Meta): {
 export async function scrapeURLWithEngine(
   meta: Meta,
   engine: Engine,
+  timeToRun: number | undefined
 ): Promise<EngineScrapeResult> {
   const fn = engineHandlers[engine];
   const logger = meta.logger.child({
@@ -383,5 +384,5 @@ export async function scrapeURLWithEngine(
     logger,
   };
 
-  return await fn(_meta);
+  return await fn(_meta, timeToRun);
 }

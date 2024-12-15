@@ -15,6 +15,7 @@ type PDFProcessorResult = { html: string; markdown?: string };
 async function scrapePDFWithLlamaParse(
   meta: Meta,
   tempFilePath: string,
+  timeToRun: number | undefined,
 ): Promise<PDFProcessorResult> {
   meta.logger.debug("Processing PDF document with LlamaIndex", {
     tempFilePath,
@@ -63,8 +64,9 @@ async function scrapePDFWithLlamaParse(
 
   // TODO: timeout, retries
   const startedAt = Date.now();
+  const timeout = timeToRun ?? 300000;
 
-  while (Date.now() <= startedAt + (meta.options.timeout ?? 300000)) {
+  while (Date.now() <= startedAt + timeout) {
     try {
       const result = await robustFetch({
         url: `https://api.cloud.llamaindex.ai/api/parsing/job/${jobId}/result/markdown`,
@@ -122,7 +124,7 @@ async function scrapePDFWithParsePDF(
   };
 }
 
-export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
+export async function scrapePDF(meta: Meta, timeToRun: number | undefined): Promise<EngineScrapeResult> {
   if (!meta.options.parsePDF) {
     const file = await fetchFileToBuffer(meta.url);
     const content = file.buffer.toString("base64");
@@ -148,6 +150,7 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
           }),
         },
         tempFilePath,
+        timeToRun,
       );
     } catch (error) {
       if (error instanceof Error && error.message === "LlamaParse timed out") {

@@ -9,16 +9,17 @@ const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY!);
 
 export function scrapeURLWithScrapingBee(
   wait_browser: "domcontentloaded" | "networkidle2",
-): (meta: Meta) => Promise<EngineScrapeResult> {
-  return async (meta: Meta): Promise<EngineScrapeResult> => {
+): (meta: Meta, timeToRun: number | undefined) => Promise<EngineScrapeResult> {
+  return async (meta: Meta, timeToRun: number | undefined): Promise<EngineScrapeResult> => {
     let response: AxiosResponse<any>;
+    const timeout = (timeToRun ?? 300000) + meta.options.waitFor;
     try {
       response = await client.get({
         url: meta.url,
         params: {
-          timeout: 15000, // TODO: dynamic timeout based on request timeout
+          timeout,
           wait_browser: wait_browser,
-          wait: Math.min(meta.options.waitFor, 35000),
+          wait: meta.options.waitFor,
           transparent_status_code: true,
           json_response: true,
           screenshot: meta.options.formats.includes("screenshot"),
