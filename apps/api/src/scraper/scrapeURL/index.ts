@@ -202,11 +202,15 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   const results: EngineResultsTracker = {};
   let result: EngineScrapeResultWithContext | null = null;
 
+  const timeToRun = meta.options.timeout !== undefined
+    ? Math.round(meta.options.timeout / Math.min(fallbackList.length, 3))
+    : undefined
+
   for (const { engine, unsupportedFeatures } of fallbackList) {
     const startedAt = Date.now();
     try {
       meta.logger.info("Scraping via " + engine + "...");
-      const _engineResult = await scrapeURLWithEngine(meta, engine);
+      const _engineResult = await scrapeURLWithEngine(meta, engine, timeToRun);
       if (_engineResult.markdown === undefined) {
         // Some engines emit Markdown directly.
         _engineResult.markdown = await parseMarkdown(_engineResult.html);
