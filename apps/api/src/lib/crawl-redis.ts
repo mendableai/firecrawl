@@ -233,13 +233,6 @@ export async function lockURL(
   url = normalizeURL(url, sc);
   logger = logger.child({ url });
 
-  await redisConnection.sadd("crawl:" + id + ":visited_unique", url);
-  await redisConnection.expire(
-    "crawl:" + id + ":visited_unique",
-    24 * 60 * 60,
-    "NX",
-  );
-
   let res: boolean;
   if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
     res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0;
@@ -254,6 +247,15 @@ export async function lockURL(
   }
 
   await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
+
+  if (res) {
+    await redisConnection.sadd("crawl:" + id + ":visited_unique", url);
+    await redisConnection.expire(
+      "crawl:" + id + ":visited_unique",
+      24 * 60 * 60,
+      "NX",
+    );
+  }
 
   logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
     res,
