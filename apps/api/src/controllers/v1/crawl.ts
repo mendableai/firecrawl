@@ -18,7 +18,7 @@ import {
 } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
-import { addScrapeJob } from "../../services/queue-jobs";
+import { addScrapeJob, addScrapeJobs } from "../../services/queue-jobs";
 import { logger as _logger } from "../../lib/logger";
 import { getJobPriority } from "../../lib/job-priority";
 import { callWebhook } from "../../services/webhook";
@@ -139,9 +139,9 @@ export async function crawlController(
         name: uuid,
         data: {
           url,
-          mode: "single_urls",
+          mode: "single_urls" as const,
           team_id: req.auth.team_id,
-          plan: req.auth.plan,
+          plan: req.auth.plan!,
           crawlerOptions,
           scrapeOptions,
           internalOptions: sc.internalOptions,
@@ -170,7 +170,7 @@ export async function crawlController(
       jobs.map((x) => x.opts.jobId),
     );
     logger.debug("Adding scrape jobs to BullMQ...");
-    await getScrapeQueue().addBulk(jobs);
+    await addScrapeJobs(jobs);
   } else {
     logger.debug("Sitemap not found or ignored.", {
       ignoreSitemap: sc.crawlerOptions.ignoreSitemap,

@@ -11,11 +11,50 @@ import {
   pushConcurrencyLimitedJob,
 } from "../lib/concurrency-limit";
 
+async function _addScrapeJobToConcurrencyQueue(
+  webScraperOptions: any,
+  options: any,
+  jobId: string,
+  jobPriority: number,
+) {
+  await pushConcurrencyLimitedJob(webScraperOptions.team_id, {
+    id: jobId,
+    data: webScraperOptions,
+    opts: {
+      ...options,
+      priority: jobPriority,
+      jobId: jobId,
+    },
+    priority: jobPriority,
+  });
+}
+
+async function _addScrapeJobToBullMQ(
+  webScraperOptions: any,
+  options: any,
+  jobId: string,
+  jobPriority: number,
+) {
+  if (
+    webScraperOptions &&
+    webScraperOptions.team_id &&
+    webScraperOptions.plan
+  ) {
+    await pushConcurrencyLimitActiveJob(webScraperOptions.team_id, jobId);
+  }
+
+  await getScrapeQueue().add(jobId, webScraperOptions, {
+    ...options,
+    priority: jobPriority,
+    jobId,
+  });
+}
+
 async function addScrapeJobRaw(
   webScraperOptions: any,
   options: any,
   jobId: string,
-  jobPriority: number = 10,
+  jobPriority: number,
 ) {
   let concurrencyLimited = false;
 
@@ -33,30 +72,9 @@ async function addScrapeJobRaw(
   }
 
   if (concurrencyLimited) {
-    await pushConcurrencyLimitedJob(webScraperOptions.team_id, {
-      id: jobId,
-      data: webScraperOptions,
-      opts: {
-        ...options,
-        priority: jobPriority,
-        jobId: jobId,
-      },
-      priority: jobPriority,
-    });
+    await _addScrapeJobToConcurrencyQueue(webScraperOptions, options, jobId, jobPriority);
   } else {
-    if (
-      webScraperOptions &&
-      webScraperOptions.team_id &&
-      webScraperOptions.plan
-    ) {
-      await pushConcurrencyLimitActiveJob(webScraperOptions.team_id, jobId);
-    }
-
-    await getScrapeQueue().add(jobId, webScraperOptions, {
-      ...options,
-      priority: jobPriority,
-      jobId,
-    });
+    await _addScrapeJobToBullMQ(webScraperOptions, options, jobId, jobPriority);
   }
 }
 
@@ -109,11 +127,87 @@ export async function addScrapeJobs(
   }[],
 ) {
   if (jobs.length === 0) return true;
-  // TODO: better
+
+  let countCanBeDirectlyAdded = Infinity;
+
+  if (
+    jobs[0].data &&
+    jobs[0].data.team_id &&
+    jobs[0].data.plan
+  ) {
+    const now = Date.now();
+    const limit = await getConcurrencyLimitMax(jobs[0].data.plan);
+    console.log("CC limit", limit);
+    cleanOldConcurrencyLimitEntries(jobs[0].data.team_id, now);
+
+    countCanBeDirectlyAdded = Math.max(limit - (await getConcurrencyLimitActiveJobs(jobs[0].data.team_id, now)).length, 0);
+  }
+
+  const addToBull = jobs.slice(0, countCanBeDirectlyAdded);
+  const addToCQ = jobs.slice(countCanBeDirectlyAdded);
+
   await Promise.all(
-    jobs.map((job) =>
-      addScrapeJob(job.data, job.opts, job.opts.jobId, job.opts.priority),
-    ),
+    addToBull.map(async (job) => {
+      const size = JSON.stringify(job.data).length;
+      return await Sentry.startSpan(
+        {
+          name: "Add scrape job",
+          op: "queue.publish",
+          attributes: {
+            "messaging.message.id": job.opts.jobId,
+            "messaging.destination.name": getScrapeQueue().name,
+            "messaging.message.body.size": size,
+          },
+        },
+        async (span) => {
+          await _addScrapeJobToBullMQ(
+            {
+              ...job.data,
+              sentry: {
+                trace: Sentry.spanToTraceHeader(span),
+                baggage: Sentry.spanToBaggageHeader(span),
+                size,
+              },
+            },
+            job.opts,
+            job.opts.jobId,
+            job.opts.priority,
+          );
+        },
+      );
+    }),
+  );
+
+  await Promise.all(
+    addToCQ.map(async (job) => {
+      const size = JSON.stringify(job.data).length;
+      return await Sentry.startSpan(
+        {
+          name: "Add scrape job",
+          op: "queue.publish",
+          attributes: {
+            "messaging.message.id": job.opts.jobId,
+            "messaging.destination.name": getScrapeQueue().name,
+            "messaging.message.body.size": size,
+          },
+        },
+        async (span) => {
+          await _addScrapeJobToConcurrencyQueue(
+            {
+              ...job.data,
+              sentry: {
+                trace: Sentry.spanToTraceHeader(span),
+                baggage: Sentry.spanToBaggageHeader(span),
+                size,
+              },
+            },
+            job.opts,
+            job.opts.jobId,
+            job.opts.priority,
+          );
+        },
+      );
+    }),
   );
 }
 
