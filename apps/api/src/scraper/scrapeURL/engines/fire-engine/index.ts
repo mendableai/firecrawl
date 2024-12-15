@@ -120,6 +120,8 @@ export async function scrapeURLWithFireEngineChromeCDP(
     // Include specified actions
     ...(meta.options.actions ?? []),
   ];
+  
+  const timeout = (meta.options.timeout === undefined ? 300000 : Math.round(meta.options.timeout / 3));
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestChromeCDP = {
@@ -136,7 +138,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     priority: meta.internalOptions.priority,
     geolocation: meta.options.geolocation,
     mobile: meta.options.mobile,
-    timeout: meta.options.timeout === undefined ? 300000 : meta.options.timeout, // TODO: better timeout logic
+    timeout, // TODO: better timeout logic
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
     // TODO: scrollXPaths
   };
@@ -152,7 +154,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
       request,
     }),
     request,
-    meta.options.timeout !== undefined ? defaultTimeout + totalWait : Infinity, // TODO: better timeout handling
+    timeout + totalWait,
   );
 
   specialtyScrapeCheck(
@@ -207,6 +209,8 @@ export async function scrapeURLWithFireEngineChromeCDP(
 export async function scrapeURLWithFireEnginePlaywright(
   meta: Meta,
 ): Promise<EngineScrapeResult> {
+  const timeout = meta.options.timeout === undefined ? 300000 : Math.round(meta.options.timeout / 3);
+
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestPlaywright = {
     url: meta.url,
@@ -220,7 +224,7 @@ export async function scrapeURLWithFireEnginePlaywright(
     wait: meta.options.waitFor,
     geolocation: meta.options.geolocation,
 
-    timeout: meta.options.timeout === undefined ? 300000 : meta.options.timeout, // TODO: better timeout logic
+    timeout,
   };
 
   let response = await performFireEngineScrape(
@@ -229,9 +233,7 @@ export async function scrapeURLWithFireEnginePlaywright(
       request,
     }),
     request,
-    meta.options.timeout !== undefined
-      ? defaultTimeout + meta.options.waitFor
-      : Infinity, // TODO: better timeout handling
+    timeout + meta.options.waitFor,
   );
 
   specialtyScrapeCheck(
@@ -266,6 +268,8 @@ export async function scrapeURLWithFireEnginePlaywright(
 export async function scrapeURLWithFireEngineTLSClient(
   meta: Meta,
 ): Promise<EngineScrapeResult> {
+  const timeout = meta.options.timeout === undefined ? 30000 : Math.round(meta.options.timeout / 3);
+
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestTLSClient = {
     url: meta.url,
@@ -279,7 +283,7 @@ export async function scrapeURLWithFireEngineTLSClient(
     geolocation: meta.options.geolocation,
     disableJsDom: meta.internalOptions.v0DisableJsDom,
 
-    timeout: meta.options.timeout === undefined ? 30000 : meta.options.timeout, // TODO: better timeout logic
+    timeout,
   };
 
   let response = await performFireEngineScrape(
@@ -288,7 +292,7 @@ export async function scrapeURLWithFireEngineTLSClient(
       request,
     }),
     request,
-    meta.options.timeout !== undefined ? defaultTimeout : Infinity, // TODO: better timeout handling
+    timeout,
   );
 
   specialtyScrapeCheck(
