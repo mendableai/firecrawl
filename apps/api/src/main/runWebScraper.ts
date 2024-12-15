@@ -96,6 +96,7 @@ export async function runWebScraper({
         ...internalOptions,
       });
       if (!response.success) {
+        error = response.error;
         if (response.error instanceof Error) {
           throw response.error;
         } else {

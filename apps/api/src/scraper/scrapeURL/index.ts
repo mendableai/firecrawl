@@ -12,6 +12,7 @@ import {
 } from "./engines";
 import { parseMarkdown } from "../../lib/html-to-markdown";
 import {
+  ActionError,
   AddFeatureError,
   EngineError,
   NoEnginesLeftError,
@@ -288,6 +289,8 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         throw error;
       } else if (error instanceof SiteError) {
         throw error;
+      } else if (error instanceof ActionError) {
+        throw error;
       } else {
         Sentry.captureException(error);
         meta.logger.info(
@@ -408,6 +411,8 @@ export async function scrapeURL(
       // TODO: results?
     } else if (error instanceof SiteError) {
       meta.logger.warn("scrapeURL: Site failed to load in browser", { error });
+    } else if (error instanceof ActionError) {
+      meta.logger.warn("scrapeURL: Action(s) failed to complete", { error });
     } else {
       Sentry.captureException(error);
       meta.logger.error("scrapeURL: Unexpected error happened", { error });

@@ -13,7 +13,7 @@ import {
   FireEngineCheckStatusSuccess,
   StillProcessingError,
 } from "./checkStatus";
-import { EngineError, SiteError, TimeoutError } from "../../error";
+import { ActionError, EngineError, SiteError, TimeoutError } from "../../error";
 import * as Sentry from "@sentry/node";
 import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
@@ -68,7 +68,11 @@ async function performFireEngineScrape<
     } catch (error) {
       if (error instanceof StillProcessingError) {
         // nop
-      } else if (error instanceof EngineError || error instanceof SiteError) {
+      } else if (
+        error instanceof EngineError ||
+        error instanceof SiteError ||
+        error instanceof ActionError
+      ) {
         logger.debug("Fire-engine scrape job failed.", {
           error,
           jobId: scrape.jobId,
