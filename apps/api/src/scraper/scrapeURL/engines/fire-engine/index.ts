@@ -51,7 +51,11 @@ async function performFireEngineScrape<
       });
     }
 
-    if (Date.now() - startTime > timeout) {
+    const userParam = request.timeout ?? 0;
+    // Use 70% of the user-provided timeout as the timeout for fire-engine check status
+    const fireEngineTimeout = timeout + Math.round(userParam * 0.7);
+    const fullTimeout = Math.max(fireEngineTimeout, timeout);
+    if (Date.now() - startTime > fullTimeout) {
       logger.info(
         "Fire-engine was unable to scrape the page before timing out.",
         { errors, timeout },
