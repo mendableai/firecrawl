@@ -60,7 +60,7 @@ export async function scrapeController(
   try {
     doc = await waitForJob<Document>(jobId, timeout + totalWait); // TODO: better types for this
   } catch (e) {
-    logger.error(`Error in scrapeController: ${e}`);
+    logger.error(`Error in scrapeController: ${e}`, { jobId, scrapeId: jobId, startTime });
     if (
       e instanceof Error &&
       (e.message.startsWith("Job wait") || e.message === "timeout")
