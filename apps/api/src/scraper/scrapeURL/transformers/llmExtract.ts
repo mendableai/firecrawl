@@ -121,6 +121,10 @@ export async function generateOpenAICompletions(
   }
 
   let schema = options.schema;
+  if (schema) {
+    schema = removeDefaultProperty(schema);
+}
+
   if (schema && schema.type === "array") {
     schema = {
       type: "object",
@@ -134,10 +138,12 @@ export async function generateOpenAICompletions(
     schema = {
       type: "object",
       properties: Object.fromEntries(
-        Object.entries(schema).map(([key, value]) => [key, { type: value }]),
+        Object.entries(schema).map(([key, value]) => {
+          return [key, removeDefaultProperty(value)];
+        })
       ),
       required: Object.keys(schema),
-      additionalProperties: false,
+      additionalProperties: false
     };
   }
 
@@ -183,124 +189,6 @@ export async function generateOpenAICompletions(
 
   if (extract === null && jsonCompletion.choices[0].message.content !== null) {
     try {
-        // Encode the message into tokens
-        const tokens = encoder.encode(markdown);
-    
-        // Return the number of tokens
-        numTokens = tokens.length;
-    } catch (error) {
-        logger.warn("Calculating num tokens of string failed", { error, markdown });
-
-        markdown = markdown.slice(0, maxTokens * modifier);
-
-        let w = "Failed to derive number of LLM tokens the extraction might use -- the input has been automatically trimmed to the maximum number of tokens (" + maxTokens + ") we support.";
-        warning = previousWarning === undefined ? w : w + " " + previousWarning;
-    } finally {
-        // Free the encoder resources after use
-        encoder.free();
-    }
-
-    if (numTokens > maxTokens) {
-        // trim the document to the maximum number of tokens, tokens != characters
-        markdown = markdown.slice(0, maxTokens * modifier);
-
-        const w = "The extraction content would have used more tokens (" + numTokens + ") than the maximum we allow (" + maxTokens + "). -- the input has been automatically trimmed.";
-        warning = previousWarning === undefined ? w : w + " " + previousWarning;
-    }
-
-    let schema = options.schema;
-    if (schema) {
-        schema = removeDefaultProperty(schema);
-    }
-
-    if (schema && schema.type === "array") {
-        schema = {
-            type: "object",
-            properties: {
-                items: options.schema,
-            },
-            required: ["items"],
-            additionalProperties: false,
-        };
-    } else if (schema && typeof schema === 'object' && !schema.type) {
-      schema = {
-          type: "object",
-          properties: Object.fromEntries(
-              Object.entries(schema).map(([key, value]) => {
-                  return [key, removeDefaultProperty(value)];
-              })
-          ),
-          required: Object.keys(schema),
-          additionalProperties: false
-      };
-    }
-
-    schema = normalizeSchema(schema);
-
-    const jsonCompletion = await openai.beta.chat.completions.parse({
-        model,
-        temperature: 0,
-        messages: [
-            {
-                role: "system",
-                content: options.systemPrompt,
-            },
-            {
-                role: "user",
-                content: [{ type: "text", text: markdown }],
-            },
-            {
-                role: "user",
-                content: options.prompt !== undefined
-                    ? `Transform the above content into structured JSON output based on the following user request: ${options.prompt}`
-                    : "Transform the above content into structured JSON output.",
-            },
-        ],
-        response_format: options.schema ? {
-            type: "json_schema",
-            json_schema: {
-                name: "websiteContent",
-                schema: schema,
-                strict: true,
-            }
-        } : { type: "json_object" },
-    });
-
-    if (jsonCompletion.choices[0].message.refusal !== null) {
-        throw new LLMRefusalError(jsonCompletion.choices[0].message.refusal);
-    }
-
-    extract = jsonCompletion.choices[0].message.parsed;
-
-    if (extract === null && jsonCompletion.choices[0].message.content !== null) {
-        try {
-            if (!isExtractEndpoint) {
-                extract = JSON.parse(jsonCompletion.choices[0].message.content);
-            } else {
-                const extractData = JSON.parse(jsonCompletion.choices[0].message.content);
-                extract = options.schema ? extractData.data.extract : extractData;
-            }
-        } catch (e) {
-            logger.error("Failed to parse returned JSON, no schema specified.", { error: e });
-            throw new LLMRefusalError("Failed to parse returned JSON. Please specify a schema in the extract object.");
-        }
-    }
-
-    // If the users actually wants the items object, they can specify it as 'required' in the schema
-    // otherwise, we just return the items array
-    if (options.schema && options.schema.type === "array" && !schema?.required?.includes("items")) {
-        extract = extract?.items;
-    }
-    return { extract, warning, numTokens };
-}
-
-export async function performLLMExtract(meta: Meta, document: Document): Promise<Document> {
-    if (meta.options.formats.includes("extract")) {
-        const { extract, warning } = await generateOpenAICompletions(
-          meta.logger.child({ method: "performLLMExtract/generateOpenAICompletions" }),
-          meta.options.extract!,
-          document.markdown,
-          document.warning,
       if (!isExtractEndpoint) {
         extract = JSON.parse(jsonCompletion.choices[0].message.content);
       } else {
@@ -329,6 +217,26 @@ export async function performLLMExtract(meta: Meta, document: Document): Promise
     extract = extract?.items;
   }
   return { extract, warning, numTokens };
+}
+
+export async function performLLMExtract(
+  meta: Meta,
+  document: Document,
+): Promise<Document> {
+  if (meta.options.formats.includes("extract")) {
+    const { extract, warning } = await generateOpenAICompletions(
+      meta.logger.child({
+        method: "performLLMExtract/generateOpenAICompletions",
+      }),
+      meta.options.extract!,
+      document.markdown,
+      document.warning,
+    );
+    document.extract = extract;
+    document.warning = warning;
+  }
+
+  return document;
 }
 
 export function removeDefaultProperty(schema: any): any {
