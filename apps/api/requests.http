@@ -19,7 +19,7 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-  "url": "v"
+  "url": "firecrawl.dev"
 }
 
 ### Check Crawl Status
