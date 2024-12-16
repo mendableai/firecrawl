@@ -199,7 +199,7 @@ export async function performLLMExtract(meta: Meta, document: Document): Promise
     return document;
 }
 
-function removeDefaultProperty(schema: any): any {
+export function removeDefaultProperty(schema: any): any {
   if (typeof schema !== 'object' || schema === null) return schema;
 
   const { default: _, ...rest } = schema;
