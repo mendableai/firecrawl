@@ -1,16 +1,20 @@
-
-import koffi from 'koffi';
-import { join } from 'path';
-import "../services/sentry"
+import koffi from "koffi";
+import { join } from "path";
+import "../services/sentry";
 import * as Sentry from "@sentry/node";
 
-import dotenv from 'dotenv';
-import { logger } from './logger';
-import { stat } from 'fs/promises';
+import dotenv from "dotenv";
+import { logger } from "./logger";
+import { stat } from "fs/promises";
 dotenv.config();
 
 // TODO: add a timeout to the Go parser
-const goExecutablePath = join(process.cwd(), 'sharedLibs', 'go-html-to-md', 'html-to-markdown.so');
+const goExecutablePath = join(
+  process.cwd(),
+  "sharedLibs",
+  "go-html-to-md",
+  "html-to-markdown.so",
+);
 
 class GoMarkdownConverter {
   private static instance: GoMarkdownConverter;
@@ -18,7 +22,7 @@ class GoMarkdownConverter {
 
   private constructor() {
     const lib = koffi.load(goExecutablePath);
-    this.convert = lib.func('ConvertHTMLToMarkdown', 'string', ['string']);
+    this.convert = lib.func("ConvertHTMLToMarkdown", "string", ["string"]);
   }
 
   public static async getInstance(): Promise<GoMarkdownConverter> {
@@ -46,9 +50,11 @@ class GoMarkdownConverter {
   }
 }
 
-export async function parseMarkdown(html: string | null | undefined): Promise<string> {
+export async function parseMarkdown(
+  html: string | null | undefined,
+): Promise<string> {
   if (!html) {
-    return '';
+    return "";
   }
 
   try {
@@ -62,17 +68,25 @@ export async function parseMarkdown(html: string | null | undefined): Promise<st
       return markdownContent;
     }
   } catch (error) {
-    if (!(error instanceof Error) || error.message !== "Go shared library not found") {
+    if (
+      !(error instanceof Error) ||
+      error.message !== "Go shared library not found"
+    ) {
       Sentry.captureException(error);
-      logger.error(`Error converting HTML to Markdown with Go parser: ${error}`);
+      logger.error(
+        `Error converting HTML to Markdown with Go parser: ${error}`,
+      );
     } else {
-      logger.warn("Tried to use Go parser, but it doesn't exist in the file system.", { goExecutablePath });
+      logger.warn(
+        "Tried to use Go parser, but it doesn't exist in the file system.",
+        { goExecutablePath },
+      );
     }
   }
 
   // Fallback to TurndownService if Go parser fails or is not enabled
   var TurndownService = require("turndown");
-  var turndownPluginGfm = require('joplin-turndown-plugin-gfm');
+  var turndownPluginGfm = require("joplin-turndown-plugin-gfm");
 
   const turndownService = new TurndownService();
   turndownService.addRule("inlineLink", {
@@ -99,7 +113,7 @@ export async function parseMarkdown(html: string | null | undefined): Promise<st
 
     return markdownContent;
   } catch (error) {
-    logger.error("Error converting HTML to Markdown", {error});
+    logger.error("Error converting HTML to Markdown", { error });
     return ""; // Optionally return an empty string or handle the error as needed
   }
 }
@@ -131,7 +145,7 @@ function removeSkipToContentLinks(markdownContent: string): string {
   // Remove [Skip to Content](#page) and [Skip to content](#skip)
   const newMarkdownContent = markdownContent.replace(
     /\[Skip to Content\]\(#[^\)]*\)/gi,
-    ""
+    "",
   );
   return newMarkdownContent;
 }

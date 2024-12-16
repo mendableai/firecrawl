@@ -43,6 +43,7 @@
     "jest-fetch-mock": "^3.0.3",
     "mammoth": "^1.7.2",
     "nodemon": "^2.0.20",
+    "prettier": "^3.4.2",
     "supabase": "^1.77.9",
     "supertest": "^6.3.3",
     "ts-jest": "^29.1.1",

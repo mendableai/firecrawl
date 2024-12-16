@@ -7,10 +7,22 @@ import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
 import { logCrawl } from "../../../src/services/logging/crawl_log";
 import { validateIdempotencyKey } from "../../../src/services/idempotency/validate";
 import { createIdempotencyKey } from "../../../src/services/idempotency/create";
-import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../../src/lib/default-values";
+import {
+  defaultCrawlPageOptions,
+  defaultCrawlerOptions,
+  defaultOrigin,
+} from "../../../src/lib/default-values";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../../src/lib/logger";
-import { addCrawlJob, addCrawlJobs, crawlToCrawler, lockURL, lockURLs, saveCrawl, StoredCrawl } from "../../../src/lib/crawl-redis";
+import {
+  addCrawlJob,
+  addCrawlJobs,
+  crawlToCrawler,
+  lockURL,
+  lockURLs,
+  saveCrawl,
+  StoredCrawl,
+} from "../../../src/lib/crawl-redis";
 import { getScrapeQueue } from "../../../src/services/queue-service";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
@@ -20,11 +32,7 @@ import { ZodError } from "zod";
 
 export async function crawlController(req: Request, res: Response) {
   try {
-    const auth = await authenticateUser(
-      req,
-      res,
-      RateLimiterMode.Crawl
-    );
+    const auth = await authenticateUser(req, res, RateLimiterMode.Crawl);
     if (!auth.success) {
       return res.status(auth.status).json({ error: auth.error });
     }
@@ -71,16 +79,22 @@ export async function crawlController(req: Request, res: Response) {
     }
 
     const limitCheck = req.body?.crawlerOptions?.limit ?? 1;
-    const { success: creditsCheckSuccess, message: creditsCheckMessage, remainingCredits } =
-      await checkTeamCredits(chunk, team_id, limitCheck);
+    const {
+      success: creditsCheckSuccess,
+      message: creditsCheckMessage,
+      remainingCredits,
+    } = await checkTeamCredits(chunk, team_id, limitCheck);
 
     if (!creditsCheckSuccess) {
-      return res.status(402).json({ error: "Insufficient credits. You may be requesting with a higher limit than the amount of credits you have left. If not, upgrade your plan at https://firecrawl.dev/pricing or contact us at help@firecrawl.com" });
+      return res.status(402).json({
+        error:
+          "Insufficient credits. You may be requesting with a higher limit than the amount of credits you have left. If not, upgrade your plan at https://firecrawl.dev/pricing or contact us at help@firecrawl.com",
+      });
     }
 
     // TODO: need to do this to v1
     crawlerOptions.limit = Math.min(remainingCredits, crawlerOptions.limit);
-    
+
     let url = urlSchema.parse(req.body.url);
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
@@ -136,7 +150,12 @@ export async function crawlController(req: Request, res: Response) {
 
     await logCrawl(id, team_id);
 
-    const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(pageOptions, undefined, undefined);
+    const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(
+      pageOptions,
+      undefined,
+      undefined,
+    );
+    internalOptions.disableSmartWaitCache = true; // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
 
     delete (scrapeOptions as any).timeout;
 
@@ -162,14 +181,13 @@ export async function crawlController(req: Request, res: Response) {
       ? null
       : await crawler.tryGetSitemap();
 
-
     if (sitemap !== null && sitemap.length > 0) {
       let jobPriority = 20;
       // If it is over 1000, we need to get the job priority,
       // otherwise we can use the default priority of 20
-      if(sitemap.length > 1000){
+      if (sitemap.length > 1000) {
         // set base to 21
-        jobPriority = await getJobPriority({plan, team_id, basePriority: 21})
+        jobPriority = await getJobPriority({ plan, team_id, basePriority: 21 });
       }
       const jobs = sitemap.map((x) => {
         const url = x.url;
@@ -198,11 +216,11 @@ export async function crawlController(req: Request, res: Response) {
       await lockURLs(
         id,
         sc,
-        jobs.map((x) => x.data.url)
+        jobs.map((x) => x.data.url),
       );
       await addCrawlJobs(
         id,
-        jobs.map((x) => x.opts.jobId)
+        jobs.map((x) => x.opts.jobId),
       );
       for (const job of jobs) {
         // add with sentry instrumentation
@@ -239,8 +257,8 @@ export async function crawlController(req: Request, res: Response) {
   } catch (error) {
     Sentry.captureException(error);
     logger.error(error);
-    return res.status(500).json({ error: error instanceof ZodError
-      ? "Invalid URL"
-      : error.message });
+    return res.status(500).json({
+      error: error instanceof ZodError ? "Invalid URL" : error.message,
+    });
   }
 }

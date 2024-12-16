@@ -14,7 +14,10 @@ interface SearchOptions {
   page?: number;
 }
 
-export async function searchapi_search(q: string, options: SearchOptions): Promise<SearchResult[]> {
+export async function searchapi_search(
+  q: string,
+  options: SearchOptions,
+): Promise<SearchResult[]> {
   const params = {
     q: q,
     hl: options.lang,
@@ -30,13 +33,12 @@ export async function searchapi_search(q: string, options: SearchOptions): Promi
   try {
     const response = await axios.get(url, {
       headers: {
-        "Authorization": `Bearer ${process.env.SEARCHAPI_API_KEY}`,
+        Authorization: `Bearer ${process.env.SEARCHAPI_API_KEY}`,
         "Content-Type": "application/json",
         "X-SearchApi-Source": "Firecrawl",
       },
       params: params,
     });
-
 
     if (response.status === 401) {
       throw new Error("Unauthorized. Please check your API key.");
