@@ -96,7 +96,6 @@ export async function runWebScraper({
         ...internalOptions,
       });
       if (!response.success) {
-        error = response.error;
         if (response.error instanceof Error) {
           throw response.error;
         } else {
@@ -124,7 +123,8 @@ export async function runWebScraper({
         // status code is good -- do not attempt retry
         break;
       }
-    } catch (error) {
+    } catch (_error) {
+      error = _error;
       engines =
         response !== undefined
           ? response.engines
