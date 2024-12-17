@@ -265,9 +265,10 @@ export async function scrapeController(req: Request, res: Response) {
       }
       if (creditsToBeBilled > 0) {
         // billing for doc done on queue end, bill only for llm extraction
-        billTeam(team_id, chunk?.sub_id, creditsToBeBilled).catch((error) => {
+        billTeam(team_id, chunk?.sub_id, creditsToBeBilled, logger).catch((error) => {
           logger.error(
-            `Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`,
+            `Failed to bill team ${team_id} for ${creditsToBeBilled} credits`,
+            { error }
           );
           // Optionally, you could notify an admin or add to a retry queue here
         });
@@ -312,7 +313,7 @@ export async function scrapeController(req: Request, res: Response) {
     return res.status(result.returnCode).json(result);
   } catch (error) {
     Sentry.captureException(error);
-    logger.error(error);
+    logger.error("Scrape error occcurred", { error });
     return res.status(500).json({
       error:
         error instanceof ZodError

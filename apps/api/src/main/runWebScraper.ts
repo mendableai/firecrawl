@@ -7,7 +7,7 @@ import {
 import { billTeam } from "../services/billing/credit_billing";
 import { Document } from "../controllers/v1/types";
 import { supabase_service } from "../services/supabase";
-import { logger } from "../lib/logger";
+import { logger as _logger } from "../lib/logger";
 import { ScrapeEvents } from "../lib/scrape-events";
 import { configDotenv } from "dotenv";
 import {
@@ -66,6 +66,12 @@ export async function runWebScraper({
   is_scrape = false,
   is_crawl = false,
 }: RunWebScraperParams): Promise<ScrapeUrlResponse> {
+  const logger = _logger.child({
+    method: "runWebScraper",
+    module: "runWebscraper",
+    scrapeId: bull_job_id,
+    jobId: bull_job_id,
+  })
   const tries = is_crawl ? 3 : 1;
 
   let response: ScrapeUrlResponse | undefined = undefined;
@@ -75,10 +81,6 @@ export async function runWebScraper({
   for (let i = 0; i < tries; i++) {
     if (i > 0) {
       logger.debug("Retrying scrape...", {
-        scrapeId: bull_job_id,
-        jobId: bull_job_id,
-        method: "runWebScraper",
-        module: "runWebScraper",
         tries,
         i,
         previousStatusCode: (response as any)?.document?.metadata?.statusCode,
@@ -171,9 +173,10 @@ export async function runWebScraper({
         creditsToBeBilled = 5;
       }
 
-      billTeam(team_id, undefined, creditsToBeBilled).catch((error) => {
+      billTeam(team_id, undefined, creditsToBeBilled, logger).catch((error) => {
         logger.error(
-          `Failed to bill team ${team_id} for ${creditsToBeBilled} credits: ${error}`,
+          `Failed to bill team ${team_id} for ${creditsToBeBilled} credits`,
+          { error }
         );
         // Optionally, you could notify an admin or add to a retry queue here
       });
@@ -232,6 +235,11 @@ const saveJob = async (
     }
     ScrapeEvents.logJobEvent(job, "completed");
   } catch (error) {
-    logger.error(`🐂 Failed to update job status: ${error}`);
+    _logger.error(`🐂 Failed to update job status`, {
+      module: "runWebScraper",
+      method: "saveJob",
+      jobId: job.id,
+      scrapeId: job.id,
+    });
   }
 };

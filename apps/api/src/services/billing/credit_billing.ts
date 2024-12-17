@@ -10,6 +10,7 @@ import { issueCredits } from "./issue_credits";
 import { redlock } from "../redlock";
 import { autoCharge } from "./auto_charge";
 import { getValue, setValue } from "../redis";
+import type { Logger } from "winston";
 
 const FREE_CREDITS = 500;
 
@@ -20,22 +21,30 @@ export async function billTeam(
   team_id: string,
   subscription_id: string | null | undefined,
   credits: number,
+  logger?: Logger,
 ) {
   return withAuth(supaBillTeam, { success: true, message: "No DB, bypassed." })(
     team_id,
     subscription_id,
     credits,
+    logger,
   );
 }
 export async function supaBillTeam(
   team_id: string,
   subscription_id: string | null | undefined,
   credits: number,
+  __logger?: Logger,
 ) {
+  const _logger = (__logger ?? logger).child({
+    module: "credit_billing",
+    method: "supaBillTeam",
+  });
+
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
   }
-  logger.info(`Billing team ${team_id} for ${credits} credits`);
+  _logger.info(`Billing team ${team_id} for ${credits} credits`, { team_id, credits });
 
   const { data, error } = await supabase_service.rpc("bill_team", {
     _team_id: team_id,
@@ -46,7 +55,7 @@ export async function supaBillTeam(
 
   if (error) {
     Sentry.captureException(error);
-    logger.error("Failed to bill team: " + JSON.stringify(error));
+    _logger.error("Failed to bill team.", { error });
     return;
   }
 
