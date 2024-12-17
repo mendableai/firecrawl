@@ -6,7 +6,7 @@ import { robustFetch } from "../../lib/fetch";
 import { z } from "zod";
 import * as Sentry from "@sentry/node";
 import escapeHtml from "escape-html";
-import pdf2md from "@opendocsg/pdf2md";
+import PdfParse from "pdf-parse";
 import { downloadFile, fetchFileToBuffer } from "../utils/downloadFile";
 import { RemoveFeatureError } from "../../error";
 
@@ -113,11 +113,10 @@ async function scrapePDFWithParsePDF(
   meta: Meta,
   tempFilePath: string,
 ): Promise<PDFProcessorResult> {
-  meta.logger.debug("Processing PDF document with pdf2md", { tempFilePath });
+  meta.logger.debug("Processing PDF document with parse-pdf", { tempFilePath });
 
-  const pdfBuffer = await fs.readFile(tempFilePath);
-  const markdown = await pdf2md(pdfBuffer);
-  const escaped = escapeHtml(markdown);
+  const result = await PdfParse(await fs.readFile(tempFilePath));
+  const escaped = escapeHtml(result.text);
 
   return {
     markdown: escaped,
@@ -142,7 +141,7 @@ export async function scrapePDF(meta: Meta, timeToRun: number | undefined): Prom
 
   let result: PDFProcessorResult | null = null;
 
-  // First, try parsing with pdf2md
+  // First, try parsing with PdfParse
   result = await scrapePDFWithParsePDF(
     {
       ...meta,
@@ -170,14 +169,14 @@ export async function scrapePDF(meta: Meta, timeToRun: number | undefined): Prom
       result = llamaResult; // Use LlamaParse result if successful
     } catch (error) {
       if (error instanceof Error && error.message === "LlamaParse timed out") {
-        meta.logger.warn("LlamaParse timed out -- using pdf2md result", {
+        meta.logger.warn("LlamaParse timed out -- using parse-pdf result", {
           error,
         });
       } else if (error instanceof RemoveFeatureError) {
         throw error;
       } else {
         meta.logger.warn(
-          "LlamaParse failed to parse PDF -- using pdf2md result",
+          "LlamaParse failed to parse PDF -- using parse-pdf result",
           { error },
         );
         Sentry.captureException(error);
