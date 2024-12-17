@@ -123,8 +123,13 @@ export async function scrapeURLWithFireEngineChromeCDP(
     // Include specified actions
     ...(meta.options.actions ?? []),
   ];
+
+  const totalWait = actions.reduce(
+    (a, x) => (x.type === "wait" ? (x.milliseconds ?? 1000) + a : a),
+    0,
+  );
   
-  const timeout = timeToRun ?? 300000;
+  const timeout = (timeToRun ?? 300000) + totalWait;
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestChromeCDP = {
@@ -146,18 +151,13 @@ export async function scrapeURLWithFireEngineChromeCDP(
     // TODO: scrollXPaths
   };
 
-  const totalWait = actions.reduce(
-    (a, x) => (x.type === "wait" ? (x.milliseconds ?? 1000) + a : a),
-    0,
-  );
-
   let response = await performFireEngineScrape(
     meta.logger.child({
       method: "scrapeURLWithFireEngineChromeCDP/callFireEngine",
       request,
     }),
     request,
-    timeout + totalWait,
+    timeout,
   );
 
   specialtyScrapeCheck(
@@ -213,7 +213,8 @@ export async function scrapeURLWithFireEnginePlaywright(
   meta: Meta,
   timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  const timeout = timeToRun ?? 300000;
+  const totalWait = meta.options.waitFor;
+  const timeout = (timeToRun ?? 300000) + totalWait;
 
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestPlaywright = {
@@ -237,7 +238,7 @@ export async function scrapeURLWithFireEnginePlaywright(
       request,
     }),
     request,
-    timeout + meta.options.waitFor,
+    timeout,
   );
 
   specialtyScrapeCheck(
