@@ -386,6 +386,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     jobId: job.id,
     scrapeId: job.id,
     crawlId: job.data?.crawl_id ?? undefined,
+    teamId: job.data?.team_id ?? undefined,
   });
   logger.info(`🐂 Worker taking job ${job.id}`, { url: job.data.url });
 
