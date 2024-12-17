@@ -6,7 +6,7 @@ import { robustFetch } from "../../lib/fetch";
 import { z } from "zod";
 import * as Sentry from "@sentry/node";
 import escapeHtml from "escape-html";
-import PdfParse from "pdf-parse";
+import pdf2md from "@opendocsg/pdf2md";
 import { downloadFile, fetchFileToBuffer } from "../utils/downloadFile";
 import { RemoveFeatureError } from "../../error";
 
@@ -113,10 +113,11 @@ async function scrapePDFWithParsePDF(
   meta: Meta,
   tempFilePath: string,
 ): Promise<PDFProcessorResult> {
-  meta.logger.debug("Processing PDF document with parse-pdf", { tempFilePath });
+  meta.logger.debug("Processing PDF document with pdf2md", { tempFilePath });
 
-  const result = await PdfParse(await fs.readFile(tempFilePath));
-  const escaped = escapeHtml(result.text);
+  const pdfBuffer = await fs.readFile(tempFilePath);
+  const markdown = await pdf2md(pdfBuffer);
+  const escaped = escapeHtml(markdown);
 
   return {
     markdown: escaped,
@@ -140,9 +141,23 @@ export async function scrapePDF(meta: Meta, timeToRun: number | undefined): Prom
   const { response, tempFilePath } = await downloadFile(meta.id, meta.url);
 
   let result: PDFProcessorResult | null = null;
-  if (process.env.LLAMAPARSE_API_KEY) {
+
+  // First, try parsing with pdf2md
+  result = await scrapePDFWithParsePDF(
+    {
+      ...meta,
+      logger: meta.logger.child({
+        method: "scrapePDF/scrapePDFWithParsePDF",
+      }),
+    },
+    tempFilePath,
+  );
+
+
+  // If the parsed text is under 500 characters and LLAMAPARSE_API_KEY exists, try LlamaParse
+  if (result.markdown && result.markdown.length < 500 && process.env.LLAMAPARSE_API_KEY) {
     try {
-      result = await scrapePDFWithLlamaParse(
+      const llamaResult = await scrapePDFWithLlamaParse(
         {
           ...meta,
           logger: meta.logger.child({
@@ -152,33 +167,22 @@ export async function scrapePDF(meta: Meta, timeToRun: number | undefined): Prom
         tempFilePath,
         timeToRun,
       );
+      result = llamaResult; // Use LlamaParse result if successful
     } catch (error) {
       if (error instanceof Error && error.message === "LlamaParse timed out") {
-        meta.logger.warn("LlamaParse timed out -- falling back to parse-pdf", {
+        meta.logger.warn("LlamaParse timed out -- using pdf2md result", {
           error,
         });
       } else if (error instanceof RemoveFeatureError) {
         throw error;
       } else {
         meta.logger.warn(
-          "LlamaParse failed to parse PDF -- falling back to parse-pdf",
+          "LlamaParse failed to parse PDF -- using pdf2md result",
           { error },
         );
         Sentry.captureException(error);
       }
     }
-  }
-
-  if (result === null) {
-    result = await scrapePDFWithParsePDF(
-      {
-        ...meta,
-        logger: meta.logger.child({
-          method: "scrapePDF/scrapePDFWithParsePDF",
-        }),
-      },
-      tempFilePath,
-    );
   }
 
   await fs.unlink(tempFilePath);
