@@ -10,7 +10,10 @@ const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY!);
 export function scrapeURLWithScrapingBee(
   wait_browser: "domcontentloaded" | "networkidle2",
 ): (meta: Meta, timeToRun: number | undefined) => Promise<EngineScrapeResult> {
-  return async (meta: Meta, timeToRun: number | undefined): Promise<EngineScrapeResult> => {
+  return async (
+    meta: Meta,
+    timeToRun: number | undefined,
+  ): Promise<EngineScrapeResult> => {
     let response: AxiosResponse<any>;
     const timeout = (timeToRun ?? 300000) + meta.options.waitFor;
     try {

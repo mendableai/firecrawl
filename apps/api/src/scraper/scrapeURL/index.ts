@@ -203,9 +203,10 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   const results: EngineResultsTracker = {};
   let result: EngineScrapeResultWithContext | null = null;
 
-  const timeToRun = meta.options.timeout !== undefined
-    ? Math.round(meta.options.timeout / Math.min(fallbackList.length, 2))
-    : undefined
+  const timeToRun =
+    meta.options.timeout !== undefined
+      ? Math.round(meta.options.timeout / Math.min(fallbackList.length, 2))
+      : undefined;
 
   for (const { engine, unsupportedFeatures } of fallbackList) {
     const startedAt = Date.now();

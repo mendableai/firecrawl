@@ -60,9 +60,7 @@ export class SiteError extends Error {
 export class ActionError extends Error {
   public code: string;
   constructor(code: string) {
-    super(
-      "Action(s) failed to complete. Error code: " + code,
-    );
+    super("Action(s) failed to complete. Error code: " + code);
     this.code = code;
   }
 }

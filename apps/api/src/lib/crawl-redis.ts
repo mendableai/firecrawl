@@ -94,9 +94,13 @@ export async function addCrawlJobDone(
     await redisConnection.rpush("crawl:" + id + ":jobs_done_ordered", job_id);
   } else {
     // in case it's already been pushed, make sure it's removed
-    await redisConnection.lrem("crawl:" + id + ":jobs_done_ordered", -1, job_id);
+    await redisConnection.lrem(
+      "crawl:" + id + ":jobs_done_ordered",
+      -1,
+      job_id,
+    );
   }
-  
+
   await redisConnection.expire(
     "crawl:" + id + ":jobs_done_ordered",
     24 * 60 * 60,

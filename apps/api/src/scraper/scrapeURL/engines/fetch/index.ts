@@ -5,7 +5,7 @@ import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 
 export async function scrapeURLWithFetch(
   meta: Meta,
-  timeToRun: number | undefined
+  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
   const timeout = timeToRun ?? 300000;
 

@@ -72,7 +72,12 @@ async function addScrapeJobRaw(
   }
 
   if (concurrencyLimited) {
-    await _addScrapeJobToConcurrencyQueue(webScraperOptions, options, jobId, jobPriority);
+    await _addScrapeJobToConcurrencyQueue(
+      webScraperOptions,
+      options,
+      jobId,
+      jobPriority,
+    );
   } else {
     await _addScrapeJobToBullMQ(webScraperOptions, options, jobId, jobPriority);
   }
@@ -130,17 +135,17 @@ export async function addScrapeJobs(
 
   let countCanBeDirectlyAdded = Infinity;
 
-  if (
-    jobs[0].data &&
-    jobs[0].data.team_id &&
-    jobs[0].data.plan
-  ) {
+  if (jobs[0].data && jobs[0].data.team_id && jobs[0].data.plan) {
     const now = Date.now();
     const limit = await getConcurrencyLimitMax(jobs[0].data.plan);
     console.log("CC limit", limit);
     cleanOldConcurrencyLimitEntries(jobs[0].data.team_id, now);
 
-    countCanBeDirectlyAdded = Math.max(limit - (await getConcurrencyLimitActiveJobs(jobs[0].data.team_id, now)).length, 0);
+    countCanBeDirectlyAdded = Math.max(
+      limit -
+        (await getConcurrencyLimitActiveJobs(jobs[0].data.team_id, now)).length,
+      0,
+    );
   }
 
   const addToBull = jobs.slice(0, countCanBeDirectlyAdded);

@@ -124,7 +124,10 @@ async function scrapePDFWithParsePDF(
   };
 }
 
-export async function scrapePDF(meta: Meta, timeToRun: number | undefined): Promise<EngineScrapeResult> {
+export async function scrapePDF(
+  meta: Meta,
+  timeToRun: number | undefined,
+): Promise<EngineScrapeResult> {
   if (!meta.options.parsePDF) {
     const file = await fetchFileToBuffer(meta.url);
     const content = file.buffer.toString("base64");
@@ -152,9 +155,12 @@ export async function scrapePDF(meta: Meta, timeToRun: number | undefined): Prom
     tempFilePath,
   );
 
-
   // If the parsed text is under 500 characters and LLAMAPARSE_API_KEY exists, try LlamaParse
-  if (result.markdown && result.markdown.length < 500 && process.env.LLAMAPARSE_API_KEY) {
+  if (
+    result.markdown &&
+    result.markdown.length < 500 &&
+    process.env.LLAMAPARSE_API_KEY
+  ) {
     try {
       const llamaResult = await scrapePDFWithLlamaParse(
         {

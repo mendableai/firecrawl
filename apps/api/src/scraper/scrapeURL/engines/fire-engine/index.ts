@@ -128,7 +128,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     (a, x) => (x.type === "wait" ? (x.milliseconds ?? 1000) + a : a),
     0,
   );
-  
+
   const timeout = (timeToRun ?? 300000) + totalWait;
 
   const request: FireEngineScrapeRequestCommon &

@@ -496,15 +496,14 @@ async function processJob(job: Job & { id: string }, token: string) {
           // See lockURL
           const x = await redisConnection.sadd(
             "crawl:" + job.data.crawl_id + ":visited",
-            ...p1.map(x => x.href),
+            ...p1.map((x) => x.href),
           );
           const lockRes = x === p1.length;
-  
+
           if (job.data.crawlerOptions !== null && !lockRes) {
             throw new RacedRedirectError();
           }
         }
-        
       }
 
       logger.debug("Logging job to DB...");
@@ -675,7 +674,10 @@ async function processJob(job: Job & { id: string }, token: string) {
 
       logger.debug("Declaring job as done...");
       await addCrawlJobDone(job.data.crawl_id, job.id, false);
-      await redisConnection.srem("crawl:" + job.data.crawl_id + ":visited_unique", normalizeURL(job.data.url, sc));
+      await redisConnection.srem(
+        "crawl:" + job.data.crawl_id + ":visited_unique",
+        normalizeURL(job.data.url, sc),
+      );
 
       logger.debug("Logging job to DB...");
       await logJob(
