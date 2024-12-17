@@ -28,7 +28,7 @@ const redis = new Redis(process.env.REDIS_URL!);
 // Max Links that /map can return
 const MAX_MAP_LIMIT = 5000;
 // Max Links that "Smart /map" can return
-const MAX_FIRE_ENGINE_RESULTS = 1000;
+const MAX_FIRE_ENGINE_RESULTS = 500;
 
 interface MapResult {
   success: boolean;
