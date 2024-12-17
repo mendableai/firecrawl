@@ -61,7 +61,7 @@ export async function extractController(
       const baseUrl = url.replace("/*", "");
       // const pathPrefix = baseUrl.split('/').slice(3).join('/'); // Get path after domain if any
 
-      const allowExternalLinks = req.body.allowExternalLinks ?? true;
+      const allowExternalLinks = req.body.allowExternalLinks;
       let urlWithoutWww = baseUrl.replace("www.", "");
       let mapUrl =
         req.body.prompt && allowExternalLinks
@@ -84,6 +84,8 @@ export async function extractController(
         includeSubdomains: req.body.includeSubdomains,
       });
 
+      // console.log("mapResults", mapResults);
+
       let mappedLinks = mapResults.links as MapDocument[];
       // Limit number of links to MAX_EXTRACT_LIMIT
       mappedLinks = mappedLinks.slice(0, MAX_EXTRACT_LIMIT);
@@ -92,6 +94,7 @@ export async function extractController(
         (x) =>
           `url: ${x.url}, title: ${x.title}, description: ${x.description}`,
       );
+      // console.log("mappedLinksRerank", mappedLinksRerank);
 
       // Filter by path prefix if present
       // wrong
@@ -150,15 +153,20 @@ export async function extractController(
     } else {
       // Handle direct URLs without glob pattern
       if (!isUrlBlocked(url)) {
+        // console.log("url", url);
         return [url];
       }
       return [];
     }
   });
 
+  // console.log("urlPromises", urlPromises.length);
+
   // Wait for all URL processing to complete and flatten results
   const processedUrls = await Promise.all(urlPromises);
-  links.push(...processedUrls.flat());
+  const flattenedUrls = processedUrls.flat().filter(url => url); // Filter out any null/undefined values
+  links.push(...flattenedUrls);
+  // console.log("links", links.length, "flattenedUrls", flattenedUrls.length);
 
   if (links.length === 0) {
     return res.status(400).json({
