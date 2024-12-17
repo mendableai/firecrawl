@@ -24,6 +24,8 @@ import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { getMapResults } from "./map";
 import { buildDocument } from "../../lib/extract/build-document";
+import { generateBasicCompletion } from "../../lib/LLM-extraction";
+import { buildRefrasedPrompt } from "../../lib/extract/build-prompts";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -63,30 +65,35 @@ export async function extractController(
 
       const allowExternalLinks = req.body.allowExternalLinks;
       let urlWithoutWww = baseUrl.replace("www.", "");
-      let mapUrl =
-        req.body.prompt && allowExternalLinks
-          ? `${req.body.prompt} ${urlWithoutWww}`
-          : req.body.prompt
-            ? `${req.body.prompt} site:${urlWithoutWww}`
-            : `site:${urlWithoutWww}`;
+
+      let rephrasedPrompt = req.body.prompt;
+      if (req.body.prompt) {
+        rephrasedPrompt =
+          (await generateBasicCompletion(
+            buildRefrasedPrompt(req.body.prompt, baseUrl),
+          )) ?? req.body.prompt;
+      }
 
       const mapResults = await getMapResults({
         url: baseUrl,
-        search: req.body.prompt,
+        search: rephrasedPrompt,
         teamId: req.auth.team_id,
         plan: req.auth.plan,
         allowExternalLinks,
         origin: req.body.origin,
         limit: req.body.limit,
         // If we're self-hosted, we don't want to ignore the sitemap, due to our fire-engine mapping
-        ignoreSitemap: !selfHosted ? true : false,
+        ignoreSitemap: false,
         includeMetadata: true,
         includeSubdomains: req.body.includeSubdomains,
       });
 
-      // console.log("mapResults", mapResults);
-
       let mappedLinks = mapResults.links as MapDocument[];
+
+      if (mappedLinks.length === 0) {
+        mappedLinks = [{ url: baseUrl, title: "", description: "" }];
+      }
+
       // Limit number of links to MAX_EXTRACT_LIMIT
       mappedLinks = mappedLinks.slice(0, MAX_EXTRACT_LIMIT);
 
@@ -94,20 +101,19 @@ export async function extractController(
         (x) =>
           `url: ${x.url}, title: ${x.title}, description: ${x.description}`,
       );
-      // console.log("mappedLinksRerank", mappedLinksRerank);
-
-      // Filter by path prefix if present
-      // wrong
-      // if (pathPrefix) {
-      //   mappedLinks = mappedLinks.filter(x => x.url && x.url.includes(`/${pathPrefix}/`));
-      // }
 
       if (req.body.prompt) {
+        let searchQuery =
+          req.body.prompt && allowExternalLinks
+            ? `${req.body.prompt} ${urlWithoutWww}`
+            : req.body.prompt
+              ? `${req.body.prompt} site:${urlWithoutWww}`
+              : `site:${urlWithoutWww}`;
         // Get similarity scores between the search query and each link's context
         const linksAndScores = await performRanking(
           mappedLinksRerank,
           mappedLinks.map((l) => l.url),
-          mapUrl,
+          searchQuery,
         );
 
         // First try with high threshold
@@ -153,20 +159,16 @@ export async function extractController(
     } else {
       // Handle direct URLs without glob pattern
       if (!isUrlBlocked(url)) {
-        // console.log("url", url);
         return [url];
       }
       return [];
     }
   });
 
-  // console.log("urlPromises", urlPromises.length);
-
   // Wait for all URL processing to complete and flatten results
   const processedUrls = await Promise.all(urlPromises);
-  const flattenedUrls = processedUrls.flat().filter(url => url); // Filter out any null/undefined values
+  const flattenedUrls = processedUrls.flat().filter((url) => url); // Filter out any null/undefined values
   links.push(...flattenedUrls);
-  // console.log("links", links.length, "flattenedUrls", flattenedUrls.length);
 
   if (links.length === 0) {
     return res.status(400).json({
@@ -212,7 +214,7 @@ export async function extractController(
       }
       return doc;
     } catch (e) {
-      logger.error(`Error in scrapeController: ${e}`);
+      logger.error(`Error in extractController: ${e}`);
       if (
         e instanceof Error &&
         (e.message.startsWith("Job wait") || e.message === "timeout")
@@ -316,4 +318,3 @@ function filterAndProcessLinks(
         x !== undefined && x.url !== undefined && !isUrlBlocked(x.url),
     );
 }
-
