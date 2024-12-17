@@ -32,10 +32,11 @@ const MAX_FIRE_ENGINE_RESULTS = 500;
 
 interface MapResult {
   success: boolean;
-  links: string[] | any[];
+  links: string[];
   scrape_id?: string;
   job_id: string;
   time_taken: number;
+  mapResults: MapDocument[];
 }
 
 export async function getMapResults({
@@ -215,7 +216,8 @@ export async function getMapResults({
 
   return {
     success: true,
-    links: includeMetadata ? mapResults : linksToReturn,
+    links: linksToReturn,
+    mapResults: mapResults,
     scrape_id: origin?.includes("website") ? id : undefined,
     job_id: id,
     time_taken: (new Date().getTime() - Date.now()) / 1000,

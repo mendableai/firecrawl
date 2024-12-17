@@ -26,6 +26,7 @@ import { getMapResults } from "./map";
 import { buildDocument } from "../../lib/extract/build-document";
 import { generateBasicCompletion } from "../../lib/LLM-extraction";
 import { buildRefrasedPrompt } from "../../lib/extract/build-prompts";
+import { removeDuplicateUrls } from "../../lib/validateUrl";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -88,8 +89,22 @@ export async function extractController(
         includeSubdomains: req.body.includeSubdomains,
       });
 
-      let mappedLinks = mapResults.links as MapDocument[];
+      let mappedLinks = mapResults.mapResults as MapDocument[];
 
+      // Remove duplicates between mapResults.links and mappedLinks
+      const allUrls = [...mappedLinks.map(m => m.url), ...mapResults.links];
+      const uniqueUrls = removeDuplicateUrls(allUrls);
+      
+      // Only add URLs from mapResults.links that aren't already in mappedLinks
+      const existingUrls = new Set(mappedLinks.map(m => m.url));
+      const newUrls = uniqueUrls.filter(url => !existingUrls.has(url));
+      
+      mappedLinks = [
+        ...mappedLinks,
+        ...newUrls.map(url => ({ url, title: "", description: "" }))
+      ];
+
+      
       if (mappedLinks.length === 0) {
         mappedLinks = [{ url: baseUrl, title: "", description: "" }];
       }
@@ -101,6 +116,7 @@ export async function extractController(
         (x) =>
           `url: ${x.url}, title: ${x.title}, description: ${x.description}`,
       );
+
 
       if (req.body.prompt) {
         let searchQuery =
