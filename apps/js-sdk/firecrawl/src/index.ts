@@ -289,17 +289,23 @@ export default class FirecrawlApp {
   public apiKey: string;
   public apiUrl: string;
 
+  private isCloudService(url: string): boolean {
+    return url.includes('api.firecrawl.dev');
+  }
+
   /**
    * Initializes a new instance of the FirecrawlApp class.
    * @param config - Configuration options for the FirecrawlApp instance.
    */
   constructor({ apiKey = null, apiUrl = null }: FirecrawlAppConfig) {
-    if (typeof apiKey !== "string") {
+    const baseUrl = apiUrl || "https://api.firecrawl.dev";
+    
+    if (this.isCloudService(baseUrl) && typeof apiKey !== "string") {
       throw new FirecrawlError("No API key provided", 401);
     }
 
-    this.apiKey = apiKey;
-    this.apiUrl = apiUrl || "https://api.firecrawl.dev";
+    this.apiKey = apiKey || '';
+    this.apiUrl = baseUrl;
   }
 
   /**
