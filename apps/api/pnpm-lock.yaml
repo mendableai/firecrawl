@@ -158,9 +158,6 @@ importers:
       openai:
         specifier: ^4.57.0
         version: 4.57.0(zod@3.23.8)
-      pdf-parse:
-        specifier: ^1.1.1
-        version: 1.1.1
       pos:
         specifier: ^0.4.2
         version: 0.4.2
@@ -8927,7 +8924,8 @@ snapshots:
 
   node-domexception@1.0.0: {}
 
-  node-ensure@0.0.0: {}
+  node-ensure@0.0.0:
+    optional: true
 
   node-fetch@2.7.0:
     dependencies:
@@ -9157,6 +9155,7 @@ snapshots:
       node-ensure: 0.0.0
     transitivePeerDependencies:
       - supports-color
+    optional: true
 
   peberminta@0.9.0: {}
 
