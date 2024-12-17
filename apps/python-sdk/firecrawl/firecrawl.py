@@ -40,19 +40,22 @@ class FirecrawlApp:
         error: Optional[str] = None
 
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
-      """
-      Initialize the FirecrawlApp instance with API key, API URL.
+        """
+        Initialize the FirecrawlApp instance with API key, API URL.
 
-      Args:
-          api_key (Optional[str]): API key for authenticating with the Firecrawl API.
-          api_url (Optional[str]): Base URL for the Firecrawl API.
-      """
-      self.api_key = api_key or os.getenv('FIRECRAWL_API_KEY')
-      self.api_url = api_url or os.getenv('FIRECRAWL_API_URL', 'https://api.firecrawl.dev')
-      if self.api_key is None:
-          logger.warning("No API key provided")
-          raise ValueError('No API key provided')
-      logger.debug(f"Initialized FirecrawlApp with API key: {self.api_key}")
+        Args:
+            api_key (Optional[str]): API key for authenticating with the Firecrawl API.
+            api_url (Optional[str]): Base URL for the Firecrawl API.
+        """
+        self.api_key = api_key or os.getenv('FIRECRAWL_API_KEY')
+        self.api_url = api_url or os.getenv('FIRECRAWL_API_URL', 'https://api.firecrawl.dev')
+        
+        # Only require API key when using cloud service
+        if 'api.firecrawl.dev' in self.api_url and self.api_key is None:
+            logger.warning("No API key provided for cloud service")
+            raise ValueError('No API key provided')
+            
+        logger.debug(f"Initialized FirecrawlApp with API URL: {self.api_url}")
 
     def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
         """
