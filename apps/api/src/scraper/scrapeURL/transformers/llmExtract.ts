@@ -159,8 +159,8 @@ export async function generateOpenAICompletions(
         role: "user",
         content:
           options.prompt !== undefined
-            ? `Transform the above content into structured JSON output based on the following user request: ${options.prompt}`
-            : "Transform the above content into structured JSON output.",
+            ? `Transform the above content into structured JSON output based on the provided schema if any and the following user request: ${options.prompt}`
+            : "Transform the above content into structured JSON output based on the provided schema if any.",
       },
     ],
     response_format: options.schema
