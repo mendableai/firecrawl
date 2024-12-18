@@ -704,15 +704,15 @@ class CrawlWatcher:
     async def _handle_message(self, msg: Dict[str, Any]):
         if msg['type'] == 'done':
             self.status = 'completed'
-            self.dispatch_event('done', {'status': self.status, 'data': self.data})
+            self.dispatch_event('done', {'status': self.status, 'data': self.data, 'id': self.id})
         elif msg['type'] == 'error':
             self.status = 'failed'
-            self.dispatch_event('error', {'status': self.status, 'data': self.data, 'error': msg['error']})
+            self.dispatch_event('error', {'status': self.status, 'data': self.data, 'error': msg['error'], 'id': self.id})
         elif msg['type'] == 'catchup':
             self.status = msg['data']['status']
             self.data.extend(msg['data'].get('data', []))
             for doc in self.data:
-                self.dispatch_event('document', doc)
+                self.dispatch_event('document', {'data': doc, 'id': self.id})
         elif msg['type'] == 'document':
             self.data.append(msg['data'])
-            self.dispatch_event('document', msg['data'])
+            self.dispatch_event('document', {'data': msg['data'], 'id': self.id})
