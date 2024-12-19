@@ -144,7 +144,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
         }
       : {}),
     priority: meta.internalOptions.priority,
-    geolocation: meta.options.geolocation,
+    geolocation: meta.options.geolocation ?? meta.options.location,
     mobile: meta.options.mobile,
     timeout, // TODO: better timeout logic
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
@@ -227,7 +227,7 @@ export async function scrapeURLWithFireEnginePlaywright(
     screenshot: meta.options.formats.includes("screenshot"),
     fullPageScreenshot: meta.options.formats.includes("screenshot@fullPage"),
     wait: meta.options.waitFor,
-    geolocation: meta.options.geolocation,
+    geolocation: meta.options.geolocation ?? meta.options.location,
 
     timeout,
   };
@@ -286,7 +286,7 @@ export async function scrapeURLWithFireEngineTLSClient(
     priority: meta.internalOptions.priority,
 
     atsv: meta.internalOptions.atsv,
-    geolocation: meta.options.geolocation,
+    geolocation: meta.options.geolocation ?? meta.options.location,
     disableJsDom: meta.internalOptions.v0DisableJsDom,
 
     timeout,
