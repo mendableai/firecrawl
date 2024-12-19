@@ -1,7 +1,24 @@
 import axios, { type AxiosResponse, type AxiosRequestHeaders, AxiosError } from "axios";
 import type * as zt from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { WebSocket } from "isows";
+
+import type { WebSocket as IsowsWebSocket } from 'isows';
+/**
+ * Dynamically imports the WebSocket class from 'isows'.
+ * If the import fails, WebSocket is set to null.
+ * This approach is used because some environments, such as Firebase Functions,
+ * might not support WebSocket natively.
+ */
+const WebSocket: typeof IsowsWebSocket | null = await (async () => {
+  try {
+    const module = await import('isows');
+    return module.WebSocket;
+  } catch (error) {
+    console.error("Failed to load 'isows' module:", error);
+    return null;
+  }
+})();
+
 import { TypedEventTarget } from "typescript-event-target";
 
 /**
@@ -938,6 +955,8 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
 
   constructor(id: string, app: FirecrawlApp) {
     super();
+    if(!WebSocket)
+      throw new FirecrawlError("WebSocket module failed to load. Your system might not support WebSocket.", 500);
     this.ws = new WebSocket(`${app.apiUrl}/v1/crawl/${id}`, app.apiKey);
     this.status = "scraping";
     this.data = [];
