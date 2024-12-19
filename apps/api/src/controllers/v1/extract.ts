@@ -231,20 +231,7 @@ export async function extractController(
       return doc;
     } catch (e) {
       logger.error(`Error in extractController: ${e}`);
-      if (
-        e instanceof Error &&
-        (e.message.startsWith("Job wait") || e.message === "timeout")
-      ) {
-        throw {
-          status: 408,
-          error: "Request timed out",
-        };
-      } else {
-        throw {
-          status: 500,
-          error: `(Internal server error) - ${e && e.message ? e.message : e}`,
-        };
-      }
+      return null;
     }
   });
 
