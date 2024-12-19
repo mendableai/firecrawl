@@ -935,9 +935,11 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
   private ws: WebSocket;
   public data: FirecrawlDocument<undefined>[];
   public status: CrawlStatusResponse["status"];
+  public id: string;
 
   constructor(id: string, app: FirecrawlApp) {
     super();
+    this.id = id;
     this.ws = new WebSocket(`${app.apiUrl}/v1/crawl/${id}`, app.apiKey);
     this.status = "scraping";
     this.data = [];
@@ -968,6 +970,7 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
           detail: {
             status: this.status,
             data: this.data,
+            id: this.id,
           },
         }));
       } else if (msg.type === "error") {
@@ -977,6 +980,7 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
             status: this.status,
             data: this.data,
             error: msg.error,
+            id: this.id,
           },
         }));
       } else if (msg.type === "catchup") {
@@ -984,12 +988,18 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
         this.data.push(...(msg.data.data ?? []));
         for (const doc of this.data) {
           this.dispatchTypedEvent("document", new CustomEvent("document", {
-            detail: doc,
+            detail: {
+              ...doc,
+              id: this.id,
+            },
           }));
         }
       } else if (msg.type === "document") {
         this.dispatchTypedEvent("document", new CustomEvent("document", {
-          detail: msg.data,
+          detail: {
+            ...msg.data,
+            id: this.id,
+          },
         }));
       }
     }
@@ -1016,6 +1026,7 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
           status: this.status,
           data: this.data,
           error: "WebSocket error",
+          id: this.id,
         },
       }));
     }).bind(this);
