@@ -14,7 +14,6 @@ const WebSocket: typeof IsowsWebSocket | null = await (async () => {
     const module = await import('isows');
     return module.WebSocket;
   } catch (error) {
-    console.error("Failed to load 'isows' module:", error);
     return null;
   }
 })();
