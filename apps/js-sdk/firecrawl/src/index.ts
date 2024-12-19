@@ -243,7 +243,7 @@ export interface MapResponse {
  * Defines options for extracting information from URLs.
  */
 export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
-  prompt: string;
+  prompt?: string;
   schema?: LLMSchema;
   systemPrompt?: string;
   allowExternalLinks?: boolean;
