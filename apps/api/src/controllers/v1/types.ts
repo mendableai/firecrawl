@@ -194,6 +194,7 @@ export const extractV1Options = z
       .array()
       .max(10, "Maximum of 10 URLs allowed per request while in beta."),
     prompt: z.string().optional(),
+    systemPrompt: z.string().optional(),
     schema: z.any().optional(),
     limit: z.number().int().positive().finite().safe().optional(),
     ignoreSitemap: z.boolean().default(false),
