@@ -40,7 +40,7 @@ export function extractMetadata(
   const soup = load(html);
 
   try {
-    title = soup("title").text() || undefined;
+    title = soup("title").first().text().trim() || undefined;
     description = soup('meta[name="description"]').attr("content") || undefined;
 
     // Assuming the language is part of the URL as per the regex pattern
