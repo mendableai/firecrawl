@@ -86,7 +86,7 @@ const RATE_LIMITS = {
   testSuite: {
     free: 10000,
     default: 10000,
-  }
+  },
 };
 
 export const redisRateLimitClient = new Redis(
