@@ -11,6 +11,7 @@ import {
   Document as V0Document,
 } from "../../lib/entities";
 import { InternalOptions } from "../../scraper/scrapeURL";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 export type Format =
   | "markdown"
@@ -44,10 +45,7 @@ export const url = z.preprocess(
         return false;
       }
     }, "Invalid URL")
-    .refine(
-      (x) => !isUrlBlocked(x as string),
-      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-    ),
+    .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
 );
 
 const strictMessage =

@@ -32,6 +32,7 @@ import { extractController } from "../controllers/v1/extract";
 // import { livenessController } from "../controllers/v1/liveness";
 // import { readinessController } from "../controllers/v1/readiness";
 import { creditUsageController } from "../controllers/v1/credit-usage";
+import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 
 function checkCreditsMiddleware(
   minimum?: number,
@@ -123,8 +124,7 @@ function blocklistMiddleware(req: Request, res: Response, next: NextFunction) {
     if (!res.headersSent) {
       return res.status(403).json({
         success: false,
-        error:
-          "URL is blocked intentionally. Firecrawl currently does not support scraping this site due to policy restrictions.",
+        error: BLOCKLISTED_URL_MESSAGE,
       });
     }
   }
@@ -231,4 +231,3 @@ v1Router.get(
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(creditUsageController),
 );
-
