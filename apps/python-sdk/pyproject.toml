@@ -13,7 +13,6 @@ dependencies = [
     "python-dotenv",
     "websockets",
     "nest-asyncio",
-    "pytest>=8.3.4",
     "pydantic>=2.10.3",
 ]
 authors = [{name = "Mendable.ai",email = "nick@mendable.ai"}]

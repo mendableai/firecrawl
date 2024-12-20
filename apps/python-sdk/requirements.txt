@@ -3,5 +3,4 @@ pytest
 python-dotenv
 websockets
 nest-asyncio
-pytest
 pydantic
