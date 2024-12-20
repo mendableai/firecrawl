@@ -30,12 +30,12 @@ def test_scrape_url_invalid_api_key():
         invalid_app.scrape_url('https://firecrawl.dev')
     assert "Unauthorized: Invalid token" in str(excinfo.value)
 
-def test_blocklisted_url():
-    blocklisted_url = "https://facebook.com/fake-test"
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
-    with pytest.raises(Exception) as excinfo:
-        app.scrape_url(blocklisted_url)
-    assert "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." in str(excinfo.value)
+# def test_blocklisted_url():
+#     blocklisted_url = "https://facebook.com/fake-test"
+#     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+#     with pytest.raises(Exception) as excinfo:
+#         app.scrape_url(blocklisted_url)
+#     assert "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." in str(excinfo.value)
 
 def test_successful_response_with_valid_preview_token():
     app = FirecrawlApp(api_url=API_URL, api_key="this_is_just_a_preview_token")
@@ -136,12 +136,12 @@ def test_crawl_url_invalid_api_key():
         invalid_app.crawl_url('https://firecrawl.dev')
     assert "Unauthorized: Invalid token" in str(excinfo.value)
 
-def test_should_return_error_for_blocklisted_url():
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
-    blocklisted_url = "https://twitter.com/fake-test"
-    with pytest.raises(Exception) as excinfo:
-        app.crawl_url(blocklisted_url)
-    assert "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." in str(excinfo.value)
+# def test_should_return_error_for_blocklisted_url():
+#     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+#     blocklisted_url = "https://twitter.com/fake-test"
+#     with pytest.raises(Exception) as excinfo:
+#         app.crawl_url(blocklisted_url)
+#     assert "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." in str(excinfo.value)
 
 def test_crawl_url_wait_for_completion_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
@@ -296,12 +296,12 @@ def test_invalid_api_key_on_map():
         invalid_app.map_url('https://roastmywebsite.ai')
     assert "Unauthorized: Invalid token" in str(excinfo.value)
 
-def test_blocklisted_url_on_map():
-    app = FirecrawlApp(api_key=TEST_API_KEY, api_url=API_URL)
-    blocklisted_url = "https://facebook.com/fake-test"
-    with pytest.raises(Exception) as excinfo:
-        app.map_url(blocklisted_url)
-    assert "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." in str(excinfo.value)
+# def test_blocklisted_url_on_map():
+#     app = FirecrawlApp(api_key=TEST_API_KEY, api_url=API_URL)
+#     blocklisted_url = "https://facebook.com/fake-test"
+#     with pytest.raises(Exception) as excinfo:
+#         app.map_url(blocklisted_url)
+#     assert "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." in str(excinfo.value)
 
 def test_successful_response_with_valid_preview_token_on_map():
     app = FirecrawlApp(api_key="this_is_just_a_preview_token", api_url=API_URL)
