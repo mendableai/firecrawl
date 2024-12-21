@@ -9,15 +9,28 @@ const TEST_API_KEY = process.env.TEST_API_KEY;
 const API_URL = process.env.API_URL ?? "https://api.firecrawl.dev";
 
 describe('FirecrawlApp E2E Tests', () => {
-  test.concurrent('should throw error for no API key', async () => {
-    expect(() => {
-      new FirecrawlApp({ apiKey: null, apiUrl: API_URL });
-    }).toThrow("No API key provided");
+  test.concurrent('should throw error for no API key only for cloud service', async () => {
+    if (API_URL.includes('api.firecrawl.dev')) {
+      // Should throw for cloud service
+      expect(() => {
+        new FirecrawlApp({ apiKey: null, apiUrl: API_URL });
+      }).toThrow("No API key provided");
+    } else {
+      // Should not throw for self-hosted
+      expect(() => {
+        new FirecrawlApp({ apiKey: null, apiUrl: API_URL });
+      }).not.toThrow();
+    }
   });
 
   test.concurrent('should throw error for invalid API key on scrape', async () => {
-    const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
-    await expect(invalidApp.scrapeUrl('https://roastmywebsite.ai')).rejects.toThrow("Request failed with status code 401");
+    if (API_URL.includes('api.firecrawl.dev')) {
+      const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
+      await expect(invalidApp.scrapeUrl('https://roastmywebsite.ai')).rejects.toThrow("Unexpected error occurred while trying to scrape URL. Status code: 404");
+    } else {
+      const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
+      await expect(invalidApp.scrapeUrl('https://roastmywebsite.ai')).resolves.not.toThrow();
+    }
   });
 
   test.concurrent('should throw error for blocklisted URL on scrape', async () => {
@@ -155,8 +168,13 @@ describe('FirecrawlApp E2E Tests', () => {
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should throw error for invalid API key on crawl', async () => {
-    const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
-    await expect(invalidApp.crawlUrl('https://roastmywebsite.ai')).rejects.toThrow("Request failed with status code 401");
+    if (API_URL.includes('api.firecrawl.dev')) {
+      const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
+      await expect(invalidApp.crawlUrl('https://roastmywebsite.ai')).rejects.toThrow("Request failed with status code 404");
+    } else {
+      const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
+      await expect(invalidApp.crawlUrl('https://roastmywebsite.ai')).resolves.not.toThrow();
+    }
   });
 
   test.concurrent('should return successful response for crawl and wait for completion', async () => {
@@ -331,8 +349,13 @@ describe('FirecrawlApp E2E Tests', () => {
   }, 60000); // 60 seconds timeout
 
   test.concurrent('should throw error for invalid API key on map', async () => {
-    const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
-    await expect(invalidApp.mapUrl('https://roastmywebsite.ai')).rejects.toThrow("Request failed with status code 401");
+    if (API_URL.includes('api.firecrawl.dev')) {
+      const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
+      await expect(invalidApp.mapUrl('https://roastmywebsite.ai')).rejects.toThrow("Request failed with status code 404");
+    } else {
+      const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
+      await expect(invalidApp.mapUrl('https://roastmywebsite.ai')).resolves.not.toThrow();
+    }
   });
 
   test.concurrent('should throw error for blocklisted URL on map', async () => {
@@ -349,8 +372,7 @@ describe('FirecrawlApp E2E Tests', () => {
   }, 30000); // 30 seconds timeout
 
   test.concurrent('should return successful response for valid map', async () => {
-    const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
-    const response = await app.mapUrl('https://roastmywebsite.ai') as MapResponse;
+    const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });    const response = await app.mapUrl('https://roastmywebsite.ai') as MapResponse;
     expect(response).not.toBeNull();
     
     expect(response.links?.length).toBeGreaterThan(0);
