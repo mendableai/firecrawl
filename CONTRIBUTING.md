@@ -111,6 +111,20 @@ curl -X POST http://localhost:3002/v1/crawl \
     }'
 ```
 
+### Alternative: Using Docker Compose
+
+For a simpler setup, you can use Docker Compose to run all services:
+
+1. Prerequisites: Make sure you have Docker and Docker Compose installed
+2. Copy the `.env.example` file to `.env` in the `/apps/api/` directory and configure as needed
+3. From the root directory, run:
+
+```bash
+docker compose up
+```
+
+This will start Redis, the API server, and workers automatically in the correct configuration.
+
 ## Tests:
 
 The best way to do this is run the test with `npm run test:local-no-auth` if you'd like to run the tests without authentication.
