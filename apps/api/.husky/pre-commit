@@ -1,0 +1,2 @@
+cd apps/api
+pnpm lint-staged
