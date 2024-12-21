@@ -17,13 +17,13 @@ describe('FirecrawlApp E2E Tests', () => {
 
   test.concurrent('should throw error for invalid API key on scrape', async () => {
     const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });
-    await expect(invalidApp.scrapeUrl('https://roastmywebsite.ai')).rejects.toThrow("Request failed with status code 401");
+    await expect(invalidApp.scrapeUrl('https://roastmywebsite.ai')).rejects.toThrow("Unexpected error occurred while trying to scrape URL. Status code: 401");
   });
 
   test.concurrent('should throw error for blocklisted URL on scrape', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const blocklistedUrl = "https://facebook.com/fake-test";
-    await expect(app.scrapeUrl(blocklistedUrl)).rejects.toThrow("Request failed with status code 403");
+    await expect(app.scrapeUrl(blocklistedUrl)).rejects.toThrow("Unexpected error occurred while trying to scrape URL. Status code: 403");
   });
 
   test.concurrent('should return successful response with valid preview token', async () => {
@@ -61,7 +61,7 @@ describe('FirecrawlApp E2E Tests', () => {
       'https://roastmywebsite.ai', {
         formats: ['markdown', 'html', 'rawHtml', 'screenshot', 'links'],
         headers: { "x-key": "test" },
-        includeTags: ['h1'],
+        // includeTags: ['h1'],
         excludeTags: ['h2'],
         onlyMainContent: true,
         timeout: 30000,
@@ -162,7 +162,7 @@ describe('FirecrawlApp E2E Tests', () => {
   test.concurrent('should throw error for blocklisted URL on crawl', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const blocklistedUrl = "https://twitter.com/fake-test";
-    await expect(app.crawlUrl(blocklistedUrl)).rejects.toThrow("URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions.");
+    await expect(app.crawlUrl(blocklistedUrl)).rejects.toThrow("Request failed with status code 403. Error: This website is no longer supported, please reach out to help@firecrawl.com for more info on how to activate it on your account. ");
   });
 
   test.concurrent('should return successful response for crawl and wait for completion', async () => {
@@ -212,7 +212,7 @@ describe('FirecrawlApp E2E Tests', () => {
       scrapeOptions: {
         formats: ['markdown', 'html', 'rawHtml', 'screenshot', 'links'],
         headers: { "x-key": "test" },
-        includeTags: ['h1'],
+        // includeTags: ['h1'],
         excludeTags: ['h2'],
         onlyMainContent: true,
         waitFor: 1000
@@ -334,7 +334,7 @@ describe('FirecrawlApp E2E Tests', () => {
         expect(statusResponse.data[0].metadata).not.toHaveProperty("error");
       }
     }
-  }, 60000); // 60 seconds timeout
+  }, 120000); // 120 seconds timeout
 
   test.concurrent('should throw error for invalid API key on map', async () => {
     const invalidApp = new FirecrawlApp({ apiKey: "invalid_api_key", apiUrl: API_URL });

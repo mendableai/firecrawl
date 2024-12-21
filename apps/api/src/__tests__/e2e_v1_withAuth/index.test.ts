@@ -58,7 +58,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       expect(response.statusCode).toBe(403);
       expect(response.body.error).toBe(
-        "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions.",
+        "Request failed with status code 403. Error: URL is blocked intentionally. Firecrawl currently does not support scraping this site due to policy restrictions. ",
       );
     });
 
@@ -757,7 +757,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
       expect(response.statusCode).toBe(403);
       expect(response.body.error).toBe(
-        "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions.",
+        "Request failed with status code 403. Error: URL is blocked intentionally. Firecrawl currently does not support scraping this site due to policy restrictions. ",
       );
     });
 
