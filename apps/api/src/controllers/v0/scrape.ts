@@ -29,6 +29,7 @@ import { getJobPriority } from "../../lib/job-priority";
 import { fromLegacyScrapeOptions } from "../v1/types";
 import { ZodError } from "zod";
 import { Document as V0Document } from "./../../lib/entities";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 export async function scrapeHelper(
   jobId: string,
@@ -53,8 +54,7 @@ export async function scrapeHelper(
   if (isUrlBlocked(url)) {
     return {
       success: false,
-      error:
-        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
+      error: BLOCKLISTED_URL_MESSAGE,
       returnCode: 403,
     };
   }
@@ -265,13 +265,15 @@ export async function scrapeController(req: Request, res: Response) {
       }
       if (creditsToBeBilled > 0) {
         // billing for doc done on queue end, bill only for llm extraction
-        billTeam(team_id, chunk?.sub_id, creditsToBeBilled, logger).catch((error) => {
-          logger.error(
-            `Failed to bill team ${team_id} for ${creditsToBeBilled} credits`,
-            { error }
-          );
-          // Optionally, you could notify an admin or add to a retry queue here
-        });
+        billTeam(team_id, chunk?.sub_id, creditsToBeBilled, logger).catch(
+          (error) => {
+            logger.error(
+              `Failed to bill team ${team_id} for ${creditsToBeBilled} credits`,
+              { error },
+            );
+            // Optionally, you could notify an admin or add to a retry queue here
+          },
+        );
       }
     }
 

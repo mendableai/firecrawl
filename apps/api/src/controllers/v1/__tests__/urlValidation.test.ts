@@ -1,4 +1,5 @@
 import { url } from "../types";
+import { BLOCKLISTED_URL_MESSAGE } from "../../../lib/strings";
 
 describe("URL Schema Validation", () => {
   beforeEach(() => {
@@ -31,7 +32,7 @@ describe("URL Schema Validation", () => {
 
   it("should reject blocked URLs", () => {
     expect(() => url.parse("https://facebook.com")).toThrow(
-      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
+      BLOCKLISTED_URL_MESSAGE,
     );
   });
 
@@ -47,16 +48,16 @@ describe("URL Schema Validation", () => {
 
   it("should handle URLs with subdomains that are blocked", () => {
     expect(() => url.parse("https://sub.facebook.com")).toThrow(
-      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
+      BLOCKLISTED_URL_MESSAGE,
     );
   });
 
   it("should handle URLs with paths that are blocked", () => {
     expect(() => url.parse("http://facebook.com/path")).toThrow(
-      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
+      BLOCKLISTED_URL_MESSAGE,
     );
     expect(() => url.parse("https://facebook.com/another/path")).toThrow(
-      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
+      BLOCKLISTED_URL_MESSAGE,
     );
   });
 

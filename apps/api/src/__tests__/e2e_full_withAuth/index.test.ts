@@ -1,6 +1,7 @@
 import request from "supertest";
 import dotenv from "dotenv";
 import { v4 as uuidv4 } from "uuid";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 dotenv.config();
 
@@ -58,9 +59,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Content-Type", "application/json")
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain(
-        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-      );
+      expect(response.body.error).toContain(BLOCKLISTED_URL_MESSAGE);
     });
 
     // tested on rate limit test
@@ -480,9 +479,7 @@ describe("E2E Tests for API Routes", () => {
         .set("Content-Type", "application/json")
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain(
-        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-      );
+      expect(response.body.error).toContain(BLOCKLISTED_URL_MESSAGE);
     });
 
     it.concurrent(

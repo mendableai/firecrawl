@@ -44,7 +44,10 @@ export async function supaBillTeam(
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
   }
-  _logger.info(`Billing team ${team_id} for ${credits} credits`, { team_id, credits });
+  _logger.info(`Billing team ${team_id} for ${credits} credits`, {
+    team_id,
+    credits,
+  });
 
   const { data, error } = await supabase_service.rpc("bill_team", {
     _team_id: team_id,

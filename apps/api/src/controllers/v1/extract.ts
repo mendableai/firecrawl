@@ -92,19 +92,18 @@ export async function extractController(
       let mappedLinks = mapResults.mapResults as MapDocument[];
 
       // Remove duplicates between mapResults.links and mappedLinks
-      const allUrls = [...mappedLinks.map(m => m.url), ...mapResults.links];
+      const allUrls = [...mappedLinks.map((m) => m.url), ...mapResults.links];
       const uniqueUrls = removeDuplicateUrls(allUrls);
-      
+
       // Only add URLs from mapResults.links that aren't already in mappedLinks
-      const existingUrls = new Set(mappedLinks.map(m => m.url));
-      const newUrls = uniqueUrls.filter(url => !existingUrls.has(url));
-      
+      const existingUrls = new Set(mappedLinks.map((m) => m.url));
+      const newUrls = uniqueUrls.filter((url) => !existingUrls.has(url));
+
       mappedLinks = [
         ...mappedLinks,
-        ...newUrls.map(url => ({ url, title: "", description: "" }))
+        ...newUrls.map((url) => ({ url, title: "", description: "" })),
       ];
 
-      
       if (mappedLinks.length === 0) {
         mappedLinks = [{ url: baseUrl, title: "", description: "" }];
       }
@@ -116,7 +115,6 @@ export async function extractController(
         (x) =>
           `url: ${x.url}, title: ${x.title}, description: ${x.description}`,
       );
-
 
       if (req.body.prompt) {
         let searchQuery =

@@ -1,5 +1,6 @@
 import request from "supertest";
 import dotenv from "dotenv";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 const fs = require("fs");
 const path = require("path");
 
@@ -61,9 +62,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
         .set("Content-Type", "application/json")
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain(
-        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-      );
+      expect(response.body.error).toContain(BLOCKLISTED_URL_MESSAGE);
     });
 
     it("should return a successful response", async () => {
@@ -88,9 +87,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
         .set("Content-Type", "application/json")
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain(
-        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-      );
+      expect(response.body.error).toContain(BLOCKLISTED_URL_MESSAGE);
     });
 
     it("should return a successful response", async () => {
@@ -119,9 +116,7 @@ describe("E2E Tests for API Routes with No Authentication", () => {
         .set("Content-Type", "application/json")
         .send({ url: blocklistedUrl });
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toContain(
-        "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-      );
+      expect(response.body.error).toContain(BLOCKLISTED_URL_MESSAGE);
     });
 
     it("should return a successful response", async () => {

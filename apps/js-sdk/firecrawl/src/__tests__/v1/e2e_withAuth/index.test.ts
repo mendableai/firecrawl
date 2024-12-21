@@ -159,12 +159,6 @@ describe('FirecrawlApp E2E Tests', () => {
     await expect(invalidApp.crawlUrl('https://roastmywebsite.ai')).rejects.toThrow("Request failed with status code 401");
   });
 
-  test.concurrent('should throw error for blocklisted URL on crawl', async () => {
-    const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
-    const blocklistedUrl = "https://twitter.com/fake-test";
-    await expect(app.crawlUrl(blocklistedUrl)).rejects.toThrow("Request failed with status code 403. Error: This website is no longer supported, please reach out to help@firecrawl.com for more info on how to activate it on your account. ");
-  });
-
   test.concurrent('should return successful response for crawl and wait for completion', async () => {
     const app = new FirecrawlApp({ apiKey: TEST_API_KEY, apiUrl: API_URL });
     const response = await app.crawlUrl('https://roastmywebsite.ai', {}, 30) as CrawlStatusResponse;

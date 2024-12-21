@@ -1027,14 +1027,21 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
         this.ws.close();
         return;
       }
-
-      const msg = JSON.parse(ev.data) as Message;
-      messageHandler(msg);
+      try {
+        const msg = JSON.parse(ev.data) as Message;
+        messageHandler(msg);
+      } catch (error) {
+        console.error("Error on message", error);
+      }
     }).bind(this);
 
     this.ws.onclose = ((ev: CloseEvent) => {
-      const msg = JSON.parse(ev.reason) as Message;
-      messageHandler(msg);
+      try {
+        const msg = JSON.parse(ev.reason) as Message;
+        messageHandler(msg);
+      } catch (error) {
+        console.error("Error on close", error);
+      }
     }).bind(this);
 
     this.ws.onerror = ((_: Event) => {

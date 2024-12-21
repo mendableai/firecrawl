@@ -4,6 +4,7 @@ import {
   ScrapeRequestInput,
   ScrapeResponseRequestTest,
 } from "../../controllers/v1/types";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 configDotenv();
 const TEST_URL = "http://127.0.0.1:3002";
@@ -57,9 +58,7 @@ describe("E2E Tests for v1 API Routes", () => {
         .send(scrapeRequest);
 
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toBe(
-        "Request failed with status code 403. Error: URL is blocked intentionally. Firecrawl currently does not support scraping this site due to policy restrictions. ",
-      );
+      expect(response.body.error).toBe(BLOCKLISTED_URL_MESSAGE);
     });
 
     it.concurrent(
@@ -756,9 +755,7 @@ describe("E2E Tests for v1 API Routes", () => {
         .send(scrapeRequest);
 
       expect(response.statusCode).toBe(403);
-      expect(response.body.error).toBe(
-        "Request failed with status code 403. Error: URL is blocked intentionally. Firecrawl currently does not support scraping this site due to policy restrictions. ",
-      );
+      expect(response.body.error).toBe(BLOCKLISTED_URL_MESSAGE);
     });
 
     it.concurrent(

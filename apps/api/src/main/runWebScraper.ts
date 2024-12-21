@@ -71,7 +71,7 @@ export async function runWebScraper({
     module: "runWebscraper",
     scrapeId: bull_job_id,
     jobId: bull_job_id,
-  })
+  });
   const tries = is_crawl ? 3 : 1;
 
   let response: ScrapeUrlResponse | undefined = undefined;
@@ -176,7 +176,7 @@ export async function runWebScraper({
       billTeam(team_id, undefined, creditsToBeBilled, logger).catch((error) => {
         logger.error(
           `Failed to bill team ${team_id} for ${creditsToBeBilled} credits`,
-          { error }
+          { error },
         );
         // Optionally, you could notify an admin or add to a retry queue here
       });
