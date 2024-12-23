@@ -49,6 +49,8 @@ _Pst. hey, you, join our stargazers :)_
   <img src="https://img.shields.io/github/stars/mendableai/firecrawl.svg?style=social&label=Star&maxAge=2592000" alt="GitHub stars">
 </a>
 
+[![Star History Chart](https://api.star-history.com/svg?repos=mendableai/firecrawl&type=Date)](https://star-history.com/#mendableai/firecrawl&Date)
+
 ## How to use it?
 
 We provide an easy to use API with our hosted version. You can find the playground and documentation [here](https://firecrawl.dev/playground). You can also self host the backend if you'd like.
