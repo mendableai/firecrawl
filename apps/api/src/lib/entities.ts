@@ -170,7 +170,7 @@ export class Document {
   }
 }
 
-export class SearchResult {
+export class SearchResult implements SearchResult {
   url: string;
   title: string;
   description: string;
