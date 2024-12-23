@@ -18,16 +18,18 @@ import { v4 as uuidv4 } from "uuid";
 import {
   addCrawlJob,
   addCrawlJobDone,
+  addCrawlJobs,
   crawlToCrawler,
   finishCrawl,
   generateURLPermutations,
   getCrawl,
   getCrawlJobs,
   lockURL,
+  lockURLs,
   normalizeURL,
 } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
-import { addScrapeJob } from "./queue-jobs";
+import { addScrapeJob, addScrapeJobs } from "./queue-jobs";
 import {
   addJobPriority,
   deleteJobPriority,
@@ -191,22 +193,34 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
   await addJobPriority(job.data.team_id, job.id);
   let err = null;
   try {
-    const result = await processJob(job, token);
-    if (result.success) {
-      try {
-        if (job.data.crawl_id && process.env.USE_DB_AUTHENTICATION === "true") {
-          logger.debug(
-            "Job succeeded -- has crawl associated, putting null in Redis",
-          );
+    if (job.data?.mode === "kickoff") {
+      const result = await processKickoffJob(job, token);
+      if (result.success) {
+        try {
           await job.moveToCompleted(null, token, false);
-        } else {
-          logger.debug("Job succeeded -- putting result in Redis");
-          await job.moveToCompleted(result.document, token, false);
-        }
-      } catch (e) {}
+        } catch (e) {}
+      } else {
+        logger.debug("Job failed", { result, mode: job.data.mode });
+        await job.moveToFailed((result as any).error, token, false);
+      }
     } else {
-      logger.debug("Job failed", { result });
-      await job.moveToFailed((result as any).error, token, false);
+      const result = await processJob(job, token);
+      if (result.success) {
+        try {
+          if (job.data.crawl_id && process.env.USE_DB_AUTHENTICATION === "true") {
+            logger.debug(
+              "Job succeeded -- has crawl associated, putting null in Redis",
+            );
+            await job.moveToCompleted(null, token, false);
+          } else {
+            logger.debug("Job succeeded -- putting result in Redis");
+            await job.moveToCompleted(result.document, token, false);
+          }
+        } catch (e) {}
+      } else {
+        logger.debug("Job failed", { result });
+        await job.moveToFailed((result as any).error, token, false);
+      }
     }
   } catch (error) {
     logger.debug("Job failed", { error });
@@ -378,6 +392,130 @@ const workerFun = async (
 };
 
 workerFun(getScrapeQueue(), processJobInternal);
+
+async function processKickoffJob(job: Job & { id: string }, token: string) {
+  const logger = _logger.child({
+    module: "queue-worker",
+    method: "processKickoffJob",
+    jobId: job.id,
+    scrapeId: job.id,
+    crawlId: job.data?.crawl_id ?? undefined,
+    teamId: job.data?.team_id ?? undefined,
+  });
+
+  try {
+    const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+    const crawler = crawlToCrawler(job.data.crawl_id, sc);
+
+    const sitemap = sc.crawlerOptions.ignoreSitemap
+        ? 0
+        : await crawler.tryGetSitemap(async urls => {
+            if (urls.length === 0) return;
+            
+            logger.debug("Using sitemap chunk of length " + urls.length, {
+              sitemapLength: urls.length,
+            });
+    
+            let jobPriority = await getJobPriority({
+              plan: job.data.plan,
+              team_id: job.data.team_id,
+              basePriority: 21,
+            });
+            logger.debug("Using job priority " + jobPriority, { jobPriority });
+    
+            const jobs = urls.map(url => {
+              const uuid = uuidv4();
+              return {
+                name: uuid,
+                data: {
+                  url,
+                  mode: "single_urls" as const,
+                  team_id: job.data.team_id,
+                  plan: job.data.plan!,
+                  crawlerOptions: job.data.crawlerOptions,
+                  scrapeOptions: job.data.scrapeOptions,
+                  internalOptions: sc.internalOptions,
+                  origin: job.data.origin,
+                  crawl_id: job.data.crawl_id,
+                  sitemapped: true,
+                  webhook: job.data.webhook,
+                  v1: job.data.v1,
+                },
+                opts: {
+                  jobId: uuid,
+                  priority: 20,
+                },
+              };
+            });
+        
+            logger.debug("Locking URLs...");
+            await lockURLs(
+              job.data.crawl_id,
+              sc,
+              jobs.map((x) => x.data.url),
+            );
+            logger.debug("Adding scrape jobs to Redis...");
+            await addCrawlJobs(
+              job.data.crawl_id,
+              jobs.map((x) => x.opts.jobId),
+            );
+            logger.debug("Adding scrape jobs to BullMQ...");
+            await addScrapeJobs(jobs);
+          });
+
+    if (sitemap === 0) {
+      logger.debug("Sitemap not found or ignored.", {
+        ignoreSitemap: sc.crawlerOptions.ignoreSitemap,
+      });
+  
+      logger.debug("Locking URL...");
+      await lockURL(job.data.crawl_id, sc, job.data.url);
+      const jobId = uuidv4();
+      logger.debug("Adding scrape job to Redis...", { jobId });
+      await addScrapeJob(
+        {
+          url: job.data.url,
+          mode: "single_urls",
+          team_id: job.data.team_id,
+          crawlerOptions: job.data.crawlerOptions,
+          scrapeOptions: scrapeOptions.parse(job.data.scrapeOptions),
+          internalOptions: sc.internalOptions,
+          plan: job.data.plan!,
+          origin: job.data.origin,
+          crawl_id: job.data.crawl_id,
+          webhook: job.data.webhook,
+          v1: job.data.v1,
+        },
+        {
+          priority: 15,
+        },
+        jobId,
+      );
+      logger.debug("Adding scrape job to BullMQ...", { jobId });
+      await addCrawlJob(job.data.crawl_id, jobId);
+    }
+    logger.debug("Done queueing jobs!");
+
+    if (job.data.webhook) {
+      logger.debug("Calling webhook with crawl.started...", {
+        webhook: job.data.webhook,
+      });
+      await callWebhook(
+        job.data.team_id,
+        job.data.crawl_id,
+        null,
+        job.data.webhook,
+        true,
+        "crawl.started",
+      );
+    }
+    
+    return { success: true }
+  } catch (error) {
+    logger.error("An error occurred!", { error })
+    return { success: false, error };
+  }
+}
 
 async function processJob(job: Job & { id: string }, token: string) {
   const logger = _logger.child({

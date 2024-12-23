@@ -86,11 +86,12 @@ export async function getMapResults({
 
   // If sitemapOnly is true, only get links from sitemap
   if (crawlerOptions.sitemapOnly) {
-    const sitemap = await crawler.tryGetSitemap(true, true);
-    if (sitemap !== null) {
-      sitemap.forEach((x) => {
-        links.push(x.url);
+    const sitemap = await crawler.tryGetSitemap(urls => {
+      urls.forEach((x) => {
+        links.push(x);
       });
+    }, true, true);
+    if (sitemap > 0) {
       links = links
         .slice(1)
         .map((x) => {
@@ -143,19 +144,15 @@ export async function getMapResults({
     }
 
     // Parallelize sitemap fetch with serper search
-    const [sitemap, ...searchResults] = await Promise.all([
-      ignoreSitemap ? null : crawler.tryGetSitemap(true),
+    const [_, ...searchResults] = await Promise.all([
+      ignoreSitemap ? null : crawler.tryGetSitemap(urls => {
+        links.push(...urls);
+      }, true),
       ...(cachedResult ? [] : pagePromises),
     ]);
 
     if (!cachedResult) {
       allResults = searchResults;
-    }
-
-    if (sitemap !== null) {
-      sitemap.forEach((x) => {
-        links.push(x.url);
-      });
     }
 
     mapResults = allResults
