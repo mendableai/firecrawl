@@ -32,7 +32,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       });
       await expect(
         invalidApp.scrapeUrl("https://roastmywebsite.ai")
-      ).rejects.toThrow("Unexpected error occurred while trying to scrape URL. Status code: 401");
+      ).rejects.toThrow("Request failed with status code 401");
     }
   );
 
@@ -46,7 +46,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       });
       const blocklistedUrl = "https://facebook.com/fake-test";
       await expect(app.scrapeUrl(blocklistedUrl)).rejects.toThrow(
-        "Unexpected error occurred while trying to scrape URL. Status code: 403"
+        "Request failed with status code 403"
       );
     }
   );
@@ -169,7 +169,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       });
       const blocklistedUrl = "https://twitter.com/fake-test";
       await expect(app.crawlUrl(blocklistedUrl)).rejects.toThrow(
-        "Unexpected error occurred while trying to scrape URL. Status code: 403"
+        "Request failed with status code 403"
       );
     }
   );
@@ -242,7 +242,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
       const maxChecks = 15;
       let checks = 0;
 
-      while ((statusResponse.status === "active" || statusResponse.status === "scraping" ) && checks < maxChecks) {
+      while (statusResponse.status === "active" && checks < maxChecks) {
         await new Promise((resolve) => setTimeout(resolve, 5000));
         expect(statusResponse.partial_data).not.toBeNull();
         // expect(statusResponse.current).toBeGreaterThanOrEqual(1);
