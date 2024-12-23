@@ -55,6 +55,7 @@ export interface RunWebScraperParams {
   bull_job_id: string;
   priority?: number;
   is_scrape?: boolean;
+  is_crawl?: boolean;
 }
 
 export type RunWebScraperResult =

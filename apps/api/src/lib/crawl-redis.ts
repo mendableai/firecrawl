@@ -60,6 +60,8 @@ export async function addCrawlJob(id: string, job_id: string) {
 }
 
 export async function addCrawlJobs(id: string, job_ids: string[]) {
+  if (job_ids.length === 0) return true;
+
   _logger.debug("Adding crawl jobs to Redis...", {
     jobIds: job_ids,
     module: "crawl-redis",
@@ -90,12 +92,20 @@ export async function addCrawlJobDone(
 
   if (success) {
     await redisConnection.rpush("crawl:" + id + ":jobs_done_ordered", job_id);
-    await redisConnection.expire(
+  } else {
+    // in case it's already been pushed, make sure it's removed
+    await redisConnection.lrem(
       "crawl:" + id + ":jobs_done_ordered",
-      24 * 60 * 60,
-      "NX",
+      -1,
+      job_id,
     );
   }
+
+  await redisConnection.expire(
+    "crawl:" + id + ":jobs_done_ordered",
+    24 * 60 * 60,
+    "NX",
+  );
 }
 
 export async function getDoneJobsOrderedLength(id: string): Promise<number> {
@@ -227,13 +237,6 @@ export async function lockURL(
   url = normalizeURL(url, sc);
   logger = logger.child({ url });
 
-  await redisConnection.sadd("crawl:" + id + ":visited_unique", url);
-  await redisConnection.expire(
-    "crawl:" + id + ":visited_unique",
-    24 * 60 * 60,
-    "NX",
-  );
-
   let res: boolean;
   if (!sc.crawlerOptions?.deduplicateSimilarURLs) {
     res = (await redisConnection.sadd("crawl:" + id + ":visited", url)) !== 0;
@@ -249,6 +252,15 @@ export async function lockURL(
 
   await redisConnection.expire("crawl:" + id + ":visited", 24 * 60 * 60, "NX");
 
+  if (res) {
+    await redisConnection.sadd("crawl:" + id + ":visited_unique", url);
+    await redisConnection.expire(
+      "crawl:" + id + ":visited_unique",
+      24 * 60 * 60,
+      "NX",
+    );
+  }
+
   logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
     res,
   });
@@ -261,6 +273,8 @@ export async function lockURLs(
   sc: StoredCrawl,
   urls: string[],
 ): Promise<boolean> {
+  if (urls.length === 0) return true;
+
   urls = urls.map((url) => normalizeURL(url, sc));
   const logger = _logger.child({
     crawlId: id,

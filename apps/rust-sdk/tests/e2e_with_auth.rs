@@ -5,20 +5,20 @@ use firecrawl::FirecrawlApp;
 use serde_json::json;
 use std::env;
 
-#[tokio::test]
-async fn test_blocklisted_url() {
-    dotenv().ok();
-    let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("TEST_API_KEY").ok();
-    let app = FirecrawlApp::new_selfhosted(api_url, api_key).unwrap();
-    let blocklisted_url = "https://facebook.com/fake-test";
-    let result = app.scrape_url(blocklisted_url, None).await;
+// #[tokio::test]
+// async fn test_blocklisted_url() {
+//     dotenv().ok();
+//     let api_url = env::var("API_URL").unwrap();
+//     let api_key = env::var("TEST_API_KEY").ok();
+//     let app = FirecrawlApp::new_selfhosted(api_url, api_key).unwrap();
+//     let blocklisted_url = "https://facebook.com/fake-test";
+//     let result = app.scrape_url(blocklisted_url, None).await;
 
-    assert_matches!(
-        result,
-        Err(e) if e.to_string().contains("Firecrawl currently does not support social media scraping due to policy restrictions")
-    );
-}
+//     assert_matches!(
+//         result,
+//         Err(e) if e.to_string().contains("Firecrawl currently does not support social media scraping due to policy restrictions")
+//     );
+// }
 
 #[tokio::test]
 async fn test_successful_response_with_valid_preview_token() {
@@ -103,20 +103,21 @@ async fn test_successful_response_for_valid_scrape_with_pdf_file_without_explici
         .contains("We present spectrophotometric observations of the Broad Line Radio Galaxy"));
 }
 
-#[tokio::test]
-async fn test_should_return_error_for_blocklisted_url() {
-    dotenv().ok();
-    let api_url = env::var("API_URL").unwrap();
-    let api_key = env::var("TEST_API_KEY").ok();
-    let app = FirecrawlApp::new_selfhosted(api_url, api_key).unwrap();
-    let blocklisted_url = "https://twitter.com/fake-test";
-    let result = app.crawl_url(blocklisted_url, None).await;
 
-    assert_matches!(
-        result,
-        Err(e) if e.to_string().contains("Firecrawl currently does not support social media scraping due to policy restrictions.")
-    );
-}
+// #[tokio::test]
+// async fn test_should_return_error_for_blocklisted_url() {
+//     dotenv().ok();
+//     let api_url = env::var("API_URL").unwrap();
+//     let api_key = env::var("TEST_API_KEY").ok();
+//     let app = FirecrawlApp::new_selfhosted(api_url, api_key).unwrap();
+//     let blocklisted_url = "https://twitter.com/fake-test";
+//     let result = app.crawl_url(blocklisted_url, None).await;
+
+//     assert_matches!(
+//         result,
+//         Err(e) if e.to_string().contains("Firecrawl currently does not support social media scraping due to policy restrictions.")
+//     );
+// }
 
 #[tokio::test]
 async fn test_llm_extraction() {

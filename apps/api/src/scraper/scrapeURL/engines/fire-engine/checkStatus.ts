@@ -3,7 +3,7 @@ import * as Sentry from "@sentry/node";
 import { z } from "zod";
 
 import { robustFetch } from "../../lib/fetch";
-import { EngineError, SiteError } from "../../error";
+import { ActionError, EngineError, SiteError } from "../../error";
 
 const successSchema = z.object({
   jobId: z.string(),
@@ -111,6 +111,12 @@ export async function fireEngineCheckStatus(
       status.error.includes("Chrome error: ")
     ) {
       throw new SiteError(status.error.split("Chrome error: ")[1]);
+    } else if (
+      typeof status.error === "string" &&
+      // TODO: improve this later
+      status.error.includes("Element")
+    ) {
+      throw new ActionError(status.error.split("Error: ")[1]);
     } else {
       throw new EngineError("Scrape job failed", {
         cause: {

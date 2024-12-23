@@ -62,3 +62,16 @@ export async function generateCompletions(
 
   return completions;
 }
+
+// generate basic completion
+
+export async function generateBasicCompletion(prompt: string) {
+  const openai = new OpenAI();
+  const model = "gpt-4o";
+
+  const completion = await openai.chat.completions.create({
+    model,
+    messages: [{ role: "user", content: prompt }],
+  });
+  return completion.choices[0].message.content;
+}

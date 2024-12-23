@@ -15,6 +15,7 @@ import { addScrapeJob } from "../../../src/services/queue-jobs";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
 import { fromLegacyScrapeOptions } from "../v1/types";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 export async function crawlPreviewController(req: Request, res: Response) {
   try {
@@ -42,8 +43,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
 
     if (isUrlBlocked(url)) {
       return res.status(403).json({
-        error:
-          "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
+        error: BLOCKLISTED_URL_MESSAGE,
       });
     }
 

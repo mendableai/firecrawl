@@ -15,6 +15,7 @@ type PDFProcessorResult = { html: string; markdown?: string };
 async function scrapePDFWithLlamaParse(
   meta: Meta,
   tempFilePath: string,
+  timeToRun: number | undefined,
 ): Promise<PDFProcessorResult> {
   meta.logger.debug("Processing PDF document with LlamaIndex", {
     tempFilePath,
@@ -63,8 +64,9 @@ async function scrapePDFWithLlamaParse(
 
   // TODO: timeout, retries
   const startedAt = Date.now();
+  const timeout = timeToRun ?? 300000;
 
-  while (Date.now() <= startedAt + (meta.options.timeout ?? 300000)) {
+  while (Date.now() <= startedAt + timeout) {
     try {
       const result = await robustFetch({
         url: `https://api.cloud.llamaindex.ai/api/parsing/job/${jobId}/result/markdown`,
@@ -122,7 +124,10 @@ async function scrapePDFWithParsePDF(
   };
 }
 
-export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
+export async function scrapePDF(
+  meta: Meta,
+  timeToRun: number | undefined,
+): Promise<EngineScrapeResult> {
   if (!meta.options.parsePDF) {
     const file = await fetchFileToBuffer(meta.url);
     const content = file.buffer.toString("base64");
@@ -138,9 +143,26 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
   const { response, tempFilePath } = await downloadFile(meta.id, meta.url);
 
   let result: PDFProcessorResult | null = null;
-  if (process.env.LLAMAPARSE_API_KEY) {
+
+  // First, try parsing with PdfParse
+  result = await scrapePDFWithParsePDF(
+    {
+      ...meta,
+      logger: meta.logger.child({
+        method: "scrapePDF/scrapePDFWithParsePDF",
+      }),
+    },
+    tempFilePath,
+  );
+
+  // If the parsed text is under 500 characters and LLAMAPARSE_API_KEY exists, try LlamaParse
+  if (
+    result.markdown &&
+    result.markdown.length < 500 &&
+    process.env.LLAMAPARSE_API_KEY
+  ) {
     try {
-      result = await scrapePDFWithLlamaParse(
+      const llamaResult = await scrapePDFWithLlamaParse(
         {
           ...meta,
           logger: meta.logger.child({
@@ -148,34 +170,24 @@ export async function scrapePDF(meta: Meta): Promise<EngineScrapeResult> {
           }),
         },
         tempFilePath,
+        timeToRun,
       );
+      result = llamaResult; // Use LlamaParse result if successful
     } catch (error) {
       if (error instanceof Error && error.message === "LlamaParse timed out") {
-        meta.logger.warn("LlamaParse timed out -- falling back to parse-pdf", {
+        meta.logger.warn("LlamaParse timed out -- using parse-pdf result", {
           error,
         });
       } else if (error instanceof RemoveFeatureError) {
         throw error;
       } else {
         meta.logger.warn(
-          "LlamaParse failed to parse PDF -- falling back to parse-pdf",
+          "LlamaParse failed to parse PDF -- using parse-pdf result",
           { error },
         );
         Sentry.captureException(error);
       }
     }
-  }
-
-  if (result === null) {
-    result = await scrapePDFWithParsePDF(
-      {
-        ...meta,
-        logger: meta.logger.child({
-          method: "scrapePDF/scrapePDFWithParsePDF",
-        }),
-      },
-      tempFilePath,
-    );
   }
 
   await fs.unlink(tempFilePath);

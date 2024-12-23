@@ -13,12 +13,10 @@ import {
   FireEngineCheckStatusSuccess,
   StillProcessingError,
 } from "./checkStatus";
-import { EngineError, SiteError, TimeoutError } from "../../error";
+import { ActionError, EngineError, SiteError, TimeoutError } from "../../error";
 import * as Sentry from "@sentry/node";
 import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
-
-export const defaultTimeout = 10000;
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -31,7 +29,7 @@ async function performFireEngineScrape<
 >(
   logger: Logger,
   request: FireEngineScrapeRequestCommon & Engine,
-  timeout = defaultTimeout,
+  timeout: number,
 ): Promise<FireEngineCheckStatusSuccess> {
   const scrape = await fireEngineScrape(
     logger.child({ method: "fireEngineScrape" }),
@@ -70,7 +68,11 @@ async function performFireEngineScrape<
     } catch (error) {
       if (error instanceof StillProcessingError) {
         // nop
-      } else if (error instanceof EngineError || error instanceof SiteError) {
+      } else if (
+        error instanceof EngineError ||
+        error instanceof SiteError ||
+        error instanceof ActionError
+      ) {
         logger.debug("Fire-engine scrape job failed.", {
           error,
           jobId: scrape.jobId,
@@ -94,6 +96,7 @@ async function performFireEngineScrape<
 
 export async function scrapeURLWithFireEngineChromeCDP(
   meta: Meta,
+  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
   const actions: Action[] = [
     // Transform waitFor option into an action (unsupported by chrome-cdp)
@@ -121,6 +124,13 @@ export async function scrapeURLWithFireEngineChromeCDP(
     ...(meta.options.actions ?? []),
   ];
 
+  const totalWait = actions.reduce(
+    (a, x) => (x.type === "wait" ? (x.milliseconds ?? 1000) + a : a),
+    0,
+  );
+
+  const timeout = (timeToRun ?? 300000) + totalWait;
+
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestChromeCDP = {
     url: meta.url,
@@ -134,17 +144,12 @@ export async function scrapeURLWithFireEngineChromeCDP(
         }
       : {}),
     priority: meta.internalOptions.priority,
-    geolocation: meta.options.geolocation,
+    geolocation: meta.options.geolocation ?? meta.options.location,
     mobile: meta.options.mobile,
-    timeout: meta.options.timeout === undefined ? 300000 : undefined, // TODO: better timeout logic
+    timeout, // TODO: better timeout logic
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
     // TODO: scrollXPaths
   };
-
-  const totalWait = actions.reduce(
-    (a, x) => (x.type === "wait" ? (x.milliseconds ?? 1000) + a : a),
-    0,
-  );
 
   let response = await performFireEngineScrape(
     meta.logger.child({
@@ -152,7 +157,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
       request,
     }),
     request,
-    meta.options.timeout !== undefined ? defaultTimeout + totalWait : Infinity, // TODO: better timeout handling
+    timeout,
   );
 
   specialtyScrapeCheck(
@@ -206,7 +211,11 @@ export async function scrapeURLWithFireEngineChromeCDP(
 
 export async function scrapeURLWithFireEnginePlaywright(
   meta: Meta,
+  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
+  const totalWait = meta.options.waitFor;
+  const timeout = (timeToRun ?? 300000) + totalWait;
+
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestPlaywright = {
     url: meta.url,
@@ -218,9 +227,9 @@ export async function scrapeURLWithFireEnginePlaywright(
     screenshot: meta.options.formats.includes("screenshot"),
     fullPageScreenshot: meta.options.formats.includes("screenshot@fullPage"),
     wait: meta.options.waitFor,
-    geolocation: meta.options.geolocation,
+    geolocation: meta.options.geolocation ?? meta.options.location,
 
-    timeout: meta.options.timeout === undefined ? 300000 : undefined, // TODO: better timeout logic
+    timeout,
   };
 
   let response = await performFireEngineScrape(
@@ -229,9 +238,7 @@ export async function scrapeURLWithFireEnginePlaywright(
       request,
     }),
     request,
-    meta.options.timeout !== undefined
-      ? defaultTimeout + meta.options.waitFor
-      : Infinity, // TODO: better timeout handling
+    timeout,
   );
 
   specialtyScrapeCheck(
@@ -265,7 +272,10 @@ export async function scrapeURLWithFireEnginePlaywright(
 
 export async function scrapeURLWithFireEngineTLSClient(
   meta: Meta,
+  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
+  const timeout = timeToRun ?? 30000;
+
   const request: FireEngineScrapeRequestCommon &
     FireEngineScrapeRequestTLSClient = {
     url: meta.url,
@@ -276,10 +286,10 @@ export async function scrapeURLWithFireEngineTLSClient(
     priority: meta.internalOptions.priority,
 
     atsv: meta.internalOptions.atsv,
-    geolocation: meta.options.geolocation,
+    geolocation: meta.options.geolocation ?? meta.options.location,
     disableJsDom: meta.internalOptions.v0DisableJsDom,
 
-    timeout: meta.options.timeout === undefined ? 300000 : undefined, // TODO: better timeout logic
+    timeout,
   };
 
   let response = await performFireEngineScrape(
@@ -288,7 +298,7 @@ export async function scrapeURLWithFireEngineTLSClient(
       request,
     }),
     request,
-    meta.options.timeout !== undefined ? defaultTimeout : Infinity, // TODO: better timeout handling
+    timeout,
   );
 
   specialtyScrapeCheck(

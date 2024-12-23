@@ -12,6 +12,7 @@ import {
 } from "./engines";
 import { parseMarkdown } from "../../lib/html-to-markdown";
 import {
+  ActionError,
   AddFeatureError,
   EngineError,
   NoEnginesLeftError,
@@ -86,7 +87,7 @@ function buildFeatureFlags(
     flags.add("skipTlsVerification");
   }
 
-  if (internalOptions.v0UseFastMode) {
+  if (options.fastMode) {
     flags.add("useFastMode");
   }
 
@@ -148,7 +149,6 @@ export type InternalOptions = {
   atsv?: boolean; // anti-bot solver, beta
 
   v0CrawlOnlyUrls?: boolean;
-  v0UseFastMode?: boolean;
   v0DisableJsDom?: boolean;
 
   disableSmartWaitCache?: boolean; // Passed along to fire-engine
@@ -203,11 +203,16 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   const results: EngineResultsTracker = {};
   let result: EngineScrapeResultWithContext | null = null;
 
+  const timeToRun =
+    meta.options.timeout !== undefined
+      ? Math.round(meta.options.timeout / Math.min(fallbackList.length, 2))
+      : undefined;
+
   for (const { engine, unsupportedFeatures } of fallbackList) {
     const startedAt = Date.now();
     try {
       meta.logger.info("Scraping via " + engine + "...");
-      const _engineResult = await scrapeURLWithEngine(meta, engine);
+      const _engineResult = await scrapeURLWithEngine(meta, engine, timeToRun);
       if (_engineResult.markdown === undefined) {
         // Some engines emit Markdown directly.
         _engineResult.markdown = await parseMarkdown(_engineResult.html);
@@ -284,6 +289,8 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         meta.logger.warn("LLM refusal encountered", { error });
         throw error;
       } else if (error instanceof SiteError) {
+        throw error;
+      } else if (error instanceof ActionError) {
         throw error;
       } else {
         Sentry.captureException(error);
@@ -405,6 +412,8 @@ export async function scrapeURL(
       // TODO: results?
     } else if (error instanceof SiteError) {
       meta.logger.warn("scrapeURL: Site failed to load in browser", { error });
+    } else if (error instanceof ActionError) {
+      meta.logger.warn("scrapeURL: Action(s) failed to complete", { error });
     } else {
       Sentry.captureException(error);
       meta.logger.error("scrapeURL: Unexpected error happened", { error });

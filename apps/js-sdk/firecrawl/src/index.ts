@@ -157,6 +157,7 @@ export interface CrawlParams {
   webhook?: string | {
     url: string;
     headers?: Record<string, string>;
+    metadata?: Record<string, string>;
   };
   deduplicateSimilarURLs?: boolean;
   ignoreQueryParameters?: boolean;
@@ -182,6 +183,7 @@ export interface BatchScrapeResponse {
   url?: string;
   success: true;
   error?: string;
+  invalidURLs?: string[];
 }
 
 /**
@@ -241,10 +243,11 @@ export interface MapResponse {
  * Defines options for extracting information from URLs.
  */
 export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
-  prompt: string;
+  prompt?: string;
   schema?: LLMSchema;
   systemPrompt?: string;
   allowExternalLinks?: boolean;
+  includeSubdomains?: boolean;
 }
 
 /**
@@ -575,9 +578,10 @@ export default class FirecrawlApp {
     pollInterval: number = 2,
     idempotencyKey?: string,
     webhook?: CrawlParams["webhook"],
+    ignoreInvalidURLs?: boolean,
   ): Promise<BatchScrapeStatusResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
-    let jsonData: any = { urls, ...params };
+    let jsonData: any = { urls, webhook, ignoreInvalidURLs, ...params };
     if (jsonData?.extract?.schema) {
       let schema = jsonData.extract.schema;
 
@@ -620,10 +624,12 @@ export default class FirecrawlApp {
   async asyncBatchScrapeUrls(
     urls: string[],
     params?: ScrapeParams,
-    idempotencyKey?: string
+    idempotencyKey?: string,
+    webhook?: CrawlParams["webhook"],
+    ignoreInvalidURLs?: boolean,
   ): Promise<BatchScrapeResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
-    let jsonData: any = { urls, ...(params ?? {}) };
+    let jsonData: any = { urls, webhook, ignoreInvalidURLs, ...(params ?? {}) };
     try {
       const response: AxiosResponse = await this.postRequest(
         this.apiUrl + `/v1/batch/scrape`,
@@ -656,8 +662,10 @@ export default class FirecrawlApp {
     urls: string[],
     params?: ScrapeParams,
     idempotencyKey?: string,
+    webhook?: CrawlParams["webhook"],
+    ignoreInvalidURLs?: boolean,
   ) {
-    const crawl = await this.asyncBatchScrapeUrls(urls, params, idempotencyKey);
+    const crawl = await this.asyncBatchScrapeUrls(urls, params, idempotencyKey, webhook, ignoreInvalidURLs);
 
     if (crawl.success && crawl.id) {
       const id = crawl.id;
@@ -927,9 +935,11 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
   private ws: WebSocket;
   public data: FirecrawlDocument<undefined>[];
   public status: CrawlStatusResponse["status"];
+  public id: string;
 
   constructor(id: string, app: FirecrawlApp) {
     super();
+    this.id = id;
     this.ws = new WebSocket(`${app.apiUrl}/v1/crawl/${id}`, app.apiKey);
     this.status = "scraping";
     this.data = [];
@@ -960,6 +970,7 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
           detail: {
             status: this.status,
             data: this.data,
+            id: this.id,
           },
         }));
       } else if (msg.type === "error") {
@@ -969,6 +980,7 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
             status: this.status,
             data: this.data,
             error: msg.error,
+            id: this.id,
           },
         }));
       } else if (msg.type === "catchup") {
@@ -976,12 +988,18 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
         this.data.push(...(msg.data.data ?? []));
         for (const doc of this.data) {
           this.dispatchTypedEvent("document", new CustomEvent("document", {
-            detail: doc,
+            detail: {
+              ...doc,
+              id: this.id,
+            },
           }));
         }
       } else if (msg.type === "document") {
         this.dispatchTypedEvent("document", new CustomEvent("document", {
-          detail: msg.data,
+          detail: {
+            ...msg.data,
+            id: this.id,
+          },
         }));
       }
     }
@@ -991,14 +1009,21 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
         this.ws.close();
         return;
       }
-
-      const msg = JSON.parse(ev.data) as Message;
-      messageHandler(msg);
+      try {
+        const msg = JSON.parse(ev.data) as Message;
+        messageHandler(msg);
+      } catch (error) {
+        console.error("Error on message", error);
+      }
     }).bind(this);
 
     this.ws.onclose = ((ev: CloseEvent) => {
-      const msg = JSON.parse(ev.reason) as Message;
-      messageHandler(msg);
+      try {
+        const msg = JSON.parse(ev.reason) as Message;
+        messageHandler(msg);
+      } catch (error) {
+        console.error("Error on close", error);
+      }
     }).bind(this);
 
     this.ws.onerror = ((_: Event) => {
@@ -1008,6 +1033,7 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
           status: this.status,
           data: this.data,
           error: "WebSocket error",
+          id: this.id,
         },
       }));
     }).bind(this);

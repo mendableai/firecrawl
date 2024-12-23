@@ -3,6 +3,7 @@
     "rootDir": "./src",
     "lib": ["ES2022", "DOM"],
 
+
     // or higher
     "target": "ES2022",
 
@@ -18,7 +19,7 @@
       "*": ["node_modules/*", "src/types/*"],
     },
 
-    "inlineSources": true
+    "inlineSources": true,
   },
   "include": ["src/","src/**/*", "services/db/supabase.ts", "utils/utils.ts", "services/db/supabaseEmbeddings.ts", "utils/EventEmmitter.ts", "src/services/queue-service.ts"]
 }
