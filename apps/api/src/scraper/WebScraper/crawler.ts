@@ -198,26 +198,28 @@ export class WebCrawler {
   }
 
   public async tryGetSitemap(
+    urlsHandler: (urls: string[]) => unknown,
     fromMap: boolean = false,
     onlySitemap: boolean = false,
-  ): Promise<{ url: string; html: string }[] | null> {
+  ): Promise<number> {
     this.logger.debug(`Fetching sitemap links from ${this.initialUrl}`, {
       method: "tryGetSitemap",
     });
-    const sitemapLinks = await this.tryFetchSitemapLinks(this.initialUrl);
-    if (fromMap && onlySitemap) {
-      return sitemapLinks.map((link) => ({ url: link, html: "" }));
-    }
-    if (sitemapLinks.length > 0) {
-      let filteredLinks = this.filterLinks(
-        [...new Set(sitemapLinks)],
-        this.limit,
-        this.maxCrawledDepth,
-        fromMap,
-      );
-      return filteredLinks.map((link) => ({ url: link, html: "" }));
-    }
-    return null;
+    let leftOfLimit = this.limit;
+    return await this.tryFetchSitemapLinks(this.initialUrl, (urls: string[]) => {
+      if (fromMap && onlySitemap) {
+        return urlsHandler(urls);
+      } else {
+        let filteredLinks = this.filterLinks(
+          [...new Set(urls)],
+          leftOfLimit,
+          this.maxCrawledDepth,
+          fromMap,
+        );
+        leftOfLimit -= filteredLinks.length;
+        return urlsHandler(filteredLinks);
+      }
+    });
   }
 
   public filterURL(href: string, url: string): string | null {
@@ -436,23 +438,23 @@ export class WebCrawler {
     return socialMediaOrEmail.some((ext) => url.includes(ext));
   }
 
-  private async tryFetchSitemapLinks(url: string): Promise<string[]> {
-    const normalizeUrl = (url: string) => {
-      url = url.replace(/^https?:\/\//, "").replace(/^www\./, "");
-      if (url.endsWith("/")) {
-        url = url.slice(0, -1);
-      }
-      return url;
-    };
+  private async tryFetchSitemapLinks(url: string, urlsHandler: (urls: string[]) => unknown): Promise<number> {
+    // const normalizeUrl = (url: string) => {
+    //   url = url.replace(/^https?:\/\//, "").replace(/^www\./, "");
+    //   if (url.endsWith("/")) {
+    //     url = url.slice(0, -1);
+    //   }
+    //   return url;
+    // };
 
     const sitemapUrl = url.endsWith(".xml") ? url : `${url}/sitemap.xml`;
 
-    let sitemapLinks: string[] = [];
+    let sitemapCount: number = 0;
 
     try {
       const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
       if (response.status === 200) {
-        sitemapLinks = await getLinksFromSitemap({ sitemapUrl }, this.logger);
+        sitemapCount = await getLinksFromSitemap({ sitemapUrl, urlsHandler }, this.logger);
       }
     } catch (error) {
       this.logger.debug(
@@ -463,24 +465,24 @@ export class WebCrawler {
         // ignore 404
       } else {
         const response = await getLinksFromSitemap(
-          { sitemapUrl, mode: "fire-engine" },
+          { sitemapUrl, urlsHandler, mode: "fire-engine" },
           this.logger,
         );
         if (response) {
-          sitemapLinks = response;
+          sitemapCount = response;
         }
       }
     }
 
-    if (sitemapLinks.length === 0) {
+    if (sitemapCount === 0) {
       const baseUrlSitemap = `${this.baseUrl}/sitemap.xml`;
       try {
         const response = await axios.get(baseUrlSitemap, {
           timeout: axiosTimeout,
         });
         if (response.status === 200) {
-          sitemapLinks = await getLinksFromSitemap(
-            { sitemapUrl: baseUrlSitemap, mode: "fire-engine" },
+          sitemapCount += await getLinksFromSitemap(
+            { sitemapUrl: baseUrlSitemap, urlsHandler, mode: "fire-engine" },
             this.logger,
           );
         }
@@ -493,25 +495,27 @@ export class WebCrawler {
         if (error instanceof AxiosError && error.response?.status === 404) {
           // ignore 404
         } else {
-          sitemapLinks = await getLinksFromSitemap(
-            { sitemapUrl: baseUrlSitemap, mode: "fire-engine" },
+          sitemapCount += await getLinksFromSitemap(
+            { sitemapUrl: baseUrlSitemap, urlsHandler, mode: "fire-engine" },
             this.logger,
           );
         }
       }
     }
 
-    const normalizedUrl = normalizeUrl(url);
-    const normalizedSitemapLinks = sitemapLinks.map((link) =>
-      normalizeUrl(link),
-    );
-    // has to be greater than 0 to avoid adding the initial URL to the sitemap links, and preventing crawler to crawl
-    if (
-      !normalizedSitemapLinks.includes(normalizedUrl) &&
-      sitemapLinks.length > 0
-    ) {
-      sitemapLinks.push(url);
-    }
-    return sitemapLinks;
+    // TODO: readd
+    // const normalizedUrl = normalizeUrl(url);
+    // const normalizedSitemapLinks = sitemapLinks.map((link) =>
+    //   normalizeUrl(link),
+    // );
+    // // has to be greater than 0 to avoid adding the initial URL to the sitemap links, and preventing crawler to crawl
+    // if (
+    //   !normalizedSitemapLinks.includes(normalizedUrl) &&
+    //   sitemapLinks.length > 0
+    // ) {
+    //   sitemapLinks.push(url);
+    // }
+    // return sitemapLinks;
+    return sitemapCount;
   }
 }

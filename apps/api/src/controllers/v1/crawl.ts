@@ -18,7 +18,7 @@ import {
 } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
 import { getScrapeQueue } from "../../services/queue-service";
-import { addScrapeJob, addScrapeJobs } from "../../services/queue-jobs";
+import { _addScrapeJobToBullMQ, addScrapeJob, addScrapeJobs } from "../../services/queue-jobs";
 import { logger as _logger } from "../../lib/logger";
 import { getJobPriority } from "../../lib/job-priority";
 import { callWebhook } from "../../services/webhook";
@@ -111,113 +111,20 @@ export async function crawlController(
 
   await saveCrawl(id, sc);
 
-  const sitemap = sc.crawlerOptions.ignoreSitemap
-    ? null
-    : await crawler.tryGetSitemap();
-
-  if (sitemap !== null && sitemap.length > 0) {
-    logger.debug("Using sitemap of length " + sitemap.length, {
-      sitemapLength: sitemap.length,
-    });
-    let jobPriority = 20;
-    // If it is over 1000, we need to get the job priority,
-    // otherwise we can use the default priority of 20
-    if (sitemap.length > 1000) {
-      // set base to 21
-      jobPriority = await getJobPriority({
-        plan: req.auth.plan,
-        team_id: req.auth.team_id,
-        basePriority: 21,
-      });
-    }
-    logger.debug("Using job priority " + jobPriority, { jobPriority });
-
-    const jobs = sitemap.map((x) => {
-      const url = x.url;
-      const uuid = uuidv4();
-      return {
-        name: uuid,
-        data: {
-          url,
-          mode: "single_urls" as const,
-          team_id: req.auth.team_id,
-          plan: req.auth.plan!,
-          crawlerOptions,
-          scrapeOptions,
-          internalOptions: sc.internalOptions,
-          origin: "api",
-          crawl_id: id,
-          sitemapped: true,
-          webhook: req.body.webhook,
-          v1: true,
-        },
-        opts: {
-          jobId: uuid,
-          priority: 20,
-        },
-      };
-    });
-
-    logger.debug("Locking URLs...");
-    await lockURLs(
-      id,
-      sc,
-      jobs.map((x) => x.data.url),
-    );
-    logger.debug("Adding scrape jobs to Redis...");
-    await addCrawlJobs(
-      id,
-      jobs.map((x) => x.opts.jobId),
-    );
-    logger.debug("Adding scrape jobs to BullMQ...");
-    await addScrapeJobs(jobs);
-  } else {
-    logger.debug("Sitemap not found or ignored.", {
-      ignoreSitemap: sc.crawlerOptions.ignoreSitemap,
-    });
-
-    logger.debug("Locking URL...");
-    await lockURL(id, sc, req.body.url);
-    const jobId = uuidv4();
-    logger.debug("Adding scrape job to Redis...", { jobId });
-    await addScrapeJob(
-      {
-        url: req.body.url,
-        mode: "single_urls",
-        team_id: req.auth.team_id,
-        crawlerOptions,
-        scrapeOptions: scrapeOptionsSchema.parse(scrapeOptions),
-        internalOptions: sc.internalOptions,
-        plan: req.auth.plan!,
-        origin: "api",
-        crawl_id: id,
-        webhook: req.body.webhook,
-        v1: true,
-      },
-      {
-        priority: 15,
-      },
-      jobId,
-    );
-    logger.debug("Adding scrape job to BullMQ...", { jobId });
-    await addCrawlJob(id, jobId);
-  }
-  logger.debug("Done queueing jobs!");
-
-  if (req.body.webhook) {
-    logger.debug("Calling webhook with crawl.started...", {
-      webhook: req.body.webhook,
-    });
-    await callWebhook(
-      req.auth.team_id,
-      id,
-      null,
-      req.body.webhook,
-      true,
-      "crawl.started",
-    );
-  }
-
+  await _addScrapeJobToBullMQ({
+    url: req.body.url,
+    mode: "kickoff" as const,
+    team_id: req.auth.team_id,
+    plan: req.auth.plan,
+    crawlerOptions,
+    scrapeOptions: sc.scrapeOptions,
+    internalOptions: sc.internalOptions,
+    origin: "api",
+    crawl_id: id,
+    webhook: req.body.webhook,
+    v1: true,
+  }, {}, crypto.randomUUID(), 10);
+  
   const protocol = process.env.ENV === "local" ? req.protocol : "https";
 
   return res.status(200).json({
