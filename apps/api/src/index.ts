@@ -23,7 +23,7 @@ const { BullAdapter } = require("@bull-board/api/bullAdapter");
 const { ExpressAdapter } = require("@bull-board/express");
 
 const numCPUs = process.env.ENV === "local" ? 2 : os.availableParallelism();
-Logger.info(`Number of CPUs: ${numCPUs} available`);
+logger.info(`Number of CPUs: ${numCPUs} available`);
 
 const cacheable = new CacheableLookup();
 
