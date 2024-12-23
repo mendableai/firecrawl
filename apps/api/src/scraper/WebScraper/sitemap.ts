@@ -9,15 +9,15 @@ import type { Logger } from "winston";
 export async function getLinksFromSitemap(
   {
     sitemapUrl,
-    allUrls = [],
+    urlsHandler,
     mode = "axios",
   }: {
     sitemapUrl: string;
-    allUrls?: string[];
+    urlsHandler(urls: string[]): unknown,
     mode?: "axios" | "fire-engine";
   },
   logger: Logger,
-): Promise<string[]> {
+): Promise<number> {
   try {
     let content: string = "";
     try {
@@ -44,22 +44,23 @@ export async function getLinksFromSitemap(
         error,
       });
 
-      return allUrls;
+      return 0;
     }
 
     const parsed = await parseStringPromise(content);
     const root = parsed.urlset || parsed.sitemapindex;
+    let count = 0;
 
     if (root && root.sitemap) {
-      const sitemapPromises = root.sitemap
+      const sitemapPromises: Promise<number>[] = root.sitemap
         .filter((sitemap) => sitemap.loc && sitemap.loc.length > 0)
         .map((sitemap) =>
           getLinksFromSitemap(
-            { sitemapUrl: sitemap.loc[0], allUrls, mode },
+            { sitemapUrl: sitemap.loc[0], urlsHandler, mode },
             logger,
           ),
         );
-      await Promise.all(sitemapPromises);
+      count += (await Promise.all(sitemapPromises)).reduce((a,x) => a + x, 0);
     } else if (root && root.url) {
       const validUrls = root.url
         .filter(
@@ -69,8 +70,11 @@ export async function getLinksFromSitemap(
             !WebCrawler.prototype.isFile(url.loc[0]),
         )
         .map((url) => url.loc[0]);
-      allUrls.push(...validUrls);
+      count += validUrls.length;
+      urlsHandler(validUrls);
     }
+
+    return count;
   } catch (error) {
     logger.debug(`Error processing sitemapUrl: ${sitemapUrl}`, {
       method: "getLinksFromSitemap",
@@ -80,7 +84,7 @@ export async function getLinksFromSitemap(
     });
   }
 
-  return allUrls;
+  return 0;
 }
 
 export const fetchSitemapData = async (

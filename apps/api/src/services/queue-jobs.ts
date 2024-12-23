@@ -29,7 +29,7 @@ async function _addScrapeJobToConcurrencyQueue(
   });
 }
 
-async function _addScrapeJobToBullMQ(
+export async function _addScrapeJobToBullMQ(
   webScraperOptions: any,
   options: any,
   jobId: string,
@@ -138,7 +138,6 @@ export async function addScrapeJobs(
   if (jobs[0].data && jobs[0].data.team_id && jobs[0].data.plan) {
     const now = Date.now();
     const limit = await getConcurrencyLimitMax(jobs[0].data.plan);
-    console.log("CC limit", limit);
     cleanOldConcurrencyLimitEntries(jobs[0].data.team_id, now);
 
     countCanBeDirectlyAdded = Math.max(
