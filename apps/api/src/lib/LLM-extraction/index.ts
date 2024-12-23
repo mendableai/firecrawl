@@ -4,19 +4,19 @@ const ajv = new Ajv(); // Initialize AJV for JSON schema validation
 
 import { generateOpenAICompletions } from "./models";
 import { Document, ExtractorOptions } from "../entities";
-import { Logger } from "../logger";
+import { logger } from "../logger";
 
 // Generate completion using OpenAI
 export async function generateCompletions(
   documents: Document[],
-  extractionOptions: ExtractorOptions,
-  mode: "markdown" | "raw-html"
+  extractionOptions: ExtractorOptions | undefined,
+  mode: "markdown" | "raw-html",
 ): Promise<Document[]> {
   // const schema = zodToJsonSchema(options.schema)
 
-  const schema = extractionOptions.extractionSchema;
-  const systemPrompt = extractionOptions.extractionPrompt;
-  const prompt = extractionOptions.userPrompt;
+  const schema = extractionOptions?.extractionSchema;
+  const systemPrompt = extractionOptions?.extractionPrompt;
+  const prompt = extractionOptions?.userPrompt;
 
   const switchVariable = "openAI"; // Placholder, want to think more about how we abstract the model provider
 
@@ -43,22 +43,35 @@ export async function generateCompletions(
                   `JSON parsing error(s): ${validate.errors
                     ?.map((err) => err.message)
                     .join(
-                      ", "
-                    )}\n\nLLM extraction did not match the extraction schema you provided. This could be because of a model hallucination, or an Error on our side. Try adjusting your prompt, and if it doesn't work reach out to support.`
+                      ", ",
+                    )}\n\nLLM extraction did not match the extraction schema you provided. This could be because of a model hallucination, or an Error on our side. Try adjusting your prompt, and if it doesn't work reach out to support.`,
                 );
               }
             }
 
             return completionResult;
           } catch (error) {
-            Logger.error(`Error generating completions: ${error}`);
+            logger.error(`Error generating completions: ${error}`);
             throw error;
           }
         default:
           throw new Error("Invalid client");
       }
-    })
+    }),
   );
 
   return completions;
+}
+
+// generate basic completion
+
+export async function generateBasicCompletion(prompt: string) {
+  const openai = new OpenAI();
+  const model = "gpt-4o";
+
+  const completion = await openai.chat.completions.create({
+    model,
+    messages: [{ role: "user", content: prompt }],
+  });
+  return completion.choices[0].message.content;
 }

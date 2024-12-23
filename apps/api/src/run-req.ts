@@ -31,7 +31,7 @@ async function sendCrawl(result: Result): Promise<string | undefined> {
           "Content-Type": "application/json",
           Authorization: `Bearer `,
         },
-      }
+      },
     );
     result.idempotency_key = idempotencyKey;
     return response.data.jobId;
@@ -53,7 +53,7 @@ async function getContent(result: Result): Promise<boolean> {
             "Content-Type": "application/json",
             Authorization: `Bearer `,
           },
-        }
+        },
       );
       if (response.data.status === "completed") {
         result.result_data_jsonb = response.data.data;
@@ -95,13 +95,13 @@ async function processResults(results: Result[]): Promise<void> {
       // Save the result to the file
       try {
         // Save job id along with the start_url
-        const resultWithJobId = results.map(r => ({
+        const resultWithJobId = results.map((r) => ({
           start_url: r.start_url,
           job_id: r.job_id,
         }));
         await fs.writeFile(
           "results_with_job_id_4000_6000.json",
-          JSON.stringify(resultWithJobId, null, 4)
+          JSON.stringify(resultWithJobId, null, 4),
         );
       } catch (error) {
         console.error("Error writing to results_with_content.json:", error);

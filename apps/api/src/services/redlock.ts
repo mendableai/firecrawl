@@ -4,7 +4,7 @@ import Client from "ioredis";
 export const redlock = new Redlock(
   // You should have one client for each independent redis node
   // or cluster.
-  [new Client(process.env.REDIS_RATE_LIMIT_URL)],
+  [new Client(process.env.REDIS_RATE_LIMIT_URL!)],
   {
     // The expected clock drift; for more details see:
     // http://redis.io/topics/distlock
@@ -22,5 +22,5 @@ export const redlock = new Redlock(
     // The minimum remaining time on a lock before an extension is automatically
     // attempted with the `using` API.
     automaticExtensionThreshold: 500, // time in ms
-  }
+  },
 );

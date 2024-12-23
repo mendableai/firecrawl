@@ -1,1 +1,1 @@
-export const axiosTimeout = 3000;
+export const axiosTimeout = 5000;

@@ -19,10 +19,10 @@ RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN \
 
 # Install Go
 FROM golang:1.19 AS go-base
-COPY src/lib/go-html-to-md /app/src/lib/go-html-to-md
+COPY sharedLibs/go-html-to-md /app/sharedLibs/go-html-to-md
 
 # Install Go dependencies and build parser lib
-RUN cd /app/src/lib/go-html-to-md && \
+RUN cd /app/sharedLibs/go-html-to-md && \
     go mod tidy && \
     go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go && \
     chmod +x html-to-markdown.so
@@ -30,7 +30,7 @@ RUN cd /app/src/lib/go-html-to-md && \
 FROM base
 COPY --from=prod-deps /app/node_modules /app/node_modules
 COPY --from=build /app /app
-COPY --from=go-base /app/src/lib/go-html-to-md/html-to-markdown.so /app/dist/src/lib/go-html-to-md/html-to-markdown.so
+COPY --from=go-base /app/sharedLibs/go-html-to-md/html-to-markdown.so /app/sharedLibs/go-html-to-md/html-to-markdown.so
 
 # Start the server by default, this can be overwritten at runtime
 EXPOSE 8080

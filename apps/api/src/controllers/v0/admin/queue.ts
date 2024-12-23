@@ -1,16 +1,16 @@
 import { Request, Response } from "express";
 
 import { Job } from "bullmq";
-import { Logger } from "../../../lib/logger";
+import { logger } from "../../../lib/logger";
 import { getScrapeQueue } from "../../../services/queue-service";
 import { checkAlerts } from "../../../services/alerts";
 import { sendSlackWebhook } from "../../../services/alerts/slack";
 
 export async function cleanBefore24hCompleteJobsController(
   req: Request,
-  res: Response
+  res: Response,
 ) {
-  Logger.info("🐂 Cleaning jobs older than 24h");
+  logger.info("🐂 Cleaning jobs older than 24h");
   try {
     const scrapeQueue = getScrapeQueue();
     const batchSize = 10;
@@ -22,8 +22,8 @@ export async function cleanBefore24hCompleteJobsController(
           ["completed"],
           i * batchSize,
           i * batchSize + batchSize,
-          true
-        )
+          true,
+        ),
       );
     }
     const completedJobs: Job[] = (
@@ -31,7 +31,9 @@ export async function cleanBefore24hCompleteJobsController(
     ).flat();
     const before24hJobs =
       completedJobs.filter(
-        (job) => job.finishedOn < Date.now() - 24 * 60 * 60 * 1000
+        (job) =>
+          job.finishedOn !== undefined &&
+          job.finishedOn < Date.now() - 24 * 60 * 60 * 1000,
       ) || [];
 
     let count = 0;
@@ -45,12 +47,12 @@ export async function cleanBefore24hCompleteJobsController(
         await job.remove();
         count++;
       } catch (jobError) {
-        Logger.error(`🐂 Failed to remove job with ID ${job.id}: ${jobError}`);
+        logger.error(`🐂 Failed to remove job with ID ${job.id}: ${jobError}`);
       }
     }
     return res.status(200).send(`Removed ${count} completed jobs.`);
   } catch (error) {
-    Logger.error(`🐂 Failed to clean last 24h complete jobs: ${error}`);
+    logger.error(`🐂 Failed to clean last 24h complete jobs: ${error}`);
     return res.status(500).send("Failed to clean jobs");
   }
 }
@@ -60,7 +62,7 @@ export async function checkQueuesController(req: Request, res: Response) {
     await checkAlerts();
     return res.status(200).send("Alerts initialized");
   } catch (error) {
-    Logger.debug(`Failed to initialize alerts: ${error}`);
+    logger.debug(`Failed to initialize alerts: ${error}`);
     return res.status(500).send("Failed to initialize alerts");
   }
 }
@@ -81,7 +83,7 @@ export async function queuesController(req: Request, res: Response) {
       noActiveJobs,
     });
   } catch (error) {
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).json({ error: error.message });
   }
 }
@@ -109,7 +111,7 @@ export async function autoscalerController(req: Request, res: Response) {
         headers: {
           Authorization: `Bearer ${process.env.FLY_API_TOKEN}`,
         },
-      }
+      },
     );
     const machines = await request.json();
 
@@ -119,7 +121,7 @@ export async function autoscalerController(req: Request, res: Response) {
         (machine.state === "started" ||
           machine.state === "starting" ||
           machine.state === "replacing") &&
-        machine.config.env["FLY_PROCESS_GROUP"] === "worker"
+        machine.config.env["FLY_PROCESS_GROUP"] === "worker",
     ).length;
 
     let targetMachineCount = activeMachines;
@@ -132,17 +134,17 @@ export async function autoscalerController(req: Request, res: Response) {
     if (webScraperActive > 9000 || waitingAndPriorityCount > 2000) {
       targetMachineCount = Math.min(
         maxNumberOfMachines,
-        activeMachines + baseScaleUp * 3
+        activeMachines + baseScaleUp * 3,
       );
     } else if (webScraperActive > 5000 || waitingAndPriorityCount > 1000) {
       targetMachineCount = Math.min(
         maxNumberOfMachines,
-        activeMachines + baseScaleUp * 2
+        activeMachines + baseScaleUp * 2,
       );
     } else if (webScraperActive > 1000 || waitingAndPriorityCount > 500) {
       targetMachineCount = Math.min(
         maxNumberOfMachines,
-        activeMachines + baseScaleUp
+        activeMachines + baseScaleUp,
       );
     }
 
@@ -150,36 +152,36 @@ export async function autoscalerController(req: Request, res: Response) {
     if (webScraperActive < 100 && waitingAndPriorityCount < 50) {
       targetMachineCount = Math.max(
         minNumberOfMachines,
-        activeMachines - baseScaleDown * 3
+        activeMachines - baseScaleDown * 3,
       );
     } else if (webScraperActive < 500 && waitingAndPriorityCount < 200) {
       targetMachineCount = Math.max(
         minNumberOfMachines,
-        activeMachines - baseScaleDown * 2
+        activeMachines - baseScaleDown * 2,
       );
     } else if (webScraperActive < 1000 && waitingAndPriorityCount < 500) {
       targetMachineCount = Math.max(
         minNumberOfMachines,
-        activeMachines - baseScaleDown
+        activeMachines - baseScaleDown,
       );
     }
 
     if (targetMachineCount !== activeMachines) {
-      Logger.info(
-        `🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting`
+      logger.info(
+        `🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting`,
       );
 
       if (targetMachineCount > activeMachines) {
         sendSlackWebhook(
           `🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting - Current DateTime: ${new Date().toISOString()}`,
           false,
-          process.env.SLACK_AUTOSCALER ?? ""
+          process.env.SLACK_AUTOSCALER ?? "",
         );
       } else {
         sendSlackWebhook(
           `🐂 Scaling from ${activeMachines} to ${targetMachineCount} - ${webScraperActive} active, ${webScraperWaiting} waiting - Current DateTime: ${new Date().toISOString()}`,
           false,
-          process.env.SLACK_AUTOSCALER ?? ""
+          process.env.SLACK_AUTOSCALER ?? "",
         );
       }
       return res.status(200).json({
@@ -193,7 +195,7 @@ export async function autoscalerController(req: Request, res: Response) {
       count: activeMachines,
     });
   } catch (error) {
-    Logger.error(error);
+    logger.error(error);
     return res.status(500).send("Failed to initialize autoscaler");
   }
 }

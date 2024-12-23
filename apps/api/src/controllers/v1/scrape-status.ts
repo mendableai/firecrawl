@@ -11,8 +11,12 @@ export async function scrapeStatusController(req: any, res: any) {
     await rateLimiter.consume(iptoken);
 
     const job = await supabaseGetJobByIdOnlyData(req.params.jobId);
+    const allowedTeams = [
+      "41bdbfe1-0579-4d9b-b6d5-809f16be12f5",
+      "511544f2-2fce-4183-9c59-6c29b02c69b5",
+    ];
 
-    if(job.team_id !== "41bdbfe1-0579-4d9b-b6d5-809f16be12f5"){
+    if (!allowedTeams.includes(job?.team_id)) {
       return res.status(403).json({
         success: false,
         error: "You are not allowed to access this resource.",

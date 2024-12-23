@@ -1,15 +1,15 @@
 import Redis from "ioredis";
 import { redisRateLimitClient } from "./rate-limiter";
-import { Logger } from "../lib/logger";
+import { logger } from "../lib/logger";
 
 // Listen to 'error' events to the Redis connection
 redisRateLimitClient.on("error", (error) => {
   try {
     if (error.message === "ECONNRESET") {
-      Logger.error("Connection to Redis Session Rate Limit Store timed out.");
+      logger.error("Connection to Redis Session Rate Limit Store timed out.");
     } else if (error.message === "ECONNREFUSED") {
-      Logger.error("Connection to Redis Session Rate Limit Store refused!");
-    } else Logger.error(error);
+      logger.error("Connection to Redis Session Rate Limit Store refused!");
+    } else logger.error(error);
   } catch (error) {}
 });
 
@@ -17,15 +17,15 @@ redisRateLimitClient.on("error", (error) => {
 redisRateLimitClient.on("reconnecting", (err) => {
   try {
     if (redisRateLimitClient.status === "reconnecting")
-      Logger.info("Reconnecting to Redis Session Rate Limit Store...");
-    else Logger.error("Error reconnecting to Redis Session Rate Limit Store.");
+      logger.info("Reconnecting to Redis Session Rate Limit Store...");
+    else logger.error("Error reconnecting to Redis Session Rate Limit Store.");
   } catch (error) {}
 });
 
 // Listen to the 'connect' event to Redis
 redisRateLimitClient.on("connect", (err) => {
   try {
-    if (!err) Logger.info("Connected to Redis Session Rate Limit Store!");
+    if (!err) logger.info("Connected to Redis Session Rate Limit Store!");
   } catch (error) {}
 });
 
@@ -35,7 +35,12 @@ redisRateLimitClient.on("connect", (err) => {
  * @param {string} value The value to store.
  * @param {number} [expire] Optional expiration time in seconds.
  */
-const setValue = async (key: string, value: string, expire?: number, nx = false) => {
+const setValue = async (
+  key: string,
+  value: string,
+  expire?: number,
+  nx = false,
+) => {
   if (expire && !nx) {
     await redisRateLimitClient.set(key, value, "EX", expire);
   } else {

@@ -2,11 +2,11 @@
 
 Welcome to [Firecrawl](https://firecrawl.dev) 🔥! Here are some instructions on how to get the project locally, so you can run it on your own (and contribute)
 
-If you're contributing, note that the process is similar to other open source repos i.e. (fork firecrawl, make changes, run tests, PR). If you have any questions, and would like help gettin on board, reach out to hello@mendable.ai for more or submit an issue!
+If you're contributing, note that the process is similar to other open source repos i.e. (fork firecrawl, make changes, run tests, PR). If you have any questions, and would like help gettin on board, reach out to help@firecrawl.com for more or submit an issue!
 
 ## Running the project locally
 
-First, start by installing dependencies
+First, start by installing dependencies:
 
 1. node.js [instructions](https://nodejs.org/en/learn/getting-started/how-to-install-nodejs)
 2. pnpm [instructions](https://pnpm.io/installation)
@@ -41,7 +41,6 @@ TEST_API_KEY= # use if you've set up authentication and want to test with a real
 SCRAPING_BEE_API_KEY= #Set if you'd like to use scraping Be to handle JS blocking
 OPENAI_API_KEY= # add for LLM dependednt features (image alt generation, etc.)
 BULL_AUTH_KEY= @
-LOGTAIL_KEY= # Use if you're configuring basic logging with logtail
 PLAYWRIGHT_MICROSERVICE_URL=  # set if you'd like to run a playwright fallback
 LLAMAPARSE_API_KEY= #Set if you have a llamaparse key you'd like to use to parse pdfs
 SLACK_WEBHOOK_URL= # set if you'd like to send slack server health status messages
@@ -56,12 +55,13 @@ POSTHOG_HOST= # set if you'd like to send posthog events like job logs
 First, install the dependencies using pnpm.
 
 ```bash
-pnpm install
+# cd apps/api # to make sure you're in the right folder
+pnpm install # make sure you have pnpm version 9+!
 ```
 
 ### Running the project
 
-You're going to need to open 3 terminals.
+You're going to need to open 3 terminals. Here is [a video guide accurate as of Oct 2024](https://youtu.be/LHqg5QNI4UY).
 
 ### Terminal 1 - setting up redis
 
@@ -77,6 +77,7 @@ Now, navigate to the apps/api/ directory and run:
 
 ```bash
 pnpm run workers
+# if you are going to use the [llm-extract feature](https://github.com/mendableai/firecrawl/pull/586/), you should also export OPENAI_API_KEY=sk-______
 ```
 
 This will start the workers who are responsible for processing crawl jobs.

@@ -7,25 +7,38 @@ import { isUrlBlocked } from "../../../src/scraper/WebScraper/utils/blocklist";
 import { logCrawl } from "../../../src/services/logging/crawl_log";
 import { validateIdempotencyKey } from "../../../src/services/idempotency/validate";
 import { createIdempotencyKey } from "../../../src/services/idempotency/create";
-import { defaultCrawlPageOptions, defaultCrawlerOptions, defaultOrigin } from "../../../src/lib/default-values";
+import {
+  defaultCrawlPageOptions,
+  defaultCrawlerOptions,
+  defaultOrigin,
+} from "../../../src/lib/default-values";
 import { v4 as uuidv4 } from "uuid";
-import { Logger } from "../../../src/lib/logger";
-import { addCrawlJob, addCrawlJobs, crawlToCrawler, lockURL, lockURLs, saveCrawl, StoredCrawl } from "../../../src/lib/crawl-redis";
+import { logger } from "../../../src/lib/logger";
+import {
+  addCrawlJob,
+  addCrawlJobs,
+  crawlToCrawler,
+  lockURL,
+  lockURLs,
+  saveCrawl,
+  StoredCrawl,
+} from "../../../src/lib/crawl-redis";
 import { getScrapeQueue } from "../../../src/services/queue-service";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
+import { fromLegacyScrapeOptions, url as urlSchema } from "../v1/types";
+import { ZodError } from "zod";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 export async function crawlController(req: Request, res: Response) {
   try {
-    const { success, team_id, error, status, plan, chunk } = await authenticateUser(
-      req,
-      res,
-      RateLimiterMode.Crawl
-    );
-    if (!success) {
-      return res.status(status).json({ error });
+    const auth = await authenticateUser(req, res, RateLimiterMode.Crawl);
+    if (!auth.success) {
+      return res.status(auth.status).json({ error: auth.error });
     }
+
+    const { team_id, plan, chunk } = auth;
 
     if (req.headers["x-idempotency-key"]) {
       const isIdempotencyValid = await validateIdempotencyKey(req);
@@ -35,7 +48,7 @@ export async function crawlController(req: Request, res: Response) {
       try {
         createIdempotencyKey(req);
       } catch (error) {
-        Logger.error(error);
+        logger.error(error);
         return res.status(500).json({ error: error.message });
       }
     }
@@ -67,17 +80,23 @@ export async function crawlController(req: Request, res: Response) {
     }
 
     const limitCheck = req.body?.crawlerOptions?.limit ?? 1;
-    const { success: creditsCheckSuccess, message: creditsCheckMessage, remainingCredits } =
-      await checkTeamCredits(chunk, team_id, limitCheck);
+    const {
+      success: creditsCheckSuccess,
+      message: creditsCheckMessage,
+      remainingCredits,
+    } = await checkTeamCredits(chunk, team_id, limitCheck);
 
     if (!creditsCheckSuccess) {
-      return res.status(402).json({ error: "Insufficient credits. You may be requesting with a higher limit than the amount of credits you have left. If not, upgrade your plan at https://firecrawl.dev/pricing or contact us at hello@firecrawl.com" });
+      return res.status(402).json({
+        error:
+          "Insufficient credits. You may be requesting with a higher limit than the amount of credits you have left. If not, upgrade your plan at https://firecrawl.dev/pricing or contact us at help@firecrawl.com",
+      });
     }
 
     // TODO: need to do this to v1
     crawlerOptions.limit = Math.min(remainingCredits, crawlerOptions.limit);
-    
-    let url = req.body.url;
+
+    let url = urlSchema.parse(req.body.url);
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
     }
@@ -94,8 +113,7 @@ export async function crawlController(req: Request, res: Response) {
 
     if (isUrlBlocked(url)) {
       return res.status(403).json({
-        error:
-          "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
+        error: BLOCKLISTED_URL_MESSAGE,
       });
     }
 
@@ -123,7 +141,7 @@ export async function crawlController(req: Request, res: Response) {
     //       documents: docs,
     //     });
     //   } catch (error) {
-    //     Logger.error(error);
+    //     logger.error(error);
     //     return res.status(500).json({ error: error.message });
     //   }
     // }
@@ -132,10 +150,20 @@ export async function crawlController(req: Request, res: Response) {
 
     await logCrawl(id, team_id);
 
+    const { scrapeOptions, internalOptions } = fromLegacyScrapeOptions(
+      pageOptions,
+      undefined,
+      undefined,
+    );
+    internalOptions.disableSmartWaitCache = true; // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
+
+    delete (scrapeOptions as any).timeout;
+
     const sc: StoredCrawl = {
       originUrl: url,
       crawlerOptions,
-      pageOptions,
+      scrapeOptions,
+      internalOptions,
       team_id,
       plan,
       createdAt: Date.now(),
@@ -153,14 +181,13 @@ export async function crawlController(req: Request, res: Response) {
       ? null
       : await crawler.tryGetSitemap();
 
-
     if (sitemap !== null && sitemap.length > 0) {
       let jobPriority = 20;
       // If it is over 1000, we need to get the job priority,
       // otherwise we can use the default priority of 20
-      if(sitemap.length > 1000){
+      if (sitemap.length > 1000) {
         // set base to 21
-        jobPriority = await getJobPriority({plan, team_id, basePriority: 21})
+        jobPriority = await getJobPriority({ plan, team_id, basePriority: 21 });
       }
       const jobs = sitemap.map((x) => {
         const url = x.url;
@@ -170,10 +197,11 @@ export async function crawlController(req: Request, res: Response) {
           data: {
             url,
             mode: "single_urls",
-            crawlerOptions: crawlerOptions,
+            crawlerOptions,
+            scrapeOptions,
+            internalOptions,
             team_id,
             plan,
-            pageOptions: pageOptions,
             origin: req.body.origin ?? defaultOrigin,
             crawl_id: id,
             sitemapped: true,
@@ -187,19 +215,16 @@ export async function crawlController(req: Request, res: Response) {
 
       await lockURLs(
         id,
-        jobs.map((x) => x.data.url)
+        sc,
+        jobs.map((x) => x.data.url),
       );
       await addCrawlJobs(
         id,
-        jobs.map((x) => x.opts.jobId)
+        jobs.map((x) => x.opts.jobId),
       );
-      if (Sentry.isInitialized()) {
-        for (const job of jobs) {
-          // add with sentry instrumentation
-          await addScrapeJob(job.data as any, {}, job.opts.jobId);
-        }
-      } else {
-        await getScrapeQueue().addBulk(jobs);
+      for (const job of jobs) {
+        // add with sentry instrumentation
+        await addScrapeJob(job.data as any, {}, job.opts.jobId);
       }
     } else {
       await lockURL(id, sc, url);
@@ -207,28 +232,33 @@ export async function crawlController(req: Request, res: Response) {
       // Not needed, first one should be 15.
       // const jobPriority = await getJobPriority({plan, team_id, basePriority: 10})
 
-      const job = await addScrapeJob(
+      const jobId = uuidv4();
+      await addScrapeJob(
         {
           url,
           mode: "single_urls",
-          crawlerOptions: crawlerOptions,
+          crawlerOptions,
+          scrapeOptions,
+          internalOptions,
           team_id,
-          plan,
-          pageOptions: pageOptions,
+          plan: plan!,
           origin: req.body.origin ?? defaultOrigin,
           crawl_id: id,
         },
         {
           priority: 15, // prioritize request 0 of crawl jobs same as scrape jobs
-        }
+        },
+        jobId,
       );
-      await addCrawlJob(id, job.id);
+      await addCrawlJob(id, jobId);
     }
 
     res.json({ jobId: id });
   } catch (error) {
     Sentry.captureException(error);
-    Logger.error(error);
-    return res.status(500).json({ error: error.message });
+    logger.error(error);
+    return res.status(500).json({
+      error: error instanceof ZodError ? "Invalid URL" : error.message,
+    });
   }
 }

@@ -1,4 +1,4 @@
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY ?? "");
@@ -13,12 +13,15 @@ async function getCustomerDefaultPaymentMethod(customerId: string) {
 type ReturnStatus = "succeeded" | "requires_action" | "failed";
 export async function createPaymentIntent(
   team_id: string,
-  customer_id: string
+  customer_id: string,
 ): Promise<{ return_status: ReturnStatus; charge_id: string }> {
   try {
-    const defaultPaymentMethod = await getCustomerDefaultPaymentMethod(customer_id);
+    const defaultPaymentMethod =
+      await getCustomerDefaultPaymentMethod(customer_id);
     if (!defaultPaymentMethod) {
-      Logger.error(`No default payment method found for customer: ${customer_id}`);
+      logger.error(
+        `No default payment method found for customer: ${customer_id}`,
+      );
       return { return_status: "failed", charge_id: "" };
     }
     const paymentIntent = await stripe.paymentIntents.create({
@@ -33,22 +36,22 @@ export async function createPaymentIntent(
     });
 
     if (paymentIntent.status === "succeeded") {
-      Logger.info(`Payment succeeded for team: ${team_id}`);
+      logger.info(`Payment succeeded for team: ${team_id}`);
       return { return_status: "succeeded", charge_id: paymentIntent.id };
     } else if (
       paymentIntent.status === "requires_action" ||
       paymentIntent.status === "processing" ||
       paymentIntent.status === "requires_capture"
     ) {
-      Logger.warn(`Payment requires further action for team: ${team_id}`);
+      logger.warn(`Payment requires further action for team: ${team_id}`);
       return { return_status: "requires_action", charge_id: paymentIntent.id };
     } else {
-      Logger.error(`Payment failed for team: ${team_id}`);
+      logger.error(`Payment failed for team: ${team_id}`);
       return { return_status: "failed", charge_id: paymentIntent.id };
     }
   } catch (error) {
-    Logger.error(
-      `Failed to create or confirm PaymentIntent for team: ${team_id}`
+    logger.error(
+      `Failed to create or confirm PaymentIntent for team: ${team_id}`,
     );
     console.error(error);
     return { return_status: "failed", charge_id: "" };

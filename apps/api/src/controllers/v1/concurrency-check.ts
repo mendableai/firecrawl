@@ -10,14 +10,14 @@ import { redisConnection } from "../../services/queue-service";
 // Basically just middleware and error wrapping
 export async function concurrencyCheckController(
   req: RequestWithAuth<ConcurrencyCheckParams, undefined, undefined>,
-  res: Response<ConcurrencyCheckResponse>
+  res: Response<ConcurrencyCheckResponse>,
 ) {
   const concurrencyLimiterKey = "concurrency-limiter:" + req.auth.team_id;
   const now = Date.now();
   const activeJobsOfTeam = await redisConnection.zrangebyscore(
     concurrencyLimiterKey,
     now,
-    Infinity
+    Infinity,
   );
   return res
     .status(200)

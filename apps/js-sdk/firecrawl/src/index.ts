@@ -86,11 +86,15 @@ export interface CrawlScrapeOptions {
     country?: string;
     languages?: string[];
   };
+  mobile?: boolean;
+  skipTlsVerification?: boolean;
+  removeBase64Images?: boolean;
 }
 
 export type Action = {
   type: "wait",
-  milliseconds: number,
+  milliseconds?: number,
+  selector?: string,
 } | {
   type: "click",
   selector: string,
@@ -105,7 +109,13 @@ export type Action = {
   key: string,
 } | {
   type: "scroll",
-  direction: "up" | "down",
+  direction?: "up" | "down",
+  selector?: string,
+} | {
+  type: "scrape",
+} | {
+  type: "executeJavascript",
+  script: string,
 };
 
 export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchema extends (Action[] | undefined) = undefined> extends CrawlScrapeOptions {
@@ -144,7 +154,13 @@ export interface CrawlParams {
   allowExternalLinks?: boolean;
   ignoreSitemap?: boolean;
   scrapeOptions?: CrawlScrapeOptions;
-  webhook?: string;
+  webhook?: string | {
+    url: string;
+    headers?: Record<string, string>;
+    metadata?: Record<string, string>;
+  };
+  deduplicateSimilarURLs?: boolean;
+  ignoreQueryParameters?: boolean;
 }
 
 /**
@@ -167,6 +183,7 @@ export interface BatchScrapeResponse {
   url?: string;
   success: true;
   error?: string;
+  invalidURLs?: string[];
 }
 
 /**
@@ -207,6 +224,7 @@ export interface MapParams {
   search?: string;
   ignoreSitemap?: boolean;
   includeSubdomains?: boolean;
+  sitemapOnly?: boolean;
   limit?: number;
 }
 
@@ -221,6 +239,29 @@ export interface MapResponse {
 }
 
 /**
+ * Parameters for extracting information from URLs.
+ * Defines options for extracting information from URLs.
+ */
+export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
+  prompt?: string;
+  schema?: LLMSchema;
+  systemPrompt?: string;
+  allowExternalLinks?: boolean;
+  includeSubdomains?: boolean;
+}
+
+/**
+ * Response interface for extracting information from URLs.
+ * Defines the structure of the response received after extracting information from URLs.
+ */
+export interface ExtractResponse<LLMSchema extends zt.ZodSchema = any> {
+  success: boolean;
+  data: LLMSchema;
+  error?: string;
+  warning?: string;
+}
+
+/**
  * Error response interface.
  * Defines the structure of the response received when an error occurs.
  */
@@ -228,7 +269,6 @@ export interface ErrorResponse {
   success: false;
   error: string;
 }
-
 
 /**
  * Custom error class for Firecrawl.
@@ -250,17 +290,23 @@ export default class FirecrawlApp {
   public apiKey: string;
   public apiUrl: string;
 
+  private isCloudService(url: string): boolean {
+    return url.includes('api.firecrawl.dev');
+  }
+
   /**
    * Initializes a new instance of the FirecrawlApp class.
    * @param config - Configuration options for the FirecrawlApp instance.
    */
   constructor({ apiKey = null, apiUrl = null }: FirecrawlAppConfig) {
-    if (typeof apiKey !== "string") {
+    const baseUrl = apiUrl || "https://api.firecrawl.dev";
+    
+    if (this.isCloudService(baseUrl) && typeof apiKey !== "string") {
       throw new FirecrawlError("No API key provided", 401);
     }
 
-    this.apiKey = apiKey;
-    this.apiUrl = apiUrl || "https://api.firecrawl.dev";
+    this.apiKey = apiKey || '';
+    this.apiUrl = baseUrl;
   }
 
   /**
@@ -529,16 +575,36 @@ export default class FirecrawlApp {
    * @param params - Additional parameters for the scrape request.
    * @param pollInterval - Time in seconds for job status checks.
    * @param idempotencyKey - Optional idempotency key for the request.
+   * @param webhook - Optional webhook for the batch scrape.
    * @returns The response from the crawl operation.
    */
   async batchScrapeUrls(
     urls: string[],
     params?: ScrapeParams,
     pollInterval: number = 2,
-    idempotencyKey?: string
+    idempotencyKey?: string,
+    webhook?: CrawlParams["webhook"],
+    ignoreInvalidURLs?: boolean,
   ): Promise<BatchScrapeStatusResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
-    let jsonData: any = { urls, ...(params ?? {}) };
+    let jsonData: any = { urls, webhook, ignoreInvalidURLs, ...params };
+    if (jsonData?.extract?.schema) {
+      let schema = jsonData.extract.schema;
+
+      // Try parsing the schema as a Zod schema
+      try {
+        schema = zodToJsonSchema(schema);
+      } catch (error) {
+        
+      }
+      jsonData = {
+        ...jsonData,
+        extract: {
+          ...jsonData.extract,
+          schema: schema,
+        },
+      };
+    }
     try {
       const response: AxiosResponse = await this.postRequest(
         this.apiUrl + `/v1/batch/scrape`,
@@ -564,10 +630,12 @@ export default class FirecrawlApp {
   async asyncBatchScrapeUrls(
     urls: string[],
     params?: ScrapeParams,
-    idempotencyKey?: string
+    idempotencyKey?: string,
+    webhook?: CrawlParams["webhook"],
+    ignoreInvalidURLs?: boolean,
   ): Promise<BatchScrapeResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
-    let jsonData: any = { urls, ...(params ?? {}) };
+    let jsonData: any = { urls, webhook, ignoreInvalidURLs, ...(params ?? {}) };
     try {
       const response: AxiosResponse = await this.postRequest(
         this.apiUrl + `/v1/batch/scrape`,
@@ -600,8 +668,10 @@ export default class FirecrawlApp {
     urls: string[],
     params?: ScrapeParams,
     idempotencyKey?: string,
+    webhook?: CrawlParams["webhook"],
+    ignoreInvalidURLs?: boolean,
   ) {
-    const crawl = await this.asyncBatchScrapeUrls(urls, params, idempotencyKey);
+    const crawl = await this.asyncBatchScrapeUrls(urls, params, idempotencyKey, webhook, ignoreInvalidURLs);
 
     if (crawl.success && crawl.id) {
       const id = crawl.id;
@@ -654,6 +724,55 @@ export default class FirecrawlApp {
         })
       } else {
         this.handleError(response, "check batch scrape status");
+      }
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500);
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Extracts information from URLs using the Firecrawl API.
+   * Currently in Beta. Expect breaking changes on future minor versions.
+   * @param url - The URL to extract information from.
+   * @param params - Additional parameters for the extract request.
+   * @returns The response from the extract operation.
+   */
+  async extract<T extends zt.ZodSchema = any>(urls: string[], params?: ExtractParams<T>): Promise<ExtractResponse<zt.infer<T>> | ErrorResponse> {
+    const headers = this.prepareHeaders();
+
+    if (!params?.prompt) {
+      throw new FirecrawlError("Prompt is required", 400);
+    }
+
+    let jsonData: { urls: string[] } & ExtractParams<T> = { urls,  ...params };
+    let jsonSchema: any;
+    try {
+      jsonSchema = params?.schema ? zodToJsonSchema(params.schema) : undefined;
+    } catch (error: any) {
+      throw new FirecrawlError("Invalid schema. Use a valid Zod schema.", 400);
+    }
+
+    try {
+      const response: AxiosResponse = await this.postRequest(
+        this.apiUrl + `/v1/extract`,
+        { ...jsonData, schema: jsonSchema },
+        headers
+      );
+      if (response.status === 200) {
+        const responseData = response.data as ExtractResponse<T>;
+        if (responseData.success) {
+          return {
+            success: true,
+            data: responseData.data,
+            warning: responseData.warning,
+            error: responseData.error
+          };
+        } else {
+          throw new FirecrawlError(`Failed to scrape URL. Error: ${responseData.error}`, response.status);
+        }
+      } else {
+        this.handleError(response, "extract");
       }
     } catch (error: any) {
       throw new FirecrawlError(error.message, 500);
@@ -822,9 +941,11 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
   private ws: WebSocket;
   public data: FirecrawlDocument<undefined>[];
   public status: CrawlStatusResponse["status"];
+  public id: string;
 
   constructor(id: string, app: FirecrawlApp) {
     super();
+    this.id = id;
     this.ws = new WebSocket(`${app.apiUrl}/v1/crawl/${id}`, app.apiKey);
     this.status = "scraping";
     this.data = [];
@@ -855,6 +976,7 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
           detail: {
             status: this.status,
             data: this.data,
+            id: this.id,
           },
         }));
       } else if (msg.type === "error") {
@@ -864,6 +986,7 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
             status: this.status,
             data: this.data,
             error: msg.error,
+            id: this.id,
           },
         }));
       } else if (msg.type === "catchup") {
@@ -871,12 +994,18 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
         this.data.push(...(msg.data.data ?? []));
         for (const doc of this.data) {
           this.dispatchTypedEvent("document", new CustomEvent("document", {
-            detail: doc,
+            detail: {
+              ...doc,
+              id: this.id,
+            },
           }));
         }
       } else if (msg.type === "document") {
         this.dispatchTypedEvent("document", new CustomEvent("document", {
-          detail: msg.data,
+          detail: {
+            ...msg.data,
+            id: this.id,
+          },
         }));
       }
     }
@@ -886,14 +1015,21 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
         this.ws.close();
         return;
       }
-
-      const msg = JSON.parse(ev.data) as Message;
-      messageHandler(msg);
+      try {
+        const msg = JSON.parse(ev.data) as Message;
+        messageHandler(msg);
+      } catch (error) {
+        console.error("Error on message", error);
+      }
     }).bind(this);
 
     this.ws.onclose = ((ev: CloseEvent) => {
-      const msg = JSON.parse(ev.reason) as Message;
-      messageHandler(msg);
+      try {
+        const msg = JSON.parse(ev.reason) as Message;
+        messageHandler(msg);
+      } catch (error) {
+        console.error("Error on close", error);
+      }
     }).bind(this);
 
     this.ws.onerror = ((_: Event) => {
@@ -903,6 +1039,7 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
           status: this.status,
           data: this.data,
           error: "WebSocket error",
+          id: this.id,
         },
       }));
     }).bind(this);

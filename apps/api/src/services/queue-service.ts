@@ -1,10 +1,10 @@
 import { Queue } from "bullmq";
-import { Logger } from "../lib/logger";
+import { logger } from "../lib/logger";
 import IORedis from "ioredis";
 
 let scrapeQueue: Queue;
 
-export const redisConnection = new IORedis(process.env.REDIS_URL, {
+export const redisConnection = new IORedis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
 });
 
@@ -24,7 +24,7 @@ export function getScrapeQueue() {
             age: 90000, // 25 hours
           },
         },
-      }
+      },
       //   {
       //   settings: {
       //     lockDuration: 1 * 60 * 1000, // 1 minute in milliseconds,
@@ -37,11 +37,10 @@ export function getScrapeQueue() {
       //   }
       // }
     );
-    Logger.info("Web scraper queue created");
+    logger.info("Web scraper queue created");
   }
   return scrapeQueue;
 }
-
 
 // === REMOVED IN FAVOR OF POLLING -- NOT RELIABLE
 // import { QueueEvents } from 'bullmq';

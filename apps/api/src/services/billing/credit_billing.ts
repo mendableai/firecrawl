@@ -2,7 +2,7 @@ import { NotificationType } from "../../types";
 import { withAuth } from "../../lib/withAuth";
 import { sendNotification } from "../notification/email_notification";
 import { supabase_service } from "../supabase";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import * as Sentry from "@sentry/node";
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
 import { getACUC, setCachedACUC } from "../../controllers/auth";
@@ -10,6 +10,7 @@ import { issueCredits } from "./issue_credits";
 import { redlock } from "../redlock";
 import { autoCharge } from "./auto_charge";
 import { getValue, setValue } from "../redis";
+import type { Logger } from "winston";
 
 const FREE_CREDITS = 500;
 
@@ -19,19 +20,34 @@ const FREE_CREDITS = 500;
 export async function billTeam(
   team_id: string,
   subscription_id: string | null | undefined,
-  credits: number
+  credits: number,
+  logger?: Logger,
 ) {
-  return withAuth(supaBillTeam)(team_id, subscription_id, credits);
+  return withAuth(supaBillTeam, { success: true, message: "No DB, bypassed." })(
+    team_id,
+    subscription_id,
+    credits,
+    logger,
+  );
 }
 export async function supaBillTeam(
   team_id: string,
-  subscription_id: string,
-  credits: number
+  subscription_id: string | null | undefined,
+  credits: number,
+  __logger?: Logger,
 ) {
+  const _logger = (__logger ?? logger).child({
+    module: "credit_billing",
+    method: "supaBillTeam",
+  });
+
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
   }
-  Logger.info(`Billing team ${team_id} for ${credits} credits`);
+  _logger.info(`Billing team ${team_id} for ${credits} credits`, {
+    team_id,
+    credits,
+  });
 
   const { data, error } = await supabase_service.rpc("bill_team", {
     _team_id: team_id,
@@ -42,7 +58,7 @@ export async function supaBillTeam(
 
   if (error) {
     Sentry.captureException(error);
-    Logger.error("Failed to bill team: " + JSON.stringify(error));
+    _logger.error("Failed to bill team.", { error });
     return;
   }
 
@@ -56,32 +72,37 @@ export async function supaBillTeam(
               adjusted_credits_used: acuc.adjusted_credits_used + credits,
               remaining_credits: acuc.remaining_credits - credits,
             }
-          : null
+          : null,
       );
     }
   })();
 }
 
+export type CheckTeamCreditsResponse = {
+  success: boolean;
+  message: string;
+  remainingCredits: number;
+  chunk?: AuthCreditUsageChunk;
+};
+
 export async function checkTeamCredits(
-  chunk: AuthCreditUsageChunk,
+  chunk: AuthCreditUsageChunk | null,
   team_id: string,
-  credits: number
-): Promise<{ success: boolean; message: string; remainingCredits: number; chunk: AuthCreditUsageChunk }> {
-  const result = await withAuth(supaCheckTeamCredits)(chunk, team_id, credits);
-  return {
-    success: result.success,
-    message: result.message,
-    remainingCredits: result.remainingCredits,
-    chunk: chunk // Ensure chunk is always returned
-  };
+  credits: number,
+): Promise<CheckTeamCreditsResponse> {
+  return withAuth(supaCheckTeamCredits, {
+    success: true,
+    message: "No DB, bypassed",
+    remainingCredits: Infinity,
+  })(chunk, team_id, credits);
 }
 
 // if team has enough credits for the operation, return true, else return false
 export async function supaCheckTeamCredits(
-  chunk: AuthCreditUsageChunk,
+  chunk: AuthCreditUsageChunk | null,
   team_id: string,
-  credits: number
-) {
+  credits: number,
+): Promise<CheckTeamCreditsResponse> {
   // WARNING: chunk will be null if team_id is preview -- do not perform operations on it under ANY circumstances - mogery
   if (team_id === "preview") {
     return {
@@ -89,6 +110,8 @@ export async function supaCheckTeamCredits(
       message: "Preview team, no credits used",
       remainingCredits: Infinity,
     };
+  } else if (chunk === null) {
+    throw new Error("NULL ACUC passed to supaCheckTeamCredits");
   }
 
   const creditsWillBeUsed = chunk.adjusted_credits_used + credits;
@@ -98,7 +121,8 @@ export async function supaCheckTeamCredits(
   // Removal of + credits
   const creditUsagePercentage = chunk.adjusted_credits_used / totalPriceCredits;
 
-  let isAutoRechargeEnabled = false, autoRechargeThreshold = 1000;
+  let isAutoRechargeEnabled = false,
+    autoRechargeThreshold = 1000;
   const cacheKey = `team_auto_recharge_${team_id}`;
   let cachedData = await getValue(cacheKey);
   if (cachedData) {
@@ -119,16 +143,19 @@ export async function supaCheckTeamCredits(
     }
   }
 
-  if (isAutoRechargeEnabled && chunk.remaining_credits < autoRechargeThreshold) {
+  if (
+    isAutoRechargeEnabled &&
+    chunk.remaining_credits < autoRechargeThreshold
+  ) {
     const autoChargeResult = await autoCharge(chunk, autoRechargeThreshold);
     if (autoChargeResult.success) {
       return {
         success: true,
-      message: autoChargeResult.message,
-      remainingCredits: autoChargeResult.remainingCredits,
-      chunk: autoChargeResult.chunk,
-    };
-  }
+        message: autoChargeResult.message,
+        remainingCredits: autoChargeResult.remainingCredits,
+        chunk: autoChargeResult.chunk,
+      };
+    }
   }
 
   // Compare the adjusted total credits used with the credits allowed by the plan
@@ -140,7 +167,7 @@ export async function supaCheckTeamCredits(
         NotificationType.LIMIT_REACHED,
         chunk.sub_current_period_start,
         chunk.sub_current_period_end,
-        chunk
+        chunk,
       );
     }
     return {
@@ -157,7 +184,7 @@ export async function supaCheckTeamCredits(
       NotificationType.APPROACHING_LIMIT,
       chunk.sub_current_period_start,
       chunk.sub_current_period_end,
-      chunk
+      chunk,
     );
   }
 
@@ -171,7 +198,7 @@ export async function supaCheckTeamCredits(
 
 // Count the total credits used by a team within the current billing period and return the remaining credits.
 export async function countCreditsAndRemainingForCurrentBillingPeriod(
-  team_id: string
+  team_id: string,
 ) {
   // 1. Retrieve the team's active subscription based on the team_id.
   const { data: subscription, error: subscriptionError } =
@@ -191,7 +218,7 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
   if (coupons && coupons.length > 0) {
     couponCredits = coupons.reduce(
       (total, coupon) => total + coupon.credits,
-      0
+      0,
     );
   }
 
@@ -206,13 +233,13 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
 
     if (creditUsageError || !creditUsages) {
       throw new Error(
-        `Failed to retrieve credit usage for team_id: ${team_id}`
+        `Failed to retrieve credit usage for team_id: ${team_id}`,
       );
     }
 
     const totalCreditsUsed = creditUsages.reduce(
       (acc, usage) => acc + usage.credits_used,
-      0
+      0,
     );
 
     const remainingCredits = FREE_CREDITS + couponCredits - totalCreditsUsed;
@@ -232,13 +259,13 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
 
   if (creditUsageError || !creditUsages) {
     throw new Error(
-      `Failed to retrieve credit usage for subscription_id: ${subscription.id}`
+      `Failed to retrieve credit usage for subscription_id: ${subscription.id}`,
     );
   }
 
   const totalCreditsUsed = creditUsages.reduce(
     (acc, usage) => acc + usage.credits_used,
-    0
+    0,
   );
 
   const { data: price, error: priceError } = await supabase_service
@@ -249,7 +276,7 @@ export async function countCreditsAndRemainingForCurrentBillingPeriod(
 
   if (priceError || !price) {
     throw new Error(
-      `Failed to retrieve price for price_id: ${subscription.price_id}`
+      `Failed to retrieve price for price_id: ${subscription.price_id}`,
     );
   }
 

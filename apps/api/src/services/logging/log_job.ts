@@ -3,49 +3,95 @@ import { supabase_service } from "../supabase";
 import { FirecrawlJob } from "../../types";
 import { posthog } from "../posthog";
 import "dotenv/config";
-import { Logger } from "../../lib/logger";
+import { logger } from "../../lib/logger";
 import { configDotenv } from "dotenv";
 configDotenv();
 
-export async function logJob(job: FirecrawlJob) {
+export async function logJob(job: FirecrawlJob, force: boolean = false) {
   try {
-    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
     if (!useDbAuthentication) {
       return;
     }
 
     // Redact any pages that have an authorization header
     if (
-      job.pageOptions &&
-      job.pageOptions.headers &&
-      job.pageOptions.headers["Authorization"]
+      job.scrapeOptions &&
+      job.scrapeOptions.headers &&
+      job.scrapeOptions.headers["Authorization"]
     ) {
-      job.pageOptions.headers["Authorization"] = "REDACTED";
-      job.docs = [{ content: "REDACTED DUE TO AUTHORIZATION HEADER", html: "REDACTED DUE TO AUTHORIZATION HEADER" }];
-    }
-
-    const { data, error } = await supabase_service
-      .from("firecrawl_jobs")
-      .insert([
+      job.scrapeOptions.headers["Authorization"] = "REDACTED";
+      job.docs = [
         {
-          job_id: job.job_id ? job.job_id : null,
-          success: job.success,
-          message: job.message,
-          num_docs: job.num_docs,
-          docs: job.docs,
-          time_taken: job.time_taken,
-          team_id: job.team_id === "preview" ? null : job.team_id,
-          mode: job.mode,
-          url: job.url,
-          crawler_options: job.crawlerOptions,
-          page_options: job.pageOptions,
-          origin: job.origin,
-          extractor_options: job.extractor_options,
-          num_tokens: job.num_tokens,
-          retry: !!job.retry,
-          crawl_id: job.crawl_id,
+          content: "REDACTED DUE TO AUTHORIZATION HEADER",
+          html: "REDACTED DUE TO AUTHORIZATION HEADER",
         },
-      ]);
+      ];
+    }
+    const jobColumn = {
+      job_id: job.job_id ? job.job_id : null,
+      success: job.success,
+      message: job.message,
+      num_docs: job.num_docs,
+      docs: job.docs,
+      time_taken: job.time_taken,
+      team_id: job.team_id === "preview" ? null : job.team_id,
+      mode: job.mode,
+      url: job.url,
+      crawler_options: job.crawlerOptions,
+      page_options: job.scrapeOptions,
+      origin: job.origin,
+      num_tokens: job.num_tokens,
+      retry: !!job.retry,
+      crawl_id: job.crawl_id,
+    };
+
+    if (force) {
+      let i = 0,
+        done = false;
+      while (i++ <= 10) {
+        try {
+          const { error } = await supabase_service
+            .from("firecrawl_jobs")
+            .insert([jobColumn]);
+          if (error) {
+            logger.error(
+              "Failed to log job due to Supabase error -- trying again",
+              { error, scrapeId: job.job_id },
+            );
+            await new Promise<void>((resolve) =>
+              setTimeout(() => resolve(), 75),
+            );
+          } else {
+            done = true;
+            break;
+          }
+        } catch (error) {
+          logger.error(
+            "Failed to log job due to thrown error -- trying again",
+            { error, scrapeId: job.job_id },
+          );
+          await new Promise<void>((resolve) => setTimeout(() => resolve(), 75));
+        }
+      }
+      if (done) {
+        logger.debug("Job logged successfully!", { scrapeId: job.job_id });
+      } else {
+        logger.error("Failed to log job!", { scrapeId: job.job_id });
+      }
+    } else {
+      const { error } = await supabase_service
+        .from("firecrawl_jobs")
+        .insert([jobColumn]);
+      if (error) {
+        logger.error(`Error logging job: ${error.message}`, {
+          error,
+          scrapeId: job.job_id,
+        });
+      } else {
+        logger.debug("Job logged successfully!", { scrapeId: job.job_id });
+      }
+    }
 
     if (process.env.POSTHOG_API_KEY && !job.crawl_id) {
       let phLog = {
@@ -63,21 +109,17 @@ export async function logJob(job: FirecrawlJob) {
           mode: job.mode,
           url: job.url,
           crawler_options: job.crawlerOptions,
-          page_options: job.pageOptions,
+          page_options: job.scrapeOptions,
           origin: job.origin,
-          extractor_options: job.extractor_options,
           num_tokens: job.num_tokens,
           retry: job.retry,
         },
       };
-      if(job.mode !== "single_urls") {
+      if (job.mode !== "single_urls") {
         posthog.capture(phLog);
       }
     }
-    if (error) {
-      Logger.error(`Error logging job: ${error.message}`);
-    }
   } catch (error) {
-    Logger.error(`Error logging job: ${error.message}`);
+    logger.error(`Error logging job: ${error.message}`);
   }
 }

@@ -1,5 +1,12 @@
-import { AuthCreditUsageChunk } from "./controllers/v1/types";
-import { ExtractorOptions, Document, DocumentUrl } from "./lib/entities";
+import { z } from "zod";
+import {
+  AuthCreditUsageChunk,
+  ScrapeOptions,
+  Document as V1Document,
+  webhookSchema,
+} from "./controllers/v1/types";
+import { ExtractorOptions, Document } from "./lib/entities";
+import { InternalOptions } from "./scraper/scrapeURL";
 
 type Mode = "crawl" | "single_urls" | "sitemap";
 
@@ -24,15 +31,15 @@ export interface IngestResult {
 export interface WebScraperOptions {
   url: string;
   mode: Mode;
-  crawlerOptions: any;
-  pageOptions: any;
-  extractorOptions?: any;
+  crawlerOptions?: any;
+  scrapeOptions: ScrapeOptions;
+  internalOptions?: InternalOptions;
   team_id: string;
   plan: string;
   origin?: string;
   crawl_id?: string;
   sitemapped?: boolean;
-  webhook?: string;
+  webhook?: z.infer<typeof webhookSchema>;
   v1?: boolean;
   is_scrape?: boolean;
 }
@@ -40,28 +47,31 @@ export interface WebScraperOptions {
 export interface RunWebScraperParams {
   url: string;
   mode: Mode;
-  crawlerOptions: any;
-  pageOptions?: any;
-  extractorOptions?: any;
-  inProgress: (progress: any) => void;
-  onSuccess: (result: any, mode: string) => void;
-  onError: (error: Error) => void;
+  scrapeOptions: ScrapeOptions;
+  internalOptions?: InternalOptions;
+  // onSuccess: (result: V1Document, mode: string) => void;
+  // onError: (error: Error) => void;
   team_id: string;
   bull_job_id: string;
   priority?: number;
   is_scrape?: boolean;
+  is_crawl?: boolean;
 }
 
-export interface RunWebScraperResult {
-  success: boolean;
-  message: string;
-  docs: Document[] | DocumentUrl[];
-}
+export type RunWebScraperResult =
+  | {
+      success: false;
+      error: Error;
+    }
+  | {
+      success: true;
+      document: V1Document;
+    };
 
 export interface FirecrawlJob {
   job_id?: string;
   success: boolean;
-  message: string;
+  message?: string;
   num_docs: number;
   docs: any[];
   time_taken: number;
@@ -69,11 +79,10 @@ export interface FirecrawlJob {
   mode: string;
   url: string;
   crawlerOptions?: any;
-  pageOptions?: any;
+  scrapeOptions?: any;
   origin: string;
-  extractor_options?: ExtractorOptions,
-  num_tokens?: number,
-  retry?: boolean,
+  num_tokens?: number;
+  retry?: boolean;
   crawl_id?: string;
 }
 
@@ -91,7 +100,6 @@ export interface FirecrawlCrawlResponse {
   body: {
     status: string;
     jobId: string;
-    
   };
   error?: string;
 }
@@ -100,7 +108,16 @@ export interface FirecrawlCrawlStatusResponse {
   statusCode: number;
   body: {
     status: string;
-    data: Document[];    
+    data: Document[];
+  };
+  error?: string;
+}
+
+export interface FirecrawlExtractResponse {
+  statusCode: number;
+  body: {
+    success: boolean;
+    data: any[];
   };
   error?: string;
 }
@@ -112,19 +129,21 @@ export enum RateLimiterMode {
   Preview = "preview",
   Search = "search",
   Map = "map",
-
 }
 
-export interface AuthResponse {
-  success: boolean;
-  team_id?: string;
-  error?: string;
-  status?: number;
-  api_key?: string;
-  plan?: PlanType;
-  chunk?: AuthCreditUsageChunk;
-}
-  
+export type AuthResponse =
+  | {
+      success: true;
+      team_id: string;
+      api_key?: string;
+      plan?: PlanType;
+      chunk: AuthCreditUsageChunk | null;
+    }
+  | {
+      success: false;
+      error: string;
+      status: number;
+    };
 
 export enum NotificationType {
   APPROACHING_LIMIT = "approachingLimit",
@@ -149,7 +168,7 @@ export type ScrapeLog = {
   ipv6_support?: boolean | null;
 };
 
-export type PlanType = 
+export type PlanType =
   | "starter"
   | "standard"
   | "scale"
@@ -157,8 +176,17 @@ export type PlanType =
   | "standardnew"
   | "growth"
   | "growthdouble"
+  | "etier2c"
+  | "etier1a"
+  | "etierscale1"
   | "free"
   | "";
 
-
-export type WebhookEventType = "crawl.page" | "batch_scrape.page" | "crawl.started" | "crawl.completed" | "batch_scrape.completed" | "crawl.failed";
+export type WebhookEventType =
+  | "crawl.page"
+  | "batch_scrape.page"
+  | "crawl.started"
+  | "batch_scrape.started"
+  | "crawl.completed"
+  | "batch_scrape.completed"
+  | "crawl.failed";

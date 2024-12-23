@@ -1,0 +1,6 @@
+requests
+beautifulsoup4
+firecrawl
+pydantic
+python-dotenv
+firecrawl-py

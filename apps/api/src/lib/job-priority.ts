@@ -1,6 +1,6 @@
 import { redisConnection } from "../../src/services/queue-service";
 import { PlanType } from "../../src/types";
-import { Logger } from "./logger";
+import { logger } from "./logger";
 
 const SET_KEY_PREFIX = "limit_team_id:";
 export async function addJobPriority(team_id, job_id) {
@@ -13,7 +13,7 @@ export async function addJobPriority(team_id, job_id) {
     // This approach will reset the expiration time to 60 seconds every time a new job is added to the set.
     await redisConnection.expire(setKey, 60);
   } catch (e) {
-    Logger.error(`Add job priority (sadd) failed: ${team_id}, ${job_id}`);
+    logger.error(`Add job priority (sadd) failed: ${team_id}, ${job_id}`);
   }
 }
 
@@ -24,7 +24,7 @@ export async function deleteJobPriority(team_id, job_id) {
     // remove job_id from the set
     await redisConnection.srem(setKey, job_id);
   } catch (e) {
-    Logger.error(`Delete job priority (srem) failed: ${team_id}, ${job_id}`);
+    logger.error(`Delete job priority (srem) failed: ${team_id}, ${job_id}`);
   }
 }
 
@@ -33,7 +33,7 @@ export async function getJobPriority({
   team_id,
   basePriority = 10,
 }: {
-  plan: PlanType;
+  plan: PlanType | undefined;
   team_id: string;
   basePriority?: number;
 }): Promise<number> {
@@ -70,6 +70,14 @@ export async function getJobPriority({
         bucketLimit = 400;
         planModifier = 0.1;
         break;
+      case "etier2c":
+        bucketLimit = 1000;
+        planModifier = 0.05;
+        break;
+      case "etier1a":
+        bucketLimit = 1000;
+        planModifier = 0.05;
+        break;
 
       default:
         bucketLimit = 25;
@@ -83,12 +91,12 @@ export async function getJobPriority({
     } else {
       // If not, we keep base priority + planModifier
       return Math.ceil(
-        basePriority + Math.ceil((setLength - bucketLimit) * planModifier)
+        basePriority + Math.ceil((setLength - bucketLimit) * planModifier),
       );
     }
   } catch (e) {
-    Logger.error(
-      `Get job priority failed: ${team_id}, ${plan}, ${basePriority}`
+    logger.error(
+      `Get job priority failed: ${team_id}, ${plan}, ${basePriority}`,
     );
     return basePriority;
   }

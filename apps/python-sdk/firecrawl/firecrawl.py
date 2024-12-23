@@ -12,15 +12,33 @@ Classes:
 import logging
 import os
 import time
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional, List, Union
 import json
 
 import requests
+import pydantic
 import websockets
 
 logger : logging.Logger = logging.getLogger("firecrawl")
 
 class FirecrawlApp:
+    class ExtractParams(pydantic.BaseModel):
+        """
+        Parameters for the extract operation.
+        """
+        prompt: Optional[str] = None
+        schema_: Optional[Any] = pydantic.Field(None, alias='schema')
+        system_prompt: Optional[str] = None
+        allow_external_links: Optional[bool] = False
+
+    class ExtractResponse(pydantic.BaseModel):
+        """
+        Response from the extract operation.
+        """
+        success: bool
+        data: Optional[Any] = None
+        error: Optional[str] = None
+
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
       """
       Initialize the FirecrawlApp instance with API key, API URL.
@@ -189,17 +207,38 @@ class FirecrawlApp:
         headers = self._prepare_headers()
         response = self._get_request(f'{self.api_url}{endpoint}', headers)
         if response.status_code == 200:
-            data = response.json()
+            status_data = response.json()
+            if status_data['status'] == 'completed':
+                if 'data' in status_data:
+                    data = status_data['data']
+                    while 'next' in status_data:
+                        next_url = status_data.get('next')
+                        if not next_url:
+                            logger.warning("Expected 'next' URL is missing.")
+                            break
+                        try:
+                            status_response = self._get_request(next_url, headers)
+                            if status_response.status_code != 200:
+                                logger.error(f"Failed to fetch next page: {status_response.status_code}")
+                                break
+                            next_data = status_response.json()
+                            data.extend(next_data.get('data', []))
+                            status_data = next_data
+                        except Exception as e:
+                            logger.error(f"Error during pagination request: {e}")
+                            break
+                    status_data['data'] = data
+                    
             return {
                 'success': True,
-                'status': data.get('status'),
-                'total': data.get('total'),
-                'completed': data.get('completed'),
-                'creditsUsed': data.get('creditsUsed'),
-                'expiresAt': data.get('expiresAt'),
-                'next': data.get('next'),
-                'data': data.get('data'),
-                'error': data.get('error')
+                'status': status_data.get('status'),
+                'total': status_data.get('total'),
+                'completed': status_data.get('completed'),
+                'creditsUsed': status_data.get('creditsUsed'),
+                'expiresAt': status_data.get('expiresAt'),
+                'data': status_data.get('data'),
+                'error': status_data.get('error'),
+                'next': status_data.get('next', None)
             }
         else:
             self._handle_error(response, 'check crawl status')
@@ -377,20 +416,87 @@ class FirecrawlApp:
         headers = self._prepare_headers()
         response = self._get_request(f'{self.api_url}{endpoint}', headers)
         if response.status_code == 200:
-            data = response.json()
+            status_data = response.json()
+            if status_data['status'] == 'completed':
+                if 'data' in status_data:
+                    data = status_data['data']
+                    while 'next' in status_data:
+                        next_url = status_data.get('next')
+                        if not next_url:
+                            logger.warning("Expected 'next' URL is missing.")
+                            break
+                        try:
+                            status_response = self._get_request(next_url, headers)
+                            if status_response.status_code != 200:
+                                logger.error(f"Failed to fetch next page: {status_response.status_code}")
+                                break
+                            next_data = status_response.json()
+                            data.extend(next_data.get('data', []))
+                            status_data = next_data
+                        except Exception as e:
+                            logger.error(f"Error during pagination request: {e}")
+                            break
+                    status_data['data'] = data
+
             return {
                 'success': True,
-                'status': data.get('status'),
-                'total': data.get('total'),
-                'completed': data.get('completed'),
-                'creditsUsed': data.get('creditsUsed'),
-                'expiresAt': data.get('expiresAt'),
-                'next': data.get('next'),
-                'data': data.get('data'),
-                'error': data.get('error')
+                'status': status_data.get('status'),
+                'total': status_data.get('total'),
+                'completed': status_data.get('completed'),
+                'creditsUsed': status_data.get('creditsUsed'),
+                'expiresAt': status_data.get('expiresAt'),
+                'data': status_data.get('data'),
+                'error': status_data.get('error'),
+                'next': status_data.get('next', None)
             }
         else:
             self._handle_error(response, 'check batch scrape status')
+
+
+    def extract(self, urls: List[str], params: Optional[ExtractParams] = None) -> Any:
+        """
+        Extracts information from a URL using the Firecrawl API.
+
+        Args:
+            urls (List[str]): The URLs to extract information from.
+            params (Optional[ExtractParams]): Additional parameters for the extract request.
+
+        Returns:
+            Union[ExtractResponse, ErrorResponse]: The response from the extract operation.
+        """
+        headers = self._prepare_headers()
+
+        if not params or not params.get('prompt'):
+            raise ValueError("Prompt is required")
+
+        if not params.get('schema'):
+            raise ValueError("Schema is required for extraction")
+
+        jsonData = {'urls': urls, **params}
+        jsonSchema = params['schema'].schema() if hasattr(params['schema'], 'schema') else None
+
+        try:
+            response = self._post_request(
+                f'{self.api_url}/v1/extract',
+                {
+                    **jsonData,
+                    'allowExternalLinks': params.get('allow_external_links', False),
+                    'schema': jsonSchema
+                },
+                headers
+            )
+            if response.status_code == 200:
+                data = response.json()
+                if data['success']:
+                    return data
+                else:
+                    raise Exception(f'Failed to extract. Error: {data["error"]}')
+            else:
+                self._handle_error(response, "extract")
+        except Exception as e:
+            raise ValueError(str(e), 500)
+
+        return {'success': False, 'error': "Internal server error."}
 
     def _prepare_headers(self, idempotency_key: Optional[str] = None) -> Dict[str, str]:
         """
@@ -523,7 +629,7 @@ class FirecrawlApp:
                         while 'next' in status_data:
                           status_response = self._get_request(status_data['next'], headers)
                           status_data = status_response.json()
-                          data.extend(status_data['data'])
+                          data.extend(status_data.get('data', []))
                         status_data['data'] = data
                         return status_data
                     else:
@@ -598,15 +704,15 @@ class CrawlWatcher:
     async def _handle_message(self, msg: Dict[str, Any]):
         if msg['type'] == 'done':
             self.status = 'completed'
-            self.dispatch_event('done', {'status': self.status, 'data': self.data})
+            self.dispatch_event('done', {'status': self.status, 'data': self.data, 'id': self.id})
         elif msg['type'] == 'error':
             self.status = 'failed'
-            self.dispatch_event('error', {'status': self.status, 'data': self.data, 'error': msg['error']})
+            self.dispatch_event('error', {'status': self.status, 'data': self.data, 'error': msg['error'], 'id': self.id})
         elif msg['type'] == 'catchup':
             self.status = msg['data']['status']
             self.data.extend(msg['data'].get('data', []))
             for doc in self.data:
-                self.dispatch_event('document', doc)
+                self.dispatch_event('document', {'data': doc, 'id': self.id})
         elif msg['type'] == 'document':
             self.data.append(msg['data'])
-            self.dispatch_event('document', msg['data'])
+            self.dispatch_event('document', {'data': msg['data'], 'id': self.id})
