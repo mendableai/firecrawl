@@ -1,7 +1,7 @@
 use assert_matches::assert_matches;
 use dotenvy::dotenv;
 use firecrawl::scrape::{ExtractOptions, ScrapeFormats, ScrapeOptions};
-use firecrawl::FirecrawlApp;
+use firecrawl::{FirecrawlApp, FirecrawlError};
 use serde_json::json;
 use std::env;
 
@@ -154,4 +154,30 @@ async fn test_llm_extraction() {
         .contains_key("company_mission"));
     assert!(llm_extraction["supports_sso"].is_boolean());
     assert!(llm_extraction["is_open_source"].is_boolean());
+}
+
+#[test]
+fn test_api_key_requirements() {
+    dotenv().ok();
+    
+    let api_url = env::var("API_URL").unwrap_or("http://localhost:3002".to_string());
+    let api_key = env::var("TEST_API_KEY").ok();
+
+    match (api_url.contains("api.firecrawl.dev"), api_key) {
+        (false, _) => {
+            let result = FirecrawlApp::new_selfhosted(&api_url, None::<String>);
+            assert!(result.is_ok(), "Local setup failed: {:?}", result.err().unwrap());
+        }
+        (true, None) => {
+            let result = FirecrawlApp::new_selfhosted(&api_url, None::<String>);
+            assert!(matches!(
+                result,
+                Err(FirecrawlError::APIError(msg, _)) if msg == "Configuration"
+            ));
+        }
+        (true, Some(key)) => {
+            let result = FirecrawlApp::new_selfhosted(&api_url, Some(&key));
+            assert!(result.is_ok());
+        }
+    }
 }
