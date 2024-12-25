@@ -70,6 +70,8 @@ services:
       - TEST_API_KEY=${TEST_API_KEY}
       - HOST=${HOST:-0.0.0.0}
       - LOGGING_LEVEL=${LOGGING_LEVEL}
+      - MAX_RAM=${MAX_RAM:-0.95}
+      - MAX_CPU=${MAX_CPU:-0.95}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -93,6 +95,8 @@ services:
       - SCRAPING_BEE_API_KEY=${SCRAPING_BEE_API_KEY}
       - HOST=${HOST:-0.0.0.0}
       - LOGGING_LEVEL=${LOGGING_LEVEL}
+      - MAX_RAM=${MAX_RAM:-0.95}
+      - MAX_CPU=${MAX_CPU:-0.95}
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
