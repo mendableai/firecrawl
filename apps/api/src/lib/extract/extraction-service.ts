@@ -20,7 +20,7 @@ interface ExtractResult {
   data?: any;
   scrapeId: string;
   warning?: string;
-  urlTrace: URLTrace[];
+  urlTrace?: URLTrace[];
   error?: string;
 }
 
@@ -140,6 +140,6 @@ export async function performExtraction(options: ExtractServiceOptions): Promise
     data: completions.extract ?? {},
     scrapeId,
     warning: completions.warning,
-    urlTrace: urlTraces,
+    urlTrace: request.urlTrace ? urlTraces : undefined,
   };
 } 
