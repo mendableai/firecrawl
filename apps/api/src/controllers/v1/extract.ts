@@ -7,6 +7,7 @@ import {
   ExtractResponse,
   MapDocument,
   scrapeOptions,
+  URLTrace,
 } from "./types";
 // import { Document } from "../../lib/entities";
 import Redis from "ioredis";
@@ -56,14 +57,22 @@ export async function extractController(
   let links: string[] = [];
   let docs: Document[] = [];
   const earlyReturn = false;
+  const urlTraces: URLTrace[] = [];
 
   // Process all URLs in parallel
   const urlPromises = req.body.urls.map(async (url) => {
+    const trace: URLTrace = {
+      url,
+      status: 'mapped',
+      timing: {
+        discoveredAt: new Date().toISOString(),
+      },
+    };
+    urlTraces.push(trace);
+
     if (url.includes("/*") || req.body.allowExternalLinks) {
       // Handle glob pattern URLs
       const baseUrl = url.replace("/*", "");
-      // const pathPrefix = baseUrl.split('/').slice(3).join('/'); // Get path after domain if any
-
       const allowExternalLinks = req.body.allowExternalLinks;
       let urlWithoutWww = baseUrl.replace("www.", "");
 
@@ -75,113 +84,167 @@ export async function extractController(
           )) ?? req.body.prompt;
       }
 
-      const mapResults = await getMapResults({
-        url: baseUrl,
-        search: rephrasedPrompt,
-        teamId: req.auth.team_id,
-        plan: req.auth.plan,
-        allowExternalLinks,
-        origin: req.body.origin,
-        limit: req.body.limit,
-        // If we're self-hosted, we don't want to ignore the sitemap, due to our fire-engine mapping
-        ignoreSitemap: false,
-        includeMetadata: true,
-        includeSubdomains: req.body.includeSubdomains,
-      });
+      try {
+        const mapResults = await getMapResults({
+          url: baseUrl,
+          search: rephrasedPrompt,
+          teamId: req.auth.team_id,
+          plan: req.auth.plan,
+          allowExternalLinks,
+          origin: req.body.origin,
+          limit: req.body.limit,
+          ignoreSitemap: false,
+          includeMetadata: true,
+          includeSubdomains: req.body.includeSubdomains,
+        });
 
-      let mappedLinks = mapResults.mapResults as MapDocument[];
+        let mappedLinks = mapResults.mapResults as MapDocument[];
 
-      // Remove duplicates between mapResults.links and mappedLinks
-      const allUrls = [...mappedLinks.map((m) => m.url), ...mapResults.links];
-      const uniqueUrls = removeDuplicateUrls(allUrls);
+        // Remove duplicates between mapResults.links and mappedLinks
+        const allUrls = [...mappedLinks.map((m) => m.url), ...mapResults.links];
+        const uniqueUrls = removeDuplicateUrls(allUrls);
 
-      // Only add URLs from mapResults.links that aren't already in mappedLinks
-      const existingUrls = new Set(mappedLinks.map((m) => m.url));
-      const newUrls = uniqueUrls.filter((url) => !existingUrls.has(url));
-
-      mappedLinks = [
-        ...mappedLinks,
-        ...newUrls.map((url) => ({ url, title: "", description: "" })),
-      ];
-
-      if (mappedLinks.length === 0) {
-        mappedLinks = [{ url: baseUrl, title: "", description: "" }];
-      }
-
-      // Limit number of links to MAX_EXTRACT_LIMIT
-      mappedLinks = mappedLinks.slice(0, MAX_EXTRACT_LIMIT);
-
-      let mappedLinksRerank = mappedLinks.map(
-        (x) =>
-          `url: ${x.url}, title: ${x.title}, description: ${x.description}`,
-      );
-
-      if (req.body.prompt) {
-        let searchQuery =
-          req.body.prompt && allowExternalLinks
-            ? `${req.body.prompt} ${urlWithoutWww}`
-            : req.body.prompt
-              ? `${req.body.prompt} site:${urlWithoutWww}`
-              : `site:${urlWithoutWww}`;
-        // Get similarity scores between the search query and each link's context
-        const linksAndScores = await performRanking(
-          mappedLinksRerank,
-          mappedLinks.map((l) => l.url),
-          searchQuery,
-        );
-
-        // First try with high threshold
-        let filteredLinks = filterAndProcessLinks(
-          mappedLinks,
-          linksAndScores,
-          INITIAL_SCORE_THRESHOLD,
-        );
-
-        // If we don't have enough high-quality links, try with lower threshold
-        if (filteredLinks.length < MIN_REQUIRED_LINKS) {
-          logger.info(
-            `Only found ${filteredLinks.length} links with score > ${INITIAL_SCORE_THRESHOLD}. Trying lower threshold...`,
-          );
-          filteredLinks = filterAndProcessLinks(
-            mappedLinks,
-            linksAndScores,
-            FALLBACK_SCORE_THRESHOLD,
-          );
-
-          if (filteredLinks.length === 0) {
-            // If still no results, take top N results regardless of score
-            logger.warn(
-              `No links found with score > ${FALLBACK_SCORE_THRESHOLD}. Taking top ${MIN_REQUIRED_LINKS} results.`,
-            );
-            filteredLinks = linksAndScores
-              .sort((a, b) => b.score - a.score)
-              .slice(0, MIN_REQUIRED_LINKS)
-              .map((x) => mappedLinks.find((link) => link.url === x.link))
-              .filter(
-                (x): x is MapDocument =>
-                  x !== undefined &&
-                  x.url !== undefined &&
-                  !isUrlBlocked(x.url),
-              );
+        // Track all discovered URLs
+        uniqueUrls.forEach(discoveredUrl => {
+          if (!urlTraces.some(t => t.url === discoveredUrl)) {
+            urlTraces.push({
+              url: discoveredUrl,
+              status: 'mapped',
+              timing: {
+                discoveredAt: new Date().toISOString(),
+              },
+              usedInCompletion: false, // Default to false, will update if used
+            });
           }
+        });
+
+        // Only add URLs from mapResults.links that aren't already in mappedLinks
+        const existingUrls = new Set(mappedLinks.map((m) => m.url));
+        const newUrls = uniqueUrls.filter((url) => !existingUrls.has(url));
+
+        mappedLinks = [
+          ...mappedLinks,
+          ...newUrls.map((url) => ({ url, title: "", description: "" })),
+        ];
+
+        if (mappedLinks.length === 0) {
+          mappedLinks = [{ url: baseUrl, title: "", description: "" }];
         }
 
-        mappedLinks = filteredLinks.slice(0, MAX_RANKING_LIMIT);
-      }
+        // Limit number of links to MAX_EXTRACT_LIMIT
+        mappedLinks = mappedLinks.slice(0, MAX_EXTRACT_LIMIT);
 
-      return mappedLinks.map((x) => x.url) as string[];
+        let mappedLinksRerank = mappedLinks.map(
+          (x) =>
+            `url: ${x.url}, title: ${x.title}, description: ${x.description}`,
+        );
+
+        if (req.body.prompt) {
+          let searchQuery =
+            req.body.prompt && allowExternalLinks
+              ? `${req.body.prompt} ${urlWithoutWww}`
+              : req.body.prompt
+                ? `${req.body.prompt} site:${urlWithoutWww}`
+                : `site:${urlWithoutWww}`;
+          // Get similarity scores between the search query and each link's context
+          const linksAndScores = await performRanking(
+            mappedLinksRerank,
+            mappedLinks.map((l) => l.url),
+            searchQuery,
+          );
+
+          // First try with high threshold
+          let filteredLinks = filterAndProcessLinks(
+            mappedLinks,
+            linksAndScores,
+            INITIAL_SCORE_THRESHOLD,
+          );
+
+          // If we don't have enough high-quality links, try with lower threshold
+          if (filteredLinks.length < MIN_REQUIRED_LINKS) {
+            logger.info(
+              `Only found ${filteredLinks.length} links with score > ${INITIAL_SCORE_THRESHOLD}. Trying lower threshold...`,
+            );
+            filteredLinks = filterAndProcessLinks(
+              mappedLinks,
+              linksAndScores,
+              FALLBACK_SCORE_THRESHOLD,
+            );
+
+            if (filteredLinks.length === 0) {
+              // If still no results, take top N results regardless of score
+              logger.warn(
+                `No links found with score > ${FALLBACK_SCORE_THRESHOLD}. Taking top ${MIN_REQUIRED_LINKS} results.`,
+              );
+              filteredLinks = linksAndScores
+                .sort((a, b) => b.score - a.score)
+                .slice(0, MIN_REQUIRED_LINKS)
+                .map((x) => mappedLinks.find((link) => link.url === x.link))
+                .filter(
+                  (x): x is MapDocument =>
+                    x !== undefined &&
+                    x.url !== undefined &&
+                    !isUrlBlocked(x.url),
+                );
+            }
+          }
+
+          // Update URL traces with relevance scores and mark filtered out URLs
+          linksAndScores.forEach((score) => {
+            const trace = urlTraces.find((t) => t.url === score.link);
+            if (trace) {
+              trace.relevanceScore = score.score;
+              // If URL didn't make it through filtering, mark it as filtered out
+              if (!filteredLinks.some(link => link.url === score.link)) {
+                trace.warning = `Relevance score ${score.score} below threshold`;
+                trace.usedInCompletion = false;
+              }
+            }
+          });
+
+          mappedLinks = filteredLinks.slice(0, MAX_RANKING_LIMIT);
+          
+          // Mark URLs that will be used in completion
+          mappedLinks.forEach(link => {
+            const trace = urlTraces.find(t => t.url === link.url);
+            if (trace) {
+              trace.usedInCompletion = true;
+            }
+          });
+
+          // Mark URLs that were dropped due to ranking limit
+          filteredLinks.slice(MAX_RANKING_LIMIT).forEach(link => {
+            const trace = urlTraces.find(t => t.url === link.url);
+            if (trace) {
+              trace.warning = 'Excluded due to ranking limit';
+              trace.usedInCompletion = false;
+            }
+          });
+        }
+
+        return mappedLinks.map((x) => x.url);
+      } catch (error) {
+        trace.status = 'error';
+        trace.error = error.message;
+        trace.usedInCompletion = false;
+        return [];
+      }
     } else {
       // Handle direct URLs without glob pattern
       if (!isUrlBlocked(url)) {
+        trace.usedInCompletion = true;
         return [url];
       }
+      trace.status = 'error';
+      trace.error = 'URL is blocked';
+      trace.usedInCompletion = false;
       return [];
     }
   });
 
   // Wait for all URL processing to complete and flatten results
   const processedUrls = await Promise.all(urlPromises);
-  const flattenedUrls = processedUrls.flat().filter((url) => url); // Filter out any null/undefined values
+  const flattenedUrls = processedUrls.flat().filter((url) => url);
   links.push(...flattenedUrls);
 
   if (links.length === 0) {
@@ -189,13 +252,20 @@ export async function extractController(
       success: false,
       error:
         "No valid URLs found to scrape. Try adjusting your search criteria or including more URLs.",
+      urlTrace: urlTraces,
     });
   }
 
   // Scrape all links in parallel with retries
   const scrapePromises = links.map(async (url) => {
+    const trace = urlTraces.find((t) => t.url === url);
+    if (trace) {
+      trace.status = 'scraped';
+      trace.timing.scrapedAt = new Date().toISOString();
+    }
+
     const origin = req.body.origin || "api";
-    const timeout = Math.floor((req.body.timeout || 40000) * 0.7) || 30000; // Use 70% of total timeout for individual scrapes
+    const timeout = Math.floor((req.body.timeout || 40000) * 0.7) || 30000;
     const jobId = crypto.randomUUID();
 
     const jobPriority = await getJobPriority({
@@ -204,31 +274,45 @@ export async function extractController(
       basePriority: 10,
     });
 
-    await addScrapeJob(
-      {
-        url,
-        mode: "single_urls",
-        team_id: req.auth.team_id,
-        scrapeOptions: scrapeOptions.parse({}),
-        internalOptions: {},
-        plan: req.auth.plan!,
-        origin,
-        is_scrape: true,
-      },
-      {},
-      jobId,
-      jobPriority,
-    );
-
     try {
+      await addScrapeJob(
+        {
+          url,
+          mode: "single_urls",
+          team_id: req.auth.team_id,
+          scrapeOptions: scrapeOptions.parse({}),
+          internalOptions: {},
+          plan: req.auth.plan!,
+          origin,
+          is_scrape: true,
+        },
+        {},
+        jobId,
+        jobPriority,
+      );
+
       const doc = await waitForJob<Document>(jobId, timeout);
       await getScrapeQueue().remove(jobId);
+
+      if (trace) {
+        trace.timing.completedAt = new Date().toISOString();
+        trace.contentStats = {
+          rawContentLength: doc.markdown?.length || 0,
+          processedContentLength: doc.markdown?.length || 0,
+          tokensUsed: 0, // Will be updated after LLM processing
+        };
+      }
+
       if (earlyReturn) {
         return null;
       }
       return doc;
     } catch (e) {
       logger.error(`Error in extractController: ${e}`);
+      if (trace) {
+        trace.status = 'error';
+        trace.error = e.message;
+      }
       return null;
     }
   });
@@ -240,6 +324,7 @@ export async function extractController(
     return res.status(e.status).json({
       success: false,
       error: e.error,
+      urlTrace: urlTraces,
     });
   }
 
@@ -256,8 +341,24 @@ export async function extractController(
     },
     docs.map((x) => buildDocument(x)).join("\n"),
     undefined,
-    true, // isExtractEndpoint
+    true,
   );
+
+  // Update token usage in URL traces
+  if (completions.numTokens) {
+    // Distribute tokens proportionally based on content length
+    const totalLength = docs.reduce((sum, doc) => sum + (doc.markdown?.length || 0), 0);
+    docs.forEach((doc) => {
+      if (doc.metadata?.sourceURL) {
+        const trace = urlTraces.find((t) => t.url === doc.metadata.sourceURL);
+        if (trace && trace.contentStats) {
+          trace.contentStats.tokensUsed = Math.floor(
+            ((doc.markdown?.length || 0) / totalLength) * completions.numTokens
+          );
+        }
+      }
+    });
+  }
 
   // TODO: change this later
   // While on beta, we're billing 5 credits per link discovered/scraped.
@@ -292,6 +393,7 @@ export async function extractController(
     data: data,
     scrape_id: id,
     warning: warning,
+    urlTrace: urlTraces,
   });
 }
 

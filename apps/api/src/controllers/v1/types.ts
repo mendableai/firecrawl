@@ -379,16 +379,16 @@ export type MapRequest = z.infer<typeof mapRequestSchema>;
 
 export type Document = {
   markdown?: string;
-  extract?: any;
   html?: string;
   rawHtml?: string;
   links?: string[];
   screenshot?: string;
+  extract?: any;
+  warning?: string;
   actions?: {
     screenshots?: string[];
     scrapes?: ScrapeActionContent[];
   };
-  warning?: string;
   metadata: {
     title?: string;
     description?: string;
@@ -425,7 +425,7 @@ export type Document = {
     error?: string;
     [key: string]: string | string[] | number | undefined;
   };
-};
+}
 
 export type ErrorResponse = {
   success: false;
@@ -448,14 +448,33 @@ export interface ScrapeResponseRequestTest {
   error?: string;
 }
 
-export type ExtractResponse =
-  | ErrorResponse
-  | {
-      success: true;
-      warning?: string;
-      data: z.infer<typeof extractRequestSchema>;
-      scrape_id?: string;
-    };
+export interface URLTrace {
+  url: string;
+  status: 'mapped' | 'scraped' | 'error';
+  timing: {
+    discoveredAt: string;
+    scrapedAt?: string;
+    completedAt?: string;
+  };
+  error?: string;
+  warning?: string;
+  contentStats?: {
+    rawContentLength: number;
+    processedContentLength: number;
+    tokensUsed: number;
+  };
+  relevanceScore?: number;
+  usedInCompletion?: boolean;
+}
+
+export interface ExtractResponse {
+  success: boolean;
+  data?: any;
+  scrape_id?: string;
+  warning?: string;
+  error?: string;
+  urlTrace?: URLTrace[];
+}
 
 export interface ExtractResponseRequestTest {
   statusCode: number;
