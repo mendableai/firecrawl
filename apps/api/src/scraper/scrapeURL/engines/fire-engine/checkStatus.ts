@@ -3,7 +3,7 @@ import * as Sentry from "@sentry/node";
 import { z } from "zod";
 
 import { robustFetch } from "../../lib/fetch";
-import { ActionError, EngineError, SiteError } from "../../error";
+import { ActionError, EngineError, SiteError, UnsupportedFileError } from "../../error";
 
 const successSchema = z.object({
   jobId: z.string(),
@@ -35,6 +35,12 @@ const successSchema = z.object({
     })
     .array()
     .optional(),
+  
+  // chrome-cdp only -- file download handler
+  file: z.object({
+    name: z.string(),
+    content: z.string(),
+  }).optional().or(z.null()),
 });
 
 export type FireEngineCheckStatusSuccess = z.infer<typeof successSchema>;
@@ -111,6 +117,11 @@ export async function fireEngineCheckStatus(
       status.error.includes("Chrome error: ")
     ) {
       throw new SiteError(status.error.split("Chrome error: ")[1]);
+    } else if (
+      typeof status.error === "string" &&
+      status.error.includes("File size exceeds")
+    ) {
+      throw new UnsupportedFileError("File size exceeds " + status.error.split("File size exceeds ")[1]);
     } else if (
       typeof status.error === "string" &&
       // TODO: improve this later

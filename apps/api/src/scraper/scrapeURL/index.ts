@@ -19,6 +19,7 @@ import {
   RemoveFeatureError,
   SiteError,
   TimeoutError,
+  UnsupportedFileError,
 } from "./error";
 import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
@@ -292,6 +293,8 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         throw error;
       } else if (error instanceof ActionError) {
         throw error;
+      } else if (error instanceof UnsupportedFileError) {
+        throw error;
       } else {
         Sentry.captureException(error);
         meta.logger.info(
@@ -414,6 +417,8 @@ export async function scrapeURL(
       meta.logger.warn("scrapeURL: Site failed to load in browser", { error });
     } else if (error instanceof ActionError) {
       meta.logger.warn("scrapeURL: Action(s) failed to complete", { error });
+    } else if (error instanceof UnsupportedFileError) {
+      meta.logger.warn("scrapeURL: Tried to scrape unsupported file", { error });
     } else {
       Sentry.captureException(error);
       meta.logger.error("scrapeURL: Unexpected error happened", { error });
