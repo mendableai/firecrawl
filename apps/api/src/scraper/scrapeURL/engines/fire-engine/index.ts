@@ -17,6 +17,7 @@ import { ActionError, EngineError, SiteError, TimeoutError } from "../../error";
 import * as Sentry from "@sentry/node";
 import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
+import { fireEngineDelete } from "./delete";
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -44,6 +45,7 @@ async function performFireEngineScrape<
   while (status === undefined) {
     if (errors.length >= errorLimit) {
       logger.error("Error limit hit.", { errors });
+      await fireEngineDelete(logger, scrape.jobId);
       throw new Error("Error limit hit. See e.cause.errors for errors.", {
         cause: { errors },
       });
@@ -54,6 +56,7 @@ async function performFireEngineScrape<
         "Fire-engine was unable to scrape the page before timing out.",
         { errors, timeout },
       );
+      await fireEngineDelete(logger, scrape.jobId);
       throw new TimeoutError(
         "Fire-engine was unable to scrape the page before timing out",
         { cause: { errors, timeout } },
@@ -77,6 +80,7 @@ async function performFireEngineScrape<
           error,
           jobId: scrape.jobId,
         });
+        await fireEngineDelete(logger, scrape.jobId);
         throw error;
       } else {
         Sentry.captureException(error);
@@ -90,6 +94,8 @@ async function performFireEngineScrape<
 
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
+
+  await fireEngineDelete(logger, scrape.jobId);
 
   return status;
 }
