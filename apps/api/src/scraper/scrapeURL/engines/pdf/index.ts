@@ -32,6 +32,9 @@ async function scrapePDFWithLlamaParse(
         tempFilePath,
       ) as unknown as ReadableStream<Uint8Array>;
     },
+    bytes() {
+      throw Error("Unimplemented in mock Blob: bytes");
+    },
     arrayBuffer() {
       throw Error("Unimplemented in mock Blob: arrayBuffer");
     },
