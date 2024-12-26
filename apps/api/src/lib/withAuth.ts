@@ -17,7 +17,7 @@ export function withAuth<T, U extends any[]>(
         logger.warn("You're bypassing authentication");
         warningCount++;
       }
-      return { success: true } as T;
+      return { success: true, ...(mockSuccess || {}) } as T;
     } else {
       return await originalFunction(...args);
     }
