@@ -446,44 +446,75 @@ export class WebCrawler {
     };
 
     const sitemapUrl = url.endsWith(".xml") ? url : `${url}/sitemap.xml`;
-
     let sitemapLinks: string[] = [];
 
+    // Try to get sitemap from the provided URL first
     try {
-      const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
-      if (response.status === 200) {
-        sitemapLinks = await getLinksFromSitemap({ sitemapUrl }, this.logger);
-      }
+      sitemapLinks = await getLinksFromSitemap(
+        { sitemapUrl, allUrls: [], mode: "fire-engine" },
+        this.logger,
+      );
     } catch (error) {
       this.logger.debug(
-        `Failed to fetch sitemap with axios from ${sitemapUrl}`,
+        `Failed to fetch sitemap from ${sitemapUrl}`,
         { method: "tryFetchSitemapLinks", sitemapUrl, error },
       );
-      if (error instanceof AxiosError && error.response?.status === 404) {
-        // ignore 404
-      } else {
-        const response = await getLinksFromSitemap(
-          { sitemapUrl, mode: "fire-engine" },
-          this.logger,
-        );
-        if (response) {
-          sitemapLinks = response;
-        }
-      }
     }
 
+    // If this is a subdomain, also try to get sitemap from the main domain
+    try {
+      const urlObj = new URL(url);
+      const hostname = urlObj.hostname;
+      const domainParts = hostname.split('.');
+      
+      // Check if this is a subdomain (has more than 2 parts and not www)
+      if (domainParts.length > 2 && domainParts[0] !== 'www') {
+        // Get the main domain by taking the last two parts
+        const mainDomain = domainParts.slice(-2).join('.');
+        const mainDomainUrl = `${urlObj.protocol}//${mainDomain}`;
+        const mainDomainSitemapUrl = `${mainDomainUrl}/sitemap.xml`;
+
+        try {
+          // Get all links from the main domain's sitemap
+          const mainDomainLinks = await getLinksFromSitemap(
+            { sitemapUrl: mainDomainSitemapUrl, allUrls: [], mode: "fire-engine" },
+            this.logger,
+          );
+          // Filter links to only include those pointing to the current subdomain
+          const subdomainLinks = mainDomainLinks.filter(link => {
+            try {
+              const linkUrl = new URL(link);
+              return linkUrl.hostname.endsWith(hostname);
+            } catch {
+              return false;
+            }
+          });
+          sitemapLinks = [...new Set([...sitemapLinks, ...subdomainLinks])];
+        } catch (error) {
+          this.logger.debug(
+            `Failed to fetch main domain sitemap from ${mainDomainSitemapUrl}`,
+            { method: "tryFetchSitemapLinks", mainDomainSitemapUrl, error },
+          );
+        }
+      }
+    } catch (error) {
+      this.logger.debug(`Error processing main domain sitemap`, {
+        method: "tryFetchSitemapLinks",
+        url,
+        error,
+      });
+    }
+
+    // If no sitemap found yet, try the baseUrl as a last resort
     if (sitemapLinks.length === 0) {
       const baseUrlSitemap = `${this.baseUrl}/sitemap.xml`;
       try {
-        const response = await axios.get(baseUrlSitemap, {
-          timeout: axiosTimeout,
-        });
-        if (response.status === 200) {
-          sitemapLinks = await getLinksFromSitemap(
-            { sitemapUrl: baseUrlSitemap, mode: "fire-engine" },
-            this.logger,
-          );
-        }
+        const baseLinks = await getLinksFromSitemap(
+          { sitemapUrl: baseUrlSitemap, allUrls: [], mode: "fire-engine" },
+          this.logger,
+        );
+
+        sitemapLinks = [...new Set([...sitemapLinks, ...baseLinks])];
       } catch (error) {
         this.logger.debug(`Failed to fetch sitemap from ${baseUrlSitemap}`, {
           method: "tryFetchSitemapLinks",

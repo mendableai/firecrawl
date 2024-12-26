@@ -5,7 +5,9 @@ import { WebCrawler } from "./crawler";
 import { scrapeURL } from "../scrapeURL";
 import { scrapeOptions } from "../../controllers/v1/types";
 import type { Logger } from "winston";
-
+const useFireEngine =
+  process.env.FIRE_ENGINE_BETA_URL !== "" &&
+  process.env.FIRE_ENGINE_BETA_URL !== undefined;
 export async function getLinksFromSitemap(
   {
     sitemapUrl,
@@ -21,10 +23,7 @@ export async function getLinksFromSitemap(
   try {
     let content: string = "";
     try {
-      if (mode === "axios" || process.env.FIRE_ENGINE_BETA_URL === "") {
-        const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
-        content = response.data;
-      } else if (mode === "fire-engine") {
+      if (mode === "fire-engine" && useFireEngine) {
         const response = await scrapeURL(
           "sitemap",
           sitemapUrl,
@@ -35,6 +34,9 @@ export async function getLinksFromSitemap(
           throw response.error;
         }
         content = response.document.rawHtml!;
+      } else {
+        const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
+        content = response.data;
       }
     } catch (error) {
       logger.error(`Request failed for ${sitemapUrl}`, {
@@ -43,7 +45,6 @@ export async function getLinksFromSitemap(
         sitemapUrl,
         error,
       });
-
       return allUrls;
     }
 
@@ -51,21 +52,55 @@ export async function getLinksFromSitemap(
     const root = parsed.urlset || parsed.sitemapindex;
 
     if (root && root.sitemap) {
-      const sitemapPromises = root.sitemap
+      // Handle sitemap index files
+      const sitemapUrls = root.sitemap
         .filter((sitemap) => sitemap.loc && sitemap.loc.length > 0)
-        .map((sitemap) =>
+        .map((sitemap) => sitemap.loc[0]);
+
+      const sitemapPromises = sitemapUrls.map((sitemapUrl) =>
+        getLinksFromSitemap(
+          { sitemapUrl, allUrls: [], mode },
+          logger,
+        ),
+      );
+      
+      const results = await Promise.all(sitemapPromises);
+      results.forEach(urls => {
+        allUrls.push(...urls);
+      });
+    } else if (root && root.url) {
+      // Check if any URLs point to additional sitemaps
+      const xmlSitemaps = root.url
+        .filter(
+          (url) =>
+            url.loc &&
+            url.loc.length > 0 &&
+            url.loc[0].toLowerCase().endsWith('.xml')
+        )
+        .map((url) => url.loc[0]);
+
+      if (xmlSitemaps.length > 0) {
+        // Recursively fetch links from additional sitemaps
+        const sitemapPromises = xmlSitemaps.map((sitemapUrl) =>
           getLinksFromSitemap(
-            { sitemapUrl: sitemap.loc[0], allUrls, mode },
+            { sitemapUrl, allUrls: [], mode },
             logger,
           ),
         );
-      await Promise.all(sitemapPromises);
-    } else if (root && root.url) {
+        
+        const results = await Promise.all(sitemapPromises);
+        results.forEach(urls => {
+          allUrls.push(...urls);
+        });
+      }
+
+      // Add regular URLs that aren't sitemaps
       const validUrls = root.url
         .filter(
           (url) =>
             url.loc &&
             url.loc.length > 0 &&
+            !url.loc[0].toLowerCase().endsWith('.xml') &&
             !WebCrawler.prototype.isFile(url.loc[0]),
         )
         .map((url) => url.loc[0]);
@@ -80,7 +115,7 @@ export async function getLinksFromSitemap(
     });
   }
 
-  return allUrls;
+  return [...new Set(allUrls)];
 }
 
 export const fetchSitemapData = async (
