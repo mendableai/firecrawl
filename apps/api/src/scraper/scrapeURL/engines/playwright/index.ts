@@ -6,8 +6,9 @@ import { robustFetch } from "../../lib/fetch";
 
 export async function scrapeURLWithPlaywright(
   meta: Meta,
+  timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
-  const timeout = 20000 + meta.options.waitFor;
+  const timeout = (timeToRun ?? 300000) + meta.options.waitFor;
 
   const response = await Promise.race([
     await robustFetch({
@@ -30,7 +31,7 @@ export async function scrapeURLWithPlaywright(
       }),
     }),
     (async () => {
-      await new Promise((resolve) => setTimeout(() => resolve(null), 20000));
+      await new Promise((resolve) => setTimeout(() => resolve(null), timeout));
       throw new TimeoutError(
         "Playwright was unable to scrape the page before timing out",
         { cause: { timeout } },

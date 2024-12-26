@@ -21,7 +21,7 @@ export function cacheKey(
   if (
     internalOptions.v0CrawlOnlyUrls ||
     internalOptions.forceEngine ||
-    internalOptions.v0UseFastMode ||
+    scrapeOptions.fastMode ||
     internalOptions.atsv ||
     (scrapeOptions.actions && scrapeOptions.actions.length > 0)
   ) {

@@ -8,6 +8,7 @@ import {
 } from "../controllers/v0/admin/queue";
 import { wrap } from "./v1";
 import { acucCacheClearController } from "../controllers/v0/admin/acuc-cache-clear";
+import { checkFireEngine } from "../controllers/v0/admin/check-fire-engine";
 
 export const adminRouter = express.Router();
 
@@ -36,4 +37,9 @@ adminRouter.get(
 adminRouter.post(
   `/admin/${process.env.BULL_AUTH_KEY}/acuc-cache-clear`,
   wrap(acucCacheClearController),
+);
+
+adminRouter.get(
+  `/admin/${process.env.BULL_AUTH_KEY}/feng-check`,
+  wrap(checkFireEngine),
 );

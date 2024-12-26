@@ -386,27 +386,27 @@ async function processJob(job: Job & { id: string }, token: string) {
     jobId: job.id,
     scrapeId: job.id,
     crawlId: job.data?.crawl_id ?? undefined,
+    teamId: job.data?.team_id ?? undefined,
   });
   logger.info(`🐂 Worker taking job ${job.id}`, { url: job.data.url });
 
   // Check if the job URL is researchhub and block it immediately
   // TODO: remove this once solve the root issue
-  if (
-    job.data.url &&
-    (job.data.url.includes("researchhub.com") ||
-      job.data.url.includes("ebay.com") ||
-      job.data.url.includes("youtube.com"))
-  ) {
-    logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
-    const data = {
-      success: false,
-      document: null,
-      project_id: job.data.project_id,
-      error:
-        "URL is blocked. Suspecious activity detected. Please contact help@firecrawl.com if you believe this is an error.",
-    };
-    return data;
-  }
+  // if (
+  //   job.data.url &&
+  //   (job.data.url.includes("researchhub.com") ||
+  //     job.data.url.includes("ebay.com"))
+  // ) {
+  //   logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
+  //   const data = {
+  //     success: false,
+  //     document: null,
+  //     project_id: job.data.project_id,
+  //     error:
+  //       "URL is blocked. Suspecious activity detected. Please contact help@firecrawl.com if you believe this is an error.",
+  //   };
+  //   return data;
+  // }
 
   try {
     job.updateProgress({
@@ -482,32 +482,28 @@ async function processJob(job: Job & { id: string }, token: string) {
         normalizeURL(doc.metadata.url, sc) !==
           normalizeURL(doc.metadata.sourceURL, sc)
       ) {
-        logger.debug(
-          "Was redirected, removing old URL and locking new URL...",
-          { oldUrl: doc.metadata.sourceURL, newUrl: doc.metadata.url },
-        );
-        // Remove the old URL from visited unique due to checking for limit
-        // Do not remove from :visited otherwise it will keep crawling the original URL (sourceURL)
-        await redisConnection.srem(
-          "crawl:" + job.data.crawl_id + ":visited_unique",
-          normalizeURL(doc.metadata.sourceURL, sc),
-        );
-
         const p1 = generateURLPermutations(normalizeURL(doc.metadata.url, sc));
         const p2 = generateURLPermutations(
           normalizeURL(doc.metadata.sourceURL, sc),
         );
 
-        // In crawls, we should only crawl a redirected page once, no matter how many; times it is redirected to, or if it's been discovered by the crawler before.
-        // This can prevent flakiness with race conditions.
-        // Lock the new URL
-        const lockRes = await lockURL(job.data.crawl_id, sc, doc.metadata.url);
-        if (
-          job.data.crawlerOptions !== null &&
-          !lockRes &&
-          JSON.stringify(p1) !== JSON.stringify(p2)
-        ) {
-          throw new RacedRedirectError();
+        if (JSON.stringify(p1) !== JSON.stringify(p2)) {
+          logger.debug(
+            "Was redirected, removing old URL and locking new URL...",
+            { oldUrl: doc.metadata.sourceURL, newUrl: doc.metadata.url },
+          );
+
+          // Prevent redirect target from being visited in the crawl again
+          // See lockURL
+          const x = await redisConnection.sadd(
+            "crawl:" + job.data.crawl_id + ":visited",
+            ...p1.map((x) => x.href),
+          );
+          const lockRes = x === p1.length;
+
+          if (job.data.crawlerOptions !== null && !lockRes) {
+            throw new RacedRedirectError();
+          }
         }
       }
 
@@ -679,6 +675,10 @@ async function processJob(job: Job & { id: string }, token: string) {
 
       logger.debug("Declaring job as done...");
       await addCrawlJobDone(job.data.crawl_id, job.id, false);
+      await redisConnection.srem(
+        "crawl:" + job.data.crawl_id + ":visited_unique",
+        normalizeURL(job.data.url, sc),
+      );
 
       logger.debug("Logging job to DB...");
       await logJob(

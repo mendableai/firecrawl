@@ -5,7 +5,7 @@ import { Meta } from "..";
 export function extractMetadata(
   meta: Meta,
   html: string,
-): Document["metadata"] {
+): Partial<Document["metadata"]> {
   let title: string | undefined = undefined;
   let description: string | undefined = undefined;
   let language: string | undefined = undefined;
@@ -40,7 +40,7 @@ export function extractMetadata(
   const soup = load(html);
 
   try {
-    title = soup("title").text() || undefined;
+    title = soup("title").first().text().trim() || undefined;
     description = soup('meta[name="description"]').attr("content") || undefined;
 
     // Assuming the language is part of the URL as per the regex pattern

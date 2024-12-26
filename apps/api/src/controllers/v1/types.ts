@@ -11,6 +11,7 @@ import {
   Document as V0Document,
 } from "../../lib/entities";
 import { InternalOptions } from "../../scraper/scrapeURL";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 export type Format =
   | "markdown"
@@ -44,10 +45,7 @@ export const url = z.preprocess(
         return false;
       }
     }, "Invalid URL")
-    .refine(
-      (x) => !isUrlBlocked(x as string),
-      "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
-    ),
+    .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
 );
 
 const strictMessage =
@@ -182,6 +180,7 @@ export const scrapeOptions = z
       .optional(),
     skipTlsVerification: z.boolean().default(false),
     removeBase64Images: z.boolean().default(true),
+    fastMode: z.boolean().default(false),
   })
   .strict(strictMessage);
 
@@ -193,11 +192,12 @@ export const extractV1Options = z
       .array()
       .max(10, "Maximum of 10 URLs allowed per request while in beta."),
     prompt: z.string().optional(),
+    systemPrompt: z.string().optional(),
     schema: z.any().optional(),
     limit: z.number().int().positive().finite().safe().optional(),
     ignoreSitemap: z.boolean().default(false),
     includeSubdomains: z.boolean().default(true),
-    allowExternalLinks: z.boolean().default(true),
+    allowExternalLinks: z.boolean().default(false),
     origin: z.string().optional().default("api"),
     timeout: z.number().int().positive().finite().safe().default(60000),
   })
@@ -262,6 +262,31 @@ export const batchScrapeRequestSchema = scrapeOptions
     origin: z.string().optional().default("api"),
     webhook: webhookSchema.optional(),
     appendToId: z.string().uuid().optional(),
+    ignoreInvalidURLs: z.boolean().default(false),
+  })
+  .strict(strictMessage)
+  .refine(
+    (obj) => {
+      const hasExtractFormat = obj.formats?.includes("extract");
+      const hasExtractOptions = obj.extract !== undefined;
+      return (
+        (hasExtractFormat && hasExtractOptions) ||
+        (!hasExtractFormat && !hasExtractOptions)
+      );
+    },
+    {
+      message:
+        "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
+    },
+  );
+
+export const batchScrapeRequestSchemaNoURLValidation = scrapeOptions
+  .extend({
+    urls: z.string().array(),
+    origin: z.string().optional().default("api"),
+    webhook: webhookSchema.optional(),
+    appendToId: z.string().uuid().optional(),
+    ignoreInvalidURLs: z.boolean().default(false),
   })
   .strict(strictMessage)
   .refine(
@@ -396,7 +421,7 @@ export type Document = {
     articleSection?: string;
     url?: string;
     sourceURL?: string;
-    statusCode?: number;
+    statusCode: number;
     error?: string;
     [key: string]: string | string[] | number | undefined;
   };
@@ -444,6 +469,15 @@ export type CrawlResponse =
       success: true;
       id: string;
       url: string;
+    };
+
+export type BatchScrapeResponse =
+  | ErrorResponse
+  | {
+      success: true;
+      id: string;
+      url: string;
+      invalidURLs?: string[];
     };
 
 export type MapResponse =
@@ -651,11 +685,11 @@ export function fromLegacyScrapeOptions(
             }
           : undefined,
       mobile: pageOptions.mobile,
+      fastMode: pageOptions.useFastMode,
     }),
     internalOptions: {
       atsv: pageOptions.atsv,
       v0DisableJsDom: pageOptions.disableJsDom,
-      v0UseFastMode: pageOptions.useFastMode,
     },
     // TODO: fallback, fetchPageContent, replaceAllPathsWithAbsolutePaths, includeLinks
   };

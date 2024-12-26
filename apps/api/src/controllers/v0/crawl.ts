@@ -29,6 +29,7 @@ import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
 import { fromLegacyScrapeOptions, url as urlSchema } from "../v1/types";
 import { ZodError } from "zod";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 export async function crawlController(req: Request, res: Response) {
   try {
@@ -112,8 +113,7 @@ export async function crawlController(req: Request, res: Response) {
 
     if (isUrlBlocked(url)) {
       return res.status(403).json({
-        error:
-          "Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it.",
+        error: BLOCKLISTED_URL_MESSAGE,
       });
     }
 

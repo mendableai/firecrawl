@@ -210,7 +210,7 @@ export class WebCrawler {
     }
     if (sitemapLinks.length > 0) {
       let filteredLinks = this.filterLinks(
-        sitemapLinks,
+        [...new Set(sitemapLinks)],
         this.limit,
         this.maxCrawledDepth,
         fromMap,
