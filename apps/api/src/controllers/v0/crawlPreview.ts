@@ -113,32 +113,32 @@ export async function crawlPreviewController(req: Request, res: Response) {
     const crawler = crawlToCrawler(id, sc);
 
     const sitemap = sc.crawlerOptions?.ignoreSitemap
-      ? null
-      : await crawler.tryGetSitemap();
+      ? 0
+      : await crawler.tryGetSitemap(async urls => {
+        for (const url of urls) {
+          await lockURL(id, sc, url);
+          const jobId = uuidv4();
+          await addScrapeJob(
+            {
+              url,
+              mode: "single_urls",
+              team_id,
+              plan: plan!,
+              crawlerOptions,
+              scrapeOptions,
+              internalOptions,
+              origin: "website-preview",
+              crawl_id: id,
+              sitemapped: true,
+            },
+            {},
+            jobId,
+          );
+          await addCrawlJob(id, jobId);
+        }
+      });
 
-    if (sitemap !== null) {
-      for (const url of sitemap.map((x) => x.url)) {
-        await lockURL(id, sc, url);
-        const jobId = uuidv4();
-        await addScrapeJob(
-          {
-            url,
-            mode: "single_urls",
-            team_id,
-            plan: plan!,
-            crawlerOptions,
-            scrapeOptions,
-            internalOptions,
-            origin: "website-preview",
-            crawl_id: id,
-            sitemapped: true,
-          },
-          {},
-          jobId,
-        );
-        await addCrawlJob(id, jobId);
-      }
-    } else {
+    if (sitemap === 0) {
       await lockURL(id, sc, url);
       const jobId = uuidv4();
       await addScrapeJob(

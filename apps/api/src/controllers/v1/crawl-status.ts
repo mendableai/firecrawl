@@ -115,7 +115,7 @@ export async function crawlStatusController(
   const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] =
     sc.cancelled
       ? "cancelled"
-      : validJobStatuses.every((x) => x[1] === "completed")
+      : (validJobStatuses.every((x) => x[1] === "completed") && validJobStatuses.length > 0)
         ? "completed"
         : "scraping";
 
