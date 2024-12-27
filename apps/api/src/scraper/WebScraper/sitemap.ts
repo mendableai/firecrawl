@@ -31,9 +31,12 @@ export async function getLinksFromSitemap(
           { forceEngine: "fire-engine;tlsclient", v0DisableJsDom: true },
         );
         if (!response.success) {
-          throw response.error;
+          logger.debug("Failed to scrape sitemap via TLSClient, falling back to axios...", { error: response.error })
+          const ar = await axios.get(sitemapUrl, { timeout: axiosTimeout });
+          content = ar.data;
+        } else {
+          content = response.document.rawHtml!;
         }
-        content = response.document.rawHtml!;
       } else {
         const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
         content = response.data;
@@ -89,7 +92,7 @@ export async function getLinksFromSitemap(
         );
         count += (await Promise.all(sitemapPromises)).reduce((a,x) => a + x, 0);
       }
-    } else if (root && root.url) {
+
       const validUrls = root.url
         .filter(
           (url) =>
