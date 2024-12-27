@@ -13,12 +13,12 @@ import path from "node:path";
 
 type PDFProcessorResult = { html: string; markdown?: string };
 
-async function scrapePDFWithMinerU(
+async function scrapePDFWithRunPodMU(
   meta: Meta,
   tempFilePath: string,
   timeToRun: number | undefined,
 ): Promise<PDFProcessorResult> {
-  meta.logger.debug("Processing PDF document with MinerU", {
+  meta.logger.debug("Processing PDF document with RunPod MU", {
     tempFilePath,
   });
 
@@ -30,10 +30,10 @@ async function scrapePDFWithMinerU(
   console.log(tempFilePath);
 
   const upload = await robustFetch({
-    url: "https://api.runpod.ai/v2/" + process.env.MINERU_POD_ID + "/run",
+    url: "https://api.runpod.ai/v2/" + process.env.RUNPOD_MU_POD_ID + "/run",
     method: "POST",
     headers: {
-      Authorization: `Bearer ${process.env.MINERU_API_KEY}`,
+      Authorization: `Bearer ${process.env.RUNPOD_MU_API_KEY}`,
     },
     body: {
       input: {
@@ -42,7 +42,7 @@ async function scrapePDFWithMinerU(
       },
     },
     logger: meta.logger.child({
-      method: "scrapePDFWithMinerU/upload/robustFetch",
+      method: "scrapePDFWithRunPodMU/upload/robustFetch",
     }),
     schema: z.object({
       id: z.string(),
@@ -58,13 +58,13 @@ async function scrapePDFWithMinerU(
   while (Date.now() <= startedAt + timeout) {
     try {
       const result = await robustFetch({
-        url: `https://api.runpod.ai/v2/${process.env.MINERU_POD_ID}/status/${jobId}`,
+        url: `https://api.runpod.ai/v2/${process.env.RUNPOD_MU_POD_ID}/status/${jobId}`,
         method: "GET",
         headers: {
-          Authorization: `Bearer ${process.env.MINERU_API_KEY}`,
+          Authorization: `Bearer ${process.env.RUNPOD_MU_API_KEY}`,
         },
         logger: meta.logger.child({
-          method: "scrapePDFWithMinerU/result/robustFetch",
+          method: "scrapePDFWithRunPodMU/result/robustFetch",
         }),
         schema: z.object({
           status: z.string(),
@@ -83,7 +83,7 @@ async function scrapePDFWithMinerU(
       }
 
       if (result.status === "FAILED") {
-        throw new Error("MinerU failed to parse PDF: " + result.error!, { cause: result.error });
+        throw new Error("RunPod MU failed to parse PDF: " + result.error!, { cause: result.error });
       }
 
       // result not up yet
@@ -96,7 +96,7 @@ async function scrapePDFWithMinerU(
         //   meta.logger.debug("URL is not actually a PDF, signalling...");
         //   throw new RemoveFeatureError(["pdf"]);
         // } else {
-          throw new Error("MinerU threw an error", {
+          throw new Error("RunPod MU threw an error", {
             cause: e.cause,
           });
         // }
@@ -108,7 +108,7 @@ async function scrapePDFWithMinerU(
     await new Promise<void>((resolve) => setTimeout(() => resolve(), 250));
   }
 
-  throw new Error("MinerU timed out");
+  throw new Error("RunPod MU timed out");
 }
 
 async function scrapePDFWithParsePDF(
@@ -157,33 +157,33 @@ export async function scrapePDF(
     tempFilePath,
   );
 
-  // Then, if output is too short, pass to MinerU
+  // Then, if output is too short, pass to RunPod MU
   if (
     result.markdown && result.markdown.length < 500 &&
-    process.env.MINERU_API_KEY && process.env.MINERU_POD_ID
+    process.env.RUNPOD_MU_API_KEY && process.env.RUNPOD_MU_POD_ID
   ) {
     try {
-      const mineruResult = await scrapePDFWithMinerU(
+      const muResult = await scrapePDFWithRunPodMU(
         {
           ...meta,
           logger: meta.logger.child({
-            method: "scrapePDF/scrapePDFWithMinerU",
+            method: "scrapePDF/scrapePDFWithRunPodMU",
           }),
         },
         tempFilePath,
         timeToRun,
       );
-      result = mineruResult; // Use LlamaParse result if successful
+      result = muResult; // Use LlamaParse result if successful
     } catch (error) {
-      if (error instanceof Error && error.message === "MinerU timed out") {
-        meta.logger.warn("MinerU timed out -- using parse-pdf result", {
+      if (error instanceof Error && error.message === "RunPod MU timed out") {
+        meta.logger.warn("RunPod MU timed out -- using parse-pdf result", {
           error,
         });
       } else if (error instanceof RemoveFeatureError) {
         throw error;
       } else {
         meta.logger.warn(
-          "MinerU failed to parse PDF -- using parse-pdf result",
+          "RunPod MU failed to parse PDF -- using parse-pdf result",
           { error },
         );
         Sentry.captureException(error);
