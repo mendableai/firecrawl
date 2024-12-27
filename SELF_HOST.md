@@ -116,6 +116,14 @@ If you’d like to test the crawl endpoint, you can run this:
 
 This section provides solutions to common issues you might encounter while setting up or running your self-hosted instance of Firecrawl.
 
+### API key errors when using the firebase SDK
+
+**Symptom**
+SDK errors when trying to connect to self hosted firebase instance because of missing API key.
+
+**Explanation**
+The SDKs are designed to connect to the firebase SaaS. The SDKs require an api key value to be provided. Providing an empty value e.g. "" will not work. You can get around it by supplying e.g. "somevalue".
+
 ### Supabase client is not configured
 
 **Symptom:**
