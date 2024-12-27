@@ -111,9 +111,11 @@ describe("E2E Tests for Extract API Routes", () => {
 
       let gotItRight = 0;
       for (const hiring of response.body.data?.items) {
-        if (hiring.includes("Developer Support Engineer")) gotItRight++;
-        if (hiring.includes("Dev Ops Engineer")) gotItRight++;
+        if (hiring.includes("Firecrawl Example Creator")) gotItRight++;
+        if (hiring.includes("Senior Frontend Engineer")) gotItRight++;
+        if (hiring.includes("Technical Chief of Staff")) gotItRight++;
         if (hiring.includes("Founding Web Automation Engineer")) gotItRight++;
+        if (hiring.includes("Founding Fullstack Engineer")) gotItRight++;
       }
 
       expect(gotItRight).toBeGreaterThan(2);
