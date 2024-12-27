@@ -9,6 +9,7 @@ pub mod map;
 pub mod scrape;
 
 pub use error::FirecrawlError;
+use error::FirecrawlAPIError;
 
 #[derive(Clone, Debug)]
 pub struct FirecrawlApp {
@@ -18,16 +19,30 @@ pub struct FirecrawlApp {
 }
 
 pub(crate) const API_VERSION: &str = "/v1";
+const CLOUD_API_URL: &str = "https://api.firecrawl.dev";
 
 impl FirecrawlApp {
     pub fn new(api_key: impl AsRef<str>) -> Result<Self, FirecrawlError> {
-        FirecrawlApp::new_selfhosted("https://api.firecrawl.dev", Some(api_key))
+        FirecrawlApp::new_selfhosted(CLOUD_API_URL, Some(api_key))
     }
 
     pub fn new_selfhosted(api_url: impl AsRef<str>, api_key: Option<impl AsRef<str>>) -> Result<Self, FirecrawlError> {
+        let url = api_url.as_ref().to_string();
+        
+        if url == CLOUD_API_URL && api_key.is_none() {
+            return Err(FirecrawlError::APIError(
+                "Configuration".to_string(),
+                FirecrawlAPIError {
+                    success: false,
+                    error: "API key is required for cloud service".to_string(),
+                    details: None,
+                }
+            ));
+        }
+
         Ok(FirecrawlApp {
             api_key: api_key.map(|x| x.as_ref().to_string()),
-            api_url: api_url.as_ref().to_string(),
+            api_url: url,
             client: Client::new(),
         })
     }

@@ -116,6 +116,10 @@ If you’d like to test the crawl endpoint, you can run this:
 
 This section provides solutions to common issues you might encounter while setting up or running your self-hosted instance of Firecrawl.
 
+### API Keys for SDK Usage
+
+**Note:** When using Firecrawl SDKs with a self-hosted instance, API keys are optional. API keys are only required when connecting to the cloud service (api.firecrawl.dev).
+
 ### Supabase client is not configured
 
 **Symptom:**
