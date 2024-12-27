@@ -8,6 +8,7 @@ export function extractMetadata(
 ): Partial<Document["metadata"]> {
   let title: string | undefined = undefined;
   let description: string | undefined = undefined;
+  let favicon: string | undefined = undefined;
   let language: string | undefined = undefined;
   let keywords: string | undefined = undefined;
   let robots: string | undefined = undefined;
@@ -42,6 +43,12 @@ export function extractMetadata(
   try {
     title = soup("title").first().text().trim() || undefined;
     description = soup('meta[name="description"]').attr("content") || undefined;
+    
+    const faviconLink = soup('link[rel="icon"]').attr("href") || soup('link[rel*="icon"]').first().attr("href") || undefined;
+    if (faviconLink) {
+      const baseUrl = new URL(meta.url).origin;
+      favicon = faviconLink.startsWith('http') ? faviconLink : `${baseUrl}${faviconLink}`;
+    }
 
     // Assuming the language is part of the URL as per the regex pattern
     language = soup("html").attr("lang") || undefined;
@@ -121,6 +128,7 @@ export function extractMetadata(
   return {
     title,
     description,
+    favicon,
     language,
     keywords,
     robots,
