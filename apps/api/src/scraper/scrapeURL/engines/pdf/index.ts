@@ -8,7 +8,7 @@ import escapeHtml from "escape-html";
 import PdfParse from "pdf-parse";
 import { downloadFile, fetchFileToBuffer } from "../utils/downloadFile";
 import { RemoveFeatureError, UnsupportedFileError } from "../../error";
-import { stat, readFile, unlink } from "node:fs/promises";
+import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 
 type PDFProcessorResult = { html: string; markdown?: string };
@@ -25,7 +25,6 @@ async function scrapePDFWithRunPodMU(
     tempFilePath,
   });
 
-  
   const result = await robustFetch({
     url:
       "https://api.runpod.ai/v2/" + process.env.RUNPOD_MU_POD_ID + "/runsync",
@@ -92,15 +91,14 @@ export async function scrapePDF(
 
   const base64Content = (await readFile(tempFilePath)).toString("base64");
 
-  // Then, if output is too short, pass to RunPod MU
+  // First try RunPod MU if conditions are met
   if (
-    // result.markdown && result.markdown.length < 500 &&
     base64Content.length < MAX_FILE_SIZE &&
     process.env.RUNPOD_MU_API_KEY &&
     process.env.RUNPOD_MU_POD_ID
   ) {
     try {
-      const muResult = await scrapePDFWithRunPodMU(
+      result = await scrapePDFWithRunPodMU(
         {
           ...meta,
           logger: meta.logger.child({
@@ -111,24 +109,20 @@ export async function scrapePDF(
         timeToRun,
         base64Content,
       );
-      result = muResult; // Use LlamaParse result if successful
     } catch (error) {
-      if (error instanceof Error && error.message === "RunPod MU timed out") {
-        meta.logger.warn("RunPod MU timed out -- using parse-pdf result", {
-          error,
-        });
-      } else if (error instanceof RemoveFeatureError) {
+      if (error instanceof RemoveFeatureError) {
         throw error;
-      } else {
-        meta.logger.warn(
-          "RunPod MU failed to parse PDF -- using parse-pdf result",
-          { error },
-        );
-        Sentry.captureException(error);
       }
+      meta.logger.warn(
+        "RunPod MU failed to parse PDF -- falling back to parse-pdf",
+        { error },
+      );
+      Sentry.captureException(error);
     }
-  } else {
-    // First, try parsing with PdfParse
+  }
+
+  // If RunPod MU failed or wasn't attempted, use PdfParse
+  if (!result) {
     result = await scrapePDFWithParsePDF(
       {
         ...meta,
@@ -145,7 +139,6 @@ export async function scrapePDF(
   return {
     url: response.url,
     statusCode: response.status,
-
     html: result?.html ?? "",
     markdown: result?.markdown ?? "",
   };
