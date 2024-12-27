@@ -42,7 +42,15 @@
                     "type": "array",
                     "items": {
                       "type": "string",
-                      "enum": ["markdown", "html", "rawHtml", "links", "screenshot", "extract", "screenshot@fullPage"]
+                      "enum": [
+                        "markdown",
+                        "html",
+                        "rawHtml",
+                        "links",
+                        "screenshot",
+                        "extract",
+                        "screenshot@fullPage"
+                      ]
                     },
                     "description": "Formats to include in the output.",
                     "default": ["markdown"]
@@ -74,6 +82,16 @@
                     "type": "integer",
                     "description": "Specify a delay in milliseconds before fetching the content, allowing the page sufficient time to load.",
                     "default": 0
+                  },
+                  "mobile": {
+                    "type": "boolean",
+                    "description": "Set to true if you want to emulate scraping from a mobile device. Useful for testing responsive pages and taking mobile screenshots.",
+                    "default": false
+                  },
+                  "skipTlsVerification": {
+                    "type": "boolean",
+                    "description": "Skip TLS certificate verification when making requests",
+                    "default": false
                   },
                   "timeout": {
                     "type": "integer",
@@ -116,9 +134,391 @@
                               "type": "integer",
                               "minimum": 1,
                               "description": "Number of milliseconds to wait"
+                            },
+                            "selector": {
+                              "type": "string",
+                              "description": "Query selector to find the element by",
+                              "example": "#my-element"
                             }
                           },
-                          "required": ["type", "milliseconds"]
+                          "required": ["type"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Screenshot",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["screenshot"],
+                              "description": "Take a screenshot"
+                            },
+                            "fullPage": {
+                              "type": "boolean",
+                              "description": "Should the screenshot be full-page or viewport sized?",
+                              "default": false
+                            }
+                          },
+                          "required": ["type"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Click",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["click"],
+                              "description": "Click on an element"
+                            },
+                            "selector": {
+                              "type": "string",
+                              "description": "Query selector to find the element by",
+                              "example": "#load-more-button"
+                            }
+                          },
+                          "required": ["type", "selector"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Write text",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["write"],
+                              "description": "Write text into an input field, text area, or contenteditable element. Note: You must first focus the element using a 'click' action before writing. The text will be typed character by character to simulate keyboard input."
+                            },
+                            "text": {
+                              "type": "string",
+                              "description": "Text to type",
+                              "example": "Hello, world!"
+                            }
+                          },
+                          "required": ["type", "text"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Press a key",
+                          "description": "Press a key on the page. See https://asawicki.info/nosense/doc/devices/keyboard/key_codes.html for key codes.",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["press"],
+                              "description": "Press a key on the page"
+                            },
+                            "key": {
+                              "type": "string",
+                              "description": "Key to press",
+                              "example": "Enter"
+                            }
+                          },
+                          "required": ["type", "key"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Scroll",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["scroll"],
+                              "description": "Scroll the page or a specific element"
+                            },
+                            "direction": {
+                              "type": "string",
+                              "enum": ["up", "down"],
+                              "description": "Direction to scroll",
+                              "default": "down"
+                            },
+                            "selector": {
+                              "type": "string",
+                              "description": "Query selector for the element to scroll",
+                              "example": "#my-element"
+                            }
+                          },
+                          "required": ["type"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Scrape",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["scrape"],
+                              "description": "Scrape the current page content, returns the url and the html."
+                            }
+                          },
+                          "required": ["type"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Execute JavaScript",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["executeJavascript"],
+                              "description": "Execute JavaScript code on the page"
+                            },
+                            "script": {
+                              "type": "string",
+                              "description": "JavaScript code to execute",
+                              "example": "document.querySelector('.button').click();"
+                            }
+                          },
+                          "required": ["type", "script"]
+                        }
+                      ]
+                    }
+                  },
+                  "location": {
+                    "type": "object",
+                    "description": "Location settings for the request. When specified, this will use an appropriate proxy if available and emulate the corresponding language and timezone settings. Defaults to 'US' if not specified.",
+                    "properties": {
+                      "country": {
+                        "type": "string",
+                        "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'AU', 'DE', 'JP')",
+                        "pattern": "^[A-Z]{2}$",
+                        "default": "US"
+                      },
+                      "languages": {
+                        "type": "array",
+                        "description": "Preferred languages and locales for the request in order of priority. Defaults to the language of the specified location. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Language",
+                        "items": {
+                          "type": "string",
+                          "example": "en-US"
+                        }
+                      }
+                    }
+                  },
+                  "removeBase64Images": {
+                    "type": "boolean",
+                    "description": "Removes all base 64 images from the output, which may be overwhelmingly long. The image's alt text remains in the output, but the URL is replaced with a placeholder."
+                  }
+                },
+                "required": ["url"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScrapeResponse"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Payment required to access this resource."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Request rate limit exceeded. Please wait and try again later."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/batch/scrape": {
+      "post": {
+        "summary": "Scrape multiple URLs and optionally extract information using an LLM",
+        "operationId": "scrapeAndExtractFromUrls",
+        "tags": ["Scraping"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "urls": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "The URL to scrape"
+                    }
+                  },
+                  "webhook": {
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "description": "The URL to send the webhook to. This will trigger for batch scrape started (batch_scrape.started), every page scraped (batch_scrape.page) and when the batch scrape is completed (batch_scrape.completed or batch_scrape.failed). The response will be the same as the `/scrape` endpoint."
+                      },
+                      {
+                        "type": "object",
+                        "description": "A complex webhook specification object.",
+                        "properties": {
+                          "url": {
+                            "type": "string",
+                            "description": "The URL to send the webhook to. This will trigger for batch scrape started (batch_scrape.started), every page scraped (batch_scrape.page) and when the batch scrape is completed (batch_scrape.completed or batch_scrape.failed). The response will be the same as the `/scrape` endpoint."
+                          },
+                          "headers": {
+                            "type": "object",
+                            "description": "Headers to send to the webhook URL.",
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "description": "Custom metadata that will be included in all webhook payloads for this crawl",
+                            "additionalProperties": true
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    ]
+                  },
+                  "formats": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "markdown",
+                        "html",
+                        "rawHtml",
+                        "links",
+                        "screenshot",
+                        "extract",
+                        "screenshot@fullPage"
+                      ]
+                    },
+                    "description": "Formats to include in the output.",
+                    "default": ["markdown"]
+                  },
+                  "onlyMainContent": {
+                    "type": "boolean",
+                    "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
+                    "default": true
+                  },
+                  "includeTags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Tags to include in the output."
+                  },
+                  "excludeTags": {
+                    "type": "array",
+                    "items": {
+                      "type": "string"
+                    },
+                    "description": "Tags to exclude from the output."
+                  },
+                  "headers": {
+                    "type": "object",
+                    "description": "Headers to send with the request. Can be used to send cookies, user-agent, etc."
+                  },
+                  "waitFor": {
+                    "type": "integer",
+                    "description": "Specify a delay in milliseconds before fetching the content, allowing the page sufficient time to load.",
+                    "default": 0
+                  },
+                  "mobile": {
+                    "type": "boolean",
+                    "description": "Set to true if you want to emulate scraping from a mobile device. Useful for testing responsive pages and taking mobile screenshots.",
+                    "default": false
+                  },
+                  "skipTlsVerification": {
+                    "type": "boolean",
+                    "description": "Skip TLS certificate verification when making requests",
+                    "default": false
+                  },
+                  "timeout": {
+                    "type": "integer",
+                    "description": "Timeout in milliseconds for the request",
+                    "default": 30000
+                  },
+                  "extract": {
+                    "type": "object",
+                    "description": "Extract object",
+                    "properties": {
+                      "schema": {
+                        "type": "object",
+                        "description": "The schema to use for the extraction (Optional)"
+                      },
+                      "systemPrompt": {
+                        "type": "string",
+                        "description": "The system prompt to use for the extraction (Optional)"
+                      },
+                      "prompt": {
+                        "type": "string",
+                        "description": "The prompt to use for the extraction without a schema (Optional)"
+                      }
+                    }
+                  },
+                  "actions": {
+                    "type": "array",
+                    "description": "Actions to perform on the page before grabbing the content",
+                    "items": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "title": "Wait",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["wait"],
+                              "description": "Wait for a specified amount of milliseconds"
+                            },
+                            "milliseconds": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "description": "Number of milliseconds to wait"
+                            },
+                            "selector": {
+                              "type": "string",
+                              "description": "Query selector to find the element by",
+                              "example": "#my-element"
+                            }
+                          },
+                          "required": ["type"]
                         },
                         {
                           "type": "object",
@@ -201,23 +601,82 @@
                             "type": {
                               "type": "string",
                               "enum": ["scroll"],
-                              "description": "Scroll the page"
+                              "description": "Scroll the page or a specific element"
                             },
                             "direction": {
                               "type": "string",
                               "enum": ["up", "down"],
-                              "description": "Direction to scroll"
+                              "description": "Direction to scroll",
+                              "default": "down"
                             },
-                            "amount": {
-                              "type": "integer",
-                              "description": "Amount to scroll in pixels",
-                              "minimum": 1
+                            "selector": {
+                              "type": "string",
+                              "description": "Query selector for the element to scroll",
+                              "example": "#my-element"
                             }
                           },
-                          "required": ["type", "direction"]
-                        }   
+                          "required": ["type"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Scrape",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["scrape"],
+                              "description": "Scrape the current page content, returns the url and the html."
+                            }
+                          },
+                          "required": ["type"]
+                        },
+                        {
+                          "type": "object",
+                          "title": "Execute JavaScript",
+                          "properties": {
+                            "type": {
+                              "type": "string",
+                              "enum": ["executeJavascript"],
+                              "description": "Execute JavaScript code on the page"
+                            },
+                            "script": {
+                              "type": "string",
+                              "description": "JavaScript code to execute",
+                              "example": "document.querySelector('.button').click();"
+                            }
+                          },
+                          "required": ["type", "script"]
+                        }
                       ]
                     }
+                  },
+                  "location": {
+                    "type": "object",
+                    "description": "Location settings for the request. When specified, this will use an appropriate proxy if available and emulate the corresponding language and timezone settings. Defaults to 'US' if not specified.",
+                    "properties": {
+                      "country": {
+                        "type": "string",
+                        "description": "ISO 3166-1 alpha-2 country code (e.g., 'US', 'AU', 'DE', 'JP')",
+                        "pattern": "^[A-Z]{2}$",
+                        "default": "US"
+                      },
+                      "languages": {
+                        "type": "array",
+                        "description": "Preferred languages and locales for the request in order of priority. Defaults to the language of the specified location. See https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Accept-Language",
+                        "items": {
+                          "type": "string",
+                          "example": "en-US"
+                        }
+                      }
+                    }
+                  },
+                  "removeBase64Images": {
+                    "type": "boolean",
+                    "description": "Removes all base 64 images from the output, which may be overwhelmingly long. The image's alt text remains in the output, but the URL is replaced with a placeholder."
+                  },
+                  "ignoreInvalidURLs": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "If invalid URLs are specified in the urls array, they will be ignored. Instead of them failing the entire request, a batch scrape using the remaining valid URLs will be created, and the invalid URLs will be returned in the invalidURLs field of the response."
                   }
                 },
                 "required": ["url"]
@@ -231,7 +690,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ScrapeResponse"
+                  "$ref": "#/components/schemas/BatchScrapeResponseObj"
                 }
               }
             }
@@ -262,6 +721,154 @@
                     "error": {
                       "type": "string",
                       "example": "Request rate limit exceeded. Please wait and try again later."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/batch/scrape/{id}": {
+      "parameters": [
+        {
+          "name": "id",
+          "in": "path",
+          "description": "The ID of the batch scrape job",
+          "required": true,
+          "schema": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      ],
+      "get": {
+        "summary": "Get the status of a batch scrape job",
+        "operationId": "getBatchScrapeStatus",
+        "tags": ["Scraping"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BatchScrapeStatusResponseObj"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Payment required to access this resource."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Request rate limit exceeded. Please wait and try again later."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "Cancel a crawl job",
+        "operationId": "cancelCrawl",
+        "tags": ["Crawling"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful cancellation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "message": {
+                      "type": "string",
+                      "example": "Crawl job successfully cancelled."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Crawl job not found",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Crawl job not found."
                     }
                   }
                 }
@@ -479,12 +1086,12 @@
                   "ignoreSitemap": {
                     "type": "boolean",
                     "description": "Ignore the website sitemap when crawling",
-                    "default": true
+                    "default": false
                   },
                   "limit": {
                     "type": "integer",
                     "description": "Maximum number of pages to crawl. Default limit is 10000.",
-                    "default": 10
+                    "default": 10000
                   },
                   "allowBackwardLinks": {
                     "type": "boolean",
@@ -497,8 +1104,35 @@
                     "default": false
                   },
                   "webhook": {
-                    "type": "string",
-                    "description": "The URL to send the webhook to. This will trigger for crawl started (crawl.started) ,every page crawled (crawl.page) and when the crawl is completed (crawl.completed or crawl.failed). The response will be the same as the `/scrape` endpoint."
+                    "oneOf": [
+                      {
+                        "type": "string",
+                        "description": "The URL to send the webhook to. This will trigger for crawl started (crawl.started) ,every page crawled (crawl.page) and when the crawl is completed (crawl.completed or crawl.failed). The response will be the same as the `/scrape` endpoint."
+                      },
+                      {
+                        "type": "object",
+                        "description": "A complex webhook specification object.",
+                        "properties": {
+                          "url": {
+                            "type": "string",
+                            "description": "The URL to send the webhook to. This will trigger for crawl started (crawl.started), every page crawled (crawl.page) and when the crawl is completed (crawl.completed or crawl.failed). The response will be the same as the `/scrape` endpoint."
+                          },
+                          "headers": {
+                            "type": "object",
+                            "description": "Headers to send to the webhook URL.",
+                            "additionalProperties": {
+                              "type": "string"
+                            }
+                          },
+                          "metadata": {
+                            "type": "object",
+                            "description": "Custom metadata that will be included in all webhook payloads for this crawl",
+                            "additionalProperties": true
+                          }
+                        },
+                        "required": ["url"]
+                      }
+                    ]
                   },
                   "scrapeOptions": {
                     "type": "object",
@@ -507,7 +1141,13 @@
                         "type": "array",
                         "items": {
                           "type": "string",
-                          "enum": ["markdown", "html", "rawHtml", "links", "screenshot"]
+                          "enum": [
+                            "markdown",
+                            "html",
+                            "rawHtml",
+                            "links",
+                            "screenshot"
+                          ]
                         },
                         "description": "Formats to include in the output.",
                         "default": ["markdown"]
@@ -534,6 +1174,16 @@
                         "type": "boolean",
                         "description": "Only return the main content of the page excluding headers, navs, footers, etc.",
                         "default": true
+                      },
+                      "removeBase64Images": {
+                        "type": "boolean",
+                        "description": "Remove base64 encoded images from the output",
+                        "default": true
+                      },
+                      "mobile": {
+                        "type": "boolean",
+                        "description": "Set to true if you want to emulate scraping from a mobile device. Useful for testing responsive pages and taking mobile screenshots.",
+                        "default": false
                       },
                       "waitFor": {
                         "type": "integer",
@@ -612,106 +1262,110 @@
     },
     "/map": {
       "post": {
-          "summary": "Map multiple URLs based on options",
-          "operationId": "mapUrls",
-          "tags": ["Mapping"],
-          "security": [
-            {
-              "bearerAuth": []
+        "summary": "Map multiple URLs based on options",
+        "operationId": "mapUrls",
+        "tags": ["Mapping"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "url": {
+                    "type": "string",
+                    "format": "uri",
+                    "description": "The base URL to start crawling from"
+                  },
+                  "search": {
+                    "type": "string",
+                    "description": "Search query to use for mapping. During the Alpha phase, the 'smart' part of the search functionality is limited to 1000 search results. However, if map finds more results, there is no limit applied."
+                  },
+                  "ignoreSitemap": {
+                    "type": "boolean",
+                    "description": "Ignore the website sitemap when crawling.",
+                    "default": true
+                  },
+                  "sitemapOnly": {
+                    "type": "boolean",
+                    "description": "Only return links found in the website sitemap",
+                    "default": false
+                  },
+                  "includeSubdomains": {
+                    "type": "boolean",
+                    "description": "Include subdomains of the website",
+                    "default": false
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "description": "Maximum number of links to return",
+                    "default": 5000,
+                    "maximum": 5000
+                  }
+                },
+                "required": ["url"]
+              }
             }
-          ],
-          "requestBody": {
-            "required": true,
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MapResponse"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "url": {
+                    "error": {
                       "type": "string",
-                      "format": "uri",
-                      "description": "The base URL to start crawling from"
-                    },
-                    "search": {
-                      "type": "string",
-                      "description": "Search query to use for mapping. During the Alpha phase, the 'smart' part of the search functionality is limited to 1000 search results. However, if map finds more results, there is no limit applied."
-                    },
-                    "ignoreSitemap": {
-                      "type": "boolean",
-                      "description": "Ignore the website sitemap when crawling",
-                      "default": true
-                    },
-                    "includeSubdomains": {
-                      "type": "boolean",
-                      "description": "Include subdomains of the website",
-                      "default": false
-                    },
-                    "limit": {
-                      "type": "integer",
-                      "description": "Maximum number of links to return",
-                      "default": 5000,
-                      "maximum": 5000
+                      "example": "Payment required to access this resource."
                     }
-                  },
-                  "required": ["url"]
+                  }
                 }
               }
             }
           },
-          "responses": {
-            "200": {
-              "description": "Successful response",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "$ref": "#/components/schemas/MapResponse"
-                  }
-                }
-              }
-            },
-            "402": {
-              "description": "Payment required",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "object",
-                    "properties": {
-                      "error": {
-                        "type": "string",
-                        "example": "Payment required to access this resource."
-                      }
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Request rate limit exceeded. Please wait and try again later."
                     }
                   }
                 }
               }
-            },
-            "429": {
-              "description": "Too many requests",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "object",
-                    "properties": {
-                      "error": {
-                        "type": "string",
-                        "example": "Request rate limit exceeded. Please wait and try again later."
-                      }
-                    }
-                  }
-                }
-              }
-            },
-            "500": {
-              "description": "Server error",
-              "content": {
-                "application/json": {
-                  "schema": {
-                    "type": "object",
-                    "properties": {
-                      "error": {
-                        "type": "string",
-                        "example": "An unexpected error occurred on the server."
-                      }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
                     }
                   }
                 }
@@ -719,14 +1373,109 @@
             }
           }
         }
-      },
-    "/credit-usage": {
+      }
+    },
+    "/extract": {
+      "post": {
+        "summary": "Extract structured data from pages using LLMs",
+        "operationId": "extractData",
+        "tags": ["Extraction"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "urls": {
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uri",
+                      "description": "The URLs to extract data from. URLs should be in glob format."
+                    }
+                  },
+                  "prompt": {
+                    "type": "string",
+                    "description": "Prompt to guide the extraction process"
+                  },
+                  "schema": {
+                    "type": "object",
+                    "description": "Schema to define the structure of the extracted data",
+                    "properties": {
+                      "property1": {
+                        "type": "string",
+                        "description": "Description of property1"
+                      },
+                      "property2": {
+                        "type": "integer",
+                        "description": "Description of property2"
+                      }
+                    },
+                    "required": ["property1", "property2"]
+                  }
+                },
+                "required": ["urls", "prompt"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful extraction",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExtractResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Invalid request",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Invalid input data."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/team/credit-usage": {
       "get": {
         "summary": "Get remaining credits for the authenticated team",
         "operationId": "getCreditUsage",
-        "tags": [
-          "Billing"
-        ],
+        "tags": ["Billing"],
         "security": [
           {
             "bearerAuth": []
@@ -859,7 +1608,7 @@
                     }
                   }
                 }
-              },  
+              },
               "metadata": {
                 "type": "object",
                 "properties": {
@@ -889,7 +1638,6 @@
                     "nullable": true,
                     "description": "The error message of the page"
                   }
-                  
                 }
               },
               "llm_extraction": {
@@ -1002,6 +1750,102 @@
           }
         }
       },
+      "BatchScrapeStatusResponseObj": {
+        "type": "object",
+        "properties": {
+          "status": {
+            "type": "string",
+            "description": "The current status of the batch scrape. Can be `scraping`, `completed`, or `failed`."
+          },
+          "total": {
+            "type": "integer",
+            "description": "The total number of pages that were attempted to be scraped."
+          },
+          "completed": {
+            "type": "integer",
+            "description": "The number of pages that have been successfully scraped."
+          },
+          "creditsUsed": {
+            "type": "integer",
+            "description": "The number of credits used for the batch scrape."
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "The date and time when the batch scrape will expire."
+          },
+          "next": {
+            "type": "string",
+            "nullable": true,
+            "description": "The URL to retrieve the next 10MB of data. Returned if the batch scrape is not completed or if the response is larger than 10MB."
+          },
+          "data": {
+            "type": "array",
+            "description": "The data of the batch scrape.",
+            "items": {
+              "type": "object",
+              "properties": {
+                "markdown": {
+                  "type": "string"
+                },
+                "html": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "HTML version of the content on page if `includeHtml`  is true"
+                },
+                "rawHtml": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Raw HTML content of the page if `includeRawHtml`  is true"
+                },
+                "links": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  },
+                  "description": "List of links on the page if `includeLinks` is true"
+                },
+                "screenshot": {
+                  "type": "string",
+                  "nullable": true,
+                  "description": "Screenshot of the page if `includeScreenshot` is true"
+                },
+                "metadata": {
+                  "type": "object",
+                  "properties": {
+                    "title": {
+                      "type": "string"
+                    },
+                    "description": {
+                      "type": "string"
+                    },
+                    "language": {
+                      "type": "string",
+                      "nullable": true
+                    },
+                    "sourceURL": {
+                      "type": "string",
+                      "format": "uri"
+                    },
+                    "<any other metadata> ": {
+                      "type": "string"
+                    },
+                    "statusCode": {
+                      "type": "integer",
+                      "description": "The status code of the page"
+                    },
+                    "error": {
+                      "type": "string",
+                      "nullable": true,
+                      "description": "The error message of the page"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
       "CrawlResponse": {
         "type": "object",
         "properties": {
@@ -1017,6 +1861,29 @@
           }
         }
       },
+      "BatchScrapeResponseObj": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "id": {
+            "type": "string"
+          },
+          "url": {
+            "type": "string",
+            "format": "uri"
+          },
+          "invalidURLs": {
+            "type": "array",
+            "nullable": true,
+            "items": {
+              "type": "string"
+            },
+            "description": "If ignoreInvalidURLs is true, this is an array containing the invalid URLs that were specified in the request. If there were no invalid URLs, this will be an empty array. If ignoreInvalidURLs is false, this field will be undefined."
+          }
+        }
+      },
       "MapResponse": {
         "type": "object",
         "properties": {
@@ -1027,6 +1894,25 @@
             "type": "array",
             "items": {
               "type": "string"
+            }
+          }
+        }
+      },
+      "ExtractResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "object",
+            "properties": {
+              "<property1>": {
+                "type": "string"
+              },
+              "<property2>": {
+                "type": "number"
+              }
             }
           }
         }
