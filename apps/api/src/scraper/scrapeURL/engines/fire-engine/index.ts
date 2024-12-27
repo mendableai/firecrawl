@@ -17,6 +17,7 @@ import { ActionError, EngineError, SiteError, TimeoutError, UnsupportedFileError
 import * as Sentry from "@sentry/node";
 import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
+import { fireEngineDelete } from "./delete";
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -44,6 +45,13 @@ async function performFireEngineScrape<
   while (status === undefined) {
     if (errors.length >= errorLimit) {
       logger.error("Error limit hit.", { errors });
+      fireEngineDelete(
+        logger.child({
+          method: "performFireEngineScrape/fireEngineDelete",
+          afterErrors: errors,
+        }),
+        scrape.jobId,
+      );
       throw new Error("Error limit hit. See e.cause.errors for errors.", {
         cause: { errors },
       });
@@ -74,6 +82,13 @@ async function performFireEngineScrape<
         error instanceof ActionError ||
         error instanceof UnsupportedFileError
       ) {
+        fireEngineDelete(
+          logger.child({
+            method: "performFireEngineScrape/fireEngineDelete",
+            afterError: error,
+          }),
+          scrape.jobId,
+        );
         logger.debug("Fire-engine scrape job failed.", {
           error,
           jobId: scrape.jobId,
@@ -104,6 +119,13 @@ async function performFireEngineScrape<
     delete status.file;
     status.content = Buffer.from(content, "base64").toString("utf8"); // TODO: handle other encodings via Content-Type tag
   }
+
+  fireEngineDelete(
+    logger.child({
+      method: "performFireEngineScrape/fireEngineDelete",
+    }),
+    scrape.jobId,
+  );
 
   return status;
 }

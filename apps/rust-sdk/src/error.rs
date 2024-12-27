@@ -9,7 +9,7 @@ use crate::crawl::CrawlStatus;
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct FirecrawlAPIError {
     /// Always false.
-    success: bool,
+    pub success: bool,
 
     /// Error message
     pub error: String,

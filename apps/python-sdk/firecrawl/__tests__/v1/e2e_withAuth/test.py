@@ -8,7 +8,7 @@ from datetime import datetime
 
 load_dotenv()
 
-API_URL = "http://127.0.0.1:3002";
+API_URL = os.getenv('API_URL', 'http://127.0.0.1:3002')
 ABSOLUTE_FIRECRAWL_PATH = "firecrawl/firecrawl.py"
 TEST_API_KEY = os.getenv('TEST_API_KEY')
 
@@ -20,15 +20,26 @@ spec.loader.exec_module(firecrawl)
 FirecrawlApp = firecrawl.FirecrawlApp
 
 def test_no_api_key():
-    with pytest.raises(Exception) as excinfo:
-      invalid_app = FirecrawlApp(api_url=API_URL)
-    assert "No API key provided" in str(excinfo.value)
+    if 'api.firecrawl.dev' in API_URL:
+        with pytest.raises(Exception) as excinfo:
+            invalid_app = FirecrawlApp(api_url=API_URL)
+        assert "No API key provided" in str(excinfo.value)
+    else:
+        # Should not raise error for self-hosted
+        app = FirecrawlApp(api_url=API_URL)
+        assert app is not None
 
 def test_scrape_url_invalid_api_key():
-    invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key")
-    with pytest.raises(Exception) as excinfo:
-        invalid_app.scrape_url('https://firecrawl.dev')
-    assert "Unauthorized: Invalid token" in str(excinfo.value)
+    if 'api.firecrawl.dev' in API_URL:
+        invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key")
+        with pytest.raises(Exception) as excinfo:
+            invalid_app.scrape_url('https://firecrawl.dev')
+        assert "Unauthorized: Invalid token" in str(excinfo.value)
+    else:
+        # Should work without API key for self-hosted
+        app = FirecrawlApp(api_url=API_URL)
+        response = app.scrape_url('https://firecrawl.dev')
+        assert response is not None
 
 # def test_blocklisted_url():
 #     blocklisted_url = "https://facebook.com/fake-test"
@@ -131,10 +142,16 @@ def test_successful_response_for_valid_scrape_with_pdf_file_without_explicit_ext
     assert 'We present spectrophotometric observations of the Broad Line Radio Galaxy' in response['markdown']
 
 def test_crawl_url_invalid_api_key():
-    invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key")
-    with pytest.raises(Exception) as excinfo:
-        invalid_app.crawl_url('https://firecrawl.dev')
-    assert "Unauthorized: Invalid token" in str(excinfo.value)
+    if 'api.firecrawl.dev' in API_URL:
+        invalid_app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key")
+        with pytest.raises(Exception) as excinfo:
+            invalid_app.crawl_url('https://firecrawl.dev')
+        assert "Unauthorized: Invalid token" in str(excinfo.value)
+    else:
+        # Should work without API key for self-hosted
+        app = FirecrawlApp(api_url=API_URL)
+        response = app.crawl_url('https://firecrawl.dev')
+        assert response is not None
 
 # def test_should_return_error_for_blocklisted_url():
 #     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
@@ -291,10 +308,16 @@ def test_check_crawl_status_e2e():
     assert 'error' not in status_response['data'][0]['metadata']
 
 def test_invalid_api_key_on_map():
-    invalid_app = FirecrawlApp(api_key="invalid_api_key", api_url=API_URL)
-    with pytest.raises(Exception) as excinfo:
-        invalid_app.map_url('https://roastmywebsite.ai')
-    assert "Unauthorized: Invalid token" in str(excinfo.value)
+    if 'api.firecrawl.dev' in API_URL:
+        invalid_app = FirecrawlApp(api_key="invalid_api_key", api_url=API_URL)
+        with pytest.raises(Exception) as excinfo:
+            invalid_app.map_url('https://roastmywebsite.ai')
+        assert "Unauthorized: Invalid token" in str(excinfo.value)
+    else:
+        # Should work without API key for self-hosted
+        app = FirecrawlApp(api_url=API_URL)
+        response = app.map_url('https://roastmywebsite.ai')
+        assert response is not None
 
 # def test_blocklisted_url_on_map():
 #     app = FirecrawlApp(api_key=TEST_API_KEY, api_url=API_URL)
@@ -349,4 +372,3 @@ def test_search_e2e():
 #     assert isinstance(llm_extraction['is_open_source'], bool)
 
 
-    
