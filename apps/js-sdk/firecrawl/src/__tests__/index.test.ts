@@ -1,9 +1,9 @@
-import { describe, test, expect, jest } from '@jest/globals';
-import axios from 'axios';
-import FirecrawlApp from '../index';
+import { describe, expect, jest, test } from '@jest/globals';
 
-import { readFile } from 'fs/promises';
+import FirecrawlApp from '../index';
+import axios from 'axios';
 import { join } from 'path';
+import { readFile } from 'fs/promises';
 
 // Mock jest and set the type
 jest.mock('axios');
@@ -14,13 +14,22 @@ async function loadFixture(name: string): Promise<string> {
   return await readFile(join(__dirname, 'fixtures', `${name}.json`), 'utf-8')
 }
 
+const API_URL = process.env.API_URL ?? "https://api.firecrawl.dev";
+
 describe('the firecrawl JS SDK', () => {
 
-  test('Should require an API key to instantiate FirecrawlApp', async () => {
-    const fn = () => {
-      new FirecrawlApp({ apiKey: undefined });
-    };
-    expect(fn).toThrow('No API key provided');
+  test('Should require an API key only for cloud service', async () => {
+    if (API_URL.includes('api.firecrawl.dev')) {
+      // Should throw for cloud service
+      expect(() => {
+        new FirecrawlApp({ apiKey: undefined, apiUrl: API_URL });
+      }).toThrow('No API key provided');
+    } else {
+      // Should not throw for self-hosted
+      expect(() => {
+        new FirecrawlApp({ apiKey: undefined, apiUrl: API_URL });
+      }).not.toThrow();
+    }
   });
 
   test('Should return scraped data from a /scrape API call', async () => {

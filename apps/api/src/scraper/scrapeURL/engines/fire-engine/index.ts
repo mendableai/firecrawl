@@ -13,10 +13,11 @@ import {
   FireEngineCheckStatusSuccess,
   StillProcessingError,
 } from "./checkStatus";
-import { ActionError, EngineError, SiteError, TimeoutError } from "../../error";
+import { ActionError, EngineError, SiteError, TimeoutError, UnsupportedFileError } from "../../error";
 import * as Sentry from "@sentry/node";
 import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
+import { fireEngineDelete } from "./delete";
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -44,6 +45,13 @@ async function performFireEngineScrape<
   while (status === undefined) {
     if (errors.length >= errorLimit) {
       logger.error("Error limit hit.", { errors });
+      fireEngineDelete(
+        logger.child({
+          method: "performFireEngineScrape/fireEngineDelete",
+          afterErrors: errors,
+        }),
+        scrape.jobId,
+      );
       throw new Error("Error limit hit. See e.cause.errors for errors.", {
         cause: { errors },
       });
@@ -71,8 +79,16 @@ async function performFireEngineScrape<
       } else if (
         error instanceof EngineError ||
         error instanceof SiteError ||
-        error instanceof ActionError
+        error instanceof ActionError ||
+        error instanceof UnsupportedFileError
       ) {
+        fireEngineDelete(
+          logger.child({
+            method: "performFireEngineScrape/fireEngineDelete",
+            afterError: error,
+          }),
+          scrape.jobId,
+        );
         logger.debug("Fire-engine scrape job failed.", {
           error,
           jobId: scrape.jobId,
@@ -90,6 +106,26 @@ async function performFireEngineScrape<
 
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
+
+  specialtyScrapeCheck(
+    logger.child({
+      method: "performFireEngineScrape/specialtyScrapeCheck",
+    }),
+    status.responseHeaders,
+  );
+
+  if (status.file) {
+    const content = status.file.content;
+    delete status.file;
+    status.content = Buffer.from(content, "base64").toString("utf8"); // TODO: handle other encodings via Content-Type tag
+  }
+
+  fireEngineDelete(
+    logger.child({
+      method: "performFireEngineScrape/fireEngineDelete",
+    }),
+    scrape.jobId,
+  );
 
   return status;
 }
@@ -158,13 +194,6 @@ export async function scrapeURLWithFireEngineChromeCDP(
     }),
     request,
     timeout,
-  );
-
-  specialtyScrapeCheck(
-    meta.logger.child({
-      method: "scrapeURLWithFireEngineChromeCDP/specialtyScrapeCheck",
-    }),
-    response.responseHeaders,
   );
 
   if (
@@ -241,13 +270,6 @@ export async function scrapeURLWithFireEnginePlaywright(
     timeout,
   );
 
-  specialtyScrapeCheck(
-    meta.logger.child({
-      method: "scrapeURLWithFireEnginePlaywright/specialtyScrapeCheck",
-    }),
-    response.responseHeaders,
-  );
-
   if (!response.url) {
     meta.logger.warn("Fire-engine did not return the response's URL", {
       response,
@@ -299,13 +321,6 @@ export async function scrapeURLWithFireEngineTLSClient(
     }),
     request,
     timeout,
-  );
-
-  specialtyScrapeCheck(
-    meta.logger.child({
-      method: "scrapeURLWithFireEngineTLSClient/specialtyScrapeCheck",
-    }),
-    response.responseHeaders,
   );
 
   if (!response.url) {
