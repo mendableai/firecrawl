@@ -13,102 +13,46 @@ import path from "node:path";
 
 type PDFProcessorResult = { html: string; markdown?: string };
 
+const MAX_FILE_SIZE = 19 * 1024 * 1024; // 19MB
+
 async function scrapePDFWithRunPodMU(
   meta: Meta,
   tempFilePath: string,
   timeToRun: number | undefined,
+  base64Content: string,
 ): Promise<PDFProcessorResult> {
   meta.logger.debug("Processing PDF document with RunPod MU", {
     tempFilePath,
   });
 
-  const fileStat = await stat(tempFilePath);
-  if (fileStat.size > ((2**10)**2)*10) {
-    throw new UnsupportedFileError("File is larger than PDF parser limit (10MiB)");
-  }
-
-  console.log(tempFilePath);
-
-  const upload = await robustFetch({
-    url: "https://api.runpod.ai/v2/" + process.env.RUNPOD_MU_POD_ID + "/run",
+  
+  const result = await robustFetch({
+    url:
+      "https://api.runpod.ai/v2/" + process.env.RUNPOD_MU_POD_ID + "/runsync",
     method: "POST",
     headers: {
       Authorization: `Bearer ${process.env.RUNPOD_MU_API_KEY}`,
     },
     body: {
       input: {
-        file_content: (await readFile(tempFilePath)).toString("base64"),
+        file_content: base64Content,
         filename: path.basename(tempFilePath) + ".pdf",
       },
     },
     logger: meta.logger.child({
-      method: "scrapePDFWithRunPodMU/upload/robustFetch",
+      method: "scrapePDFWithRunPodMU/robustFetch",
     }),
     schema: z.object({
-      id: z.string(),
+      output: z.object({
+        markdown: z.string(),
+      }),
     }),
   });
 
-  const jobId = upload.id;
-
-  // TODO: timeout, retries
-  const startedAt = Date.now();
-  const timeout = timeToRun ?? 300000;
-
-  while (Date.now() <= startedAt + timeout) {
-    try {
-      const result = await robustFetch({
-        url: `https://api.runpod.ai/v2/${process.env.RUNPOD_MU_POD_ID}/status/${jobId}`,
-        method: "GET",
-        headers: {
-          Authorization: `Bearer ${process.env.RUNPOD_MU_API_KEY}`,
-        },
-        logger: meta.logger.child({
-          method: "scrapePDFWithRunPodMU/result/robustFetch",
-        }),
-        schema: z.object({
-          status: z.string(),
-          error: z.any().optional(),
-          output: z.object({
-            markdown: z.string(),
-          }).optional(),
-        }),
-      });
-      
-      if (result.status === "COMPLETED") {
-        return {
-          markdown: result.output!.markdown,
-          html: await marked.parse(result.output!.markdown, { async: true }),
-        };
-      }
-
-      if (result.status === "FAILED") {
-        throw new Error("RunPod MU failed to parse PDF: " + result.error!, { cause: result.error });
-      }
-
-      // result not up yet
-    } catch (e) {
-      if (e instanceof Error && e.message === "Request sent failure status") {
-        // if ((e.cause as any).response.status === 404) {
-        //   // no-op, result not up yet
-        // } else if ((e.cause as any).response.body.includes("PDF_IS_BROKEN")) {
-        //   // URL is not a PDF, actually!
-        //   meta.logger.debug("URL is not actually a PDF, signalling...");
-        //   throw new RemoveFeatureError(["pdf"]);
-        // } else {
-          throw new Error("RunPod MU threw an error", {
-            cause: e.cause,
-          });
-        // }
-      } else {
-        throw e;
-      }
-    }
-
-    await new Promise<void>((resolve) => setTimeout(() => resolve(), 250));
-  }
-
-  throw new Error("RunPod MU timed out");
+  return {
+    markdown: result.output.markdown,
+    html: await marked.parse(result.output.markdown, { async: true }),
+  };
 }
 
 async function scrapePDFWithParsePDF(
@@ -146,21 +90,14 @@ export async function scrapePDF(
 
   let result: PDFProcessorResult | null = null;
 
-  // First, try parsing with PdfParse
-  result = await scrapePDFWithParsePDF(
-    {
-      ...meta,
-      logger: meta.logger.child({
-        method: "scrapePDF/scrapePDFWithParsePDF",
-      }),
-    },
-    tempFilePath,
-  );
+  const base64Content = (await readFile(tempFilePath)).toString("base64");
 
   // Then, if output is too short, pass to RunPod MU
   if (
-    result.markdown && result.markdown.length < 500 &&
-    process.env.RUNPOD_MU_API_KEY && process.env.RUNPOD_MU_POD_ID
+    // result.markdown && result.markdown.length < 500 &&
+    base64Content.length < MAX_FILE_SIZE &&
+    process.env.RUNPOD_MU_API_KEY &&
+    process.env.RUNPOD_MU_POD_ID
   ) {
     try {
       const muResult = await scrapePDFWithRunPodMU(
@@ -172,6 +109,7 @@ export async function scrapePDF(
         },
         tempFilePath,
         timeToRun,
+        base64Content,
       );
       result = muResult; // Use LlamaParse result if successful
     } catch (error) {
@@ -189,6 +127,17 @@ export async function scrapePDF(
         Sentry.captureException(error);
       }
     }
+  } else {
+    // First, try parsing with PdfParse
+    result = await scrapePDFWithParsePDF(
+      {
+        ...meta,
+        logger: meta.logger.child({
+          method: "scrapePDF/scrapePDFWithParsePDF",
+        }),
+      },
+      tempFilePath,
+    );
   }
 
   await unlink(tempFilePath);
@@ -197,7 +146,7 @@ export async function scrapePDF(
     url: response.url,
     statusCode: response.status,
 
-    html: result.html,
-    markdown: result.markdown,
+    html: result?.html ?? "",
+    markdown: result?.markdown ?? "",
   };
 }
