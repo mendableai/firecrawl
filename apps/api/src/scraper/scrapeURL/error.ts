@@ -64,3 +64,11 @@ export class ActionError extends Error {
     this.code = code;
   }
 }
+
+export class UnsupportedFileError extends Error {
+  public reason: string;
+  constructor(reason: string) {
+    super("Scrape resulted in unsupported file: " + reason);
+    this.reason = reason;
+  }
+}

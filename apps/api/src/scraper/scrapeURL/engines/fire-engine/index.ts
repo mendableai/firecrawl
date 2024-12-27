@@ -13,7 +13,7 @@ import {
   FireEngineCheckStatusSuccess,
   StillProcessingError,
 } from "./checkStatus";
-import { ActionError, EngineError, SiteError, TimeoutError } from "../../error";
+import { ActionError, EngineError, SiteError, TimeoutError, UnsupportedFileError } from "../../error";
 import * as Sentry from "@sentry/node";
 import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
@@ -71,7 +71,8 @@ async function performFireEngineScrape<
       } else if (
         error instanceof EngineError ||
         error instanceof SiteError ||
-        error instanceof ActionError
+        error instanceof ActionError ||
+        error instanceof UnsupportedFileError
       ) {
         logger.debug("Fire-engine scrape job failed.", {
           error,
@@ -89,6 +90,19 @@ async function performFireEngineScrape<
     }
 
     await new Promise((resolve) => setTimeout(resolve, 250));
+  }
+
+  specialtyScrapeCheck(
+    logger.child({
+      method: "performFireEngineScrape/specialtyScrapeCheck",
+    }),
+    status.responseHeaders,
+  );
+
+  if (status.file) {
+    const content = status.file.content;
+    delete status.file;
+    status.content = Buffer.from(content, "base64").toString("utf8"); // TODO: handle other encodings via Content-Type tag
   }
 
   return status;
@@ -158,13 +172,6 @@ export async function scrapeURLWithFireEngineChromeCDP(
     }),
     request,
     timeout,
-  );
-
-  specialtyScrapeCheck(
-    meta.logger.child({
-      method: "scrapeURLWithFireEngineChromeCDP/specialtyScrapeCheck",
-    }),
-    response.responseHeaders,
   );
 
   if (
@@ -241,13 +248,6 @@ export async function scrapeURLWithFireEnginePlaywright(
     timeout,
   );
 
-  specialtyScrapeCheck(
-    meta.logger.child({
-      method: "scrapeURLWithFireEnginePlaywright/specialtyScrapeCheck",
-    }),
-    response.responseHeaders,
-  );
-
   if (!response.url) {
     meta.logger.warn("Fire-engine did not return the response's URL", {
       response,
@@ -299,13 +299,6 @@ export async function scrapeURLWithFireEngineTLSClient(
     }),
     request,
     timeout,
-  );
-
-  specialtyScrapeCheck(
-    meta.logger.child({
-      method: "scrapeURLWithFireEngineTLSClient/specialtyScrapeCheck",
-    }),
-    response.responseHeaders,
   );
 
   if (!response.url) {
