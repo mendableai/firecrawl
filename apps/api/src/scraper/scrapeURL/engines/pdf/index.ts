@@ -114,7 +114,7 @@ export async function scrapePDF(
         throw error;
       }
       meta.logger.warn(
-        "RunPod MU failed to parse PDF -- falling back to parse-pdf",
+        "RunPod MU failed to parse PDF (could be due to timeout) -- falling back to parse-pdf",
         { error },
       );
       Sentry.captureException(error);
