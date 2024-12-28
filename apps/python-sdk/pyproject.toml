@@ -13,6 +13,7 @@ dependencies = [
     "python-dotenv",
     "websockets",
     "nest-asyncio",
+    "pydantic>=2.10.3",
     "aiohttp>=3.8.0",
     "asyncio>=3.4.3",
 ]
