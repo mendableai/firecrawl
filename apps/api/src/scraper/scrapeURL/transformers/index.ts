@@ -31,6 +31,35 @@ export function deriveMetadataFromRawHTML(
   return document;
 }
 
+export function encodeRawHTML(_meta: Meta, document: Document): Document {
+  if (document.rawHtml === undefined) {
+    throw new Error(
+      "rawHtml is undefined -- this transformer is being called out of order",
+    );
+  }
+
+  const data: Uint8Array = new TextEncoder().encode(document.rawHtml);
+
+  const charsetMatch = document.rawHtml.match(
+    /<meta[^>]+charset=["']?([^"'>]+)/i,
+  );
+  const charset = charsetMatch ? charsetMatch[1] : "UTF-8";
+
+  try {
+    // Convert the response data if charset is not UTF-8
+    if (charset.toUpperCase() !== "UTF-8") {
+      const decoder = new TextDecoder(charset);
+      document.rawHtml = decoder.decode(data);
+      
+      return document;
+    }
+  } catch (error) {
+    throw new Error("Failed to convert rawHtml to UTF-8");
+  }
+
+  return document;
+}
+
 export function deriveHTMLFromRawHTML(
   meta: Meta,
   document: Document,
@@ -153,6 +182,7 @@ export function coerceFieldsToFormats(
 
 // TODO: allow some of these to run in parallel
 export const transformerStack: Transformer[] = [
+  encodeRawHTML,
   saveToCache,
   deriveHTMLFromRawHTML,
   deriveMarkdownFromHTML,
