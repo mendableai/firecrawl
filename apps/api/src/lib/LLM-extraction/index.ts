@@ -10,7 +10,7 @@ import { logger } from "../logger";
 export async function generateCompletions(
   documents: Document[],
   extractionOptions: ExtractorOptions | undefined,
-  mode: "markdown" | "raw-html"
+  mode: "markdown" | "raw-html",
 ): Promise<Document[]> {
   // const schema = zodToJsonSchema(options.schema)
 
@@ -43,8 +43,8 @@ export async function generateCompletions(
                   `JSON parsing error(s): ${validate.errors
                     ?.map((err) => err.message)
                     .join(
-                      ", "
-                    )}\n\nLLM extraction did not match the extraction schema you provided. This could be because of a model hallucination, or an Error on our side. Try adjusting your prompt, and if it doesn't work reach out to support.`
+                      ", ",
+                    )}\n\nLLM extraction did not match the extraction schema you provided. This could be because of a model hallucination, or an Error on our side. Try adjusting your prompt, and if it doesn't work reach out to support.`,
                 );
               }
             }
@@ -57,8 +57,21 @@ export async function generateCompletions(
         default:
           throw new Error("Invalid client");
       }
-    })
+    }),
   );
 
   return completions;
+}
+
+// generate basic completion
+
+export async function generateBasicCompletion(prompt: string) {
+  const openai = new OpenAI();
+  const model = "gpt-4o";
+
+  const completion = await openai.chat.completions.create({
+    model,
+    messages: [{ role: "user", content: prompt }],
+  });
+  return completion.choices[0].message.content;
 }

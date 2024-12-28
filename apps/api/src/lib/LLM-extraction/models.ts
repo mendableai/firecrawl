@@ -14,7 +14,7 @@ const defaultPrompt =
 
 function prepareOpenAIDoc(
   document: Document,
-  mode: "markdown" | "raw-html"
+  mode: "markdown" | "raw-html",
 ): [OpenAI.Chat.Completions.ChatCompletionContentPart[], number] | null {
   let markdown = document.markdown;
 
@@ -95,7 +95,7 @@ export async function generateOpenAICompletions({
 
     try {
       llmExtraction = JSON.parse(
-        (jsonCompletion.choices[0].message.content ?? "").trim()
+        (jsonCompletion.choices[0].message.content ?? "").trim(),
       );
     } catch (e) {
       throw new Error("Invalid JSON");

@@ -18,16 +18,18 @@ import { v4 as uuidv4 } from "uuid";
 import {
   addCrawlJob,
   addCrawlJobDone,
+  addCrawlJobs,
   crawlToCrawler,
   finishCrawl,
   generateURLPermutations,
   getCrawl,
   getCrawlJobs,
   lockURL,
+  lockURLs,
   normalizeURL,
 } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
-import { addScrapeJob } from "./queue-jobs";
+import { addScrapeJob, addScrapeJobs } from "./queue-jobs";
 import {
   addJobPriority,
   deleteJobPriority,
@@ -38,12 +40,17 @@ import { getJobs } from "..//controllers/v1/crawl-status";
 import { configDotenv } from "dotenv";
 import { scrapeOptions } from "../controllers/v1/types";
 import { getRateLimiterPoints } from "./rate-limiter";
-import { cleanOldConcurrencyLimitEntries, pushConcurrencyLimitActiveJob, removeConcurrencyLimitActiveJob, takeConcurrencyLimitedJob } from "../lib/concurrency-limit";
+import {
+  cleanOldConcurrencyLimitEntries,
+  pushConcurrencyLimitActiveJob,
+  removeConcurrencyLimitActiveJob,
+  takeConcurrencyLimitedJob,
+} from "../lib/concurrency-limit";
 configDotenv();
 
 class RacedRedirectError extends Error {
   constructor() {
-    super("Raced redirect error")
+    super("Raced redirect error");
   }
 }
 
@@ -63,21 +70,28 @@ const connectionMonitorInterval =
   Number(process.env.CONNECTION_MONITOR_INTERVAL) || 10;
 const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 
-async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) { 
+async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   if (await finishCrawl(job.data.crawl_id)) {
     if (!job.data.v1) {
       const jobIDs = await getCrawlJobs(job.data.crawl_id);
 
-      const jobs = (await getJobs(jobIDs)).sort((a, b) => a.timestamp - b.timestamp);
+      const jobs = (await getJobs(jobIDs)).sort(
+        (a, b) => a.timestamp - b.timestamp,
+      );
       // const jobStatuses = await Promise.all(jobs.map((x) => x.getState()));
-      const jobStatus =
-        sc.cancelled // || jobStatuses.some((x) => x === "failed")
-          ? "failed"
-          : "completed";
+      const jobStatus = sc.cancelled // || jobStatuses.some((x) => x === "failed")
+        ? "failed"
+        : "completed";
 
-      const fullDocs = jobs.map((x) =>
-        x.returnvalue ? (Array.isArray(x.returnvalue) ? x.returnvalue[0] : x.returnvalue) : null
-      ).filter(x => x !== null);
+      const fullDocs = jobs
+        .map((x) =>
+          x.returnvalue
+            ? Array.isArray(x.returnvalue)
+              ? x.returnvalue[0]
+              : x.returnvalue
+            : null,
+        )
+        .filter((x) => x !== null);
 
       await logJob({
         job_id: job.data.crawl_id,
@@ -116,15 +130,14 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           data,
           job.data.webhook,
           job.data.v1,
-          job.data.crawlerOptions !== null ? "crawl.completed" : "batch_scrape.completed"
+          job.data.crawlerOptions !== null
+            ? "crawl.completed"
+            : "batch_scrape.completed",
         );
       }
     } else {
       const jobIDs = await getCrawlJobs(job.data.crawl_id);
-      const jobStatus =
-        sc.cancelled
-          ? "failed"
-          : "completed";
+      const jobStatus = sc.cancelled ? "failed" : "completed";
 
       // v1 web hooks, call when done with no data, but with event completed
       if (job.data.v1 && job.data.webhook) {
@@ -134,30 +147,43 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           [],
           job.data.webhook,
           job.data.v1,
-          job.data.crawlerOptions !== null ? "crawl.completed" : "batch_scrape.completed"
-          );
-        }
+          job.data.crawlerOptions !== null
+            ? "crawl.completed"
+            : "batch_scrape.completed",
+        );
+      }
 
-      await logJob({
-        job_id: job.data.crawl_id,
-        success: jobStatus === "completed",
-        message: sc.cancelled ? "Cancelled" : undefined,
-        num_docs: jobIDs.length,
-        docs: [],
-        time_taken: (Date.now() - sc.createdAt) / 1000,
-        team_id: job.data.team_id,
-        scrapeOptions: sc.scrapeOptions,
-        mode: job.data.crawlerOptions !== null ? "crawl" : "batch_scrape",
-        url: sc?.originUrl ?? (job.data.crawlerOptions === null ? "Batch Scrape" : "Unknown"),
-        crawlerOptions: sc.crawlerOptions,
-        origin: job.data.origin,
-      }, true);
+      await logJob(
+        {
+          job_id: job.data.crawl_id,
+          success: jobStatus === "completed",
+          message: sc.cancelled ? "Cancelled" : undefined,
+          num_docs: jobIDs.length,
+          docs: [],
+          time_taken: (Date.now() - sc.createdAt) / 1000,
+          team_id: job.data.team_id,
+          scrapeOptions: sc.scrapeOptions,
+          mode: job.data.crawlerOptions !== null ? "crawl" : "batch_scrape",
+          url:
+            sc?.originUrl ??
+            (job.data.crawlerOptions === null ? "Batch Scrape" : "Unknown"),
+          crawlerOptions: sc.crawlerOptions,
+          origin: job.data.origin,
+        },
+        true,
+      );
     }
   }
 }
 
 const processJobInternal = async (token: string, job: Job & { id: string }) => {
-  const logger = _logger.child({ module: "queue-worker", method: "processJobInternal", jobId: job.id, scrapeId: job.id, crawlId: job.data?.crawl_id ?? undefined });
+  const logger = _logger.child({
+    module: "queue-worker",
+    method: "processJobInternal",
+    jobId: job.id,
+    scrapeId: job.id,
+    crawlId: job.data?.crawl_id ?? undefined,
+  });
 
   const extendLockInterval = setInterval(async () => {
     logger.info(`🐂 Worker extending lock on job ${job.id}`);
@@ -167,20 +193,34 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
   await addJobPriority(job.data.team_id, job.id);
   let err = null;
   try {
-    const result = await processJob(job, token);
-    if (result.success) {
-      try {
-        if (job.data.crawl_id && process.env.USE_DB_AUTHENTICATION === "true") {
-          logger.debug("Job succeeded -- has crawl associated, putting null in Redis");
+    if (job.data?.mode === "kickoff") {
+      const result = await processKickoffJob(job, token);
+      if (result.success) {
+        try {
           await job.moveToCompleted(null, token, false);
-        } else {
-          logger.debug("Job succeeded -- putting result in Redis");
-          await job.moveToCompleted(result.document, token, false);
-        }
-      } catch (e) {}
+        } catch (e) {}
+      } else {
+        logger.debug("Job failed", { result, mode: job.data.mode });
+        await job.moveToFailed((result as any).error, token, false);
+      }
     } else {
-      logger.debug("Job failed", { result });
-      await job.moveToFailed((result as any).error, token, false);
+      const result = await processJob(job, token);
+      if (result.success) {
+        try {
+          if (job.data.crawl_id && process.env.USE_DB_AUTHENTICATION === "true") {
+            logger.debug(
+              "Job succeeded -- has crawl associated, putting null in Redis",
+            );
+            await job.moveToCompleted(null, token, false);
+          } else {
+            logger.debug("Job succeeded -- putting result in Redis");
+            await job.moveToCompleted(result.document, token, false);
+          }
+        } catch (e) {}
+      } else {
+        logger.debug("Job failed", { result });
+        await job.moveToFailed((result as any).error, token, false);
+      }
     }
   } catch (error) {
     logger.debug("Job failed", { error });
@@ -211,7 +251,7 @@ let cantAcceptConnectionCount = 0;
 
 const workerFun = async (
   queue: Queue,
-  processJobInternal: (token: string, job: Job) => Promise<any>
+  processJobInternal: (token: string, job: Job) => Promise<any>,
 ) => {
   const logger = _logger.child({ module: "queue-worker", method: "workerFun" });
 
@@ -265,14 +305,18 @@ const workerFun = async (
           if (nextJob !== null) {
             await pushConcurrencyLimitActiveJob(job.data.team_id, nextJob.id);
 
-            await queue.add(nextJob.id, {
-              ...nextJob.data,
-              concurrencyLimitHit: true,
-            }, {
-              ...nextJob.opts,
-              jobId: nextJob.id,
-              priority: nextJob.priority,
-            });
+            await queue.add(
+              nextJob.id,
+              {
+                ...nextJob.data,
+                concurrencyLimitHit: true,
+              },
+              {
+                ...nextJob.opts,
+                jobId: nextJob.id,
+                priority: nextJob.priority,
+              },
+            );
           }
         }
       }
@@ -310,20 +354,20 @@ const workerFun = async (
                     let res;
                     try {
                       res = await processJobInternal(token, job);
-                    } finally { 
-                      await afterJobDone(job)
+                    } finally {
+                      await afterJobDone(job);
                     }
-                    
+
                     if (res !== null) {
                       span.setStatus({ code: 2 }); // ERROR
                     } else {
                       span.setStatus({ code: 1 }); // OK
                     }
-                  }
+                  },
                 );
-              }
+              },
             );
-          }
+          },
         );
       } else {
         Sentry.startSpan(
@@ -335,9 +379,8 @@ const workerFun = async (
             },
           },
           () => {
-            processJobInternal(token, job)
-              .finally(() => afterJobDone(job));
-          }
+            processJobInternal(token, job).finally(() => afterJobDone(job));
+          },
         );
       }
 
@@ -350,28 +393,158 @@ const workerFun = async (
 
 workerFun(getScrapeQueue(), processJobInternal);
 
+async function processKickoffJob(job: Job & { id: string }, token: string) {
+  const logger = _logger.child({
+    module: "queue-worker",
+    method: "processKickoffJob",
+    jobId: job.id,
+    scrapeId: job.id,
+    crawlId: job.data?.crawl_id ?? undefined,
+    teamId: job.data?.team_id ?? undefined,
+  });
+
+  try {
+    const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+    const crawler = crawlToCrawler(job.data.crawl_id, sc);
+
+    const sitemap = sc.crawlerOptions.ignoreSitemap
+        ? 0
+        : await crawler.tryGetSitemap(async urls => {
+            if (urls.length === 0) return;
+            
+            logger.debug("Using sitemap chunk of length " + urls.length, {
+              sitemapLength: urls.length,
+            });
+    
+            let jobPriority = await getJobPriority({
+              plan: job.data.plan,
+              team_id: job.data.team_id,
+              basePriority: 21,
+            });
+            logger.debug("Using job priority " + jobPriority, { jobPriority });
+    
+            const jobs = urls.map(url => {
+              const uuid = uuidv4();
+              return {
+                name: uuid,
+                data: {
+                  url,
+                  mode: "single_urls" as const,
+                  team_id: job.data.team_id,
+                  plan: job.data.plan!,
+                  crawlerOptions: job.data.crawlerOptions,
+                  scrapeOptions: job.data.scrapeOptions,
+                  internalOptions: sc.internalOptions,
+                  origin: job.data.origin,
+                  crawl_id: job.data.crawl_id,
+                  sitemapped: true,
+                  webhook: job.data.webhook,
+                  v1: job.data.v1,
+                },
+                opts: {
+                  jobId: uuid,
+                  priority: 20,
+                },
+              };
+            });
+        
+            logger.debug("Locking URLs...");
+            await lockURLs(
+              job.data.crawl_id,
+              sc,
+              jobs.map((x) => x.data.url),
+            );
+            logger.debug("Adding scrape jobs to Redis...");
+            await addCrawlJobs(
+              job.data.crawl_id,
+              jobs.map((x) => x.opts.jobId),
+            );
+            logger.debug("Adding scrape jobs to BullMQ...");
+            await addScrapeJobs(jobs);
+          });
+
+    if (sitemap === 0) {
+      logger.debug("Sitemap not found or ignored.", {
+        ignoreSitemap: sc.crawlerOptions.ignoreSitemap,
+      });
+  
+      logger.debug("Locking URL...");
+      await lockURL(job.data.crawl_id, sc, job.data.url);
+      const jobId = uuidv4();
+      logger.debug("Adding scrape job to Redis...", { jobId });
+      await addScrapeJob(
+        {
+          url: job.data.url,
+          mode: "single_urls",
+          team_id: job.data.team_id,
+          crawlerOptions: job.data.crawlerOptions,
+          scrapeOptions: scrapeOptions.parse(job.data.scrapeOptions),
+          internalOptions: sc.internalOptions,
+          plan: job.data.plan!,
+          origin: job.data.origin,
+          crawl_id: job.data.crawl_id,
+          webhook: job.data.webhook,
+          v1: job.data.v1,
+        },
+        {
+          priority: 15,
+        },
+        jobId,
+      );
+      logger.debug("Adding scrape job to BullMQ...", { jobId });
+      await addCrawlJob(job.data.crawl_id, jobId);
+    }
+    logger.debug("Done queueing jobs!");
+
+    if (job.data.webhook) {
+      logger.debug("Calling webhook with crawl.started...", {
+        webhook: job.data.webhook,
+      });
+      await callWebhook(
+        job.data.team_id,
+        job.data.crawl_id,
+        null,
+        job.data.webhook,
+        true,
+        "crawl.started",
+      );
+    }
+    
+    return { success: true }
+  } catch (error) {
+    logger.error("An error occurred!", { error })
+    return { success: false, error };
+  }
+}
+
 async function processJob(job: Job & { id: string }, token: string) {
-  const logger = _logger.child({ module: "queue-worker", method: "processJob", jobId: job.id, scrapeId: job.id, crawlId: job.data?.crawl_id ?? undefined });
+  const logger = _logger.child({
+    module: "queue-worker",
+    method: "processJob",
+    jobId: job.id,
+    scrapeId: job.id,
+    crawlId: job.data?.crawl_id ?? undefined,
+    teamId: job.data?.team_id ?? undefined,
+  });
   logger.info(`🐂 Worker taking job ${job.id}`, { url: job.data.url });
 
   // Check if the job URL is researchhub and block it immediately
   // TODO: remove this once solve the root issue
-  if (
-    job.data.url &&
-    (job.data.url.includes("researchhub.com") ||
-      job.data.url.includes("ebay.com") ||
-      job.data.url.includes("youtube.com"))
-  ) {
-    logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
-    const data = {
-      success: false,
-      document: null,
-      project_id: job.data.project_id,
-      error:
-        "URL is blocked. Suspecious activity detected. Please contact help@firecrawl.com if you believe this is an error.",
-    };
-    return data;
-  }
+  // if (
+  //   job.data.url &&
+  //   (job.data.url.includes("researchhub.com") ||
+  //     job.data.url.includes("ebay.com"))
+  // ) {
+  //   logger.info(`🐂 Blocking job ${job.id} with URL ${job.data.url}`);
+  //   const data = {
+  //     success: false,
+  //     document: null,
+  //     project_id: job.data.project_id,
+  //     error:
+  //       "URL is blocked. Suspecious activity detected. Please contact help@firecrawl.com if you believe this is an error.",
+  //   };
+  //   return data;
+  // }
 
   try {
     job.updateProgress({
@@ -387,12 +560,14 @@ async function processJob(job: Job & { id: string }, token: string) {
         job,
         token,
       }),
-      ...(job.data.scrapeOptions.timeout !== undefined ? [
-        (async () => {
-          await sleep(job.data.scrapeOptions.timeout);
-          throw new Error("timeout")
-        })(),
-      ] : [])
+      ...(job.data.scrapeOptions.timeout !== undefined
+        ? [
+            (async () => {
+              await sleep(job.data.scrapeOptions.timeout);
+              throw new Error("timeout");
+            })(),
+          ]
+        : []),
     ]);
 
     if (!pipeline.success) {
@@ -410,17 +585,21 @@ async function processJob(job: Job & { id: string }, token: string) {
     const data = {
       success: true,
       result: {
-        links: [{
-          content: doc,
-          source: doc?.metadata?.sourceURL ?? doc?.metadata?.url ?? "",
-        }],
+        links: [
+          {
+            content: doc,
+            source: doc?.metadata?.sourceURL ?? doc?.metadata?.url ?? "",
+          },
+        ],
       },
       project_id: job.data.project_id,
       document: doc,
     };
 
     if (job.data.webhook && job.data.mode !== "crawl" && job.data.v1) {
-      logger.debug("Calling webhook with success...", { webhook: job.data.webhook });
+      logger.debug("Calling webhook with success...", {
+        webhook: job.data.webhook,
+      });
       await callWebhook(
         job.data.team_id,
         job.data.crawl_id,
@@ -428,60 +607,85 @@ async function processJob(job: Job & { id: string }, token: string) {
         job.data.webhook,
         job.data.v1,
         job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
-        true
+        true,
       );
     }
 
     if (job.data.crawl_id) {
       const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
-    
-      if (doc.metadata.url !== undefined && doc.metadata.sourceURL !== undefined && normalizeURL(doc.metadata.url, sc) !== normalizeURL(doc.metadata.sourceURL, sc)) {
-        logger.debug("Was redirected, removing old URL and locking new URL...", { oldUrl: doc.metadata.sourceURL, newUrl: doc.metadata.url });
-        // Remove the old URL from visited unique due to checking for limit
-        // Do not remove from :visited otherwise it will keep crawling the original URL (sourceURL)
-        await redisConnection.srem("crawl:" + job.data.crawl_id + ":visited_unique", normalizeURL(doc.metadata.sourceURL, sc));
 
+      if (
+        doc.metadata.url !== undefined &&
+        doc.metadata.sourceURL !== undefined &&
+        normalizeURL(doc.metadata.url, sc) !==
+          normalizeURL(doc.metadata.sourceURL, sc)
+      ) {
         const p1 = generateURLPermutations(normalizeURL(doc.metadata.url, sc));
-        const p2 = generateURLPermutations(normalizeURL(doc.metadata.sourceURL, sc));
+        const p2 = generateURLPermutations(
+          normalizeURL(doc.metadata.sourceURL, sc),
+        );
 
-        // In crawls, we should only crawl a redirected page once, no matter how many; times it is redirected to, or if it's been discovered by the crawler before.
-        // This can prevent flakiness with race conditions.
-        // Lock the new URL
-        const lockRes = await lockURL(job.data.crawl_id, sc, doc.metadata.url);
-        if (job.data.crawlerOptions !== null && !lockRes && JSON.stringify(p1) !== JSON.stringify(p2)) {
-          throw new RacedRedirectError();
+        if (JSON.stringify(p1) !== JSON.stringify(p2)) {
+          logger.debug(
+            "Was redirected, removing old URL and locking new URL...",
+            { oldUrl: doc.metadata.sourceURL, newUrl: doc.metadata.url },
+          );
+
+          // Prevent redirect target from being visited in the crawl again
+          // See lockURL
+          const x = await redisConnection.sadd(
+            "crawl:" + job.data.crawl_id + ":visited",
+            ...p1.map((x) => x.href),
+          );
+          const lockRes = x === p1.length;
+
+          if (job.data.crawlerOptions !== null && !lockRes) {
+            throw new RacedRedirectError();
+          }
         }
       }
 
       logger.debug("Logging job to DB...");
-      await logJob({
-        job_id: job.id as string,
-        success: true,
-        num_docs: 1,
-        docs: [doc],
-        time_taken: timeTakenInSeconds,
-        team_id: job.data.team_id,
-        mode: job.data.mode,
-        url: job.data.url,
-        crawlerOptions: sc.crawlerOptions,
-        scrapeOptions: job.data.scrapeOptions,
-        origin: job.data.origin,
-        crawl_id: job.data.crawl_id,
-      }, true);
+      await logJob(
+        {
+          job_id: job.id as string,
+          success: true,
+          num_docs: 1,
+          docs: [doc],
+          time_taken: timeTakenInSeconds,
+          team_id: job.data.team_id,
+          mode: job.data.mode,
+          url: job.data.url,
+          crawlerOptions: sc.crawlerOptions,
+          scrapeOptions: job.data.scrapeOptions,
+          origin: job.data.origin,
+          crawl_id: job.data.crawl_id,
+        },
+        true,
+      );
 
       logger.debug("Declaring job as done...");
       await addCrawlJobDone(job.data.crawl_id, job.id, true);
 
       if (job.data.crawlerOptions !== null) {
         if (!sc.cancelled) {
-          const crawler = crawlToCrawler(job.data.crawl_id, sc, doc.metadata.url ?? doc.metadata.sourceURL ?? sc.originUrl!);
+          const crawler = crawlToCrawler(
+            job.data.crawl_id,
+            sc,
+            doc.metadata.url ?? doc.metadata.sourceURL ?? sc.originUrl!,
+          );
 
           const links = crawler.filterLinks(
-            crawler.extractLinksFromHTML(rawHtml ?? "", doc.metadata?.url ?? doc.metadata?.sourceURL ?? sc.originUrl!),
+            crawler.extractLinksFromHTML(
+              rawHtml ?? "",
+              doc.metadata?.url ?? doc.metadata?.sourceURL ?? sc.originUrl!,
+            ),
             Infinity,
-            sc.crawlerOptions?.maxDepth ?? 10
+            sc.crawlerOptions?.maxDepth ?? 10,
           );
-          logger.debug("Discovered " + links.length + " links...", { linksLength: links.length });
+          logger.debug("Discovered " + links.length + " links...", {
+            linksLength: links.length,
+          });
 
           for (const link of links) {
             if (await lockURL(job.data.crawl_id, sc, link)) {
@@ -493,7 +697,13 @@ async function processJob(job: Job & { id: string }, token: string) {
               });
               const jobId = uuidv4();
 
-              logger.debug("Determined job priority " + jobPriority + " for URL " + JSON.stringify(link), { jobPriority, url: link });
+              logger.debug(
+                "Determined job priority " +
+                  jobPriority +
+                  " for URL " +
+                  JSON.stringify(link),
+                { jobPriority, url: link },
+              );
 
               // console.log("plan: ",  sc.plan);
               // console.log("team_id: ", sc.team_id)
@@ -515,13 +725,19 @@ async function processJob(job: Job & { id: string }, token: string) {
                 },
                 {},
                 jobId,
-                jobPriority
+                jobPriority,
               );
 
               await addCrawlJob(job.data.crawl_id, jobId);
-              logger.debug("Added job for URL " + JSON.stringify(link), { jobPriority, url: link, newJobId: jobId });
+              logger.debug("Added job for URL " + JSON.stringify(link), {
+                jobPriority,
+                url: link,
+                newJobId: jobId,
+              });
             } else {
-              logger.debug("Could not lock URL " + JSON.stringify(link), { url: link });
+              logger.debug("Could not lock URL " + JSON.stringify(link), {
+                url: link,
+              });
             }
           }
         }
@@ -533,7 +749,8 @@ async function processJob(job: Job & { id: string }, token: string) {
     logger.info(`🐂 Job done ${job.id}`);
     return data;
   } catch (error) {
-    const isEarlyTimeout = error instanceof Error && error.message === "timeout";
+    const isEarlyTimeout =
+      error instanceof Error && error.message === "timeout";
 
     if (isEarlyTimeout) {
       logger.error(`🐂 Job timed out ${job.id}`);
@@ -562,7 +779,12 @@ async function processJob(job: Job & { id: string }, token: string) {
       success: false,
       document: null,
       project_id: job.data.project_id,
-      error: error instanceof Error ? error : typeof error === "string" ? new Error(error) : new Error(JSON.stringify(error)),
+      error:
+        error instanceof Error
+          ? error
+          : typeof error === "string"
+            ? new Error(error)
+            : new Error(JSON.stringify(error)),
     };
 
     if (!job.data.v1 && (job.data.mode === "crawl" || job.data.crawl_id)) {
@@ -588,31 +810,38 @@ async function processJob(job: Job & { id: string }, token: string) {
 
     if (job.data.crawl_id) {
       const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
-      
+
       logger.debug("Declaring job as done...");
       await addCrawlJobDone(job.data.crawl_id, job.id, false);
+      await redisConnection.srem(
+        "crawl:" + job.data.crawl_id + ":visited_unique",
+        normalizeURL(job.data.url, sc),
+      );
 
       logger.debug("Logging job to DB...");
-      await logJob({
-        job_id: job.id as string,
-        success: false,
-        message:
-          typeof error === "string"
-            ? error
-            : error.message ??
-              "Something went wrong... Contact help@mendable.ai",
-        num_docs: 0,
-        docs: [],
-        time_taken: 0,
-        team_id: job.data.team_id,
-        mode: job.data.mode,
-        url: job.data.url,
-        crawlerOptions: sc.crawlerOptions,
-        scrapeOptions: job.data.scrapeOptions,
-        origin: job.data.origin,
-        crawl_id: job.data.crawl_id,
-      }, true);
-      
+      await logJob(
+        {
+          job_id: job.id as string,
+          success: false,
+          message:
+            typeof error === "string"
+              ? error
+              : (error.message ??
+                "Something went wrong... Contact help@mendable.ai"),
+          num_docs: 0,
+          docs: [],
+          time_taken: 0,
+          team_id: job.data.team_id,
+          mode: job.data.mode,
+          url: job.data.url,
+          crawlerOptions: sc.crawlerOptions,
+          scrapeOptions: job.data.scrapeOptions,
+          origin: job.data.origin,
+          crawl_id: job.data.crawl_id,
+        },
+        true,
+      );
+
       await finishCrawlIfNeeded(job, sc);
 
       // await logJob({

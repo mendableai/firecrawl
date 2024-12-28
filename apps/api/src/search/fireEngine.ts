@@ -15,7 +15,7 @@ export async function fireEngineMap(
     location?: string;
     numResults: number;
     page?: number;
-  }
+  },
 ): Promise<SearchResult[]> {
   try {
     let data = JSON.stringify({
@@ -30,7 +30,7 @@ export async function fireEngineMap(
 
     if (!process.env.FIRE_ENGINE_BETA_URL) {
       console.warn(
-        "(v1/map Beta) Results might differ from cloud offering currently."
+        "(v1/map Beta) Results might differ from cloud offering currently.",
       );
       return [];
     }

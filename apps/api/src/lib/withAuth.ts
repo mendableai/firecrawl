@@ -11,13 +11,13 @@ export function withAuth<T, U extends any[]>(
   mockSuccess: T,
 ) {
   return async function (...args: U): Promise<T> {
-    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === 'true';
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
     if (!useDbAuthentication) {
       if (warningCount < 5) {
         logger.warn("You're bypassing authentication");
         warningCount++;
       }
-      return { success: true } as T;
+      return { success: true, ...(mockSuccess || {}) } as T;
     } else {
       return await originalFunction(...args);
     }

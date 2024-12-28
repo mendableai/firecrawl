@@ -48,7 +48,7 @@ export async function search({
         filter,
         lang,
         country,
-        location
+        location,
       });
     }
     return await googleSearch(
@@ -61,7 +61,7 @@ export async function search({
       country,
       proxy,
       sleep_interval,
-      timeout
+      timeout,
     );
   } catch (error) {
     logger.error(`Error in search function: ${error}`);

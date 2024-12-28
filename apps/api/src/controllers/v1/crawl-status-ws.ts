@@ -1,32 +1,47 @@
 import { authMiddleware } from "../../routes/v1";
 import { RateLimiterMode } from "../../types";
 import { authenticateUser } from "../auth";
-import { CrawlStatusParams, CrawlStatusResponse, Document, ErrorResponse, RequestWithAuth } from "./types";
+import {
+  CrawlStatusParams,
+  CrawlStatusResponse,
+  Document,
+  ErrorResponse,
+  RequestWithAuth,
+} from "./types";
 import { WebSocket } from "ws";
 import { v4 as uuidv4 } from "uuid";
 import { logger } from "../../lib/logger";
-import { getCrawl, getCrawlExpiry, getCrawlJobs, getDoneJobsOrdered, getDoneJobsOrderedLength, getThrottledJobs, isCrawlFinished, isCrawlFinishedLocked } from "../../lib/crawl-redis";
+import {
+  getCrawl,
+  getCrawlExpiry,
+  getCrawlJobs,
+  getDoneJobsOrdered,
+  getDoneJobsOrderedLength,
+  getThrottledJobs,
+  isCrawlFinished,
+  isCrawlFinishedLocked,
+} from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
 import { getJob, getJobs } from "./crawl-status";
 import * as Sentry from "@sentry/node";
 import { Job, JobState } from "bullmq";
 
 type ErrorMessage = {
-  type: "error",
-  error: string,
-}
+  type: "error";
+  error: string;
+};
 
 type CatchupMessage = {
-  type: "catchup",
-  data: CrawlStatusResponse,
-}
+  type: "catchup";
+  data: CrawlStatusResponse;
+};
 
 type DocumentMessage = {
-  type: "document",
-  data: Document,
-}
+  type: "document";
+  data: Document;
+};
 
-type DoneMessage = { type: "done" }
+type DoneMessage = { type: "done" };
 
 type Message = ErrorMessage | CatchupMessage | DoneMessage | DocumentMessage;
 
@@ -47,7 +62,10 @@ function close(ws: WebSocket, code: number, msg: Message) {
   }
 }
 
-async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusParams, undefined, undefined>) {
+async function crawlStatusWS(
+  ws: WebSocket,
+  req: RequestWithAuth<CrawlStatusParams, undefined, undefined>,
+) {
   const sc = await getCrawl(req.params.jobId);
   if (!sc) {
     return close(ws, 1008, { type: "error", error: "Job not found" });
@@ -69,17 +87,26 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
       return close(ws, 1000, { type: "done" });
     }
 
-    const notDoneJobIDs = jobIDs.filter(x => !doneJobIDs.includes(x));
-    const jobStatuses = await Promise.all(notDoneJobIDs.map(async x => [x, await getScrapeQueue().getJobState(x)]));
-    const newlyDoneJobIDs: string[] = jobStatuses.filter(x => x[1] === "completed" || x[1] === "failed").map(x => x[0]);
-    const newlyDoneJobs: Job[] = (await Promise.all(newlyDoneJobIDs.map(x => getJob(x)))).filter(x => x !== undefined) as Job[]
+    const notDoneJobIDs = jobIDs.filter((x) => !doneJobIDs.includes(x));
+    const jobStatuses = await Promise.all(
+      notDoneJobIDs.map(async (x) => [
+        x,
+        await getScrapeQueue().getJobState(x),
+      ]),
+    );
+    const newlyDoneJobIDs: string[] = jobStatuses
+      .filter((x) => x[1] === "completed" || x[1] === "failed")
+      .map((x) => x[0]);
+    const newlyDoneJobs: Job[] = (
+      await Promise.all(newlyDoneJobIDs.map((x) => getJob(x)))
+    ).filter((x) => x !== undefined) as Job[];
 
     for (const job of newlyDoneJobs) {
       if (job.returnvalue) {
         send(ws, {
           type: "document",
           data: job.returnvalue,
-        })
+        });
       } else {
         return close(ws, 3000, { type: "error", error: job.failedReason });
       }
@@ -95,8 +122,12 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
   doneJobIDs = await getDoneJobsOrdered(req.params.jobId);
 
   let jobIDs = await getCrawlJobs(req.params.jobId);
-  let jobStatuses = await Promise.all(jobIDs.map(async x => [x, await getScrapeQueue().getJobState(x)] as const));
-  const throttledJobs = new Set(...await getThrottledJobs(req.auth.team_id));
+  let jobStatuses = await Promise.all(
+    jobIDs.map(
+      async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
+    ),
+  );
+  const throttledJobs = new Set(...(await getThrottledJobs(req.auth.team_id)));
 
   const throttledJobsSet = new Set(throttledJobs);
 
@@ -104,18 +135,27 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
   const validJobIDs: string[] = [];
 
   for (const [id, status] of jobStatuses) {
-    if (!throttledJobsSet.has(id) && status !== "failed" && status !== "unknown") {
+    if (
+      !throttledJobsSet.has(id) &&
+      status !== "failed" &&
+      status !== "unknown"
+    ) {
       validJobStatuses.push([id, status]);
       validJobIDs.push(id);
     }
   }
 
-  const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] = sc.cancelled ? "cancelled" : validJobStatuses.every(x => x[1] === "completed") ? "completed" : "scraping";
+  const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] =
+    sc.cancelled
+      ? "cancelled"
+      : validJobStatuses.every((x) => x[1] === "completed")
+        ? "completed"
+        : "scraping";
 
   jobIDs = validJobIDs; // Use validJobIDs instead of jobIDs for further processing
 
   const doneJobs = await getJobs(doneJobIDs);
-  const data = doneJobs.map(x => x.returnvalue);
+  const data = doneJobs.map((x) => x.returnvalue);
 
   send(ws, {
     type: "catchup",
@@ -127,7 +167,7 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
       creditsUsed: jobIDs.length,
       expiresAt: (await getCrawlExpiry(req.params.jobId)).toISOString(),
       data: data,
-    }
+    },
   });
 
   if (status !== "scraping") {
@@ -137,13 +177,12 @@ async function crawlStatusWS(ws: WebSocket, req: RequestWithAuth<CrawlStatusPara
 }
 
 // Basically just middleware and error wrapping
-export async function crawlStatusWSController(ws: WebSocket, req: RequestWithAuth<CrawlStatusParams, undefined, undefined>) {
+export async function crawlStatusWSController(
+  ws: WebSocket,
+  req: RequestWithAuth<CrawlStatusParams, undefined, undefined>,
+) {
   try {
-    const auth = await authenticateUser(
-      req,
-      null,
-      RateLimiterMode.CrawlStatus,
-    );
+    const auth = await authenticateUser(req, null, RateLimiterMode.CrawlStatus);
 
     if (!auth.success) {
       return close(ws, 3000, {
@@ -172,10 +211,19 @@ export async function crawlStatusWSController(ws: WebSocket, req: RequestWithAut
       }
     }
 
-    logger.error("Error occurred in WebSocket! (" + req.path + ") -- ID " + id + " -- " + verbose);
+    logger.error(
+      "Error occurred in WebSocket! (" +
+        req.path +
+        ") -- ID " +
+        id +
+        " -- " +
+        verbose,
+    );
     return close(ws, 1011, {
       type: "error",
-      error: "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " + id
+      error:
+        "An unexpected error occurred. Please contact help@firecrawl.com for help. Your exception ID is " +
+        id,
     });
   }
 }

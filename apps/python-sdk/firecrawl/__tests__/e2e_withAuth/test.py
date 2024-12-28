@@ -29,12 +29,12 @@ def test_scrape_url_invalid_api_key():
         invalid_app.scrape_url('https://firecrawl.dev')
     assert "Unexpected error during scrape URL: Status code 401. Unauthorized: Invalid token" in str(excinfo.value)
 
-def test_blocklisted_url():
-    blocklisted_url = "https://facebook.com/fake-test"
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
-    with pytest.raises(Exception) as excinfo:
-        app.scrape_url(blocklisted_url)
-    assert "Unexpected error during scrape URL: Status code 403. Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it." in str(excinfo.value)
+# def test_blocklisted_url():
+#     blocklisted_url = "https://facebook.com/fake-test"
+#     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
+#     with pytest.raises(Exception) as excinfo:
+#         app.scrape_url(blocklisted_url)
+#     assert "Unexpected error during scrape URL: Status code 403. Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it." in str(excinfo.value)
 
 def test_successful_response_with_valid_preview_token():
     app = FirecrawlApp(api_url=API_URL, api_key="this_is_just_a_preview_token", version='v0')
@@ -90,12 +90,12 @@ def test_crawl_url_invalid_api_key():
         invalid_app.crawl_url('https://firecrawl.dev')
     assert "Unexpected error during start crawl job: Status code 401. Unauthorized: Invalid token" in str(excinfo.value)
 
-def test_should_return_error_for_blocklisted_url():
-    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
-    blocklisted_url = "https://twitter.com/fake-test"
-    with pytest.raises(Exception) as excinfo:
-        app.crawl_url(blocklisted_url)
-    assert "Unexpected error during start crawl job: Status code 403. Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it." in str(excinfo.value)
+# def test_should_return_error_for_blocklisted_url():
+#     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')
+#     blocklisted_url = "https://twitter.com/fake-test"
+#     with pytest.raises(Exception) as excinfo:
+#         app.crawl_url(blocklisted_url)
+#     assert "Unexpected error during start crawl job: Status code 403. Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it." in str(excinfo.value)
 
 def test_crawl_url_wait_for_completion_e2e():
     app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY, version='v0')

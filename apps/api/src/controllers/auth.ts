@@ -39,8 +39,9 @@ function normalizedApiIsUuid(potentialUuid: string): boolean {
 export async function setCachedACUC(
   api_key: string,
   acuc:
-    | AuthCreditUsageChunk | null
-    | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk | null)
+    | AuthCreditUsageChunk
+    | null
+    | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk | null),
 ) {
   const cacheKeyACUC = `acuc_${api_key}`;
   const redLockKey = `lock_${cacheKeyACUC}`;
@@ -48,7 +49,7 @@ export async function setCachedACUC(
   try {
     await redlock.using([redLockKey], 10000, {}, async (signal) => {
       if (typeof acuc === "function") {
-        acuc = acuc(JSON.parse(await getValue(cacheKeyACUC) ?? "null"));
+        acuc = acuc(JSON.parse((await getValue(cacheKeyACUC)) ?? "null"));
 
         if (acuc === null) {
           if (signal.aborted) {
@@ -75,7 +76,7 @@ export async function setCachedACUC(
 export async function getACUC(
   api_key: string,
   cacheOnly = false,
-  useCache = true
+  useCache = true,
 ): Promise<AuthCreditUsageChunk | null> {
   const cacheKeyACUC = `acuc_${api_key}`;
 
@@ -96,7 +97,7 @@ export async function getACUC(
       ({ data, error } = await supabase_service.rpc(
         "auth_credit_usage_chunk_test_21_credit_pack",
         { input_key: api_key },
-        { get: true }
+        { get: true },
       ));
 
       if (!error) {
@@ -104,13 +105,13 @@ export async function getACUC(
       }
 
       logger.warn(
-        `Failed to retrieve authentication and credit usage data after ${retries}, trying again...`
+        `Failed to retrieve authentication and credit usage data after ${retries}, trying again...`,
       );
       retries++;
       if (retries === maxRetries) {
         throw new Error(
           "Failed to retrieve authentication and credit usage data after 3 attempts: " +
-            JSON.stringify(error)
+            JSON.stringify(error),
         );
       }
 
@@ -125,7 +126,7 @@ export async function getACUC(
     if (chunk !== null && useCache) {
       setCachedACUC(api_key, chunk);
     }
-    
+
     // console.log(chunk);
 
     return chunk;
@@ -134,9 +135,7 @@ export async function getACUC(
   }
 }
 
-export async function clearACUC(
-  api_key: string,
-): Promise<void> {
+export async function clearACUC(api_key: string): Promise<void> {
   const cacheKeyACUC = `acuc_${api_key}`;
   await deleteKey(cacheKeyACUC);
 }
@@ -144,15 +143,19 @@ export async function clearACUC(
 export async function authenticateUser(
   req,
   res,
-  mode?: RateLimiterMode
+  mode?: RateLimiterMode,
 ): Promise<AuthResponse> {
-  return withAuth(supaAuthenticateUser, { success: true, chunk: null, team_id: "bypass" })(req, res, mode);
+  return withAuth(supaAuthenticateUser, {
+    success: true,
+    chunk: null,
+    team_id: "bypass",
+  })(req, res, mode);
 }
 
 export async function supaAuthenticateUser(
   req,
   res,
-  mode?: RateLimiterMode
+  mode?: RateLimiterMode,
 ): Promise<AuthResponse> {
   const authHeader =
     req.headers.authorization ??
@@ -223,7 +226,7 @@ export async function supaAuthenticateUser(
         rateLimiter = getRateLimiter(
           RateLimiterMode.Crawl,
           token,
-          subscriptionData.plan
+          subscriptionData.plan,
         );
         break;
       case RateLimiterMode.Scrape:
@@ -231,21 +234,21 @@ export async function supaAuthenticateUser(
           RateLimiterMode.Scrape,
           token,
           subscriptionData.plan,
-          teamId
+          teamId,
         );
         break;
       case RateLimiterMode.Search:
         rateLimiter = getRateLimiter(
           RateLimiterMode.Search,
           token,
-          subscriptionData.plan
+          subscriptionData.plan,
         );
         break;
       case RateLimiterMode.Map:
         rateLimiter = getRateLimiter(
           RateLimiterMode.Map,
           token,
-          subscriptionData.plan
+          subscriptionData.plan,
         );
         break;
       case RateLimiterMode.CrawlStatus:
@@ -270,7 +273,13 @@ export async function supaAuthenticateUser(
   try {
     await rateLimiter.consume(team_endpoint_token);
   } catch (rateLimiterRes) {
-    logger.error(`Rate limit exceeded: ${rateLimiterRes}`, { teamId, priceId, plan: subscriptionData?.plan, mode, rateLimiterRes });
+    logger.error(`Rate limit exceeded: ${rateLimiterRes}`, {
+      teamId,
+      priceId,
+      plan: subscriptionData?.plan,
+      mode,
+      rateLimiterRes,
+    });
     const secs = Math.round(rateLimiterRes.msBeforeNext / 1000) || 1;
     const retryDate = new Date(Date.now() + rateLimiterRes.msBeforeNext);
 
@@ -342,6 +351,7 @@ function getPlanByPriceId(price_id: string | null): PlanType {
     case process.env.STRIPE_PRICE_ID_ETIER1A_MONTHLY: //ocqh
       return "etier1a";
     case process.env.STRIPE_PRICE_ID_ETIER_SCALE_1_MONTHLY:
+    case process.env.STRIPE_PRICE_ID_ETIER_SCALE_1_YEARLY:
       return "etierscale1";
     default:
       return "free";

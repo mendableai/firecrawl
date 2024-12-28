@@ -17,7 +17,7 @@ import { getScrapeQueue } from "../../services/queue-service";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
-  res: Response<ScrapeResponse>
+  res: Response<ScrapeResponse>,
 ) {
   req.body = scrapeRequestSchema.parse(req.body);
   let earlyReturn = false;
@@ -46,17 +46,29 @@ export async function scrapeController(
     },
     {},
     jobId,
-    jobPriority
+    jobPriority,
   );
 
-  const totalWait = (req.body.waitFor ?? 0) + (req.body.actions ?? []).reduce((a,x) => (x.type === "wait" ? x.milliseconds ?? 0 : 0) + a, 0);
+  const totalWait =
+    (req.body.waitFor ?? 0) +
+    (req.body.actions ?? []).reduce(
+      (a, x) => (x.type === "wait" ? (x.milliseconds ?? 0) : 0) + a,
+      0,
+    );
 
   let doc: Document;
   try {
     doc = await waitForJob<Document>(jobId, timeout + totalWait); // TODO: better types for this
   } catch (e) {
-    logger.error(`Error in scrapeController: ${e}`);
-    if (e instanceof Error && (e.message.startsWith("Job wait") || e.message === "timeout")) {
+    logger.error(`Error in scrapeController: ${e}`, {
+      jobId,
+      scrapeId: jobId,
+      startTime,
+    });
+    if (
+      e instanceof Error &&
+      (e.message.startsWith("Job wait") || e.message === "timeout")
+    ) {
       return res.status(408).json({
         success: false,
         error: "Request timed out",
@@ -64,7 +76,7 @@ export async function scrapeController(
     } else {
       return res.status(500).json({
         success: false,
-        error: `(Internal server error) - ${(e && e.message) ? e.message : e}`,
+        error: `(Internal server error) - ${e && e.message ? e.message : e}`,
       });
     }
   }
@@ -75,8 +87,8 @@ export async function scrapeController(
   const timeTakenInSeconds = (endTime - startTime) / 1000;
   const numTokens =
     doc && doc.extract
-      // ? numTokensFromString(doc.markdown, "gpt-3.5-turbo")
-      ? 0 // TODO: fix
+      ? // ? numTokensFromString(doc.markdown, "gpt-3.5-turbo")
+        0 // TODO: fix
       : 0;
 
   let creditsToBeBilled = 1; // Assuming 1 credit per document
@@ -84,14 +96,18 @@ export async function scrapeController(
     // Don't bill if we're early returning
     return;
   }
-  if(req.body.extract && req.body.formats.includes("extract")) {
+  if (req.body.extract && req.body.formats.includes("extract")) {
     creditsToBeBilled = 5;
   }
 
-  billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(error => {
-    logger.error(`Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`);
-    // Optionally, you could notify an admin or add to a retry queue here
-  });
+  billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(
+    (error) => {
+      logger.error(
+        `Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`,
+      );
+      // Optionally, you could notify an admin or add to a retry queue here
+    },
+  );
 
   if (!req.body.formats.includes("rawHtml")) {
     if (doc && doc.rawHtml) {

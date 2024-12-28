@@ -17,15 +17,15 @@ export async function checkAlerts() {
           const activeJobs = await scrapeQueue.getActiveCount();
           if (activeJobs > Number(process.env.ALERT_NUM_ACTIVE_JOBS)) {
             logger.warn(
-              `Alert: Number of active jobs is over ${process.env.ALERT_NUM_ACTIVE_JOBS}. Current active jobs: ${activeJobs}.`
+              `Alert: Number of active jobs is over ${process.env.ALERT_NUM_ACTIVE_JOBS}. Current active jobs: ${activeJobs}.`,
             );
             sendSlackWebhook(
               `Alert: Number of active jobs is over ${process.env.ALERT_NUM_ACTIVE_JOBS}. Current active jobs: ${activeJobs}`,
-              true
+              true,
             );
           } else {
             logger.info(
-              `Number of active jobs is under ${process.env.ALERT_NUM_ACTIVE_JOBS}. Current active jobs: ${activeJobs}`
+              `Number of active jobs is under ${process.env.ALERT_NUM_ACTIVE_JOBS}. Current active jobs: ${activeJobs}`,
             );
           }
         } catch (error) {
@@ -39,11 +39,11 @@ export async function checkAlerts() {
 
         if (waitingJobs > Number(process.env.ALERT_NUM_WAITING_JOBS)) {
           logger.warn(
-            `Alert: Number of waiting jobs is over ${process.env.ALERT_NUM_WAITING_JOBS}. Current waiting jobs: ${waitingJobs}.`
+            `Alert: Number of waiting jobs is over ${process.env.ALERT_NUM_WAITING_JOBS}. Current waiting jobs: ${waitingJobs}.`,
           );
           sendSlackWebhook(
             `Alert: Number of waiting jobs is over ${process.env.ALERT_NUM_WAITING_JOBS}. Current waiting jobs: ${waitingJobs}. Scale up the number of workers with fly scale count worker=20`,
-            true
+            true,
           );
         }
       };
@@ -54,7 +54,7 @@ export async function checkAlerts() {
       };
 
       await checkAll();
-      // setInterval(checkAll, 10000); // Run every 
+      // setInterval(checkAll, 10000); // Run every
     }
   } catch (error) {
     logger.error(`Failed to initialize alerts: ${error}`);
