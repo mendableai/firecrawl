@@ -1,7 +1,9 @@
+import * as undici from "undici";
 import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
 import { TimeoutError } from "../../error";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
+import { InsecureConnectionError, makeSecureDispatcher } from "../utils/safeFetch";
 
 export async function scrapeURLWithFetch(
   meta: Meta,
@@ -9,19 +11,29 @@ export async function scrapeURLWithFetch(
 ): Promise<EngineScrapeResult> {
   const timeout = timeToRun ?? 300000;
 
-  const response = await Promise.race([
-    fetch(meta.url, {
-      redirect: "follow",
-      headers: meta.options.headers,
-    }),
-    (async () => {
-      await new Promise((resolve) => setTimeout(() => resolve(null), timeout));
-      throw new TimeoutError(
-        "Fetch was unable to scrape the page before timing out",
-        { cause: { timeout } },
-      );
-    })(),
-  ]);
+  let response: undici.Response;
+  try {
+    response = await Promise.race([
+      undici.fetch(meta.url, {
+        dispatcher: await makeSecureDispatcher(meta.url),
+        redirect: "follow",
+        headers: meta.options.headers,
+      }),
+      (async () => {
+        await new Promise((resolve) => setTimeout(() => resolve(null), timeout));
+        throw new TimeoutError(
+          "Fetch was unable to scrape the page before timing out",
+          { cause: { timeout } },
+        );
+      })(),
+    ]);
+  } catch (error) {
+    if (error instanceof TypeError && error.cause instanceof InsecureConnectionError) {
+      throw error.cause;
+    } else {
+      throw error;
+    }
+  }
 
   specialtyScrapeCheck(
     meta.logger.child({ method: "scrapeURLWithFetch/specialtyScrapeCheck" }),

@@ -5,6 +5,7 @@ import { EngineError } from "../../error";
 import { Writable } from "stream";
 import { v4 as uuid } from "uuid";
 import * as undici from "undici";
+import { makeSecureDispatcher } from "./safeFetch";
 
 export async function fetchFileToBuffer(url: string): Promise<{
   response: Response;
@@ -28,16 +29,9 @@ export async function downloadFile(
   const tempFileWrite = createWriteStream(tempFilePath);
 
   // TODO: maybe we could use tlsclient for this? for proxying
-  // use undici to ignore SSL for now
-  const response = await undici.fetch(url, {
-    dispatcher: new undici.Agent({
-      connect: {
-        rejectUnauthorized: false,
-      },
-    }),
-  });
+  const response = await undici.fetch(url, { dispatcher: await makeSecureDispatcher(url) });
 
-  // This should never happen in the current state of JS (2024), but let's check anyways.
+  // This should never happen in the current state of JS/Undici (2024), but let's check anyways.
   if (response.body === null) {
     throw new EngineError("Response body was null", { cause: { response } });
   }

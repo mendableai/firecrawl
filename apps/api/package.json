@@ -86,6 +86,7 @@
     "glob": "^10.4.2",
     "gpt3-tokenizer": "^1.1.5",
     "ioredis": "^5.4.1",
+    "ip-address": "^10.0.1",
     "joplin-turndown-plugin-gfm": "^1.0.12",
     "json-schema-to-zod": "^2.3.0",
     "keyword-extractor": "^0.0.28",
