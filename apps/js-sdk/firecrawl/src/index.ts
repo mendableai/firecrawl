@@ -942,7 +942,7 @@ interface CrawlWatcherEvents {
 }
 
 export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
-  private ws: WebSocket;
+  private ws!: WebSocket;
   public data: FirecrawlDocument<undefined>[];
   public status: CrawlStatusResponse["status"];
   public id: string;
@@ -963,10 +963,22 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
     super();
     const WS = CrawlWatcher.loadWebSocket();
     this.id = id;
-    this.ws = new WS(`${app.apiUrl}/v1/crawl/${id}`, app.apiKey);
+    
+    if (WS instanceof Promise) {
+      WS.then(WebSocketClass => {
+        this.ws = new WebSocketClass(`${app.apiUrl}/v1/crawl/${id}`, app.apiKey);
+        this.initializeWebSocket();
+      });
+    } else {
+      this.ws = new WS(`${app.apiUrl}/v1/crawl/${id}`, app.apiKey);
+      this.initializeWebSocket();
+    }
+    
     this.status = "scraping";
     this.data = [];
+  }
 
+  private initializeWebSocket() {
     type ErrorMessage = {
       type: "error",
       error: string,
