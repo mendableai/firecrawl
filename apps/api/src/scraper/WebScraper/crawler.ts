@@ -506,7 +506,7 @@ export class WebCrawler {
           // Get all links from the main domain's sitemap
           sitemapCount += await getLinksFromSitemap(
             { sitemapUrl: mainDomainSitemapUrl, urlsHandler(urls) {
-              urlsHandler(urls.filter(link => {
+              return urlsHandler(urls.filter(link => {
                 try {
                   const linkUrl = new URL(link);
                   return linkUrl.hostname.endsWith(hostname);

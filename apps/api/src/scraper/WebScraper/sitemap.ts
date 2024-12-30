@@ -103,7 +103,11 @@ export async function getLinksFromSitemap(
         )
         .map((url) => url.loc[0]);
       count += validUrls.length;
-      urlsHandler(validUrls);
+
+      const h = urlsHandler(validUrls);
+      if (h instanceof Promise) {
+        await h;
+      }
     }
 
     return count;
