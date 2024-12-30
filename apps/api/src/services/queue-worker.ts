@@ -46,6 +46,8 @@ import {
   removeConcurrencyLimitActiveJob,
   takeConcurrencyLimitedJob,
 } from "../lib/concurrency-limit";
+import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
+import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 configDotenv();
 
 class RacedRedirectError extends Error {
@@ -620,6 +622,15 @@ async function processJob(job: Job & { id: string }, token: string) {
         normalizeURL(doc.metadata.url, sc) !==
           normalizeURL(doc.metadata.sourceURL, sc)
       ) {
+        const crawler = crawlToCrawler(job.data.crawl_id, sc);
+        if (crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL) === null) {
+          throw new Error("Redirected target URL is not allowed by crawlOptions"); // TODO: make this its own error type that is ignored by error tracking
+        }
+
+        if (isUrlBlocked(doc.metadata.url)) {
+          throw new Error(BLOCKLISTED_URL_MESSAGE); // TODO: make this its own error type that is ignored by error tracking
+        }
+        
         const p1 = generateURLPermutations(normalizeURL(doc.metadata.url, sc));
         const p2 = generateURLPermutations(
           normalizeURL(doc.metadata.sourceURL, sc),
