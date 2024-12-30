@@ -58,6 +58,7 @@
     "@devil7softwares/pos": "^1.0.2",
     "@dqbd/tiktoken": "^1.0.17",
     "@nangohq/node": "^0.40.8",
+    "@pinecone-database/pinecone": "^4.0.0",
     "@sentry/cli": "^2.33.1",
     "@sentry/node": "^8.26.0",
     "@sentry/profiling-node": "^8.26.0",
