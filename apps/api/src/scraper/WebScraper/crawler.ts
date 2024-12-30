@@ -433,7 +433,7 @@ export class WebCrawler {
       ".pptx",
       // ".docx",
       ".xlsx",
-      ".xml",
+      // ".xml",
       ".avi",
       ".flv",
       ".woff",
