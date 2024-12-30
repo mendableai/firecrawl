@@ -13,6 +13,8 @@ const pinecone = new Pinecone({
 
 const INDEX_NAME = process.env.PINECONE_INDEX_NAME ?? "";
 
+const MAX_METADATA_SIZE = 30 * 1024; // 30KB in bytes
+
 export interface PageMetadata {
   url: string;
   originUrl: string;
@@ -42,40 +44,54 @@ function normalizeUrl(url: string) {
   return urlO.href;
 }
 
-export async function indexPage(
-  document: Document, 
-  originUrl: string,
-  crawlId?: string,
-  teamId?: string
+export async function indexPage({
+  document,
+  originUrl,
+  crawlId,
+  teamId
+}: {
+  document: Document;
+  originUrl: string;
+  crawlId?: string;
+  teamId?: string;
+}
 ) {
   try {
     const index = pinecone.index(INDEX_NAME);
+
+    // Trim markdown if it's too long
+    let trimmedMarkdown = document.markdown;
+    if (trimmedMarkdown && Buffer.byteLength(trimmedMarkdown, 'utf-8') > MAX_METADATA_SIZE) {
+      trimmedMarkdown = trimmedMarkdown.slice(0, Math.floor(MAX_METADATA_SIZE / 2)); // Using half the size to be safe with UTF-8 encoding
+    }
 
     // Create text to embed
     const textToEmbed = [
       document.metadata.title,
       document.metadata.description,
-      document.markdown
+      trimmedMarkdown
     ].filter(Boolean).join('\n\n');
 
     // Get embedding from OpenAI
     const embedding = await getEmbedding(textToEmbed);
 
+    const normalizedUrl = normalizeUrl(document.metadata.sourceURL || document.metadata.url!);
+
     // Prepare metadata
     const metadata: PageMetadata = {
-      url: normalizeUrl(document.metadata.sourceURL || document.metadata.url!),
+      url: normalizedUrl,
       originUrl: normalizeUrl(originUrl),
       title: document.metadata.title,
       description: document.metadata.description,
       crawlId,
       teamId,
-      markdown: document.markdown,
+      markdown: trimmedMarkdown,
       timestamp: Date.now()
     };
 
     // Upsert to Pinecone
     await index.upsert([{
-      id: document.metadata.sourceURL || document.metadata.url!,
+      id: normalizedUrl,
       values: embedding,
       metadata: {
         ...metadata,
@@ -114,10 +130,11 @@ export async function searchSimilarPages(
       includeMetadata: true
     };
 
+    const normalizedOriginUrl = originUrl ? normalizeUrl(originUrl) : undefined;
     // Add filter if originUrl is provided
-    if (originUrl) {
+    if (normalizedOriginUrl) {
       queryParams.filter = {
-        [originUrl]: { $contains: normalizeUrl(originUrl) }
+        originUrl: { $eq: normalizedOriginUrl }
       };
     }
 

@@ -17,7 +17,6 @@ import expressWs from "express-ws";
 import { ErrorResponse, ResponseWithSentry } from "./controllers/v1/types";
 import { ZodError } from "zod";
 import { v4 as uuidv4 } from "uuid";
-import { searchSimilarPages } from "./lib/extract/index/pinecone";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -255,3 +254,4 @@ logger.info(`Worker ${process.pid} started`);
 // sq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
 // sq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
 // sq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
+// 
