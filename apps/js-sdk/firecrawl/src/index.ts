@@ -1069,8 +1069,9 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
     }).bind(this);
   }
 
-  async close() {
-    await this.initialized;
-    this.ws.close();
+  close() {
+    this.initialized.then(() => {
+      this.ws.close();
+    });
   }
 }
