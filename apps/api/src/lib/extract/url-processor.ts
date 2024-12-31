@@ -7,8 +7,7 @@ import { generateBasicCompletion } from "../LLM-extraction";
 import { buildRefrasedPrompt } from "./build-prompts";
 import { logger } from "../logger";
 import { rerankLinks } from "./reranker";
-
-const MAX_EXTRACT_LIMIT = 100;
+import { extractConfig } from "./config";
 
 interface ProcessUrlOptions {
   url: string;
@@ -96,8 +95,8 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
       mappedLinks = [{ url: baseUrl, title: "", description: "" }];
     }
 
-    // Limit initial set of links
-    mappedLinks = mappedLinks.slice(0, MAX_EXTRACT_LIMIT);
+    // Limit initial set of links (1000)
+    mappedLinks = mappedLinks.slice(0, extractConfig.MAX_INITIAL_RANKING_LIMIT);
 
     // Perform reranking if prompt is provided
     if (options.prompt) {

@@ -42,7 +42,7 @@ export async function saveEntryToCache(key: string, entry: CacheEntry) {
   if (!cacheRedis) return;
 
   try {
-    await cacheRedis.set(key, JSON.stringify(entry));
+    await cacheRedis.set(key, JSON.stringify(entry), "EX", 3600); // 1 hour in seconds
   } catch (error) {
     logger.warn("Failed to save to cache", { key, error });
   }

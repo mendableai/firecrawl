@@ -38,7 +38,7 @@ const useCache =
   process.env.CACHE_REDIS_URL !== undefined;
 
 export const engines: Engine[] = [
-  // ...(useCache ? [ "cache" as const ] : []),
+  ...(useCache ? [ "cache" as const ] : []),
   ...(useFireEngine
     ? [
         "fire-engine;chrome-cdp" as const,
