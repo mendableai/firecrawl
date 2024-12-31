@@ -153,6 +153,7 @@ export type InternalOptions = {
   v0DisableJsDom?: boolean;
 
   disableSmartWaitCache?: boolean; // Passed along to fire-engine
+  isBackgroundIndex?: boolean;
 };
 
 export type EngineResultsTracker = {

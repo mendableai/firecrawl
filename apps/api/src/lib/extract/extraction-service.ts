@@ -7,6 +7,8 @@ import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/
 import { buildDocument } from "./build-document";
 import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
+import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
+import { saveCrawl, StoredCrawl } from "../crawl-redis";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -22,6 +24,18 @@ interface ExtractResult {
   warning?: string;
   urlTrace?: URLTrace[];
   error?: string;
+}
+
+function getRootDomain(url: string): string {
+  try {
+    if(url.endsWith("/*")) {
+      url = url.slice(0, -2);
+    }
+    const urlObj = new URL(url);
+    return `${urlObj.protocol}//${urlObj.hostname}`;
+  } catch (e) {
+    return url;
+  }
 }
 
 export async function performExtraction(options: ExtractServiceOptions): Promise<ExtractResult> {
@@ -111,6 +125,62 @@ export async function performExtraction(options: ExtractServiceOptions): Promise
       }
     });
   }
+
+  // Kickoff background crawl for indexing root domains
+  const rootDomains = new Set(request.urls.map(getRootDomain));
+  rootDomains.forEach(async url => {
+    const crawlId = crypto.randomUUID();
+    
+    // Create and save crawl configuration first
+    const sc: StoredCrawl = {
+      originUrl: url,
+      crawlerOptions: {
+        maxDepth: 15,
+        limit: 5000,
+        includePaths: [],
+        excludePaths: [],
+        ignoreSitemap: false,
+        includeSubdomains: true,
+        allowExternalLinks: false,
+        allowBackwardLinks: true
+      },
+      scrapeOptions: {
+          formats: ["markdown"],
+          onlyMainContent: true,
+          waitFor: 0,
+          mobile: false,
+          removeBase64Images: true,
+          fastMode: false,
+          parsePDF: true,
+          skipTlsVerification: false,
+      },
+      internalOptions: { 
+        disableSmartWaitCache: true,
+        isBackgroundIndex: true
+      },
+      team_id: process.env.BACKGROUND_INDEX_TEAM_ID!,
+      createdAt: Date.now(),
+      plan: "hobby", // make it a low concurrency
+    };
+
+    // Save the crawl configuration
+    await saveCrawl(crawlId, sc);
+
+    // Then kick off the job
+    await _addScrapeJobToBullMQ({
+      url,
+      mode: "kickoff" as const,
+      team_id: process.env.BACKGROUND_INDEX_TEAM_ID!,
+      plan: "hobby", // make it a low concurrency
+      crawlerOptions: sc.crawlerOptions,
+      scrapeOptions: sc.scrapeOptions,
+      internalOptions: sc.internalOptions,
+      origin: "index",
+      crawl_id: crawlId,
+      webhook: null,
+      v1: true,
+    }, {}, crypto.randomUUID(), 50);
+  });
 
   // Bill team for usage
   billTeam(teamId, subId, links.length * 5).catch((error) => {
