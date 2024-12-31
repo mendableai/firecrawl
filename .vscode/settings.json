@@ -1,5 +1,0 @@
-{
-    "rust-analyzer.linkedProjects": [
-        "apps/rust-sdk/Cargo.toml"
-    ]
-}

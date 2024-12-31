@@ -33,3 +33,6 @@ apps/js-sdk/firecrawl/dist
 /examples/haiku_web_crawler/firecrawl_env
 /examples/sonnet_web_crawler/firecrawl_env
 /examples/internal_link_assitant/firecrawl_env
+
+
+.vscode
