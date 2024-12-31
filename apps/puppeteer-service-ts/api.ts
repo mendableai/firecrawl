@@ -46,6 +46,73 @@ const initializeHeroCore = async () => {
   heroCore.addConnection(bridge.transportToClient);
 };
 
+const scrape = async (
+  url: string,
+  wait_after_load: number,
+  timeout: number,
+  headers?: { [key: string]: string },
+  check_selector?: string,
+  proxy_url?: string,
+) => {
+  const heroInstance = new Hero({
+    connectionToCore,
+    userAgent:
+      headers?.["User-Agent"] ||
+      "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0",
+    upstreamProxyUrl: proxy_url,
+    upstreamProxyUseLocalDns: true,
+  });
+
+  const tab = heroInstance.activeTab;
+
+  if (proxy_url) {
+    console.log(`Using proxy: ${proxy_url}`);
+  }
+
+  if (headers) {
+    tab.on("resource", (resource: Resource | WebsocketResource) => {
+      if ("request" in resource && "headers" in resource.request) {
+        Object.entries(headers).forEach(([key, value]) => {
+          if (typeof value === "string") {
+            resource.request.headers[key] = value;
+          }
+        });
+      }
+    });
+  }
+
+  // Wait for navigation to complete and get response
+  const resource = await tab.goto(url, {
+    timeoutMs: timeout,
+  });
+
+  const pageStatusCode = resource.response.statusCode;
+
+  // Wait for page to be stable first
+  await tab.waitForPaintingStable();
+
+  // Check for required selector if specified
+  if (check_selector) {
+    await tab.waitForElement(tab.querySelector(check_selector), {
+      timeoutMs: timeout,
+    });
+  }
+
+  // Wait additional time if specified
+  if (wait_after_load > 0) {
+    await tab.waitForMillis(wait_after_load);
+  }
+
+  // Get the page content
+  const documentElement = await tab.document.documentElement;
+  const pageContent = await documentElement.innerHTML;
+  if (!pageContent) {
+    throw new Error("Failed to get page content");
+  }
+
+  return { heroInstance, pageContent, pageStatusCode };
+};
+
 /**
  * @openapi
  * components:
@@ -164,53 +231,37 @@ app.post("/scrape", async (req: Request, res: Response) => {
   let heroInstance: Hero | undefined;
   const startTime = Date.now();
 
+  const attemptScrape = async () => {
+    try {
+      return await scrape(
+        url,
+        wait_after_load,
+        timeout,
+        headers,
+        check_selector,
+      );
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === "Failed to get page content"
+      ) {
+        console.log("Retrying scrape due to failed page content...");
+        let proxy_url = process.env.PROXY_URL;
+        return await scrape(
+          url,
+          wait_after_load,
+          timeout,
+          headers,
+          check_selector,
+          proxy_url,
+        );
+      }
+      throw error;
+    }
+  };
+
   try {
-    heroInstance = new Hero({
-      connectionToCore,
-      userAgent:
-        headers?.["User-Agent"] ||
-        "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/109.0",
-    });
-
-    const tab = heroInstance.activeTab;
-
-    if (headers) {
-      tab.on("resource", (resource: Resource | WebsocketResource) => {
-        if ("request" in resource && "headers" in resource.request) {
-          Object.entries(headers).forEach(([key, value]) => {
-            if (typeof value === "string") {
-              resource.request.headers[key] = value;
-            }
-          });
-        }
-      });
-    }
-
-    // Wait for navigation to complete and get response
-    const resource = await tab.goto(url, {
-      timeoutMs: timeout,
-    });
-
-    pageStatusCode = resource.response.statusCode;
-
-    // Wait for page to be stable first
-    await tab.waitForPaintingStable();
-
-    // Check for required selector if specified
-    if (check_selector) {
-      await tab.waitForElement(tab.querySelector(check_selector), {
-        timeoutMs: timeout,
-      });
-    }
-
-    // Wait additional time if specified
-    if (wait_after_load > 0) {
-      await tab.waitForMillis(wait_after_load);
-    }
-
-    // Get the page content
-    const documentElement = await tab.document.documentElement;
-    pageContent = await documentElement.innerHTML;
+    ({ heroInstance, pageContent, pageStatusCode } = await attemptScrape());
   } catch (error) {
     console.error("Scraping error:", error);
     return res.status(500).json({
@@ -231,7 +282,7 @@ app.post("/scrape", async (req: Request, res: Response) => {
     console.log(`✅ Scrape of ${url} successful! (${executionTime}s)`);
   } else {
     console.log(
-      `🚨 Scrape of ${url} failed: ${pageStatusCode} - ${errorMessage}`
+      `🚨 Scrape of ${url} failed: ${pageStatusCode} - ${errorMessage}`,
     );
   }
 
