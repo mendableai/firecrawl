@@ -71,6 +71,9 @@ async function scrapeSearchResult(
 
     // Return a minimal document with SERP results at top level
     return {
+        title: searchResult.title,
+      description: searchResult.description,
+      url: searchResult.url,
       metadata: {
         title: searchResult.title,
         description: searchResult.description,
@@ -78,9 +81,7 @@ async function scrapeSearchResult(
         statusCode: 0,
         error: error.message,
       },
-      title: searchResult.title,
-      description: searchResult.description,
-      url: searchResult.url,
+      
     };
   }
 }
