@@ -290,7 +290,6 @@ export class FirecrawlError extends Error {
  * Defines options for searching and scraping search results.
  */
 export interface SearchParams {
-  query: string;
   limit?: number;
   tbs?: string;
   filter?: string;
@@ -401,26 +400,27 @@ export default class FirecrawlApp {
 
   /**
    * Searches using the Firecrawl API and optionally scrapes the results.
-   * @param params - Parameters for the search request.
+   * @param query - The search query string.
+   * @param params - Optional parameters for the search request.
    * @returns The response from the search operation.
    */
-  async search(params: SearchParams): Promise<SearchResponse> {
+  async search(query: string, params?: SearchParams | Record<string, any>): Promise<SearchResponse> {
     const headers: AxiosRequestHeaders = {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this.apiKey}`,
     } as AxiosRequestHeaders;
 
     let jsonData: any = {
-      query: params.query,
-      limit: params.limit ?? 5,
-      tbs: params.tbs,
-      filter: params.filter,
-      lang: params.lang ?? "en",
-      country: params.country ?? "us",
-      location: params.location,
-      origin: params.origin ?? "api",
-      timeout: params.timeout ?? 60000,
-      scrapeOptions: params.scrapeOptions ?? { formats: [] },
+      query,
+      limit: params?.limit ?? 5,
+      tbs: params?.tbs,
+      filter: params?.filter,
+      lang: params?.lang ?? "en",
+      country: params?.country ?? "us",
+      location: params?.location,
+      origin: params?.origin ?? "api",
+      timeout: params?.timeout ?? 60000,
+      scrapeOptions: params?.scrapeOptions ?? { formats: [] },
     };
 
     if (jsonData?.scrapeOptions?.extract?.schema) {
@@ -456,7 +456,7 @@ export default class FirecrawlApp {
         if (responseData.success) {
           return {
             success: true,
-            data: responseData.data,
+            data: responseData.data as FirecrawlDocument<any>[],
             warning: responseData.warning,
           };
         } else {
