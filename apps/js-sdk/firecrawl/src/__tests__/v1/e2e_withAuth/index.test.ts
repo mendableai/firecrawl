@@ -381,8 +381,45 @@ describe('FirecrawlApp E2E Tests', () => {
     expect(filteredLinks?.length).toBeGreaterThan(0);
   }, 30000); // 30 seconds timeout
 
-  test('should throw NotImplementedError for search on v1', async () => {
+  
+
+  test('should search with string query', async () => {
     const app = new FirecrawlApp({ apiUrl: API_URL, apiKey: TEST_API_KEY });
-    await expect(app.search("test query")).rejects.toThrow("Search is not supported in v1");
+    const response = await app.search("firecrawl");
+    expect(response.success).toBe(true);
+    console.log(response.data);
+    expect(response.data?.length).toBeGreaterThan(0);
+    expect(response.data?.[0]?.markdown).toBeDefined();
+    expect(response.data?.[0]?.metadata).toBeDefined();
+    expect(response.data?.[0]?.metadata?.title).toBeDefined();
+    expect(response.data?.[0]?.metadata?.description).toBeDefined();
+  });
+
+  test('should search with params object', async () => {
+    const app = new FirecrawlApp({ apiUrl: API_URL, apiKey: TEST_API_KEY });
+    const response = await app.search("firecrawl", {
+      limit: 3,
+      lang: 'en',
+      country: 'us',
+      scrapeOptions: {
+        formats: ['markdown', 'html', 'links'],
+        onlyMainContent: true
+      }
+    });
+    expect(response.success).toBe(true);
+    expect(response.data.length).toBeLessThanOrEqual(3);
+    for (const doc of response.data) {
+      expect(doc.markdown).toBeDefined();
+      expect(doc.html).toBeDefined();
+      expect(doc.links).toBeDefined();
+      expect(doc.metadata).toBeDefined();
+      expect(doc.metadata?.title).toBeDefined();
+      expect(doc.metadata?.description).toBeDefined();
+    }
+  });
+
+  test('should handle invalid API key for search', async () => {
+    const app = new FirecrawlApp({ apiUrl: API_URL, apiKey: "invalid_api_key" });
+    await expect(app.search("test query")).rejects.toThrow("Request failed with status code 404");
   });
 });
