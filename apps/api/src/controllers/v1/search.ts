@@ -96,9 +96,6 @@ export async function searchController(
     const startTime = new Date().getTime();
 
     let limit = req.body.limit;
-    if (req.auth.team_id === "d97c4ceb-290b-4957-8432-2b2a02727d95") {
-      limit = 1;
-    }
 
     // Buffer results by 50% to account for filtered URLs
     const num_results_buffer = Math.floor(limit * 1.5);
