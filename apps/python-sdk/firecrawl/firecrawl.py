@@ -22,6 +22,30 @@ import websockets
 logger : logging.Logger = logging.getLogger("firecrawl")
 
 class FirecrawlApp:
+    class SearchParams(pydantic.BaseModel):
+        """
+        Parameters for the search operation.
+        """
+        query: str
+        limit: Optional[int] = 5
+        tbs: Optional[str] = None
+        filter: Optional[str] = None
+        lang: Optional[str] = "en"
+        country: Optional[str] = "us"
+        location: Optional[str] = None
+        origin: Optional[str] = "api"
+        timeout: Optional[int] = 60000
+        scrapeOptions: Optional[Dict[str, Any]] = None
+
+    class SearchResponse(pydantic.BaseModel):
+        """
+        Response from the search operation.
+        """
+        success: bool
+        data: List[Dict[str, Any]]
+        warning: Optional[str] = None
+        error: Optional[str] = None
+
     class ExtractParams(pydantic.BaseModel):
         """
         Parameters for the extract operation.
@@ -109,22 +133,60 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'scrape URL')
 
-    def search(self, query: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def search(self, params: Union[str, SearchParams, Dict[str, Any]]) -> SearchResponse:
         """
-        Perform a search using the Firecrawl API.
+        Search using the Firecrawl API and optionally scrape the results.
 
         Args:
-            query (str): The search query.
-            params (Optional[Dict[str, Any]]): Additional parameters for the search request.
+            params (Union[str, SearchParams, Dict[str, Any]]): Search parameters. Can be:
+                - A string representing the search query
+                - A SearchParams object
+                - A dictionary with search parameters
 
         Returns:
-            Any: The search results if the request is successful.
+            SearchResponse: The response from the search operation.
 
         Raises:
-            NotImplementedError: If the search request is attempted on API version v1.
-            Exception: If the search request fails.
+            Exception: If the search operation fails.
         """
-        raise NotImplementedError("Search is not supported in v1.")
+        # Convert string query to SearchParams
+        if isinstance(params, str):
+            params = self.SearchParams(query=params)
+        # Convert dict to SearchParams
+        elif isinstance(params, dict):
+            params = self.SearchParams(**params)
+        
+        # Validate params
+        if not isinstance(params, self.SearchParams):
+            raise ValueError("Invalid search parameters")
+
+        # Convert to dict for request
+        json_data = params.model_dump(exclude_none=True)
+
+        # Handle schema conversion if present in scrapeOptions
+        if json_data.get('scrapeOptions', {}).get('extract', {}).get('schema'):
+            try:
+                schema = json_data['scrapeOptions']['extract']['schema']
+                if isinstance(schema, dict):
+                    # Already a JSON schema
+                    pass
+                else:
+                    # Try to convert from a Pydantic model
+                    schema = schema.model_json_schema()
+                json_data['scrapeOptions']['extract']['schema'] = schema
+            except Exception as e:
+                logger.warning(f"Failed to convert schema: {e}")
+
+        headers = self._prepare_headers()
+        response = self._post_request(f'{self.api_url}/v1/search', json_data, headers)
+
+        if response.status_code == 200:
+            response_data = response.json()
+            return self.SearchResponse(**response_data)
+        else:
+            self._handle_error(response, 'search')
+
+        return self.SearchResponse(success=False, data=[], error="Internal server error.")
 
     def crawl_url(self, url: str,
                   params: Optional[Dict[str, Any]] = None,
