@@ -379,6 +379,9 @@ export const mapRequestSchema = crawlerOptions
 export type MapRequest = z.infer<typeof mapRequestSchema>;
 
 export type Document = {
+  title?: string;
+  description?: string;
+  url?: string;
   markdown?: string;
   html?: string;
   rawHtml?: string;
@@ -425,6 +428,11 @@ export type Document = {
     statusCode: number;
     error?: string;
     [key: string]: string | string[] | number | undefined;
+  };
+  serpResults?: {
+    title: string;
+    description: string;
+    url: string;
   };
 }
 
@@ -757,3 +765,36 @@ export function toLegacyDocument(
     warning: document.warning,
   };
 }
+
+export const searchRequestSchema = z.object({
+  query: z.string(),
+  limit: z.number().int().positive().finite().safe().optional().default(5),
+  tbs: z.string().optional(),
+  filter: z.string().optional(),
+  lang: z.string().optional().default("en"),
+  country: z.string().optional().default("us"),
+  location: z.string().optional(),
+  origin: z.string().optional().default("api"),
+  timeout: z.number().int().positive().finite().safe().default(60000),
+  scrapeOptions: scrapeOptions.extend({
+    formats: z.array(z.enum([
+      "markdown",
+      "html", 
+      "rawHtml",
+      "links",
+      "screenshot",
+      "screenshot@fullPage",
+      "extract"
+    ])).default([])
+  }).default({}),
+}).strict("Unrecognized key in body -- please review the v1 API documentation for request body changes");
+
+export type SearchRequest = z.infer<typeof searchRequestSchema>;
+
+export type SearchResponse =
+  | ErrorResponse
+  | {
+      success: true;
+      warning?: string;
+      data: Document[];
+    };
