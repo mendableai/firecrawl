@@ -112,7 +112,6 @@ export async function searchController(
     });
 
     // Filter blocked URLs early to avoid unnecessary billing
-    searchResults = searchResults.filter((r) => !isUrlBlocked(r.url));
     if (searchResults.length > limit) {
       searchResults = searchResults.slice(0, limit);
     }
@@ -152,7 +151,10 @@ export async function searchController(
       });
     }
 
-    // Scrape each result, handling timeouts individually
+    // Filter out blocked URLs before scraping
+    searchResults = searchResults.filter((r) => !isUrlBlocked(r.url));
+
+    // Scrape each non-blocked result, handling timeouts individually 
     const scrapePromises = searchResults.map((result) =>
       scrapeSearchResult(result, {
         teamId: req.auth.team_id,
