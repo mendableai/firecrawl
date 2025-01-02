@@ -101,7 +101,7 @@ export async function performExtraction(options: ExtractServiceOptions): Promise
       mode: "llm",
       systemPrompt:
         (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
-        "Always prioritize using the provided content to answer the question. Do not make up an answer. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
+        "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
         links.join(", "),
       prompt: request.prompt,
       schema: request.schema,

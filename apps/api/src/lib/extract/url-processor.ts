@@ -66,8 +66,56 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
     });
 
     let mappedLinks = mapResults.mapResults as MapDocument[];
-    const allUrls = [...mappedLinks.map((m) => m.url), ...mapResults.links];
-    const uniqueUrls = removeDuplicateUrls(allUrls);
+    let allUrls = [...mappedLinks.map((m) => m.url), ...mapResults.links];
+    let uniqueUrls = removeDuplicateUrls(allUrls);
+
+    // Track all discovered URLs
+    uniqueUrls.forEach(discoveredUrl => {
+      if (!urlTraces.some(t => t.url === discoveredUrl)) {
+        urlTraces.push({
+          url: discoveredUrl,
+          status: 'mapped',
+          timing: {
+            discoveredAt: new Date().toISOString(),
+          },
+          usedInCompletion: false,
+        });
+      }
+    });
+
+    // retry if only one url is returned
+    if (uniqueUrls.length === 1)  {
+      const retryMapResults = await getMapResults({
+        url: baseUrl,
+        teamId: options.teamId,
+        plan: options.plan,
+        allowExternalLinks: options.allowExternalLinks,
+        origin: options.origin,
+        limit: options.limit,
+        ignoreSitemap: false,
+        includeMetadata: true,
+        includeSubdomains: options.includeSubdomains,
+      });
+  
+      mappedLinks = retryMapResults.mapResults as MapDocument[];
+      allUrls = [...mappedLinks.map((m) => m.url), ...mapResults.links];
+      uniqueUrls = removeDuplicateUrls(allUrls);
+
+      // Track all discovered URLs
+      uniqueUrls.forEach(discoveredUrl => {
+        if (!urlTraces.some(t => t.url === discoveredUrl)) {
+          urlTraces.push({
+            url: discoveredUrl,
+            status: 'mapped',
+            warning: 'Broader search. Not limiting map results to prompt.',
+            timing: {
+              discoveredAt: new Date().toISOString(),
+            },
+            usedInCompletion: false,
+          });
+        }
+      });
+    }
 
     // Track all discovered URLs
     uniqueUrls.forEach(discoveredUrl => {
