@@ -6,7 +6,8 @@ import {
 import { authenticateUser } from "../auth";
 import { PlanType, RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
-import { PageOptions, SearchOptions } from "../../lib/entities";
+import { PageOptions } from "../../lib/entities";
+import { SearchOptions } from "../../search/types";
 import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { v4 as uuidv4 } from "uuid";
@@ -14,14 +15,8 @@ import { logger } from "../../lib/logger";
 import { getScrapeQueue } from "../../services/queue-service";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import * as Sentry from "@sentry/node";
-import { getJobPriority } from "../../lib/job-priority";
-import { Job } from "bullmq";
-import {
-  Document,
-  fromLegacyCombo,
-  fromLegacyScrapeOptions,
-  toLegacyDocument,
-} from "../v1/types";
+import { getJobPriority, BASE_TEAM_ID } from "../../lib/job-priority";
+import { Document, fromLegacyCombo, toLegacyDocument } from "../v1/types";
 
 export async function searchHelper(
   jobId: string,
@@ -39,24 +34,18 @@ export async function searchHelper(
   returnCode: number;
 }> {
   const query = req.body.query;
-  const advanced = false;
   if (!query) {
     return { success: false, error: "Query is required", returnCode: 400 };
   }
 
   const tbs = searchOptions.tbs ?? undefined;
   const filter = searchOptions.filter ?? undefined;
-  let num_results = Math.min(searchOptions.limit ?? 7, 10);
-
-  if (team_id === "d97c4ceb-290b-4957-8432-2b2a02727d95") {
-    num_results = 1;
-  }
-
+  const num_results =
+    team_id === BASE_TEAM_ID ? 1 : Math.min(req.body.limit ?? 7, 10);
   const num_results_buffer = Math.floor(num_results * 1.5);
 
   let res = await search({
     query: query,
-    advanced: advanced,
     num_results: num_results_buffer,
     tbs: tbs,
     filter: filter,
