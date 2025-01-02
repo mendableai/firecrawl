@@ -14,6 +14,8 @@ dependencies = [
     "websockets",
     "nest-asyncio",
     "pydantic>=2.10.3",
+    "aiohttp>=3.8.0",
+    "asyncio>=3.4.3",
 ]
 authors = [{name = "Mendable.ai",email = "nick@mendable.ai"}]
 maintainers = [{name = "Mendable.ai",email = "nick@mendable.ai"}]

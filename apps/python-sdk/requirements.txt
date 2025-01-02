@@ -4,3 +4,5 @@ python-dotenv
 websockets
 nest-asyncio
 pydantic
+aiohttp
+asyncio
