@@ -472,20 +472,24 @@ class FirecrawlApp:
         if not params or not params.get('prompt'):
             raise ValueError("Prompt is required")
 
-        if not params.get('schema'):
-            raise ValueError("Schema is required for extraction")
+        schema = params.get('schema')
+        if schema:
+            if hasattr(schema, 'model_json_schema'):
+                # Convert Pydantic model to JSON schema
+                schema = schema.model_json_schema()
+            # Otherwise assume it's already a JSON schema dict
 
         jsonData = {'urls': urls, **params}
-        jsonSchema = params['schema'].schema() if hasattr(params['schema'], 'schema') else None
+        request_data = {
+            **jsonData,
+            'allowExternalLinks': params.get('allow_external_links', False),
+            'schema': schema
+        }
 
         try:
             response = self._post_request(
                 f'{self.api_url}/v1/extract',
-                {
-                    **jsonData,
-                    'allowExternalLinks': params.get('allow_external_links', False),
-                    'schema': jsonSchema
-                },
+                request_data,
                 headers
             )
             if response.status_code == 200:
