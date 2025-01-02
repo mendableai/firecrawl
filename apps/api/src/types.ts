@@ -10,6 +10,8 @@ import { InternalOptions } from "./scraper/scrapeURL";
 
 type Mode = "crawl" | "single_urls" | "sitemap";
 
+export { Mode };
+
 export interface CrawlResult {
   source: string;
   content: string;

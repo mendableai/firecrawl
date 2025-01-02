@@ -8,7 +8,7 @@ import { serper_search } from "./serper";
 export async function search({
   query,
   advanced = false,
-  num_results = 7,
+  num_results = 5,
   tbs = undefined,
   filter = undefined,
   lang = "en",
