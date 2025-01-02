@@ -49,6 +49,26 @@ export type Meta = {
   featureFlags: Set<FeatureFlag>;
 };
 
+async function isPdfContent(url: string): Promise<boolean> {
+  try {
+    const response = await fetch(url, { method: "HEAD" });
+    const contentType = response.headers.get("Content-Type");
+    return contentType?.includes("application/pdf") ?? false;
+  } catch (error) {
+    logger.warn("Failed to verify Content-Type for URL: " + url, { error });
+    return false; 
+  }
+}
+
+async function verifyFeatureFlags(meta: Meta): Promise<void> {
+  if (meta.featureFlags.has("pdf")) {
+    const isPdf = await isPdfContent(meta.url);
+    if (!isPdf) {
+      meta.featureFlags.delete("pdf");
+    }
+  }
+}
+
 function buildFeatureFlags(
   url: string,
   options: ScrapeOptions,
@@ -101,7 +121,7 @@ function buildFeatureFlags(
   if (urlO.pathname.endsWith(".docx")) {
     flags.add("docx");
   }
-
+  
   return flags;
 }
 
@@ -361,6 +381,9 @@ export async function scrapeURL(
   internalOptions: InternalOptions = {},
 ): Promise<ScrapeUrlResponse> {
   const meta = buildMetaObject(id, url, options, internalOptions);
+
+  await verifyFeatureFlags(meta);
+
   try {
     while (true) {
       try {
