@@ -768,7 +768,7 @@ export function toLegacyDocument(
 
 export const searchRequestSchema = z.object({
   query: z.string(),
-  limit: z.number().int().positive().finite().safe().optional().default(5),
+  limit: z.number().int().positive().finite().safe().max(10).optional().default(5),
   tbs: z.string().optional(),
   filter: z.string().optional(),
   lang: z.string().optional().default("en"),
