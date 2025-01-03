@@ -1,7 +1,6 @@
 import axios, { type AxiosResponse, type AxiosRequestHeaders, AxiosError } from "axios";
 import * as zt from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { WebSocket } from "isows";
 import { TypedEventTarget } from "typescript-event-target";
 
 /**
@@ -1038,18 +1037,39 @@ interface CrawlWatcherEvents {
 }
 
 export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
-  private ws: WebSocket;
+  private ws!: WebSocket;
+  private initialized: Promise<void>;
   public data: FirecrawlDocument<undefined>[];
   public status: CrawlStatusResponse["status"];
   public id: string;
 
+  private static async loadWebSocket() {
+    try {
+      if (typeof require !== 'undefined') {
+        return require('isows').WebSocket;
+      } else {
+        const module = await import('isows');
+        return module.WebSocket;
+      }
+    } catch (e) {
+      throw new FirecrawlError('Failed to load WebSocket implementation', 500);
+    }
+  }
+
   constructor(id: string, app: FirecrawlApp) {
     super();
     this.id = id;
-    this.ws = new WebSocket(`${app.apiUrl}/v1/crawl/${id}`, app.apiKey);
     this.status = "scraping";
     this.data = [];
 
+    this.initialized = CrawlWatcher.loadWebSocket()
+      .then((WebSocket) => {
+        this.ws = new WebSocket(`${app.apiUrl}/v1/crawl/${id}`, app.apiKey);
+        this.initializeWebSocket();
+      });
+  }
+
+  private initializeWebSocket() {
     type ErrorMessage = {
       type: "error",
       error: string,
@@ -1146,6 +1166,8 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
   }
 
   close() {
-    this.ws.close();
+    this.initialized.then(() => {
+      this.ws.close();
+    });
   }
 }
