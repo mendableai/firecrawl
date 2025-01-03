@@ -371,4 +371,70 @@ def test_search_e2e():
 #     assert isinstance(llm_extraction['supports_sso'], bool)
 #     assert isinstance(llm_extraction['is_open_source'], bool)
 
+def test_search_with_string_query():
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    response = app.search("firecrawl")
+    assert response["success"] is True
+    assert len(response["data"]) > 0
+    assert response["data"][0]["markdown"] is not None
+    assert response["data"][0]["metadata"] is not None
+    assert response["data"][0]["metadata"]["title"] is not None
+    assert response["data"][0]["metadata"]["description"] is not None
+
+def test_search_with_params_dict():
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    response = app.search("firecrawl", {
+        "limit": 3,
+        "lang": "en",
+        "country": "us",
+        "scrapeOptions": {
+            "formats": ["markdown", "html", "links"],
+            "onlyMainContent": True
+        }
+    })
+    assert response["success"] is True
+    assert len(response["data"]) <= 3
+    for doc in response["data"]:
+        assert doc["markdown"] is not None
+        assert doc["html"] is not None
+        assert doc["links"] is not None
+        assert doc["metadata"] is not None
+        assert doc["metadata"]["title"] is not None
+        assert doc["metadata"]["description"] is not None
+
+def test_search_with_params_object():
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    params = SearchParams(
+        query="firecrawl",
+        limit=3,
+        lang="en",
+        country="us",
+        scrapeOptions={
+            "formats": ["markdown", "html", "links"],
+            "onlyMainContent": True
+        }
+    )
+    response = app.search(params.query, params)
+    assert response["success"] is True
+    assert len(response["data"]) <= 3
+    for doc in response["data"]:
+        assert doc["markdown"] is not None
+        assert doc["html"] is not None
+        assert doc["links"] is not None
+        assert doc["metadata"] is not None
+        assert doc["metadata"]["title"] is not None
+        assert doc["metadata"]["description"] is not None
+
+def test_search_invalid_api_key():
+    app = FirecrawlApp(api_url=API_URL, api_key="invalid_api_key")
+    with pytest.raises(Exception) as e:
+        app.search("test query")
+    assert "404" in str(e.value)
+
+def test_search_with_invalid_params():
+    app = FirecrawlApp(api_url=API_URL, api_key=TEST_API_KEY)
+    with pytest.raises(Exception) as e:
+        app.search("test query", {"invalid_param": "value"})
+    assert "ValidationError" in str(e.value)
+
 

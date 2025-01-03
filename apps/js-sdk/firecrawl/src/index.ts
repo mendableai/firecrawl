@@ -1,5 +1,5 @@
 import axios, { type AxiosResponse, type AxiosRequestHeaders, AxiosError } from "axios";
-import type * as zt from "zod";
+import * as zt from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WebSocket } from "isows";
 import { TypedEventTarget } from "typescript-event-target";
@@ -68,6 +68,9 @@ export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult
   screenshot?: string;
   metadata?: FirecrawlDocumentMetadata;
   actions: ActionsSchema;
+  // v1 search only
+  title?: string;
+  description?: string;
 }
 
 /**
@@ -244,7 +247,7 @@ export interface MapResponse {
  */
 export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
   prompt?: string;
-  schema?: LLMSchema;
+  schema?: LLMSchema | object;
   systemPrompt?: string;
   allowExternalLinks?: boolean;
   includeSubdomains?: boolean;
@@ -280,6 +283,33 @@ export class FirecrawlError extends Error {
     super(message);
     this.statusCode = statusCode;
   }
+}
+
+/**
+ * Parameters for search operations.
+ * Defines options for searching and scraping search results.
+ */
+export interface SearchParams {
+  limit?: number;
+  tbs?: string;
+  filter?: string;
+  lang?: string;
+  country?: string;
+  location?: string;
+  origin?: string;
+  timeout?: number;
+  scrapeOptions?: ScrapeParams;
+}
+
+/**
+ * Response interface for search operations.
+ * Defines the structure of the response received after a search operation.
+ */
+export interface SearchResponse {
+  success: boolean;
+  data: FirecrawlDocument<undefined>[];
+  warning?: string;
+  error?: string;
 }
 
 /**
@@ -369,16 +399,80 @@ export default class FirecrawlApp {
   }
 
   /**
-   * This method is intended to search for a query using the Firecrawl API. However, it is not supported in version 1 of the API.
+   * Searches using the Firecrawl API and optionally scrapes the results.
    * @param query - The search query string.
-   * @param params - Additional parameters for the search.
-   * @returns Throws an error advising to use version 0 of the API.
+   * @param params - Optional parameters for the search request.
+   * @returns The response from the search operation.
    */
-  async search(
-    query: string,
-    params?: any
-  ): Promise<any> {
-    throw new FirecrawlError("Search is not supported in v1, please downgrade Firecrawl to 0.0.36.", 400);
+  async search(query: string, params?: SearchParams | Record<string, any>): Promise<SearchResponse> {
+    const headers: AxiosRequestHeaders = {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${this.apiKey}`,
+    } as AxiosRequestHeaders;
+
+    let jsonData: any = {
+      query,
+      limit: params?.limit ?? 5,
+      tbs: params?.tbs,
+      filter: params?.filter,
+      lang: params?.lang ?? "en",
+      country: params?.country ?? "us",
+      location: params?.location,
+      origin: params?.origin ?? "api",
+      timeout: params?.timeout ?? 60000,
+      scrapeOptions: params?.scrapeOptions ?? { formats: [] },
+    };
+
+    if (jsonData?.scrapeOptions?.extract?.schema) {
+      let schema = jsonData.scrapeOptions.extract.schema;
+
+      // Try parsing the schema as a Zod schema
+      try {
+        schema = zodToJsonSchema(schema);
+      } catch (error) {
+        
+      }
+      jsonData = {
+        ...jsonData,
+        scrapeOptions: {
+          ...jsonData.scrapeOptions,
+          extract: {
+            ...jsonData.scrapeOptions.extract,
+            schema: schema,
+          },
+        },
+      };
+    }
+
+    try {
+      const response: AxiosResponse = await this.postRequest(
+        this.apiUrl + `/v1/search`,
+        jsonData,
+        headers
+      );
+
+      if (response.status === 200) {
+        const responseData = response.data;
+        if (responseData.success) {
+          return {
+            success: true,
+            data: responseData.data as FirecrawlDocument<any>[],
+            warning: responseData.warning,
+          };
+        } else {
+          throw new FirecrawlError(`Failed to search. Error: ${responseData.error}`, response.status);
+        }
+      } else {
+        this.handleError(response, "search");
+      }
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new FirecrawlError(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`, error.response.status);
+      } else {
+        throw new FirecrawlError(error.message, 500);
+      }
+    }
+    return { success: false, error: "Internal server error.", data: [] };
   }
 
   /**
@@ -741,16 +835,18 @@ export default class FirecrawlApp {
   async extract<T extends zt.ZodSchema = any>(urls: string[], params?: ExtractParams<T>): Promise<ExtractResponse<zt.infer<T>> | ErrorResponse> {
     const headers = this.prepareHeaders();
 
-    if (!params?.prompt) {
-      throw new FirecrawlError("Prompt is required", 400);
-    }
-
     let jsonData: { urls: string[] } & ExtractParams<T> = { urls,  ...params };
     let jsonSchema: any;
     try {
-      jsonSchema = params?.schema ? zodToJsonSchema(params.schema) : undefined;
+      if (!params?.schema) {
+        jsonSchema = undefined;
+      } else if (params.schema instanceof zt.ZodType) {
+        jsonSchema = zodToJsonSchema(params.schema);
+      } else {
+        jsonSchema = params.schema;
+      }
     } catch (error: any) {
-      throw new FirecrawlError("Invalid schema. Use a valid Zod schema.", 400);
+      throw new FirecrawlError("Invalid schema. Schema must be either a valid Zod schema or JSON schema object.", 400);
     }
 
     try {

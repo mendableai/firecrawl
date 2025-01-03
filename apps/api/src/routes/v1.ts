@@ -33,6 +33,7 @@ import { extractController } from "../controllers/v1/extract";
 // import { readinessController } from "../controllers/v1/readiness";
 import { creditUsageController } from "../controllers/v1/credit-usage";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
+import { searchController } from "../controllers/v1/search";
 
 function checkCreditsMiddleware(
   minimum?: number,
@@ -170,6 +171,13 @@ v1Router.post(
 );
 
 v1Router.post(
+  "/search",
+  authMiddleware(RateLimiterMode.Search),
+  checkCreditsMiddleware(),
+  wrap(searchController),
+);
+
+v1Router.post(
   "/map",
   authMiddleware(RateLimiterMode.Map),
   checkCreditsMiddleware(1),
@@ -231,3 +239,6 @@ v1Router.get(
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(creditUsageController),
 );
+
+
+
