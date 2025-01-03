@@ -144,8 +144,7 @@ export async function searchController(
           metadata: {
             title: r.title,
             description: r.description,
-            sourceURL: r.url,
-            statusCode: 0,
+            sourceURL: r.url
           },
         })) as Document[],
       });
