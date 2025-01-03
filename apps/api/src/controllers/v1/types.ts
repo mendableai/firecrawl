@@ -181,6 +181,7 @@ export const scrapeOptions = z
     skipTlsVerification: z.boolean().default(false),
     removeBase64Images: z.boolean().default(true),
     fastMode: z.boolean().default(false),
+    useMock: z.string().optional(),
   })
   .strict(strictMessage);
 

@@ -4,6 +4,7 @@ import { z } from "zod";
 
 import { Action } from "../../../../lib/entities";
 import { robustFetch } from "../../lib/fetch";
+import { MockState } from "../../lib/mock";
 
 export type FireEngineScrapeRequestCommon = {
   url: string;
@@ -69,6 +70,7 @@ export async function fireEngineScrape<
 >(
   logger: Logger,
   request: FireEngineScrapeRequestCommon & Engine,
+  mock: MockState | null,
 ): Promise<z.infer<typeof schema>> {
   const fireEngineURL = process.env.FIRE_ENGINE_BETA_URL!;
 
@@ -97,6 +99,7 @@ export async function fireEngineScrape<
         logger: logger.child({ method: "fireEngineScrape/robustFetch" }),
         schema,
         tryCount: 3,
+        mock,
       });
     },
   );

@@ -1,7 +1,7 @@
 import { Logger } from "winston";
 import { z, ZodError } from "zod";
-import { v4 as uuid } from "uuid";
 import * as Sentry from "@sentry/node";
+import { MockState, saveMock } from "./mock";
 
 export type RobustFetchParams<Schema extends z.Schema<any>> = {
   url: string;
@@ -16,6 +16,7 @@ export type RobustFetchParams<Schema extends z.Schema<any>> = {
   requestId?: string;
   tryCount?: number;
   tryCooldown?: number;
+  mock: MockState | null;
 };
 
 export async function robustFetch<
@@ -30,9 +31,10 @@ export async function robustFetch<
   schema,
   ignoreResponse = false,
   ignoreFailure = false,
-  requestId = uuid(),
+  requestId = crypto.randomUUID(),
   tryCount = 1,
   tryCooldown,
+  mock
 }: RobustFetchParams<Schema>): Promise<Output> {
   const params = {
     url,
@@ -47,73 +49,108 @@ export async function robustFetch<
     tryCooldown,
   };
 
-  let request: Response;
-  try {
-    request = await fetch(url, {
-      method,
-      headers: {
-        ...(body instanceof FormData
-          ? {}
-          : body !== undefined
-            ? {
-                "Content-Type": "application/json",
-              }
-            : {}),
-        ...(headers !== undefined ? headers : {}),
-      },
-      ...(body instanceof FormData
-        ? {
-            body,
-          }
-        : body !== undefined
-          ? {
-              body: JSON.stringify(body),
-            }
-          : {}),
-    });
-  } catch (error) {
-    if (!ignoreFailure) {
-      Sentry.captureException(error);
-      if (tryCount > 1) {
-        logger.debug(
-          "Request failed, trying " + (tryCount - 1) + " more times",
-          { params, error, requestId },
-        );
-        return await robustFetch({
-          ...params,
-          requestId,
-          tryCount: tryCount - 1,
-        });
-      } else {
-        logger.debug("Request failed", { params, error, requestId });
-        throw new Error("Request failed", {
-          cause: {
-            params,
-            requestId,
-            error,
-          },
-        });
-      }
-    } else {
-      return null as Output;
-    }
-  }
-
-  if (ignoreResponse === true) {
-    return null as Output;
-  }
-
-  const response = {
-    status: request.status,
-    headers: request.headers,
-    body: await request.text(), // NOTE: can this throw an exception?
+  let response: {
+    status: number;
+    headers: Headers,
+    body: string,
   };
 
-  if (request.status >= 300) {
+  if (mock === null) {
+    let request: Response;
+    try {
+      request = await fetch(url, {
+        method,
+        headers: {
+          ...(body instanceof FormData
+            ? {}
+            : body !== undefined
+              ? {
+                  "Content-Type": "application/json",
+                }
+              : {}),
+          ...(headers !== undefined ? headers : {}),
+        },
+        ...(body instanceof FormData
+          ? {
+              body,
+            }
+          : body !== undefined
+            ? {
+                body: JSON.stringify(body),
+              }
+            : {}),
+      });
+    } catch (error) {
+      if (!ignoreFailure) {
+        Sentry.captureException(error);
+        if (tryCount > 1) {
+          logger.debug(
+            "Request failed, trying " + (tryCount - 1) + " more times",
+            { params, error, requestId },
+          );
+          return await robustFetch({
+            ...params,
+            requestId,
+            tryCount: tryCount - 1,
+            mock,
+          });
+        } else {
+          logger.debug("Request failed", { params, error, requestId });
+          throw new Error("Request failed", {
+            cause: {
+              params,
+              requestId,
+              error,
+            },
+          });
+        }
+      } else {
+        return null as Output;
+      }
+    }
+
+    if (ignoreResponse === true) {
+      return null as Output;
+    }
+
+    response = {
+      status: request.status,
+      headers: request.headers,
+      body: await request.text(), // NOTE: can this throw an exception?
+    };
+  } else {
+    if (ignoreResponse === true) {
+      return null as Output;
+    }
+
+    const makeRequestTypeId = (request: typeof mock["requests"][number]["options"]) => {
+      let out = request.url + ";" + request.method;
+      if (process.env.FIRE_ENGINE_BETA_URL && url.startsWith(process.env.FIRE_ENGINE_BETA_URL) && request.method === "POST") {
+        out += "f-e;" + request.body?.engine + ";" + request.body?.url;
+      }
+      return out;
+    }
+
+    const thisId = makeRequestTypeId(params);
+    const matchingMocks = mock.requests.filter(x => makeRequestTypeId(x.options) === thisId).sort((a,b) => a.time - b.time);
+    const nextI = mock.tracker[thisId] ?? 0;
+    mock.tracker[thisId] = nextI + 1;
+    
+    if (!matchingMocks[nextI]) {
+      throw new Error("Failed to mock request -- no mock targets found.");
+    }
+
+    response = {
+      ...(matchingMocks[nextI].result),
+      headers: new Headers(matchingMocks[nextI].result.headers),
+    };
+  }
+
+  if (response.status >= 300) {
     if (tryCount > 1) {
       logger.debug(
         "Request sent failure status, trying " + (tryCount - 1) + " more times",
-        { params, request, response, requestId },
+        { params, response, requestId },
       );
       if (tryCooldown !== undefined) {
         await new Promise((resolve) =>
@@ -124,23 +161,31 @@ export async function robustFetch<
         ...params,
         requestId,
         tryCount: tryCount - 1,
+        mock,
       });
     } else {
       logger.debug("Request sent failure status", {
         params,
-        request,
         response,
         requestId,
       });
       throw new Error("Request sent failure status", {
         cause: {
           params,
-          request,
           response,
           requestId,
         },
       });
     }
+  }
+
+  if (mock === null) {
+    await saveMock({
+      ...params,
+      logger: undefined,
+      schema: undefined,
+      headers: undefined,
+    }, response);
   }
 
   let data: Output;
@@ -149,14 +194,12 @@ export async function robustFetch<
   } catch (error) {
     logger.debug("Request sent malformed JSON", {
       params,
-      request,
       response,
       requestId,
     });
     throw new Error("Request sent malformed JSON", {
       cause: {
         params,
-        request,
         response,
         requestId,
       },
@@ -170,7 +213,6 @@ export async function robustFetch<
       if (error instanceof ZodError) {
         logger.debug("Response does not match provided schema", {
           params,
-          request,
           response,
           requestId,
           error,
@@ -179,7 +221,6 @@ export async function robustFetch<
         throw new Error("Response does not match provided schema", {
           cause: {
             params,
-            request,
             response,
             requestId,
             error,
@@ -189,7 +230,6 @@ export async function robustFetch<
       } else {
         logger.debug("Parsing response with provided schema failed", {
           params,
-          request,
           response,
           requestId,
           error,
@@ -198,7 +238,6 @@ export async function robustFetch<
         throw new Error("Parsing response with provided schema failed", {
           cause: {
             params,
-            request,
             response,
             requestId,
             error,
