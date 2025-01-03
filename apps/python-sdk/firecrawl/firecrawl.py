@@ -251,7 +251,6 @@ class FirecrawlApp:
                     data = status_data['data']
                     while 'next' in status_data:
                         if len(status_data['data']) == 0:
-                            logger.warning("Expected 'data' is missing.")
                             break
                         next_url = status_data.get('next')
                         if not next_url:
@@ -471,7 +470,6 @@ class FirecrawlApp:
                     data = status_data['data']
                     while 'next' in status_data:
                         if len(status_data['data']) == 0:
-                            logger.warning("Expected 'data' is missing.")
                             break
                         next_url = status_data.get('next')
                         if not next_url:
@@ -692,7 +690,6 @@ class FirecrawlApp:
                         data = status_data['data']
                         while 'next' in status_data:
                           if len(status_data['data']) == 0:
-                              logger.warning("Expected 'data' is missing.")
                               break
                           status_response = self._get_request(status_data['next'], headers)
                           status_data = status_response.json()
