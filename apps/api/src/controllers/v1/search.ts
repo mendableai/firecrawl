@@ -73,13 +73,17 @@ async function scrapeSearchResult(
       teamId: options.teamId,
     });
 
+    let statusCode = 0;
+    if (error.message.includes("Could not scrape url")) {
+      statusCode = 403;
+    }
     // Return a minimal document with SERP results at top level
     return {
       title: searchResult.title,
       description: searchResult.description,
       url: searchResult.url,
       metadata: {
-        statusCode: 0,
+        statusCode,
         error: error.message,
       },
     };
