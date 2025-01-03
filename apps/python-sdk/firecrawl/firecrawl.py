@@ -266,17 +266,25 @@ class FirecrawlApp:
                             logger.error(f"Error during pagination request: {e}")
                             break
                     status_data['data'] = data
-                    
-            return {
-                'success': True,
+
+            response = {
                 'status': status_data.get('status'),
                 'total': status_data.get('total'),
                 'completed': status_data.get('completed'),
                 'creditsUsed': status_data.get('creditsUsed'),
                 'expiresAt': status_data.get('expiresAt'),
-                'data': status_data.get('data'),
-                'error': status_data.get('error'),
-                'next': status_data.get('next', None)
+                'data': status_data.get('data')
+            }
+
+            if 'error' in status_data:
+                response['error'] = status_data['error']
+
+            if 'next' in status_data:
+                response['next'] = status_data['next']
+
+            return {
+                'success': False if 'error' in status_data else True,
+                **response
             }
         else:
             self._handle_error(response, 'check crawl status')
@@ -476,16 +484,24 @@ class FirecrawlApp:
                             break
                     status_data['data'] = data
 
-            return {
-                'success': True,
+            response = {
                 'status': status_data.get('status'),
                 'total': status_data.get('total'),
                 'completed': status_data.get('completed'),
                 'creditsUsed': status_data.get('creditsUsed'),
                 'expiresAt': status_data.get('expiresAt'),
-                'data': status_data.get('data'),
-                'error': status_data.get('error'),
-                'next': status_data.get('next', None)
+                'data': status_data.get('data')
+            }
+
+            if 'error' in status_data:
+                response['error'] = status_data['error']
+
+            if 'next' in status_data:
+                response['next'] = status_data['next']
+
+            return {
+                'success': False if 'error' in status_data else True,
+                **response
             }
         else:
             self._handle_error(response, 'check batch scrape status')
