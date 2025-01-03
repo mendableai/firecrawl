@@ -18,6 +18,7 @@ import { getScrapeQueue } from "../../services/queue-service";
 import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import * as Sentry from "@sentry/node";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 async function scrapeSearchResult(
   searchResult: { url: string; title: string; description: string },
@@ -37,6 +38,9 @@ async function scrapeSearchResult(
   });
 
   try {
+    if (isUrlBlocked(searchResult.url)) {
+      throw new Error("Could not scrape url: " + BLOCKLISTED_URL_MESSAGE);
+    }
     await addScrapeJob(
       {
         url: searchResult.url,
@@ -75,9 +79,6 @@ async function scrapeSearchResult(
       description: searchResult.description,
       url: searchResult.url,
       metadata: {
-        title: searchResult.title,
-        description: searchResult.description,
-        sourceURL: searchResult.url,
         statusCode: 0,
         error: error.message,
       },
@@ -145,10 +146,7 @@ export async function searchController(
       });
     }
 
-    // Filter out blocked URLs before scraping
-    searchResults = searchResults.filter((r) => !isUrlBlocked(r.url));
-
-    // Scrape each non-blocked result, handling timeouts individually 
+    // Scrape each non-blocked result, handling timeouts individually
     const scrapePromises = searchResults.map((result) =>
       scrapeSearchResult(result, {
         teamId: req.auth.team_id,
