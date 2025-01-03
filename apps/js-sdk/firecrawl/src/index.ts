@@ -565,6 +565,10 @@ export default class FirecrawlApp {
           if ("data" in statusData) {
             let data = statusData.data;
             while (typeof statusData === 'object' && 'next' in statusData) {
+              if (data.length === 0) {
+                console.warn("Expected 'data' is missing.")
+                break
+              }
               statusData = (await this.getRequest(statusData.next, headers)).data;
               data = data.concat(statusData.data);
             }
@@ -812,6 +816,10 @@ export default class FirecrawlApp {
           if ("data" in statusData) {
             let data = statusData.data;
             while (typeof statusData === 'object' && 'next' in statusData) {
+              if (data.length === 0) {
+                console.warn("Expected 'data' is missing.")
+                break
+              }
               statusData = (await this.getRequest(statusData.next, headers)).data;
               data = data.concat(statusData.data);
             }
@@ -995,6 +1003,10 @@ export default class FirecrawlApp {
               if ("data" in statusData) {
                 let data = statusData.data;
                 while (typeof statusData === 'object' && 'next' in statusData) {
+                  if (data.length === 0) {
+                    console.warn("Expected 'data' is missing.")
+                    break
+                  }
                   statusResponse = await this.getRequest(statusData.next, headers);
                   statusData = statusResponse.data;
                   data = data.concat(statusData.data);
