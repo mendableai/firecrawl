@@ -565,23 +565,39 @@ export default class FirecrawlApp {
           if ("data" in statusData) {
             let data = statusData.data;
             while (typeof statusData === 'object' && 'next' in statusData) {
+              if (data.length === 0) {
+                break
+              }
               statusData = (await this.getRequest(statusData.next, headers)).data;
               data = data.concat(statusData.data);
             }
             allData = data;
           }
         }
-        return ({
+
+        let resp: CrawlStatusResponse | ErrorResponse = {
           success: response.data.success,
           status: response.data.status,
           total: response.data.total,
           completed: response.data.completed,
           creditsUsed: response.data.creditsUsed,
           expiresAt: new Date(response.data.expiresAt),
-          next: response.data.next,
-          data: allData,
-          error: response.data.error,
-        })
+          data: allData
+        }
+
+        if (!response.data.success && response.data.error) {
+          resp = {
+            ...resp,
+            success: false,
+            error: response.data.error
+          } as ErrorResponse;
+        }
+
+        if (response.data.next) {
+          (resp as CrawlStatusResponse).next = response.data.next;
+        }
+        
+        return resp;
       } else {
         this.handleError(response, "check crawl status");
       }
@@ -799,23 +815,39 @@ export default class FirecrawlApp {
           if ("data" in statusData) {
             let data = statusData.data;
             while (typeof statusData === 'object' && 'next' in statusData) {
+              if (data.length === 0) {
+                break
+              }
               statusData = (await this.getRequest(statusData.next, headers)).data;
               data = data.concat(statusData.data);
             }
             allData = data;
           }
         }
-        return ({
+
+        let resp: BatchScrapeStatusResponse | ErrorResponse = {
           success: response.data.success,
           status: response.data.status,
           total: response.data.total,
           completed: response.data.completed,
           creditsUsed: response.data.creditsUsed,
           expiresAt: new Date(response.data.expiresAt),
-          next: response.data.next,
-          data: allData,
-          error: response.data.error,
-        })
+          data: allData
+        }
+
+        if (!response.data.success && response.data.error) {
+          resp = {
+            ...resp,
+            success: false,
+            error: response.data.error
+          } as ErrorResponse;
+        }
+
+        if (response.data.next) {
+          (resp as BatchScrapeStatusResponse).next = response.data.next;
+        }
+        
+        return resp;
       } else {
         this.handleError(response, "check batch scrape status");
       }
@@ -971,6 +1003,9 @@ export default class FirecrawlApp {
               if ("data" in statusData) {
                 let data = statusData.data;
                 while (typeof statusData === 'object' && 'next' in statusData) {
+                  if (data.length === 0) {
+                    break
+                  }
                   statusResponse = await this.getRequest(statusData.next, headers);
                   statusData = statusResponse.data;
                   data = data.concat(statusData.data);
