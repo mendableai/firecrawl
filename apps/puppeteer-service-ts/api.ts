@@ -110,7 +110,9 @@ const scrape = async (
     throw new Error("Failed to get page content");
   }
 
-  return { heroInstance, pageContent, pageStatusCode };
+  heroInstance.close().catch(console.error);
+
+  return { pageContent, pageStatusCode };
 };
 
 /**
@@ -228,7 +230,6 @@ app.post("/scrape", async (req: Request, res: Response) => {
 
   let pageContent: string | null = null;
   let pageStatusCode: number | null = null;
-  let heroInstance: Hero | undefined;
   const startTime = Date.now();
 
   const attemptScrape = async () => {
@@ -261,17 +262,13 @@ app.post("/scrape", async (req: Request, res: Response) => {
   };
 
   try {
-    ({ heroInstance, pageContent, pageStatusCode } = await attemptScrape());
+    ({ pageContent, pageStatusCode } = await attemptScrape());
   } catch (error) {
     console.error("Scraping error:", error);
     return res.status(500).json({
       error: "Failed to scrape the page",
       details: error instanceof Error ? error.message : String(error),
     });
-  } finally {
-    if (heroInstance) {
-      await heroInstance.close().catch(console.error);
-    }
   }
 
   const errorMessage = getError(pageStatusCode);
