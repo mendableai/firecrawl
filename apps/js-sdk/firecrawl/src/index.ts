@@ -1,5 +1,5 @@
 import axios, { type AxiosResponse, type AxiosRequestHeaders, AxiosError } from "axios";
-import type * as zt from "zod";
+import * as zt from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
 import { WebSocket } from "isows";
 import { TypedEventTarget } from "typescript-event-target";
@@ -247,7 +247,7 @@ export interface MapResponse {
  */
 export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
   prompt?: string;
-  schema?: LLMSchema;
+  schema?: LLMSchema | object;
   systemPrompt?: string;
   allowExternalLinks?: boolean;
   includeSubdomains?: boolean;
@@ -869,16 +869,18 @@ export default class FirecrawlApp {
   async extract<T extends zt.ZodSchema = any>(urls: string[], params?: ExtractParams<T>): Promise<ExtractResponse<zt.infer<T>> | ErrorResponse> {
     const headers = this.prepareHeaders();
 
-    if (!params?.prompt) {
-      throw new FirecrawlError("Prompt is required", 400);
-    }
-
     let jsonData: { urls: string[] } & ExtractParams<T> = { urls,  ...params };
     let jsonSchema: any;
     try {
-      jsonSchema = params?.schema ? zodToJsonSchema(params.schema) : undefined;
+      if (!params?.schema) {
+        jsonSchema = undefined;
+      } else if (params.schema instanceof zt.ZodType) {
+        jsonSchema = zodToJsonSchema(params.schema);
+      } else {
+        jsonSchema = params.schema;
+      }
     } catch (error: any) {
-      throw new FirecrawlError("Invalid schema. Use a valid Zod schema.", 400);
+      throw new FirecrawlError("Invalid schema. Schema must be either a valid Zod schema or JSON schema object.", 400);
     }
 
     try {
