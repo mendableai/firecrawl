@@ -20,7 +20,7 @@ interface ExtractServiceOptions {
 interface ExtractResult {
   success: boolean;
   data?: any;
-  scrapeId: string;
+  extractId: string;
   warning?: string;
   urlTrace?: URLTrace[];
   error?: string;
@@ -38,9 +38,8 @@ function getRootDomain(url: string): string {
   }
 }
 
-export async function performExtraction(options: ExtractServiceOptions): Promise<ExtractResult> {
+export async function performExtraction(extractId, options: ExtractServiceOptions): Promise<ExtractResult> {
   const { request, teamId, plan, subId } = options;
-  const scrapeId = crypto.randomUUID();
   const urlTraces: URLTrace[] = [];
   let docs: Document[] = [];
 
@@ -65,7 +64,7 @@ export async function performExtraction(options: ExtractServiceOptions): Promise
     return {
       success: false,
       error: "No valid URLs found to scrape. Try adjusting your search criteria or including more URLs.",
-      scrapeId,
+      extractId,
       urlTrace: urlTraces,
     };
   }
@@ -89,7 +88,7 @@ export async function performExtraction(options: ExtractServiceOptions): Promise
     return {
       success: false,
       error: error.message,
-      scrapeId,
+      extractId,
       urlTrace: urlTraces,
     };
   }
@@ -191,7 +190,7 @@ export async function performExtraction(options: ExtractServiceOptions): Promise
 
   // Log job
   logJob({
-    job_id: scrapeId,
+    job_id: extractId,
     success: true,
     message: "Extract completed",
     num_docs: 1,
@@ -208,7 +207,7 @@ export async function performExtraction(options: ExtractServiceOptions): Promise
   return {
     success: true,
     data: completions.extract ?? {},
-    scrapeId,
+    extractId,
     warning: completions.warning,
     urlTrace: request.urlTrace ? urlTraces : undefined,
   };

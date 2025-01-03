@@ -4,8 +4,10 @@ import * as Sentry from "@sentry/node";
 import { CustomError } from "../lib/custom-error";
 import {
   getScrapeQueue,
+  getExtractQueue,
   redisConnection,
   scrapeQueueName,
+  extractQueueName,
 } from "./queue-service";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
@@ -50,6 +52,7 @@ import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 import { indexPage } from "../lib/extract/index/pinecone";
 import { Document } from "../controllers/v1/types";
+import { performExtraction } from "../lib/extract/extraction-service";
 
 configDotenv();
 
@@ -243,6 +246,52 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
   return err;
 };
 
+const processExtractJobInternal = async (token: string, job: Job & { id: string }) => {
+  const logger = _logger.child({
+    module: "extract-worker",
+    method: "processJobInternal",
+    jobId: job.id,
+    extractId: job.data.extractId,
+    teamId: job.data?.teamId ?? undefined,
+  });
+
+  const extendLockInterval = setInterval(async () => {
+    logger.info(`🔄 Worker extending lock on job ${job.id}`);
+    await job.extendLock(token, jobLockExtensionTime);
+  }, jobLockExtendInterval);
+
+  try {
+    const result = await performExtraction(job.data.extractId, {
+      request: job.data.request,
+      teamId: job.data.teamId,
+      plan: job.data.plan,
+      subId: job.data.subId,
+    });
+
+    if (result.success) {
+      // Move job to completed state in Redis
+      await job.moveToCompleted(result, token, false);
+      return result;
+    } else {
+      throw new Error(result.error || "Unknown error during extraction");
+    }
+  } catch (error) {
+    logger.error(`🚫 Job errored ${job.id} - ${error}`, { error });
+    
+    Sentry.captureException(error, {
+      data: {
+        job: job.id,
+      },
+    });
+    
+    // Move job to failed state in Redis
+    await job.moveToFailed(error, token, false);
+    throw error;
+  } finally {
+    clearInterval(extendLockInterval);
+  }
+};
+
 let isShuttingDown = false;
 
 process.on("SIGINT", () => {
@@ -399,7 +448,9 @@ const workerFun = async (
   }
 };
 
+// Start both workers
 workerFun(getScrapeQueue(), processJobInternal);
+workerFun(getExtractQueue(), processExtractJobInternal);
 
 async function processKickoffJob(job: Job & { id: string }, token: string) {
   const logger = _logger.child({
