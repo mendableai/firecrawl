@@ -141,11 +141,6 @@ export async function searchController(
           url: r.url,
           title: r.title,
           description: r.description,
-          metadata: {
-            title: r.title,
-            description: r.description,
-            sourceURL: r.url
-          },
         })) as Document[],
       });
     }
