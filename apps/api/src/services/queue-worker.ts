@@ -710,7 +710,8 @@ async function processJob(job: Job & { id: string }, token: string) {
         doc.metadata.url !== undefined &&
         doc.metadata.sourceURL !== undefined &&
         normalizeURL(doc.metadata.url, sc) !==
-          normalizeURL(doc.metadata.sourceURL, sc)
+          normalizeURL(doc.metadata.sourceURL, sc) &&
+        job.data.crawlerOptions !== null // only on crawls, don't care on batch scrape
       ) {
         const crawler = crawlToCrawler(job.data.crawl_id, sc);
         if (
