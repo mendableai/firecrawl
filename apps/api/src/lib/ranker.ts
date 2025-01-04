@@ -10,7 +10,7 @@ const openai = new OpenAI({
 
 async function getEmbedding(text: string) {
   const embedding = await openai.embeddings.create({
-    model: "text-embedding-ada-002",
+    model: "text-embedding-3-small",
     input: text,
     encoding_format: "float",
   });

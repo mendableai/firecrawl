@@ -16,6 +16,7 @@ import {
   ScrapeUrlResponse,
 } from "../scraper/scrapeURL";
 import { Engine } from "../scraper/scrapeURL/engines";
+import { indexPage } from "../lib/extract/index/pinecone";
 configDotenv();
 
 export async function startWebScraperPipeline({
@@ -172,6 +173,12 @@ export async function runWebScraper({
       if (scrapeOptions.extract) {
         creditsToBeBilled = 5;
       }
+
+      // If the team is the background index team, return the response
+      if(team_id === process.env.BACKGROUND_INDEX_TEAM_ID!) {
+        return response;
+      }
+
 
       billTeam(team_id, undefined, creditsToBeBilled, logger).catch((error) => {
         logger.error(

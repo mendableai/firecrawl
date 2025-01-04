@@ -3,15 +3,13 @@ import { performRanking } from "../ranker";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { logger } from "../logger";
 import { CohereClient } from "cohere-ai";
+import { extractConfig } from "./config";
 
 const cohere = new CohereClient({
   token: process.env.COHERE_API_KEY,
 });
 
-const MAX_RANKING_LIMIT = 10;
-const INITIAL_SCORE_THRESHOLD = 0.75;
-const FALLBACK_SCORE_THRESHOLD = 0.5;
-const MIN_REQUIRED_LINKS = 1;
+
 
 interface RankingResult {
   mappedLinks: MapDocument[];
@@ -61,32 +59,35 @@ export async function rerankLinks(
     searchQuery,
   );
 
+  
   // First try with high threshold
   let filteredLinks = filterAndProcessLinks(
     mappedLinks,
     linksAndScores,
-    INITIAL_SCORE_THRESHOLD,
+    extractConfig.INITIAL_SCORE_THRESHOLD,
   );
 
+
+
   // If we don't have enough high-quality links, try with lower threshold
-  if (filteredLinks.length < MIN_REQUIRED_LINKS) {
+  if (filteredLinks.length < extractConfig.MIN_REQUIRED_LINKS) {
     logger.info(
-      `Only found ${filteredLinks.length} links with score > ${INITIAL_SCORE_THRESHOLD}. Trying lower threshold...`,
+      `Only found ${filteredLinks.length} links with score > ${extractConfig.INITIAL_SCORE_THRESHOLD}. Trying lower threshold...`,
     );
     filteredLinks = filterAndProcessLinks(
       mappedLinks,
       linksAndScores,
-      FALLBACK_SCORE_THRESHOLD,
+      extractConfig.FALLBACK_SCORE_THRESHOLD,
     );
 
     if (filteredLinks.length === 0) {
       // If still no results, take top N results regardless of score
       logger.warn(
-        `No links found with score > ${FALLBACK_SCORE_THRESHOLD}. Taking top ${MIN_REQUIRED_LINKS} results.`,
+        `No links found with score > ${extractConfig.FALLBACK_SCORE_THRESHOLD}. Taking top ${extractConfig.MIN_REQUIRED_LINKS} results.`,
       );
       filteredLinks = linksAndScores
         .sort((a, b) => b.score - a.score)
-        .slice(0, MIN_REQUIRED_LINKS)
+        .slice(0, extractConfig.MIN_REQUIRED_LINKS)
         .map((x) => mappedLinks.find((link) => link.url === x.link))
         .filter(
           (x): x is MapDocument =>
@@ -108,7 +109,7 @@ export async function rerankLinks(
     }
   });
 
-  const rankedLinks = filteredLinks.slice(0, MAX_RANKING_LIMIT);
+  const rankedLinks = filteredLinks.slice(0, extractConfig.MAX_RANKING_LIMIT);
   
   // Mark URLs that will be used in completion
   rankedLinks.forEach(link => {
@@ -119,7 +120,7 @@ export async function rerankLinks(
   });
 
   // Mark URLs that were dropped due to ranking limit
-  filteredLinks.slice(MAX_RANKING_LIMIT).forEach(link => {
+  filteredLinks.slice(extractConfig.MAX_RANKING_LIMIT).forEach(link => {
     const trace = urlTraces.find(t => t.url === link.url);
     if (trace) {
       trace.warning = 'Excluded due to ranking limit';
