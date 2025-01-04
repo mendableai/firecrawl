@@ -3,6 +3,10 @@ import { Meta } from "..";
 import { CacheEntry, cacheKey, saveEntryToCache } from "../../../lib/cache";
 
 export function saveToCache(meta: Meta, document: Document): Document {
+  if (meta.internalOptions.useCache !== true) {
+    return document;
+  }
+
   if (
     document.metadata.statusCode! < 200 ||
     document.metadata.statusCode! >= 300
