@@ -154,6 +154,7 @@ export type InternalOptions = {
   useCache?: boolean;
   disableSmartWaitCache?: boolean; // Passed along to fire-engine
   isBackgroundIndex?: boolean;
+  fromCache?: boolean; // Indicates if the document was retrieved from cache
 };
 
 export type EngineResultsTracker = {

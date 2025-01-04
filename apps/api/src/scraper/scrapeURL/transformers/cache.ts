@@ -19,6 +19,12 @@ export function saveToCache(meta: Meta, document: Document): Document {
     );
   }
 
+  // If the document was retrieved from cache, we don't need to save it
+  if (meta.internalOptions.fromCache) {
+    return document;
+  }
+
+
   const key = cacheKey(meta.url, meta.options, meta.internalOptions);
 
   if (key !== null) {
