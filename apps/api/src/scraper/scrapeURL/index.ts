@@ -151,8 +151,9 @@ export type InternalOptions = {
 
   v0CrawlOnlyUrls?: boolean;
   v0DisableJsDom?: boolean;
-
+  useCache?: boolean;
   disableSmartWaitCache?: boolean; // Passed along to fire-engine
+  isBackgroundIndex?: boolean;
 };
 
 export type EngineResultsTracker = {

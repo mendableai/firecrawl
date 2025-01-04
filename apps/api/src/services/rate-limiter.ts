@@ -166,6 +166,7 @@ const testSuiteTokens = [
   "4c2638d",
   "cbb3462", // don't remove (s-ai)
   "824abcd", // don't remove (s-ai)
+  "0966288",
 ];
 
 const manual = ["69be9e74-7624-4990-b20d-08e0acc70cf6"];
