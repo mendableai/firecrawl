@@ -84,7 +84,7 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
     });
 
     // retry if only one url is returned
-    if (uniqueUrls.length === 1)  {
+    if (uniqueUrls.length <= 1)  {
       const retryMapResults = await getMapResults({
         url: baseUrl,
         teamId: options.teamId,
