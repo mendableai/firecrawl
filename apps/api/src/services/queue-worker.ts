@@ -531,16 +531,16 @@ async function indexJob(job: Job & { id: string }, document: Document) {
     document.markdown &&
     job.data.team_id === process.env.BACKGROUND_INDEX_TEAM_ID!
   ) {
-    indexPage({
-      document: document,
-      originUrl: job.data.crawl_id
-        ? (await getCrawl(job.data.crawl_id))?.originUrl!
-        : document.metadata.sourceURL!,
-      crawlId: job.data.crawl_id,
-      teamId: job.data.team_id,
-    }).catch((error) => {
-      _logger.error("Error indexing page", { error });
-    });
+    // indexPage({
+    //   document: document,
+    //   originUrl: job.data.crawl_id
+    //     ? (await getCrawl(job.data.crawl_id))?.originUrl!
+    //     : document.metadata.sourceURL!,
+    //   crawlId: job.data.crawl_id,
+    //   teamId: job.data.team_id,
+    // }).catch((error) => {
+    //   _logger.error("Error indexing page", { error });
+    // });
   }
 }
 
