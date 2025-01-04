@@ -157,10 +157,10 @@ export async function crawlStatusController(
           continue;
         }
 
-        if (job.returnvalue === undefined) {
+        if (job.returnvalue === undefined || job.returnvalue === null) {
           logger.warn(
             "Job was considered done, but returnvalue is undefined!",
-            { jobId: job.id, state },
+            { jobId: job.id, state, returnvalue: job.returnvalue },
           );
           continue;
         }
