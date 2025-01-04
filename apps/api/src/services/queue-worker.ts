@@ -50,6 +50,7 @@ import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 import { indexPage } from "../lib/extract/index/pinecone";
 import { Document } from "../controllers/v1/types";
+import { supabase_service } from "../services/supabase";
 
 configDotenv();
 
@@ -77,6 +78,30 @@ const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   if (await finishCrawl(job.data.crawl_id)) {
+    // Get all visited URLs from Redis
+    const visitedUrls = await redisConnection.smembers("crawl:" + job.data.crawl_id + ":visited");
+    
+    // Upload to Supabase if we have URLs and this is a crawl (not a batch scrape)
+    if (visitedUrls.length > 0 && job.data.crawlerOptions !== null) {
+      try {
+        const { error } = await supabase_service
+          .from('crawl_maps')
+          .insert({
+            crawl_id: job.data.crawl_id,
+            team_id: job.data.team_id,
+            origin_url: sc.originUrl,
+            urls: visitedUrls,
+            created_at: new Date().toISOString()
+          });
+          
+        if (error) {
+          _logger.error("Failed to save crawl map", { error });
+        }
+      } catch (error) {
+        _logger.error("Error saving crawl map", { error });
+      }
+    }
+
     if (!job.data.v1) {
       const jobIDs = await getCrawlJobs(job.data.crawl_id);
 
