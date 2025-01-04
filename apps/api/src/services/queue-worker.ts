@@ -51,7 +51,7 @@ import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 import { indexPage } from "../lib/extract/index/pinecone";
 import { Document } from "../controllers/v1/types";
 import { supabase_service } from "../services/supabase";
-import { normalizeUrl } from "../lib/canonical-url";
+import { normalizeUrl, normalizeUrlOnlyHostname } from "../lib/canonical-url";
 
 configDotenv();
 
@@ -80,7 +80,7 @@ const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   if (await finishCrawl(job.data.crawl_id)) {
     (async () => {
-      const originUrl = sc.originUrl ? normalizeUrl(sc.originUrl) : undefined;
+      const originUrl = sc.originUrl ? normalizeUrlOnlyHostname(sc.originUrl) : undefined;
       // Get all visited URLs from Redis
       const visitedUrls = await redisConnection.smembers(
         "crawl:" + job.data.crawl_id + ":visited",
