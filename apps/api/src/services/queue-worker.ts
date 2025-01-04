@@ -51,6 +51,7 @@ import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 import { indexPage } from "../lib/extract/index/pinecone";
 import { Document } from "../controllers/v1/types";
 import { supabase_service } from "../services/supabase";
+import { normalizeUrl } from "../lib/canonical-url";
 
 configDotenv();
 
@@ -78,54 +79,68 @@ const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   if (await finishCrawl(job.data.crawl_id)) {
-    // Get all visited URLs from Redis
-    const visitedUrls = await redisConnection.smembers("crawl:" + job.data.crawl_id + ":visited");
-    
-    // Upload to Supabase if we have URLs and this is a crawl (not a batch scrape)
-    if (visitedUrls.length > 0 && job.data.crawlerOptions !== null) {
-      try {
-        // First check if entry exists for this origin URL
-        const { data: existingMap } = await supabase_service
-          .from('crawl_maps')
-          .select('urls')
-          .eq('origin_url', sc.originUrl)
-          .single();
+    (async () => {
+      const originUrl = sc.originUrl ? normalizeUrl(sc.originUrl) : undefined;
+      // Get all visited URLs from Redis
+      const visitedUrls = await redisConnection.smembers(
+        "crawl:" + job.data.crawl_id + ":visited",
+      );
+      // Upload to Supabase if we have URLs and this is a crawl (not a batch scrape)
+      if (visitedUrls.length > 0 && job.data.crawlerOptions !== null && originUrl) {
+        // Fire and forget the upload to Supabase
+        try {
+          // Standardize URLs to canonical form (https, no www)
+          const standardizedUrls = [
+            ...new Set(
+              visitedUrls.map((url) => {
+                return normalizeUrl(url);
+              }),
+            ),
+          ];
+          // First check if entry exists for this origin URL
+          const { data: existingMap } = await supabase_service
+            .from("crawl_maps")
+            .select("urls")
+            .eq("origin_url", originUrl)
+            .single();
 
-        if (existingMap) {
-          // Merge URLs, removing duplicates
-          const mergedUrls = [...new Set([...existingMap.urls, ...visitedUrls])];
-          
-          const { error } = await supabase_service
-            .from('crawl_maps')
-            .update({
-              urls: mergedUrls,
-              num_urls: mergedUrls.length,
-              updated_at: new Date().toISOString()
-            })
-            .eq('origin_url', sc.originUrl);
+          if (existingMap) {
+            // Merge URLs, removing duplicates
+            const mergedUrls = [
+              ...new Set([...existingMap.urls, ...standardizedUrls]),
+            ];
 
-          if (error) {
-            _logger.error("Failed to update crawl map", { error });
-          }
-        } else {
-          // Insert new entry if none exists
-          const { error } = await supabase_service
-            .from('crawl_maps')
-            .insert({
-              origin_url: sc.originUrl,
-              urls: visitedUrls,
-              num_urls: visitedUrls.length,
-              created_at: new Date().toISOString()
+            const { error } = await supabase_service
+              .from("crawl_maps")
+              .update({
+                urls: mergedUrls,
+                num_urls: mergedUrls.length,
+                updated_at: new Date().toISOString(),
+              })
+              .eq("origin_url", originUrl);
+
+            if (error) {
+              _logger.error("Failed to update crawl map", { error });
+            }
+          } else {
+            // Insert new entry if none exists
+            const { error } = await supabase_service.from("crawl_maps").insert({
+              origin_url: originUrl,
+              urls: standardizedUrls,
+              num_urls: standardizedUrls.length,
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             });
 
-          if (error) {
-            _logger.error("Failed to save crawl map", { error });
+            if (error) {
+              _logger.error("Failed to save crawl map", { error });
+            }
           }
+        } catch (error) {
+          _logger.error("Error saving crawl map", { error });
         }
-      } catch (error) {
-        _logger.error("Error saving crawl map", { error });
       }
-    }
+    })();
 
     if (!job.data.v1) {
       const jobIDs = await getCrawlJobs(job.data.crawl_id);
