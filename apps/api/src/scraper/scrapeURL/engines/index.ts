@@ -300,8 +300,11 @@ export function buildFallbackList(meta: Meta): {
 }[] {
 
   if (meta.internalOptions.useCache !== true) {
-    engines.splice(engines.indexOf("cache"), 1);
-  }else{
+    const cacheIndex = engines.indexOf("cache");
+    if (cacheIndex !== -1) {
+      engines.splice(cacheIndex, 1);
+    }
+  } else {
     meta.logger.debug("Cache engine enabled by useCache option");
   }
   const prioritySum = [...meta.featureFlags].reduce(

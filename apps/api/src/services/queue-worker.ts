@@ -84,18 +84,43 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
     // Upload to Supabase if we have URLs and this is a crawl (not a batch scrape)
     if (visitedUrls.length > 0 && job.data.crawlerOptions !== null) {
       try {
-        const { error } = await supabase_service
+        // First check if entry exists for this origin URL
+        const { data: existingMap } = await supabase_service
           .from('crawl_maps')
-          .insert({
-            crawl_id: job.data.crawl_id,
-            team_id: job.data.team_id,
-            origin_url: sc.originUrl,
-            urls: visitedUrls,
-            created_at: new Date().toISOString()
-          });
+          .select('urls')
+          .eq('origin_url', sc.originUrl)
+          .single();
+
+        if (existingMap) {
+          // Merge URLs, removing duplicates
+          const mergedUrls = [...new Set([...existingMap.urls, ...visitedUrls])];
           
-        if (error) {
-          _logger.error("Failed to save crawl map", { error });
+          const { error } = await supabase_service
+            .from('crawl_maps')
+            .update({
+              urls: mergedUrls,
+              num_urls: mergedUrls.length,
+              updated_at: new Date().toISOString()
+            })
+            .eq('origin_url', sc.originUrl);
+
+          if (error) {
+            _logger.error("Failed to update crawl map", { error });
+          }
+        } else {
+          // Insert new entry if none exists
+          const { error } = await supabase_service
+            .from('crawl_maps')
+            .insert({
+              origin_url: sc.originUrl,
+              urls: visitedUrls,
+              num_urls: visitedUrls.length,
+              created_at: new Date().toISOString()
+            });
+
+          if (error) {
+            _logger.error("Failed to save crawl map", { error });
+          }
         }
       } catch (error) {
         _logger.error("Error saving crawl map", { error });
@@ -802,9 +827,10 @@ async function processJob(job: Job & { id: string }, token: string) {
                 newJobId: jobId,
               });
             } else {
-              logger.debug("Could not lock URL " + JSON.stringify(link), {
-                url: link,
-              });
+              // TODO: removed this, ok? too many 'not useful' logs (?) Mogery!
+              // logger.debug("Could not lock URL " + JSON.stringify(link), {
+              //   url: link,
+              // });
             }
           }
         }
