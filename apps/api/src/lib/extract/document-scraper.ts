@@ -14,10 +14,13 @@ interface ScrapeDocumentOptions {
   timeout: number;
 }
 
-export async function scrapeDocument(options: ScrapeDocumentOptions, urlTraces: URLTrace[]): Promise<Document | null> {
+export async function scrapeDocument(
+  options: ScrapeDocumentOptions,
+  urlTraces: URLTrace[],
+): Promise<Document | null> {
   const trace = urlTraces.find((t) => t.url === options.url);
   if (trace) {
-    trace.status = 'scraped';
+    trace.status = "scraped";
     trace.timing.scrapedAt = new Date().toISOString();
   }
 
@@ -35,7 +38,9 @@ export async function scrapeDocument(options: ScrapeDocumentOptions, urlTraces: 
         mode: "single_urls",
         team_id: options.teamId,
         scrapeOptions: scrapeOptions.parse({}),
-        internalOptions: {},
+        internalOptions: {
+          useCache: true,
+        },
         plan: options.plan,
         origin: options.origin,
         is_scrape: true,
@@ -61,9 +66,9 @@ export async function scrapeDocument(options: ScrapeDocumentOptions, urlTraces: 
   } catch (error) {
     logger.error(`Error in scrapeDocument: ${error}`);
     if (trace) {
-      trace.status = 'error';
+      trace.status = "error";
       trace.error = error.message;
     }
     return null;
   }
-} 
+}
