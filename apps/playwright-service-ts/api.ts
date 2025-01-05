@@ -2,7 +2,7 @@ import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
 import { chromium, Browser, BrowserContext, Route, Request as PlaywrightRequest } from 'playwright';
 import dotenv from 'dotenv';
-import randomUseragent from 'random-useragent';
+import UserAgent from 'user-agents';
 import { getError } from './helpers/get_error';
 
 dotenv.config();
@@ -60,7 +60,7 @@ const initializeBrowser = async () => {
     ]
   });
 
-  const userAgent = randomUseragent.getRandom();
+  const userAgent = new UserAgent().toString();
   const viewport = { width: 1280, height: 800 };
 
   const contextOptions: any = {
