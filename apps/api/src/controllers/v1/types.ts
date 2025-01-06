@@ -478,10 +478,11 @@ export interface URLTrace {
 
 export interface ExtractResponse {
   success: boolean;
+  error?: string;
   data?: any;
   scrape_id?: string;
+  id?: string;
   warning?: string;
-  error?: string;
   urlTrace?: URLTrace[];
 }
 

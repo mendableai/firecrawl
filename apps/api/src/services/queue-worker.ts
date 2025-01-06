@@ -4,8 +4,10 @@ import * as Sentry from "@sentry/node";
 import { CustomError } from "../lib/custom-error";
 import {
   getScrapeQueue,
+  getExtractQueue,
   redisConnection,
   scrapeQueueName,
+  extractQueueName,
 } from "./queue-service";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
@@ -50,8 +52,9 @@ import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 import { indexPage } from "../lib/extract/index/pinecone";
 import { Document } from "../controllers/v1/types";
+import { performExtraction } from "../lib/extract/extraction-service";
 import { supabase_service } from "../services/supabase";
-import { normalizeUrl } from "../lib/canonical-url";
+import { normalizeUrl, normalizeUrlOnlyHostname } from "../lib/canonical-url";
 
 configDotenv();
 
@@ -80,7 +83,7 @@ const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   if (await finishCrawl(job.data.crawl_id)) {
     (async () => {
-      const originUrl = sc.originUrl ? normalizeUrl(sc.originUrl) : undefined;
+      const originUrl = sc.originUrl ? normalizeUrlOnlyHostname(sc.originUrl) : undefined;
       // Get all visited URLs from Redis
       const visitedUrls = await redisConnection.smembers(
         "crawl:" + job.data.crawl_id + ":visited",
@@ -308,6 +311,52 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
   return err;
 };
 
+const processExtractJobInternal = async (token: string, job: Job & { id: string }) => {
+  const logger = _logger.child({
+    module: "extract-worker",
+    method: "processJobInternal",
+    jobId: job.id,
+    extractId: job.data.extractId,
+    teamId: job.data?.teamId ?? undefined,
+  });
+
+  const extendLockInterval = setInterval(async () => {
+    logger.info(`🔄 Worker extending lock on job ${job.id}`);
+    await job.extendLock(token, jobLockExtensionTime);
+  }, jobLockExtendInterval);
+
+  try {
+    const result = await performExtraction(job.data.extractId, {
+      request: job.data.request,
+      teamId: job.data.teamId,
+      plan: job.data.plan,
+      subId: job.data.subId,
+    });
+
+    if (result.success) {
+      // Move job to completed state in Redis
+      await job.moveToCompleted(result, token, false);
+      return result;
+    } else {
+      throw new Error(result.error || "Unknown error during extraction");
+    }
+  } catch (error) {
+    logger.error(`🚫 Job errored ${job.id} - ${error}`, { error });
+    
+    Sentry.captureException(error, {
+      data: {
+        job: job.id,
+      },
+    });
+    
+    // Move job to failed state in Redis
+    await job.moveToFailed(error, token, false);
+    throw error;
+  } finally {
+    clearInterval(extendLockInterval);
+  }
+};
+
 let isShuttingDown = false;
 
 process.on("SIGINT", () => {
@@ -464,7 +513,9 @@ const workerFun = async (
   }
 };
 
+// Start both workers
 workerFun(getScrapeQueue(), processJobInternal);
+workerFun(getExtractQueue(), processExtractJobInternal);
 
 async function processKickoffJob(job: Job & { id: string }, token: string) {
   const logger = _logger.child({
@@ -710,7 +761,8 @@ async function processJob(job: Job & { id: string }, token: string) {
         doc.metadata.url !== undefined &&
         doc.metadata.sourceURL !== undefined &&
         normalizeURL(doc.metadata.url, sc) !==
-          normalizeURL(doc.metadata.sourceURL, sc)
+          normalizeURL(doc.metadata.sourceURL, sc) &&
+        job.data.crawlerOptions !== null // only on crawls, don't care on batch scrape
       ) {
         const crawler = crawlToCrawler(job.data.crawl_id, sc);
         if (

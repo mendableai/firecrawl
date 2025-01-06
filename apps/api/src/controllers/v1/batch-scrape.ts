@@ -61,7 +61,7 @@ export async function batchScrapeController(
   }
 
   logger.debug("Batch scrape " + id + " starting", {
-    urlsLength: urls,
+    urlsLength: urls.length,
     appendToId: req.body.appendToId,
     account: req.account,
   });

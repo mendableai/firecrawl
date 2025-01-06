@@ -10,6 +10,9 @@ export async function scrapeCache(meta: Meta): Promise<EngineScrapeResult> {
   const entry = await getEntryFromCache(key);
   if (entry === null) throw new EngineError("Cache missed");
 
+  // Set fromCache flag to indicate this document was retrieved from cache
+  meta.internalOptions.fromCache = true;
+
   return {
     url: entry.url,
     html: entry.html,

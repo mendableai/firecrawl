@@ -3,6 +3,10 @@ import { Meta } from "..";
 import { CacheEntry, cacheKey, saveEntryToCache } from "../../../lib/cache";
 
 export function saveToCache(meta: Meta, document: Document): Document {
+  if (meta.internalOptions.useCache !== true) {
+    return document;
+  }
+
   if (
     document.metadata.statusCode! < 200 ||
     document.metadata.statusCode! >= 300
@@ -14,6 +18,12 @@ export function saveToCache(meta: Meta, document: Document): Document {
       "rawHtml is undefined -- this transformer is being called out of order",
     );
   }
+
+  // If the document was retrieved from cache, we don't need to save it
+  if (meta.internalOptions.fromCache) {
+    return document;
+  }
+
 
   const key = cacheKey(meta.url, meta.options, meta.internalOptions);
 

@@ -5,7 +5,9 @@ import {
   extractRequestSchema,
   ExtractResponse,
 } from "./types";
-import { performExtraction } from "../../lib/extract/extraction-service";
+import { getExtractQueue } from "../../services/queue-service";
+import * as Sentry from "@sentry/node";
+import { v4 as uuidv4 } from "uuid";
 
 /**
  * Extracts data from the provided URLs based on the request parameters.
@@ -29,12 +31,47 @@ export async function extractController(
     });
   }
 
-  const result = await performExtraction({
+  const extractId = crypto.randomUUID();
+  const jobData = {
     request: req.body,
     teamId: req.auth.team_id,
     plan: req.auth.plan,
-    subId: req.acuc?.sub_id || undefined,
-  });
+    subId: req.acuc?.sub_id,
+    extractId,
+  };
 
-  return res.status(result.success ? 200 : 400).json(result);
+  if (Sentry.isInitialized()) {
+    const size = JSON.stringify(jobData).length;
+    await Sentry.startSpan(
+      {
+        name: "Add extract job",
+        op: "queue.publish",
+        attributes: {
+          "messaging.message.id": extractId,
+          "messaging.destination.name": getExtractQueue().name,
+          "messaging.message.body.size": size,
+        },
+      },
+      async (span) => {
+        await getExtractQueue().add(extractId, {
+          ...jobData,
+          sentry: {
+            trace: Sentry.spanToTraceHeader(span),
+            baggage: Sentry.spanToBaggageHeader(span),
+            size,
+          },
+        });
+      },
+    );
+  } else {
+    await getExtractQueue().add(extractId, jobData, {
+      jobId: extractId,
+    });
+  }
+
+  return res.status(202).json({
+    success: true,
+    id: extractId,
+    urlTrace: [],
+  });
 }
