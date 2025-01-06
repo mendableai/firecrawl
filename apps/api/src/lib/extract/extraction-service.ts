@@ -9,6 +9,10 @@ import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { saveCrawl, StoredCrawl } from "../crawl-redis";
+import { z } from "zod";
+import OpenAI from "openai";
+
+const openai = new OpenAI();
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -38,11 +42,101 @@ function getRootDomain(url: string): string {
   }
 }
 
+async function analyzeSchemaAndPrompt(schema: any, prompt: string): Promise<{
+  keys: string[],
+  hasLargeArrays: boolean
+}> {
+  const schemaString = JSON.stringify(schema);
+
+  const checkSchema = z.object({
+    hasLargeArrays: z.boolean(),
+    keys: z.array(z.string())
+  });
+
+  const result = await openai.beta.chat.completions.parse({
+    model: "gpt-4o-mini",
+    messages: [
+    {
+        role: "system",
+        content: "You are a helpful assistant that analyzes a schema and a prompt and determines if the schema or the prompt has an array with a large amount of items. If so, return the keys of the array.",
+      },
+      {
+        role: "user",
+        content: `Schema: ${schemaString}\nPrompt: ${prompt}`,
+      },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        schema: {
+          type: "object",
+          properties: {
+            hasLargeArrays: { type: "boolean" },
+            keys: { type: "array", items: { type: "string" } }
+          },
+          required: ["hasLargeArrays", "keys"],
+          additionalProperties: false
+        },
+        name: "checkSchema"
+      }
+    }
+  });
+
+  const { hasLargeArrays, keys } = checkSchema.parse(result.choices[0].message.parsed);
+  console.log({ hasLargeArrays, keys });
+  return { hasLargeArrays, keys };
+}
+
 export async function performExtraction(options: ExtractServiceOptions): Promise<ExtractResult> {
   const { request, teamId, plan, subId } = options;
   const scrapeId = crypto.randomUUID();
   const urlTraces: URLTrace[] = [];
   let docs: Document[] = [];
+  let reqSchema = request.schema;
+
+  // agent evaluates if the schema or the prompt has an array with big amount of items
+  // also it checks if the schema any other properties that are not arrays
+  // if so, it splits the results into 2 types of completions:
+  // 1. the first one is a completion that will extract the array of items
+  // 2. the second one is multiple completions that will extract the items from the array
+  const { hasLargeArrays, keys } = await analyzeSchemaAndPrompt(request.schema, request.prompt ?? "");
+
+  if (hasLargeArrays) {
+    // crawl
+    console.log("crawl");
+
+    // removes from reqSchema the keys that are arrays
+    for (const key of keys) {
+      const keyParts = key.split('.');
+      let current = reqSchema;
+      for (let i = 0; i < keyParts.length - 1; i++) {
+        if (current[keyParts[i]]) {
+          current = current[keyParts[i]];
+        } else {
+          current = null;
+          break;
+        }
+      }
+      if (current && current[keyParts[keyParts.length - 1]]) {
+        delete current[keyParts[keyParts.length - 1]];
+      }
+    }
+    // Perform array extraction
+    // const arrayCompletions = await generateArrayCompletions(request, docs);
+
+    // Process arrayCompletions as needed
+
+
+
+
+  } else {
+    // map
+    console.log("map");
+
+    // Perform item extraction
+    // const itemCompletions = await generateItemCompletions(request, docs);
+    // Process itemCompletions as needed
+  }
 
   // Process URLs
   const urlPromises = request.urls.map(url => 
