@@ -1,7 +1,15 @@
 import axios, { type AxiosResponse, type AxiosRequestHeaders, AxiosError } from "axios";
 import type * as zt from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
+import { WebSocket as IsowsWebSocket } from "isows";
 import { TypedEventTarget } from "typescript-event-target";
+
+
+let WebSocket: typeof IsowsWebSocket;
+
+if (typeof __WEBSOCKET_LOADER__ === 'string') {
+  WebSocket = new Function('return ' + __WEBSOCKET_LOADER__)();
+}
 
 /**
  * Configuration interface for FirecrawlApp.
@@ -941,39 +949,23 @@ interface CrawlWatcherEvents {
 }
 
 export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
-  private ws!: WebSocket;
-  private initialized: Promise<void>;
+  private ws: WebSocket;
   public data: FirecrawlDocument<undefined>[];
   public status: CrawlStatusResponse["status"];
   public id: string;
 
-  private static async loadWebSocket() {
-    try {
-      if (typeof require !== 'undefined') {
-        return require('isows').WebSocket;
-      } else {
-        const module = await import('isows');
-        return module.WebSocket;
-      }
-    } catch (e) {
-      throw new FirecrawlError('Failed to load WebSocket implementation', 500);
-    }
-  }
-
   constructor(id: string, app: FirecrawlApp) {
     super();
     this.id = id;
+    console.log('typeof WebSocket', typeof WebSocket)
+    // @ts-ignore
+    if (typeof WebSocket === "function" && WebSocket.prototype.then) {
+      throw new Error("WebSocket behaves like a Promise, which is unexpected.");
+    }    
+    this.ws = new WebSocket(`${app.apiUrl}/v1/crawl/${id}`, app.apiKey);
     this.status = "scraping";
     this.data = [];
 
-    this.initialized = CrawlWatcher.loadWebSocket()
-      .then((WebSocket) => {
-        this.ws = new WebSocket(`${app.apiUrl}/v1/crawl/${id}`, app.apiKey);
-        this.initializeWebSocket();
-      });
-  }
-
-  private initializeWebSocket() {
     type ErrorMessage = {
       type: "error",
       error: string,
@@ -1070,8 +1062,6 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
   }
 
   close() {
-    this.initialized.then(() => {
-      this.ws.close();
-    });
+    this.ws.close();
   }
 }
