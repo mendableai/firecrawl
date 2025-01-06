@@ -529,6 +529,7 @@ export type ConcurrencyCheckResponse =
   | {
       success: true;
       concurrency: number;
+      maxConcurrency: number;
     };
 
 export type CrawlStatusResponse =

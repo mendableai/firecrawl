@@ -16,6 +16,10 @@ export const CONCURRENCY_LIMIT: Omit<Record<PlanType, number>, ""> = {
   etier1a: 100,
   etier2a: 300,
   etierscale1: 150,
+  testSuite: 200,
+  devB: 120,
+  etier2d: 250,
+  manual: 200,
 };
 
 const RATE_LIMITS = {
@@ -240,4 +244,39 @@ export function getRateLimiter(
     `${mode}-${makePlanKey(plan)}`,
     getRateLimiterPoints(mode, token, plan, teamId),
   );
+}
+
+export function getConcurrencyLimitMax(
+  plan: PlanType,
+  teamId?: string,
+): number {
+  // Moved this to auth check, plan will come as testSuite if token is present
+  // if (token && testSuiteTokens.some((testToken) => token.includes(testToken))) {
+  //   return CONCURRENCY_LIMIT.testSuite;
+  // }
+  if (teamId && teamId === process.env.DEV_B_TEAM_ID) {
+    return CONCURRENCY_LIMIT.devB;
+  }
+
+  if (teamId && teamId === process.env.ETIER1A_TEAM_ID) {
+    return CONCURRENCY_LIMIT.etier1a;
+  }
+
+  if (teamId && teamId === process.env.ETIER2A_TEAM_ID) {
+    return CONCURRENCY_LIMIT.etier2a;
+  }
+
+  if (teamId && teamId === process.env.ETIER2D_TEAM_ID) {
+    return CONCURRENCY_LIMIT.etier2a;
+  }
+
+  if (teamId && manual.includes(teamId)) {
+    return CONCURRENCY_LIMIT.manual;
+  }
+
+  return CONCURRENCY_LIMIT[plan] ?? 10;
+}
+
+export function isTestSuiteToken(token: string): boolean {
+  return testSuiteTokens.some((testToken) => token.includes(testToken));
 }

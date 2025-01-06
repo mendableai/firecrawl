@@ -52,6 +52,10 @@ export async function getJobPriority({
     let bucketLimit = 0;
 
     switch (plan) {
+      case "testSuite":
+        bucketLimit = 1000;
+        planModifier = 0.25;
+        break;
       case "free":
         bucketLimit = 25;
         planModifier = 0.5;

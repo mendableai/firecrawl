@@ -6,12 +6,12 @@ import * as Sentry from "@sentry/node";
 import {
   cleanOldConcurrencyLimitEntries,
   getConcurrencyLimitActiveJobs,
-  getConcurrencyLimitMax,
   getConcurrencyQueueJobsCount,
   pushConcurrencyLimitActiveJob,
   pushConcurrencyLimitedJob,
 } from "../lib/concurrency-limit";
 import { logger } from "../lib/logger";
+import { getConcurrencyLimitMax } from "./rate-limiter";
 import { sendNotificationWithCustomDays } from "./notification/email_notification";
 
 async function _addScrapeJobToConcurrencyQueue(
@@ -69,7 +69,7 @@ async function addScrapeJobRaw(
     webScraperOptions.team_id
   ) {
     const now = Date.now();
-    maxConcurrency = getConcurrencyLimitMax(webScraperOptions.plan ?? "free");
+    maxConcurrency = getConcurrencyLimitMax(webScraperOptions.plan ?? "free", webScraperOptions.team_id);
     cleanOldConcurrencyLimitEntries(webScraperOptions.team_id, now);
     currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(webScraperOptions.team_id, now)).length;
     concurrencyLimited = currentActiveConcurrency >= maxConcurrency;
@@ -155,7 +155,7 @@ export async function addScrapeJobs(
 
   if (jobs[0].data && jobs[0].data.team_id && jobs[0].data.plan) {
     const now = Date.now();
-    maxConcurrency = getConcurrencyLimitMax(jobs[0].data.plan as PlanType);
+    maxConcurrency = getConcurrencyLimitMax(jobs[0].data.plan as PlanType, jobs[0].data.team_id);
     cleanOldConcurrencyLimitEntries(jobs[0].data.team_id, now);
 
     currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(jobs[0].data.team_id, now)).length;

@@ -8,9 +8,7 @@ const constructQueueKey = (team_id: string) =>
   "concurrency-limit-queue:" + team_id;
 const stalledJobTimeoutMs = 2 * 60 * 1000;
 
-export function getConcurrencyLimitMax(plan: PlanType): number {
-  return CONCURRENCY_LIMIT[plan] ?? 10;
-}
+
 
 export async function cleanOldConcurrencyLimitEntries(
   team_id: string,

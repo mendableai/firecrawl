@@ -185,6 +185,10 @@ export type PlanType =
   | "etierscale1"
   | "etier2a"
   | "free"
+  | "testSuite"
+  | "devB"
+  | "etier2d"
+  | "manual"
   | "";
 
 export type WebhookEventType =
