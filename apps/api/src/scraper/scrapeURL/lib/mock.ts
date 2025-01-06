@@ -1,10 +1,9 @@
 import * as fs from "fs/promises";
 import * as path from "path";
 import { logger as _logger } from "../../../lib/logger";
-import type { Logger } from "winston";
-
+import { Logger } from "winston";
 const saveMocksDirPath = path.join(__dirname, "../mocks/").replace("dist/", "");
-const loadMocksDirPath = path.join(__dirname, "../../../../../src/__tests__/snips/mocks");
+const loadMocksDirPath = path.join(__dirname, "../../../__tests__/snips/mocks");
 
 export async function saveMock(options: unknown, result: unknown) {
     if (!process.env.FIRECRAWL_SAVE_MOCKS) return;
