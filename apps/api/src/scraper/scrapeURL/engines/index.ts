@@ -298,6 +298,15 @@ export function buildFallbackList(meta: Meta): {
   engine: Engine;
   unsupportedFeatures: Set<FeatureFlag>;
 }[] {
+
+  if (meta.internalOptions.useCache !== true) {
+    const cacheIndex = engines.indexOf("cache");
+    if (cacheIndex !== -1) {
+      engines.splice(cacheIndex, 1);
+    }
+  } else {
+    meta.logger.debug("Cache engine enabled by useCache option");
+  }
   const prioritySum = [...meta.featureFlags].reduce(
     (a, x) => a + featureFlagOptions[x].priority,
     0,
