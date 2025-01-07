@@ -4,7 +4,7 @@ import * as Sentry from "@sentry/node";
 import express, { NextFunction, Request, Response } from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
-import { getExtractQueue, getScrapeQueue } from "./services/queue-service";
+import { getScrapeQueue } from "./services/queue-service";
 import { v0Router } from "./routes/v0";
 import os from "os";
 import { logger } from "./lib/logger";
@@ -42,11 +42,11 @@ app.use(bodyParser.json({ limit: "10mb" }));
 app.use(cors()); // Add this line to enable CORS
 
 const serverAdapter = new ExpressAdapter();
-serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
+serverAdapter.setBasePath("/admin/queues");
 
 const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
-  queues: [new BullAdapter(getScrapeQueue()), new BullAdapter(getExtractQueue())],
-  serverAdapter: serverAdapter,
+  queues: [new BullAdapter(getScrapeQueue())],
+  serverAdapter,
 });
 
 app.use(
@@ -245,13 +245,3 @@ app.use(
 );
 
 logger.info(`Worker ${process.pid} started`);
-
-// const sq = getScrapeQueue();
-
-// sq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));
-// sq.on("active", j => ScrapeEvents.logJobEvent(j, "active"));
-// sq.on("completed", j => ScrapeEvents.logJobEvent(j, "completed"));
-// sq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
-// sq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
-// sq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
-// 

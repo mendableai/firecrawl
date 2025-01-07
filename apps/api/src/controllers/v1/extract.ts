@@ -5,7 +5,7 @@ import {
   extractRequestSchema,
   ExtractResponse,
 } from "./types";
-import { getExtractQueue } from "../../services/queue-service";
+import { getScrapeQueue } from "../../services/queue-service";
 import * as Sentry from "@sentry/node";
 import { saveExtract } from "../../lib/extract/extract-redis";
 import { getTeamIdSyncB } from "../../lib/extract/team-id-sync";
@@ -73,12 +73,12 @@ export async function extractController(
         op: "queue.publish",
         attributes: {
           "messaging.message.id": extractId,
-          "messaging.destination.name": getExtractQueue().name,
+          "messaging.destination.name": getScrapeQueue().name,
           "messaging.message.body.size": size,
         },
       },
       async (span) => {
-        await getExtractQueue().add(extractId, {
+        await getScrapeQueue().add(extractId, {
           ...jobData,
           sentry: {
             trace: Sentry.spanToTraceHeader(span),
@@ -89,7 +89,7 @@ export async function extractController(
       },
     );
   } else {
-    await getExtractQueue().add(extractId, jobData, {
+    await getScrapeQueue().add(extractId, jobData, {
       jobId: extractId,
     });
   }

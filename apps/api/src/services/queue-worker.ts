@@ -6,8 +6,7 @@ import {
   getScrapeQueue,
   getExtractQueue,
   redisConnection,
-  scrapeQueueName,
-  extractQueueName,
+  mainQueueName,
 } from "./queue-service";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
@@ -269,7 +268,23 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
   await addJobPriority(job.data.team_id, job.id);
   let err = null;
   try {
-    if (job.data?.mode === "kickoff") {
+    // Check job type and process accordingly
+    if (job.data.extractId) {
+      // This is an extract job
+      const result = await performExtraction(job.data.extractId, {
+        request: job.data.request,
+        teamId: job.data.teamId,
+        plan: job.data.plan,
+        subId: job.data.subId,
+      });
+
+      if (result.success) {
+        await job.moveToCompleted(result, token, false);
+      } else {
+        throw new Error(result.error || "Unknown error during extraction");
+      }
+    } else if (job.data?.mode === "kickoff") {
+      // This is a kickoff job
       const result = await processKickoffJob(job, token);
       if (result.success) {
         try {
@@ -280,6 +295,7 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
         await job.moveToFailed((result as any).error, token, false);
       }
     } else {
+      // This is a scrape job
       const result = await processJob(job, token);
       if (result.success) {
         try {
@@ -306,64 +322,20 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
     Sentry.captureException(error);
     err = error;
     await job.moveToFailed(error, token, false);
+
+    // Handle extract job specific error updates
+    if (job.data.extractId) {
+      await updateExtract(job.data.extractId, {
+        status: "failed",
+        error: error.error ?? error ?? "Unknown error, please contact help@firecrawl.dev. Extract id: " + job.data.extractId,
+      });
+    }
   } finally {
     await deleteJobPriority(job.data.team_id, job.id);
     clearInterval(extendLockInterval);
   }
 
   return err;
-};
-
-const processExtractJobInternal = async (token: string, job: Job & { id: string }) => {
-  const logger = _logger.child({
-    module: "extract-worker",
-    method: "processJobInternal",
-    jobId: job.id,
-    extractId: job.data.extractId,
-    teamId: job.data?.teamId ?? undefined,
-  });
-
-  const extendLockInterval = setInterval(async () => {
-    logger.info(`🔄 Worker extending lock on job ${job.id}`);
-    await job.extendLock(token, jobLockExtensionTime);
-  }, jobLockExtendInterval);
-
-  try {
-    const result = await performExtraction(job.data.extractId, {
-      request: job.data.request,
-      teamId: job.data.teamId,
-      plan: job.data.plan,
-      subId: job.data.subId,
-    });
-
-    if (result.success) {
-      // Move job to completed state in Redis
-      await job.moveToCompleted(result, token, false);
-      return result;
-    } else {
-      throw new Error(result.error || "Unknown error during extraction");
-    }
-  } catch (error) {
-    logger.error(`🚫 Job errored ${job.id} - ${error}`, { error });
-    
-    Sentry.captureException(error, {
-      data: {
-        job: job.id,
-      },
-    });
-    
-    // Move job to failed state in Redis
-    await job.moveToFailed(error, token, false);
-
-    await updateExtract(job.data.extractId, {
-      status: "failed",
-      error: error.error ?? error ?? "Unknown error, please contact help@firecrawl.dev. Extract id: " + job.data.extractId,
-    });
-    // throw error;
-  } finally {
-    
-    clearInterval(extendLockInterval);
-  }
 };
 
 let isShuttingDown = false;
@@ -522,9 +494,8 @@ const workerFun = async (
   }
 };
 
-// Start both workers
+// Start single worker for all jobs
 workerFun(getScrapeQueue(), processJobInternal);
-workerFun(getExtractQueue(), processExtractJobInternal);
 
 async function processKickoffJob(job: Job & { id: string }, token: string) {
   const logger = _logger.child({

@@ -2,22 +2,20 @@ import { Queue } from "bullmq";
 import { logger } from "../lib/logger";
 import IORedis from "ioredis";
 
-let scrapeQueue: Queue;
-let extractQueue: Queue;
+let mainQueue: Queue;
 let loggingQueue: Queue;
 
 export const redisConnection = new IORedis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
 });
 
-export const scrapeQueueName = "{scrapeQueue}";
-export const extractQueueName = "{extractQueue}";
+export const mainQueueName = "{mainQueue}";
 export const loggingQueueName = "{loggingQueue}";
 
-export function getScrapeQueue() {
-  if (!scrapeQueue) {
-    scrapeQueue = new Queue(
-      scrapeQueueName,
+export function getMainQueue() {
+  if (!mainQueue) {
+    mainQueue = new Queue(
+      mainQueueName,
       {
         connection: redisConnection,
         defaultJobOptions: {
@@ -30,33 +28,21 @@ export function getScrapeQueue() {
         },
       }
     );
-    logger.info("Web scraper queue created");
+    logger.info("Main queue created");
   }
-  return scrapeQueue;
+  return mainQueue;
 }
 
-export function getExtractQueue() {
-  if (!extractQueue) {
-    extractQueue = new Queue(
-      extractQueueName,
-      {
-        connection: redisConnection,
-        defaultJobOptions: {
-          removeOnComplete: {
-            age: 90000, // 25 hours
-          },
-          removeOnFail: {
-            age: 90000, // 25 hours
-          },
-        },
-      }
-    );
-    logger.info("Extraction queue created");
+export function getLoggingQueue() {
+  if (!loggingQueue) {
+    loggingQueue = new Queue(loggingQueueName, {
+      connection: redisConnection,
+    });
+    logger.info("Logging queue created");
   }
-  return extractQueue;
+  return loggingQueue;
 }
 
-
-// === REMOVED IN FAVOR OF POLLING -- NOT RELIABLE
-// import { QueueEvents } from 'bullmq';
-// export const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection.duplicate() });
+// Backwards compatibility exports
+export const getScrapeQueue = getMainQueue;
+export const getExtractQueue = getMainQueue;
