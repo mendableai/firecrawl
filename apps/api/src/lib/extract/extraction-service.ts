@@ -225,7 +225,9 @@ export async function performExtraction(extractId: string, options: ExtractServi
     //   v1: true,
     // }, {}, crypto.randomUUID(), 50);
 
-
+    //we restructure and make all of the arrays we need to fill into objects, 
+    // adding them to a single object so the llm can fill them one at a time
+    //TODO: make this work for more complex schemas where arrays are not first level
     console.log("schema", largeArraysSchema);
     let schemasForLLM: {} = {};
     for(const key in largeArraysSchema) {
