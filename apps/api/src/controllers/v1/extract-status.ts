@@ -24,6 +24,12 @@ export async function extractStatusController(
         error: "You are not allowed to access this resource.",
       });
     }
+    // BUG:
+    // getting this when the job is not done (not cached):
+    // {
+    //   "success": false,
+    //   "error": "You are not allowed to access this resource."
+    // }
 
     const jobData = await supabaseGetJobsById([req.params.jobId]);
     if (!jobData || jobData.length === 0) {
