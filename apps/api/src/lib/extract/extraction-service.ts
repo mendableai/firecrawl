@@ -263,7 +263,7 @@ export async function performExtraction(extractId: string, options: ExtractServi
 
         const schema = {properties:schemasForLLM,type:"object"};
         console.log("schemaa",schema);
-        
+        console.log("schema",JSON.stringify(schema));
         ajv.compile(schema);
 
 
