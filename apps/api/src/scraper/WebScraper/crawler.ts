@@ -397,8 +397,7 @@ export class WebCrawler {
 
   private isInternalLink(link: string): boolean {
     const urlObj = new URL(link, this.baseUrl);
-    const baseDomain = this.baseUrl
-      .replace(/^https?:\/\//, "")
+    const baseDomain = new URL(this.baseUrl).hostname
       .replace(/^www\./, "")
       .trim();
     const linkDomain = urlObj.hostname.replace(/^www\./, "").trim();
