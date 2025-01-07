@@ -226,15 +226,22 @@ export async function performExtraction(extractId: string, options: ExtractServi
     // }, {}, crypto.randomUUID(), 50);
 
 
-    console.log("schema",largeArraysSchema);
+    console.log("schema", largeArraysSchema);
     let schemasForLLM: {} = {};
-    for(const key in largeArraysSchema){
-      let clonedObj = {}
-      // console.log("clonebObj",clonedObj)
-      clonedObj["type"] = "object";
-      clonedObj["properties"] = structuredClone(largeArraysSchema[key].items);
-      clonedObj["properties"]["type"] = "object";
-      clonedObj["properties"].informationFilled = {type:"boolean"};
+    for(const key in largeArraysSchema) {
+      const originalSchema = structuredClone(largeArraysSchema[key].items);
+      let clonedObj = {
+        type: "object",
+        properties: {
+          informationFilled: {
+            type: "boolean"
+          },
+          data: {
+            type: "object",
+            properties: originalSchema.properties
+          }
+        }
+      };
       schemasForLLM[key] = clonedObj;
     }
 
@@ -304,7 +311,7 @@ export async function performExtraction(extractId: string, options: ExtractServi
               }
             }
           });
-
+          console.log("extract", JSON.stringify(comp));
           for(const [key, value] of Object.entries(comp.extract)){
             //@ts-ignore
             if(value.informationFilled === true){
@@ -314,9 +321,8 @@ export async function performExtraction(extractId: string, options: ExtractServi
               if (!largeArrayResult[key]) {
                 largeArrayResult[key] = [];
               }
-              largeArrayResult[key].push({
-                //@ts-ignore
-                ...value});
+              //@ts-ignore
+              largeArrayResult[key].push(value.data);
 
             }
           }
