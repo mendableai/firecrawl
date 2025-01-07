@@ -48,7 +48,7 @@ import {
 } from "../lib/concurrency-limit";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
-import { indexPage } from "../lib/extract/index/pinecone";
+import { getIndex } from "../lib/extract/index/";
 import { Document } from "../controllers/v1/types";
 import { supabase_service } from "../services/supabase";
 import { normalizeUrl, normalizeUrlOnlyHostname } from "../lib/canonical-url";
@@ -80,13 +80,19 @@ const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   if (await finishCrawl(job.data.crawl_id)) {
     (async () => {
-      const originUrl = sc.originUrl ? normalizeUrlOnlyHostname(sc.originUrl) : undefined;
+      const originUrl = sc.originUrl
+        ? normalizeUrlOnlyHostname(sc.originUrl)
+        : undefined;
       // Get all visited URLs from Redis
       const visitedUrls = await redisConnection.smembers(
         "crawl:" + job.data.crawl_id + ":visited",
       );
       // Upload to Supabase if we have URLs and this is a crawl (not a batch scrape)
-      if (visitedUrls.length > 0 && job.data.crawlerOptions !== null && originUrl) {
+      if (
+        visitedUrls.length > 0 &&
+        job.data.crawlerOptions !== null &&
+        originUrl
+      ) {
         // Fire and forget the upload to Supabase
         try {
           // Standardize URLs to canonical form (https, no www)
@@ -596,7 +602,7 @@ async function indexJob(job: Job & { id: string }, document: Document) {
     document.markdown &&
     job.data.team_id === process.env.BACKGROUND_INDEX_TEAM_ID!
   ) {
-    // indexPage({
+    // getIndex().indexPage({
     //   document: document,
     //   originUrl: job.data.crawl_id
     //     ? (await getCrawl(job.data.crawl_id))?.originUrl!
