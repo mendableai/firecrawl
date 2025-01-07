@@ -674,6 +674,10 @@ async function processJob(job: Job & { id: string }, token: string) {
 
     const rawHtml = doc.rawHtml ?? "";
 
+    if (!job.data.scrapeOptions.formats.includes("rawHtml")) {
+      delete doc.rawHtml;
+    }
+
     const data = {
       success: true,
       result: {
