@@ -55,6 +55,7 @@ import { Document } from "../controllers/v1/types";
 import { performExtraction } from "../lib/extract/extraction-service";
 import { supabase_service } from "../services/supabase";
 import { normalizeUrl, normalizeUrlOnlyHostname } from "../lib/canonical-url";
+import { saveExtract, updateExtract } from "../lib/extract/extract-redis";
 
 configDotenv();
 
@@ -351,6 +352,11 @@ const processExtractJobInternal = async (token: string, job: Job & { id: string 
     
     // Move job to failed state in Redis
     await job.moveToFailed(error, token, false);
+
+    await updateExtract(job.data.extractId, {
+      status: "failed",
+      error: error.error ?? error ?? "Unknown error, please contact help@firecrawl.dev. Extract id: " + job.data.extractId,
+    });
     // throw error;
   } finally {
     

@@ -7,6 +7,7 @@ export type StoredExtract = {
   plan?: string;
   createdAt: number;
   status: "processing" | "completed" | "failed" | "cancelled";
+  error?: any;
 };
 
 export async function saveExtract(id: string, extract: StoredExtract) {
