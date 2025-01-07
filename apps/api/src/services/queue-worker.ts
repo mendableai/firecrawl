@@ -351,7 +351,7 @@ const processExtractJobInternal = async (token: string, job: Job & { id: string 
     
     // Move job to failed state in Redis
     await job.moveToFailed(error, token, false);
-    throw error;
+    // throw error;
   } finally {
     clearInterval(extendLockInterval);
   }
