@@ -39,7 +39,7 @@ function getRootDomain(url: string): string {
   }
 }
 
-export async function performExtraction(extractId, options: ExtractServiceOptions): Promise<ExtractResult> {
+export async function performExtraction(extractId: string, options: ExtractServiceOptions): Promise<ExtractResult> {
   const { request, teamId, plan, subId } = options;
   const urlTraces: URLTrace[] = [];
   let docs: Document[] = [];
