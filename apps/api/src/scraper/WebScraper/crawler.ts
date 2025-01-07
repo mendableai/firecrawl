@@ -471,7 +471,7 @@ export class WebCrawler {
   }
 
   private async tryFetchSitemapLinks(url: string, urlsHandler: (urls: string[]) => unknown): Promise<number> {
-    const sitemapUrl = url.endsWith(".xml") ? url : `${url}/sitemap.xml`;
+    const sitemapUrl = url.endsWith(".xml") ? url : `${url}${url.endsWith("/") ? "" : "/"}sitemap.xml`;
 
     let sitemapCount: number = 0;
 

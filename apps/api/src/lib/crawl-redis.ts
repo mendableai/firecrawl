@@ -315,6 +315,22 @@ export async function lockURLs(
   return res;
 }
 
+export async function lockURLsIndividually(
+  id: string,
+  sc: StoredCrawl,
+  jobs: { id: string; url: string; }[],
+) {
+  const out: typeof jobs = [];
+
+  for (const job of jobs) {
+    if (await lockURL(id, sc, job.url)) {
+      out.push(job);      
+    }
+  }
+
+  return out;
+}
+
 export function crawlToCrawler(
   id: string,
   sc: StoredCrawl,

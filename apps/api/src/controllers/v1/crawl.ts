@@ -8,21 +8,13 @@ import {
   toLegacyCrawlerOptions,
 } from "./types";
 import {
-  addCrawlJob,
-  addCrawlJobs,
   crawlToCrawler,
-  lockURL,
-  lockURLs,
   saveCrawl,
   StoredCrawl,
 } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
-import { getScrapeQueue } from "../../services/queue-service";
-import { _addScrapeJobToBullMQ, addScrapeJob, addScrapeJobs } from "../../services/queue-jobs";
+import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { logger as _logger } from "../../lib/logger";
-import { getJobPriority } from "../../lib/job-priority";
-import { callWebhook } from "../../services/webhook";
-import { scrapeOptions as scrapeOptionsSchema } from "./types";
 
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
