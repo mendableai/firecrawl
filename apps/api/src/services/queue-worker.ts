@@ -211,20 +211,6 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
       const jobIDs = await getCrawlJobs(job.data.crawl_id);
       const jobStatus = sc.cancelled ? "failed" : "completed";
 
-      // v1 web hooks, call when done with no data, but with event completed
-      if (job.data.v1 && job.data.webhook) {
-        callWebhook(
-          job.data.team_id,
-          job.data.crawl_id,
-          [],
-          job.data.webhook,
-          job.data.v1,
-          job.data.crawlerOptions !== null
-            ? "crawl.completed"
-            : "batch_scrape.completed",
-        );
-      }
-
       await logJob(
         {
           job_id: job.data.crawl_id,
@@ -244,6 +230,20 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         },
         true,
       );
+
+      // v1 web hooks, call when done with no data, but with event completed
+      if (job.data.v1 && job.data.webhook) {
+        callWebhook(
+          job.data.team_id,
+          job.data.crawl_id,
+          [],
+          job.data.webhook,
+          job.data.v1,
+          job.data.crawlerOptions !== null
+            ? "crawl.completed"
+            : "batch_scrape.completed",
+        );
+      }
     }
   }
 }
