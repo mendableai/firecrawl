@@ -724,6 +724,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         ) {
           if (job.data.isCrawlSourceScrape) {
             // TODO: re-fetch sitemap for redirect target domain
+            // TODO: reset crawl source url to new target
           } else {
             throw new Error(
               "Redirected target URL is not allowed by crawlOptions",
