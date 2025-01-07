@@ -582,6 +582,69 @@ class FirecrawlApp:
             raise ValueError(str(e), 500)
 
         return {'success': False, 'error': "Internal server error."}
+    
+    def get_extract_status(self, job_id: str) -> Dict[str, Any]:
+        """
+        Retrieve the status of an extract job.
+
+        Args:
+            job_id (str): The ID of the extract job.
+
+        Returns:
+            Dict[str, Any]: The status of the extract job.
+
+        Raises:
+            ValueError: If there is an error retrieving the status.
+        """
+        headers = self._prepare_headers()
+        try:
+            response = self._get_request(f'{self.api_url}/v1/extract/{job_id}', headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                self._handle_error(response, "get extract status")
+        except Exception as e:
+            raise ValueError(str(e), 500)
+
+    def async_extract(self, urls: List[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Initiate an asynchronous extract job.
+
+        Args:
+            urls (List[str]): The URLs to extract data from.
+            params (Optional[Dict[str, Any]]): Additional parameters for the extract request.
+            idempotency_key (Optional[str]): A unique key to ensure idempotency of requests.
+
+        Returns:
+            Dict[str, Any]: The response from the extract operation.
+
+        Raises:
+            ValueError: If there is an error initiating the extract job.
+        """
+        headers = self._prepare_headers(idempotency_key)
+        
+        schema = params.get('schema') if params else None
+        if schema:
+            if hasattr(schema, 'model_json_schema'):
+                # Convert Pydantic model to JSON schema
+                schema = schema.model_json_schema()
+            # Otherwise assume it's already a JSON schema dict
+
+        jsonData = {'urls': urls, **(params or {})}
+        request_data = {
+            **jsonData,
+            'allowExternalLinks': params.get('allow_external_links', False) if params else False,
+            'schema': schema
+        }
+
+        try:
+            response = self._post_request(f'{self.api_url}/v1/extract', request_data, headers)
+            if response.status_code == 200:
+                return response.json()
+            else:
+                self._handle_error(response, "async extract")
+        except Exception as e:
+            raise ValueError(str(e), 500)
 
     def _prepare_headers(self, idempotency_key: Optional[str] = None) -> Dict[str, str]:
         """

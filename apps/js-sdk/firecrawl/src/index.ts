@@ -923,6 +923,72 @@ export default class FirecrawlApp {
   }
 
   /**
+   * Initiates an asynchronous extract job for a URL using the Firecrawl API.
+   * @param url - The URL to extract data from.
+   * @param params - Additional parameters for the extract request.
+   * @param idempotencyKey - Optional idempotency key for the request.
+   * @returns The response from the extract operation.
+   */
+  async asyncExtract(
+    url: string,
+    params?: ExtractParams,
+    idempotencyKey?: string
+  ): Promise<ExtractResponse | ErrorResponse> {
+    const headers = this.prepareHeaders(idempotencyKey);
+    let jsonData: any = { url, ...params };
+    let jsonSchema: any;
+
+    try {
+      if (params?.schema instanceof zt.ZodType) {
+        jsonSchema = zodToJsonSchema(params.schema);
+      } else {
+        jsonSchema = params?.schema;
+      }
+    } catch (error: any) {
+      throw new FirecrawlError("Invalid schema. Schema must be either a valid Zod schema or JSON schema object.", 400);
+    }
+
+    try {
+      const response: AxiosResponse = await this.postRequest(
+        this.apiUrl + `/v1/extract`,
+        { ...jsonData, schema: jsonSchema },
+        headers
+      );
+
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "start extract job");
+      }
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500);
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Retrieves the status of an extract job.
+   * @param jobId - The ID of the extract job.
+   * @returns The status of the extract job.
+   */
+  async getExtractStatus(jobId: string): Promise<any> {
+    try {
+      const response: AxiosResponse = await this.getRequest(
+        `${this.apiUrl}/v1/extract/${jobId}`,
+        this.prepareHeaders()
+      );
+
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "get extract status");
+      }
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500);
+    }
+  }
+
+  /**
    * Prepares the headers for an API request.
    * @param idempotencyKey - Optional key to ensure idempotency.
    * @returns The prepared headers.
