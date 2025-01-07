@@ -42,7 +42,7 @@ app.use(bodyParser.json({ limit: "10mb" }));
 app.use(cors()); // Add this line to enable CORS
 
 const serverAdapter = new ExpressAdapter();
-serverAdapter.setBasePath("/admin/queues");
+serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
 
 const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
   queues: [new BullAdapter(getScrapeQueue())],
