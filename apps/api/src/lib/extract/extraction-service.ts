@@ -99,6 +99,7 @@ export async function performExtraction(extractId: string, options: ExtractServi
     numTokens: number;
     warning: string | undefined;
   } | null = null;
+  let largeArraysSchema: any = {};
   let largeArrayResult: any = {};
   // Process URLs
   const urlPromises = request.urls.map(url => 
@@ -136,16 +137,21 @@ export async function performExtraction(extractId: string, options: ExtractServi
   const { hasLargeArrays, keysWithLargeArrays } = await analyzeSchemaAndPrompt(links.length, request.schema, request.prompt ?? "");
   console.log({ hasLargeArrays, keysWithLargeArrays });
   if (hasLargeArrays) {
-    // removes from reqSchema the keys that are large arrays
+    // removes from reqSchema the keys that are large arrays and adds them to largeArraysSchema
     for (const key of keysWithLargeArrays) {
       const keyParts = key.split('.');
       let currentSchema = reqSchema['properties'];
+      let currentLargeArraySchema = largeArraysSchema;
       for (let i = 0; i < keyParts.length - 1; i++) {
         currentSchema = currentSchema[keyParts[i]]['properties'];
+        if (!currentLargeArraySchema[keyParts[i]]) {
+          currentLargeArraySchema[keyParts[i]] = { type: 'object', properties: {} };
+        }
+        currentLargeArraySchema = currentLargeArraySchema[keyParts[i]]['properties'];
       }
+      currentLargeArraySchema[keyParts[keyParts.length - 1]] = currentSchema[keyParts[keyParts.length - 1]];
       delete currentSchema[keyParts[keyParts.length - 1]];
     }
-    
     // recursively delete keys with 'properties' == {}
     const deleteEmptyProperties = (schema: any) => {
       for (const key in schema['properties']) {
@@ -161,85 +167,140 @@ export async function performExtraction(extractId: string, options: ExtractServi
     }
     
     deleteEmptyProperties(reqSchema);
+    
+    // crawl in the background
+    // const sc: StoredCrawl = {
+    //   originUrl: url,
+    //   crawlerOptions: {
+    //     maxDepth: 15,
+    //     limit: 5000,
+    //     includePaths: [],
+    //     excludePaths: [],
+    //     ignoreSitemap: false,
+    //     includeSubdomains: true,
+    //     allowExternalLinks: false,
+    //     allowBackwardLinks: true
+    //   },
+    //   scrapeOptions: {
+    //       formats: ["markdown"],
+    //       onlyMainContent: true,
+    //       waitFor: 0,
+    //       mobile: false,
+    //       removeBase64Images: true,
+    //       fastMode: false,
+    //       parsePDF: true,
+    //       skipTlsVerification: false,
+    //   },
+    //   internalOptions: { 
+    //     disableSmartWaitCache: true,
+    //     isBackgroundIndex: true
+    //   },
+    //   team_id: process.env.BACKGROUND_INDEX_TEAM_ID!,
+    //   createdAt: Date.now(),
+    //   plan: "hobby", // make it a low concurrency
+    // };
 
-    // crawl
-    // Create and save crawl configuration first
-  //   const sc: StoredCrawl = {
-  //     originUrl: url,
-  //     crawlerOptions: {
-  //       maxDepth: 15,
-  //       limit: 5000,
-  //       includePaths: [],
-  //       excludePaths: [],
-  //       ignoreSitemap: false,
-  //       includeSubdomains: true,
-  //       allowExternalLinks: false,
-  //       allowBackwardLinks: true
-  //     },
-  //     scrapeOptions: {
-  //         formats: ["markdown"],
-  //         onlyMainContent: true,
-  //         waitFor: 0,
-  //         mobile: false,
-  //         removeBase64Images: true,
-  //         fastMode: false,
-  //         parsePDF: true,
-  //         skipTlsVerification: false,
-  //     },
-  //     internalOptions: { 
-  //       disableSmartWaitCache: true,
-  //       isBackgroundIndex: true
-  //     },
-  //     team_id: process.env.BACKGROUND_INDEX_TEAM_ID!,
-  //     createdAt: Date.now(),
-  //     plan: "hobby", // make it a low concurrency
-  //   };
+    // // Save the crawl configuration
+    // await saveCrawl(crawlId, sc);
 
-  //   // Save the crawl configuration
-  //   await saveCrawl(crawlId, sc);
-
-  //   // Then kick off the job
-  //   await _addScrapeJobToBullMQ({
-  //     url,
-  //     mode: "kickoff" as const,
-  //     team_id: process.env.BACKGROUND_INDEX_TEAM_ID!,
-  //     plan: "hobby", // make it a low concurrency
-  //     crawlerOptions: sc.crawlerOptions,
-  //     scrapeOptions: sc.scrapeOptions,
-  //     internalOptions: sc.internalOptions,
-  //     origin: "index",
-  //     crawl_id: crawlId,
-  //     webhook: null,
-  //     v1: true,
-  //   }, {}, crypto.randomUUID(), 50);
-  // });
-
-    for (const key of keysWithLargeArrays) {
-      // batch scrape    
+    // // Then kick off the job
+    // await _addScrapeJobToBullMQ({
+    //   url,
+    //   mode: "kickoff" as const,
+    //   team_id: process.env.BACKGROUND_INDEX_TEAM_ID!,
+    //   plan: "hobby", // make it a low concurrency
+    //   crawlerOptions: sc.crawlerOptions,
+    //   scrapeOptions: sc.scrapeOptions,
+    //   internalOptions: sc.internalOptions,
+    //   origin: "index",
+    //   crawl_id: crawlId,
+    //   webhook: null,
+    //   v1: true,
+    // }, {}, crypto.randomUUID(), 50);
 
 
+    for (const key in largeArraysSchema) {
+      console.log('>>>>>>', key, largeArraysSchema[key]);
+      // Scrape documents
+      const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
+      const scrapePromises = links.map(url =>
+        scrapeDocument({
+          url,
+          teamId,
+          plan,
+          origin: request.origin || "api",
+          timeout,
+        }, urlTraces)
+      );
 
-      // merge the results into the 
-      const keys = key.split('.');
-      let currentLevel = largeArrayResult;
+      try {
+        const results = await Promise.all(scrapePromises);
+        docs.push(...results.filter((doc): doc is Document => doc !== null));
+      } catch (error) {
+        return {
+          success: false,
+          error: error.message,
+          extractId,
+          urlTrace: urlTraces,
+        };
+      }
 
-      // Traverse or create nested objects based on the keys
-      for (let i = 0; i < keys.length; i++) {
-        const part = keys[i];
-        if (i === keys.length - 1) {
-          // Assign the array to the last key
-          currentLevel[part] = ["a", "b", "c"]; // TODO: replace with actual results
-        } else {
-          // Create the object if it doesn't exist
-          if (!currentLevel[part]) {
-            currentLevel[part] = {};
-          }
-          currentLevel = currentLevel[part];
+      for (const doc of docs) {
+        console.log(doc, key, largeArraysSchema[key]);
+        // Generate completions
+        const comp = await generateOpenAICompletions(
+          logger.child({ method: "extractService/generateOpenAICompletions" }),
+          {
+            mode: "llm",
+            systemPrompt:
+              (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
+              "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
+              links.join(", "),
+            prompt: request.prompt,
+            schema: largeArraysSchema[key],
+          },
+          buildDocument(doc),
+          undefined,
+          true,
+        );
+        console.log(JSON.stringify(comp, null, 2));
+        // Update token usage in traces
+        if (comp && comp.numTokens) {
+          const totalLength = docs.reduce((sum, doc) => sum + (doc.markdown?.length || 0), 0);
+          docs.forEach((doc) => {
+            if (doc.metadata?.sourceURL) {
+              const trace = urlTraces.find((t) => t.url === doc.metadata.sourceURL);
+              if (trace && trace.contentStats) {
+                trace.contentStats.tokensUsed = Math.floor(
+                  ((doc.markdown?.length || 0) / totalLength) * (comp?.numTokens || 0)
+                );
+              }
+            }
+          });
         }
       }
-      
-    }
 
+
+
+    //   // merge the results into the 
+    //   const keys = key.split('.');
+    //   let currentLevel = largeArrayResult;
+
+    //   // Traverse or create nested objects based on the keys
+    //   for (let i = 0; i < keys.length; i++) {
+    //     const part = keys[i];
+    //     if (i === keys.length - 1) {
+    //       // Assign the array to the last key
+    //       currentLevel[part] = comp.extract[part]; // TODO: replace with actual results
+    //     } else {
+    //       // Create the object if it doesn't exist
+    //       if (!currentLevel[part]) {
+    //         currentLevel[part] = {};
+    //       }
+    //       currentLevel = currentLevel[part];
+    //     }
+    //   }
+    }
   }
   
   if (reqSchema && Object.keys(reqSchema).length > 0) {
