@@ -538,7 +538,8 @@ class FirecrawlApp:
         request_data = {
             **jsonData,
             'allowExternalLinks': params.get('allow_external_links', False),
-            'schema': schema
+            'schema': schema,
+            'origin': 'api-sdk'
         }
 
         try:

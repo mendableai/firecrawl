@@ -884,7 +884,7 @@ export default class FirecrawlApp {
     try {
       const response: AxiosResponse = await this.postRequest(
         this.apiUrl + `/v1/extract`,
-        { ...jsonData, schema: jsonSchema },
+        { ...jsonData, schema: jsonSchema, origin: "api-sdk" },
         headers
       );
 

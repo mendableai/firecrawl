@@ -8,7 +8,28 @@ import {
 import { getExtractQueue } from "../../services/queue-service";
 import * as Sentry from "@sentry/node";
 import { saveExtract } from "../../lib/extract/extract-redis";
+import { getTeamIdSyncB } from "../../lib/extract/team-id-sync";
+import { performExtraction } from "../../lib/extract/extraction-service";
 
+export async function oldExtract(req: RequestWithAuth<{}, ExtractResponse, ExtractRequest>, res: Response<ExtractResponse>, extractId: string){
+  // Means that are in the non-queue system
+  // TODO: Remove this once all teams have transitioned to the new system
+    try {
+      const result = await performExtraction(extractId, {
+        request: req.body,
+        teamId: req.auth.team_id,
+        plan: req.auth.plan ?? "free",
+        subId: req.acuc?.sub_id ?? undefined,
+    });
+
+      return res.status(200).json(result);
+    } catch (error) {
+      return res.status(500).json({
+        success: false,
+        error: "Internal server error",
+      });
+    }
+  }
 /**
  * Extracts data from the provided URLs based on the request parameters.
  * Currently in beta.
@@ -31,6 +52,10 @@ export async function extractController(
     subId: req.acuc?.sub_id,
     extractId,
   };
+
+  if(await getTeamIdSyncB(req.auth.team_id) && req.body.origin !== "api-sdk") {
+    return await oldExtract(req, res, extractId);
+  }
 
   await saveExtract(extractId, {
     id: extractId,
