@@ -69,7 +69,7 @@ export async function extractController(
     });
   }
 
-  return res.status(202).json({
+  return res.status(200).json({
     success: true,
     id: extractId,
     urlTrace: [],

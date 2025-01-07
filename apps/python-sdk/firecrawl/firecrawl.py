@@ -542,6 +542,7 @@ class FirecrawlApp:
         }
 
         try:
+            # Send the initial extract request
             response = self._post_request(
                 f'{self.api_url}/v1/extract',
                 request_data,
@@ -550,7 +551,29 @@ class FirecrawlApp:
             if response.status_code == 200:
                 data = response.json()
                 if data['success']:
-                    return data
+                    job_id = data.get('id')
+                    if not job_id:
+                        raise Exception('Job ID not returned from extract request.')
+
+                    # Poll for the extract status
+                    while True:
+                        status_response = self._get_request(
+                            f'{self.api_url}/v1/extract/{job_id}',
+                            headers
+                        )
+                        if status_response.status_code == 200:
+                            status_data = status_response.json()
+                            if status_data['status'] == 'completed':
+                                if status_data['success']:
+                                    return status_data
+                                else:
+                                    raise Exception(f'Failed to extract. Error: {status_data["error"]}')
+                            elif status_data['status'] in ['failed', 'cancelled']:
+                                raise Exception(f'Extract job {status_data["status"]}. Error: {status_data["error"]}')
+                        else:
+                            self._handle_error(status_response, "extract-status")
+
+                        time.sleep(2)  # Polling interval
                 else:
                     raise Exception(f'Failed to extract. Error: {data["error"]}')
             else:

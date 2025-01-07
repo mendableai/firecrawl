@@ -887,18 +887,32 @@ export default class FirecrawlApp {
         { ...jsonData, schema: jsonSchema },
         headers
       );
+
       if (response.status === 200) {
-        const responseData = response.data as ExtractResponse<T>;
-        if (responseData.success) {
-          return {
-            success: true,
-            data: responseData.data,
-            warning: responseData.warning,
-            error: responseData.error
-          };
-        } else {
-          throw new FirecrawlError(`Failed to scrape URL. Error: ${responseData.error}`, response.status);
-        }
+        const jobId = response.data.id;
+        let extractStatus;
+        do {
+          const statusResponse: AxiosResponse = await this.getRequest(
+            `${this.apiUrl}/v1/extract/${jobId}`,
+            headers
+          );
+          extractStatus = statusResponse.data;
+          if (extractStatus.status === "completed") {
+            if (extractStatus.success) {
+              return {
+                success: true,
+                data: extractStatus.data,
+                warning: extractStatus.warning,
+                error: extractStatus.error
+              };
+            } else {
+              throw new FirecrawlError(`Failed to extract data. Error: ${extractStatus.error}`, statusResponse.status);
+            }
+          } else if (extractStatus.status === "failed" || extractStatus.status === "cancelled") {
+            throw new FirecrawlError(`Extract job ${extractStatus.status}. Error: ${extractStatus.error}`, statusResponse.status);
+          }
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Polling interval
+        } while (extractStatus.status !== "completed");
       } else {
         this.handleError(response, "extract");
       }
