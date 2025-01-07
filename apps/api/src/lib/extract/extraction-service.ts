@@ -9,6 +9,7 @@ import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { saveCrawl, StoredCrawl } from "../crawl-redis";
+import { updateExtract } from "./extract-redis";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -20,7 +21,7 @@ interface ExtractServiceOptions {
 interface ExtractResult {
   success: boolean;
   data?: any;
-  scrapeId: string;
+  extractId: string;
   warning?: string;
   urlTrace?: URLTrace[];
   error?: string;
@@ -38,9 +39,8 @@ function getRootDomain(url: string): string {
   }
 }
 
-export async function performExtraction(options: ExtractServiceOptions): Promise<ExtractResult> {
+export async function performExtraction(extractId: string, options: ExtractServiceOptions): Promise<ExtractResult> {
   const { request, teamId, plan, subId } = options;
-  const scrapeId = crypto.randomUUID();
   const urlTraces: URLTrace[] = [];
   let docs: Document[] = [];
 
@@ -65,7 +65,7 @@ export async function performExtraction(options: ExtractServiceOptions): Promise
     return {
       success: false,
       error: "No valid URLs found to scrape. Try adjusting your search criteria or including more URLs.",
-      scrapeId,
+      extractId,
       urlTrace: urlTraces,
     };
   }
@@ -89,7 +89,7 @@ export async function performExtraction(options: ExtractServiceOptions): Promise
     return {
       success: false,
       error: error.message,
-      scrapeId,
+      extractId,
       urlTrace: urlTraces,
     };
   }
@@ -191,7 +191,7 @@ export async function performExtraction(options: ExtractServiceOptions): Promise
 
   // Log job
   logJob({
-    job_id: scrapeId,
+    job_id: extractId,
     success: true,
     message: "Extract completed",
     num_docs: 1,
@@ -203,12 +203,20 @@ export async function performExtraction(options: ExtractServiceOptions): Promise
     scrapeOptions: request,
     origin: request.origin ?? "api",
     num_tokens: completions.numTokens ?? 0,
+  }).then(() => {
+    updateExtract(extractId, {
+      status: "completed",
+    }).catch((error) => {
+      logger.error(`Failed to update extract ${extractId} status to completed: ${error}`);
+    });
   });
+
+
 
   return {
     success: true,
     data: completions.extract ?? {},
-    scrapeId,
+    extractId,
     warning: completions.warning,
     urlTrace: request.urlTrace ? urlTraces : undefined,
   };

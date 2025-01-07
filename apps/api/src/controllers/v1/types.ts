@@ -186,6 +186,10 @@ export const scrapeOptions = z
 
 export type ScrapeOptions = z.infer<typeof scrapeOptions>;
 
+import Ajv from "ajv";
+
+const ajv = new Ajv();
+
 export const extractV1Options = z
   .object({
     urls: url
@@ -193,7 +197,20 @@ export const extractV1Options = z
       .max(10, "Maximum of 10 URLs allowed per request while in beta."),
     prompt: z.string().optional(),
     systemPrompt: z.string().optional(),
-    schema: z.any().optional(),
+    schema: z
+      .any()
+      .optional()
+      .refine((val) => {
+        if (!val) return true; // Allow undefined schema
+        try {
+          const validate = ajv.compile(val);
+          return typeof validate === "function";
+        } catch (e) {
+          return false;
+        }
+      }, {
+        message: "Invalid JSON schema.",
+      }),
     limit: z.number().int().positive().finite().safe().optional(),
     ignoreSitemap: z.boolean().default(false),
     includeSubdomains: z.boolean().default(true),
@@ -478,10 +495,11 @@ export interface URLTrace {
 
 export interface ExtractResponse {
   success: boolean;
+  error?: string;
   data?: any;
   scrape_id?: string;
+  id?: string;
   warning?: string;
-  error?: string;
   urlTrace?: URLTrace[];
 }
 
