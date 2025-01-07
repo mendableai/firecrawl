@@ -218,89 +218,94 @@ export async function performExtraction(extractId: string, options: ExtractServi
     //   v1: true,
     // }, {}, crypto.randomUUID(), 50);
 
-
+    console.log('???', JSON.stringify(largeArraysSchema, null, 2));
+    console.log('???', JSON.stringify(largeArrayResult, null, 2));
     for (const key in largeArraysSchema) {
       console.log('>>>>>>', key, largeArraysSchema[key]);
-      // Scrape documents
-      const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
-      const scrapePromises = links.map(url =>
-        scrapeDocument({
-          url,
-          teamId,
-          plan,
-          origin: request.origin || "api",
-          timeout,
-        }, urlTraces)
-      );
+    }
 
-      try {
-        const results = await Promise.all(scrapePromises);
-        docs.push(...results.filter((doc): doc is Document => doc !== null));
-      } catch (error) {
-        return {
-          success: false,
-          error: error.message,
-          extractId,
-          urlTrace: urlTraces,
-        };
-      }
+    // for (const key in largeArraysSchema) {
+    //   console.log('>>>>>>', key, largeArraysSchema[key]);
+    //   // Scrape documents
+    //   const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
+    //   const scrapePromises = links.map(url =>
+    //     scrapeDocument({
+    //       url,
+    //       teamId,
+    //       plan,
+    //       origin: request.origin || "api",
+    //       timeout,
+    //     }, urlTraces)
+    //   );
 
-      for (const doc of docs) {
-        console.log(doc, key, largeArraysSchema[key]);
-        // Generate completions
-        const comp = await generateOpenAICompletions(
-          logger.child({ method: "extractService/generateOpenAICompletions" }),
-          {
-            mode: "llm",
-            systemPrompt:
-              (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
-              "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
-              links.join(", "),
-            prompt: request.prompt,
-            schema: largeArraysSchema[key],
-          },
-          buildDocument(doc),
-          undefined,
-          true,
-        );
-        console.log(JSON.stringify(comp, null, 2));
-        // Update token usage in traces
-        if (comp && comp.numTokens) {
-          const totalLength = docs.reduce((sum, doc) => sum + (doc.markdown?.length || 0), 0);
-          docs.forEach((doc) => {
-            if (doc.metadata?.sourceURL) {
-              const trace = urlTraces.find((t) => t.url === doc.metadata.sourceURL);
-              if (trace && trace.contentStats) {
-                trace.contentStats.tokensUsed = Math.floor(
-                  ((doc.markdown?.length || 0) / totalLength) * (comp?.numTokens || 0)
-                );
-              }
-            }
-          });
-        }
-      }
+    //   try {
+    //     const results = await Promise.all(scrapePromises);
+    //     docs.push(...results.filter((doc): doc is Document => doc !== null));
+    //   } catch (error) {
+    //     return {
+    //       success: false,
+    //       error: error.message,
+    //       extractId,
+    //       urlTrace: urlTraces,
+    //     };
+    //   }
 
-
-
-    //   // merge the results into the 
-    //   const keys = key.split('.');
-    //   let currentLevel = largeArrayResult;
-
-    //   // Traverse or create nested objects based on the keys
-    //   for (let i = 0; i < keys.length; i++) {
-    //     const part = keys[i];
-    //     if (i === keys.length - 1) {
-    //       // Assign the array to the last key
-    //       currentLevel[part] = comp.extract[part]; // TODO: replace with actual results
-    //     } else {
-    //       // Create the object if it doesn't exist
-    //       if (!currentLevel[part]) {
-    //         currentLevel[part] = {};
-    //       }
-    //       currentLevel = currentLevel[part];
+    //   for (const doc of docs) {
+    //     console.log(doc, key, largeArraysSchema[key]);
+    //     // Generate completions
+    //     const comp = await generateOpenAICompletions(
+    //       logger.child({ method: "extractService/generateOpenAICompletions" }),
+    //       {
+    //         mode: "llm",
+    //         systemPrompt:
+    //           (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
+    //           "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
+    //           links.join(", "),
+    //         prompt: request.prompt,
+    //         schema: largeArraysSchema[key],
+    //       },
+    //       buildDocument(doc),
+    //       undefined,
+    //       true,
+    //     );
+    //     console.log(JSON.stringify(comp, null, 2));
+    //     // Update token usage in traces
+    //     if (comp && comp.numTokens) {
+    //       const totalLength = docs.reduce((sum, doc) => sum + (doc.markdown?.length || 0), 0);
+    //       docs.forEach((doc) => {
+    //         if (doc.metadata?.sourceURL) {
+    //           const trace = urlTraces.find((t) => t.url === doc.metadata.sourceURL);
+    //           if (trace && trace.contentStats) {
+    //             trace.contentStats.tokensUsed = Math.floor(
+    //               ((doc.markdown?.length || 0) / totalLength) * (comp?.numTokens || 0)
+    //             );
+    //           }
+    //         }
+    //       });
     //     }
     //   }
-    }
+
+
+
+    // //   // merge the results into the 
+    // //   const keys = key.split('.');
+    // //   let currentLevel = largeArrayResult;
+
+    // //   // Traverse or create nested objects based on the keys
+    // //   for (let i = 0; i < keys.length; i++) {
+    // //     const part = keys[i];
+    // //     if (i === keys.length - 1) {
+    // //       // Assign the array to the last key
+    // //       currentLevel[part] = comp.extract[part]; // TODO: replace with actual results
+    // //     } else {
+    // //       // Create the object if it doesn't exist
+    // //       if (!currentLevel[part]) {
+    // //         currentLevel[part] = {};
+    // //       }
+    // //       currentLevel = currentLevel[part];
+    // //     }
+    // //   }
+    // }
   }
   
   if (reqSchema && Object.keys(reqSchema).length > 0) {

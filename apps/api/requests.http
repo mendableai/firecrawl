@@ -473,35 +473,29 @@ Content-Type: application/json
         "type": "string",
         "title": "Description"
       },
-      "ecommerce": {
-        "type": "object",
-        "title": "Ecommerce",
-        "properties": {
-          "categories": {
-            "type": "array",
-            "items": {
+      "categories": {
+        "type": "array",
+        "items": {
+          "type": "string",
+          "title": "Category"
+        }
+      },
+      "products": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "name": {
               "type": "string",
-              "title": "Category"
-            }
-          },
-          "products": {
-            "type": "array",
-            "items": {
-              "type": "object",
-              "properties": {
-                "name": {
-                  "type": "string",
-                  "title": "Name"
-                },
-                "description": {
-                  "type": "string",
-                  "title": "Description"
-                },
-                "price": {
-                  "type": "string",
-                  "title": "Price"
-                }
-              }
+              "title": "Name"
+            },
+            "description": {
+              "type": "string",
+              "title": "Description"
+            },
+            "price": {
+              "type": "string",
+              "title": "Price"
             }
           }
         }
