@@ -1,21 +1,39 @@
 import { Response } from "express";
 import { supabaseGetJobsById } from "../../lib/supabase-jobs";
 import { RequestWithAuth } from "./types";
+import { getExtract, getExtractExpiry } from "../../lib/extract/extract-redis";
 
 export async function extractStatusController(
   req: RequestWithAuth<{ jobId: string }, any, any>,
   res: Response,
 ) {
-  const jobData = await supabaseGetJobsById([req.params.jobId]);
-  if (!jobData || jobData.length === 0) {
+  const extract = await getExtract(req.params.jobId);
+
+  if (!extract) {
     return res.status(404).json({
       success: false,
-      error: "Job not found",
+      error: "Extract job not found",
     });
+  }
+
+  let data: any[] = [];
+
+  if (extract.status === "completed") {
+    const jobData = await supabaseGetJobsById([req.params.jobId]);
+    if (!jobData || jobData.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: "Job not found",
+      });
+    }
+
+    data = jobData[0].docs;
   }
 
   return res.status(200).json({
     success: true,
-    data: jobData[0].docs,
+    data: data,
+    status: extract.status,
+    expiresAt: (await getExtractExpiry(req.params.jobId)).toISOString(),
   });
 }

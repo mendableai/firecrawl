@@ -7,7 +7,7 @@ import {
 } from "./types";
 import { getExtractQueue } from "../../services/queue-service";
 import * as Sentry from "@sentry/node";
-import { v4 as uuidv4 } from "uuid";
+import { saveExtract } from "../../lib/extract/extract-redis";
 
 /**
  * Extracts data from the provided URLs based on the request parameters.
@@ -23,14 +23,6 @@ export async function extractController(
   const selfHosted = process.env.USE_DB_AUTHENTICATION !== "true";
   req.body = extractRequestSchema.parse(req.body);
 
-  if (!req.auth.plan) {
-    return res.status(400).json({
-      success: false,
-      error: "No plan specified",
-      urlTrace: [],
-    });
-  }
-
   const extractId = crypto.randomUUID();
   const jobData = {
     request: req.body,
@@ -39,6 +31,14 @@ export async function extractController(
     subId: req.acuc?.sub_id,
     extractId,
   };
+
+  await saveExtract(extractId, {
+    id: extractId,
+    team_id: req.auth.team_id,
+    plan: req.auth.plan,
+    createdAt: Date.now(),
+    status: "processing",
+  });
 
   if (Sentry.isInitialized()) {
     const size = JSON.stringify(jobData).length;

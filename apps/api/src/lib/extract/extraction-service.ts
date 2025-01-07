@@ -9,6 +9,7 @@ import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { saveCrawl, StoredCrawl } from "../crawl-redis";
+import { updateExtract } from "./extract-redis";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -202,7 +203,15 @@ export async function performExtraction(extractId, options: ExtractServiceOption
     scrapeOptions: request,
     origin: request.origin ?? "api",
     num_tokens: completions.numTokens ?? 0,
+  }).then(() => {
+    updateExtract(extractId, {
+      status: "completed",
+    }).catch((error) => {
+      logger.error(`Failed to update extract ${extractId} status to completed: ${error}`);
+    });
   });
+
+
 
   return {
     success: true,

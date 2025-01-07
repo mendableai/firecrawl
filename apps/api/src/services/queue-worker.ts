@@ -353,6 +353,7 @@ const processExtractJobInternal = async (token: string, job: Job & { id: string 
     await job.moveToFailed(error, token, false);
     // throw error;
   } finally {
+    
     clearInterval(extendLockInterval);
   }
 };
