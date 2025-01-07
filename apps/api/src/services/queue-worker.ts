@@ -558,6 +558,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
           crawl_id: job.data.crawl_id,
           webhook: job.data.webhook,
           v1: job.data.v1,
+          isCrawlSourceScrape: true,
         },
         {
           priority: 15,
@@ -721,9 +722,13 @@ async function processJob(job: Job & { id: string }, token: string) {
         if (
           crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL) === null
         ) {
-          throw new Error(
-            "Redirected target URL is not allowed by crawlOptions",
-          ); // TODO: make this its own error type that is ignored by error tracking
+          if (job.data.isCrawlSourceScrape) {
+            // TODO: re-fetch sitemap for redirect target domain
+          } else {
+            throw new Error(
+              "Redirected target URL is not allowed by crawlOptions",
+            ); // TODO: make this its own error type that is ignored by error tracking
+          }
         }
 
         if (isUrlBlocked(doc.metadata.url)) {
