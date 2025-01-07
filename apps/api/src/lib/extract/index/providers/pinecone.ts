@@ -3,9 +3,6 @@ import { Pinecone as PineconeDB } from "@pinecone-database/pinecone";
 import { logger } from "../../../logger";
 import { Document } from "../../../../controllers/v1/types";
 
-const pinecone = new PineconeDB({
-  apiKey: process.env.PINECONE_API_KEY!,
-});
 const INDEX_NAME = process.env.PINECONE_INDEX_NAME ?? "";
 
 export class Pinecone extends PagesIndex {
@@ -21,6 +18,10 @@ export class Pinecone extends PagesIndex {
     teamId?: string;
   }) {
     try {
+      const pinecone = new PineconeDB({
+        apiKey: process.env.PINECONE_API_KEY!,
+      });
+
       const index = pinecone.index(INDEX_NAME);
 
       const textToEmbed = this.prepareTextForEmbedding(document);
@@ -70,6 +71,10 @@ export class Pinecone extends PagesIndex {
     limit: number = 10,
   ) {
     try {
+      const pinecone = new PineconeDB({
+        apiKey: process.env.PINECONE_API_KEY!,
+      });
+
       const index = pinecone.index(INDEX_NAME);
       const queryEmbedding = await this.getEmbedding(query);
 

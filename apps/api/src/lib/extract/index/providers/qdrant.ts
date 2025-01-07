@@ -4,10 +4,6 @@ import { logger } from "../../../logger";
 import { v5 as uuidv5 } from "uuid";
 import { Document } from "../../../../controllers/v1/types";
 
-const qdrantClient = new QdrantClient({
-  url: process.env.QDRANT_URL!,
-  apiKey: process.env.QDRANT_API_KEY!,
-});
 const COLLECTION_NAME = process.env.QDRANT_COLLECTION_NAME ?? "firecrawl";
 
 export class Qdrant extends PagesIndex {
@@ -23,6 +19,11 @@ export class Qdrant extends PagesIndex {
     teamId?: string;
   }) {
     try {
+      const qdrantClient = new QdrantClient({
+        url: process.env.QDRANT_URL!,
+        apiKey: process.env.QDRANT_API_KEY! ?? "",
+      });
+
       const textToEmbed = this.prepareTextForEmbedding(document);
       const embedding = await this.getEmbedding(textToEmbed);
       const normalizedUrl = this.normalizeUrl(
@@ -80,6 +81,11 @@ export class Qdrant extends PagesIndex {
     limit: number = 10,
   ) {
     try {
+      const qdrantClient = new QdrantClient({
+        url: process.env.QDRANT_URL!,
+        apiKey: process.env.QDRANT_API_KEY! ?? "",
+      });
+
       const queryEmbedding = await this.getEmbedding(query);
 
       const queryParams: any = {
