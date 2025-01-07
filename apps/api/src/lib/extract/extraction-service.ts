@@ -12,6 +12,9 @@ import { saveCrawl, StoredCrawl } from "../crawl-redis";
 import { z } from "zod";
 import OpenAI from "openai";
 
+import Ajv from "ajv";
+const ajv = new Ajv();
+
 const openai = new OpenAI();
 
 interface ExtractServiceOptions {
@@ -134,7 +137,11 @@ export async function performExtraction(extractId: string, options: ExtractServi
   // if so, it splits the results into 2 types of completions:
   // 1. the first one is a completion that will extract the array of items
   // 2. the second one is multiple completions that will extract the items from the array
-  const { hasLargeArrays, keysWithLargeArrays } = await analyzeSchemaAndPrompt(links.length, request.schema, request.prompt ?? "");
+  
+  // const { hasLargeArrays, keysWithLargeArrays } = await analyzeSchemaAndPrompt(links.length, request.schema, request.prompt ?? "");
+  const hasLargeArrays = true;
+  const keysWithLargeArrays = ["products"];
+  
   console.log({ hasLargeArrays, keysWithLargeArrays });
   if (hasLargeArrays) {
     // removes from reqSchema the keys that are large arrays and adds them to largeArraysSchema
@@ -218,37 +225,107 @@ export async function performExtraction(extractId: string, options: ExtractServi
     //   v1: true,
     // }, {}, crypto.randomUUID(), 50);
 
-    console.log('???', JSON.stringify(largeArraysSchema, null, 2));
-    console.log('???', JSON.stringify(largeArrayResult, null, 2));
+
+    console.log("schema",largeArraysSchema);
+    let schemasForLLM: {} = {};
+    for(const key in largeArraysSchema){
+      let clonedObj = {}
+      // console.log("clonebObj",clonedObj)
+      clonedObj["type"] = "object";
+      clonedObj["properties"] = structuredClone(largeArraysSchema[key].items);
+      clonedObj["properties"]["type"] = "object";
+      clonedObj["properties"].informationFilled = {type:"boolean"};
+      schemasForLLM[key] = clonedObj;
+    }
+
+    console.log("schemasForLLM",schemasForLLM);
     for (const key in largeArraysSchema) {
       console.log('>>>>>>', key, largeArraysSchema[key]);
     }
 
     // for (const key in largeArraysSchema) {
-    //   console.log('>>>>>>', key, largeArraysSchema[key]);
-    //   // Scrape documents
-    //   const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
-    //   const scrapePromises = links.map(url =>
-    //     scrapeDocument({
-    //       url,
-    //       teamId,
-    //       plan,
-    //       origin: request.origin || "api",
-    //       timeout,
-    //     }, urlTraces)
-    //   );
+      // console.log('>>>>>>', key, largeArraysSchema[key]);
+      // Scrape documents
+      const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
+      const scrapePromises = links.map(url =>
+        scrapeDocument({
+          url,
+          teamId,
+          plan,
+          origin: request.origin || "api",
+          timeout,
+        }, urlTraces)
+      );
 
-    //   try {
-    //     const results = await Promise.all(scrapePromises);
-    //     docs.push(...results.filter((doc): doc is Document => doc !== null));
-    //   } catch (error) {
-    //     return {
-    //       success: false,
-    //       error: error.message,
-    //       extractId,
-    //       urlTrace: urlTraces,
-    //     };
-    //   }
+      let docs = (await Promise.all(scrapePromises)).filter((doc): doc is Document => doc !== null);
+
+      for (const doc of docs) {
+
+        const schema = {properties:schemasForLLM,type:"object"};
+        console.log("schemaa",schema);
+        
+        ajv.compile(schema);
+
+
+
+
+
+
+        
+        // console.log(doc, key, largeArraysSchema[key]);
+        // Generate completions
+        const comp = await generateOpenAICompletions(
+          logger.child({ method: "extractService/generateOpenAICompletions" }),
+          {
+            mode: "llm",
+            systemPrompt:
+              (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
+              "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
+              links.join(", "),
+            prompt: request.prompt,
+            schema: schemasForLLM,
+          },
+          buildDocument(doc),
+          undefined,
+          true,
+        );
+        console.log("llm response",JSON.stringify(comp, null, 2));
+        // Update token usage in traces
+        if (comp && comp.numTokens) {
+
+          const totalLength = docs.reduce((sum, doc) => sum + (doc.markdown?.length || 0), 0);
+          docs.forEach((doc) => {
+            if (doc.metadata?.sourceURL) {
+              const trace = urlTraces.find((t) => t.url === doc.metadata.sourceURL);
+              if (trace && trace.contentStats) {
+                trace.contentStats.tokensUsed = Math.floor(
+                  ((doc.markdown?.length || 0) / totalLength) * (comp?.numTokens || 0)
+                );
+              }
+            }
+          });
+
+          for(const [key, value] of Object.entries(comp.extract)){
+            //@ts-ignore
+            if(value.informationFilled === true){
+              let res = value;
+              //@ts-ignore
+              delete res.informationFilled;
+              if (!largeArrayResult[key]) {
+                largeArrayResult[key] = [];
+              }
+              largeArrayResult[key].push({
+                //@ts-ignore
+                ...value});
+
+            }
+          }
+        }
+      }
+
+
+      console.log("Results!!!!, ",largeArrayResult);
+  
 
     //   for (const doc of docs) {
     //     console.log(doc, key, largeArraysSchema[key]);
