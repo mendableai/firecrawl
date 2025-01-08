@@ -75,6 +75,7 @@ async function analyzeSchemaAndPrompt(numUrls: number, schema: any, prompt: stri
         content: "\
           You are a helpful assistant that analyzes a schema, a prompt, and the number of urls and determines if the schema or the prompt has an array with a large amount of items.\
           If the array with large amount of items is deep nested, you should return the whole key. For example, if the key is 'products' below 'ecommerce', you should return 'ecommerce.products'.\
+          Consider large amount of items to be 100 or more.\
         ",
       },
       {
