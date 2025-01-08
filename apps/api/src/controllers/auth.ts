@@ -204,7 +204,7 @@ export async function supaAuthenticateUser(
     }
 
     chunk = await getACUC(normalizedApi);
-
+    
     if (chunk === null) {
       return {
         success: false,
@@ -247,6 +247,13 @@ export async function supaAuthenticateUser(
       case RateLimiterMode.Map:
         rateLimiter = getRateLimiter(
           RateLimiterMode.Map,
+          token,
+          subscriptionData.plan,
+        );
+        break;
+      case RateLimiterMode.Extract:
+        rateLimiter = getRateLimiter(
+          RateLimiterMode.Extract,
           token,
           subscriptionData.plan,
         );
@@ -304,6 +311,7 @@ export async function supaAuthenticateUser(
       mode === RateLimiterMode.Map ||
       mode === RateLimiterMode.Crawl ||
       mode === RateLimiterMode.CrawlStatus ||
+      mode === RateLimiterMode.Extract ||
       mode === RateLimiterMode.Search)
   ) {
     return { success: true, team_id: "preview", chunk: null };
