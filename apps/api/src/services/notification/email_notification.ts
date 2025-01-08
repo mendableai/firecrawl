@@ -7,6 +7,7 @@ import { sendSlackWebhook } from "../alerts/slack";
 import { getNotificationString } from "./notification_string";
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
 import { redlock } from "../redlock";
+import { redisConnection } from "../queue-service";
 
 const emailTemplates: Record<
   NotificationType,
@@ -205,25 +206,16 @@ export async function sendNotificationWithCustomDays(
     daysBetweenEmails: number,
     bypassRecentChecks: boolean,
   ) => {
-    const now = new Date();
-    const pastDate = new Date(now.getTime() - daysBetweenEmails * 24 * 60 * 60 * 1000);
+    const redisKey = "notification_sent:" + notificationType + ":" + team_id;
 
-    const { data: recentNotifications, error: recentNotificationsError } = await supabase_service
-      .from("user_notifications")
-      .select("*")
-      .eq("team_id", team_id)
-      .eq("notification_type", notificationType)
-      .gte("sent_date", pastDate.toISOString());
+    const didSendRecentNotification = (await redisConnection.get(redisKey)) !== null;
 
-    if (recentNotificationsError) {
-      logger.debug(`Error fetching recent notifications: ${recentNotificationsError}`);
-      return { success: false };
-    }
-
-    if (recentNotifications.length > 0 && !bypassRecentChecks) {
+    if (didSendRecentNotification && !bypassRecentChecks) {
       logger.debug(`Notification already sent within the last ${daysBetweenEmails} days for team_id: ${team_id} and notificationType: ${notificationType}`);
       return { success: true };
     }
+
+    await redisConnection.set(redisKey, "1", "EX", daysBetweenEmails * 24 * 60 * 60);
 
     console.log(
       `Sending notification for team_id: ${team_id} and notificationType: ${notificationType}`,
@@ -236,6 +228,7 @@ export async function sendNotificationWithCustomDays(
 
     if (emailsError) {
       logger.debug(`Error fetching emails: ${emailsError}`);
+      await redisConnection.del(redisKey); // free up redis, let it try again
       return { success: false };
     }
 
@@ -266,6 +259,7 @@ export async function sendNotificationWithCustomDays(
 
     if (insertError) {
       logger.debug(`Error inserting notification record: ${insertError}`);
+      await redisConnection.del(redisKey); // free up redis, let it try again
       return { success: false };
     }
 
