@@ -6,8 +6,9 @@ import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { generateBasicCompletion } from "../LLM-extraction";
 import { buildRefrasedPrompt } from "./build-prompts";
 import { logger } from "../logger";
-import { rerankLinks } from "./reranker";
+import { rerankLinks, rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
+import { searchSimilarPages } from "./index/pinecone";
 
 interface ProcessUrlOptions {
   url: string;
@@ -144,17 +145,50 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
     }
 
     // Limit initial set of links (1000)
-    mappedLinks = mappedLinks.slice(0, extractConfig.MAX_INITIAL_RANKING_LIMIT);
+    mappedLinks = mappedLinks.slice(0, extractConfig.RERANKING.MAX_INITIAL_RANKING_LIMIT);
 
+
+    
     // Perform reranking if prompt is provided
     if (options.prompt) {
       const searchQuery = options.allowExternalLinks
         ? `${options.prompt} ${urlWithoutWww}`
         : `${options.prompt} site:${urlWithoutWww}`;
 
-      mappedLinks = await rerankLinks(mappedLinks, searchQuery, urlTraces);
+// const a = await searchSimilarPages(options.prompt, baseUrl);
+
+
+//       const fs = require('fs');
+//       const path = require('path');
+
+//       const indexFilePath = path.join(__dirname, 'index-file.txt');
+//       const indexData = a.map((item, index) => 
+//         `${index + 1}. URL: ${item.url}, Title: ${item.title}, Description: ${item.description}, Score: ${item.score}`
+//       ).join('\n');
+
+//       fs.writeFileSync(indexFilePath, indexData, 'utf8');
+//       console.log("Dumped search results into index-file.txt");
+
+
+
+console.log("Reranking links with LLM");
+      mappedLinks = await rerankLinksWithLLM(mappedLinks, searchQuery, urlTraces);
+
+      const fs = require('fs');
+      const path = require('path');
+
+      const llmLinksFilePath = path.join(__dirname, 'llm-links.txt');
+      const llmLinksData = mappedLinks.map((link, index) => 
+        `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
+      ).join('\n');
+
+      fs.writeFileSync(llmLinksFilePath, llmLinksData, 'utf8');
+      console.log("Dumped mapped links into llm-links.txt");
     }
 
+    // Remove title and description from mappedLinks
+    mappedLinks = mappedLinks.map(link => ({ url: link.url }));
+    console.log(mappedLinks);
     return mappedLinks.map(x => x.url);
   } catch (error) {
     trace.status = 'error';

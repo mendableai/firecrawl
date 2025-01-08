@@ -1,4 +1,4 @@
-import { Document, ExtractRequest, URLTrace } from "../../controllers/v1/types";
+import { Document, ExtractRequest, toLegacyCrawlerOptions, URLTrace } from "../../controllers/v1/types";
 import { PlanType } from "../../types";
 import { logger } from "../logger";
 import { processUrl } from "./url-processor";
@@ -129,6 +129,8 @@ export async function performExtraction(extractId: string, options: ExtractServi
     }, urlTraces)
   );
 
+  
+
   const processedUrls = await Promise.all(urlPromises);
   const links = processedUrls.flat().filter(url => url);
 
@@ -151,6 +153,7 @@ export async function performExtraction(extractId: string, options: ExtractServi
   // 2. the second one is multiple completions that will extract the items from the array
   const { hasLargeArrays, keysWithLargeArrays } = await analyzeSchemaAndPrompt(links.length, request.schema, request.prompt ?? "");
   
+  console.log(hasLargeArrays);
   if (hasLargeArrays) {
     // removes from reqSchema the keys that are large arrays and adds them to largeArraysSchema
     for (const key of keysWithLargeArrays) {
@@ -182,20 +185,24 @@ export async function performExtraction(extractId: string, options: ExtractServi
     }
     
     deleteEmptyProperties(reqSchema);
+
+    // const id = crypto.randomUUID();
     
-    // crawl in the background
     // const sc: StoredCrawl = {
-    //   originUrl: url,
-    //   crawlerOptions: {
+    //   originUrl: request.urls[0].replace("/*",""),
+    //   crawlerOptions: toLegacyCrawlerOptions({
     //     maxDepth: 15,
     //     limit: 5000,
     //     includePaths: [],
     //     excludePaths: [],
     //     ignoreSitemap: false,
-    //     includeSubdomains: true,
     //     allowExternalLinks: false,
-    //     allowBackwardLinks: true
-    //   },
+    //     allowBackwardLinks: true,
+    //     allowSubdomains: false,
+    //     ignoreRobotsTxt: false,
+    //     deduplicateSimilarURLs: false,
+    //     ignoreQueryParameters: false
+    //   }),
     //   scrapeOptions: {
     //       formats: ["markdown"],
     //       onlyMainContent: true,
@@ -216,11 +223,11 @@ export async function performExtraction(extractId: string, options: ExtractServi
     // };
 
     // // Save the crawl configuration
-    // await saveCrawl(crawlId, sc);
+    // await saveCrawl(id, sc);
 
     // // Then kick off the job
     // await _addScrapeJobToBullMQ({
-    //   url,
+    //   url: request.urls[0].replace("/*",""),
     //   mode: "kickoff" as const,
     //   team_id: process.env.BACKGROUND_INDEX_TEAM_ID!,
     //   plan: "hobby", // make it a low concurrency
@@ -228,7 +235,7 @@ export async function performExtraction(extractId: string, options: ExtractServi
     //   scrapeOptions: sc.scrapeOptions,
     //   internalOptions: sc.internalOptions,
     //   origin: "index",
-    //   crawl_id: crawlId,
+    //   crawl_id: id,
     //   webhook: null,
     //   v1: true,
     // }, {}, crypto.randomUUID(), 50);
