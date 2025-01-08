@@ -204,7 +204,7 @@ v1Router.ws("/crawl/:jobId", crawlStatusWSController);
 
 v1Router.post(
   "/extract",
-  authMiddleware(RateLimiterMode.Scrape),
+  authMiddleware(RateLimiterMode.Extract),
   checkCreditsMiddleware(1),
   wrap(extractController),
 );
