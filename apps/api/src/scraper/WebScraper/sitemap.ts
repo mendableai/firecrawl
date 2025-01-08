@@ -60,7 +60,7 @@ export async function getLinksFromSitemap(
       // Handle sitemap index files
       const sitemapUrls = root.sitemap
         .filter((sitemap) => sitemap.loc && sitemap.loc.length > 0)
-        .map((sitemap) => sitemap.loc[0]);
+        .map((sitemap) => sitemap.loc[0].trim());
 
       const sitemapPromises: Promise<number>[] = sitemapUrls.map((sitemapUrl) =>
         getLinksFromSitemap(
@@ -78,9 +78,9 @@ export async function getLinksFromSitemap(
           (url) =>
             url.loc &&
             url.loc.length > 0 &&
-            url.loc[0].toLowerCase().endsWith('.xml')
+            url.loc[0].trim().toLowerCase().endsWith('.xml')
         )
-        .map((url) => url.loc[0]);
+        .map((url) => url.loc[0].trim());
 
       if (xmlSitemaps.length > 0) {
         // Recursively fetch links from additional sitemaps
@@ -98,10 +98,10 @@ export async function getLinksFromSitemap(
           (url) =>
             url.loc &&
             url.loc.length > 0 &&
-            !url.loc[0].toLowerCase().endsWith('.xml') &&
-            !WebCrawler.prototype.isFile(url.loc[0]),
+            !url.loc[0].trim().toLowerCase().endsWith('.xml') &&
+            !WebCrawler.prototype.isFile(url.loc[0].trim()),
         )
-        .map((url) => url.loc[0]);
+        .map((url) => url.loc[0].trim());
       count += validUrls.length;
 
       const h = urlsHandler(validUrls);
