@@ -10,6 +10,7 @@ import { logJob } from "../../services/logging/log_job";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { saveCrawl, StoredCrawl } from "../crawl-redis";
 import { updateExtract } from "./extract-redis";
+import { CUSTOM_U_TEAMS } from "./config";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -182,10 +183,15 @@ export async function performExtraction(extractId: string, options: ExtractServi
   //   }, {}, crypto.randomUUID(), 50);
   // });
 
+  let linksBilled = links.length * 5;
+
+  if(CUSTOM_U_TEAMS.includes(teamId)){
+    linksBilled = 1;
+  }
   // Bill team for usage
-  billTeam(teamId, subId, links.length * 5).catch((error) => {
+  billTeam(teamId, subId, linksBilled).catch((error) => {
     logger.error(
-      `Failed to bill team ${teamId} for ${links.length * 5} credits: ${error}`,
+      `Failed to bill team ${teamId} for ${linksBilled} credits: ${error}`,
     );
   });
 
