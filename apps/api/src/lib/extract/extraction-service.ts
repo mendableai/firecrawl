@@ -9,6 +9,7 @@ import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { saveCrawl, StoredCrawl } from "../crawl-redis";
+import { dereference } from '@apidevtools/json-schema-ref-parser';
 import { z } from "zod";
 import OpenAI from "openai";
 
@@ -31,6 +32,15 @@ interface ExtractResult {
   warning?: string;
   urlTrace?: URLTrace[];
   error?: string;
+}
+
+async function dereferenceSchema(schema: any): Promise<any> {
+  try {
+    return await dereference(schema);
+  } catch (error) {
+    console.error("Failed to dereference schema:", error);
+    throw error;
+  }
 }
 
 function getRootDomain(url: string): string {
@@ -130,6 +140,7 @@ export async function performExtraction(extractId: string, options: ExtractServi
   }
 
   let reqSchema = request.schema;
+  reqSchema = await dereferenceSchema(reqSchema);
 
   // agent evaluates if the schema or the prompt has an array with big amount of items
   // also it checks if the schema any other properties that are not arrays
@@ -227,6 +238,7 @@ export async function performExtraction(extractId: string, options: ExtractServi
     let schemasForLLM: {} = {};
     for(const key in largeArraysSchema) {
       const originalSchema = structuredClone(largeArraysSchema[key].items);
+      console.log("key", key, "\noriginalSchema", JSON.stringify(largeArraysSchema[key], null, 2));
       let clonedObj = {
         type: "object",
         properties: {
@@ -257,6 +269,7 @@ export async function performExtraction(extractId: string, options: ExtractServi
 
     for (const doc of docs) {
       const schema = {properties:schemasForLLM,type:"object"};
+      console.log("schema", JSON.stringify(schema, null, 2));
       ajv.compile(schema);
       // Generate completions
       const comp = await generateOpenAICompletions(
