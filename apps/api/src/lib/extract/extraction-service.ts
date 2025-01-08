@@ -400,7 +400,7 @@ export async function performExtraction(
   }
 
   console.log("reqSchema", JSON.stringify(reqSchema, null, 2));
-  if (reqSchema && Object.keys(reqSchema).length > 0) {
+  if (reqSchema && Object.keys(reqSchema).length > 0 && reqSchema.properties && Object.keys(reqSchema.properties).length > 0) {
     // Scrape documents
     const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
     const scrapePromises = links.map((url) =>
