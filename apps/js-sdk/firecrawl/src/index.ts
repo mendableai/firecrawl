@@ -884,21 +884,35 @@ export default class FirecrawlApp {
     try {
       const response: AxiosResponse = await this.postRequest(
         this.apiUrl + `/v1/extract`,
-        { ...jsonData, schema: jsonSchema },
+        { ...jsonData, schema: jsonSchema, origin: "api-sdk" },
         headers
       );
+
       if (response.status === 200) {
-        const responseData = response.data as ExtractResponse<T>;
-        if (responseData.success) {
-          return {
-            success: true,
-            data: responseData.data,
-            warning: responseData.warning,
-            error: responseData.error
-          };
-        } else {
-          throw new FirecrawlError(`Failed to scrape URL. Error: ${responseData.error}`, response.status);
-        }
+        const jobId = response.data.id;
+        let extractStatus;
+        do {
+          const statusResponse: AxiosResponse = await this.getRequest(
+            `${this.apiUrl}/v1/extract/${jobId}`,
+            headers
+          );
+          extractStatus = statusResponse.data;
+          if (extractStatus.status === "completed") {
+            if (extractStatus.success) {
+              return {
+                success: true,
+                data: extractStatus.data,
+                warning: extractStatus.warning,
+                error: extractStatus.error
+              };
+            } else {
+              throw new FirecrawlError(`Failed to extract data. Error: ${extractStatus.error}`, statusResponse.status);
+            }
+          } else if (extractStatus.status === "failed" || extractStatus.status === "cancelled") {
+            throw new FirecrawlError(`Extract job ${extractStatus.status}. Error: ${extractStatus.error}`, statusResponse.status);
+          }
+          await new Promise(resolve => setTimeout(resolve, 1000)); // Polling interval
+        } while (extractStatus.status !== "completed");
       } else {
         this.handleError(response, "extract");
       }
@@ -906,6 +920,72 @@ export default class FirecrawlApp {
       throw new FirecrawlError(error.message, 500);
     }
     return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Initiates an asynchronous extract job for a URL using the Firecrawl API.
+   * @param url - The URL to extract data from.
+   * @param params - Additional parameters for the extract request.
+   * @param idempotencyKey - Optional idempotency key for the request.
+   * @returns The response from the extract operation.
+   */
+  async asyncExtract(
+    url: string,
+    params?: ExtractParams,
+    idempotencyKey?: string
+  ): Promise<ExtractResponse | ErrorResponse> {
+    const headers = this.prepareHeaders(idempotencyKey);
+    let jsonData: any = { url, ...params };
+    let jsonSchema: any;
+
+    try {
+      if (params?.schema instanceof zt.ZodType) {
+        jsonSchema = zodToJsonSchema(params.schema);
+      } else {
+        jsonSchema = params?.schema;
+      }
+    } catch (error: any) {
+      throw new FirecrawlError("Invalid schema. Schema must be either a valid Zod schema or JSON schema object.", 400);
+    }
+
+    try {
+      const response: AxiosResponse = await this.postRequest(
+        this.apiUrl + `/v1/extract`,
+        { ...jsonData, schema: jsonSchema },
+        headers
+      );
+
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "start extract job");
+      }
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500);
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Retrieves the status of an extract job.
+   * @param jobId - The ID of the extract job.
+   * @returns The status of the extract job.
+   */
+  async getExtractStatus(jobId: string): Promise<any> {
+    try {
+      const response: AxiosResponse = await this.getRequest(
+        `${this.apiUrl}/v1/extract/${jobId}`,
+        this.prepareHeaders()
+      );
+
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "get extract status");
+      }
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500);
+    }
   }
 
   /**

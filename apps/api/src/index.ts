@@ -4,7 +4,7 @@ import * as Sentry from "@sentry/node";
 import express, { NextFunction, Request, Response } from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
-import { getScrapeQueue } from "./services/queue-service";
+import { getExtractQueue, getScrapeQueue } from "./services/queue-service";
 import { v0Router } from "./routes/v0";
 import os from "os";
 import { logger } from "./lib/logger";
@@ -45,7 +45,7 @@ const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
 
 const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
-  queues: [new BullAdapter(getScrapeQueue())],
+  queues: [new BullAdapter(getScrapeQueue()), new BullAdapter(getExtractQueue())],
   serverAdapter: serverAdapter,
 });
 
