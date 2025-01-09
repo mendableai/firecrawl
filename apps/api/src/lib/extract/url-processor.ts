@@ -21,10 +21,13 @@ interface ProcessUrlOptions {
   includeSubdomains?: boolean;
 }
 
-export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace[]): Promise<string[]> {
+export async function processUrl(
+  options: ProcessUrlOptions,
+  urlTraces: URLTrace[],
+): Promise<string[]> {
   const trace: URLTrace = {
     url: options.url,
-    status: 'mapped',
+    status: "mapped",
     timing: {
       discoveredAt: new Date().toISOString(),
     },
@@ -36,8 +39,8 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
       trace.usedInCompletion = true;
       return [options.url];
     }
-    trace.status = 'error';
-    trace.error = 'URL is blocked';
+    trace.status = "error";
+    trace.error = "URL is blocked";
     trace.usedInCompletion = false;
     return [];
   }
@@ -47,9 +50,10 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
 
   let rephrasedPrompt = options.prompt;
   if (options.prompt) {
-    rephrasedPrompt = await generateBasicCompletion(
-      buildRefrasedPrompt(options.prompt, baseUrl)
-    ) ?? options.prompt;
+    rephrasedPrompt =
+      (await generateBasicCompletion(
+        buildRefrasedPrompt(options.prompt, baseUrl),
+      )) ?? options.prompt;
   }
 
   try {
@@ -71,11 +75,11 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
     let uniqueUrls = removeDuplicateUrls(allUrls);
 
     // Track all discovered URLs
-    uniqueUrls.forEach(discoveredUrl => {
-      if (!urlTraces.some(t => t.url === discoveredUrl)) {
+    uniqueUrls.forEach((discoveredUrl) => {
+      if (!urlTraces.some((t) => t.url === discoveredUrl)) {
         urlTraces.push({
           url: discoveredUrl,
-          status: 'mapped',
+          status: "mapped",
           timing: {
             discoveredAt: new Date().toISOString(),
           },
@@ -85,7 +89,7 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
     });
 
     // retry if only one url is returned
-    if (uniqueUrls.length <= 1)  {
+    if (uniqueUrls.length <= 1) {
       const retryMapResults = await getMapResults({
         url: baseUrl,
         teamId: options.teamId,
@@ -97,18 +101,18 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
         includeMetadata: true,
         includeSubdomains: options.includeSubdomains,
       });
-  
+
       mappedLinks = retryMapResults.mapResults as MapDocument[];
       allUrls = [...mappedLinks.map((m) => m.url), ...mapResults.links];
       uniqueUrls = removeDuplicateUrls(allUrls);
 
       // Track all discovered URLs
-      uniqueUrls.forEach(discoveredUrl => {
-        if (!urlTraces.some(t => t.url === discoveredUrl)) {
+      uniqueUrls.forEach((discoveredUrl) => {
+        if (!urlTraces.some((t) => t.url === discoveredUrl)) {
           urlTraces.push({
             url: discoveredUrl,
-            status: 'mapped',
-            warning: 'Broader search. Not limiting map results to prompt.',
+            status: "mapped",
+            warning: "Broader search. Not limiting map results to prompt.",
             timing: {
               discoveredAt: new Date().toISOString(),
             },
@@ -119,11 +123,11 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
     }
 
     // Track all discovered URLs
-    uniqueUrls.forEach(discoveredUrl => {
-      if (!urlTraces.some(t => t.url === discoveredUrl)) {
+    uniqueUrls.forEach((discoveredUrl) => {
+      if (!urlTraces.some((t) => t.url === discoveredUrl)) {
         urlTraces.push({
           url: discoveredUrl,
-          status: 'mapped',
+          status: "mapped",
           timing: {
             discoveredAt: new Date().toISOString(),
           },
@@ -145,55 +149,74 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
     }
 
     // Limit initial set of links (1000)
-    mappedLinks = mappedLinks.slice(0, extractConfig.RERANKING.MAX_INITIAL_RANKING_LIMIT);
+    mappedLinks = mappedLinks.slice(
+      0,
+      extractConfig.RERANKING.MAX_INITIAL_RANKING_LIMIT,
+    );
 
-
-    
     // Perform reranking if prompt is provided
     if (options.prompt) {
       const searchQuery = options.allowExternalLinks
         ? `${options.prompt} ${urlWithoutWww}`
         : `${options.prompt} site:${urlWithoutWww}`;
 
-// const a = await searchSimilarPages(options.prompt, baseUrl);
+      // const a = await searchSimilarPages(options.prompt, baseUrl);
 
+      //       const fs = require('fs');
+      //       const path = require('path');
 
-//       const fs = require('fs');
-//       const path = require('path');
+      //       const indexFilePath = path.join(__dirname, 'index-file.txt');
+      //       const indexData = a.map((item, index) =>
+      //         `${index + 1}. URL: ${item.url}, Title: ${item.title}, Description: ${item.description}, Score: ${item.score}`
+      //       ).join('\n');
 
-//       const indexFilePath = path.join(__dirname, 'index-file.txt');
-//       const indexData = a.map((item, index) => 
-//         `${index + 1}. URL: ${item.url}, Title: ${item.title}, Description: ${item.description}, Score: ${item.score}`
-//       ).join('\n');
+      //       fs.writeFileSync(indexFilePath, indexData, 'utf8');
+      //       console.log("Dumped search results into index-file.txt");
 
-//       fs.writeFileSync(indexFilePath, indexData, 'utf8');
-//       console.log("Dumped search results into index-file.txt");
+      const fss = require("fs");
+      const pathh = require("path");
 
+      const mappedLinksFilePath = pathh.join(__dirname, "mapped-links.txt");
+      const mappedLinksData = mappedLinks
+        .map(
+          (link, index) =>
+            `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`,
+        )
+        .join("\n");
 
+      fss.writeFileSync(mappedLinksFilePath, mappedLinksData, "utf8");
+      console.log("Dumped mapped links into mapped-links.txt");
 
-console.log("Reranking links with LLM");
-      mappedLinks = await rerankLinksWithLLM(mappedLinks, searchQuery, urlTraces);
+      console.log("Reranking links with LLM");
+      mappedLinks = await rerankLinksWithLLM(
+        mappedLinks,
+        searchQuery,
+        urlTraces,
+      );
 
-      const fs = require('fs');
-      const path = require('path');
+      const fs = require("fs");
+      const path = require("path");
 
-      const llmLinksFilePath = path.join(__dirname, 'llm-links.txt');
-      const llmLinksData = mappedLinks.map((link, index) => 
-        `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
-      ).join('\n');
+      const llmLinksFilePath = path.join(__dirname, "llm-links.txt");
+      const llmLinksData = mappedLinks
+        .map(
+          (link, index) =>
+            `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`,
+        )
+        .join("\n");
 
-      fs.writeFileSync(llmLinksFilePath, llmLinksData, 'utf8');
+      fs.writeFileSync(llmLinksFilePath, llmLinksData, "utf8");
       console.log("Dumped mapped links into llm-links.txt");
     }
 
     // Remove title and description from mappedLinks
-    mappedLinks = mappedLinks.map(link => ({ url: link.url }));
+    mappedLinks = mappedLinks.map((link) => ({ url: link.url }));
     console.log(mappedLinks);
-    return mappedLinks.map(x => x.url);
+    return mappedLinks.map((x) => x.url);
   } catch (error) {
-    trace.status = 'error';
+    trace.status = "error";
     trace.error = error.message;
     trace.usedInCompletion = false;
     return [];
   }
-} 
+}

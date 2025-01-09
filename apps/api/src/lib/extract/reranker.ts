@@ -172,7 +172,7 @@ export async function rerankLinksWithLLM(
   searchQuery: string,
   urlTraces: URLTrace[],
 ): Promise<MapDocument[]> {
-  const chunkSize = 200;
+  const chunkSize = 100;
   const chunks: MapDocument[][] = [];
   
   // Split mappedLinks into chunks of 200
