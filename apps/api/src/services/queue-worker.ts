@@ -989,16 +989,30 @@ async function processJob(job: Job & { id: string }, token: string) {
         job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
       );
     }
-    // if (job.data.v1) {
-    //   callWebhook(
-    //     job.data.team_id,
-    //     job.id as string,
-    //     [],
-    //     job.data.webhook,
-    //     job.data.v1,
-    //     "crawl.failed"
-    //   );
-    // }
+
+    logger.debug("Logging job to DB...");
+    await logJob(
+      {
+        job_id: job.id as string,
+        success: false,
+        message:
+          typeof error === "string"
+            ? error
+            : (error.message ??
+              "Something went wrong... Contact help@mendable.ai"),
+        num_docs: 0,
+        docs: [],
+        time_taken: 0,
+        team_id: job.data.team_id,
+        mode: job.data.mode,
+        url: job.data.url,
+        crawlerOptions: job.data.crawlerOptions,
+        scrapeOptions: job.data.scrapeOptions,
+        origin: job.data.origin,
+        crawl_id: job.data.crawl_id,
+      },
+      true,
+    );
 
     if (job.data.crawl_id) {
       const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
@@ -1008,30 +1022,6 @@ async function processJob(job: Job & { id: string }, token: string) {
       await redisConnection.srem(
         "crawl:" + job.data.crawl_id + ":visited_unique",
         normalizeURL(job.data.url, sc),
-      );
-
-      logger.debug("Logging job to DB...");
-      await logJob(
-        {
-          job_id: job.id as string,
-          success: false,
-          message:
-            typeof error === "string"
-              ? error
-              : (error.message ??
-                "Something went wrong... Contact help@mendable.ai"),
-          num_docs: 0,
-          docs: [],
-          time_taken: 0,
-          team_id: job.data.team_id,
-          mode: job.data.mode,
-          url: job.data.url,
-          crawlerOptions: sc.crawlerOptions,
-          scrapeOptions: job.data.scrapeOptions,
-          origin: job.data.origin,
-          crawl_id: job.data.crawl_id,
-        },
-        true,
       );
 
       await finishCrawlIfNeeded(job, sc);
