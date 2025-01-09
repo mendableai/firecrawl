@@ -27,19 +27,20 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
     }
 
     // Redact any pages that have an authorization header
-    if (
-      job.scrapeOptions &&
-      job.scrapeOptions.headers &&
-      job.scrapeOptions.headers["Authorization"]
-    ) {
-      job.scrapeOptions.headers["Authorization"] = "REDACTED";
-      job.docs = [
-        {
-          content: "REDACTED DUE TO AUTHORIZATION HEADER",
-          html: "REDACTED DUE TO AUTHORIZATION HEADER",
-        },
-      ];
-    }
+    // actually, Don't. we use the db to retrieve results now. this breaks authed crawls - mogery
+    // if (
+    //   job.scrapeOptions &&
+    //   job.scrapeOptions.headers &&
+    //   job.scrapeOptions.headers["Authorization"]
+    // ) {
+    //   job.scrapeOptions.headers["Authorization"] = "REDACTED";
+    //   job.docs = [
+    //     {
+    //       content: "REDACTED DUE TO AUTHORIZATION HEADER",
+    //       html: "REDACTED DUE TO AUTHORIZATION HEADER",
+    //     },
+    //   ];
+    // }
     const jobColumn = {
       job_id: job.job_id ? job.job_id : null,
       success: job.success,
