@@ -201,7 +201,7 @@ export function transformArrayToObject(
 
     // Copy non-array properties from the parent object
     for (const key in parentSchema.properties) {
-      if (key !== arrayKey && currentItem.hasOwnProperty(key)) {
+      if (key !== arrayKey && currentItem.hasOwnProperty(key) && !currentLevel.hasOwnProperty(key)) {
         currentLevel[key] = currentItem[key];
       }
     }

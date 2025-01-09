@@ -248,7 +248,7 @@ describe("transformArrayToObject function", () => {
     }
     const res2 = {
       "ecommerce": {
-        "name": '1',
+        "name": 'keep the first',
         "products": [
           {
             "name": "סיר Neon 2",
