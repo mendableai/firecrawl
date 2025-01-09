@@ -145,11 +145,10 @@ describe("transformArrayToObject function", () => {
       ]
     }
 
-    const res2 = { "products": [{}] }
     const res3 = { "products": [] }
     const res4 = { "products": null }
 
-    const results = [res1, res2, res3, res4]
+    const results = [res1, res3, res4]
 
     const multiEntityResult = {
       "products": [
@@ -175,7 +174,6 @@ describe("transformArrayToObject function", () => {
       ]
     }
 
-    const res2 = { "products": [{}] }
     const res3 = { "products": [] }
     const res4 = { "products": [{
       "name": "סיר Neon 4",
@@ -183,7 +181,7 @@ describe("transformArrayToObject function", () => {
       "description": "סיר מסדרת Neon גוף הכלי עשוי אלומיניום להולכת חום מהירה ואחידה ולחיסכון בזמן ואנרגיה סיר בציפוי נון סטיק למניעת הדבקות המזון, לשימוש מופחת בשמן ולניקוי קל ונוח. מתאים לכל סוגי הכיריים, מתאים לאינדוקציה מתאים לשטיפה במדיח. מתאים לשימוש כסיר אורז, סיר פסטה, סיר מרק, סיר למגוון תבשילים. סיר 28 ס”מ | 7.1 ליטר התמונה להמחשה בלבד. הצבע בתמונה עשוי להיות שונה מהמציאות"
     }] }
 
-    const results = [res1, res2, res3, res4]
+    const results = [res1, res3, res4]
 
     const multiEntityResult = {
       "products": [
@@ -288,5 +286,103 @@ describe("transformArrayToObject function", () => {
     console.log(await transformArrayToObject(originalSchema, results))
 
     expect(await transformArrayToObject(originalSchema, results)).toEqual(multiEntityResult)
+  })
+
+  it("even more complex schema", async () => {
+    const moreComplexSchema = {
+      type: "object",
+      properties: {
+        "name": { type: "string" },
+        "description": { type: "string" },
+        "products": {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              "name": { type: "string" },
+              "price": { type: "string" },
+              "description": { type: "string" }
+            }
+          }
+        },
+        categories: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        }
+      }
+    }
+
+    const res1 = {
+      "name": '1',
+      "description": "description",
+      "products": [
+        {
+            "name": "Neon 1",
+            "price": "99.90 ₪",
+            "description": "neon 1 product"
+          }
+        ],
+      "categories": [ "something", "else" ]
+    }
+    
+    const res4 = { "products": [] }
+
+    const res2 = {
+      "name": 'keep first',
+      "description": "description",
+      "products": [
+        {
+            "name": "Neon 2",
+            "price": "99.90 ₪",
+            "description": "neon 2 product"
+          }
+        ],
+      "categories": ["something" ]
+    }
+
+    const res3 = {
+      "name": 'keep the first',
+      "products": [
+        {
+          "name": "Neon 3",
+          "price": "555.90 ₪",
+          "description": "neon 3 product"
+        }
+      ],
+      "categories": [ "hey", "something", "other one" ]
+    }
+
+    const res5 = { "products": null }
+
+    const results = [res1, res2, res3]
+
+    const multiEntityResult = {
+      "name": '1',
+      "description": "description",
+      "products": [
+        {
+          "name": "Neon 1",
+          "price": "99.90 ₪",
+          "description": "neon 1 product"
+        },
+        {
+          "name": "Neon 2",
+          "price": "99.90 ₪",
+          "description": "neon 2 product"
+        },
+        {
+          "name": "Neon 3",
+          "price": "555.90 ₪",
+          "description": "neon 3 product"
+        }
+      ],
+      "categories": [ "something", "else", "hey", "other one" ]
+    }
+
+    console.log(multiEntityResult, await transformArrayToObject(moreComplexSchema, results))
+
+    expect(await transformArrayToObject(moreComplexSchema, results)).toEqual(multiEntityResult)
   })
 })

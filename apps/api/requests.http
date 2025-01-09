@@ -476,8 +476,7 @@ Content-Type: application/json
       "categories": {
         "type": "array",
         "items": {
-          "type": "string",
-          "title": "Category"
+          "type": "string"
         }
       },
       "products": {

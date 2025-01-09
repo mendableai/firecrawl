@@ -140,6 +140,9 @@ importers:
       languagedetect:
         specifier: ^2.0.0
         version: 2.0.0
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
       logsnag:
         specifier: ^1.0.0
         version: 1.0.0(encoding@0.1.13)
@@ -264,6 +267,9 @@ importers:
       '@types/jest':
         specifier: ^29.5.12
         version: 29.5.12
+      '@types/lodash':
+        specifier: ^4.17.14
+        version: 4.17.14
       '@types/node':
         specifier: ^20.14.1
         version: 20.14.1
@@ -1561,6 +1567,9 @@ packages:
 
   '@types/json-schema@7.0.15':
     resolution: {integrity: sha512-5+fP8P8MFNC+AyZCDxrB2pkZFPGzqQWUzpSeuuVLvm8VMcorNYavBqoFcxK8bQz4Qsbn4oUEEem4wDLfcysGHA==}
+
+  '@types/lodash@4.17.14':
+    resolution: {integrity: sha512-jsxagdikDiDBeIRaPYtArcT8my4tN1og7MtMRquFT3XNA6axxyHDRUemqDz/taRDdOUn0GnGHRCuff4q48sW9A==}
 
   '@types/mime@1.3.5':
     resolution: {integrity: sha512-/pyBZWSLD2n0dcHE3hq8s8ZvcETHtEuF+3E7XVt0Ig2nvsVQXdghHVcEkIWjy9A0wKfTn97a/PSDYohKIlnP/w==}
@@ -4359,8 +4368,8 @@ packages:
     engines: {node: '>=14.17'}
     hasBin: true
 
-  typescript@5.7.2:
-    resolution: {integrity: sha512-i5t66RHxDvVN40HfDd1PsEThGNnlMCMT3jMUuoh9/0TaqWevNontacunWyN02LA9/fIbEWlcHZcgTKb9QoaLfg==}
+  typescript@5.7.3:
+    resolution: {integrity: sha512-84MVSjMEHP+FQRPy3pX9sTVV/INIex71s9TL2Gm5FG/WG1SqXeKyZ0k7/blY/4FdOzI12CBy1vGc4og/eus0fw==}
     engines: {node: '>=14.17'}
     hasBin: true
 
@@ -6635,6 +6644,8 @@ snapshots:
       pretty-format: 29.7.0
 
   '@types/json-schema@7.0.15': {}
+
+  '@types/lodash@4.17.14': {}
 
   '@types/mime@1.3.5': {}
 
@@ -9063,7 +9074,7 @@ snapshots:
       csv-parse: 5.5.6
       gpt3-tokenizer: 1.1.5
       openai: 3.3.0
-      typescript: 5.7.2
+      typescript: 5.7.3
       uuid: 9.0.1
       zod: 3.23.8
     transitivePeerDependencies:
@@ -9647,7 +9658,7 @@ snapshots:
 
   typescript@5.4.5: {}
 
-  typescript@5.7.2: {}
+  typescript@5.7.3: {}
 
   typesense@1.8.2(@babel/runtime@7.24.6):
     dependencies:
