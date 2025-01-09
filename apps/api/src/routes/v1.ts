@@ -192,7 +192,10 @@ v1Router.get(
   wrap((req: any, res): any => crawlStatusController(req, res, true)),
 );
 
-v1Router.get("/scrape/:jobId", wrap(scrapeStatusController));
+v1Router.get("/scrape/:jobId",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(scrapeStatusController),
+);
 
 v1Router.get(
   "/concurrency-check",
