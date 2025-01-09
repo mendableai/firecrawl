@@ -25,6 +25,7 @@ import {
   finishCrawl,
   generateURLPermutations,
   getCrawl,
+  getCrawlJobCount,
   getCrawlJobs,
   lockURL,
   lockURLs,
@@ -212,7 +213,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         );
       }
     } else {
-      const jobIDs = await getCrawlJobs(job.data.crawl_id);
+      const num_docs = await getCrawlJobCount(job.data.crawl_id);
       const jobStatus = sc.cancelled ? "failed" : "completed";
 
       await logJob(
@@ -220,7 +221,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           job_id: job.data.crawl_id,
           success: jobStatus === "completed",
           message: sc.cancelled ? "Cancelled" : undefined,
-          num_docs: jobIDs.length,
+          num_docs,
           docs: [],
           time_taken: (Date.now() - sc.createdAt) / 1000,
           team_id: job.data.team_id,

@@ -160,6 +160,10 @@ export async function getCrawlJobs(id: string): Promise<string[]> {
   return await redisConnection.smembers("crawl:" + id + ":jobs");
 }
 
+export async function getCrawlJobCount(id: string): Promise<number> {
+  return await redisConnection.scard("crawl:" + id + ":jobs");
+}
+
 export async function getThrottledJobs(teamId: string): Promise<string[]> {
   return await redisConnection.zrangebyscore(
     "concurrency-limiter:" + teamId + ":throttled",
