@@ -156,6 +156,7 @@ export function extractMetadata(
     publishedTime,
     articleTag,
     articleSection,
+    scrapeId: meta.id,
     ...customMetadata,
   };
 }

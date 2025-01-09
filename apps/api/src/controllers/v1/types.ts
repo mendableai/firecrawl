@@ -443,6 +443,7 @@ export type Document = {
     url?: string;
     sourceURL?: string;
     statusCode: number;
+    scrapeId?: string;
     error?: string;
     [key: string]: string | string[] | number | undefined;
   };
