@@ -225,8 +225,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       };
 
       // Success factors
-      // const isLongEnough = engineResult.markdown.length >= 20;
-      const isLongEnough = true; // just assume first engine is good
+      const isLongEnough = engineResult.markdown.length > 0;
       const isGoodStatusCode =
         (engineResult.statusCode >= 200 && engineResult.statusCode < 300) ||
         engineResult.statusCode === 304;
