@@ -151,7 +151,6 @@ describe("spreadSchemas", () => {
   })
 
   it("shoud spread (id: 26)", async () => {
-
     const schema = {
       type: "object",
       properties: {
@@ -170,6 +169,37 @@ describe("spreadSchemas", () => {
     }
 
     const keys = ["products"]
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(schema, keys)
+
+    expect(singleAnswerSchema).toEqual({})
+    expect(multiEntitySchema).toEqual(schema)
+  })
+
+  it("shoud spread categories and products", async () => {
+    const schema = {
+      type: "object",
+      properties: {
+        categories: {
+          type: "array",
+          items: {
+            type: "string"
+          }
+        },
+        products: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              price: { type: "string" },
+              description: { type: "string" }
+            }
+          }
+        }
+      }
+    }
+
+    const keys = ["products", "categories"]
     const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(schema, keys)
 
     expect(singleAnswerSchema).toEqual({})

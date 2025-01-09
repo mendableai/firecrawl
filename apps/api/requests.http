@@ -501,7 +501,7 @@ Content-Type: application/json
       }
     }
   },
-  "systemPrompt": "Extract all the products from the page."
+  "systemPrompt": "Extract all the products from the page. Consider it's a huge store with thousands of products and categories."
 }
 
 ###

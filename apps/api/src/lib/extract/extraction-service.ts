@@ -203,7 +203,6 @@ export async function performExtraction(
 
   let rSchema = reqSchema;
   if (isMultiEntity) {
-    console.log("is it getting here???")
     const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(reqSchema, multiEntityKeys)
     rSchema = singleAnswerSchema;
 
@@ -318,7 +317,6 @@ export async function performExtraction(
     ]);
       
     for (const doc of multyEntityDocs) {
-      console.log(">>>>>> doc", JSON.stringify(doc, null, 2));
       ajv.compile(multiEntitySchema);
       // Generate completions
       const multiEntityCompletion = await generateOpenAICompletions(
@@ -363,7 +361,11 @@ export async function performExtraction(
     }
     console.log(">>>>>> multiEntitySchema", JSON.stringify(multiEntitySchema, null, 2));
     console.log(">>>>>> ?? multiEntityCompletions", JSON.stringify(multiEntityCompletions, null, 2));
-    multiEntityResult = transformArrayToObject(multiEntitySchema, multiEntityCompletions);
+    try {
+      multiEntityResult = transformArrayToObject(multiEntitySchema, multiEntityCompletions);
+    } catch (error) {
+      console.log("error", error);
+    }
   }
 
   console.log(">>>>> multiEntityResult", JSON.stringify(multiEntityResult, null, 2));
