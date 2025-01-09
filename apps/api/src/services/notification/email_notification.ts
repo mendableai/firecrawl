@@ -214,8 +214,30 @@ export async function sendNotificationWithCustomDays(
       logger.debug(`Notification already sent within the last ${daysBetweenEmails} days for team_id: ${team_id} and notificationType: ${notificationType}`);
       return { success: true };
     }
-
+    
     await redisConnection.set(redisKey, "1", "EX", daysBetweenEmails * 24 * 60 * 60);
+
+    const now = new Date();
+    const pastDate = new Date(now.getTime() - daysBetweenEmails * 24 * 60 * 60 * 1000);
+
+    const { data: recentNotifications, error: recentNotificationsError } = await supabase_service
+      .from("user_notifications")
+      .select("*")
+      .eq("team_id", team_id)
+      .eq("notification_type", notificationType)
+      .gte("sent_date", pastDate.toISOString());
+
+    if (recentNotificationsError) {
+      logger.debug(`Error fetching recent notifications: ${recentNotificationsError}`);
+      await redisConnection.del(redisKey); // free up redis, let it try again
+      return { success: false };
+    }
+
+    if (recentNotifications.length > 0 && !bypassRecentChecks) {
+      logger.debug(`Notification already sent within the last ${daysBetweenEmails} days for team_id: ${team_id} and notificationType: ${notificationType}`);
+      await redisConnection.set(redisKey, "1", "EX", daysBetweenEmails * 24 * 60 * 60);
+      return { success: true };
+    }
 
     console.log(
       `Sending notification for team_id: ${team_id} and notificationType: ${notificationType}`,
