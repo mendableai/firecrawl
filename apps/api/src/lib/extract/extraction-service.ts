@@ -61,6 +61,174 @@ function getRootDomain(url: string): string {
   }
 }
 
+export async function spreadSchemas(schema: any, keys: string[]): Promise<{
+  singleAnswerSchema: any;
+  multiEntitySchema: any;
+}> {
+  let singleAnswerSchema = { ...schema, properties: { ...schema.properties } };
+  let multiEntitySchema: any = { type: "object", properties: {} };
+
+  keys.forEach((key) => {
+    if (singleAnswerSchema.properties[key]) {
+      multiEntitySchema.properties[key] = singleAnswerSchema.properties[key];
+      delete singleAnswerSchema.properties[key];
+    }
+  });
+  // Recursively delete empty properties in singleAnswerSchema
+  const deleteEmptyProperties = (schema: any) => {
+    for (const key in schema.properties) {
+      if (
+        schema.properties[key].properties &&
+        Object.keys(schema.properties[key].properties).length === 0
+      ) {
+        delete schema.properties[key];
+      } else if (schema.properties[key].properties) {
+        deleteEmptyProperties(schema.properties[key]);
+      }
+    }
+  };
+
+  deleteEmptyProperties(singleAnswerSchema);
+  deleteEmptyProperties(multiEntitySchema);
+
+  // If singleAnswerSchema has no properties left, return an empty object
+  if (Object.keys(singleAnswerSchema.properties).length === 0) {
+    singleAnswerSchema = {};
+  }
+   
+  if (Object.keys(multiEntitySchema.properties).length === 0) {
+    multiEntitySchema = {};
+  }
+
+  return {
+    singleAnswerSchema,
+    multiEntitySchema,
+  };
+}
+
+export async function mixSchemaObjects(
+  finalSchema: any,
+  singleAnswerResult: any,
+  multiEntityResult: any
+) {
+  const finalResult: any = {};
+
+  // Recursive helper function to merge results based on schema
+  function mergeResults(schema: any, singleResult: any, multiResult: any) {
+    const result: any = {};
+    for (const key in schema.properties) {
+      if (schema.properties[key].type === 'object' && schema.properties[key].properties) {
+        // If the property is an object, recursively merge its properties
+        result[key] = mergeResults(
+          schema.properties[key],
+          singleResult[key] || {},
+          multiResult[key] || {}
+        );
+      } else if (schema.properties[key].type === 'array' && Array.isArray(multiResult[key])) {
+        // If the property is an array, flatten the arrays from multiResult
+        result[key] = multiResult[key].flat();
+      } else if (singleResult.hasOwnProperty(key)) {
+        result[key] = singleResult[key];
+      } else if (multiResult.hasOwnProperty(key)) {
+        result[key] = multiResult[key];
+      }
+    }
+    return result;
+  }
+
+  // Merge the properties from the final schema
+  Object.assign(finalResult, mergeResults(finalSchema, singleAnswerResult, multiEntityResult));
+
+  return finalResult;
+}
+
+export function transformArrayToObject(
+  originalSchema: any,
+  arrayData: any[]
+): any {
+  const transformedResult: any = {};
+
+  // Function to find the array key in a nested schema
+  function findArrayKey(schema: any): string | null {
+    for (const key in schema.properties) {
+      if (schema.properties[key].type === 'array') {
+        return key;
+      } else if (schema.properties[key].type === 'object') {
+        const nestedKey = findArrayKey(schema.properties[key]);
+        if (nestedKey) {
+          return `${key}.${nestedKey}`;
+        }
+      }
+    }
+    return null;
+  }
+
+  const arrayKeyPath = findArrayKey(originalSchema);
+  if (!arrayKeyPath) {
+    throw new Error("Schema does not contain an array property");
+  }
+
+  const arrayKeyParts = arrayKeyPath.split('.');
+  const arrayKey = arrayKeyParts.pop();
+  if (!arrayKey) {
+    throw new Error("Array key not found in schema");
+  }
+
+  const parentSchema = arrayKeyParts.reduce((schema, key) => schema.properties[key], originalSchema);
+  const itemSchema = parentSchema.properties[arrayKey].items;
+  if (!itemSchema) {
+    throw new Error("Item schema not found for array key");
+  }
+
+  // Initialize the array in the transformed result
+  let currentLevel = transformedResult;
+  arrayKeyParts.forEach(part => {
+    if (!currentLevel[part]) {
+      currentLevel[part] = {};
+    }
+    currentLevel = currentLevel[part];
+  });
+  currentLevel[arrayKey] = [];
+
+  // Iterate over each item in the arrayData
+  arrayData.forEach(item => {
+    let currentItem = item;
+    arrayKeyParts.forEach(part => {
+      if (currentItem[part]) {
+        currentItem = currentItem[part];
+      }
+    });
+
+    // Copy non-array properties from the parent object
+    for (const key in parentSchema.properties) {
+      if (key !== arrayKey && currentItem.hasOwnProperty(key)) {
+        currentLevel[key] = currentItem[key];
+      }
+    }
+
+    if (Array.isArray(currentItem[arrayKey])) {
+      currentItem[arrayKey].forEach((subItem: any) => {
+        const transformedItem: any = {};
+        let hasValidData = false;
+
+        for (const key in itemSchema.properties) {
+          if (subItem.hasOwnProperty(key) && subItem[key] !== undefined) {
+            transformedItem[key] = subItem[key];
+            hasValidData = true;
+          }
+        }
+
+        // Only add the transformed item if it has valid data
+        if (hasValidData) {
+          currentLevel[arrayKey].push(transformedItem);
+        }
+      });
+    }
+  });
+
+  return transformedResult;
+}
+
 async function analyzeSchemaAndPrompt(
   urls: string[],
   schema: any,
@@ -149,9 +317,9 @@ export async function performExtraction(
 ): Promise<ExtractResult> {
   const { request, teamId, plan, subId } = options;
   const urlTraces: URLTrace[] = [];
-  let docs: Document[] = [];
+  let docsMap: Map<string, Document> = new Map();
   let completions: {
-    extract: any;
+    extract: Record<string, any>;
     numTokens: number;
     warning: string | undefined;
   } | null = null;
@@ -205,42 +373,7 @@ export async function performExtraction(
   console.log("\nReasoning:", reasoning);
   console.log("\nKey Indicators:", keyIndicators);
   if (isMultiEntity) {
-    // removes from reqSchema the keys that are large arrays and adds them to largeArraysSchema
-    for (const key of multiEntityKeys) {
-      const keyParts = key.split(".");
-      let currentSchema = reqSchema["properties"];
-      let currentLargeArraySchema = largeArraysSchema;
-      for (let i = 0; i < keyParts.length - 1; i++) {
-        currentSchema = currentSchema[keyParts[i]]["properties"];
-        if (!currentLargeArraySchema[keyParts[i]]) {
-          currentLargeArraySchema[keyParts[i]] = {
-            type: "object",
-            properties: {},
-          };
-        }
-        currentLargeArraySchema =
-          currentLargeArraySchema[keyParts[i]]["properties"];
-      }
-      currentLargeArraySchema[keyParts[keyParts.length - 1]] =
-        currentSchema[keyParts[keyParts.length - 1]];
-      delete currentSchema[keyParts[keyParts.length - 1]];
-    }
-    // recursively delete keys with 'properties' == {}
-    const deleteEmptyProperties = (schema: any) => {
-      for (const key in schema["properties"]) {
-        if (
-          schema["properties"][key]["properties"] &&
-          Object.keys(schema["properties"][key]["properties"]).length === 0
-        ) {
-          delete schema["properties"][key];
-        } else if (schema["properties"][key]["properties"]) {
-          deleteEmptyProperties(schema["properties"][key]);
-        }
-      }
-    };
-
-    deleteEmptyProperties(reqSchema);
-
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(reqSchema, multiEntityKeys)
     // const id = crypto.randomUUID();
 
     // const sc: StoredCrawl = {
@@ -299,54 +432,65 @@ export async function performExtraction(
     // adding them to a single object so the llm can fill them one at a time
     // TODO: make this work for more complex schemas where arrays are not first level
 
-    let schemasForLLM: {} = {};
-    for (const key in largeArraysSchema) {
-      const originalSchema = structuredClone(largeArraysSchema[key].items);
-      console.log(
-        "key",
-        key,
-        "\noriginalSchema",
-        JSON.stringify(largeArraysSchema[key], null, 2),
-      );
-      let clonedObj = {
-        type: "object",
-        properties: {
-          informationFilled: {
-            type: "boolean",
-          },
-          data: {
-            type: "object",
-            properties: originalSchema.properties,
-          },
-        },
-      };
-      schemasForLLM[key] = clonedObj;
-    }
+    // let schemasForLLM: {} = {};
+    // for (const key in largeArraysSchema) {
+    //   const originalSchema = structuredClone(largeArraysSchema[key].items);
+    //   console.log(
+    //     "key",
+    //     key,
+    //     "\noriginalSchema",
+    //     JSON.stringify(largeArraysSchema[key], null, 2),
+    //   );
+    //   let clonedObj = {
+    //     type: "object",
+    //     properties: {
+    //       informationFilled: {
+    //         type: "boolean",
+    //       },
+    //       data: {
+    //         type: "object",
+    //         properties: originalSchema.properties,
+    //       },
+    //     },
+    //   };
+    //   schemasForLLM[key] = clonedObj;
+    // }
 
     const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
-    const scrapePromises = links.map((url) =>
-      scrapeDocument(
-        {
-          url,
-          teamId,
-          plan,
-          origin: request.origin || "api",
-          timeout,
-        },
-        urlTraces,
-      ),
-    );
-
+    const scrapePromises = links.map((url) => {
+      if (!docsMap['url']) {
+        return scrapeDocument(
+          {
+            url,
+            teamId,
+            plan,
+            origin: request.origin || "api",
+            timeout,
+          },
+          urlTraces,
+        )
+      }
+      return null;
+    })
+  
     let docs = (await Promise.all(scrapePromises)).filter(
       (doc): doc is Document => doc !== null,
     );
 
-    for (const doc of docs) {
-      const schema = { properties: schemasForLLM, type: "object" };
-      console.log("schema", JSON.stringify(schema, null, 2));
-      ajv.compile(schema);
+    docsMap = new Map([
+      ...docsMap,
+      ...docs
+        .map((doc) => (doc.url ? [doc.url, doc] : undefined))
+        .filter((entry): entry is [string, Document] => entry !== undefined)
+    ]);
+      
+
+    for (const doc of docsMap.values()) {
+      // const schema = { properties: multiEntitySchema, type: "object" };
+      // console.log("schema", JSON.stringify(schema, null, 2));
+      ajv.compile(multiEntitySchema);
       // Generate completions
-      const comp = await generateOpenAICompletions(
+      const multiEntityCompletion = await generateOpenAICompletions(
         logger.child({ method: "extractService/generateOpenAICompletions" }),
         {
           mode: "llm",
@@ -355,7 +499,7 @@ export async function performExtraction(
             "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
             links.join(", "),
           prompt: request.prompt,
-          schema: schemasForLLM,
+          schema: multiEntitySchema,
         },
         buildDocument(doc),
         undefined,
@@ -363,7 +507,7 @@ export async function performExtraction(
       );
 
       // Update token usage in traces
-      if (comp && comp.numTokens) {
+      if (multiEntityCompletion && multiEntityCompletion.numTokens) {
         const totalLength = docs.reduce(
           (sum, doc) => sum + (doc.markdown?.length || 0),
           0,
@@ -376,137 +520,145 @@ export async function performExtraction(
             if (trace && trace.contentStats) {
               trace.contentStats.tokensUsed = Math.floor(
                 ((doc.markdown?.length || 0) / totalLength) *
-                  (comp?.numTokens || 0),
+                  (multiEntityCompletion?.numTokens || 0),
               );
             }
           }
         });
 
-        for (const [key, value] of Object.entries(comp.extract)) {
-          //@ts-ignore
-          if (value.informationFilled === true) {
-            let res = value;
-            //@ts-ignore
-            delete res.informationFilled;
-            if (!largeArrayResult[key]) {
-              largeArrayResult[key] = [];
-            }
-            //@ts-ignore
-            largeArrayResult[key].push(value.data);
-          }
-        }
+        // for (const [key, value] of Object.entries(comp.extract)) {
+        //   //@ts-ignore
+        //   if (value.informationFilled === true) {
+        //     let res = value;
+        //     //@ts-ignore
+        //     delete res.informationFilled;
+        //     if (!largeArrayResult[key]) {
+        //       largeArrayResult[key] = [];
+        //     }
+        //     //@ts-ignore
+        //     largeArrayResult[key].push(value.data);
+        //   }
+        // }
       }
     }
   }
 
   console.log("reqSchema", JSON.stringify(reqSchema, null, 2));
-  if (reqSchema && Object.keys(reqSchema).length > 0 && reqSchema.properties && Object.keys(reqSchema.properties).length > 0) {
-    // Scrape documents
-    const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
-    const scrapePromises = links.map((url) =>
-      scrapeDocument(
-        {
-          url,
-          teamId,
-          plan,
-          origin: request.origin || "api",
-          timeout,
-        },
-        urlTraces,
-      ),
-    );
+  // if (reqSchema && Object.keys(reqSchema).length > 0 && reqSchema.properties && Object.keys(reqSchema.properties).length > 0) {
+  //   // Scrape documents
+  //   const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
+  //   const scrapePromises = links.map((url) =>
+  //     scrapeDocument(
+  //       {
+  //         url,
+  //         teamId,
+  //         plan,
+  //         origin: request.origin || "api",
+  //         timeout,
+  //       },
+  //       urlTraces,
+  //     ),
+  //   );
 
-    try {
-      const results = await Promise.all(scrapePromises);
-      docs.push(...results.filter((doc): doc is Document => doc !== null));
-    } catch (error) {
-      return {
-        success: false,
-        error: error.message,
-        extractId,
-        urlTrace: urlTraces,
-      };
-    }
+  //   try {
+  //     const results = await Promise.all(scrapePromises);
+  //     docs.push(...results.filter((doc): doc is Document => doc !== null));
+  //   } catch (error) {
+  //     return {
+  //       success: false,
+  //       error: error.message,
+  //       extractId,
+  //       urlTrace: urlTraces,
+  //     };
+  //   }
 
-    // Generate completions
-    completions = await generateOpenAICompletions(
-      logger.child({ method: "extractService/generateOpenAICompletions" }),
-      {
-        mode: "llm",
-        systemPrompt:
-          (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
-          "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Return 'null' the property that you don't find the information. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
-          links.join(", "),
-        prompt: request.prompt,
-        schema: request.schema,
-      },
-      docs.map((x) => buildDocument(x)).join("\n"),
-      undefined,
-      true,
-    );
+  //   // Generate completions
+  //   completions = await generateOpenAICompletions(
+  //     logger.child({ method: "extractService/generateOpenAICompletions" }),
+  //     {
+  //       mode: "llm",
+  //       systemPrompt:
+  //         (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
+  //         "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Return 'null' the property that you don't find the information. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
+  //         links.join(", "),
+  //       prompt: request.prompt,
+  //       schema: request.schema,
+  //     },
+  //     docs.map((x) => buildDocument(x)).join("\n"),
+  //     undefined,
+  //     true,
+  //   );
 
-    // Update token usage in traces
-    if (completions && completions.numTokens) {
-      const totalLength = docs.reduce(
-        (sum, doc) => sum + (doc.markdown?.length || 0),
-        0,
-      );
-      docs.forEach((doc) => {
-        if (doc.metadata?.sourceURL) {
-          const trace = urlTraces.find((t) => t.url === doc.metadata.sourceURL);
-          if (trace && trace.contentStats) {
-            trace.contentStats.tokensUsed = Math.floor(
-              ((doc.markdown?.length || 0) / totalLength) *
-                (completions?.numTokens || 0),
-            );
-          }
-        }
-      });
-    }
-  }
-
-  if (completions && completions.extract) {
-    for (const key in largeArrayResult) {
-      completions.extract[key] = largeArrayResult[key];
-    }
-  }
-
-  // Bill team for usage
-  billTeam(teamId, subId, links.length * 5).catch((error) => {
-    logger.error(
-      `Failed to bill team ${teamId} for ${links.length * 5} credits: ${error}`,
-    );
-  });
-
-  // Log job
-  logJob({
-    job_id: extractId,
-    success: true,
-    message: "Extract completed",
-    num_docs: 1,
-    docs: completions?.extract ?? {},
-    time_taken: (new Date().getTime() - Date.now()) / 1000,
-    team_id: teamId,
-    mode: "extract",
-    url: request.urls.join(", "),
-    scrapeOptions: request,
-    origin: request.origin ?? "api",
-    num_tokens: completions?.numTokens ?? 0,
-  }).then(() => {
-    updateExtract(extractId, {
-      status: "completed",
-    }).catch((error) => {
-      logger.error(
-        `Failed to update extract ${extractId} status to completed: ${error}`,
-      );
-    });
-  });
+  //   // Update token usage in traces
+  //   if (completions && completions.numTokens) {
+  //     const totalLength = docs.reduce(
+  //       (sum, doc) => sum + (doc.markdown?.length || 0),
+  //       0,
+  //     );
+  //     docs.forEach((doc) => {
+  //       if (doc.metadata?.sourceURL) {
+  //         const trace = urlTraces.find((t) => t.url === doc.metadata.sourceURL);
+  //         if (trace && trace.contentStats) {
+  //           trace.contentStats.tokensUsed = Math.floor(
+  //             ((doc.markdown?.length || 0) / totalLength) *
+  //               (completions?.numTokens || 0),
+  //           );
+  //         }
+  //       }
+  //     });
+  //   }
+  // }
 
   return {
     success: true,
-    data: completions?.extract ?? {},
+    data: {},
     extractId,
-    warning: completions?.warning,
+    warning: undefined,
     urlTrace: request.urlTrace ? urlTraces : undefined,
   };
+
+  // if (completions && completions.extract) {
+  //   for (const key in largeArrayResult) {
+  //     completions.extract[key] = largeArrayResult[key];
+  //   }
+  // }
+
+  // // Bill team for usage
+  // billTeam(teamId, subId, links.length * 5).catch((error) => {
+  //   logger.error(
+  //     `Failed to bill team ${teamId} for ${links.length * 5} credits: ${error}`,
+  //   );
+  // });
+
+  // // Log job
+  // logJob({
+  //   job_id: extractId,
+  //   success: true,
+  //   message: "Extract completed",
+  //   num_docs: 1,
+  //   docs: completions?.extract ?? {},
+  //   time_taken: (new Date().getTime() - Date.now()) / 1000,
+  //   team_id: teamId,
+  //   mode: "extract",
+  //   url: request.urls.join(", "),
+  //   scrapeOptions: request,
+  //   origin: request.origin ?? "api",
+  //   num_tokens: completions?.numTokens ?? 0,
+  // }).then(() => {
+  //   updateExtract(extractId, {
+  //     status: "completed",
+  //   }).catch((error) => {
+  //     logger.error(
+  //       `Failed to update extract ${extractId} status to completed: ${error}`,
+  //     );
+  //   });
+  // });
+
+  // return {
+  //   success: true,
+  //   data: completions?.extract ?? {},
+  //   extractId,
+  //   warning: completions?.warning,
+  //   urlTrace: request.urlTrace ? urlTraces : undefined,
+  // };
 }
