@@ -1,4 +1,4 @@
-import { transformArrayToObject } from "../extract/extraction-service";
+import { transformArrayToObject } from "../extract/helpers/transform-array-to-obj";
 
 const originalSchema = {
   type: "object",
