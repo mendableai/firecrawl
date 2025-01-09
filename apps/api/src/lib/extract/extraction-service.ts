@@ -14,11 +14,12 @@ import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { saveCrawl, StoredCrawl } from "../crawl-redis";
-import { dereference } from "@apidevtools/json-schema-ref-parser";
+import { dereferenceSchema } from "./helpers/dereference-schema"; 
 import { z } from "zod";
-import isEqual from 'lodash/isEqual';
 import OpenAI from "openai";
-
+import { spreadSchemas } from "./helpers/spread-schemas";
+import { transformArrayToObject } from "./helpers/transform-array-to-obj";
+import { mixSchemaObjects } from "./helpers/mix-schema-objs";
 import Ajv from "ajv";
 const ajv = new Ajv();
 
@@ -41,15 +42,6 @@ interface ExtractResult {
   error?: string;
 }
 
-async function dereferenceSchema(schema: any): Promise<any> {
-  try {
-    return await dereference(schema);
-  } catch (error) {
-    console.error("Failed to dereference schema:", error);
-    throw error;
-  }
-}
-
 function getRootDomain(url: string): string {
   try {
     if (url.endsWith("/*")) {
@@ -60,202 +52,6 @@ function getRootDomain(url: string): string {
   } catch (e) {
     return url;
   }
-}
-
-export async function spreadSchemas(schema: any, keys: string[]): Promise<{
-  singleAnswerSchema: any;
-  multiEntitySchema: any;
-}> {
-  let singleAnswerSchema = { ...schema, properties: { ...schema.properties } };
-  let multiEntitySchema: any = { type: "object", properties: {} };
-
-  keys.forEach((key) => {
-    if (singleAnswerSchema.properties[key]) {
-      multiEntitySchema.properties[key] = singleAnswerSchema.properties[key];
-      delete singleAnswerSchema.properties[key];
-    }
-  });
-  // Recursively delete empty properties in singleAnswerSchema
-  const deleteEmptyProperties = (schema: any) => {
-    for (const key in schema.properties) {
-      if (
-        schema.properties[key].properties &&
-        Object.keys(schema.properties[key].properties).length === 0
-      ) {
-        delete schema.properties[key];
-      } else if (schema.properties[key].properties) {
-        deleteEmptyProperties(schema.properties[key]);
-      }
-    }
-  };
-
-  deleteEmptyProperties(singleAnswerSchema);
-  deleteEmptyProperties(multiEntitySchema);
-
-  // If singleAnswerSchema has no properties left, return an empty object
-  if (Object.keys(singleAnswerSchema.properties).length === 0) {
-    singleAnswerSchema = {};
-  }
-   
-  if (Object.keys(multiEntitySchema.properties).length === 0) {
-    multiEntitySchema = {};
-  }
-
-  return {
-    singleAnswerSchema,
-    multiEntitySchema,
-  };
-}
-
-export async function mixSchemaObjects(
-  finalSchema: any,
-  singleAnswerResult: any,
-  multiEntityResult: any
-) {
-  const finalResult: any = {};
-
-  // Recursive helper function to merge results based on schema
-  function mergeResults(schema: any, singleResult: any, multiResult: any) {
-    const result: any = {};
-    for (const key in schema.properties) {
-      if (schema.properties[key].type === 'object' && schema.properties[key].properties) {
-        // If the property is an object, recursively merge its properties
-        result[key] = mergeResults(
-          schema.properties[key],
-          singleResult[key] || {},
-          multiResult[key] || {}
-        );
-      } else if (schema.properties[key].type === 'array' && Array.isArray(multiResult[key])) {
-        // If the property is an array, flatten the arrays from multiResult
-        result[key] = multiResult[key].flat();
-      } else if (singleResult.hasOwnProperty(key)) {
-        result[key] = singleResult[key];
-      } else if (multiResult.hasOwnProperty(key)) {
-        result[key] = multiResult[key];
-      }
-    }
-    return result;
-  }
-
-  // Merge the properties from the final schema
-  Object.assign(finalResult, mergeResults(finalSchema, singleAnswerResult, multiEntityResult));
-
-  return finalResult;
-}
-
-export function transformArrayToObject(
-  originalSchema: any,
-  arrayData: any[]
-): any {
-  const transformedResult: any = {};
-
-  // Function to find the array key in a nested schema
-  function findArrayKey(schema: any): string | null {
-    for (const key in schema.properties) {
-      if (schema.properties[key].type === 'array') {
-        return key;
-      } else if (schema.properties[key].type === 'object') {
-        const nestedKey = findArrayKey(schema.properties[key]);
-        if (nestedKey) {
-          return `${key}.${nestedKey}`;
-        }
-      }
-    }
-    return null;
-  }
-
-  const arrayKeyPath = findArrayKey(originalSchema);
-  if (!arrayKeyPath) {
-    throw new Error("Schema does not contain an array property");
-  }
-
-  const arrayKeyParts = arrayKeyPath.split('.');
-  const arrayKey = arrayKeyParts.pop();
-  if (!arrayKey) {
-    throw new Error("Array key not found in schema");
-  }
-
-  const parentSchema = arrayKeyParts.reduce((schema, key) => schema.properties[key], originalSchema);
-  const itemSchema = parentSchema.properties[arrayKey].items;
-  if (!itemSchema) {
-    throw new Error("Item schema not found for array key");
-  }
-
-  // Initialize the array in the transformed result
-  let currentLevel = transformedResult;
-  arrayKeyParts.forEach(part => {
-    if (!currentLevel[part]) {
-      currentLevel[part] = {};
-    }
-    currentLevel = currentLevel[part];
-  });
-  currentLevel[arrayKey] = [];
-
-  // Helper function to check if an object is already in the array
-  function isDuplicateObject(array: any[], obj: any): boolean {
-    return array.some(existingItem => isEqual(existingItem, obj));
-  }
-
-  // Helper function to validate if an object follows the schema
-  function isValidObject(obj: any, schema: any): boolean {
-    return Object.keys(schema.properties).every(key => {
-      return obj.hasOwnProperty(key) && typeof obj[key] === schema.properties[key].type;
-    });
-  }
-
-  // Iterate over each item in the arrayData
-  arrayData.forEach(item => {
-    let currentItem = item;
-    arrayKeyParts.forEach(part => {
-      if (currentItem[part]) {
-        currentItem = currentItem[part];
-      }
-    });
-
-    // Copy non-array properties from the parent object
-    for (const key in parentSchema.properties) {
-      if (key !== arrayKey && currentItem.hasOwnProperty(key) && !currentLevel.hasOwnProperty(key)) {
-        currentLevel[key] = currentItem[key];
-      }
-    }
-
-    if (Array.isArray(currentItem[arrayKey])) {
-      currentItem[arrayKey].forEach((subItem: any) => {
-        if (typeof subItem === 'object' && subItem !== null && isValidObject(subItem, itemSchema)) {
-          // For arrays of objects, add only unique objects
-          const transformedItem: any = {};
-          let hasValidData = false;
-
-          for (const key in itemSchema.properties) {
-            if (subItem.hasOwnProperty(key) && subItem[key] !== undefined) {
-              transformedItem[key] = subItem[key];
-              hasValidData = true;
-            }
-          }
-
-          if (hasValidData && !isDuplicateObject(currentLevel[arrayKey], transformedItem)) {
-            currentLevel[arrayKey].push(transformedItem);
-          }
-        }
-      });
-    }
-
-    // Handle merging of array properties
-    for (const key in parentSchema.properties) {
-      if (parentSchema.properties[key].type === 'array' && Array.isArray(currentItem[key])) {
-        if (!currentLevel[key]) {
-          currentLevel[key] = [];
-        }
-        currentItem[key].forEach((value: any) => {
-          if (!currentLevel[key].includes(value) && !isDuplicateObject(currentLevel[arrayKey], value)) {
-            currentLevel[key].push(value);
-          }
-        });
-      }
-    }
-  });
-
-  return transformedResult;
 }
 
 async function analyzeSchemaAndPrompt(

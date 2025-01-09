@@ -1,4 +1,5 @@
-import { mixSchemaObjects, transformArrayToObject } from "../extract/extraction-service";
+import { mixSchemaObjects } from "../extract/helpers/mix-schema-objs";
+import { transformArrayToObject } from "../extract/helpers/transform-array-to-obj";
 
 describe("mixSchemaObjects function", () => {
   it("should mix kyb schema (id: 1)", async () => {

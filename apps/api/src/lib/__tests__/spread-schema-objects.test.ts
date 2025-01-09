@@ -1,4 +1,4 @@
-import { spreadSchemas } from "../extract/extraction-service";
+import { spreadSchemas } from "../extract/helpers/spread-schemas";
 
 describe("spreadSchemas", () => {
   it("should spread kyb schema (id: 1)", async () => {
