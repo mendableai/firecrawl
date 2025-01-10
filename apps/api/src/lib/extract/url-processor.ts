@@ -193,6 +193,11 @@ export async function processUrl(
         searchQuery,
         urlTraces,
       );
+      mappedLinks = await rerankLinksWithLLM(
+        mappedLinks,
+        searchQuery,
+        urlTraces,
+      );
 
       const fs = require("fs");
       const path = require("path");
