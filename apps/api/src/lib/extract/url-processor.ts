@@ -193,11 +193,15 @@ export async function processUrl(
         searchQuery,
         urlTraces,
       );
-      mappedLinks = await rerankLinksWithLLM(
-        mappedLinks,
-        searchQuery,
-        urlTraces,
-      );
+
+      // 2nd Pass, useful for when the first pass returns too many links
+      if(mappedLinks.length > 100) {
+        mappedLinks = await rerankLinksWithLLM(
+          mappedLinks,
+          searchQuery,
+          urlTraces,
+        );
+      }
 
       const fs = require("fs");
       const path = require("path");
