@@ -364,7 +364,13 @@ export async function performExtraction(
       multiEntityResult = mergeNullValObjs(multiEntityResult);
       // @nick: maybe we can add here a llm that checks if the array probably has a primary key?
     } catch (error) {
-      console.log("error: " + error);
+      logger.error(`Failed to transform array to object: ${error}`);
+      return {
+        success: false,
+        error: "An unexpected error occurred. Please contact help@firecrawl.com for help.",
+        extractId,
+        urlTrace: urlTraces,
+      };
     }
   }
   if (rSchema && Object.keys(rSchema).length > 0 && rSchema.properties && Object.keys(rSchema.properties).length > 0) {
