@@ -315,7 +315,8 @@ export async function performExtraction(
         .map((doc) => (doc.url ? [doc.url, doc] : undefined))
         .filter((entry): entry is [string, Document] => entry !== undefined)
     ]);
-      
+    
+    console.log(multyEntityDocs.length)
     for (const doc of multyEntityDocs) {
       ajv.compile(multiEntitySchema);
       // Generate completions
@@ -377,8 +378,18 @@ export async function performExtraction(
     const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
     let singleAnswerDocs: Document[] = [];
 
+    if (links.length == request.urls.length && docsMap.size == 0) {
+      // All urls are invalid
+      return {
+        success: false,
+        error: "All provided URLs are invalid. Please check your input and try again.",
+        extractId,
+        urlTrace: request.urlTrace ? urlTraces : undefined,
+      };
+    }
+
     const scrapePromises = links.map((url) => {
-      if (!docsMap['url']) {
+      if (!docsMap.has(url)) {
         return scrapeDocument(
           {
             url,
