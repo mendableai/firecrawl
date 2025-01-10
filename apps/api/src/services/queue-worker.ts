@@ -87,9 +87,9 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   if (await finishCrawl(job.data.crawl_id)) {
     (async () => {
       const originUrl = sc.originUrl ? normalizeUrlOnlyHostname(sc.originUrl) : undefined;
-      // Get all visited URLs from Redis
+      // Get all visited unique URLs from Redis
       const visitedUrls = await redisConnection.smembers(
-        "crawl:" + job.data.crawl_id + ":visited",
+        "crawl:" + job.data.crawl_id + ":visited_unique",
       );
       // Upload to Supabase if we have URLs and this is a crawl (not a batch scrape)
       if (visitedUrls.length > 0 && job.data.crawlerOptions !== null && originUrl) {
