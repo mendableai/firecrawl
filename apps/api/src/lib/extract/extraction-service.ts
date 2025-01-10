@@ -25,6 +25,8 @@ const ajv = new Ajv();
 
 const openai = new OpenAI();
 import { updateExtract } from "./extract-redis";
+import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
+import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -186,8 +188,6 @@ export async function performExtraction(
   let reqSchema = request.schema;
   reqSchema = await dereferenceSchema(reqSchema);
 
-  console.log("links", JSON.stringify(links, null, 2));
-
   // agent evaluates if the schema or the prompt has an array with big amount of items
   // also it checks if the schema any other properties that are not arrays
   // if so, it splits the results into 2 types of completions:
@@ -333,7 +333,6 @@ export async function performExtraction(
         undefined,
         true,
       );
-      console.log(">>>>>> multiEntityCompletion", JSON.stringify(multiEntityCompletion, null, 2));
 
       // Update token usage in traces
       // if (multiEntityCompletion && multiEntityCompletion.numTokens) {
@@ -358,19 +357,16 @@ export async function performExtraction(
 
       multiEntityCompletions.push(multiEntityCompletion.extract);
     }
-    console.log(">>>>>> multiEntitySchema", JSON.stringify(multiEntitySchema, null, 2));
-    console.log(">>>>>> ?? multiEntityCompletions", JSON.stringify(multiEntityCompletions, null, 2));
+
     try {
       multiEntityResult = transformArrayToObject(multiEntitySchema, multiEntityCompletions);
+      multiEntityResult = deduplicateObjectsArray(multiEntityResult);
+      multiEntityResult = mergeNullValObjs(multiEntityResult);
+      // @nick: maybe we can add here a llm that checks if the array probably has a primary key?
     } catch (error) {
-      console.log("error", error);
+      console.log("error: " + error);
     }
   }
-
-  console.log(">>>>> multiEntityResult", JSON.stringify(multiEntityResult, null, 2));
-  console.log("reqSchema", JSON.stringify(reqSchema, null, 2));
-  console.log("rSchema", JSON.stringify(rSchema, null, 2));
-
   if (rSchema && Object.keys(rSchema).length > 0 && rSchema.properties && Object.keys(rSchema.properties).length > 0) {
     // Scrape documents
     const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
