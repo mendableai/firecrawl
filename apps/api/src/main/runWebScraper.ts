@@ -175,10 +175,9 @@ export async function runWebScraper({
       }
 
       // If the team is the background index team, return the response
-      if(team_id === process.env.BACKGROUND_INDEX_TEAM_ID!) {
+      if (team_id === process.env.BACKGROUND_INDEX_TEAM_ID!) {
         return response;
       }
-
 
       billTeam(team_id, undefined, creditsToBeBilled, logger).catch((error) => {
         logger.error(

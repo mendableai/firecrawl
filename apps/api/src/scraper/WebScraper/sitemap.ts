@@ -15,7 +15,7 @@ export async function getLinksFromSitemap(
     mode = "axios",
   }: {
     sitemapUrl: string;
-    urlsHandler(urls: string[]): unknown,
+    urlsHandler(urls: string[]): unknown;
     mode?: "axios" | "fire-engine";
   },
   logger: Logger,
@@ -31,7 +31,10 @@ export async function getLinksFromSitemap(
           { forceEngine: "fire-engine;tlsclient", v0DisableJsDom: true },
         );
         if (!response.success) {
-          logger.debug("Failed to scrape sitemap via TLSClient, falling back to axios...", { error: response.error })
+          logger.debug(
+            "Failed to scrape sitemap via TLSClient, falling back to axios...",
+            { error: response.error },
+          );
           const ar = await axios.get(sitemapUrl, { timeout: axiosTimeout });
           content = ar.data;
         } else {
@@ -63,14 +66,11 @@ export async function getLinksFromSitemap(
         .map((sitemap) => sitemap.loc[0].trim());
 
       const sitemapPromises: Promise<number>[] = sitemapUrls.map((sitemapUrl) =>
-        getLinksFromSitemap(
-          { sitemapUrl, urlsHandler, mode },
-          logger,
-        ),
+        getLinksFromSitemap({ sitemapUrl, urlsHandler, mode }, logger),
       );
-      
+
       const results = await Promise.all(sitemapPromises);
-      count = results.reduce((a,x) => a + x)
+      count = results.reduce((a, x) => a + x);
     } else if (root && root.url) {
       // Check if any URLs point to additional sitemaps
       const xmlSitemaps: string[] = root.url
@@ -78,7 +78,7 @@ export async function getLinksFromSitemap(
           (url) =>
             url.loc &&
             url.loc.length > 0 &&
-            url.loc[0].trim().toLowerCase().endsWith('.xml')
+            url.loc[0].trim().toLowerCase().endsWith(".xml"),
         )
         .map((url) => url.loc[0].trim());
 
@@ -90,7 +90,10 @@ export async function getLinksFromSitemap(
             logger,
           ),
         );
-        count += (await Promise.all(sitemapPromises)).reduce((a,x) => a + x, 0);
+        count += (await Promise.all(sitemapPromises)).reduce(
+          (a, x) => a + x,
+          0,
+        );
       }
 
       const validUrls = root.url
@@ -98,7 +101,7 @@ export async function getLinksFromSitemap(
           (url) =>
             url.loc &&
             url.loc.length > 0 &&
-            !url.loc[0].trim().toLowerCase().endsWith('.xml') &&
+            !url.loc[0].trim().toLowerCase().endsWith(".xml") &&
             !WebCrawler.prototype.isFile(url.loc[0].trim()),
         )
         .map((url) => url.loc[0].trim());

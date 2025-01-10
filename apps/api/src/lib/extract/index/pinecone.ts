@@ -1,6 +1,6 @@
-import { Pinecone } from '@pinecone-database/pinecone';
-import { Document } from '../../../controllers/v1/types';
-import { logger } from '../../logger';
+import { Pinecone } from "@pinecone-database/pinecone";
+import { Document } from "../../../controllers/v1/types";
+import { logger } from "../../logger";
 import OpenAI from "openai";
 
 const openai = new OpenAI({
@@ -48,34 +48,43 @@ export async function indexPage({
   document,
   originUrl,
   crawlId,
-  teamId
+  teamId,
 }: {
   document: Document;
   originUrl: string;
   crawlId?: string;
   teamId?: string;
-}
-) {
+}) {
   try {
     const index = pinecone.index(INDEX_NAME);
 
     // Trim markdown if it's too long
     let trimmedMarkdown = document.markdown;
-    if (trimmedMarkdown && Buffer.byteLength(trimmedMarkdown, 'utf-8') > MAX_METADATA_SIZE) {
-      trimmedMarkdown = trimmedMarkdown.slice(0, Math.floor(MAX_METADATA_SIZE / 2)); // Using half the size to be safe with UTF-8 encoding
+    if (
+      trimmedMarkdown &&
+      Buffer.byteLength(trimmedMarkdown, "utf-8") > MAX_METADATA_SIZE
+    ) {
+      trimmedMarkdown = trimmedMarkdown.slice(
+        0,
+        Math.floor(MAX_METADATA_SIZE / 2),
+      ); // Using half the size to be safe with UTF-8 encoding
     }
 
     // Create text to embed
     const textToEmbed = [
       document.metadata.title,
       document.metadata.description,
-      trimmedMarkdown
-    ].filter(Boolean).join('\n\n');
+      trimmedMarkdown,
+    ]
+      .filter(Boolean)
+      .join("\n\n");
 
     // Get embedding from OpenAI
     const embedding = await getEmbedding(textToEmbed);
 
-    const normalizedUrl = normalizeUrl(document.metadata.sourceURL || document.metadata.url!);
+    const normalizedUrl = normalizeUrl(
+      document.metadata.sourceURL || document.metadata.url!,
+    );
 
     // Prepare metadata
     const metadata: PageMetadata = {
@@ -86,29 +95,30 @@ export async function indexPage({
       crawlId,
       teamId,
       markdown: trimmedMarkdown,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
     // Upsert to Pinecone
-    await index.upsert([{
-      id: normalizedUrl,
-      values: embedding,
-      metadata: {
-        ...metadata,
-        [document.metadata.sourceURL || document.metadata.url!]: true
-      }
-    }]);
+    await index.upsert([
+      {
+        id: normalizedUrl,
+        values: embedding,
+        metadata: {
+          ...metadata,
+          [document.metadata.sourceURL || document.metadata.url!]: true,
+        },
+      },
+    ]);
 
-    logger.debug('Successfully indexed page in Pinecone', {
+    logger.debug("Successfully indexed page in Pinecone", {
       url: metadata.url,
-      crawlId
+      crawlId,
     });
-
   } catch (error) {
-    logger.error('Failed to index page in Pinecone', {
+    logger.error("Failed to index page in Pinecone", {
       error,
       url: document.metadata.sourceURL || document.metadata.url,
-      crawlId
+      crawlId,
     });
   }
 }
@@ -116,7 +126,7 @@ export async function indexPage({
 export async function searchSimilarPages(
   query: string,
   originUrl?: string,
-  limit: number = 10
+  limit: number = 10,
 ) {
   try {
     const index = pinecone.index(INDEX_NAME);
@@ -127,31 +137,30 @@ export async function searchSimilarPages(
     const queryParams: any = {
       vector: queryEmbedding,
       topK: limit,
-      includeMetadata: true
+      includeMetadata: true,
     };
 
     const normalizedOriginUrl = originUrl ? normalizeUrl(originUrl) : undefined;
     // Add filter if originUrl is provided
     if (normalizedOriginUrl) {
       queryParams.filter = {
-        originUrl: { $eq: normalizedOriginUrl }
+        originUrl: { $eq: normalizedOriginUrl },
       };
     }
 
     const results = await index.query(queryParams);
-    return results.matches.map(match => ({
+    return results.matches.map((match) => ({
       url: match.metadata?.url,
-      title: match.metadata?.title, 
+      title: match.metadata?.title,
       description: match.metadata?.description,
       score: match.score,
-      markdown: match.metadata?.markdown
+      markdown: match.metadata?.markdown,
     }));
-
   } catch (error) {
-    logger.error('Failed to search similar pages in Pinecone', {
+    logger.error("Failed to search similar pages in Pinecone", {
       error,
       query,
-      originUrl
+      originUrl,
     });
     return [];
   }

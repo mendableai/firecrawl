@@ -89,13 +89,19 @@ const runningJobs: Set<string> = new Set();
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   if (await finishCrawl(job.data.crawl_id)) {
     (async () => {
-      const originUrl = sc.originUrl ? normalizeUrlOnlyHostname(sc.originUrl) : undefined;
+      const originUrl = sc.originUrl
+        ? normalizeUrlOnlyHostname(sc.originUrl)
+        : undefined;
       // Get all visited URLs from Redis
       const visitedUrls = await redisConnection.smembers(
         "crawl:" + job.data.crawl_id + ":visited",
       );
       // Upload to Supabase if we have URLs and this is a crawl (not a batch scrape)
-      if (visitedUrls.length > 0 && job.data.crawlerOptions !== null && originUrl) {
+      if (
+        visitedUrls.length > 0 &&
+        job.data.crawlerOptions !== null &&
+        originUrl
+      ) {
         // Fire and forget the upload to Supabase
         try {
           // Standardize URLs to canonical form (https, no www)
@@ -317,7 +323,10 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
   return err;
 };
 
-const processExtractJobInternal = async (token: string, job: Job & { id: string }) => {
+const processExtractJobInternal = async (
+  token: string,
+  job: Job & { id: string },
+) => {
   const logger = _logger.child({
     module: "extract-worker",
     method: "processJobInternal",
@@ -348,23 +357,26 @@ const processExtractJobInternal = async (token: string, job: Job & { id: string 
     }
   } catch (error) {
     logger.error(`🚫 Job errored ${job.id} - ${error}`, { error });
-    
+
     Sentry.captureException(error, {
       data: {
         job: job.id,
       },
     });
-    
+
     // Move job to failed state in Redis
     await job.moveToFailed(error, token, false);
 
     await updateExtract(job.data.extractId, {
       status: "failed",
-      error: error.error ?? error ?? "Unknown error, please contact help@firecrawl.dev. Extract id: " + job.data.extractId,
+      error:
+        error.error ??
+        error ??
+        "Unknown error, please contact help@firecrawl.dev. Extract id: " +
+          job.data.extractId,
     });
     // throw error;
   } finally {
-    
     clearInterval(extendLockInterval);
   }
 };
@@ -635,7 +647,9 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
             sc,
             jobs.map((x) => ({ id: x.opts.jobId, url: x.data.url })),
           );
-          const lockedJobs = jobs.filter(x => lockedIds.find(y => y.id === x.opts.jobId));
+          const lockedJobs = jobs.filter((x) =>
+            lockedIds.find((y) => y.id === x.opts.jobId),
+          );
           logger.debug("Adding scrape jobs to Redis...");
           await addCrawlJobs(
             job.data.crawl_id,
@@ -790,7 +804,8 @@ async function processJob(job: Job & { id: string }, token: string) {
       ) {
         const crawler = crawlToCrawler(job.data.crawl_id, sc);
         if (
-          crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL) === null &&
+          crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL) ===
+            null &&
           !job.data.isCrawlSourceScrape
         ) {
           throw new Error(
@@ -1073,7 +1088,7 @@ async function processJob(job: Job & { id: string }, token: string) {
   console.log("All workers exited. Waiting for all jobs to finish...");
 
   while (runningJobs.size > 0) {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
   process.exit(0);

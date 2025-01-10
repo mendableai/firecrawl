@@ -9,8 +9,6 @@ const cohere = new CohereClient({
   token: process.env.COHERE_API_KEY,
 });
 
-
-
 interface RankingResult {
   mappedLinks: MapDocument[];
   linksAndScores: {
@@ -59,15 +57,12 @@ export async function rerankLinks(
     searchQuery,
   );
 
-  
   // First try with high threshold
   let filteredLinks = filterAndProcessLinks(
     mappedLinks,
     linksAndScores,
     extractConfig.INITIAL_SCORE_THRESHOLD,
   );
-
-
 
   // If we don't have enough high-quality links, try with lower threshold
   if (filteredLinks.length < extractConfig.MIN_REQUIRED_LINKS) {
@@ -102,7 +97,7 @@ export async function rerankLinks(
     if (trace) {
       trace.relevanceScore = score.score;
       // If URL didn't make it through filtering, mark it as filtered out
-      if (!filteredLinks.some(link => link.url === score.link)) {
+      if (!filteredLinks.some((link) => link.url === score.link)) {
         trace.warning = `Relevance score ${score.score} below threshold`;
         trace.usedInCompletion = false;
       }
@@ -110,20 +105,20 @@ export async function rerankLinks(
   });
 
   const rankedLinks = filteredLinks.slice(0, extractConfig.MAX_RANKING_LIMIT);
-  
+
   // Mark URLs that will be used in completion
-  rankedLinks.forEach(link => {
-    const trace = urlTraces.find(t => t.url === link.url);
+  rankedLinks.forEach((link) => {
+    const trace = urlTraces.find((t) => t.url === link.url);
     if (trace) {
       trace.usedInCompletion = true;
     }
   });
 
   // Mark URLs that were dropped due to ranking limit
-  filteredLinks.slice(extractConfig.MAX_RANKING_LIMIT).forEach(link => {
-    const trace = urlTraces.find(t => t.url === link.url);
+  filteredLinks.slice(extractConfig.MAX_RANKING_LIMIT).forEach((link) => {
+    const trace = urlTraces.find((t) => t.url === link.url);
     if (trace) {
-      trace.warning = 'Excluded due to ranking limit';
+      trace.warning = "Excluded due to ranking limit";
       trace.usedInCompletion = false;
     }
   });

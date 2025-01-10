@@ -204,7 +204,7 @@ export async function supaAuthenticateUser(
     }
 
     chunk = await getACUC(normalizedApi);
-    
+
     if (chunk === null) {
       return {
         success: false,

@@ -20,10 +20,13 @@ interface ProcessUrlOptions {
   includeSubdomains?: boolean;
 }
 
-export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace[]): Promise<string[]> {
+export async function processUrl(
+  options: ProcessUrlOptions,
+  urlTraces: URLTrace[],
+): Promise<string[]> {
   const trace: URLTrace = {
     url: options.url,
-    status: 'mapped',
+    status: "mapped",
     timing: {
       discoveredAt: new Date().toISOString(),
     },
@@ -35,8 +38,8 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
       trace.usedInCompletion = true;
       return [options.url];
     }
-    trace.status = 'error';
-    trace.error = 'URL is blocked';
+    trace.status = "error";
+    trace.error = "URL is blocked";
     trace.usedInCompletion = false;
     return [];
   }
@@ -46,9 +49,10 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
 
   let rephrasedPrompt = options.prompt;
   if (options.prompt) {
-    rephrasedPrompt = await generateBasicCompletion(
-      buildRefrasedPrompt(options.prompt, baseUrl)
-    ) ?? options.prompt;
+    rephrasedPrompt =
+      (await generateBasicCompletion(
+        buildRefrasedPrompt(options.prompt, baseUrl),
+      )) ?? options.prompt;
   }
 
   try {
@@ -70,11 +74,11 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
     let uniqueUrls = removeDuplicateUrls(allUrls);
 
     // Track all discovered URLs
-    uniqueUrls.forEach(discoveredUrl => {
-      if (!urlTraces.some(t => t.url === discoveredUrl)) {
+    uniqueUrls.forEach((discoveredUrl) => {
+      if (!urlTraces.some((t) => t.url === discoveredUrl)) {
         urlTraces.push({
           url: discoveredUrl,
-          status: 'mapped',
+          status: "mapped",
           timing: {
             discoveredAt: new Date().toISOString(),
           },
@@ -84,7 +88,7 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
     });
 
     // retry if only one url is returned
-    if (uniqueUrls.length <= 1)  {
+    if (uniqueUrls.length <= 1) {
       const retryMapResults = await getMapResults({
         url: baseUrl,
         teamId: options.teamId,
@@ -96,18 +100,18 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
         includeMetadata: true,
         includeSubdomains: options.includeSubdomains,
       });
-  
+
       mappedLinks = retryMapResults.mapResults as MapDocument[];
       allUrls = [...mappedLinks.map((m) => m.url), ...mapResults.links];
       uniqueUrls = removeDuplicateUrls(allUrls);
 
       // Track all discovered URLs
-      uniqueUrls.forEach(discoveredUrl => {
-        if (!urlTraces.some(t => t.url === discoveredUrl)) {
+      uniqueUrls.forEach((discoveredUrl) => {
+        if (!urlTraces.some((t) => t.url === discoveredUrl)) {
           urlTraces.push({
             url: discoveredUrl,
-            status: 'mapped',
-            warning: 'Broader search. Not limiting map results to prompt.',
+            status: "mapped",
+            warning: "Broader search. Not limiting map results to prompt.",
             timing: {
               discoveredAt: new Date().toISOString(),
             },
@@ -118,11 +122,11 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
     }
 
     // Track all discovered URLs
-    uniqueUrls.forEach(discoveredUrl => {
-      if (!urlTraces.some(t => t.url === discoveredUrl)) {
+    uniqueUrls.forEach((discoveredUrl) => {
+      if (!urlTraces.some((t) => t.url === discoveredUrl)) {
         urlTraces.push({
           url: discoveredUrl,
-          status: 'mapped',
+          status: "mapped",
           timing: {
             discoveredAt: new Date().toISOString(),
           },
@@ -155,11 +159,11 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
       mappedLinks = await rerankLinks(mappedLinks, searchQuery, urlTraces);
     }
 
-    return mappedLinks.map(x => x.url);
+    return mappedLinks.map((x) => x.url);
   } catch (error) {
-    trace.status = 'error';
+    trace.status = "error";
     trace.error = error.message;
     trace.usedInCompletion = false;
     return [];
   }
-} 
+}

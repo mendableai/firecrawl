@@ -45,7 +45,10 @@ const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
 
 const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
-  queues: [new BullAdapter(getScrapeQueue()), new BullAdapter(getExtractQueue())],
+  queues: [
+    new BullAdapter(getScrapeQueue()),
+    new BullAdapter(getExtractQueue()),
+  ],
   serverAdapter: serverAdapter,
 });
 
@@ -254,4 +257,4 @@ logger.info(`Worker ${process.pid} started`);
 // sq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
 // sq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
 // sq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
-// 
+//

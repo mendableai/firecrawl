@@ -43,11 +43,16 @@ export function extractMetadata(
   try {
     title = soup("title").first().text().trim() || undefined;
     description = soup('meta[name="description"]').attr("content") || undefined;
-    
-    const faviconLink = soup('link[rel="icon"]').attr("href") || soup('link[rel*="icon"]').first().attr("href") || undefined;
+
+    const faviconLink =
+      soup('link[rel="icon"]').attr("href") ||
+      soup('link[rel*="icon"]').first().attr("href") ||
+      undefined;
     if (faviconLink) {
       const baseUrl = new URL(meta.url).origin;
-      favicon = faviconLink.startsWith('http') ? faviconLink : `${baseUrl}${faviconLink}`;
+      favicon = faviconLink.startsWith("http")
+        ? faviconLink
+        : `${baseUrl}${faviconLink}`;
     }
 
     // Assuming the language is part of the URL as per the regex pattern

@@ -219,34 +219,51 @@ export class WebCrawler {
     const _urlsHandler = async (urls: string[]) => {
       let uniqueURLs: string[] = [];
       for (const url of urls) {
-        if (await redisConnection.sadd("sitemap:" + this.jobId + ":links", normalizeUrl(url))) {
+        if (
+          await redisConnection.sadd(
+            "sitemap:" + this.jobId + ":links",
+            normalizeUrl(url),
+          )
+        ) {
           uniqueURLs.push(url);
         }
       }
 
-      await redisConnection.expire("sitemap:" + this.jobId + ":links", 3600, "NX");
+      await redisConnection.expire(
+        "sitemap:" + this.jobId + ":links",
+        3600,
+        "NX",
+      );
       if (uniqueURLs.length > 0) {
         urlsHandler(uniqueURLs);
       }
     };
 
-    let count = await this.tryFetchSitemapLinks(this.initialUrl, (urls: string[]) => {
-      if (fromMap && onlySitemap) {
-        return urlsHandler(urls);
-      } else {
-        let filteredLinks = this.filterLinks(
-          [...new Set(urls)],
-          leftOfLimit,
-          this.maxCrawledDepth,
-          fromMap,
-        );
-        leftOfLimit -= filteredLinks.length;
-        return _urlsHandler(filteredLinks);
-      }
-    });
+    let count = await this.tryFetchSitemapLinks(
+      this.initialUrl,
+      (urls: string[]) => {
+        if (fromMap && onlySitemap) {
+          return urlsHandler(urls);
+        } else {
+          let filteredLinks = this.filterLinks(
+            [...new Set(urls)],
+            leftOfLimit,
+            this.maxCrawledDepth,
+            fromMap,
+          );
+          leftOfLimit -= filteredLinks.length;
+          return _urlsHandler(filteredLinks);
+        }
+      },
+    );
 
     if (count > 0) {
-      if (await redisConnection.sadd("sitemap:" + this.jobId + ":links", normalizeUrl(this.initialUrl))) {
+      if (
+        await redisConnection.sadd(
+          "sitemap:" + this.jobId + ":links",
+          normalizeUrl(this.initialUrl),
+        )
+      ) {
         urlsHandler([this.initialUrl]);
       }
       count++;
@@ -470,8 +487,13 @@ export class WebCrawler {
     return socialMediaOrEmail.some((ext) => url.includes(ext));
   }
 
-  private async tryFetchSitemapLinks(url: string, urlsHandler: (urls: string[]) => unknown): Promise<number> {
-    const sitemapUrl = url.endsWith(".xml") ? url : `${url}${url.endsWith("/") ? "" : "/"}sitemap.xml`;
+  private async tryFetchSitemapLinks(
+    url: string,
+    urlsHandler: (urls: string[]) => unknown,
+  ): Promise<number> {
+    const sitemapUrl = url.endsWith(".xml")
+      ? url
+      : `${url}${url.endsWith("/") ? "" : "/"}sitemap.xml`;
 
     let sitemapCount: number = 0;
 
@@ -482,37 +504,43 @@ export class WebCrawler {
         this.logger,
       );
     } catch (error) {
-      this.logger.debug(
-        `Failed to fetch sitemap from ${sitemapUrl}`,
-        { method: "tryFetchSitemapLinks", sitemapUrl, error },
-      );
+      this.logger.debug(`Failed to fetch sitemap from ${sitemapUrl}`, {
+        method: "tryFetchSitemapLinks",
+        sitemapUrl,
+        error,
+      });
     }
 
     // If this is a subdomain, also try to get sitemap from the main domain
     try {
       const urlObj = new URL(url);
       const hostname = urlObj.hostname;
-      const domainParts = hostname.split('.');
-      
+      const domainParts = hostname.split(".");
+
       // Check if this is a subdomain (has more than 2 parts and not www)
-      if (domainParts.length > 2 && domainParts[0] !== 'www') {
+      if (domainParts.length > 2 && domainParts[0] !== "www") {
         // Get the main domain by taking the last two parts
-        const mainDomain = domainParts.slice(-2).join('.');
+        const mainDomain = domainParts.slice(-2).join(".");
         const mainDomainUrl = `${urlObj.protocol}//${mainDomain}`;
         const mainDomainSitemapUrl = `${mainDomainUrl}/sitemap.xml`;
 
         try {
           // Get all links from the main domain's sitemap
           sitemapCount += await getLinksFromSitemap(
-            { sitemapUrl: mainDomainSitemapUrl, urlsHandler(urls) {
-              return urlsHandler(urls.filter(link => {
-                try {
-                  const linkUrl = new URL(link);
-                  return linkUrl.hostname.endsWith(hostname);
-                } catch {
-                }
-              }))
-            }, mode: "fire-engine" },
+            {
+              sitemapUrl: mainDomainSitemapUrl,
+              urlsHandler(urls) {
+                return urlsHandler(
+                  urls.filter((link) => {
+                    try {
+                      const linkUrl = new URL(link);
+                      return linkUrl.hostname.endsWith(hostname);
+                    } catch {}
+                  }),
+                );
+              },
+              mode: "fire-engine",
+            },
             this.logger,
           );
         } catch (error) {

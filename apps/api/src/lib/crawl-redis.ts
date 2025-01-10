@@ -322,13 +322,13 @@ export async function lockURLs(
 export async function lockURLsIndividually(
   id: string,
   sc: StoredCrawl,
-  jobs: { id: string; url: string; }[],
+  jobs: { id: string; url: string }[],
 ) {
   const out: typeof jobs = [];
 
   for (const job of jobs) {
     if (await lockURL(id, sc, job.url)) {
-      out.push(job);      
+      out.push(job);
     }
   }
 

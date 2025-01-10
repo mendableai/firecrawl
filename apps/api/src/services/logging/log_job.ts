@@ -9,9 +9,11 @@ configDotenv();
 
 function cleanOfNull<T>(x: T): T {
   if (Array.isArray(x)) {
-    return x.map(x => cleanOfNull(x)) as T;
+    return x.map((x) => cleanOfNull(x)) as T;
   } else if (typeof x === "object" && x !== null) {
-    return Object.fromEntries(Object.entries(x).map(([k,v]) => [k,cleanOfNull(v)])) as T
+    return Object.fromEntries(
+      Object.entries(x).map(([k, v]) => [k, cleanOfNull(v)]),
+    ) as T;
   } else if (typeof x === "string") {
     return x.replaceAll("\u0000", "") as T;
   } else {

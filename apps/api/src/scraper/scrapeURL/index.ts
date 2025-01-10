@@ -420,7 +420,9 @@ export async function scrapeURL(
     } else if (error instanceof ActionError) {
       meta.logger.warn("scrapeURL: Action(s) failed to complete", { error });
     } else if (error instanceof UnsupportedFileError) {
-      meta.logger.warn("scrapeURL: Tried to scrape unsupported file", { error });
+      meta.logger.warn("scrapeURL: Tried to scrape unsupported file", {
+        error,
+      });
     } else {
       Sentry.captureException(error);
       meta.logger.error("scrapeURL: Unexpected error happened", { error });

@@ -192,7 +192,8 @@ v1Router.get(
   wrap((req: any, res): any => crawlStatusController(req, res, true)),
 );
 
-v1Router.get("/scrape/:jobId",
+v1Router.get(
+  "/scrape/:jobId",
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(scrapeStatusController),
 );
@@ -242,6 +243,3 @@ v1Router.get(
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(creditUsageController),
 );
-
-
-
