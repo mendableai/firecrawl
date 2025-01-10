@@ -1,0 +1,67 @@
+services:
+  - type: web
+    name: firecrawl-api
+    env: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    envVars:
+      - key: PORT
+        value: 3002
+      - key: HOST
+        value: 0.0.0.0
+      - key: NUM_WORKERS_PER_QUEUE
+        value: 8
+      - key: USE_DB_AUTHENTICATION
+        value: false
+      - key: REDIS_URL
+        fromService:
+          name: firecrawl-redis
+          type: redis
+          property: connectionString
+      - key: REDIS_RATE_LIMIT_URL
+        fromService:
+          name: firecrawl-redis
+          type: redis
+          property: connectionString
+      - key: PLAYWRIGHT_MICROSERVICE_URL
+        value: http://firecrawl-playwright:3000
+    healthCheckPath: /health
+
+  - type: worker
+    name: firecrawl-worker
+    env: docker
+    dockerfilePath: ./apps/api/Dockerfile
+    envVars:
+      - key: PORT
+        value: 3002
+      - key: HOST
+        value: 0.0.0.0
+      - key: NUM_WORKERS_PER_QUEUE
+        value: 8
+      - key: USE_DB_AUTHENTICATION
+        value: false
+      - key: REDIS_URL
+        fromService:
+          name: firecrawl-redis
+          type: redis
+          property: connectionString
+      - key: REDIS_RATE_LIMIT_URL
+        fromService:
+          name: firecrawl-redis
+          type: redis
+          property: connectionString
+      - key: PLAYWRIGHT_MICROSERVICE_URL
+        value: http://firecrawl-playwright:3000
+    startCommand: pnpm run workers
+
+  - type: web
+    name: firecrawl-playwright
+    env: docker
+    dockerfilePath: ./apps/playwright-service/Dockerfile
+    envVars:
+      - key: PORT
+        value: 3000
+
+  - type: redis
+    name: firecrawl-redis
+    ipAllowList: []
+    plan: free 
