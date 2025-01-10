@@ -7,7 +7,9 @@ import { supabase_service } from "../../services/supabase";
  * @param url The URL to query
  * @returns A list of URLs found in the sitemap index aggregated from all sitemaps
  */
-export async function querySitemapIndex(url: string) {
+import { withAuth } from "../../lib/withAuth";
+
+async function querySitemapIndexFunction(url: string) {
   const originUrl = normalizeUrlOnlyHostname(url);
 
   const { data, error } = await supabase_service
@@ -24,3 +26,5 @@ export async function querySitemapIndex(url: string) {
 
   return allUrls;
 }
+
+export const querySitemapIndex = withAuth(querySitemapIndexFunction, []);
