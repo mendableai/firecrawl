@@ -4,6 +4,10 @@ export function transformArrayToObject(
   originalSchema: any,
   arrayData: any[]
 ): any {
+  if (Object.keys(originalSchema).length == 0) {
+    return {};
+  }
+  
   const transformedResult: any = {};
 
   // Function to find the array key in a nested schema

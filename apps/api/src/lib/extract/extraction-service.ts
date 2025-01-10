@@ -203,7 +203,6 @@ export async function performExtraction(
 
   let rSchema = reqSchema;
   if (isMultiEntity) {
-    console.log("is it getting here???")
     const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(reqSchema, multiEntityKeys)
     rSchema = singleAnswerSchema;
 
@@ -291,7 +290,7 @@ export async function performExtraction(
 
     const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
     const scrapePromises = links.map((url) => {
-      if (!docsMap.get(url)) {
+      if (!docsMap.has(url)) {
         return scrapeDocument(
           {
             url,
@@ -310,15 +309,13 @@ export async function performExtraction(
       (doc): doc is Document => doc !== null,
     );
 
-    docsMap = new Map([
-      ...docsMap,
-      ...multyEntityDocs
-        .map((doc) => (doc.url ? [doc.url, doc] : undefined))
-        .filter((entry): entry is [string, Document] => entry !== undefined)
-    ]);
-      
     for (const doc of multyEntityDocs) {
-      console.log(">>>>>> doc", JSON.stringify(doc, null, 2));
+      if (doc?.metadata?.url) {
+        docsMap.set(doc.metadata.url, doc);
+      }
+    }
+    
+    for (const doc of multyEntityDocs) {
       ajv.compile(multiEntitySchema);
       // Generate completions
       const multiEntityCompletion = await generateOpenAICompletions(
@@ -363,7 +360,11 @@ export async function performExtraction(
     }
     console.log(">>>>>> multiEntitySchema", JSON.stringify(multiEntitySchema, null, 2));
     console.log(">>>>>> ?? multiEntityCompletions", JSON.stringify(multiEntityCompletions, null, 2));
-    multiEntityResult = transformArrayToObject(multiEntitySchema, multiEntityCompletions);
+    try {
+      multiEntityResult = transformArrayToObject(multiEntitySchema, multiEntityCompletions);
+    } catch (error) {
+      console.log("error", error);
+    }
   }
 
   console.log(">>>>> multiEntityResult", JSON.stringify(multiEntityResult, null, 2));
@@ -376,7 +377,7 @@ export async function performExtraction(
     let singleAnswerDocs: Document[] = [];
 
     const scrapePromises = links.map((url) => {
-      if (!docsMap['url']) {
+      if (!docsMap.has(url)) {
         return scrapeDocument(
           {
             url,
@@ -393,6 +394,13 @@ export async function performExtraction(
 
     try {
       const results = await Promise.all(scrapePromises);
+
+      for (const doc of results) {
+        if (doc?.metadata?.url) {
+          docsMap.set(doc.metadata.url, doc);
+        }
+      }
+
       singleAnswerDocs.push(...results.filter((doc): doc is Document => doc !== null));
     } catch (error) {
       return {
@@ -400,6 +408,16 @@ export async function performExtraction(
         error: error.message,
         extractId,
         urlTrace: urlTraces,
+      };
+    }
+
+    if (docsMap.size == 0) {
+      // All urls are invalid
+      return {
+        success: false,
+        error: "All provided URLs are invalid. Please check your input and try again.",
+        extractId,
+        urlTrace: request.urlTrace ? urlTraces : undefined,
       };
     }
 
