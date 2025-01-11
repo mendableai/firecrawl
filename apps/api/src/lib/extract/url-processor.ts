@@ -53,7 +53,7 @@ export async function processUrl(
     rephrasedPrompt =
       (await generateBasicCompletion(
         buildRefrasedPrompt(options.prompt, baseUrl),
-      )) ?? options.prompt;
+      ))?.replace('"', '').replace("/", "") ?? options.prompt;
   }
 
   try {

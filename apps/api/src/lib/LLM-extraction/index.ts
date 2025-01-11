@@ -70,6 +70,7 @@ export async function generateBasicCompletion(prompt: string) {
   const model = "gpt-4o";
 
   const completion = await openai.chat.completions.create({
+    temperature: 0,
     model,
     messages: [{ role: "user", content: prompt }],
   });
