@@ -265,9 +265,9 @@ export async function lockURL(
     );
   }
 
-  logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
-    res,
-  });
+  // logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
+  //   res,
+  // });
   return res;
 }
 
