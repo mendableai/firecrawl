@@ -335,8 +335,8 @@ export async function performExtraction(
           ajv.compile(multiEntitySchema);
           
           // Wrap in timeout promise
-          const timeoutPromise = new Promise((_, reject) => {
-            setTimeout(() => reject(new Error('Request timeout')), timeoutCompletion);
+          const timeoutPromise = new Promise((resolve) => {
+            setTimeout(() => resolve(null), timeoutCompletion);
           });
 
           // Check if page should be extracted before proceeding
@@ -361,16 +361,28 @@ export async function performExtraction(
             true
           );
 
-          console.log(`shouldExtractCheck: ${JSON.stringify(shouldExtractCheck)}, for ${doc.metadata.url}`);
-          if (!shouldExtractCheck.extract) {
+          if (!shouldExtractCheck.extract["extract"]) {
             console.log(`Skipping extraction for ${doc.metadata.url} as content is irrelevant`);
             return null;
           }
+          // Add confidence score to schema with 5 levels
+          // const schemaWithConfidence = {
+          //   ...multiEntitySchema,
+          //   properties: {
+          //     ...multiEntitySchema.properties,
+          //     extraction_confidence: {
+          //       type: "integer",
+          //       description: "Confidence level from 1-5 where: 1=Completely uncertain/likely hallucinated, 2=Low confidence/partially supported, 3=Moderate confidence/mostly supported, 4=High confidence/well supported, 5=Complete certainty/directly quoted"
+          //     }
+          //   },
+          //   required: [...(multiEntitySchema.required || []), "extraction_confidence"]
+          // };
+          // console.log("schemaWithConfidence", schemaWithConfidence);
 
           const completionPromise = generateOpenAICompletions(
             logger.child({ method: "extractService/generateOpenAICompletions" }),
             {
-              mode: "llm",
+              mode: "llm", 
               systemPrompt:
                 (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
                 "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
@@ -409,6 +421,11 @@ export async function performExtraction(
           //     }
           //   });
           //  }
+
+          // if (multiEntityCompletion.extract && multiEntityCompletion.extract.extraction_confidence < 3) {
+          //   console.log(`Skipping extraction for ${doc.metadata.url} as confidence is too low (${multiEntityCompletion.extract.extraction_confidence})`);
+          //   return null;
+          // }
 
           return multiEntityCompletion.extract;
         } catch (error) {
