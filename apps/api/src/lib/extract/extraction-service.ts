@@ -27,6 +27,7 @@ const openai = new OpenAI();
 import { updateExtract } from "./extract-redis";
 import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
+import { rerankLinks } from "./reranker";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -167,6 +168,7 @@ export async function performExtraction(
         origin: request.origin,
         limit: request.limit,
         includeSubdomains: request.includeSubdomains,
+        schema: request.schema,
       },
       urlTraces,
     ),
@@ -315,47 +317,109 @@ export async function performExtraction(
       }
     }
     
-    for (const doc of multyEntityDocs) {
-      ajv.compile(multiEntitySchema);
-      // Generate completions
-      const multiEntityCompletion = await generateOpenAICompletions(
-        logger.child({ method: "extractService/generateOpenAICompletions" }),
-        {
-          mode: "llm",
-          systemPrompt:
-            (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
-            "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
-            links.join(", "),
-          prompt: request.prompt,
-          schema: multiEntitySchema,
-        },
-        buildDocument(doc),
-        undefined,
-        true,
-      );
+    // Process docs in chunks with queue style processing
+    const chunkSize = 50;
+    const timeoutCompletion = 45000; // 45 second timeout
+    const chunks: Document[][] = [];
 
-      // Update token usage in traces
-      // if (multiEntityCompletion && multiEntityCompletion.numTokens) {
-      //   const totalLength = docs.reduce(
-      //     (sum, doc) => sum + (doc.markdown?.length || 0),
-      //     0,
-      //   );
-      //   docs.forEach((doc) => {
-      //     if (doc.metadata?.sourceURL) {
-      //       const trace = urlTraces.find(
-      //         (t) => t.url === doc.metadata.sourceURL,
-      //       );
-      //       if (trace && trace.contentStats) {
-      //         trace.contentStats.tokensUsed = Math.floor(
-      //           ((doc.markdown?.length || 0) / totalLength) *
-      //             (multiEntityCompletion?.numTokens || 0),
-      //         );
-      //       }
-      //     }
-      //   });
-      //  }
+    // Split into chunks
+    for (let i = 0; i < multyEntityDocs.length; i += chunkSize) {
+      chunks.push(multyEntityDocs.slice(i, i + chunkSize));
+    }
 
-      multiEntityCompletions.push(multiEntityCompletion.extract);
+    console.log("chunks step 1");
+    // Process chunks sequentially with timeout
+    for (const chunk of chunks) {
+      const chunkPromises = chunk.map(async (doc) => {
+        try {
+          ajv.compile(multiEntitySchema);
+          
+          // Wrap in timeout promise
+          const timeoutPromise = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error('Request timeout')), timeoutCompletion);
+          });
+
+          // Check if page should be extracted before proceeding
+          const shouldExtractCheck = await generateOpenAICompletions(
+            logger.child({ method: "extractService/checkShouldExtract" }),
+            {
+              mode: "llm",
+              systemPrompt: "You are a content relevance checker. Your job is to determine if the provided content is very relevant to extract information from based on the user's prompt. Return true only if the content appears relevant and contains information that could help answer the prompt. Return false if the content seems irrelevant or unlikely to contain useful information for the prompt.",
+              prompt: `Should the following content be used to extract information for this prompt: "${request.prompt}" User schema is: ${JSON.stringify(multiEntitySchema)}\nReturn only true or false.`,
+              schema: {
+                "type": "object",
+                "properties": {
+                  "extract": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["extract"]
+              }
+            },
+            buildDocument(doc),
+            undefined,
+            true
+          );
+
+          console.log(`shouldExtractCheck: ${JSON.stringify(shouldExtractCheck)}, for ${doc.metadata.url}`);
+          if (!shouldExtractCheck.extract) {
+            console.log(`Skipping extraction for ${doc.metadata.url} as content is irrelevant`);
+            return null;
+          }
+
+          const completionPromise = generateOpenAICompletions(
+            logger.child({ method: "extractService/generateOpenAICompletions" }),
+            {
+              mode: "llm",
+              systemPrompt:
+                (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
+                "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
+                links.join(", "),
+              prompt: request.prompt,
+              schema: multiEntitySchema,
+            },
+            buildDocument(doc),
+            undefined,
+            true,
+          );
+
+          // Race between timeout and completion
+          const multiEntityCompletion = await Promise.race([
+            completionPromise,
+            timeoutPromise
+          ]) as Awaited<ReturnType<typeof generateOpenAICompletions>>;
+
+          // Update token usage in traces
+          // if (multiEntityCompletion && multiEntityCompletion.numTokens) {
+          //   const totalLength = docs.reduce(
+          //     (sum, doc) => sum + (doc.markdown?.length || 0),
+          //     0,
+          //   );
+          //   docs.forEach((doc) => {
+          //     if (doc.metadata?.sourceURL) {
+          //       const trace = urlTraces.find(
+          //         (t) => t.url === doc.metadata.sourceURL,
+          //       );
+          //       if (trace && trace.contentStats) {
+          //         trace.contentStats.tokensUsed = Math.floor(
+          //           ((doc.markdown?.length || 0) / totalLength) *
+          //             (multiEntityCompletion?.numTokens || 0),
+          //         );
+          //       }
+          //     }
+          //   });
+          //  }
+
+          return multiEntityCompletion.extract;
+        } catch (error) {
+          logger.error(`Failed to process document: ${error}`);
+          return null;
+        }
+      });
+
+      // Wait for current chunk to complete before processing next chunk
+      const chunkResults = await Promise.all(chunkPromises);
+      multiEntityCompletions.push(...chunkResults.filter(result => result !== null));
     }
 
     try {
@@ -377,6 +441,8 @@ export async function performExtraction(
     // Scrape documents
     const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
     let singleAnswerDocs: Document[] = [];
+
+    // let rerank = await rerankLinks(links.map((url) => ({ url })), request.prompt ?? JSON.stringify(request.schema), urlTraces);
 
     const scrapePromises = links.map((url) => {
       if (!docsMap.has(url)) {

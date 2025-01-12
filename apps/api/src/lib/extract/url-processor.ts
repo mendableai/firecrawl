@@ -9,10 +9,12 @@ import { logger } from "../logger";
 import { rerankLinks, rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
 import { searchSimilarPages } from "./index/pinecone";
+import { dumpToFile } from "./helpers/dump-to-file";
 
 interface ProcessUrlOptions {
   url: string;
   prompt?: string;
+  schema?: any;
   teamId: string;
   plan: PlanType;
   allowExternalLinks?: boolean;
@@ -153,74 +155,63 @@ export async function processUrl(
       0,
       extractConfig.RERANKING.MAX_INITIAL_RANKING_LIMIT,
     );
-
-    // Perform reranking if prompt is provided
+    
+    // Perform reranking using either prompt or schema
+    let searchQuery = "";
     if (options.prompt) {
-      const searchQuery = options.allowExternalLinks
+      searchQuery = options.allowExternalLinks
         ? `${options.prompt} ${urlWithoutWww}`
         : `${options.prompt} site:${urlWithoutWww}`;
+    } else if (options.schema) {
+      // Generate search query from schema using basic completion
+      try {
+        const schemaString = JSON.stringify(options.schema, null, 2);
+        const prompt = `Given this JSON schema, generate a natural language search query that would help find relevant pages containing this type of data. Focus on the key properties and their descriptions and keep it very concise. Schema: ${schemaString}`;
+        
+        searchQuery = await generateBasicCompletion(prompt) ?? "Extract the data according to the schema: " + schemaString;
+        
+        if (options.allowExternalLinks) {
+          searchQuery = `${searchQuery} ${urlWithoutWww}`;
+        } else {
+          searchQuery = `${searchQuery} site:${urlWithoutWww}`;
+        }
+      } catch (error) {
+        console.error("Error generating search query from schema:", error);
+        searchQuery = urlWithoutWww; // Fallback to just the domain
+      }
+    } else {
+      searchQuery = urlWithoutWww;
+    }
 
-      // const a = await searchSimilarPages(options.prompt, baseUrl);
+    dumpToFile(
+      "mapped-links.txt",
+      mappedLinks,
+      (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
+    );
 
-      //       const fs = require('fs');
-      //       const path = require('path');
+    console.log("Reranking links with LLM");
+    mappedLinks = await rerankLinksWithLLM(
+      mappedLinks,
+      searchQuery,
+      urlTraces,
+    );
 
-      //       const indexFilePath = path.join(__dirname, 'index-file.txt');
-      //       const indexData = a.map((item, index) =>
-      //         `${index + 1}. URL: ${item.url}, Title: ${item.title}, Description: ${item.description}, Score: ${item.score}`
-      //       ).join('\n');
-
-      //       fs.writeFileSync(indexFilePath, indexData, 'utf8');
-      //       console.log("Dumped search results into index-file.txt");
-
-      const fss = require("fs");
-      const pathh = require("path");
-
-      const mappedLinksFilePath = pathh.join(__dirname, "mapped-links.txt");
-      const mappedLinksData = mappedLinks
-        .map(
-          (link, index) =>
-            `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`,
-        )
-        .join("\n");
-
-      fss.writeFileSync(mappedLinksFilePath, mappedLinksData, "utf8");
-      console.log("Dumped mapped links into mapped-links.txt");
-
-      console.log("Reranking links with LLM");
+    // 2nd Pass, useful for when the first pass returns too many links
+    if(mappedLinks.length > 100) {
       mappedLinks = await rerankLinksWithLLM(
         mappedLinks,
         searchQuery,
         urlTraces,
       );
-
-      // 2nd Pass, useful for when the first pass returns too many links
-      if(mappedLinks.length > 100) {
-        mappedLinks = await rerankLinksWithLLM(
-          mappedLinks,
-          searchQuery,
-          urlTraces,
-        );
-      }
-
-      const fs = require("fs");
-      const path = require("path");
-
-      const llmLinksFilePath = path.join(__dirname, "llm-links.txt");
-      const llmLinksData = mappedLinks
-        .map(
-          (link, index) =>
-            `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`,
-        )
-        .join("\n");
-
-      fs.writeFileSync(llmLinksFilePath, llmLinksData, "utf8");
-      console.log("Dumped mapped links into llm-links.txt");
     }
 
+    dumpToFile(
+      "llm-links.txt",
+      mappedLinks,
+      (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
+    );
     // Remove title and description from mappedLinks
     mappedLinks = mappedLinks.map((link) => ({ url: link.url }));
-    console.log(mappedLinks);
     return mappedLinks.map((x) => x.url);
   } catch (error) {
     trace.status = "error";
