@@ -174,6 +174,8 @@ export async function rerankLinksWithLLM(
 ): Promise<MapDocument[]> {
   const chunkSize = 100;
   const chunks: MapDocument[][] = [];
+  const TIMEOUT_MS = 20000;
+  const MAX_RETRIES = 2;
   
   // Split mappedLinks into chunks of 200
   for (let i = 0; i < mappedLinks.length; i += chunkSize) {
@@ -202,37 +204,55 @@ export async function rerankLinksWithLLM(
 
   const results = await Promise.all(
     chunks.map(async (chunk, chunkIndex) => {
-      try {
-        console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} links`);
-        
-        const linksContent = chunk.map(link => 
-          `URL: ${link.url}${link.title ? `\nTitle: ${link.title}` : ''}${link.description ? `\nDescription: ${link.description}` : ''}`
-        ).join("\n\n");
+      console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} links`);
+      
+      const linksContent = chunk.map(link => 
+        `URL: ${link.url}${link.title ? `\nTitle: ${link.title}` : ''}${link.description ? `\nDescription: ${link.description}` : ''}`
+      ).join("\n\n");
 
-        const completion = await generateOpenAICompletions(
-          logger.child({ method: "rerankLinksWithLLM", chunk: chunkIndex + 1 }),
-          {
-            mode: "llm",
-            systemPrompt: "You are a search relevance expert. Analyze the provided URLs and their content to determine their relevance to the search query. For each URL, assign a relevance score between 0 and 1, where 1 means highly relevant and 0 means not relevant at all. Only include URLs that are actually relevant to the query.",
-            prompt: `Given these URLs and their content, identify which ones are relevant to the search query: "${searchQuery}". Return an array of relevant links with their relevance scores (0-1). Higher scores should be given to URLs that directly address the search query. Be very mindful with the links you select, as if they are not that relevant it may affect the quality of the extraction. Only include URLs that have a relvancy score of 0.8+.`,
-            schema: schema
-          },
-          linksContent,
-          undefined,
-          true
-        );
+      for (let retry = 0; retry <= MAX_RETRIES; retry++) {
+        try {
+          const timeoutPromise = new Promise<null>((resolve) => {
+            setTimeout(() => resolve(null), TIMEOUT_MS);
+          });
 
-        if (!completion.extract?.relevantLinks) {
-          console.warn(`Chunk ${chunkIndex + 1}: No relevant links found in completion response`);
-          return [];
+          const completionPromise = generateOpenAICompletions(
+            logger.child({ method: "rerankLinksWithLLM", chunk: chunkIndex + 1, retry }),
+            {
+              mode: "llm",
+              systemPrompt: "You are a search relevance expert. Analyze the provided URLs and their content to determine their relevance to the search query. For each URL, assign a relevance score between 0 and 1, where 1 means highly relevant and 0 means not relevant at all. Only include URLs that are actually relevant to the query.",
+              prompt: `Given these URLs and their content, identify which ones are relevant to the search query: "${searchQuery}". Return an array of relevant links with their relevance scores (0-1). Higher scores should be given to URLs that directly address the search query. Be very mindful with the links you select, as if they are not that relevant it may affect the quality of the extraction. Only include URLs that have a relvancy score of 0.8+.`,
+              schema: schema
+            },
+            linksContent,
+            undefined,
+            true
+          );
+
+          const completion = await Promise.race([completionPromise, timeoutPromise]);
+          
+          if (!completion) {
+            console.log(`Chunk ${chunkIndex + 1}: Timeout on attempt ${retry + 1}`);
+            continue;
+          }
+
+          if (!completion.extract?.relevantLinks) {
+            console.warn(`Chunk ${chunkIndex + 1}: No relevant links found in completion response`);
+            return [];
+          }
+
+          console.log(`Chunk ${chunkIndex + 1}: Found ${completion.extract.relevantLinks.length} relevant links`);
+          return completion.extract.relevantLinks;
+
+        } catch (error) {
+          console.warn(`Error processing chunk ${chunkIndex + 1} attempt ${retry + 1}:`, error);
+          if (retry === MAX_RETRIES) {
+            console.log(`Chunk ${chunkIndex + 1}: Max retries reached, returning empty array`);
+            return [];
+          }
         }
-
-        console.log(`Chunk ${chunkIndex + 1}: Found ${completion.extract.relevantLinks.length} relevant links`);
-        return completion.extract.relevantLinks;
-      } catch (error) {
-        console.error(`Error processing chunk ${chunkIndex + 1}:`, error);
-        return [];
       }
+      return [];
     })
   );
 
@@ -241,18 +261,6 @@ export async function rerankLinksWithLLM(
   // Flatten results and sort by relevance score
   const flattenedResults = results.flat().sort((a, b) => b.relevanceScore - a.relevanceScore);
   console.log(`Total relevant links found: ${flattenedResults.length}`);
-
-  // Update URL traces with relevance scores
-  // flattenedResults.forEach((result) => {
-  //   const trace = urlTraces.find((t) => t.url === result.url);
-  //   if (trace) {
-  //     trace.relevanceScore = result.relevanceScore;
-  //     trace.usedInCompletion = result.relevanceScore > 0.3; // Lower threshold to 0.3
-  //     if (!trace.usedInCompletion) {
-  //       trace.warning = `Low relevance score: ${result.relevanceScore}`;
-  //     }
-  //   }
-  // });
 
   // Map back to MapDocument format, keeping only relevant links
   const relevantLinks = flattenedResults
