@@ -339,44 +339,44 @@ export async function performExtraction(
             setTimeout(() => resolve(null), timeoutCompletion);
           });
 
-          // Check if page should be extracted before proceeding
-          const shouldExtractCheck = await generateOpenAICompletions(
-            logger.child({ method: "extractService/checkShouldExtract" }),
-            {
-              mode: "llm",
-              systemPrompt: "You are a content relevance checker. Your job is to determine if the provided content is very relevant to extract information from based on the user's prompt. Return true only if the content appears relevant and contains information that could help answer the prompt. Return false if the content seems irrelevant or unlikely to contain useful information for the prompt.",
-              prompt: `Should the following content be used to extract information for this prompt: "${request.prompt}" User schema is: ${JSON.stringify(multiEntitySchema)}\nReturn only true or false.`,
-              schema: {
-                "type": "object",
-                "properties": {
-                  "extract": {
-                    "type": "boolean"
-                  }
-                },
-                "required": ["extract"]
-              }
-            },
-            buildDocument(doc),
-            undefined,
-            true
-          );
-
-          if (!shouldExtractCheck.extract["extract"]) {
-            console.log(`Skipping extraction for ${doc.metadata.url} as content is irrelevant`);
-            return null;
-          }
-          // Add confidence score to schema with 5 levels
-          // const schemaWithConfidence = {
-          //   ...multiEntitySchema,
-          //   properties: {
-          //     ...multiEntitySchema.properties,
-          //     extraction_confidence: {
-          //       type: "integer",
-          //       description: "Confidence level from 1-5 where: 1=Completely uncertain/likely hallucinated, 2=Low confidence/partially supported, 3=Moderate confidence/mostly supported, 4=High confidence/well supported, 5=Complete certainty/directly quoted"
+          // // Check if page should be extracted before proceeding
+          // const shouldExtractCheck = await generateOpenAICompletions(
+          //   logger.child({ method: "extractService/checkShouldExtract" }),
+          //   {
+          //     mode: "llm",
+          //     systemPrompt: "You are a content relevance checker. Your job is to determine if the provided content is very relevant to extract information from based on the user's prompt. Return true only if the content appears relevant and contains information that could help answer the prompt. Return false if the content seems irrelevant or unlikely to contain useful information for the prompt.",
+          //     prompt: `Should the following content be used to extract information for this prompt: "${request.prompt}" User schema is: ${JSON.stringify(multiEntitySchema)}\nReturn only true or false.`,
+          //     schema: {
+          //       "type": "object",
+          //       "properties": {
+          //         "extract": {
+          //           "type": "boolean"
+          //         }
+          //       },
+          //       "required": ["extract"]
           //     }
           //   },
-          //   required: [...(multiEntitySchema.required || []), "extraction_confidence"]
-          // };
+          //   buildDocument(doc),
+          //   undefined,
+          //   true
+          // );
+
+          // if (!shouldExtractCheck.extract["extract"]) {
+          //   console.log(`Skipping extraction for ${doc.metadata.url} as content is irrelevant`);
+          //   return null;
+          // }
+          // Add confidence score to schema with 5 levels
+          const schemaWithConfidence = {
+            ...multiEntitySchema,
+            properties: {
+              ...multiEntitySchema.properties,
+              is_content_relevant: {
+                type: "boolean", 
+                description: "Determine if this content is relevant to the prompt. Return true ONLY if the content contains information that directly helps answer the prompt. Return false if the content is irrelevant or unlikely to contain useful information."
+              }
+            },
+            required: [...(multiEntitySchema.required || []), "is_content_relevant"]
+          };
           // console.log("schemaWithConfidence", schemaWithConfidence);
 
           const completionPromise = generateOpenAICompletions(
@@ -385,10 +385,10 @@ export async function performExtraction(
               mode: "llm", 
               systemPrompt:
                 (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
-                "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
+                `Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. If the document provided is not relevant to the prompt nor to the final user schema ${JSON.stringify(multiEntitySchema)}, return null. Here are the urls the user provided of which he wants to extract information from: ` +
                 links.join(", "),
               prompt: request.prompt,
-              schema: multiEntitySchema,
+              schema: schemaWithConfidence,
             },
             buildDocument(doc),
             undefined,
@@ -400,6 +400,12 @@ export async function performExtraction(
             completionPromise,
             timeoutPromise
           ]) as Awaited<ReturnType<typeof generateOpenAICompletions>>;
+
+          console.log(multiEntityCompletion.extract)
+          if (!multiEntityCompletion.extract?.is_content_relevant) {
+            console.log(`Skipping extraction for ${doc.metadata.url} as content is not relevant`);
+            return null;
+          }
 
           // Update token usage in traces
           // if (multiEntityCompletion && multiEntityCompletion.numTokens) {
@@ -495,6 +501,8 @@ export async function performExtraction(
         urlTrace: urlTraces,
       };
     }
+
+    console.log("docsMap", docsMap);
 
     if (docsMap.size == 0) {
       // All urls are invalid
