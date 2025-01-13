@@ -456,4 +456,19 @@ describe("mergeNullValObjs", () => {
 
     expect(result).toEqual(expected);
   })
+
+    it ("should deal with arrays of strings", async () => {
+      const objArray = {
+        "lawyers": ["res1", "res2", "res3"]
+      }
+
+      const expected = {
+        "lawyers": ["res1", "res2", "res3"]
+      }
+
+      const result = mergeNullValObjs(objArray);
+
+      expect(result).toEqual(expected);
+    })
+
 })

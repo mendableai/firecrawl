@@ -65,24 +65,34 @@ function mergeArrays(arr1: any[], arr2: any[]): any[] {
  */
 function mergeObjects(obj1: any, obj2: any): any {
   const result = { ...obj1 };
-  
-  // Merge all properties from obj2
-  for (const key of Object.keys(obj2)) {
-    if (obj2[key] !== null) {
-      if (Array.isArray(obj2[key])) {
-        // If both are arrays, merge them
-        if (Array.isArray(result[key])) {
-          result[key] = mergeArrays(result[key], obj2[key]);
+
+  for (const key in obj2) {
+    if (obj2.hasOwnProperty(key)) {
+      // If obj2's value is non-null, it should override obj1's value
+      if (obj2[key] !== null) {
+        if (Array.isArray(obj2[key])) {
+          // If both are arrays, merge them
+          if (Array.isArray(result[key])) {
+            result[key] = mergeArrays(result[key], obj2[key]);
+          } else {
+            // If only obj2's value is an array, use it
+            result[key] = [...obj2[key]];
+          }
+        } else if (typeof obj2[key] === 'object') {
+          // If both are objects (but not arrays), merge them
+          if (typeof result[key] === 'object' && !Array.isArray(result[key])) {
+            result[key] = mergeObjects(result[key], obj2[key]);
+          } else {
+            result[key] = { ...obj2[key] };
+          }
         } else {
-          // If only obj2's value is an array, use it
-          result[key] = [...obj2[key]];
+          // For primitive values, obj2's non-null value always wins
+          result[key] = obj2[key];
         }
-      } else {
-        result[key] = obj2[key];
       }
     }
   }
-  
+
   return result;
 }
 
@@ -96,6 +106,11 @@ export function mergeNullValObjs(objArray: { [key: string]: any[] }): { [key: st
 
   for (const key in objArray) {
     if (Array.isArray(objArray[key])) {
+      // If array contains only primitive values, return as is
+      if (objArray[key].every(item => typeof item !== 'object' || item === null)) {
+        result[key] = [...objArray[key]];
+        continue;
+      }
 
       const items = objArray[key].map(unifyItemValues);
       const mergedItems: any[] = [];
