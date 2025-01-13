@@ -431,4 +431,29 @@ describe("mergeNullValObjs", () => {
 
     expect(result).toEqual(expected);
   })
+
+  it ("should deal with not array values", async () => {
+    const objArray = {
+      "lawyers": {
+        "name": "not an array"
+      },
+      "attorneys": {
+        "name": "not an array"
+      }
+    }
+
+    const expected = {
+      "lawyers": {
+        "name": "not an array"
+      },
+      "attorneys": {
+        "name": "not an array"
+      }
+    }
+
+    // @ts-expect-error
+    const result = mergeNullValObjs(objArray);
+
+    expect(result).toEqual(expected);
+  })
 })

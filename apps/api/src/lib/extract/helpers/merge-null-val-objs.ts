@@ -95,27 +95,33 @@ export function mergeNullValObjs(objArray: { [key: string]: any[] }): { [key: st
   const result: { [key: string]: any[] } = {};
 
   for (const key in objArray) {
-    const items = objArray[key].map(unifyItemValues);
-    const mergedItems: any[] = [];
+    if (Array.isArray(objArray[key])) {
 
-    for (const item of items) {
-      let merged = false;
-      
-      for (let i = 0; i < mergedItems.length; i++) {
-        if (areMergeable(mergedItems[i], item)) {
-          mergedItems[i] = mergeObjects(mergedItems[i], item);
-          merged = true;
-          break;
+      const items = objArray[key].map(unifyItemValues);
+      const mergedItems: any[] = [];
+
+      for (const item of items) {
+        let merged = false;
+        
+        for (let i = 0; i < mergedItems.length; i++) {
+          if (areMergeable(mergedItems[i], item)) {
+            mergedItems[i] = mergeObjects(mergedItems[i], item);
+            merged = true;
+            break;
+          }
+        }
+        
+        if (!merged) {
+          mergedItems.push({ ...item });
         }
       }
-      
-      if (!merged) {
-        mergedItems.push({ ...item });
-      }
-    }
 
-    // Final deduplication pass
-    result[key] = deduplicateObjectsArray({ [key]: mergedItems })[key];
+      // Final deduplication pass
+      result[key] = deduplicateObjectsArray({ [key]: mergedItems })[key];
+    } else {
+      console.warn(`Expected an array at objArray[${key}], but found:`, objArray[key]);
+      return objArray;
+    }
   }
 
   return result;

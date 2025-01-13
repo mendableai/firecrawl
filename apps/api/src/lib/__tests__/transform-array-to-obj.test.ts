@@ -385,4 +385,290 @@ describe("transformArrayToObject function", () => {
 
     expect(await transformArrayToObject(moreComplexSchema, results)).toEqual(multiEntityResult)
   })
+
+  it("should transform array to object (id: 7)", async () => {
+    const originalSchema = {
+        "type": "object",
+        "properties": {
+          "property_details": {
+            "properties": {
+              "title": {
+                "title": "Title",
+                "type": "string"
+              },
+              "location": {
+                "title": "Location",
+                "type": "string"
+              },
+              "property_type": {
+                "title": "Property Type",
+                "type": "string"
+              },
+              "size": {
+                "title": "Size",
+                "type": "string"
+              },
+              "rooms": {
+                "title": "Rooms",
+                "type": "string"
+              },
+              "floor": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Floor"
+              },
+              "furnished": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Furnished"
+              },
+              "energy_rating": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Energy Rating"
+              }
+            },
+            "required": [
+              "title",
+              "location",
+              "property_type",
+              "size",
+              "rooms",
+              "floor",
+              "furnished",
+              "energy_rating"
+            ],
+            "title": "PropertyDetails",
+            "type": "object"
+          },
+          "features": {
+            "properties": {
+              "pets_allowed": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Pets Allowed"
+              },
+              "senior_friendly": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Senior Friendly"
+              },
+              "balcony": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Balcony"
+              },
+              "dishwasher": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Dishwasher"
+              },
+              "parking": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Parking"
+              },
+              "electric_charging": {
+                "anyOf": [
+                  { "type": "string"},
+                  { "type": "null" }
+                ],
+                "title": "Electric Charging"
+              },
+              "elevator": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Elevator"
+              },
+              "washer_dryer": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Washer Dryer"
+              }
+            },
+            "required": [
+              "pets_allowed",
+              "senior_friendly",
+              "balcony",
+              "dishwasher",
+              "parking",
+              "electric_charging",
+              "elevator",
+              "washer_dryer"
+            ],
+            "title": "FeaturesAmenities",
+            "type": "object"
+          },
+          "rental_details": {
+            "properties": {
+              "monthly_net_rent": {
+                "title": "Monthly Net Rent",
+                "type": "string"
+              },
+              "utilities": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Utilities"
+              },
+              "move_in_price": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Move In Price"
+              },
+              "deposit": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Deposit"
+              },
+              "prepaid_rent": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Prepaid Rent"
+              },
+              "rental_period": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Rental Period"
+              },
+              "available_from": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Available From"
+              },
+              "listing_id": {
+                "title": "Listing Id",
+                "type": "string"
+              }
+            },
+            "required": [
+              "monthly_net_rent",
+              "utilities",
+              "move_in_price",
+              "deposit",
+              "prepaid_rent",
+              "rental_period",
+              "available_from",
+              "listing_id"
+            ],
+            "title": "RentalDetails",
+            "type": "object"
+          },
+          "landlord_status": {
+            "properties": {
+              "boligportal_approved": {
+                "anyOf": [
+                  { "type": "boolean" },
+                  { "type": "null" }
+                ],
+                "title": "Boligportal Approved"
+              },
+              "number_of_ads": {
+                "anyOf": [
+                  { "type": "integer" },
+                  { "type": "null" }
+                ],
+                "title": "Number Of Ads"
+              },
+              "last_active": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Last Active"
+              },
+              "profile_created": {
+                "anyOf": [
+                  { "type": "string" },
+                  { "type": "null" }
+                ],
+                "title": "Profile Created"
+              }
+            },
+            "required": [
+              "boligportal_approved",
+              "number_of_ads",
+              "last_active",
+              "profile_created"
+            ],
+            "title": "LandlordStatus",
+            "type": "object"
+          }
+        }
+      }
+
+      const results = [
+        {
+          "property_details": {
+            "title": "3 room apartment on 70 m²",
+            "location": "Odense",
+            "property_type": "Apartment",
+            "size": "70 m²",
+            "rooms": "3",
+            "floor": null,
+            "furnished": null,
+            "energy_rating": null
+          },
+          "features": {
+            "pets_allowed": null,
+            "senior_friendly": null,
+            "balcony": null,
+            "dishwasher": null,
+            "parking": null,
+            "electric_charging": null,
+            "elevator": null,
+            "washer_dryer": null
+          },
+          "rental_details": {
+            "monthly_net_rent": "7,000 kr.",
+            "utilities": null,
+            "move_in_price": null,
+            "deposit": null,
+            "prepaid_rent": null,
+            "rental_period": null,
+            "available_from": null,
+            "listing_id": "4937446"
+          },
+          "landlord_status": {
+            "boligportal_approved": null,
+            "number_of_ads": null,
+            "last_active": null,
+            "profile_created": null
+          }
+        }
+      ]
+
+      expect(await transformArrayToObject(originalSchema, results)).toEqual(results[0])
+  })
 })

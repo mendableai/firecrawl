@@ -27,7 +27,16 @@ export function transformArrayToObject(
 
   const arrayKeyPath = findArrayKey(originalSchema);
   if (!arrayKeyPath) {
-    throw new Error("Schema does not contain an array property");
+    return arrayData.reduce((acc, item) => {
+      for (const key in item) {
+        if (!acc[key]) {
+          acc[key] = item[key];
+        } else if (typeof acc[key] === 'object' && typeof item[key] === 'object') {
+          acc[key] = { ...acc[key], ...item[key] };
+        }
+      }
+      return acc;
+    }, {});
   }
 
   const arrayKeyParts = arrayKeyPath.split('.');
@@ -80,26 +89,29 @@ export function transformArrayToObject(
       }
     }
 
-    if (Array.isArray(currentItem[arrayKey])) {
-      currentItem[arrayKey].forEach((subItem: any) => {
-        if (typeof subItem === 'object' && subItem !== null && isValidObject(subItem, itemSchema)) {
-          // For arrays of objects, add only unique objects
-          const transformedItem: any = {};
-          let hasValidData = false;
+  // Ensure that the currentItem[arrayKey] is an array before mapping
+  if (Array.isArray(currentItem[arrayKey])) {
+    currentItem[arrayKey].forEach((subItem: any) => {
+      if (typeof subItem === 'object' && subItem !== null && isValidObject(subItem, itemSchema)) {
+        // For arrays of objects, add only unique objects
+        const transformedItem: any = {};
+        let hasValidData = false;
 
-          for (const key in itemSchema.properties) {
-            if (subItem.hasOwnProperty(key) && subItem[key] !== undefined) {
-              transformedItem[key] = subItem[key];
-              hasValidData = true;
-            }
-          }
-
-          if (hasValidData && !isDuplicateObject(currentLevel[arrayKey], transformedItem)) {
-            currentLevel[arrayKey].push(transformedItem);
+        for (const key in itemSchema.properties) {
+          if (subItem.hasOwnProperty(key) && subItem[key] !== undefined) {
+            transformedItem[key] = subItem[key];
+            hasValidData = true;
           }
         }
-      });
-    }
+
+        if (hasValidData && !isDuplicateObject(currentLevel[arrayKey], transformedItem)) {
+          currentLevel[arrayKey].push(transformedItem);
+        }
+      }
+    });
+  } else {
+    console.warn(`Expected an array at ${arrayKey}, but found:`, currentItem[arrayKey]);
+  }
 
     // Handle merging of array properties
     for (const key in parentSchema.properties) {
