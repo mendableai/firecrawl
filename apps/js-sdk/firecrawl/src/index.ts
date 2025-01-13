@@ -1161,8 +1161,9 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
   constructor(id: string, app: FirecrawlApp) {
     super();
     this.id = id;
-    const ws_url = app.apiUrl.replace("https://", "wss://");
-    this.ws = new WebSocket(`${ws_url}/v1/crawl/${id}`, app.apiKey);
+    // replace `http` with `ws` (`http://` -> `ws://` and `https://` -> `wss://`)
+    const wsUrl = app.apiUrl.replace(/^http/, "ws");
+    this.ws = new WebSocket(`${wsUrl}/v1/crawl/${id}`, app.apiKey);
     this.status = "scraping";
     this.data = [];
 
