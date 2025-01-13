@@ -365,19 +365,18 @@ curl -X POST https://api.firecrawl.dev/v1/batch/scrape \
     }'
 ```
 
-### Search (v0) (Beta)
+### Search
 
-Used to search the web, get the most relevant results, scrape each page and return the markdown.
+The search endpoint combines web search with Firecrawl’s scraping capabilities to return full page content for any query.
+
+Include `scrapeOptions` with `formats: ["markdown"]` to get complete markdown content for each search result otherwise it defaults to getting SERP results (url, title, description).
 
 ```bash
-curl -X POST https://api.firecrawl.dev/v0/search \
+curl -X POST https://api.firecrawl.dev/v1/search \
     -H 'Content-Type: application/json' \
     -H 'Authorization: Bearer YOUR_API_KEY' \
     -d '{
-      "query": "firecrawl",
-      "pageOptions": {
-        "fetchPageContent": true // false for a fast serp api
-      }
+      "query": "What is Mendable?"
     }'
 ```
 
@@ -387,14 +386,8 @@ curl -X POST https://api.firecrawl.dev/v0/search \
   "data": [
     {
       "url": "https://mendable.ai",
-      "markdown": "# Markdown Content",
-      "provider": "web-scraper",
-      "metadata": {
-        "title": "Mendable | AI for CX and Sales",
-        "description": "AI for CX and Sales",
-        "language": null,
-        "sourceURL": "https://www.mendable.ai/"
-      }
+      "title": "Mendable | AI for CX and Sales",
+      "description": "AI for CX and Sales"
     }
   ]
 }

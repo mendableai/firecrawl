@@ -115,7 +115,8 @@ export async function crawlStatusController(
   const status: Exclude<CrawlStatusResponse, ErrorResponse>["status"] =
     sc.cancelled
       ? "cancelled"
-      : (validJobStatuses.every((x) => x[1] === "completed") && validJobStatuses.length > 0)
+      : validJobStatuses.every((x) => x[1] === "completed") &&
+          validJobStatuses.length > 0
         ? "completed"
         : "scraping";
 
@@ -157,10 +158,10 @@ export async function crawlStatusController(
           continue;
         }
 
-        if (job.returnvalue === undefined) {
+        if (job.returnvalue === undefined || job.returnvalue === null) {
           logger.warn(
             "Job was considered done, but returnvalue is undefined!",
-            { jobId: job.id, state },
+            { jobId: job.id, state, returnvalue: job.returnvalue },
           );
           continue;
         }
@@ -196,6 +197,7 @@ export async function crawlStatusController(
     nextURL.searchParams.set("limit", req.query.limit);
   }
 
+  // deprecated: this is done on queue-worker side now. if you see this after january 8, 2025, remove this
   if (data.length > 0) {
     if (!doneJobs[0].data.scrapeOptions.formats.includes("rawHtml")) {
       for (let ii = 0; ii < doneJobs.length; ii++) {
@@ -205,6 +207,7 @@ export async function crawlStatusController(
       }
     }
   }
+  // remove until here
 
   res.status(200).json({
     success: true,

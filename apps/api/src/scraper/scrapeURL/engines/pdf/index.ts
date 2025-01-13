@@ -75,7 +75,9 @@ export async function scrapePDF(
   timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
   if (!meta.options.parsePDF) {
-    const file = await fetchFileToBuffer(meta.url);
+    const file = await fetchFileToBuffer(meta.url, {
+      headers: meta.options.headers,
+    });
     const content = file.buffer.toString("base64");
     return {
       url: file.response.url,
@@ -86,7 +88,9 @@ export async function scrapePDF(
     };
   }
 
-  const { response, tempFilePath } = await downloadFile(meta.id, meta.url);
+  const { response, tempFilePath } = await downloadFile(meta.id, meta.url, {
+    headers: meta.options.headers,
+  });
 
   let result: PDFProcessorResult | null = null;
 

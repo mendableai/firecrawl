@@ -7,8 +7,7 @@ import { generateBasicCompletion } from "../LLM-extraction";
 import { buildRefrasedPrompt } from "./build-prompts";
 import { logger } from "../logger";
 import { rerankLinks } from "./reranker";
-
-const MAX_EXTRACT_LIMIT = 100;
+import { extractConfig } from "./config";
 
 interface ProcessUrlOptions {
   url: string;
@@ -21,10 +20,13 @@ interface ProcessUrlOptions {
   includeSubdomains?: boolean;
 }
 
-export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace[]): Promise<string[]> {
+export async function processUrl(
+  options: ProcessUrlOptions,
+  urlTraces: URLTrace[],
+): Promise<string[]> {
   const trace: URLTrace = {
     url: options.url,
-    status: 'mapped',
+    status: "mapped",
     timing: {
       discoveredAt: new Date().toISOString(),
     },
@@ -36,8 +38,8 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
       trace.usedInCompletion = true;
       return [options.url];
     }
-    trace.status = 'error';
-    trace.error = 'URL is blocked';
+    trace.status = "error";
+    trace.error = "URL is blocked";
     trace.usedInCompletion = false;
     return [];
   }
@@ -47,9 +49,10 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
 
   let rephrasedPrompt = options.prompt;
   if (options.prompt) {
-    rephrasedPrompt = await generateBasicCompletion(
-      buildRefrasedPrompt(options.prompt, baseUrl)
-    ) ?? options.prompt;
+    rephrasedPrompt =
+      (await generateBasicCompletion(
+        buildRefrasedPrompt(options.prompt, baseUrl),
+      ))?.replace('"', '').replace("/", "") ?? options.prompt;
   }
 
   try {
@@ -67,15 +70,63 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
     });
 
     let mappedLinks = mapResults.mapResults as MapDocument[];
-    const allUrls = [...mappedLinks.map((m) => m.url), ...mapResults.links];
-    const uniqueUrls = removeDuplicateUrls(allUrls);
+    let allUrls = [...mappedLinks.map((m) => m.url), ...mapResults.links];
+    let uniqueUrls = removeDuplicateUrls(allUrls);
 
     // Track all discovered URLs
-    uniqueUrls.forEach(discoveredUrl => {
-      if (!urlTraces.some(t => t.url === discoveredUrl)) {
+    uniqueUrls.forEach((discoveredUrl) => {
+      if (!urlTraces.some((t) => t.url === discoveredUrl)) {
         urlTraces.push({
           url: discoveredUrl,
-          status: 'mapped',
+          status: "mapped",
+          timing: {
+            discoveredAt: new Date().toISOString(),
+          },
+          usedInCompletion: false,
+        });
+      }
+    });
+
+    // retry if only one url is returned
+    if (uniqueUrls.length <= 1) {
+      const retryMapResults = await getMapResults({
+        url: baseUrl,
+        teamId: options.teamId,
+        plan: options.plan,
+        allowExternalLinks: options.allowExternalLinks,
+        origin: options.origin,
+        limit: options.limit,
+        ignoreSitemap: false,
+        includeMetadata: true,
+        includeSubdomains: options.includeSubdomains,
+      });
+
+      mappedLinks = retryMapResults.mapResults as MapDocument[];
+      allUrls = [...mappedLinks.map((m) => m.url), ...mapResults.links];
+      uniqueUrls = removeDuplicateUrls(allUrls);
+
+      // Track all discovered URLs
+      uniqueUrls.forEach((discoveredUrl) => {
+        if (!urlTraces.some((t) => t.url === discoveredUrl)) {
+          urlTraces.push({
+            url: discoveredUrl,
+            status: "mapped",
+            warning: "Broader search. Not limiting map results to prompt.",
+            timing: {
+              discoveredAt: new Date().toISOString(),
+            },
+            usedInCompletion: false,
+          });
+        }
+      });
+    }
+
+    // Track all discovered URLs
+    uniqueUrls.forEach((discoveredUrl) => {
+      if (!urlTraces.some((t) => t.url === discoveredUrl)) {
+        urlTraces.push({
+          url: discoveredUrl,
+          status: "mapped",
           timing: {
             discoveredAt: new Date().toISOString(),
           },
@@ -96,8 +147,8 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
       mappedLinks = [{ url: baseUrl, title: "", description: "" }];
     }
 
-    // Limit initial set of links
-    mappedLinks = mappedLinks.slice(0, MAX_EXTRACT_LIMIT);
+    // Limit initial set of links (1000)
+    mappedLinks = mappedLinks.slice(0, extractConfig.MAX_INITIAL_RANKING_LIMIT);
 
     // Perform reranking if prompt is provided
     if (options.prompt) {
@@ -108,11 +159,11 @@ export async function processUrl(options: ProcessUrlOptions, urlTraces: URLTrace
       mappedLinks = await rerankLinks(mappedLinks, searchQuery, urlTraces);
     }
 
-    return mappedLinks.map(x => x.url);
+    return mappedLinks.map((x) => x.url);
   } catch (error) {
-    trace.status = 'error';
+    trace.status = "error";
     trace.error = error.message;
     trace.usedInCompletion = false;
     return [];
   }
-} 
+}

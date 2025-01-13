@@ -64,12 +64,29 @@ const RATE_LIMITS = {
     hobby: 10,
     standardNew: 50,
     standardnew: 50,
-    growth: 500,
-    growthdouble: 500,
+    growth: 1000,
+    growthdouble: 1000,
     etier2c: 2500,
     etier1a: 1000,
     etier2a: 2500,
     etierscale1: 1500,
+  },
+  extract: {
+    default: 20,
+    free: 10,
+    starter: 100,
+    standard: 100,
+    standardOld: 100,
+    scale: 300,
+    hobby: 20,
+    standardNew: 100,
+    standardnew: 100,
+    growth: 300,
+    growthdouble: 300,
+    etier2c: 1000,
+    etier1a: 1000,
+    etier2a: 1000,
+    etierscale1: 1000,
   },
   preview: {
     free: 5,
@@ -166,6 +183,7 @@ const testSuiteTokens = [
   "4c2638d",
   "cbb3462", // don't remove (s-ai)
   "824abcd", // don't remove (s-ai)
+  "0966288",
 ];
 
 const manual = ["69be9e74-7624-4990-b20d-08e0acc70cf6"];

@@ -3,7 +3,10 @@ import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
 import { TimeoutError } from "../../error";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
-import { InsecureConnectionError, makeSecureDispatcher } from "../utils/safeFetch";
+import {
+  InsecureConnectionError,
+  makeSecureDispatcher,
+} from "../utils/safeFetch";
 
 export async function scrapeURLWithFetch(
   meta: Meta,
@@ -20,7 +23,9 @@ export async function scrapeURLWithFetch(
         headers: meta.options.headers,
       }),
       (async () => {
-        await new Promise((resolve) => setTimeout(() => resolve(null), timeout));
+        await new Promise((resolve) =>
+          setTimeout(() => resolve(null), timeout),
+        );
         throw new TimeoutError(
           "Fetch was unable to scrape the page before timing out",
           { cause: { timeout } },
@@ -28,7 +33,10 @@ export async function scrapeURLWithFetch(
       })(),
     ]);
   } catch (error) {
-    if (error instanceof TypeError && error.cause instanceof InsecureConnectionError) {
+    if (
+      error instanceof TypeError &&
+      error.cause instanceof InsecureConnectionError
+    ) {
       throw error.cause;
     } else {
       throw error;

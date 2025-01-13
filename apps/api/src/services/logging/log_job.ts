@@ -7,6 +7,20 @@ import { logger } from "../../lib/logger";
 import { configDotenv } from "dotenv";
 configDotenv();
 
+function cleanOfNull<T>(x: T): T {
+  if (Array.isArray(x)) {
+    return x.map((x) => cleanOfNull(x)) as T;
+  } else if (typeof x === "object" && x !== null) {
+    return Object.fromEntries(
+      Object.entries(x).map(([k, v]) => [k, cleanOfNull(v)]),
+    ) as T;
+  } else if (typeof x === "string") {
+    return x.replaceAll("\u0000", "") as T;
+  } else {
+    return x;
+  }
+}
+
 export async function logJob(job: FirecrawlJob, force: boolean = false) {
   try {
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
@@ -15,25 +29,26 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
     }
 
     // Redact any pages that have an authorization header
-    if (
-      job.scrapeOptions &&
-      job.scrapeOptions.headers &&
-      job.scrapeOptions.headers["Authorization"]
-    ) {
-      job.scrapeOptions.headers["Authorization"] = "REDACTED";
-      job.docs = [
-        {
-          content: "REDACTED DUE TO AUTHORIZATION HEADER",
-          html: "REDACTED DUE TO AUTHORIZATION HEADER",
-        },
-      ];
-    }
+    // actually, Don't. we use the db to retrieve results now. this breaks authed crawls - mogery
+    // if (
+    //   job.scrapeOptions &&
+    //   job.scrapeOptions.headers &&
+    //   job.scrapeOptions.headers["Authorization"]
+    // ) {
+    //   job.scrapeOptions.headers["Authorization"] = "REDACTED";
+    //   job.docs = [
+    //     {
+    //       content: "REDACTED DUE TO AUTHORIZATION HEADER",
+    //       html: "REDACTED DUE TO AUTHORIZATION HEADER",
+    //     },
+    //   ];
+    // }
     const jobColumn = {
       job_id: job.job_id ? job.job_id : null,
       success: job.success,
       message: job.message,
       num_docs: job.num_docs,
-      docs: job.docs,
+      docs: cleanOfNull(job.docs),
       time_taken: job.time_taken,
       team_id: job.team_id === "preview" ? null : job.team_id,
       mode: job.mode,

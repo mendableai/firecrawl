@@ -36,12 +36,15 @@ const successSchema = z.object({
     })
     .array()
     .optional(),
-  
+
   // chrome-cdp only -- file download handler
-  file: z.object({
-    name: z.string(),
-    content: z.string(),
-  }).optional().or(z.null()),
+  file: z
+    .object({
+      name: z.string(),
+      content: z.string(),
+    })
+    .optional()
+    .or(z.null()),
 });
 
 export type FireEngineCheckStatusSuccess = z.infer<typeof successSchema>;
@@ -124,7 +127,9 @@ export async function fireEngineCheckStatus(
       typeof status.error === "string" &&
       status.error.includes("File size exceeds")
     ) {
-      throw new UnsupportedFileError("File size exceeds " + status.error.split("File size exceeds ")[1]);
+      throw new UnsupportedFileError(
+        "File size exceeds " + status.error.split("File size exceeds ")[1],
+      );
     } else if (
       typeof status.error === "string" &&
       // TODO: improve this later

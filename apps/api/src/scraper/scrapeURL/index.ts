@@ -154,8 +154,10 @@ export type InternalOptions = {
 
   v0CrawlOnlyUrls?: boolean;
   v0DisableJsDom?: boolean;
-
+  useCache?: boolean;
   disableSmartWaitCache?: boolean; // Passed along to fire-engine
+  isBackgroundIndex?: boolean;
+  fromCache?: boolean; // Indicates if the document was retrieved from cache
 };
 
 export type EngineResultsTracker = {
@@ -226,7 +228,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       };
 
       // Success factors
-      const isLongEnough = engineResult.markdown.length >= 20;
+      const isLongEnough = engineResult.markdown.length > 0;
       const isGoodStatusCode =
         (engineResult.statusCode >= 200 && engineResult.statusCode < 300) ||
         engineResult.statusCode === 304;
@@ -421,7 +423,9 @@ export async function scrapeURL(
     } else if (error instanceof ActionError) {
       meta.logger.warn("scrapeURL: Action(s) failed to complete", { error });
     } else if (error instanceof UnsupportedFileError) {
-      meta.logger.warn("scrapeURL: Tried to scrape unsupported file", { error });
+      meta.logger.warn("scrapeURL: Tried to scrape unsupported file", {
+        error,
+      });
     } else {
       Sentry.captureException(error);
       meta.logger.error("scrapeURL: Unexpected error happened", { error });
