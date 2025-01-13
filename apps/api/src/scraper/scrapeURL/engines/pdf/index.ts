@@ -46,6 +46,7 @@ async function scrapePDFWithRunPodMU(
         markdown: z.string(),
       }),
     }),
+    mock: meta.mock,
   });
 
   return {

@@ -2,7 +2,7 @@ import { Logger } from "winston";
 import * as Sentry from "@sentry/node";
 
 import { Document, ScrapeOptions } from "../../controllers/v1/types";
-import { logger } from "../../lib/logger";
+import { logger as _logger } from "../../lib/logger";
 import {
   buildFallbackList,
   Engine,
@@ -24,6 +24,7 @@ import {
 import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
 import { urlSpecificParams } from "./lib/urlSpecificParams";
+import { loadMock, MockState } from "./lib/mock";
 
 export type ScrapeUrlResponse = (
   | {
@@ -47,6 +48,7 @@ export type Meta = {
   logger: Logger;
   logs: any[];
   featureFlags: Set<FeatureFlag>;
+  mock: MockState | null;
 };
 
 function buildFeatureFlags(
@@ -110,12 +112,12 @@ function buildFeatureFlags(
 // The meta object is usually immutable, except for the logs array, and in edge cases (e.g. a new feature is suddenly required)
 // Having a meta object that is treated as immutable helps the code stay clean and easily tracable,
 // while also retaining the benefits that WebScraper had from its OOP design.
-function buildMetaObject(
+async function buildMetaObject(
   id: string,
   url: string,
   options: ScrapeOptions,
   internalOptions: InternalOptions,
-): Meta {
+): Promise<Meta> {
   const specParams =
     urlSpecificParams[new URL(url).hostname.replace(/^www\./, "")];
   if (specParams !== undefined) {
@@ -126,7 +128,7 @@ function buildMetaObject(
     );
   }
 
-  const _logger = logger.child({
+  const logger = _logger.child({
     module: "ScrapeURL",
     scrapeId: id,
     scrapeURL: url,
@@ -138,9 +140,10 @@ function buildMetaObject(
     url,
     options,
     internalOptions,
-    logger: _logger,
+    logger,
     logs,
     featureFlags: buildFeatureFlags(url, options, internalOptions),
+    mock: options.useMock !== undefined ? await loadMock(options.useMock, _logger) : null,
   };
 }
 
@@ -299,7 +302,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         throw error;
       } else {
         Sentry.captureException(error);
-        meta.logger.info(
+        meta.logger.warn(
           "An unexpected error happened while scraping with " + engine + ".",
           { error },
         );
@@ -362,7 +365,7 @@ export async function scrapeURL(
   options: ScrapeOptions,
   internalOptions: InternalOptions = {},
 ): Promise<ScrapeUrlResponse> {
-  const meta = buildMetaObject(id, url, options, internalOptions);
+  const meta = await buildMetaObject(id, url, options, internalOptions);
   try {
     while (true) {
       try {
