@@ -341,7 +341,15 @@ const processExtractJobInternal = async (token: string, job: Job & { id: string 
       await job.moveToCompleted(result, token, false);
       return result;
     } else {
-      throw new Error(result.error || "Unknown error during extraction");
+      // throw new Error(result.error || "Unknown error during extraction");
+      
+      await job.moveToCompleted(result, token, false);
+      await updateExtract(job.data.extractId, {
+        status: "failed",
+        error: result.error ?? "Unknown error, please contact help@firecrawl.dev. Extract id: " + job.data.extractId,
+      });
+
+      return result;
     }
   } catch (error) {
     logger.error(`🚫 Job errored ${job.id} - ${error}`, { error });
@@ -359,6 +367,7 @@ const processExtractJobInternal = async (token: string, job: Job & { id: string 
       status: "failed",
       error: error.error ?? error ?? "Unknown error, please contact help@firecrawl.dev. Extract id: " + job.data.extractId,
     });
+    return { success: false, error: error.error ?? error ?? "Unknown error, please contact help@firecrawl.dev. Extract id: " + job.data.extractId };
     // throw error;
   } finally {
     
