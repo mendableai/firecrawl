@@ -3,12 +3,15 @@ import { logger as _logger } from "../logger";
 
 export enum ExtractStep {
   INITIAL = "initial",
+  MAP = "map",
+  MAP_RERANK = "map-rerank",
   MULTI_ENTITY = "multi-entity",
   MULTI_ENTITY_SCRAPE = "multi-entity-scrape",
   MULTI_ENTITY_EXTRACT = "multi-entity-extract",
   SCRAPE = "scrape",
-  MAP = "map",
+
   EXTRACT = "extract",
+
   COMPLETE = "complete",
 }
 

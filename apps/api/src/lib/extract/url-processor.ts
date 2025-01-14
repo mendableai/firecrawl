@@ -25,6 +25,7 @@ interface ProcessUrlOptions {
 export async function processUrl(
   options: ProcessUrlOptions,
   urlTraces: URLTrace[],
+  updateExtractCallback: (links: string[]) => void,
 ): Promise<string[]> {
   const trace: URLTrace = {
     url: options.url,
@@ -159,6 +160,8 @@ export async function processUrl(
       extractConfig.RERANKING.MAX_INITIAL_RANKING_LIMIT,
     );
 
+
+    updateExtractCallback(mappedLinks.map((x) => x.url));
 
 
     // Perform reranking using either prompt or schema

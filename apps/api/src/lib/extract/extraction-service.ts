@@ -170,6 +170,8 @@ export async function performExtraction(
     ],
   });
 
+  let startMap = Date.now();
+  let aggMapLinks: string[] = [];
   // Process URLs
   const urlPromises = request.urls.map((url) =>
     processUrl(
@@ -184,9 +186,20 @@ export async function performExtraction(
         includeSubdomains: request.includeSubdomains,
         schema: request.schema,
       },
-      urlTraces,
-    ),
-  );
+      urlTraces,  
+      (links: string[]) => {
+        aggMapLinks.push(...links);
+        updateExtract(extractId, {
+          steps: [
+          {
+            step: ExtractStep.MAP,
+            startedAt: startMap,
+            finishedAt: Date.now(),
+            discoveredLinks: aggMapLinks,
+          },
+        ],
+      });
+    }));
 
   const processedUrls = await Promise.all(urlPromises);
   const links = processedUrls.flat().filter((url) => url);
@@ -205,8 +218,8 @@ export async function performExtraction(
     status: "processing",
     steps: [
       {
-        step: ExtractStep.MAP,
-        startedAt: Date.now(),
+        step: ExtractStep.MAP_RERANK,
+        startedAt: startMap,
         finishedAt: Date.now(),
         discoveredLinks: links,
       },
@@ -221,6 +234,7 @@ export async function performExtraction(
   // if so, it splits the results into 2 types of completions:
   // 1. the first one is a completion that will extract the array of items
   // 2. the second one is multiple completions that will extract the items from the array
+  let startAnalyze = Date.now();
   const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
     await analyzeSchemaAndPrompt(links, request.schema, request.prompt ?? "");
 
@@ -239,7 +253,7 @@ export async function performExtraction(
       steps: [
         {
           step: ExtractStep.MULTI_ENTITY,
-          startedAt: Date.now(),
+          startedAt: startAnalyze,
           finishedAt: Date.now(),
           discoveredLinks: [],
         },
@@ -254,12 +268,14 @@ export async function performExtraction(
       steps: [
         {
           step: ExtractStep.MULTI_ENTITY_SCRAPE,
-          startedAt: Date.now(),
+          startedAt: startAnalyze,
           finishedAt: Date.now(),
           discoveredLinks: links,
         },
       ],
     });
+
+    let startScrape = Date.now();
     const scrapePromises = links.map((url) => {
       if (!docsMap.has(url)) {
         return scrapeDocument(
@@ -279,6 +295,20 @@ export async function performExtraction(
     let multyEntityDocs = (await Promise.all(scrapePromises)).filter(
       (doc): doc is Document => doc !== null,
     );
+
+    let endScrape = Date.now();
+
+    await updateExtract(extractId, {
+      status: "processing",
+      steps: [
+        {
+          step: ExtractStep.MULTI_ENTITY_SCRAPE,
+          startedAt: startScrape,
+          finishedAt: endScrape,
+          discoveredLinks: links,
+        },
+      ],
+    });
 
     for (const doc of multyEntityDocs) {
       if (doc?.metadata?.url) {
@@ -352,7 +382,7 @@ export async function performExtraction(
             steps: [
               {
                 step: ExtractStep.MULTI_ENTITY_EXTRACT,
-                startedAt: Date.now(),
+                startedAt: startScrape,
                 finishedAt: Date.now(),
                 discoveredLinks: [doc.metadata.url || doc.metadata.sourceURL || ""],
               },
