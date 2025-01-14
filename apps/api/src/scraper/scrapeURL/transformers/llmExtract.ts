@@ -173,7 +173,7 @@ export async function generateOpenAICompletions(
       ? {
           type: "json_schema",
           json_schema: {
-            name: "websiteContent",
+            name: "schema",
             schema: schema,
             strict: true,
           },

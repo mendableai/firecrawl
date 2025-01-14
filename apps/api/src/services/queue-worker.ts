@@ -89,12 +89,10 @@ const runningJobs: Set<string> = new Set();
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   if (await finishCrawl(job.data.crawl_id)) {
     (async () => {
-      const originUrl = sc.originUrl
-        ? normalizeUrlOnlyHostname(sc.originUrl)
-        : undefined;
-      // Get all visited URLs from Redis
+      const originUrl = sc.originUrl ? normalizeUrlOnlyHostname(sc.originUrl) : undefined;
+      // Get all visited unique URLs from Redis
       const visitedUrls = await redisConnection.smembers(
-        "crawl:" + job.data.crawl_id + ":visited",
+        "crawl:" + job.data.crawl_id + ":visited_unique",
       );
       // Upload to Supabase if we have URLs and this is a crawl (not a batch scrape)
       if (
@@ -353,7 +351,15 @@ const processExtractJobInternal = async (
       await job.moveToCompleted(result, token, false);
       return result;
     } else {
-      throw new Error(result.error || "Unknown error during extraction");
+      // throw new Error(result.error || "Unknown error during extraction");
+      
+      await job.moveToCompleted(result, token, false);
+      await updateExtract(job.data.extractId, {
+        status: "failed",
+        error: result.error ?? "Unknown error, please contact help@firecrawl.com. Extract id: " + job.data.extractId,
+      });
+
+      return result;
     }
   } catch (error) {
     logger.error(`🚫 Job errored ${job.id} - ${error}`, { error });
@@ -372,9 +378,10 @@ const processExtractJobInternal = async (
       error:
         error.error ??
         error ??
-        "Unknown error, please contact help@firecrawl.dev. Extract id: " +
+        "Unknown error, please contact help@firecrawl.com. Extract id: " +
           job.data.extractId,
     });
+    return { success: false, error: error.error ?? error ?? "Unknown error, please contact help@firecrawl.com. Extract id: " + job.data.extractId };
     // throw error;
   } finally {
     clearInterval(extendLockInterval);

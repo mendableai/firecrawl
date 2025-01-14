@@ -5,13 +5,13 @@ import { removeDuplicateUrls } from "../validateUrl";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { generateBasicCompletion } from "../LLM-extraction";
 import { buildRefrasedPrompt } from "./build-prompts";
-import { logger } from "../logger";
-import { rerankLinks } from "./reranker";
+import { rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
 
 interface ProcessUrlOptions {
   url: string;
   prompt?: string;
+  schema?: any;
   teamId: string;
   plan: PlanType;
   allowExternalLinks?: boolean;
@@ -50,9 +50,13 @@ export async function processUrl(
   let rephrasedPrompt = options.prompt;
   if (options.prompt) {
     rephrasedPrompt =
-      (await generateBasicCompletion(
-        buildRefrasedPrompt(options.prompt, baseUrl),
-      ))?.replace('"', '').replace("/", "") ?? options.prompt;
+      (
+        await generateBasicCompletion(
+          buildRefrasedPrompt(options.prompt, baseUrl),
+        )
+      )
+        ?.replace('"', "")
+        .replace("/", "") ?? options.prompt;
   }
 
   try {
@@ -148,17 +152,64 @@ export async function processUrl(
     }
 
     // Limit initial set of links (1000)
-    mappedLinks = mappedLinks.slice(0, extractConfig.MAX_INITIAL_RANKING_LIMIT);
+    mappedLinks = mappedLinks.slice(
+      0,
+      extractConfig.RERANKING.MAX_INITIAL_RANKING_LIMIT,
+    );
 
-    // Perform reranking if prompt is provided
+    // Perform reranking using either prompt or schema
+    let searchQuery = "";
     if (options.prompt) {
-      const searchQuery = options.allowExternalLinks
+      searchQuery = options.allowExternalLinks
         ? `${options.prompt} ${urlWithoutWww}`
         : `${options.prompt} site:${urlWithoutWww}`;
+    } else if (options.schema) {
+      // Generate search query from schema using basic completion
+      try {
+        const schemaString = JSON.stringify(options.schema, null, 2);
+        const prompt = `Given this JSON schema, generate a natural language search query that would help find relevant pages containing this type of data. Focus on the key properties and their descriptions and keep it very concise. Schema: ${schemaString}`;
 
-      mappedLinks = await rerankLinks(mappedLinks, searchQuery, urlTraces);
+        searchQuery =
+          (await generateBasicCompletion(prompt)) ??
+          "Extract the data according to the schema: " + schemaString;
+
+        if (options.allowExternalLinks) {
+          searchQuery = `${searchQuery} ${urlWithoutWww}`;
+        } else {
+          searchQuery = `${searchQuery} site:${urlWithoutWww}`;
+        }
+      } catch (error) {
+        console.error("Error generating search query from schema:", error);
+        searchQuery = urlWithoutWww; // Fallback to just the domain
+      }
+    } else {
+      searchQuery = urlWithoutWww;
     }
 
+    // dumpToFile(
+    //   "mapped-links.txt",
+    //   mappedLinks,
+    //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
+    // );
+
+    mappedLinks = await rerankLinksWithLLM(mappedLinks, searchQuery, urlTraces);
+
+    // 2nd Pass, useful for when the first pass returns too many links
+    if (mappedLinks.length > 100) {
+      mappedLinks = await rerankLinksWithLLM(
+        mappedLinks,
+        searchQuery,
+        urlTraces,
+      );
+    }
+
+    // dumpToFile(
+    //   "llm-links.txt",
+    //   mappedLinks,
+    //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
+    // );
+    // Remove title and description from mappedLinks
+    mappedLinks = mappedLinks.map((link) => ({ url: link.url }));
     return mappedLinks.map((x) => x.url);
   } catch (error) {
     trace.status = "error";

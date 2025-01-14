@@ -1,4 +1,9 @@
-import { Document, ExtractRequest, URLTrace } from "../../controllers/v1/types";
+import {
+  Document,
+  ExtractRequest,
+  toLegacyCrawlerOptions,
+  URLTrace,
+} from "../../controllers/v1/types";
 import { PlanType } from "../../types";
 import { logger } from "../logger";
 import { processUrl } from "./url-processor";
@@ -9,7 +14,19 @@ import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { saveCrawl, StoredCrawl } from "../crawl-redis";
+import { dereferenceSchema } from "./helpers/dereference-schema"; 
+import { z } from "zod";
+import OpenAI from "openai";
+import { spreadSchemas } from "./helpers/spread-schemas";
+import { transformArrayToObject } from "./helpers/transform-array-to-obj";
+import { mixSchemaObjects } from "./helpers/mix-schema-objs";
+import Ajv from "ajv";
+const ajv = new Ajv();
+
+const openai = new OpenAI();
 import { updateExtract } from "./extract-redis";
+import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
+import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
 import { CUSTOM_U_TEAMS } from "./config";
 
 interface ExtractServiceOptions {
@@ -26,6 +43,95 @@ interface ExtractResult {
   warning?: string;
   urlTrace?: URLTrace[];
   error?: string;
+}
+
+
+async function analyzeSchemaAndPrompt(
+  urls: string[],
+  schema: any,
+  prompt: string,
+): Promise<{
+  isMultiEntity: boolean;
+  multiEntityKeys: string[];
+  reasoning?: string;
+  keyIndicators?: string[];
+}> {
+  const schemaString = JSON.stringify(schema);
+
+  const checkSchema = z.object({
+    isMultiEntity: z.boolean(),
+    multiEntityKeys: z.array(z.string()),
+    reasoning: z.string(),
+    keyIndicators: z.array(z.string()),
+  });
+
+  const result = await openai.beta.chat.completions.parse({
+    model: "gpt-4o",
+    messages: [
+      {
+        role: "system",
+        content: `
+You are a query classifier for a web scraping system. Classify the data extraction query as either:
+A) Single-Answer: One answer across a few pages, possibly containing small arrays.
+B) Multi-Entity: Many items across many pages, often involving large arrays.
+
+Consider:
+1. Answer Cardinality: Single or multiple items?
+2. Page Distribution: Found on 1-3 pages or many?
+3. Verification Needs: Cross-page verification or independent extraction?
+
+Provide:
+- Method: [Single-Answer/Multi-Entity]
+- Confidence: [0-100%]
+- Reasoning: Why this classification?
+- Key Indicators: Specific aspects leading to this decision.
+
+Examples:
+- "Is this company a non-profit?" -> Single-Answer
+- "Extract all product prices" -> Multi-Entity
+
+For Single-Answer, arrays may be present but are typically small. For Multi-Entity, if arrays have multiple items not from a single page, return keys with large arrays. If nested, return the full key (e.g., 'ecommerce.products').
+        `,
+      },
+      {
+        role: "user",
+        content: `Classify the query as Single-Answer or Multi-Entity. For Multi-Entity, return keys with large arrays; otherwise, return none:
+Schema: ${schemaString}\nPrompt: ${prompt}\nRelevant URLs: ${urls}`,
+      },
+    ],
+    response_format: {
+      type: "json_schema",
+      json_schema: {
+        schema: {
+          type: "object",
+          properties: {
+            isMultiEntity: { type: "boolean" },
+            multiEntityKeys: { type: "array", items: { type: "string" } },
+            reasoning: { type: "string" },
+            keyIndicators: { type: "array", items: { type: "string" } },
+          },
+          required: [
+            "isMultiEntity",
+            "multiEntityKeys",
+            "reasoning",
+            "keyIndicators",
+          ],
+          additionalProperties: false,
+        },
+        name: "checkSchema",
+      },
+    },
+  });
+
+  const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
+    checkSchema.parse(result.choices[0].message.parsed);
+  return { isMultiEntity, multiEntityKeys, reasoning, keyIndicators };
+}
+
+type completions = {
+  extract: Record<string, any>;
+  numTokens: number;
+  warning?: string;
 }
 
 function getRootDomain(url: string): string {
@@ -46,8 +152,11 @@ export async function performExtraction(
 ): Promise<ExtractResult> {
   const { request, teamId, plan, subId } = options;
   const urlTraces: URLTrace[] = [];
-  let docs: Document[] = [];
-
+  let docsMap: Map<string, Document> = new Map();
+  let singleAnswerCompletions: completions | null = null;
+  let multiEntityCompletions: completions[] = [];
+  let multiEntityResult: any = {};
+  let singleAnswerResult: any = {};
   // Process URLs
   const urlPromises = request.urls.map((url) =>
     processUrl(
@@ -60,6 +169,7 @@ export async function performExtraction(
         origin: request.origin,
         limit: request.limit,
         includeSubdomains: request.includeSubdomains,
+        schema: request.schema,
       },
       urlTraces,
     ),
@@ -78,123 +188,289 @@ export async function performExtraction(
     };
   }
 
-  // Scrape documents
-  const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
-  const scrapePromises = links.map((url) =>
-    scrapeDocument(
-      {
-        url,
-        teamId,
-        plan,
-        origin: request.origin || "api",
-        timeout,
-      },
-      urlTraces,
-    ),
-  );
+  let reqSchema = request.schema;
+  reqSchema = await dereferenceSchema(reqSchema);
 
-  try {
-    const results = await Promise.all(scrapePromises);
-    docs.push(...results.filter((doc): doc is Document => doc !== null));
-  } catch (error) {
-    return {
-      success: false,
-      error: error.message,
-      extractId,
-      urlTrace: urlTraces,
-    };
-  }
+  // agent evaluates if the schema or the prompt has an array with big amount of items
+  // also it checks if the schema any other properties that are not arrays
+  // if so, it splits the results into 2 types of completions:
+  // 1. the first one is a completion that will extract the array of items
+  // 2. the second one is multiple completions that will extract the items from the array
+  const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
+    await analyzeSchemaAndPrompt(links, request.schema, request.prompt ?? "");
 
-  // Generate completions
-  const completions = await generateOpenAICompletions(
-    logger.child({ method: "extractService/generateOpenAICompletions" }),
-    {
-      mode: "llm",
-      systemPrompt:
-        (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
-        "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
-        links.join(", "),
-      prompt: request.prompt,
-      schema: request.schema,
-    },
-    docs.map((x) => buildDocument(x)).join("\n"),
-    undefined,
-    true,
-  );
+  // console.log("\nIs Multi Entity:", isMultiEntity);
+  // console.log("\nMulti Entity Keys:", multiEntityKeys);
+  // console.log("\nReasoning:", reasoning);
+  // console.log("\nKey Indicators:", keyIndicators);
 
-  // Update token usage in traces
-  if (completions.numTokens) {
-    const totalLength = docs.reduce(
-      (sum, doc) => sum + (doc.markdown?.length || 0),
-      0,
+  let rSchema = reqSchema;
+  if (isMultiEntity) {
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(reqSchema, multiEntityKeys)
+    rSchema = singleAnswerSchema;
+
+
+    const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
+    const scrapePromises = links.map((url) => {
+      if (!docsMap.has(url)) {
+        return scrapeDocument(
+          {
+            url,
+            teamId,
+            plan,
+            origin: request.origin || "api",
+            timeout,
+          },
+          urlTraces,
+        )
+      }
+      return docsMap.get(url);
+    })
+  
+    let multyEntityDocs = (await Promise.all(scrapePromises)).filter(
+      (doc): doc is Document => doc !== null,
     );
-    docs.forEach((doc) => {
-      if (doc.metadata?.sourceURL) {
-        const trace = urlTraces.find((t) => t.url === doc.metadata.sourceURL);
-        if (trace && trace.contentStats) {
-          trace.contentStats.tokensUsed = Math.floor(
-            ((doc.markdown?.length || 0) / totalLength) * completions.numTokens,
+
+    for (const doc of multyEntityDocs) {
+      if (doc?.metadata?.url) {
+        docsMap.set(doc.metadata.url, doc);
+      }
+    }
+    
+    // Process docs in chunks with queue style processing
+    const chunkSize = 50;
+    const timeoutCompletion = 45000; // 45 second timeout
+    const chunks: Document[][] = [];
+
+    // Split into chunks
+    for (let i = 0; i < multyEntityDocs.length; i += chunkSize) {
+      chunks.push(multyEntityDocs.slice(i, i + chunkSize));
+    }
+
+    // Process chunks sequentially with timeout
+    for (const chunk of chunks) {
+      const chunkPromises = chunk.map(async (doc) => {
+        try {
+          ajv.compile(multiEntitySchema);
+          
+          // Wrap in timeout promise
+          const timeoutPromise = new Promise((resolve) => {
+            setTimeout(() => resolve(null), timeoutCompletion);
+          });
+
+          // // Check if page should be extracted before proceeding
+          const shouldExtractCheck = await generateOpenAICompletions(
+            logger.child({ method: "extractService/checkShouldExtract" }),
+            {
+              mode: "llm",
+              systemPrompt: "You are a content relevance checker. Your job is to determine if the provided content is very relevant to extract information from based on the user's prompt. Return true only if the content appears relevant and contains information that could help answer the prompt. Return false if the content seems irrelevant or unlikely to contain useful information for the prompt.",
+              prompt: `Should the following content be used to extract information for this prompt: "${request.prompt}" User schema is: ${JSON.stringify(multiEntitySchema)}\nReturn only true or false.`,
+              schema: {
+                "type": "object",
+                "properties": {
+                  "extract": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["extract"]
+              }
+            },
+            buildDocument(doc),
+            undefined,
+            true
           );
+
+          if (!shouldExtractCheck.extract["extract"]) {
+            console.log(`Skipping extraction for ${doc.metadata.url} as content is irrelevant`);
+            return null;
+          }
+          // Add confidence score to schema with 5 levels
+          const schemaWithConfidence = {
+            ...multiEntitySchema,
+            properties: {
+              ...multiEntitySchema.properties,
+              is_content_relevant: {
+                type: "boolean", 
+                description: "Determine if this content is relevant to the prompt. Return true ONLY if the content contains information that directly helps answer the prompt. Return false if the content is irrelevant or unlikely to contain useful information."
+              }
+            },
+            required: [...(multiEntitySchema.required || []), "is_content_relevant"]
+          };
+          // console.log("schemaWithConfidence", schemaWithConfidence);
+
+          const completionPromise = generateOpenAICompletions(
+            logger.child({ method: "extractService/generateOpenAICompletions" }),
+            {
+              mode: "llm", 
+              systemPrompt:
+                (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
+                `Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. If the document provided is not relevant to the prompt nor to the final user schema ${JSON.stringify(multiEntitySchema)}, return null. Here are the urls the user provided of which he wants to extract information from: ` +
+                links.join(", "),
+              prompt: request.prompt,
+              schema: multiEntitySchema,
+            },
+            buildDocument(doc),
+            undefined,
+            true,
+          );
+
+          // Race between timeout and completion
+          const multiEntityCompletion = await Promise.race([
+            completionPromise,
+            timeoutPromise
+          ]) as Awaited<ReturnType<typeof generateOpenAICompletions>>;
+
+          // console.log(multiEntityCompletion.extract)
+          // if (!multiEntityCompletion.extract?.is_content_relevant) {
+          //   console.log(`Skipping extraction for ${doc.metadata.url} as content is not relevant`);
+          //   return null;
+          // }
+
+          // Update token usage in traces
+          // if (multiEntityCompletion && multiEntityCompletion.numTokens) {
+          //   const totalLength = docs.reduce(
+          //     (sum, doc) => sum + (doc.markdown?.length || 0),
+          //     0,
+          //   );
+          //   docs.forEach((doc) => {
+          //     if (doc.metadata?.sourceURL) {
+          //       const trace = urlTraces.find(
+          //         (t) => t.url === doc.metadata.sourceURL,
+          //       );
+          //       if (trace && trace.contentStats) {
+          //         trace.contentStats.tokensUsed = Math.floor(
+          //           ((doc.markdown?.length || 0) / totalLength) *
+          //             (multiEntityCompletion?.numTokens || 0),
+          //         );
+          //       }
+          //     }
+          //   });
+          //  }
+
+          // if (multiEntityCompletion.extract && multiEntityCompletion.extract.extraction_confidence < 3) {
+          //   console.log(`Skipping extraction for ${doc.metadata.url} as confidence is too low (${multiEntityCompletion.extract.extraction_confidence})`);
+          //   return null;
+          // }
+
+          return multiEntityCompletion.extract;
+        } catch (error) {
+          logger.error(`Failed to process document: ${error}`);
+          return null;
+        }
+      });
+
+      // Wait for current chunk to complete before processing next chunk
+      const chunkResults = await Promise.all(chunkPromises);
+      multiEntityCompletions.push(...chunkResults.filter(result => result !== null));
+    }
+
+    try {
+      multiEntityResult = transformArrayToObject(multiEntitySchema, multiEntityCompletions);
+      multiEntityResult = deduplicateObjectsArray(multiEntityResult);
+      multiEntityResult = mergeNullValObjs(multiEntityResult);
+      // @nick: maybe we can add here a llm that checks if the array probably has a primary key?
+    } catch (error) {
+      logger.error(`Failed to transform array to object: ${error}`);
+      return {
+        success: false,
+        error: "An unexpected error occurred. Please contact help@firecrawl.com for help.",
+        extractId,
+        urlTrace: urlTraces,
+      };
+    }
+  }
+  if (rSchema && Object.keys(rSchema).length > 0 && rSchema.properties && Object.keys(rSchema.properties).length > 0) {
+    // Scrape documents
+    const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
+    let singleAnswerDocs: Document[] = [];
+
+    // let rerank = await rerankLinks(links.map((url) => ({ url })), request.prompt ?? JSON.stringify(request.schema), urlTraces);
+
+    const scrapePromises = links.map((url) => {
+      if (!docsMap.has(url)) {
+        return scrapeDocument(
+          {
+            url,
+            teamId,
+            plan,
+            origin: request.origin || "api",
+            timeout,
+          },
+          urlTraces,
+        );
+      }
+      return docsMap.get(url);
+    });
+
+    try {
+      const results = await Promise.all(scrapePromises);
+
+      for (const doc of results) {
+        if (doc?.metadata?.url) {
+          docsMap.set(doc.metadata.url, doc);
         }
       }
-    });
+
+      singleAnswerDocs.push(...results.filter((doc): doc is Document => doc !== null));
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message,
+        extractId,
+        urlTrace: urlTraces,
+      };
+    }
+
+    if (docsMap.size == 0) {
+      // All urls are invalid
+      return {
+        success: false,
+        error: "All provided URLs are invalid. Please check your input and try again.",
+        extractId,
+        urlTrace: request.urlTrace ? urlTraces : undefined,
+      };
+    }
+
+    // Generate completions
+    singleAnswerCompletions = await generateOpenAICompletions(
+      logger.child({ method: "extractService/generateOpenAICompletions" }),
+      {
+        mode: "llm",
+        systemPrompt:
+          (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
+          "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Return 'null' the property that you don't find the information. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
+          links.join(", "),
+        prompt: request.prompt,
+        schema: rSchema,
+      },
+      singleAnswerDocs.map((x) => buildDocument(x)).join("\n"),
+      undefined,
+      true,
+    );
+
+    singleAnswerResult = singleAnswerCompletions.extract;
+
+    // Update token usage in traces
+    // if (completions && completions.numTokens) {
+    //   const totalLength = docs.reduce(
+    //     (sum, doc) => sum + (doc.markdown?.length || 0),
+    //     0,
+    //   );
+    //   docs.forEach((doc) => {
+    //     if (doc.metadata?.sourceURL) {
+    //       const trace = urlTraces.find((t) => t.url === doc.metadata.sourceURL);
+    //       if (trace && trace.contentStats) {
+    //         trace.contentStats.tokensUsed = Math.floor(
+    //           ((doc.markdown?.length || 0) / totalLength) *
+    //             (completions?.numTokens || 0),
+    //         );
+    //       }
+    //     }
+    //   });
+    // }
   }
 
-  // Kickoff background crawl for indexing root domains
-  // const rootDomains = new Set(request.urls.map(getRootDomain));
-  // rootDomains.forEach(async url => {
-  //   const crawlId = crypto.randomUUID();
-
-  //   // Create and save crawl configuration first
-  //   const sc: StoredCrawl = {
-  //     originUrl: url,
-  //     crawlerOptions: {
-  //       maxDepth: 15,
-  //       limit: 5000,
-  //       includePaths: [],
-  //       excludePaths: [],
-  //       ignoreSitemap: false,
-  //       includeSubdomains: true,
-  //       allowExternalLinks: false,
-  //       allowBackwardLinks: true
-  //     },
-  //     scrapeOptions: {
-  //         formats: ["markdown"],
-  //         onlyMainContent: true,
-  //         waitFor: 0,
-  //         mobile: false,
-  //         removeBase64Images: true,
-  //         fastMode: false,
-  //         parsePDF: true,
-  //         skipTlsVerification: false,
-  //     },
-  //     internalOptions: {
-  //       disableSmartWaitCache: true,
-  //       isBackgroundIndex: true
-  //     },
-  //     team_id: process.env.BACKGROUND_INDEX_TEAM_ID!,
-  //     createdAt: Date.now(),
-  //     plan: "hobby", // make it a low concurrency
-  //   };
-
-  //   // Save the crawl configuration
-  //   await saveCrawl(crawlId, sc);
-
-  //   // Then kick off the job
-  //   await _addScrapeJobToBullMQ({
-  //     url,
-  //     mode: "kickoff" as const,
-  //     team_id: process.env.BACKGROUND_INDEX_TEAM_ID!,
-  //     plan: "hobby", // make it a low concurrency
-  //     crawlerOptions: sc.crawlerOptions,
-  //     scrapeOptions: sc.scrapeOptions,
-  //     internalOptions: sc.internalOptions,
-  //     origin: "index",
-  //     crawl_id: crawlId,
-  //     webhook: null,
-  //     v1: true,
-  //   }, {}, crypto.randomUUID(), 50);
-  // });
+  const finalResult = await mixSchemaObjects(reqSchema, singleAnswerResult, multiEntityResult);
 
   let linksBilled = links.length * 5;
 
@@ -214,14 +490,14 @@ export async function performExtraction(
     success: true,
     message: "Extract completed",
     num_docs: 1,
-    docs: completions.extract ?? {},
+    docs: finalResult ?? {},
     time_taken: (new Date().getTime() - Date.now()) / 1000,
     team_id: teamId,
     mode: "extract",
     url: request.urls.join(", "),
     scrapeOptions: request,
     origin: request.origin ?? "api",
-    num_tokens: completions.numTokens ?? 0,
+    num_tokens: 0, // completions?.numTokens ?? 0,
   }).then(() => {
     updateExtract(extractId, {
       status: "completed",
@@ -234,9 +510,9 @@ export async function performExtraction(
 
   return {
     success: true,
-    data: completions.extract ?? {},
+    data: finalResult ?? {},
     extractId,
-    warning: completions.warning,
+    warning: undefined, // TODO FIX
     urlTrace: request.urlTrace ? urlTraces : undefined,
   };
 }

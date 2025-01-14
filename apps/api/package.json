@@ -36,6 +36,7 @@
     "@types/escape-html": "^1.0.4",
     "@types/express": "^4.17.17",
     "@types/jest": "^29.5.12",
+    "@types/lodash": "^4.17.14",
     "@types/node": "^20.14.1",
     "@types/pdf-parse": "^1.1.4",
     "@types/supertest": "^6.0.2",
@@ -54,6 +55,7 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.24.3",
+    "@apidevtools/json-schema-ref-parser": "^11.7.3",
     "@brillout/import": "^0.2.2",
     "@bull-board/api": "^5.20.5",
     "@bull-board/express": "^5.20.5",
@@ -96,6 +98,7 @@
     "koffi": "^2.9.0",
     "langchain": "^0.2.8",
     "languagedetect": "^2.0.0",
+    "lodash": "^4.17.21",
     "logsnag": "^1.0.0",
     "luxon": "^3.4.3",
     "marked": "^14.1.2",

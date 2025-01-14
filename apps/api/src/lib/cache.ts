@@ -20,7 +20,7 @@ export function cacheKey(
   // these options disqualify a cache
   if (
     internalOptions.v0CrawlOnlyUrls ||
-    internalOptions.forceEngine ||
+    internalOptions.forceEngine?.includes("cache") ||
     scrapeOptions.fastMode ||
     internalOptions.atsv ||
     (scrapeOptions.actions && scrapeOptions.actions.length > 0)

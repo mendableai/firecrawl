@@ -38,3 +38,5 @@ apps/js-sdk/firecrawl/dist
 /apps/api/debug/*
 
 .vscode
+llm-links.txt
+mapped-links.txt
