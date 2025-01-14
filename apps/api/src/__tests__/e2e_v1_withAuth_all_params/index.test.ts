@@ -2,7 +2,6 @@ import request from "supertest";
 import { configDotenv } from "dotenv";
 import {
   ScrapeRequest,
-  ScrapeResponseRequestTest,
 } from "../../controllers/v1/types";
 
 configDotenv();
@@ -13,7 +12,7 @@ describe("E2E Tests for v1 API Routes", () => {
   it.concurrent(
     "should return a successful response for a scrape with 403 page",
     async () => {
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -40,7 +39,7 @@ describe("E2E Tests for v1 API Routes", () => {
         url: E2E_TEST_SERVER_URL,
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -87,7 +86,7 @@ describe("E2E Tests for v1 API Routes", () => {
         formats: ["html"],
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -122,7 +121,7 @@ describe("E2E Tests for v1 API Routes", () => {
         formats: ["rawHtml"],
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -160,7 +159,7 @@ describe("E2E Tests for v1 API Routes", () => {
         headers: { "e2e-header-test": "firecrawl" },
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -189,7 +188,7 @@ describe("E2E Tests for v1 API Routes", () => {
         includeTags: ["#content-1"],
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -221,7 +220,7 @@ describe("E2E Tests for v1 API Routes", () => {
         excludeTags: ["#content-1"],
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -254,7 +253,7 @@ describe("E2E Tests for v1 API Routes", () => {
         onlyMainContent: false,
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -286,7 +285,7 @@ describe("E2E Tests for v1 API Routes", () => {
         timeout: 500,
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -313,7 +312,7 @@ describe("E2E Tests for v1 API Routes", () => {
         mobile: true,
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -336,7 +335,7 @@ describe("E2E Tests for v1 API Routes", () => {
   it.concurrent(
     "should handle 'parsePDF' parameter correctly",
     async () => {
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -358,7 +357,7 @@ describe("E2E Tests for v1 API Routes", () => {
         "h7uKu14adDL6yGfnGf2qycY5uq8kC3OKCWkPxm",
       );
 
-      const responseNoParsePDF: ScrapeResponseRequestTest = await request(
+      const responseNoParsePDF: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -392,7 +391,7 @@ describe("E2E Tests for v1 API Routes", () => {
   //       }
   //     };
 
-  //     const response: ScrapeResponseRequestTest = await request(FIRECRAWL_API_URL)
+  //     const response: any = await request(FIRECRAWL_API_URL)
   //       .post("/v1/scrape")
   //       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
   //       .set("Content-Type", "application/json")
@@ -411,7 +410,7 @@ describe("E2E Tests for v1 API Routes", () => {
         timeout: 120000,
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -433,7 +432,7 @@ describe("E2E Tests for v1 API Routes", () => {
         timeout: 120000,
       } as ScrapeRequest;
 
-      const responseWithSkipTlsVerification: ScrapeResponseRequestTest =
+      const responseWithSkipTlsVerification: any =
         await request(FIRECRAWL_API_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -462,7 +461,7 @@ describe("E2E Tests for v1 API Routes", () => {
         removeBase64Images: true,
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -494,7 +493,7 @@ describe("E2E Tests for v1 API Routes", () => {
         ],
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -527,7 +526,7 @@ describe("E2E Tests for v1 API Routes", () => {
         ],
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -570,7 +569,7 @@ describe("E2E Tests for v1 API Routes", () => {
         ],
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -620,7 +619,7 @@ describe("E2E Tests for v1 API Routes", () => {
         ],
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -658,7 +657,7 @@ describe("E2E Tests for v1 API Routes", () => {
         ],
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -693,7 +692,7 @@ describe("E2E Tests for v1 API Routes", () => {
         ],
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")
@@ -732,7 +731,7 @@ describe("E2E Tests for v1 API Routes", () => {
         ],
       } as ScrapeRequest;
 
-      const response: ScrapeResponseRequestTest = await request(
+      const response: any = await request(
         FIRECRAWL_API_URL,
       )
         .post("/v1/scrape")

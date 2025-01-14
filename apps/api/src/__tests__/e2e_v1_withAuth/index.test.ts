@@ -2,7 +2,6 @@ import request from "supertest";
 import { configDotenv } from "dotenv";
 import {
   ScrapeRequestInput,
-  ScrapeResponseRequestTest,
 } from "../../controllers/v1/types";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
@@ -20,7 +19,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
   describe("GET /is-production", () => {
     it.concurrent("should return the production status", async () => {
-      const response: ScrapeResponseRequestTest =
+      const response: any =
         await request(TEST_URL).get("/is-production");
 
       console.log(
@@ -39,7 +38,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
   describe("POST /v1/scrape", () => {
     it.concurrent("should require authorization", async () => {
-      const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      const response: any = await request(TEST_URL)
         .post("/v1/scrape")
         .send({ url: "https://firecrawl.dev" });
 
@@ -64,7 +63,7 @@ describe("E2E Tests for v1 API Routes", () => {
     it.concurrent(
       "should return an error response with an invalid API key",
       async () => {
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer invalid-api-key`)
           .set("Content-Type", "application/json")
@@ -80,7 +79,7 @@ describe("E2E Tests for v1 API Routes", () => {
           url: "https://roastmywebsite.ai",
         };
 
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -132,7 +131,7 @@ describe("E2E Tests for v1 API Routes", () => {
           url: "https://arxiv.org/abs/2410.04840",
         };
 
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -189,7 +188,7 @@ describe("E2E Tests for v1 API Routes", () => {
           formats: ["markdown", "html"],
         };
 
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -217,7 +216,7 @@ describe("E2E Tests for v1 API Routes", () => {
           url: "https://arxiv.org/pdf/astro-ph/9301001.pdf",
           //   formats: ["markdown", "html"],
         };
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -245,7 +244,7 @@ describe("E2E Tests for v1 API Routes", () => {
         const scrapeRequest: ScrapeRequestInput = {
           url: "https://arxiv.org/pdf/astro-ph/9301001",
         };
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -275,7 +274,7 @@ describe("E2E Tests for v1 API Routes", () => {
           url: "https://www.scrapethissite.com/",
           onlyMainContent: false, // default is true
         };
-        const responseWithoutRemoveTags: ScrapeResponseRequestTest =
+        const responseWithoutRemoveTags: any =
           await request(TEST_URL)
             .post("/v1/scrape")
             .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -302,7 +301,7 @@ describe("E2E Tests for v1 API Routes", () => {
           excludeTags: [".nav", "#footer", "strong"],
           onlyMainContent: false, // default is true
         };
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -325,7 +324,7 @@ describe("E2E Tests for v1 API Routes", () => {
     it.concurrent(
       "should return a successful response for a scrape with 400 page",
       async () => {
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -347,7 +346,7 @@ describe("E2E Tests for v1 API Routes", () => {
     it.concurrent(
       "should return a successful response for a scrape with 401 page",
       async () => {
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -368,7 +367,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
     // Removed it as we want to retry fallback to the next scraper
     // it.concurrent('should return a successful response for a scrape with 403 page', async () => {
-    //   const response: ScrapeResponseRequestTest = await request(TEST_URL)
+    //   const response: any = await request(TEST_URL)
     //     .post('/v1/scrape')
     //     .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
     //     .set('Content-Type', 'application/json')
@@ -388,7 +387,7 @@ describe("E2E Tests for v1 API Routes", () => {
     it.concurrent(
       "should return a successful response for a scrape with 404 page",
       async () => {
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -408,7 +407,7 @@ describe("E2E Tests for v1 API Routes", () => {
     );
 
     // it.concurrent('should return a successful response for a scrape with 405 page', async () => {
-    //   const response: ScrapeResponseRequestTest = await request(TEST_URL)
+    //   const response: any = await request(TEST_URL)
     //     .post('/v1/scrape')
     //     .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
     //     .set('Content-Type', 'application/json')
@@ -426,7 +425,7 @@ describe("E2E Tests for v1 API Routes", () => {
     // }, 60000);
 
     // it.concurrent('should return a successful response for a scrape with 500 page', async () => {
-    //   const response: ScrapeResponseRequestTest = await request(TEST_URL)
+    //   const response: any = await request(TEST_URL)
     //     .post('/v1/scrape')
     //     .set('Authorization', `Bearer ${process.env.TEST_API_KEY}`)
     //     .set('Content-Type', 'application/json')
@@ -446,7 +445,7 @@ describe("E2E Tests for v1 API Routes", () => {
     it.concurrent(
       "should return a timeout error when scraping takes longer than the specified timeout",
       async () => {
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -465,7 +464,7 @@ describe("E2E Tests for v1 API Routes", () => {
           formats: ["html", "rawHtml"],
         };
 
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -497,7 +496,7 @@ describe("E2E Tests for v1 API Routes", () => {
           waitFor: 8000,
         };
 
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -528,7 +527,7 @@ describe("E2E Tests for v1 API Routes", () => {
           formats: ["links"],
         };
 
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -553,7 +552,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
   describe("POST /v1/map", () => {
     it.concurrent("should require authorization", async () => {
-      const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      const response: any = await request(TEST_URL)
         .post("/v1/map")
         .send({ url: "https://firecrawl.dev" });
       expect(response.statusCode).toBe(401);
@@ -562,7 +561,7 @@ describe("E2E Tests for v1 API Routes", () => {
     it.concurrent(
       "should return an error response with an invalid API key",
       async () => {
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/map")
           .set("Authorization", `Bearer invalid-api-key`)
           .set("Content-Type", "application/json")
@@ -578,7 +577,7 @@ describe("E2E Tests for v1 API Routes", () => {
           url: "https://roastmywebsite.ai",
         };
 
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/map")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -604,7 +603,7 @@ describe("E2E Tests for v1 API Routes", () => {
           search: "pricing",
         };
 
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/map")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -632,7 +631,7 @@ describe("E2E Tests for v1 API Routes", () => {
           includeSubdomains: true,
         };
 
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/map")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -664,7 +663,7 @@ describe("E2E Tests for v1 API Routes", () => {
           includeSubdomains: true,
         };
 
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/map")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -697,7 +696,7 @@ describe("E2E Tests for v1 API Routes", () => {
           includeSubdomains: false,
         };
 
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/map")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -723,7 +722,7 @@ describe("E2E Tests for v1 API Routes", () => {
         search: "test",
       };
 
-      const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      const response: any = await request(TEST_URL)
         .post("/v1/map")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")
@@ -737,7 +736,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
   describe("POST /v1/crawl", () => {
     it.concurrent("should require authorization", async () => {
-      const response: ScrapeResponseRequestTest = await request(TEST_URL)
+      const response: any = await request(TEST_URL)
         .post("/v1/crawl")
         .send({ url: "https://firecrawl.dev" });
       expect(response.statusCode).toBe(401);
@@ -761,7 +760,7 @@ describe("E2E Tests for v1 API Routes", () => {
     it.concurrent(
       "should return an error response with an invalid API key",
       async () => {
-        const response: ScrapeResponseRequestTest = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v1/crawl")
           .set("Authorization", `Bearer invalid-api-key`)
           .set("Content-Type", "application/json")
