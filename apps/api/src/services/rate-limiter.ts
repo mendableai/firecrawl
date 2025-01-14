@@ -13,7 +13,7 @@ export const CONCURRENCY_LIMIT: Omit<Record<PlanType, number>, ""> = {
   growth: 100,
   growthdouble: 100,
   etier2c: 300,
-  etier1a: 100,
+  etier1a: 200,
   etier2a: 300,
   etierscale1: 150,
   testSuite: 200,
