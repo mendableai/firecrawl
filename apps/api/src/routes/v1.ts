@@ -192,7 +192,11 @@ v1Router.get(
   wrap((req: any, res): any => crawlStatusController(req, res, true)),
 );
 
-v1Router.get("/scrape/:jobId", wrap(scrapeStatusController));
+v1Router.get(
+  "/scrape/:jobId",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(scrapeStatusController),
+);
 
 v1Router.get(
   "/concurrency-check",
@@ -204,7 +208,7 @@ v1Router.ws("/crawl/:jobId", crawlStatusWSController);
 
 v1Router.post(
   "/extract",
-  authMiddleware(RateLimiterMode.Scrape),
+  authMiddleware(RateLimiterMode.Extract),
   checkCreditsMiddleware(1),
   wrap(extractController),
 );
@@ -239,6 +243,3 @@ v1Router.get(
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(creditUsageController),
 );
-
-
-

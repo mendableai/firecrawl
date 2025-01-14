@@ -50,9 +50,13 @@ export async function processUrl(
   let rephrasedPrompt = options.prompt;
   if (options.prompt) {
     rephrasedPrompt =
-      (await generateBasicCompletion(
-        buildRefrasedPrompt(options.prompt, baseUrl),
-      ))?.replace('"', '').replace("/", "") ?? options.prompt;
+      (
+        await generateBasicCompletion(
+          buildRefrasedPrompt(options.prompt, baseUrl),
+        )
+      )
+        ?.replace('"', "")
+        .replace("/", "") ?? options.prompt;
   }
 
   try {
@@ -152,7 +156,7 @@ export async function processUrl(
       0,
       extractConfig.RERANKING.MAX_INITIAL_RANKING_LIMIT,
     );
-    
+
     // Perform reranking using either prompt or schema
     let searchQuery = "";
     if (options.prompt) {
@@ -164,9 +168,11 @@ export async function processUrl(
       try {
         const schemaString = JSON.stringify(options.schema, null, 2);
         const prompt = `Given this JSON schema, generate a natural language search query that would help find relevant pages containing this type of data. Focus on the key properties and their descriptions and keep it very concise. Schema: ${schemaString}`;
-        
-        searchQuery = await generateBasicCompletion(prompt) ?? "Extract the data according to the schema: " + schemaString;
-        
+
+        searchQuery =
+          (await generateBasicCompletion(prompt)) ??
+          "Extract the data according to the schema: " + schemaString;
+
         if (options.allowExternalLinks) {
           searchQuery = `${searchQuery} ${urlWithoutWww}`;
         } else {
@@ -186,14 +192,10 @@ export async function processUrl(
     //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
     // );
 
-    mappedLinks = await rerankLinksWithLLM(
-      mappedLinks,
-      searchQuery,
-      urlTraces,
-    );
+    mappedLinks = await rerankLinksWithLLM(mappedLinks, searchQuery, urlTraces);
 
     // 2nd Pass, useful for when the first pass returns too many links
-    if(mappedLinks.length > 100) {
+    if (mappedLinks.length > 100) {
       mappedLinks = await rerankLinksWithLLM(
         mappedLinks,
         searchQuery,

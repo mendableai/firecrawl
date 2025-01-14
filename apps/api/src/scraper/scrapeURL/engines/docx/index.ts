@@ -4,7 +4,9 @@ import { downloadFile } from "../utils/downloadFile";
 import mammoth from "mammoth";
 
 export async function scrapeDOCX(meta: Meta): Promise<EngineScrapeResult> {
-  const { response, tempFilePath } = await downloadFile(meta.id, meta.url);
+  const { response, tempFilePath } = await downloadFile(meta.id, meta.url, {
+    headers: meta.options.headers,
+  });
 
   return {
     url: response.url,

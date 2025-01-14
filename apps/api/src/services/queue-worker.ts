@@ -25,6 +25,7 @@ import {
   finishCrawl,
   generateURLPermutations,
   getCrawl,
+  getCrawlJobCount,
   getCrawlJobs,
   lockURL,
   lockURLs,
@@ -83,6 +84,8 @@ const connectionMonitorInterval =
   Number(process.env.CONNECTION_MONITOR_INTERVAL) || 10;
 const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 
+const runningJobs: Set<string> = new Set();
+
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   if (await finishCrawl(job.data.crawl_id)) {
     (async () => {
@@ -92,7 +95,11 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         "crawl:" + job.data.crawl_id + ":visited_unique",
       );
       // Upload to Supabase if we have URLs and this is a crawl (not a batch scrape)
-      if (visitedUrls.length > 0 && job.data.crawlerOptions !== null && originUrl) {
+      if (
+        visitedUrls.length > 0 &&
+        job.data.crawlerOptions !== null &&
+        originUrl
+      ) {
         // Fire and forget the upload to Supabase
         try {
           // Standardize URLs to canonical form (https, no www)
@@ -212,7 +219,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         );
       }
     } else {
-      const jobIDs = await getCrawlJobs(job.data.crawl_id);
+      const num_docs = await getCrawlJobCount(job.data.crawl_id);
       const jobStatus = sc.cancelled ? "failed" : "completed";
 
       await logJob(
@@ -220,7 +227,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           job_id: job.data.crawl_id,
           success: jobStatus === "completed",
           message: sc.cancelled ? "Cancelled" : undefined,
-          num_docs: jobIDs.length,
+          num_docs,
           docs: [],
           time_taken: (Date.now() - sc.createdAt) / 1000,
           team_id: job.data.team_id,
@@ -314,7 +321,10 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
   return err;
 };
 
-const processExtractJobInternal = async (token: string, job: Job & { id: string }) => {
+const processExtractJobInternal = async (
+  token: string,
+  job: Job & { id: string },
+) => {
   const logger = _logger.child({
     module: "extract-worker",
     method: "processJobInternal",
@@ -353,24 +363,27 @@ const processExtractJobInternal = async (token: string, job: Job & { id: string 
     }
   } catch (error) {
     logger.error(`🚫 Job errored ${job.id} - ${error}`, { error });
-    
+
     Sentry.captureException(error, {
       data: {
         job: job.id,
       },
     });
-    
+
     // Move job to failed state in Redis
     await job.moveToFailed(error, token, false);
 
     await updateExtract(job.data.extractId, {
       status: "failed",
-      error: error.error ?? error ?? "Unknown error, please contact help@firecrawl.dev. Extract id: " + job.data.extractId,
+      error:
+        error.error ??
+        error ??
+        "Unknown error, please contact help@firecrawl.dev. Extract id: " +
+          job.data.extractId,
     });
     return { success: false, error: error.error ?? error ?? "Unknown error, please contact help@firecrawl.dev. Extract id: " + job.data.extractId };
     // throw error;
   } finally {
-    
     clearInterval(extendLockInterval);
   }
 };
@@ -433,7 +446,15 @@ const workerFun = async (
 
     const job = await worker.getNextJob(token);
     if (job) {
+      if (job.id) {
+        runningJobs.add(job.id);
+      }
+
       async function afterJobDone(job: Job<any, any, string>) {
+        if (job.id) {
+          runningJobs.delete(job.id);
+        }
+
         if (job.id && job.data && job.data.team_id && job.data.plan) {
           await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
           cleanOldConcurrencyLimitEntries(job.data.team_id);
@@ -530,10 +551,6 @@ const workerFun = async (
     }
   }
 };
-
-// Start both workers
-workerFun(getScrapeQueue(), processJobInternal);
-workerFun(getExtractQueue(), processExtractJobInternal);
 
 async function processKickoffJob(job: Job & { id: string }, token: string) {
   const logger = _logger.child({
@@ -637,7 +654,9 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
             sc,
             jobs.map((x) => ({ id: x.opts.jobId, url: x.data.url })),
           );
-          const lockedJobs = jobs.filter(x => lockedIds.find(y => y.id === x.opts.jobId));
+          const lockedJobs = jobs.filter((x) =>
+            lockedIds.find((y) => y.id === x.opts.jobId),
+          );
           logger.debug("Adding scrape jobs to Redis...");
           await addCrawlJobs(
             job.data.crawl_id,
@@ -757,6 +776,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           {
             content: doc,
             source: doc?.metadata?.sourceURL ?? doc?.metadata?.url ?? "",
+            id: job.id,
           },
         ],
       },
@@ -791,7 +811,8 @@ async function processJob(job: Job & { id: string }, token: string) {
       ) {
         const crawler = crawlToCrawler(job.data.crawl_id, sc);
         if (
-          crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL) === null &&
+          crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL) ===
+            null &&
           !job.data.isCrawlSourceScrape
         ) {
           throw new Error(
@@ -991,16 +1012,30 @@ async function processJob(job: Job & { id: string }, token: string) {
         job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
       );
     }
-    // if (job.data.v1) {
-    //   callWebhook(
-    //     job.data.team_id,
-    //     job.id as string,
-    //     [],
-    //     job.data.webhook,
-    //     job.data.v1,
-    //     "crawl.failed"
-    //   );
-    // }
+
+    logger.debug("Logging job to DB...");
+    await logJob(
+      {
+        job_id: job.id as string,
+        success: false,
+        message:
+          typeof error === "string"
+            ? error
+            : (error.message ??
+              "Something went wrong... Contact help@mendable.ai"),
+        num_docs: 0,
+        docs: [],
+        time_taken: 0,
+        team_id: job.data.team_id,
+        mode: job.data.mode,
+        url: job.data.url,
+        crawlerOptions: job.data.crawlerOptions,
+        scrapeOptions: job.data.scrapeOptions,
+        origin: job.data.origin,
+        crawl_id: job.data.crawl_id,
+      },
+      true,
+    );
 
     if (job.data.crawl_id) {
       const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
@@ -1010,30 +1045,6 @@ async function processJob(job: Job & { id: string }, token: string) {
       await redisConnection.srem(
         "crawl:" + job.data.crawl_id + ":visited_unique",
         normalizeURL(job.data.url, sc),
-      );
-
-      logger.debug("Logging job to DB...");
-      await logJob(
-        {
-          job_id: job.id as string,
-          success: false,
-          message:
-            typeof error === "string"
-              ? error
-              : (error.message ??
-                "Something went wrong... Contact help@mendable.ai"),
-          num_docs: 0,
-          docs: [],
-          time_taken: 0,
-          team_id: job.data.team_id,
-          mode: job.data.mode,
-          url: job.data.url,
-          crawlerOptions: sc.crawlerOptions,
-          scrapeOptions: job.data.scrapeOptions,
-          origin: job.data.origin,
-          crawl_id: job.data.crawl_id,
-        },
-        true,
       );
 
       await finishCrawlIfNeeded(job, sc);
@@ -1073,3 +1084,19 @@ async function processJob(job: Job & { id: string }, token: string) {
 // wsq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
 // wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
 // wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
+
+// Start both workers
+(async () => {
+  await Promise.all([
+    workerFun(getScrapeQueue(), processJobInternal),
+    workerFun(getExtractQueue(), processExtractJobInternal),
+  ]);
+
+  console.log("All workers exited. Waiting for all jobs to finish...");
+
+  while (runningJobs.size > 0) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  process.exit(0);
+})();

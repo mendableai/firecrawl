@@ -27,6 +27,7 @@ const openai = new OpenAI();
 import { updateExtract } from "./extract-redis";
 import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
+import { CUSTOM_U_TEAMS } from "./config";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -131,6 +132,18 @@ type completions = {
   extract: Record<string, any>;
   numTokens: number;
   warning?: string;
+}
+
+function getRootDomain(url: string): string {
+  try {
+    if (url.endsWith("/*")) {
+      url = url.slice(0, -2);
+    }
+    const urlObj = new URL(url);
+    return `${urlObj.protocol}//${urlObj.hostname}`;
+  } catch (e) {
+    return url;
+  }
 }
 
 export async function performExtraction(
@@ -459,10 +472,15 @@ export async function performExtraction(
 
   const finalResult = await mixSchemaObjects(reqSchema, singleAnswerResult, multiEntityResult);
 
+  let linksBilled = links.length * 5;
+
+  if (CUSTOM_U_TEAMS.includes(teamId)) {
+    linksBilled = 1;
+  }
   // Bill team for usage
-  billTeam(teamId, subId, links.length * 5).catch((error) => {
+  billTeam(teamId, subId, linksBilled).catch((error) => {
     logger.error(
-      `Failed to bill team ${teamId} for ${links.length * 5} credits: ${error}`,
+      `Failed to bill team ${teamId} for ${linksBilled} credits: ${error}`,
     );
   });
 

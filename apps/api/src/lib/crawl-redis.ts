@@ -160,6 +160,10 @@ export async function getCrawlJobs(id: string): Promise<string[]> {
   return await redisConnection.smembers("crawl:" + id + ":jobs");
 }
 
+export async function getCrawlJobCount(id: string): Promise<number> {
+  return await redisConnection.scard("crawl:" + id + ":jobs");
+}
+
 export async function getThrottledJobs(teamId: string): Promise<string[]> {
   return await redisConnection.zrangebyscore(
     "concurrency-limiter:" + teamId + ":throttled",
@@ -261,9 +265,9 @@ export async function lockURL(
     );
   }
 
-  logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
-    res,
-  });
+  // logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
+  //   res,
+  // });
   return res;
 }
 
@@ -318,13 +322,13 @@ export async function lockURLs(
 export async function lockURLsIndividually(
   id: string,
   sc: StoredCrawl,
-  jobs: { id: string; url: string; }[],
+  jobs: { id: string; url: string }[],
 ) {
   const out: typeof jobs = [];
 
   for (const job of jobs) {
     if (await lockURL(id, sc, job.url)) {
-      out.push(job);      
+      out.push(job);
     }
   }
 

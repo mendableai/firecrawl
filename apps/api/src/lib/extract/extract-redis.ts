@@ -21,13 +21,18 @@ export async function getExtract(id: string): Promise<StoredExtract | null> {
   return x ? JSON.parse(x) : null;
 }
 
-export async function updateExtract(id: string, extract: Partial<StoredExtract>) {
+export async function updateExtract(
+  id: string,
+  extract: Partial<StoredExtract>,
+) {
   const current = await getExtract(id);
   if (!current) return;
-  await redisConnection.set("extract:" + id, JSON.stringify({ ...current, ...extract }));
+  await redisConnection.set(
+    "extract:" + id,
+    JSON.stringify({ ...current, ...extract }),
+  );
   await redisConnection.expire("extract:" + id, 24 * 60 * 60, "NX");
 }
-
 
 export async function getExtractExpiry(id: string): Promise<Date> {
   const d = new Date();

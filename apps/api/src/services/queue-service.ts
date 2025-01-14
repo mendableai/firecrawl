@@ -16,20 +16,17 @@ export const loggingQueueName = "{loggingQueue}";
 
 export function getScrapeQueue() {
   if (!scrapeQueue) {
-    scrapeQueue = new Queue(
-      scrapeQueueName,
-      {
-        connection: redisConnection,
-        defaultJobOptions: {
-          removeOnComplete: {
-            age: 90000, // 25 hours
-          },
-          removeOnFail: {
-            age: 90000, // 25 hours
-          },
+    scrapeQueue = new Queue(scrapeQueueName, {
+      connection: redisConnection,
+      defaultJobOptions: {
+        removeOnComplete: {
+          age: 90000, // 25 hours
         },
-      }
-    );
+        removeOnFail: {
+          age: 90000, // 25 hours
+        },
+      },
+    });
     logger.info("Web scraper queue created");
   }
   return scrapeQueue;
@@ -37,25 +34,21 @@ export function getScrapeQueue() {
 
 export function getExtractQueue() {
   if (!extractQueue) {
-    extractQueue = new Queue(
-      extractQueueName,
-      {
-        connection: redisConnection,
-        defaultJobOptions: {
-          removeOnComplete: {
-            age: 90000, // 25 hours
-          },
-          removeOnFail: {
-            age: 90000, // 25 hours
-          },
+    extractQueue = new Queue(extractQueueName, {
+      connection: redisConnection,
+      defaultJobOptions: {
+        removeOnComplete: {
+          age: 90000, // 25 hours
         },
-      }
-    );
+        removeOnFail: {
+          age: 90000, // 25 hours
+        },
+      },
+    });
     logger.info("Extraction queue created");
   }
   return extractQueue;
 }
-
 
 // === REMOVED IN FAVOR OF POLLING -- NOT RELIABLE
 // import { QueueEvents } from 'bullmq';

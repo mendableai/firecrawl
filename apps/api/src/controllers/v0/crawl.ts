@@ -178,48 +178,52 @@ export async function crawlController(req: Request, res: Response) {
     await saveCrawl(id, sc);
 
     const sitemap = sc.crawlerOptions.ignoreSitemap
-        ? 0
-        : await crawler.tryGetSitemap(async urls => {
-            if (urls.length === 0) return;
-            
-            let jobPriority = await getJobPriority({ plan, team_id, basePriority: 21 });
-            const jobs = urls.map(url => {
-              const uuid = uuidv4();
-              return {
-                name: uuid,
-                data: {
-                  url,
-                  mode: "single_urls",
-                  crawlerOptions,
-                  scrapeOptions,
-                  internalOptions,
-                  team_id,
-                  plan,
-                  origin: req.body.origin ?? defaultOrigin,
-                  crawl_id: id,
-                  sitemapped: true,
-                },
-                opts: {
-                  jobId: uuid,
-                  priority: jobPriority,
-                },
-              };
-            });
+      ? 0
+      : await crawler.tryGetSitemap(async (urls) => {
+          if (urls.length === 0) return;
 
-            await lockURLs(
-              id,
-              sc,
-              jobs.map((x) => x.data.url),
-            );
-            await addCrawlJobs(
-              id,
-              jobs.map((x) => x.opts.jobId),
-            );
-            for (const job of jobs) {
-              // add with sentry instrumentation
-              await addScrapeJob(job.data as any, {}, job.opts.jobId);
-            }
+          let jobPriority = await getJobPriority({
+            plan,
+            team_id,
+            basePriority: 21,
           });
+          const jobs = urls.map((url) => {
+            const uuid = uuidv4();
+            return {
+              name: uuid,
+              data: {
+                url,
+                mode: "single_urls",
+                crawlerOptions,
+                scrapeOptions,
+                internalOptions,
+                team_id,
+                plan,
+                origin: req.body.origin ?? defaultOrigin,
+                crawl_id: id,
+                sitemapped: true,
+              },
+              opts: {
+                jobId: uuid,
+                priority: jobPriority,
+              },
+            };
+          });
+
+          await lockURLs(
+            id,
+            sc,
+            jobs.map((x) => x.data.url),
+          );
+          await addCrawlJobs(
+            id,
+            jobs.map((x) => x.opts.jobId),
+          );
+          for (const job of jobs) {
+            // add with sentry instrumentation
+            await addScrapeJob(job.data as any, {}, job.opts.jobId);
+          }
+        });
 
     if (sitemap === 0) {
       await lockURL(id, sc, url);

@@ -38,7 +38,7 @@ const useCache =
   process.env.CACHE_REDIS_URL !== undefined;
 
 export const engines: Engine[] = [
-  ...(useCache ? [ "cache" as const ] : []),
+  ...(useCache ? ["cache" as const] : []),
   ...(useFireEngine
     ? [
         "fire-engine;chrome-cdp" as const,
@@ -298,7 +298,6 @@ export function buildFallbackList(meta: Meta): {
   engine: Engine;
   unsupportedFeatures: Set<FeatureFlag>;
 }[] {
-
   if (meta.internalOptions.useCache !== true) {
     const cacheIndex = engines.indexOf("cache");
     if (cacheIndex !== -1) {

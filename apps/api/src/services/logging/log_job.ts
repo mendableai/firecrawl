@@ -9,9 +9,11 @@ configDotenv();
 
 function cleanOfNull<T>(x: T): T {
   if (Array.isArray(x)) {
-    return x.map(x => cleanOfNull(x)) as T;
+    return x.map((x) => cleanOfNull(x)) as T;
   } else if (typeof x === "object" && x !== null) {
-    return Object.fromEntries(Object.entries(x).map(([k,v]) => [k,cleanOfNull(v)])) as T
+    return Object.fromEntries(
+      Object.entries(x).map(([k, v]) => [k, cleanOfNull(v)]),
+    ) as T;
   } else if (typeof x === "string") {
     return x.replaceAll("\u0000", "") as T;
   } else {
@@ -27,19 +29,20 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
     }
 
     // Redact any pages that have an authorization header
-    if (
-      job.scrapeOptions &&
-      job.scrapeOptions.headers &&
-      job.scrapeOptions.headers["Authorization"]
-    ) {
-      job.scrapeOptions.headers["Authorization"] = "REDACTED";
-      job.docs = [
-        {
-          content: "REDACTED DUE TO AUTHORIZATION HEADER",
-          html: "REDACTED DUE TO AUTHORIZATION HEADER",
-        },
-      ];
-    }
+    // actually, Don't. we use the db to retrieve results now. this breaks authed crawls - mogery
+    // if (
+    //   job.scrapeOptions &&
+    //   job.scrapeOptions.headers &&
+    //   job.scrapeOptions.headers["Authorization"]
+    // ) {
+    //   job.scrapeOptions.headers["Authorization"] = "REDACTED";
+    //   job.docs = [
+    //     {
+    //       content: "REDACTED DUE TO AUTHORIZATION HEADER",
+    //       html: "REDACTED DUE TO AUTHORIZATION HEADER",
+    //     },
+    //   ];
+    // }
     const jobColumn = {
       job_id: job.job_id ? job.job_id : null,
       success: job.success,
