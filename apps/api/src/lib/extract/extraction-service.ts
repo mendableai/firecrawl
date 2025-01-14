@@ -256,7 +256,7 @@ export async function performExtraction(
           step: ExtractStep.MULTI_ENTITY_SCRAPE,
           startedAt: Date.now(),
           finishedAt: Date.now(),
-          discoveredLinks: [],
+          discoveredLinks: links,
         },
       ],
     });
@@ -510,7 +510,7 @@ export async function performExtraction(
           step: ExtractStep.EXTRACT,
           startedAt: Date.now(),
           finishedAt: Date.now(),
-          discoveredLinks: [],
+          discoveredLinks: links,
         },
       ],
     });
