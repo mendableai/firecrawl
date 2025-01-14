@@ -6,7 +6,7 @@ const saveMocksDirPath = path.join(__dirname, "../mocks/").replace("dist/", "");
 const loadMocksDirPath = path.join(__dirname, "../../../__tests__/snips/mocks");
 
 export async function saveMock(options: unknown, result: unknown) {
-    if (!process.env.FIRECRAWL_SAVE_MOCKS) return;
+    if (process.env.FIRECRAWL_SAVE_MOCKS !== "true") return;
 
     await fs.mkdir(saveMocksDirPath, { recursive: true });
 

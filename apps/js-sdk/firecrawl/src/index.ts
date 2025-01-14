@@ -930,12 +930,12 @@ export default class FirecrawlApp {
    * @returns The response from the extract operation.
    */
   async asyncExtract(
-    url: string,
+    urls: string[],
     params?: ExtractParams,
     idempotencyKey?: string
   ): Promise<ExtractResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
-    let jsonData: any = { url, ...params };
+    let jsonData: any = { urls, ...params };
     let jsonSchema: any;
 
     try {

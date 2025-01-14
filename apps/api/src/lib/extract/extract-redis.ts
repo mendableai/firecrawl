@@ -1,6 +1,25 @@
 import { redisConnection } from "../../services/queue-service";
 import { logger as _logger } from "../logger";
 
+export enum ExtractStep {
+  INITIAL = "initial",
+  MULTI_ENTITY = "multi-entity",
+  MULTI_ENTITY_SCRAPE = "multi-entity-scrape",
+  MULTI_ENTITY_EXTRACT = "multi-entity-extract",
+  SCRAPE = "scrape",
+  MAP = "map",
+  EXTRACT = "extract",
+  COMPLETE = "complete",
+}
+
+export type ExtractedStep = {
+  step: ExtractStep;
+  startedAt: number;
+  finishedAt: number;
+  error?: any;
+  discoveredLinks?: string[];
+};
+
 export type StoredExtract = {
   id: string;
   team_id: string;
@@ -8,6 +27,8 @@ export type StoredExtract = {
   createdAt: number;
   status: "processing" | "completed" | "failed" | "cancelled";
   error?: any;
+  showSteps?: boolean;
+  steps?: ExtractedStep[];
 };
 
 export async function saveExtract(id: string, extract: StoredExtract) {
@@ -27,6 +48,12 @@ export async function updateExtract(
 ) {
   const current = await getExtract(id);
   if (!current) return;
+
+  // Handle steps aggregation
+  if (extract.steps && current.steps) {
+    extract.steps = [...current.steps, ...extract.steps];
+  }
+
   await redisConnection.set(
     "extract:" + id,
     JSON.stringify({ ...current, ...extract }),

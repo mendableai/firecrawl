@@ -70,6 +70,7 @@ export async function extractController(
     plan: req.auth.plan,
     createdAt: Date.now(),
     status: "processing",
+    showSteps: req.body.__experimental_streamSteps,
   });
 
   if (Sentry.isInitialized()) {
