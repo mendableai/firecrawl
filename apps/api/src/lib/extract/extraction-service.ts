@@ -8,13 +8,16 @@ import { PlanType } from "../../types";
 import { logger } from "../logger";
 import { processUrl } from "./url-processor";
 import { scrapeDocument } from "./document-scraper";
-import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
+import {
+  generateOpenAICompletions,
+  generateSchemaFromPrompt,
+} from "../../scraper/scrapeURL/transformers/llmExtract";
 import { buildDocument } from "./build-document";
 import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { saveCrawl, StoredCrawl } from "../crawl-redis";
-import { dereferenceSchema } from "./helpers/dereference-schema"; 
+import { dereferenceSchema } from "./helpers/dereference-schema";
 import { z } from "zod";
 import OpenAI from "openai";
 import { spreadSchemas } from "./helpers/spread-schemas";
@@ -45,7 +48,6 @@ interface ExtractResult {
   error?: string;
 }
 
-
 async function analyzeSchemaAndPrompt(
   urls: string[],
   schema: any,
@@ -56,6 +58,10 @@ async function analyzeSchemaAndPrompt(
   reasoning?: string;
   keyIndicators?: string[];
 }> {
+  if (!schema) {
+    schema = await generateSchemaFromPrompt(prompt);
+  }
+
   const schemaString = JSON.stringify(schema);
 
   const checkSchema = z.object({
@@ -132,7 +138,7 @@ type completions = {
   extract: Record<string, any>;
   numTokens: number;
   warning?: string;
-}
+};
 
 function getRootDomain(url: string): string {
   try {
@@ -186,20 +192,22 @@ export async function performExtraction(
         includeSubdomains: request.includeSubdomains,
         schema: request.schema,
       },
-      urlTraces,  
+      urlTraces,
       (links: string[]) => {
         aggMapLinks.push(...links);
         updateExtract(extractId, {
           steps: [
-          {
-            step: ExtractStep.MAP,
-            startedAt: startMap,
-            finishedAt: Date.now(),
-            discoveredLinks: aggMapLinks,
-          },
-        ],
-      });
-    }));
+            {
+              step: ExtractStep.MAP,
+              startedAt: startMap,
+              finishedAt: Date.now(),
+              discoveredLinks: aggMapLinks,
+            },
+          ],
+        });
+      },
+    ),
+  );
 
   const processedUrls = await Promise.all(urlPromises);
   const links = processedUrls.flat().filter((url) => url);
@@ -227,7 +235,13 @@ export async function performExtraction(
   });
 
   let reqSchema = request.schema;
-  reqSchema = await dereferenceSchema(reqSchema);
+  if (!reqSchema && request.prompt) {
+    reqSchema = await generateSchemaFromPrompt(request.prompt);
+  }
+
+  if (reqSchema) {
+    reqSchema = await dereferenceSchema(reqSchema);
+  }
 
   // agent evaluates if the schema or the prompt has an array with big amount of items
   // also it checks if the schema any other properties that are not arrays
@@ -236,7 +250,7 @@ export async function performExtraction(
   // 2. the second one is multiple completions that will extract the items from the array
   let startAnalyze = Date.now();
   const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
-    await analyzeSchemaAndPrompt(links, request.schema, request.prompt ?? "");
+    await analyzeSchemaAndPrompt(links, reqSchema, request.prompt ?? "");
 
   // console.log("\nIs Multi Entity:", isMultiEntity);
   // console.log("\nMulti Entity Keys:", multiEntityKeys);
@@ -244,8 +258,11 @@ export async function performExtraction(
   // console.log("\nKey Indicators:", keyIndicators);
 
   let rSchema = reqSchema;
-  if (isMultiEntity) {
-    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(reqSchema, multiEntityKeys)
+  if (isMultiEntity && reqSchema) {
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      reqSchema,
+      multiEntityKeys,
+    );
     rSchema = singleAnswerSchema;
 
     await updateExtract(extractId, {
@@ -259,7 +276,6 @@ export async function performExtraction(
         },
       ],
     });
-
 
     const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
 
@@ -287,11 +303,11 @@ export async function performExtraction(
             timeout,
           },
           urlTraces,
-        )
+        );
       }
       return docsMap.get(url);
-    })
-  
+    });
+
     let multyEntityDocs = (await Promise.all(scrapePromises)).filter(
       (doc): doc is Document => doc !== null,
     );
@@ -315,7 +331,7 @@ export async function performExtraction(
         docsMap.set(doc.metadata.url, doc);
       }
     }
-    
+
     // Process docs in chunks with queue style processing
     const chunkSize = 50;
     const timeoutCompletion = 45000; // 45 second timeout
@@ -331,7 +347,7 @@ export async function performExtraction(
       const chunkPromises = chunk.map(async (doc) => {
         try {
           ajv.compile(multiEntitySchema);
-          
+
           // Wrap in timeout promise
           const timeoutPromise = new Promise((resolve) => {
             setTimeout(() => resolve(null), timeoutCompletion);
@@ -342,25 +358,28 @@ export async function performExtraction(
             logger.child({ method: "extractService/checkShouldExtract" }),
             {
               mode: "llm",
-              systemPrompt: "You are a content relevance checker. Your job is to determine if the provided content is very relevant to extract information from based on the user's prompt. Return true only if the content appears relevant and contains information that could help answer the prompt. Return false if the content seems irrelevant or unlikely to contain useful information for the prompt.",
+              systemPrompt:
+                "You are a content relevance checker. Your job is to determine if the provided content is very relevant to extract information from based on the user's prompt. Return true only if the content appears relevant and contains information that could help answer the prompt. Return false if the content seems irrelevant or unlikely to contain useful information for the prompt.",
               prompt: `Should the following content be used to extract information for this prompt: "${request.prompt}" User schema is: ${JSON.stringify(multiEntitySchema)}\nReturn only true or false.`,
               schema: {
-                "type": "object",
-                "properties": {
-                  "extract": {
-                    "type": "boolean"
-                  }
+                type: "object",
+                properties: {
+                  extract: {
+                    type: "boolean",
+                  },
                 },
-                "required": ["extract"]
-              }
+                required: ["extract"],
+              },
             },
             buildDocument(doc),
             undefined,
-            true
+            true,
           );
 
           if (!shouldExtractCheck.extract["extract"]) {
-            console.log(`Skipping extraction for ${doc.metadata.url} as content is irrelevant`);
+            console.log(
+              `Skipping extraction for ${doc.metadata.url} as content is irrelevant`,
+            );
             return null;
           }
           // Add confidence score to schema with 5 levels
@@ -369,11 +388,15 @@ export async function performExtraction(
             properties: {
               ...multiEntitySchema.properties,
               is_content_relevant: {
-                type: "boolean", 
-                description: "Determine if this content is relevant to the prompt. Return true ONLY if the content contains information that directly helps answer the prompt. Return false if the content is irrelevant or unlikely to contain useful information."
-              }
+                type: "boolean",
+                description:
+                  "Determine if this content is relevant to the prompt. Return true ONLY if the content contains information that directly helps answer the prompt. Return false if the content is irrelevant or unlikely to contain useful information.",
+              },
             },
-            required: [...(multiEntitySchema.required || []), "is_content_relevant"]
+            required: [
+              ...(multiEntitySchema.required || []),
+              "is_content_relevant",
+            ],
           };
           // console.log("schemaWithConfidence", schemaWithConfidence);
 
@@ -384,15 +407,19 @@ export async function performExtraction(
                 step: ExtractStep.MULTI_ENTITY_EXTRACT,
                 startedAt: startScrape,
                 finishedAt: Date.now(),
-                discoveredLinks: [doc.metadata.url || doc.metadata.sourceURL || ""],
+                discoveredLinks: [
+                  doc.metadata.url || doc.metadata.sourceURL || "",
+                ],
               },
             ],
           });
 
           const completionPromise = generateOpenAICompletions(
-            logger.child({ method: "extractService/generateOpenAICompletions" }),
+            logger.child({
+              method: "extractService/generateOpenAICompletions",
+            }),
             {
-              mode: "llm", 
+              mode: "llm",
               systemPrompt:
                 (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
                 `Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. If the document provided is not relevant to the prompt nor to the final user schema ${JSON.stringify(multiEntitySchema)}, return null. Here are the urls the user provided of which he wants to extract information from: ` +
@@ -406,10 +433,10 @@ export async function performExtraction(
           );
 
           // Race between timeout and completion
-          const multiEntityCompletion = await Promise.race([
+          const multiEntityCompletion = (await Promise.race([
             completionPromise,
-            timeoutPromise
-          ]) as Awaited<ReturnType<typeof generateOpenAICompletions>>;
+            timeoutPromise,
+          ])) as Awaited<ReturnType<typeof generateOpenAICompletions>>;
 
           // console.log(multiEntityCompletion.extract)
           // if (!multiEntityCompletion.extract?.is_content_relevant) {
@@ -452,11 +479,16 @@ export async function performExtraction(
 
       // Wait for current chunk to complete before processing next chunk
       const chunkResults = await Promise.all(chunkPromises);
-      multiEntityCompletions.push(...chunkResults.filter(result => result !== null));
+      multiEntityCompletions.push(
+        ...chunkResults.filter((result) => result !== null),
+      );
     }
 
     try {
-      multiEntityResult = transformArrayToObject(multiEntitySchema, multiEntityCompletions);
+      multiEntityResult = transformArrayToObject(
+        multiEntitySchema,
+        multiEntityCompletions,
+      );
       multiEntityResult = deduplicateObjectsArray(multiEntityResult);
       multiEntityResult = mergeNullValObjs(multiEntityResult);
       // @nick: maybe we can add here a llm that checks if the array probably has a primary key?
@@ -464,13 +496,19 @@ export async function performExtraction(
       logger.error(`Failed to transform array to object: ${error}`);
       return {
         success: false,
-        error: "An unexpected error occurred. Please contact help@firecrawl.com for help.",
+        error:
+          "An unexpected error occurred. Please contact help@firecrawl.com for help.",
         extractId,
         urlTrace: urlTraces,
       };
     }
   }
-  if (rSchema && Object.keys(rSchema).length > 0 && rSchema.properties && Object.keys(rSchema.properties).length > 0) {
+  if (
+    rSchema &&
+    Object.keys(rSchema).length > 0 &&
+    rSchema.properties &&
+    Object.keys(rSchema.properties).length > 0
+  ) {
     // Scrape documents
     const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
     let singleAnswerDocs: Document[] = [];
@@ -513,7 +551,9 @@ export async function performExtraction(
         }
       }
 
-      singleAnswerDocs.push(...results.filter((doc): doc is Document => doc !== null));
+      singleAnswerDocs.push(
+        ...results.filter((doc): doc is Document => doc !== null),
+      );
     } catch (error) {
       return {
         success: false,
@@ -527,7 +567,8 @@ export async function performExtraction(
       // All urls are invalid
       return {
         success: false,
-        error: "All provided URLs are invalid. Please check your input and try again.",
+        error:
+          "All provided URLs are invalid. Please check your input and try again.",
         extractId,
         urlTrace: request.urlTrace ? urlTraces : undefined,
       };
@@ -584,7 +625,9 @@ export async function performExtraction(
     // }
   }
 
-  const finalResult = await mixSchemaObjects(reqSchema, singleAnswerResult, multiEntityResult);
+  const finalResult = reqSchema
+    ? await mixSchemaObjects(reqSchema, singleAnswerResult, multiEntityResult)
+    : singleAnswerResult || multiEntityResult;
 
   let linksBilled = links.length * 5;
 

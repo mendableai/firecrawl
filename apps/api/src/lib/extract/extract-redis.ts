@@ -9,9 +9,7 @@ export enum ExtractStep {
   MULTI_ENTITY_SCRAPE = "multi-entity-scrape",
   MULTI_ENTITY_EXTRACT = "multi-entity-extract",
   SCRAPE = "scrape",
-
   EXTRACT = "extract",
-
   COMPLETE = "complete",
 }
 

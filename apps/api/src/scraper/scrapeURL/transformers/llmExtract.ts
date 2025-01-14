@@ -4,6 +4,7 @@ import { TiktokenModel } from "@dqbd/tiktoken";
 import { Document, ExtractOptions } from "../../../controllers/v1/types";
 import { Logger } from "winston";
 import { EngineResultsTracker, Meta } from "..";
+import { logger } from "../../../lib/logger";
 
 const maxTokens = 32000;
 const modifier = 4;
@@ -253,4 +254,61 @@ export function removeDefaultProperty(schema: any): any {
   }
 
   return rest;
+}
+
+export async function generateSchemaFromPrompt(prompt: string): Promise<any> {
+  const openai = new OpenAI();
+
+  const temperatures = [0, 0.1, 0.3]; // Different temperatures to try
+  let lastError: Error | null = null;
+
+  for (const temp of temperatures) {
+    try {
+      const result = await openai.beta.chat.completions.parse({
+        model: "gpt-4o",
+        temperature: temp,
+        messages: [
+          {
+            role: "system",
+            content: `You are a schema generator for a web scraping system. Generate a JSON schema based on the user's prompt.
+Consider:
+1. The type of data being requested
+2. Required fields vs optional fields
+3. Appropriate data types for each field
+4. Nested objects and arrays where appropriate
+
+Return a valid JSON schema object with properties that would capture the information requested in the prompt.`,
+          },
+          {
+            role: "user",
+            content: `Generate a JSON schema for extracting the following information: ${prompt}`,
+          },
+        ],
+        response_format: {
+          type: "json_object",
+        },
+      });
+
+      if (result.choices[0].message.refusal !== null) {
+        throw new Error("LLM refused to generate schema");
+      }
+
+      let schema;
+      try {
+        schema = JSON.parse(result.choices[0].message.content ?? "");
+        return schema;
+      } catch (e) {
+        throw new Error("Failed to parse schema JSON from LLM response");
+      }
+    } catch (error) {
+      lastError = error as Error;
+      logger.warn(`Failed attempt with temperature ${temp}: ${error.message}`);
+      continue;
+    }
+  }
+
+  // If we get here, all attempts failed
+  throw new Error(
+    `Failed to generate schema after all attempts. Last error: ${lastError?.message}`,
+  );
 }
