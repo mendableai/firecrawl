@@ -5,11 +5,8 @@ import { removeDuplicateUrls } from "../validateUrl";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { generateBasicCompletion } from "../LLM-extraction";
 import { buildRefrasedPrompt } from "./build-prompts";
-import { logger } from "../logger";
-import { rerankLinks, rerankLinksWithLLM } from "./reranker";
+import { rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
-import { searchSimilarPages } from "./index/pinecone";
-import { dumpToFile } from "./helpers/dump-to-file";
 
 interface ProcessUrlOptions {
   url: string;
@@ -183,13 +180,12 @@ export async function processUrl(
       searchQuery = urlWithoutWww;
     }
 
-    dumpToFile(
-      "mapped-links.txt",
-      mappedLinks,
-      (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
-    );
+    // dumpToFile(
+    //   "mapped-links.txt",
+    //   mappedLinks,
+    //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
+    // );
 
-    console.log("Reranking links with LLM");
     mappedLinks = await rerankLinksWithLLM(
       mappedLinks,
       searchQuery,
@@ -205,11 +201,11 @@ export async function processUrl(
       );
     }
 
-    dumpToFile(
-      "llm-links.txt",
-      mappedLinks,
-      (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
-    );
+    // dumpToFile(
+    //   "llm-links.txt",
+    //   mappedLinks,
+    //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
+    // );
     // Remove title and description from mappedLinks
     mappedLinks = mappedLinks.map((link) => ({ url: link.url }));
     return mappedLinks.map((x) => x.url);

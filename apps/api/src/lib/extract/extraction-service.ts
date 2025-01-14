@@ -27,7 +27,6 @@ const openai = new OpenAI();
 import { updateExtract } from "./extract-redis";
 import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
-import { rerankLinks } from "./reranker";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -45,17 +44,6 @@ interface ExtractResult {
   error?: string;
 }
 
-function getRootDomain(url: string): string {
-  try {
-    if (url.endsWith("/*")) {
-      url = url.slice(0, -2);
-    }
-    const urlObj = new URL(url);
-    return `${urlObj.protocol}//${urlObj.hostname}`;
-  } catch (e) {
-    return url;
-  }
-}
 
 async function analyzeSchemaAndPrompt(
   urls: string[],
@@ -198,97 +186,16 @@ export async function performExtraction(
   const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
     await analyzeSchemaAndPrompt(links, request.schema, request.prompt ?? "");
 
-  console.log("\nIs Multi Entity:", isMultiEntity);
-  console.log("\nMulti Entity Keys:", multiEntityKeys);
-  console.log("\nReasoning:", reasoning);
-  console.log("\nKey Indicators:", keyIndicators);
+  // console.log("\nIs Multi Entity:", isMultiEntity);
+  // console.log("\nMulti Entity Keys:", multiEntityKeys);
+  // console.log("\nReasoning:", reasoning);
+  // console.log("\nKey Indicators:", keyIndicators);
 
   let rSchema = reqSchema;
   if (isMultiEntity) {
     const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(reqSchema, multiEntityKeys)
     rSchema = singleAnswerSchema;
 
-    // const id = crypto.randomUUID();
-
-    // const sc: StoredCrawl = {
-    //   originUrl: request.urls[0].replace("/*",""),
-    //   crawlerOptions: toLegacyCrawlerOptions({
-    //     maxDepth: 15,
-    //     limit: 5000,
-    //     includePaths: [],
-    //     excludePaths: [],
-    //     ignoreSitemap: false,
-    //     allowExternalLinks: false,
-    //     allowBackwardLinks: true,
-    //     allowSubdomains: false,
-    //     ignoreRobotsTxt: false,
-    //     deduplicateSimilarURLs: false,
-    //     ignoreQueryParameters: false
-    //   }),
-    //   scrapeOptions: {
-    //       formats: ["markdown"],
-    //       onlyMainContent: true,
-    //       waitFor: 0,
-    //       mobile: false,
-    //       removeBase64Images: true,
-    //       fastMode: false,
-    //       parsePDF: true,
-    //       skipTlsVerification: false,
-    //   },
-    //   internalOptions: {
-    //     disableSmartWaitCache: true,
-    //     isBackgroundIndex: true
-    //   },
-    //   team_id: process.env.BACKGROUND_INDEX_TEAM_ID!,
-    //   createdAt: Date.now(),
-    //   plan: "hobby", // make it a low concurrency
-    // };
-
-    // // Save the crawl configuration
-    // await saveCrawl(id, sc);
-
-    // // Then kick off the job
-    // await _addScrapeJobToBullMQ({
-    //   url: request.urls[0].replace("/*",""),
-    //   mode: "kickoff" as const,
-    //   team_id: process.env.BACKGROUND_INDEX_TEAM_ID!,
-    //   plan: "hobby", // make it a low concurrency
-    //   crawlerOptions: sc.crawlerOptions,
-    //   scrapeOptions: sc.scrapeOptions,
-    //   internalOptions: sc.internalOptions,
-    //   origin: "index",
-    //   crawl_id: id,
-    //   webhook: null,
-    //   v1: true,
-    // }, {}, crypto.randomUUID(), 50);
-
-    // we restructure and make all of the arrays we need to fill into objects,
-    // adding them to a single object so the llm can fill them one at a time
-    // TODO: make this work for more complex schemas where arrays are not first level
-
-    // let schemasForLLM: {} = {};
-    // for (const key in largeArraysSchema) {
-    //   const originalSchema = structuredClone(largeArraysSchema[key].items);
-    //   console.log(
-    //     "key",
-    //     key,
-    //     "\noriginalSchema",
-    //     JSON.stringify(largeArraysSchema[key], null, 2),
-    //   );
-    //   let clonedObj = {
-    //     type: "object",
-    //     properties: {
-    //       informationFilled: {
-    //         type: "boolean",
-    //       },
-    //       data: {
-    //         type: "object",
-    //         properties: originalSchema.properties,
-    //       },
-    //     },
-    //   };
-    //   schemasForLLM[key] = clonedObj;
-    // }
 
     const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
     const scrapePromises = links.map((url) => {
@@ -327,7 +234,6 @@ export async function performExtraction(
       chunks.push(multyEntityDocs.slice(i, i + chunkSize));
     }
 
-    console.log("chunks step 1");
     // Process chunks sequentially with timeout
     for (const chunk of chunks) {
       const chunkPromises = chunk.map(async (doc) => {
@@ -340,31 +246,31 @@ export async function performExtraction(
           });
 
           // // Check if page should be extracted before proceeding
-          // const shouldExtractCheck = await generateOpenAICompletions(
-          //   logger.child({ method: "extractService/checkShouldExtract" }),
-          //   {
-          //     mode: "llm",
-          //     systemPrompt: "You are a content relevance checker. Your job is to determine if the provided content is very relevant to extract information from based on the user's prompt. Return true only if the content appears relevant and contains information that could help answer the prompt. Return false if the content seems irrelevant or unlikely to contain useful information for the prompt.",
-          //     prompt: `Should the following content be used to extract information for this prompt: "${request.prompt}" User schema is: ${JSON.stringify(multiEntitySchema)}\nReturn only true or false.`,
-          //     schema: {
-          //       "type": "object",
-          //       "properties": {
-          //         "extract": {
-          //           "type": "boolean"
-          //         }
-          //       },
-          //       "required": ["extract"]
-          //     }
-          //   },
-          //   buildDocument(doc),
-          //   undefined,
-          //   true
-          // );
+          const shouldExtractCheck = await generateOpenAICompletions(
+            logger.child({ method: "extractService/checkShouldExtract" }),
+            {
+              mode: "llm",
+              systemPrompt: "You are a content relevance checker. Your job is to determine if the provided content is very relevant to extract information from based on the user's prompt. Return true only if the content appears relevant and contains information that could help answer the prompt. Return false if the content seems irrelevant or unlikely to contain useful information for the prompt.",
+              prompt: `Should the following content be used to extract information for this prompt: "${request.prompt}" User schema is: ${JSON.stringify(multiEntitySchema)}\nReturn only true or false.`,
+              schema: {
+                "type": "object",
+                "properties": {
+                  "extract": {
+                    "type": "boolean"
+                  }
+                },
+                "required": ["extract"]
+              }
+            },
+            buildDocument(doc),
+            undefined,
+            true
+          );
 
-          // if (!shouldExtractCheck.extract["extract"]) {
-          //   console.log(`Skipping extraction for ${doc.metadata.url} as content is irrelevant`);
-          //   return null;
-          // }
+          if (!shouldExtractCheck.extract["extract"]) {
+            console.log(`Skipping extraction for ${doc.metadata.url} as content is irrelevant`);
+            return null;
+          }
           // Add confidence score to schema with 5 levels
           const schemaWithConfidence = {
             ...multiEntitySchema,
@@ -388,7 +294,7 @@ export async function performExtraction(
                 `Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. If the document provided is not relevant to the prompt nor to the final user schema ${JSON.stringify(multiEntitySchema)}, return null. Here are the urls the user provided of which he wants to extract information from: ` +
                 links.join(", "),
               prompt: request.prompt,
-              schema: schemaWithConfidence,
+              schema: multiEntitySchema,
             },
             buildDocument(doc),
             undefined,
@@ -401,11 +307,11 @@ export async function performExtraction(
             timeoutPromise
           ]) as Awaited<ReturnType<typeof generateOpenAICompletions>>;
 
-          console.log(multiEntityCompletion.extract)
-          if (!multiEntityCompletion.extract?.is_content_relevant) {
-            console.log(`Skipping extraction for ${doc.metadata.url} as content is not relevant`);
-            return null;
-          }
+          // console.log(multiEntityCompletion.extract)
+          // if (!multiEntityCompletion.extract?.is_content_relevant) {
+          //   console.log(`Skipping extraction for ${doc.metadata.url} as content is not relevant`);
+          //   return null;
+          // }
 
           // Update token usage in traces
           // if (multiEntityCompletion && multiEntityCompletion.numTokens) {
@@ -501,8 +407,6 @@ export async function performExtraction(
         urlTrace: urlTraces,
       };
     }
-
-    console.log("docsMap", docsMap);
 
     if (docsMap.size == 0) {
       // All urls are invalid

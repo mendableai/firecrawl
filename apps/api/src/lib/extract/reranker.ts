@@ -12,7 +12,6 @@ const cohere = new CohereClient({
 });
 
 
-
 interface RankingResult {
   mappedLinks: MapDocument[];
   linksAndScores: {
@@ -51,7 +50,7 @@ export async function rerankLinks(
   searchQuery: string,
   urlTraces: URLTrace[],
 ): Promise<MapDocument[]> {
-  console.log("Going to rerank links");
+  // console.log("Going to rerank links");
   const mappedLinksRerank = mappedLinks.map(
     (x) => `url: ${x.url}, title: ${x.title}, description: ${x.description}`,
   );
@@ -62,18 +61,6 @@ export async function rerankLinks(
     searchQuery
   );
 
-  const fs = require('fs');
-  const path = require('path');
-
-  const dumpFilePath = path.join(__dirname, 'links_scores_dump.txt');
-  const dumpData = linksAndScores.map((linkScore, index) => 
-    `${index + 1}. URL: ${linkScore.link}, Score: ${linkScore.score}`
-  ).join('\n');
-
-  fs.writeFileSync(dumpFilePath, dumpData, 'utf8');
-  console.log("Dumped links and scores");
-
-  
   // First try with high threshold
   let filteredLinks = filterAndProcessLinks(
     mappedLinks,
@@ -142,7 +129,7 @@ export async function rerankLinks(
     }
   });
 
-  console.log("Reranked links: ", rankedLinks.length);
+  // console.log("Reranked links: ", rankedLinks.length);
 
   return rankedLinks;
 }
@@ -182,7 +169,7 @@ export async function rerankLinksWithLLM(
     chunks.push(mappedLinks.slice(i, i + chunkSize));
   }
 
-  console.log(`Total links: ${mappedLinks.length}, Number of chunks: ${chunks.length}`);
+  // console.log(`Total links: ${mappedLinks.length}, Number of chunks: ${chunks.length}`);
 
   const schema = {
     type: "object",
@@ -204,7 +191,7 @@ export async function rerankLinksWithLLM(
 
   const results = await Promise.all(
     chunks.map(async (chunk, chunkIndex) => {
-      console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} links`);
+      // console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} links`);
       
       const linksContent = chunk.map(link => 
         `URL: ${link.url}${link.title ? `\nTitle: ${link.title}` : ''}${link.description ? `\nDescription: ${link.description}` : ''}`
@@ -232,22 +219,22 @@ export async function rerankLinksWithLLM(
           const completion = await Promise.race([completionPromise, timeoutPromise]);
           
           if (!completion) {
-            console.log(`Chunk ${chunkIndex + 1}: Timeout on attempt ${retry + 1}`);
+            // console.log(`Chunk ${chunkIndex + 1}: Timeout on attempt ${retry + 1}`);
             continue;
           }
 
           if (!completion.extract?.relevantLinks) {
-            console.warn(`Chunk ${chunkIndex + 1}: No relevant links found in completion response`);
+            // console.warn(`Chunk ${chunkIndex + 1}: No relevant links found in completion response`);
             return [];
           }
 
-          console.log(`Chunk ${chunkIndex + 1}: Found ${completion.extract.relevantLinks.length} relevant links`);
+          // console.log(`Chunk ${chunkIndex + 1}: Found ${completion.extract.relevantLinks.length} relevant links`);
           return completion.extract.relevantLinks;
 
         } catch (error) {
           console.warn(`Error processing chunk ${chunkIndex + 1} attempt ${retry + 1}:`, error);
           if (retry === MAX_RETRIES) {
-            console.log(`Chunk ${chunkIndex + 1}: Max retries reached, returning empty array`);
+            // console.log(`Chunk ${chunkIndex + 1}: Max retries reached, returning empty array`);
             return [];
           }
         }
@@ -256,17 +243,17 @@ export async function rerankLinksWithLLM(
     })
   );
 
-  console.log(`Processed ${results.length} chunks`);
+  // console.log(`Processed ${results.length} chunks`);
 
   // Flatten results and sort by relevance score
   const flattenedResults = results.flat().sort((a, b) => b.relevanceScore - a.relevanceScore);
-  console.log(`Total relevant links found: ${flattenedResults.length}`);
+  // console.log(`Total relevant links found: ${flattenedResults.length}`);
 
   // Map back to MapDocument format, keeping only relevant links
   const relevantLinks = flattenedResults
     .map(result => mappedLinks.find(link => link.url === result.url))
     .filter((link): link is MapDocument => link !== undefined);
 
-  console.log(`Returning ${relevantLinks.length} relevant links`);
+  // console.log(`Returning ${relevantLinks.length} relevant links`);
   return relevantLinks;
 }
