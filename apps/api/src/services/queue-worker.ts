@@ -356,7 +356,7 @@ const processExtractJobInternal = async (
       await job.moveToCompleted(result, token, false);
       await updateExtract(job.data.extractId, {
         status: "failed",
-        error: result.error ?? "Unknown error, please contact help@firecrawl.dev. Extract id: " + job.data.extractId,
+        error: result.error ?? "Unknown error, please contact help@firecrawl.com. Extract id: " + job.data.extractId,
       });
 
       return result;
@@ -378,10 +378,10 @@ const processExtractJobInternal = async (
       error:
         error.error ??
         error ??
-        "Unknown error, please contact help@firecrawl.dev. Extract id: " +
+        "Unknown error, please contact help@firecrawl.com. Extract id: " +
           job.data.extractId,
     });
-    return { success: false, error: error.error ?? error ?? "Unknown error, please contact help@firecrawl.dev. Extract id: " + job.data.extractId };
+    return { success: false, error: error.error ?? error ?? "Unknown error, please contact help@firecrawl.com. Extract id: " + job.data.extractId };
     // throw error;
   } finally {
     clearInterval(extendLockInterval);
