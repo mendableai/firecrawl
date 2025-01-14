@@ -24,7 +24,7 @@ import Ajv from "ajv";
 const ajv = new Ajv();
 
 const openai = new OpenAI();
-import { updateExtract } from "./extract-redis";
+import { ExtractStep, updateExtract } from "./extract-redis";
 import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
 import { CUSTOM_U_TEAMS } from "./config";
@@ -157,6 +157,19 @@ export async function performExtraction(
   let multiEntityCompletions: completions[] = [];
   let multiEntityResult: any = {};
   let singleAnswerResult: any = {};
+
+  await updateExtract(extractId, {
+    status: "processing",
+    steps: [
+      {
+        step: ExtractStep.INITIAL,
+        startedAt: Date.now(),
+        finishedAt: Date.now(),
+        discoveredLinks: request.urls,
+      },
+    ],
+  });
+
   // Process URLs
   const urlPromises = request.urls.map((url) =>
     processUrl(
@@ -188,6 +201,18 @@ export async function performExtraction(
     };
   }
 
+  await updateExtract(extractId, {
+    status: "processing",
+    steps: [
+      {
+        step: ExtractStep.MAP,
+        startedAt: Date.now(),
+        finishedAt: Date.now(),
+        discoveredLinks: links,
+      },
+    ],
+  });
+
   let reqSchema = request.schema;
   reqSchema = await dereferenceSchema(reqSchema);
 
@@ -209,8 +234,32 @@ export async function performExtraction(
     const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(reqSchema, multiEntityKeys)
     rSchema = singleAnswerSchema;
 
+    await updateExtract(extractId, {
+      status: "processing",
+      steps: [
+        {
+          step: ExtractStep.MULTI_ENTITY,
+          startedAt: Date.now(),
+          finishedAt: Date.now(),
+          discoveredLinks: [],
+        },
+      ],
+    });
+
 
     const timeout = Math.floor((request.timeout || 40000) * 0.7) || 30000;
+
+    await updateExtract(extractId, {
+      status: "processing",
+      steps: [
+        {
+          step: ExtractStep.MULTI_ENTITY_SCRAPE,
+          startedAt: Date.now(),
+          finishedAt: Date.now(),
+          discoveredLinks: [],
+        },
+      ],
+    });
     const scrapePromises = links.map((url) => {
       if (!docsMap.has(url)) {
         return scrapeDocument(
@@ -297,6 +346,18 @@ export async function performExtraction(
             required: [...(multiEntitySchema.required || []), "is_content_relevant"]
           };
           // console.log("schemaWithConfidence", schemaWithConfidence);
+
+          await updateExtract(extractId, {
+            status: "processing",
+            steps: [
+              {
+                step: ExtractStep.MULTI_ENTITY_EXTRACT,
+                startedAt: Date.now(),
+                finishedAt: Date.now(),
+                discoveredLinks: [doc.metadata.url || doc.metadata.sourceURL || ""],
+              },
+            ],
+          });
 
           const completionPromise = generateOpenAICompletions(
             logger.child({ method: "extractService/generateOpenAICompletions" }),
@@ -386,6 +447,17 @@ export async function performExtraction(
 
     // let rerank = await rerankLinks(links.map((url) => ({ url })), request.prompt ?? JSON.stringify(request.schema), urlTraces);
 
+    await updateExtract(extractId, {
+      status: "processing",
+      steps: [
+        {
+          step: ExtractStep.SCRAPE,
+          startedAt: Date.now(),
+          finishedAt: Date.now(),
+          discoveredLinks: links,
+        },
+      ],
+    });
     const scrapePromises = links.map((url) => {
       if (!docsMap.has(url)) {
         return scrapeDocument(
@@ -430,6 +502,18 @@ export async function performExtraction(
         urlTrace: request.urlTrace ? urlTraces : undefined,
       };
     }
+
+    await updateExtract(extractId, {
+      status: "processing",
+      steps: [
+        {
+          step: ExtractStep.EXTRACT,
+          startedAt: Date.now(),
+          finishedAt: Date.now(),
+          discoveredLinks: [],
+        },
+      ],
+    });
 
     // Generate completions
     singleAnswerCompletions = await generateOpenAICompletions(

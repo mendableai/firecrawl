@@ -36,5 +36,6 @@ export async function extractStatusController(
     status: extract.status,
     error: extract?.error ?? undefined,
     expiresAt: (await getExtractExpiry(req.params.jobId)).toISOString(),
+    steps: extract.showSteps ? extract.steps : undefined,
   });
 }

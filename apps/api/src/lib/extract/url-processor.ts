@@ -7,6 +7,8 @@ import { generateBasicCompletion } from "../LLM-extraction";
 import { buildRefrasedPrompt } from "./build-prompts";
 import { rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
+import { updateExtract } from "./extract-redis";
+import { ExtractStep } from "./extract-redis";
 
 interface ProcessUrlOptions {
   url: string;
@@ -156,6 +158,8 @@ export async function processUrl(
       0,
       extractConfig.RERANKING.MAX_INITIAL_RANKING_LIMIT,
     );
+
+
 
     // Perform reranking using either prompt or schema
     let searchQuery = "";
