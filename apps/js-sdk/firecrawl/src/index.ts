@@ -545,17 +545,28 @@ export default class FirecrawlApp {
    * Checks the status of a crawl job using the Firecrawl API.
    * @param id - The ID of the crawl operation.
    * @param getAllData - Paginate through all the pages of documents, returning the full list of all documents. (default: `false`)
+   * @param nextURL - The `next` URL from the previous crawl status. Only required if you're not manually increasing `skip`. Only used when `getAllData = false`.
+   * @param skip - How many entries to skip to paginate. Only required if you're not providing `nextURL`. Only used when `getAllData = false`.
+   * @param limit - How many entries to return. Only used when `getAllData = false`.
    * @returns The response containing the job status.
    */
-  async checkCrawlStatus(id?: string, getAllData = false): Promise<CrawlStatusResponse | ErrorResponse> {
+  async checkCrawlStatus(id?: string, getAllData = false, nextURL?: string, skip?: number, limit?: number): Promise<CrawlStatusResponse | ErrorResponse> {
     if (!id) {
       throw new FirecrawlError("No crawl ID provided", 400);
     }
 
     const headers: AxiosRequestHeaders = this.prepareHeaders();
+    const targetURL = new URL(nextURL ?? `${this.apiUrl}/v1/crawl/${id}`);
+    if (skip !== undefined) {
+      targetURL.searchParams.set("skip", skip.toString());
+    }
+    if (limit !== undefined) {
+      targetURL.searchParams.set("skip", limit.toString());
+    }
+
     try {
       const response: AxiosResponse = await this.getRequest(
-        `${this.apiUrl}/v1/crawl/${id}`,
+        targetURL.href,
         headers
       );
       if (response.status === 200) {
@@ -581,6 +592,7 @@ export default class FirecrawlApp {
           total: response.data.total,
           completed: response.data.completed,
           creditsUsed: response.data.creditsUsed,
+          next: getAllData ? undefined : response.data.next,
           expiresAt: new Date(response.data.expiresAt),
           data: allData
         }
@@ -795,17 +807,28 @@ export default class FirecrawlApp {
    * Checks the status of a batch scrape job using the Firecrawl API.
    * @param id - The ID of the batch scrape operation.
    * @param getAllData - Paginate through all the pages of documents, returning the full list of all documents. (default: `false`)
+   * @param nextURL - The `next` URL from the previous batch scrape status. Only required if you're not manually increasing `skip`. Only used when `getAllData = false`.
+   * @param skip - How many entries to skip to paginate. Only used when `getAllData = false`.
+   * @param limit - How many entries to return. Only used when `getAllData = false`.
    * @returns The response containing the job status.
    */
-  async checkBatchScrapeStatus(id?: string, getAllData = false): Promise<BatchScrapeStatusResponse | ErrorResponse> {
+  async checkBatchScrapeStatus(id?: string, getAllData = false, nextURL?: string, skip?: number, limit?: number): Promise<BatchScrapeStatusResponse | ErrorResponse> {
     if (!id) {
       throw new FirecrawlError("No batch scrape ID provided", 400);
     }
 
     const headers: AxiosRequestHeaders = this.prepareHeaders();
+    const targetURL = new URL(nextURL ?? `${this.apiUrl}/v1/batch/scrape/${id}`);
+    if (skip !== undefined) {
+      targetURL.searchParams.set("skip", skip.toString());
+    }
+    if (limit !== undefined) {
+      targetURL.searchParams.set("skip", limit.toString());
+    }
+
     try {
       const response: AxiosResponse = await this.getRequest(
-        `${this.apiUrl}/v1/batch/scrape/${id}`,
+        targetURL.href,
         headers
       );
       if (response.status === 200) {
@@ -831,6 +854,7 @@ export default class FirecrawlApp {
           total: response.data.total,
           completed: response.data.completed,
           creditsUsed: response.data.creditsUsed,
+          next: getAllData ? undefined : response.data.next,
           expiresAt: new Date(response.data.expiresAt),
           data: allData
         }
