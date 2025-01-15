@@ -42,11 +42,18 @@ export const logger = winston.createLogger({
     },
   }),
   transports: [
-    ...(process.env.FIRECRAWL_LOG_TO_FILE ? [
-      new winston.transports.File({
-        filename: "firecrawl-" + (process.argv[1].includes("worker") ? "worker" : "app") + "-" + crypto.randomUUID() + ".log",
-      })
-    ] : []),
+    ...(process.env.FIRECRAWL_LOG_TO_FILE
+      ? [
+          new winston.transports.File({
+            filename:
+              "firecrawl-" +
+              (process.argv[1].includes("worker") ? "worker" : "app") +
+              "-" +
+              crypto.randomUUID() +
+              ".log",
+          }),
+        ]
+      : []),
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.timestamp({ format: "YYYY-MM-DD HH:mm:ss" }),

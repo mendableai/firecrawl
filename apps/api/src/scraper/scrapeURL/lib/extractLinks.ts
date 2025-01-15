@@ -7,8 +7,9 @@ export function extractLinks(html: string, baseUrl: string): string[] {
   const links: string[] = [];
 
   $("a").each((_, element) => {
-    const href = $(element).attr("href");
+    let href = $(element).attr("href");
     if (href) {
+      href = href.trim();
       try {
         if (href.startsWith("http://") || href.startsWith("https://")) {
           // Absolute URL, add as is

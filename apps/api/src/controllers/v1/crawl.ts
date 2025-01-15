@@ -7,22 +7,10 @@ import {
   RequestWithAuth,
   toLegacyCrawlerOptions,
 } from "./types";
-import {
-  addCrawlJob,
-  addCrawlJobs,
-  crawlToCrawler,
-  lockURL,
-  lockURLs,
-  saveCrawl,
-  StoredCrawl,
-} from "../../lib/crawl-redis";
+import { crawlToCrawler, saveCrawl, StoredCrawl } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
-import { getScrapeQueue } from "../../services/queue-service";
-import { _addScrapeJobToBullMQ, addScrapeJob, addScrapeJobs } from "../../services/queue-jobs";
+import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { logger as _logger } from "../../lib/logger";
-import { getJobPriority } from "../../lib/job-priority";
-import { callWebhook } from "../../services/webhook";
-import { scrapeOptions as scrapeOptionsSchema } from "./types";
 
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
@@ -111,20 +99,25 @@ export async function crawlController(
 
   await saveCrawl(id, sc);
 
-  await _addScrapeJobToBullMQ({
-    url: req.body.url,
-    mode: "kickoff" as const,
-    team_id: req.auth.team_id,
-    plan: req.auth.plan,
-    crawlerOptions,
-    scrapeOptions: sc.scrapeOptions,
-    internalOptions: sc.internalOptions,
-    origin: "api",
-    crawl_id: id,
-    webhook: req.body.webhook,
-    v1: true,
-  }, {}, crypto.randomUUID(), 10);
-  
+  await _addScrapeJobToBullMQ(
+    {
+      url: req.body.url,
+      mode: "kickoff" as const,
+      team_id: req.auth.team_id,
+      plan: req.auth.plan,
+      crawlerOptions,
+      scrapeOptions: sc.scrapeOptions,
+      internalOptions: sc.internalOptions,
+      origin: "api",
+      crawl_id: id,
+      webhook: req.body.webhook,
+      v1: true,
+    },
+    {},
+    crypto.randomUUID(),
+    10,
+  );
+
   const protocol = process.env.ENV === "local" ? req.protocol : "https";
 
   return res.status(200).json({

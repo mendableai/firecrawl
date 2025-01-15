@@ -21,6 +21,7 @@ import { logJob } from "../../services/logging/log_job";
 import { performCosineSimilarity } from "../../lib/map-cosine";
 import { logger } from "../../lib/logger";
 import Redis from "ioredis";
+import { querySitemapIndex } from "../../scraper/WebScraper/sitemap-index";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -86,11 +87,15 @@ export async function getMapResults({
 
   // If sitemapOnly is true, only get links from sitemap
   if (crawlerOptions.sitemapOnly) {
-    const sitemap = await crawler.tryGetSitemap(urls => {
-      urls.forEach((x) => {
-        links.push(x);
-      });
-    }, true, true);
+    const sitemap = await crawler.tryGetSitemap(
+      (urls) => {
+        urls.forEach((x) => {
+          links.push(x);
+        });
+      },
+      true,
+      true,
+    );
     if (sitemap > 0) {
       links = links
         .slice(1)
@@ -140,14 +145,15 @@ export async function getMapResults({
       );
       allResults = await Promise.all(pagePromises);
 
-      await redis.set(cacheKey, JSON.stringify(allResults), "EX", 24 * 60 * 60); // Cache for 24 hours
+      await redis.set(cacheKey, JSON.stringify(allResults), "EX", 48 * 60 * 60); // Cache for 48 hours
     }
 
-    // Parallelize sitemap fetch with serper search
-    const [_, ...searchResults] = await Promise.all([
+    // Parallelize sitemap fetch with serper search and sitemap-index
+    const [_, sitemapIndexUrls, ...searchResults] = await Promise.all([
       ignoreSitemap ? null : crawler.tryGetSitemap(urls => {
         links.push(...urls);
       }, true),
+      querySitemapIndex(url),
       ...(cachedResult ? [] : pagePromises),
     ]);
 
@@ -178,6 +184,9 @@ export async function getMapResults({
         });
       }
     }
+
+    // Add sitemap-index URLs
+    links.push(...sitemapIndexUrls);
 
     // Perform cosine similarity between the search query and the list of links
     if (search) {

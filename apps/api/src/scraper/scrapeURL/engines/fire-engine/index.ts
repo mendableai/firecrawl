@@ -13,11 +13,18 @@ import {
   FireEngineCheckStatusSuccess,
   StillProcessingError,
 } from "./checkStatus";
-import { ActionError, EngineError, SiteError, TimeoutError, UnsupportedFileError } from "../../error";
+import {
+  ActionError,
+  EngineError,
+  SiteError,
+  TimeoutError,
+  UnsupportedFileError,
+} from "../../error";
 import * as Sentry from "@sentry/node";
 import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import { fireEngineDelete } from "./delete";
+import { MockState, saveMock } from "../../lib/mock";
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -31,10 +38,12 @@ async function performFireEngineScrape<
   logger: Logger,
   request: FireEngineScrapeRequestCommon & Engine,
   timeout: number,
+  mock: MockState | null,
 ): Promise<FireEngineCheckStatusSuccess> {
   const scrape = await fireEngineScrape(
     logger.child({ method: "fireEngineScrape" }),
     request,
+    mock,
   );
 
   const startTime = Date.now();
@@ -51,6 +60,7 @@ async function performFireEngineScrape<
           afterErrors: errors,
         }),
         scrape.jobId,
+        mock,
       );
       throw new Error("Error limit hit. See e.cause.errors for errors.", {
         cause: { errors },
@@ -72,6 +82,7 @@ async function performFireEngineScrape<
       status = await fireEngineCheckStatus(
         logger.child({ method: "fireEngineCheckStatus" }),
         scrape.jobId,
+        mock,
       );
     } catch (error) {
       if (error instanceof StillProcessingError) {
@@ -88,6 +99,7 @@ async function performFireEngineScrape<
             afterError: error,
           }),
           scrape.jobId,
+          mock,
         );
         logger.debug("Fire-engine scrape job failed.", {
           error,
@@ -125,6 +137,7 @@ async function performFireEngineScrape<
       method: "performFireEngineScrape/fireEngineDelete",
     }),
     scrape.jobId,
+    mock,
   );
 
   return status;
@@ -194,6 +207,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     }),
     request,
     timeout,
+    meta.mock,
   );
 
   if (
@@ -268,6 +282,7 @@ export async function scrapeURLWithFireEnginePlaywright(
     }),
     request,
     timeout,
+    meta.mock,
   );
 
   if (!response.url) {
@@ -321,6 +336,7 @@ export async function scrapeURLWithFireEngineTLSClient(
     }),
     request,
     timeout,
+    meta.mock,
   );
 
   if (!response.url) {

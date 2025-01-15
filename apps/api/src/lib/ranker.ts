@@ -53,29 +53,26 @@ async function performRanking(
     // Generate embeddings for the search query
     const queryEmbedding = await getEmbedding(sanitizedQuery);
 
-    // Generate embeddings for each link and calculate similarity
+    // Generate embeddings for each link and calculate similarity in parallel
     const linksAndScores = await Promise.all(
-      linksWithContext.map(async (linkWithContext, index) => {
-        try {
-          const linkEmbedding = await getEmbedding(linkWithContext);
-          const score = cosineSimilarity(queryEmbedding, linkEmbedding);
-
-          return {
-            link: links[index],
-            linkWithContext,
-            score,
-            originalIndex: index,
-          };
-        } catch (err) {
-          // If embedding fails for a link, return with score 0
-          return {
+      linksWithContext.map((linkWithContext, index) => 
+        getEmbedding(linkWithContext)
+          .then(linkEmbedding => {
+            const score = cosineSimilarity(queryEmbedding, linkEmbedding);
+            return {
+              link: links[index],
+              linkWithContext,
+              score,
+              originalIndex: index,
+            };
+          })
+          .catch(() => ({
             link: links[index],
             linkWithContext,
             score: 0,
             originalIndex: index,
-          };
-        }
-      }),
+          }))
+      )
     );
 
     // Sort links based on similarity scores while preserving original order for equal scores

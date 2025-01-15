@@ -44,6 +44,7 @@ export interface WebScraperOptions {
   webhook?: z.infer<typeof webhookSchema>;
   v1?: boolean;
   is_scrape?: boolean;
+  isCrawlSourceScrape?: boolean;
 }
 
 export interface RunWebScraperParams {
@@ -131,6 +132,7 @@ export enum RateLimiterMode {
   Preview = "preview",
   Search = "search",
   Map = "map",
+  Extract = "extract",
 }
 
 export type AuthResponse =

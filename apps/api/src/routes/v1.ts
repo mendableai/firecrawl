@@ -24,13 +24,7 @@ import { scrapeStatusController } from "../controllers/v1/scrape-status";
 import { concurrencyCheckController } from "../controllers/v1/concurrency-check";
 import { batchScrapeController } from "../controllers/v1/batch-scrape";
 import { extractController } from "../controllers/v1/extract";
-// import { crawlPreviewController } from "../../src/controllers/v1/crawlPreview";
-// import { crawlJobStatusPreviewController } from "../../src/controllers/v1/status";
-// import { searchController } from "../../src/controllers/v1/search";
-// import { crawlCancelController } from "../../src/controllers/v1/crawl-cancel";
-// import { keyAuthController } from "../../src/controllers/v1/keyAuth";
-// import { livenessController } from "../controllers/v1/liveness";
-// import { readinessController } from "../controllers/v1/readiness";
+import { extractStatusController } from "../controllers/v1/extract-status";
 import { creditUsageController } from "../controllers/v1/credit-usage";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 import { searchController } from "../controllers/v1/search";
@@ -198,7 +192,11 @@ v1Router.get(
   wrap((req: any, res): any => crawlStatusController(req, res, true)),
 );
 
-v1Router.get("/scrape/:jobId", wrap(scrapeStatusController));
+v1Router.get(
+  "/scrape/:jobId",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(scrapeStatusController),
+);
 
 v1Router.get(
   "/concurrency-check",
@@ -210,9 +208,15 @@ v1Router.ws("/crawl/:jobId", crawlStatusWSController);
 
 v1Router.post(
   "/extract",
-  authMiddleware(RateLimiterMode.Scrape),
+  authMiddleware(RateLimiterMode.Extract),
   checkCreditsMiddleware(1),
   wrap(extractController),
+);
+
+v1Router.get(
+  "/extract/:jobId",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(extractStatusController),
 );
 
 // v1Router.post("/crawlWebsitePreview", crawlPreviewController);
@@ -239,6 +243,3 @@ v1Router.get(
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(creditUsageController),
 );
-
-
-
