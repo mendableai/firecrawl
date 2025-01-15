@@ -25,7 +25,7 @@ export async function checkFireEngine(req: Request, res: Response) {
             "X-Disable-Cache": "true",
           },
           body: JSON.stringify({
-            url: "https://example.com",
+            url: "https://roastmywebsite.ai",
           }),
           signal: controller.signal,
         },
