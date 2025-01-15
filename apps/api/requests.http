@@ -9,19 +9,17 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-  "url":"https://opencorporates.com/companies/us_tn/001260776/"
+  "url":"https://firecrawl.dev"
 }
 
-### http://ibtikar.net.sa bugado. redirect
-### https://bansko.bg/bg -> webhooks
 ### Crawl Website
 # @name crawl
-POST {{baseUrl}}/v1/map HTTP/1.1
+POST {{baseUrl}}/v1/crawl HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
-{ 
-  "url": "https://emelitastes.lausd.org"
+{
+  "url": "https://firecrawl.dev"
 }
 
 ### Check Crawl Status
