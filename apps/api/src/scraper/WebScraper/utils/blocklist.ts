@@ -94,6 +94,8 @@ const allowedKeywords = [
   "://ads.tiktok.com",
   "://tiktok.com/business",
   "://developers.facebook.com",
+  "://facebook.com/ads/library",
+  "://www.facebook.com/ads/library",
 ];
 
 export function isUrlBlocked(url: string): boolean {
