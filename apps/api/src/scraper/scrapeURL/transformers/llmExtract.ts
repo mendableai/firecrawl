@@ -151,7 +151,8 @@ export async function generateOpenAICompletions(
 
   const jsonCompletion = await openai.beta.chat.completions.parse({
     model,
-    temperature: 0,
+    temperature: 0.00000001,
+    top_p: options.top_p ?? undefined,
     messages: [
       {
         role: "system",

@@ -1,3 +1,4 @@
+import { promises as fs } from 'fs';
 import { MapDocument, URLTrace } from "../../controllers/v1/types";
 import { performRanking } from "../ranker";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
@@ -6,6 +7,7 @@ import { CohereClient } from "cohere-ai";
 import { extractConfig } from "./config";
 import { searchSimilarPages } from "./index/pinecone";
 import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
+import { dumpToFile } from "./helpers/dump-to-file";
 
 const cohere = new CohereClient({
   token: process.env.COHERE_API_KEY,
@@ -108,7 +110,7 @@ export async function rerankLinks(
   });
 
   const rankedLinks = filteredLinks.slice(0, extractConfig.RERANKING.MAX_RANKING_LIMIT_FOR_RELEVANCE);
-  
+
   // Mark URLs that will be used in completion
   rankedLinks.forEach((link) => {
     const trace = urlTraces.find((t) => t.url === link.url);
@@ -158,9 +160,11 @@ export async function rerankLinksWithLLM(
 ): Promise<MapDocument[]> {
   const chunkSize = 100;
   const chunks: MapDocument[][] = [];
-  const TIMEOUT_MS = 20000;
+  const TIMEOUT_MS = 30000;
   const MAX_RETRIES = 2;
-  
+
+  dumpToFile("rerankLinksWithLLM.txt", mappedLinks);
+  mappedLinks = mappedLinks.sort((a, b) => a.title && b.title && b.title > a.title ? 1 : -1);
   // Split mappedLinks into chunks of 200
   for (let i = 0; i < mappedLinks.length; i += chunkSize) {
     chunks.push(mappedLinks.slice(i, i + chunkSize));
@@ -177,80 +181,91 @@ export async function rerankLinksWithLLM(
           type: "object",
           properties: {
             url: { type: "string" },
+            criteria: { type: "string" },
             relevanceScore: { type: "number" }
           },
-          required: ["url", "relevanceScore"]
+          required: ["url", "criteria", "relevanceScore"]
         }
       }
     },
     required: ["relevantLinks"]
   };
 
+  const N = 3; // Number of times to call the LLM
   const results = await Promise.all(
     chunks.map(async (chunk, chunkIndex) => {
-      // console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} links`);
-      
-      const linksContent = chunk.map(link => 
+
+      const linksContent = chunk.map(link =>
         `URL: ${link.url}${link.title ? `\nTitle: ${link.title}` : ''}${link.description ? `\nDescription: ${link.description}` : ''}`
       ).join("\n\n");
 
-      for (let retry = 0; retry <= MAX_RETRIES; retry++) {
-        try {
-          const timeoutPromise = new Promise<null>((resolve) => {
-            setTimeout(() => resolve(null), TIMEOUT_MS);
-          });
+      const scoresMap: Record<string, number[]> = {};
 
-          const completionPromise = generateOpenAICompletions(
-            logger.child({ method: "rerankLinksWithLLM", chunk: chunkIndex + 1, retry }),
-            {
-              mode: "llm",
-              systemPrompt: "You are a search relevance expert. Analyze the provided URLs and their content to determine their relevance to the search query. For each URL, assign a relevance score between 0 and 1, where 1 means highly relevant and 0 means not relevant at all. Only include URLs that are actually relevant to the query.",
-              prompt: `Given these URLs and their content, identify which ones are relevant to the search query: "${searchQuery}". Return an array of relevant links with their relevance scores (0-1). Higher scores should be given to URLs that directly address the search query. Be very mindful with the links you select, as if they are not that relevant it may affect the quality of the extraction. Only include URLs that have a relvancy score of 0.8+.`,
-              schema: schema
-            },
-            linksContent,
-            undefined,
-            true
-          );
+      for (let attempt = 0; attempt < N; attempt++) {
+        for (let retry = 0; retry <= MAX_RETRIES; retry++) {
+          try {
+            const timeoutPromise = new Promise<null>((resolve) => {
+              setTimeout(() => {
+                resolve(null);
+              }, TIMEOUT_MS);
+            });
 
-          const completion = await Promise.race([completionPromise, timeoutPromise]);
-          
-          if (!completion) {
-            // console.log(`Chunk ${chunkIndex + 1}: Timeout on attempt ${retry + 1}`);
-            continue;
-          }
+            const completionPromise = generateOpenAICompletions(
+              logger.child({ method: "rerankLinksWithLLM", chunk: chunkIndex + 1, retry }),
+              {
+                mode: "llm",
+                systemPrompt: "You are a search relevance expert. Analyze the provided URLs and their content to determine their relevance to the search query. For each URL, assign a relevance score between 0 and 1, where 1 means highly relevant and 0 means not relevant at all. Only include URLs that are actually relevant to the query.",
+                prompt: `Given these URLs and their content, identify which ones are relevant and the criteria to the search query: "${searchQuery}". Return an array of relevant links with their relevance scores (0-1) and why/criteria. Higher scores should be given to URLs that directly address the search query. Be very mindful with the links you select, as if they are not that relevant it may affect the quality of the extraction.`,
+                schema: schema
+              },
+              linksContent,
+              undefined,
+              true
+            );
 
-          if (!completion.extract?.relevantLinks) {
-            // console.warn(`Chunk ${chunkIndex + 1}: No relevant links found in completion response`);
-            return [];
-          }
+            const completion = await Promise.race([completionPromise, timeoutPromise]);
 
-          // console.log(`Chunk ${chunkIndex + 1}: Found ${completion.extract.relevantLinks.length} relevant links`);
-          return completion.extract.relevantLinks;
+            if (!completion || !completion.extract?.relevantLinks) {
+              continue;
+            }
 
-        } catch (error) {
-          console.warn(`Error processing chunk ${chunkIndex + 1} attempt ${retry + 1}:`, error);
-          if (retry === MAX_RETRIES) {
-            // console.log(`Chunk ${chunkIndex + 1}: Max retries reached, returning empty array`);
-            return [];
+            completion.extract.relevantLinks.forEach(link => {
+              if (!scoresMap[link.url]) {
+                scoresMap[link.url] = [];
+              }
+              scoresMap[link.url].push(link.relevanceScore);
+            });
+
+            break; // Break retry loop if successful
+
+          } catch (error) {
+            console.warn(`Error processing chunk ${chunkIndex + 1} attempt ${retry + 1}:`, error);
+            if (retry === MAX_RETRIES) {
+              return [];
+            }
           }
         }
       }
-      return [];
+
+      await fs.writeFile('mapped-result.txt', JSON.stringify(scoresMap, null, 2));
+      console.log(`Results successfully dumped to mapped-result.txt`);
+      // Calculate average scores
+      const averagedResults = Object.entries(scoresMap).map(([url, scores]) => ({
+        url,
+        averageScore: scores.reduce((a, b) => a + b, 0) / scores.length
+      }));
+
+      return averagedResults.filter(result => result.averageScore > 0.5);
+
     })
   );
 
-  // console.log(`Processed ${results.length} chunks`);
-
-  // Flatten results and sort by relevance score
-  const flattenedResults = results.flat().sort((a, b) => b.relevanceScore - a.relevanceScore);
-  // console.log(`Total relevant links found: ${flattenedResults.length}`);
-
-  // Map back to MapDocument format, keeping only relevant links
+  // Flatten results and map back to MapDocument format
+  const flattenedResults = results.flat();
   const relevantLinks = flattenedResults
     .map(result => mappedLinks.find(link => link.url === result.url))
     .filter((link): link is MapDocument => link !== undefined);
 
-  // console.log(`Returning ${relevantLinks.length} relevant links`);
+
   return relevantLinks;
 }

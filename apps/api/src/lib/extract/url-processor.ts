@@ -1,3 +1,4 @@
+import fs from 'fs/promises'
 import { MapDocument, URLTrace } from "../../controllers/v1/types";
 import { getMapResults } from "../../controllers/v1/map";
 import { PlanType } from "../../types";
@@ -7,6 +8,8 @@ import { generateBasicCompletion } from "../LLM-extraction";
 import { buildRefrasedPrompt } from "./build-prompts";
 import { rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
+import { dumpToFile } from "./helpers/dump-to-file";
+import { warn } from "console";
 
 interface ProcessUrlOptions {
   url: string;
@@ -55,10 +58,11 @@ export async function processUrl(
           buildRefrasedPrompt(options.prompt, baseUrl),
         )
       )
-        ?.replace('"', "")
-        .replace("/", "") ?? options.prompt;
+        ?.replaceAll('"', "")
+        .replaceAll("/", "") ?? options.prompt;
   }
 
+  await fs.writeFile('prompt.txt', rephrasedPrompt ?? '', { encoding: 'utf8', flag: 'a' });
   try {
     const mapResults = await getMapResults({
       url: baseUrl,
@@ -186,11 +190,11 @@ export async function processUrl(
       searchQuery = urlWithoutWww;
     }
 
-    // dumpToFile(
-    //   "mapped-links.txt",
-    //   mappedLinks,
-    //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
-    // );
+    dumpToFile(
+      "mapped-links-hey.txt",
+      mappedLinks,
+      (link, index) => `${index + 1}. ${link.url}`
+    );
 
     mappedLinks = await rerankLinksWithLLM(mappedLinks, searchQuery, urlTraces);
 
@@ -203,11 +207,11 @@ export async function processUrl(
       );
     }
 
-    // dumpToFile(
-    //   "llm-links.txt",
-    //   mappedLinks,
-    //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
-    // );
+    await dumpToFile(
+      "./llm-links.txt",
+      mappedLinks,
+      (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
+    );
     // Remove title and description from mappedLinks
     mappedLinks = mappedLinks.map((link) => ({ url: link.url }));
     return mappedLinks.map((x) => x.url);
