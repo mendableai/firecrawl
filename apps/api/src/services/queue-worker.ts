@@ -739,6 +739,13 @@ async function processJob(job: Job & { id: string }, token: string) {
     });
     const start = Date.now();
 
+    if (job.data.crawl_id) {
+      const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+      if (sc && sc.cancelled) {
+        throw new Error("Parent crawl/batch scrape was cancelled");
+      }
+    }
+
     const pipeline = await Promise.race([
       startWebScraperPipeline({
         job,
@@ -983,11 +990,15 @@ async function processJob(job: Job & { id: string }, token: string) {
   } catch (error) {
     const isEarlyTimeout =
       error instanceof Error && error.message === "timeout";
+    const isCancelled =
+      error instanceof Error && error.message === "Parent crawl/batch scrape was cancelled";
 
     if (isEarlyTimeout) {
       logger.error(`🐂 Job timed out ${job.id}`);
     } else if (error instanceof RacedRedirectError) {
       logger.warn(`🐂 Job got redirect raced ${job.id}, silently failing`);
+    } else if (isCancelled) {
+      logger.warn(`🐂 Job got cancelled, silently failing`);
     } else {
       logger.error(`🐂 Job errored ${job.id} - ${error}`, { error });
 
