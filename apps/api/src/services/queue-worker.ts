@@ -59,6 +59,7 @@ import { performExtraction } from "../lib/extract/extraction-service";
 import { supabase_service } from "../services/supabase";
 import { normalizeUrl, normalizeUrlOnlyHostname } from "../lib/canonical-url";
 import { saveExtract, updateExtract } from "../lib/extract/extract-redis";
+import { billTeam } from "./billing/credit_billing";
 
 configDotenv();
 
@@ -754,7 +755,6 @@ async function processJob(job: Job & { id: string }, token: string) {
     ]);
 
     if (!pipeline.success) {
-      // TODO: let's Not do this
       throw pipeline.error;
     }
 
@@ -959,6 +959,23 @@ async function processJob(job: Job & { id: string }, token: string) {
       await finishCrawlIfNeeded(job, sc);
     } else {
       indexJob(job, doc);
+    }
+
+    if (job.data.is_scrape !== true) {
+      let creditsToBeBilled = 1; // Assuming 1 credit per document
+      if (job.data.scrapeOptions.extract) {
+        creditsToBeBilled = 5;
+      }
+
+      if (job.data.team_id !== process.env.BACKGROUND_INDEX_TEAM_ID!) {
+        billTeam(job.data.team_id, undefined, creditsToBeBilled, logger).catch((error) => {
+          logger.error(
+            `Failed to bill team ${job.data.team_id} for ${creditsToBeBilled} credits`,
+            { error },
+          );
+          // Optionally, you could notify an admin or add to a retry queue here
+        });
+      }
     }
 
     logger.info(`🐂 Job done ${job.id}`);
