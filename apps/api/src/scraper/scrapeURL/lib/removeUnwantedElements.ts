@@ -49,12 +49,14 @@ const excludeNonMainTags = [
 
 const forceIncludeMainTags = ["#main"];
 
-export const removeUnwantedElements = (
+export const htmlTransform = (
   html: string,
+  url: string,
   scrapeOptions: ScrapeOptions,
 ) => {
   const soup = load(html);
 
+  // remove unwanted elements
   if (
     scrapeOptions.includeTags &&
     scrapeOptions.includeTags.filter((x) => x.trim().length !== 0).length > 0
@@ -136,6 +138,18 @@ export const removeUnwantedElements = (
     sizes.sort((a,b) => b.size - a.size);
 
     el.attribs.src = sizes[0]?.url;
+  });
+
+  // absolute links
+  soup("img[src]").each((_, el) => {
+    try {
+      el.attribs.src = new URL(el.attribs.src, url).href;
+    } catch (_) {}
+  });
+  soup("a[href]").each((_, el) => {
+    try {
+      el.attribs.href = new URL(el.attribs.href, url).href;
+    } catch (_) {}
   });
 
   const cleanedHtml = soup.html();
