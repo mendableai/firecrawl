@@ -1,5 +1,6 @@
 // Last updated: 2025-01-15
 // Thanks to AgentOps - https://github.com/AgentOps-AI/tokencost
+// 291 kb
 
 export const modelPrices = {
     "gpt-4": {
