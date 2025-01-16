@@ -46,6 +46,7 @@ services:
       SELF_HOSTED_WEBHOOK_URL: ${SELF_HOSTED_WEBHOOK_URL}
       LOGGING_LEVEL: ${LOGGING_LEVEL}
       FLY_PROCESS_GROUP: app
+      ENV: ${ENV}
     depends_on:
       - redis
       - playwright-service
