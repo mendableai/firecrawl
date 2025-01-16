@@ -279,9 +279,11 @@ export interface ErrorResponse {
  */
 export class FirecrawlError extends Error {
   statusCode: number;
-  constructor(message: string, statusCode: number) {
+  details?: any;
+  constructor(message: string, statusCode: number, details?: any) {
     super(message);
     this.statusCode = statusCode;
+    this.details = details;
   }
 }
 
@@ -941,9 +943,9 @@ export default class FirecrawlApp {
         this.handleError(response, "extract");
       }
     } catch (error: any) {
-      throw new FirecrawlError(error.message, 500);
+      throw new FirecrawlError(error.message, 500, error.response?.data?.details);
     }
-    return { success: false, error: "Internal server error." };
+    return { success: false, error: "Internal server error."};
   }
 
   /**
@@ -985,7 +987,7 @@ export default class FirecrawlApp {
         this.handleError(response, "start extract job");
       }
     } catch (error: any) {
-      throw new FirecrawlError(error.message, 500);
+      throw new FirecrawlError(error.message, 500, error.response?.data?.details);
     }
     return { success: false, error: "Internal server error." };
   }
