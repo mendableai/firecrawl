@@ -114,6 +114,30 @@ export const removeUnwantedElements = (
     });
   }
 
+  // always return biggest image
+  soup("img[srcset]").each((_, el) => {
+    const sizes = el.attribs.srcset.split(",").map(x => {
+      const tok = x.trim().split(" ");
+      return {
+        url: tok[0],
+        size: parseInt((tok[1] ?? "1x").slice(0, -1), 10),
+        isX: (tok[1] ?? "").endsWith("x")
+      };
+    });
+
+    if (sizes.every(x => x.isX) && el.attribs.src) {
+      sizes.push({
+        url: el.attribs.src,
+        size: 1,
+        isX: true,
+      });
+    }
+
+    sizes.sort((a,b) => b.size - a.size);
+
+    el.attribs.src = sizes[0]?.url;
+  });
+
   const cleanedHtml = soup.html();
   return cleanedHtml;
 };
