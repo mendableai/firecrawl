@@ -71,6 +71,7 @@ export async function extractController(
     createdAt: Date.now(),
     status: "processing",
     showSteps: req.body.__experimental_streamSteps,
+    showLLMUsage: req.body.__experimental_llmUsage,
   });
 
   if (Sentry.isInitialized()) {

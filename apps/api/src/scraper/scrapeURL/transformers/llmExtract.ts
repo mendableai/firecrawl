@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { encoding_for_model } from "@dqbd/tiktoken";
 import { TiktokenModel } from "@dqbd/tiktoken";
-import { Document, ExtractOptions } from "../../../controllers/v1/types";
+import { Document, ExtractOptions, TokenUsage } from "../../../controllers/v1/types";
 import { Logger } from "winston";
 import { EngineResultsTracker, Meta } from "..";
 import { logger } from "../../../lib/logger";
@@ -72,7 +72,7 @@ export async function generateOpenAICompletions(
   markdown?: string,
   previousWarning?: string,
   isExtractEndpoint?: boolean,
-): Promise<{ extract: any; numTokens: number; warning: string | undefined }> {
+): Promise<{ extract: any; numTokens: number; warning: string | undefined; totalUsage: TokenUsage }> {
   let extract: any;
   let warning: string | undefined;
 
@@ -208,6 +208,9 @@ export async function generateOpenAICompletions(
     }
   }
 
+  const promptTokens = (jsonCompletion.usage?.prompt_tokens ?? 0);
+  const completionTokens = (jsonCompletion.usage?.completion_tokens ?? 0);
+
   // If the users actually wants the items object, they can specify it as 'required' in the schema
   // otherwise, we just return the items array
   if (
@@ -217,7 +220,9 @@ export async function generateOpenAICompletions(
   ) {
     extract = extract?.items;
   }
-  return { extract, warning, numTokens };
+  // num tokens (just user prompt tokenized) | deprecated
+  // totalTokens = promptTokens + completionTokens
+  return { extract, warning, numTokens, totalUsage: { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens, model: model } };
 }
 
 export async function performLLMExtract(
