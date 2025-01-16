@@ -1126,5 +1126,6 @@ async function processJob(job: Job & { id: string }, token: string) {
     await new Promise((resolve) => setTimeout(resolve, 500));
   }
 
+  console.log("All jobs finished. Worker out!");
   process.exit(0);
 })();
