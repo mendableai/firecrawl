@@ -22,12 +22,14 @@ export async function billTeam(
   subscription_id: string | null | undefined,
   credits: number,
   logger?: Logger,
+  is_extract: boolean = false,
 ) {
   return withAuth(supaBillTeam, { success: true, message: "No DB, bypassed." })(
     team_id,
     subscription_id,
     credits,
     logger,
+    is_extract,
   );
 }
 export async function supaBillTeam(
@@ -35,6 +37,7 @@ export async function supaBillTeam(
   subscription_id: string | null | undefined,
   credits: number,
   __logger?: Logger,
+  is_extract: boolean = false,
 ) {
   const _logger = (__logger ?? logger).child({
     module: "credit_billing",
@@ -49,11 +52,12 @@ export async function supaBillTeam(
     credits,
   });
 
-  const { data, error } = await supabase_service.rpc("bill_team", {
+  const { data, error } = await supabase_service.rpc("bill_team_w_extract", {
     _team_id: team_id,
     sub_id: subscription_id ?? null,
     fetch_subscription: subscription_id === undefined,
     credits,
+    is_extract,
   });
 
   if (error) {

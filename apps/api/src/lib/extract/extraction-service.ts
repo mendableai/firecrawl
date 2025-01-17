@@ -32,7 +32,7 @@ import { ExtractStep, updateExtract } from "./extract-redis";
 import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
 import { CUSTOM_U_TEAMS } from "./config";
-import { estimateCost, estimateTotalCost } from "./usage/llm-cost";
+import { calculateFinalResultCost, estimateCost, estimateTotalCost } from "./usage/llm-cost";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -50,6 +50,7 @@ interface ExtractResult {
   error?: string;
   tokenUsageBreakdown?: TokenUsage[];
   llmUsage?: number;
+  totalUrlsScraped?: number;
 }
 
 async function analyzeSchemaAndPrompt(
@@ -178,6 +179,7 @@ export async function performExtraction(
   let multiEntityCompletions: completions[] = [];
   let multiEntityResult: any = {};
   let singleAnswerResult: any = {};
+  let totalUrlsScraped = 0;
 
   
   // Token tracking
@@ -238,6 +240,7 @@ export async function performExtraction(
         "No valid URLs found to scrape. Try adjusting your search criteria or including more URLs.",
       extractId,
       urlTrace: urlTraces,
+      totalUrlsScraped: 0
     };
   }
 
@@ -333,6 +336,8 @@ export async function performExtraction(
     let multyEntityDocs = (await Promise.all(scrapePromises)).filter(
       (doc): doc is Document => doc !== null,
     );
+
+    totalUrlsScraped += multyEntityDocs.length;
 
     let endScrape = Date.now();
 
@@ -529,6 +534,7 @@ export async function performExtraction(
           "An unexpected error occurred. Please contact help@firecrawl.com for help.",
         extractId,
         urlTrace: urlTraces,
+        totalUrlsScraped
       };
     }
   }
@@ -580,15 +586,17 @@ export async function performExtraction(
         }
       }
 
-      singleAnswerDocs.push(
-        ...results.filter((doc): doc is Document => doc !== null),
-      );
+      const validResults = results.filter((doc): doc is Document => doc !== null);
+      singleAnswerDocs.push(...validResults);
+      totalUrlsScraped += validResults.length;
+
     } catch (error) {
       return {
         success: false,
         error: error.message,
         extractId,
         urlTrace: urlTraces,
+        totalUrlsScraped
       };
     }
 
@@ -600,6 +608,7 @@ export async function performExtraction(
           "All provided URLs are invalid. Please check your input and try again.",
         extractId,
         urlTrace: request.urlTrace ? urlTraces : undefined,
+        totalUrlsScraped: 0
       };
     }
 
@@ -663,20 +672,23 @@ export async function performExtraction(
     ? await mixSchemaObjects(reqSchema, singleAnswerResult, multiEntityResult)
     : singleAnswerResult || multiEntityResult;
 
+  
+  const totalTokensUsed = tokenUsage.reduce((a, b) => a + b.totalTokens, 0);
+  const llmUsage = estimateTotalCost(tokenUsage);
+  const tokensToBill = calculateFinalResultCost(finalResult);
+
   let linksBilled = links.length * 5;
 
   if (CUSTOM_U_TEAMS.includes(teamId)) {
     linksBilled = 1;
   }
   // Bill team for usage
-  billTeam(teamId, subId, linksBilled).catch((error) => {
+  billTeam(teamId, subId, tokensToBill, logger, true).catch((error) => {
     logger.error(
-      `Failed to bill team ${teamId} for ${linksBilled} credits: ${error}`,
+      `Failed to bill team ${teamId} for ${tokensToBill} tokens: ${error}`,
     );
   });
 
-  const totalTokensUsed = tokenUsage.reduce((a, b) => a + b.totalTokens, 0);
-  const llmUsage = estimateTotalCost(tokenUsage);
 
   // Log job with token usage
   logJob({
@@ -710,6 +722,6 @@ export async function performExtraction(
     warning: undefined, // TODO FIX
     urlTrace: request.urlTrace ? urlTraces : undefined,
     llmUsage,
+    totalUrlsScraped
   };
 }
-

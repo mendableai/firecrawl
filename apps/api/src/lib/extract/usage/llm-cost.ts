@@ -8,6 +8,12 @@ interface ModelPricing {
   input_cost_per_request?: number;
   mode: string;
 }
+const tokenPerCharacter = 4;
+const baseTokenCost = 200;
+
+export function calculateFinalResultCost(data: any): number {
+  return JSON.stringify(data).length / tokenPerCharacter + baseTokenCost;
+}
 
 export function estimateTotalCost(tokenUsage: TokenUsage[]): number {
   return tokenUsage.reduce((total, usage) => {
