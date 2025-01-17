@@ -299,6 +299,16 @@ export class WebCrawler {
         this.isRobotsAllowed(fullUrl, this.ignoreRobotsTxt)
       ) {
         return fullUrl;
+      } else if (
+        this.isInternalLink(fullUrl) &&
+        this.noSections(fullUrl) &&
+        !this.matchesExcludes(path) &&
+        !this.isRobotsAllowed(fullUrl, this.ignoreRobotsTxt)
+      ) {
+        (async() => {
+          await redisConnection.sadd("crawl:" + this.jobId + ":robots_blocked", fullUrl);
+          await redisConnection.expire("crawl:" + this.jobId + ":robots_blocked", 24 * 60 * 60, "NX");
+        })();
       }
     } else {
       // EXTERNAL LINKS

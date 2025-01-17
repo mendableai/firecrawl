@@ -568,6 +568,19 @@ export type CrawlStatusResponse =
       data: Document[];
     };
 
+
+export type CrawlErrorsResponse =
+  | ErrorResponse
+  | {
+      errors: {
+        id: string,
+        timestamp?: string,
+        url: string,
+        error: string,
+      }[];
+      robotsBlocked: string[];
+    };
+
 type AuthObject = {
   team_id: string;
   plan: PlanType | undefined;
