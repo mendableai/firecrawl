@@ -60,9 +60,6 @@ content-type: application/json
   "sitemapOnly": true
 }
 
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
-
-
 ### Extract Firecrawl Title
 # @name extractFirecrawl
 POST {{baseUrl}}/v1/extract HTTP/1.1
