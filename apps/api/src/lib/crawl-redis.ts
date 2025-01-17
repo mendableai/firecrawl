@@ -157,6 +157,9 @@ export async function finishCrawl(id: string) {
       module: "crawl-redis",
       method: "finishCrawl",
       crawlId: id,
+      jobs_done: (await redisConnection.scard("crawl:" + id + ":jobs_done")),
+      jobs: (await redisConnection.scard("crawl:" + id + ":jobs")),
+      kickoff_finished: (await redisConnection.get("crawl:" + id + ":kickoff:finish")) !== null,
     });
   }
 }
