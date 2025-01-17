@@ -128,11 +128,16 @@ export async function isCrawlFinished(id: string) {
   return (
     (await redisConnection.scard("crawl:" + id + ":jobs_done")) ===
     (await redisConnection.scard("crawl:" + id + ":jobs"))
+    && (await redisConnection.get("crawl:" + id + ":kickoff:finish")) !== null
   );
 }
 
 export async function isCrawlFinishedLocked(id: string) {
   return await redisConnection.exists("crawl:" + id + ":finish");
+}
+
+export async function finishCrawlKickoff(id: string) {
+  await redisConnection.set("crawl:" + id + ":kickoff:finish", "yes", "EX", 24 * 60 * 60);
 }
 
 export async function finishCrawl(id: string) {

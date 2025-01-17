@@ -23,6 +23,7 @@ import {
   addCrawlJobs,
   crawlToCrawler,
   finishCrawl,
+  finishCrawlKickoff,
   generateURLPermutations,
   getCrawl,
   getCrawlJobCount,
@@ -674,6 +675,9 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
     }
 
     logger.debug("Done queueing jobs!");
+
+    await finishCrawlKickoff(job.data.crawl_id);
+    await finishCrawlIfNeeded(job, sc);
 
     return { success: true };
   } catch (error) {
