@@ -228,7 +228,7 @@ export class WebCrawler {
         );
         leftOfLimit -= filteredLinks.length;
         let uniqueURLs: string[] = [];
-        for (const url of urls) {
+        for (const url of filteredLinks) {
           if (
             await redisConnection.sadd(
               "sitemap:" + this.jobId + ":links",
