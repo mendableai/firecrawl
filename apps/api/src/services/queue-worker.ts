@@ -711,6 +711,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     teamId: job.data?.team_id ?? undefined,
   });
   logger.info(`🐂 Worker taking job ${job.id}`, { url: job.data.url });
+  const start = Date.now();
 
   // Check if the job URL is researchhub and block it immediately
   // TODO: remove this once solve the root issue
@@ -737,7 +738,6 @@ async function processJob(job: Job & { id: string }, token: string) {
       current_step: "SCRAPING",
       current_url: "",
     });
-    const start = Date.now();
 
     if (job.data.crawl_id) {
       const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
@@ -1041,6 +1041,9 @@ async function processJob(job: Job & { id: string }, token: string) {
       );
     }
 
+    const end = Date.now();
+    const timeTakenInSeconds = (end - start) / 1000;
+
     logger.debug("Logging job to DB...");
     await logJob(
       {
@@ -1053,7 +1056,7 @@ async function processJob(job: Job & { id: string }, token: string) {
               "Something went wrong... Contact help@mendable.ai"),
         num_docs: 0,
         docs: [],
-        time_taken: 0,
+        time_taken: timeTakenInSeconds,
         team_id: job.data.team_id,
         mode: job.data.mode,
         url: job.data.url,
