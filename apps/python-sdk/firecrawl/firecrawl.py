@@ -309,6 +309,26 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'check crawl status')
     
+    def check_crawl_errors(self, id: str) -> Dict[str, Any]:
+        """
+        Returns information about crawl errors.
+
+        Args:
+            id (str): The ID of the crawl job.
+
+        Returns:
+            Dict[str, Any]: Information about crawl errors.
+        """
+        headers = self._prepare_headers()
+        response = self._get_request(f'{self.api_url}/v1/crawl/{id}/errors', headers)
+        if response.status_code == 200:
+            try:
+                return response.json()
+            except:
+                raise Exception(f'Failed to parse Firecrawl response as JSON.')
+        else:
+            self._handle_error(response, "check crawl errors")
+    
     def cancel_crawl(self, id: str) -> Dict[str, Any]:
         """
         Cancel an asynchronous crawl job using the Firecrawl API.
@@ -546,6 +566,25 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'check batch scrape status')
 
+    def check_batch_scrape_errors(self, id: str) -> Dict[str, Any]:
+        """
+        Returns information about batch scrape errors.
+
+        Args:
+            id (str): The ID of the crawl job.
+
+        Returns:
+            Dict[str, Any]: Information about crawl errors.
+        """
+        headers = self._prepare_headers()
+        response = self._get_request(f'{self.api_url}/v1/batch/scrape/{id}/errors', headers)
+        if response.status_code == 200:
+            try:
+                return response.json()
+            except:
+                raise Exception(f'Failed to parse Firecrawl response as JSON.')
+        else:
+            self._handle_error(response, "check batch scrape errors")
 
     def extract(self, urls: List[str], params: Optional[ExtractParams] = None) -> Any:
         """

@@ -315,6 +315,26 @@ export interface SearchResponse {
 }
 
 /**
+ * Response interface for crawl/batch scrape error monitoring.
+ */
+export interface CrawlErrorsResponse {
+  /**
+   * Scrapes that errored out + error details
+   */
+  errors: {
+    id: string,
+    timestamp?: string,
+    url: string,
+    error: string,
+  }[];
+
+  /**
+   * URLs blocked by robots.txt
+   */
+  robotsBlocked: string[];
+};
+
+/**
  * Main class for interacting with the Firecrawl API.
  * Provides methods for scraping, searching, crawling, and mapping web content.
  */
@@ -622,6 +642,29 @@ export default class FirecrawlApp {
   }
 
   /**
+   * Returns information about crawl errors.
+   * @param id - The ID of the crawl operation.
+   * @returns Information about crawl errors.
+   */
+  async checkCrawlErrors(id: string): Promise<CrawlErrorsResponse | ErrorResponse> {
+    const headers = this.prepareHeaders();
+    try {
+      const response: AxiosResponse = await this.deleteRequest(
+        `${this.apiUrl}/v1/crawl/${id}/errors`,
+        headers
+      );
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "check crawl errors");
+      }
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500);
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
    * Cancels a crawl job using the Firecrawl API.
    * @param id - The ID of the crawl operation.
    * @returns The response from the cancel crawl operation.
@@ -876,6 +919,29 @@ export default class FirecrawlApp {
         return resp;
       } else {
         this.handleError(response, "check batch scrape status");
+      }
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500);
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Returns information about batch scrape errors.
+   * @param id - The ID of the batch scrape operation.
+   * @returns Information about batch scrape errors.
+   */
+  async checkBatchScrapeErrors(id: string): Promise<CrawlErrorsResponse | ErrorResponse> {
+    const headers = this.prepareHeaders();
+    try {
+      const response: AxiosResponse = await this.deleteRequest(
+        `${this.apiUrl}/v1/batch/scrape/${id}/errors`,
+        headers
+      );
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "check batch scrape errors");
       }
     } catch (error: any) {
       throw new FirecrawlError(error.message, 500);
