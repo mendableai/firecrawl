@@ -682,6 +682,11 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
     return { success: true };
   } catch (error) {
     logger.error("An error occurred!", { error });
+    await finishCrawlKickoff(job.data.crawl_id);
+    const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+    if (sc) {
+      await finishCrawlIfNeeded(job, sc);
+    }
     return { success: false, error };
   }
 }
