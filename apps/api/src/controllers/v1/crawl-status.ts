@@ -13,6 +13,7 @@ import {
   getDoneJobsOrderedLength,
   getThrottledJobs,
   isCrawlFinished,
+  isCrawlFinishedLocked,
 } from "../../lib/crawl-redis";
 import { getScrapeQueue } from "../../services/queue-service";
 import {
@@ -117,7 +118,7 @@ export async function crawlStatusController(
     sc.cancelled
       ? "cancelled"
       : validJobStatuses.every((x) => x[1] === "completed") &&
-          await isCrawlFinished(req.params.jobId)
+          (await isCrawlFinishedLocked(req.params.jobId) || await isCrawlFinished(req.params.jobId))
         ? "completed"
         : "scraping";
 
