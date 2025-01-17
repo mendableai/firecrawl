@@ -54,7 +54,7 @@ export const htmlTransform = (
   url: string,
   scrapeOptions: ScrapeOptions,
 ) => {
-  const soup = load(html);
+  let soup = load(html);
 
   // remove unwanted elements
   if (
@@ -68,7 +68,8 @@ export const htmlTransform = (
         newRoot.append(soup(element).clone());
       });
     });
-    return newRoot.html() ?? "";
+
+    soup = load(newRoot.html() ?? "");
   }
 
   soup("script, style, noscript, meta, head").remove();
