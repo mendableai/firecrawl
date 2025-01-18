@@ -29,6 +29,7 @@ jobs:
     - name: 构建并推送 Docker 镜像
       uses: docker/build-push-action@v6  # 使用 Docker Build-Push Action
       with:
-        context: .  # 设置构建上下文为当前目录
+        context: ./apps/api  # 设置构建上下文为 apps/api 目录
+        dockerfile: ./apps/api/Dockerfile  # 指定 Dockerfile 的路径
         push: true  # 启用推送功能
-        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/firecrawl:latest 
+        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/firecrawl:latest  # 设置镜像标签
