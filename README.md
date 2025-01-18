@@ -250,8 +250,8 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
     -H 'Authorization: Bearer YOUR_API_KEY' \
     -d '{
       "url": "https://www.mendable.ai/",
-      "formats": ["extract"],
-      "extract": {
+      "formats": ["json"],
+      "jsonOptions": {
         "schema": {
           "type": "object",
           "properties": {
@@ -296,7 +296,7 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
       "ogSiteName": "Mendable",
       "sourceURL": "https://mendable.ai/"
     },
-    "llm_extraction": {
+    "json": {
       "company_mission": "Train a secure AI on your technical resources that answers customer and employee questions so your team doesn't have to",
       "supports_sso": true,
       "is_open_source": false,
@@ -316,8 +316,8 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
     -H 'Authorization: Bearer YOUR_API_KEY' \
     -d '{
       "url": "https://docs.firecrawl.dev/",
-      "formats": ["extract"],
-      "extract": {
+      "formats": ["json"],
+      "jsonOptions": {
         "prompt": "Extract the company mission from the page."
       }
     }'
@@ -447,12 +447,12 @@ class TopArticlesSchema(BaseModel):
     top: List[ArticleSchema] = Field(..., max_items=5, description="Top 5 stories")
 
 data = app.scrape_url('https://news.ycombinator.com', {
-    'formats': ['extract'],
-    'extract': {
+    'formats': ['json'],
+    'jsonOptions': {
         'schema': TopArticlesSchema.model_json_schema()
     }
 })
-print(data["extract"])
+print(data["json"])
 ```
 
 ## Using the Node SDK
@@ -526,10 +526,10 @@ const schema = z.object({
 });
 
 const scrapeResult = await app.scrapeUrl("https://news.ycombinator.com", {
-  extractorOptions: { extractionSchema: schema },
+  jsonOptions: { extractionSchema: schema },
 });
 
-console.log(scrapeResult.data["llm_extraction"]);
+console.log(scrapeResult.data["json"]);
 ```
 
 ## Open Source vs Cloud Offering

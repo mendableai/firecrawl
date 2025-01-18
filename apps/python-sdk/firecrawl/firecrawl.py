@@ -112,6 +112,18 @@ class FirecrawlApp:
                 if key not in ['extract']:
                     scrape_params[key] = value
 
+            json = params.get("jsonOptions", {})
+            if json:
+                if 'schema' in json and hasattr(json['schema'], 'schema'):
+                    json['schema'] = json['schema'].schema()
+                scrape_params['jsonOptions'] = json
+
+            # Include any other params directly at the top level of scrape_params
+            for key, value in params.items():
+                if key not in ['jsonOptions']:
+                    scrape_params[key] = value
+
+
         endpoint = f'/v1/scrape'
         # Make the POST request with the prepared headers and JSON data
         response = requests.post(
