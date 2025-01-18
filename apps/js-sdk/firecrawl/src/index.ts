@@ -1262,7 +1262,7 @@ export default class FirecrawlApp {
       throw new FirecrawlError(
         `Failed to ${action}. Status code: ${response.status}. Error: ${errorMessage}${details}`,
         response.status,
-        response.data.details
+        response?.data?.details
       );
     } else {
       throw new FirecrawlError(
