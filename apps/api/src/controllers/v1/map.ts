@@ -85,6 +85,11 @@ export async function getMapResults({
 
   const crawler = crawlToCrawler(id, sc);
 
+  try {
+    sc.robots = await crawler.getRobotsTxt();
+    await crawler.importRobotsTxt(sc.robots);
+  } catch (_) {}
+
   // If sitemapOnly is true, only get links from sitemap
   if (crawlerOptions.sitemapOnly) {
     const sitemap = await crawler.tryGetSitemap(

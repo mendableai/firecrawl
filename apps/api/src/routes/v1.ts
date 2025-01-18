@@ -28,6 +28,7 @@ import { extractStatusController } from "../controllers/v1/extract-status";
 import { creditUsageController } from "../controllers/v1/credit-usage";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 import { searchController } from "../controllers/v1/search";
+import { crawlErrorsController } from "../controllers/v1/crawl-errors";
 
 function checkCreditsMiddleware(
   minimum?: number,
@@ -190,6 +191,18 @@ v1Router.get(
   authMiddleware(RateLimiterMode.CrawlStatus),
   // Yes, it uses the same controller as the normal crawl status controller
   wrap((req: any, res): any => crawlStatusController(req, res, true)),
+);
+
+v1Router.get(
+  "/crawl/:jobId/errors",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(crawlErrorsController),
+);
+
+v1Router.get(
+  "/batch/scrape/:jobId/errors",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(crawlErrorsController),
 );
 
 v1Router.get(

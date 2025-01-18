@@ -279,9 +279,11 @@ export interface ErrorResponse {
  */
 export class FirecrawlError extends Error {
   statusCode: number;
-  constructor(message: string, statusCode: number) {
+  details?: any;
+  constructor(message: string, statusCode: number, details?: any) {
     super(message);
     this.statusCode = statusCode;
+    this.details = details;
   }
 }
 
@@ -311,6 +313,26 @@ export interface SearchResponse {
   warning?: string;
   error?: string;
 }
+
+/**
+ * Response interface for crawl/batch scrape error monitoring.
+ */
+export interface CrawlErrorsResponse {
+  /**
+   * Scrapes that errored out + error details
+   */
+  errors: {
+    id: string,
+    timestamp?: string,
+    url: string,
+    error: string,
+  }[];
+
+  /**
+   * URLs blocked by robots.txt
+   */
+  robotsBlocked: string[];
+};
 
 /**
  * Main class for interacting with the Firecrawl API.
@@ -620,6 +642,29 @@ export default class FirecrawlApp {
   }
 
   /**
+   * Returns information about crawl errors.
+   * @param id - The ID of the crawl operation.
+   * @returns Information about crawl errors.
+   */
+  async checkCrawlErrors(id: string): Promise<CrawlErrorsResponse | ErrorResponse> {
+    const headers = this.prepareHeaders();
+    try {
+      const response: AxiosResponse = await this.deleteRequest(
+        `${this.apiUrl}/v1/crawl/${id}/errors`,
+        headers
+      );
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "check crawl errors");
+      }
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500);
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
    * Cancels a crawl job using the Firecrawl API.
    * @param id - The ID of the crawl operation.
    * @returns The response from the cancel crawl operation.
@@ -882,6 +927,29 @@ export default class FirecrawlApp {
   }
 
   /**
+   * Returns information about batch scrape errors.
+   * @param id - The ID of the batch scrape operation.
+   * @returns Information about batch scrape errors.
+   */
+  async checkBatchScrapeErrors(id: string): Promise<CrawlErrorsResponse | ErrorResponse> {
+    const headers = this.prepareHeaders();
+    try {
+      const response: AxiosResponse = await this.deleteRequest(
+        `${this.apiUrl}/v1/batch/scrape/${id}/errors`,
+        headers
+      );
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "check batch scrape errors");
+      }
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500);
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
    * Extracts information from URLs using the Firecrawl API.
    * Currently in Beta. Expect breaking changes on future minor versions.
    * @param url - The URL to extract information from.
@@ -941,9 +1009,9 @@ export default class FirecrawlApp {
         this.handleError(response, "extract");
       }
     } catch (error: any) {
-      throw new FirecrawlError(error.message, 500);
+      throw new FirecrawlError(error.message, 500, error.response?.data?.details);
     }
-    return { success: false, error: "Internal server error." };
+    return { success: false, error: "Internal server error."};
   }
 
   /**
@@ -985,7 +1053,7 @@ export default class FirecrawlApp {
         this.handleError(response, "start extract job");
       }
     } catch (error: any) {
-      throw new FirecrawlError(error.message, 500);
+      throw new FirecrawlError(error.message, 500, error.response?.data?.details);
     }
     return { success: false, error: "Internal server error." };
   }
