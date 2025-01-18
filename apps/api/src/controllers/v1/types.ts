@@ -125,6 +125,7 @@ export const scrapeOptions = z
         "screenshot",
         "screenshot@fullPage",
         "extract",
+        "json"
       ])
       .array()
       .optional()
@@ -139,7 +140,10 @@ export const scrapeOptions = z
     onlyMainContent: z.boolean().default(true),
     timeout: z.number().int().positive().finite().safe().optional(),
     waitFor: z.number().int().nonnegative().finite().safe().default(0),
+    // Deprecate this to jsonOptions
     extract: extractOptions.optional(),
+    // New
+    jsonOptions: extractOptions.optional(),
     mobile: z.boolean().default(false),
     parsePDF: z.boolean().default(true),
     actions: actionsSchema.optional(),
@@ -242,20 +246,43 @@ export const scrapeRequestSchema = scrapeOptions
     (obj) => {
       const hasExtractFormat = obj.formats?.includes("extract");
       const hasExtractOptions = obj.extract !== undefined;
+      const hasJsonFormat = obj.formats?.includes("json");
+      const hasJsonOptions = obj.jsonOptions !== undefined;
       return (
         (hasExtractFormat && hasExtractOptions) ||
-        (!hasExtractFormat && !hasExtractOptions)
+        (!hasExtractFormat && !hasExtractOptions) ||
+        (hasJsonFormat && hasJsonOptions) ||
+        (!hasJsonFormat && !hasJsonOptions)
       );
     },
     {
       message:
-        "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
+        "When 'extract' or 'json' format is specified, corresponding options must be provided, and vice versa",
     },
   )
   .transform((obj) => {
-    if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
-      return { ...obj, timeout: 60000 };
+    // Handle timeout
+    if ((obj.formats?.includes("extract") || obj.extract || obj.formats?.includes("json") || obj.jsonOptions) && !obj.timeout) {
+      obj = { ...obj, timeout: 60000 };
     }
+
+    if(obj.formats?.includes("json")) {
+      obj.formats.push("extract");
+    }
+
+    // Convert JSON options to extract options if needed
+    if (obj.jsonOptions && !obj.extract) {
+      obj = {
+        ...obj,
+        extract: {
+          prompt: obj.jsonOptions.prompt,
+          systemPrompt: obj.jsonOptions.systemPrompt,
+          schema: obj.jsonOptions.schema,
+          mode: "llm"
+        }
+      };
+    }
+
     return obj;
   });
 
@@ -410,6 +437,7 @@ export type Document = {
   links?: string[];
   screenshot?: string;
   extract?: any;
+  json?: any;
   warning?: string;
   actions?: {
     screenshots?: string[];

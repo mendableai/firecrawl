@@ -233,7 +233,12 @@ export async function performLLMExtract(
       document.markdown,
       document.warning,
     );
-    document.extract = extract;
+    
+    if (meta.options.formats.includes("json")) {
+      document.json = extract;
+    } else {
+      document.extract = extract;
+    }
     document.warning = warning;
   }
 
