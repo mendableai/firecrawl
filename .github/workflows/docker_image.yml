@@ -22,10 +22,20 @@ jobs:
     - name: 设置 Docker
       uses: docker/setup-buildx-action@v3  # 设置 Docker Buildx（用于多平台构建）
 
-    - name: 设置 Docker Compose
+    - name: 安装最新版本的 Docker Compose
       run: |
-        sudo apt-get update
-        sudo apt-get install -y docker-compose  # 安装 Docker Compose
+        # 获取 Docker Compose 最新版本
+        VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)
+        
+        # 下载并安装 Docker Compose
+        sudo curl -L "https://github.com/docker/compose/releases/download/$VERSION/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        
+        # 赋予执行权限
+        sudo chmod +x /usr/local/bin/docker-compose
+        
+        # 验证安装是否成功
+        docker-compose --version
+
 
     # 步骤3: 登录 Docker Hub
     - name: 登录 Docker Hub
