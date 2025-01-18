@@ -127,7 +127,7 @@ export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchem
     schema?: LLMSchema;
     systemPrompt?: string;
   };
-  json?:{
+  jsonOptions?:{
     prompt?: string;
     schema?: LLMSchema;
     systemPrompt?: string;
