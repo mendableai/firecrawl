@@ -51,13 +51,13 @@ jobs:
         
         # 使用 docker-compose 构建所有服务镜像
         docker-compose -f docker-compose.yaml build
-        
+        docker images
         # 为每个服务添加合适的标签并推送到 Docker Hub
-        docker tag firecrawl_playwright-service:latest ${DOCKER_HUB_USERNAME}/firecrawl-playwright:latest
+        docker tag playwright-service ${DOCKER_HUB_USERNAME}/firecrawl-playwright:latest
         docker push ${DOCKER_HUB_USERNAME}/firecrawl-playwright:latest
     
-        docker tag firecrawl_api:latest ${DOCKER_HUB_USERNAME}/firecrawl-api:latest
+        docker tag api ${DOCKER_HUB_USERNAME}/firecrawl-api:latest
         docker push ${DOCKER_HUB_USERNAME}/firecrawl-api:latest
     
-        docker tag firecrawl_worker:latest ${DOCKER_HUB_USERNAME}/firecrawl-worker:latest
+        docker tag worker ${DOCKER_HUB_USERNAME}/firecrawl-worker:latest
         docker push ${DOCKER_HUB_USERNAME}/firecrawl-worker:latest
