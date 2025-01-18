@@ -1255,12 +1255,14 @@ export default class FirecrawlApp {
    * @param {string} action - The action being performed when the error occurred.
    */
   handleError(response: AxiosResponse, action: string): void {
-    if ([402, 408, 409, 500].includes(response.status)) {
+    if ([400, 402, 408, 409, 500].includes(response.status)) {
       const errorMessage: string =
         response.data.error || "Unknown error occurred";
+      const details = response.data.details ? ` - ${JSON.stringify(response.data.details)}` : '';
       throw new FirecrawlError(
-        `Failed to ${action}. Status code: ${response.status}. Error: ${errorMessage}`,
-        response.status
+        `Failed to ${action}. Status code: ${response.status}. Error: ${errorMessage}${details}`,
+        response.status,
+        response.data.details
       );
     } else {
       throw new FirecrawlError(
