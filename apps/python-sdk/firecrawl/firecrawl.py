@@ -599,8 +599,8 @@ class FirecrawlApp:
         """
         headers = self._prepare_headers()
 
-        #if not params or not params.get('prompt'):
-        #    raise ValueError("Prompt is required")
+        if not params or (not params.get('prompt') and not params.get('schema')):
+            raise ValueError("Either prompt or schema is required")
 
         schema = params.get('schema')
         if schema:
