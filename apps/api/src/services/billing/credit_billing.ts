@@ -52,12 +52,12 @@ export async function supaBillTeam(
     credits,
   });
 
-  const { data, error } = await supabase_service.rpc("bill_team_w_extract", {
+  const { data, error } = await supabase_service.rpc("bill_team_w_extract_3", {
     _team_id: team_id,
     sub_id: subscription_id ?? null,
     fetch_subscription: subscription_id === undefined,
     credits,
-    is_extract,
+    is_extract_param: is_extract,
   });
 
   if (error) {

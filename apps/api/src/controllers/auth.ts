@@ -79,7 +79,7 @@ export async function getACUC(
   useCache = true,
   mode?: RateLimiterMode,
 ): Promise<AuthCreditUsageChunk | null> {
-  const cacheKeyACUC = `acuc_${api_key}`;
+  const cacheKeyACUC = `acuc_${api_key}_${mode}`;
 
   if (useCache) {
     const cachedACUC = await getValue(cacheKeyACUC);
@@ -94,7 +94,7 @@ export async function getACUC(
     let retries = 0;
     const maxRetries = 5;
 
-    let rpcName = mode === RateLimiterMode.Extract ? "auth_credit_usage_chunk_extract" : "auth_credit_usage_chunk_test_21_credit_pack";
+    let rpcName = mode === RateLimiterMode.Extract ? "auth_credit_usage_chunk_extract" : "auth_credit_usage_chunk_test_21_credit_pack_n_extract";
     while (retries < maxRetries) {
       ({ data, error } = await supabase_service.rpc(
         rpcName,
