@@ -78,7 +78,7 @@ export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult
  * Defines the options and configurations available for scraping web content.
  */
 export interface CrawlScrapeOptions {
-  formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "screenshot@fullPage" | "extract")[];
+  formats: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "screenshot@fullPage" | "extract" | "json")[];
   headers?: Record<string, string>;
   includeTags?: string[];
   excludeTags?: string[];
@@ -127,6 +127,11 @@ export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchem
     schema?: LLMSchema;
     systemPrompt?: string;
   };
+  json?:{
+    prompt?: string;
+    schema?: LLMSchema;
+    systemPrompt?: string;
+  }
   actions?: ActionsSchema;
 }
 
@@ -389,6 +394,23 @@ export default class FirecrawlApp {
         ...jsonData,
         extract: {
           ...jsonData.extract,
+          schema: schema,
+        },
+      };
+    }
+
+    if (jsonData?.jsonOptions?.schema) {
+      let schema = jsonData.jsonOptions.schema;
+      // Try parsing the schema as a Zod schema
+      try {
+        schema = zodToJsonSchema(schema);
+      } catch (error) {
+        
+      }
+      jsonData = {
+        ...jsonData,
+        jsonOptions: {
+          ...jsonData.jsonOptions,
           schema: schema,
         },
       };
@@ -768,6 +790,23 @@ export default class FirecrawlApp {
         ...jsonData,
         extract: {
           ...jsonData.extract,
+          schema: schema,
+        },
+      };
+    }
+    if (jsonData?.jsonOptions?.schema) {
+      let schema = jsonData.jsonOptions.schema;
+
+      // Try parsing the schema as a Zod schema
+      try {
+        schema = zodToJsonSchema(schema);
+      } catch (error) {
+        
+      }
+      jsonData = {
+        ...jsonData,
+        jsonOptions: {
+          ...jsonData.jsonOptions,
           schema: schema,
         },
       };

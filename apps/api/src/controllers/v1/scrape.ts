@@ -33,6 +33,7 @@ export async function scrapeController(
     basePriority: 10,
   });
 
+
   await addScrapeJob(
     {
       url: req.body.url,
@@ -96,7 +97,7 @@ export async function scrapeController(
     // Don't bill if we're early returning
     return;
   }
-  if (req.body.extract && req.body.formats.includes("extract")) {
+  if (req.body.extract && req.body.formats.includes("extract") ) {
     creditsToBeBilled = 5;
   }
 
