@@ -40,7 +40,7 @@ jobs:
         export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
         
         # 使用 docker-compose 构建所有服务镜像
-        docker-compose -f docker-compose.yml build
+        docker-compose -f docker-compose.yaml build
         
         # 为每个服务添加合适的标签并推送到 Docker Hub
         docker tag ${DOCKER_HUB_USERNAME}/playwright-service:latest ${DOCKER_HUB_USERNAME}/firecrawl-playwright:latest
