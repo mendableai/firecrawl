@@ -149,6 +149,9 @@ export async function generateOpenAICompletions(
 
   schema = normalizeSchema(schema);
 
+  const timeElapsed = Date.now();
+  const today = new Date(timeElapsed);
+
   const jsonCompletion = await openai.beta.chat.completions.parse({
     model,
     temperature: 0.00000001,
@@ -156,7 +159,7 @@ export async function generateOpenAICompletions(
     messages: [
       {
         role: "system",
-        content: options.systemPrompt,
+        content: `${options.systemPrompt}\nToday's date is ${today.toDateString()}.`,
       },
       {
         role: "user",

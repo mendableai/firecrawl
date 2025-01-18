@@ -1,4 +1,4 @@
-import { Document, URLTrace, scrapeOptions } from "../../controllers/v1/types";
+import { Document, ScrapeOptions, URLTrace, scrapeOptions } from "../../controllers/v1/types";
 import { PlanType } from "../../types";
 import { logger } from "../logger";
 import { getScrapeQueue } from "../../services/queue-service";
@@ -12,6 +12,7 @@ interface ScrapeDocumentOptions {
   plan: PlanType;
   origin: string;
   timeout: number;
+  scrapeOptions?: ScrapeOptions;
 }
 
 export async function scrapeDocument(
@@ -31,13 +32,25 @@ export async function scrapeDocument(
     basePriority: 10,
   });
 
+  const defaultExtractScrapeOptions: ScrapeOptions = {
+      onlyMainContent: true,
+      formats: [ 'markdown'],
+      waitFor: 0,
+      mobile: false,
+      parsePDF: true,
+      skipTlsVerification: false,
+      removeBase64Images: true,
+      fastMode: false
+  };
+
+  console.log("Scrape options: ", scrapeOptions.parse({...defaultExtractScrapeOptions, ...options.scrapeOptions}));
   try {
     await addScrapeJob(
       {
         url: options.url,
         mode: "single_urls",
         team_id: options.teamId,
-        scrapeOptions: scrapeOptions.parse({ onlyMainContent: false }),
+        scrapeOptions: scrapeOptions.parse({...defaultExtractScrapeOptions, ...options.scrapeOptions}),
         internalOptions: {
           useCache: true,
         },
