@@ -1,0 +1,63 @@
+name: 构建和推送 Docker 镜像
+
+on:
+  push:
+    branches:
+      - main  # 只在 main 分支更新时触发
+  pull_request:
+    branches:
+      - main  # 在 pull request 合并到 main 分支时触发
+  workflow_dispatch:  # 允许手动触发工作流
+
+jobs:
+  build:
+    runs-on: ubuntu-latest  # 使用最新的 Ubuntu 环境
+
+    steps:
+    # 步骤1: 检出代码
+    - name: 检出代码
+      uses: actions/checkout@v4  # 检出当前仓库的代码
+
+    # 步骤2: 设置 Docker 和 Docker Compose
+    - name: 设置 Docker
+      uses: docker/setup-buildx-action@v3  # 设置 Docker Buildx（用于多平台构建）
+
+    - name: 安装最新版本的 Docker Compose
+      run: |
+        # 获取 Docker Compose 最新版本
+        VERSION=$(curl -s https://api.github.com/repos/docker/compose/releases/latest | jq -r .tag_name)
+        
+        # 下载并安装 Docker Compose
+        sudo curl -L "https://github.com/docker/compose/releases/download/$VERSION/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+        
+        # 赋予执行权限
+        sudo chmod +x /usr/local/bin/docker-compose
+        
+        # 验证安装是否成功
+        docker-compose --version
+
+
+    # 步骤3: 登录 Docker Hub
+    - name: 登录 Docker Hub
+      uses: docker/login-action@v3  # 登录到 Docker Hub
+      with:
+        username: ${{ secrets.DOCKER_HUB_USERNAME }}  # 从 GitHub Secrets 中获取 Docker Hub 用户名
+        password: ${{ secrets.DOCKER_HUB_TOKEN }}  # 从 GitHub Secrets 中获取 Docker Hub 密码
+
+    # 步骤4: 构建并推送 Docker 镜像
+    - name: 构建并推送 Docker 镜像
+      run: |
+        export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
+        
+        # 使用 docker-compose 构建所有服务镜像
+        docker-compose -f docker-compose.yaml build
+        
+        # 为每个服务添加合适的标签并推送到 Docker Hub
+        docker tag playwright-service ${DOCKER_HUB_USERNAME}/firecrawl-playwright:latest
+        docker push ${DOCKER_HUB_USERNAME}/firecrawl-playwright:latest
+    
+        docker tag api ${DOCKER_HUB_USERNAME}/firecrawl-api:latest
+        docker push ${DOCKER_HUB_USERNAME}/firecrawl-api:latest
+    
+        docker tag worker ${DOCKER_HUB_USERNAME}/firecrawl-worker:latest
+        docker push ${DOCKER_HUB_USERNAME}/firecrawl-worker:latest
