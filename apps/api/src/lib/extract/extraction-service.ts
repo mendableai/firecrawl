@@ -704,6 +704,7 @@ export async function performExtraction(
     scrapeOptions: request,
     origin: request.origin ?? "api",
     num_tokens: totalTokensUsed,
+    tokens_billed: tokensToBill,
   }).then(() => {
     updateExtract(extractId, {
       status: "completed",
