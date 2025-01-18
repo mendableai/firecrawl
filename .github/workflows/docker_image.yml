@@ -14,22 +14,40 @@ jobs:
     runs-on: ubuntu-latest  # 使用最新的 Ubuntu 环境
 
     steps:
+    # 步骤1: 检出代码
     - name: 检出代码
       uses: actions/checkout@v4  # 检出当前仓库的代码
 
-    - name: 设置 Docker Buildx
+    # 步骤2: 设置 Docker 和 Docker Compose
+    - name: 设置 Docker
       uses: docker/setup-buildx-action@v3  # 设置 Docker Buildx（用于多平台构建）
 
+    - name: 设置 Docker Compose
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y docker-compose  # 安装 Docker Compose
+
+    # 步骤3: 登录 Docker Hub
     - name: 登录 Docker Hub
       uses: docker/login-action@v3  # 登录到 Docker Hub
       with:
         username: ${{ secrets.DOCKER_HUB_USERNAME }}  # 从 GitHub Secrets 中获取 Docker Hub 用户名
         password: ${{ secrets.DOCKER_HUB_TOKEN }}  # 从 GitHub Secrets 中获取 Docker Hub 密码
 
+    # 步骤4: 构建并推送 Docker 镜像
     - name: 构建并推送 Docker 镜像
-      uses: docker/build-push-action@v6  # 使用 Docker Build-Push Action
-      with:
-        context: ./apps/api  # 设置构建上下文为 apps/api 目录
-        dockerfile: ./apps/api/Dockerfile  # 指定 Dockerfile 的路径
-        push: true  # 启用推送功能
-        tags: ${{ secrets.DOCKER_HUB_USERNAME }}/firecrawl:latest  # 设置镜像标签
+      run: |
+        export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }}
+        
+        # 使用 docker-compose 构建所有服务镜像
+        docker-compose -f docker-compose.yml build
+        
+        # 为每个服务添加合适的标签并推送到 Docker Hub
+        docker tag ${DOCKER_HUB_USERNAME}/playwright-service:latest ${DOCKER_HUB_USERNAME}/firecrawl-playwright:latest
+        docker push ${DOCKER_HUB_USERNAME}/firecrawl-playwright:latest
+
+        docker tag ${DOCKER_HUB_USERNAME}/api-service:latest ${DOCKER_HUB_USERNAME}/firecrawl-api:latest
+        docker push ${DOCKER_HUB_USERNAME}/firecrawl-api:latest
+
+        docker tag ${DOCKER_HUB_USERNAME}/worker-service:latest ${DOCKER_HUB_USERNAME}/firecrawl-worker:latest
+        docker push ${DOCKER_HUB_USERNAME}/firecrawl-worker:latest
