@@ -65,6 +65,7 @@ export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult
   rawHtml?: string;
   links?: string[];
   extract?: T;
+  json?: T;
   screenshot?: string;
   metadata?: FirecrawlDocumentMetadata;
   actions: ActionsSchema;
