@@ -15,44 +15,54 @@ export async function checkFireEngine(req: Request, res: Response) {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 30000);
 
-    try {
-      const response = await fetch(
-        `${process.env.FIRE_ENGINE_BETA_URL}/scrape`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "X-Disable-Cache": "true",
+    const urls = ["https://roastmywebsite.ai", "https://example.com"];
+    let lastError : string | null = null;
+
+    for (const url of urls) {
+      try {
+        const response = await fetch(
+          `${process.env.FIRE_ENGINE_BETA_URL}/scrape`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "X-Disable-Cache": "true",
+            },
+            body: JSON.stringify({
+              url,
+            }),
+            signal: controller.signal,
           },
-          body: JSON.stringify({
-            url: "https://roastmywebsite.ai",
-          }),
-          signal: controller.signal,
-        },
-      );
+        );
 
-      clearTimeout(timeout);
+        clearTimeout(timeout);
 
-      if (response.ok) {
-        const responseData = await response.json();
-        return res.status(200).json({
-          data: responseData,
-        });
-      } else {
-        return res.status(response.status).json({
-          success: false,
-          error: `Fire engine returned status ${response.status}`,
-        });
+        if (response.ok) {
+          const responseData = await response.json();
+          return res.status(200).json({
+            data: responseData,
+          });
+        }
+        lastError = `Fire engine returned status ${response.status}`;
+      } catch (error) {
+        if (error.name === "AbortError") {
+          return res.status(504).json({
+            success: false,
+            error: "Request timed out after 30 seconds",
+          });
+        }
+        lastError = error;
       }
-    } catch (error) {
-      if (error.name === "AbortError") {
-        return res.status(504).json({
-          success: false,
-          error: "Request timed out after 30 seconds",
-        });
-      }
-      throw error;
     }
+
+    // If we get here, all retries failed
+    logger.error(lastError);
+    Sentry.captureException(lastError);
+    return res.status(500).json({
+      success: false,
+      error: "Internal server error - all retry attempts failed",
+    });
+
   } catch (error) {
     logger.error(error);
     Sentry.captureException(error);
