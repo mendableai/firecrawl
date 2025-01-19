@@ -1014,6 +1014,7 @@ export default class FirecrawlApp {
       throw new FirecrawlError("Invalid schema. Schema must be either a valid Zod schema or JSON schema object.", 400);
     }
 
+    
     try {
       const response: AxiosResponse = await this.postRequest(
         this.apiUrl + `/v1/extract`,
