@@ -12,19 +12,33 @@ import { withAuth } from "../../lib/withAuth";
 async function querySitemapIndexFunction(url: string) {
   const originUrl = normalizeUrlOnlyHostname(url);
 
-  const { data, error } = await supabase_service
-    .from("crawl_maps")
-    .select("urls")
-    .eq("origin_url", originUrl);
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const { data, error } = await supabase_service
+        .from("crawl_maps")
+        .select("urls")
+        .eq("origin_url", originUrl);
 
-  if (error) {
-    logger.error("(sitemap-index) Error querying the index", { error });
-    return [];
+      if (error) {
+        throw error;
+      }
+
+      const allUrls = data.map((entry) => entry.urls).flat();
+      return allUrls;
+
+    } catch (error) {
+      logger.error("(sitemap-index) Error querying the index", { 
+        error,
+        attempt 
+      });
+
+      if (attempt === 3) {
+        return [];
+      }
+    }
   }
 
-  const allUrls = data.map((entry) => entry.urls).flat();
-
-  return allUrls;
+  return [];
 }
 
 export const querySitemapIndex = withAuth(querySitemapIndexFunction, []);

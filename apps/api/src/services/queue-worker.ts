@@ -61,6 +61,7 @@ import { supabase_service } from "../services/supabase";
 import { normalizeUrl, normalizeUrlOnlyHostname } from "../lib/canonical-url";
 import { saveExtract, updateExtract } from "../lib/extract/extract-redis";
 import { billTeam } from "./billing/credit_billing";
+import { saveCrawlMap } from "./indexing/crawl-maps-index";
 
 configDotenv();
 
@@ -102,58 +103,9 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         job.data.crawlerOptions !== null &&
         originUrl
       ) {
-        // Fire and forget the upload to Supabase
-        try {
-          // Standardize URLs to canonical form (https, no www)
-          const standardizedUrls = [
-            ...new Set(
-              visitedUrls.map((url) => {
-                return normalizeUrl(url);
-              }),
-            ),
-          ];
-          // First check if entry exists for this origin URL
-          const { data: existingMap } = await supabase_service
-            .from("crawl_maps")
-            .select("urls")
-            .eq("origin_url", originUrl)
-            .single();
-
-          if (existingMap) {
-            // Merge URLs, removing duplicates
-            const mergedUrls = [
-              ...new Set([...existingMap.urls, ...standardizedUrls]),
-            ];
-
-            const { error } = await supabase_service
-              .from("crawl_maps")
-              .update({
-                urls: mergedUrls,
-                num_urls: mergedUrls.length,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("origin_url", originUrl);
-
-            if (error) {
-              _logger.error("Failed to update crawl map", { error });
-            }
-          } else {
-            // Insert new entry if none exists
-            const { error } = await supabase_service.from("crawl_maps").insert({
-              origin_url: originUrl,
-              urls: standardizedUrls,
-              num_urls: standardizedUrls.length,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            });
-
-            if (error) {
-              _logger.error("Failed to save crawl map", { error });
-            }
-          }
-        } catch (error) {
-          _logger.error("Error saving crawl map", { error });
-        }
+        saveCrawlMap(originUrl, visitedUrls).catch((e) => {
+          _logger.error("Error saving crawl map", { error: e });
+        });
       }
     })();
 
