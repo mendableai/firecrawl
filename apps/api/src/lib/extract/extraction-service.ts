@@ -675,12 +675,11 @@ export async function performExtraction(
   
   const totalTokensUsed = tokenUsage.reduce((a, b) => a + b.totalTokens, 0);
   const llmUsage = estimateTotalCost(tokenUsage);
-  const tokensToBill = calculateFinalResultCost(finalResult);
+  let tokensToBill = calculateFinalResultCost(finalResult);
 
-  let linksBilled = links.length * 5;
 
   if (CUSTOM_U_TEAMS.includes(teamId)) {
-    linksBilled = 1;
+    tokensToBill = 1;
   }
   // Bill team for usage
   billTeam(teamId, subId, tokensToBill, logger, true).catch((error) => {
