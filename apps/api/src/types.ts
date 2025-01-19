@@ -134,6 +134,7 @@ export enum RateLimiterMode {
   Search = "search",
   Map = "map",
   Extract = "extract",
+  ExtractStatus = "extractStatus",
 }
 
 export type AuthResponse =
