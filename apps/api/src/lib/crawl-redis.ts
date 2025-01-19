@@ -132,6 +132,10 @@ export async function isCrawlFinished(id: string) {
   );
 }
 
+export async function isCrawlKickoffFinished(id: string) {
+  return await redisConnection.get("crawl:" + id + ":kickoff:finish") !== null
+}
+
 export async function isCrawlFinishedLocked(id: string) {
   return await redisConnection.exists("crawl:" + id + ":finish");
 }
