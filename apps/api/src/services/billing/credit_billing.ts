@@ -12,6 +12,7 @@ import { autoCharge } from "./auto_charge";
 import { getValue, setValue } from "../redis";
 import type { Logger } from "winston";
 
+// Deprecated, done via rpc
 const FREE_CREDITS = 500;
 
 /**
