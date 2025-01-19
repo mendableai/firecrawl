@@ -9,7 +9,7 @@ interface ModelPricing {
   mode: string;
 }
 const tokenPerCharacter = 4;
-const baseTokenCost = 200;
+const baseTokenCost = 300;
 
 export function calculateFinalResultCost(data: any): number {
   return Math.floor((JSON.stringify(data).length / tokenPerCharacter) + baseTokenCost);
