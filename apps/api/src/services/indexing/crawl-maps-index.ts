@@ -8,8 +8,8 @@ import { redisConnection } from "../queue-service";
 
 const BATCH_KEY = "crawl_maps_batch";
 const BATCH_LOCK_KEY = "crawl_maps_batch_lock";
-const BATCH_SIZE = 10;
-const BATCH_TIMEOUT = 10000; // 10 seconds
+const BATCH_SIZE = 20;
+const BATCH_TIMEOUT = 20000; // 10 seconds
 const LOCK_TIMEOUT = 30000; // 30 seconds
 
 interface CrawlMapOperation {
