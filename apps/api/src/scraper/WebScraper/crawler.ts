@@ -202,6 +202,7 @@ export class WebCrawler {
     urlsHandler: (urls: string[]) => unknown,
     fromMap: boolean = false,
     onlySitemap: boolean = false,
+    timeout: number = 120000,
   ): Promise<number> {
     this.logger.debug(`Fetching sitemap links from ${this.initialUrl}`, {
       method: "tryGetSitemap",
@@ -250,27 +251,49 @@ export class WebCrawler {
       }
     };
 
-    let count = (await Promise.all([
-      this.tryFetchSitemapLinks(
-        this.initialUrl,
-        _urlsHandler,
-      ),
-      ...this.robots.getSitemaps().map(x => this.tryFetchSitemapLinks(x, _urlsHandler)),
-    ])).reduce((a,x) => a+x, 0);
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Sitemap fetch timeout')), timeout);
+    });
 
-    if (count > 0) {
-      if (
-        await redisConnection.sadd(
-          "sitemap:" + this.jobId + ":links",
-          normalizeUrl(this.initialUrl),
-        )
-      ) {
-        urlsHandler([this.initialUrl]);
+    try {
+      let count = await Promise.race([
+        Promise.all([
+          this.tryFetchSitemapLinks(
+            this.initialUrl,
+            _urlsHandler,
+          ),
+          ...this.robots.getSitemaps().map(x => this.tryFetchSitemapLinks(x, _urlsHandler)),
+        ]).then(results => results.reduce((a,x) => a+x, 0)),
+        timeoutPromise
+      ]) as number;
+
+      if (count > 0) {
+        if (
+          await redisConnection.sadd(
+            "sitemap:" + this.jobId + ":links",
+            normalizeUrl(this.initialUrl),
+          )
+        ) {
+          urlsHandler([this.initialUrl]);
+        }
+        count++;
       }
-      count++;
-    }
 
-    return count;
+      return count;
+    } catch (error) {
+      if (error.message === 'Sitemap fetch timeout') {
+        this.logger.warn('Sitemap fetch timed out', {
+          method: "tryGetSitemap",
+          timeout,
+        });
+        return 0;
+      }
+      this.logger.error('Error fetching sitemap', {
+        method: "tryGetSitemap",
+        error,
+      });
+      return 0;
+    }
   }
 
   public filterURL(href: string, url: string): string | null {

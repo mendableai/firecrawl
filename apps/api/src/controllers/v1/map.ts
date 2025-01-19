@@ -100,6 +100,7 @@ export async function getMapResults({
       },
       true,
       true,
+      30000
     );
     if (sitemap > 0) {
       links = links
