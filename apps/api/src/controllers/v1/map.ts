@@ -158,7 +158,7 @@ export async function getMapResults({
     const [_, sitemapIndexUrls, ...searchResults] = await Promise.all([
       ignoreSitemap ? null : crawler.tryGetSitemap(urls => {
         links.push(...urls);
-      }, true),
+      }, true, false, 30000),
       querySitemapIndex(url),
       ...(cachedResult ? [] : pagePromises),
     ]);
