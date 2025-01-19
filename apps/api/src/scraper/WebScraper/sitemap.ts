@@ -24,21 +24,40 @@ export async function getLinksFromSitemap(
     let content: string = "";
     try {
       if (mode === "fire-engine" && useFireEngine) {
-        const response = await scrapeURL(
-          "sitemap",
+        // Try TLS client first
+        const tlsResponse = await scrapeURL(
+          "sitemap", 
           sitemapUrl,
           scrapeOptions.parse({ formats: ["rawHtml"] }),
           { forceEngine: "fire-engine;tlsclient", v0DisableJsDom: true },
         );
-        if (!response.success) {
-          logger.debug(
-            "Failed to scrape sitemap via TLSClient, falling back to axios...",
-            { error: response.error },
-          );
-          const ar = await axios.get(sitemapUrl, { timeout: axiosTimeout });
-          content = ar.data;
+
+        if (tlsResponse.success) {
+          content = tlsResponse.document.rawHtml!;
         } else {
-          content = response.document.rawHtml!;
+          logger.debug(
+            "Failed to scrape sitemap via TLSClient, trying Chrome CDP...",
+            { error: tlsResponse.error },
+          );
+
+          // Try Chrome CDP next
+          const cdpResponse = await scrapeURL(
+            "sitemap",
+            sitemapUrl, 
+            scrapeOptions.parse({ formats: ["rawHtml"] }),
+            { forceEngine: "fire-engine;chrome-cdp" },
+          );
+
+          if (cdpResponse.success) {
+            content = cdpResponse.document.rawHtml!;
+          } else {
+            logger.debug(
+              "Failed to scrape sitemap via Chrome CDP, falling back to axios...",
+              { error: cdpResponse.error },
+            );
+            const ar = await axios.get(sitemapUrl, { timeout: axiosTimeout });
+            content = ar.data;
+          }
         }
       } else {
         const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });

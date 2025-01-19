@@ -8,6 +8,7 @@ import {
   redisConnection,
   scrapeQueueName,
   extractQueueName,
+  getIndexQueue,
 } from "./queue-service";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
@@ -103,9 +104,17 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         job.data.crawlerOptions !== null &&
         originUrl
       ) {
-        saveCrawlMap(originUrl, visitedUrls).catch((e) => {
-          _logger.error("Error saving crawl map", { error: e });
-        });
+        // Queue the indexing job instead of doing it directly
+        await getIndexQueue().add(
+          job.data.crawl_id,
+          {
+            originUrl,
+            visitedUrls,
+          },
+          {
+            priority: 10,
+          }
+        );
       }
     })();
 

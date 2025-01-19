@@ -5,6 +5,7 @@ import IORedis from "ioredis";
 let scrapeQueue: Queue;
 let extractQueue: Queue;
 let loggingQueue: Queue;
+let indexQueue: Queue;
 
 export const redisConnection = new IORedis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
@@ -13,6 +14,7 @@ export const redisConnection = new IORedis(process.env.REDIS_URL!, {
 export const scrapeQueueName = "{scrapeQueue}";
 export const extractQueueName = "{extractQueue}";
 export const loggingQueueName = "{loggingQueue}";
+export const indexQueueName = "{indexQueue}";
 
 export function getScrapeQueue() {
   if (!scrapeQueue) {
@@ -48,6 +50,24 @@ export function getExtractQueue() {
     logger.info("Extraction queue created");
   }
   return extractQueue;
+}
+
+export function getIndexQueue() {
+  if (!indexQueue) {
+    indexQueue = new Queue(indexQueueName, {
+      connection: redisConnection,
+      defaultJobOptions: {
+        removeOnComplete: {
+          age: 90000, // 25 hours
+        },
+        removeOnFail: {
+          age: 90000, // 25 hours
+        },
+      },
+    });
+    logger.info("Index queue created");
+  }
+  return indexQueue;
 }
 
 // === REMOVED IN FAVOR OF POLLING -- NOT RELIABLE

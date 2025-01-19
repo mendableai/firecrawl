@@ -18,6 +18,8 @@
     "test:snips": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false src/__tests__/snips/*.test.ts",
     "workers": "nodemon --exec ts-node src/services/queue-worker.ts",
     "worker:production": "node dist/src/services/queue-worker.js",
+    "index-worker": "nodemon --exec ts-node src/services/indexing/index-worker.ts",
+    "index-worker:production": "node dist/src/services/indexing/index-worker.js",
     "mongo-docker": "docker run -d -p 2717:27017 -v ./mongo-data:/data/db --name mongodb mongo:latest",
     "mongo-docker-console": "docker exec -it mongodb mongosh",
     "run-example": "npx ts-node src/example.ts",

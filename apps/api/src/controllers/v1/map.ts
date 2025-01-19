@@ -22,6 +22,7 @@ import { performCosineSimilarity } from "../../lib/map-cosine";
 import { logger } from "../../lib/logger";
 import Redis from "ioredis";
 import { querySitemapIndex } from "../../scraper/WebScraper/sitemap-index";
+import { getIndexQueue } from "../../services/queue-service";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -227,6 +228,17 @@ export async function getMapResults({
     : links.slice(0, limit);
 
   //
+
+  await getIndexQueue().add(
+    id,
+    {
+      originUrl: url,
+      visitedUrls: linksToReturn,
+    },
+    {
+      priority: 10,
+    }
+  );
 
   return {
     success: true,
