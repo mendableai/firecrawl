@@ -18,6 +18,7 @@ import {
   addCrawlJob,
   addCrawlJobs,
   crawlToCrawler,
+  finishCrawlKickoff,
   lockURL,
   lockURLs,
   saveCrawl,
@@ -177,6 +178,8 @@ export async function crawlController(req: Request, res: Response) {
 
     await saveCrawl(id, sc);
 
+    await finishCrawlKickoff(id);
+
     const sitemap = sc.crawlerOptions.ignoreSitemap
       ? 0
       : await crawler.tryGetSitemap(async (urls) => {
@@ -224,7 +227,7 @@ export async function crawlController(req: Request, res: Response) {
             await addScrapeJob(job.data as any, {}, job.opts.jobId);
           }
         });
-
+    
     if (sitemap === 0) {
       await lockURL(id, sc, url);
 

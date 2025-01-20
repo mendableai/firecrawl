@@ -7,6 +7,7 @@ import { logger } from "../../../src/lib/logger";
 import {
   addCrawlJob,
   crawlToCrawler,
+  finishCrawlKickoff,
   lockURL,
   saveCrawl,
   StoredCrawl,
@@ -111,6 +112,8 @@ export async function crawlPreviewController(req: Request, res: Response) {
     await saveCrawl(id, sc);
 
     const crawler = crawlToCrawler(id, sc);
+
+    await finishCrawlKickoff(id);
 
     const sitemap = sc.crawlerOptions?.ignoreSitemap
       ? 0
