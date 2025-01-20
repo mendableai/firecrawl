@@ -607,7 +607,7 @@ export default class FirecrawlApp {
       targetURL.searchParams.set("skip", skip.toString());
     }
     if (limit !== undefined) {
-      targetURL.searchParams.set("skip", limit.toString());
+      targetURL.searchParams.set("limit", limit.toString());
     }
 
     try {
@@ -909,7 +909,7 @@ export default class FirecrawlApp {
       targetURL.searchParams.set("skip", skip.toString());
     }
     if (limit !== undefined) {
-      targetURL.searchParams.set("skip", limit.toString());
+      targetURL.searchParams.set("limit", limit.toString());
     }
 
     try {
