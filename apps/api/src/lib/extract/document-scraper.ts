@@ -12,6 +12,7 @@ interface ScrapeDocumentOptions {
   plan: PlanType;
   origin: string;
   timeout: number;
+  isSingleUrl?: boolean;
 }
 
 export async function scrapeDocument(
@@ -24,14 +25,14 @@ export async function scrapeDocument(
     trace.timing.scrapedAt = new Date().toISOString();
   }
 
-  const jobId = crypto.randomUUID();
-  const jobPriority = await getJobPriority({
-    plan: options.plan,
-    team_id: options.teamId,
-    basePriority: 10,
-  });
+  async function attemptScrape(timeout: number) {
+    const jobId = crypto.randomUUID();
+    const jobPriority = await getJobPriority({
+      plan: options.plan,
+      team_id: options.teamId,
+      basePriority: 10,
+    });
 
-  try {
     await addScrapeJob(
       {
         url: options.url,
@@ -50,7 +51,7 @@ export async function scrapeDocument(
       jobPriority,
     );
 
-    const doc = await waitForJob<Document>(jobId, options.timeout);
+    const doc = await waitForJob<Document>(jobId, timeout);
     await getScrapeQueue().remove(jobId);
 
     if (trace) {
@@ -63,6 +64,18 @@ export async function scrapeDocument(
     }
 
     return doc;
+  }
+
+  try {
+    try {
+      return await attemptScrape(options.timeout);
+    } catch (timeoutError) {
+      if (options.isSingleUrl) {
+        // For single URLs, try again with double timeout
+        return await attemptScrape(options.timeout * 2);
+      }
+      throw timeoutError;
+    }
   } catch (error) {
     logger.error(`Error in scrapeDocument: ${error}`);
     if (trace) {
