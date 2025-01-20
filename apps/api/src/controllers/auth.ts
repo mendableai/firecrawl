@@ -97,7 +97,7 @@ export async function getACUC(
     let rpcName =
       mode === RateLimiterMode.Extract || mode === RateLimiterMode.ExtractStatus
         ? "auth_credit_usage_chunk_extract"
-        : "auth_credit_usage_chunk_test_21_credit_pack_n_extract";
+        : "auth_credit_usage_chunk_test_22_credit_pack_n_extract";
     while (retries < maxRetries) {
       ({ data, error } = await supabase_service.rpc(
         rpcName,
