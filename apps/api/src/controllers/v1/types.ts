@@ -223,6 +223,9 @@ export const extractV1Options = z
     origin: z.string().optional().default("api"),
     urlTrace: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().default(60000),
+
+    cacheKey: z.string().optional(),
+    cacheMode: z.enum(["direct", "save", "load"]).optional(),
   })
   .strict(strictMessage);
 
