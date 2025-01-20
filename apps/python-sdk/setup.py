@@ -17,7 +17,7 @@ def get_version():
 
 
 setup(
-    name="firecrawl",
+    name="firecrawl-py",
     version=get_version(),
     url="https://github.com/mendableai/firecrawl",
     author="Mendable.ai",

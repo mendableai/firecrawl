@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 dynamic = ["version"]
-name = "firecrawl"
+name = "firecrawl-py"
 description = "Python SDK for Firecrawl API"
 readme = {file="README.md", content-type = "text/markdown"}
 requires-python = ">=3.8"
