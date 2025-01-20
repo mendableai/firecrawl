@@ -302,6 +302,7 @@ anyOf
 
 Formats are not supported. Min/max are not supported. Anything beyond the above is not supported. Keep it simple with types and descriptions.
 Optionals are not supported.
+DO NOT USE FORMATS.
 Keep it simple. Don't create too many properties, just the ones that are needed. Don't invent properties.
 Return a valid JSON schema object with properties that would capture the information requested in the prompt.`,
           },
