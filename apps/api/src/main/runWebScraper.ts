@@ -16,7 +16,6 @@ import {
   ScrapeUrlResponse,
 } from "../scraper/scrapeURL";
 import { Engine } from "../scraper/scrapeURL/engines";
-import { indexPage } from "../lib/extract/index/pinecone";
 configDotenv();
 
 export async function startWebScraperPipeline({

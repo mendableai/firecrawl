@@ -35,6 +35,9 @@ importers:
       '@pinecone-database/pinecone':
         specifier: ^4.0.0
         version: 4.0.0
+      '@qdrant/js-client-rest':
+        specifier: ^1.12.0
+        version: 1.12.0(typescript@5.4.5)
       '@sentry/cli':
         specifier: ^2.33.1
         version: 2.33.1(encoding@0.1.13)
@@ -693,6 +696,10 @@ packages:
   '@dqbd/tiktoken@1.0.17':
     resolution: {integrity: sha512-v2gz0V6DiuR2TsALM32TkBThf6LdjLbxe6HS/nx9/KJxuDX0Z7SGX7N7PvQfqIvRyus42jI9poVUqezc/j/aQw==}
 
+  '@fastify/busboy@2.1.1':
+    resolution: {integrity: sha512-vBZP4NlzfOlerQTnba4aqZoMhE/a9HY7HRqoOPaETQcSQuWEIyZMHGfVu6w9wGtGK5fED5qRs2DteVCjOH60sA==}
+    engines: {node: '>=14'}
+
   '@flydotio/dockerfile@0.4.11':
     resolution: {integrity: sha512-L52UAfrOhmAn3T4TxpeRofQOSO+Kctg+uraB4nLzo4mvvh+4Z7HYxSi7Dnq0Kirz+xx6fDIc4OMNT1EdaORecA==}
     engines: {node: '>=16.0.0'}
@@ -1044,6 +1051,16 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  '@qdrant/js-client-rest@1.12.0':
+    resolution: {integrity: sha512-H8VokZq2DYe9yfKG3c7xPNR+Oc5ZvwMUtPEr1wUO4xVi9w5P89MScJaCc9UW8mS5AR+/Y1h2t1YjSxBFPIYT2Q==}
+    engines: {node: '>=18.0.0', pnpm: '>=8'}
+    peerDependencies:
+      typescript: '>=4.7'
+
+  '@qdrant/openapi-typescript-fetch@1.2.6':
+    resolution: {integrity: sha512-oQG/FejNpItrxRHoyctYvT3rwGZOnK4jr3JdppO/c78ktDvkWiPXPHNsrDf33K9sZdRb6PR7gi4noIapu5q4HA==}
+    engines: {node: '>=18.0.0', pnpm: '>=8'}
+
   '@react-email/render@0.0.15':
     resolution: {integrity: sha512-/pT5dBu0y1mogrfEpc002rgRcXpbShK6PFtxTVU6LZZ+bccvZPgk67HKc01lxpa1eYGQgZ6I+VQ02GRnMDclTg==}
     engines: {node: '>=18.0.0'}
@@ -1156,6 +1173,9 @@ packages:
   '@sentry/utils@8.26.0':
     resolution: {integrity: sha512-xvlPU9Hd2BlyT+FhWHGNwnxWqdVRk2AHnDtVcW4Ma0Ri5EwS+uy4Jeik5UkSv8C5RVb9VlxFmS8LN3I1MPJsLw==}
     engines: {node: '>=14.18'}
+
+  '@sevinf/maybe@0.5.0':
+    resolution: {integrity: sha512-ARhyoYDnY1LES3vYI0fiG6e9esWfTNcXcO6+MPJJXcnyMV3bim4lnFt45VXouV7y82F4x3YH8nOQ6VztuvUiWg==}
 
   '@sinclair/typebox@0.27.8':
     resolution: {integrity: sha512-+Fj43pSMwJs4KRrH/938Uf+uAELIgVBmQzg/q1YG10djyfA3TnrU8N8XzqCh/okZdszqBQTZf96idMfE5lnwTA==}
@@ -4411,6 +4431,10 @@ packages:
   undici-types@5.26.5:
     resolution: {integrity: sha512-JlCMO+ehdEIKqlFxk6IfVoAUVmgz7cU7zD/h9XZ0qzeosSHmUJVOzSQvvYSYWXkFXC+IfLKSIffhv0sVZup6pA==}
 
+  undici@5.28.4:
+    resolution: {integrity: sha512-72RFADWFqKmUb2hmmvNODKL3p9hcB6Gt2DOQMis1SEBaV6a4MH8soBvzg+95CYhCKPFedut2JY9bMfrDl9D23g==}
+    engines: {node: '>=14.0'}
+
   undici@6.20.1:
     resolution: {integrity: sha512-AjQF1QsmqfJys+LXfGTNum+qw4S88CojRInG/6t31W/1fk6G59s92bnAvGz5Cmur+kQv2SURXEvvudLmbrE8QA==}
     engines: {node: '>=18.17'}
@@ -5413,6 +5437,8 @@ snapshots:
 
   '@dqbd/tiktoken@1.0.17': {}
 
+  '@fastify/busboy@2.1.1': {}
+
   '@flydotio/dockerfile@0.4.11':
     dependencies:
       chalk: 5.3.0
@@ -5949,6 +5975,15 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
+  '@qdrant/js-client-rest@1.12.0(typescript@5.4.5)':
+    dependencies:
+      '@qdrant/openapi-typescript-fetch': 1.2.6
+      '@sevinf/maybe': 0.5.0
+      typescript: 5.4.5
+      undici: 5.28.4
+
+  '@qdrant/openapi-typescript-fetch@1.2.6': {}
+
   '@react-email/render@0.0.15':
     dependencies:
       html-to-text: 9.0.5
@@ -6096,6 +6131,8 @@ snapshots:
   '@sentry/utils@8.26.0':
     dependencies:
       '@sentry/types': 8.26.0
+
+  '@sevinf/maybe@0.5.0': {}
 
   '@sinclair/typebox@0.27.8': {}
 
@@ -9712,6 +9749,10 @@ snapshots:
   underscore@1.13.6: {}
 
   undici-types@5.26.5: {}
+
+  undici@5.28.4:
+    dependencies:
+      '@fastify/busboy': 2.1.1
 
   undici@6.20.1: {}
 

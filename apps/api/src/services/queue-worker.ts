@@ -55,7 +55,7 @@ import {
 } from "../lib/concurrency-limit";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
-import { indexPage } from "../lib/extract/index/pinecone";
+import { getIndex } from "../lib/extract/index/";
 import { Document } from "../controllers/v1/types";
 import { performExtraction } from "../lib/extract/extraction-service";
 import { supabase_service } from "../services/supabase";
@@ -658,7 +658,7 @@ async function indexJob(job: Job & { id: string }, document: Document) {
     document.markdown &&
     job.data.team_id === process.env.BACKGROUND_INDEX_TEAM_ID!
   ) {
-    // indexPage({
+    // getIndex().indexPage({
     //   document: document,
     //   originUrl: job.data.crawl_id
     //     ? (await getCrawl(job.data.crawl_id))?.originUrl!
