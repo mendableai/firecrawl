@@ -43,15 +43,15 @@ export async function supaBillTeam(
   const _logger = (__logger ?? logger).child({
     module: "credit_billing",
     method: "supaBillTeam",
+    teamId: team_id,
+    subscriptionId: subscription_id,
+    credits,
   });
 
   if (team_id === "preview") {
     return { success: true, message: "Preview team, no credits used" };
   }
-  _logger.info(`Billing team ${team_id} for ${credits} credits`, {
-    team_id,
-    credits,
-  });
+  _logger.info(`Billing team ${team_id} for ${credits} credits`);
 
   const { data, error } = await supabase_service.rpc("bill_team_w_extract_3", {
     _team_id: team_id,
