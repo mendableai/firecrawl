@@ -457,6 +457,8 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 Content-Type: application/json
 
 {
+  "cacheMode":"load",
+  "cacheKey":"test-cache-key",
   "urls": [
     "https://www.naamanp.co.il/catalog/product/view/id/16453/s/11314179/category/167/",
     "https://www.naamanp.co.il/11290046",
