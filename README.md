@@ -72,6 +72,7 @@ To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and ge
 - [**Scrape**](#scraping): scrapes a URL and get its content in LLM-ready format (markdown, structured data via [LLM Extract](#llm-extraction-beta), screenshot, html)
 - [**Crawl**](#crawling): scrapes all the URLs of a web page and return content in LLM-ready format
 - [**Map**](#map-alpha): input a website and get all the website urls - extremely fast
+- [**Extract**](#extract): get structured data from single page, multiple pages or entire websites with AI.
 
 ### Powerful Capabilities
 - **LLM-ready formats**: markdown, structured data, screenshot, HTML, links, metadata
@@ -237,6 +238,76 @@ Response will be an ordered list from the most relevant to the least relevant.
     "https://docs.firecrawl.dev/sdks/python",
     "https://docs.firecrawl.dev/learn/rag-llama3",
   ]
+}
+```
+
+### Extract
+
+Get structured data from entire websites with a prompt and/or a schema.
+
+You can extract structured data from one or multiple URLs, including wildcards:
+
+Single Page:
+Example: https://firecrawl.dev/some-page
+
+Multiple Pages / Full Domain
+Example: https://firecrawl.dev/*
+
+When you use /*, Firecrawl will automatically crawl and parse all URLs it can discover in that domain, then extract the requested data.
+
+```bash
+curl -X POST https://api.firecrawl.dev/v1/extract \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer YOUR_API_KEY' \
+    -d '{
+      "urls": [
+        "https://firecrawl.dev/*", 
+        "https://docs.firecrawl.dev/", 
+        "https://www.ycombinator.com/companies"
+      ],
+      "prompt": "Extract the company mission, whether it is open source, and whether it is in Y Combinator from the page.",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "company_mission": {
+            "type": "string"
+          },
+          "is_open_source": {
+            "type": "boolean"
+          },
+          "is_in_yc": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "company_mission",
+          "supports_sso",
+          "is_open_source",
+          "is_in_yc"
+        ]
+      }
+    }'
+```
+
+```json
+{
+  "success": true,
+  "id": "44aa536d-f1cb-4706-ab87-ed0386685740",
+  "urlTrace": []
+}
+```
+
+If you are using the sdks, it will auto pull the response for you:
+
+```json
+{
+  "success": true,
+  "data": {
+    "company_mission": "Firecrawl is the easiest way to extract data from the web. Developers use us to reliably convert URLs into LLM-ready markdown or structured data with a single API call.",
+    "supports_sso": false,
+    "is_open_source": true,
+    "is_in_yc": true
+  }
 }
 ```
 
