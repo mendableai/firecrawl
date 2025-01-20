@@ -223,13 +223,18 @@ export const extractV1Options = z
     ignoreSitemap: z.boolean().default(false),
     includeSubdomains: z.boolean().default(true),
     allowExternalLinks: z.boolean().default(false),
+    enableWebSearch: z.boolean().default(false),
     origin: z.string().optional().default("api"),
     urlTrace: z.boolean().default(false),
     __experimental_streamSteps: z.boolean().default(false),
     __experimental_llmUsage: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().default(60000),
   })
-  .strict(strictMessage);
+  .strict(strictMessage)
+  .transform((obj) => ({
+    ...obj,
+    allowExternalLinks: obj.allowExternalLinks || obj.enableWebSearch
+  }));
 
 export type ExtractV1Options = z.infer<typeof extractV1Options>;
 export const extractRequestSchema = extractV1Options;

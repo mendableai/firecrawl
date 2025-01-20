@@ -624,7 +624,8 @@ class FirecrawlApp:
         jsonData = {'urls': urls, **params}
         request_data = {
             **jsonData,
-            'allowExternalLinks': params.get('allow_external_links', False),
+            'allowExternalLinks': params.get('allow_external_links', params.get('allowExternalLinks', False)),
+            'enableWebSearch': params.get('enable_web_search', params.get('enableWebSearch', False)),
             'schema': schema,
             'origin': 'api-sdk'
         }

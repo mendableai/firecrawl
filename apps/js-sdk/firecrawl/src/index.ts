@@ -256,6 +256,7 @@ export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
   schema?: LLMSchema | object;
   systemPrompt?: string;
   allowExternalLinks?: boolean;
+  enableWebSearch?: boolean;
   includeSubdomains?: boolean;
   origin?: string;
 }
