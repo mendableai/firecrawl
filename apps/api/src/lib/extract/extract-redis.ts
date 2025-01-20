@@ -30,6 +30,8 @@ export type StoredExtract = {
   error?: any;
   showSteps?: boolean;
   steps?: ExtractedStep[];
+  showLLMUsage?: boolean;
+  llmUsage?: number;
 };
 
 export async function saveExtract(id: string, extract: StoredExtract) {

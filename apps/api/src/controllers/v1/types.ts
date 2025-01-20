@@ -226,6 +226,7 @@ export const extractV1Options = z
     origin: z.string().optional().default("api"),
     urlTrace: z.boolean().default(false),
     __experimental_streamSteps: z.boolean().default(false),
+    __experimental_llmUsage: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().default(60000),
   })
   .strict(strictMessage);
@@ -881,3 +882,12 @@ export type SearchResponse =
       warning?: string;
       data: Document[];
     };
+
+
+export type TokenUsage = {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  step?: string;
+  model?: string;
+};

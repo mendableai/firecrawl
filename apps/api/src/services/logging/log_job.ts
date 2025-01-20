@@ -59,6 +59,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       num_tokens: job.num_tokens,
       retry: !!job.retry,
       crawl_id: job.crawl_id,
+      tokens_billed: job.tokens_billed,
     };
 
     if (force) {
@@ -128,6 +129,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
           origin: job.origin,
           num_tokens: job.num_tokens,
           retry: job.retry,
+          tokens_billed: job.tokens_billed,
         },
       };
       if (job.mode !== "single_urls") {
