@@ -192,6 +192,8 @@ export async function supaAuthenticateUser(
   if (token == "this_is_just_a_preview_token") {
     if (mode == RateLimiterMode.CrawlStatus) {
       rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
+    } else if (mode == RateLimiterMode.ExtractStatus) {
+      rateLimiter = getRateLimiter(RateLimiterMode.ExtractStatus, token);
     } else {
       rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
     }
