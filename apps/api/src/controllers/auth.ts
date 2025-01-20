@@ -77,8 +77,9 @@ export async function getACUC(
   api_key: string,
   cacheOnly = false,
   useCache = true,
+  mode?: RateLimiterMode,
 ): Promise<AuthCreditUsageChunk | null> {
-  const cacheKeyACUC = `acuc_${api_key}`;
+  const cacheKeyACUC = `acuc_${api_key}_${mode}`;
 
   if (useCache) {
     const cachedACUC = await getValue(cacheKeyACUC);
@@ -93,9 +94,13 @@ export async function getACUC(
     let retries = 0;
     const maxRetries = 5;
 
+    let rpcName =
+      mode === RateLimiterMode.Extract || mode === RateLimiterMode.ExtractStatus
+        ? "auth_credit_usage_chunk_extract"
+        : "auth_credit_usage_chunk_test_22_credit_pack_n_extract";
     while (retries < maxRetries) {
       ({ data, error } = await supabase_service.rpc(
-        "auth_credit_usage_chunk_test_21_credit_pack",
+        rpcName,
         { input_key: api_key },
         { get: true },
       ));
@@ -126,8 +131,6 @@ export async function getACUC(
     if (chunk !== null && useCache) {
       setCachedACUC(api_key, chunk);
     }
-
-    // console.log(chunk);
 
     return chunk;
   } else {
@@ -203,7 +206,7 @@ export async function supaAuthenticateUser(
       };
     }
 
-    chunk = await getACUC(normalizedApi);
+    chunk = await getACUC(normalizedApi, false, true, mode);
 
     if (chunk === null) {
       return {
@@ -257,6 +260,9 @@ export async function supaAuthenticateUser(
           token,
           subscriptionData.plan,
         );
+        break;
+      case RateLimiterMode.ExtractStatus:
+        rateLimiter = getRateLimiter(RateLimiterMode.ExtractStatus, token);
         break;
       case RateLimiterMode.CrawlStatus:
         rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);

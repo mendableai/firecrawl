@@ -1,6 +1,7 @@
 import {
   Document,
   ExtractRequest,
+  TokenUsage,
   toLegacyCrawlerOptions,
   URLTrace,
 } from "../../controllers/v1/types";
@@ -31,6 +32,7 @@ import { ExtractStep, updateExtract } from "./extract-redis";
 import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
 import { CUSTOM_U_TEAMS } from "./config";
+import { calculateFinalResultCost, estimateCost, estimateTotalCost } from "./usage/llm-cost";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -46,6 +48,9 @@ interface ExtractResult {
   warning?: string;
   urlTrace?: URLTrace[];
   error?: string;
+  tokenUsageBreakdown?: TokenUsage[];
+  llmUsage?: number;
+  totalUrlsScraped?: number;
 }
 
 async function analyzeSchemaAndPrompt(
@@ -57,6 +62,7 @@ async function analyzeSchemaAndPrompt(
   multiEntityKeys: string[];
   reasoning?: string;
   keyIndicators?: string[];
+  tokenUsage: TokenUsage;
 }> {
   if (!schema) {
     schema = await generateSchemaFromPrompt(prompt);
@@ -71,8 +77,10 @@ async function analyzeSchemaAndPrompt(
     keyIndicators: z.array(z.string()),
   });
 
+  const model = "gpt-4o";
+
   const result = await openai.beta.chat.completions.parse({
-    model: "gpt-4o",
+    model: model,
     messages: [
       {
         role: "system",
@@ -131,12 +139,20 @@ Schema: ${schemaString}\nPrompt: ${prompt}\nRelevant URLs: ${urls}`,
 
   const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
     checkSchema.parse(result.choices[0].message.parsed);
-  return { isMultiEntity, multiEntityKeys, reasoning, keyIndicators };
+
+  const tokenUsage: TokenUsage = {
+    promptTokens: result.usage?.prompt_tokens ?? 0,
+    completionTokens: result.usage?.completion_tokens ?? 0,
+    totalTokens: result.usage?.total_tokens ?? 0,
+    model: model,
+  };
+  return { isMultiEntity, multiEntityKeys, reasoning, keyIndicators, tokenUsage };
 }
 
 type completions = {
   extract: Record<string, any>;
   numTokens: number;
+  totalUsage: TokenUsage;
   warning?: string;
 };
 
@@ -163,6 +179,11 @@ export async function performExtraction(
   let multiEntityCompletions: completions[] = [];
   let multiEntityResult: any = {};
   let singleAnswerResult: any = {};
+  let totalUrlsScraped = 0;
+
+  
+  // Token tracking
+  let tokenUsage: TokenUsage[] = [];
 
   await updateExtract(extractId, {
     status: "processing",
@@ -219,6 +240,7 @@ export async function performExtraction(
         "No valid URLs found to scrape. Try adjusting your search criteria or including more URLs.",
       extractId,
       urlTrace: urlTraces,
+      totalUrlsScraped: 0
     };
   }
 
@@ -249,8 +271,11 @@ export async function performExtraction(
   // 1. the first one is a completion that will extract the array of items
   // 2. the second one is multiple completions that will extract the items from the array
   let startAnalyze = Date.now();
-  const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
+  const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators, tokenUsage: schemaAnalysisTokenUsage } =
     await analyzeSchemaAndPrompt(links, reqSchema, request.prompt ?? "");
+
+  // Track schema analysis tokens
+  tokenUsage.push(schemaAnalysisTokenUsage);
 
   // console.log("\nIs Multi Entity:", isMultiEntity);
   // console.log("\nMulti Entity Keys:", multiEntityKeys);
@@ -311,6 +336,8 @@ export async function performExtraction(
     let multyEntityDocs = (await Promise.all(scrapePromises)).filter(
       (doc): doc is Document => doc !== null,
     );
+
+    totalUrlsScraped += multyEntityDocs.length;
 
     let endScrape = Date.now();
 
@@ -376,6 +403,8 @@ export async function performExtraction(
             true,
           );
 
+          tokenUsage.push(shouldExtractCheck.totalUsage);
+
           if (!shouldExtractCheck.extract["extract"]) {
             console.log(
               `Skipping extraction for ${doc.metadata.url} as content is irrelevant`,
@@ -437,6 +466,11 @@ export async function performExtraction(
             completionPromise,
             timeoutPromise,
           ])) as Awaited<ReturnType<typeof generateOpenAICompletions>>;
+
+          // Track multi-entity extraction tokens
+          if (multiEntityCompletion) {
+            tokenUsage.push(multiEntityCompletion.totalUsage);
+          }
 
           // console.log(multiEntityCompletion.extract)
           // if (!multiEntityCompletion.extract?.is_content_relevant) {
@@ -500,6 +534,7 @@ export async function performExtraction(
           "An unexpected error occurred. Please contact help@firecrawl.com for help.",
         extractId,
         urlTrace: urlTraces,
+        totalUrlsScraped
       };
     }
   }
@@ -551,15 +586,17 @@ export async function performExtraction(
         }
       }
 
-      singleAnswerDocs.push(
-        ...results.filter((doc): doc is Document => doc !== null),
-      );
+      const validResults = results.filter((doc): doc is Document => doc !== null);
+      singleAnswerDocs.push(...validResults);
+      totalUrlsScraped += validResults.length;
+
     } catch (error) {
       return {
         success: false,
         error: error.message,
         extractId,
         urlTrace: urlTraces,
+        totalUrlsScraped
       };
     }
 
@@ -571,6 +608,7 @@ export async function performExtraction(
           "All provided URLs are invalid. Please check your input and try again.",
         extractId,
         urlTrace: request.urlTrace ? urlTraces : undefined,
+        totalUrlsScraped: 0
       };
     }
 
@@ -603,6 +641,11 @@ export async function performExtraction(
       true,
     );
 
+    // Track single answer extraction tokens
+    if (singleAnswerCompletions) {
+      tokenUsage.push(singleAnswerCompletions.totalUsage);
+    }
+
     singleAnswerResult = singleAnswerCompletions.extract;
 
     // Update token usage in traces
@@ -629,19 +672,24 @@ export async function performExtraction(
     ? await mixSchemaObjects(reqSchema, singleAnswerResult, multiEntityResult)
     : singleAnswerResult || multiEntityResult;
 
-  let linksBilled = links.length * 5;
+  
+  const totalTokensUsed = tokenUsage.reduce((a, b) => a + b.totalTokens, 0);
+  const llmUsage = estimateTotalCost(tokenUsage);
+  let tokensToBill = calculateFinalResultCost(finalResult);
+
 
   if (CUSTOM_U_TEAMS.includes(teamId)) {
-    linksBilled = 1;
+    tokensToBill = 1;
   }
   // Bill team for usage
-  billTeam(teamId, subId, linksBilled).catch((error) => {
+  billTeam(teamId, subId, tokensToBill, logger, true).catch((error) => {
     logger.error(
-      `Failed to bill team ${teamId} for ${linksBilled} credits: ${error}`,
+      `Failed to bill team ${teamId} for ${tokensToBill} tokens: ${error}`,
     );
   });
 
-  // Log job
+
+  // Log job with token usage
   logJob({
     job_id: extractId,
     success: true,
@@ -654,10 +702,12 @@ export async function performExtraction(
     url: request.urls.join(", "),
     scrapeOptions: request,
     origin: request.origin ?? "api",
-    num_tokens: 0, // completions?.numTokens ?? 0,
+    num_tokens: totalTokensUsed,
+    tokens_billed: tokensToBill,
   }).then(() => {
     updateExtract(extractId, {
       status: "completed",
+      llmUsage,
     }).catch((error) => {
       logger.error(
         `Failed to update extract ${extractId} status to completed: ${error}`,
@@ -671,5 +721,7 @@ export async function performExtraction(
     extractId,
     warning: undefined, // TODO FIX
     urlTrace: request.urlTrace ? urlTraces : undefined,
+    llmUsage,
+    totalUrlsScraped
   };
 }
