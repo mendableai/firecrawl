@@ -228,7 +228,7 @@ v1Router.post(
 
 v1Router.get(
   "/extract/:jobId",
-  authMiddleware(RateLimiterMode.ExtractStatus),
+  authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(extractStatusController),
 );
 

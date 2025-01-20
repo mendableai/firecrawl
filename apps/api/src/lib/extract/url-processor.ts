@@ -199,19 +199,15 @@ export async function processUrl(
     //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
     // );
 
-    const rerankerResult = await rerankLinksWithLLM(mappedLinks, searchQuery, urlTraces);
-    mappedLinks = rerankerResult.mapDocument;
-    let tokensUsed = rerankerResult.tokensUsed;
+    mappedLinks = await rerankLinksWithLLM(mappedLinks, searchQuery, urlTraces);
 
     // 2nd Pass, useful for when the first pass returns too many links
     if (mappedLinks.length > 100) {
-      const rerankerResult = await rerankLinksWithLLM(
+      mappedLinks = await rerankLinksWithLLM(
         mappedLinks,
         searchQuery,
         urlTraces,
       );
-      mappedLinks = rerankerResult.mapDocument;
-      tokensUsed += rerankerResult.tokensUsed;
     }
 
     // dumpToFile(

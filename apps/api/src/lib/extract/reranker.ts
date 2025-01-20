@@ -150,21 +150,16 @@ function filterAndProcessLinks(
     );
 }
 
-export type RerankerResult = {
-  mapDocument: MapDocument[];
-  tokensUsed: number;
-}
 
 export async function rerankLinksWithLLM(
   mappedLinks: MapDocument[],
   searchQuery: string,
   urlTraces: URLTrace[],
-): Promise<RerankerResult> {
+): Promise<MapDocument[]> {
   const chunkSize = 100;
   const chunks: MapDocument[][] = [];
   const TIMEOUT_MS = 20000;
   const MAX_RETRIES = 2;
-  let totalTokensUsed = 0;
   
   // Split mappedLinks into chunks of 200
   for (let i = 0; i < mappedLinks.length; i += chunkSize) {
@@ -230,7 +225,6 @@ export async function rerankLinksWithLLM(
             return [];
           }
 
-          totalTokensUsed += completion.numTokens || 0;
           // console.log(`Chunk ${chunkIndex + 1}: Found ${completion.extract.relevantLinks.length} relevant links`);
           return completion.extract.relevantLinks;
 
@@ -258,8 +252,5 @@ export async function rerankLinksWithLLM(
     .filter((link): link is MapDocument => link !== undefined);
 
   // console.log(`Returning ${relevantLinks.length} relevant links`);
-  return {
-    mapDocument: relevantLinks,
-    tokensUsed: totalTokensUsed,
-  };
+  return relevantLinks;
 }

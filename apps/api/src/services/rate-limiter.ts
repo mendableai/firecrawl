@@ -100,10 +100,6 @@ const RATE_LIMITS = {
     free: 500,
     default: 5000,
   },
-  extractStatus: {
-    free: 500,
-    default: 5000,
-  },
   testSuite: {
     free: 10000,
     default: 10000,
