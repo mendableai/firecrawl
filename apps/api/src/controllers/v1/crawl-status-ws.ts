@@ -157,7 +157,7 @@ async function crawlStatusWS(
   const doneJobs = await getJobs(doneJobIDs);
   const data = doneJobs.map((x) => x.returnvalue);
 
-  send(ws, {
+  await send(ws, {
     type: "catchup",
     data: {
       success: true,
