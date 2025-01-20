@@ -64,7 +64,7 @@ export async function parseMarkdown(
 
       markdownContent = processMultiLineLinks(markdownContent);
       markdownContent = removeSkipToContentLinks(markdownContent);
-      logger.info(`HTML to Markdown conversion using Go parser successful`);
+      // logger.info(`HTML to Markdown conversion using Go parser successful`);
       return markdownContent;
     }
   } catch (error) {
