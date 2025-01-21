@@ -19,6 +19,10 @@ const RATE_LIMITS = {
     etier1a: 1000,
     etier2a: 300,
     etierscale1: 150,
+    // extract ops
+    extract_starter: 20,
+    extract_explorer: 100,
+    extract_pro: 1000,
   },
   scrape: {
     default: 20,
@@ -36,6 +40,10 @@ const RATE_LIMITS = {
     etier1a: 1000,
     etier2a: 2500,
     etierscale1: 1500,
+    // extract ops
+    extract_starter: 20,
+    extract_explorer: 100,
+    extract_pro: 1000,
   },
   search: {
     default: 20,
@@ -53,6 +61,10 @@ const RATE_LIMITS = {
     etier1a: 1000,
     etier2a: 2500,
     etierscale1: 1500,
+    // extract ops
+    extract_starter: 20,
+    extract_explorer: 100,
+    extract_pro: 1000,
   },
   map: {
     default: 20,
@@ -70,6 +82,10 @@ const RATE_LIMITS = {
     etier1a: 1000,
     etier2a: 2500,
     etierscale1: 1500,
+    // extract ops
+    extract_starter: 20,
+    extract_explorer: 100,
+    extract_pro: 1000,
   },
   extract: {
     default: 20,
@@ -87,6 +103,9 @@ const RATE_LIMITS = {
     etier1a: 1000,
     etier2a: 1000,
     etierscale1: 1000,
+    extract_starter: 20,
+    extract_explorer: 100,
+    extract_pro: 1000,
   },
   preview: {
     free: 5,

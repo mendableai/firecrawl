@@ -186,6 +186,9 @@ export type PlanType =
   | "etier1a"
   | "etierscale1"
   | "free"
+  | "extract_starter"
+  | "extract_explorer"
+  | "extract_pro"
   | "";
 
 export type WebhookEventType =
