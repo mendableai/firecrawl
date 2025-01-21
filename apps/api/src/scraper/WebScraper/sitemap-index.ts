@@ -1,5 +1,5 @@
 import { logger } from "../../lib/logger";
-import { normalizeUrlOnlyHostname } from "../../lib/canonical-url";
+import { normalizeUrl, normalizeUrlOnlyHostname } from "../../lib/canonical-url";
 import { supabase_service } from "../../services/supabase";
 
 /**
@@ -23,7 +23,7 @@ async function querySitemapIndexFunction(url: string) {
         throw error;
       }
 
-      const allUrls = data.map((entry) => entry.urls).flat();
+      const allUrls = [...new Set(data.map((entry) => entry.urls).flat().map(url => normalizeUrl(url)))];
       return allUrls;
 
     } catch (error) {
