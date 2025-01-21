@@ -32,6 +32,15 @@ export async function autoCharge(
   const resource = `auto-recharge:${chunk.team_id}`;
   const cooldownKey = `auto-recharge-cooldown:${chunk.team_id}`;
 
+  if(chunk.team_id === "285bb597-6eaf-4b96-801c-51461fc3c543"){
+    return {
+      success: false,
+      message: "Auto-recharge failed",
+      remainingCredits: chunk.remaining_credits,
+      chunk,
+    };
+  }
+
   try {
     // Check if the team is in the cooldown period
     // Another check to prevent race conditions, double charging - cool down of 5 minutes
