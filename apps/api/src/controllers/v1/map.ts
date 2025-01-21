@@ -156,13 +156,21 @@ export async function getMapResults({
     }
 
     // Parallelize sitemap index query with search results
-    const [sitemapIndexUrls, ...searchResults] = await Promise.all([
+    const [sitemapIndexResult, ...searchResults] = await Promise.all([
       querySitemapIndex(url),
       ...(cachedResult ? [] : pagePromises),
     ]);
 
-    // Only query sitemap if index has less than 100 links
-    if (!ignoreSitemap && sitemapIndexUrls.length < 100) {
+    const twoDaysAgo = new Date();
+    twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
+
+
+    // If sitemap is not ignored and either we have few URLs (<100) or the data is stale (>2 days old), fetch fresh sitemap
+    if (
+      !ignoreSitemap && 
+      (sitemapIndexResult.urls.length < 100 ||
+      new Date(sitemapIndexResult.lastUpdated) < twoDaysAgo)
+    ) {
       await crawler.tryGetSitemap(urls => {
         links.push(...urls);
       }, true, false, 30000);
@@ -197,7 +205,7 @@ export async function getMapResults({
     }
 
     // Add sitemap-index URLs
-    links.push(...sitemapIndexUrls);
+    links.push(...sitemapIndexResult.urls);
 
     // Perform cosine similarity between the search query and the list of links
     if (search) {

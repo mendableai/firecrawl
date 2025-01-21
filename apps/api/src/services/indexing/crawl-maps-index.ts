@@ -91,7 +91,16 @@ async function processBatch() {
     const inserts: CrawlMapRecord[] = [];
     const duplicatesToDelete: string[] = [];
 
+    // Track processed origins to avoid duplicates in the same batch
+    const processedOrigins = new Set<string>();
+
     for (const op of operations) {
+      // Skip if we've already processed this origin in this batch
+      if (processedOrigins.has(op.originUrl)) {
+        continue;
+      }
+      processedOrigins.add(op.originUrl);
+
       const existingForOrigin = mapsByOrigin.get(op.originUrl) || [];
 
       if (existingForOrigin.length > 0) {
@@ -110,7 +119,7 @@ async function processBatch() {
         ];
 
         updates.push({
-          id: mostRecent.id, // Add id to ensure we update the correct record
+          id: mostRecent.id,
           origin_url: op.originUrl,
           urls: mergedUrls,
           num_urls: mergedUrls.length,
@@ -156,14 +165,19 @@ async function processBatch() {
       logger.info(`🔄 Updating ${updates.length} existing crawl maps`, {
         origins: updates.map((u) => u.origin_url),
       });
-      const { error: updateError } = await supabase_service
-        .from("crawl_maps")
-        .upsert(updates);
+      
+      // Process updates one at a time to avoid conflicts
+      for (const update of updates) {
+        const { error: updateError } = await supabase_service
+          .from("crawl_maps")
+          .upsert(update);
 
-      if (updateError) {
-        logger.error("Failed to batch update crawl maps", {
-          error: updateError,
-        });
+        if (updateError) {
+          logger.error("Failed to update crawl map", {
+            error: updateError,
+            origin: update.origin_url
+          });
+        }
       }
     }
 

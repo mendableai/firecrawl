@@ -51,6 +51,11 @@ class FirecrawlApp:
         schema_: Optional[Any] = pydantic.Field(None, alias='schema')
         system_prompt: Optional[str] = None
         allow_external_links: Optional[bool] = False
+        enable_web_search: Optional[bool] = False
+        # Just for backwards compatibility
+        enableWebSearch: Optional[bool] = False
+
+
 
     class ExtractResponse(pydantic.BaseModel):
         """
