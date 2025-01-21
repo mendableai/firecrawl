@@ -94,11 +94,11 @@ export const actionsSchema = z.array(
     z.object({
       type: z.literal("write"),
       text: z.string(),
-    }).optional(),
+    }),
     z.object({
       type: z.literal("press"),
       key: z.string(),
-    }).optional(),
+    }),
     z.object({
       type: z.literal("scroll"),
       direction: z.enum(["up", "down"]).optional().default("down"),
@@ -110,7 +110,7 @@ export const actionsSchema = z.array(
     z.object({
       type: z.literal("executeJavascript"),
       script: z.string(),
-    }).optional(),
+    }),
   ]),
 );
 

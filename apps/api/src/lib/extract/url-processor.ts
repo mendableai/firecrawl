@@ -21,6 +21,7 @@ interface ProcessUrlOptions {
   origin?: string;
   limit?: number;
   includeSubdomains?: boolean;
+  relevanceThreshold?: number;
 }
 
 export async function processUrl(
@@ -194,12 +195,11 @@ export async function processUrl(
       searchQuery = urlWithoutWww;
     }
 
-    // dumpToFile(
+    // await dumpToFile(
     //   "mapped-links.txt",
-    await dumpToFile(
-      "mapped-links.txt",
-      mappedLinks,
-      (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
+    //   mappedLinks,
+    //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
+    // );
 
     const rerankerResult = await rerankLinksWithLLM(mappedLinks, searchQuery, urlTraces);
     mappedLinks = rerankerResult.mapDocument;
@@ -217,11 +217,11 @@ export async function processUrl(
       tokensUsed += rerankerResult.tokensUsed;
     }
 
-    await dumpToFile(
-      "llm-links.txt",
-      mappedLinks,
-      (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
-    );
+    // await dumpToFile(
+    //   "llm-links.txt",
+    //   mappedLinks,
+    //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
+    // );
     // Remove title and description from mappedLinks
     mappedLinks = mappedLinks.map((link) => ({ url: link.url }));
     return mappedLinks.map((x) => x.url);

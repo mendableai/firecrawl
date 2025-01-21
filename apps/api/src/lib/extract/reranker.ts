@@ -285,8 +285,8 @@ Content: A review article listing the top 10 laptops, with brief descriptions bu
             true
           );
 
-          await dumpToFile("links-content.txt", [linksContent], (item) => item);
-          await dumpToFile("search-query.txt", [searchQuery], (item) => item);
+          // await dumpToFile("links-content.txt", [linksContent], (item) => item);
+          // await dumpToFile("search-query.txt", [searchQuery], (item) => item);
 
           const completion = await Promise.race([completionPromise, timeoutPromise]);
           
