@@ -155,14 +155,18 @@ export async function getMapResults({
       await redis.set(cacheKey, JSON.stringify(allResults), "EX", 48 * 60 * 60); // Cache for 48 hours
     }
 
-    // Parallelize sitemap fetch with serper search and sitemap-index
-    const [_, sitemapIndexUrls, ...searchResults] = await Promise.all([
-      ignoreSitemap ? null : crawler.tryGetSitemap(urls => {
-        links.push(...urls);
-      }, true, false, 30000),
+    // Parallelize sitemap index query with search results
+    const [sitemapIndexUrls, ...searchResults] = await Promise.all([
       querySitemapIndex(url),
       ...(cachedResult ? [] : pagePromises),
     ]);
+
+    // Only query sitemap if index has less than 100 links
+    if (!ignoreSitemap && sitemapIndexUrls.length < 100) {
+      await crawler.tryGetSitemap(urls => {
+        links.push(...urls);
+      }, true, false, 30000);
+    }
 
     if (!cachedResult) {
       allResults = searchResults;
