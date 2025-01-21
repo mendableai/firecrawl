@@ -160,7 +160,7 @@ export async function rerankLinksWithLLM(
   mappedLinks: MapDocument[],
   searchQuery: string,
   urlTraces: URLTrace[],
-  relevanceThreshold: number = 0.8
+  relevanceThreshold: number = 0.6
 ): Promise<RerankerResult> {
   const chunkSize = 100;
   const chunks: MapDocument[][] = [];
