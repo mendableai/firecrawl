@@ -1,4 +1,4 @@
-import { Document, URLTrace, scrapeOptions } from "../../controllers/v1/types";
+import { Document, ScrapeOptions, URLTrace } from "../../controllers/v1/types";
 import { PlanType } from "../../types";
 import { logger } from "../logger";
 import { getScrapeQueue } from "../../services/queue-service";
@@ -18,6 +18,7 @@ interface ScrapeDocumentOptions {
 export async function scrapeDocument(
   options: ScrapeDocumentOptions,
   urlTraces: URLTrace[],
+  scrapeOptions: ScrapeOptions,
 ): Promise<Document | null> {
   const trace = urlTraces.find((t) => t.url === options.url);
   if (trace) {
@@ -38,7 +39,7 @@ export async function scrapeDocument(
         url: options.url,
         mode: "single_urls",
         team_id: options.teamId,
-        scrapeOptions: scrapeOptions.parse({}),
+        scrapeOptions: scrapeOptions,
         internalOptions: {
           useCache: true,
         },

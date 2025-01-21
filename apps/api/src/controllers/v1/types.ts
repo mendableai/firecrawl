@@ -94,11 +94,11 @@ export const actionsSchema = z.array(
     z.object({
       type: z.literal("write"),
       text: z.string(),
-    }),
+    }).optional(),
     z.object({
       type: z.literal("press"),
       key: z.string(),
-    }),
+    }).optional(),
     z.object({
       type: z.literal("scroll"),
       direction: z.enum(["up", "down"]).optional().default("down"),
@@ -110,7 +110,7 @@ export const actionsSchema = z.array(
     z.object({
       type: z.literal("executeJavascript"),
       script: z.string(),
-    }),
+    }).optional(),
   ]),
 );
 
@@ -229,6 +229,8 @@ export const extractV1Options = z
     __experimental_streamSteps: z.boolean().default(false),
     __experimental_llmUsage: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().default(60000),
+    scrapeOptions: scrapeOptions.default({}),
+    relevanceThreshold: z.number().positive().finite().max(1).default(0.8),
   })
   .strict(strictMessage)
   .transform((obj) => ({

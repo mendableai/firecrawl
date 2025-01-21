@@ -50,12 +50,16 @@ export async function scrapeController(
     jobPriority,
   );
 
-  const totalWait =
-    (req.body.waitFor ?? 0) +
-    (req.body.actions ?? []).reduce(
-      (a, x) => (x.type === "wait" ? (x.milliseconds ?? 0) : 0) + a,
+  let totalWait = 0;
+  if (req.body.waitFor ?? 0) {
+    totalWait += req.body.waitFor ?? 0;
+  }
+  if (req.body.actions) {
+    totalWait += (req.body.actions ?? []).reduce(
+      (a, x) => a + (x?.type === "wait" ? (x?.milliseconds ?? 0) : 0),
       0,
     );
+  }
 
   let doc: Document;
   try {

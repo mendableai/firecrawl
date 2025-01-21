@@ -1,6 +1,7 @@
 import {
   Document,
   ExtractRequest,
+  scrapeOptions,
   TokenUsage,
   toLegacyCrawlerOptions,
   URLTrace,
@@ -212,6 +213,7 @@ export async function performExtraction(
         limit: request.limit,
         includeSubdomains: request.includeSubdomains,
         schema: request.schema,
+        relevanceThreshold: request.relevanceThreshold || 0.8,
       },
       urlTraces,
       (links: string[]) => {
@@ -328,6 +330,7 @@ export async function performExtraction(
             timeout,
           },
           urlTraces,
+          options.request.scrapeOptions || scrapeOptions.parse({})
         );
       }
       return docsMap.get(url);
@@ -572,6 +575,7 @@ export async function performExtraction(
             timeout,
           },
           urlTraces,
+          options.request.scrapeOptions || scrapeOptions.parse({})
         );
       }
       return docsMap.get(url);

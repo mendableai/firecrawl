@@ -173,10 +173,15 @@ export async function scrapeURLWithFireEngineChromeCDP(
     ...(meta.options.actions ?? []),
   ];
 
-  const totalWait = actions.reduce(
-    (a, x) => (x.type === "wait" ? (x.milliseconds ?? 1000) + a : a),
-    0,
-  );
+  let totalWait = 0;
+  if (actions.length > 0) {
+    if (actions.some((x: Action) => x?.type === "wait")) {
+      totalWait = actions.reduce(
+        (a: number, x: Action) => (x?.type === "wait" ? (x?.milliseconds ?? 1000) + a : a),
+        0,
+      );
+    }
+  }
 
   const timeout = (timeToRun ?? 300000) + totalWait;
 

@@ -45,7 +45,8 @@ export type Action =
   | {
       type: "executeJavascript";
       script: string;
-    };
+    }
+  | undefined;
 
 export type PageOptions = {
   includeMarkdown?: boolean;

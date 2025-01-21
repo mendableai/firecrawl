@@ -1,4 +1,4 @@
-import * as fs from 'fs';
+import fs from 'fs/promises';
 import * as path from 'path';
 
 /**
@@ -7,7 +7,7 @@ import * as path from 'path';
  * @param data The data to write to the file
  * @param formatter Optional function to format each item in the data array
  */
-export function dumpToFile<T>(
+export async function dumpToFile<T>(
   filename: string,
   data: T[],
   formatter?: (item: T, index: number) => string
@@ -21,6 +21,6 @@ export function dumpToFile<T>(
     fileContent = data.map((item, index) => `${index + 1}. ${JSON.stringify(item)}`).join('\n');
   }
 
-  fs.writeFileSync(filePath, fileContent, 'utf8');
+  await fs.writeFile(filePath, fileContent, 'utf8');
   console.log(`Dumped data to ${filename}`);
 }

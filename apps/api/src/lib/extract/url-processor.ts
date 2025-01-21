@@ -9,6 +9,7 @@ import { rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
 import { updateExtract } from "./extract-redis";
 import { ExtractStep } from "./extract-redis";
+import { dumpToFile } from "./helpers/dump-to-file";
 
 interface ProcessUrlOptions {
   url: string;
@@ -195,9 +196,10 @@ export async function processUrl(
 
     // dumpToFile(
     //   "mapped-links.txt",
-    //   mappedLinks,
-    //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
-    // );
+    await dumpToFile(
+      "mapped-links.txt",
+      mappedLinks,
+      (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
 
     const rerankerResult = await rerankLinksWithLLM(mappedLinks, searchQuery, urlTraces);
     mappedLinks = rerankerResult.mapDocument;
@@ -209,16 +211,17 @@ export async function processUrl(
         mappedLinks,
         searchQuery,
         urlTraces,
+        options.relevanceThreshold,
       );
       mappedLinks = rerankerResult.mapDocument;
       tokensUsed += rerankerResult.tokensUsed;
     }
 
-    // dumpToFile(
-    //   "llm-links.txt",
-    //   mappedLinks,
-    //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
-    // );
+    await dumpToFile(
+      "llm-links.txt",
+      mappedLinks,
+      (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
+    );
     // Remove title and description from mappedLinks
     mappedLinks = mappedLinks.map((link) => ({ url: link.url }));
     return mappedLinks.map((x) => x.url);
