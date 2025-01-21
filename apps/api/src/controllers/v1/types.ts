@@ -230,7 +230,7 @@ export const extractV1Options = z
     __experimental_llmUsage: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().default(60000),
     scrapeOptions: scrapeOptions.default({}),
-    relevanceThreshold: z.number().positive().finite().max(1).default(0.8),
+    relevanceThreshold: z.number().positive().finite().max(1).default(0.6),
   })
   .strict(strictMessage)
   .transform((obj) => ({
