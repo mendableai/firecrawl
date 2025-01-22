@@ -59,7 +59,8 @@ export async function extractController(
 
   if (
     (await getTeamIdSyncB(req.auth.team_id)) &&
-    req.body.origin !== "api-sdk"
+    req.body.origin !== "api-sdk" &&
+    req.body.origin !== "website"
   ) {
     return await oldExtract(req, res, extractId);
   }
