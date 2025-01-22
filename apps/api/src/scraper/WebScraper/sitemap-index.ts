@@ -1,5 +1,5 @@
 import { logger } from "../../lib/logger";
-import { normalizeUrlOnlyHostname } from "../../lib/canonical-url";
+import { normalizeUrl, normalizeUrlOnlyHostname } from "../../lib/canonical-url";
 import { supabase_service } from "../../services/supabase";
 
 /**
@@ -16,15 +16,20 @@ async function querySitemapIndexFunction(url: string) {
     try {
       const { data, error } = await supabase_service
         .from("crawl_maps")
-        .select("urls")
-        .eq("origin_url", originUrl);
+        .select("urls, updated_at")
+        .eq("origin_url", originUrl)
+        .order("updated_at", { ascending: false });
 
       if (error) {
         throw error;
       }
 
-      const allUrls = data.map((entry) => entry.urls).flat();
-      return allUrls;
+      if (!data || data.length === 0) {
+        return { urls: [], lastUpdated: new Date(0) };
+      }
+
+      const allUrls = [...new Set(data.map((entry) => entry.urls).flat().map(url => normalizeUrl(url)))];
+      return { urls: allUrls, lastUpdated: data[0].updated_at };
 
     } catch (error) {
       logger.error("(sitemap-index) Error querying the index", { 
@@ -33,12 +38,12 @@ async function querySitemapIndexFunction(url: string) {
       });
 
       if (attempt === 3) {
-        return [];
+        return { urls: [], lastUpdated: new Date(0) };
       }
     }
   }
 
-  return [];
+  return { urls: [], lastUpdated: new Date(0) };
 }
 
-export const querySitemapIndex = withAuth(querySitemapIndexFunction, []);
+export const querySitemapIndex = withAuth(querySitemapIndexFunction, { urls: [], lastUpdated: new Date(0) });
