@@ -171,9 +171,13 @@ export async function getMapResults({
       (sitemapIndexResult.urls.length < 100 ||
       new Date(sitemapIndexResult.lastUpdated) < twoDaysAgo)
     ) {
-      await crawler.tryGetSitemap(urls => {
-        links.push(...urls);
-      }, true, false, 30000);
+      try {
+        await crawler.tryGetSitemap(urls => {
+          links.push(...urls);
+        }, true, false, 30000);
+      } catch (e) {
+        logger.warn("tryGetSitemap threw an error", { error: e });
+      }      
     }
 
     if (!cachedResult) {
