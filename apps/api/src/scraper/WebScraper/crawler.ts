@@ -252,20 +252,19 @@ export class WebCrawler {
     };
 
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('Sitemap fetch timeout')), timeout);
+      setTimeout(() => reject(new Error("Sitemap fetch timeout")), timeout);
     });
 
     try {
-      let count = await Promise.race([
+      let count = (await Promise.race([
         Promise.all([
-          this.tryFetchSitemapLinks(
-            this.initialUrl,
-            _urlsHandler,
-          ),
-          ...this.robots.getSitemaps().map(x => this.tryFetchSitemapLinks(x, _urlsHandler)),
-        ]).then(results => results.reduce((a,x) => a+x, 0)),
-        timeoutPromise
-      ]) as number;
+          this.tryFetchSitemapLinks(this.initialUrl, _urlsHandler),
+          ...this.robots
+            .getSitemaps()
+            .map((x) => this.tryFetchSitemapLinks(x, _urlsHandler)),
+        ]).then((results) => results.reduce((a, x) => a + x, 0)),
+        timeoutPromise,
+      ])) as number;
 
       if (count > 0) {
         if (
@@ -281,14 +280,14 @@ export class WebCrawler {
 
       return count;
     } catch (error) {
-      if (error.message === 'Sitemap fetch timeout') {
-        this.logger.warn('Sitemap fetch timed out', {
+      if (error.message === "Sitemap fetch timeout") {
+        this.logger.warn("Sitemap fetch timed out", {
           method: "tryGetSitemap",
           timeout,
         });
         return 0;
       }
-      this.logger.error('Error fetching sitemap', {
+      this.logger.error("Error fetching sitemap", {
         method: "tryGetSitemap",
         error,
       });
@@ -328,9 +327,16 @@ export class WebCrawler {
         !this.matchesExcludes(path) &&
         !this.isRobotsAllowed(fullUrl, this.ignoreRobotsTxt)
       ) {
-        (async() => {
-          await redisConnection.sadd("crawl:" + this.jobId + ":robots_blocked", fullUrl);
-          await redisConnection.expire("crawl:" + this.jobId + ":robots_blocked", 24 * 60 * 60, "NX");
+        (async () => {
+          await redisConnection.sadd(
+            "crawl:" + this.jobId + ":robots_blocked",
+            fullUrl,
+          );
+          await redisConnection.expire(
+            "crawl:" + this.jobId + ":robots_blocked",
+            24 * 60 * 60,
+            "NX",
+          );
         })();
       }
     } else {

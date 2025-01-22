@@ -55,9 +55,9 @@ async function performRanking(
 
     // Generate embeddings for each link and calculate similarity in parallel
     const linksAndScores = await Promise.all(
-      linksWithContext.map((linkWithContext, index) => 
+      linksWithContext.map((linkWithContext, index) =>
         getEmbedding(linkWithContext)
-          .then(linkEmbedding => {
+          .then((linkEmbedding) => {
             const score = cosineSimilarity(queryEmbedding, linkEmbedding);
             return {
               link: links[index],
@@ -71,8 +71,8 @@ async function performRanking(
             linkWithContext,
             score: 0,
             originalIndex: index,
-          }))
-      )
+          })),
+      ),
     );
 
     // Sort links based on similarity scores while preserving original order for equal scores

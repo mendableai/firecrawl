@@ -59,7 +59,7 @@ export async function rerankLinks(
   const linksAndScores = await performRanking(
     mappedLinksRerank,
     mappedLinks.map((l) => l.url),
-    searchQuery
+    searchQuery,
   );
 
   // First try with high threshold
@@ -109,8 +109,11 @@ export async function rerankLinks(
     }
   });
 
-  const rankedLinks = filteredLinks.slice(0, extractConfig.RERANKING.MAX_RANKING_LIMIT_FOR_RELEVANCE);
-  
+  const rankedLinks = filteredLinks.slice(
+    0,
+    extractConfig.RERANKING.MAX_RANKING_LIMIT_FOR_RELEVANCE,
+  );
+
   // Mark URLs that will be used in completion
   rankedLinks.forEach((link) => {
     const trace = urlTraces.find((t) => t.url === link.url);
@@ -120,13 +123,15 @@ export async function rerankLinks(
   });
 
   // Mark URLs that were dropped due to ranking limit
-  filteredLinks.slice(extractConfig.RERANKING.MAX_RANKING_LIMIT_FOR_RELEVANCE).forEach(link => {
-    const trace = urlTraces.find(t => t.url === link.url);
-    if (trace) {
-      trace.warning = "Excluded due to ranking limit";
-      trace.usedInCompletion = false;
-    }
-  });
+  filteredLinks
+    .slice(extractConfig.RERANKING.MAX_RANKING_LIMIT_FOR_RELEVANCE)
+    .forEach((link) => {
+      const trace = urlTraces.find((t) => t.url === link.url);
+      if (trace) {
+        trace.warning = "Excluded due to ranking limit";
+        trace.usedInCompletion = false;
+      }
+    });
 
   // console.log("Reranked links: ", rankedLinks.length);
 
@@ -155,7 +160,7 @@ function filterAndProcessLinks(
 export type RerankerResult = {
   mapDocument: MapDocument[];
   tokensUsed: number;
-}
+};
 
 export async function rerankLinksWithLLM(
   mappedLinks: MapDocument[],
@@ -167,7 +172,7 @@ export async function rerankLinksWithLLM(
   const TIMEOUT_MS = 20000;
   const MAX_RETRIES = 2;
   let totalTokensUsed = 0;
-  
+
   // Split mappedLinks into chunks of 200
   for (let i = 0; i < mappedLinks.length; i += chunkSize) {
     chunks.push(mappedLinks.slice(i, i + chunkSize));
@@ -184,23 +189,25 @@ export async function rerankLinksWithLLM(
           type: "object",
           properties: {
             url: { type: "string" },
-            relevanceScore: { type: "number" }
+            relevanceScore: { type: "number" },
           },
-          required: ["url", "relevanceScore"]
-        }
-      }
+          required: ["url", "relevanceScore"],
+        },
+      },
     },
-    required: ["relevantLinks"]
+    required: ["relevantLinks"],
   };
-
 
   const results = await Promise.all(
     chunks.map(async (chunk, chunkIndex) => {
       // console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} links`);
-      
-      const linksContent = chunk.map(link => 
-        `URL: ${link.url}${link.title ? `\nTitle: ${link.title}` : ''}${link.description ? `\nDescription: ${link.description}` : ''}`
-      ).join("\n\n");
+
+      const linksContent = chunk
+        .map(
+          (link) =>
+            `URL: ${link.url}${link.title ? `\nTitle: ${link.title}` : ""}${link.description ? `\nDescription: ${link.description}` : ""}`,
+        )
+        .join("\n\n");
 
       for (let retry = 0; retry <= MAX_RETRIES; retry++) {
         try {
@@ -208,22 +215,28 @@ export async function rerankLinksWithLLM(
             setTimeout(() => resolve(null), TIMEOUT_MS);
           });
 
-
           const completionPromise = generateOpenAICompletions(
-            logger.child({ method: "rerankLinksWithLLM", chunk: chunkIndex + 1, retry }),
+            logger.child({
+              method: "rerankLinksWithLLM",
+              chunk: chunkIndex + 1,
+              retry,
+            }),
             {
               mode: "llm",
               systemPrompt: buildRerankerSystemPrompt(),
               prompt: buildRerankerUserPrompt(searchQuery),
-              schema: schema
+              schema: schema,
             },
             linksContent,
             undefined,
-            true
+            true,
           );
 
-          const completion = await Promise.race([completionPromise, timeoutPromise]);
-          
+          const completion = await Promise.race([
+            completionPromise,
+            timeoutPromise,
+          ]);
+
           if (!completion) {
             // console.log(`Chunk ${chunkIndex + 1}: Timeout on attempt ${retry + 1}`);
             continue;
@@ -237,9 +250,11 @@ export async function rerankLinksWithLLM(
           totalTokensUsed += completion.numTokens || 0;
           // console.log(`Chunk ${chunkIndex + 1}: Found ${completion.extract.relevantLinks.length} relevant links`);
           return completion.extract.relevantLinks;
-
         } catch (error) {
-          console.warn(`Error processing chunk ${chunkIndex + 1} attempt ${retry + 1}:`, error);
+          console.warn(
+            `Error processing chunk ${chunkIndex + 1} attempt ${retry + 1}:`,
+            error,
+          );
           if (retry === MAX_RETRIES) {
             // console.log(`Chunk ${chunkIndex + 1}: Max retries reached, returning empty array`);
             return [];
@@ -247,18 +262,20 @@ export async function rerankLinksWithLLM(
         }
       }
       return [];
-    })
+    }),
   );
 
   // console.log(`Processed ${results.length} chunks`);
 
   // Flatten results and sort by relevance score
-  const flattenedResults = results.flat().sort((a, b) => b.relevanceScore - a.relevanceScore);
+  const flattenedResults = results
+    .flat()
+    .sort((a, b) => b.relevanceScore - a.relevanceScore);
   // console.log(`Total relevant links found: ${flattenedResults.length}`);
 
   // Map back to MapDocument format, keeping only relevant links
   const relevantLinks = flattenedResults
-    .map(result => mappedLinks.find(link => link.url === result.url))
+    .map((result) => mappedLinks.find((link) => link.url === result.url))
     .filter((link): link is MapDocument => link !== undefined);
 
   // console.log(`Returning ${relevantLinks.length} relevant links`);

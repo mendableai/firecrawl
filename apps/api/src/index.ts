@@ -4,7 +4,11 @@ import * as Sentry from "@sentry/node";
 import express, { NextFunction, Request, Response } from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
-import { getExtractQueue, getScrapeQueue, getIndexQueue } from "./services/queue-service";
+import {
+  getExtractQueue,
+  getScrapeQueue,
+  getIndexQueue,
+} from "./services/queue-service";
 import { v0Router } from "./routes/v0";
 import os from "os";
 import { logger } from "./lib/logger";

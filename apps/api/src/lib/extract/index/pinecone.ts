@@ -91,7 +91,8 @@ export async function indexPage({
       url: normalizedUrl,
       originUrl: normalizeUrl(originUrl),
       title: document.metadata.title ?? document.metadata.ogTitle ?? "",
-      description: document.metadata.description ?? document.metadata.ogDescription ?? "",
+      description:
+        document.metadata.description ?? document.metadata.ogDescription ?? "",
       crawlId,
       teamId,
       markdown: trimmedMarkdown,
@@ -126,7 +127,7 @@ export async function indexPage({
 export async function searchSimilarPages(
   query: string,
   originUrl?: string,
-  limit: number = 1000
+  limit: number = 1000,
 ): Promise<any[]> {
   try {
     const index = pinecone.index(INDEX_NAME);

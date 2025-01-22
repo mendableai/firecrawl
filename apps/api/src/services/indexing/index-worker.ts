@@ -3,18 +3,27 @@ import "../sentry";
 import * as Sentry from "@sentry/node";
 import { Job, Queue, Worker } from "bullmq";
 import { logger as _logger, logger } from "../../lib/logger";
-import { redisConnection, indexQueueName, getIndexQueue } from "../queue-service";
+import {
+  redisConnection,
+  indexQueueName,
+  getIndexQueue,
+} from "../queue-service";
 import { saveCrawlMap } from "./crawl-maps-index";
 import systemMonitor from "../system-monitor";
 import { v4 as uuidv4 } from "uuid";
 
 const workerLockDuration = Number(process.env.WORKER_LOCK_DURATION) || 60000;
-const workerStalledCheckInterval = Number(process.env.WORKER_STALLED_CHECK_INTERVAL) || 30000;
-const jobLockExtendInterval = Number(process.env.JOB_LOCK_EXTEND_INTERVAL) || 15000;
-const jobLockExtensionTime = Number(process.env.JOB_LOCK_EXTENSION_TIME) || 60000;
+const workerStalledCheckInterval =
+  Number(process.env.WORKER_STALLED_CHECK_INTERVAL) || 30000;
+const jobLockExtendInterval =
+  Number(process.env.JOB_LOCK_EXTEND_INTERVAL) || 15000;
+const jobLockExtensionTime =
+  Number(process.env.JOB_LOCK_EXTENSION_TIME) || 60000;
 
-const cantAcceptConnectionInterval = Number(process.env.CANT_ACCEPT_CONNECTION_INTERVAL) || 2000;
-const connectionMonitorInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 10;
+const cantAcceptConnectionInterval =
+  Number(process.env.CANT_ACCEPT_CONNECTION_INTERVAL) || 2000;
+const connectionMonitorInterval =
+  Number(process.env.CONNECTION_MONITOR_INTERVAL) || 10;
 const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 
 const runningJobs: Set<string> = new Set();
@@ -88,7 +97,7 @@ const workerFun = async (queue: Queue) => {
 
     const token = uuidv4();
     const canAcceptConnection = await monitor.acceptConnection();
-    
+
     if (!canAcceptConnection) {
       logger.info("Cant accept connection");
       cantAcceptConnectionCount++;
@@ -100,7 +109,9 @@ const workerFun = async (queue: Queue) => {
         });
       }
 
-      await new Promise(resolve => setTimeout(resolve, cantAcceptConnectionInterval));
+      await new Promise((resolve) =>
+        setTimeout(resolve, cantAcceptConnectionInterval),
+      );
       continue;
     } else {
       cantAcceptConnectionCount = 0;
@@ -141,15 +152,17 @@ const workerFun = async (queue: Queue) => {
         runningJobs.delete(job.id);
       }
 
-      await new Promise(resolve => setTimeout(resolve, gotJobInterval));
+      await new Promise((resolve) => setTimeout(resolve, gotJobInterval));
     } else {
-      await new Promise(resolve => setTimeout(resolve, connectionMonitorInterval));
+      await new Promise((resolve) =>
+        setTimeout(resolve, connectionMonitorInterval),
+      );
     }
   }
 
   logger.info("Worker loop ended. Waiting for running jobs to finish...");
   while (runningJobs.size > 0) {
-    await new Promise(resolve => setTimeout(resolve, 500));
+    await new Promise((resolve) => setTimeout(resolve, 500));
   }
   logger.info("All jobs finished. Worker exiting!");
   process.exit(0);
@@ -158,4 +171,4 @@ const workerFun = async (queue: Queue) => {
 // Start the worker
 (async () => {
   await workerFun(getIndexQueue());
-})(); 
+})();

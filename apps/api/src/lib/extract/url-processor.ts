@@ -184,8 +184,6 @@ export async function processUrl(
     //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
     // );
 
-
-
     const rerankerResult = await rerankLinksWithLLM(
       mappedLinks,
       rephrasedPrompt,

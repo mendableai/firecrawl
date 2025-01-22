@@ -1,6 +1,6 @@
 import { Response } from "express";
 import {
-    CrawlErrorsResponse,
+  CrawlErrorsResponse,
   CrawlStatusParams,
   CrawlStatusResponse,
   ErrorResponse,
@@ -62,20 +62,23 @@ export async function crawlErrorsController(
   const failedJobIDs: string[] = [];
 
   for (const [id, status] of jobStatuses) {
-    if (
-      status === "failed"
-    ) {
+    if (status === "failed") {
       failedJobIDs.push(id);
     }
   }
 
   res.status(200).json({
-    errors: (await getJobs(failedJobIDs)).map(x => ({
-        id: x.id,
-        timestamp: x.finishedOn !== undefined ? (new Date(x.finishedOn).toISOString()) : undefined,
-        url: x.data.url,
-        error: x.failedReason,
+    errors: (await getJobs(failedJobIDs)).map((x) => ({
+      id: x.id,
+      timestamp:
+        x.finishedOn !== undefined
+          ? new Date(x.finishedOn).toISOString()
+          : undefined,
+      url: x.data.url,
+      error: x.failedReason,
     })),
-    robotsBlocked: await redisConnection.smembers("crawl:" + req.params.jobId + ":robots_blocked"),
+    robotsBlocked: await redisConnection.smembers(
+      "crawl:" + req.params.jobId + ":robots_blocked",
+    ),
   });
 }

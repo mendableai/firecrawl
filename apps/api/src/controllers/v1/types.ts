@@ -125,7 +125,7 @@ export const scrapeOptions = z
         "screenshot",
         "screenshot@fullPage",
         "extract",
-        "json"
+        "json",
       ])
       .array()
       .optional()
@@ -233,7 +233,7 @@ export const extractV1Options = z
   .strict(strictMessage)
   .transform((obj) => ({
     ...obj,
-    allowExternalLinks: obj.allowExternalLinks || obj.enableWebSearch
+    allowExternalLinks: obj.allowExternalLinks || obj.enableWebSearch,
   }));
 
 export type ExtractV1Options = z.infer<typeof extractV1Options>;
@@ -268,11 +268,17 @@ export const scrapeRequestSchema = scrapeOptions
   )
   .transform((obj) => {
     // Handle timeout
-    if ((obj.formats?.includes("extract") || obj.extract || obj.formats?.includes("json") || obj.jsonOptions) && !obj.timeout) {
+    if (
+      (obj.formats?.includes("extract") ||
+        obj.extract ||
+        obj.formats?.includes("json") ||
+        obj.jsonOptions) &&
+      !obj.timeout
+    ) {
       obj = { ...obj, timeout: 60000 };
     }
 
-    if(obj.formats?.includes("json")) {
+    if (obj.formats?.includes("json")) {
       obj.formats.push("extract");
     }
 
@@ -284,8 +290,8 @@ export const scrapeRequestSchema = scrapeOptions
           prompt: obj.jsonOptions.prompt,
           systemPrompt: obj.jsonOptions.systemPrompt,
           schema: obj.jsonOptions.schema,
-          mode: "llm"
-        }
+          mode: "llm",
+        },
       };
     }
 
@@ -602,15 +608,14 @@ export type CrawlStatusResponse =
       data: Document[];
     };
 
-
 export type CrawlErrorsResponse =
   | ErrorResponse
   | {
       errors: {
-        id: string,
-        timestamp?: string,
-        url: string,
-        error: string,
+        id: string;
+        timestamp?: string;
+        url: string;
+        error: string;
       }[];
       robotsBlocked: string[];
     };
@@ -887,7 +892,6 @@ export type SearchResponse =
       warning?: string;
       data: Document[];
     };
-
 
 export type TokenUsage = {
   promptTokens: number;

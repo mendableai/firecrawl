@@ -1,5 +1,5 @@
-import * as fs from 'fs';
-import * as path from 'path';
+import * as fs from "fs";
+import * as path from "path";
 
 /**
  * Helper function to dump data to a file for debugging/logging purposes
@@ -10,17 +10,19 @@ import * as path from 'path';
 export function dumpToFile<T>(
   filename: string,
   data: T[],
-  formatter?: (item: T, index: number) => string
+  formatter?: (item: T, index: number) => string,
 ) {
   const filePath = path.join(__dirname, filename);
-  
+
   let fileContent: string;
   if (formatter) {
-    fileContent = data.map((item, index) => formatter(item, index)).join('\n');
+    fileContent = data.map((item, index) => formatter(item, index)).join("\n");
   } else {
-    fileContent = data.map((item, index) => `${index + 1}. ${JSON.stringify(item)}`).join('\n');
+    fileContent = data
+      .map((item, index) => `${index + 1}. ${JSON.stringify(item)}`)
+      .join("\n");
   }
 
-  fs.writeFileSync(filePath, fileContent, 'utf8');
+  fs.writeFileSync(filePath, fileContent, "utf8");
   console.log(`Dumped data to ${filename}`);
 }

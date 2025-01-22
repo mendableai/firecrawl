@@ -23,8 +23,7 @@ describe("E2E Tests for v0 API Routes", () => {
 
   describe("POST /v0/scrape", () => {
     it.concurrent("should require authorization", async () => {
-      const response: any =
-        await request(TEST_URL).post("/v0/scrape");
+      const response: any = await request(TEST_URL).post("/v0/scrape");
       expect(response.statusCode).toBe(401);
     });
 
@@ -159,12 +158,11 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response with a valid API key with removeTags option",
       async () => {
-        const responseWithoutRemoveTags: any =
-          await request(TEST_URL)
-            .post("/v0/scrape")
-            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-            .set("Content-Type", "application/json")
-            .send({ url: "https://www.scrapethissite.com/" });
+        const responseWithoutRemoveTags: any = await request(TEST_URL)
+          .post("/v0/scrape")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send({ url: "https://www.scrapethissite.com/" });
         expect(responseWithoutRemoveTags.statusCode).toBe(200);
         expect(responseWithoutRemoveTags.body).toHaveProperty("data");
         expect(responseWithoutRemoveTags.body.data).toHaveProperty("content");
@@ -332,8 +330,7 @@ describe("E2E Tests for v0 API Routes", () => {
 
   describe("POST /v0/crawl", () => {
     it.concurrent("should require authorization", async () => {
-      const response: any =
-        await request(TEST_URL).post("/v0/crawl");
+      const response: any = await request(TEST_URL).post("/v0/crawl");
       expect(response.statusCode).toBe(401);
     });
 
@@ -461,9 +458,7 @@ describe("E2E Tests for v0 API Routes", () => {
         }
 
         await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
-        const completedResponse: any = await request(
-          TEST_URL,
-        )
+        const completedResponse: any = await request(TEST_URL)
           .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
@@ -509,9 +504,7 @@ describe("E2E Tests for v0 API Routes", () => {
             await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
           }
         }
-        const completedResponse: any = await request(
-          TEST_URL,
-        )
+        const completedResponse: any = await request(TEST_URL)
           .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 

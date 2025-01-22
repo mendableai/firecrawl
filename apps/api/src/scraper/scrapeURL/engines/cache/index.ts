@@ -17,7 +17,6 @@ export async function scrapeCache(meta: Meta): Promise<EngineScrapeResult> {
     throw new EngineError("Cache hit but HTML is too short to be useful");
   }
 
-
   // Set fromCache flag to indicate this document was retrieved from cache
   meta.internalOptions.fromCache = true;
 

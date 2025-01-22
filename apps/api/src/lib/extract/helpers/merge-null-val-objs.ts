@@ -1,4 +1,4 @@
-import { deduplicateObjectsArray } from './deduplicate-objs-array';
+import { deduplicateObjectsArray } from "./deduplicate-objs-array";
 
 /**
  * Convert "null" strings to actual null values for easier comparison.
@@ -25,16 +25,16 @@ function areMergeable(obj1: any, obj2: any): boolean {
   const allKeys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
   let matchingNonNullValues = 0;
   let nonNullComparisons = 0;
-  
+
   for (const key of allKeys) {
     const val1 = obj1[key];
     const val2 = obj2[key];
-    
+
     // Skip array comparisons - they'll be merged separately
     if (Array.isArray(val1) || Array.isArray(val2)) {
       continue;
     }
-    
+
     // If both values exist and are not null
     if (val1 !== null && val2 !== null) {
       nonNullComparisons++;
@@ -43,7 +43,7 @@ function areMergeable(obj1: any, obj2: any): boolean {
       }
     }
   }
-  
+
   // Objects are mergeable if they have at least one matching non-null value
   // and all their non-null values match when both objects have them
   return nonNullComparisons > 0 && matchingNonNullValues === nonNullComparisons;
@@ -56,7 +56,10 @@ function mergeArrays(arr1: any[], arr2: any[]): any[] {
   const combined = [...arr1, ...arr2];
   return combined.filter((item, index) => {
     const stringified = JSON.stringify(item);
-    return combined.findIndex(other => JSON.stringify(other) === stringified) === index;
+    return (
+      combined.findIndex((other) => JSON.stringify(other) === stringified) ===
+      index
+    );
   });
 }
 
@@ -78,9 +81,9 @@ function mergeObjects(obj1: any, obj2: any): any {
             // If only obj2's value is an array, use it
             result[key] = [...obj2[key]];
           }
-        } else if (typeof obj2[key] === 'object') {
+        } else if (typeof obj2[key] === "object") {
           // If both are objects (but not arrays), merge them
-          if (typeof result[key] === 'object' && !Array.isArray(result[key])) {
+          if (typeof result[key] === "object" && !Array.isArray(result[key])) {
             result[key] = mergeObjects(result[key], obj2[key]);
           } else {
             result[key] = { ...obj2[key] };
@@ -101,13 +104,17 @@ function mergeObjects(obj1: any, obj2: any): any {
  * null-equivalent fields, filling in null fields with the corresponding
  * non-null fields from the other object.
  */
-export function mergeNullValObjs(objArray: { [key: string]: any[] }): { [key: string]: any[] } {
+export function mergeNullValObjs(objArray: { [key: string]: any[] }): {
+  [key: string]: any[];
+} {
   const result: { [key: string]: any[] } = {};
 
   for (const key in objArray) {
     if (Array.isArray(objArray[key])) {
       // If array contains only primitive values, return as is
-      if (objArray[key].every(item => typeof item !== 'object' || item === null)) {
+      if (
+        objArray[key].every((item) => typeof item !== "object" || item === null)
+      ) {
         result[key] = [...objArray[key]];
         continue;
       }
@@ -117,7 +124,7 @@ export function mergeNullValObjs(objArray: { [key: string]: any[] }): { [key: st
 
       for (const item of items) {
         let merged = false;
-        
+
         for (let i = 0; i < mergedItems.length; i++) {
           if (areMergeable(mergedItems[i], item)) {
             mergedItems[i] = mergeObjects(mergedItems[i], item);
@@ -125,7 +132,7 @@ export function mergeNullValObjs(objArray: { [key: string]: any[] }): { [key: st
             break;
           }
         }
-        
+
         if (!merged) {
           mergedItems.push({ ...item });
         }
@@ -134,7 +141,10 @@ export function mergeNullValObjs(objArray: { [key: string]: any[] }): { [key: st
       // Final deduplication pass
       result[key] = deduplicateObjectsArray({ [key]: mergedItems })[key];
     } else {
-      console.warn(`Expected an array at objArray[${key}], but found:`, objArray[key]);
+      console.warn(
+        `Expected an array at objArray[${key}], but found:`,
+        objArray[key],
+      );
       return objArray;
     }
   }

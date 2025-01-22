@@ -1,7 +1,11 @@
 import OpenAI from "openai";
 import { encoding_for_model } from "@dqbd/tiktoken";
 import { TiktokenModel } from "@dqbd/tiktoken";
-import { Document, ExtractOptions, TokenUsage } from "../../../controllers/v1/types";
+import {
+  Document,
+  ExtractOptions,
+  TokenUsage,
+} from "../../../controllers/v1/types";
 import { Logger } from "winston";
 import { EngineResultsTracker, Meta } from "..";
 import { logger } from "../../../lib/logger";
@@ -72,13 +76,19 @@ export async function generateOpenAICompletions(
   markdown?: string,
   previousWarning?: string,
   isExtractEndpoint?: boolean,
-  model: TiktokenModel = (process.env.MODEL_NAME as TiktokenModel) ?? "gpt-4o-mini",
-): Promise<{ extract: any; numTokens: number; warning: string | undefined; totalUsage: TokenUsage, model: string }> {
+  model: TiktokenModel = (process.env.MODEL_NAME as TiktokenModel) ??
+    "gpt-4o-mini",
+): Promise<{
+  extract: any;
+  numTokens: number;
+  warning: string | undefined;
+  totalUsage: TokenUsage;
+  model: string;
+}> {
   let extract: any;
   let warning: string | undefined;
 
   const openai = new OpenAI();
-
 
   if (markdown === undefined) {
     throw new Error("document.markdown is undefined -- this is unexpected");
@@ -208,8 +218,8 @@ export async function generateOpenAICompletions(
     }
   }
 
-  const promptTokens = (jsonCompletion.usage?.prompt_tokens ?? 0);
-  const completionTokens = (jsonCompletion.usage?.completion_tokens ?? 0);
+  const promptTokens = jsonCompletion.usage?.prompt_tokens ?? 0;
+  const completionTokens = jsonCompletion.usage?.completion_tokens ?? 0;
 
   // If the users actually wants the items object, they can specify it as 'required' in the schema
   // otherwise, we just return the items array
@@ -222,7 +232,17 @@ export async function generateOpenAICompletions(
   }
   // num tokens (just user prompt tokenized) | deprecated
   // totalTokens = promptTokens + completionTokens
-  return { extract, warning, numTokens, totalUsage: { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens }, model };
+  return {
+    extract,
+    warning,
+    numTokens,
+    totalUsage: {
+      promptTokens,
+      completionTokens,
+      totalTokens: promptTokens + completionTokens,
+    },
+    model,
+  };
 }
 
 export async function performLLMExtract(
@@ -238,7 +258,7 @@ export async function performLLMExtract(
       document.markdown,
       document.warning,
     );
-    
+
     if (meta.options.formats.includes("json")) {
       document.json = extract;
     } else {

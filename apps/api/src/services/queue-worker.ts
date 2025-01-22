@@ -93,7 +93,9 @@ const runningJobs: Set<string> = new Set();
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   if (await finishCrawl(job.data.crawl_id)) {
     (async () => {
-      const originUrl = sc.originUrl ? normalizeUrlOnlyHostname(sc.originUrl) : undefined;
+      const originUrl = sc.originUrl
+        ? normalizeUrlOnlyHostname(sc.originUrl)
+        : undefined;
       // Get all visited unique URLs from Redis
       const visitedUrls = await redisConnection.smembers(
         "crawl:" + job.data.crawl_id + ":visited_unique",
@@ -113,7 +115,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           },
           {
             priority: 10,
-          }
+          },
         );
       }
     })();
@@ -315,11 +317,14 @@ const processExtractJobInternal = async (
       return result;
     } else {
       // throw new Error(result.error || "Unknown error during extraction");
-      
+
       await job.moveToCompleted(result, token, false);
       await updateExtract(job.data.extractId, {
         status: "failed",
-        error: result.error ?? "Unknown error, please contact help@firecrawl.com. Extract id: " + job.data.extractId,
+        error:
+          result.error ??
+          "Unknown error, please contact help@firecrawl.com. Extract id: " +
+            job.data.extractId,
       });
 
       return result;
@@ -348,7 +353,14 @@ const processExtractJobInternal = async (
         "Unknown error, please contact help@firecrawl.com. Extract id: " +
           job.data.extractId,
     });
-    return { success: false, error: error.error ?? error ?? "Unknown error, please contact help@firecrawl.com. Extract id: " + job.data.extractId };
+    return {
+      success: false,
+      error:
+        error.error ??
+        error ??
+        "Unknown error, please contact help@firecrawl.com. Extract id: " +
+          job.data.extractId,
+    };
     // throw error;
   } finally {
     clearInterval(extendLockInterval);
@@ -949,13 +961,15 @@ async function processJob(job: Job & { id: string }, token: string) {
       }
 
       if (job.data.team_id !== process.env.BACKGROUND_INDEX_TEAM_ID!) {
-        billTeam(job.data.team_id, undefined, creditsToBeBilled, logger).catch((error) => {
-          logger.error(
-            `Failed to bill team ${job.data.team_id} for ${creditsToBeBilled} credits`,
-            { error },
-          );
-          // Optionally, you could notify an admin or add to a retry queue here
-        });
+        billTeam(job.data.team_id, undefined, creditsToBeBilled, logger).catch(
+          (error) => {
+            logger.error(
+              `Failed to bill team ${job.data.team_id} for ${creditsToBeBilled} credits`,
+              { error },
+            );
+            // Optionally, you could notify an admin or add to a retry queue here
+          },
+        );
       }
     }
 
@@ -974,11 +988,12 @@ async function processJob(job: Job & { id: string }, token: string) {
 
       await finishCrawlIfNeeded(job, sc);
     }
-    
+
     const isEarlyTimeout =
       error instanceof Error && error.message === "timeout";
     const isCancelled =
-      error instanceof Error && error.message === "Parent crawl/batch scrape was cancelled";
+      error instanceof Error &&
+      error.message === "Parent crawl/batch scrape was cancelled";
 
     if (isEarlyTimeout) {
       logger.error(`🐂 Job timed out ${job.id}`);

@@ -2,7 +2,7 @@ import { spreadSchemas } from "../extract/helpers/spread-schemas";
 
 describe("spreadSchemas", () => {
   it("should spread kyb schema (id: 1)", async () => {
-    const keys = ["owners"]
+    const keys = ["owners"];
     const schema = {
       type: "object",
       properties: {
@@ -21,13 +21,13 @@ describe("spreadSchemas", () => {
                 city: { type: "string" },
                 state: { type: "string" },
                 country: { type: "string" },
-                postal_code: { type: "string" }
+                postal_code: { type: "string" },
               },
             },
             incorporation_date: { type: "string", format: "date" },
             phone: { type: "string" },
-            email: { type: "string", format: "email" }
-          }
+            email: { type: "string", format: "email" },
+          },
         },
         owners: {
           type: "array",
@@ -43,18 +43,21 @@ describe("spreadSchemas", () => {
                   city: { type: "string" },
                   state: { type: "string" },
                   country: { type: "string" },
-                  postal_code: { type: "string" }
+                  postal_code: { type: "string" },
                 },
               },
               phone: { type: "string" },
-              email: { type: "string", format: "email" }
-            }
-          }
-        }
-      }
-    }
+              email: { type: "string", format: "email" },
+            },
+          },
+        },
+      },
+    };
 
-    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(schema, keys)
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      schema,
+      keys,
+    );
 
     expect(singleAnswerSchema).toEqual({
       type: "object",
@@ -74,16 +77,16 @@ describe("spreadSchemas", () => {
                 city: { type: "string" },
                 state: { type: "string" },
                 country: { type: "string" },
-                postal_code: { type: "string" }
-              }
+                postal_code: { type: "string" },
+              },
             },
             incorporation_date: { type: "string", format: "date" },
             phone: { type: "string" },
-            email: { type: "string", format: "email" }
-          }
+            email: { type: "string", format: "email" },
+          },
         },
       },
-    })
+    });
 
     expect(multiEntitySchema).toEqual({
       type: "object",
@@ -102,20 +105,20 @@ describe("spreadSchemas", () => {
                   city: { type: "string" },
                   state: { type: "string" },
                   country: { type: "string" },
-                  postal_code: { type: "string" }
-                }
+                  postal_code: { type: "string" },
+                },
               },
               phone: { type: "string" },
-              email: { type: "string", format: "email" }
-            }
-          }
-        }
-      }
-    })
-  })
+              email: { type: "string", format: "email" },
+            },
+          },
+        },
+      },
+    });
+  });
 
   it("should spread lawyers schema (id: 9)", async () => {
-    const keys = ["lawyers"]
+    const keys = ["lawyers"];
     const schema = {
       type: "object",
       properties: {
@@ -133,22 +136,25 @@ describe("spreadSchemas", () => {
                 items: {
                   type: "object",
                   properties: {
-                    area: { type: "string" }
+                    area: { type: "string" },
                   },
                 },
-                alias: "practice-areas"
-              }
+                alias: "practice-areas",
+              },
             },
-          }
-        }
-      }
+          },
+        },
+      },
     };
 
-    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(schema, keys)
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      schema,
+      keys,
+    );
 
-    expect(singleAnswerSchema).toEqual({})
-    expect(multiEntitySchema).toEqual(schema)
-  })
+    expect(singleAnswerSchema).toEqual({});
+    expect(multiEntitySchema).toEqual(schema);
+  });
 
   it("shoud spread (id: 26)", async () => {
     const schema = {
@@ -161,19 +167,22 @@ describe("spreadSchemas", () => {
             properties: {
               name: { type: "string" },
               price: { type: "string" },
-              description: { type: "string" }
-            }
-          }
-        }
-      }
-    }
+              description: { type: "string" },
+            },
+          },
+        },
+      },
+    };
 
-    const keys = ["products"]
-    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(schema, keys)
+    const keys = ["products"];
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      schema,
+      keys,
+    );
 
-    expect(singleAnswerSchema).toEqual({})
-    expect(multiEntitySchema).toEqual(schema)
-  })
+    expect(singleAnswerSchema).toEqual({});
+    expect(multiEntitySchema).toEqual(schema);
+  });
 
   it("shoud spread categories and products", async () => {
     const schema = {
@@ -182,8 +191,8 @@ describe("spreadSchemas", () => {
         categories: {
           type: "array",
           items: {
-            type: "string"
-          }
+            type: "string",
+          },
         },
         products: {
           type: "array",
@@ -192,19 +201,22 @@ describe("spreadSchemas", () => {
             properties: {
               name: { type: "string" },
               price: { type: "string" },
-              description: { type: "string" }
-            }
-          }
-        }
-      }
-    }
+              description: { type: "string" },
+            },
+          },
+        },
+      },
+    };
 
-    const keys = ["products", "categories"]
-    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(schema, keys)
+    const keys = ["products", "categories"];
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      schema,
+      keys,
+    );
 
-    expect(singleAnswerSchema).toEqual({})
-    expect(multiEntitySchema).toEqual(schema)
-  })
+    expect(singleAnswerSchema).toEqual({});
+    expect(multiEntitySchema).toEqual(schema);
+  });
 
   it("should spread (id: 29)", async () => {
     const schema = {
@@ -220,50 +232,55 @@ describe("spreadSchemas", () => {
         offers_cmmc: { type: "boolean" },
         has_soc_2_cert: { type: "boolean" },
         offers_office365: { type: "boolean" },
-        offers_endpoint_security: { type: "boolean" }
-      }
-    }
+        offers_endpoint_security: { type: "boolean" },
+      },
+    };
 
-    const keys = []
-    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(schema, keys)
+    const keys = [];
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      schema,
+      keys,
+    );
 
-    expect(singleAnswerSchema).toEqual(schema)
-    expect(multiEntitySchema).toEqual({})
-  })
+    expect(singleAnswerSchema).toEqual(schema);
+    expect(multiEntitySchema).toEqual({});
+  });
 
   it("should spread kyb schema (id: 29)", async () => {
-
     const schema = {
-      "type": "object",
-      "properties": {
-        "lawyers": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "name": { "type": "string" },
-              "email": { "type": ["string", "null"] },
-              "phone-number": { "type": "string" },
+      type: "object",
+      properties: {
+        lawyers: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              name: { type: "string" },
+              email: { type: ["string", "null"] },
+              "phone-number": { type: "string" },
               "practice-areas": {
-                "type": "array",
-                "items": {
-                  "type": "object",
-                  "properties": {
-                    "area": { "type": "string" }
-                  }
-                }
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    area: { type: "string" },
+                  },
+                },
               },
-              "title": { "type": ["string", "null"] }
+              title: { type: ["string", "null"] },
             },
-          }
-        }
-      }
-    }
+          },
+        },
+      },
+    };
 
-    const keys = ["lawyers"]
-    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(schema, keys)
+    const keys = ["lawyers"];
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      schema,
+      keys,
+    );
 
-    expect(singleAnswerSchema).toEqual({})
-    expect(multiEntitySchema).toEqual(schema)
-  })
-})
+    expect(singleAnswerSchema).toEqual({});
+    expect(multiEntitySchema).toEqual(schema);
+  });
+});

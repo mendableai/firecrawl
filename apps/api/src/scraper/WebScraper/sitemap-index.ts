@@ -1,5 +1,8 @@
 import { logger } from "../../lib/logger";
-import { normalizeUrl, normalizeUrlOnlyHostname } from "../../lib/canonical-url";
+import {
+  normalizeUrl,
+  normalizeUrlOnlyHostname,
+} from "../../lib/canonical-url";
 import { supabase_service } from "../../services/supabase";
 
 /**
@@ -28,13 +31,19 @@ async function querySitemapIndexFunction(url: string) {
         return { urls: [], lastUpdated: new Date(0) };
       }
 
-      const allUrls = [...new Set(data.map((entry) => entry.urls).flat().map(url => normalizeUrl(url)))];
+      const allUrls = [
+        ...new Set(
+          data
+            .map((entry) => entry.urls)
+            .flat()
+            .map((url) => normalizeUrl(url)),
+        ),
+      ];
       return { urls: allUrls, lastUpdated: data[0].updated_at };
-
     } catch (error) {
-      logger.error("(sitemap-index) Error querying the index", { 
+      logger.error("(sitemap-index) Error querying the index", {
         error,
-        attempt 
+        attempt,
       });
 
       if (attempt === 3) {
@@ -46,4 +55,7 @@ async function querySitemapIndexFunction(url: string) {
   return { urls: [], lastUpdated: new Date(0) };
 }
 
-export const querySitemapIndex = withAuth(querySitemapIndexFunction, { urls: [], lastUpdated: new Date(0) });
+export const querySitemapIndex = withAuth(querySitemapIndexFunction, {
+  urls: [],
+  lastUpdated: new Date(0),
+});

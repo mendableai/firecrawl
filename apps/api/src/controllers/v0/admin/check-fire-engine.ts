@@ -16,7 +16,7 @@ export async function checkFireEngine(req: Request, res: Response) {
     const timeout = setTimeout(() => controller.abort(), 30000);
 
     const urls = ["https://roastmywebsite.ai", "https://example.com"];
-    let lastError : string | null = null;
+    let lastError: string | null = null;
 
     for (const url of urls) {
       try {
@@ -62,7 +62,6 @@ export async function checkFireEngine(req: Request, res: Response) {
       success: false,
       error: "Internal server error - all retry attempts failed",
     });
-
   } catch (error) {
     logger.error(error);
     Sentry.captureException(error);

@@ -41,7 +41,11 @@ export function deriveHTMLFromRawHTML(
     );
   }
 
-  document.html = htmlTransform(document.rawHtml, document.metadata.url ?? document.metadata.sourceURL ?? meta.url, meta.options);
+  document.html = htmlTransform(
+    document.rawHtml,
+    document.metadata.url ?? document.metadata.sourceURL ?? meta.url,
+    meta.options,
+  );
   return document;
 }
 

@@ -143,7 +143,10 @@ async function buildMetaObject(
     logger,
     logs,
     featureFlags: buildFeatureFlags(url, options, internalOptions),
-    mock: options.useMock !== undefined ? await loadMock(options.useMock, _logger) : null,
+    mock:
+      options.useMock !== undefined
+        ? await loadMock(options.useMock, _logger)
+        : null,
   };
 }
 

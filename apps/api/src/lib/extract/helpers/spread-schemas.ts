@@ -1,4 +1,7 @@
-export async function spreadSchemas(schema: any, keys: string[]): Promise<{
+export async function spreadSchemas(
+  schema: any,
+  keys: string[],
+): Promise<{
   singleAnswerSchema: any;
   multiEntitySchema: any;
 }> {
@@ -32,7 +35,7 @@ export async function spreadSchemas(schema: any, keys: string[]): Promise<{
   if (Object.keys(singleAnswerSchema.properties).length === 0) {
     singleAnswerSchema = {};
   }
-   
+
   if (Object.keys(multiEntitySchema.properties).length === 0) {
     multiEntitySchema = {};
   }

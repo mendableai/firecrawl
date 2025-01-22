@@ -34,7 +34,7 @@ export async function robustFetch<
   requestId = crypto.randomUUID(),
   tryCount = 1,
   tryCooldown,
-  mock
+  mock,
 }: RobustFetchParams<Schema>): Promise<Output> {
   const params = {
     url,
@@ -51,8 +51,8 @@ export async function robustFetch<
 
   let response: {
     status: number;
-    headers: Headers,
-    body: string,
+    headers: Headers;
+    body: string;
   };
 
   if (mock === null) {
@@ -123,25 +123,33 @@ export async function robustFetch<
       return null as Output;
     }
 
-    const makeRequestTypeId = (request: typeof mock["requests"][number]["options"]) => {
+    const makeRequestTypeId = (
+      request: (typeof mock)["requests"][number]["options"],
+    ) => {
       let out = request.url + ";" + request.method;
-      if (process.env.FIRE_ENGINE_BETA_URL && url.startsWith(process.env.FIRE_ENGINE_BETA_URL) && request.method === "POST") {
+      if (
+        process.env.FIRE_ENGINE_BETA_URL &&
+        url.startsWith(process.env.FIRE_ENGINE_BETA_URL) &&
+        request.method === "POST"
+      ) {
         out += "f-e;" + request.body?.engine + ";" + request.body?.url;
       }
       return out;
-    }
+    };
 
     const thisId = makeRequestTypeId(params);
-    const matchingMocks = mock.requests.filter(x => makeRequestTypeId(x.options) === thisId).sort((a,b) => a.time - b.time);
+    const matchingMocks = mock.requests
+      .filter((x) => makeRequestTypeId(x.options) === thisId)
+      .sort((a, b) => a.time - b.time);
     const nextI = mock.tracker[thisId] ?? 0;
     mock.tracker[thisId] = nextI + 1;
-    
+
     if (!matchingMocks[nextI]) {
       throw new Error("Failed to mock request -- no mock targets found.");
     }
 
     response = {
-      ...(matchingMocks[nextI].result),
+      ...matchingMocks[nextI].result,
       headers: new Headers(matchingMocks[nextI].result.headers),
     };
   }
@@ -180,12 +188,15 @@ export async function robustFetch<
   }
 
   if (mock === null) {
-    await saveMock({
-      ...params,
-      logger: undefined,
-      schema: undefined,
-      headers: undefined,
-    }, response);
+    await saveMock(
+      {
+        ...params,
+        logger: undefined,
+        schema: undefined,
+        headers: undefined,
+      },
+      response,
+    );
   }
 
   let data: Output;

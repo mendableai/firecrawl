@@ -227,7 +227,7 @@ export async function crawlController(req: Request, res: Response) {
             await addScrapeJob(job.data as any, {}, job.opts.jobId);
           }
         });
-    
+
     if (sitemap === 0) {
       await lockURL(id, sc, url);
 

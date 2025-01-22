@@ -59,11 +59,11 @@ export async function updateExtract(
 
   // Limit links in steps to 500
   if (extract.steps) {
-    extract.steps = extract.steps.map(step => {
+    extract.steps = extract.steps.map((step) => {
       if (step.discoveredLinks && step.discoveredLinks.length > 500) {
         return {
           ...step,
-          discoveredLinks: step.discoveredLinks.slice(0, 500)
+          discoveredLinks: step.discoveredLinks.slice(0, 500),
         };
       }
       return step;

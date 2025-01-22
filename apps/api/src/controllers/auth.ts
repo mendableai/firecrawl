@@ -105,7 +105,6 @@ export async function getACUC(
         { get: true },
       ));
 
-
       if (!error) {
         break;
       }
@@ -146,7 +145,7 @@ export async function clearACUC(api_key: string): Promise<void> {
     modes.map(async (mode) => {
       const cacheKey = `acuc_${api_key}_${mode}`;
       await deleteKey(cacheKey);
-    })
+    }),
   );
 
   // Also clear the base cache key
@@ -231,7 +230,6 @@ export async function supaAuthenticateUser(
 
     teamId = chunk.team_id;
     priceId = chunk.price_id;
-
 
     plan = getPlanByPriceId(priceId);
     subscriptionData = {

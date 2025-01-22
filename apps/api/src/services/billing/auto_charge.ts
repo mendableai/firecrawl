@@ -32,7 +32,7 @@ export async function autoCharge(
   const resource = `auto-recharge:${chunk.team_id}`;
   const cooldownKey = `auto-recharge-cooldown:${chunk.team_id}`;
 
-  if(chunk.team_id === "285bb597-6eaf-4b96-801c-51461fc3c543"){
+  if (chunk.team_id === "285bb597-6eaf-4b96-801c-51461fc3c543") {
     return {
       success: false,
       message: "Auto-recharge failed",

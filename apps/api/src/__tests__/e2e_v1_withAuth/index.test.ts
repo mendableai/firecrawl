@@ -1,8 +1,6 @@
 import request from "supertest";
 import { configDotenv } from "dotenv";
-import {
-  ScrapeRequestInput,
-} from "../../controllers/v1/types";
+import { ScrapeRequestInput } from "../../controllers/v1/types";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 configDotenv();
@@ -19,8 +17,7 @@ describe("E2E Tests for v1 API Routes", () => {
 
   describe("GET /is-production", () => {
     it.concurrent("should return the production status", async () => {
-      const response: any =
-        await request(TEST_URL).get("/is-production");
+      const response: any = await request(TEST_URL).get("/is-production");
 
       console.log(
         "process.env.USE_DB_AUTHENTICATION",
@@ -274,12 +271,11 @@ describe("E2E Tests for v1 API Routes", () => {
           url: "https://www.scrapethissite.com/",
           onlyMainContent: false, // default is true
         };
-        const responseWithoutRemoveTags: any =
-          await request(TEST_URL)
-            .post("/v1/scrape")
-            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-            .set("Content-Type", "application/json")
-            .send(scrapeRequest);
+        const responseWithoutRemoveTags: any = await request(TEST_URL)
+          .post("/v1/scrape")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send(scrapeRequest);
         expect(responseWithoutRemoveTags.statusCode).toBe(200);
         expect(responseWithoutRemoveTags.body).toHaveProperty("data");
 

@@ -12,7 +12,9 @@ const tokenPerCharacter = 4;
 const baseTokenCost = 300;
 
 export function calculateFinalResultCost(data: any): number {
-  return Math.floor((JSON.stringify(data).length / tokenPerCharacter) + baseTokenCost);
+  return Math.floor(
+    JSON.stringify(data).length / tokenPerCharacter + baseTokenCost,
+  );
 }
 
 export function estimateTotalCost(tokenUsage: TokenUsage[]): number {

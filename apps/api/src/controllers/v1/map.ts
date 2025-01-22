@@ -101,7 +101,7 @@ export async function getMapResults({
       },
       true,
       true,
-      30000
+      30000,
     );
     if (sitemap > 0) {
       links = links
@@ -164,20 +164,24 @@ export async function getMapResults({
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
 
-
     // If sitemap is not ignored and either we have few URLs (<100) or the data is stale (>2 days old), fetch fresh sitemap
     if (
-      !ignoreSitemap && 
+      !ignoreSitemap &&
       (sitemapIndexResult.urls.length < 100 ||
-      new Date(sitemapIndexResult.lastUpdated) < twoDaysAgo)
+        new Date(sitemapIndexResult.lastUpdated) < twoDaysAgo)
     ) {
       try {
-        await crawler.tryGetSitemap(urls => {
-          links.push(...urls);
-        }, true, false, 30000);
+        await crawler.tryGetSitemap(
+          (urls) => {
+            links.push(...urls);
+          },
+          true,
+          false,
+          30000,
+        );
       } catch (e) {
         logger.warn("tryGetSitemap threw an error", { error: e });
-      }      
+      }
     }
 
     if (!cachedResult) {
@@ -253,7 +257,7 @@ export async function getMapResults({
     },
     {
       priority: 10,
-    }
+    },
   );
 
   return {

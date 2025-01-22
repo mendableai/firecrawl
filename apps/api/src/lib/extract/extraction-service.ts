@@ -32,7 +32,11 @@ import { ExtractStep, updateExtract } from "./extract-redis";
 import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
 import { CUSTOM_U_TEAMS, extractConfig } from "./config";
-import { calculateFinalResultCost, estimateCost, estimateTotalCost } from "./usage/llm-cost";
+import {
+  calculateFinalResultCost,
+  estimateCost,
+  estimateTotalCost,
+} from "./usage/llm-cost";
 import { numTokensFromString } from "../LLM-extraction/helpers";
 
 interface ExtractServiceOptions {
@@ -147,7 +151,13 @@ Schema: ${schemaString}\nPrompt: ${prompt}\nRelevant URLs: ${urls}`,
     totalTokens: result.usage?.total_tokens ?? 0,
     model: model,
   };
-  return { isMultiEntity, multiEntityKeys, reasoning, keyIndicators, tokenUsage };
+  return {
+    isMultiEntity,
+    multiEntityKeys,
+    reasoning,
+    keyIndicators,
+    tokenUsage,
+  };
 }
 
 type completions = {
@@ -187,7 +197,7 @@ export async function performExtraction(
     method: "performExtraction",
     extractId,
   });
-  
+
   // Token tracking
   let tokenUsage: TokenUsage[] = [];
 
@@ -246,7 +256,7 @@ export async function performExtraction(
         "No valid URLs found to scrape. Try adjusting your search criteria or including more URLs.",
       extractId,
       urlTrace: urlTraces,
-      totalUrlsScraped: 0
+      totalUrlsScraped: 0,
     };
   }
 
@@ -277,8 +287,13 @@ export async function performExtraction(
   // 1. the first one is a completion that will extract the array of items
   // 2. the second one is multiple completions that will extract the items from the array
   let startAnalyze = Date.now();
-  const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators, tokenUsage: schemaAnalysisTokenUsage } =
-    await analyzeSchemaAndPrompt(links, reqSchema, request.prompt ?? "");
+  const {
+    isMultiEntity,
+    multiEntityKeys,
+    reasoning,
+    keyIndicators,
+    tokenUsage: schemaAnalysisTokenUsage,
+  } = await analyzeSchemaAndPrompt(links, reqSchema, request.prompt ?? "");
 
   // Track schema analysis tokens
   tokenUsage.push(schemaAnalysisTokenUsage);
@@ -540,7 +555,7 @@ export async function performExtraction(
           "An unexpected error occurred. Please contact help@firecrawl.com for help.",
         extractId,
         urlTrace: urlTraces,
-        totalUrlsScraped
+        totalUrlsScraped,
       };
     }
   }
@@ -592,17 +607,18 @@ export async function performExtraction(
         }
       }
 
-      const validResults = results.filter((doc): doc is Document => doc !== null);
+      const validResults = results.filter(
+        (doc): doc is Document => doc !== null,
+      );
       singleAnswerDocs.push(...validResults);
       totalUrlsScraped += validResults.length;
-
     } catch (error) {
       return {
         success: false,
         error: error.message,
         extractId,
         urlTrace: urlTraces,
-        totalUrlsScraped
+        totalUrlsScraped,
       };
     }
 
@@ -614,7 +630,7 @@ export async function performExtraction(
           "All provided URLs are invalid. Please check your input and try again.",
         extractId,
         urlTrace: request.urlTrace ? urlTraces : undefined,
-        totalUrlsScraped: 0
+        totalUrlsScraped: 0,
       };
     }
 
@@ -679,12 +695,12 @@ export async function performExtraction(
     : singleAnswerResult || multiEntityResult;
 
   // Tokenize final result to get token count
-  let finalResultTokens = 0;
-  if (finalResult) {
-    const finalResultStr = JSON.stringify(finalResult);
-    finalResultTokens = numTokensFromString(finalResultStr, "gpt-4o");
+  // let finalResultTokens = 0;
+  // if (finalResult) {
+  //   const finalResultStr = JSON.stringify(finalResult);
+  //   finalResultTokens = numTokensFromString(finalResultStr, "gpt-4o");
 
-  }
+  // }
   // // Deduplicate and validate final result against schema
   // if (reqSchema && finalResult && finalResult.length <= extractConfig.DEDUPLICATION.MAX_TOKENS) {
   //   const schemaValidation = await generateOpenAICompletions(
@@ -695,7 +711,7 @@ export async function performExtraction(
   //       1. Remove any duplicate entries in the data extracted by merging that into a single object according to the provided shcema
   //       2. Ensure all data matches the provided schema
   //       3. Keep only the highest quality and most complete entries when duplicates are found.
-        
+
   //       Do not change anything else. If data is null keep it null. If the schema is not provided, return the data as is.`,
   //       prompt: `Please validate and merge the duplicate entries in this data according to the schema provided:\n
 
@@ -732,11 +748,9 @@ export async function performExtraction(
   const llmUsage = estimateTotalCost(tokenUsage);
   let tokensToBill = calculateFinalResultCost(finalResult);
 
-
   if (CUSTOM_U_TEAMS.includes(teamId)) {
     tokensToBill = 1;
   }
-
 
   // Bill team for usage
   billTeam(teamId, subId, tokensToBill, logger, true).catch((error) => {
@@ -744,7 +758,6 @@ export async function performExtraction(
       `Failed to bill team ${teamId} for ${tokensToBill} tokens: ${error}`,
     );
   });
-
 
   // Log job with token usage
   logJob({
@@ -779,6 +792,6 @@ export async function performExtraction(
     warning: undefined, // TODO FIX
     urlTrace: request.urlTrace ? urlTraces : undefined,
     llmUsage,
-    totalUrlsScraped
+    totalUrlsScraped,
   };
 }

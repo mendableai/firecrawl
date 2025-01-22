@@ -107,15 +107,15 @@ async function processBatch() {
         // Keep most recent entry and mark others for deletion
         const [mostRecent, ...duplicates] = existingForOrigin;
         if (duplicates.length > 0) {
-          duplicatesToDelete.push(...duplicates.map(d => d.id));
+          duplicatesToDelete.push(...duplicates.map((d) => d.id));
         }
 
         // Merge and deduplicate URLs
         const mergedUrls = [
           ...new Set([
             ...mostRecent.urls,
-            ...op.standardizedUrls.map(url => normalizeUrl(url))
-          ])
+            ...op.standardizedUrls.map((url) => normalizeUrl(url)),
+          ]),
         ];
 
         updates.push({
@@ -127,7 +127,9 @@ async function processBatch() {
         });
       } else {
         // Prepare insert with deduplicated URLs
-        const deduplicatedUrls = [...new Set(op.standardizedUrls.map(url => normalizeUrl(url)))];
+        const deduplicatedUrls = [
+          ...new Set(op.standardizedUrls.map((url) => normalizeUrl(url))),
+        ];
         inserts.push({
           origin_url: op.originUrl,
           urls: deduplicatedUrls,
@@ -140,8 +142,10 @@ async function processBatch() {
 
     // Delete duplicate entries
     if (duplicatesToDelete.length > 0) {
-      logger.info(`🗑️ Deleting ${duplicatesToDelete.length} duplicate crawl maps in batches of 100`);
-      
+      logger.info(
+        `🗑️ Deleting ${duplicatesToDelete.length} duplicate crawl maps in batches of 100`,
+      );
+
       // Delete in batches of 100
       for (let i = 0; i < duplicatesToDelete.length; i += 100) {
         const batch = duplicatesToDelete.slice(i, i + 100);
@@ -151,11 +155,14 @@ async function processBatch() {
           .in("id", batch);
 
         if (deleteError) {
-          logger.error(`Failed to delete batch ${i/100 + 1} of duplicate crawl maps`, {
-            error: deleteError,
-            batchSize: batch.length,
-            startIndex: i
-          });
+          logger.error(
+            `Failed to delete batch ${i / 100 + 1} of duplicate crawl maps`,
+            {
+              error: deleteError,
+              batchSize: batch.length,
+              startIndex: i,
+            },
+          );
         }
       }
     }
@@ -165,7 +172,7 @@ async function processBatch() {
       logger.info(`🔄 Updating ${updates.length} existing crawl maps`, {
         origins: updates.map((u) => u.origin_url),
       });
-      
+
       // Process updates one at a time to avoid conflicts
       for (const update of updates) {
         const { error: updateError } = await supabase_service
@@ -175,7 +182,7 @@ async function processBatch() {
         if (updateError) {
           logger.error("Failed to update crawl map", {
             error: updateError,
-            origin: update.origin_url
+            origin: update.origin_url,
           });
         }
       }

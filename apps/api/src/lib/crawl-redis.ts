@@ -127,13 +127,15 @@ export async function getDoneJobsOrdered(
 export async function isCrawlFinished(id: string) {
   return (
     (await redisConnection.scard("crawl:" + id + ":jobs_done")) ===
-    (await redisConnection.scard("crawl:" + id + ":jobs"))
-    && (await redisConnection.get("crawl:" + id + ":kickoff:finish")) !== null
+      (await redisConnection.scard("crawl:" + id + ":jobs")) &&
+    (await redisConnection.get("crawl:" + id + ":kickoff:finish")) !== null
   );
 }
 
 export async function isCrawlKickoffFinished(id: string) {
-  return await redisConnection.get("crawl:" + id + ":kickoff:finish") !== null
+  return (
+    (await redisConnection.get("crawl:" + id + ":kickoff:finish")) !== null
+  );
 }
 
 export async function isCrawlFinishedLocked(id: string) {
@@ -141,7 +143,12 @@ export async function isCrawlFinishedLocked(id: string) {
 }
 
 export async function finishCrawlKickoff(id: string) {
-  await redisConnection.set("crawl:" + id + ":kickoff:finish", "yes", "EX", 24 * 60 * 60);
+  await redisConnection.set(
+    "crawl:" + id + ":kickoff:finish",
+    "yes",
+    "EX",
+    24 * 60 * 60,
+  );
 }
 
 export async function finishCrawl(id: string) {
@@ -161,9 +168,10 @@ export async function finishCrawl(id: string) {
       module: "crawl-redis",
       method: "finishCrawl",
       crawlId: id,
-      jobs_done: (await redisConnection.scard("crawl:" + id + ":jobs_done")),
-      jobs: (await redisConnection.scard("crawl:" + id + ":jobs")),
-      kickoff_finished: (await redisConnection.get("crawl:" + id + ":kickoff:finish")) !== null,
+      jobs_done: await redisConnection.scard("crawl:" + id + ":jobs_done"),
+      jobs: await redisConnection.scard("crawl:" + id + ":jobs"),
+      kickoff_finished:
+        (await redisConnection.get("crawl:" + id + ":kickoff:finish")) !== null,
     });
   }
 }
