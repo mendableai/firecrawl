@@ -1,4 +1,3 @@
-import axios from "axios";
 import { axiosTimeout } from "../../lib/timeout";
 import { parseStringPromise } from "xml2js";
 import { WebCrawler } from "./crawler";
@@ -24,44 +23,58 @@ export async function getLinksFromSitemap(
     let content: string = "";
     try {
       if (mode === "fire-engine" && useFireEngine) {
-        // Try TLS client first
-        const tlsResponse = await scrapeURL(
+        const fetchResponse = await scrapeURL(
           "sitemap", 
           sitemapUrl,
           scrapeOptions.parse({ formats: ["rawHtml"] }),
-          { forceEngine: "fire-engine;tlsclient", v0DisableJsDom: true },
+          { forceEngine: "fetch" },
         );
 
-        if (tlsResponse.success) {
-          content = tlsResponse.document.rawHtml!;
+        if (fetchResponse.success && (fetchResponse.document.metadata.statusCode >= 200 && fetchResponse.document.metadata.statusCode < 300)) {
+          content = fetchResponse.document.rawHtml!;
         } else {
           logger.debug(
-            "Failed to scrape sitemap via TLSClient, trying Chrome CDP...",
-            { error: tlsResponse.error },
+            "Failed to scrape sitemap via fetch, falling back to TLSClient...",
+            { error: fetchResponse.success ? fetchResponse.document : fetchResponse.error },
           );
 
-          // Try Chrome CDP next
-          const cdpResponse = await scrapeURL(
-            "sitemap",
-            sitemapUrl, 
+          const tlsResponse = await scrapeURL(
+            "sitemap", 
+            sitemapUrl,
             scrapeOptions.parse({ formats: ["rawHtml"] }),
-            { forceEngine: "fire-engine;chrome-cdp" },
+            { forceEngine: "fire-engine;tlsclient", v0DisableJsDom: true },
           );
 
-          if (cdpResponse.success) {
-            content = cdpResponse.document.rawHtml!;
+          if (tlsResponse.success && (tlsResponse.document.metadata.statusCode >= 200 && tlsResponse.document.metadata.statusCode < 300)) {
+            content = tlsResponse.document.rawHtml!;
           } else {
-            logger.debug(
-              "Failed to scrape sitemap via Chrome CDP, falling back to axios...",
-              { error: cdpResponse.error },
-            );
-            const ar = await axios.get(sitemapUrl, { timeout: axiosTimeout });
-            content = ar.data;
+            logger.error(`Request failed for ${sitemapUrl}, ran out of engines!`, {
+              method: "getLinksFromSitemap",
+              mode,
+              sitemapUrl,
+              error: tlsResponse.success ? tlsResponse.document : tlsResponse.error,
+            });
+            return 0;
           }
         }
       } else {
-        const response = await axios.get(sitemapUrl, { timeout: axiosTimeout });
-        content = response.data;
+        const fetchResponse = await scrapeURL(
+          "sitemap", 
+          sitemapUrl,
+          scrapeOptions.parse({ formats: ["rawHtml"] }),
+          { forceEngine: "fetch" },
+        );
+
+        if (fetchResponse.success && (fetchResponse.document.metadata.statusCode >= 200 && fetchResponse.document.metadata.statusCode < 300)) {
+          content = fetchResponse.document.rawHtml!;
+        } else {
+          logger.error(`Request failed for ${sitemapUrl}, ran out of engines!`, {
+            method: "getLinksFromSitemap",
+            mode,
+            sitemapUrl,
+          });
+          return 0;
+        }
       }
     } catch (error) {
       logger.error(`Request failed for ${sitemapUrl}`, {
@@ -151,11 +164,15 @@ export const fetchSitemapData = async (
 ): Promise<SitemapEntry[] | null> => {
   const sitemapUrl = url.endsWith("/sitemap.xml") ? url : `${url}/sitemap.xml`;
   try {
-    const response = await axios.get(sitemapUrl, {
-      timeout: timeout || axiosTimeout,
-    });
-    if (response.status === 200) {
-      const xml = response.data;
+    const fetchResponse = await scrapeURL(
+      "sitemap", 
+      sitemapUrl,
+      scrapeOptions.parse({ formats: ["rawHtml"], timeout: timeout || axiosTimeout }),
+      { forceEngine: "fetch" },
+    );
+
+    if (fetchResponse.success && (fetchResponse.document.metadata.statusCode >= 200 && fetchResponse.document.metadata.statusCode < 300)) {
+      const xml = fetchResponse.document.rawHtml!;
       const parsedXml = await parseStringPromise(xml);
 
       const sitemapData: SitemapEntry[] = [];
