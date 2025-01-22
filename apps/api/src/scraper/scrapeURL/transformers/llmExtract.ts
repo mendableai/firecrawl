@@ -72,13 +72,13 @@ export async function generateOpenAICompletions(
   markdown?: string,
   previousWarning?: string,
   isExtractEndpoint?: boolean,
-): Promise<{ extract: any; numTokens: number; warning: string | undefined; totalUsage: TokenUsage }> {
+  model: TiktokenModel = (process.env.MODEL_NAME as TiktokenModel) ?? "gpt-4o-mini",
+): Promise<{ extract: any; numTokens: number; warning: string | undefined; totalUsage: TokenUsage, model: string }> {
   let extract: any;
   let warning: string | undefined;
 
   const openai = new OpenAI();
-  const model: TiktokenModel =
-    (process.env.MODEL_NAME as TiktokenModel) ?? "gpt-4o-mini";
+
 
   if (markdown === undefined) {
     throw new Error("document.markdown is undefined -- this is unexpected");
@@ -197,6 +197,7 @@ export async function generateOpenAICompletions(
           jsonCompletion.choices[0].message.content,
         );
         extract = options.schema ? extractData.data.extract : extractData;
+        console.log("extract", extract);
       }
     } catch (e) {
       logger.error("Failed to parse returned JSON, no schema specified.", {
@@ -222,7 +223,7 @@ export async function generateOpenAICompletions(
   }
   // num tokens (just user prompt tokenized) | deprecated
   // totalTokens = promptTokens + completionTokens
-  return { extract, warning, numTokens, totalUsage: { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens, model: model } };
+  return { extract, warning, numTokens, totalUsage: { promptTokens, completionTokens, totalTokens: promptTokens + completionTokens }, model };
 }
 
 export async function performLLMExtract(
