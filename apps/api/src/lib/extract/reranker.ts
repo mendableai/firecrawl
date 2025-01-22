@@ -247,17 +247,8 @@ Content: This page provides a detailed description of the Dell XPS 13 laptop, in
 URL: https://example.com/electronics/laptops/macbook-pro  
 Content: This page features the MacBook Pro laptop, with details about configurations, pricing, and availability for purchase.  
 
-URL: https://example.com/electronics/tutorials/how-to-choose-a-laptop  
-Content: A blog post explaining how to choose the best laptop, with no direct product listings or purchase options.  
-
-URL: https://example.com/electronics/about-us  
-Content: This page provides general information about the company, its mission, and its history, with no mention of products.  
-
 URL: https://example.com/electronics/deals  
-Content: A sales page showcasing discounts on various gadgets, with links to detailed product pages.  
-
-URL: https://example.com/electronics/reviews/top-10-laptops  
-Content: A review article listing the top 10 laptops, with brief descriptions but no links to purchase.  
+Content: A sales page showcasing discounts on various gadgets, with links to detailed product pages.   
 
 ### Expected Output: ###
 [
@@ -322,6 +313,8 @@ Content: A review article listing the top 10 laptops, with brief descriptions bu
   const flattenedResults = results.flat().sort((a, b) => b.relevanceScore - a.relevanceScore);
   // console.log(`Total relevant links found: ${flattenedResults.length}`);
   
+  console.log(">>>>>>>>>>>>>>>>>>>relevanceThreshold", relevanceThreshold);
+
   // Filter out links below relevance threshold
   const filteredResults = flattenedResults.filter((a) => a.relevanceScore >= relevanceThreshold);
 
@@ -329,6 +322,8 @@ Content: A review article listing the top 10 laptops, with brief descriptions bu
   const relevantLinks = filteredResults 
     .map(result => mappedLinks.find(link => link.url === result.url))
     .filter((link): link is MapDocument => link !== undefined);
+
+  dumpToFile("flattenedResults-links.txt", flattenedResults, (link) => JSON.stringify(link, null, 2));
 
   // console.log(`Returning ${relevantLinks.length} relevant links`);
   return {
