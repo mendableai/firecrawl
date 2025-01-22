@@ -212,63 +212,8 @@ export async function rerankLinksWithLLM(
             logger.child({ method: "rerankLinksWithLLM", chunk: chunkIndex + 1, retry }),
             {
               mode: "llm",
-              systemPrompt: `You are a search relevance expert. Your task is to analyze the provided URLs and their content to determine their relevance to the search query. For each URL, assign a relevance score between 0 and 1, where:
-
-1 means highly relevant (content directly addresses the query).
-0 means not relevant at all.
-Only include URLs that meet a minimum relevance threshold of 0.5. Provide a clear reason for the assigned score based on the content and query.
-`,
-              prompt: `
-Given these URLs and their content, identify which ones are relevant to the search query:
-"${searchQuery}".
-
-### Instructions: ###
-Analyze each URL's content based on its alignment with the query.
-Only include URLs with a relevance score of 0.5 or higher.
-Return results as an array in the following schema:
-{
-  "url": "URL of the page",
-  "relevanceScore": 0-1, // Relevance score with 1 being highly relevant
-  "reason": "A brief explanation of the relevance score"
-}
-Assign scores based on the following criteria:
-0.9–1.0: Highly relevant. The content directly addresses the search query with detailed information or matches the intent closely.
-0.5–0.8: Moderately relevant. The content partially addresses the search query but may lack detail or specificity.
-0–0.4: Irrelevant. The content does not address the search query or contains minimal alignment.
-Example Input:
-Search Query: Extract all the electronic gadgets listed for sale.
-Site: https://example.com/electronics
-
-### Content: ###
-
-URL: https://example.com/electronics/laptops/dell-xps13  
-Content: This page provides a detailed description of the Dell XPS 13 laptop, including specifications, price, and purchase options.  
-
-URL: https://example.com/electronics/laptops/macbook-pro  
-Content: This page features the MacBook Pro laptop, with details about configurations, pricing, and availability for purchase.  
-
-URL: https://example.com/electronics/deals  
-Content: A sales page showcasing discounts on various gadgets, with links to detailed product pages.   
-
-### Expected Output: ###
-[
-  {
-    "url": "https://example.com/electronics/laptops/dell-xps13",
-    "relevanceScore": 1.0,
-    "reason": "The page provides detailed product information, including specifications, price, and purchase options, directly addressing the query."
-  },
-  {
-    "url": "https://example.com/electronics/laptops/macbook-pro",
-    "relevanceScore": 1.0,
-    "reason": "The page contains detailed product information relevant to the search query."
-  },
-  {
-    "url": "https://example.com/electronics/deals",
-    "relevanceScore": 0.7,
-    "reason": "The page lists multiple relevant products with links to detailed pages but lacks comprehensive product descriptions itself."
-  }
-]
-`,
+              systemPrompt: "You are a search relevance expert. Analyze the provided URLs and their content to determine their relevance to the search query. For each URL, assign a relevance score between 0 and 1, where 1 means highly relevant and 0 means not relevant at all. Only include URLs that are actually relevant to the query.",
+              prompt: `Given these URLs and their content, identify which ones are relevant to the search query: "${searchQuery}". Return an array of relevant links with their relevance scores (0-1). Higher scores should be given to URLs that directly address the search query. Be very mindful with the links you select, as if they are not that relevant it may affect the quality of the extraction.`,
               schema: schema
             },
             linksContent,
