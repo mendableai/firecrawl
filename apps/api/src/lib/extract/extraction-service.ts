@@ -31,8 +31,9 @@ const openai = new OpenAI();
 import { ExtractStep, updateExtract } from "./extract-redis";
 import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
-import { CUSTOM_U_TEAMS } from "./config";
+import { CUSTOM_U_TEAMS, extractConfig } from "./config";
 import { calculateFinalResultCost, estimateCost, estimateTotalCost } from "./usage/llm-cost";
+import { numTokensFromString } from "../LLM-extraction/helpers";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -673,11 +674,60 @@ export async function performExtraction(
     // }
   }
 
-  const finalResult = reqSchema
+  let finalResult = reqSchema
     ? await mixSchemaObjects(reqSchema, singleAnswerResult, multiEntityResult)
     : singleAnswerResult || multiEntityResult;
 
-  
+  // Tokenize final result to get token count
+  let finalResultTokens = 0;
+  if (finalResult) {
+    const finalResultStr = JSON.stringify(finalResult);
+    finalResultTokens = numTokensFromString(finalResultStr, "gpt-4o");
+
+  }
+  // // Deduplicate and validate final result against schema
+  // if (reqSchema && finalResult && finalResult.length <= extractConfig.DEDUPLICATION.MAX_TOKENS) {
+  //   const schemaValidation = await generateOpenAICompletions(
+  //     logger.child({ method: "extractService/validateAndDeduplicate" }),
+  //     {
+  //       mode: "llm",
+  //       systemPrompt: `You are a data validator and deduplicator. Your task is to:
+  //       1. Remove any duplicate entries in the data extracted by merging that into a single object according to the provided shcema
+  //       2. Ensure all data matches the provided schema
+  //       3. Keep only the highest quality and most complete entries when duplicates are found.
+        
+  //       Do not change anything else. If data is null keep it null. If the schema is not provided, return the data as is.`,
+  //       prompt: `Please validate and merge the duplicate entries in this data according to the schema provided:\n
+
+  //       <start of extract data>
+
+  //       ${JSON.stringify(finalResult)}
+
+  //       <end of extract data>
+
+  //       <start of schema>
+
+  //       ${JSON.stringify(reqSchema)}
+
+  //       <end of schema>
+  //       `,
+  //       schema: reqSchema,
+  //     },
+  //     undefined,
+  //     undefined,
+  //     true,
+  //     "gpt-4o"
+  //   );
+  //   console.log("schemaValidation", schemaValidation);
+
+  //   console.log("schemaValidation", finalResult);
+
+  //   if (schemaValidation?.extract) {
+  //     tokenUsage.push(schemaValidation.totalUsage);
+  //     finalResult = schemaValidation.extract;
+  //   }
+  // }
+
   const totalTokensUsed = tokenUsage.reduce((a, b) => a + b.totalTokens, 0);
   const llmUsage = estimateTotalCost(tokenUsage);
   let tokensToBill = calculateFinalResultCost(finalResult);
@@ -686,6 +736,8 @@ export async function performExtraction(
   if (CUSTOM_U_TEAMS.includes(teamId)) {
     tokensToBill = 1;
   }
+
+
   // Bill team for usage
   billTeam(teamId, subId, tokensToBill, logger, true).catch((error) => {
     logger.error(

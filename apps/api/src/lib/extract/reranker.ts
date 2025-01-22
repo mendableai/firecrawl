@@ -6,6 +6,8 @@ import { CohereClient } from "cohere-ai";
 import { extractConfig } from "./config";
 import { searchSimilarPages } from "./index/pinecone";
 import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
+import { buildRerankerUserPrompt } from "./build-prompts";
+import { buildRerankerSystemPrompt } from "./build-prompts";
 
 const cohere = new CohereClient({
   token: process.env.COHERE_API_KEY,
@@ -191,6 +193,7 @@ export async function rerankLinksWithLLM(
     required: ["relevantLinks"]
   };
 
+
   const results = await Promise.all(
     chunks.map(async (chunk, chunkIndex) => {
       // console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} links`);
@@ -205,12 +208,13 @@ export async function rerankLinksWithLLM(
             setTimeout(() => resolve(null), TIMEOUT_MS);
           });
 
+
           const completionPromise = generateOpenAICompletions(
             logger.child({ method: "rerankLinksWithLLM", chunk: chunkIndex + 1, retry }),
             {
               mode: "llm",
-              systemPrompt: "You are a search relevance expert. Analyze the provided URLs and their content to determine their relevance to the search query. For each URL, assign a relevance score between 0 and 1, where 1 means highly relevant and 0 means not relevant at all. Only include URLs that are actually relevant to the query.",
-              prompt: `Given these URLs and their content, identify which ones are relevant to the search query: "${searchQuery}". Return an array of relevant links with their relevance scores (0-1). Higher scores should be given to URLs that directly address the search query. Be very mindful with the links you select, as if they are not that relevant it may affect the quality of the extraction. Only include URLs that have a relvancy score of 0.6+.`,
+              systemPrompt: buildRerankerSystemPrompt(),
+              prompt: buildRerankerUserPrompt(searchQuery),
               schema: schema
             },
             linksContent,
