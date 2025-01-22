@@ -6,7 +6,7 @@ import {
   URLTrace,
 } from "../../controllers/v1/types";
 import { PlanType } from "../../types";
-import { logger } from "../logger";
+import { logger as _logger } from "../logger";
 import { processUrl } from "./url-processor";
 import { scrapeDocument } from "./document-scraper";
 import {
@@ -182,6 +182,11 @@ export async function performExtraction(
   let singleAnswerResult: any = {};
   let totalUrlsScraped = 0;
 
+  const logger = _logger.child({
+    module: "extraction-service",
+    method: "performExtraction",
+    extractId,
+  });
   
   // Token tracking
   let tokenUsage: TokenUsage[] = [];
