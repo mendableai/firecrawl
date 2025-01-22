@@ -333,12 +333,8 @@ const processExtractJobInternal = async (
       },
     });
 
-    try {
-      // Move job to failed state in Redis
-      await job.moveToFailed(error, token, false);
-    } catch (e) {
-      logger.log("Failed to move job to failed state in Redis", { error });
-    }
+    // Move job to failed state in Redis
+    await job.moveToFailed(error, token, false);
 
     await updateExtract(job.data.extractId, {
       status: "failed",

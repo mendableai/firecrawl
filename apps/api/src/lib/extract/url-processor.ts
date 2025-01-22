@@ -4,7 +4,7 @@ import { PlanType } from "../../types";
 import { removeDuplicateUrls } from "../validateUrl";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { generateBasicCompletion } from "../LLM-extraction";
-import { buildPreRerankPrompt, buildRefrasedPrompt } from "./build-prompts";
+import { buildRefrasedPrompt } from "./build-prompts";
 import { rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
 import { updateExtract } from "./extract-redis";
@@ -50,9 +50,9 @@ export async function processUrl(
   const baseUrl = options.url.replace("/*", "");
   let urlWithoutWww = baseUrl.replace("www.", "");
 
-  let searchQuery = options.prompt;
+  let rephrasedPrompt = options.prompt;
   if (options.prompt) {
-    searchQuery =
+    rephrasedPrompt =
       (
         await generateBasicCompletion(
           buildRefrasedPrompt(options.prompt, baseUrl),
@@ -65,7 +65,7 @@ export async function processUrl(
   try {
     const mapResults = await getMapResults({
       url: baseUrl,
-      search: searchQuery,
+      search: rephrasedPrompt,
       teamId: options.teamId,
       plan: options.plan,
       allowExternalLinks: options.allowExternalLinks,
@@ -160,38 +160,46 @@ export async function processUrl(
       extractConfig.RERANKING.MAX_INITIAL_RANKING_LIMIT,
     );
 
+
     updateExtractCallback(mappedLinks.map((x) => x.url));
 
-    let rephrasedPrompt = options.prompt ?? searchQuery;
-    try {
-      rephrasedPrompt =
-        (await generateBasicCompletion(
-          buildPreRerankPrompt(rephrasedPrompt, options.schema, baseUrl),
-        )) ??
-        "Extract the data according to the schema: " +
-          JSON.stringify(options.schema, null, 2);
-    } catch (error) {
-      console.error("Error generating search query from schema:", error);
-      rephrasedPrompt =
-        "Extract the data according to the schema: " +
-        JSON.stringify(options.schema, null, 2) +
-        " " +
-        options?.prompt; // Fallback to just the domain
+
+    // Perform reranking using either prompt or schema
+    let searchQuery = "";
+    if (options.prompt) {
+      searchQuery = options.allowExternalLinks
+        ? `${options.prompt} ${urlWithoutWww}`
+        : `${options.prompt} site:${urlWithoutWww}`;
+    } else if (options.schema) {
+      // Generate search query from schema using basic completion
+      try {
+        const schemaString = JSON.stringify(options.schema, null, 2);
+        const prompt = `Given this JSON schema, generate a natural language search query that would help find relevant pages containing this type of data. Focus on the key properties and their descriptions and keep it very concise. Schema: ${schemaString}`;
+
+        searchQuery =
+          (await generateBasicCompletion(prompt)) ??
+          "Extract the data according to the schema: " + schemaString;
+
+        if (options.allowExternalLinks) {
+          searchQuery = `${searchQuery} ${urlWithoutWww}`;
+        } else {
+          searchQuery = `${searchQuery} site:${urlWithoutWww}`;
+        }
+      } catch (error) {
+        console.error("Error generating search query from schema:", error);
+        searchQuery = urlWithoutWww; // Fallback to just the domain
+      }
+    } else {
+      searchQuery = urlWithoutWww;
     }
 
+    // dumpToFile(
     //   "mapped-links.txt",
     //   mappedLinks,
     //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
     // );
 
-    console.log("search query: ", rephrasedPrompt);
-
-
-    const rerankerResult = await rerankLinksWithLLM(
-      mappedLinks,
-      rephrasedPrompt,
-      urlTraces,
-    );
+    const rerankerResult = await rerankLinksWithLLM(mappedLinks, searchQuery, urlTraces);
     mappedLinks = rerankerResult.mapDocument;
     let tokensUsed = rerankerResult.tokensUsed;
 
@@ -199,7 +207,7 @@ export async function processUrl(
     if (mappedLinks.length > 100) {
       const rerankerResult = await rerankLinksWithLLM(
         mappedLinks,
-        rephrasedPrompt,
+        searchQuery,
         urlTraces,
       );
       mappedLinks = rerankerResult.mapDocument;
