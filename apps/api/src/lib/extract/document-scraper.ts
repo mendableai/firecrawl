@@ -5,6 +5,7 @@ import { getScrapeQueue } from "../../services/queue-service";
 import { waitForJob } from "../../services/queue-jobs";
 import { addScrapeJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../job-priority";
+import type { Logger } from "winston";
 
 interface ScrapeDocumentOptions {
   url: string;
@@ -18,6 +19,7 @@ interface ScrapeDocumentOptions {
 export async function scrapeDocument(
   options: ScrapeDocumentOptions,
   urlTraces: URLTrace[],
+  logger: Logger,
 ): Promise<Document | null> {
   const trace = urlTraces.find((t) => t.url === options.url);
   if (trace) {
@@ -68,16 +70,25 @@ export async function scrapeDocument(
 
   try {
     try {
-      return await attemptScrape(options.timeout);
+      logger.debug("Attempting scrape...");
+      const x = await attemptScrape(options.timeout);
+      logger.debug("Scrape finished!");
+      return x;
     } catch (timeoutError) {
+      logger.warn("Scrape failed.", { error: timeoutError });
+
       if (options.isSingleUrl) {
         // For single URLs, try again with double timeout
-        return await attemptScrape(options.timeout * 2);
+        logger.debug("Attempting scrape...");
+        const x = await attemptScrape(options.timeout * 2);
+        logger.debug("Scrape finished!");
+        return x;
       }
+      
       throw timeoutError;
     }
   } catch (error) {
-    logger.error(`Error in scrapeDocument: ${error}`);
+    logger.error(`error in scrapeDocument`, { error });
     if (trace) {
       trace.status = "error";
       trace.error = error.message;

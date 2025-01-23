@@ -9,6 +9,7 @@ import { rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
 import { updateExtract } from "./extract-redis";
 import { ExtractStep } from "./extract-redis";
+import type { Logger } from "winston";
 
 interface ProcessUrlOptions {
   url: string;
@@ -26,6 +27,7 @@ export async function processUrl(
   options: ProcessUrlOptions,
   urlTraces: URLTrace[],
   updateExtractCallback: (links: string[]) => void,
+  logger: Logger,
 ): Promise<string[]> {
   const trace: URLTrace = {
     url: options.url,
@@ -41,6 +43,7 @@ export async function processUrl(
       trace.usedInCompletion = true;
       return [options.url];
     }
+    logger.warn("URL is blocked");
     trace.status = "error";
     trace.error = "URL is blocked";
     trace.usedInCompletion = false;
@@ -63,6 +66,9 @@ export async function processUrl(
   }
 
   try {
+    logger.debug("Running map...", {
+      search: searchQuery,
+    })
     const mapResults = await getMapResults({
       url: baseUrl,
       search: searchQuery,
@@ -79,6 +85,10 @@ export async function processUrl(
     let mappedLinks = mapResults.mapResults as MapDocument[];
     let allUrls = [...mappedLinks.map((m) => m.url), ...mapResults.links];
     let uniqueUrls = removeDuplicateUrls(allUrls);
+    logger.debug("Map finished.", {
+      linkCount: allUrls.length,
+      uniqueLinkCount: uniqueUrls.length,
+    });
 
     // Track all discovered URLs
     uniqueUrls.forEach((discoveredUrl) => {
@@ -96,6 +106,7 @@ export async function processUrl(
 
     // retry if only one url is returned
     if (uniqueUrls.length <= 1) {
+      logger.debug("Running map... (pass 2)");
       const retryMapResults = await getMapResults({
         url: baseUrl,
         teamId: options.teamId,
@@ -111,6 +122,10 @@ export async function processUrl(
       mappedLinks = retryMapResults.mapResults as MapDocument[];
       allUrls = [...mappedLinks.map((m) => m.url), ...mapResults.links];
       uniqueUrls = removeDuplicateUrls(allUrls);
+      logger.debug("Map finished. (pass 2)", {
+        linkCount: allUrls.length,
+        uniqueLinkCount: uniqueUrls.length,
+      });
 
       // Track all discovered URLs
       uniqueUrls.forEach((discoveredUrl) => {
@@ -184,6 +199,11 @@ export async function processUrl(
     //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
     // );
 
+    logger.info("Generated rephrased prompt.", {
+      rephrasedPrompt
+    });
+
+    logger.info("Reranking (pass 1)...");
     const rerankerResult = await rerankLinksWithLLM(
       mappedLinks,
       rephrasedPrompt,
@@ -191,9 +211,13 @@ export async function processUrl(
     );
     mappedLinks = rerankerResult.mapDocument;
     let tokensUsed = rerankerResult.tokensUsed;
+    logger.info("Reranked! (pass 1)", {
+      linkCount: mappedLinks.length,
+    });
 
     // 2nd Pass, useful for when the first pass returns too many links
     if (mappedLinks.length > 100) {
+      logger.info("Reranking (pass 2)...");
       const rerankerResult = await rerankLinksWithLLM(
         mappedLinks,
         rephrasedPrompt,
@@ -201,6 +225,9 @@ export async function processUrl(
       );
       mappedLinks = rerankerResult.mapDocument;
       tokensUsed += rerankerResult.tokensUsed;
+      logger.info("Reranked! (pass 2)", {
+        linkCount: mappedLinks.length,
+      });
     }
 
     // dumpToFile(

@@ -1,9 +1,13 @@
+import type { Logger } from "winston";
+
 export async function mixSchemaObjects(
   finalSchema: any,
   singleAnswerResult: any,
   multiEntityResult: any,
+  logger: Logger
 ) {
   const finalResult: any = {};
+  logger.debug("Mixing schema objects.");
 
   // Recursive helper function to merge results based on schema
   function mergeResults(schema: any, singleResult: any, multiResult: any) {
