@@ -21,7 +21,7 @@ export async function getLinksFromSitemap(
   crawlId: string,
   sitemapsHit: Set<string>,
 ): Promise<number> {
-  if (sitemapsHit.size >= 10) {
+  if (sitemapsHit.size >= 20) {
     logger.warn("Sitemap limit hit, not hitting this one.");
     return 0;
   }
