@@ -34,10 +34,27 @@ export type StoredExtract = {
   llmUsage?: number;
 };
 
+// Reduce TTL to 6 hours instead of 24
+const EXTRACT_TTL = 6 * 60 * 60;
+
+const STEPS_MAX_DISCOVERED_LINKS = 100;
+
 export async function saveExtract(id: string, extract: StoredExtract) {
   _logger.debug("Saving extract " + id + " to Redis...");
-  await redisConnection.set("extract:" + id, JSON.stringify(extract));
-  await redisConnection.expire("extract:" + id, 24 * 60 * 60, "NX");
+  // Only store essential data
+  const minimalExtract = {
+    ...extract,
+    steps: extract.steps?.map(step => ({
+      step: step.step,
+      startedAt: step.startedAt,
+      finishedAt: step.finishedAt,
+      error: step.error,
+      // Only store first 20 discovered links per step
+      discoveredLinks: step.discoveredLinks?.slice(0, STEPS_MAX_DISCOVERED_LINKS)
+    }))
+  };
+  await redisConnection.set("extract:" + id, JSON.stringify(minimalExtract));
+  await redisConnection.expire("extract:" + id, EXTRACT_TTL);
 }
 
 export async function getExtract(id: string): Promise<StoredExtract | null> {
@@ -52,29 +69,40 @@ export async function updateExtract(
   const current = await getExtract(id);
   if (!current) return;
 
-  // Handle steps aggregation
+  // Handle steps aggregation with cleanup
   if (extract.steps && current.steps) {
-    extract.steps = [...current.steps, ...extract.steps];
+    // Keep only the last 5 steps to prevent unbounded growth
+    const allSteps = [...current.steps, ...extract.steps];
+    extract.steps = allSteps.slice(Math.max(0, allSteps.length - 5));
   }
 
-  // Limit links in steps to 500
+  // Limit links in steps to 20 instead of 100 to reduce memory usage
   if (extract.steps) {
     extract.steps = extract.steps.map((step) => {
-      if (step.discoveredLinks && step.discoveredLinks.length > 500) {
+      if (step.discoveredLinks && step.discoveredLinks.length > STEPS_MAX_DISCOVERED_LINKS) {
         return {
           ...step,
-          discoveredLinks: step.discoveredLinks.slice(0, 500),
+          discoveredLinks: step.discoveredLinks.slice(0, STEPS_MAX_DISCOVERED_LINKS),
         };
       }
       return step;
     });
   }
 
-  await redisConnection.set(
-    "extract:" + id,
-    JSON.stringify({ ...current, ...extract }),
-  );
-  await redisConnection.expire("extract:" + id, 24 * 60 * 60, "NX");
+  const minimalExtract = {
+    ...current,
+    ...extract,
+    steps: extract.steps?.map(step => ({
+      step: step.step,
+      startedAt: step.startedAt,
+      finishedAt: step.finishedAt,
+      error: step.error,
+      discoveredLinks: step.discoveredLinks?.slice(0, STEPS_MAX_DISCOVERED_LINKS)
+    }))
+  };
+
+  await redisConnection.set("extract:" + id, JSON.stringify(minimalExtract));
+  await redisConnection.expire("extract:" + id, EXTRACT_TTL);
 }
 
 export async function getExtractExpiry(id: string): Promise<Date> {
