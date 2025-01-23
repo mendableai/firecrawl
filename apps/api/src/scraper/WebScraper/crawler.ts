@@ -532,19 +532,9 @@ export class WebCrawler {
     url: string,
     urlsHandler: (urls: string[]) => unknown,
   ): Promise<number> {
-    if (this.sitemapsHit.size >= 5) {
-      this.logger.warn("Sitemap limit of 5 hit, not hitting this one.");
-      return 0;
-    }
-
     const sitemapUrl = url.endsWith(".xml")
       ? url
       : `${url}${url.endsWith("/") ? "" : "/"}sitemap.xml`;
-
-    if (this.sitemapsHit.has(sitemapUrl)) {
-      this.logger.warn("This sitemap has already been hit.", { sitemapUrl });
-      return 0;
-    }
 
     this.sitemapsHit.add(sitemapUrl);
 
@@ -556,6 +546,7 @@ export class WebCrawler {
         { sitemapUrl, urlsHandler, mode: "fire-engine" },
         this.logger,
         this.jobId,
+        this.sitemapsHit,
       );
     } catch (error) {
       this.logger.debug(`Failed to fetch sitemap from ${sitemapUrl}`, {
@@ -597,6 +588,7 @@ export class WebCrawler {
             },
             this.logger,
             this.jobId,
+            this.sitemapsHit,
           );
         } catch (error) {
           this.logger.debug(
@@ -621,6 +613,7 @@ export class WebCrawler {
           { sitemapUrl: baseUrlSitemap, urlsHandler, mode: "fire-engine" },
           this.logger,
           this.jobId,
+          this.sitemapsHit,
         );
       } catch (error) {
         this.logger.debug(`Failed to fetch sitemap from ${baseUrlSitemap}`, {
@@ -635,6 +628,7 @@ export class WebCrawler {
             { sitemapUrl: baseUrlSitemap, urlsHandler, mode: "fire-engine" },
             this.logger,
             this.jobId,
+            this.sitemapsHit,
           );
         }
       }

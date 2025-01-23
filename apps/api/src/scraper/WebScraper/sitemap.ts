@@ -19,7 +19,20 @@ export async function getLinksFromSitemap(
   },
   logger: Logger,
   crawlId: string,
+  sitemapsHit: Set<string>,
 ): Promise<number> {
+  if (sitemapsHit.size >= 5) {
+    logger.warn("Sitemap limit of 5 hit, not hitting this one.");
+    return 0;
+  }
+
+  if (sitemapsHit.has(sitemapUrl)) {
+    logger.warn("This sitemap has already been hit.", { sitemapUrl });
+    return 0;
+  }
+
+  sitemapsHit.add(sitemapUrl);
+
   try {
     let content: string = "";
     try {
@@ -126,7 +139,7 @@ export async function getLinksFromSitemap(
         .map((sitemap) => sitemap.loc[0].trim());
 
       const sitemapPromises: Promise<number>[] = sitemapUrls.map((sitemapUrl) =>
-        getLinksFromSitemap({ sitemapUrl, urlsHandler, mode }, logger, crawlId),
+        getLinksFromSitemap({ sitemapUrl, urlsHandler, mode }, logger, crawlId, sitemapsHit),
       );
 
       const results = await Promise.all(sitemapPromises);
@@ -149,6 +162,7 @@ export async function getLinksFromSitemap(
             { sitemapUrl: sitemapUrl, urlsHandler, mode },
             logger,
             crawlId,
+            sitemapsHit,
           ),
         );
         count += (await Promise.all(sitemapPromises)).reduce(
