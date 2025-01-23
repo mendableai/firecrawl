@@ -18,13 +18,14 @@ export async function getLinksFromSitemap(
     mode?: "axios" | "fire-engine";
   },
   logger: Logger,
+  crawlId: string,
 ): Promise<number> {
   try {
     let content: string = "";
     try {
       if (mode === "fire-engine" && useFireEngine) {
         const fetchResponse = await scrapeURL(
-          "sitemap",
+          "sitemap;" + crawlId,
           sitemapUrl,
           scrapeOptions.parse({ formats: ["rawHtml"] }),
           { forceEngine: "fetch" },
@@ -79,7 +80,7 @@ export async function getLinksFromSitemap(
         }
       } else {
         const fetchResponse = await scrapeURL(
-          "sitemap",
+          "sitemap;" + crawlId,
           sitemapUrl,
           scrapeOptions.parse({ formats: ["rawHtml"] }),
           { forceEngine: "fetch" },
@@ -125,7 +126,7 @@ export async function getLinksFromSitemap(
         .map((sitemap) => sitemap.loc[0].trim());
 
       const sitemapPromises: Promise<number>[] = sitemapUrls.map((sitemapUrl) =>
-        getLinksFromSitemap({ sitemapUrl, urlsHandler, mode }, logger),
+        getLinksFromSitemap({ sitemapUrl, urlsHandler, mode }, logger, crawlId),
       );
 
       const results = await Promise.all(sitemapPromises);
@@ -147,6 +148,7 @@ export async function getLinksFromSitemap(
           getLinksFromSitemap(
             { sitemapUrl: sitemapUrl, urlsHandler, mode },
             logger,
+            crawlId,
           ),
         );
         count += (await Promise.all(sitemapPromises)).reduce(

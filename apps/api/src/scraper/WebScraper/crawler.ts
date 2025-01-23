@@ -555,6 +555,7 @@ export class WebCrawler {
       sitemapCount = await getLinksFromSitemap(
         { sitemapUrl, urlsHandler, mode: "fire-engine" },
         this.logger,
+        this.jobId,
       );
     } catch (error) {
       this.logger.debug(`Failed to fetch sitemap from ${sitemapUrl}`, {
@@ -595,6 +596,7 @@ export class WebCrawler {
               mode: "fire-engine",
             },
             this.logger,
+            this.jobId,
           );
         } catch (error) {
           this.logger.debug(
@@ -618,6 +620,7 @@ export class WebCrawler {
         sitemapCount += await getLinksFromSitemap(
           { sitemapUrl: baseUrlSitemap, urlsHandler, mode: "fire-engine" },
           this.logger,
+          this.jobId,
         );
       } catch (error) {
         this.logger.debug(`Failed to fetch sitemap from ${baseUrlSitemap}`, {
@@ -631,6 +634,7 @@ export class WebCrawler {
           sitemapCount += await getLinksFromSitemap(
             { sitemapUrl: baseUrlSitemap, urlsHandler, mode: "fire-engine" },
             this.logger,
+            this.jobId,
           );
         }
       }
