@@ -27,6 +27,7 @@ export class WebCrawler {
   private allowSubdomains: boolean;
   private ignoreRobotsTxt: boolean;
   private logger: typeof _logger;
+  private sitemapsHit: Set<string> = new Set();
 
   constructor({
     jobId,
@@ -531,9 +532,21 @@ export class WebCrawler {
     url: string,
     urlsHandler: (urls: string[]) => unknown,
   ): Promise<number> {
+    if (this.sitemapsHit.size >= 5) {
+      this.logger.warn("Sitemap limit of 5 hit, not hitting this one.");
+      return 0;
+    }
+
     const sitemapUrl = url.endsWith(".xml")
       ? url
       : `${url}${url.endsWith("/") ? "" : "/"}sitemap.xml`;
+
+    if (this.sitemapsHit.has(sitemapUrl)) {
+      this.logger.warn("This sitemap has already been hit.", { sitemapUrl });
+      return 0;
+    }
+
+    this.sitemapsHit.add(sitemapUrl);
 
     let sitemapCount: number = 0;
 
