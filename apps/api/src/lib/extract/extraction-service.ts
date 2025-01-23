@@ -257,6 +257,9 @@ export async function performExtraction(
   });
 
   if (links.length === 0) {
+    logger.error("0 links! Bailing.", {
+      linkCount: links.length
+    });
     return {
       success: false,
       error:
