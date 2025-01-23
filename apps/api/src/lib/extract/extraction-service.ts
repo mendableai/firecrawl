@@ -282,6 +282,7 @@ export async function performExtraction(
   let reqSchema = request.schema;
   if (!reqSchema && request.prompt) {
     reqSchema = await generateSchemaFromPrompt(request.prompt);
+    logger.debug("Generated request schema.", { originalSchema: request.schema, schema: reqSchema });
   }
 
   if (reqSchema) {
