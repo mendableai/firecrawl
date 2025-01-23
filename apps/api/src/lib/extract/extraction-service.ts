@@ -500,7 +500,7 @@ export async function performExtraction(
                 (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
                 `Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. If the document provided is not relevant to the prompt nor to the final user schema ${JSON.stringify(multiEntitySchema)}, return null. Here are the urls the user provided of which he wants to extract information from: ` +
                 links.join(", "),
-              prompt: request.prompt,
+              prompt: "Today is: " + new Date().toISOString() + "\n" + request.prompt,
               schema: multiEntitySchema,
             },
             buildDocument(doc),
@@ -693,7 +693,7 @@ export async function performExtraction(
           (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
           "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Return 'null' the property that you don't find the information. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
           links.join(", "),
-        prompt: request.prompt,
+        prompt: "Today is: " + new Date().toISOString() + "\n" + request.prompt,
         schema: rSchema,
       },
       singleAnswerDocs.map((x) => buildDocument(x)).join("\n"),
