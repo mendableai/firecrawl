@@ -22,7 +22,6 @@ export async function getLinksFromSitemap(
   sitemapsHit: Set<string>,
 ): Promise<number> {
   if (sitemapsHit.size >= 20) {
-    logger.warn("Sitemap limit hit, not hitting this one.");
     return 0;
   }
 

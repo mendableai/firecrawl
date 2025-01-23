@@ -632,6 +632,10 @@ export class WebCrawler {
       }
     }
 
+    if (this.sitemapsHit.size >= 20) {
+      this.logger.warn("Sitemap limit hit!", { crawlId: this.jobId, url: this.baseUrl });
+    }
+
     return sitemapCount;
   }
 }
