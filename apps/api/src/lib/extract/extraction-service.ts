@@ -288,7 +288,7 @@ export async function performExtraction(
     reqSchema = await dereferenceSchema(reqSchema);
   }
 
-  logger.debug("Transformed schema.", { schema: reqSchema });
+  logger.debug("Transformed schema.", { originalSchema: request.schema, schema: reqSchema });
 
   // agent evaluates if the schema or the prompt has an array with big amount of items
   // also it checks if the schema any other properties that are not arrays
