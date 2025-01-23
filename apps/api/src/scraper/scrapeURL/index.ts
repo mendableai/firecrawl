@@ -152,7 +152,7 @@ async function buildMetaObject(
 
 export type InternalOptions = {
   priority?: number; // Passed along to fire-engine
-  forceEngine?: Engine;
+  forceEngine?: Engine | Engine[];
   atsv?: boolean; // anti-bot solver, beta
 
   v0CrawlOnlyUrls?: boolean;

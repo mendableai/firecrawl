@@ -36,86 +36,41 @@ export async function getLinksFromSitemap(
   try {
     let content: string = "";
     try {
-      if (mode === "fire-engine" && useFireEngine) {
-        const fetchResponse = await scrapeURL(
-          "sitemap;" + crawlId,
-          sitemapUrl,
-          scrapeOptions.parse({ formats: ["rawHtml"] }),
-          { forceEngine: "fetch" },
-        );
+      const response = await scrapeURL(
+        "sitemap;" + crawlId,
+        sitemapUrl,
+        scrapeOptions.parse({ formats: ["rawHtml"] }),
+        {
+          forceEngine: [
+            "fetch",
+            ...((mode === "fire-engine" && useFireEngine) ? ["fire-engine;tlsclient" as const] : []),
+          ],
+          v0DisableJsDom: true
+        },
+      );
 
-        if (
-          fetchResponse.success &&
-          fetchResponse.document.metadata.statusCode >= 200 &&
-          fetchResponse.document.metadata.statusCode < 300
-        ) {
-          content = fetchResponse.document.rawHtml!;
-        } else {
-          logger.debug(
-            "Failed to scrape sitemap via fetch, falling back to TLSClient...",
-            {
-              error: fetchResponse.success
-                ? fetchResponse.document
-                : fetchResponse.error,
-            },
-          );
-
-          const tlsResponse = await scrapeURL(
-            "sitemap",
-            sitemapUrl,
-            scrapeOptions.parse({ formats: ["rawHtml"] }),
-            { forceEngine: "fire-engine;tlsclient", v0DisableJsDom: true },
-          );
-
-          if (
-            tlsResponse.success &&
-            tlsResponse.document.metadata.statusCode >= 200 &&
-            tlsResponse.document.metadata.statusCode < 300
-          ) {
-            content = tlsResponse.document.rawHtml!;
-          } else {
-            logger.error(
-              `Request failed for ${sitemapUrl}, ran out of engines!`,
-              {
-                method: "getLinksFromSitemap",
-                mode,
-                sitemapUrl,
-                error: tlsResponse.success
-                  ? tlsResponse.document
-                  : tlsResponse.error,
-              },
-            );
-            return 0;
-          }
-        }
+      if (
+        response.success &&
+        response.document.metadata.statusCode >= 200 &&
+        response.document.metadata.statusCode < 300
+      ) {
+        content = response.document.rawHtml!;
       } else {
-        const fetchResponse = await scrapeURL(
-          "sitemap;" + crawlId,
-          sitemapUrl,
-          scrapeOptions.parse({ formats: ["rawHtml"] }),
-          { forceEngine: "fetch" },
+        logger.error(
+          `Request failed for sitemap fetch`,
+          {
+            method: "getLinksFromSitemap",
+            mode,
+            sitemapUrl,
+            error: response.success
+              ? response.document
+              : response.error,
+          },
         );
-
-        if (
-          fetchResponse.success &&
-          fetchResponse.document.metadata.statusCode >= 200 &&
-          fetchResponse.document.metadata.statusCode < 300
-        ) {
-          content = fetchResponse.document.rawHtml!;
-        } else {
-          logger.error(
-            `Request failed for ${sitemapUrl}, ran out of engines!`,
-            {
-              method: "getLinksFromSitemap",
-              mode,
-              sitemapUrl,
-            },
-          );
-          return 0;
-        }
+        return 0;
       }
     } catch (error) {
-      logger.error(`Request failed for ${sitemapUrl}`, {
+      logger.error(`Request failed for sitemap fetch`, {
         method: "getLinksFromSitemap",
         mode,
         sitemapUrl,

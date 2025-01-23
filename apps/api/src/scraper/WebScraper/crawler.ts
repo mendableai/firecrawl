@@ -536,8 +536,6 @@ export class WebCrawler {
       ? url
       : `${url}${url.endsWith("/") ? "" : "/"}sitemap.xml`;
 
-    this.sitemapsHit.add(sitemapUrl);
-
     let sitemapCount: number = 0;
 
     // Try to get sitemap from the provided URL first
