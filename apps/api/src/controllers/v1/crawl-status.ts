@@ -25,7 +25,7 @@ import { logger } from "../../lib/logger";
 import { supabase_service } from "../../services/supabase";
 configDotenv();
 
-type PseudoJob<T> = {
+export type PseudoJob<T> = {
   id: string,
   getState(): Promise<JobState | "unknown"> | JobState | "unknown",
   returnvalue: T | null,
@@ -33,9 +33,10 @@ type PseudoJob<T> = {
   data: {
     scrapeOptions: any,
   },
+  failedReason?: string,
 }
 
-type DBJob = { docs: any, success: boolean, page_options: any, date_added: any }
+export type DBJob = { docs: any, success: boolean, page_options: any, date_added: any, message: string | null }
 
 export async function getJob(id: string): Promise<PseudoJob<any> | null> {
   const [bullJob, dbJob] = await Promise.all([
@@ -57,6 +58,7 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
       scrapeOptions: bullJob ? bullJob.data.scrapeOptions : dbJob!.page_options,
     },
     timestamp: bullJob ? bullJob.timestamp : new Date(dbJob!.date_added).valueOf(),
+    failedReason: (bullJob ? bullJob.failedReason : dbJob!.message) || undefined,
   }
 
   return job;
@@ -99,6 +101,7 @@ export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
         scrapeOptions: bullJob ? bullJob.data.scrapeOptions : dbJob!.page_options,
       },
       timestamp: bullJob ? bullJob.timestamp : new Date(dbJob!.date_added).valueOf(),
+      failedReason: (bullJob ? bullJob.failedReason : dbJob!.message) || undefined,
     }
 
     jobs.push(job);
