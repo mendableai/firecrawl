@@ -37,42 +37,45 @@ export async function getLinksFromSitemap(
         ) {
           content = fetchResponse.document.rawHtml!;
         } else {
-          logger.debug(
-            "Failed to scrape sitemap via fetch, falling back to TLSClient...",
-            {
-              error: fetchResponse.success
-                ? fetchResponse.document
-                : fetchResponse.error,
-            },
-          );
+          // logger.debug(
+          //   "Failed to scrape sitemap via fetch, falling back to TLSClient...",
+          //   {
+          //     error: fetchResponse.success
+          //       ? fetchResponse.document
+          //       : fetchResponse.error,
+          //   },
+          // );
 
-          const tlsResponse = await scrapeURL(
-            "sitemap",
-            sitemapUrl,
-            scrapeOptions.parse({ formats: ["rawHtml"] }),
-            { forceEngine: "fire-engine;tlsclient", v0DisableJsDom: true },
-          );
+          // const tlsResponse = await scrapeURL(
+          //   "sitemap",
+          //   sitemapUrl,
+          //   scrapeOptions.parse({ formats: ["rawHtml"] }),
+          //   { forceEngine: "fire-engine;tlsclient", v0DisableJsDom: true },
+          // );
 
-          if (
-            tlsResponse.success &&
-            tlsResponse.document.metadata.statusCode >= 200 &&
-            tlsResponse.document.metadata.statusCode < 300
-          ) {
-            content = tlsResponse.document.rawHtml!;
-          } else {
+          // if (
+          //   tlsResponse.success &&
+          //   tlsResponse.document.metadata.statusCode >= 200 &&
+          //   tlsResponse.document.metadata.statusCode < 300
+          // ) {
+          //   content = tlsResponse.document.rawHtml!;
+          // } else {
             logger.error(
               `Request failed for ${sitemapUrl}, ran out of engines!`,
               {
                 method: "getLinksFromSitemap",
                 mode,
                 sitemapUrl,
-                error: tlsResponse.success
-                  ? tlsResponse.document
-                  : tlsResponse.error,
+                // error: tlsResponse.success
+                //   ? tlsResponse.document
+                //   : tlsResponse.error,
+                error: fetchResponse.success
+                  ? fetchResponse.document
+                  : fetchResponse.error,
               },
             );
             return 0;
-          }
+          // }
         }
       } else {
         const fetchResponse = await scrapeURL(
