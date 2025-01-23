@@ -4,10 +4,10 @@ export async function mixSchemaObjects(
   finalSchema: any,
   singleAnswerResult: any,
   multiEntityResult: any,
-  logger: Logger
+  logger?: Logger
 ) {
   const finalResult: any = {};
-  logger.debug("Mixing schema objects.");
+  logger?.debug("Mixing schema objects.");
 
   // Recursive helper function to merge results based on schema
   function mergeResults(schema: any, singleResult: any, multiResult: any) {
