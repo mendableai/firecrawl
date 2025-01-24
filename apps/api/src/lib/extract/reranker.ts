@@ -171,7 +171,7 @@ export type RerankerOptions = {
 
 export async function rerankLinksWithLLM(options: RerankerOptions): Promise<RerankerResult> {
   const { links, searchQuery, urlTraces } = options;
-  const chunkSize = 20;
+  const chunkSize = 100;
   const chunks: MapDocument[][] = [];
   const TIMEOUT_MS = 20000;
   const MAX_RETRIES = 2;
