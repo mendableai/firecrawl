@@ -234,7 +234,10 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
   });
 
   const extendLockInterval = setInterval(async () => {
-    logger.info(`🐂 Worker extending lock on job ${job.id}`);
+    logger.info(`🐂 Worker extending lock on job ${job.id}`, {
+      extendInterval: jobLockExtendInterval,
+      extensionTime: jobLockExtensionTime,
+    });
     await job.extendLock(token, jobLockExtensionTime);
   }, jobLockExtendInterval);
 
