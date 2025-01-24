@@ -19,7 +19,8 @@ class RustHTMLTransformer {
   private constructor() {
     const lib = koffi.load(rustExecutablePath);
     this._freeString = lib.func("free_string", "void", ["string"]);
-    const freedResultString = koffi.disposable("CString", "string", this._freeString);
+    const cstn = "CString:" + crypto.randomUUID();
+    const freedResultString = koffi.disposable(cstn, "string", this._freeString);
     this._extractLinks = lib.func("extract_links", freedResultString, ["string"]);
     this._extractMetadata = lib.func("extract_metadata", freedResultString, ["string"]);
   }
