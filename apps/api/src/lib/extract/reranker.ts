@@ -8,6 +8,7 @@ import { searchSimilarPages } from "./index/pinecone";
 import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { buildRerankerUserPrompt } from "./build-prompts";
 import { buildRerankerSystemPrompt } from "./build-prompts";
+import { dumpToFile } from "./helpers/dump-to-file";
 
 const cohere = new CohereClient({
   token: process.env.COHERE_API_KEY,
@@ -158,7 +159,7 @@ function filterAndProcessLinks(
 }
 
 export type RerankerResult = {
-  mapDocument: (MapDocument & { relevanceScore?: number })[];
+  mapDocument: (MapDocument & { relevanceScore?: number; reason?: string })[];
   tokensUsed: number;
 };
 
@@ -170,7 +171,7 @@ export type RerankerOptions = {
 
 export async function rerankLinksWithLLM(options: RerankerOptions): Promise<RerankerResult> {
   const { links, searchQuery, urlTraces } = options;
-  const chunkSize = 100;
+  const chunkSize = 20;
   const chunks: MapDocument[][] = [];
   const TIMEOUT_MS = 20000;
   const MAX_RETRIES = 2;
@@ -193,7 +194,7 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
           properties: {
             url: { type: "string" },
             relevanceScore: { type: "number" },
-            reason: { type: "string" },
+            reason: { type: "string", description: "The reason why you chose the score for this link given the intent." },
           },
           required: ["url", "relevanceScore", "reason"],
         },
@@ -219,6 +220,7 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
             setTimeout(() => resolve(null), TIMEOUT_MS);
           });
 
+          // dumpToFile(new Date().toISOString(),[buildRerankerSystemPrompt(), buildRerankerUserPrompt(searchQuery), schema, linksContent])
           const completionPromise = generateOpenAICompletions(
             logger.child({
               method: "rerankLinksWithLLM",
@@ -233,7 +235,7 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
             },
             linksContent,
             undefined,
-            true,
+            true
           );
 
           const completion = await Promise.race([
@@ -282,7 +284,7 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
     .map((result) => {
       const link = links.find((link) => link.url === result.url);
       if (link) {
-        return { ...link, relevanceScore: result.relevanceScore ? parseFloat(result.relevanceScore) : 0 };
+        return { ...link, relevanceScore: result.relevanceScore ? parseFloat(result.relevanceScore) : 0, reason: result.reason };
       }
       return undefined;
     })
