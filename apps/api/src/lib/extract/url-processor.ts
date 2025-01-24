@@ -259,6 +259,7 @@ export async function processUrl(
       rerankedLinks = mappedLinks;
     }
 
+    logger.error(`Reranked links length ${rerankedLinks.length}`);
     // Remove title and description from mappedLinks
     mappedLinks = mappedLinks.map((link) => ({ url: link.url }));
     return mappedLinks.map((x) => x.url);

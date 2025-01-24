@@ -7,7 +7,7 @@ export const extractConfig = {
     MIN_REQUIRED_LINKS: 1,
   },
   DEDUPLICATION: {
-    MAX_TOKENS: 4096,
+    MAX_TOKENS: 8000,
   },
 };
 export const CUSTOM_U_TEAMS = ["874d40cc-a5c0-4e93-b661-9ddfbad5e51e"];

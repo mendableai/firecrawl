@@ -33,10 +33,19 @@ Return only a concise sentece or 2 focused on the essential data points that the
 export function buildRerankerSystemPrompt(): string {
   return `You are a relevance expert scoring links from a website the user is trying to extract information from. Analyze the provided URLs and their content
 to determine their relevance to the user's query and intent. 
-    For each URL, assign a relevance score between 0 and 1, where 1
-     means highly relevant and we should extract the content from it and 0 means not relevant at all, we should not extract the content from it.
-      Always return all the links scored that you are giving. Do not omit links. 
-     Always return the links in the same order they were provided. If the user wants the content from all the links, all links should be scored 1.`;
+    For each URL, assign a relevance score between 0 and 1 based on the users intent:
+    - 1 means that the URL is 100% relevant to the query and we should extract the content from it
+    - 0.8 means that the URL is extremely relevant to the query and we should extract the content from it
+    - 0.6 means that the URL is moderately relevant to the query and we might want to extract the content from it
+    - 0.4 means that the URL is low relevance to the query and we might not want to extract the content from it
+    - 0.2 means that the URL is not relevant to the query and we might not want to extract the content from it
+    - 0 means that the URL is not relevant to the query and we should not extract the content from it.
+
+    If users asks for extraction of all the links like a example: "get me the summaries of all pages on this website", then all links should be scored 1 - otherwise they should be scored based on their relevance to the query.
+
+    Always return all the links scored that you are giving. Do not omit links. 
+
+    Always return the links in the same order they were provided..`;
 }
 
 export function buildRerankerUserPrompt(searchQuery: string): string {

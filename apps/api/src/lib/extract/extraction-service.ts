@@ -453,7 +453,7 @@ export async function performExtraction(
           tokenUsage.push(shouldExtractCheck.totalUsage);
 
           if (!shouldExtractCheck.extract["extract"]) {
-            console.log(
+            logger.debug(
               `Skipping extraction for ${doc.metadata.url} as content is irrelevant`,
             );
             return null;
@@ -734,54 +734,50 @@ export async function performExtraction(
     : singleAnswerResult || multiEntityResult;
 
   // Tokenize final result to get token count
-  // let finalResultTokens = 0;
-  // if (finalResult) {
-  //   const finalResultStr = JSON.stringify(finalResult);
-  //   finalResultTokens = numTokensFromString(finalResultStr, "gpt-4o");
+  let finalResultTokens = 0;
+  if (finalResult) {
+    const finalResultStr = JSON.stringify(finalResult);
+    finalResultTokens = numTokensFromString(finalResultStr, "gpt-4o");
+  }
+  // Deduplicate and validate final result against schema
+  if (reqSchema && isMultiEntity && finalResult && finalResult.length <= extractConfig.DEDUPLICATION.MAX_TOKENS) {
+    const schemaValidation = await generateOpenAICompletions(
+      logger.child({ method: "extractService/validateAndDeduplicate" }),
+      {
+        mode: "llm",
+        systemPrompt: `You are a data validator and deduplicator. Your task is to:
+        1. Remove any duplicate entries in the data extracted by merging that into a single object according to the provided shcema
+        2. Ensure all data matches the provided schema
+        3. Keep only the highest quality and most complete entries when duplicates are found.
 
-  // }
-  // // Deduplicate and validate final result against schema
-  // if (reqSchema && finalResult && finalResult.length <= extractConfig.DEDUPLICATION.MAX_TOKENS) {
-  //   const schemaValidation = await generateOpenAICompletions(
-  //     logger.child({ method: "extractService/validateAndDeduplicate" }),
-  //     {
-  //       mode: "llm",
-  //       systemPrompt: `You are a data validator and deduplicator. Your task is to:
-  //       1. Remove any duplicate entries in the data extracted by merging that into a single object according to the provided shcema
-  //       2. Ensure all data matches the provided schema
-  //       3. Keep only the highest quality and most complete entries when duplicates are found.
+        Do not change anything else. If data is null keep it null. If the schema is not provided, return the data as is.`,
+        prompt: `Please validate and merge the duplicate entries in this data according to the schema provided:\n
 
-  //       Do not change anything else. If data is null keep it null. If the schema is not provided, return the data as is.`,
-  //       prompt: `Please validate and merge the duplicate entries in this data according to the schema provided:\n
+        <start of extract data>
 
-  //       <start of extract data>
+        ${JSON.stringify(finalResult)}
 
-  //       ${JSON.stringify(finalResult)}
+        <end of extract data>
 
-  //       <end of extract data>
+        <start of schema>
 
-  //       <start of schema>
+        ${JSON.stringify(reqSchema)}
 
-  //       ${JSON.stringify(reqSchema)}
+        <end of schema>
+        `,
+        schema: reqSchema,
+      },
+      undefined,
+      undefined,
+      true,
+      "gpt-4o"
+    );
 
-  //       <end of schema>
-  //       `,
-  //       schema: reqSchema,
-  //     },
-  //     undefined,
-  //     undefined,
-  //     true,
-  //     "gpt-4o"
-  //   );
-  //   console.log("schemaValidation", schemaValidation);
-
-  //   console.log("schemaValidation", finalResult);
-
-  //   if (schemaValidation?.extract) {
-  //     tokenUsage.push(schemaValidation.totalUsage);
-  //     finalResult = schemaValidation.extract;
-  //   }
-  // }
+    if (schemaValidation?.extract) {
+      tokenUsage.push(schemaValidation.totalUsage);
+      finalResult = schemaValidation.extract;
+    }
+  }
 
   const totalTokensUsed = tokenUsage.reduce((a, b) => a + b.totalTokens, 0);
   const llmUsage = estimateTotalCost(tokenUsage);
