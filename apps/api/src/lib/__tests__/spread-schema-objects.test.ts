@@ -283,4 +283,574 @@ describe("spreadSchemas", () => {
     expect(singleAnswerSchema).toEqual({});
     expect(multiEntitySchema).toEqual(schema);
   });
+
+  it("should spread pages schema", async () => {
+    const schema = {
+      type: "object",
+      properties: {
+        pages: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              title: {
+                type: "string",
+              },
+            },
+          },
+        },
+      },
+      required: ["pages"],
+    };
+
+    const keys = ["pages"];
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      schema,
+      keys,
+    );
+
+    expect(singleAnswerSchema).toEqual({});
+    expect(multiEntitySchema).toEqual(schema);
+  });
+
+  it("should spread pages schema", async () => {
+    const schema = {
+      type: "object",
+      properties: {
+        pages: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              title: {
+                type: "string",
+              },
+            },
+          },
+        },
+      },
+      required: ["pages"],
+    };
+
+    const keys = ["pages.title"];
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      schema,
+      keys,
+    );
+
+    expect(singleAnswerSchema).toEqual({});
+    expect(multiEntitySchema).toEqual(schema);
+  });
+
+  it("should handle deeply nested array properties", async () => {
+    const schema = {
+      type: "object",
+      properties: {
+        company: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            departments: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  name: { type: "string" },
+                  employees: {
+                    type: "array",
+                    items: {
+                      type: "object",
+                      properties: {
+                        name: { type: "string" },
+                        role: { type: "string" },
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      required: ["company"],
+    };
+
+    const keys = ["company.departments.employees"];
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      schema,
+      keys,
+    );
+
+    expect(singleAnswerSchema).toEqual({});
+    expect(multiEntitySchema).toEqual(schema);
+  });
+
+  it("should handle multiple nested paths", async () => {
+    const schema = {
+      type: "object",
+      properties: {
+        user: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            contacts: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  email: { type: "string" },
+                  phone: { type: "string" },
+                },
+              },
+            },
+          },
+        },
+        orders: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              id: { type: "string" },
+              items: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    name: { type: "string" },
+                    quantity: { type: "number" },
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+      required: ["user", "orders"],
+    };
+
+    const keys = ["user.contacts", "orders.items"];
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      schema,
+      keys,
+    );
+
+    expect(singleAnswerSchema).toEqual({});
+    expect(multiEntitySchema).toEqual(schema);
+  });
+
+  it("should handle mixed single and array properties", async () => {
+    const schema = {
+      type: "object",
+      properties: {
+        metadata: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            description: { type: "string" },
+          },
+        },
+        sections: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              content: { type: "string" },
+            },
+          },
+        },
+      },
+      required: ["metadata", "sections"],
+    };
+
+    const keys = ["sections"];
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      schema,
+      keys,
+    );
+
+    expect(singleAnswerSchema).toEqual({
+      type: "object",
+      properties: {
+        metadata: {
+          type: "object",
+          properties: {
+            title: { type: "string" },
+            description: { type: "string" },
+          },
+        },
+      },
+      required: ["metadata"],
+    });
+
+    expect(multiEntitySchema).toEqual({
+      type: "object",
+      properties: {
+        sections: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              content: { type: "string" },
+            },
+          },
+        },
+      },
+      required: ["sections"],
+    });
+  });
+
+  it("should handle empty keys array", async () => {
+    const schema = {
+      type: "object",
+      properties: {
+        name: { type: "string" },
+        age: { type: "number" },
+      },
+      required: ["name"],
+    };
+
+    const keys: string[] = [];
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      schema,
+      keys,
+    );
+
+    expect(singleAnswerSchema).toEqual(schema);
+    expect(multiEntitySchema).toEqual({});
+  });
+
+  it("should handle non-existent paths", async () => {
+    const schema = {
+      type: "object",
+      properties: {
+        user: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+          },
+        },
+      },
+    };
+
+    const keys = ["user.nonexistent.path"];
+    const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      schema,
+      keys,
+    );
+
+    expect(singleAnswerSchema).toEqual({});
+    expect(multiEntitySchema).toEqual(schema);
+  });
+
+  // it("should split nested object and array properties", async () => {
+  //   const schema = {
+  //     type: "object",
+  //     properties: {
+  //       company: {
+  //         type: "object",
+  //         properties: {
+  //           name: { type: "string" },
+  //           address: {
+  //             type: "object",
+  //             properties: {
+  //               street: { type: "string" },
+  //               city: { type: "string" },
+  //             },
+  //           },
+  //           employees: {
+  //             type: "array",
+  //             items: {
+  //               type: "object",
+  //               properties: {
+  //                 name: { type: "string" },
+  //                 position: { type: "string" },
+  //               },
+  //             },
+  //           },
+  //         },
+  //       },
+  //     },
+  //     required: ["company"],
+  //   };
+
+  //   const keys = ["company.employees"];
+  //   const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+  //     schema,
+  //     keys,
+  //   );
+
+  //   expect(singleAnswerSchema).toEqual({
+  //     type: "object",
+  //     properties: {
+  //       company: {
+  //         type: "object",
+  //         properties: {
+  //           name: { type: "string" },
+  //           address: {
+  //             type: "object",
+  //             properties: {
+  //               street: { type: "string" },
+  //               city: { type: "string" },
+  //             },
+  //           },
+  //         },
+  //       },
+  //     },
+  //     required: ["company"],
+  //   });
+
+  //   expect(multiEntitySchema).toEqual({
+  //     type: "object",
+  //     properties: {
+  //       company: {
+  //         type: "object",
+  //         properties: {
+  //           employees: {
+  //             type: "array",
+  //             items: {
+  //               type: "object",
+  //               properties: {
+  //                 name: { type: "string" },
+  //                 position: { type: "string" },
+  //               },
+  //             },
+  //           },
+  //         },
+  //       },
+  //     },
+  //     required: ["company"],
+  //   });
+  // });
+
+  // it("should handle multiple root level properties with nested paths", async () => {
+  //   const schema = {
+  //     type: "object",
+  //     properties: {
+  //       user: {
+  //         type: "object",
+  //         properties: {
+  //           id: { type: "string" },
+  //           profile: {
+  //             type: "object",
+  //             properties: {
+  //               name: { type: "string" },
+  //               email: { type: "string" },
+  //             },
+  //           },
+  //           posts: {
+  //             type: "array",
+  //             items: {
+  //               type: "object",
+  //               properties: {
+  //                 title: { type: "string" },
+  //                 content: { type: "string" },
+  //               },
+  //             },
+  //           },
+  //         },
+  //       },
+  //       settings: {
+  //         type: "object",
+  //         properties: {
+  //           theme: { type: "string" },
+  //           notifications: {
+  //             type: "object",
+  //             properties: {
+  //               email: { type: "boolean" },
+  //               push: { type: "boolean" },
+  //             },
+  //           },
+  //         },
+  //       },
+  //     },
+  //     required: ["user", "settings"],
+  //   };
+
+  //   const keys = ["user.posts", "settings.notifications"];
+  //   const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+  //     schema,
+  //     keys,
+  //   );
+
+  //   expect(singleAnswerSchema).toEqual({
+  //     type: "object",
+  //     properties: {
+  //       user: {
+  //         type: "object",
+  //         properties: {
+  //           id: { type: "string" },
+  //           profile: {
+  //             type: "object",
+  //             properties: {
+  //               name: { type: "string" },
+  //               email: { type: "string" },
+  //             },
+  //           },
+  //         },
+  //       },
+  //       settings: {
+  //         type: "object",
+  //         properties: {
+  //           theme: { type: "string" },
+  //         },
+  //       },
+  //     },
+  //     required: ["user", "settings"],
+  //   });
+
+  //   expect(multiEntitySchema).toEqual({
+  //     type: "object",
+  //     properties: {
+  //       user: {
+  //         type: "object",
+  //         properties: {
+  //           posts: {
+  //             type: "array",
+  //             items: {
+  //               type: "object",
+  //               properties: {
+  //                 title: { type: "string" },
+  //                 content: { type: "string" },
+  //               },
+  //             },
+  //           },
+  //         },
+  //       },
+  //       settings: {
+  //         type: "object",
+  //         properties: {
+  //           notifications: {
+  //             type: "object",
+  //             properties: {
+  //               email: { type: "boolean" },
+  //               push: { type: "boolean" },
+  //             },
+  //           },
+  //         },
+  //       },
+  //     },
+  //     required: ["user", "settings"],
+  //   });
+  // });
+
+  // it("should handle array properties at different nesting levels", async () => {
+  //   const schema = {
+  //     type: "object",
+  //     properties: {
+  //       categories: {
+  //         type: "array",
+  //         items: {
+  //           type: "object",
+  //           properties: {
+  //             name: { type: "string" },
+  //             subcategories: {
+  //               type: "array",
+  //               items: {
+  //                 type: "object",
+  //                 properties: {
+  //                   name: { type: "string" },
+  //                   products: {
+  //                     type: "array",
+  //                     items: {
+  //                       type: "object",
+  //                       properties: {
+  //                         name: { type: "string" },
+  //                         price: { type: "number" },
+  //                       },
+  //                     },
+  //                   },
+  //                 },
+  //               },
+  //             },
+  //           },
+  //         },
+  //       },
+  //       featured: {
+  //         type: "object",
+  //         properties: {
+  //           category: { type: "string" },
+  //           items: {
+  //             type: "array",
+  //             items: {
+  //               type: "object",
+  //               properties: {
+  //                 id: { type: "string" },
+  //                 name: { type: "string" },
+  //               },
+  //             },
+  //           },
+  //         },
+  //       },
+  //     },
+  //   };
+
+  //   const keys = ["categories.subcategories", "featured.items"];
+  //   const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+  //     schema,
+  //     keys,
+  //   );
+
+  //   expect(singleAnswerSchema).toEqual({
+  //     type: "object",
+  //     properties: {
+  //       featured: {
+  //         type: "object",
+  //         properties: {
+  //           category: { type: "string" },
+  //         },
+  //       },
+  //     },
+  //   });
+
+  //   expect(multiEntitySchema).toEqual({
+  //     type: "object",
+  //     properties: {
+  //       categories: {
+  //         type: "array",
+  //         items: {
+  //           type: "object",
+  //           properties: {
+  //             name: { type: "string" },
+  //             subcategories: {
+  //               type: "array",
+  //               items: {
+  //                 type: "object",
+  //                 properties: {
+  //                   name: { type: "string" },
+  //                   products: {
+  //                     type: "array",
+  //                     items: {
+  //                       type: "object",
+  //                       properties: {
+  //                         name: { type: "string" },
+  //                         price: { type: "number" },
+  //                       },
+  //                     },
+  //                   },
+  //                 },
+  //               },
+  //             },
+  //           },
+  //         },
+  //       },
+  //       featured: {
+  //         type: "object",
+  //         properties: {
+  //           items: {
+  //             type: "array",
+  //             items: {
+  //               type: "object",
+  //               properties: {
+  //                 id: { type: "string" },
+  //                 name: { type: "string" },
+  //               },
+  //             },
+  //           },
+  //         },
+  //       },
+  //     },
+  //   });
+  // });
 });
