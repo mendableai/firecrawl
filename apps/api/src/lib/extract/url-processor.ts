@@ -204,18 +204,27 @@ export async function processUrl(
     });
 
     let rerankedLinks = mappedLinks;
-    logger.info("Reranking pass 1 (threshold 0.6)...");
+    logger.info("Reranking pass 1 (threshold 0.8)...");
     const rerankerResult = await rerankLinksWithLLM({
       links: rerankedLinks,
       searchQuery: rephrasedPrompt,
       urlTraces
     });
-    rerankedLinks = rerankerResult.mapDocument.filter((x) => x.relevanceScore && x.relevanceScore > 0.6);
+    rerankedLinks = rerankerResult.mapDocument.filter((x) => x.relevanceScore && x.relevanceScore > 0.8);
     let tokensUsed = rerankerResult.tokensUsed;
 
-    logger.info("Reranked! (threshold 0.6)", {
+    logger.info("Reranked! (threshold 0.8)", {
       linkCount: rerankedLinks.length,
     });
+
+    // lower threshold to 0.6 if no links are found
+    if (rerankedLinks.length === 0) {
+      logger.info("No links found. Reranking with threshold 0.6");
+      rerankedLinks = rerankerResult.mapDocument.filter((x) => x.relevanceScore && x.relevanceScore > 0.6);
+      logger.info("Reranked! (threshold 0.6)", {
+        linkCount: rerankedLinks.length,
+      });
+    }
 
     // lower threshold to 0.3 if no links are found
     if (rerankedLinks.length === 0) {
@@ -235,8 +244,9 @@ export async function processUrl(
         urlTraces,
       });
 
+      // why 0.6? average? experimental results?
       if (secondPassRerankerResult.mapDocument.length > 0) {
-        rerankedLinks = secondPassRerankerResult.mapDocument;
+        rerankedLinks = secondPassRerankerResult.mapDocument.filter((x) => x.relevanceScore && x.relevanceScore > 0.6);
         logger.info("Reranked! (threshold 0.6)", {
           linkCount: rerankedLinks.length,
         });
