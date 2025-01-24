@@ -8,6 +8,7 @@ import { searchSimilarPages } from "./index/pinecone";
 import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { buildRerankerUserPrompt } from "./build-prompts";
 import { buildRerankerSystemPrompt } from "./build-prompts";
+import { dumpToFile } from "./helpers/dump-to-file";
 
 const cohere = new CohereClient({
   token: process.env.COHERE_API_KEY,
@@ -158,24 +159,27 @@ function filterAndProcessLinks(
 }
 
 export type RerankerResult = {
-  mapDocument: MapDocument[];
+  mapDocument: (MapDocument & { relevanceScore?: number; reason?: string })[];
   tokensUsed: number;
 };
 
-export async function rerankLinksWithLLM(
-  mappedLinks: MapDocument[],
-  searchQuery: string,
-  urlTraces: URLTrace[],
-): Promise<RerankerResult> {
+export type RerankerOptions = {
+  links: MapDocument[];
+  searchQuery: string;
+  urlTraces: URLTrace[];
+};
+
+export async function rerankLinksWithLLM(options: RerankerOptions): Promise<RerankerResult> {
+  const { links, searchQuery, urlTraces } = options;
   const chunkSize = 100;
   const chunks: MapDocument[][] = [];
   const TIMEOUT_MS = 20000;
   const MAX_RETRIES = 2;
   let totalTokensUsed = 0;
 
-  // Split mappedLinks into chunks of 200
-  for (let i = 0; i < mappedLinks.length; i += chunkSize) {
-    chunks.push(mappedLinks.slice(i, i + chunkSize));
+  // Split links into chunks of 200
+  for (let i = 0; i < links.length; i += chunkSize) {
+    chunks.push(links.slice(i, i + chunkSize));
   }
 
   // console.log(`Total links: ${mappedLinks.length}, Number of chunks: ${chunks.length}`);
@@ -190,8 +194,9 @@ export async function rerankLinksWithLLM(
           properties: {
             url: { type: "string" },
             relevanceScore: { type: "number" },
+            reason: { type: "string", description: "The reason why you chose the score for this link given the intent." },
           },
-          required: ["url", "relevanceScore"],
+          required: ["url", "relevanceScore", "reason"],
         },
       },
     },
@@ -215,6 +220,7 @@ export async function rerankLinksWithLLM(
             setTimeout(() => resolve(null), TIMEOUT_MS);
           });
 
+          // dumpToFile(new Date().toISOString(),[buildRerankerSystemPrompt(), buildRerankerUserPrompt(searchQuery), schema, linksContent])
           const completionPromise = generateOpenAICompletions(
             logger.child({
               method: "rerankLinksWithLLM",
@@ -229,7 +235,7 @@ export async function rerankLinksWithLLM(
             },
             linksContent,
             undefined,
-            true,
+            true
           );
 
           const completion = await Promise.race([
@@ -275,10 +281,15 @@ export async function rerankLinksWithLLM(
 
   // Map back to MapDocument format, keeping only relevant links
   const relevantLinks = flattenedResults
-    .map((result) => mappedLinks.find((link) => link.url === result.url))
-    .filter((link): link is MapDocument => link !== undefined);
+    .map((result) => {
+      const link = links.find((link) => link.url === result.url);
+      if (link) {
+        return { ...link, relevanceScore: result.relevanceScore ? parseFloat(result.relevanceScore) : 0, reason: result.reason };
+      }
+      return undefined;
+    })
+    .filter((link): link is NonNullable<typeof link> => link !== undefined);
 
-  // console.log(`Returning ${relevantLinks.length} relevant links`);
   return {
     mapDocument: relevantLinks,
     tokensUsed: totalTokensUsed,
