@@ -840,19 +840,16 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful cancellation",
+            "description": "Crawl job successfully cancelled",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
+                    "status": {
                       "type": "string",
-                      "example": "Crawl job successfully cancelled."
+                      "enum": ["cancelled"],
+                      "example": "cancelled"
                     }
                   }
                 }
@@ -988,19 +985,16 @@
         ],
         "responses": {
           "200": {
-            "description": "Successful cancellation",
+            "description": "Crawl job successfully cancelled",
             "content": {
               "application/json": {
                 "schema": {
                   "type": "object",
                   "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "message": {
+                    "status": {
                       "type": "string",
-                      "example": "Crawl job successfully cancelled."
+                      "enum": ["cancelled"],
+                      "example": "cancelled"
                     }
                   }
                 }

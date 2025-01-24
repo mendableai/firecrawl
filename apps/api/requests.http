@@ -28,6 +28,11 @@ content-type: application/json
 GET {{baseUrl}}/v1/crawl/{{crawlId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
+### Cancel Crawl
+@crawlId = {{crawl.response.body.$.id}}
+# @name cancelCrawl
+DELETE {{baseUrl}}/v1/crawl/{{crawlId}} HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
 ### Batch Scrape Websites
 # @name batchScrape
