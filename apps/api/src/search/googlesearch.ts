@@ -1,5 +1,5 @@
 import axios from "axios";
-import * as cheerio from "cheerio";
+import * as cheerio from "cheerio"; // TODO: rustify
 import * as querystring from "querystring";
 import { SearchResult } from "../../src/lib/entities";
 import { logger } from "../../src/lib/logger";

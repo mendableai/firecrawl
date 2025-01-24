@@ -27,10 +27,20 @@ RUN cd /app/sharedLibs/go-html-to-md && \
     go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go && \
     chmod +x html-to-markdown.so
 
+# Install Rust
+FROM rust:1-bullseye AS rust-base
+COPY sharedLibs/html-transformer /app/sharedLibs/html-transformer
+
+# Install Go dependencies and build parser lib
+RUN cd /app/sharedLibs/html-transformer && \
+    cargo build --release && \
+    chmod +x target/release/libhtml_transformer.so
+
 FROM base
 COPY --from=prod-deps /app/node_modules /app/node_modules
 COPY --from=build /app /app
 COPY --from=go-base /app/sharedLibs/go-html-to-md/html-to-markdown.so /app/sharedLibs/go-html-to-md/html-to-markdown.so
+COPY --from=rust-base /app/sharedLibs/html-transformer/target/release/libhtml_transformer.so /app/sharedLibs/html-transformer/target/release/libhtml_transformer.so
 
 # Start the server by default, this can be overwritten at runtime
 EXPOSE 8080

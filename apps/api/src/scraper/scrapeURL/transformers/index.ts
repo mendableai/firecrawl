@@ -14,10 +14,10 @@ export type Transformer = (
   document: Document,
 ) => Document | Promise<Document>;
 
-export function deriveMetadataFromRawHTML(
+export async function deriveMetadataFromRawHTML(
   meta: Meta,
   document: Document,
-): Document {
+): Promise<Document> {
   if (document.rawHtml === undefined) {
     throw new Error(
       "rawHtml is undefined -- this transformer is being called out of order",
@@ -25,7 +25,7 @@ export function deriveMetadataFromRawHTML(
   }
 
   document.metadata = {
-    ...extractMetadata(meta, document.rawHtml),
+    ...(await extractMetadata(meta, document.rawHtml)),
     ...document.metadata,
   };
   return document;
@@ -63,7 +63,7 @@ export async function deriveMarkdownFromHTML(
   return document;
 }
 
-export function deriveLinksFromHTML(meta: Meta, document: Document): Document {
+export async function deriveLinksFromHTML(meta: Meta, document: Document): Promise<Document> {
   // Only derive if the formats has links
   if (meta.options.formats.includes("links")) {
     if (document.html === undefined) {
@@ -72,7 +72,7 @@ export function deriveLinksFromHTML(meta: Meta, document: Document): Document {
       );
     }
 
-    document.links = extractLinks(document.html, meta.url);
+    document.links = await extractLinks(document.html, meta.url);
   }
 
   return document;

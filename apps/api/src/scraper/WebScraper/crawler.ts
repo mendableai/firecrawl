@@ -1,5 +1,5 @@
 import axios, { AxiosError } from "axios";
-import cheerio, { load } from "cheerio";
+import { load } from "cheerio"; // rustified
 import { URL } from "url";
 import { getLinksFromSitemap } from "./sitemap";
 import robotsParser, { Robot } from "robots-parser";
@@ -8,6 +8,7 @@ import { axiosTimeout } from "../../lib/timeout";
 import { logger as _logger } from "../../lib/logger";
 import https from "https";
 import { redisConnection } from "../../services/queue-service";
+import { extractLinks } from "../../lib/html-transformer";
 export class WebCrawler {
   private jobId: string;
   private initialUrl: string;
@@ -364,7 +365,11 @@ export class WebCrawler {
     return null;
   }
 
-  public extractLinksFromHTML(html: string, url: string) {
+  private async extractLinksFromHTMLRust(html: string, url: string) {
+    return (await extractLinks(html)).filter(x => this.filterURL(x, url));
+  }
+
+  private extractLinksFromHTMLCheerio(html: string, url: string) {
     let links: string[] = [];
 
     const $ = load(html);
@@ -386,12 +391,25 @@ export class WebCrawler {
       const src = $(element).attr("src");
       if (src && src.startsWith("data:text/html")) {
         const iframeHtml = decodeURIComponent(src.split(",")[1]);
-        const iframeLinks = this.extractLinksFromHTML(iframeHtml, url);
+        const iframeLinks = this.extractLinksFromHTMLCheerio(iframeHtml, url);
         links = links.concat(iframeLinks);
       }
     });
 
     return links;
+  }
+
+  public async extractLinksFromHTML(html: string, url: string) {
+    try {
+      return await this.extractLinksFromHTMLRust(html, url);
+    } catch (error) {
+      this.logger.error("Failed to call html-transformer! Falling back to cheerio...", {
+        error,
+        module: "scrapeURL", method: "extractMetadata"
+      });
+    }
+
+    return this.extractLinksFromHTMLCheerio(html, url);
   }
 
   private isRobotsAllowed(
