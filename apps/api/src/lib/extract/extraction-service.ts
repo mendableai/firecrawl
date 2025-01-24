@@ -77,10 +77,10 @@ async function analyzeSchemaAndPrompt(
 
   const checkSchema = z.object({
     isMultiEntity: z.boolean(),
-    multiEntityKeys: z.array(z.string()),
+    multiEntityKeys: z.array(z.string()).optional().default([]),
     reasoning: z.string(),
     keyIndicators: z.array(z.string()),
-  });
+  }).refine(x => !x.isMultiEntity || multiEntityKeys.length > 0, "isMultiEntity was true, but no multiEntityKeys were returned");
 
   const model = "gpt-4o";
 
