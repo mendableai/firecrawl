@@ -31,9 +31,8 @@ Return only a concise sentece or 2 focused on the essential data points that the
 }
 
 export function buildRerankerSystemPrompt(): string {
-  return `You are a relevance expert scoring links from a website the user is trying to
-   extract information from. Analyze the provided URLs and their content
-    to determine their relevance to the user's query and intent. 
+  return `You are a relevance expert scoring links from a website the user is trying to extract information from. Analyze the provided URLs and their content
+to determine their relevance to the user's query and intent. 
     For each URL, assign a relevance score between 0 and 1, where 1
      means highly relevant and we should extract the content from it and 0 means not relevant at all, we should not extract the content from it.
       Always return all the links scored that you are giving. Do not omit links. 
