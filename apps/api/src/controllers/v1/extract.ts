@@ -95,7 +95,7 @@ export async function extractController(
             baggage: Sentry.spanToBaggageHeader(span),
             size,
           },
-        });
+        }, { jobId: extractId });
       },
     );
   } else {
