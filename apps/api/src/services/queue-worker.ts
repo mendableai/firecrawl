@@ -884,7 +884,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           );
 
           const links = crawler.filterLinks(
-            crawler.extractLinksFromHTML(
+            await crawler.extractLinksFromHTML(
               rawHtml ?? "",
               doc.metadata?.url ?? doc.metadata?.sourceURL ?? sc.originUrl!,
             ),
