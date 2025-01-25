@@ -317,7 +317,12 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
 
 #[no_mangle]
 pub extern "C" fn transform_html(opts: *const libc::c_char) -> *mut i8 {
-    let opts: TranformHTMLOptions = serde_json::de::from_str(&unsafe { CStr::from_ptr(opts) }.to_str().unwrap()).unwrap();
+    let opts: TranformHTMLOptions = match unsafe { CStr::from_ptr(opts) }.to_str().map_err(|_| ()).and_then(|x| serde_json::de::from_str(&x).map_err(|_| ())) {
+        Ok(x) => x,
+        Err(_) => {
+            return CString::new("RUSTFC:ERROR").unwrap().into_raw();
+        }
+    };
 
     let out = match _transform_html_inner(opts) {
         Ok(x) => x,
