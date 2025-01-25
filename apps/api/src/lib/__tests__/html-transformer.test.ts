@@ -326,6 +326,8 @@ describe("HTML Transformer", () => {
             <a href="//example.net/proturl">hi</a>
             <a href="?queryurl">hi</a>
             <a href="#hashurl">hi</a>
+            <img src="#q1">
+            <img src="#q2">
           </div>
         `,
         url: "https://example.com",
@@ -342,6 +344,8 @@ describe("HTML Transformer", () => {
       expect(result).toContain("https://example.net/proturl");
       expect(result).toContain("https://example.com/?queryurl");
       expect(result).toContain("https://example.com/#hashurl");
+      expect(result).toContain("https://example.com/#q1");
+      expect(result).toContain("https://example.com/#q2");
     });
   });
 });
