@@ -221,7 +221,8 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
         let root = new_document.select_first("div")?;
 
         for x in opts.include_tags.iter() {
-            for tag in document.select(x)? {
+            let matching_nodes: Vec<_> = document.select(x)?.collect();
+            for tag in matching_nodes {
                 root.as_node().append(tag.as_node().clone());
             }
         }
