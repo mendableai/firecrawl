@@ -315,5 +315,33 @@ describe("HTML Transformer", () => {
       expect(result).toContain("á é í ó ú ñ");
       expect(result).toContain("🎉 👍 🚀");
     });
+
+    it("should make all URLs absolute", async () => {
+      const options = {
+        html: `
+          <div>
+            <a href="https://example.com/fullurl">hi</a>
+            <a href="http://example.net/fullurl">hi</a>
+            <a href="/pathurl">hi</a>
+            <a href="//example.net/proturl">hi</a>
+            <a href="?queryurl">hi</a>
+            <a href="#hashurl">hi</a>
+          </div>
+        `,
+        url: "https://example.com",
+        include_tags: [],
+        exclude_tags: [],
+        only_main_content: true,
+      };
+
+      const result = await transformHtml(options);
+      console.log(result)
+      expect(result).toContain("https://example.com/fullurl");
+      expect(result).toContain("http://example.net/fullurl");
+      expect(result).toContain("https://example.com/pathurl");
+      expect(result).toContain("https://example.net/proturl");
+      expect(result).toContain("https://example.com/?queryurl");
+      expect(result).toContain("https://example.com/#hashurl");
+    });
   });
 });

@@ -50,7 +50,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       num_docs: job.num_docs,
       docs: cleanOfNull(job.docs),
       time_taken: job.time_taken,
-      team_id: job.team_id === "preview" ? null : job.team_id,
+      team_id: (job.team_id === "preview" || job.team_id?.startsWith("preview_"))? null : job.team_id,
       mode: job.mode,
       url: job.url,
       crawler_options: job.crawlerOptions,
@@ -112,7 +112,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
     if (process.env.POSTHOG_API_KEY && !job.crawl_id) {
       let phLog = {
         distinctId: "from-api", //* To identify this on the group level, setting distinctid to a static string per posthog docs: https://posthog.com/docs/product-analytics/group-analytics#advanced-server-side-only-capturing-group-events-without-a-user
-        ...(job.team_id !== "preview" && {
+        ...((job.team_id !== "preview" && !job.team_id?.startsWith("preview_")) && {
           groups: { team: job.team_id },
         }), //* Identifying event on this team
         event: "job-logged",
@@ -121,7 +121,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
           message: job.message,
           num_docs: job.num_docs,
           time_taken: job.time_taken,
-          team_id: job.team_id === "preview" ? null : job.team_id,
+          team_id: (job.team_id === "preview" || job.team_id?.startsWith("preview_"))? null : job.team_id,
           mode: job.mode,
           url: job.url,
           crawler_options: job.crawlerOptions,
