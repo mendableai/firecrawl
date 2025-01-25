@@ -263,7 +263,7 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
     for img in document.select("img[srcset]")? {
         let mut sizes: Vec<ImageSource> = img.attributes.borrow().get("srcset").ok_or(())?.to_string().split(",").filter_map(|x| {
             let tok: Vec<&str> = x.trim().split(" ").collect();
-            let tok_1 = if tok.len() > 0 {
+            let tok_1 = if tok.len() > 1 {
                 tok[1]
             } else {
                 "1x"
