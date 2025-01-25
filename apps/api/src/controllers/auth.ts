@@ -206,7 +206,7 @@ export async function supaAuthenticateUser(
     } else {
       rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
     }
-    teamId = "preview";
+    teamId = `preview_${iptoken}`;
     plan = "free";
   } else {
     normalizedApi = parseApi(token);
@@ -332,7 +332,7 @@ export async function supaAuthenticateUser(
       mode === RateLimiterMode.Extract ||
       mode === RateLimiterMode.Search)
   ) {
-    return { success: true, team_id: "preview", chunk: null, plan: "free" };
+    return { success: true, team_id: `preview_${iptoken}`, chunk: null, plan: "free" };
     // check the origin of the request and make sure its from firecrawl.dev
     // const origin = req.headers.origin;
     // if (origin && origin.includes("firecrawl.dev")){
