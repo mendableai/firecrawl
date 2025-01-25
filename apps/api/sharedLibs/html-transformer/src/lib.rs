@@ -5,8 +5,12 @@ use serde::Deserialize;
 use serde_json::Value;
 use url::Url;
 
+/// Extracts links from HTML
+/// 
+/// # Safety
+/// Input options must be a C HTML string. Output will be a JSON string array. Output string must be freed with free_string.
 #[no_mangle]
-pub extern "C" fn extract_links(html: *const libc::c_char) -> *mut i8 {
+pub unsafe extern "C" fn extract_links(html: *const libc::c_char) -> *mut i8 {
     let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
 
     let document = parse_html().one(html);
@@ -44,9 +48,12 @@ macro_rules! insert_meta_property {
     };
 }
 
-
+/// Extracts metadata from HTML
+/// 
+/// # Safety
+/// Input options must be a C HTML string. Output will be a JSON object. Output string must be freed with free_string.
 #[no_mangle]
-pub extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut i8 {
+pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut i8 {
     let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
 
     let document = parse_html().one(html);
@@ -209,12 +216,12 @@ struct ImageSource {
 fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
     let mut document = parse_html().one(opts.html);
     
-    if opts.include_tags.len() > 0 {
+    if !opts.include_tags.is_empty() {
         let new_document = parse_html().one("<div></div>");
         let root = new_document.select_first("div")?;
 
         for x in opts.include_tags.iter() {
-            for tag in document.select(&x)? {
+            for tag in document.select(x)? {
                 root.as_node().append(tag.as_node().clone());
             }
         }
@@ -244,16 +251,16 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
 
     for x in opts.exclude_tags.iter() {
         // TODO: implement weird version
-        while let Ok(x) = document.select_first(&x) {
+        while let Ok(x) = document.select_first(x) {
             x.as_node().detach();
         }
     }
 
     if opts.only_main_content {
         for x in EXCLUDE_NON_MAIN_TAGS.iter() {
-            let x: Vec<_> = document.select(&format!("{}", x))?.collect();
+            let x: Vec<_> = document.select(x)?.collect();
             for tag in x {
-                if !FORCE_INCLUDE_MAIN_TAGS.iter().any(|x| tag.as_node().select(&x).is_ok_and(|mut x| x.next().is_some())) {
+                if !FORCE_INCLUDE_MAIN_TAGS.iter().any(|x| tag.as_node().select(x).is_ok_and(|mut x| x.next().is_some())) {
                     tag.as_node().detach();
                 }
             }
@@ -261,9 +268,9 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
     }
 
     for img in document.select("img[srcset]")? {
-        let mut sizes: Vec<ImageSource> = img.attributes.borrow().get("srcset").ok_or(())?.to_string().split(",").filter_map(|x| {
+        let mut sizes: Vec<ImageSource> = img.attributes.borrow().get("srcset").ok_or(())?.split(",").filter_map(|x| {
             let tok: Vec<&str> = x.trim().split(" ").collect();
-            let tok_1 = if tok.len() > 1 && tok[1].len() > 0 {
+            let tok_1 = if tok.len() > 1 && !tok[1].is_empty() {
                 tok[1]
             } else {
                 "1x"
@@ -315,9 +322,13 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
     Ok(document.to_string())
 }
 
+/// Transforms rawHtml to html (formerly removeUnwantedElements)
+/// 
+/// # Safety
+/// Input options must be a C JSON string. Output will be an HTML string. Output string must be freed with free_string.
 #[no_mangle]
-pub extern "C" fn transform_html(opts: *const libc::c_char) -> *mut i8 {
-    let opts: TranformHTMLOptions = match unsafe { CStr::from_ptr(opts) }.to_str().map_err(|_| ()).and_then(|x| serde_json::de::from_str(&x).map_err(|_| ())) {
+pub unsafe extern "C" fn transform_html(opts: *const libc::c_char) -> *mut i8 {
+    let opts: TranformHTMLOptions = match unsafe { CStr::from_ptr(opts) }.to_str().map_err(|_| ()).and_then(|x| serde_json::de::from_str(x).map_err(|_| ())) {
         Ok(x) => x,
         Err(_) => {
             return CString::new("RUSTFC:ERROR").unwrap().into_raw();
@@ -332,7 +343,11 @@ pub extern "C" fn transform_html(opts: *const libc::c_char) -> *mut i8 {
     CString::new(out).unwrap().into_raw()
 }
 
+/// Frees a string allocated in Rust-land.
+/// 
+/// # Safety
+/// ptr must be a non-freed string pointer returned by Rust code.
 #[no_mangle]
-pub extern "C" fn free_string(ptr: *mut i8) {
+pub unsafe extern "C" fn free_string(ptr: *mut i8) {
     drop(unsafe { CString::from_raw(ptr) })
 }
