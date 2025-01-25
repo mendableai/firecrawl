@@ -1,7 +1,9 @@
 // TODO: refactor
 
-import { AnyNode, Cheerio, load } from "cheerio"; // TODO: rustify
+import { AnyNode, Cheerio, load } from "cheerio"; // rustified
 import { ScrapeOptions } from "../../../controllers/v1/types";
+import { transformHtml } from "../../../lib/html-transformer";
+import { logger } from "../../../lib/logger";
 
 const excludeNonMainTags = [
   "header",
@@ -49,11 +51,26 @@ const excludeNonMainTags = [
 
 const forceIncludeMainTags = ["#main"];
 
-export const htmlTransform = (
+export const htmlTransform = async (
   html: string,
   url: string,
   scrapeOptions: ScrapeOptions,
 ) => {
+  try {
+    return await transformHtml({
+      html,
+      url,
+      include_tags: (scrapeOptions.includeTags ?? []).map(x => x.trim()).filter((x) => x.length !== 0),
+      exclude_tags: (scrapeOptions.excludeTags ?? []).map(x => x.trim()).filter((x) => x.length !== 0),
+      only_main_content: scrapeOptions.onlyMainContent,
+    })
+  } catch (error) {
+    logger.error("Failed to call html-transformer! Falling back to cheerio...", {
+        error,
+        module: "scrapeURL", method: "extractLinks"
+      });
+  }
+
   let soup = load(html);
 
   // remove unwanted elements

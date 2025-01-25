@@ -10,10 +10,19 @@ const rustExecutablePath = join(
   platform() === "darwin" ? "libhtml_transformer.dylib" : "libhtml_transformer.so"
 );
 
+type TransformHtmlOptions = {
+  html: string,
+  url: string,
+  include_tags: string[],
+  exclude_tags: string[],
+  only_main_content: boolean,
+};
+
 class RustHTMLTransformer {
   private static instance: RustHTMLTransformer;
   private _extractLinks: KoffiFunction;
   private _extractMetadata: KoffiFunction;
+  private _transformHtml: KoffiFunction;
   private _freeString: KoffiFunction;
 
   private constructor() {
@@ -23,6 +32,7 @@ class RustHTMLTransformer {
     const freedResultString = koffi.disposable(cstn, "string", this._freeString);
     this._extractLinks = lib.func("extract_links", freedResultString, ["string"]);
     this._extractMetadata = lib.func("extract_metadata", freedResultString, ["string"]);
+    this._transformHtml = lib.func("transform_html", freedResultString, ["string"]);
   }
 
   public static async getInstance(): Promise<RustHTMLTransformer> {
@@ -60,6 +70,22 @@ class RustHTMLTransformer {
       });
     });
   }
+
+  public async transformHtml(opts: TransformHtmlOptions): Promise<string> {
+    return new Promise<string>((resolve, reject) => {
+      this._transformHtml.async(JSON.stringify(opts), (err: Error, res: string) => {
+        if (err) {
+          reject(err);
+        } else {
+          if (res === "RUSTFC:ERROR") {
+            reject(new Error("Something went wrong on the Rust side."));
+          } else {
+            resolve(res);
+          }
+        }
+      });
+    });
+  }
 }
 
 export async function extractLinks(
@@ -82,4 +108,11 @@ export async function extractMetadata(
 
     const converter = await RustHTMLTransformer.getInstance();
     return await converter.extractMetadata(html);
+}
+
+export async function transformHtml(
+  opts: TransformHtmlOptions,
+): Promise<string> {
+  const converter = await RustHTMLTransformer.getInstance();
+  return await converter.transformHtml(opts);
 }

@@ -1,28 +1,9 @@
 use std::{collections::HashMap, ffi::{CStr, CString}};
 
 use kuchikiki::{parse_html, traits::TendrilSink};
+use serde::Deserialize;
 use serde_json::Value;
-
-// #[no_mangle]
-// pub extern "C" fn extract_links(html: *const libc::c_char) -> *mut i8 {
-//     let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
-
-//     let mut output = vec![];
-    
-//     let mut rewriter = HtmlRewriter::new(
-//         Settings {
-//             element_content_handlers: vec! [
-//                 element!("")
-//             ],
-//             ..Settings::new()
-//         },
-//         |c: &[u8]| output.extend_from_slice(c)
-//     );
-
-//     rewriter.write(html.as_bytes()).unwrap();
-
-//     CString::new(String::from_utf8(output).unwrap()).unwrap().into_raw()
-// }
+use url::Url;
 
 #[no_mangle]
 pub extern "C" fn extract_links(html: *const libc::c_char) -> *mut i8 {
@@ -160,6 +141,190 @@ pub extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut i8 {
     }
 
     CString::new(serde_json::ser::to_string(&out).unwrap()).unwrap().into_raw()
+}
+
+const EXCLUDE_NON_MAIN_TAGS: [&str; 41] = [
+    "header",
+    "footer",
+    "nav",
+    "aside",
+    ".header",
+    ".top",
+    ".navbar",
+    "#header",
+    ".footer",
+    ".bottom",
+    "#footer",
+    ".sidebar",
+    ".side",
+    ".aside",
+    "#sidebar",
+    ".modal",
+    ".popup",
+    "#modal",
+    ".overlay",
+    ".ad",
+    ".ads",
+    ".advert",
+    "#ad",
+    ".lang-selector",
+    ".language",
+    "#language-selector",
+    ".social",
+    ".social-media",
+    ".social-links",
+    "#social",
+    ".menu",
+    ".navigation",
+    "#nav",
+    ".breadcrumbs",
+    "#breadcrumbs",
+    ".share",
+    "#share",
+    ".widget",
+    "#widget",
+    ".cookie",
+    "#cookie",
+];
+
+const FORCE_INCLUDE_MAIN_TAGS: [&str; 1] = [
+    "#main"
+];
+
+#[derive(Deserialize)]
+struct TranformHTMLOptions {
+    html: String,
+    url: String,
+    include_tags: Vec<String>,
+    exclude_tags: Vec<String>,
+    only_main_content: bool,
+}
+
+struct ImageSource {
+    url: String,
+    size: i32,
+    is_x: bool,
+}
+
+fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
+    let mut document = parse_html().one(opts.html);
+    
+    if opts.include_tags.len() > 0 {
+        let new_document = parse_html().one("<div></div>");
+        let root = new_document.select_first("div")?;
+
+        for x in opts.include_tags.iter() {
+            for tag in document.select(&x)? {
+                root.as_node().append(tag.as_node().clone());
+            }
+        }
+
+        document = new_document;
+    }
+
+    while let Ok(x) = document.select_first("head") {
+        x.as_node().detach();
+    }
+
+    while let Ok(x) = document.select_first("meta") {
+        x.as_node().detach();
+    }
+
+    while let Ok(x) = document.select_first("noscript") {
+        x.as_node().detach();
+    }
+
+    while let Ok(x) = document.select_first("style") {
+        x.as_node().detach();
+    }
+
+    while let Ok(x) = document.select_first("script") {
+        x.as_node().detach();
+    }
+
+    for x in opts.exclude_tags.iter() {
+        // TODO: implement weird version
+        while let Ok(x) = document.select_first(&x) {
+            x.as_node().detach();
+        }
+    }
+
+    if opts.only_main_content {
+        for x in EXCLUDE_NON_MAIN_TAGS.iter() {
+            let x: Vec<_> = document.select(&format!("{}", x))?.collect();
+            for tag in x {
+                if !FORCE_INCLUDE_MAIN_TAGS.iter().any(|x| tag.as_node().select(&x).is_ok_and(|mut x| x.next().is_some())) {
+                    tag.as_node().detach();
+                }
+            }
+        }
+    }
+
+    for img in document.select("img[srcset]")? {
+        let mut sizes: Vec<ImageSource> = img.attributes.borrow().get("srcset").ok_or(())?.to_string().split(",").filter_map(|x| {
+            let tok: Vec<&str> = x.trim().split(" ").collect();
+            let tok_1 = if tok.len() > 0 {
+                tok[1]
+            } else {
+                "1x"
+            };
+            if let Ok(parsed_size) = tok_1[..tok_1.len()-1].parse() {
+                Some(ImageSource {
+                    url: tok[0].to_string(),
+                    size: parsed_size,
+                    is_x: tok_1.ends_with("x")
+                })
+            } else {
+                None
+            }
+        }).collect();
+
+        if sizes.iter().all(|x| x.is_x) {
+            if let Some(src) = img.attributes.borrow().get("src").map(|x| x.to_string()) {
+                sizes.push(ImageSource {
+                    url: src,
+                    size: 1,
+                    is_x: true,
+                });
+            }
+        }
+
+        sizes.sort_by(|a, b| b.size.cmp(&a.size));
+
+        if let Some(biggest) = sizes.first() {
+            img.attributes.borrow_mut().insert("src", biggest.url.clone());
+        }
+    }
+
+    let url = Url::parse(&opts.url).map_err(|_| ())?;
+    
+    for img in document.select("img[src]")? {
+        let old = img.attributes.borrow().get("src").map(|x| x.to_string()).ok_or(())?;
+        if let Ok(new) = url.join(&old) {
+            img.attributes.borrow_mut().insert("src", new.to_string());            
+        }
+    }
+
+    for anchor in document.select("a[href]")? {
+        let old = anchor.attributes.borrow().get("href").map(|x| x.to_string()).ok_or(())?;
+        if let Ok(new) = url.join(&old) {
+            anchor.attributes.borrow_mut().insert("href", new.to_string());            
+        }
+    }
+
+    Ok(document.to_string())
+}
+
+#[no_mangle]
+pub extern "C" fn transform_html(opts: *const libc::c_char) -> *mut i8 {
+    let opts: TranformHTMLOptions = serde_json::de::from_str(&unsafe { CStr::from_ptr(opts) }.to_str().unwrap()).unwrap();
+
+    let out = match _transform_html_inner(opts) {
+        Ok(x) => x,
+        Err(_) => "RUSTFC:ERROR".to_string(),
+    };
+
+    CString::new(out).unwrap().into_raw()
 }
 
 #[no_mangle]

@@ -31,17 +31,17 @@ export async function deriveMetadataFromRawHTML(
   return document;
 }
 
-export function deriveHTMLFromRawHTML(
+export async function deriveHTMLFromRawHTML(
   meta: Meta,
   document: Document,
-): Document {
+): Promise<Document> {
   if (document.rawHtml === undefined) {
     throw new Error(
       "rawHtml is undefined -- this transformer is being called out of order",
     );
   }
 
-  document.html = htmlTransform(
+  document.html = await htmlTransform(
     document.rawHtml,
     document.metadata.url ?? document.metadata.sourceURL ?? meta.url,
     meta.options,
