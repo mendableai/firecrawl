@@ -50,6 +50,13 @@ function checkCreditsMiddleware(
       if (!success) {
         logger.error(
           `Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`,
+          {
+            teamId: req.auth.team_id,
+            minimum,
+            remainingCredits,
+            request: req.body,
+            path: req.path
+          }
         );
         if (!res.headersSent) {
           return res.status(402).json({
