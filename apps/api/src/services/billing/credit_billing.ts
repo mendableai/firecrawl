@@ -48,7 +48,7 @@ export async function supaBillTeam(
     credits,
   });
 
-  if (team_id === "preview") {
+  if (team_id === "preview" || team_id.startsWith("preview_")) {
     return { success: true, message: "Preview team, no credits used" };
   }
   _logger.info(`Billing team ${team_id} for ${credits} credits`);
@@ -109,7 +109,7 @@ export async function supaCheckTeamCredits(
   credits: number,
 ): Promise<CheckTeamCreditsResponse> {
   // WARNING: chunk will be null if team_id is preview -- do not perform operations on it under ANY circumstances - mogery
-  if (team_id === "preview") {
+  if (team_id === "preview" || team_id.startsWith("preview_")) {
     return {
       success: true,
       message: "Preview team, no credits used",

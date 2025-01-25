@@ -86,7 +86,7 @@ export async function sendNotificationInternal(
   chunk: AuthCreditUsageChunk,
   bypassRecentChecks: boolean = false,
 ): Promise<{ success: boolean }> {
-  if (team_id === "preview") {
+  if (team_id === "preview" || team_id.startsWith("preview_")) {
     return { success: true };
   }
   return await redlock.using(
