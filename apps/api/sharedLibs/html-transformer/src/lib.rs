@@ -268,7 +268,8 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
         }
     }
 
-    for img in document.select("img[srcset]")? {
+    let srcset_images: Vec<_> = document.select("img[srcset]")?.collect();
+    for img in srcset_images {
         let mut sizes: Vec<ImageSource> = img.attributes.borrow().get("srcset").ok_or(())?.split(",").filter_map(|x| {
             let tok: Vec<&str> = x.trim().split(" ").collect();
             let tok_1 = if tok.len() > 1 && !tok[1].is_empty() {
@@ -306,14 +307,16 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
 
     let url = Url::parse(&opts.url).map_err(|_| ())?;
     
-    for img in document.select("img[src]")? {
+    let src_images: Vec<_> = document.select("img[src]")?.collect();
+    for img in src_images {
         let old = img.attributes.borrow().get("src").map(|x| x.to_string()).ok_or(())?;
         if let Ok(new) = url.join(&old) {
             img.attributes.borrow_mut().insert("src", new.to_string());            
         }
     }
 
-    for anchor in document.select("a[href]")? {
+    let href_anchors: Vec<_> = document.select("a[href]")?.collect();
+    for anchor in href_anchors {
         let old = anchor.attributes.borrow().get("href").map(|x| x.to_string()).ok_or(())?;
         if let Ok(new) = url.join(&old) {
             anchor.attributes.borrow_mut().insert("href", new.to_string());            
