@@ -56,9 +56,6 @@ interface ExtractResult {
   tokenUsageBreakdown?: TokenUsage[];
   llmUsage?: number;
   totalUrlsScraped?: number;
-  sources?: {
-    [key: string]: string[];
-  };
 }
 
 async function analyzeSchemaAndPrompt(
@@ -182,45 +179,6 @@ function getRootDomain(url: string): string {
   }
 }
 
-// Add helper function to track sources
-function trackFieldSources(data: any, url: string, parentPath: string = ''): string[] {
-  const extractedFields: string[] = [];
-  
-  if (data && typeof data === 'object') {
-    Object.entries(data).forEach(([key, value]) => {
-      const currentPath = parentPath ? `${parentPath}.${key}` : key;
-      
-      if (value !== null && value !== undefined) {
-        extractedFields.push(currentPath);
-        
-        if (typeof value === 'object') {
-          extractedFields.push(...trackFieldSources(value, url, currentPath));
-        }
-      }
-    });
-  }
-  
-  return extractedFields;
-}
-
-// Add helper to merge sources from multiple extractions
-function mergeSources(sources: { [key: string]: string[] }[]): { [key: string]: string[] } {
-  const mergedSources: { [key: string]: string[] } = {};
-  
-  sources.forEach(sourceMap => {
-    Object.entries(sourceMap).forEach(([field, urls]) => {
-      if (!mergedSources[field]) {
-        mergedSources[field] = [];
-      }
-      mergedSources[field].push(...urls);
-      // Deduplicate URLs
-      mergedSources[field] = [...new Set(mergedSources[field])];
-    });
-  });
-  
-  return mergedSources;
-}
-
 export async function performExtraction(
   extractId: string,
   options: ExtractServiceOptions,
@@ -233,7 +191,6 @@ export async function performExtraction(
   let multiEntityResult: any = {};
   let singleAnswerResult: any = {};
   let totalUrlsScraped = 0;
-  let extractionSources: { [key: string]: string[] } = {};
 
   const logger = _logger.child({
     module: "extract",
@@ -594,24 +551,6 @@ export async function performExtraction(
           //   return null;
           // }
 
-          if (multiEntityCompletion?.extract) {
-            const extractedFields = trackFieldSources(multiEntityCompletion.extract, doc.metadata.url || doc.metadata.sourceURL!);
-            
-            // Update URL trace with extracted fields
-            const trace = urlTraces.find(t => t.url === (doc.metadata.url || doc.metadata.sourceURL!));
-            if (trace) {
-              trace.extractedFields = extractedFields;
-            }
-            
-            // Track sources for each field
-            extractedFields.forEach(field => {
-              if (!extractionSources[field]) {
-                extractionSources[field] = [];
-              }
-              extractionSources[field].push(doc.metadata.url || doc.metadata.sourceURL!);
-            });
-          }
-
           return multiEntityCompletion.extract;
         } catch (error) {
           logger.error(`Failed to process document.`, { error, url: doc.metadata.url ?? doc.metadata.sourceURL! });
@@ -788,21 +727,6 @@ export async function performExtraction(
     //     }
     //   });
     // }
-
-    if (singleAnswerCompletions?.extract) {
-      const singleAnswerSources: { [key: string]: string[] } = {};
-      const usedUrls = Array.from(docsMap.values())
-        .map(doc => doc.metadata.url || doc.metadata.sourceURL!)
-        .filter(Boolean);
-        
-      const extractedFields = trackFieldSources(singleAnswerCompletions.extract, '');
-      extractedFields.forEach(field => {
-        singleAnswerSources[field] = usedUrls;
-      });
-      
-      // Merge with multi-entity sources
-      extractionSources = mergeSources([extractionSources, singleAnswerSources]);
-    }
   }
 
   let finalResult = reqSchema
@@ -893,7 +817,6 @@ export async function performExtraction(
     updateExtract(extractId, {
       status: "completed",
       llmUsage,
-      sources: extractionSources
     }).catch((error) => {
       logger.error(
         `Failed to update extract ${extractId} status to completed: ${error}`,
@@ -911,6 +834,5 @@ export async function performExtraction(
     urlTrace: request.urlTrace ? urlTraces : undefined,
     llmUsage,
     totalUrlsScraped,
-    sources: extractionSources
   };
 }
