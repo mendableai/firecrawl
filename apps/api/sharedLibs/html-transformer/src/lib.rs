@@ -128,7 +128,9 @@ pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut i8 
                 if let Some(v) = out.get(name) {
                     match v {
                         Value::String(_) => {
-                            out.insert(name.to_string(), Value::Array(vec! [v.clone(), Value::String(content.to_string())]));
+                            if name != "title" { // preserve title tag in metadata
+                                out.insert(name.to_string(), Value::Array(vec! [v.clone(), Value::String(content.to_string())]));
+                            }
                         },
                         Value::Array(_) => {
                             match out.get_mut(name) {
