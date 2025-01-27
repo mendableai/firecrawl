@@ -237,7 +237,6 @@ export async function processUrl(
     // );
     // Remove title and description from mappedLinks
     mappedLinks = mappedLinks.map((link) => ({ url: link.url }));
-    console.log("mappedLinks: ", mappedLinks);
     return mappedLinks.map((x) => x.url);
   } catch (error) {
     trace.status = "error";

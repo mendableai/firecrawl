@@ -340,7 +340,7 @@ export async function performExtraction(
           tokenUsage.push(shouldExtractCheckTokenUsage);
 
           if (!extract) {
-            console.log(
+            logger.info(
               `Skipping extraction for ${doc.metadata.url} as content is irrelevant`,
             );
             return null;
