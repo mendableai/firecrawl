@@ -374,7 +374,7 @@ export async function performExtraction(
             ],
           });
 
-          const completionPromise = batchExtractPromise(multiEntitySchema, links, request.prompt ?? "", request.systemPrompt ?? "", doc);
+          const completionPromise =  batchExtractPromise(multiEntitySchema, links, request.prompt ?? "", request.systemPrompt ?? "", doc);
 
           // Race between timeout and completion
           const multiEntityCompletion = (await Promise.race([
@@ -563,7 +563,7 @@ export async function performExtraction(
 
     // Generate completions
     logger.debug("Generating singleAnswer completions...");
-    let { extract: singleAnswerResult, tokenUsage: singleAnswerTokenUsage } = await singleAnswerCompletion({
+    let { extract: completionResult, tokenUsage: singleAnswerTokenUsage } = await singleAnswerCompletion({
       singleAnswerDocs,
       rSchema,
       links,
@@ -576,9 +576,9 @@ export async function performExtraction(
     if (singleAnswerTokenUsage) {
       tokenUsage.push(singleAnswerTokenUsage);
     }
-
-    singleAnswerResult = singleAnswerResult.extract;
+    singleAnswerResult = completionResult;
     singleAnswerCompletions = singleAnswerResult;
+
 
     // Update token usage in traces
     // if (completions && completions.numTokens) {
