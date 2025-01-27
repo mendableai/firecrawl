@@ -30,7 +30,7 @@ export async function extractStatusController(
     data = jobData[0].docs;
   }
 
-  console.log(extract.sources);
+  // console.log(extract.sources);
   return res.status(200).json({
     success: extract.status === "failed" ? false : true,
     data: data,
