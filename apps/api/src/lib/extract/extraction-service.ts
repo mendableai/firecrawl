@@ -52,6 +52,7 @@ interface ExtractResult {
   tokenUsageBreakdown?: TokenUsage[];
   llmUsage?: number;
   totalUrlsScraped?: number;
+  sources?: Record<string, string[]>;
 }
 
 type completions = {
@@ -59,6 +60,7 @@ type completions = {
   numTokens: number;
   totalUsage: TokenUsage;
   warning?: string;
+  sources?: string[];
 };
 
 
@@ -74,6 +76,7 @@ export async function performExtraction(
   let multiEntityResult: any = {};
   let singleAnswerResult: any = {};
   let totalUrlsScraped = 0;
+  let sources: Record<string, string[]> = {};
 
   const logger = _logger.child({
     module: "extract",
@@ -385,6 +388,23 @@ export async function performExtraction(
           // Track multi-entity extraction tokens
           if (multiEntityCompletion) {
             tokenUsage.push(multiEntityCompletion.totalUsage);
+            
+            // Track sources for multi-entity items
+            if (multiEntityCompletion.extract) {
+              // For each multi-entity key, track the source URL
+              multiEntityKeys.forEach(key => {
+                const items = multiEntityCompletion.extract[key];
+                if (Array.isArray(items)) {
+                  items.forEach((item, index) => {
+                    const sourcePath = `${key}[${index}]`;
+                    if (!sources[sourcePath]) {
+                      sources[sourcePath] = [];
+                    }
+                    sources[sourcePath].push(doc.metadata.url || doc.metadata.sourceURL || "");
+                  });
+                }
+              });
+            }
           }
 
           // console.log(multiEntityCompletion.extract)
@@ -563,7 +583,7 @@ export async function performExtraction(
 
     // Generate completions
     logger.debug("Generating singleAnswer completions...");
-    let { extract: completionResult, tokenUsage: singleAnswerTokenUsage } = await singleAnswerCompletion({
+    let { extract: completionResult, tokenUsage: singleAnswerTokenUsage, sources: singleAnswerSources } = await singleAnswerCompletion({
       singleAnswerDocs,
       rSchema,
       links,
@@ -572,9 +592,18 @@ export async function performExtraction(
     });
     logger.debug("Done generating singleAnswer completions.");
 
-    // Track single answer extraction tokens
+    // Track single answer extraction tokens and sources
     if (completionResult) {
       tokenUsage.push(singleAnswerTokenUsage);
+      
+      // Add sources for top-level properties in single answer
+      if (rSchema?.properties) {
+        Object.keys(rSchema.properties).forEach(key => {
+          if (completionResult[key] !== undefined) {
+            sources[key] = singleAnswerSources || singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || "");
+          }
+        });
+      }
     }
 
     singleAnswerResult = completionResult;
@@ -674,7 +703,7 @@ export async function performExtraction(
     );
   });
 
-  // Log job with token usage
+  // Log job with token usage and sources
   logJob({
     job_id: extractId,
     success: true,
@@ -689,10 +718,12 @@ export async function performExtraction(
     origin: request.origin ?? "api",
     num_tokens: totalTokensUsed,
     tokens_billed: tokensToBill,
+    sources,
   }).then(() => {
     updateExtract(extractId, {
       status: "completed",
       llmUsage,
+      sources,
     }).catch((error) => {
       logger.error(
         `Failed to update extract ${extractId} status to completed: ${error}`,
@@ -706,9 +737,10 @@ export async function performExtraction(
     success: true,
     data: finalResult ?? {},
     extractId,
-    warning: undefined, // TODO FIX
+    warning: undefined,
     urlTrace: request.urlTrace ? urlTraces : undefined,
     llmUsage,
     totalUrlsScraped,
+    sources,
   };
 }

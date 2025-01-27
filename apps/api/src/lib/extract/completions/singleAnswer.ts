@@ -1,7 +1,8 @@
 import { logger } from "../../../lib/logger";
 import { generateOpenAICompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { buildDocument } from "../build-document";
-import { Document } from "../../../controllers/v1/types";
+import { Document, TokenUsage } from "../../../controllers/v1/types";
+
 export async function singleAnswerCompletion({
   singleAnswerDocs,
   rSchema,
@@ -14,7 +15,11 @@ export async function singleAnswerCompletion({
   links: string[];
   prompt: string;
   systemPrompt: string;
-}) {
+}): Promise<{
+  extract: any;
+  tokenUsage: TokenUsage;
+  sources: string[];
+}> {
   const completion = await generateOpenAICompletions(
     logger.child({ module: "extract", method: "generateOpenAICompletions" }),
     {
@@ -30,5 +35,9 @@ export async function singleAnswerCompletion({
     undefined,
     true,
   );
-  return { extract: completion.extract, tokenUsage: completion.totalUsage };
+  return { 
+    extract: completion.extract, 
+    tokenUsage: completion.totalUsage,
+    sources: singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || "")
+  };
 }

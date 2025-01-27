@@ -88,6 +88,7 @@ export interface FirecrawlJob {
   retry?: boolean;
   crawl_id?: string;
   tokens_billed?: number;
+  sources?: Record<string, string[]>;
 }
 
 export interface FirecrawlScrapeResponse {

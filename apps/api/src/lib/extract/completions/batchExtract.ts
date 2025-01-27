@@ -17,14 +17,20 @@ import {
  * @param doc - The document to extract information from
  * @returns The completion promise
  */
-export function batchExtractPromise(
+export async function batchExtractPromise(
   multiEntitySchema: any,
   links: string[],
   prompt: string,
   systemPrompt: string,
   doc: Document,
-): Promise<Awaited<ReturnType<typeof generateOpenAICompletions>>> {
-  const completionPromise = generateOpenAICompletions(
+): Promise<{
+  extract: any;
+  numTokens: number;
+  totalUsage: TokenUsage;
+  warning?: string;
+  sources: string[];
+}> {
+  const completion = await generateOpenAICompletions(
     logger.child({
       method: "extractService/generateOpenAICompletions",
     }),
@@ -43,5 +49,10 @@ export function batchExtractPromise(
     true,
   );
 
-  return completionPromise;
+  return {
+    extract: completion.extract,
+    numTokens: completion.numTokens,
+    totalUsage: completion.totalUsage,
+    sources: [doc.metadata.url || doc.metadata.sourceURL || ""]
+  };
 }
