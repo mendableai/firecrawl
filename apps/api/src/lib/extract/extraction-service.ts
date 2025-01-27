@@ -573,12 +573,12 @@ export async function performExtraction(
     logger.debug("Done generating singleAnswer completions.");
 
     // Track single answer extraction tokens
-    if (singleAnswerTokenUsage) {
+    if (completionResult) {
       tokenUsage.push(singleAnswerTokenUsage);
     }
+
     singleAnswerResult = completionResult;
     singleAnswerCompletions = singleAnswerResult;
-
 
     // Update token usage in traces
     // if (completions && completions.numTokens) {

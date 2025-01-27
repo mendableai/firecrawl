@@ -1099,7 +1099,7 @@ describe("mixSchemaObjects function", () => {
     const finalResult = await mixSchemaObjects(
       originalSchema,
       singleAnswerResult, 
-      undefined
+      {}
     );
 
     expect(finalResult).toEqual(singleAnswerResult);
@@ -1175,7 +1175,7 @@ describe("mixSchemaObjects function", () => {
       }
     };
 
-    const finalResult = await mixSchemaObjects(originalSchema, singleAnswerResult, undefined);
+    const finalResult = await mixSchemaObjects(originalSchema, singleAnswerResult, {});
 
     expect(finalResult).toEqual(singleAnswerResult);
   });
