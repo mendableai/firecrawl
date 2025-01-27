@@ -56,8 +56,6 @@ interface ExtractResult {
   };
 }
 
-
-
 type completions = {
   extract: Record<string, any>;
   numTokens: number;
@@ -78,31 +76,37 @@ function getRootDomain(url: string): string {
 }
 
 // Add helper function to track sources
-function trackFieldSources(data: any, url: string, parentPath: string = ''): string[] {
+function trackFieldSources(
+  data: any,
+  url: string,
+  parentPath: string = "",
+): string[] {
   const extractedFields: string[] = [];
-  
-  if (data && typeof data === 'object') {
+
+  if (data && typeof data === "object") {
     Object.entries(data).forEach(([key, value]) => {
       const currentPath = parentPath ? `${parentPath}.${key}` : key;
-      
+
       if (value !== null && value !== undefined) {
         extractedFields.push(currentPath);
-        
-        if (typeof value === 'object') {
+
+        if (typeof value === "object") {
           extractedFields.push(...trackFieldSources(value, url, currentPath));
         }
       }
     });
   }
-  
+
   return extractedFields;
 }
 
 // Add helper to merge sources from multiple extractions
-function mergeSources(sources: { [key: string]: string[] }[]): { [key: string]: string[] } {
+function mergeSources(sources: { [key: string]: string[] }[]): {
+  [key: string]: string[];
+} {
   const mergedSources: { [key: string]: string[] } = {};
-  
-  sources.forEach(sourceMap => {
+
+  sources.forEach((sourceMap) => {
     Object.entries(sourceMap).forEach(([field, urls]) => {
       if (!mergedSources[field]) {
         mergedSources[field] = [];
@@ -112,7 +116,7 @@ function mergeSources(sources: { [key: string]: string[] }[]): { [key: string]: 
       mergedSources[field] = [...new Set(mergedSources[field])];
     });
   });
-  
+
   return mergedSources;
 }
 
@@ -196,7 +200,7 @@ export async function performExtraction(
 
   if (links.length === 0) {
     logger.error("0 links! Bailing.", {
-      linkCount: links.length
+      linkCount: links.length,
     });
     return {
       success: false,
@@ -223,14 +227,20 @@ export async function performExtraction(
   let reqSchema = request.schema;
   if (!reqSchema && request.prompt) {
     reqSchema = await generateSchemaFromPrompt(request.prompt);
-    logger.debug("Generated request schema.", { originalSchema: request.schema, schema: reqSchema });
+    logger.debug("Generated request schema.", {
+      originalSchema: request.schema,
+      schema: reqSchema,
+    });
   }
 
   if (reqSchema) {
     reqSchema = await dereferenceSchema(reqSchema);
   }
 
-  logger.debug("Transformed schema.", { originalSchema: request.schema, schema: reqSchema });
+  logger.debug("Transformed schema.", {
+    originalSchema: request.schema,
+    schema: reqSchema,
+  });
 
   // agent evaluates if the schema or the prompt has an array with big amount of items
   // also it checks if the schema any other properties that are not arrays
@@ -246,7 +256,12 @@ export async function performExtraction(
     tokenUsage: schemaAnalysisTokenUsage,
   } = await analyzeSchemaAndPrompt(links, reqSchema, request.prompt ?? "");
 
-  logger.debug("Analyzed schema.", { isMultiEntity, multiEntityKeys, reasoning, keyIndicators });
+  logger.debug("Analyzed schema.", {
+    isMultiEntity,
+    multiEntityKeys,
+    reasoning,
+    keyIndicators,
+  });
 
   // Track schema analysis tokens
   tokenUsage.push(schemaAnalysisTokenUsage);
@@ -306,7 +321,12 @@ export async function performExtraction(
             timeout,
           },
           urlTraces,
-          logger.child({ module: "extract", method: "scrapeDocument", url, isMultiEntity: true }),
+          logger.child({
+            module: "extract",
+            method: "scrapeDocument",
+            url,
+            isMultiEntity: true,
+          }),
         );
       }
       return docsMap.get(url);
@@ -438,7 +458,8 @@ export async function performExtraction(
                 (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
                 `Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. If the document provided is not relevant to the prompt nor to the final user schema ${JSON.stringify(multiEntitySchema)}, return null. Here are the urls the user provided of which he wants to extract information from: ` +
                 links.join(", "),
-              prompt: "Today is: " + new Date().toISOString() + "\n" + request.prompt,
+              prompt:
+                "Today is: " + new Date().toISOString() + "\n" + request.prompt,
               schema: multiEntitySchema,
             },
             buildDocument(doc),
@@ -490,26 +511,36 @@ export async function performExtraction(
           // }
 
           if (multiEntityCompletion?.extract) {
-            const extractedFields = trackFieldSources(multiEntityCompletion.extract, doc.metadata.url || doc.metadata.sourceURL!);
-            
+            const extractedFields = trackFieldSources(
+              multiEntityCompletion.extract,
+              doc.metadata.url || doc.metadata.sourceURL!,
+            );
+
             // Update URL trace with extracted fields
-            const trace = urlTraces.find(t => t.url === (doc.metadata.url || doc.metadata.sourceURL!));
+            const trace = urlTraces.find(
+              (t) => t.url === (doc.metadata.url || doc.metadata.sourceURL!),
+            );
             if (trace) {
               trace.extractedFields = extractedFields;
             }
-            
+
             // Track sources for each field
-            extractedFields.forEach(field => {
+            extractedFields.forEach((field) => {
               if (!extractionSources[field]) {
                 extractionSources[field] = [];
               }
-              extractionSources[field].push(doc.metadata.url || doc.metadata.sourceURL!);
+              extractionSources[field].push(
+                doc.metadata.url || doc.metadata.sourceURL!,
+              );
             });
           }
 
           return multiEntityCompletion.extract;
         } catch (error) {
-          logger.error(`Failed to process document.`, { error, url: doc.metadata.url ?? doc.metadata.sourceURL! });
+          logger.error(`Failed to process document.`, {
+            error,
+            url: doc.metadata.url ?? doc.metadata.sourceURL!,
+          });
           return null;
         }
       });
@@ -519,7 +550,9 @@ export async function performExtraction(
       multiEntityCompletions.push(
         ...chunkResults.filter((result) => result !== null),
       );
-      logger.debug("All multi-entity completion chunks finished.", { completionCount: multiEntityCompletions.length });
+      logger.debug("All multi-entity completion chunks finished.", {
+        completionCount: multiEntityCompletions.length,
+      });
     }
 
     try {
@@ -581,7 +614,12 @@ export async function performExtraction(
             timeout,
           },
           urlTraces,
-          logger.child({ module: "extract", method: "scrapeDocument", url, isMultiEntity: false })
+          logger.child({
+            module: "extract",
+            method: "scrapeDocument",
+            url,
+            isMultiEntity: false,
+          }),
         );
       }
       return docsMap.get(url);
@@ -687,21 +725,32 @@ export async function performExtraction(
     if (singleAnswerCompletions?.extract) {
       const singleAnswerSources: { [key: string]: string[] } = {};
       const usedUrls = Array.from(docsMap.values())
-        .map(doc => doc.metadata.url || doc.metadata.sourceURL!)
+        .map((doc) => doc.metadata.url || doc.metadata.sourceURL!)
         .filter(Boolean);
-        
-      const extractedFields = trackFieldSources(singleAnswerCompletions.extract, '');
-      extractedFields.forEach(field => {
+
+      const extractedFields = trackFieldSources(
+        singleAnswerCompletions.extract,
+        "",
+      );
+      extractedFields.forEach((field) => {
         singleAnswerSources[field] = usedUrls;
       });
-      
+
       // Merge with multi-entity sources
-      extractionSources = mergeSources([extractionSources, singleAnswerSources]);
+      extractionSources = mergeSources([
+        extractionSources,
+        singleAnswerSources,
+      ]);
     }
   }
 
   let finalResult = reqSchema
-    ? await mixSchemaObjects(reqSchema, singleAnswerResult, multiEntityResult, logger.child({ method: "mixSchemaObjects" }))
+    ? await mixSchemaObjects(
+        reqSchema,
+        singleAnswerResult,
+        multiEntityResult,
+        logger.child({ method: "mixSchemaObjects" }),
+      )
     : singleAnswerResult || multiEntityResult;
 
   // Tokenize final result to get token count
@@ -788,7 +837,7 @@ export async function performExtraction(
     updateExtract(extractId, {
       status: "completed",
       llmUsage,
-      sources: extractionSources
+      sources: extractionSources,
     }).catch((error) => {
       logger.error(
         `Failed to update extract ${extractId} status to completed: ${error}`,
@@ -806,6 +855,6 @@ export async function performExtraction(
     urlTrace: request.urlTrace ? urlTraces : undefined,
     llmUsage,
     totalUrlsScraped,
-    sources: extractionSources
+    sources: extractionSources,
   };
 }
