@@ -741,6 +741,6 @@ export async function performExtraction(
     urlTrace: request.urlTrace ? urlTraces : undefined,
     llmUsage,
     totalUrlsScraped,
-    sources,
+    // sources,
   };
 }
