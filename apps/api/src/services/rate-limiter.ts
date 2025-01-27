@@ -227,6 +227,7 @@ export function getRateLimiterPoints(
 
   const points: number =
     rateLimitConfig[makePlanKey(plan)] || rateLimitConfig.default; // 5
+
   return points;
 }
 
