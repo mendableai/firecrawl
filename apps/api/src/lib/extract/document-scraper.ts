@@ -40,7 +40,7 @@ export async function scrapeDocument(
         url: options.url,
         mode: "single_urls",
         team_id: options.teamId,
-        scrapeOptions: scrapeOptions.parse({}),
+        scrapeOptions: scrapeOptions.parse({ onlyMainContent: false }),
         internalOptions: {
           useCache: true,
         },
