@@ -68,7 +68,7 @@ export async function processUrl(
   try {
     logger.debug("Running map...", {
       search: searchQuery,
-    })
+    });
     const mapResults = await getMapResults({
       url: baseUrl,
       search: searchQuery,
@@ -200,65 +200,41 @@ export async function processUrl(
     // );
 
     logger.info("Generated rephrased prompt.", {
-      rephrasedPrompt
+      rephrasedPrompt,
     });
 
-    let rerankedLinks = mappedLinks;
     logger.info("Reranking pass 1 (threshold 0.8)...");
     const rerankerResult = await rerankLinksWithLLM({
-      links: rerankedLinks,
+      links: mappedLinks,
       searchQuery: rephrasedPrompt,
-      urlTraces
+      urlTraces,
     });
-    rerankedLinks = rerankerResult.mapDocument.filter((x) => x.relevanceScore && x.relevanceScore > 0.8);
+    mappedLinks = rerankerResult.mapDocument;
     let tokensUsed = rerankerResult.tokensUsed;
-
-    logger.info("Reranked! (threshold 0.8)", {
-      linkCount: rerankedLinks.length,
+    logger.info("Reranked! (pass 1)", {
+      linkCount: mappedLinks.length,
     });
-
-    // lower threshold to 0.6 if no links are found
-    if (rerankedLinks.length === 0) {
-      logger.info("No links found. Reranking with threshold 0.6");
-      rerankedLinks = rerankerResult.mapDocument.filter((x) => x.relevanceScore && x.relevanceScore > 0.6);
-      logger.info("Reranked! (threshold 0.6)", {
-        linkCount: rerankedLinks.length,
-      });
-    }
-
-    // lower threshold to 0.3 if no links are found
-    if (rerankedLinks.length === 0) {
-      logger.info("No links found. Reranking with threshold 0.3");
-      rerankedLinks = rerankerResult.mapDocument.filter((x) => x.relevanceScore && x.relevanceScore > 0.3);
-      logger.info("Reranked! (threshold 0.3)", {
-        linkCount: rerankedLinks.length,
-      });
-    }
 
     // 2nd Pass, useful for when the first pass returns too many links
-    if (rerankedLinks.length > 100) {
-      logger.info("Reranking pass 2 (> 100 links - threshold 0.6)...");
-      const secondPassRerankerResult = await rerankLinksWithLLM({
-        links: rerankedLinks,
+    if (mappedLinks.length > 100) {
+      logger.info("Reranking (pass 2)...");
+      const rerankerResult = await rerankLinksWithLLM({
+        links: mappedLinks,
         searchQuery: rephrasedPrompt,
         urlTraces,
       });
-
-      // why 0.6? average? experimental results?
-      if (secondPassRerankerResult.mapDocument.length > 0) {
-        rerankedLinks = secondPassRerankerResult.mapDocument.filter((x) => x.relevanceScore && x.relevanceScore > 0.6);
-        logger.info("Reranked! (threshold 0.6)", {
-          linkCount: rerankedLinks.length,
-        });
-      }
+      mappedLinks = rerankerResult.mapDocument;
+      tokensUsed += rerankerResult.tokensUsed;
+      logger.info("Reranked! (pass 2)", {
+        linkCount: mappedLinks.length,
+      });
     }
 
-    // If no relevant links are found, return the original mapped links
-    if (rerankedLinks.length === 0) {      
-      logger.info("No links found. Not reranking.");
-      rerankedLinks = mappedLinks;
-    }
-
+    // dumpToFile(
+    //   "llm-links.txt",
+    //   mappedLinks,
+    //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
+    // );
     // Remove title and description from mappedLinks
     mappedLinks = mappedLinks.map((link) => ({ url: link.url }));
     return mappedLinks.map((x) => x.url);

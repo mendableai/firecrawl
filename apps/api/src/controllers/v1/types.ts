@@ -537,6 +537,7 @@ export interface URLTrace {
   };
   relevanceScore?: number;
   usedInCompletion?: boolean;
+  extractedFields?: string[];
 }
 
 export interface ExtractResponse {
@@ -547,6 +548,9 @@ export interface ExtractResponse {
   id?: string;
   warning?: string;
   urlTrace?: URLTrace[];
+  sources?: {
+    [key: string]: string[];
+  };
 }
 
 export interface ExtractResponseRequestTest {

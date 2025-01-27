@@ -1023,4 +1023,160 @@ describe("mixSchemaObjects function", () => {
 
     expect(finalResult).toEqual(singleAnswerResult);
   });
+
+  it("should handle empty objects correctly (id: 30)", async () => {
+    const originalSchema = {
+      type: "object", 
+      properties: {
+        business_details: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            years_in_operation: { type: "string" },
+            services_offered: {
+              type: "array",
+              items: { type: "string" }
+            },
+            experience_highlights: { type: "string" }
+          },
+          required: ["name"]
+        },
+        management: {
+          type: "object",
+          properties: {
+            owner_name: { type: "string" },
+            credentials: {
+              type: "array",
+              items: { type: "string" }
+            }
+          }
+        },
+        contact_information: {
+          type: "object",
+          properties: {
+            address: { type: "string" },
+            phone: { type: "string" }
+          }
+        },
+        reputation: {
+          type: "object",
+          properties: {
+            client_feedback: { type: "string" },
+            operational_quality: { type: "string" }
+          }
+        }
+      },
+      required: ["business_details"]
+    };
+
+    const singleAnswerResult = {
+      business_details: {
+        name: "Red Hill Mobility Group",
+        years_in_operation: "12 years",
+        services_offered: [
+          "Recovery equipment for military",
+          "Vehicle mobility solutions", 
+          "Product development for military vehicles"
+        ],
+        experience_highlights: "More than 12 years of combined experience overseas on over 25 active combat deployments."
+      },
+      management: {
+        owner_name: "",
+        credentials: []
+      },
+      contact_information: {
+        address: "659 Shell Drive, Spring Lake, NC 28390",
+        phone: "910-638-7836"
+      },
+      reputation: {
+        client_feedback: "",
+        operational_quality: ""
+      }
+    };
+
+    const multiEntityResult = {};
+
+    const finalResult = await mixSchemaObjects(
+      originalSchema,
+      singleAnswerResult, 
+      {}
+    );
+
+    expect(finalResult).toEqual(singleAnswerResult);
+  });
+
+  it("should return single answer result when multi entity is undefined", async () => {
+    const originalSchema = {
+      type: "object",
+      properties: {
+        business_details: {
+          type: "object",
+          properties: {
+            name: { type: "string" },
+            years_in_operation: { type: "string" },
+            services_offered: {
+              type: "array",
+              items: { type: "string" }
+            },
+            experience_highlights: { type: "string" }
+          },
+          required: ["name"]
+        },
+        management: {
+          type: "object",
+          properties: {
+            owner_name: { type: "string" },
+            credentials: {
+              type: "array",
+              items: { type: "string" }
+            }
+          }
+        },
+        contact_information: {
+          type: "object", 
+          properties: {
+            address: { type: "string" },
+            phone: { type: "string" }
+          }
+        },
+        reputation: {
+          type: "object",
+          properties: {
+            client_feedback: { type: "string" },
+            operational_quality: { type: "string" }
+          }
+        }
+      },
+      required: ["business_details"]
+    };
+
+    const singleAnswerResult = {
+      business_details: {
+        name: "Red Hill Mobility Group",
+        years_in_operation: "12 years",
+        services_offered: [
+          "Recovery equipment for military",
+          "Vehicle mobility solutions",
+          "Product development for military vehicles"
+        ],
+        experience_highlights: "More than 12 years of combined experience overseas on over 25 active combat deployments."
+      },
+      management: {
+        owner_name: "",
+        credentials: []
+      },
+      contact_information: {
+        address: "659 Shell Drive, Spring Lake, NC 28390",
+        phone: "910-638-7836"
+      },
+      reputation: {
+        client_feedback: "",
+        operational_quality: ""
+      }
+    };
+
+    const finalResult = await mixSchemaObjects(originalSchema, singleAnswerResult, {});
+
+    expect(finalResult).toEqual(singleAnswerResult);
+  });
 });

@@ -2,7 +2,6 @@ import {
   Document,
   ExtractRequest,
   TokenUsage,
-  toLegacyCrawlerOptions,
   URLTrace,
 } from "../../controllers/v1/types";
 import { PlanType } from "../../types";
@@ -13,31 +12,28 @@ import {
   generateOpenAICompletions,
   generateSchemaFromPrompt,
 } from "../../scraper/scrapeURL/transformers/llmExtract";
-import { buildDocument } from "./build-document";
 import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
-import { saveCrawl, StoredCrawl } from "../crawl-redis";
 import { dereferenceSchema } from "./helpers/dereference-schema";
-import { z } from "zod";
-import OpenAI from "openai";
 import { spreadSchemas } from "./helpers/spread-schemas";
 import { transformArrayToObject } from "./helpers/transform-array-to-obj";
 import { mixSchemaObjects } from "./helpers/mix-schema-objs";
 import Ajv from "ajv";
 const ajv = new Ajv();
 
-const openai = new OpenAI();
 import { ExtractStep, updateExtract } from "./extract-redis";
 import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
-import { CUSTOM_U_TEAMS, extractConfig } from "./config";
+import { CUSTOM_U_TEAMS } from "./config";
 import {
   calculateFinalResultCost,
-  estimateCost,
   estimateTotalCost,
 } from "./usage/llm-cost";
-import { numTokensFromString } from "../LLM-extraction/helpers";
+import { analyzeSchemaAndPrompt } from "./completions/analyzeSchemaAndPrompt";
+import { checkShouldExtract } from "./completions/checkShouldExtract";
+import { batchExtractPromise } from "./completions/batchExtract";
+import { singleAnswerCompletion } from "./completions/singleAnswer";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -56,108 +52,7 @@ interface ExtractResult {
   tokenUsageBreakdown?: TokenUsage[];
   llmUsage?: number;
   totalUrlsScraped?: number;
-}
-
-async function analyzeSchemaAndPrompt(
-  urls: string[],
-  schema: any,
-  prompt: string,
-): Promise<{
-  isMultiEntity: boolean;
-  multiEntityKeys: string[];
-  reasoning?: string;
-  keyIndicators?: string[];
-  tokenUsage: TokenUsage;
-}> {
-  if (!schema) {
-    schema = await generateSchemaFromPrompt(prompt);
-  }
-
-  const schemaString = JSON.stringify(schema);
-
-  const checkSchema = z.object({
-    isMultiEntity: z.boolean(),
-    multiEntityKeys: z.array(z.string()).optional().default([]),
-    reasoning: z.string(),
-    keyIndicators: z.array(z.string()),
-  }).refine(x => !x.isMultiEntity || x.multiEntityKeys.length > 0, "isMultiEntity was true, but no multiEntityKeys");
-
-  const model = "gpt-4o";
-
-  const result = await openai.beta.chat.completions.parse({
-    model: model,
-    messages: [
-      {
-        role: "system",
-        content: `
-You are a query classifier for a web scraping system. Classify the data extraction query as either:
-A) Single-Answer: One answer across a few pages, possibly containing small arrays.
-B) Multi-Entity: Many items across many pages, often involving large arrays.
-
-Consider:
-1. Answer Cardinality: Single or multiple items?
-2. Page Distribution: Found on 1-3 pages or many?
-3. Verification Needs: Cross-page verification or independent extraction?
-
-Provide:
-- Method: [Single-Answer/Multi-Entity]
-- Confidence: [0-100%]
-- Reasoning: Why this classification?
-- Key Indicators: Specific aspects leading to this decision.
-
-Examples:
-- "Is this company a non-profit?" -> Single-Answer
-- "Extract all product prices" -> Multi-Entity
-
-For Single-Answer, arrays may be present but are typically small. For Multi-Entity, if arrays have multiple items not from a single page, return keys with large arrays. If nested, return the full key (e.g., 'ecommerce.products').
-        `,
-      },
-      {
-        role: "user",
-        content: `Classify the query as Single-Answer or Multi-Entity. For Multi-Entity, return keys with large arrays; otherwise, return none:
-Schema: ${schemaString}\nPrompt: ${prompt}\nRelevant URLs: ${urls}`,
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        schema: {
-          type: "object",
-          properties: {
-            isMultiEntity: { type: "boolean" },
-            multiEntityKeys: { type: "array", items: { type: "string" } },
-            reasoning: { type: "string" },
-            keyIndicators: { type: "array", items: { type: "string" } },
-          },
-          required: [
-            "isMultiEntity",
-            "multiEntityKeys",
-            "reasoning",
-            "keyIndicators",
-          ],
-          additionalProperties: false,
-        },
-        name: "checkSchema",
-      },
-    },
-  });
-
-  const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
-    checkSchema.parse(result.choices[0].message.parsed);
-
-  const tokenUsage: TokenUsage = {
-    promptTokens: result.usage?.prompt_tokens ?? 0,
-    completionTokens: result.usage?.completion_tokens ?? 0,
-    totalTokens: result.usage?.total_tokens ?? 0,
-    model: model,
-  };
-  return {
-    isMultiEntity,
-    multiEntityKeys,
-    reasoning,
-    keyIndicators,
-    tokenUsage,
-  };
+  sources?: Record<string, string[]>;
 }
 
 type completions = {
@@ -165,19 +60,9 @@ type completions = {
   numTokens: number;
   totalUsage: TokenUsage;
   warning?: string;
+  sources?: string[];
 };
 
-function getRootDomain(url: string): string {
-  try {
-    if (url.endsWith("/*")) {
-      url = url.slice(0, -2);
-    }
-    const urlObj = new URL(url);
-    return `${urlObj.protocol}//${urlObj.hostname}`;
-  } catch (e) {
-    return url;
-  }
-}
 
 export async function performExtraction(
   extractId: string,
@@ -191,6 +76,7 @@ export async function performExtraction(
   let multiEntityResult: any = {};
   let singleAnswerResult: any = {};
   let totalUrlsScraped = 0;
+  let sources: Record<string, string[]> = {};
 
   const logger = _logger.child({
     module: "extract",
@@ -218,6 +104,7 @@ export async function performExtraction(
   logger.debug("Processing URLs...", {
     urlCount: request.urls.length,
   });
+  
   // Process URLs
   const urlPromises = request.urls.map((url) =>
     processUrl(
@@ -258,7 +145,7 @@ export async function performExtraction(
 
   if (links.length === 0) {
     logger.error("0 links! Bailing.", {
-      linkCount: links.length
+      linkCount: links.length,
     });
     return {
       success: false,
@@ -285,14 +172,20 @@ export async function performExtraction(
   let reqSchema = request.schema;
   if (!reqSchema && request.prompt) {
     reqSchema = await generateSchemaFromPrompt(request.prompt);
-    logger.debug("Generated request schema.", { originalSchema: request.schema, schema: reqSchema });
+    logger.debug("Generated request schema.", {
+      originalSchema: request.schema,
+      schema: reqSchema,
+    });
   }
 
   if (reqSchema) {
     reqSchema = await dereferenceSchema(reqSchema);
   }
 
-  logger.debug("Transformed schema.", { originalSchema: request.schema, schema: reqSchema });
+  logger.debug("Transformed schema.", {
+    originalSchema: request.schema,
+    schema: reqSchema,
+  });
 
   // agent evaluates if the schema or the prompt has an array with big amount of items
   // also it checks if the schema any other properties that are not arrays
@@ -308,7 +201,12 @@ export async function performExtraction(
     tokenUsage: schemaAnalysisTokenUsage,
   } = await analyzeSchemaAndPrompt(links, reqSchema, request.prompt ?? "");
 
-  logger.debug("Analyzed schema.", { isMultiEntity, multiEntityKeys, reasoning, keyIndicators });
+  logger.debug("Analyzed schema.", {
+    isMultiEntity,
+    multiEntityKeys,
+    reasoning,
+    keyIndicators,
+  });
 
   // Track schema analysis tokens
   tokenUsage.push(schemaAnalysisTokenUsage);
@@ -368,7 +266,12 @@ export async function performExtraction(
             timeout,
           },
           urlTraces,
-          logger.child({ module: "extract", method: "scrapeDocument", url, isMultiEntity: true }),
+          logger.child({
+            module: "extract",
+            method: "scrapeDocument",
+            url,
+            isMultiEntity: true,
+          }),
         );
       }
       return docsMap.get(url);
@@ -427,33 +330,17 @@ export async function performExtraction(
             setTimeout(() => resolve(null), timeoutCompletion);
           });
 
-          // // Check if page should be extracted before proceeding
-          const shouldExtractCheck = await generateOpenAICompletions(
-            logger.child({ method: "extractService/checkShouldExtract" }),
-            {
-              mode: "llm",
-              systemPrompt:
-                "You are a content relevance checker. Your job is to determine if the provided content is very relevant to extract information from based on the user's prompt. Return true only if the content appears relevant and contains information that could help answer the prompt. Return false if the content seems irrelevant or unlikely to contain useful information for the prompt.",
-              prompt: `Should the following content be used to extract information for this prompt: "${request.prompt}" User schema is: ${JSON.stringify(multiEntitySchema)}\nReturn only true or false.`,
-              schema: {
-                type: "object",
-                properties: {
-                  extract: {
-                    type: "boolean",
-                  },
-                },
-                required: ["extract"],
-              },
-            },
-            buildDocument(doc),
-            undefined,
-            true,
+          // Check if page should be extracted before proceeding
+          const { extract, tokenUsage: shouldExtractCheckTokenUsage } = await checkShouldExtract(
+            request.prompt ?? "",
+            multiEntitySchema,
+            doc,
           );
 
-          tokenUsage.push(shouldExtractCheck.totalUsage);
+          tokenUsage.push(shouldExtractCheckTokenUsage);
 
-          if (!shouldExtractCheck.extract["extract"]) {
-            console.log(
+          if (!extract) {
+            logger.info(
               `Skipping extraction for ${doc.metadata.url} as content is irrelevant`,
             );
             return null;
@@ -490,23 +377,7 @@ export async function performExtraction(
             ],
           });
 
-          const completionPromise = generateOpenAICompletions(
-            logger.child({
-              method: "extractService/generateOpenAICompletions",
-            }),
-            {
-              mode: "llm",
-              systemPrompt:
-                (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
-                `Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. If the document provided is not relevant to the prompt nor to the final user schema ${JSON.stringify(multiEntitySchema)}, return null. Here are the urls the user provided of which he wants to extract information from: ` +
-                links.join(", "),
-              prompt: "Today is: " + new Date().toISOString() + "\n" + request.prompt,
-              schema: multiEntitySchema,
-            },
-            buildDocument(doc),
-            undefined,
-            true,
-          );
+          const completionPromise =  batchExtractPromise(multiEntitySchema, links, request.prompt ?? "", request.systemPrompt ?? "", doc);
 
           // Race between timeout and completion
           const multiEntityCompletion = (await Promise.race([
@@ -517,6 +388,23 @@ export async function performExtraction(
           // Track multi-entity extraction tokens
           if (multiEntityCompletion) {
             tokenUsage.push(multiEntityCompletion.totalUsage);
+            
+            // Track sources for multi-entity items
+            if (multiEntityCompletion.extract) {
+              // For each multi-entity key, track the source URL
+              multiEntityKeys.forEach(key => {
+                const items = multiEntityCompletion.extract[key];
+                if (Array.isArray(items)) {
+                  items.forEach((item, index) => {
+                    const sourcePath = `${key}[${index}]`;
+                    if (!sources[sourcePath]) {
+                      sources[sourcePath] = [];
+                    }
+                    sources[sourcePath].push(doc.metadata.url || doc.metadata.sourceURL || "");
+                  });
+                }
+              });
+            }
           }
 
           // console.log(multiEntityCompletion.extract)
@@ -553,7 +441,10 @@ export async function performExtraction(
 
           return multiEntityCompletion.extract;
         } catch (error) {
-          logger.error(`Failed to process document.`, { error, url: doc.metadata.url ?? doc.metadata.sourceURL! });
+          logger.error(`Failed to process document.`, {
+            error,
+            url: doc.metadata.url ?? doc.metadata.sourceURL!,
+          });
           return null;
         }
       });
@@ -563,7 +454,9 @@ export async function performExtraction(
       multiEntityCompletions.push(
         ...chunkResults.filter((result) => result !== null),
       );
-      logger.debug("All multi-entity completion chunks finished.", { completionCount: multiEntityCompletions.length });
+      logger.debug("All multi-entity completion chunks finished.", {
+        completionCount: multiEntityCompletions.length,
+      });
     }
 
     try {
@@ -625,7 +518,12 @@ export async function performExtraction(
             timeout,
           },
           urlTraces,
-          logger.child({ module: "extract", method: "scrapeDocument", url, isMultiEntity: false })
+          logger.child({
+            module: "extract",
+            method: "scrapeDocument",
+            url,
+            isMultiEntity: false,
+          }),
         );
       }
       return docsMap.get(url);
@@ -685,29 +583,31 @@ export async function performExtraction(
 
     // Generate completions
     logger.debug("Generating singleAnswer completions...");
-    singleAnswerCompletions = await generateOpenAICompletions(
-      logger.child({ module: "extract", method: "generateOpenAICompletions" }),
-      {
-        mode: "llm",
-        systemPrompt:
-          (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
-          "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Return 'null' the property that you don't find the information. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
-          links.join(", "),
-        prompt: "Today is: " + new Date().toISOString() + "\n" + request.prompt,
-        schema: rSchema,
-      },
-      singleAnswerDocs.map((x) => buildDocument(x)).join("\n"),
-      undefined,
-      true,
-    );
+    let { extract: completionResult, tokenUsage: singleAnswerTokenUsage, sources: singleAnswerSources } = await singleAnswerCompletion({
+      singleAnswerDocs,
+      rSchema,
+      links,
+      prompt: request.prompt ?? "",
+      systemPrompt: request.systemPrompt ?? "",
+    });
     logger.debug("Done generating singleAnswer completions.");
 
-    // Track single answer extraction tokens
-    if (singleAnswerCompletions) {
-      tokenUsage.push(singleAnswerCompletions.totalUsage);
+    // Track single answer extraction tokens and sources
+    if (completionResult) {
+      tokenUsage.push(singleAnswerTokenUsage);
+      
+      // Add sources for top-level properties in single answer
+      if (rSchema?.properties) {
+        Object.keys(rSchema.properties).forEach(key => {
+          if (completionResult[key] !== undefined) {
+            sources[key] = singleAnswerSources || singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || "");
+          }
+        });
+      }
     }
 
-    singleAnswerResult = singleAnswerCompletions.extract;
+    singleAnswerResult = completionResult;
+    singleAnswerCompletions = singleAnswerResult;
 
     // Update token usage in traces
     // if (completions && completions.numTokens) {
@@ -730,7 +630,12 @@ export async function performExtraction(
   }
 
   let finalResult = reqSchema
-    ? await mixSchemaObjects(reqSchema, singleAnswerResult, multiEntityResult, logger.child({ method: "mixSchemaObjects" }))
+    ? await mixSchemaObjects(
+        reqSchema,
+        singleAnswerResult,
+        multiEntityResult,
+        logger.child({ method: "mixSchemaObjects" }),
+      )
     : singleAnswerResult || multiEntityResult;
 
   // Tokenize final result to get token count
@@ -798,7 +703,7 @@ export async function performExtraction(
     );
   });
 
-  // Log job with token usage
+  // Log job with token usage and sources
   logJob({
     job_id: extractId,
     success: true,
@@ -813,10 +718,12 @@ export async function performExtraction(
     origin: request.origin ?? "api",
     num_tokens: totalTokensUsed,
     tokens_billed: tokensToBill,
+    sources,
   }).then(() => {
     updateExtract(extractId, {
       status: "completed",
       llmUsage,
+      sources,
     }).catch((error) => {
       logger.error(
         `Failed to update extract ${extractId} status to completed: ${error}`,
@@ -830,9 +737,10 @@ export async function performExtraction(
     success: true,
     data: finalResult ?? {},
     extractId,
-    warning: undefined, // TODO FIX
+    warning: undefined,
     urlTrace: request.urlTrace ? urlTraces : undefined,
     llmUsage,
     totalUrlsScraped,
+    // sources,
   };
 }
