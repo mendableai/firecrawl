@@ -2,7 +2,6 @@ import {
   Document,
   ExtractRequest,
   TokenUsage,
-  toLegacyCrawlerOptions,
   URLTrace,
 } from "../../controllers/v1/types";
 import { PlanType } from "../../types";
@@ -17,27 +16,23 @@ import { buildDocument } from "./build-document";
 import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
-import { saveCrawl, StoredCrawl } from "../crawl-redis";
 import { dereferenceSchema } from "./helpers/dereference-schema";
-import { z } from "zod";
-import OpenAI from "openai";
 import { spreadSchemas } from "./helpers/spread-schemas";
 import { transformArrayToObject } from "./helpers/transform-array-to-obj";
 import { mixSchemaObjects } from "./helpers/mix-schema-objs";
 import Ajv from "ajv";
 const ajv = new Ajv();
 
-const openai = new OpenAI();
 import { ExtractStep, updateExtract } from "./extract-redis";
 import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
-import { CUSTOM_U_TEAMS, extractConfig } from "./config";
+import { CUSTOM_U_TEAMS } from "./config";
 import {
   calculateFinalResultCost,
   estimateCost,
   estimateTotalCost,
 } from "./usage/llm-cost";
-import { numTokensFromString } from "../LLM-extraction/helpers";
+import { analyzeSchemaAndPrompt } from "./completions/analyzeSchemaAndPrompt";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -61,107 +56,7 @@ interface ExtractResult {
   };
 }
 
-async function analyzeSchemaAndPrompt(
-  urls: string[],
-  schema: any,
-  prompt: string,
-): Promise<{
-  isMultiEntity: boolean;
-  multiEntityKeys: string[];
-  reasoning?: string;
-  keyIndicators?: string[];
-  tokenUsage: TokenUsage;
-}> {
-  if (!schema) {
-    schema = await generateSchemaFromPrompt(prompt);
-  }
 
-  const schemaString = JSON.stringify(schema);
-
-  const checkSchema = z.object({
-    isMultiEntity: z.boolean(),
-    multiEntityKeys: z.array(z.string()).optional().default([]),
-    reasoning: z.string(),
-    keyIndicators: z.array(z.string()),
-  }).refine(x => !x.isMultiEntity || x.multiEntityKeys.length > 0, "isMultiEntity was true, but no multiEntityKeys");
-
-  const model = "gpt-4o";
-
-  const result = await openai.beta.chat.completions.parse({
-    model: model,
-    messages: [
-      {
-        role: "system",
-        content: `
-You are a query classifier for a web scraping system. Classify the data extraction query as either:
-A) Single-Answer: One answer across a few pages, possibly containing small arrays.
-B) Multi-Entity: Many items across many pages, often involving large arrays.
-
-Consider:
-1. Answer Cardinality: Single or multiple items?
-2. Page Distribution: Found on 1-3 pages or many?
-3. Verification Needs: Cross-page verification or independent extraction?
-
-Provide:
-- Method: [Single-Answer/Multi-Entity]
-- Confidence: [0-100%]
-- Reasoning: Why this classification?
-- Key Indicators: Specific aspects leading to this decision.
-
-Examples:
-- "Is this company a non-profit?" -> Single-Answer
-- "Extract all product prices" -> Multi-Entity
-
-For Single-Answer, arrays may be present but are typically small. For Multi-Entity, if arrays have multiple items not from a single page, return keys with large arrays. If nested, return the full key (e.g., 'ecommerce.products').
-        `,
-      },
-      {
-        role: "user",
-        content: `Classify the query as Single-Answer or Multi-Entity. For Multi-Entity, return keys with large arrays; otherwise, return none:
-Schema: ${schemaString}\nPrompt: ${prompt}\nRelevant URLs: ${urls}`,
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        schema: {
-          type: "object",
-          properties: {
-            isMultiEntity: { type: "boolean" },
-            multiEntityKeys: { type: "array", items: { type: "string" } },
-            reasoning: { type: "string" },
-            keyIndicators: { type: "array", items: { type: "string" } },
-          },
-          required: [
-            "isMultiEntity",
-            "multiEntityKeys",
-            "reasoning",
-            "keyIndicators",
-          ],
-          additionalProperties: false,
-        },
-        name: "checkSchema",
-      },
-    },
-  });
-
-  const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
-    checkSchema.parse(result.choices[0].message.parsed);
-
-  const tokenUsage: TokenUsage = {
-    promptTokens: result.usage?.prompt_tokens ?? 0,
-    completionTokens: result.usage?.completion_tokens ?? 0,
-    totalTokens: result.usage?.total_tokens ?? 0,
-    model: model,
-  };
-  return {
-    isMultiEntity,
-    multiEntityKeys,
-    reasoning,
-    keyIndicators,
-    tokenUsage,
-  };
-}
 
 type completions = {
   extract: Record<string, any>;
