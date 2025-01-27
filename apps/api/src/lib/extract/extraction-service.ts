@@ -272,6 +272,10 @@ export async function performExtraction(
             url,
             isMultiEntity: true,
           }),
+          {
+            // Needs to be true for multi-entity to work properly
+            onlyMainContent: true,
+          }
         );
       }
       return docsMap.get(url);
@@ -313,6 +317,7 @@ export async function performExtraction(
     const chunkSize = 50;
     const timeoutCompletion = 45000; // 45 second timeout
     const chunks: Document[][] = [];
+    const extractionResults: {extract: any, url: string}[] = [];
 
     // Split into chunks
     for (let i = 0; i < multyEntityDocs.length; i += chunkSize) {
@@ -361,7 +366,6 @@ export async function performExtraction(
               "is_content_relevant",
             ],
           };
-          // console.log("schemaWithConfidence", schemaWithConfidence);
 
           await updateExtract(extractId, {
             status: "processing",
@@ -377,7 +381,7 @@ export async function performExtraction(
             ],
           });
 
-          const completionPromise =  batchExtractPromise(multiEntitySchema, links, request.prompt ?? "", request.systemPrompt ?? "", doc);
+          const completionPromise = batchExtractPromise(multiEntitySchema, links, request.prompt ?? "", request.systemPrompt ?? "", doc);
 
           // Race between timeout and completion
           const multiEntityCompletion = (await Promise.race([
@@ -389,21 +393,11 @@ export async function performExtraction(
           if (multiEntityCompletion) {
             tokenUsage.push(multiEntityCompletion.totalUsage);
             
-            // Track sources for multi-entity items
             if (multiEntityCompletion.extract) {
-              // For each multi-entity key, track the source URL
-              multiEntityKeys.forEach(key => {
-                const items = multiEntityCompletion.extract[key];
-                if (Array.isArray(items)) {
-                  items.forEach((item, index) => {
-                    const sourcePath = `${key}[${index}]`;
-                    if (!sources[sourcePath]) {
-                      sources[sourcePath] = [];
-                    }
-                    sources[sourcePath].push(doc.metadata.url || doc.metadata.sourceURL || "");
-                  });
-                }
-              });
+              return {
+                extract: multiEntityCompletion.extract,
+                url: doc.metadata.url || doc.metadata.sourceURL || ""
+              };
             }
           }
 
@@ -439,7 +433,7 @@ export async function performExtraction(
           //   return null;
           // }
 
-          return multiEntityCompletion.extract;
+          return null;
         } catch (error) {
           logger.error(`Failed to process document.`, {
             error,
@@ -451,9 +445,10 @@ export async function performExtraction(
 
       // Wait for current chunk to complete before processing next chunk
       const chunkResults = await Promise.all(chunkPromises);
-      multiEntityCompletions.push(
-        ...chunkResults.filter((result) => result !== null),
-      );
+      const validResults = chunkResults.filter((result): result is {extract: any, url: string} => result !== null);
+      extractionResults.push(...validResults);
+      multiEntityCompletions.push(...validResults.map(r => r.extract));
+      
       logger.debug("All multi-entity completion chunks finished.", {
         completionCount: multiEntityCompletions.length,
       });
@@ -466,7 +461,33 @@ export async function performExtraction(
       );
       multiEntityResult = deduplicateObjectsArray(multiEntityResult);
       multiEntityResult = mergeNullValObjs(multiEntityResult);
-      // @nick: maybe we can add here a llm that checks if the array probably has a primary key?
+
+      console.log(extractionResults[0].extract)
+      // Add sources for each multi-entity key with proper indexing
+      multiEntityKeys.forEach(key => {
+        // Track sources before deduplication/merging
+        const preProcessSources = extractionResults.map(result => result.url);
+        
+        // After deduplication/merging, map sources to final array indices
+        if (multiEntityResult[key] && Array.isArray(multiEntityResult[key])) {
+          multiEntityResult[key].forEach((item, finalIndex) => {
+            const sourceKey = `${key}[${finalIndex}]`;
+            // Find matching pre-processed items and collect their sources
+            const itemSources = extractionResults
+              .filter((result) => {
+                // Check all items in the array, not just first one
+                const resultItems = result.extract?.[key];
+                return resultItems?.some(resultItem => 
+                  JSON.stringify(resultItem) === JSON.stringify(item)
+                );
+              })
+              .map(result => result.url);
+            
+            sources[sourceKey] = itemSources;
+          });
+        }
+      });
+
     } catch (error) {
       logger.error(`Failed to transform array to object`, { error });
       return {
@@ -516,6 +537,7 @@ export async function performExtraction(
             plan,
             origin: request.origin || "api",
             timeout,
+            
           },
           urlTraces,
           logger.child({
@@ -524,6 +546,9 @@ export async function performExtraction(
             url,
             isMultiEntity: false,
           }),
+          {
+            onlyMainContent: false,
+          },
         );
       }
       return docsMap.get(url);
@@ -741,6 +766,6 @@ export async function performExtraction(
     urlTrace: request.urlTrace ? urlTraces : undefined,
     llmUsage,
     totalUrlsScraped,
-    // sources,
+    sources,
   };
 }
