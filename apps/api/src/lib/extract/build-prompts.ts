@@ -44,7 +44,6 @@ export function buildRerankerUserPrompt(searchQuery: string): string {
 }
 
 // Multi entity schema anlayzer
-
 export function buildAnalyzeSchemaPrompt(): string {
   return `You are a query classifier for a web scraping system. Classify the data extraction query as either:
 A) Single-Answer: One answer across a few pages, possibly containing small arrays.
@@ -75,4 +74,34 @@ export function buildAnalyzeSchemaUserPrompt(
 ): string {
   return `Classify the query as Single-Answer or Multi-Entity. For Multi-Entity, return keys with large arrays; otherwise, return none:
 Schema: ${schemaString}\nPrompt: ${prompt}\nRelevant URLs: ${urls}`;
+}
+
+// Should Extract
+
+export function buildShouldExtractSystemPrompt(): string {
+  return `You are a content relevance checker. Your job is to determine if the provided content is very relevant to extract information from based on the user's prompt. Return true only if the content appears relevant and contains information that could help answer the prompt. Return false if the content seems irrelevant or unlikely to contain useful information for the prompt.`;
+}
+
+export function buildShouldExtractUserPrompt(
+  prompt: string,
+  schema: any,
+): string {
+  return `Should the following content be used to extract information for this prompt: "${prompt}" User schema is: ${JSON.stringify(schema)}\nReturn only true or false.`;
+}
+
+// Batch extract
+export function buildBatchExtractSystemPrompt(
+  systemPrompt: string,
+  multiEntitySchema: any,
+  links: string[],
+): string {
+  return (
+    (systemPrompt ? `${systemPrompt}\n` : "") +
+    `Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. If the document provided is not relevant to the prompt nor to the final user schema ${JSON.stringify(multiEntitySchema)}, return null. Here are the urls the user provided of which he wants to extract information from: ` +
+    links.join(", ")
+  );
+}
+
+export function buildBatchExtractPrompt(prompt: string): string {
+  return `Today is: ${new Date().toISOString()}\n${prompt}`;
 }

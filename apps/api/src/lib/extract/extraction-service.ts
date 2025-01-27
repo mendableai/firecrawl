@@ -12,7 +12,6 @@ import {
   generateOpenAICompletions,
   generateSchemaFromPrompt,
 } from "../../scraper/scrapeURL/transformers/llmExtract";
-import { buildDocument } from "./build-document";
 import { billTeam } from "../../services/billing/credit_billing";
 import { logJob } from "../../services/logging/log_job";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
@@ -29,10 +28,12 @@ import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
 import { CUSTOM_U_TEAMS } from "./config";
 import {
   calculateFinalResultCost,
-  estimateCost,
   estimateTotalCost,
 } from "./usage/llm-cost";
 import { analyzeSchemaAndPrompt } from "./completions/analyzeSchemaAndPrompt";
+import { checkShouldExtract } from "./completions/checkShouldExtract";
+import { batchExtractPromise } from "./completions/batchExtract";
+import { singleAnswerCompletion } from "./completions/singleAnswer";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -63,17 +64,6 @@ type completions = {
   warning?: string;
 };
 
-function getRootDomain(url: string): string {
-  try {
-    if (url.endsWith("/*")) {
-      url = url.slice(0, -2);
-    }
-    const urlObj = new URL(url);
-    return `${urlObj.protocol}//${urlObj.hostname}`;
-  } catch (e) {
-    return url;
-  }
-}
 
 // Add helper function to track sources
 function trackFieldSources(
@@ -160,6 +150,7 @@ export async function performExtraction(
   logger.debug("Processing URLs...", {
     urlCount: request.urls.length,
   });
+  
   // Process URLs
   const urlPromises = request.urls.map((url) =>
     processUrl(
@@ -385,32 +376,16 @@ export async function performExtraction(
             setTimeout(() => resolve(null), timeoutCompletion);
           });
 
-          // // Check if page should be extracted before proceeding
-          const shouldExtractCheck = await generateOpenAICompletions(
-            logger.child({ method: "extractService/checkShouldExtract" }),
-            {
-              mode: "llm",
-              systemPrompt:
-                "You are a content relevance checker. Your job is to determine if the provided content is very relevant to extract information from based on the user's prompt. Return true only if the content appears relevant and contains information that could help answer the prompt. Return false if the content seems irrelevant or unlikely to contain useful information for the prompt.",
-              prompt: `Should the following content be used to extract information for this prompt: "${request.prompt}" User schema is: ${JSON.stringify(multiEntitySchema)}\nReturn only true or false.`,
-              schema: {
-                type: "object",
-                properties: {
-                  extract: {
-                    type: "boolean",
-                  },
-                },
-                required: ["extract"],
-              },
-            },
-            buildDocument(doc),
-            undefined,
-            true,
+          // Check if page should be extracted before proceeding
+          const { extract, tokenUsage: shouldExtractCheckTokenUsage } = await checkShouldExtract(
+            request.prompt ?? "",
+            multiEntitySchema,
+            doc,
           );
 
-          tokenUsage.push(shouldExtractCheck.totalUsage);
+          tokenUsage.push(shouldExtractCheckTokenUsage);
 
-          if (!shouldExtractCheck.extract["extract"]) {
+          if (!extract) {
             console.log(
               `Skipping extraction for ${doc.metadata.url} as content is irrelevant`,
             );
@@ -448,24 +423,7 @@ export async function performExtraction(
             ],
           });
 
-          const completionPromise = generateOpenAICompletions(
-            logger.child({
-              method: "extractService/generateOpenAICompletions",
-            }),
-            {
-              mode: "llm",
-              systemPrompt:
-                (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
-                `Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Be concise and follow the schema always if provided. If the document provided is not relevant to the prompt nor to the final user schema ${JSON.stringify(multiEntitySchema)}, return null. Here are the urls the user provided of which he wants to extract information from: ` +
-                links.join(", "),
-              prompt:
-                "Today is: " + new Date().toISOString() + "\n" + request.prompt,
-              schema: multiEntitySchema,
-            },
-            buildDocument(doc),
-            undefined,
-            true,
-          );
+          const completionPromise = batchExtractPromise(multiEntitySchema, links, request.prompt ?? "", request.systemPrompt ?? "", doc);
 
           // Race between timeout and completion
           const multiEntityCompletion = (await Promise.race([
@@ -679,29 +637,22 @@ export async function performExtraction(
 
     // Generate completions
     logger.debug("Generating singleAnswer completions...");
-    singleAnswerCompletions = await generateOpenAICompletions(
-      logger.child({ module: "extract", method: "generateOpenAICompletions" }),
-      {
-        mode: "llm",
-        systemPrompt:
-          (request.systemPrompt ? `${request.systemPrompt}\n` : "") +
-          "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. Return 'null' the property that you don't find the information. Be concise and follow the schema always if provided. Here are the urls the user provided of which he wants to extract information from: " +
-          links.join(", "),
-        prompt: "Today is: " + new Date().toISOString() + "\n" + request.prompt,
-        schema: rSchema,
-      },
-      singleAnswerDocs.map((x) => buildDocument(x)).join("\n"),
-      undefined,
-      true,
-    );
+    let { extract: singleAnswerResult, tokenUsage: singleAnswerTokenUsage } = await singleAnswerCompletion({
+      singleAnswerDocs,
+      rSchema,
+      links,
+      prompt: request.prompt ?? "",
+      systemPrompt: request.systemPrompt ?? "",
+    });
     logger.debug("Done generating singleAnswer completions.");
 
     // Track single answer extraction tokens
-    if (singleAnswerCompletions) {
-      tokenUsage.push(singleAnswerCompletions.totalUsage);
+    if (singleAnswerTokenUsage) {
+      tokenUsage.push(singleAnswerTokenUsage);
     }
 
-    singleAnswerResult = singleAnswerCompletions.extract;
+    singleAnswerResult = singleAnswerResult.extract;
+    singleAnswerCompletions = singleAnswerResult;
 
     // Update token usage in traces
     // if (completions && completions.numTokens) {
