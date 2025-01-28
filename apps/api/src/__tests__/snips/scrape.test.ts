@@ -35,4 +35,24 @@ describe("Scrape tests", () => {
       "this is fake data coming from the mocking system!",
     );
   });
+  
+  describe("Location API", () => {
+    it.concurrent("works without specifying an explicit location", async () => {
+      const response = await scrape({
+        url: "https://iplocation.com",
+      });
+  
+      expectScrapeToSucceed(response);
+    });
+
+    it.concurrent("works with country US", async () => {
+      const response = await scrape({
+        url: "https://iplocation.com",
+        location: { country: "US" },
+      });
+  
+      expectScrapeToSucceed(response);
+      expect(response.body.data.markdown).toContain("| Country | United States |");
+    });
+  })
 });

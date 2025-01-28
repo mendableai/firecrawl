@@ -2,7 +2,7 @@
     {
         "time": 1735911273239,
         "options": {
-            "url": "http://default-fire-engine-api-service:8080/scrape",
+            "url": "<fire-engine>/scrape",
             "method": "POST",
             "body": {
                 "url": "http://firecrawl.dev",
@@ -27,7 +27,7 @@
     {
         "time": 1735911273354,
         "options": {
-            "url": "http://default-fire-engine-api-service:8080/scrape/ede37286-90db-4f60-8efb-76217dfcfa35!chrome-cdp",
+            "url": "<fire-engine>/scrape/ede37286-90db-4f60-8efb-76217dfcfa35!chrome-cdp",
             "method": "GET",
             "headers": {},
             "ignoreResponse": false,
@@ -43,7 +43,7 @@
     {
         "time": 1735911273720,
         "options": {
-            "url": "http://default-fire-engine-api-service:8080/scrape/ede37286-90db-4f60-8efb-76217dfcfa35!chrome-cdp",
+            "url": "<fire-engine>/scrape/ede37286-90db-4f60-8efb-76217dfcfa35!chrome-cdp",
             "method": "GET",
             "headers": {},
             "ignoreResponse": false,
@@ -59,7 +59,7 @@
     {
         "time": 1735911274092,
         "options": {
-            "url": "http://default-fire-engine-api-service:8080/scrape/ede37286-90db-4f60-8efb-76217dfcfa35!chrome-cdp",
+            "url": "<fire-engine>/scrape/ede37286-90db-4f60-8efb-76217dfcfa35!chrome-cdp",
             "method": "GET",
             "headers": {},
             "ignoreResponse": false,
@@ -75,7 +75,7 @@
     {
         "time": 1735911274467,
         "options": {
-            "url": "http://default-fire-engine-api-service:8080/scrape/ede37286-90db-4f60-8efb-76217dfcfa35!chrome-cdp",
+            "url": "<fire-engine>/scrape/ede37286-90db-4f60-8efb-76217dfcfa35!chrome-cdp",
             "method": "GET",
             "headers": {},
             "ignoreResponse": false,
@@ -91,7 +91,7 @@
     {
         "time": 1735911274947,
         "options": {
-            "url": "http://default-fire-engine-api-service:8080/scrape/ede37286-90db-4f60-8efb-76217dfcfa35!chrome-cdp",
+            "url": "<fire-engine>/scrape/ede37286-90db-4f60-8efb-76217dfcfa35!chrome-cdp",
             "method": "GET",
             "headers": {},
             "ignoreResponse": false,
