@@ -197,6 +197,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     mobile: meta.options.mobile,
     timeout, // TODO: better timeout logic
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
+    blockAds: meta.options.blockAds,
     // TODO: scrollXPaths
   };
 
@@ -271,6 +272,7 @@ export async function scrapeURLWithFireEnginePlaywright(
     fullPageScreenshot: meta.options.formats.includes("screenshot@fullPage"),
     wait: meta.options.waitFor,
     geolocation: meta.options.geolocation ?? meta.options.location,
+    blockAds: meta.options.blockAds,
 
     timeout,
   };
