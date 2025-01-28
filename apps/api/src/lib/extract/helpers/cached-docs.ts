@@ -15,7 +15,16 @@ export async function getCachedDocs(urls: string[], cacheKey: string): Promise<D
     return [];
   }
 
-  return data.map((res: any) => JSON.parse(JSON.stringify(res.doc)) as Document);
+  const uniqueDocs = new Map<string, Document>();
+  data.forEach((res: any) => {
+    const doc = JSON.parse(JSON.stringify(res.doc)) as Document;
+    const docKey = `${doc.metadata.url}-${cacheKey}`;
+    if (!uniqueDocs.has(docKey)) {
+      uniqueDocs.set(docKey, doc);
+    }
+  });
+
+  return Array.from(uniqueDocs.values());
 }
 
 export async function saveCachedDocs(docs: Document[], cacheKey: string): Promise<void> {
