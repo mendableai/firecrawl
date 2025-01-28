@@ -2,7 +2,7 @@ module html-to-markdown.go
 
 go 1.19
 
-require github.com/tomkosm/html-to-markdown v0.0.0-20241031120941-3a729f6b7751
+require github.com/tomkosm/html-to-markdown v0.0.0-20250128162844-2f19490e042d
 
 require (
 	github.com/PuerkitoBio/goquery v1.9.2 // indirect
@@ -13,4 +13,4 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 )
 
-replace github.com/JohannesKaufmann/html-to-markdown => github.com/tomkosm/html-to-markdown v0.0.0-20241031120941-3a729f6b7751
+replace github.com/JohannesKaufmann/html-to-markdown => github.com/tomkosm/html-to-markdown v0.0.0-20250128162844-2f19490e042d
