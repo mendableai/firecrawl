@@ -1,5 +1,11 @@
 import isEqual from "lodash/isEqual";
 
+/**
+ * Transforms an array of objects into a single object, merging properties with the same name.
+ * @param originalSchema - The schema of the original data.
+ * @param arrayData - The array of objects to transform.
+ * @returns A single object with merged properties.
+ */
 export function transformArrayToObject(
   originalSchema: any,
   arrayData: any[],

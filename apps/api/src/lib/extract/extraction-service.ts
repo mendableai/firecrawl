@@ -25,6 +25,7 @@ const ajv = new Ajv();
 import { ExtractStep, updateExtract } from "./extract-redis";
 import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
+import { areMergeable } from "./helpers/merge-null-val-objs";
 import { CUSTOM_U_TEAMS } from "./config";
 import {
   calculateFinalResultCost,
@@ -34,6 +35,7 @@ import { analyzeSchemaAndPrompt } from "./completions/analyzeSchemaAndPrompt";
 import { checkShouldExtract } from "./completions/checkShouldExtract";
 import { batchExtractPromise } from "./completions/batchExtract";
 import { singleAnswerCompletion } from "./completions/singleAnswer";
+import { SourceTracker } from "./helpers/source-tracker";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -448,45 +450,33 @@ export async function performExtraction(
       const validResults = chunkResults.filter((result): result is {extract: any, url: string} => result !== null);
       extractionResults.push(...validResults);
       multiEntityCompletions.push(...validResults.map(r => r.extract));
-      
       logger.debug("All multi-entity completion chunks finished.", {
         completionCount: multiEntityCompletions.length,
       });
     }
 
     try {
+      // Use SourceTracker to handle source tracking
+      const sourceTracker = new SourceTracker();
+      
+      // Transform and merge results while preserving sources
+      sourceTracker.transformResults(extractionResults, multiEntitySchema, false);
+      
       multiEntityResult = transformArrayToObject(
         multiEntitySchema,
         multiEntityCompletions,
       );
+      
+      // Track sources before deduplication
+      sourceTracker.trackPreDeduplicationSources(multiEntityResult);
+      
+      // Apply deduplication and merge
       multiEntityResult = deduplicateObjectsArray(multiEntityResult);
       multiEntityResult = mergeNullValObjs(multiEntityResult);
-
-      console.log(extractionResults[0].extract)
-      // Add sources for each multi-entity key with proper indexing
-      multiEntityKeys.forEach(key => {
-        // Track sources before deduplication/merging
-        const preProcessSources = extractionResults.map(result => result.url);
-        
-        // After deduplication/merging, map sources to final array indices
-        if (multiEntityResult[key] && Array.isArray(multiEntityResult[key])) {
-          multiEntityResult[key].forEach((item, finalIndex) => {
-            const sourceKey = `${key}[${finalIndex}]`;
-            // Find matching pre-processed items and collect their sources
-            const itemSources = extractionResults
-              .filter((result) => {
-                // Check all items in the array, not just first one
-                const resultItems = result.extract?.[key];
-                return resultItems?.some(resultItem => 
-                  JSON.stringify(resultItem) === JSON.stringify(item)
-                );
-              })
-              .map(result => result.url);
-            
-            sources[sourceKey] = itemSources;
-          });
-        }
-      });
+      
+      // Map sources to final deduplicated/merged items
+      const multiEntitySources = sourceTracker.mapSourcesToFinalItems(multiEntityResult, multiEntityKeys);
+      Object.assign(sources, multiEntitySources);
 
     } catch (error) {
       logger.error(`Failed to transform array to object`, { error });
@@ -537,7 +527,6 @@ export async function performExtraction(
             plan,
             origin: request.origin || "api",
             timeout,
-            
           },
           urlTraces,
           logger.child({
@@ -546,9 +535,6 @@ export async function performExtraction(
             url,
             isMultiEntity: false,
           }),
-          {
-            onlyMainContent: false,
-          },
         );
       }
       return docsMap.get(url);
