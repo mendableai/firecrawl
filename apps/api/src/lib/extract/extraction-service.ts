@@ -153,7 +153,7 @@ async function getDocsAndSchemas(
 ): Promise<{
   success: boolean;
   extractId: string;
-  urlTraces: URLTrace[];
+  urlTrace: URLTrace[] | undefined;
   error?: string;
   links?: string[];
   docsMap?: Map<string, Document>;
@@ -195,7 +195,7 @@ async function getDocsAndSchemas(
       error:
         "No valid URLs found to scrape. Try adjusting your search criteria or including more URLs.",
       extractId,
-      urlTraces: urlTraces,
+      urlTrace: urlTraces,
     };
   }
 
@@ -403,7 +403,7 @@ async function getDocsAndSchemas(
         error:
           "An unexpected error occurred. Please contact help@firecrawl.com for help.",
         extractId,
-        urlTraces: urlTraces,
+        urlTrace: urlTraces,
       };
     }
   }
@@ -451,7 +451,7 @@ async function getDocsAndSchemas(
         success: false,
         error: error.message,
         extractId,
-        urlTraces: urlTraces,
+        urlTrace: urlTraces,
       };
     }
 
@@ -462,14 +462,14 @@ async function getDocsAndSchemas(
         error:
           "All provided URLs are invalid. Please check your input and try again.",
         extractId,
-        urlTraces: request.urlTrace ? urlTraces : [],
+        urlTrace: request.urlTrace ? urlTraces : undefined,
       };
     }
   }
   return {
     success: true,
     extractId,
-    urlTraces: urlTraces,
+    urlTrace: urlTraces,
     error: undefined,
     links,
     docsMap,
@@ -487,10 +487,7 @@ export async function cacheGetDocsAndSchemas(
   const { cacheKey, cacheMode } = request;
   const filePath = path.join(__dirname, "./cache", `${cacheKey}.json`);
 
-  if (cacheMode === "direct") {
-    // Just call getDocsAndSchemas directly, no caching.
-    return await getDocsAndSchemas(extractId, options);
-  } else if (cacheMode === "save") {
+  if (cacheMode === "save") {
     const result = await getDocsAndSchemas(extractId, options);
 
     await fs.mkdir(path.dirname(filePath), { recursive: true });
@@ -505,6 +502,9 @@ export async function cacheGetDocsAndSchemas(
         `Failed to load cached data from ${filePath}: ${String(err)}`,
       );
     }
+    //else if cacheMode === "direct"
+  } else {
+    return await getDocsAndSchemas(extractId, options);
   }
 }
 export async function performExtraction(
