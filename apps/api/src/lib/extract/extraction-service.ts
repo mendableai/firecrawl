@@ -612,6 +612,6 @@ export async function performExtraction(
     data: finalResult ?? {},
     extractId,
     warning: undefined, // TODO FIX
-    urlTrace: request.urlTrace ? urlTraces : [],
+    urlTrace: request.urlTrace ? urlTraces : undefined,
   };
 }
