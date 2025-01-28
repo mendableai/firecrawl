@@ -19,20 +19,35 @@ export async function getCachedDocs(urls: string[], cacheKey: string): Promise<D
 }
 
 export async function saveCachedDocs(docs: Document[], cacheKey: string): Promise<void> {
-  const { error } = await supabase_service
-    .from('cached_scrapes')
-    .upsert(docs.map(doc => {
-      if (!doc.metadata.url) {
-        throw new Error("Document has no URL");
-      }
-      return {
-        url: normalizeUrl(doc.metadata.url),
-        doc: doc,
-        cache_key: cacheKey,
-      }
-    }));
+  for (const doc of docs) {
+    if (!doc.metadata.url) {
+      throw new Error("Document has no URL");
+    }
 
-  if (error) {
-    console.error('Error saving cached docs:', error);
+    const normalizedUrl = normalizeUrl(doc.metadata.url);
+    const { data, error } = await supabase_service
+      .from('cached_scrapes')
+      .select('url')
+      .eq('url', normalizedUrl)
+      .eq('cache_key', cacheKey);
+
+    if (error) {
+      console.error('Error checking existing cached doc:', error);
+      continue;
+    }
+
+    if (data.length === 0) {
+      const { error: upsertError } = await supabase_service
+        .from('cached_scrapes')
+        .upsert({
+          url: normalizedUrl,
+          doc: doc,
+          cache_key: cacheKey,
+        });
+
+      if (upsertError) {
+        console.error('Error saving cached doc:', upsertError);
+      }
+    }
   }
 }
