@@ -31,6 +31,7 @@ export type StoredExtract = {
   showSteps?: boolean;
   steps?: ExtractedStep[];
   showLLMUsage?: boolean;
+  showSources?: boolean;
   llmUsage?: number;
   sources?: {
     [key: string]: string[];

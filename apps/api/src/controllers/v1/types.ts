@@ -228,6 +228,7 @@ export const extractV1Options = z
     urlTrace: z.boolean().default(false),
     __experimental_streamSteps: z.boolean().default(false),
     __experimental_llmUsage: z.boolean().default(false),
+    __experimental_showSources: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().default(60000),
   })
   .strict(strictMessage)
