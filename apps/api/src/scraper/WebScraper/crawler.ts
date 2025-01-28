@@ -401,7 +401,13 @@ export class WebCrawler {
 
   public async extractLinksFromHTML(html: string, url: string) {
     try {
-      return await this.extractLinksFromHTMLRust(html, url);
+      return (await this.extractLinksFromHTMLRust(html, url)).map(x => {
+        try {
+          return new URL(x, url).href
+        } catch (e) {
+          return null;
+        }
+      }).filter(x => x !== null) as string[];
     } catch (error) {
       this.logger.error("Failed to call html-transformer! Falling back to cheerio...", {
         error,

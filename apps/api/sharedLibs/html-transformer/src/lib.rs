@@ -17,7 +17,8 @@ pub unsafe extern "C" fn extract_links(html: *const libc::c_char) -> *mut i8 {
 
     let mut out: Vec<String> = Vec::new();
 
-    for anchor in document.select("a[href]").unwrap() {
+    let anchors: Vec<_> = document.select("a[href]").unwrap().collect();
+    for anchor in anchors {
         let mut href = anchor.attributes.borrow().get("href").unwrap().to_string();
         
         if href.starts_with("http:/") && !href.starts_with("http://") {
