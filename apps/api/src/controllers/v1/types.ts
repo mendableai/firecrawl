@@ -429,7 +429,6 @@ export const mapRequestSchema = crawlerOptions
     ignoreSitemap: z.boolean().default(false),
     sitemapOnly: z.boolean().default(false),
     limit: z.number().min(1).max(5000).default(5000),
-    timeout: z.number().positive().finite().optional(),
   })
   .strict(strictMessage);
 
@@ -439,7 +438,6 @@ export const mapRequestSchema = crawlerOptions
 // };
 
 export type MapRequest = z.infer<typeof mapRequestSchema>;
-export type MapRequestInput = z.input<typeof mapRequestSchema>;
 
 export type Document = {
   title?: string;
