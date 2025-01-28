@@ -230,6 +230,8 @@ export const extractV1Options = z
     __experimental_llmUsage: z.boolean().default(false),
     __experimental_showSources: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().default(60000),
+    cacheKey: z.string().optional(),
+    cacheMode: z.enum(["direct", "save", "load"]).default("direct").optional(),
   })
   .strict(strictMessage)
   .transform((obj) => ({

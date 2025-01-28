@@ -88,7 +88,9 @@ content-type: application/json
       }
     },
     "required": ["blog_titles"]
-  }
+  },
+  "cacheMode": "load",
+  "cacheKey": "test-cache-key"
 }
 
 ###
