@@ -276,17 +276,34 @@ export async function mapController(
 ) {
   req.body = mapRequestSchema.parse(req.body);
 
-  const result = await getMapResults({
-    url: req.body.url,
-    search: req.body.search,
-    limit: req.body.limit,
-    ignoreSitemap: req.body.ignoreSitemap,
-    includeSubdomains: req.body.includeSubdomains,
-    crawlerOptions: req.body,
-    origin: req.body.origin,
-    teamId: req.auth.team_id,
-    plan: req.auth.plan,
-  });
+  let result: Awaited<ReturnType<typeof getMapResults>>;
+  try {
+    result = await Promise.race([
+      getMapResults({
+        url: req.body.url,
+        search: req.body.search,
+        limit: req.body.limit,
+        ignoreSitemap: req.body.ignoreSitemap,
+        includeSubdomains: req.body.includeSubdomains,
+        crawlerOptions: req.body,
+        origin: req.body.origin,
+        teamId: req.auth.team_id,
+        plan: req.auth.plan,
+      }),
+      ...(req.body.timeout !== undefined ? [
+        new Promise((resolve, reject) => setTimeout(() => reject("timeout"), req.body.timeout))
+      ] : []),
+    ]) as any;
+  } catch (error) {
+    if (error === "timeout") {
+      return res.status(408).json({
+        success: false,
+        error: "Request timed out",
+      });
+    } else {
+      throw error;
+    }
+  }
 
   // Bill the team
   billTeam(req.auth.team_id, req.acuc?.sub_id, 1).catch((error) => {
