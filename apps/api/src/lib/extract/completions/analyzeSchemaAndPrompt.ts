@@ -6,6 +6,7 @@ import {
   buildAnalyzeSchemaUserPrompt,
 } from "../build-prompts";
 import OpenAI from "openai";
+import { logger } from "../../../lib/logger";
 const openai = new OpenAI();
 
 export async function analyzeSchemaAndPrompt(
@@ -75,20 +76,34 @@ export async function analyzeSchemaAndPrompt(
     },
   });
 
-  const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
-    checkSchema.parse(result.choices[0].message.parsed);
-
   const tokenUsage: TokenUsage = {
     promptTokens: result.usage?.prompt_tokens ?? 0,
     completionTokens: result.usage?.completion_tokens ?? 0,
     totalTokens: result.usage?.total_tokens ?? 0,
     model: model,
   };
+
+  try {
+    const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
+      checkSchema.parse(result.choices[0].message.parsed);
+    return {
+      isMultiEntity,
+      multiEntityKeys,
+      reasoning,
+      keyIndicators,
+      tokenUsage,
+    };
+  } catch (e) {
+    logger.warn("(analyzeSchemaAndPrompt) Error parsing schema analysis", {
+      error: e,
+    });
+  }
+
   return {
-    isMultiEntity,
-    multiEntityKeys,
-    reasoning,
-    keyIndicators,
+    isMultiEntity: false,
+    multiEntityKeys: [],
+    reasoning: "",
+    keyIndicators: [],
     tokenUsage,
   };
 }
