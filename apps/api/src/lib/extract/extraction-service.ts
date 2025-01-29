@@ -36,6 +36,7 @@ import { checkShouldExtract } from "./completions/checkShouldExtract";
 import { batchExtractPromise } from "./completions/batchExtract";
 import { singleAnswerCompletion } from "./completions/singleAnswer";
 import { SourceTracker } from "./helpers/source-tracker";
+import { deduplicateMultiEntityResults } from "./helpers/dedup-multi-entity";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -471,8 +472,10 @@ export async function performExtraction(
       sourceTracker.trackPreDeduplicationSources(multiEntityResult);
       
       // Apply deduplication and merge
-      multiEntityResult = deduplicateObjectsArray(multiEntityResult);
-      multiEntityResult = mergeNullValObjs(multiEntityResult);
+      multiEntityResult = await deduplicateMultiEntityResults(multiEntityResult, logger.child({
+        module: "extract",
+        method: "deduplicateMultiEntityResults"
+      }));
       
       // Map sources to final deduplicated/merged items
       const multiEntitySources = sourceTracker.mapSourcesToFinalItems(multiEntityResult, multiEntityKeys);
