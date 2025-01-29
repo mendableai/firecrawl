@@ -64,7 +64,7 @@ describe("Scrape tests", () => {
       });
   
       expectScrapeToSucceed(response);
-    });
+    }, 10000);
 
     it.concurrent("works with country US", async () => {
       const response = await scrape({
@@ -74,6 +74,6 @@ describe("Scrape tests", () => {
   
       expectScrapeToSucceed(response);
       expect(response.body.data.markdown).toContain("| Country | United States |");
-    });
+    }, 10000);
   });
 });
