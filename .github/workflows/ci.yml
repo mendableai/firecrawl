@@ -57,7 +57,7 @@ jobs:
         run: npm run workers &
         working-directory: ./apps/api
         id: start_workers
-      - name: Run E2E tests
+      - name: Run snippet tests
         run: |
-          npm run test:prod
+          npm run test:snips
         working-directory: ./apps/api
