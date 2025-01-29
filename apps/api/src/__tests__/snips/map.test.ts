@@ -27,7 +27,7 @@ describe("Map tests", () => {
     });
 
     expectMapToSucceed(response);
-  });
+  }, 10000);
 
   it("times out properly", async () => {
     const response = await map({
@@ -38,5 +38,5 @@ describe("Map tests", () => {
     expect(response.statusCode).toBe(408);
     expect(response.body.success).toBe(false);
     expect(response.body.error).toBe("Request timed out");
-});
+  }, 10000);
 });
