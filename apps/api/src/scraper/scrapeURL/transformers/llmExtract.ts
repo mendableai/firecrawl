@@ -9,9 +9,25 @@ import {
 import { Logger } from "winston";
 import { EngineResultsTracker, Meta } from "..";
 import { logger } from "../../../lib/logger";
+import { modelPrices } from "../../../lib/extract/usage/model-prices";
 
-const maxTokens = 32000;
-const modifier = 4;
+// Get max tokens from model prices
+const getModelLimits = (model: string) => {
+  const modelConfig = modelPrices[model];
+  if (!modelConfig) {
+    // Default fallback values
+    return {
+      maxInputTokens: 8192,
+      maxOutputTokens: 4096,
+      maxTokens: 12288,
+    };
+  }
+  return {
+    maxInputTokens: modelConfig.max_input_tokens || modelConfig.max_tokens,
+    maxOutputTokens: modelConfig.max_output_tokens || modelConfig.max_tokens,
+    maxTokens: modelConfig.max_tokens,
+  };
+};
 
 export class LLMRefusalError extends Error {
   public refusal: string;
@@ -94,6 +110,13 @@ export async function generateOpenAICompletions(
     throw new Error("document.markdown is undefined -- this is unexpected");
   }
 
+  const { maxInputTokens, maxOutputTokens } = getModelLimits(model);
+
+  // Ratio of 4 was way too high, now 3.5.
+  const modifier = 3.5; // tokens to characters ratio
+  // Calculate 80% of max input tokens (for content)
+  const maxTokensSafe = Math.floor(maxInputTokens * 0.8);
+
   // count number of tokens
   let numTokens = 0;
   const encoder = encoding_for_model(model as TiktokenModel);
@@ -106,11 +129,11 @@ export async function generateOpenAICompletions(
   } catch (error) {
     logger.warn("Calculating num tokens of string failed", { error, markdown });
 
-    markdown = markdown.slice(0, maxTokens * modifier);
+    markdown = markdown.slice(0, maxTokensSafe * modifier);
 
     let w =
       "Failed to derive number of LLM tokens the extraction might use -- the input has been automatically trimmed to the maximum number of tokens (" +
-      maxTokens +
+      maxTokensSafe +
       ") we support.";
     warning = previousWarning === undefined ? w : w + " " + previousWarning;
   } finally {
@@ -118,15 +141,15 @@ export async function generateOpenAICompletions(
     encoder.free();
   }
 
-  if (numTokens > maxTokens) {
+  if (numTokens > maxTokensSafe) {
     // trim the document to the maximum number of tokens, tokens != characters
-    markdown = markdown.slice(0, maxTokens * modifier);
+    markdown = markdown.slice(0, maxTokensSafe * modifier);
 
     const w =
       "The extraction content would have used more tokens (" +
       numTokens +
       ") than the maximum we allow (" +
-      maxTokens +
+      maxTokensSafe +
       "). -- the input has been automatically trimmed.";
     warning = previousWarning === undefined ? w : w + " " + previousWarning;
   }

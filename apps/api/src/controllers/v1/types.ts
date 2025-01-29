@@ -57,10 +57,11 @@ export const extractOptions = z
     schema: z.any().optional(),
     systemPrompt: z
       .string()
+      .max(10000)
       .default(
         "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required.",
       ),
-    prompt: z.string().optional(),
+    prompt: z.string().max(10000).optional(),
   })
   .strict(strictMessage);
 
@@ -201,8 +202,8 @@ export const extractV1Options = z
     urls: url
       .array()
       .max(10, "Maximum of 10 URLs allowed per request while in beta."),
-    prompt: z.string().optional(),
-    systemPrompt: z.string().optional(),
+    prompt: z.string().max(10000).optional(),
+    systemPrompt: z.string().max(10000).optional(),
     schema: z
       .any()
       .optional()
