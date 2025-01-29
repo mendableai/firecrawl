@@ -26,7 +26,7 @@ import { ExtractStep, updateExtract } from "./extract-redis";
 import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
 import { areMergeable } from "./helpers/merge-null-val-objs";
-import { CUSTOM_U_TEAMS } from "./config";
+import { CUSTOM_U_TEAMS, extractConfig } from "./config";
 import {
   calculateFinalResultCost,
   estimateTotalCost,
@@ -36,6 +36,8 @@ import { checkShouldExtract } from "./completions/checkShouldExtract";
 import { batchExtractPromise } from "./completions/batchExtract";
 import { singleAnswerCompletion } from "./completions/singleAnswer";
 import { SourceTracker } from "./helpers/source-tracker";
+import { numTokensFromString } from "../LLM-extraction/helpers";
+import { validateAndDeduplicate } from "./completions/validateAndDeduplicate";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -456,15 +458,38 @@ export async function performExtraction(
     }
 
     try {
+      let multiEntityExtractionResults = extractionResults;
+
+      if (reqSchema && extractionResults && extractionResults.length <= extractConfig.DEDUPLICATION.MAX_TOKENS) {
+        const { extract: deduplicatedMultiEntityResult, totalUsage } = await validateAndDeduplicate({
+          data: extractionResults,
+          schema: multiEntitySchema,
+          logger,
+        });
+
+        // Handle both array and non-array results
+        const deduplicatedArray = Array.isArray(deduplicatedMultiEntityResult) 
+          ? deduplicatedMultiEntityResult 
+          : [deduplicatedMultiEntityResult];
+
+        // Sources are now tracked in _sources field by validateAndDeduplicate
+        multiEntityExtractionResults = deduplicatedArray.map(result => ({
+          extract: result,
+          url: result._sources?.[0] || '' // Use first source URL
+        }));
+
+        tokenUsage.push(totalUsage);
+      }
+
       // Use SourceTracker to handle source tracking
       const sourceTracker = new SourceTracker();
       
       // Transform and merge results while preserving sources
-      sourceTracker.transformResults(extractionResults, multiEntitySchema, false);
+      sourceTracker.transformResults(multiEntityExtractionResults, multiEntitySchema, false);
       
       multiEntityResult = transformArrayToObject(
         multiEntitySchema,
-        multiEntityCompletions,
+        multiEntityExtractionResults.map(r => r.extract),
       );
       
       // Track sources before deduplication
@@ -656,42 +681,19 @@ export async function performExtraction(
   //   finalResultTokens = numTokensFromString(finalResultStr, "gpt-4o");
 
   // }
-  // // Deduplicate and validate final result against schema
-  // if (reqSchema && finalResult && finalResult.length <= extractConfig.DEDUPLICATION.MAX_TOKENS) {
-  //   const schemaValidation = await generateOpenAICompletions(
-  //     logger.child({ method: "extractService/validateAndDeduplicate" }),
-  //     {
-  //       mode: "llm",
-  //       systemPrompt: `You are a data validator and deduplicator. Your task is to:
-  //       1. Remove any duplicate entries in the data extracted by merging that into a single object according to the provided shcema
-  //       2. Ensure all data matches the provided schema
-  //       3. Keep only the highest quality and most complete entries when duplicates are found.
+  // console.log("finalResultTokens", finalResultTokens);
+  // console.log("finalResult", finalResult);
+  // console.log("reqSchema", reqSchema);
+  // console.log("finalResultTokens", finalResultTokens);
+  // // // Deduplicate and validate final result against schema
+  // if (reqSchema && finalResult && finalResultTokens <= extractConfig.DEDUPLICATION.MAX_TOKENS) {
+  //   console.log("finalResult", finalResult);
 
-  //       Do not change anything else. If data is null keep it null. If the schema is not provided, return the data as is.`,
-  //       prompt: `Please validate and merge the duplicate entries in this data according to the schema provided:\n
-
-  //       <start of extract data>
-
-  //       ${JSON.stringify(finalResult)}
-
-  //       <end of extract data>
-
-  //       <start of schema>
-
-  //       ${JSON.stringify(reqSchema)}
-
-  //       <end of schema>
-  //       `,
-  //       schema: reqSchema,
-  //     },
-  //     undefined,
-  //     undefined,
-  //     true,
-  //     "gpt-4o"
-  //   );
-  //   console.log("schemaValidation", schemaValidation);
-
-  //   console.log("schemaValidation", finalResult);
+  //   const schemaValidation = await validateAndDeduplicate({
+  //     data: finalResult,
+  //     schema: reqSchema,
+  //     logger,
+  //   });
 
   //   if (schemaValidation?.extract) {
   //     tokenUsage.push(schemaValidation.totalUsage);
