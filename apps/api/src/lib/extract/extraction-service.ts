@@ -25,6 +25,7 @@ const ajv = new Ajv();
 import { ExtractStep, updateExtract } from "./extract-redis";
 import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
+import { areMergeable } from "./helpers/merge-null-val-objs";
 import { CUSTOM_U_TEAMS } from "./config";
 import {
   calculateFinalResultCost,
@@ -34,6 +35,7 @@ import { analyzeSchemaAndPrompt } from "./completions/analyzeSchemaAndPrompt";
 import { checkShouldExtract } from "./completions/checkShouldExtract";
 import { batchExtractPromise } from "./completions/batchExtract";
 import { singleAnswerCompletion } from "./completions/singleAnswer";
+import { SourceTracker } from "./helpers/source-tracker";
 
 interface ExtractServiceOptions {
   request: ExtractRequest;
@@ -272,6 +274,10 @@ export async function performExtraction(
             url,
             isMultiEntity: true,
           }),
+          {
+            // Needs to be true for multi-entity to work properly
+            onlyMainContent: true,
+          }
         );
       }
       return docsMap.get(url);
@@ -313,6 +319,7 @@ export async function performExtraction(
     const chunkSize = 50;
     const timeoutCompletion = 45000; // 45 second timeout
     const chunks: Document[][] = [];
+    const extractionResults: {extract: any, url: string}[] = [];
 
     // Split into chunks
     for (let i = 0; i < multyEntityDocs.length; i += chunkSize) {
@@ -361,7 +368,6 @@ export async function performExtraction(
               "is_content_relevant",
             ],
           };
-          // console.log("schemaWithConfidence", schemaWithConfidence);
 
           await updateExtract(extractId, {
             status: "processing",
@@ -377,7 +383,7 @@ export async function performExtraction(
             ],
           });
 
-          const completionPromise =  batchExtractPromise(multiEntitySchema, links, request.prompt ?? "", request.systemPrompt ?? "", doc);
+          const completionPromise = batchExtractPromise(multiEntitySchema, links, request.prompt ?? "", request.systemPrompt ?? "", doc);
 
           // Race between timeout and completion
           const multiEntityCompletion = (await Promise.race([
@@ -389,21 +395,11 @@ export async function performExtraction(
           if (multiEntityCompletion) {
             tokenUsage.push(multiEntityCompletion.totalUsage);
             
-            // Track sources for multi-entity items
             if (multiEntityCompletion.extract) {
-              // For each multi-entity key, track the source URL
-              multiEntityKeys.forEach(key => {
-                const items = multiEntityCompletion.extract[key];
-                if (Array.isArray(items)) {
-                  items.forEach((item, index) => {
-                    const sourcePath = `${key}[${index}]`;
-                    if (!sources[sourcePath]) {
-                      sources[sourcePath] = [];
-                    }
-                    sources[sourcePath].push(doc.metadata.url || doc.metadata.sourceURL || "");
-                  });
-                }
-              });
+              return {
+                extract: multiEntityCompletion.extract,
+                url: doc.metadata.url || doc.metadata.sourceURL || ""
+              };
             }
           }
 
@@ -439,7 +435,7 @@ export async function performExtraction(
           //   return null;
           // }
 
-          return multiEntityCompletion.extract;
+          return null;
         } catch (error) {
           logger.error(`Failed to process document.`, {
             error,
@@ -451,22 +447,37 @@ export async function performExtraction(
 
       // Wait for current chunk to complete before processing next chunk
       const chunkResults = await Promise.all(chunkPromises);
-      multiEntityCompletions.push(
-        ...chunkResults.filter((result) => result !== null),
-      );
+      const validResults = chunkResults.filter((result): result is {extract: any, url: string} => result !== null);
+      extractionResults.push(...validResults);
+      multiEntityCompletions.push(...validResults.map(r => r.extract));
       logger.debug("All multi-entity completion chunks finished.", {
         completionCount: multiEntityCompletions.length,
       });
     }
 
     try {
+      // Use SourceTracker to handle source tracking
+      const sourceTracker = new SourceTracker();
+      
+      // Transform and merge results while preserving sources
+      sourceTracker.transformResults(extractionResults, multiEntitySchema, false);
+      
       multiEntityResult = transformArrayToObject(
         multiEntitySchema,
         multiEntityCompletions,
       );
+      
+      // Track sources before deduplication
+      sourceTracker.trackPreDeduplicationSources(multiEntityResult);
+      
+      // Apply deduplication and merge
       multiEntityResult = deduplicateObjectsArray(multiEntityResult);
       multiEntityResult = mergeNullValObjs(multiEntityResult);
-      // @nick: maybe we can add here a llm that checks if the array probably has a primary key?
+      
+      // Map sources to final deduplicated/merged items
+      const multiEntitySources = sourceTracker.mapSourcesToFinalItems(multiEntityResult, multiEntityKeys);
+      Object.assign(sources, multiEntitySources);
+
     } catch (error) {
       logger.error(`Failed to transform array to object`, { error });
       return {
@@ -741,6 +752,6 @@ export async function performExtraction(
     urlTrace: request.urlTrace ? urlTraces : undefined,
     llmUsage,
     totalUrlsScraped,
-    // sources,
+    sources,
   };
 }

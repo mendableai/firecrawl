@@ -16,8 +16,8 @@ github.com/rogpeppe/go-internal v1.6.1 h1:/FiVV8dS/e+YqF2JvO3yXRFbBLTIuSDkuC7aBO
 github.com/rogpeppe/go-internal v1.6.1/go.mod h1:xXDCJY+GAPziupqXw64V24skbSoqbTEfhy4qGm1nDQc=
 github.com/sebdah/goldie/v2 v2.5.3 h1:9ES/mNN+HNUbNWpVAlrzuZ7jE+Nrczbj8uFRjM7624Y=
 github.com/sergi/go-diff v1.3.1 h1:xkr+Oxo4BOQKmkn/B9eMK0g5Kg/983T9DqqPHwYqD+8=
-github.com/tomkosm/html-to-markdown v0.0.0-20241031120941-3a729f6b7751 h1:l6JdzR2ry727okVeBxnH8nh3SAd7l/0gJTWbK/3UBRY=
-github.com/tomkosm/html-to-markdown v0.0.0-20241031120941-3a729f6b7751/go.mod h1:I2mfsDlV0RelCsTjeYh9mdXdwD2M70rA7LT/y2girik=
+github.com/tomkosm/html-to-markdown v0.0.0-20250128162844-2f19490e042d h1:NBs5X/qGdcYalsplADJxPR5CjhMWo4PxcjJeIjXm2Ww=
+github.com/tomkosm/html-to-markdown v0.0.0-20250128162844-2f19490e042d/go.mod h1:I2mfsDlV0RelCsTjeYh9mdXdwD2M70rA7LT/y2girik=
 github.com/yuin/goldmark v1.4.13/go.mod h1:6yULJ656Px+3vBD8DxQVa3kxgyrAnzto9xy5taEt/CY=
 github.com/yuin/goldmark v1.7.1 h1:3bajkSilaCbjdKVsKdZjZCLBNPL9pYzrCakKaf4U49U=
 golang.org/x/crypto v0.0.0-20190308221718-c2843e01d9a2/go.mod h1:djNgcEr1/C05ACkg1iLfiJU5Ep61QUkGW8qpdssI0+w=

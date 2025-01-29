@@ -56,4 +56,24 @@ describe("Scrape tests", () => {
       expect(response.body.data.markdown).toContain(".g.doubleclick.net/");
     }, 10000);
   });
+  
+  describe("Location API (f-e dependant)", () => {
+    it.concurrent("works without specifying an explicit location", async () => {
+      const response = await scrape({
+        url: "https://iplocation.com",
+      });
+  
+      expectScrapeToSucceed(response);
+    });
+
+    it.concurrent("works with country US", async () => {
+      const response = await scrape({
+        url: "https://iplocation.com",
+        location: { country: "US" },
+      });
+  
+      expectScrapeToSucceed(response);
+      expect(response.body.data.markdown).toContain("| Country | United States |");
+    });
+  });
 });

@@ -236,6 +236,7 @@ export interface MapParams {
   includeSubdomains?: boolean;
   sitemapOnly?: boolean;
   limit?: number;
+  timeout?: number;
 }
 
 /**

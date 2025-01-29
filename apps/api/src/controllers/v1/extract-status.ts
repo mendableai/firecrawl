@@ -39,6 +39,6 @@ export async function extractStatusController(
     expiresAt: (await getExtractExpiry(req.params.jobId)).toISOString(),
     steps: extract.showSteps ? extract.steps : undefined,
     llmUsage: extract.showLLMUsage ? extract.llmUsage : undefined,
-    // sources: extract.sources,
+    sources: extract.showSources ? extract.sources : undefined,
   });
 }

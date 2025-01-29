@@ -126,10 +126,14 @@ export async function robustFetch<
     const makeRequestTypeId = (
       request: (typeof mock)["requests"][number]["options"],
     ) => {
-      let out = request.url + ";" + request.method;
+      let trueUrl = (process.env.FIRE_ENGINE_BETA_URL && request.url.startsWith(process.env.FIRE_ENGINE_BETA_URL))
+        ? request.url.replace(process.env.FIRE_ENGINE_BETA_URL, "<fire-engine>")
+        : request.url;
+      
+      let out = trueUrl + ";" + request.method;
       if (
         process.env.FIRE_ENGINE_BETA_URL &&
-        url.startsWith(process.env.FIRE_ENGINE_BETA_URL) &&
+        (trueUrl.startsWith("<fire-engine>")) &&
         request.method === "POST"
       ) {
         out += "f-e;" + request.body?.engine + ";" + request.body?.url;

@@ -154,13 +154,13 @@ export const scrapeOptions = z
           .string()
           .optional()
           .refine(
-            (val) => !val || Object.keys(countries).includes(val.toUpperCase()),
+            (val) => !val || Object.keys(countries).includes(val.toUpperCase()) || val === "US-generic",
             {
               message:
                 "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
             },
           )
-          .transform((val) => (val ? val.toUpperCase() : "US")),
+          .transform((val) => (val ? val.toUpperCase() : "US-generic")),
         languages: z.string().array().optional(),
       })
       .optional(),
@@ -178,7 +178,7 @@ export const scrapeOptions = z
                 "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
             },
           )
-          .transform((val) => (val ? val.toUpperCase() : "US")),
+          .transform((val) => (val ? val.toUpperCase() : "US-generic")),
         languages: z.string().array().optional(),
       })
       .optional(),
@@ -229,6 +229,7 @@ export const extractV1Options = z
     urlTrace: z.boolean().default(false),
     __experimental_streamSteps: z.boolean().default(false),
     __experimental_llmUsage: z.boolean().default(false),
+    __experimental_showSources: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().default(60000),
   })
   .strict(strictMessage)
@@ -430,6 +431,7 @@ export const mapRequestSchema = crawlerOptions
     ignoreSitemap: z.boolean().default(false),
     sitemapOnly: z.boolean().default(false),
     limit: z.number().min(1).max(5000).default(5000),
+    timeout: z.number().positive().finite().optional(),
   })
   .strict(strictMessage);
 
@@ -439,6 +441,7 @@ export const mapRequestSchema = crawlerOptions
 // };
 
 export type MapRequest = z.infer<typeof mapRequestSchema>;
+export type MapRequestInput = z.input<typeof mapRequestSchema>;
 
 export type Document = {
   title?: string;

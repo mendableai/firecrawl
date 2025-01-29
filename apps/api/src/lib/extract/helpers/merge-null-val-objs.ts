@@ -21,7 +21,7 @@ function unifyItemValues<T extends object>(item: T): T {
 /**
  * Check if two objects are mergeable by comparing their non-null values
  */
-function areMergeable(obj1: any, obj2: any): boolean {
+export function areMergeable(obj1: any, obj2: any): boolean {
   const allKeys = new Set([...Object.keys(obj1), ...Object.keys(obj2)]);
   let matchingNonNullValues = 0;
   let nonNullComparisons = 0;
