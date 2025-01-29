@@ -93,6 +93,7 @@ export interface CrawlScrapeOptions {
   mobile?: boolean;
   skipTlsVerification?: boolean;
   removeBase64Images?: boolean;
+  blockAds?: boolean;
 }
 
 export type Action = {

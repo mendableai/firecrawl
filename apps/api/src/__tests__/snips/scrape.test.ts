@@ -35,8 +35,29 @@ describe("Scrape tests", () => {
       "this is fake data coming from the mocking system!",
     );
   });
+
+  describe("Ad blocking (f-e dependant)", () => {
+    it.concurrent("blocks ads by default", async () => {
+      const response = await scrape({
+        url: "https://canyoublockit.com/testing/",
+      });
+
+      expectScrapeToSucceed(response);
+      expect(response.body.data.markdown).not.toContain(".g.doubleclick.net/");
+    }, 10000);
+
+    it.concurrent("doesn't block ads if explicitly disabled", async () => {
+      const response = await scrape({
+        url: "https://canyoublockit.com/testing/",
+        blockAds: false,
+      });
+
+      expectScrapeToSucceed(response);
+      expect(response.body.data.markdown).toContain(".g.doubleclick.net/");
+    }, 10000);
+  });
   
-  describe("Location API", () => {
+  describe("Location API (f-e dependant)", () => {
     it.concurrent("works without specifying an explicit location", async () => {
       const response = await scrape({
         url: "https://iplocation.com",
@@ -54,5 +75,5 @@ describe("Scrape tests", () => {
       expectScrapeToSucceed(response);
       expect(response.body.data.markdown).toContain("| Country | United States |");
     });
-  })
+  });
 });

@@ -186,6 +186,7 @@ export const scrapeOptions = z
     removeBase64Images: z.boolean().default(true),
     fastMode: z.boolean().default(false),
     useMock: z.string().optional(),
+    blockAds: z.boolean().default(true),
   })
   .strict(strictMessage);
 
