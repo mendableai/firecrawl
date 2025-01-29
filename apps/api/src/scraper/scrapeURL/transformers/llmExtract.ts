@@ -29,8 +29,6 @@ const getModelLimits = (model: string) => {
   };
 };
 
-const modifier = 3;
-
 export class LLMRefusalError extends Error {
   public refusal: string;
   public results: EngineResultsTracker | undefined;
