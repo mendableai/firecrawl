@@ -111,8 +111,10 @@ export async function generateOpenAICompletions(
   }
 
   const { maxInputTokens, maxOutputTokens } = getModelLimits(model);
-  // Calculate 80% of max input tokens and convert to characters
+
+  // Ratio of 4 was way too high, now 3.5.
   const modifier = 3.5; // tokens to characters ratio
+  // Calculate 80% of max input tokens (for content)
   const maxTokensSafe = Math.floor(maxInputTokens * 0.8);
 
   // count number of tokens
