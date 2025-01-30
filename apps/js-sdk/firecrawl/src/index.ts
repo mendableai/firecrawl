@@ -168,6 +168,7 @@ export interface CrawlParams {
     url: string;
     headers?: Record<string, string>;
     metadata?: Record<string, string>;
+    events?: ["completed", "failed", "page", "started"][number][];
   };
   deduplicateSimilarURLs?: boolean;
   ignoreQueryParameters?: boolean;

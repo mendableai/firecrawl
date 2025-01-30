@@ -16,6 +16,13 @@ export const callWebhook = async (
   eventType: WebhookEventType = "crawl.page",
   awaitWebhook: boolean = false,
 ) => {
+  if (specified) {
+    let subType = eventType.split(".")[1];
+    if (!specified.events.includes(subType as any)) {
+      return false;
+    }
+  }
+
   try {
     const selfHostedUrl = process.env.SELF_HOSTED_WEBHOOK_URL?.replace(
       "{{JOB_ID}}",

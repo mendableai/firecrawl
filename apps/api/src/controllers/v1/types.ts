@@ -317,6 +317,7 @@ export const webhookSchema = z.preprocess(
       url: z.string().url(),
       headers: z.record(z.string(), z.string()).default({}),
       metadata: z.record(z.string(), z.string()).default({}),
+      events: z.array(z.enum(["completed", "failed", "page", "started"])).default(["completed", "failed", "page", "started"]),
     })
     .strict(strictMessage),
 );
