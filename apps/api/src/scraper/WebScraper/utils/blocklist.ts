@@ -66,6 +66,7 @@ const urlBlocklist = [
   "KKttwRz4w+AMJrZcB828WQ==",
   "vMdzZ33BXoyWVZnAPOBcrg==",
   "l8GDVI8w/ueHnNzdN1ODuQ==",
+  "+yz9bnYYMnC0trJZGJwf6Q=="
 ];
 
 const decryptedBlocklist =
