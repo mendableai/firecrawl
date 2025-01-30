@@ -8,12 +8,15 @@ import { issueCredits } from "./issue_credits";
 import { sendNotification } from "../notification/email_notification";
 import { NotificationType } from "../../types";
 import { deleteKey, getValue, setValue } from "../redis";
+import { redisRateLimitClient } from "../rate-limiter";
 import { sendSlackWebhook } from "../alerts/slack";
 import { logger } from "../../lib/logger";
 
 // Define the number of credits to be added during auto-recharge
 const AUTO_RECHARGE_CREDITS = 1000;
-const AUTO_RECHARGE_COOLDOWN = 300; // 5 minutes in seconds
+const AUTO_RECHARGE_COOLDOWN = 600; // 10 minutes in seconds
+const MAX_CHARGES_PER_HOUR = 5; // Maximum number of auto-charges per hour
+const HOURLY_COUNTER_EXPIRY = 3600; // 1 hour in seconds
 
 /**
  * Attempt to automatically charge a user's account when their credit balance falls below a threshold
@@ -31,19 +34,38 @@ export async function autoCharge(
 }> {
   const resource = `auto-recharge:${chunk.team_id}`;
   const cooldownKey = `auto-recharge-cooldown:${chunk.team_id}`;
+  const hourlyCounterKey = `auto-recharge-hourly:${chunk.team_id}`;
 
   if (chunk.team_id === "285bb597-6eaf-4b96-801c-51461fc3c543") {
     return {
       success: false,
-      message: "Auto-recharge failed",
+      message: "Auto-recharge failed: blocked team",
       remainingCredits: chunk.remaining_credits,
       chunk,
     };
   }
 
   try {
-    // Check if the team is in the cooldown period
-    // Another check to prevent race conditions, double charging - cool down of 5 minutes
+    // Check hourly rate limit
+    const hourlyCharges = await redisRateLimitClient.incr(hourlyCounterKey);
+    if (hourlyCharges === 1) {
+      // Set expiry for the counter if it's new
+      await redisRateLimitClient.expire(hourlyCounterKey, HOURLY_COUNTER_EXPIRY);
+    }
+    
+    if (hourlyCharges > MAX_CHARGES_PER_HOUR) {
+      logger.warn(
+        `Auto-recharge for team ${chunk.team_id} exceeded hourly limit of ${MAX_CHARGES_PER_HOUR}`,
+      );
+      return {
+        success: false,
+        message: "Auto-recharge hourly limit exceeded",
+        remainingCredits: chunk.remaining_credits,
+        chunk,
+      };
+    }
+
+    // Check cooldown period
     const cooldownValue = await getValue(cooldownKey);
     if (cooldownValue) {
       logger.info(
@@ -71,6 +93,19 @@ export async function autoCharge(
       }> => {
         // Recheck the condition inside the lock to prevent race conditions
         const updatedChunk = await getACUC(chunk.api_key, false, false);
+        // recheck cooldown
+        const cooldownValue = await getValue(cooldownKey);
+        if (cooldownValue) {
+          logger.info(
+            `Auto-recharge for team ${chunk.team_id} is in cooldown period`,
+          );
+          return {
+            success: false,
+            message: "Auto-recharge is in cooldown period",
+            remainingCredits: chunk.remaining_credits,
+            chunk,
+          };
+        }
         if (
           updatedChunk &&
           updatedChunk.remaining_credits < autoRechargeThreshold
@@ -102,6 +137,9 @@ export async function autoCharge(
                 customer.stripe_customer_id,
               );
 
+              // set cooldown
+              await setValue(cooldownKey, "true", AUTO_RECHARGE_COOLDOWN);
+
               // If payment is successful or requires further action, issue credits
               if (
                 paymentStatus.return_status === "succeeded" ||
@@ -123,6 +161,10 @@ export async function autoCharge(
 
               // Send a notification if credits were successfully issued
               if (issueCreditsSuccess) {
+                // Increment hourly counter and set expiry if it doesn't exist
+                await redisRateLimitClient.incr(hourlyCounterKey);
+                await redisRateLimitClient.expire(hourlyCounterKey, HOURLY_COUNTER_EXPIRY);
+
                 await sendNotification(
                   chunk.team_id,
                   NotificationType.AUTO_RECHARGE_SUCCESS,
@@ -132,42 +174,47 @@ export async function autoCharge(
                   true,
                 );
 
-                // Set cooldown period
-                await setValue(cooldownKey, "true", AUTO_RECHARGE_COOLDOWN);
-              }
+                // Reset ACUC cache to reflect the new credit balance
+                const cacheKeyACUC = `acuc_${chunk.api_key}`;
+                await deleteKey(cacheKeyACUC);
 
-              // Reset ACUC cache to reflect the new credit balance
-              const cacheKeyACUC = `acuc_${chunk.api_key}`;
-              await deleteKey(cacheKeyACUC);
+                if (process.env.SLACK_ADMIN_WEBHOOK_URL) {
+                  const webhookCooldownKey = `webhook_cooldown_${chunk.team_id}`;
+                  const isInCooldown = await getValue(webhookCooldownKey);
 
-              if (process.env.SLACK_ADMIN_WEBHOOK_URL) {
-                const webhookCooldownKey = `webhook_cooldown_${chunk.team_id}`;
-                const isInCooldown = await getValue(webhookCooldownKey);
+                  if (!isInCooldown) {
+                    sendSlackWebhook(
+                      `Auto-recharge: Team ${chunk.team_id}. ${AUTO_RECHARGE_CREDITS} credits added. Payment status: ${paymentStatus.return_status}.`,
+                      false,
+                      process.env.SLACK_ADMIN_WEBHOOK_URL,
+                    ).catch((error) => {
+                      logger.debug(`Error sending slack notification: ${error}`);
+                    });
 
-                if (!isInCooldown) {
-                  sendSlackWebhook(
-                    `Auto-recharge: Team ${chunk.team_id}. ${AUTO_RECHARGE_CREDITS} credits added. Payment status: ${paymentStatus.return_status}.`,
-                    false,
-                    process.env.SLACK_ADMIN_WEBHOOK_URL,
-                  ).catch((error) => {
-                    logger.debug(`Error sending slack notification: ${error}`);
-                  });
-
-                  // Set cooldown for 1 hour
-                  await setValue(webhookCooldownKey, "true", 60 * 60);
+                    // Set cooldown for 1 hour
+                    await setValue(webhookCooldownKey, "true", 60 * 60);
+                  }
                 }
-              }
-              return {
-                success: true,
-                message: "Auto-recharge successful",
-                remainingCredits:
-                  chunk.remaining_credits + AUTO_RECHARGE_CREDITS,
-                chunk: {
-                  ...chunk,
-                  remaining_credits:
+                return {
+                  success: true,
+                  message: "Auto-recharge successful",
+                  remainingCredits:
                     chunk.remaining_credits + AUTO_RECHARGE_CREDITS,
-                },
-              };
+                  chunk: {
+                    ...chunk,
+                    remaining_credits:
+                      chunk.remaining_credits + AUTO_RECHARGE_CREDITS,
+                  },
+                };
+              } else {
+                logger.error("No Stripe customer ID found for user");
+                return {
+                  success: false,
+                  message: "No Stripe customer ID found for user",
+                  remainingCredits: chunk.remaining_credits,
+                  chunk,
+                };
+              }
             } else {
               logger.error("No Stripe customer ID found for user");
               return {
