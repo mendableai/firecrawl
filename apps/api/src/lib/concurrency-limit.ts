@@ -9,6 +9,7 @@ const constructQueueKey = (team_id: string) =>
 const stalledJobTimeoutMs = 2 * 60 * 1000;
 
 export function getConcurrencyLimitMax(plan: string): number {
+  if (plan === "growth") return 100;
   return getRateLimiterPoints(RateLimiterMode.Scrape, undefined, plan);
 }
 
