@@ -90,10 +90,10 @@ export async function performExtraction(
     extractId,
   });
 
-  if (request.cacheMode == "load" && request.cacheKey) {
+  if (request.__experimental_cacheMode == "load" && request.__experimental_cacheKey) {
     logger.debug("Loading cached docs...");
     try {
-      const cache = await getCachedDocs(request.urls, request.cacheKey);
+      const cache = await getCachedDocs(request.urls, request.__experimental_cacheKey);
       for (const doc of cache) {
         if (doc.metadata.url) {
           docsMap.set(normalizeUrl(doc.metadata.url), doc);
@@ -564,7 +564,7 @@ export async function performExtraction(
 
       for (const doc of results) {
         if (doc?.metadata?.url) {
-          docsMap.set(doc.metadata.url, doc);
+          docsMap.set(normalizeUrl(doc.metadata.url), doc);
         }
       }
       logger.debug("Updated docsMap.", { docsMapSize: docsMap.size }); // useful for error probing
@@ -763,10 +763,10 @@ export async function performExtraction(
 
   logger.debug("Done!");
 
-  if (request.cacheMode == "save" && request.cacheKey) {
+  if (request.__experimental_cacheMode == "save" && request.__experimental_cacheKey) {
     logger.debug("Saving cached docs...");
     try {
-      await saveCachedDocs([...docsMap.values()], request.cacheKey);
+      await saveCachedDocs([...docsMap.values()], request.__experimental_cacheKey);
     } catch (error) {
       logger.error("Error saving cached docs", { error });
     }

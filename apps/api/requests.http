@@ -4,7 +4,7 @@
 
 ### Scrape Website
 # @name scrape
-POST {{baseUrl}}/v1/scrape HTTP/1.1
+POST http://default-fire-engine-api-service:3002/scrape HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
@@ -88,13 +88,15 @@ content-type: application/json
       }
     },
     "required": ["blog_titles"]
-  },
-  "cacheMode": "load",
-  "cacheKey": "test-cache-key"
+  }
 }
 
 ###
 @extractFirecrawlId = {{extractFirecrawl.response.body.$.id}}
 # @name extractFirecrawlStatus 
 GET {{baseUrl}}/v1/extract/{{extractFirecrawlId}} HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+
+###
+DELETE {{baseUrl}}/v1/crawl/c94136f9-86c1-4a97-966c-1c8e0274778f HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
