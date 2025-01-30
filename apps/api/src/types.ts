@@ -158,6 +158,7 @@ export enum NotificationType {
   RATE_LIMIT_REACHED = "rateLimitReached",
   AUTO_RECHARGE_SUCCESS = "autoRechargeSuccess",
   AUTO_RECHARGE_FAILED = "autoRechargeFailed",
+  CONCURRENCY_LIMIT_REACHED = "concurrencyLimitReached",
 }
 
 export type ScrapeLog = {
@@ -181,12 +182,18 @@ export type PlanType =
   | "scale"
   | "hobby"
   | "standardnew"
+  | "standardNew"
   | "growth"
   | "growthdouble"
   | "etier2c"
   | "etier1a"
   | "etierscale1"
+  | "etier2a"
   | "free"
+  | "testSuite"
+  | "devB"
+  | "etier2d"
+  | "manual"
   | "extract_starter"
   | "extract_explorer"
   | "extract_pro"

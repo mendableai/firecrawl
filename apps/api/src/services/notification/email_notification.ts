@@ -7,6 +7,7 @@ import { sendSlackWebhook } from "../alerts/slack";
 import { getNotificationString } from "./notification_string";
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
 import { redlock } from "../redlock";
+import { redisConnection } from "../queue-service";
 
 const emailTemplates: Record<
   NotificationType,
@@ -32,6 +33,14 @@ const emailTemplates: Record<
   [NotificationType.AUTO_RECHARGE_FAILED]: {
     subject: "Auto recharge failed - Firecrawl",
     html: "Hey there,<br/><p>Your auto recharge failed. Please try again manually. If the issue persists, please reach out to us at <a href='mailto:help@firecrawl.com'>help@firecrawl.com</a></p><br/>Thanks,<br/>Firecrawl Team<br/>",
+  },
+  [NotificationType.CONCURRENCY_LIMIT_REACHED]: {
+    subject: "You could be scraping faster - Firecrawl",
+    html: `Hey there,
+    <br/>
+    <p>We've improved our system by transitioning to concurrency limits, allowing faster scraping by default and eliminating* the often rate limit errors.</p>
+    <p>You're hitting the concurrency limit for your plan quite often, which means Firecrawl can't scrape as fast as it could. But don't worry, it is not failing your requests and you are still getting your results.</p>
+    <p>This is just to let you know that you could be scraping more pages faster. Consider upgrading your plan at <a href='https://firecrawl.dev/pricing'>firecrawl.dev/pricing</a>.</p><br/>Thanks,<br/>Firecrawl Team<br/>`,
   },
 };
 
@@ -181,5 +190,106 @@ export async function sendNotificationInternal(
 
       return { success: true };
     },
+  );
+}
+
+
+export async function sendNotificationWithCustomDays(
+  team_id: string,
+  notificationType: NotificationType,
+  daysBetweenEmails: number,
+  bypassRecentChecks: boolean = false,
+) {
+  return withAuth(async (
+    team_id: string,
+    notificationType: NotificationType,
+    daysBetweenEmails: number,
+    bypassRecentChecks: boolean,
+  ) => {
+    const redisKey = "notification_sent:" + notificationType + ":" + team_id;
+
+    const didSendRecentNotification = (await redisConnection.get(redisKey)) !== null;
+
+    if (didSendRecentNotification && !bypassRecentChecks) {
+      logger.debug(`Notification already sent within the last ${daysBetweenEmails} days for team_id: ${team_id} and notificationType: ${notificationType}`);
+      return { success: true };
+    }
+    
+    await redisConnection.set(redisKey, "1", "EX", daysBetweenEmails * 24 * 60 * 60);
+
+    const now = new Date();
+    const pastDate = new Date(now.getTime() - daysBetweenEmails * 24 * 60 * 60 * 1000);
+
+    const { data: recentNotifications, error: recentNotificationsError } = await supabase_service
+      .from("user_notifications")
+      .select("*")
+      .eq("team_id", team_id)
+      .eq("notification_type", notificationType)
+      .gte("sent_date", pastDate.toISOString());
+
+    if (recentNotificationsError) {
+      logger.debug(`Error fetching recent notifications: ${recentNotificationsError}`);
+      await redisConnection.del(redisKey); // free up redis, let it try again
+      return { success: false };
+    }
+
+    if (recentNotifications.length > 0 && !bypassRecentChecks) {
+      logger.debug(`Notification already sent within the last ${daysBetweenEmails} days for team_id: ${team_id} and notificationType: ${notificationType}`);
+      await redisConnection.set(redisKey, "1", "EX", daysBetweenEmails * 24 * 60 * 60);
+      return { success: true };
+    }
+
+    console.log(
+      `Sending notification for team_id: ${team_id} and notificationType: ${notificationType}`,
+    );
+    // get the emails from the user with the team_id
+    const { data: emails, error: emailsError } = await supabase_service
+      .from("users")
+      .select("email")
+      .eq("team_id", team_id);
+
+    if (emailsError) {
+      logger.debug(`Error fetching emails: ${emailsError}`);
+      await redisConnection.del(redisKey); // free up redis, let it try again
+      return { success: false };
+    }
+
+    for (const email of emails) {
+      await sendEmailNotification(email.email, notificationType);
+    }
+
+    const { error: insertError } = await supabase_service
+      .from("user_notifications")
+      .insert([
+        {
+          team_id: team_id,
+          notification_type: notificationType,
+          sent_date: new Date().toISOString(),
+          timestamp: new Date().toISOString(),
+        },
+      ]);
+
+    if (process.env.SLACK_ADMIN_WEBHOOK_URL && emails.length > 0) {
+      sendSlackWebhook(
+        `${getNotificationString(notificationType)}: Team ${team_id}, with email ${emails[0].email}.`,
+        false,
+        process.env.SLACK_ADMIN_WEBHOOK_URL,
+      ).catch((error) => {
+        logger.debug(`Error sending slack notification: ${error}`);
+      });
+    }
+
+    if (insertError) {
+      logger.debug(`Error inserting notification record: ${insertError}`);
+      await redisConnection.del(redisKey); // free up redis, let it try again
+      return { success: false };
+    }
+
+    return { success: true };
+  }, undefined)(
+    team_id,
+    notificationType,
+    daysBetweenEmails,
+    bypassRecentChecks,
   );
 }

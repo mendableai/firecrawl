@@ -1,15 +1,18 @@
 import { Job, JobsOptions } from "bullmq";
 import { getScrapeQueue } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
-import { WebScraperOptions } from "../types";
+import { NotificationType, PlanType, WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
 import {
   cleanOldConcurrencyLimitEntries,
   getConcurrencyLimitActiveJobs,
-  getConcurrencyLimitMax,
+  getConcurrencyQueueJobsCount,
   pushConcurrencyLimitActiveJob,
   pushConcurrencyLimitedJob,
 } from "../lib/concurrency-limit";
+import { logger } from "../lib/logger";
+import { getConcurrencyLimitMax } from "./rate-limiter";
+import { sendNotificationWithCustomDays } from "./notification/email_notification";
 
 async function _addScrapeJobToConcurrencyQueue(
   webScraperOptions: any,
@@ -57,21 +60,34 @@ async function addScrapeJobRaw(
   jobPriority: number,
 ) {
   let concurrencyLimited = false;
+  let currentActiveConcurrency = 0;
+  let maxConcurrency = 0;
 
+  console.log("Concurrency check: ", webScraperOptions.team_id);
   if (
     webScraperOptions &&
-    webScraperOptions.team_id &&
-    webScraperOptions.plan
+    webScraperOptions.team_id
   ) {
     const now = Date.now();
-    const limit = await getConcurrencyLimitMax(webScraperOptions.plan);
+    maxConcurrency = getConcurrencyLimitMax(webScraperOptions.plan ?? "free", webScraperOptions.team_id);
     cleanOldConcurrencyLimitEntries(webScraperOptions.team_id, now);
-    concurrencyLimited =
-      (await getConcurrencyLimitActiveJobs(webScraperOptions.team_id, now))
-        .length >= limit;
+    currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(webScraperOptions.team_id, now)).length;
+    concurrencyLimited = currentActiveConcurrency >= maxConcurrency;
   }
 
+  const concurrencyQueueJobs = await getConcurrencyQueueJobsCount(webScraperOptions.team_id);
+
   if (concurrencyLimited) {
+    // Detect if they hit their concurrent limit
+    // If above by 2x, send them an email
+    // No need to 2x as if there are more than the max concurrency in the concurrency queue, it is already 2x
+    if(concurrencyQueueJobs > maxConcurrency) {
+      logger.info("Concurrency limited 2x (single) - ", "Concurrency queue jobs: ", concurrencyQueueJobs, "Max concurrency: ", maxConcurrency);
+      // sendNotificationWithCustomDays(webScraperOptions.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 10, false).catch((error) => {
+      //   logger.error("Error sending notification (concurrency limit reached): ", error);
+      // });
+    }
+
     await _addScrapeJobToConcurrencyQueue(
       webScraperOptions,
       options,
@@ -134,21 +150,32 @@ export async function addScrapeJobs(
   if (jobs.length === 0) return true;
 
   let countCanBeDirectlyAdded = Infinity;
+  let currentActiveConcurrency = 0;
+  let maxConcurrency = 0;
 
   if (jobs[0].data && jobs[0].data.team_id && jobs[0].data.plan) {
     const now = Date.now();
-    const limit = await getConcurrencyLimitMax(jobs[0].data.plan);
+    maxConcurrency = getConcurrencyLimitMax(jobs[0].data.plan as PlanType, jobs[0].data.team_id);
     cleanOldConcurrencyLimitEntries(jobs[0].data.team_id, now);
 
+    currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(jobs[0].data.team_id, now)).length;
+
     countCanBeDirectlyAdded = Math.max(
-      limit -
-        (await getConcurrencyLimitActiveJobs(jobs[0].data.team_id, now)).length,
+      maxConcurrency - currentActiveConcurrency,
       0,
     );
   }
 
   const addToBull = jobs.slice(0, countCanBeDirectlyAdded);
   const addToCQ = jobs.slice(countCanBeDirectlyAdded);
+
+  // equals 2x the max concurrency
+  if(addToCQ.length > maxConcurrency) {
+    logger.info("Concurrency limited 2x (multiple) - ", "Concurrency queue jobs: ", addToCQ.length, "Max concurrency: ", maxConcurrency);
+    // sendNotificationWithCustomDays(jobs[0].data.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 10, false).catch((error) => {
+    //   logger.error("Error sending notification (concurrency limit reached): ", error);
+    // });
+  }
 
   await Promise.all(
     addToBull.map(async (job) => {

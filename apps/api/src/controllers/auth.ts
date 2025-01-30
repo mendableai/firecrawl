@@ -1,5 +1,5 @@
 import { parseApi } from "../lib/parseApi";
-import { getRateLimiter } from "../services/rate-limiter";
+import { getRateLimiter, isTestSuiteToken } from "../services/rate-limiter";
 import {
   AuthResponse,
   NotificationType,
@@ -343,6 +343,16 @@ export async function supaAuthenticateUser(
     // }
 
     // return { success: false, error: "Unauthorized: Invalid token", status: 401 };
+  }
+
+  if (token && isTestSuiteToken(token)) {
+    return {
+      success: true,
+      team_id: teamId ?? undefined,
+      // Now we have a test suite plan
+      plan: "testSuite",
+      chunk
+    };
   }
 
   return {

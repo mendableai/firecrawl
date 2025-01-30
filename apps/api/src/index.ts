@@ -262,4 +262,4 @@ logger.info(`Worker ${process.pid} started`);
 // sq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
 // sq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
 // sq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
-//
+// 
