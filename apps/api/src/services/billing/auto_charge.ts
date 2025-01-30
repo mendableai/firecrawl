@@ -36,7 +36,7 @@ export async function autoCharge(
   const cooldownKey = `auto-recharge-cooldown:${chunk.team_id}`;
   const hourlyCounterKey = `auto-recharge-hourly:${chunk.team_id}`;
 
-  if (chunk.team_id === "285bb597-6eaf-4b96-801c-51461fc3c543") {
+  if (chunk.team_id === "285bb597-6eaf-4b96-801c-51461fc3c543" || chunk.team_id === "dec639a0-98ca-4995-95b5-48ac1ffab5b7") {
     return {
       success: false,
       message: "Auto-recharge failed: blocked team",
@@ -46,14 +46,11 @@ export async function autoCharge(
   }
 
   try {
-    // Check hourly rate limit
-    const hourlyCharges = await redisRateLimitClient.incr(hourlyCounterKey);
-    if (hourlyCharges === 1) {
-      // Set expiry for the counter if it's new
-      await redisRateLimitClient.expire(hourlyCounterKey, HOURLY_COUNTER_EXPIRY);
-    }
-    
-    if (hourlyCharges > MAX_CHARGES_PER_HOUR) {
+    // Check hourly rate limit first without incrementing
+    const currentCharges = await redisRateLimitClient.get(hourlyCounterKey);
+    const hourlyCharges = currentCharges ? parseInt(currentCharges) : 0;
+
+    if (hourlyCharges >= MAX_CHARGES_PER_HOUR) {
       logger.warn(
         `Auto-recharge for team ${chunk.team_id} exceeded hourly limit of ${MAX_CHARGES_PER_HOUR}`,
       );
@@ -91,9 +88,10 @@ export async function autoCharge(
         remainingCredits: number;
         chunk: AuthCreditUsageChunk;
       }> => {
-        // Recheck the condition inside the lock to prevent race conditions
+        // Recheck all conditions inside the lock to prevent race conditions
         const updatedChunk = await getACUC(chunk.api_key, false, false);
-        // recheck cooldown
+
+        // Recheck cooldown
         const cooldownValue = await getValue(cooldownKey);
         if (cooldownValue) {
           logger.info(
@@ -106,6 +104,19 @@ export async function autoCharge(
             chunk,
           };
         }
+
+        // Recheck hourly limit inside lock
+        const currentCharges = await redisRateLimitClient.get(hourlyCounterKey);
+        const hourlyCharges = currentCharges ? parseInt(currentCharges) : 0;
+        if (hourlyCharges >= MAX_CHARGES_PER_HOUR) {
+          return {
+            success: false,
+            message: "Auto-recharge hourly limit exceeded",
+            remainingCredits: chunk.remaining_credits,
+            chunk,
+          };
+        }
+
         if (
           updatedChunk &&
           updatedChunk.remaining_credits < autoRechargeThreshold
@@ -131,14 +142,15 @@ export async function autoCharge(
 
             if (customer && customer.stripe_customer_id) {
               let issueCreditsSuccess = false;
+
+              // Set cooldown BEFORE attempting payment
+              await setValue(cooldownKey, "true", AUTO_RECHARGE_COOLDOWN);
+
               // Attempt to create a payment intent
               const paymentStatus = await createPaymentIntent(
                 chunk.team_id,
                 customer.stripe_customer_id,
               );
-
-              // set cooldown
-              await setValue(cooldownKey, "true", AUTO_RECHARGE_COOLDOWN);
 
               // If payment is successful or requires further action, issue credits
               if (
@@ -163,7 +175,10 @@ export async function autoCharge(
               if (issueCreditsSuccess) {
                 // Increment hourly counter and set expiry if it doesn't exist
                 await redisRateLimitClient.incr(hourlyCounterKey);
-                await redisRateLimitClient.expire(hourlyCounterKey, HOURLY_COUNTER_EXPIRY);
+                await redisRateLimitClient.expire(
+                  hourlyCounterKey,
+                  HOURLY_COUNTER_EXPIRY,
+                );
 
                 await sendNotification(
                   chunk.team_id,
@@ -188,7 +203,9 @@ export async function autoCharge(
                       false,
                       process.env.SLACK_ADMIN_WEBHOOK_URL,
                     ).catch((error) => {
-                      logger.debug(`Error sending slack notification: ${error}`);
+                      logger.debug(
+                        `Error sending slack notification: ${error}`,
+                      );
                     });
 
                     // Set cooldown for 1 hour
