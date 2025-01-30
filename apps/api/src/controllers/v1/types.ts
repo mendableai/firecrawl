@@ -34,7 +34,7 @@ export const url = z.preprocess(
     .url()
     .regex(/^https?:\/\//, "URL uses unsupported protocol")
     .refine(
-      (x) => /\.[a-z]{2,}([\/?#]|$)/i.test(x),
+      (x) => /\.[a-zA-Z\u0400-\u04FF\u0500-\u052F\u2DE0-\u2DFF\uA640-\uA69F]{2,}(:\d+)?([\/?#]|$)/i.test(x),
       "URL must have a valid top-level domain or be a valid path",
     )
     .refine((x) => {
@@ -57,10 +57,11 @@ export const extractOptions = z
     schema: z.any().optional(),
     systemPrompt: z
       .string()
+      .max(10000)
       .default(
         "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required.",
       ),
-    prompt: z.string().optional(),
+    prompt: z.string().max(10000).optional(),
   })
   .strict(strictMessage);
 
@@ -125,6 +126,7 @@ export const scrapeOptions = z
         "screenshot",
         "screenshot@fullPage",
         "extract",
+        "json",
       ])
       .array()
       .optional()
@@ -139,7 +141,10 @@ export const scrapeOptions = z
     onlyMainContent: z.boolean().default(true),
     timeout: z.number().int().positive().finite().safe().optional(),
     waitFor: z.number().int().nonnegative().finite().safe().default(0),
+    // Deprecate this to jsonOptions
     extract: extractOptions.optional(),
+    // New
+    jsonOptions: extractOptions.optional(),
     mobile: z.boolean().default(false),
     parsePDF: z.boolean().default(true),
     actions: actionsSchema.optional(),
@@ -150,13 +155,13 @@ export const scrapeOptions = z
           .string()
           .optional()
           .refine(
-            (val) => !val || Object.keys(countries).includes(val.toUpperCase()),
+            (val) => !val || Object.keys(countries).includes(val.toUpperCase()) || val === "US-generic",
             {
               message:
                 "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
             },
           )
-          .transform((val) => (val ? val.toUpperCase() : "US")),
+          .transform((val) => (val ? val.toUpperCase() : "US-generic")),
         languages: z.string().array().optional(),
       })
       .optional(),
@@ -174,35 +179,65 @@ export const scrapeOptions = z
                 "Invalid country code. Please use a valid ISO 3166-1 alpha-2 country code.",
             },
           )
-          .transform((val) => (val ? val.toUpperCase() : "US")),
+          .transform((val) => (val ? val.toUpperCase() : "US-generic")),
         languages: z.string().array().optional(),
       })
       .optional(),
     skipTlsVerification: z.boolean().default(false),
     removeBase64Images: z.boolean().default(true),
     fastMode: z.boolean().default(false),
+    useMock: z.string().optional(),
+    blockAds: z.boolean().default(true),
   })
   .strict(strictMessage);
 
 export type ScrapeOptions = z.infer<typeof scrapeOptions>;
+
+import Ajv from "ajv";
+
+const ajv = new Ajv();
 
 export const extractV1Options = z
   .object({
     urls: url
       .array()
       .max(10, "Maximum of 10 URLs allowed per request while in beta."),
-    prompt: z.string().optional(),
-    systemPrompt: z.string().optional(),
-    schema: z.any().optional(),
+    prompt: z.string().max(10000).optional(),
+    systemPrompt: z.string().max(10000).optional(),
+    schema: z
+      .any()
+      .optional()
+      .refine(
+        (val) => {
+          if (!val) return true; // Allow undefined schema
+          try {
+            const validate = ajv.compile(val);
+            return typeof validate === "function";
+          } catch (e) {
+            return false;
+          }
+        },
+        {
+          message: "Invalid JSON schema.",
+        },
+      ),
     limit: z.number().int().positive().finite().safe().optional(),
     ignoreSitemap: z.boolean().default(false),
     includeSubdomains: z.boolean().default(true),
     allowExternalLinks: z.boolean().default(false),
+    enableWebSearch: z.boolean().default(false),
     origin: z.string().optional().default("api"),
     urlTrace: z.boolean().default(false),
+    __experimental_streamSteps: z.boolean().default(false),
+    __experimental_llmUsage: z.boolean().default(false),
+    __experimental_showSources: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().default(60000),
   })
-  .strict(strictMessage);
+  .strict(strictMessage)
+  .transform((obj) => ({
+    ...obj,
+    allowExternalLinks: obj.allowExternalLinks || obj.enableWebSearch,
+  }));
 
 export type ExtractV1Options = z.infer<typeof extractV1Options>;
 export const extractRequestSchema = extractV1Options;
@@ -220,20 +255,49 @@ export const scrapeRequestSchema = scrapeOptions
     (obj) => {
       const hasExtractFormat = obj.formats?.includes("extract");
       const hasExtractOptions = obj.extract !== undefined;
+      const hasJsonFormat = obj.formats?.includes("json");
+      const hasJsonOptions = obj.jsonOptions !== undefined;
       return (
         (hasExtractFormat && hasExtractOptions) ||
-        (!hasExtractFormat && !hasExtractOptions)
+        (!hasExtractFormat && !hasExtractOptions) ||
+        (hasJsonFormat && hasJsonOptions) ||
+        (!hasJsonFormat && !hasJsonOptions)
       );
     },
     {
       message:
-        "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
+        "When 'extract' or 'json' format is specified, corresponding options must be provided, and vice versa",
     },
   )
   .transform((obj) => {
-    if ((obj.formats?.includes("extract") || obj.extract) && !obj.timeout) {
-      return { ...obj, timeout: 60000 };
+    // Handle timeout
+    if (
+      (obj.formats?.includes("extract") ||
+        obj.extract ||
+        obj.formats?.includes("json") ||
+        obj.jsonOptions) &&
+      !obj.timeout
+    ) {
+      obj = { ...obj, timeout: 60000 };
     }
+
+    if (obj.formats?.includes("json")) {
+      obj.formats.push("extract");
+    }
+
+    // Convert JSON options to extract options if needed
+    if (obj.jsonOptions && !obj.extract) {
+      obj = {
+        ...obj,
+        extract: {
+          prompt: obj.jsonOptions.prompt,
+          systemPrompt: obj.jsonOptions.systemPrompt,
+          schema: obj.jsonOptions.schema,
+          mode: "llm",
+        },
+      };
+    }
+
     return obj;
   });
 
@@ -368,6 +432,7 @@ export const mapRequestSchema = crawlerOptions
     ignoreSitemap: z.boolean().default(false),
     sitemapOnly: z.boolean().default(false),
     limit: z.number().min(1).max(5000).default(5000),
+    timeout: z.number().positive().finite().optional(),
   })
   .strict(strictMessage);
 
@@ -377,6 +442,7 @@ export const mapRequestSchema = crawlerOptions
 // };
 
 export type MapRequest = z.infer<typeof mapRequestSchema>;
+export type MapRequestInput = z.input<typeof mapRequestSchema>;
 
 export type Document = {
   title?: string;
@@ -388,6 +454,7 @@ export type Document = {
   links?: string[];
   screenshot?: string;
   extract?: any;
+  json?: any;
   warning?: string;
   actions?: {
     screenshots?: string[];
@@ -426,6 +493,7 @@ export type Document = {
     url?: string;
     sourceURL?: string;
     statusCode: number;
+    scrapeId?: string;
     error?: string;
     [key: string]: string | string[] | number | undefined;
   };
@@ -434,7 +502,7 @@ export type Document = {
     description: string;
     url: string;
   };
-}
+};
 
 export type ErrorResponse = {
   success: false;
@@ -459,7 +527,7 @@ export interface ScrapeResponseRequestTest {
 
 export interface URLTrace {
   url: string;
-  status: 'mapped' | 'scraped' | 'error';
+  status: "mapped" | "scraped" | "error";
   timing: {
     discoveredAt: string;
     scrapedAt?: string;
@@ -474,15 +542,20 @@ export interface URLTrace {
   };
   relevanceScore?: number;
   usedInCompletion?: boolean;
+  extractedFields?: string[];
 }
 
 export interface ExtractResponse {
   success: boolean;
+  error?: string;
   data?: any;
   scrape_id?: string;
+  id?: string;
   warning?: string;
-  error?: string;
   urlTrace?: URLTrace[];
+  sources?: {
+    [key: string]: string[];
+  };
 }
 
 export interface ExtractResponseRequestTest {
@@ -543,6 +616,18 @@ export type CrawlStatusResponse =
       expiresAt: string;
       next?: string;
       data: Document[];
+    };
+
+export type CrawlErrorsResponse =
+  | ErrorResponse
+  | {
+      errors: {
+        id: string;
+        timestamp?: string;
+        url: string;
+        error: string;
+      }[];
+      robotsBlocked: string[];
     };
 
 type AuthObject = {
@@ -767,28 +852,46 @@ export function toLegacyDocument(
   };
 }
 
-export const searchRequestSchema = z.object({
-  query: z.string(),
-  limit: z.number().int().positive().finite().safe().max(10).optional().default(5),
-  tbs: z.string().optional(),
-  filter: z.string().optional(),
-  lang: z.string().optional().default("en"),
-  country: z.string().optional().default("us"),
-  location: z.string().optional(),
-  origin: z.string().optional().default("api"),
-  timeout: z.number().int().positive().finite().safe().default(60000),
-  scrapeOptions: scrapeOptions.extend({
-    formats: z.array(z.enum([
-      "markdown",
-      "html", 
-      "rawHtml",
-      "links",
-      "screenshot",
-      "screenshot@fullPage",
-      "extract"
-    ])).default([])
-  }).default({}),
-}).strict("Unrecognized key in body -- please review the v1 API documentation for request body changes");
+export const searchRequestSchema = z
+  .object({
+    query: z.string(),
+    limit: z
+      .number()
+      .int()
+      .positive()
+      .finite()
+      .safe()
+      .max(10)
+      .optional()
+      .default(5),
+    tbs: z.string().optional(),
+    filter: z.string().optional(),
+    lang: z.string().optional().default("en"),
+    country: z.string().optional().default("us"),
+    location: z.string().optional(),
+    origin: z.string().optional().default("api"),
+    timeout: z.number().int().positive().finite().safe().default(60000),
+    scrapeOptions: scrapeOptions
+      .extend({
+        formats: z
+          .array(
+            z.enum([
+              "markdown",
+              "html",
+              "rawHtml",
+              "links",
+              "screenshot",
+              "screenshot@fullPage",
+              "extract",
+            ]),
+          )
+          .default([]),
+      })
+      .default({}),
+  })
+  .strict(
+    "Unrecognized key in body -- please review the v1 API documentation for request body changes",
+  );
 
 export type SearchRequest = z.infer<typeof searchRequestSchema>;
 
@@ -799,3 +902,11 @@ export type SearchResponse =
       warning?: string;
       data: Document[];
     };
+
+export type TokenUsage = {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  step?: string;
+  model?: string;
+};

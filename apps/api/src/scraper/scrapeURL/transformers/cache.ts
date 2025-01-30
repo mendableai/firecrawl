@@ -24,7 +24,6 @@ export function saveToCache(meta: Meta, document: Document): Document {
     return document;
   }
 
-
   const key = cacheKey(meta.url, meta.options, meta.internalOptions);
 
   if (key !== null) {

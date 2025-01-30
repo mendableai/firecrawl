@@ -38,7 +38,7 @@ const useCache =
   process.env.CACHE_REDIS_URL !== undefined;
 
 export const engines: Engine[] = [
-  ...(useCache ? [ "cache" as const ] : []),
+  ...(useCache ? ["cache" as const] : []),
   ...(useFireEngine
     ? [
         "fire-engine;chrome-cdp" as const,
@@ -298,11 +298,12 @@ export function buildFallbackList(meta: Meta): {
   engine: Engine;
   unsupportedFeatures: Set<FeatureFlag>;
 }[] {
+  const _engines = [...engines];
 
   if (meta.internalOptions.useCache !== true) {
-    const cacheIndex = engines.indexOf("cache");
+    const cacheIndex = _engines.indexOf("cache");
     if (cacheIndex !== -1) {
-      engines.splice(cacheIndex, 1);
+      _engines.splice(cacheIndex, 1);
     }
   } else {
     meta.logger.debug("Cache engine enabled by useCache option");
@@ -320,8 +321,8 @@ export function buildFallbackList(meta: Meta): {
 
   const currentEngines =
     meta.internalOptions.forceEngine !== undefined
-      ? [meta.internalOptions.forceEngine]
-      : engines;
+      ? (Array.isArray(meta.internalOptions.forceEngine) ? meta.internalOptions.forceEngine : [meta.internalOptions.forceEngine])
+      : _engines;
 
   for (const engine of currentEngines) {
     const supportedFlags = new Set([
@@ -372,11 +373,13 @@ export function buildFallbackList(meta: Meta): {
     );
   }
 
-  selectedEngines.sort(
-    (a, b) =>
-      b.supportScore - a.supportScore ||
-      engineOptions[b.engine].quality - engineOptions[a.engine].quality,
-  );
+  if (meta.internalOptions.forceEngine === undefined) { // retain force engine order
+    selectedEngines.sort(
+      (a, b) =>
+        b.supportScore - a.supportScore ||
+        engineOptions[b.engine].quality - engineOptions[a.engine].quality,
+    );
+  }
 
   return selectedEngines;
 }

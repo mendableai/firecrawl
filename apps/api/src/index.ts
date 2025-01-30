@@ -4,7 +4,11 @@ import * as Sentry from "@sentry/node";
 import express, { NextFunction, Request, Response } from "express";
 import bodyParser from "body-parser";
 import cors from "cors";
-import { getScrapeQueue } from "./services/queue-service";
+import {
+  getExtractQueue,
+  getScrapeQueue,
+  getIndexQueue,
+} from "./services/queue-service";
 import { v0Router } from "./routes/v0";
 import os from "os";
 import { logger } from "./lib/logger";
@@ -17,6 +21,7 @@ import expressWs from "express-ws";
 import { ErrorResponse, ResponseWithSentry } from "./controllers/v1/types";
 import { ZodError } from "zod";
 import { v4 as uuidv4 } from "uuid";
+import { RateLimiterMode } from "./types";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -45,7 +50,11 @@ const serverAdapter = new ExpressAdapter();
 serverAdapter.setBasePath(`/admin/${process.env.BULL_AUTH_KEY}/queues`);
 
 const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
-  queues: [new BullAdapter(getScrapeQueue())],
+  queues: [
+    new BullAdapter(getScrapeQueue()),
+    new BullAdapter(getExtractQueue()),
+    new BullAdapter(getIndexQueue()),
+  ],
   serverAdapter: serverAdapter,
 });
 
@@ -245,7 +254,6 @@ app.use(
 );
 
 logger.info(`Worker ${process.pid} started`);
-
 // const sq = getScrapeQueue();
 
 // sq.on("waiting", j => ScrapeEvents.logJobEvent(j, "waiting"));

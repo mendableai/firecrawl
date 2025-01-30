@@ -11,6 +11,7 @@ import {
 } from "./types";
 import {
   addCrawlJobs,
+  finishCrawlKickoff,
   getCrawl,
   lockURLs,
   saveCrawl,
@@ -130,6 +131,8 @@ export async function batchScrapeController(
       },
     };
   });
+
+  await finishCrawlKickoff(id);
 
   logger.debug("Locking URLs...");
   await lockURLs(

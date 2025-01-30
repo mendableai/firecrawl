@@ -1,11 +1,37 @@
-import { load } from "cheerio";
+import { load } from "cheerio"; // rustified
 import { Document } from "../../../controllers/v1/types";
 import { Meta } from "..";
+import { extractMetadata as _extractMetadata } from "../../../lib/html-transformer";
 
-export function extractMetadata(
+export async function extractMetadataRust(
   meta: Meta,
   html: string,
-): Partial<Document["metadata"]> {
+): Promise<Partial<Document["metadata"]>> {
+  const fromRust = await _extractMetadata(html);
+
+  return {
+    ...fromRust,
+    ...(fromRust.favicon ? {
+      favicon: new URL(fromRust.favicon, meta.url)
+    } : {}),
+    scrapeId: meta.id,
+  };
+}
+
+
+export async function extractMetadata(
+  meta: Meta,
+  html: string,
+): Promise<Partial<Document["metadata"]>> {
+  try {
+    return await extractMetadataRust(meta, html);
+  } catch (error) {
+    meta.logger.error("Failed to call html-transformer! Falling back to cheerio...", {
+      error,
+      module: "scrapeURL", method: "extractMetadata"
+    });
+  }
+
   let title: string | undefined = undefined;
   let description: string | undefined = undefined;
   let favicon: string | undefined = undefined;
@@ -43,11 +69,16 @@ export function extractMetadata(
   try {
     title = soup("title").first().text().trim() || undefined;
     description = soup('meta[name="description"]').attr("content") || undefined;
-    
-    const faviconLink = soup('link[rel="icon"]').attr("href") || soup('link[rel*="icon"]').first().attr("href") || undefined;
+
+    const faviconLink =
+      soup('link[rel="icon"]').attr("href") ||
+      soup('link[rel*="icon"]').first().attr("href") ||
+      undefined;
     if (faviconLink) {
       const baseUrl = new URL(meta.url).origin;
-      favicon = faviconLink.startsWith('http') ? faviconLink : `${baseUrl}${faviconLink}`;
+      favicon = faviconLink.startsWith("http")
+        ? faviconLink
+        : `${baseUrl}${faviconLink}`;
     }
 
     // Assuming the language is part of the URL as per the regex pattern
@@ -156,6 +187,7 @@ export function extractMetadata(
     publishedTime,
     articleTag,
     articleSection,
+    scrapeId: meta.id,
     ...customMetadata,
   };
 }

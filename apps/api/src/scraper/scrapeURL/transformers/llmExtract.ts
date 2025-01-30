@@ -1,12 +1,33 @@
 import OpenAI from "openai";
 import { encoding_for_model } from "@dqbd/tiktoken";
 import { TiktokenModel } from "@dqbd/tiktoken";
-import { Document, ExtractOptions } from "../../../controllers/v1/types";
+import {
+  Document,
+  ExtractOptions,
+  TokenUsage,
+} from "../../../controllers/v1/types";
 import { Logger } from "winston";
 import { EngineResultsTracker, Meta } from "..";
+import { logger } from "../../../lib/logger";
+import { modelPrices } from "../../../lib/extract/usage/model-prices";
 
-const maxTokens = 32000;
-const modifier = 4;
+// Get max tokens from model prices
+const getModelLimits = (model: string) => {
+  const modelConfig = modelPrices[model];
+  if (!modelConfig) {
+    // Default fallback values
+    return {
+      maxInputTokens: 8192,
+      maxOutputTokens: 4096,
+      maxTokens: 12288,
+    };
+  }
+  return {
+    maxInputTokens: modelConfig.max_input_tokens || modelConfig.max_tokens,
+    maxOutputTokens: modelConfig.max_output_tokens || modelConfig.max_tokens,
+    maxTokens: modelConfig.max_tokens,
+  };
+};
 
 export class LLMRefusalError extends Error {
   public refusal: string;
@@ -71,17 +92,30 @@ export async function generateOpenAICompletions(
   markdown?: string,
   previousWarning?: string,
   isExtractEndpoint?: boolean,
-): Promise<{ extract: any; numTokens: number; warning: string | undefined }> {
+  model: TiktokenModel = (process.env.MODEL_NAME as TiktokenModel) ??
+    "gpt-4o-mini",
+): Promise<{
+  extract: any;
+  numTokens: number;
+  warning: string | undefined;
+  totalUsage: TokenUsage;
+  model: string;
+}> {
   let extract: any;
   let warning: string | undefined;
 
   const openai = new OpenAI();
-  const model: TiktokenModel =
-    (process.env.MODEL_NAME as TiktokenModel) ?? "gpt-4o-mini";
 
   if (markdown === undefined) {
     throw new Error("document.markdown is undefined -- this is unexpected");
   }
+
+  const { maxInputTokens, maxOutputTokens } = getModelLimits(model);
+
+  // Ratio of 4 was way too high, now 3.5.
+  const modifier = 3.5; // tokens to characters ratio
+  // Calculate 80% of max input tokens (for content)
+  const maxTokensSafe = Math.floor(maxInputTokens * 0.8);
 
   // count number of tokens
   let numTokens = 0;
@@ -95,11 +129,11 @@ export async function generateOpenAICompletions(
   } catch (error) {
     logger.warn("Calculating num tokens of string failed", { error, markdown });
 
-    markdown = markdown.slice(0, maxTokens * modifier);
+    markdown = markdown.slice(0, maxTokensSafe * modifier);
 
     let w =
       "Failed to derive number of LLM tokens the extraction might use -- the input has been automatically trimmed to the maximum number of tokens (" +
-      maxTokens +
+      maxTokensSafe +
       ") we support.";
     warning = previousWarning === undefined ? w : w + " " + previousWarning;
   } finally {
@@ -107,15 +141,15 @@ export async function generateOpenAICompletions(
     encoder.free();
   }
 
-  if (numTokens > maxTokens) {
+  if (numTokens > maxTokensSafe) {
     // trim the document to the maximum number of tokens, tokens != characters
-    markdown = markdown.slice(0, maxTokens * modifier);
+    markdown = markdown.slice(0, maxTokensSafe * modifier);
 
     const w =
       "The extraction content would have used more tokens (" +
       numTokens +
       ") than the maximum we allow (" +
-      maxTokens +
+      maxTokensSafe +
       "). -- the input has been automatically trimmed.";
     warning = previousWarning === undefined ? w : w + " " + previousWarning;
   }
@@ -123,7 +157,7 @@ export async function generateOpenAICompletions(
   let schema = options.schema;
   if (schema) {
     schema = removeDefaultProperty(schema);
-}
+  }
 
   if (schema && schema.type === "array") {
     schema = {
@@ -140,10 +174,10 @@ export async function generateOpenAICompletions(
       properties: Object.fromEntries(
         Object.entries(schema).map(([key, value]) => {
           return [key, removeDefaultProperty(value)];
-        })
+        }),
       ),
       required: Object.keys(schema),
-      additionalProperties: false
+      additionalProperties: false,
     };
   }
 
@@ -173,7 +207,7 @@ export async function generateOpenAICompletions(
       ? {
           type: "json_schema",
           json_schema: {
-            name: "websiteContent",
+            name: "schema",
             schema: schema,
             strict: true,
           },
@@ -207,6 +241,9 @@ export async function generateOpenAICompletions(
     }
   }
 
+  const promptTokens = jsonCompletion.usage?.prompt_tokens ?? 0;
+  const completionTokens = jsonCompletion.usage?.completion_tokens ?? 0;
+
   // If the users actually wants the items object, they can specify it as 'required' in the schema
   // otherwise, we just return the items array
   if (
@@ -216,7 +253,19 @@ export async function generateOpenAICompletions(
   ) {
     extract = extract?.items;
   }
-  return { extract, warning, numTokens };
+  // num tokens (just user prompt tokenized) | deprecated
+  // totalTokens = promptTokens + completionTokens
+  return {
+    extract,
+    warning,
+    numTokens,
+    totalUsage: {
+      promptTokens,
+      completionTokens,
+      totalTokens: promptTokens + completionTokens,
+    },
+    model,
+  };
 }
 
 export async function performLLMExtract(
@@ -232,7 +281,12 @@ export async function performLLMExtract(
       document.markdown,
       document.warning,
     );
-    document.extract = extract;
+
+    if (meta.options.formats.includes("json")) {
+      document.json = extract;
+    } else {
+      document.extract = extract;
+    }
     document.warning = warning;
   }
 
@@ -240,17 +294,91 @@ export async function performLLMExtract(
 }
 
 export function removeDefaultProperty(schema: any): any {
-  if (typeof schema !== 'object' || schema === null) return schema;
+  if (typeof schema !== "object" || schema === null) return schema;
 
   const { default: _, ...rest } = schema;
 
   for (const key in rest) {
-      if (Array.isArray(rest[key])) {
-          rest[key] = rest[key].map((item: any) => removeDefaultProperty(item));
-      } else if (typeof rest[key] === 'object' && rest[key] !== null) {
-          rest[key] = removeDefaultProperty(rest[key]);
-      }
+    if (Array.isArray(rest[key])) {
+      rest[key] = rest[key].map((item: any) => removeDefaultProperty(item));
+    } else if (typeof rest[key] === "object" && rest[key] !== null) {
+      rest[key] = removeDefaultProperty(rest[key]);
+    }
   }
 
   return rest;
+}
+
+export async function generateSchemaFromPrompt(prompt: string): Promise<any> {
+  const openai = new OpenAI();
+
+  const temperatures = [0, 0.1, 0.3]; // Different temperatures to try
+  let lastError: Error | null = null;
+
+  for (const temp of temperatures) {
+    try {
+      const result = await openai.beta.chat.completions.parse({
+        model: "gpt-4o",
+        temperature: temp,
+        messages: [
+          {
+            role: "system",
+            content: `You are a schema generator for a web scraping system. Generate a JSON schema based on the user's prompt.
+Consider:
+1. The type of data being requested
+2. Required fields vs optional fields
+3. Appropriate data types for each field
+4. Nested objects and arrays where appropriate
+
+Valid JSON schema, has to be simple. No crazy properties. OpenAI has to support it.
+Supported types
+The following types are supported for Structured Outputs:
+
+String
+Number
+Boolean
+Integer
+Object
+Array
+Enum
+anyOf
+
+Formats are not supported. Min/max are not supported. Anything beyond the above is not supported. Keep it simple with types and descriptions.
+Optionals are not supported.
+DO NOT USE FORMATS.
+Keep it simple. Don't create too many properties, just the ones that are needed. Don't invent properties.
+Return a valid JSON schema object with properties that would capture the information requested in the prompt.`,
+          },
+          {
+            role: "user",
+            content: `Generate a JSON schema for extracting the following information: ${prompt}`,
+          },
+        ],
+        response_format: {
+          type: "json_object",
+        },
+      });
+
+      if (result.choices[0].message.refusal !== null) {
+        throw new Error("LLM refused to generate schema");
+      }
+
+      let schema;
+      try {
+        schema = JSON.parse(result.choices[0].message.content ?? "");
+        return schema;
+      } catch (e) {
+        throw new Error("Failed to parse schema JSON from LLM response");
+      }
+    } catch (error) {
+      lastError = error as Error;
+      logger.warn(`Failed attempt with temperature ${temp}: ${error.message}`);
+      continue;
+    }
+  }
+
+  // If we get here, all attempts failed
+  throw new Error(
+    `Failed to generate schema after all attempts. Last error: ${lastError?.message}`,
+  );
 }

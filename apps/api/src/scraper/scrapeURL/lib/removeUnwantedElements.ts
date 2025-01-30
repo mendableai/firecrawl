@@ -1,7 +1,9 @@
 // TODO: refactor
 
-import { AnyNode, Cheerio, load } from "cheerio";
+import { AnyNode, Cheerio, load } from "cheerio"; // rustified
 import { ScrapeOptions } from "../../../controllers/v1/types";
+import { transformHtml } from "../../../lib/html-transformer";
+import { logger } from "../../../lib/logger";
 
 const excludeNonMainTags = [
   "header",
@@ -49,12 +51,29 @@ const excludeNonMainTags = [
 
 const forceIncludeMainTags = ["#main"];
 
-export const removeUnwantedElements = (
+export const htmlTransform = async (
   html: string,
+  url: string,
   scrapeOptions: ScrapeOptions,
 ) => {
-  const soup = load(html);
+  try {
+    return await transformHtml({
+      html,
+      url,
+      include_tags: (scrapeOptions.includeTags ?? []).map(x => x.trim()).filter((x) => x.length !== 0),
+      exclude_tags: (scrapeOptions.excludeTags ?? []).map(x => x.trim()).filter((x) => x.length !== 0),
+      only_main_content: scrapeOptions.onlyMainContent,
+    })
+  } catch (error) {
+    logger.error("Failed to call html-transformer! Falling back to cheerio...", {
+        error,
+        module: "scrapeURL", method: "extractLinks"
+      });
+  }
 
+  let soup = load(html);
+
+  // remove unwanted elements
   if (
     scrapeOptions.includeTags &&
     scrapeOptions.includeTags.filter((x) => x.trim().length !== 0).length > 0
@@ -66,7 +85,8 @@ export const removeUnwantedElements = (
         newRoot.append(soup(element).clone());
       });
     });
-    return newRoot.html() ?? "";
+
+    soup = load(newRoot.html() ?? "");
   }
 
   soup("script, style, noscript, meta, head").remove();
@@ -113,6 +133,42 @@ export const removeUnwantedElements = (
       elementsToRemove.remove();
     });
   }
+
+  // always return biggest image
+  soup("img[srcset]").each((_, el) => {
+    const sizes = el.attribs.srcset.split(",").map((x) => {
+      const tok = x.trim().split(" ");
+      return {
+        url: tok[0],
+        size: parseInt((tok[1] ?? "1x").slice(0, -1), 10),
+        isX: (tok[1] ?? "").endsWith("x"),
+      };
+    });
+
+    if (sizes.every((x) => x.isX) && el.attribs.src) {
+      sizes.push({
+        url: el.attribs.src,
+        size: 1,
+        isX: true,
+      });
+    }
+
+    sizes.sort((a, b) => b.size - a.size);
+
+    el.attribs.src = sizes[0]?.url;
+  });
+
+  // absolute links
+  soup("img[src]").each((_, el) => {
+    try {
+      el.attribs.src = new URL(el.attribs.src, url).href;
+    } catch (_) {}
+  });
+  soup("a[href]").each((_, el) => {
+    try {
+      el.attribs.href = new URL(el.attribs.href, url).href;
+    } catch (_) {}
+  });
 
   const cleanedHtml = soup.html();
   return cleanedHtml;

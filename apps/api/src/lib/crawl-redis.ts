@@ -127,12 +127,28 @@ export async function getDoneJobsOrdered(
 export async function isCrawlFinished(id: string) {
   return (
     (await redisConnection.scard("crawl:" + id + ":jobs_done")) ===
-    (await redisConnection.scard("crawl:" + id + ":jobs"))
+      (await redisConnection.scard("crawl:" + id + ":jobs")) &&
+    (await redisConnection.get("crawl:" + id + ":kickoff:finish")) !== null
+  );
+}
+
+export async function isCrawlKickoffFinished(id: string) {
+  return (
+    (await redisConnection.get("crawl:" + id + ":kickoff:finish")) !== null
   );
 }
 
 export async function isCrawlFinishedLocked(id: string) {
   return await redisConnection.exists("crawl:" + id + ":finish");
+}
+
+export async function finishCrawlKickoff(id: string) {
+  await redisConnection.set(
+    "crawl:" + id + ":kickoff:finish",
+    "yes",
+    "EX",
+    24 * 60 * 60,
+  );
 }
 
 export async function finishCrawl(id: string) {
@@ -152,12 +168,20 @@ export async function finishCrawl(id: string) {
       module: "crawl-redis",
       method: "finishCrawl",
       crawlId: id,
+      jobs_done: await redisConnection.scard("crawl:" + id + ":jobs_done"),
+      jobs: await redisConnection.scard("crawl:" + id + ":jobs"),
+      kickoff_finished:
+        (await redisConnection.get("crawl:" + id + ":kickoff:finish")) !== null,
     });
   }
 }
 
 export async function getCrawlJobs(id: string): Promise<string[]> {
   return await redisConnection.smembers("crawl:" + id + ":jobs");
+}
+
+export async function getCrawlJobCount(id: string): Promise<number> {
+  return await redisConnection.scard("crawl:" + id + ":jobs");
 }
 
 export async function getThrottledJobs(teamId: string): Promise<string[]> {
@@ -261,9 +285,9 @@ export async function lockURL(
     );
   }
 
-  logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
-    res,
-  });
+  // logger.debug("Locking URL " + JSON.stringify(url) + "... result: " + res, {
+  //   res,
+  // });
   return res;
 }
 
@@ -313,6 +337,22 @@ export async function lockURLs(
 
   logger.debug("lockURLs final result: " + res, { res });
   return res;
+}
+
+export async function lockURLsIndividually(
+  id: string,
+  sc: StoredCrawl,
+  jobs: { id: string; url: string }[],
+) {
+  const out: typeof jobs = [];
+
+  for (const job of jobs) {
+    if (await lockURL(id, sc, job.url)) {
+      out.push(job);
+    }
+  }
+
+  return out;
 }
 
 export function crawlToCrawler(

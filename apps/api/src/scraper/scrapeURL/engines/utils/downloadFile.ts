@@ -7,11 +7,18 @@ import { v4 as uuid } from "uuid";
 import * as undici from "undici";
 import { makeSecureDispatcher } from "./safeFetch";
 
-export async function fetchFileToBuffer(url: string): Promise<{
-  response: Response;
+export async function fetchFileToBuffer(
+  url: string,
+  init?: undici.RequestInit,
+): Promise<{
+  response: undici.Response;
   buffer: Buffer;
 }> {
-  const response = await fetch(url); // TODO: maybe we could use tlsclient for this? for proxying
+  const response = await undici.fetch(url, {
+    ...init,
+    redirect: "follow",
+    dispatcher: await makeSecureDispatcher(url),
+  });
   return {
     response,
     buffer: Buffer.from(await response.arrayBuffer()),
@@ -21,6 +28,7 @@ export async function fetchFileToBuffer(url: string): Promise<{
 export async function downloadFile(
   id: string,
   url: string,
+  init?: undici.RequestInit,
 ): Promise<{
   response: undici.Response;
   tempFilePath: string;
@@ -29,7 +37,11 @@ export async function downloadFile(
   const tempFileWrite = createWriteStream(tempFilePath);
 
   // TODO: maybe we could use tlsclient for this? for proxying
-  const response = await undici.fetch(url, { dispatcher: await makeSecureDispatcher(url) });
+  const response = await undici.fetch(url, {
+    ...init,
+    redirect: "follow",
+    dispatcher: await makeSecureDispatcher(url),
+  });
 
   // This should never happen in the current state of JS/Undici (2024), but let's check anyways.
   if (response.body === null) {

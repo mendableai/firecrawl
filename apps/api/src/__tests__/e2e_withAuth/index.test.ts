@@ -1,10 +1,5 @@
 import request from "supertest";
 import dotenv from "dotenv";
-import {
-  FirecrawlCrawlResponse,
-  FirecrawlCrawlStatusResponse,
-  FirecrawlScrapeResponse,
-} from "../../types";
 
 dotenv.config();
 const TEST_URL = "http://127.0.0.1:3002";
@@ -28,15 +23,14 @@ describe("E2E Tests for v0 API Routes", () => {
 
   describe("POST /v0/scrape", () => {
     it.concurrent("should require authorization", async () => {
-      const response: FirecrawlScrapeResponse =
-        await request(TEST_URL).post("/v0/scrape");
+      const response: any = await request(TEST_URL).post("/v0/scrape");
       expect(response.statusCode).toBe(401);
     });
 
     it.concurrent(
       "should return an error response with an invalid API key",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer invalid-api-key`)
           .set("Content-Type", "application/json")
@@ -48,7 +42,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response with a valid API key",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -92,7 +86,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response with a valid API key and includeHtml set to true",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -118,7 +112,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response for a valid scrape with PDF file",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -141,7 +135,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response for a valid scrape with PDF file without explicit .pdf extension",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -164,12 +158,11 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response with a valid API key with removeTags option",
       async () => {
-        const responseWithoutRemoveTags: FirecrawlScrapeResponse =
-          await request(TEST_URL)
-            .post("/v0/scrape")
-            .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-            .set("Content-Type", "application/json")
-            .send({ url: "https://www.scrapethissite.com/" });
+        const responseWithoutRemoveTags: any = await request(TEST_URL)
+          .post("/v0/scrape")
+          .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+          .set("Content-Type", "application/json")
+          .send({ url: "https://www.scrapethissite.com/" });
         expect(responseWithoutRemoveTags.statusCode).toBe(200);
         expect(responseWithoutRemoveTags.body).toHaveProperty("data");
         expect(responseWithoutRemoveTags.body.data).toHaveProperty("content");
@@ -189,7 +182,7 @@ describe("E2E Tests for v0 API Routes", () => {
           "web scraping",
         ); // strong
 
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -214,7 +207,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response for a scrape with 400 page",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -236,7 +229,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response for a scrape with 401 page",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -258,7 +251,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response for a scrape with 403 page",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -280,7 +273,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response for a scrape with 404 page",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -318,7 +311,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response for a scrape with 500 page",
       async () => {
-        const response: FirecrawlScrapeResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -337,15 +330,14 @@ describe("E2E Tests for v0 API Routes", () => {
 
   describe("POST /v0/crawl", () => {
     it.concurrent("should require authorization", async () => {
-      const response: FirecrawlCrawlResponse =
-        await request(TEST_URL).post("/v0/crawl");
+      const response: any = await request(TEST_URL).post("/v0/crawl");
       expect(response.statusCode).toBe(401);
     });
 
     it.concurrent(
       "should return an error response with an invalid API key",
       async () => {
-        const response: FirecrawlCrawlResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/crawl")
           .set("Authorization", `Bearer invalid-api-key`)
           .set("Content-Type", "application/json")
@@ -357,7 +349,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response with a valid API key for crawl",
       async () => {
-        const response: FirecrawlCrawlResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -373,7 +365,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response with a valid API key and valid includes option",
       async () => {
-        const crawlResponse: FirecrawlCrawlResponse = await request(TEST_URL)
+        const crawlResponse: any = await request(TEST_URL)
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -385,7 +377,7 @@ describe("E2E Tests for v0 API Routes", () => {
             },
           });
 
-        let response: FirecrawlCrawlStatusResponse;
+        let response: any;
         let isFinished = false;
 
         while (!isFinished) {
@@ -436,7 +428,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response with a valid API key and valid excludes option",
       async () => {
-        const crawlResponse: FirecrawlCrawlResponse = await request(TEST_URL)
+        const crawlResponse: any = await request(TEST_URL)
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -449,7 +441,7 @@ describe("E2E Tests for v0 API Routes", () => {
           });
 
         let isFinished = false;
-        let response: FirecrawlCrawlStatusResponse;
+        let response: any;
 
         while (!isFinished) {
           response = await request(TEST_URL)
@@ -466,9 +458,7 @@ describe("E2E Tests for v0 API Routes", () => {
         }
 
         await new Promise((resolve) => setTimeout(resolve, 1000)); // wait for data to be saved on the database
-        const completedResponse: FirecrawlCrawlStatusResponse = await request(
-          TEST_URL,
-        )
+        const completedResponse: any = await request(TEST_URL)
           .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
@@ -486,7 +476,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a successful response with max depth option for a valid crawl job",
       async () => {
-        const crawlResponse: FirecrawlCrawlResponse = await request(TEST_URL)
+        const crawlResponse: any = await request(TEST_URL)
           .post("/v0/crawl")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")
@@ -496,7 +486,7 @@ describe("E2E Tests for v0 API Routes", () => {
           });
         expect(crawlResponse.statusCode).toBe(200);
 
-        const response: FirecrawlCrawlStatusResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
         expect(response.statusCode).toBe(200);
@@ -514,9 +504,7 @@ describe("E2E Tests for v0 API Routes", () => {
             await new Promise((resolve) => setTimeout(resolve, 1000)); // Wait for 1 second before checking again
           }
         }
-        const completedResponse: FirecrawlCrawlStatusResponse = await request(
-          TEST_URL,
-        )
+        const completedResponse: any = await request(TEST_URL)
           .get(`/v0/crawl/status/${crawlResponse.body.jobId}`)
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`);
 
@@ -556,7 +544,7 @@ describe("E2E Tests for v0 API Routes", () => {
 
   describe("POST /v0/crawlWebsitePreview", () => {
     it.concurrent("should require authorization", async () => {
-      const response: FirecrawlCrawlResponse = await request(TEST_URL).post(
+      const response: any = await request(TEST_URL).post(
         "/v0/crawlWebsitePreview",
       );
       expect(response.statusCode).toBe(401);
@@ -565,7 +553,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return an error response with an invalid API key",
       async () => {
-        const response: FirecrawlCrawlResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/crawlWebsitePreview")
           .set("Authorization", `Bearer invalid-api-key`)
           .set("Content-Type", "application/json")
@@ -577,7 +565,7 @@ describe("E2E Tests for v0 API Routes", () => {
     it.concurrent(
       "should return a timeout error when scraping takes longer than the specified timeout",
       async () => {
-        const response: FirecrawlCrawlResponse = await request(TEST_URL)
+        const response: any = await request(TEST_URL)
           .post("/v0/scrape")
           .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
           .set("Content-Type", "application/json")

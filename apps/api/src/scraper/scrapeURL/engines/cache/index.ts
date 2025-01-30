@@ -10,6 +10,13 @@ export async function scrapeCache(meta: Meta): Promise<EngineScrapeResult> {
   const entry = await getEntryFromCache(key);
   if (entry === null) throw new EngineError("Cache missed");
 
+  if (!entry.html) {
+    throw new EngineError("Cache hit but HTML is missing");
+  }
+  if (entry.html.length < 100) {
+    throw new EngineError("Cache hit but HTML is too short to be useful");
+  }
+
   // Set fromCache flag to indicate this document was retrieved from cache
   meta.internalOptions.fromCache = true;
 

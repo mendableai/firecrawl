@@ -18,12 +18,13 @@ import {
   addCrawlJob,
   addCrawlJobs,
   crawlToCrawler,
+  finishCrawlKickoff,
   lockURL,
   lockURLs,
   saveCrawl,
   StoredCrawl,
 } from "../../../src/lib/crawl-redis";
-import { getScrapeQueue } from "../../../src/services/queue-service";
+import { getScrapeQueue, redisConnection } from "../../../src/services/queue-service";
 import { checkAndUpdateURL } from "../../../src/lib/validateUrl";
 import * as Sentry from "@sentry/node";
 import { getJobPriority } from "../../lib/job-priority";
@@ -39,6 +40,9 @@ export async function crawlController(req: Request, res: Response) {
     }
 
     const { team_id, plan, chunk } = auth;
+
+    redisConnection.sadd("teams_using_v0", team_id)
+      .catch(error => logger.error("Failed to add team to teams_using_v0", { error, team_id }));
 
     if (req.headers["x-idempotency-key"]) {
       const isIdempotencyValid = await validateIdempotencyKey(req);
@@ -177,49 +181,55 @@ export async function crawlController(req: Request, res: Response) {
 
     await saveCrawl(id, sc);
 
-    const sitemap = sc.crawlerOptions.ignoreSitemap
-        ? 0
-        : await crawler.tryGetSitemap(async urls => {
-            if (urls.length === 0) return;
-            
-            let jobPriority = await getJobPriority({ plan, team_id, basePriority: 21 });
-            const jobs = urls.map(url => {
-              const uuid = uuidv4();
-              return {
-                name: uuid,
-                data: {
-                  url,
-                  mode: "single_urls",
-                  crawlerOptions,
-                  scrapeOptions,
-                  internalOptions,
-                  team_id,
-                  plan,
-                  origin: req.body.origin ?? defaultOrigin,
-                  crawl_id: id,
-                  sitemapped: true,
-                },
-                opts: {
-                  jobId: uuid,
-                  priority: jobPriority,
-                },
-              };
-            });
+    await finishCrawlKickoff(id);
 
-            await lockURLs(
-              id,
-              sc,
-              jobs.map((x) => x.data.url),
-            );
-            await addCrawlJobs(
-              id,
-              jobs.map((x) => x.opts.jobId),
-            );
-            for (const job of jobs) {
-              // add with sentry instrumentation
-              await addScrapeJob(job.data as any, {}, job.opts.jobId);
-            }
+    const sitemap = sc.crawlerOptions.ignoreSitemap
+      ? 0
+      : await crawler.tryGetSitemap(async (urls) => {
+          if (urls.length === 0) return;
+
+          let jobPriority = await getJobPriority({
+            plan,
+            team_id,
+            basePriority: 21,
           });
+          const jobs = urls.map((url) => {
+            const uuid = uuidv4();
+            return {
+              name: uuid,
+              data: {
+                url,
+                mode: "single_urls",
+                crawlerOptions,
+                scrapeOptions,
+                internalOptions,
+                team_id,
+                plan,
+                origin: req.body.origin ?? defaultOrigin,
+                crawl_id: id,
+                sitemapped: true,
+              },
+              opts: {
+                jobId: uuid,
+                priority: jobPriority,
+              },
+            };
+          });
+
+          await lockURLs(
+            id,
+            sc,
+            jobs.map((x) => x.data.url),
+          );
+          await addCrawlJobs(
+            id,
+            jobs.map((x) => x.opts.jobId),
+          );
+          for (const job of jobs) {
+            // add with sentry instrumentation
+            await addScrapeJob(job.data as any, {}, job.opts.jobId);
+          }
+        });
 
     if (sitemap === 0) {
       await lockURL(id, sc, url);

@@ -66,6 +66,7 @@ const urlBlocklist = [
   "KKttwRz4w+AMJrZcB828WQ==",
   "vMdzZ33BXoyWVZnAPOBcrg==",
   "l8GDVI8w/ueHnNzdN1ODuQ==",
+  "+yz9bnYYMnC0trJZGJwf6Q=="
 ];
 
 const decryptedBlocklist =
@@ -94,6 +95,8 @@ const allowedKeywords = [
   "://ads.tiktok.com",
   "://tiktok.com/business",
   "://developers.facebook.com",
+  "://facebook.com/ads/library",
+  "://www.facebook.com/ads/library",
 ];
 
 export function isUrlBlocked(url: string): boolean {

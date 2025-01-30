@@ -40,6 +40,12 @@ jobs:
           - 6379:6379
     steps:
       - uses: actions/checkout@v3
+      - name: Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
@@ -57,7 +63,7 @@ jobs:
         run: npm run workers &
         working-directory: ./apps/api
         id: start_workers
-      - name: Run E2E tests
+      - name: Run snippet tests
         run: |
-          npm run test:prod
+          npm run test:snips
         working-directory: ./apps/api

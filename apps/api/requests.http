@@ -9,7 +9,7 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-    "url":"firecrawl.dev"
+  "url":"https://firecrawl.dev"
 }
 
 ### Crawl Website
@@ -19,7 +19,7 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-  "url": "firecrawl.dev"
+  "url": "https://firecrawl.dev"
 }
 
 ### Check Crawl Status
@@ -28,6 +28,11 @@ content-type: application/json
 GET {{baseUrl}}/v1/crawl/{{crawlId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
+### Cancel Crawl
+@crawlId = {{crawl.response.body.$.id}}
+# @name cancelCrawl
+DELETE {{baseUrl}}/v1/crawl/{{crawlId}} HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
 ### Batch Scrape Websites
 # @name batchScrape
@@ -60,18 +65,34 @@ content-type: application/json
   "sitemapOnly": true
 }
 
-### Extract
-# @name extract
+### Extract Firecrawl Title
+# @name extractFirecrawl
 POST {{baseUrl}}/v1/extract HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-  "urls": ["firecrawl.dev"],
-  "prompt": "What is the title, description and main product of the page?",
+  "urls": [
+    "https://firecrawl.dev/blog"
+  ],
+  "origin": "api-sdk",
+  "prompt": "Extract all the blog titles from the page, is multity entity = true",
   "schema": {
-    "title": { "type": "string" },
-    "description": { "type": "string" },
-    "mainProduct": { "type": "string" }
+    "type": "object",
+    "properties": {
+      "blog_titles": {
+        "type": "array",
+        "items": {
+          "type": "string"
+        }
+      }
+    },
+    "required": ["blog_titles"]
   }
 }
+
+###
+@extractFirecrawlId = {{extractFirecrawl.response.body.$.id}}
+# @name extractFirecrawlStatus 
+GET {{baseUrl}}/v1/extract/{{extractFirecrawlId}} HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}

@@ -44,6 +44,7 @@ export interface WebScraperOptions {
   webhook?: z.infer<typeof webhookSchema>;
   v1?: boolean;
   is_scrape?: boolean;
+  isCrawlSourceScrape?: boolean;
 }
 
 export interface RunWebScraperParams {
@@ -86,6 +87,8 @@ export interface FirecrawlJob {
   num_tokens?: number;
   retry?: boolean;
   crawl_id?: string;
+  tokens_billed?: number;
+  sources?: Record<string, string[]>;
 }
 
 export interface FirecrawlScrapeResponse {
@@ -131,6 +134,8 @@ export enum RateLimiterMode {
   Preview = "preview",
   Search = "search",
   Map = "map",
+  Extract = "extract",
+  ExtractStatus = "extractStatus",
 }
 
 export type AuthResponse =
@@ -189,6 +194,9 @@ export type PlanType =
   | "devB"
   | "etier2d"
   | "manual"
+  | "extract_starter"
+  | "extract_explorer"
+  | "extract_pro"
   | "";
 
 export type WebhookEventType =

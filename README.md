@@ -72,6 +72,7 @@ To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and ge
 - [**Scrape**](#scraping): scrapes a URL and get its content in LLM-ready format (markdown, structured data via [LLM Extract](#llm-extraction-beta), screenshot, html)
 - [**Crawl**](#crawling): scrapes all the URLs of a web page and return content in LLM-ready format
 - [**Map**](#map-alpha): input a website and get all the website urls - extremely fast
+- [**Extract**](#extract): get structured data from single page, multiple pages or entire websites with AI.
 
 ### Powerful Capabilities
 - **LLM-ready formats**: markdown, structured data, screenshot, HTML, links, metadata
@@ -240,6 +241,76 @@ Response will be an ordered list from the most relevant to the least relevant.
 }
 ```
 
+### Extract
+
+Get structured data from entire websites with a prompt and/or a schema.
+
+You can extract structured data from one or multiple URLs, including wildcards:
+
+Single Page:
+Example: https://firecrawl.dev/some-page
+
+Multiple Pages / Full Domain
+Example: https://firecrawl.dev/*
+
+When you use /*, Firecrawl will automatically crawl and parse all URLs it can discover in that domain, then extract the requested data.
+
+```bash
+curl -X POST https://api.firecrawl.dev/v1/extract \
+    -H 'Content-Type: application/json' \
+    -H 'Authorization: Bearer YOUR_API_KEY' \
+    -d '{
+      "urls": [
+        "https://firecrawl.dev/*", 
+        "https://docs.firecrawl.dev/", 
+        "https://www.ycombinator.com/companies"
+      ],
+      "prompt": "Extract the company mission, whether it is open source, and whether it is in Y Combinator from the page.",
+      "schema": {
+        "type": "object",
+        "properties": {
+          "company_mission": {
+            "type": "string"
+          },
+          "is_open_source": {
+            "type": "boolean"
+          },
+          "is_in_yc": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "company_mission",
+          "supports_sso",
+          "is_open_source",
+          "is_in_yc"
+        ]
+      }
+    }'
+```
+
+```json
+{
+  "success": true,
+  "id": "44aa536d-f1cb-4706-ab87-ed0386685740",
+  "urlTrace": []
+}
+```
+
+If you are using the sdks, it will auto pull the response for you:
+
+```json
+{
+  "success": true,
+  "data": {
+    "company_mission": "Firecrawl is the easiest way to extract data from the web. Developers use us to reliably convert URLs into LLM-ready markdown or structured data with a single API call.",
+    "supports_sso": false,
+    "is_open_source": true,
+    "is_in_yc": true
+  }
+}
+```
+
 ### LLM Extraction (Beta)
 
 Used to extract structured data from scraped pages.
@@ -250,8 +321,8 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
     -H 'Authorization: Bearer YOUR_API_KEY' \
     -d '{
       "url": "https://www.mendable.ai/",
-      "formats": ["extract"],
-      "extract": {
+      "formats": ["json"],
+      "jsonOptions": {
         "schema": {
           "type": "object",
           "properties": {
@@ -296,7 +367,7 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
       "ogSiteName": "Mendable",
       "sourceURL": "https://mendable.ai/"
     },
-    "llm_extraction": {
+    "json": {
       "company_mission": "Train a secure AI on your technical resources that answers customer and employee questions so your team doesn't have to",
       "supports_sso": true,
       "is_open_source": false,
@@ -316,8 +387,8 @@ curl -X POST https://api.firecrawl.dev/v1/scrape \
     -H 'Authorization: Bearer YOUR_API_KEY' \
     -d '{
       "url": "https://docs.firecrawl.dev/",
-      "formats": ["extract"],
-      "extract": {
+      "formats": ["json"],
+      "jsonOptions": {
         "prompt": "Extract the company mission from the page."
       }
     }'
@@ -447,12 +518,12 @@ class TopArticlesSchema(BaseModel):
     top: List[ArticleSchema] = Field(..., max_items=5, description="Top 5 stories")
 
 data = app.scrape_url('https://news.ycombinator.com', {
-    'formats': ['extract'],
-    'extract': {
+    'formats': ['json'],
+    'jsonOptions': {
         'schema': TopArticlesSchema.model_json_schema()
     }
 })
-print(data["extract"])
+print(data["json"])
 ```
 
 ## Using the Node SDK
@@ -526,10 +597,10 @@ const schema = z.object({
 });
 
 const scrapeResult = await app.scrapeUrl("https://news.ycombinator.com", {
-  extractorOptions: { extractionSchema: schema },
+  jsonOptions: { extractionSchema: schema },
 });
 
-console.log(scrapeResult.data["llm_extraction"]);
+console.log(scrapeResult.data["json"]);
 ```
 
 ## Open Source vs Cloud Offering

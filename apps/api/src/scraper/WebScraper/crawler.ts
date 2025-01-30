@@ -1,13 +1,14 @@
 import axios, { AxiosError } from "axios";
-import cheerio, { load } from "cheerio";
+import { load } from "cheerio"; // rustified
 import { URL } from "url";
 import { getLinksFromSitemap } from "./sitemap";
-import robotsParser from "robots-parser";
+import robotsParser, { Robot } from "robots-parser";
 import { getURLDepth } from "./utils/maxDepthUtils";
 import { axiosTimeout } from "../../lib/timeout";
 import { logger as _logger } from "../../lib/logger";
 import https from "https";
 import { redisConnection } from "../../services/queue-service";
+import { extractLinks } from "../../lib/html-transformer";
 export class WebCrawler {
   private jobId: string;
   private initialUrl: string;
@@ -20,13 +21,14 @@ export class WebCrawler {
   private crawledUrls: Map<string, string> = new Map();
   private limit: number;
   private robotsTxtUrl: string;
-  public robots: any;
+  public robots: Robot;
   private generateImgAltText: boolean;
   private allowBackwardCrawling: boolean;
   private allowExternalContentLinks: boolean;
   private allowSubdomains: boolean;
   private ignoreRobotsTxt: boolean;
   private logger: typeof _logger;
+  private sitemapsHit: Set<string> = new Set();
 
   constructor({
     jobId,
@@ -63,7 +65,7 @@ export class WebCrawler {
     this.includes = Array.isArray(includes) ? includes : [];
     this.excludes = Array.isArray(excludes) ? excludes : [];
     this.limit = limit;
-    this.robotsTxtUrl = `${this.baseUrl}/robots.txt`;
+    this.robotsTxtUrl = `${this.baseUrl}${this.baseUrl.endsWith("/") ? "" : "/"}robots.txt`;
     this.robots = robotsParser(this.robotsTxtUrl, "");
     // Deprecated, use limit instead
     this.maxCrawledLinks = maxCrawledLinks ?? limit;
@@ -202,6 +204,7 @@ export class WebCrawler {
     urlsHandler: (urls: string[]) => unknown,
     fromMap: boolean = false,
     onlySitemap: boolean = false,
+    timeout: number = 120000,
   ): Promise<number> {
     this.logger.debug(`Fetching sitemap links from ${this.initialUrl}`, {
       method: "tryGetSitemap",
@@ -217,20 +220,6 @@ export class WebCrawler {
     };
 
     const _urlsHandler = async (urls: string[]) => {
-      let uniqueURLs: string[] = [];
-      for (const url of urls) {
-        if (await redisConnection.sadd("sitemap:" + this.jobId + ":links", normalizeUrl(url))) {
-          uniqueURLs.push(url);
-        }
-      }
-
-      await redisConnection.expire("sitemap:" + this.jobId + ":links", 3600, "NX");
-      if (uniqueURLs.length > 0) {
-        urlsHandler(uniqueURLs);
-      }
-    };
-
-    let count = await this.tryFetchSitemapLinks(this.initialUrl, (urls: string[]) => {
       if (fromMap && onlySitemap) {
         return urlsHandler(urls);
       } else {
@@ -241,18 +230,71 @@ export class WebCrawler {
           fromMap,
         );
         leftOfLimit -= filteredLinks.length;
-        return _urlsHandler(filteredLinks);
+        let uniqueURLs: string[] = [];
+        for (const url of filteredLinks) {
+          if (
+            await redisConnection.sadd(
+              "sitemap:" + this.jobId + ":links",
+              normalizeUrl(url),
+            )
+          ) {
+            uniqueURLs.push(url);
+          }
+        }
+
+        await redisConnection.expire(
+          "sitemap:" + this.jobId + ":links",
+          3600,
+          "NX",
+        );
+        if (uniqueURLs.length > 0) {
+          return urlsHandler(uniqueURLs);
+        }
       }
+    };
+
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error("Sitemap fetch timeout")), timeout);
     });
 
-    if (count > 0) {
-      if (await redisConnection.sadd("sitemap:" + this.jobId + ":links", normalizeUrl(this.initialUrl))) {
-        urlsHandler([this.initialUrl]);
-      }
-      count++;
-    }
+    try {
+      let count = (await Promise.race([
+        Promise.all([
+          this.tryFetchSitemapLinks(this.initialUrl, _urlsHandler),
+          ...this.robots
+            .getSitemaps()
+            .map((x) => this.tryFetchSitemapLinks(x, _urlsHandler)),
+        ]).then((results) => results.reduce((a, x) => a + x, 0)),
+        timeoutPromise,
+      ])) as number;
 
-    return count;
+      if (count > 0) {
+        if (
+          await redisConnection.sadd(
+            "sitemap:" + this.jobId + ":links",
+            normalizeUrl(this.initialUrl),
+          )
+        ) {
+          urlsHandler([this.initialUrl]);
+        }
+        count++;
+      }
+
+      return count;
+    } catch (error) {
+      if (error.message === "Sitemap fetch timeout") {
+        this.logger.warn("Sitemap fetch timed out", {
+          method: "tryGetSitemap",
+          timeout,
+        });
+        return 0;
+      }
+      this.logger.error("Error fetching sitemap", {
+        method: "tryGetSitemap",
+        error,
+      });
+      return 0;
+    }
   }
 
   public filterURL(href: string, url: string): string | null {
@@ -281,6 +323,23 @@ export class WebCrawler {
         this.isRobotsAllowed(fullUrl, this.ignoreRobotsTxt)
       ) {
         return fullUrl;
+      } else if (
+        this.isInternalLink(fullUrl) &&
+        this.noSections(fullUrl) &&
+        !this.matchesExcludes(path) &&
+        !this.isRobotsAllowed(fullUrl, this.ignoreRobotsTxt)
+      ) {
+        (async () => {
+          await redisConnection.sadd(
+            "crawl:" + this.jobId + ":robots_blocked",
+            fullUrl,
+          );
+          await redisConnection.expire(
+            "crawl:" + this.jobId + ":robots_blocked",
+            24 * 60 * 60,
+            "NX",
+          );
+        })();
       }
     } else {
       // EXTERNAL LINKS
@@ -306,7 +365,11 @@ export class WebCrawler {
     return null;
   }
 
-  public extractLinksFromHTML(html: string, url: string) {
+  private async extractLinksFromHTMLRust(html: string, url: string) {
+    return (await extractLinks(html)).filter(x => this.filterURL(x, url));
+  }
+
+  private extractLinksFromHTMLCheerio(html: string, url: string) {
     let links: string[] = [];
 
     const $ = load(html);
@@ -328,12 +391,31 @@ export class WebCrawler {
       const src = $(element).attr("src");
       if (src && src.startsWith("data:text/html")) {
         const iframeHtml = decodeURIComponent(src.split(",")[1]);
-        const iframeLinks = this.extractLinksFromHTML(iframeHtml, url);
+        const iframeLinks = this.extractLinksFromHTMLCheerio(iframeHtml, url);
         links = links.concat(iframeLinks);
       }
     });
 
     return links;
+  }
+
+  public async extractLinksFromHTML(html: string, url: string) {
+    try {
+      return [...new Set((await this.extractLinksFromHTMLRust(html, url)).map(x => {
+        try {
+          return new URL(x, url).href
+        } catch (e) {
+          return null;
+        }
+      }).filter(x => x !== null) as string[])];
+    } catch (error) {
+      this.logger.error("Failed to call html-transformer! Falling back to cheerio...", {
+        error,
+        module: "scrapeURL", method: "extractMetadata"
+      });
+    }
+
+    return this.extractLinksFromHTMLCheerio(html, url);
   }
 
   private isRobotsAllowed(
@@ -397,8 +479,7 @@ export class WebCrawler {
 
   private isInternalLink(link: string): boolean {
     const urlObj = new URL(link, this.baseUrl);
-    const baseDomain = this.baseUrl
-      .replace(/^https?:\/\//, "")
+    const baseDomain = new URL(this.baseUrl).hostname
       .replace(/^www\./, "")
       .trim();
     const linkDomain = urlObj.hostname.replace(/^www\./, "").trim();
@@ -471,8 +552,13 @@ export class WebCrawler {
     return socialMediaOrEmail.some((ext) => url.includes(ext));
   }
 
-  private async tryFetchSitemapLinks(url: string, urlsHandler: (urls: string[]) => unknown): Promise<number> {
-    const sitemapUrl = url.endsWith(".xml") ? url : `${url}/sitemap.xml`;
+  private async tryFetchSitemapLinks(
+    url: string,
+    urlsHandler: (urls: string[]) => unknown,
+  ): Promise<number> {
+    const sitemapUrl = url.endsWith(".xml")
+      ? url
+      : `${url}${url.endsWith("/") ? "" : "/"}sitemap.xml`;
 
     let sitemapCount: number = 0;
 
@@ -481,40 +567,50 @@ export class WebCrawler {
       sitemapCount = await getLinksFromSitemap(
         { sitemapUrl, urlsHandler, mode: "fire-engine" },
         this.logger,
+        this.jobId,
+        this.sitemapsHit,
       );
     } catch (error) {
-      this.logger.debug(
-        `Failed to fetch sitemap from ${sitemapUrl}`,
-        { method: "tryFetchSitemapLinks", sitemapUrl, error },
-      );
+      this.logger.debug(`Failed to fetch sitemap from ${sitemapUrl}`, {
+        method: "tryFetchSitemapLinks",
+        sitemapUrl,
+        error,
+      });
     }
 
     // If this is a subdomain, also try to get sitemap from the main domain
     try {
       const urlObj = new URL(url);
       const hostname = urlObj.hostname;
-      const domainParts = hostname.split('.');
-      
+      const domainParts = hostname.split(".");
+
       // Check if this is a subdomain (has more than 2 parts and not www)
-      if (domainParts.length > 2 && domainParts[0] !== 'www') {
+      if (domainParts.length > 2 && domainParts[0] !== "www") {
         // Get the main domain by taking the last two parts
-        const mainDomain = domainParts.slice(-2).join('.');
+        const mainDomain = domainParts.slice(-2).join(".");
         const mainDomainUrl = `${urlObj.protocol}//${mainDomain}`;
         const mainDomainSitemapUrl = `${mainDomainUrl}/sitemap.xml`;
 
         try {
           // Get all links from the main domain's sitemap
           sitemapCount += await getLinksFromSitemap(
-            { sitemapUrl: mainDomainSitemapUrl, urlsHandler(urls) {
-              return urlsHandler(urls.filter(link => {
-                try {
-                  const linkUrl = new URL(link);
-                  return linkUrl.hostname.endsWith(hostname);
-                } catch {
-                }
-              }))
-            }, mode: "fire-engine" },
+            {
+              sitemapUrl: mainDomainSitemapUrl,
+              urlsHandler(urls) {
+                return urlsHandler(
+                  urls.filter((link) => {
+                    try {
+                      const linkUrl = new URL(link);
+                      return linkUrl.hostname.endsWith(hostname);
+                    } catch {}
+                  }),
+                );
+              },
+              mode: "fire-engine",
+            },
             this.logger,
+            this.jobId,
+            this.sitemapsHit,
           );
         } catch (error) {
           this.logger.debug(
@@ -538,6 +634,8 @@ export class WebCrawler {
         sitemapCount += await getLinksFromSitemap(
           { sitemapUrl: baseUrlSitemap, urlsHandler, mode: "fire-engine" },
           this.logger,
+          this.jobId,
+          this.sitemapsHit,
         );
       } catch (error) {
         this.logger.debug(`Failed to fetch sitemap from ${baseUrlSitemap}`, {
@@ -551,9 +649,15 @@ export class WebCrawler {
           sitemapCount += await getLinksFromSitemap(
             { sitemapUrl: baseUrlSitemap, urlsHandler, mode: "fire-engine" },
             this.logger,
+            this.jobId,
+            this.sitemapsHit,
           );
         }
       }
+    }
+
+    if (this.sitemapsHit.size >= 20) {
+      this.logger.warn("Sitemap limit hit!", { crawlId: this.jobId, url: this.baseUrl });
     }
 
     return sitemapCount;

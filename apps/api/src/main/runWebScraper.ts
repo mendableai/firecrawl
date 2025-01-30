@@ -168,27 +168,6 @@ export async function runWebScraper({
   }
 
   if (error === undefined && response?.success) {
-    if (is_scrape === false) {
-      let creditsToBeBilled = 1; // Assuming 1 credit per document
-      if (scrapeOptions.extract) {
-        creditsToBeBilled = 5;
-      }
-
-      // If the team is the background index team, return the response
-      if(team_id === process.env.BACKGROUND_INDEX_TEAM_ID!) {
-        return response;
-      }
-
-
-      billTeam(team_id, undefined, creditsToBeBilled, logger).catch((error) => {
-        logger.error(
-          `Failed to bill team ${team_id} for ${creditsToBeBilled} credits`,
-          { error },
-        );
-        // Optionally, you could notify an admin or add to a retry queue here
-      });
-    }
-
     return response;
   } else {
     if (response !== undefined) {

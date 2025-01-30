@@ -4,8 +4,11 @@ import * as Sentry from "@sentry/node";
 import { CustomError } from "../lib/custom-error";
 import {
   getScrapeQueue,
+  getExtractQueue,
   redisConnection,
   scrapeQueueName,
+  extractQueueName,
+  getIndexQueue,
 } from "./queue-service";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
@@ -21,12 +24,16 @@ import {
   addCrawlJobs,
   crawlToCrawler,
   finishCrawl,
+  finishCrawlKickoff,
   generateURLPermutations,
   getCrawl,
+  getCrawlJobCount,
   getCrawlJobs,
   lockURL,
   lockURLs,
+  lockURLsIndividually,
   normalizeURL,
+  saveCrawl,
 } from "../lib/crawl-redis";
 import { StoredCrawl } from "../lib/crawl-redis";
 import { addScrapeJob, addScrapeJobs } from "./queue-jobs";
@@ -50,8 +57,12 @@ import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 import { indexPage } from "../lib/extract/index/pinecone";
 import { Document } from "../controllers/v1/types";
+import { performExtraction } from "../lib/extract/extraction-service";
 import { supabase_service } from "../services/supabase";
 import { normalizeUrl, normalizeUrlOnlyHostname } from "../lib/canonical-url";
+import { saveExtract, updateExtract } from "../lib/extract/extract-redis";
+import { billTeam } from "./billing/credit_billing";
+import { saveCrawlMap } from "./indexing/crawl-maps-index";
 
 configDotenv();
 
@@ -77,68 +88,35 @@ const connectionMonitorInterval =
   Number(process.env.CONNECTION_MONITOR_INTERVAL) || 10;
 const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 
+const runningJobs: Set<string> = new Set();
+
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   if (await finishCrawl(job.data.crawl_id)) {
     (async () => {
-      const originUrl = sc.originUrl ? normalizeUrlOnlyHostname(sc.originUrl) : undefined;
-      // Get all visited URLs from Redis
+      const originUrl = sc.originUrl
+        ? normalizeUrlOnlyHostname(sc.originUrl)
+        : undefined;
+      // Get all visited unique URLs from Redis
       const visitedUrls = await redisConnection.smembers(
-        "crawl:" + job.data.crawl_id + ":visited",
+        "crawl:" + job.data.crawl_id + ":visited_unique",
       );
       // Upload to Supabase if we have URLs and this is a crawl (not a batch scrape)
-      if (visitedUrls.length > 0 && job.data.crawlerOptions !== null && originUrl) {
-        // Fire and forget the upload to Supabase
-        try {
-          // Standardize URLs to canonical form (https, no www)
-          const standardizedUrls = [
-            ...new Set(
-              visitedUrls.map((url) => {
-                return normalizeUrl(url);
-              }),
-            ),
-          ];
-          // First check if entry exists for this origin URL
-          const { data: existingMap } = await supabase_service
-            .from("crawl_maps")
-            .select("urls")
-            .eq("origin_url", originUrl)
-            .single();
-
-          if (existingMap) {
-            // Merge URLs, removing duplicates
-            const mergedUrls = [
-              ...new Set([...existingMap.urls, ...standardizedUrls]),
-            ];
-
-            const { error } = await supabase_service
-              .from("crawl_maps")
-              .update({
-                urls: mergedUrls,
-                num_urls: mergedUrls.length,
-                updated_at: new Date().toISOString(),
-              })
-              .eq("origin_url", originUrl);
-
-            if (error) {
-              _logger.error("Failed to update crawl map", { error });
-            }
-          } else {
-            // Insert new entry if none exists
-            const { error } = await supabase_service.from("crawl_maps").insert({
-              origin_url: originUrl,
-              urls: standardizedUrls,
-              num_urls: standardizedUrls.length,
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            });
-
-            if (error) {
-              _logger.error("Failed to save crawl map", { error });
-            }
-          }
-        } catch (error) {
-          _logger.error("Error saving crawl map", { error });
-        }
+      if (
+        visitedUrls.length > 0 &&
+        job.data.crawlerOptions !== null &&
+        originUrl
+      ) {
+        // Queue the indexing job instead of doing it directly
+        await getIndexQueue().add(
+          job.data.crawl_id,
+          {
+            originUrl,
+            visitedUrls,
+          },
+          {
+            priority: 10,
+          },
+        );
       }
     })();
 
@@ -206,8 +184,28 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         );
       }
     } else {
-      const jobIDs = await getCrawlJobs(job.data.crawl_id);
+      const num_docs = await getCrawlJobCount(job.data.crawl_id);
       const jobStatus = sc.cancelled ? "failed" : "completed";
+
+      await logJob(
+        {
+          job_id: job.data.crawl_id,
+          success: jobStatus === "completed",
+          message: sc.cancelled ? "Cancelled" : undefined,
+          num_docs,
+          docs: [],
+          time_taken: (Date.now() - sc.createdAt) / 1000,
+          team_id: job.data.team_id,
+          scrapeOptions: sc.scrapeOptions,
+          mode: job.data.crawlerOptions !== null ? "crawl" : "batch_scrape",
+          url:
+            sc?.originUrl ??
+            (job.data.crawlerOptions === null ? "Batch Scrape" : "Unknown"),
+          crawlerOptions: sc.crawlerOptions,
+          origin: job.data.origin,
+        },
+        true,
+      );
 
       // v1 web hooks, call when done with no data, but with event completed
       if (job.data.v1 && job.data.webhook) {
@@ -222,26 +220,6 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
             : "batch_scrape.completed",
         );
       }
-
-      await logJob(
-        {
-          job_id: job.data.crawl_id,
-          success: jobStatus === "completed",
-          message: sc.cancelled ? "Cancelled" : undefined,
-          num_docs: jobIDs.length,
-          docs: [],
-          time_taken: (Date.now() - sc.createdAt) / 1000,
-          team_id: job.data.team_id,
-          scrapeOptions: sc.scrapeOptions,
-          mode: job.data.crawlerOptions !== null ? "crawl" : "batch_scrape",
-          url:
-            sc?.originUrl ??
-            (job.data.crawlerOptions === null ? "Batch Scrape" : "Unknown"),
-          crawlerOptions: sc.crawlerOptions,
-          origin: job.data.origin,
-        },
-        true,
-      );
     }
   }
 }
@@ -256,7 +234,10 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
   });
 
   const extendLockInterval = setInterval(async () => {
-    logger.info(`🐂 Worker extending lock on job ${job.id}`);
+    logger.info(`🐂 Worker extending lock on job ${job.id}`, {
+      extendInterval: jobLockExtendInterval,
+      extensionTime: jobLockExtensionTime,
+    });
     await job.extendLock(token, jobLockExtensionTime);
   }, jobLockExtendInterval);
 
@@ -306,6 +287,87 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
   }
 
   return err;
+};
+
+const processExtractJobInternal = async (
+  token: string,
+  job: Job & { id: string },
+) => {
+  const logger = _logger.child({
+    module: "extract-worker",
+    method: "processJobInternal",
+    jobId: job.id,
+    extractId: job.data.extractId,
+    teamId: job.data?.teamId ?? undefined,
+  });
+
+  const extendLockInterval = setInterval(async () => {
+    logger.info(`🔄 Worker extending lock on job ${job.id}`);
+    await job.extendLock(token, jobLockExtensionTime);
+  }, jobLockExtendInterval);
+
+  try {
+    const result = await performExtraction(job.data.extractId, {
+      request: job.data.request,
+      teamId: job.data.teamId,
+      plan: job.data.plan,
+      subId: job.data.subId,
+    });
+
+    if (result.success) {
+      // Move job to completed state in Redis
+      await job.moveToCompleted(result, token, false);
+      return result;
+    } else {
+      // throw new Error(result.error || "Unknown error during extraction");
+
+      await job.moveToCompleted(result, token, false);
+      await updateExtract(job.data.extractId, {
+        status: "failed",
+        error:
+          result.error ??
+          "Unknown error, please contact help@firecrawl.com. Extract id: " +
+            job.data.extractId,
+      });
+
+      return result;
+    }
+  } catch (error) {
+    logger.error(`🚫 Job errored ${job.id} - ${error}`, { error });
+
+    Sentry.captureException(error, {
+      data: {
+        job: job.id,
+      },
+    });
+
+    try {
+      // Move job to failed state in Redis
+      await job.moveToFailed(error, token, false);
+    } catch (e) {
+      logger.log("Failed to move job to failed state in Redis", { error });
+    }
+
+    await updateExtract(job.data.extractId, {
+      status: "failed",
+      error:
+        error.error ??
+        error ??
+        "Unknown error, please contact help@firecrawl.com. Extract id: " +
+          job.data.extractId,
+    });
+    return {
+      success: false,
+      error:
+        error.error ??
+        error ??
+        "Unknown error, please contact help@firecrawl.com. Extract id: " +
+          job.data.extractId,
+    };
+    // throw error;
+  } finally {
+    clearInterval(extendLockInterval);
+  }
 };
 
 let isShuttingDown = false;
@@ -366,7 +428,15 @@ const workerFun = async (
 
     const job = await worker.getNextJob(token);
     if (job) {
+      if (job.id) {
+        runningJobs.add(job.id);
+      }
+
       async function afterJobDone(job: Job<any, any, string>) {
+        if (job.id) {
+          runningJobs.delete(job.id);
+        }
+
         if (job.id && job.data && job.data.team_id && job.data.plan) {
           await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
           cleanOldConcurrencyLimitEntries(job.data.team_id);
@@ -464,8 +534,6 @@ const workerFun = async (
   }
 };
 
-workerFun(getScrapeQueue(), processJobInternal);
-
 async function processKickoffJob(job: Job & { id: string }, token: string) {
   const logger = _logger.child({
     module: "queue-worker",
@@ -479,6 +547,47 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
   try {
     const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
     const crawler = crawlToCrawler(job.data.crawl_id, sc);
+
+    logger.debug("Locking URL...");
+    await lockURL(job.data.crawl_id, sc, job.data.url);
+    const jobId = uuidv4();
+    logger.debug("Adding scrape job to Redis...", { jobId });
+    await addScrapeJob(
+      {
+        url: job.data.url,
+        mode: "single_urls",
+        team_id: job.data.team_id,
+        crawlerOptions: job.data.crawlerOptions,
+        scrapeOptions: scrapeOptions.parse(job.data.scrapeOptions),
+        internalOptions: sc.internalOptions,
+        plan: job.data.plan!,
+        origin: job.data.origin,
+        crawl_id: job.data.crawl_id,
+        webhook: job.data.webhook,
+        v1: job.data.v1,
+        isCrawlSourceScrape: true,
+      },
+      {
+        priority: 15,
+      },
+      jobId,
+    );
+    logger.debug("Adding scrape job to BullMQ...", { jobId });
+    await addCrawlJob(job.data.crawl_id, jobId);
+
+    if (job.data.webhook) {
+      logger.debug("Calling webhook with crawl.started...", {
+        webhook: job.data.webhook,
+      });
+      await callWebhook(
+        job.data.team_id,
+        job.data.crawl_id,
+        null,
+        job.data.webhook,
+        true,
+        "crawl.started",
+      );
+    }
 
     const sitemap = sc.crawlerOptions.ignoreSitemap
       ? 0
@@ -522,70 +631,42 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
           });
 
           logger.debug("Locking URLs...");
-          await lockURLs(
+          const lockedIds = await lockURLsIndividually(
             job.data.crawl_id,
             sc,
-            jobs.map((x) => x.data.url),
+            jobs.map((x) => ({ id: x.opts.jobId, url: x.data.url })),
+          );
+          const lockedJobs = jobs.filter((x) =>
+            lockedIds.find((y) => y.id === x.opts.jobId),
           );
           logger.debug("Adding scrape jobs to Redis...");
           await addCrawlJobs(
             job.data.crawl_id,
-            jobs.map((x) => x.opts.jobId),
+            lockedJobs.map((x) => x.opts.jobId),
           );
           logger.debug("Adding scrape jobs to BullMQ...");
-          await addScrapeJobs(jobs);
+          await addScrapeJobs(lockedJobs);
         });
 
     if (sitemap === 0) {
       logger.debug("Sitemap not found or ignored.", {
         ignoreSitemap: sc.crawlerOptions.ignoreSitemap,
       });
-
-      logger.debug("Locking URL...");
-      await lockURL(job.data.crawl_id, sc, job.data.url);
-      const jobId = uuidv4();
-      logger.debug("Adding scrape job to Redis...", { jobId });
-      await addScrapeJob(
-        {
-          url: job.data.url,
-          mode: "single_urls",
-          team_id: job.data.team_id,
-          crawlerOptions: job.data.crawlerOptions,
-          scrapeOptions: scrapeOptions.parse(job.data.scrapeOptions),
-          internalOptions: sc.internalOptions,
-          plan: job.data.plan!,
-          origin: job.data.origin,
-          crawl_id: job.data.crawl_id,
-          webhook: job.data.webhook,
-          v1: job.data.v1,
-        },
-        {
-          priority: 15,
-        },
-        jobId,
-      );
-      logger.debug("Adding scrape job to BullMQ...", { jobId });
-      await addCrawlJob(job.data.crawl_id, jobId);
     }
+
     logger.debug("Done queueing jobs!");
 
-    if (job.data.webhook) {
-      logger.debug("Calling webhook with crawl.started...", {
-        webhook: job.data.webhook,
-      });
-      await callWebhook(
-        job.data.team_id,
-        job.data.crawl_id,
-        null,
-        job.data.webhook,
-        true,
-        "crawl.started",
-      );
-    }
+    await finishCrawlKickoff(job.data.crawl_id);
+    await finishCrawlIfNeeded(job, sc);
 
     return { success: true };
   } catch (error) {
     logger.error("An error occurred!", { error });
+    await finishCrawlKickoff(job.data.crawl_id);
+    const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+    if (sc) {
+      await finishCrawlIfNeeded(job, sc);
+    }
     return { success: false, error };
   }
 }
@@ -619,6 +700,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     teamId: job.data?.team_id ?? undefined,
   });
   logger.info(`🐂 Worker taking job ${job.id}`, { url: job.data.url });
+  const start = Date.now();
 
   // Check if the job URL is researchhub and block it immediately
   // TODO: remove this once solve the root issue
@@ -645,7 +727,13 @@ async function processJob(job: Job & { id: string }, token: string) {
       current_step: "SCRAPING",
       current_url: "",
     });
-    const start = Date.now();
+
+    if (job.data.crawl_id) {
+      const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+      if (sc && sc.cancelled) {
+        throw new Error("Parent crawl/batch scrape was cancelled");
+      }
+    }
 
     const pipeline = await Promise.race([
       startWebScraperPipeline({
@@ -663,7 +751,6 @@ async function processJob(job: Job & { id: string }, token: string) {
     ]);
 
     if (!pipeline.success) {
-      // TODO: let's Not do this
       throw pipeline.error;
     }
 
@@ -674,6 +761,10 @@ async function processJob(job: Job & { id: string }, token: string) {
 
     const rawHtml = doc.rawHtml ?? "";
 
+    if (!job.data.scrapeOptions.formats.includes("rawHtml")) {
+      delete doc.rawHtml;
+    }
+
     const data = {
       success: true,
       result: {
@@ -681,6 +772,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           {
             content: doc,
             source: doc?.metadata?.sourceURL ?? doc?.metadata?.url ?? "",
+            id: job.id,
           },
         ],
       },
@@ -715,11 +807,19 @@ async function processJob(job: Job & { id: string }, token: string) {
       ) {
         const crawler = crawlToCrawler(job.data.crawl_id, sc);
         if (
-          crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL) === null
+          crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL) ===
+            null &&
+          !job.data.isCrawlSourceScrape
         ) {
           throw new Error(
             "Redirected target URL is not allowed by crawlOptions",
           ); // TODO: make this its own error type that is ignored by error tracking
+        }
+
+        if (job.data.isCrawlSourceScrape) {
+          // TODO: re-fetch sitemap for redirect target domain
+          sc.originUrl = doc.metadata.url;
+          await saveCrawl(job.data.crawl_id, sc);
         }
 
         if (isUrlBlocked(doc.metadata.url)) {
@@ -784,7 +884,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           );
 
           const links = crawler.filterLinks(
-            crawler.extractLinksFromHTML(
+            await crawler.extractLinksFromHTML(
               rawHtml ?? "",
               doc.metadata?.url ?? doc.metadata?.sourceURL ?? sc.originUrl!,
             ),
@@ -857,16 +957,53 @@ async function processJob(job: Job & { id: string }, token: string) {
       indexJob(job, doc);
     }
 
+    if (job.data.is_scrape !== true) {
+      let creditsToBeBilled = 1; // Assuming 1 credit per document
+      if (job.data.scrapeOptions.extract) {
+        creditsToBeBilled = 5;
+      }
+
+      if (job.data.team_id !== process.env.BACKGROUND_INDEX_TEAM_ID!) {
+        billTeam(job.data.team_id, undefined, creditsToBeBilled, logger).catch(
+          (error) => {
+            logger.error(
+              `Failed to bill team ${job.data.team_id} for ${creditsToBeBilled} credits`,
+              { error },
+            );
+            // Optionally, you could notify an admin or add to a retry queue here
+          },
+        );
+      }
+    }
+
     logger.info(`🐂 Job done ${job.id}`);
     return data;
   } catch (error) {
+    if (job.data.crawl_id) {
+      const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+
+      logger.debug("Declaring job as done...");
+      await addCrawlJobDone(job.data.crawl_id, job.id, false);
+      await redisConnection.srem(
+        "crawl:" + job.data.crawl_id + ":visited_unique",
+        normalizeURL(job.data.url, sc),
+      );
+
+      await finishCrawlIfNeeded(job, sc);
+    }
+
     const isEarlyTimeout =
       error instanceof Error && error.message === "timeout";
+    const isCancelled =
+      error instanceof Error &&
+      error.message === "Parent crawl/batch scrape was cancelled";
 
     if (isEarlyTimeout) {
       logger.error(`🐂 Job timed out ${job.id}`);
     } else if (error instanceof RacedRedirectError) {
       logger.warn(`🐂 Job got redirect raced ${job.id}, silently failing`);
+    } else if (isCancelled) {
+      logger.warn(`🐂 Job got cancelled, silently failing`);
     } else {
       logger.error(`🐂 Job errored ${job.id} - ${error}`, { error });
 
@@ -908,73 +1045,33 @@ async function processJob(job: Job & { id: string }, token: string) {
         job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
       );
     }
-    // if (job.data.v1) {
-    //   callWebhook(
-    //     job.data.team_id,
-    //     job.id as string,
-    //     [],
-    //     job.data.webhook,
-    //     job.data.v1,
-    //     "crawl.failed"
-    //   );
-    // }
 
-    if (job.data.crawl_id) {
-      const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
+    const end = Date.now();
+    const timeTakenInSeconds = (end - start) / 1000;
 
-      logger.debug("Declaring job as done...");
-      await addCrawlJobDone(job.data.crawl_id, job.id, false);
-      await redisConnection.srem(
-        "crawl:" + job.data.crawl_id + ":visited_unique",
-        normalizeURL(job.data.url, sc),
-      );
-
-      logger.debug("Logging job to DB...");
-      await logJob(
-        {
-          job_id: job.id as string,
-          success: false,
-          message:
-            typeof error === "string"
-              ? error
-              : (error.message ??
-                "Something went wrong... Contact help@mendable.ai"),
-          num_docs: 0,
-          docs: [],
-          time_taken: 0,
-          team_id: job.data.team_id,
-          mode: job.data.mode,
-          url: job.data.url,
-          crawlerOptions: sc.crawlerOptions,
-          scrapeOptions: job.data.scrapeOptions,
-          origin: job.data.origin,
-          crawl_id: job.data.crawl_id,
-        },
-        true,
-      );
-
-      await finishCrawlIfNeeded(job, sc);
-
-      // await logJob({
-      //   job_id: job.data.crawl_id,
-      //   success: false,
-      //   message:
-      //     typeof error === "string"
-      //       ? error
-      //       : error.message ??
-      //         "Something went wrong... Contact help@mendable.ai",
-      //   num_docs: 0,
-      //   docs: [],
-      //   time_taken: 0,
-      //   team_id: job.data.team_id,
-      //   mode: job.data.crawlerOptions !== null ? "crawl" : "batch_scrape",
-      //   url: sc ? sc.originUrl ?? job.data.url : job.data.url,
-      //   crawlerOptions: sc ? sc.crawlerOptions : undefined,
-      //   scrapeOptions: sc ? sc.scrapeOptions : job.data.scrapeOptions,
-      //   origin: job.data.origin,
-      // });
-    }
-    // done(null, data);
+    logger.debug("Logging job to DB...");
+    await logJob(
+      {
+        job_id: job.id as string,
+        success: false,
+        message:
+          typeof error === "string"
+            ? error
+            : (error.message ??
+              "Something went wrong... Contact help@mendable.ai"),
+        num_docs: 0,
+        docs: [],
+        time_taken: timeTakenInSeconds,
+        team_id: job.data.team_id,
+        mode: job.data.mode,
+        url: job.data.url,
+        crawlerOptions: job.data.crawlerOptions,
+        scrapeOptions: job.data.scrapeOptions,
+        origin: job.data.origin,
+        crawl_id: job.data.crawl_id,
+      },
+      true,
+    );
     return data;
   }
 }
@@ -990,3 +1087,20 @@ async function processJob(job: Job & { id: string }, token: string) {
 // wsq.on("paused", j => ScrapeEvents.logJobEvent(j, "paused"));
 // wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
 // wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
+
+// Start both workers
+(async () => {
+  await Promise.all([
+    workerFun(getScrapeQueue(), processJobInternal),
+    workerFun(getExtractQueue(), processExtractJobInternal),
+  ]);
+
+  console.log("All workers exited. Waiting for all jobs to finish...");
+
+  while (runningJobs.size > 0) {
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+
+  console.log("All jobs finished. Worker out!");
+  process.exit(0);
+})();
