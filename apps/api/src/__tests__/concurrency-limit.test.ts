@@ -9,7 +9,7 @@ import {
   getConcurrencyQueueJobsCount,
   ConcurrencyLimitedJob,
 } from "../lib/concurrency-limit";
-import { getConcurrencyLimitMax } from "../services/rate-limiter";
+import { CONCURRENCY_LIMIT, getConcurrencyLimitMax } from "../services/rate-limiter";
 import { PlanType } from "../types";
 
 // Mock Redis client
@@ -182,12 +182,12 @@ describe("Concurrency Limit", () => {
 
     it("should return correct limit for standard plan", () => {
       const result = getConcurrencyLimitMax("standard");
-      expect(result).toBe(10);
+      expect(result).toBe(CONCURRENCY_LIMIT.standard);
     });
 
     it("should return correct limit for scale plan", () => {
       const result = getConcurrencyLimitMax("scale");
-      expect(result).toBe(100);
+      expect(result).toBe(CONCURRENCY_LIMIT.scale);
     });
 
     it("should return default limit for unknown plan", () => {
