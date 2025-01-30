@@ -1,13 +1,7 @@
-import { Job } from "bullmq";
-import { redisConnection, getScrapeQueue } from "../services/queue-service";
-import {
-  addScrapeJob,
-  addScrapeJobs,
-} from "../services/queue-jobs";
+import { redisConnection } from "../services/queue-service";
+import { addScrapeJob, addScrapeJobs } from "../services/queue-jobs";
 import {
   cleanOldConcurrencyLimitEntries,
-  getConcurrencyLimitActiveJobs,
-  getConcurrencyQueueJobsCount,
   pushConcurrencyLimitActiveJob,
   takeConcurrencyLimitedJob,
   removeConcurrencyLimitActiveJob,
@@ -42,7 +36,16 @@ describe("Queue Concurrency Integration", () => {
   const mockNow = Date.now();
 
   const defaultScrapeOptions = {
-    formats: ["markdown"] as ("markdown" | "html" | "rawHtml" | "links" | "screenshot" | "screenshot@fullPage" | "extract" | "json")[],
+    formats: ["markdown"] as (
+      | "markdown"
+      | "html"
+      | "rawHtml"
+      | "links"
+      | "screenshot"
+      | "screenshot@fullPage"
+      | "extract"
+      | "json"
+    )[],
     onlyMainContent: true,
     waitFor: 0,
     mobile: false,
@@ -85,20 +88,20 @@ describe("Queue Concurrency Integration", () => {
     it("should add job directly to BullMQ when under concurrency limit", async () => {
       // Mock current active jobs to be under limit
       (redisConnection.zrangebyscore as jest.Mock).mockResolvedValue([]);
-      
+
       await addScrapeJob(mockWebScraperOptions);
 
       // Should have checked concurrency
       expect(redisConnection.zrangebyscore).toHaveBeenCalled();
-      
+
       // Should have added to BullMQ
       expect(mockAdd).toHaveBeenCalled();
-      
+
       // Should have added to active jobs
       expect(redisConnection.zadd).toHaveBeenCalledWith(
         expect.stringContaining("concurrency-limiter"),
         expect.any(Number),
-        expect.any(String)
+        expect.any(String),
       );
     });
 
@@ -106,58 +109,63 @@ describe("Queue Concurrency Integration", () => {
       // Mock current active jobs to be at limit
       const maxConcurrency = getConcurrencyLimitMax(mockPlan);
       const activeJobs = Array(maxConcurrency).fill("active-job");
-      (redisConnection.zrangebyscore as jest.Mock).mockResolvedValue(activeJobs);
-      
+      (redisConnection.zrangebyscore as jest.Mock).mockResolvedValue(
+        activeJobs,
+      );
+
       await addScrapeJob(mockWebScraperOptions);
 
       // Should have checked concurrency
       expect(redisConnection.zrangebyscore).toHaveBeenCalled();
-      
+
       // Should NOT have added to BullMQ
       expect(mockAdd).not.toHaveBeenCalled();
-      
+
       // Should have added to concurrency queue
       expect(redisConnection.zadd).toHaveBeenCalledWith(
         expect.stringContaining("concurrency-limit-queue"),
         expect.any(Number),
-        expect.stringContaining("mock-uuid")
+        expect.stringContaining("mock-uuid"),
       );
     });
   });
 
   describe("Batch Job Addition", () => {
-    const createMockJobs = (count: number) => Array(count).fill(null).map((_, i) => ({
-      data: {
-        url: `https://test${i}.com`,
-        mode: "single_urls",
-        team_id: mockTeamId,
-        plan: mockPlan,
-        scrapeOptions: defaultScrapeOptions,
-      } as WebScraperOptions,
-      opts: {
-        jobId: `job-${i}`,
-        priority: 1,
-      },
-    }));
+    const createMockJobs = (count: number) =>
+      Array(count)
+        .fill(null)
+        .map((_, i) => ({
+          data: {
+            url: `https://test${i}.com`,
+            mode: "single_urls",
+            team_id: mockTeamId,
+            plan: mockPlan,
+            scrapeOptions: defaultScrapeOptions,
+          } as WebScraperOptions,
+          opts: {
+            jobId: `job-${i}`,
+            priority: 1,
+          },
+        }));
 
     it("should handle batch jobs respecting concurrency limits", async () => {
       const maxConcurrency = getConcurrencyLimitMax(mockPlan);
       const totalJobs = maxConcurrency + 5; // Some jobs should go to queue
       const mockJobs = createMockJobs(totalJobs);
-      
+
       // Mock current active jobs to be empty
       (redisConnection.zrangebyscore as jest.Mock).mockResolvedValue([]);
-      
+
       await addScrapeJobs(mockJobs);
 
       // Should have added maxConcurrency jobs to BullMQ
       expect(mockAdd).toHaveBeenCalledTimes(maxConcurrency);
-      
+
       // Should have added remaining jobs to concurrency queue
       expect(redisConnection.zadd).toHaveBeenCalledWith(
         expect.stringContaining("concurrency-limit-queue"),
         expect.any(Number),
-        expect.any(String)
+        expect.any(String),
       );
     });
 
@@ -193,18 +201,18 @@ describe("Queue Concurrency Integration", () => {
       // Simulate job completion in worker
       await removeConcurrencyLimitActiveJob(mockTeamId, mockJob.id);
       await cleanOldConcurrencyLimitEntries(mockTeamId);
-      
+
       const nextJob = await takeConcurrencyLimitedJob(mockTeamId);
-      
+
       // Should have taken next job from queue
       expect(nextJob).toEqual(queuedJob);
-      
+
       // Should have added new job to active jobs
       await pushConcurrencyLimitActiveJob(mockTeamId, nextJob!.id);
       expect(redisConnection.zadd).toHaveBeenCalledWith(
         expect.stringContaining("concurrency-limiter"),
         expect.any(Number),
-        nextJob!.id
+        nextJob!.id,
       );
     });
 
@@ -227,36 +235,38 @@ describe("Queue Concurrency Integration", () => {
       // Verify job was removed from active jobs
       expect(redisConnection.zrem).toHaveBeenCalledWith(
         expect.stringContaining("concurrency-limiter"),
-        mockJob.id
+        mockJob.id,
       );
     });
   });
 
   describe("Edge Cases", () => {
     it("should handle stalled jobs cleanup", async () => {
-      const stalledTime = mockNow - (3 * 60 * 1000); // 3 minutes ago
-      
+      const stalledTime = mockNow - 3 * 60 * 1000; // 3 minutes ago
+
       // Mock stalled jobs in Redis
-      (redisConnection.zrangebyscore as jest.Mock).mockResolvedValueOnce(["stalled-job"]);
-      
+      (redisConnection.zrangebyscore as jest.Mock).mockResolvedValueOnce([
+        "stalled-job",
+      ]);
+
       await cleanOldConcurrencyLimitEntries(mockTeamId, mockNow);
-      
+
       // Should have cleaned up stalled jobs
       expect(redisConnection.zremrangebyscore).toHaveBeenCalledWith(
         expect.stringContaining("concurrency-limiter"),
         -Infinity,
-        mockNow
+        mockNow,
       );
     });
 
     it("should handle race conditions in job queue processing", async () => {
       // Mock a race condition where job is taken by another worker
       (redisConnection.zmpop as jest.Mock).mockResolvedValueOnce(null);
-      
+
       const nextJob = await takeConcurrencyLimitedJob(mockTeamId);
-      
+
       // Should handle gracefully when no job is available
       expect(nextJob).toBeNull();
     });
   });
-}); 
+});
