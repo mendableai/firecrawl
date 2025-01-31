@@ -1,13 +1,37 @@
 import { CONCURRENCY_LIMIT } from "../services/rate-limiter";
 import { redisConnection } from "../services/queue-service";
 import { PlanType } from "../types";
-import { JobsOptions } from "bullmq";
+import type { Job, JobsOptions } from "bullmq";
 
 const constructKey = (team_id: string) => "concurrency-limiter:" + team_id;
 const constructQueueKey = (team_id: string) =>
   "concurrency-limit-queue:" + team_id;
-const stalledJobTimeoutMs = 2 * 60 * 1000;
 
+export function calculateJobTimeToRun(
+  job: ConcurrencyLimitedJob
+): number {
+  let jobTimeToRun = 2 * 60 * 1000;
+
+  if (job.data.scrapeOptions) {
+    if (job.data.scrapeOptions.timeout) { 
+      jobTimeToRun = job.data.scrapeOptions.timeout;
+    }
+
+    if (job.data.scrapeOptions.waitFor) {
+      jobTimeToRun += job.data.scrapeOptions.waitFor;
+    }
+
+    (job.data.scrapeOptions.actions ?? []).forEach(x => {
+      if (x.type === "wait" && x.milliseconds) {
+        jobTimeToRun += x.milliseconds;
+      } else {
+        jobTimeToRun += 1000;
+      }
+    })
+  }
+
+  return jobTimeToRun;
+}
 
 export async function cleanOldConcurrencyLimitEntries(
   team_id: string,
@@ -30,11 +54,12 @@ export async function getConcurrencyLimitActiveJobs(
 export async function pushConcurrencyLimitActiveJob(
   team_id: string,
   id: string,
+  timeout: number,
   now: number = Date.now(),
 ) {
   await redisConnection.zadd(
     constructKey(team_id),
-    now + stalledJobTimeoutMs,
+    now + timeout,
     id,
   );
 }

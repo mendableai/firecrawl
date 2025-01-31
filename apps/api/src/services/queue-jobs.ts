@@ -4,6 +4,7 @@ import { v4 as uuidv4 } from "uuid";
 import { NotificationType, PlanType, WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
 import {
+  calculateJobTimeToRun,
   cleanOldConcurrencyLimitEntries,
   getConcurrencyLimitActiveJobs,
   getConcurrencyQueueJobsCount,
@@ -43,7 +44,15 @@ export async function _addScrapeJobToBullMQ(
     webScraperOptions.team_id &&
     webScraperOptions.plan
   ) {
-    await pushConcurrencyLimitActiveJob(webScraperOptions.team_id, jobId);
+    await pushConcurrencyLimitActiveJob(webScraperOptions.team_id, jobId, calculateJobTimeToRun({
+      id: jobId,
+      opts: {
+        ...options,
+        priority: jobPriority,
+        jobId,
+      },
+      data: webScraperOptions,
+    }));
   }
 
   await getScrapeQueue().add(jobId, webScraperOptions, {

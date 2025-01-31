@@ -71,7 +71,7 @@ describe("Concurrency Limit", () => {
 
   describe("pushConcurrencyLimitActiveJob", () => {
     it("should add job with expiration timestamp", async () => {
-      await pushConcurrencyLimitActiveJob(mockTeamId, mockJobId, mockNow);
+      await pushConcurrencyLimitActiveJob(mockTeamId, mockJobId, 2 * 60 * 1000, mockNow);
 
       expect(redisConnection.zadd).toHaveBeenCalledWith(
         "concurrency-limiter:test-team-id",
@@ -223,7 +223,7 @@ describe("Concurrency Limit", () => {
       expect(takenJob).toEqual(mockJob);
 
       // Add to active jobs
-      await pushConcurrencyLimitActiveJob(mockTeamId, mockJob.id, mockNow);
+      await pushConcurrencyLimitActiveJob(mockTeamId, mockJob.id, 2 * 60 * 1000, mockNow);
       expect(redisConnection.zadd).toHaveBeenCalled();
 
       // Verify active jobs

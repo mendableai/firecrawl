@@ -208,7 +208,7 @@ describe("Queue Concurrency Integration", () => {
       expect(nextJob).toEqual(queuedJob);
 
       // Should have added new job to active jobs
-      await pushConcurrencyLimitActiveJob(mockTeamId, nextJob!.id);
+      await pushConcurrencyLimitActiveJob(mockTeamId, nextJob!.id, 2 * 60 * 1000);
       expect(redisConnection.zadd).toHaveBeenCalledWith(
         expect.stringContaining("concurrency-limiter"),
         expect.any(Number),
@@ -226,7 +226,7 @@ describe("Queue Concurrency Integration", () => {
       };
 
       // Add job to active jobs
-      await pushConcurrencyLimitActiveJob(mockTeamId, mockJob.id);
+      await pushConcurrencyLimitActiveJob(mockTeamId, mockJob.id, 2 * 60 * 1000);
 
       // Simulate job failure and cleanup
       await removeConcurrencyLimitActiveJob(mockTeamId, mockJob.id);
