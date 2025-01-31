@@ -655,6 +655,7 @@ export type AuthCreditUsageChunk = {
   remaining_credits: number;
   sub_user_id: string | null;
   total_credits_sum: number;
+  is_extract?: boolean;
 };
 
 export interface RequestWithMaybeACUC<

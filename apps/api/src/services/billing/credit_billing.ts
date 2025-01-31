@@ -150,7 +150,8 @@ export async function supaCheckTeamCredits(
 
   if (
     isAutoRechargeEnabled &&
-    chunk.remaining_credits < autoRechargeThreshold
+    chunk.remaining_credits < autoRechargeThreshold &&
+    !chunk.is_extract
   ) {
     const autoChargeResult = await autoCharge(chunk, autoRechargeThreshold);
     if (autoChargeResult.success) {
