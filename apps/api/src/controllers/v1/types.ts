@@ -140,7 +140,7 @@ export const scrapeOptions = z
     excludeTags: z.string().array().optional(),
     onlyMainContent: z.boolean().default(true),
     timeout: z.number().int().positive().finite().safe().optional(),
-    waitFor: z.number().int().nonnegative().finite().safe().default(0),
+    waitFor: z.number().int().nonnegative().finite().safe().max(60000).default(0),
     // Deprecate this to jsonOptions
     extract: extractOptions.optional(),
     // New
