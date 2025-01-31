@@ -4,7 +4,7 @@
 
 ### Scrape Website
 # @name scrape
-POST http://default-fire-engine-api-service:3002/scrape HTTP/1.1
+POST {{baseUrl}}/v1/scrape HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
