@@ -96,3 +96,7 @@ content-type: application/json
 # @name extractFirecrawlStatus 
 GET {{baseUrl}}/v1/extract/{{extractFirecrawlId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
+
+###
+DELETE {{baseUrl}}/v1/crawl/c94136f9-86c1-4a97-966c-1c8e0274778f HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}

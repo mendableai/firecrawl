@@ -228,10 +228,12 @@ export const extractV1Options = z
     enableWebSearch: z.boolean().default(false),
     origin: z.string().optional().default("api"),
     urlTrace: z.boolean().default(false),
+    timeout: z.number().int().positive().finite().safe().default(60000),
     __experimental_streamSteps: z.boolean().default(false),
     __experimental_llmUsage: z.boolean().default(false),
     __experimental_showSources: z.boolean().default(false),
-    timeout: z.number().int().positive().finite().safe().default(60000),
+    __experimental_cacheKey: z.string().optional(),
+    __experimental_cacheMode: z.enum(["direct", "save", "load"]).default("direct").optional()
   })
   .strict(strictMessage)
   .transform((obj) => ({
