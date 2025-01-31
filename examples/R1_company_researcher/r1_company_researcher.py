@@ -142,7 +142,7 @@ def extract_company_info(urls, prompt, company, api_key):
         print(f"{Colors.RED}Failed to extract data: {e}{Colors.RESET}")
         return None
 
-def poll_firecrawl_result(extraction_id, api_key, interval=5, max_attempts=12):
+def poll_firecrawl_result(extraction_id, api_key, interval=5, max_attempts=36):
     """Poll Firecrawl API to get the extraction result."""
     url = f"https://api.firecrawl.dev/v1/extract/{extraction_id}"
     headers = {
