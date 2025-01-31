@@ -63,7 +63,6 @@ async function addScrapeJobRaw(
   let currentActiveConcurrency = 0;
   let maxConcurrency = 0;
 
-  console.log("Concurrency check: ", webScraperOptions.team_id);
   if (
     webScraperOptions &&
     webScraperOptions.team_id
