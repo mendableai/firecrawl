@@ -7,7 +7,7 @@ configDotenv();
 const hashKey = Buffer.from(process.env.HASH_KEY || "", "utf-8");
 const algorithm = "aes-256-ecb";
 
-function encryptAES(plaintext: string, key: Buffer): string {
+export function encryptAES(plaintext: string, key: Buffer): string {
   const cipher = crypto.createCipheriv(algorithm, key, null);
   const encrypted = Buffer.concat([
     cipher.update(plaintext, "utf-8"),
@@ -16,7 +16,7 @@ function encryptAES(plaintext: string, key: Buffer): string {
   return encrypted.toString("base64");
 }
 
-function decryptAES(ciphertext: string, key: Buffer): string {
+export function decryptAES(ciphertext: string, key: Buffer): string {
   const decipher = crypto.createDecipheriv(algorithm, key, null);
   const decrypted = Buffer.concat([
     decipher.update(Buffer.from(ciphertext, "base64")),
@@ -62,18 +62,12 @@ const urlBlocklist = [
   "g/ME+Sh1CAFboKrwkVb+5Q==",
   "Pw+xawUoX8xBYbX2yqqGWQ==",
   "k6vBalxYFhAvkPsF19t9gQ==",
-  "e3HFXLVgxhaVoadYpwb2BA==",
   "b+asgLayXQ5Jq+se+q56jA==",
   "KKttwRz4w+AMJrZcB828WQ==",
   "vMdzZ33BXoyWVZnAPOBcrg==",
   "l8GDVI8w/ueHnNzdN1ODuQ==",
   "+yz9bnYYMnC0trJZGJwf6Q==",
-];
-
-const decryptedBlocklist =
-  hashKey.length > 0
-    ? urlBlocklist.map((ciphertext) => decryptAES(ciphertext, hashKey))
-    : [];
+]
 
 const allowedKeywords = [
   "pulse",
@@ -100,15 +94,22 @@ const allowedKeywords = [
   "://www.facebook.com/ads/library",
 ];
 
+function decryptedBlocklist(list: string[]): string[] {
+  return hashKey.length > 0
+    ? list.map((ciphertext) => decryptAES(ciphertext, hashKey))
+    : [];
+}
+
 export function isUrlBlocked(url: string): boolean {
   const lowerCaseUrl = url.trim().toLowerCase();
-
+  
+  const blockedlist = decryptedBlocklist(urlBlocklist);
   const decryptedUrl =
-    decryptedBlocklist.find((decrypted) => lowerCaseUrl === decrypted) ||
+    blockedlist.find((decrypted) => lowerCaseUrl === decrypted) ||
     lowerCaseUrl;
 
   // If the URL is empty or invalid, return false
-  let parsedUrl;
+  let parsedUrl: any;
   try {
     parsedUrl = parse(decryptedUrl);
   } catch {
@@ -133,12 +134,12 @@ export function isUrlBlocked(url: string): boolean {
   }
 
   // Block exact matches
-  if (decryptedBlocklist.includes(domain)) {
+  if (blockedlist.includes(domain)) {
     return true;
   }
 
   // Block subdomains
-  if (decryptedBlocklist.some((blocked) => domain.endsWith(`.${blocked}`))) {
+  if (blockedlist.some((blocked) => domain.endsWith(`.${blocked}`))) {
     return true;
   }
 
@@ -146,7 +147,7 @@ export function isUrlBlocked(url: string): boolean {
   const baseDomain = domain.split(".")[0]; // Extract the base domain (e.g., "facebook" from "facebook.com")
   if (
     publicSuffix &&
-    decryptedBlocklist.some(
+    blockedlist.some(
       (blocked) => blocked.startsWith(baseDomain) && blocked !== domain,
     )
   ) {
