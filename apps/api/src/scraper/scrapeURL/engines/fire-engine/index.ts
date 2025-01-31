@@ -151,9 +151,9 @@ export async function scrapeURLWithFireEngineChromeCDP(
     // Transform waitFor option into an action (unsupported by chrome-cdp)
     ...(meta.options.waitFor !== 0
       ? [
-          {
+          { 
             type: "wait" as const,
-            milliseconds: meta.options.waitFor,
+            milliseconds: meta.options.waitFor > 30000 ? 30000 : meta.options.waitFor,
           },
         ]
       : []),
