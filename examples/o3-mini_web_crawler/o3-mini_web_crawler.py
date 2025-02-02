@@ -151,7 +151,7 @@ def find_objective_in_top_pages(map_website, objective, app, client):
 # Main function to execute the process
 def main():
     # Get user input
-    url = input(f"{Colors.BLUE}Enter the website to crawl: {Colors.RESET}")
+    url = input(f"{Colors.BLUE}Enter the website to crawl : {Colors.RESET}")
     objective = input(f"{Colors.BLUE}Enter your objective: {Colors.RESET}")
     
     print(f"{Colors.YELLOW}Initiating web crawling process...{Colors.RESET}")
@@ -159,12 +159,12 @@ def main():
     map_website = find_relevant_page_via_map(objective, url, app, client)
     
     if map_website:
-        print(f"{Colors.GREEN}Relevant pages identified. Proceeding with detailed analysis...{Colors.RESET}")
+        print(f"{Colors.GREEN}Relevant pages identified. Proceeding with detailed analysis using o3-mini...{Colors.RESET}")
         # Find objective in top pages
         result = find_objective_in_top_pages(map_website, objective, app, client)
         
         if result:
-            print(f"{Colors.GREEN}Objective successfully fulfilled. Extracted information:{Colors.RESET}")
+            print(f"{Colors.GREEN}Objective successfully fulfilled. Extracted information :{Colors.RESET}")
             print(f"{Colors.MAGENTA}{json.dumps(result, indent=2)}{Colors.RESET}")
         else:
             print(f"{Colors.RED}Unable to fulfill the objective with the available content.{Colors.RESET}")
