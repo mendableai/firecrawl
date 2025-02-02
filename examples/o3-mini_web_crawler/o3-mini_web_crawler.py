@@ -37,7 +37,7 @@ def find_relevant_page_via_map(objective, url, app, client):
 
         print(f"{Colors.YELLOW}Analyzing objective to determine optimal search parameter...{Colors.RESET}")
         completion = client.chat.completions.create(
-            model="o1-preview",
+            model="o3-mini",
             messages=[
                 {
                     "role": "user",
@@ -56,9 +56,28 @@ def find_relevant_page_via_map(objective, url, app, client):
 
         print(f"{Colors.YELLOW}Mapping website using the identified search parameter...{Colors.RESET}")
         map_website = app.map_url(url, params={"search": map_search_parameter})
+        
+        # Debug print to see the response structure
+        print(f"{Colors.MAGENTA}Debug - Map response structure: {json.dumps(map_website, indent=2)}{Colors.RESET}")
+        
         print(f"{Colors.GREEN}Website mapping completed successfully.{Colors.RESET}")
-        print(f"{Colors.GREEN}Located {len(map_website)} relevant links.{Colors.RESET}")
-        return map_website
+        
+        # Handle the response based on its structure
+        if isinstance(map_website, dict):
+            # Assuming the links are in a 'urls' or similar key
+            links = map_website.get('urls', []) or map_website.get('links', [])
+        elif isinstance(map_website, str):
+            try:
+                parsed = json.loads(map_website)
+                links = parsed.get('urls', []) or parsed.get('links', [])
+            except json.JSONDecodeError:
+                links = []
+        else:
+            links = map_website if isinstance(map_website, list) else []
+            
+        print(f"{Colors.GREEN}Located {len(links)} relevant links.{Colors.RESET}")
+        return links
+    
     except Exception as e:
         print(f"{Colors.RED}Error encountered during relevant page identification: {str(e)}{Colors.RESET}")
         return None
@@ -67,7 +86,11 @@ def find_relevant_page_via_map(objective, url, app, client):
 def find_objective_in_top_pages(map_website, objective, app, client):
     try:
         # Get top 3 links from the map result
-        top_links = map_website[:3] if isinstance(map_website, list) else []
+        if not map_website:
+            print(f"{Colors.RED}No links found to analyze.{Colors.RESET}")
+            return None
+            
+        top_links = map_website[:3]
         print(f"{Colors.CYAN}Proceeding to analyze top {len(top_links)} links: {top_links}{Colors.RESET}")
         
         for link in top_links:
@@ -93,18 +116,17 @@ def find_objective_in_top_pages(map_website, objective, app, client):
             """
         
             completion = client.chat.completions.create(
-          model="o3-mini",
-    reasoning_effort="medium",
-            messages=[
-                {
-                    "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": check_prompt
-                        }
-                    ]
-                }
+                model="o3-mini",
+                messages=[
+                    {
+                        "role": "user",
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": check_prompt
+                            }
+                        ]
+                    }
                 ]
             )
             
@@ -129,10 +151,10 @@ def find_objective_in_top_pages(map_website, objective, app, client):
 # Main function to execute the process
 def main():
     # Get user input
-    url = input(f"{Colors.BLUE}Enter the website to crawl using o3-mini : {Colors.RESET}")
+    url = input(f"{Colors.BLUE}Enter the website to crawl: {Colors.RESET}")
     objective = input(f"{Colors.BLUE}Enter your objective: {Colors.RESET}")
     
-    print(f"{Colors.YELLOW}Initiating web crawling process with o3 mini...{Colors.RESET}")
+    print(f"{Colors.YELLOW}Initiating web crawling process...{Colors.RESET}")
     # Find the relevant page
     map_website = find_relevant_page_via_map(objective, url, app, client)
     
