@@ -11,7 +11,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@anthropic-ai/sdk": "^0.24.3",
+    "@anthropic-ai/sdk": "^0.36.3",
     "@dqbd/tiktoken": "^1.0.14",
     "@supabase/supabase-js": "^2.43.1",
     "dotenv": "^16.4.5",
