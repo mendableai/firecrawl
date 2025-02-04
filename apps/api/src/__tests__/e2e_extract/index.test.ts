@@ -306,4 +306,35 @@ describe("E2E Tests for Extract API Routes", () => {
     },
     60000,
   );
+
+  it.concurrent(
+    "should extract information with scrapeOptions.waitFor",
+    async () => {
+      const response = await request(TEST_URL)
+        .post("/v1/extract")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({
+          urls: ["https://firecrawl-e2e-test-git-main-rafaelsideguides-projects.vercel.app/"],
+          prompt: "What is the content right after the #content-1 id?",
+          schema: {
+            type: "object",
+            properties: {
+              content: { type: "string" },
+            },
+            required: ["content"],
+          },
+          scrapeOptions: {
+            waitFor: 6000,
+          }
+        });
+
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("data");
+      expect(typeof response.body.data).toBe("object");
+      expect(response.body.data?.content).toBeDefined();
+      expect(response.body.data?.content).toBe("Content loaded after 5 seconds!");
+    },
+    60000,
+  );
 });

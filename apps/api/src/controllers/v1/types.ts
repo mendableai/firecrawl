@@ -226,6 +226,7 @@ export const extractV1Options = z
     includeSubdomains: z.boolean().default(true),
     allowExternalLinks: z.boolean().default(false),
     enableWebSearch: z.boolean().default(false),
+    scrapeOptions: scrapeOptions.default({ onlyMainContent: false }).optional(),
     origin: z.string().optional().default("api"),
     urlTrace: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().default(60000),
