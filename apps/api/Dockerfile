@@ -3,9 +3,8 @@ FROM node:20-slim AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
 LABEL fly_launch_runtime="Node.js"
-RUN npm install -g corepack
-RUN corepack enable
-RUN corepack prepare pnpm@10.2.0 --activate
+RUN corepack enable && npm install -g corepack@latest
+
 COPY . /app
 WORKDIR /app
 
