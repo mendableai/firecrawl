@@ -10,7 +10,7 @@ const constructQueueKey = (team_id: string) =>
 export function calculateJobTimeToRun(
   job: ConcurrencyLimitedJob
 ): number {
-  let jobTimeToRun = 2 * 60 * 1000;
+  let jobTimeToRun = 86400000; // 24h (crawl)
 
   if (job.data.scrapeOptions) {
     if (job.data.scrapeOptions.timeout) { 
