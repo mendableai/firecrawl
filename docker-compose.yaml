@@ -2,6 +2,10 @@ name: firecrawl
 
 x-common-service: &common-service
   build: apps/api
+  ulimits:
+    nofile:
+      soft: 65535
+      hard: 65535
   networks:
     - backend
   extra_hosts:
