@@ -74,6 +74,77 @@ def find_relevant_page_via_map(objective, url, app, client):
                 links = []
         else:
             links = map_website if isinstance(map_website, list) else []
+
+        if not links:
+            print(f"{Colors.RED}No links found in map response.{Colors.RESET}")
+            return None
+
+        rank_prompt = f"""
+        Given this list of URLs and the objective: {objective}
+        Analyze each URL and rank the top 3 most relevant ones that are most likely to contain the information we need.
+        Return your response as a JSON array with exactly 3 objects, each containing:
+        - "url": the full URL
+        - "relevance_score": number between 0-100 indicating relevance to objective
+        - "reason": brief explanation of why this URL is relevant
+
+        Example output:
+        [
+            {{
+                "url": "https://example.com/about",
+                "relevance_score": 95,
+                "reason": "Main about page containing company information"
+            }},
+            {{
+                "url": "https://example.com/team",
+                "relevance_score": 80,
+                "reason": "Team page with leadership details"
+            }},
+            {{
+                "url": "https://example.com/contact",
+                "relevance_score": 70,
+                "reason": "Contact page with location information"
+            }}
+        ]
+
+        URLs to analyze:
+        {json.dumps(links, indent=2)}
+        """
+
+        print(f"{Colors.YELLOW}Ranking URLs by relevance to objective...{Colors.RESET}")
+        completion = client.chat.completions.create(
+            model="o3-mini",
+            messages=[
+                {
+                    "role": "user", 
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": rank_prompt
+                        }
+                    ]
+                }
+            ]
+        )
+
+        try:
+            ranked_results = json.loads(completion.choices[0].message.content)
+            links = [result["url"] for result in ranked_results]
+            
+            # Print detailed ranking info
+            print(f"{Colors.CYAN}Top 3 ranked URLs:{Colors.RESET}")
+            for result in ranked_results:
+                print(f"{Colors.GREEN}URL: {result['url']}{Colors.RESET}")
+                print(f"{Colors.YELLOW}Relevance Score: {result['relevance_score']}{Colors.RESET}")
+                print(f"{Colors.BLUE}Reason: {result['reason']}{Colors.RESET}")
+                print("---")
+
+            if not links:
+                print(f"{Colors.RED}No relevant links identified.{Colors.RESET}")
+                return None
+
+        except (json.JSONDecodeError, KeyError) as e:
+            print(f"{Colors.RED}Error parsing ranked results: {str(e)}{Colors.RESET}")
+            return None
             
         print(f"{Colors.GREEN}Located {len(links)} relevant links.{Colors.RESET}")
         return links
