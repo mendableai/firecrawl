@@ -1,7 +1,10 @@
 import { Response } from "express";
 import { supabaseGetJobsById } from "../../lib/supabase-jobs";
+import { redisConnection } from "../../services/queue-service";
 import { RequestWithAuth } from "./types";
 import { getExtract, getExtractExpiry } from "../../lib/extract/extract-redis";
+
+const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
 
 export async function extractStatusController(
   req: RequestWithAuth<{ jobId: string }, any, any>,
@@ -19,15 +22,35 @@ export async function extractStatusController(
   let data: any[] = [];
 
   if (extract.status === "completed") {
-    const jobData = await supabaseGetJobsById([req.params.jobId]);
-    if (!jobData || jobData.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: "Job not found",
-      });
-    }
+    if (useDbAuthentication) {
+      const jobData = await supabaseGetJobsById([req.params.jobId]);
+      if (!jobData || jobData.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Job not found",
+        });
+      }
+      data = jobData[0].docs;
+    } else {
+      // Build the Bull job key (as stored by BullMQ)
+      const bullKey = `bull:{extractQueue}:${req.params.jobId}`;
+      // Use HGETALL to retrieve the hash (because the Bull key is a hash)
+      const bullJob = await redisConnection.hgetall(bullKey);
+      console.info(bullJob);
+      if (!bullJob || Object.keys(bullJob).length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Job not found in Bull queue",
+        });
+      }
 
-    data = jobData[0].docs;
+      try {
+        // The full extraction result is stored in the 'returnvalue' field.
+        data = JSON.parse(bullJob.returnvalue).data;
+      } catch (error) {
+        console.warn("Failed to parse completed job data")
+      }
+    }
   }
 
   // console.log(extract.sources);
