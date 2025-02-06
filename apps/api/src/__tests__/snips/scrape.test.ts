@@ -87,6 +87,6 @@ describe("Scrape tests", () => {
       expectScrapeToSucceed(response);
       const obj = JSON.parse(response.body.data.rawHtml);
       expect(obj.id).toBe(1);
-    }, 10000);
+    }, 25000); // TODO: mock and shorten
   })
 });
