@@ -40,7 +40,7 @@ to determine their relevance to the user's query and intent.
 }
 
 export function buildRerankerUserPrompt(searchQuery: string): string {
-  return `Given these URLs and their content, identify which ones are relevant to the user's extraction request: "${searchQuery}". Return an array of relevant links with their relevance scores (0-1). Higher scores should be given to URLs that directly address the user's extraction request. Be very mindful with the links you select, as if they are not that relevant it may affect the quality of the extraction. Only include URLs that have a relvancy score of 0.6+.`;
+  return `Given these URLs and their content, identify which ones are relevant to the user's extraction request: "${searchQuery}". Return an array of relevant links with their relevance scores (0-1). Higher scores should be given to URLs that directly address the user's extraction request. Be very mindful with the links you select, as if they are not that relevant it may affect the quality of the extraction. Only include URLs that have a relevancy score of 0.6+.`;
 }
 
 // Multi entity schema anlayzer
