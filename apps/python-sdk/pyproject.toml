@@ -17,7 +17,7 @@ dependencies = [
 ]
 authors = [{name = "Mendable.ai",email = "nick@mendable.ai"}]
 maintainers = [{name = "Mendable.ai",email = "nick@mendable.ai"}]
-license = "MIT"
+license = {text = "MIT License"}
 
 classifiers = [
     "Development Status :: 5 - Production/Stable",
