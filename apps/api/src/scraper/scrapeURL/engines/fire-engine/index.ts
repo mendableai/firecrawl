@@ -25,6 +25,7 @@ import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import { fireEngineDelete } from "./delete";
 import { MockState, saveMock } from "../../lib/mock";
+import { getInnerJSON } from "../../../../lib/html-transformer";
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -125,6 +126,14 @@ async function performFireEngineScrape<
     }),
     status.responseHeaders,
   );
+
+  const contentType = (Object.entries(status.responseHeaders ?? {}).find(
+    (x) => x[0].toLowerCase() === "content-type",
+  ) ?? [])[1] ?? "";
+
+  if (contentType.includes("application/json")) {
+    status.content = await getInnerJSON(status.content);
+  }
 
   if (status.file) {
     const content = status.file.content;

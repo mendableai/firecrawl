@@ -76,4 +76,17 @@ describe("Scrape tests", () => {
       expect(response.body.data.markdown).toContain("| Country | United States |");
     }, 10000);
   });
+
+  describe("JSON scrape support", () => {
+    it.concurrent("returns parseable JSON", async () => {
+      const response = await scrape({
+        url: "https://jsonplaceholder.typicode.com/todos/1",
+        formats: ["rawHtml"],
+      });
+
+      expectScrapeToSucceed(response);
+      const obj = JSON.parse(response.body.data.rawHtml);
+      expect(obj.id).toBe(1);
+    }, 25000); // TODO: mock and shorten
+  })
 });
