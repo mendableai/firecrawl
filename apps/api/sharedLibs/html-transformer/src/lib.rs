@@ -10,7 +10,7 @@ use url::Url;
 /// # Safety
 /// Input options must be a C HTML string. Output will be a JSON string array. Output string must be freed with free_string.
 #[no_mangle]
-pub unsafe extern "C" fn extract_links(html: *const libc::c_char) -> *mut i8 {
+pub unsafe extern "C" fn extract_links(html: *const libc::c_char) -> *mut libc::c_char {
     let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
 
     let document = parse_html().one(html);
@@ -54,7 +54,7 @@ macro_rules! insert_meta_property {
 /// # Safety
 /// Input options must be a C HTML string. Output will be a JSON object. Output string must be freed with free_string.
 #[no_mangle]
-pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut i8 {
+pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut libc::c_char {
     let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
 
     let document = parse_html().one(html);
@@ -334,7 +334,7 @@ fn _transform_html_inner(opts: TranformHTMLOptions) -> Result<String, ()> {
 /// # Safety
 /// Input options must be a C JSON string. Output will be an HTML string. Output string must be freed with free_string.
 #[no_mangle]
-pub unsafe extern "C" fn transform_html(opts: *const libc::c_char) -> *mut i8 {
+pub unsafe extern "C" fn transform_html(opts: *const libc::c_char) -> *mut libc::c_char {
     let opts: TranformHTMLOptions = match unsafe { CStr::from_ptr(opts) }.to_str().map_err(|_| ()).and_then(|x| serde_json::de::from_str(x).map_err(|_| ())) {
         Ok(x) => x,
         Err(_) => {
@@ -343,6 +343,26 @@ pub unsafe extern "C" fn transform_html(opts: *const libc::c_char) -> *mut i8 {
     };
 
     let out = match _transform_html_inner(opts) {
+        Ok(x) => x,
+        Err(_) => "RUSTFC:ERROR".to_string(),
+    };
+
+    CString::new(out).unwrap().into_raw()
+}
+
+fn _get_inner_json(html: &str) -> Result<String, ()> {
+    Ok(parse_html().one(html).select_first("body")?.text_contents())
+}
+
+/// For JSON pages retrieved by browser engines, this function can be used to transform it back into valid JSON.
+/// 
+/// # Safety
+/// Input must be a C HTML string. Output will be an HTML string. Output string must be freed with free_string.
+#[no_mangle]
+pub unsafe extern "C" fn get_inner_json(html: *const libc::c_char) -> *mut libc::c_char {
+    let html = unsafe { CStr::from_ptr(html) }.to_str().unwrap();
+
+    let out = match _get_inner_json(html) {
         Ok(x) => x,
         Err(_) => "RUSTFC:ERROR".to_string(),
     };
