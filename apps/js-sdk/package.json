@@ -9,7 +9,7 @@
   },
   "keywords": [],
   "author": "",
-  "license": "ISC",
+  "license": "MIT",
   "dependencies": {
     "@mendable/firecrawl-js": "1.7.1",
     "axios": "^1.6.8",
