@@ -294,6 +294,8 @@ export async function performExtraction(
             isMultiEntity: true,
           }),
           {
+            ...request.scrapeOptions,
+
             // Needs to be true for multi-entity to work properly
             onlyMainContent: true,
           }
@@ -554,6 +556,7 @@ export async function performExtraction(
             url,
             isMultiEntity: false,
           }),
+          request.scrapeOptions
         );
       }
       return docsMap.get(normalizeUrl(url));
