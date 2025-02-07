@@ -6,7 +6,8 @@
     "test:suite": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false",
     "test:load": "artillery run --output ./load-test-results/test-run-report.json load-test.yml",
     "test:scrape": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathPattern=tests/scrape.test.ts",
-    "test:crawl": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathPattern=tests/crawl.test.ts"
+    "test:crawl": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathPattern=tests/crawl.test.ts",
+    "test:schema-validation": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathPattern=tests/schema-validation.test.ts"
   },
   "author": "",
   "license": "ISC",
@@ -22,9 +23,11 @@
     "ts-jest": "^29.1.2"
   },
   "devDependencies": {
+    "@jest/globals": "^29.7.0",
     "@types/jest": "^29.5.12",
     "@types/supertest": "^6.0.2",
     "artillery": "^2.0.19",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "zod": "^3.24.1"
   }
 }
