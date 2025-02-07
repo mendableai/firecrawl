@@ -2,6 +2,8 @@ import { Queue } from "bullmq";
 import { logger } from "../lib/logger";
 import IORedis from "ioredis";
 
+export type QueueFunction = () => Queue<any, any, string, any, any, string>;
+
 let scrapeQueue: Queue;
 let extractQueue: Queue;
 let loggingQueue: Queue;

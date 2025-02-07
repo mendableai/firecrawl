@@ -14,13 +14,13 @@ import {
   getThrottledJobs,
   isCrawlKickoffFinished,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue } from "../../services/queue-service";
+import { getScrapeQueue, QueueFunction } from "../../services/queue-service";
 import {
   supabaseGetJobById,
   supabaseGetJobsById,
 } from "../../lib/supabase-jobs";
 import { configDotenv } from "dotenv";
-import type { Job, JobState } from "bullmq";
+import type { Job, JobState, Queue } from "bullmq";
 import { logger } from "../../lib/logger";
 import { supabase_service } from "../../services/supabase";
 configDotenv();
@@ -38,9 +38,9 @@ export type PseudoJob<T> = {
 
 export type DBJob = { docs: any, success: boolean, page_options: any, date_added: any, message: string | null }
 
-export async function getJob(id: string): Promise<PseudoJob<any> | null> {
+export async function getJob(queueFunction: QueueFunction, id: string): Promise<PseudoJob<any> | null> {
   const [bullJob, dbJob] = await Promise.all([
-    getScrapeQueue().getJob(id),
+    queueFunction().getJob(id),
     (process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobById(id) : null) as Promise<DBJob | null>,
   ]);
 
@@ -64,9 +64,9 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
   return job;
 }
 
-export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
+export async function getJobs(queueFunction: QueueFunction, ids: string[]): Promise<PseudoJob<any>[]> {
   const [bullJobs, dbJobs] = await Promise.all([
-    Promise.all(ids.map((x) => getScrapeQueue().getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
+    Promise.all(ids.map((x) => queueFunction().getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
     process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobsById(ids) : [],
   ]);
 
@@ -190,7 +190,7 @@ export async function crawlStatusController(
     ) {
       // get current chunk and retrieve jobs
       const currentIDs = doneJobsOrder.slice(i, i + factor);
-      const jobs = await getJobs(currentIDs);
+      const jobs = await getJobs(getScrapeQueue, currentIDs);
 
       // iterate through jobs and add them one them one to the byte counter
       // both loops will break once we cross the byte counter
@@ -222,7 +222,7 @@ export async function crawlStatusController(
   } else {
     doneJobs = (
       await Promise.all(
-        (await getJobs(doneJobsOrder)).map(async (x) =>
+        (await getJobs(getScrapeQueue, doneJobsOrder)).map(async (x) =>
           (await x.getState()) === "failed" ? null : x,
         ),
       )

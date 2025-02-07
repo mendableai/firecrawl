@@ -48,7 +48,7 @@ interface ExtractServiceOptions {
   cacheKey?: string;
 }
 
-interface ExtractResult {
+export interface ExtractResult {
   success: boolean;
   data?: any;
   extractId: string;
