@@ -88,7 +88,7 @@ export class WebCrawler {
     crawlerOptions?: CrawlerOptions,
     concurrencyLimit: number = 5,
     limit: number = 10000,
-    maxDepth: number = 10
+    maxDepth: number = 10,
   ): Promise<{ url: string; html: string }[]> {
     Logger.debug(`Crawler starting with ${this.initialUrl}`);
     // Fetch and parse robots.txt
@@ -111,12 +111,12 @@ export class WebCrawler {
       [this.initialUrl],
       pageOptions,
       concurrencyLimit,
-      inProgress
+      inProgress,
     );
 
     const filteredUrls = urls
       .filter(
-        (urlObj) => !this.visited.has(urlObj.url) && this.filterURL(urlObj.url)
+        (urlObj) => !this.visited.has(urlObj.url) && this.filterURL(urlObj.url),
       )
       .slice(0, limit);
 
@@ -130,7 +130,7 @@ export class WebCrawler {
     urls: string[],
     pageOptions: PageOptions,
     concurrencyLimit: number,
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
   ): Promise<{ url: string; html: string }[]> {
     const queue = async.queue(async (task: string, callback) => {
       Logger.debug(`Crawling ${task}`);
@@ -163,7 +163,7 @@ export class WebCrawler {
         newUrls.map((p) => p.url),
         pageOptions,
         concurrencyLimit,
-        inProgress
+        inProgress,
       );
       if (callback && typeof callback === "function") {
         callback();
@@ -174,11 +174,12 @@ export class WebCrawler {
     queue.push(
       urls.filter(
         (url) =>
-          !this.visited.has(url) && this.robots.isAllowed(url, "FireCrawlAgent")
+          !this.visited.has(url) &&
+          this.robots.isAllowed(url, "FireCrawlAgent"),
       ),
       (err) => {
         if (err) Logger.error(`🐂 Error pushing URLs to the queue: ${err}`);
-      }
+      },
     );
     await queue.drain();
     Logger.debug(`🐂 Crawled ${this.crawledUrls.size} URLs, Queue drained.`);
@@ -263,7 +264,7 @@ export class WebCrawler {
     url: string,
     pageOptions: PageOptions,
     webhookUrl?: string,
-    webhookMetadata?: any
+    webhookMetadata?: any,
   ): Promise<
     { url: string; html: string; pageStatusCode?: number; pageError?: string }[]
   > {
@@ -291,30 +292,20 @@ export class WebCrawler {
       let pageStatusCode: number;
       let pageError: string | undefined = undefined;
 
-      // If it is the first link, fetch with single url
-      if (this.visited.size === 1) {
-        Logger.debug(`Scraping single URL: ${url}`);
-        const page = await scrapeSingleUrl(
-          url,
-          {
-            ...pageOptions,
-            includeRawHtml: true,
-          },
-          webhookUrl,
-          webhookMetadata,
-          this.jobId
-        );
-        rawHtml = page.rawHtml ?? "";
-        pageStatusCode = page.metadata?.pageStatusCode;
-        pageError = page.metadata?.pageError || undefined;
-      } else {
-        Logger.debug(`Axios getting URL: ${url}`);
-        const response = await axios.get(url, { timeout: axiosTimeout });
-        rawHtml = response.data ?? "";
-        pageStatusCode = response.status;
-        pageError =
-          response.statusText != "OK" ? response.statusText : undefined;
-      }
+      Logger.info(`Scraping single URL: ${url}`);
+      const page = await scrapeSingleUrl(
+        url,
+        {
+          ...pageOptions,
+          includeRawHtml: true,
+        },
+        webhookUrl,
+        webhookMetadata,
+        this.jobId,
+      );
+      rawHtml = page.rawHtml ?? "";
+      pageStatusCode = page.metadata?.pageStatusCode;
+      pageError = page.metadata?.pageError || undefined;
 
       const $ = load(rawHtml);
       let links: {
@@ -335,7 +326,7 @@ export class WebCrawler {
           html: rawHtml,
           pageStatusCode,
           pageError,
-        }))
+        })),
       );
 
       const resLinks =
@@ -513,7 +504,7 @@ export class WebCrawler {
       }
     } catch (error) {
       Logger.debug(
-        `Failed to fetch sitemap with axios from ${sitemapUrl}: ${error}`
+        `Failed to fetch sitemap with axios from ${sitemapUrl}: ${error}`,
       );
     }
 
@@ -530,14 +521,14 @@ export class WebCrawler {
         }
       } catch (error) {
         Logger.debug(
-          `Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`
+          `Failed to fetch sitemap from ${baseUrlSitemap}: ${error}`,
         );
       }
     }
 
     const normalizedUrl = normalizeUrl(url);
     const normalizedSitemapLinks = sitemapLinks.map((link) =>
-      normalizeUrl(link)
+      normalizeUrl(link),
     );
     // has to be greater than 0 to avoid adding the initial URL to the sitemap links, and preventing crawler to crawl
     if (
