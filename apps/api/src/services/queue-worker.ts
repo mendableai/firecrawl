@@ -30,6 +30,7 @@ import {
 import { PlanType } from "../types";
 import { getJobs } from "../../src/controllers/v1/crawl-status";
 import { configDotenv } from "dotenv";
+import { callWebhook } from "../../src/scraper/WebScraper/single_url";
 configDotenv();
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -79,7 +80,7 @@ process.on("SIGINT", () => {
 
 const workerFun = async (
   queueName: string,
-  processJobInternal: (token: string, job: Job) => Promise<any>
+  processJobInternal: (token: string, job: Job) => Promise<any>,
 ) => {
   const worker = new Worker(queueName, null, {
     connection: redisConnection,
@@ -186,7 +187,7 @@ async function processJob(job: Job, token: string) {
 
           const links = crawler.extractLinksFromHTML(
             rawHtml,
-            docs[0]?.metadata?.sourceURL ?? docs[0]?.url ?? ""
+            docs[0]?.metadata?.sourceURL ?? docs[0]?.url ?? "",
           );
 
           for (const link of links) {
@@ -204,13 +205,15 @@ async function processJob(job: Job, token: string) {
                   crawlerOptions: sc.crawlerOptions,
                   team_id: sc.team_id,
                   pageOptions: sc.pageOptions,
+                  webhookUrl: job.data.webhookUrl,
+                  webhookMetadata: job.data.webhookMetadata,
                   origin: job.data.origin,
                   crawl_id: job.data.crawl_id,
                   v1: job.data.v1,
                 },
                 {},
                 uuidv4(),
-                jobPriority
+                jobPriority,
               );
 
               await addCrawlJob(job.data.crawl_id, newJob.id);
@@ -219,7 +222,7 @@ async function processJob(job: Job, token: string) {
         }
       }
 
-      await finishCrawl(job.data.crawl_id)
+      await finishCrawl(job.data.crawl_id);
     }
 
     Logger.info(`🐂 Job done ${job.id}`);

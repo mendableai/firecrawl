@@ -18,7 +18,7 @@ export const callWebhook = async (
   webhookUrl: string,
   data: any,
   metadata: any,
-  scrapeId?: string
+  scrapeId?: string,
 ) => {
   let retryCount = 0;
   while (retryCount < 3) {
@@ -35,14 +35,14 @@ export const callWebhook = async (
             "Content-Type": "application/json",
           },
           timeout: 10000,
-        }
+        },
       );
 
       Logger.debug(`Webhook sent for scrape ID: ${scrapeId}`);
       break;
     } catch (error) {
       Logger.debug(
-        `Error sending webhook to ${webhookUrl} for scrape ID: ${scrapeId}, retry ${retryCount}. Error: ${error}`
+        `Error sending webhook to ${webhookUrl} for scrape ID: ${scrapeId}, retry ${retryCount}. Error: ${error}`,
       );
     }
 
@@ -55,7 +55,7 @@ export const baseScrapers = ["playwright", "fetch"].filter(Boolean);
 export async function generateRequestParams(
   url: string,
   wait_browser: string = "domcontentloaded",
-  timeout: number = 60000
+  timeout: number = 60000,
 ): Promise<any> {
   const defaultParams = {
     url: url,
@@ -100,12 +100,12 @@ function getScrapingFallbackOrder(defaultScraper?: string) {
 
   const filteredDefaultOrder = defaultOrder.filter(
     (scraper: (typeof baseScrapers)[number]) =>
-      availableScrapers.includes(scraper)
+      availableScrapers.includes(scraper),
   );
   const uniqueScrapers = new Set(
     defaultScraper
       ? [defaultScraper, ...filteredDefaultOrder, ...availableScrapers]
-      : [...filteredDefaultOrder, ...availableScrapers]
+      : [...filteredDefaultOrder, ...availableScrapers],
   );
 
   const scrapersInOrder = Array.from(uniqueScrapers);
@@ -118,7 +118,7 @@ export async function scrapeSingleUrl(
   existingHtml?: string,
   webhookUrl?: string,
   webhookMetadata?: any,
-  scrapeId?: string
+  scrapeId?: string,
 ): Promise<Document> {
   pageOptions = {
     includeMarkdown: pageOptions.includeMarkdown ?? true,
@@ -147,7 +147,7 @@ export async function scrapeSingleUrl(
 
   const attemptScraping = async (
     url: string,
-    method: (typeof baseScrapers)[number]
+    method: (typeof baseScrapers)[number],
   ) => {
     let scraperResponse: {
       text: string;
@@ -161,7 +161,7 @@ export async function scrapeSingleUrl(
           const response = await scrapeWithPlaywright(
             url,
             pageOptions.waitFor,
-            pageOptions.headers
+            pageOptions.headers,
           );
           scraperResponse.text = response.content;
           scraperResponse.metadata.pageStatusCode = response.pageStatusCode;
@@ -245,19 +245,19 @@ export async function scrapeSingleUrl(
         (typeof screenshot === "string" && screenshot.length > 0)
       ) {
         Logger.debug(
-          `⛏️ ${scraper}: Successfully scraped ${urlToScrape} with rawHtml length >= 100 or screenshot, breaking`
+          `⛏️ ${scraper}: Successfully scraped ${urlToScrape} with rawHtml length >= 100 or screenshot, breaking`,
         );
         break;
       }
       if (pageStatusCode && (pageStatusCode == 404 || pageStatusCode == 500)) {
         Logger.debug(
-          `⛏️ ${scraper}: Successfully scraped ${urlToScrape} with status code 404, breaking`
+          `⛏️ ${scraper}: Successfully scraped ${urlToScrape} with status code 404, breaking`,
         );
         break;
       }
 
       Logger.debug(
-        `⛏️ ${scraper}: Failed to scrape ${urlToScrape}, trying next scraper`
+        `⛏️ ${scraper}: Failed to scrape ${urlToScrape}, trying next scraper`,
       );
     }
 
@@ -316,7 +316,7 @@ export async function scrapeSingleUrl(
 
     if (webhookUrl) {
       Logger.debug(
-        `Sending webhook for scrape ID  ${scrapeId} to ${webhookUrl}`
+        `Sending webhook for scrape ID  ${scrapeId} to ${webhookUrl}`,
       );
       await callWebhook(webhookUrl, document, webhookMetadata, scrapeId);
     } else {
@@ -326,7 +326,7 @@ export async function scrapeSingleUrl(
     return document;
   } catch (error) {
     Logger.debug(
-      `⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrape}`
+      `⛏️ Error: ${error.message} - Failed to fetch URL: ${urlToScrape}`,
     );
 
     return {

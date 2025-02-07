@@ -4,7 +4,8 @@ FROM node:20-slim AS base
 WORKDIR /app
 
 # Install pnpm
-RUN npm install -g pnpm
+RUN npm install -g pnpm corepack@latest
+RUN corepack enable
 
 # Copy package files
 COPY ./package.json ./pnpm-lock.yaml ./
