@@ -376,5 +376,5 @@ pub unsafe extern "C" fn get_inner_json(html: *const libc::c_char) -> *mut libc:
 /// ptr must be a non-freed string pointer returned by Rust code.
 #[no_mangle]
 pub unsafe extern "C" fn free_string(ptr: *mut i8) {
-    drop(unsafe { CString::from_raw(ptr) })
+    drop(unsafe { CString::from_raw(ptr as *mut u8) })
 }
