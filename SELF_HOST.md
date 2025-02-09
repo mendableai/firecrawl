@@ -61,6 +61,7 @@ SUPABASE_SERVICE_TOKEN=
 TEST_API_KEY= # use if you've set up authentication and want to test with a real API key
 SCRAPING_BEE_API_KEY= # use if you'd like to use as a fallback scraper
 OPENAI_API_KEY= # add for LLM-dependent features (e.g., image alt generation)
+OPENAI_API_BASE_URL= # add for LLM-dependent features (e.g., image alt generation)
 BULL_AUTH_KEY= @
 PLAYWRIGHT_MICROSERVICE_URL=  # set if you'd like to run a playwright fallback
 LLAMAPARSE_API_KEY= #Set if you have a llamaparse key you'd like to use to parse pdfs
