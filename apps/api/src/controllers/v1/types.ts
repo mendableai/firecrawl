@@ -135,7 +135,7 @@ export const actionsSchema = z.array(
 ).refine(
   (actions) => actions.length <= MAX_ACTIONS,
   {
-    message: `Maximum of ${MAX_ACTIONS} actions allowed`,
+    message: `Number of actions cannot exceed ${MAX_ACTIONS}`,
   },
 ).refine(
   (actions) => calculateTotalWaitTime(actions) <= ACTIONS_MAX_WAIT_TIME * 1000,
