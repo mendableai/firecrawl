@@ -68,7 +68,7 @@ export const extractOptions = z
 export type ExtractOptions = z.infer<typeof extractOptions>;
 
 const ACTIONS_MAX_WAIT_TIME = 60;
-const MAX_ACTIONS = 15;
+const MAX_ACTIONS = 50;
 function calculateTotalWaitTime(actions: any[] = [], waitFor: number = 0): number {
   const actionWaitTime = actions.reduce((acc, action) => {
     if (action.type === "wait") {
