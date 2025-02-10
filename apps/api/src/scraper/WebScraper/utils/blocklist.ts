@@ -94,7 +94,7 @@ const allowedKeywords = [
   "://www.facebook.com/ads/library",
 ];
 
-function decryptedBlocklist(list: string[]): string[] {
+export function decryptedBlocklist(list: string[]): string[] {
   return hashKey.length > 0
     ? list.map((ciphertext) => decryptAES(ciphertext, hashKey))
     : [];
@@ -148,7 +148,7 @@ export function isUrlBlocked(url: string): boolean {
   if (
     publicSuffix &&
     blockedlist.some(
-      (blocked) => blocked.startsWith(baseDomain) && blocked !== domain,
+      (blocked) => blocked.startsWith(baseDomain + ".") && blocked !== domain,
     )
   ) {
     return true;
