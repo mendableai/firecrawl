@@ -11,6 +11,7 @@ import { extractLinks } from "./utils/utils";
 import { Logger } from "../../lib/logger";
 import { clientSideError } from "../../strings";
 import axios from "axios";
+import { log } from "console";
 
 dotenv.config();
 

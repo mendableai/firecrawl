@@ -54,6 +54,7 @@ export async function startWebScraperPipeline({
     bull_job_id: job.id.toString(),
     priority: job.opts.priority,
     is_scrape: job.data.is_scrape ?? false,
+    crawl_id: job.data.crawl_id,
   })) as { success: boolean; message: string; docs: Document[] };
 }
 export async function runWebScraper({
@@ -68,6 +69,7 @@ export async function runWebScraper({
   onError,
   team_id,
   bull_job_id,
+  crawl_id,
   priority,
   is_scrape = false,
 }: RunWebScraperParams): Promise<RunWebScraperResult> {
@@ -83,6 +85,7 @@ export async function runWebScraper({
         webhookUrl: webhookUrl,
         webhookMetadata: webhookMetadata,
         bullJobId: bull_job_id,
+        crawlId: crawl_id,
         priority,
       });
     } else {
@@ -94,6 +97,7 @@ export async function runWebScraper({
         pageOptions: pageOptions,
         webhookUrl: webhookUrl,
         webhookMetadata: webhookMetadata,
+        crawlId: crawl_id,
         teamId: team_id,
       });
     }

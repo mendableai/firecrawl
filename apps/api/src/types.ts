@@ -27,7 +27,7 @@ export interface WebScraperOptions {
   pageOptions: any;
   team_id: string;
   origin?: string;
-  crawl_id?: string;
+  crawl_id: string;
   sitemapped?: boolean;
   webhookUrl?: string;
   webhookMetadata?: any;
@@ -47,6 +47,7 @@ export interface RunWebScraperParams {
   onError: (error: Error) => void;
   team_id: string;
   bull_job_id: string;
+  crawl_id: string;
   priority?: number;
   is_scrape?: boolean;
 }
@@ -70,8 +71,8 @@ export interface FirecrawlJob {
   crawlerOptions?: any;
   pageOptions?: any;
   origin: string;
-  num_tokens?: number,
-  retry?: boolean,
+  num_tokens?: number;
+  retry?: boolean;
   crawl_id?: string;
 }
 
@@ -89,7 +90,6 @@ export interface FirecrawlCrawlResponse {
   body: {
     status: string;
     jobId: string;
-    
   };
   error?: string;
 }
@@ -98,7 +98,7 @@ export interface FirecrawlCrawlStatusResponse {
   statusCode: number;
   body: {
     status: string;
-    data: Document[];    
+    data: Document[];
   };
   error?: string;
 }
@@ -110,7 +110,6 @@ export enum RateLimiterMode {
   Preview = "preview",
   Search = "search",
   Map = "map",
-
 }
 
 export interface AuthResponse {
@@ -121,7 +120,6 @@ export interface AuthResponse {
   api_key?: string;
   plan?: PlanType;
 }
-  
 
 export enum NotificationType {
   APPROACHING_LIMIT = "approachingLimit",
@@ -144,7 +142,7 @@ export type ScrapeLog = {
   ipv6_support?: boolean | null;
 };
 
-export type PlanType = 
+export type PlanType =
   | "starter"
   | "standard"
   | "scale"

@@ -11,6 +11,7 @@ import { Logger } from "../../../src/lib/logger";
 
 export class WebCrawler {
   private jobId: string;
+  private crawlId: string;
   private initialUrl: string;
   private baseUrl: string;
   private includes: string[];
@@ -33,6 +34,7 @@ export class WebCrawler {
     limit = 10000,
     maxCrawledDepth = 10,
     allowExternalLinks = false,
+    crawlId,
   }: {
     jobId: string;
     initialUrl: string;
@@ -42,6 +44,7 @@ export class WebCrawler {
     limit?: number;
     maxCrawledDepth?: number;
     allowExternalLinks?: boolean;
+    crawlId: string;
   }) {
     this.jobId = jobId;
     this.initialUrl = initialUrl;
@@ -55,6 +58,7 @@ export class WebCrawler {
     this.maxCrawledLinks = maxCrawledLinks ?? limit;
     this.maxCrawledDepth = maxCrawledDepth ?? 10;
     this.allowExternalLinks = allowExternalLinks ?? false;
+    this.crawlId = crawlId;
   }
 
   public async getRobotsTxt(): Promise<string> {
@@ -292,7 +296,7 @@ export class WebCrawler {
       let pageStatusCode: number;
       let pageError: string | undefined = undefined;
 
-      Logger.info(`Scraping single URL: ${url}`);
+      Logger.info(`Scraping single URL: ${url} with crawlId: ${this.crawlId}`);
       const page = await scrapeSingleUrl(
         url,
         {
@@ -301,7 +305,7 @@ export class WebCrawler {
         },
         webhookUrl,
         webhookMetadata,
-        this.jobId,
+        this.crawlId,
       );
       rawHtml = page.rawHtml ?? "";
       pageStatusCode = page.metadata?.pageStatusCode;

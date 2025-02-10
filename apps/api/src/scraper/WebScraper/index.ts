@@ -13,6 +13,7 @@ import { Logger } from "../../lib/logger";
 
 export class WebScraperDataProvider {
   private jobId: string;
+  private crawlId: string;
   private urls: string[] = [""];
   private mode: "single_urls" | "sitemap" | "crawl" = "single_urls";
   private includes: string | string[];
@@ -33,7 +34,7 @@ export class WebScraperDataProvider {
   private async convertUrlsToDocuments(
     urls: string[],
     inProgress?: (progress: Progress) => void,
-    allHtmls?: string[]
+    allHtmls?: string[],
   ): Promise<Document[]> {
     const totalUrls = urls.length;
     let processedUrls = 0;
@@ -44,13 +45,14 @@ export class WebScraperDataProvider {
       await Promise.all(
         batchUrls.map(async (url, index) => {
           const existingHTML = allHtmls ? allHtmls[i + index] : "";
+          Logger.info(`Scraping URL: ${url} for crawlId: ${this.crawlId}`);
           const result = await scrapeSingleUrl(
             url,
             this.pageOptions,
             existingHTML,
             this.webhookUrl,
             this.webhookMetadata,
-            this.jobId
+            this.crawlId,
           );
           processedUrls++;
           if (inProgress) {
@@ -64,7 +66,7 @@ export class WebScraperDataProvider {
           }
 
           results[i + index] = result;
-        })
+        }),
       );
     }
     return results.filter((result) => result !== null) as Document[];
@@ -72,7 +74,7 @@ export class WebScraperDataProvider {
 
   async getDocuments(
     useCaching: boolean = false,
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
   ): Promise<Document[]> {
     this.validateInitialUrl();
     if (!useCaching) {
@@ -94,7 +96,7 @@ export class WebScraperDataProvider {
    * @returns documents
    */
   private async processDocumentsWithoutCache(
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
   ): Promise<Document[]> {
     switch (this.mode) {
       case "crawl":
@@ -120,7 +122,7 @@ export class WebScraperDataProvider {
       // Normalize the hostname to account for www and non-www versions
       const initialHostname = normalizedInitialUrl.hostname.replace(
         /^www\./,
-        ""
+        "",
       );
       const linkHostname = normalizedLink.hostname.replace(/^www\./, "");
 
@@ -133,7 +135,7 @@ export class WebScraperDataProvider {
   }
 
   private async handleCrawlMode(
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
   ): Promise<Document[]> {
     let includes: string[];
     if (Array.isArray(this.includes)) {
@@ -162,6 +164,7 @@ export class WebScraperDataProvider {
       maxCrawledDepth: getAdjustedMaxDepth(this.urls[0], this.maxCrawledDepth),
       limit: this.limit,
       allowExternalLinks: this.allowExternalLinks,
+      crawlId: this.crawlId,
     });
 
     let links = await crawler.start(
@@ -172,7 +175,7 @@ export class WebScraperDataProvider {
       },
       5,
       this.limit,
-      this.maxCrawledDepth
+      this.maxCrawledDepth,
     );
 
     let allLinks = links.map((e) => e.url);
@@ -194,7 +197,7 @@ export class WebScraperDataProvider {
   }
 
   private async handleSingleUrlsMode(
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
   ): Promise<Document[]> {
     const links = this.urls;
 
@@ -203,7 +206,7 @@ export class WebScraperDataProvider {
   }
 
   private async handleSitemapMode(
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
   ): Promise<Document[]> {
     let links = await getLinksFromSitemap({ sitemapUrl: this.urls[0] });
     links = await this.cleanIrrelevantPath(links);
@@ -218,7 +221,7 @@ export class WebScraperDataProvider {
 
   private async returnOnlyUrlsResponse(
     links: string[],
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
   ): Promise<Document[]> {
     inProgress?.({
       current: links.length,
@@ -237,15 +240,15 @@ export class WebScraperDataProvider {
   private async processLinks(
     links: string[],
     inProgress?: (progress: Progress) => void,
-    allHtmls?: string[]
+    allHtmls?: string[],
   ): Promise<Document[]> {
     const pdfLinks = links.filter((link) => link.endsWith(".pdf"));
     const docLinks = links.filter(
-      (link) => link.endsWith(".doc") || link.endsWith(".docx")
+      (link) => link.endsWith(".doc") || link.endsWith(".docx"),
     );
 
     links = links.filter(
-      (link) => !pdfLinks.includes(link) && !docLinks.includes(link)
+      (link) => !pdfLinks.includes(link) && !docLinks.includes(link),
     );
 
     let [documents, sitemapData] = await Promise.all([
@@ -255,7 +258,7 @@ export class WebScraperDataProvider {
             (error) => {
               Logger.debug(`Failed to fetch sitemap data: ${error}`);
               return null;
-            }
+            },
           )
         : Promise.resolve(null),
     ]);
@@ -282,7 +285,7 @@ export class WebScraperDataProvider {
 
   private async cacheAndFinalizeDocuments(
     documents: Document[],
-    links: string[]
+    links: string[],
   ): Promise<Document[]> {
     // await this.setCachedDocuments(documents, links);
     documents = this.removeChildLinks(documents);
@@ -290,15 +293,15 @@ export class WebScraperDataProvider {
   }
 
   private async processDocumentsWithCache(
-    inProgress?: (progress: Progress) => void
+    inProgress?: (progress: Progress) => void,
   ): Promise<Document[]> {
     let documents = await this.getCachedDocuments(
-      this.urls.slice(0, this.limit)
+      this.urls.slice(0, this.limit),
     );
     if (documents.length < this.limit) {
       const newDocuments: Document[] = await this.getDocuments(
         false,
-        inProgress
+        inProgress,
       );
       documents = this.mergeNewDocuments(documents, newDocuments);
     }
@@ -310,14 +313,14 @@ export class WebScraperDataProvider {
 
   private mergeNewDocuments(
     existingDocuments: Document[],
-    newDocuments: Document[]
+    newDocuments: Document[],
   ): Document[] {
     newDocuments.forEach((doc) => {
       if (
         !existingDocuments.some(
           (d) =>
             this.normalizeUrl(d.metadata.sourceURL) ===
-            this.normalizeUrl(doc.metadata?.sourceURL)
+            this.normalizeUrl(doc.metadata?.sourceURL),
         )
       ) {
         existingDocuments.push(doc);
@@ -339,7 +342,7 @@ export class WebScraperDataProvider {
         // Check if the link should be excluded
         if (
           this.excludes.some((excludePattern) =>
-            new RegExp(excludePattern).test(path)
+            new RegExp(excludePattern).test(path),
           )
         ) {
           return false;
@@ -354,7 +357,7 @@ export class WebScraperDataProvider {
         // Check if the link matches the include patterns, if any are specified
         if (this.includes.length > 0) {
           return this.includes.some((includePattern) =>
-            new RegExp(includePattern).test(path)
+            new RegExp(includePattern).test(path),
           );
         }
       }
@@ -388,7 +391,7 @@ export class WebScraperDataProvider {
           ...document,
           childrenLinks: childrenLinks || [],
         }),
-        60 * 60
+        60 * 60,
       ); // 10 days
     }
   }
@@ -398,10 +401,10 @@ export class WebScraperDataProvider {
     for (const url of urls) {
       const normalizedUrl = this.normalizeUrl(url);
       Logger.debug(
-        "Getting cached document for web-scraper-cache:" + normalizedUrl
+        "Getting cached document for web-scraper-cache:" + normalizedUrl,
       );
       const cachedDocumentString = await getValue(
-        "web-scraper-cache:" + normalizedUrl
+        "web-scraper-cache:" + normalizedUrl,
       );
       if (cachedDocumentString) {
         const cachedDocument = JSON.parse(cachedDocumentString);
@@ -411,7 +414,7 @@ export class WebScraperDataProvider {
         for (const childUrl of cachedDocument.childrenLinks || []) {
           const normalizedChildUrl = this.normalizeUrl(childUrl);
           const childCachedDocumentString = await getValue(
-            "web-scraper-cache:" + normalizedChildUrl
+            "web-scraper-cache:" + normalizedChildUrl,
           );
           if (childCachedDocumentString) {
             const childCachedDocument = JSON.parse(childCachedDocumentString);
@@ -419,7 +422,7 @@ export class WebScraperDataProvider {
               !documents.find(
                 (doc) =>
                   doc.metadata.sourceURL ===
-                  childCachedDocument.metadata.sourceURL
+                  childCachedDocument.metadata.sourceURL,
               )
             ) {
               documents.push(childCachedDocument);
@@ -437,6 +440,7 @@ export class WebScraperDataProvider {
     }
 
     this.jobId = options.jobId;
+    this.crawlId = options.crawlId;
     this.urls = options.urls;
     this.mode = options.mode;
     this.concurrentRequests = options.concurrentRequests ?? 20;
@@ -502,7 +506,7 @@ export class WebScraperDataProvider {
         const docInSitemapData = sitemapData.find(
           (data) =>
             this.normalizeUrl(data.loc) ===
-            this.normalizeUrl(documents[i].metadata.sourceURL)
+            this.normalizeUrl(documents[i].metadata.sourceURL),
         );
         if (docInSitemapData) {
           let sitemapDocData: Partial<SitemapEntry> = {};
@@ -526,12 +530,12 @@ export class WebScraperDataProvider {
   private async getSitemapDataForSingleUrl(
     baseUrl: string,
     url: string,
-    timeout?: number
+    timeout?: number,
   ) {
     const sitemapData = await fetchSitemapData(baseUrl, timeout);
     if (sitemapData) {
       const docInSitemapData = sitemapData.find(
-        (data) => this.normalizeUrl(data.loc) === this.normalizeUrl(url)
+        (data) => this.normalizeUrl(data.loc) === this.normalizeUrl(url),
       );
       if (docInSitemapData) {
         let sitemapDocData: Partial<SitemapEntry> = {};

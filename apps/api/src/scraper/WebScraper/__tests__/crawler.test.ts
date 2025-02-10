@@ -43,7 +43,7 @@ describe("WebCrawler", () => {
       "https://en.wikipedia.com/barman",
       "https://docs.mux.com/guides/player",
       "https://mux.com",
-      "https://x.com"
+      "https://x.com",
     ];
 
     crawler = new WebCrawler({
@@ -53,10 +53,11 @@ describe("WebCrawler", () => {
       excludes: [],
       limit: 100,
       maxCrawledDepth: 10,
+      crawlId: "TEST",
     });
 
     const filteredLinks = urlsWhichShouldGetBlocked.filter(
-      (url) => !crawler.isSocialMediaOrEmail(url)
+      (url) => !crawler.isSocialMediaOrEmail(url),
     );
 
     expect(filteredLinks).toContain("https://docs.mux.com/guides/player");

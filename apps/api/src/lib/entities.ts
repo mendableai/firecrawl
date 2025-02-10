@@ -62,6 +62,7 @@ export type WebScraperOptions = {
   webhookMetadata?: any;
   concurrentRequests?: number;
   bullJobId?: string;
+  crawlId: string;
   priority?: number;
   teamId?: string;
 };
