@@ -2,7 +2,7 @@ import os
 from firecrawl import FirecrawlApp
 import json
 from dotenv import load_dotenv
-from google import genai
+import google.generativeai as genai
 
 # ANSI color codes
 class Colors:
@@ -23,9 +23,9 @@ gemini_api_key = os.getenv("GEMINI_API_KEY")
 
 # Initialize the FirecrawlApp and Gemini client
 app = FirecrawlApp(api_key=firecrawl_api_key)
-client = genai.Client(api_key=gemini_api_key)
+genai.configure(api_key=gemini_api_key)  # Configure Gemini API
 
-def find_relevant_page_via_map(objective, url, app, client):
+def find_relevant_page_via_map(objective, url, app):
     try:
         print(f"{Colors.CYAN}Understood. The objective is: {objective}{Colors.RESET}")
         print(f"{Colors.CYAN}Initiating search on the website: {url}{Colors.RESET}")
@@ -36,10 +36,8 @@ def find_relevant_page_via_map(objective, url, app, client):
         """
 
         print(f"{Colors.YELLOW}Analyzing objective to determine optimal search parameter...{Colors.RESET}")
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=map_prompt
-        )
+        model = genai.GenerativeModel('gemini-pro')  # Use gemini-pro instead of gemini-2.0-flash
+        response = model.generate_content(map_prompt)
 
         map_search_parameter = response.text.strip()
         print(f"{Colors.GREEN}Optimal search parameter identified: {map_search_parameter}{Colors.RESET}")
@@ -91,10 +89,8 @@ def find_relevant_page_via_map(objective, url, app, client):
         {json.dumps(links, indent=2)}"""
 
         print(f"{Colors.YELLOW}Ranking URLs by relevance to objective...{Colors.RESET}")
-        response = client.models.generate_content(
-            model="gemini-2.0-flash",
-            contents=rank_prompt
-        )
+        model = genai.GenerativeModel('gemini-pro')
+        response = model.generate_content(rank_prompt)
 
         print(f"{Colors.MAGENTA}Debug - Raw Gemini response:{Colors.RESET}")
         print(response.text)
@@ -145,7 +141,7 @@ def find_relevant_page_via_map(objective, url, app, client):
         print(f"{Colors.RED}Error encountered during relevant page identification: {str(e)}{Colors.RESET}")
         return None
 
-def find_objective_in_top_pages(map_website, objective, app, client):
+def find_objective_in_top_pages(map_website, objective, app):
     try:
         if not map_website:
             print(f"{Colors.RED}No links found to analyze.{Colors.RESET}")
@@ -161,7 +157,7 @@ def find_objective_in_top_pages(map_website, objective, app, client):
      
             check_prompt = f"""
             Analyze this content to find: {objective}
-            If found, return ONLY a JSON object with the information. If not found, respond EXACTLY with: Objective not met
+            If found, return ONLY a JSON object with information related to the objective. If not found, respond EXACTLY with: Objective not met
             
             Content to analyze: {scrape_result['markdown']}
             
@@ -171,10 +167,7 @@ def find_objective_in_top_pages(map_website, objective, app, client):
             - No other text or explanations
             """
         
-            response = client.models.generate_content(
-                model="gemini-2.0-flash",
-                contents=check_prompt
-            )
+            response = genai.GenerativeModel('gemini-pro').generate_content(check_prompt)
             
             result = response.text.strip()
             
@@ -208,11 +201,11 @@ def main():
     objective = input(f"{Colors.BLUE}Enter your objective: {Colors.RESET}")
     
     print(f"{Colors.YELLOW}Initiating web crawling process...{Colors.RESET}")
-    map_website = find_relevant_page_via_map(objective, url, app, client)
+    map_website = find_relevant_page_via_map(objective, url, app)
     
     if map_website:
-        print(f"{Colors.GREEN}Relevant pages identified. Proceeding with detailed analysis using gemini-2.0-flash...{Colors.RESET}")
-        result = find_objective_in_top_pages(map_website, objective, app, client)
+        print(f"{Colors.GREEN}Relevant pages identified. Proceeding with detailed analysis using gemini-pro...{Colors.RESET}")
+        result = find_objective_in_top_pages(map_website, objective, app)
         
         if result:
             print(f"{Colors.GREEN}Objective successfully fulfilled. Extracted information:{Colors.RESET}")
