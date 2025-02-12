@@ -67,6 +67,25 @@ export const extractOptions = z
 
 export type ExtractOptions = z.infer<typeof extractOptions>;
 
+const ACTIONS_MAX_WAIT_TIME = 60;
+const MAX_ACTIONS = 50;
+function calculateTotalWaitTime(actions: any[] = [], waitFor: number = 0): number {
+  const actionWaitTime = actions.reduce((acc, action) => {
+    if (action.type === "wait") {
+      if (action.milliseconds) {
+        return acc + action.milliseconds;
+      }
+      // Consider selector actions as 1 second
+      if (action.selector) {
+        return acc + 1000;
+      }
+    }
+    return acc;
+  }, 0);
+
+  return waitFor + actionWaitTime;
+}
+
 export const actionsSchema = z.array(
   z.union([
     z
@@ -113,9 +132,19 @@ export const actionsSchema = z.array(
       script: z.string(),
     }),
   ]),
+).refine(
+  (actions) => actions.length <= MAX_ACTIONS,
+  {
+    message: `Number of actions cannot exceed ${MAX_ACTIONS}`,
+  },
+).refine(
+  (actions) => calculateTotalWaitTime(actions) <= ACTIONS_MAX_WAIT_TIME * 1000,
+  {
+    message: `Total wait time (waitFor + wait actions) cannot exceed ${ACTIONS_MAX_WAIT_TIME} seconds`,
+  },
 );
 
-export const scrapeOptions = z
+const baseScrapeOptions = z
   .object({
     formats: z
       .enum([
@@ -140,7 +169,7 @@ export const scrapeOptions = z
     excludeTags: z.string().array().optional(),
     onlyMainContent: z.boolean().default(true),
     timeout: z.number().int().positive().finite().safe().optional(),
-    waitFor: z.number().int().nonnegative().finite().safe().max(30000).default(0),
+    waitFor: z.number().int().nonnegative().finite().safe().max(60000).default(0),
     // Deprecate this to jsonOptions
     extract: extractOptions.optional(),
     // New
@@ -191,7 +220,17 @@ export const scrapeOptions = z
   })
   .strict(strictMessage);
 
-export type ScrapeOptions = z.infer<typeof scrapeOptions>;
+export const scrapeOptions = baseScrapeOptions.refine(
+  (obj) => {
+    if (!obj.actions) return true;
+    return calculateTotalWaitTime(obj.actions, obj.waitFor) <= ACTIONS_MAX_WAIT_TIME * 1000;
+  },
+  {
+    message: `Total wait time (waitFor + wait actions) cannot exceed ${ACTIONS_MAX_WAIT_TIME} seconds`,
+  }
+);
+
+export type ScrapeOptions = z.infer<typeof baseScrapeOptions>;
 
 import Ajv from "ajv";
 
@@ -246,7 +285,7 @@ export type ExtractV1Options = z.infer<typeof extractV1Options>;
 export const extractRequestSchema = extractV1Options;
 export type ExtractRequest = z.infer<typeof extractRequestSchema>;
 
-export const scrapeRequestSchema = scrapeOptions
+export const scrapeRequestSchema = baseScrapeOptions
   .omit({ timeout: true })
   .extend({
     url,
@@ -325,7 +364,7 @@ export const webhookSchema = z.preprocess(
     .strict(strictMessage),
 );
 
-export const batchScrapeRequestSchema = scrapeOptions
+export const batchScrapeRequestSchema = baseScrapeOptions
   .extend({
     urls: url.array(),
     origin: z.string().optional().default("api"),
@@ -349,7 +388,7 @@ export const batchScrapeRequestSchema = scrapeOptions
     },
   );
 
-export const batchScrapeRequestSchemaNoURLValidation = scrapeOptions
+export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
   .extend({
     urls: z.string().array(),
     origin: z.string().optional().default("api"),
@@ -876,8 +915,7 @@ export const searchRequestSchema = z
     location: z.string().optional(),
     origin: z.string().optional().default("api"),
     timeout: z.number().int().positive().finite().safe().default(60000),
-    scrapeOptions: scrapeOptions
-      .extend({
+    scrapeOptions: baseScrapeOptions.extend({
         formats: z
           .array(
             z.enum([
