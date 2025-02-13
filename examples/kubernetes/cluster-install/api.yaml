@@ -24,8 +24,8 @@ spec:
           envFrom:
             - configMapRef:
                 name: firecrawl-config
-          #- secretRef:
-          #    name: firecrawl-secret
+            - secretRef:
+                name: firecrawl-secret
           livenessProbe:
             httpGet:
               path: /v0/health/liveness
