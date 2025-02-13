@@ -48,8 +48,9 @@ function checkCreditsMiddleware(
         req.acuc = chunk;
       }
       if (!success) {
+        const currencyName = req.acuc.is_extract ? "tokens" : "credits"
         logger.error(
-          `Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`,
+          `Insufficient ${currencyName}: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`,
           {
             teamId: req.auth.team_id,
             minimum,
@@ -62,7 +63,7 @@ function checkCreditsMiddleware(
           return res.status(402).json({
             success: false,
             error:
-              "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing or try changing the request limit to a lower value.",
+              "Insufficient " + currencyName + " to perform this request. For more " + currencyName + ", you can upgrade your plan at " + (currencyName === "credits" ? "https://firecrawl.dev/pricing or try changing the request limit to a lower value" : "https://www.firecrawl.dev/extract#pricing") + ".",
           });
         }
       }
