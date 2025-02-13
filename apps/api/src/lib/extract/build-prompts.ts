@@ -21,7 +21,7 @@ export function buildPreRerankPrompt(
   url: string,
 ): string {
   const schemaString = JSON.stringify(schema, null, 2);
-  return `Create a concise search query that combines the key data points from both the schema and prompt. Focus on the core information needed while keeping it general enough to find relevant matches.
+  return `Create a concise search query that combines the key data points from both the schema and prompt. Focus on the core information needed while keeping it general enough to find relevant matches. If the user wants all the items, the search query should contain "all".
 
 Schema: ${schemaString}
 Prompt: ${prompt}
@@ -40,10 +40,7 @@ to determine their relevance to the user's query and intent.
 }
 
 export function buildRerankerUserPrompt(searchQuery: string): string {
-  return `Given these URLs and their content, identify which ones are relevant to the user's extraction request: "${searchQuery}". Return an array of relevant links with their relevance scores (0-1). Higher scores should be given to URLs that directly address the user's extraction request. Be very mindful with the links you select, as if they are not that relevant it may affect the quality of the extraction. Only include URLs that have a relevancy score of 0.6+. If the users wants all the links, give them all the links. Examples:
-
-  User's extraction request: "Extract all blog posts from the page"
-  Relevant links: ["https://example.com/blog/post1", "https://example.com/blog/post2", "https://example.com/blog/post3", (return all of the /blog/ links...)]
+  return `Given these URLs and their content, identify which ones are relevant to the user's extraction request: "${searchQuery}". Return an array of relevant links with their relevance scores (0-1). Higher scores should be given to URLs that directly address the user's extraction request. Be very mindful with the links you select, as if they are not that relevant it may affect the quality of the extraction. Only include URLs that have a relevancy score of 0.6+.
 
   `;
 }
