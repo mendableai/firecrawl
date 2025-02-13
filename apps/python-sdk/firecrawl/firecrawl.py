@@ -54,6 +54,8 @@ class FirecrawlApp:
         enable_web_search: Optional[bool] = False
         # Just for backwards compatibility
         enableWebSearch: Optional[bool] = False
+        show_sources: Optional[bool] = False
+
 
 
 
@@ -631,6 +633,7 @@ class FirecrawlApp:
             **jsonData,
             'allowExternalLinks': params.get('allow_external_links', params.get('allowExternalLinks', False)),
             'enableWebSearch': params.get('enable_web_search', params.get('enableWebSearch', False)),
+            'showSources': params.get('show_sources', params.get('showSources', False)),
             'schema': schema,
             'origin': 'api-sdk'
         }
