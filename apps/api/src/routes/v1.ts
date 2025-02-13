@@ -166,7 +166,7 @@ v1Router.post(
 
 v1Router.post(
   "/batch/scrape",
-  authMiddleware(RateLimiterMode.Crawl),
+  authMiddleware(RateLimiterMode.Scrape),
   checkCreditsMiddleware(),
   blocklistMiddleware,
   idempotencyMiddleware,
