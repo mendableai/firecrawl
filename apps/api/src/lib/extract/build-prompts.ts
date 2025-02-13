@@ -36,17 +36,14 @@ to determine their relevance to the user's query and intent.
     For each URL, assign a relevance score between 0 and 1, where 1
      means highly relevant and we should extract the content from it and 0 means not relevant at all, we should not extract the content from it.
       Always return all the links scored that you are giving. Do not omit links. 
-     Always return the links in the same order they were provided. If the user wants the content from all the links, all links should be scored 1.
-      If the users wants all the links, give them all the links.
-      Example:
-
-  User's extraction request: "Extract all blog posts from the page"
-  Relevant links: ["https://example.com/blog/post1", "https://example.com/blog/post2", "https://example.com/blog/post3", (return all of the /blog/ links...)]
-     `;
+     Always return the links in the same order they were provided. If the user wants the content from all the links, all links should be scored 1.`;
 }
 
 export function buildRerankerUserPrompt(searchQuery: string): string {
-  return `Given these URLs and their content, identify which ones are relevant to the user's extraction request: "${searchQuery}". Return an array of relevant links with their relevance scores (0-1). Higher scores should be given to URLs that directly address the user's extraction request. Be very mindful with the links you select, as if they are not that relevant it may affect the quality of the extraction. Only include URLs that have a relevancy score of 0.6+.
+  return `Given these URLs and their content, identify which ones are relevant to the user's extraction request: "${searchQuery}". Return an array of relevant links with their relevance scores (0-1). Higher scores should be given to URLs that directly address the user's extraction request. Be very mindful with the links you select, as if they are not that relevant it may affect the quality of the extraction. Only include URLs that have a relevancy score of 0.6+. If the users wants all the links, give them all the links. Examples:
+
+  User's extraction request: "Extract all blog posts from the page"
+  Relevant links: ["https://example.com/blog/post1", "https://example.com/blog/post2", "https://example.com/blog/post3", (return all of the /blog/ links...)]
 
   `;
 }
