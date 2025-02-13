@@ -262,6 +262,7 @@ export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
   enableWebSearch?: boolean;
   includeSubdomains?: boolean;
   origin?: string;
+  showSources?: boolean;
 }
 
 /**
@@ -273,6 +274,7 @@ export interface ExtractResponse<LLMSchema extends zt.ZodSchema = any> {
   data: LLMSchema;
   error?: string;
   warning?: string;
+  sources?: string[];
 }
 
 /**
@@ -1041,7 +1043,8 @@ export default class FirecrawlApp {
                 success: true,
                 data: extractStatus.data,
                 warning: extractStatus.warning,
-                error: extractStatus.error
+                error: extractStatus.error,
+                sources: extractStatus?.sources || undefined,
               };
             } else {
               throw new FirecrawlError(`Failed to extract data. Error: ${extractStatus.error}`, statusResponse.status);
