@@ -63,7 +63,7 @@ function checkCreditsMiddleware(
           return res.status(402).json({
             success: false,
             error:
-              "Insufficient " + currencyName + " to perform this request. For more " + currencyName + ", you can upgrade your plan at https://firecrawl.dev/pricing or try changing the request limit to a lower value.",
+              "Insufficient " + currencyName + " to perform this request. For more " + currencyName + ", you can upgrade your plan at " + (currencyName === "credits" ? "https://firecrawl.dev/pricing or try changing the request limit to a lower value" : "https://www.firecrawl.dev/extract#pricing") + ".",
           });
         }
       }
