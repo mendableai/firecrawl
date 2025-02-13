@@ -272,6 +272,7 @@ export const extractV1Options = z
     __experimental_streamSteps: z.boolean().default(false),
     __experimental_llmUsage: z.boolean().default(false),
     __experimental_showSources: z.boolean().default(false),
+    showSources: z.boolean().default(false),
     __experimental_cacheKey: z.string().optional(),
     __experimental_cacheMode: z.enum(["direct", "save", "load"]).default("direct").optional()
   })
