@@ -12,12 +12,12 @@
 2. Build Docker images, and host it in your Docker Registry (replace the target registry with your own)
    1. API (which is also used as a worker image)
       1. ```bash
-         docker build --no-cache -t ghcr.io/winkk-dev/firecrawl:latest ../../../apps/api
+         docker build --no-cache --platform linux/amd64 -t ghcr.io/winkk-dev/firecrawl:latest ../../../apps/api
          docker push ghcr.io/winkk-dev/firecrawl:latest
          ```
    2. Playwright 
       1. ```bash
-            docker build --no-cache -t ghcr.io/winkk-dev/firecrawl-playwright:latest ../../../apps/playwright-service
+            docker build --no-cache --platform linux/amd64 -t ghcr.io/winkk-dev/firecrawl-playwright:latest ../../../apps/playwright-service
             docker push ghcr.io/winkk-dev/firecrawl-playwright:latest
          ```
 3. Replace the image in [worker.yaml](worker.yaml), [api.yaml](api.yaml) and [playwright-service.yaml](playwright-service.yaml)
