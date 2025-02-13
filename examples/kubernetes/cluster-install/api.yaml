@@ -21,6 +21,9 @@ spec:
           args: [ "pnpm", "run", "start:production" ]
           ports:
             - containerPort: 3002
+          env:
+            - name: FLY_PROCESS_GROUP
+              value: "app"
           envFrom:
             - configMapRef:
                 name: firecrawl-config
