@@ -21,7 +21,7 @@ export function buildPreRerankPrompt(
   url: string,
 ): string {
   const schemaString = JSON.stringify(schema, null, 2);
-  return `Create a concise search query that combines the key data points from both the schema and prompt. Focus on the core information needed while keeping it general enough to find relevant matches.
+  return `Create a concise search query that combines the key data points from both the schema and prompt. Focus on the core information needed while keeping it general enough to find relevant matches. If the user wants all the items, the search query should contain "all".
 
 Schema: ${schemaString}
 Prompt: ${prompt}
