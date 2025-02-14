@@ -17,7 +17,7 @@ export function scrapeURLWithScrapingBee(
     let response: AxiosResponse<any>;
     const timeout = (timeToRun ?? 300000) + meta.options.waitFor;
     try {
-      response = await Promise.race([
+      response = await Promise.race<AxiosResponse<any>>([
         client.get({
           url: meta.url,
           params: {
