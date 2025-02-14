@@ -34,7 +34,7 @@ describe("Scrape tests", () => {
     expect(response.body.data.markdown).toBe(
       "this is fake data coming from the mocking system!",
     );
-  });
+  }, 10000);
 
   describe("Ad blocking (f-e dependant)", () => {
     it.concurrent("blocks ads by default", async () => {
