@@ -229,7 +229,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
       { screenshots: response.screenshots },
     );
     if (response.screenshots) {
-      response.screenshot = response.screenshots.slice(-1, 0)[0];
+      response.screenshot = response.screenshots.slice(-1)[0];
       response.screenshots = response.screenshots.slice(0, -1);
     }
     meta.logger.debug("Screenshot transformation done", {

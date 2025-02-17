@@ -98,7 +98,7 @@ describe("Scrape tests", () => {
       });
   
       expectScrapeToSucceed(response);
-      expect(response.body.data.screenshot).toBeTruthy();
+      expect(typeof response.body.data.screenshot).toBe("string");
     }, 15000);
 
     it.concurrent("screenshot@fullPage format works", async () => {
@@ -108,7 +108,7 @@ describe("Scrape tests", () => {
       });
   
       expectScrapeToSucceed(response);
-      expect(response.body.data.screenshot).toBeTruthy();
+      expect(typeof response.body.data.screenshot).toBe("string");
     }, 15000);
   })
 });
