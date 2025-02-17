@@ -11,8 +11,8 @@ jobs:
   firecrawl_api:
     uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
     with:
-      dockerFile: 'api/Dockerfile'
-      context: './api'
+      dockerFile: 'apps/api/Dockerfile'
+      context: './apps/api'
       imageName: 'baoduy2412/firecrawl-api'
       platforms: linux/arm64,linux/amd64
     secrets:
@@ -23,8 +23,8 @@ jobs:
   firecrawl_playwright_ts:
     uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
     with:
-      dockerFile: 'playwright-service-ts/Dockerfile'
-      context: './playwright-service-ts'
+      dockerFile: 'apps/playwright-service-ts/Dockerfile'
+      context: './apps/playwright-service-ts'
       imageName: 'baoduy2412/firecrawl-playwright-ts'
       platforms: linux/arm64,linux/amd64
     secrets:
@@ -35,8 +35,8 @@ jobs:
   firecrawl_playwright:
     uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
     with:
-      dockerFile: 'playwright-service/Dockerfile'
-      context: './playwright-service'
+      dockerFile: 'apps/playwright-service/Dockerfile'
+      context: './apps/playwright-service'
       imageName: 'baoduy2412/firecrawl-playwright'
       platforms: linux/arm64,linux/amd64
     secrets:
@@ -47,8 +47,8 @@ jobs:
   firecrawl_redis:
     uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
     with:
-      dockerFile: 'redis/Dockerfile'
-      context: './redis'
+      dockerFile: 'apps/redis/Dockerfile'
+      context: './apps/redis'
       imageName: 'baoduy2412/firecrawl-redis'
       platforms: linux/arm64,linux/amd64
     secrets:
