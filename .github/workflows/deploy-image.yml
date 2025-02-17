@@ -4,11 +4,11 @@ env:
   DOTNET_VERSION: '6.0.x'
   SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
 
-on:
-  push:
-    branches:
-      - main
-  workflow_dispatch:
+#on:
+#  push:
+#    branches:
+#      - main
+#  workflow_dispatch:
 
 jobs:
       push-app-image:
