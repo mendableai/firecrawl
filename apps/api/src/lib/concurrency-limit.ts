@@ -100,6 +100,11 @@ export async function pushConcurrencyLimitedJob(
   );
 }
 
+export async function getConcurrencyLimitedJobs(
+  team_id: string,
+) {
+  return new Set((await redisConnection.zrange(constructQueueKey(team_id), 0, -1)).map(x => JSON.parse(x).id));
+}
 
 export async function getConcurrencyQueueJobsCount(team_id: string): Promise<number> {
   const count = await redisConnection.zcard(constructQueueKey(team_id));

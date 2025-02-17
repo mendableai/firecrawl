@@ -2,27 +2,15 @@ import { Response } from "express";
 import {
   CrawlErrorsResponse,
   CrawlStatusParams,
-  CrawlStatusResponse,
-  ErrorResponse,
   RequestWithAuth,
 } from "./types";
 import {
   getCrawl,
-  getCrawlExpiry,
   getCrawlJobs,
-  getDoneJobsOrdered,
-  getDoneJobsOrderedLength,
-  getThrottledJobs,
-  isCrawlFinished,
 } from "../../lib/crawl-redis";
 import { getScrapeQueue, redisConnection } from "../../services/queue-service";
-import {
-  supabaseGetJobById,
-  supabaseGetJobsById,
-} from "../../lib/supabase-jobs";
 import { configDotenv } from "dotenv";
-import { Job, JobState } from "bullmq";
-import { logger } from "../../lib/logger";
+import { Job } from "bullmq";
 configDotenv();
 
 export async function getJob(id: string) {

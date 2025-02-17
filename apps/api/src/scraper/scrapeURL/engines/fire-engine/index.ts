@@ -167,6 +167,9 @@ export async function scrapeURLWithFireEngineChromeCDP(
         ]
       : []),
 
+    // Include specified actions
+    ...(meta.options.actions ?? []),
+
     // Transform screenshot format into an action (unsupported by chrome-cdp)
     ...(meta.options.formats.includes("screenshot") ||
     meta.options.formats.includes("screenshot@fullPage")
@@ -177,9 +180,6 @@ export async function scrapeURLWithFireEngineChromeCDP(
           },
         ]
       : []),
-
-    // Include specified actions
-    ...(meta.options.actions ?? []),
   ];
 
   const totalWait = actions.reduce(
@@ -228,8 +228,10 @@ export async function scrapeURLWithFireEngineChromeCDP(
       "Transforming screenshots from actions into screenshot field",
       { screenshots: response.screenshots },
     );
-    response.screenshot = (response.screenshots ?? [])[0];
-    (response.screenshots ?? []).splice(0, 1);
+    if (response.screenshots) {
+      response.screenshot = response.screenshots.slice(-1, 0)[0];
+      response.screenshots = response.screenshots.slice(0, -1);
+    }
     meta.logger.debug("Screenshot transformation done", {
       screenshots: response.screenshots,
       screenshot: response.screenshot,

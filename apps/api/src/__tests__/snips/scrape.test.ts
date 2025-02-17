@@ -34,7 +34,7 @@ describe("Scrape tests", () => {
     expect(response.body.data.markdown).toBe(
       "this is fake data coming from the mocking system!",
     );
-  });
+  }, 10000);
 
   describe("Ad blocking (f-e dependant)", () => {
     it.concurrent("blocks ads by default", async () => {
@@ -88,5 +88,27 @@ describe("Scrape tests", () => {
       const obj = JSON.parse(response.body.data.rawHtml);
       expect(obj.id).toBe(1);
     }, 25000); // TODO: mock and shorten
+  });
+
+  describe("Screenshot", () => {
+    it.concurrent("screenshot format works", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev",
+        formats: ["screenshot"]
+      });
+  
+      expectScrapeToSucceed(response);
+      expect(response.body.data.screenshot).toBeTruthy();
+    }, 15000);
+
+    it.concurrent("screenshot@fullPage format works", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev",
+        formats: ["screenshot@fullPage"]
+      });
+  
+      expectScrapeToSucceed(response);
+      expect(response.body.data.screenshot).toBeTruthy();
+    }, 15000);
   })
 });
