@@ -31,19 +31,19 @@ jobs:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
-  # Playwright TS
+  # Playwright
   firecrawl_playwright:
     uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
     with:
       dockerFile: 'apps/playwright-service/Dockerfile'
       context: './apps/playwright-service'
       imageName: 'baoduy2412/firecrawl-playwright'
-      platforms: linux/arm64,linux/amd64
+      platforms: linux/amd64
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
-  # Playwright TS
+  # Redis
   firecrawl_redis:
     uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
     with:
