@@ -3,7 +3,8 @@ name: Build-Docker
 on:
   push:
     branches:
-    - 'master'
+    - master
+    - main
 
 jobs:
   # API
