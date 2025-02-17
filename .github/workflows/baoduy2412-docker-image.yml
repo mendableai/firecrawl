@@ -1,0 +1,57 @@
+name: Build-Docker
+
+on:
+  push:
+    branches:
+    - 'master'
+
+jobs:
+  # API
+  firecrawl_api:
+    uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
+    with:
+      dockerFile: 'api/Dockerfile'
+      context: './api'
+      imageName: '${{ secrets.DOCKER_USERNAME }}/firecrawl-api'
+      platforms: linux/arm64,linux/amd64
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+  
+  # Playwright TS
+  firecrawl_playwright_ts:
+    uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
+    with:
+      dockerFile: 'playwright-service-ts/Dockerfile'
+      context: './playwright-service-ts'
+      imageName: '${{ secrets.DOCKER_USERNAME }}/firecrawl-playwright-ts'
+      platforms: linux/arm64,linux/amd64
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+
+  # Playwright TS
+  firecrawl_playwright:
+    uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
+    with:
+      dockerFile: 'playwright-service/Dockerfile'
+      context: './playwright-service'
+      imageName: '${{ secrets.DOCKER_USERNAME }}/firecrawl-playwright'
+      platforms: linux/arm64,linux/amd64
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+
+  # Playwright TS
+  firecrawl_redis:
+    uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
+    with:
+      dockerFile: 'redis/Dockerfile'
+      context: './redis'
+      imageName: '${{ secrets.DOCKER_USERNAME }}/firecrawl-redis'
+      platforms: linux/arm64,linux/amd64
+    secrets:
+      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
+
+      
