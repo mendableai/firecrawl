@@ -13,7 +13,7 @@ jobs:
     with:
       dockerFile: 'api/Dockerfile'
       context: './api'
-      imageName: '${{ secrets.DOCKER_USERNAME }}/firecrawl-api'
+      imageName: 'baoduy2412/firecrawl-api'
       platforms: linux/arm64,linux/amd64
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -25,7 +25,7 @@ jobs:
     with:
       dockerFile: 'playwright-service-ts/Dockerfile'
       context: './playwright-service-ts'
-      imageName: '${{ secrets.DOCKER_USERNAME }}/firecrawl-playwright-ts'
+      imageName: 'baoduy2412/firecrawl-playwright-ts'
       platforms: linux/arm64,linux/amd64
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -37,7 +37,7 @@ jobs:
     with:
       dockerFile: 'playwright-service/Dockerfile'
       context: './playwright-service'
-      imageName: '${{ secrets.DOCKER_USERNAME }}/firecrawl-playwright'
+      imageName: 'baoduy2412/firecrawl-playwright'
       platforms: linux/arm64,linux/amd64
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
@@ -49,7 +49,7 @@ jobs:
     with:
       dockerFile: 'redis/Dockerfile'
       context: './redis'
-      imageName: '${{ secrets.DOCKER_USERNAME }}/firecrawl-redis'
+      imageName: 'baoduy2412/firecrawl-redis'
       platforms: linux/arm64,linux/amd64
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
