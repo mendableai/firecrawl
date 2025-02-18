@@ -277,7 +277,7 @@ export const scrapeOptions = baseScrapeOptions.refine(
     message: `Total wait time (waitFor + wait actions) cannot exceed ${ACTIONS_MAX_WAIT_TIME} seconds`,
   }
 ).refine(extractRefine, extractRefineOpts)
-.transform(extractRefine);
+.transform(extractTransform);
 
 export type ScrapeOptions = z.infer<typeof baseScrapeOptions>;
 
