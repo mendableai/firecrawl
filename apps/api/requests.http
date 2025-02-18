@@ -110,7 +110,7 @@ content-type: application/json
 {
   "url": "https://firecrawl.dev",
   "maxUrls": 2,
-  "showFullText": true
+  "showFullText": false
 }
 
 
