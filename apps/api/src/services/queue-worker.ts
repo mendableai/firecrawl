@@ -5,9 +5,11 @@ import { CustomError } from "../lib/custom-error";
 import {
   getScrapeQueue,
   getExtractQueue,
+  getDeepResearchQueue,
   redisConnection,
   scrapeQueueName,
   extractQueueName,
+  deepResearchQueueName,
   getIndexQueue,
 } from "./queue-service";
 import { startWebScraperPipeline } from "../main/runWebScraper";
@@ -65,6 +67,8 @@ import { normalizeUrl, normalizeUrlOnlyHostname } from "../lib/canonical-url";
 import { saveExtract, updateExtract } from "../lib/extract/extract-redis";
 import { billTeam } from "./billing/credit_billing";
 import { saveCrawlMap } from "./indexing/crawl-maps-index";
+import { updateDeepResearch } from "../lib/deep-research/deep-research-redis";
+import { performDeepResearch } from "../lib/deep-research/deep-research-service";
 
 configDotenv();
 
@@ -367,6 +371,68 @@ const processExtractJobInternal = async (
           job.data.extractId,
     };
     // throw error;
+  } finally {
+    clearInterval(extendLockInterval);
+  }
+};
+
+const processDeepResearchJobInternal = async (
+  token: string,
+  job: Job & { id: string },
+) => {
+  const logger = _logger.child({
+    module: "deep-research-worker",
+    method: "processJobInternal",
+    jobId: job.id,
+    researchId: job.data.researchId,
+    teamId: job.data?.teamId ?? undefined,
+  });
+
+  const extendLockInterval = setInterval(async () => {
+    logger.info(`🔄 Worker extending lock on job ${job.id}`);
+    await job.extendLock(token, jobLockExtensionTime);
+  }, jobLockExtendInterval);
+
+  try {
+    // TODO: Implement the actual deep research logic here
+    // This will involve:
+    // 1. Search phase
+    // 2. Extract phase
+    // 3. Analysis phase
+    // 4. Synthesis phase
+    // Each phase should update the job status in Redis
+
+    // For now, we'll just mark it as completed
+    await updateDeepResearch(job.data.researchId, {
+      status: "completed",
+      finalAnalysis: "Deep research implementation pending",
+    });
+
+    // Move job to completed state in Redis
+    await job.moveToCompleted(null, token, false);
+    return null;
+  } catch (error) {
+    logger.error(`🚫 Job errored ${job.id} - ${error}`, { error });
+
+    Sentry.captureException(error, {
+      data: {
+        job: job.id,
+      },
+    });
+
+    try {
+      // Move job to failed state in Redis
+      await job.moveToFailed(error, token, false);
+    } catch (e) {
+      logger.error("Failed to move job to failed state in Redis", { error });
+    }
+
+    await updateDeepResearch(job.data.researchId, {
+      status: "failed",
+      error: error.message || "Unknown error occurred",
+    });
+
+    return error;
   } finally {
     clearInterval(extendLockInterval);
   }
@@ -1090,11 +1156,12 @@ async function processJob(job: Job & { id: string }, token: string) {
 // wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
 // wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
 
-// Start both workers
+// Start all workers
 (async () => {
   await Promise.all([
     workerFun(getScrapeQueue(), processJobInternal),
     workerFun(getExtractQueue(), processExtractJobInternal),
+    workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
   ]);
 
   console.log("All workers exited. Waiting for all jobs to finish...");
