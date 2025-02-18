@@ -28,7 +28,7 @@ export async function generateLLMsTextStatusController(
   if (showFullText) {
     data = {
       llmstxt: generation.generatedText,
-      fullText: generation.fullText,
+      llmsfulltxt: generation.fullText,
     };
   } else {
     data = {
