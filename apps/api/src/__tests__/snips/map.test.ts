@@ -48,6 +48,7 @@ describe("Map tests", () => {
 
     expect(response.statusCode).toBe(200);
     expect(response.body.success).toBe(true);
+    console.log(response.body.links.slice(0,20));
     expect(response.body.links.some(x => x.match(/^https:\/\/www\.hfea\.gov\.uk\/choose-a-clinic\/clinic-search\/results\/?\?options=\d+$/))).toBe(true);
 
     response = await map({
