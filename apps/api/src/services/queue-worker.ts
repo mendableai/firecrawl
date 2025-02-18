@@ -9,13 +9,14 @@ import {
   scrapeQueueName,
   extractQueueName,
   getIndexQueue,
+  getGenerateLlmsTxtQueue,
 } from "./queue-service";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
 import { logJob } from "./logging/log_job";
 import { Job, Queue } from "bullmq";
-import { logger as _logger } from "../lib/logger";
 import { Worker } from "bullmq";
+import { logger as _logger } from "../lib/logger";
 import systemMonitor from "./system-monitor";
 import { v4 as uuidv4 } from "uuid";
 import {
@@ -374,6 +375,84 @@ const processExtractJobInternal = async (
   }
 };
 
+interface GenerateLlmsTxtResult {
+  success: boolean;
+  data?: {
+    generatedText: string;
+    fullText: string;
+  };
+  error?: string;
+}
+
+const processGenerateLlmsTxtJobInternal = async (
+  token: string,
+  job: Job & { id: string },
+) => {
+  const logger = _logger.child({
+    module: "generate-llmstxt-worker",
+    method: "processJobInternal",
+    jobId: job.id,
+    generationId: job.data.generationId,
+    teamId: job.data?.teamId ?? undefined,
+  });
+
+  const extendLockInterval = setInterval(async () => {
+    logger.info(`🔄 Worker extending lock on job ${job.id}`);
+    await job.extendLock(token, jobLockExtensionTime);
+  }, jobLockExtendInterval);
+
+  try {
+    const result = await performGenerateLlmsTxt({
+      generationId: job.data.generationId,
+      teamId: job.data.teamId,
+      plan: job.data.plan,
+      url: job.data.request.url,
+      maxTokens: job.data.request.maxTokens,
+    }) as GenerateLlmsTxtResult;
+
+    if (result.success) {
+      // Move job to completed state in Redis
+      await job.moveToCompleted(result, token, false);
+      return result;
+    } else {
+      await job.moveToCompleted(result, token, false);
+      await updateGeneratedLlmsTxt(job.data.generationId, {
+        status: "failed",
+        error: result.error ?? "Unknown error during LLMs text generation",
+      });
+
+      return result;
+    }
+  } catch (error) {
+    logger.error(`🚫 Job errored ${job.id} - ${error}`, { error });
+
+    Sentry.captureException(error, {
+      data: {
+        job: job.id,
+      },
+    });
+
+    try {
+      // Move job to failed state in Redis
+      await job.moveToFailed(error, token, false);
+    } catch (e) {
+      logger.error("Failed to move job to failed state in Redis", { error });
+    }
+
+    await updateGeneratedLlmsTxt(job.data.generationId, {
+      status: "failed",
+      error: error.message ?? error ?? "Unknown error during LLMs text generation",
+    });
+
+    return {
+      success: false,
+      error: error.message ?? error ?? "Unknown error during LLMs text generation",
+    };
+  } finally {
+    clearInterval(extendLockInterval);
+  }
+};
+
 let isShuttingDown = false;
 
 process.on("SIGINT", () => {
@@ -388,10 +467,7 @@ process.on("SIGTERM", () => {
 
 let cantAcceptConnectionCount = 0;
 
-const workerFun = async (
-  queue: Queue,
-  processJobInternal: (token: string, job: Job) => Promise<any>,
-) => {
+const workerFun = async (queue: Queue, processJobFn: (token: string, job: Job) => Promise<any>) => {
   const logger = _logger.child({ module: "queue-worker", method: "workerFun" });
 
   const worker = new Worker(queue.name, null, {
@@ -424,115 +500,42 @@ const workerFun = async (
         });
       }
 
-      await sleep(cantAcceptConnectionInterval); // more sleep
+      await sleep(cantAcceptConnectionInterval);
       continue;
     } else {
       cantAcceptConnectionCount = 0;
     }
 
-    const job = await worker.getNextJob(token);
-    if (job) {
-      if (job.id) {
-        runningJobs.add(job.id);
-      }
-
-      async function afterJobDone(job: Job<any, any, string>) {
+    try {
+      const job = await queue.getNextJob(token);
+      if (job) {
         if (job.id) {
-          runningJobs.delete(job.id);
+          runningJobs.add(job.id);
         }
 
-        if (job.id && job.data && job.data.team_id && job.data.plan) {
-          await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
-          cleanOldConcurrencyLimitEntries(job.data.team_id);
-
-          // Queue up next job, if it exists
-          // No need to check if we're under the limit here -- if the current job is finished,
-          // we are 1 under the limit, assuming the job insertion logic never over-inserts. - MG
-          const nextJob = await takeConcurrencyLimitedJob(job.data.team_id);
-          if (nextJob !== null) {
-            await pushConcurrencyLimitActiveJob(job.data.team_id, nextJob.id, calculateJobTimeToRun(nextJob));
-
-            await queue.add(
-              nextJob.id,
-              {
-                ...nextJob.data,
-                concurrencyLimitHit: true,
-              },
-              {
-                ...nextJob.opts,
-                jobId: nextJob.id,
-                priority: nextJob.priority,
-              },
-            );
-          }
-        }
-      }
-
-      if (job.data && job.data.sentry && Sentry.isInitialized()) {
-        Sentry.continueTrace(
-          {
-            sentryTrace: job.data.sentry.trace,
-            baggage: job.data.sentry.baggage,
-          },
-          () => {
-            Sentry.startSpan(
-              {
-                name: "Scrape job",
-                attributes: {
-                  job: job.id,
-                  worker: process.env.FLY_MACHINE_ID ?? worker.id,
-                },
-              },
-              async (span) => {
-                await Sentry.startSpan(
-                  {
-                    name: "Process scrape job",
-                    op: "queue.process",
-                    attributes: {
-                      "messaging.message.id": job.id,
-                      "messaging.destination.name": getScrapeQueue().name,
-                      "messaging.message.body.size": job.data.sentry.size,
-                      "messaging.message.receive.latency":
-                        Date.now() - (job.processedOn ?? job.timestamp),
-                      "messaging.message.retry.count": job.attemptsMade,
-                    },
-                  },
-                  async () => {
-                    let res;
-                    try {
-                      res = await processJobInternal(token, job);
-                    } finally {
-                      await afterJobDone(job);
-                    }
-
-                    if (res !== null) {
-                      span.setStatus({ code: 2 }); // ERROR
-                    } else {
-                      span.setStatus({ code: 1 }); // OK
-                    }
-                  },
-                );
-              },
-            );
-          },
-        );
-      } else {
         Sentry.startSpan(
           {
-            name: "Scrape job",
+            name: "Process job",
             attributes: {
               job: job.id,
-              worker: process.env.FLY_MACHINE_ID ?? worker.id,
+              worker: process.env.FLY_MACHINE_ID ?? queue.name,
             },
           },
           () => {
-            processJobInternal(token, job).finally(() => afterJobDone(job));
+            processJobFn(token, job).finally(() => {
+              if (job.id) {
+                runningJobs.delete(job.id);
+              }
+            });
           },
         );
-      }
 
-      await sleep(gotJobInterval);
-    } else {
+        await sleep(gotJobInterval);
+      } else {
+        await sleep(connectionMonitorInterval);
+      }
+    } catch (error) {
+      logger.error("Error processing job", { error });
       await sleep(connectionMonitorInterval);
     }
   }
@@ -1092,11 +1095,12 @@ async function processJob(job: Job & { id: string }, token: string) {
 // wsq.on("resumed", j => ScrapeEvents.logJobEvent(j, "resumed"));
 // wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
 
-// Start both workers
+// Start all workers
 (async () => {
   await Promise.all([
     workerFun(getScrapeQueue(), processJobInternal),
     workerFun(getExtractQueue(), processExtractJobInternal),
+    workerFun(getGenerateLlmsTxtQueue(), processGenerateLlmsTxtJobInternal),
   ]);
 
   console.log("All workers exited. Waiting for all jobs to finish...");
