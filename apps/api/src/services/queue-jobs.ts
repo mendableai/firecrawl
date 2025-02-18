@@ -1,10 +1,8 @@
-import { Job, JobsOptions } from "bullmq";
 import { getScrapeQueue } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
-import { NotificationType, PlanType, WebScraperOptions } from "../types";
+import { PlanType, WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
 import {
-  calculateJobTimeToRun,
   cleanOldConcurrencyLimitEntries,
   getConcurrencyLimitActiveJobs,
   getConcurrencyQueueJobsCount,
@@ -13,7 +11,6 @@ import {
 } from "../lib/concurrency-limit";
 import { logger } from "../lib/logger";
 import { getConcurrencyLimitMax } from "./rate-limiter";
-import { sendNotificationWithCustomDays } from "./notification/email_notification";
 
 async function _addScrapeJobToConcurrencyQueue(
   webScraperOptions: any,
@@ -44,15 +41,7 @@ export async function _addScrapeJobToBullMQ(
     webScraperOptions.team_id &&
     webScraperOptions.plan
   ) {
-    await pushConcurrencyLimitActiveJob(webScraperOptions.team_id, jobId, calculateJobTimeToRun({
-      id: jobId,
-      opts: {
-        ...options,
-        priority: jobPriority,
-        jobId,
-      },
-      data: webScraperOptions,
-    }));
+    await pushConcurrencyLimitActiveJob(webScraperOptions.team_id, jobId, 60 * 1000); // 60s default timeout
   }
 
   await getScrapeQueue().add(jobId, webScraperOptions, {
