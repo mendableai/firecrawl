@@ -330,12 +330,13 @@ export const extractV1Options = z
     ...obj,
     allowExternalLinks: obj.allowExternalLinks || obj.enableWebSearch,
   }))
-  .refine(x => extractRefine(x.scrapeOptions), extractRefineOpts)
-  .transform(x => extractTransform(x.scrapeOptions));
+  .refine(x => x.scrapeOptions ? extractRefine(x.scrapeOptions) : true, extractRefineOpts)
+  .transform(x => ({ ...x, scrapeOptions: x.scrapeOptions ? extractTransform(x.scrapeOptions) : x.scrapeOptions }));
 
 export type ExtractV1Options = z.infer<typeof extractV1Options>;
 export const extractRequestSchema = extractV1Options;
 export type ExtractRequest = z.infer<typeof extractRequestSchema>;
+export type ExtractRequestInput = z.input<typeof extractRequestSchema>;
 
 export const scrapeRequestSchema = baseScrapeOptions
   .omit({ timeout: true })
@@ -434,7 +435,7 @@ export const crawlRequestSchema = crawlerOptions
   })
   .strict(strictMessage)
   .refine(x => extractRefine(x.scrapeOptions), extractRefineOpts)
-  .transform(x => extractTransform(x.scrapeOptions));
+  .transform(x => ({ ...x, scrapeOptions: extractTransform(x.scrapeOptions) }));
 
 // export type CrawlRequest = {
 //   url: string;
@@ -449,6 +450,7 @@ export const crawlRequestSchema = crawlerOptions
 // }
 
 export type CrawlRequest = z.infer<typeof crawlRequestSchema>;
+export type CrawlRequestInput = z.input<typeof crawlRequestSchema>;
 
 export const mapRequestSchema = crawlerOptions
   .extend({
@@ -920,9 +922,10 @@ export const searchRequestSchema = z
     "Unrecognized key in body -- please review the v1 API documentation for request body changes",
   )
   .refine(x => extractRefine(x.scrapeOptions), extractRefineOpts)
-  .transform(x => extractTransform(x.scrapeOptions));
+  .transform(x => ({ ...x, scrapeOptions: extractTransform(x.scrapeOptions) }));
 
 export type SearchRequest = z.infer<typeof searchRequestSchema>;
+export type SearchRequestInput = z.input<typeof searchRequestSchema>;
 
 export type SearchResponse =
   | ErrorResponse
