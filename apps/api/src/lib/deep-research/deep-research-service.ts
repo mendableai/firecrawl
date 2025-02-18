@@ -261,7 +261,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       message: "Research completed",
       num_docs: 1,
       docs: [{ finalAnalysis: finalAnalysis }],
-      time_taken: (new Date().getTime() - Date.now()) / 1000,
+      time_taken: (Date.now() - startTime) / 1000,
       team_id: teamId,
       mode: "deep-research",
       url: options.topic,
