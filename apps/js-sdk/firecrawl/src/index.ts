@@ -1362,25 +1362,38 @@ export default class FirecrawlApp {
         return { success: false, error: 'error' in response ? response.error : 'Unknown error' };
       }
 
-      if (response.id) {
-        const jobId = response.id;
-        let researchStatus;
-        do {
-          researchStatus = await this.__checkDeepResearchStatus(jobId);
-          
-          if ('error' in researchStatus && !researchStatus.success) {
-            return researchStatus;
-          }
-
-          if (researchStatus.status === "completed" && researchStatus.data) {
-            return researchStatus;
-          } else if (researchStatus.status === "failed") {
-            throw new FirecrawlError(`Research job failed. Error: ${researchStatus.error}`, 500);
-          }
-          await new Promise(resolve => setTimeout(resolve, 1000)); // Polling interval
-        } while (researchStatus.status === "processing" || researchStatus.status === "completed");
+      if (!response.id) {
+        throw new FirecrawlError(`Failed to start research. No job ID returned.`, 500);
       }
-      throw new FirecrawlError(`Failed to start research. No job ID returned.`, 500);
+
+      const jobId = response.id;
+      let researchStatus;
+
+      do {
+        // console.log("Checking research status...");
+        researchStatus = await this.__checkDeepResearchStatus(jobId);
+        // console.log("Research status:", researchStatus);
+        
+        if ('error' in researchStatus && !researchStatus.success) {
+          return researchStatus;
+        }
+
+        if (researchStatus.status === "completed") {
+          return researchStatus;
+        }
+
+        if (researchStatus.status === "failed") {
+          throw new FirecrawlError(
+            `Research job ${researchStatus.status}. Error: ${researchStatus.error}`, 
+            500
+          );
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 1000));
+      } while (researchStatus.status === "processing");
+      // console.log("Research status finished:", researchStatus);
+
+      return { success: false, error: "Research job terminated unexpectedly" };
     } catch (error: any) {
       throw new FirecrawlError(error.message, 500, error.response?.data?.details);
     }

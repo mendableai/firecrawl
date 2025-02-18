@@ -12,7 +12,7 @@ export enum DeepResearchStep {
 
 export type DeepResearchActivity = {
   type: 'search' | 'extract' | 'analyze' | 'reasoning' | 'synthesis' | 'thought';
-  status: 'pending' | 'complete' | 'error';
+  status: 'processing' | 'complete' | 'error';
   message: string;
   timestamp: string;
   depth: number;

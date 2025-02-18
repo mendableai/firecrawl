@@ -31,18 +31,18 @@ export async function deepResearchStatusController(
 
   return res.status(200).json({
     success: research.status === "failed" ? false : true,
-    data: data ?? {
-      finalAnalysis: research.finalAnalysis,
-      completedSteps: research.completedSteps,
-      totalSteps: research.totalExpectedSteps,
+    data: {
+      finalAnalysis: data?.finalAnalysis ?? research.finalAnalysis,
+      // completedSteps: research.completedSteps,
+      // totalSteps: research.totalExpectedSteps,
     },
-    status: research.status,
     error: research?.error ?? undefined,
     expiresAt: (await getDeepResearchExpiry(req.params.jobId)).toISOString(),
     currentDepth: research.currentDepth,
     maxDepth: research.maxDepth,
+    status: research.status,
     activities: research.activities,
     sources: research.sources,
-    summaries: research.summaries,
+    // summaries: research.summaries,
   });
 } 

@@ -52,7 +52,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       // Search phase
       await state.addActivity({
         type: "search",
-        status: "pending",
+        status: "processing",
         message: `Generating search queries for "${currentTopic}"`,
         timestamp: new Date().toISOString(),
         depth: state.getCurrentDepth(),
@@ -72,7 +72,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
 
       await state.addActivity({
         type: "search",
-        status: "pending",
+        status: "processing",
         message: `Starting ${searchQueries.length} parallel searches for "${currentTopic}"`,
         timestamp: new Date().toISOString(),
         depth: state.getCurrentDepth(),
@@ -82,7 +82,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       const searchPromises = searchQueries.map(async (searchQuery) => {
         await state.addActivity({
           type: "search",
-          status: "pending",
+          status: "processing",
           message: `Searching for "${searchQuery.query}" - Goal: ${searchQuery.researchGoal}`,
           timestamp: new Date().toISOString(),
           depth: state.getCurrentDepth(),
@@ -167,7 +167,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       // Analysis phase
       await state.addActivity({
         type: "analyze",
-        status: "pending",
+        status: "processing",
         message: "Analyzing findings",
         timestamp: new Date().toISOString(),
         depth: state.getCurrentDepth(),
@@ -229,7 +229,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
     console.log("[Deep Research] Starting final synthesis");
     await state.addActivity({
       type: "synthesis",
-      status: "pending",
+      status: "processing",
       message: "Preparing final analysis",
       timestamp: new Date().toISOString(),
       depth: state.getCurrentDepth(),
@@ -258,7 +258,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
     console.log("[Deep Research] Research completed successfully");
 
     // Log job with token usage and sources
-    logJob({
+    await logJob({
       job_id: researchId,
       success: true,
       message: "Research completed",
@@ -273,15 +273,10 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       num_tokens: 0,
       tokens_billed: 0,
       sources: {},
-    }).then(() => {
-      updateDeepResearch(researchId, {
-        status: "completed",
-        finalAnalysis: finalAnalysis,
-      }).catch((error) => {
-        logger.error(
-          `Failed to update research ${researchId} status to completed: ${error}`,
-        );
-      });
+    });
+    await updateDeepResearch(researchId, {
+      status: "completed",
+      finalAnalysis: finalAnalysis,
     });
     return {
       success: true,
