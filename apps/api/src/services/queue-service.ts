@@ -6,6 +6,8 @@ let scrapeQueue: Queue;
 let extractQueue: Queue;
 let loggingQueue: Queue;
 let indexQueue: Queue;
+let deepResearchQueue: Queue;
+let generateLlmsTxtQueue: Queue;
 
 export const redisConnection = new IORedis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
@@ -15,6 +17,7 @@ export const scrapeQueueName = "{scrapeQueue}";
 export const extractQueueName = "{extractQueue}";
 export const loggingQueueName = "{loggingQueue}";
 export const indexQueueName = "{indexQueue}";
+export const generateLlmsTxtQueueName = "{generateLlmsTxtQueue}";
 
 export function getScrapeQueue() {
   if (!scrapeQueue) {
@@ -68,6 +71,24 @@ export function getIndexQueue() {
     logger.info("Index queue created");
   }
   return indexQueue;
+}
+
+export function getGenerateLlmsTxtQueue() {
+  if (!generateLlmsTxtQueue) {
+    generateLlmsTxtQueue = new Queue(generateLlmsTxtQueueName, {
+      connection: redisConnection,
+      defaultJobOptions: {
+        removeOnComplete: {
+          age: 90000, // 25 hours
+        },
+        removeOnFail: {
+          age: 90000, // 25 hours
+        },
+      },
+    });
+    logger.info("Text generation queue created");
+  }
+  return generateLlmsTxtQueue;
 }
 
 // === REMOVED IN FAVOR OF POLLING -- NOT RELIABLE
