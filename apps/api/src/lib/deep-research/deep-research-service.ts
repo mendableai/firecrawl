@@ -5,6 +5,7 @@ import { searchAndScrapeSearchResult } from "../../controllers/v1/search";
 import { ResearchLLMService, ResearchStateManager } from "./research-manager";
 import { logJob } from "../../services/logging/log_job";
 import { updateExtract } from "../extract/extract-redis";
+import { billTeam } from "../../services/billing/credit_billing";
 
 interface DeepResearchServiceOptions {
   researchId: string;
@@ -13,10 +14,11 @@ interface DeepResearchServiceOptions {
   topic: string;
   maxDepth: number;
   timeLimit: number;
+  subId?: string;
 }
 
 export async function performDeepResearch(options: DeepResearchServiceOptions) {
-  const { researchId, teamId, plan, timeLimit } = options;
+  const { researchId, teamId, plan, timeLimit, subId } = options;
   const startTime = Date.now();
   let currentTopic = options.topic;
 
@@ -112,10 +114,16 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       const searchResultsArrays = await Promise.all(searchPromises);
       const searchResults = searchResultsArrays.flat();
 
-      logger.debug("[Deep Research] Search results count:", searchResults.length);
+      logger.debug(
+        "[Deep Research] Search results count:",
+        searchResults.length,
+      );
 
       if (!searchResults || searchResults.length === 0) {
-        logger.debug("[Deep Research] No results found for topic:", currentTopic);
+        logger.debug(
+          "[Deep Research] No results found for topic:",
+          currentTopic,
+        );
         await state.addActivity({
           type: "search",
           status: "error",
@@ -127,7 +135,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       }
 
       // Filter out already seen URLs and track new ones
-      const newSearchResults = searchResults.filter(result => {
+      const newSearchResults = searchResults.filter((result) => {
         if (!result.url || state.hasSeenUrl(result.url)) {
           return false;
         }
@@ -135,10 +143,16 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         return true;
       });
 
-      logger.debug("[Deep Research] New unique results count:", newSearchResults.length);
+      logger.debug(
+        "[Deep Research] New unique results count:",
+        newSearchResults.length,
+      );
 
       if (newSearchResults.length === 0) {
-        logger.debug("[Deep Research] No new unique results found for topic:", currentTopic);
+        logger.debug(
+          "[Deep Research] No new unique results found for topic:",
+          currentTopic,
+        );
         await state.addActivity({
           type: "search",
           status: "error",
@@ -175,7 +189,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
 
       const timeRemaining = timeLimit * 1000 - (Date.now() - startTime);
       logger.debug("[Deep Research] Time remaining (ms):", timeRemaining);
-      
+
       const analysis = await llmService.analyzeAndPlan(
         state.getFindings(),
         currentTopic,
@@ -203,7 +217,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       logger.debug("[Deep Research] Analysis result:", {
         nextTopic: analysis.nextSearchTopic,
         shouldContinue: analysis.shouldContinue,
-        gapsCount: analysis.gaps.length
+        gapsCount: analysis.gaps.length,
       });
 
       state.setNextSearchTopic(analysis.nextSearchTopic || "");
@@ -249,8 +263,6 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       depth: state.getCurrentDepth(),
     });
 
-    
-
     const progress = state.getProgress();
     logger.debug("[Deep Research] Research completed successfully");
 
@@ -275,6 +287,14 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       status: "completed",
       finalAnalysis: finalAnalysis,
     });
+    // Bill team for usage
+    billTeam(teamId, subId, state.getFindings().length, logger).catch(
+      (error) => {
+        logger.error(
+          `Failed to bill team ${teamId} for ${state.getFindings().length} findings: ${error}`,
+        );
+      },
+    );
     return {
       success: true,
       data: {
