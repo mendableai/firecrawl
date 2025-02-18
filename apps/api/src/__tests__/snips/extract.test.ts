@@ -15,7 +15,7 @@ async function extractStart(body: ExtractRequestInput) {
 
 async function extractStatus(id: string) {
     return await request(TEST_URL)
-      .get("/v1/batch/scrape/" + encodeURIComponent(id))
+      .get("/v1/extract/" + encodeURIComponent(id))
       .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
       .send();
 }
@@ -68,7 +68,8 @@ describe("Extract tests", () => {
                     "company_mission",
                     "is_open_source"
                 ]
-            }
+            },
+            origin: "api-sdk",
         });
 
         expect(res.data).toHaveProperty("company_mission");

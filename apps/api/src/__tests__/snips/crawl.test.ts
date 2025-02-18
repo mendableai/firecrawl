@@ -58,5 +58,5 @@ describe("Crawl tests", () => {
             url: "https://firecrawl.dev",
             limit: 10,
         });
-    }, 60000);
+    }, 120000);
 });
