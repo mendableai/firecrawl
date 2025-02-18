@@ -353,10 +353,6 @@ export interface CrawlErrorsResponse {
  */
 export interface DeepResearchParams {
   /**
-   * The topic or question to research
-   */
-  topic: string;
-  /**
    * Maximum depth of research iterations (1-10)
    * @default 7
    */
@@ -1354,9 +1350,9 @@ export default class FirecrawlApp {
    * @param params - Parameters for the deep research operation.
    * @returns The final research results.
    */
-  async __deepResearch(params: DeepResearchParams): Promise<DeepResearchStatusResponse | ErrorResponse> {
+  async __deepResearch(topic: string, params: DeepResearchParams): Promise<DeepResearchStatusResponse | ErrorResponse> {
     try {
-      const response = await this.__asyncDeepResearch(params);
+      const response = await this.__asyncDeepResearch(topic, params);
       
       if (!response.success || 'error' in response) {
         return { success: false, error: 'error' in response ? response.error : 'Unknown error' };
@@ -1369,7 +1365,7 @@ export default class FirecrawlApp {
       const jobId = response.id;
       let researchStatus;
 
-      do {
+      while (true) {
         // console.log("Checking research status...");
         researchStatus = await this.__checkDeepResearchStatus(jobId);
         // console.log("Research status:", researchStatus);
@@ -1389,8 +1385,12 @@ export default class FirecrawlApp {
           );
         }
 
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      } while (researchStatus.status === "processing");
+        if (researchStatus.status !== "processing") {
+          break;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
       // console.log("Research status finished:", researchStatus);
 
       return { success: false, error: "Research job terminated unexpectedly" };
@@ -1404,12 +1404,12 @@ export default class FirecrawlApp {
    * @param params - Parameters for the deep research operation.
    * @returns The response containing the research job ID.
    */
-  async __asyncDeepResearch(params: DeepResearchParams): Promise<DeepResearchResponse | ErrorResponse> {
+  async __asyncDeepResearch(topic: string, params: DeepResearchParams): Promise<DeepResearchResponse | ErrorResponse> {
     const headers = this.prepareHeaders();
     try {
       const response: AxiosResponse = await this.postRequest(
         `${this.apiUrl}/v1/deep-research`,
-        params,
+        { topic, ...params },
         headers
       );
 

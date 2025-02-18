@@ -249,10 +249,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       depth: state.getCurrentDepth(),
     });
 
-    await updateDeepResearch(researchId, {
-      status: "completed",
-      finalAnalysis: finalAnalysis,
-    });
+    
 
     const progress = state.getProgress();
     console.log("[Deep Research] Research completed successfully");

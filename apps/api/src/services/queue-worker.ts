@@ -406,9 +406,7 @@ const processDeepResearchJobInternal = async (
     
     if(result.success) {
       // Move job to completed state in Redis and update research status
-      
       await job.moveToCompleted(result, token, false);
-
       return result;
     } else {
       // If the deep research failed but didn't throw an error

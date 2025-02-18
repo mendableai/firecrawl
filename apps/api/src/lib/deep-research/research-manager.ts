@@ -182,7 +182,7 @@ export class ResearchLLMService {
           
           Each query should be specific and focused on a particular aspect.
           Build upon previous findings when available.
-          Be specific and go deep, not wide - always following the original topic/
+          Be specific and go deep, not wide - always following the original topic.
           Every search query is a new SERP query so make sure the whole context is added without overwhelming the search engine.
           The first SERP query you generate should be a very concise, simple version of the topic. `,
       },
@@ -275,14 +275,14 @@ export class ResearchLLMService {
   
             Research data:
             ${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}
-            ${summaries.map((s) => `[Summary]: ${s}`).join("\n")}
   
             Requirements:
             - Format the report in Markdown with proper headers and sections
             - Include specific citations to sources where appropriate
             - Provide detailed analysis in each section
-            - Make it comprehensive and thorough (aim for 2+ pages worth of content)
+            - Make it comprehensive and thorough (aim for 4+ pages worth of content)
             - Include all relevant findings and insights from the research
+            - Cite sources
             - Use bullet points and lists where appropriate for readability`,
           100000,
         ),
@@ -290,6 +290,7 @@ export class ResearchLLMService {
       "",
       undefined,
       true,
+      "gpt-4o"
     );
 
     return extract.report;
