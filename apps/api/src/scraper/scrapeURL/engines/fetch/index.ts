@@ -43,7 +43,7 @@ export async function scrapeURLWithFetch(
     }
   }
 
-  specialtyScrapeCheck(
+  await specialtyScrapeCheck(
     meta.logger.child({ method: "scrapeURLWithFetch/specialtyScrapeCheck" }),
     Object.fromEntries(response.headers as any),
   );

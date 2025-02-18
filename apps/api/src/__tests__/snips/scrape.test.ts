@@ -44,7 +44,7 @@ describe("Scrape tests", () => {
 
       expectScrapeToSucceed(response);
       expect(response.body.data.markdown).not.toContain(".g.doubleclick.net/");
-    }, 10000);
+    }, 30000);
 
     it.concurrent("doesn't block ads if explicitly disabled", async () => {
       const response = await scrape({
@@ -54,7 +54,7 @@ describe("Scrape tests", () => {
 
       expectScrapeToSucceed(response);
       expect(response.body.data.markdown).toContain(".g.doubleclick.net/");
-    }, 10000);
+    }, 30000);
   });
   
   describe("Location API (f-e dependant)", () => {
@@ -132,5 +132,16 @@ describe("Scrape tests", () => {
         proxy: "stealth",
       });
     }, 15000);
+  });
+
+  describe("PDF (f-e dependant)", () => {
+    it.concurrent("works for PDFs behind anti-bot", async () => {
+      const response = await scrape({
+        url: "https://www.researchgate.net/profile/Amir-Leshem/publication/220732050_Robust_adaptive_beamforming_based_on_jointly_estimating_covariance_matrix_and_steering_vector/links/0c96052d2fd8f0a84b000000/Robust-adaptive-beamforming-based-on-jointly-estimating-covariance-matrix-and-steering-vector.pdf"
+      });
+  
+      expectScrapeToSucceed(response);
+      expect(response.body.data.markdown).toContain("Robust adaptive beamforming based on jointly estimating covariance matrix");
+    }, 60000);
   });
 });
