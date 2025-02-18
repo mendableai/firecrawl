@@ -473,8 +473,8 @@ const processGenerateLlmsTxtJobInternal = async (
       generationId: job.data.generationId,
       teamId: job.data.teamId,
       plan: job.data.plan,
-      url: job.data.url,
-      maxTokens: job.data.maxTokens,
+      url: job.data.request.url,
+      maxTokens: job.data.request.maxTokens,
     });
 
     if (result.success) {
@@ -1168,6 +1168,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     workerFun(getScrapeQueue(), processJobInternal),
     workerFun(getExtractQueue(), processExtractJobInternal),
     workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
+    workerFun(getGenerateLlmsTxtQueue(), processGenerateLlmsTxtJobInternal),
   ]);
 
   console.log("All workers exited. Waiting for all jobs to finish...");

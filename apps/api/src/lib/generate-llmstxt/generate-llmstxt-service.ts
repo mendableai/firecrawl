@@ -36,6 +36,7 @@ const DescriptionSchema = z.object({
 export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOptions) {
   const openai = new OpenAI();
   const { generationId, teamId, plan, url, maxTokens } = options;
+  
   const logger = _logger.child({
     module: "generate-llmstxt",
     method: "performGenerateLlmsTxt",
@@ -49,7 +50,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
       body: { url },
     };
 
-    _logger.debug("Getting URLs from map controller");
+   
     const mapResult = await mapController(mockMapReq as any, createExpressResponse<MapResponse>());
     const mapResponse = mapResult as unknown as MapResponse;
 
@@ -57,68 +58,67 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
       throw new Error(`Failed to map URLs: ${mapResponse.error}`);
     }
 
+    _logger.debug("Mapping URLs", mapResponse.links);
+
     const urls = mapResponse.links;
-    let llmstxt = "";
-    let llmsFulltxt = "";
+    let llmstxt = `# ${url} llms.txt\n\n`;
+    let llmsFulltxt = `# ${url} llms-full.txt\n\n`;
+
 
     // Scrape each URL
-    const mockScrapeReq = {
-      auth: { team_id: teamId, plan },
-      body: {
-        urls,
-        formats: ["markdown"],
-        onlyMainContent: true,
-      },
-    };
+    for (const url of urls) {
+      const mockScrapeReq = {
+        auth: { team_id: teamId, plan },
+        body: {
+          url,
+          formats: ["markdown"],
+          onlyMainContent: true,
+        },
+      };
 
-    _logger.debug("Scraping URLs");
-    const scrapeResult = await scrapeController(mockScrapeReq as any, createExpressResponse<ScrapeResponse>());
-    const scrapeResponse = scrapeResult as unknown as ScrapeResponse;
+      _logger.debug(`Scraping URL: ${url}`);
+      const scrapeResult = await scrapeController(mockScrapeReq as any, createExpressResponse<ScrapeResponse>());
+      const scrapeResponse = scrapeResult as unknown as ScrapeResponse;
 
-    if (!scrapeResponse.success) {
-      throw new Error(`Failed to scrape URLs: ${scrapeResponse.error}`);
-    }
+      if (!scrapeResponse.success) {
+        logger.error(`Failed to scrape URL ${url}: ${scrapeResponse.error}`);
+        continue;
+      }
 
-    // Process each scraped result
-    const documents = Array.isArray(scrapeResponse.data) ? scrapeResponse.data : [scrapeResponse.data];
+      // Process scraped result
+      const document = Array.isArray(scrapeResponse.data) ? scrapeResponse.data[0] : scrapeResponse.data;
+      
+      if (!document.markdown) continue;
 
-    for (let i = 0; i < documents.length; i++) {
-      const result = documents[i];
-      if (!result.markdown) continue;
-
-      _logger.debug(`Generating description for ${result.metadata?.url}`);
+      _logger.debug(`Generating description for ${document.metadata?.url}`);
       
       const completion = await openai.beta.chat.completions.parse({
         model: "gpt-4o-mini",
         messages: [
           {
             role: "user", 
-            content: `Generate a 9-10 word description and a 3-4 word title of the entire page based on ALL the content one will find on the page for this url: ${result.metadata?.url}. This will help in a user finding the page for its intended purpose. Here is the content: ${result.markdown}`
+            content: `Generate a 9-10 word description and a 3-4 word title of the entire page based on ALL the content one will find on the page for this url: ${document.metadata?.url}. This will help in a user finding the page for its intended purpose. Here is the content: ${document.markdown}`
           }
         ],
         response_format: zodResponseFormat(DescriptionSchema, "description")
       });
 
-      
       try {
-        
-
         const parsedResponse = completion.choices[0].message.parsed;
         const description = parsedResponse!.description;
         const title = parsedResponse!.title;
-
         
-        llmstxt += `- [${title}](${result.metadata?.url}): ${description}\n`;
-        llmsFulltxt += `## ${title}\n${result.markdown}\n\n`;
+        llmstxt += `- [${title}](${document.metadata?.url}): ${description}\n`;
+        llmsFulltxt += `## ${title}\n${document.markdown}\n\n`;
 
         // Update progress with both generated text and full text
         await updateGeneratedLlmsTxt(generationId, {
-          status: "processing",
+          status: "processing", 
           generatedText: llmstxt,
           fullText: llmsFulltxt,
         });
       } catch (error) {
-        logger.error(`Failed to parse LLM response for ${result.metadata?.url}:`, error);
+        logger.error(`Failed to parse LLM response for ${document.metadata?.url}:`, error);
         continue;
       }
     }
