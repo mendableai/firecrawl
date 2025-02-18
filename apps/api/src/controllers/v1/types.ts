@@ -217,6 +217,7 @@ const baseScrapeOptions = z
     fastMode: z.boolean().default(false),
     useMock: z.string().optional(),
     blockAds: z.boolean().default(true),
+    proxy: z.enum(["basic", "stealth"]).optional(),
   })
   .strict(strictMessage);
 

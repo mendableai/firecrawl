@@ -145,4 +145,26 @@ describe("Scrape tests", () => {
       expect(typeof response.json.is_open_source).toBe("boolean");
     }, 30000);
   });
+  
+  describe("Proxy API (f-e dependant)", () => {
+    it.concurrent("undefined works", async () => {
+      await scrape({
+        url: "http://firecrawl.dev",
+      });
+    }, 15000);
+
+    it.concurrent("basic works", async () => {
+      await scrape({
+        url: "http://firecrawl.dev",
+        proxy: "basic",
+      });
+    }, 15000);
+
+    it.concurrent("stealth works", async () => {
+      await scrape({
+        url: "http://firecrawl.dev",
+        proxy: "stealth",
+      });
+    }, 15000);
+  });
 });

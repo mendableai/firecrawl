@@ -94,6 +94,10 @@ function buildFeatureFlags(
     flags.add("useFastMode");
   }
 
+  if (options.proxy === "stealth") {
+    flags.add("stealthProxy");
+  }
+
   const urlO = new URL(url);
 
   if (urlO.pathname.endsWith(".pdf")) {
