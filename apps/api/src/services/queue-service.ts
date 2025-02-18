@@ -86,7 +86,7 @@ export function getGenerateLlmsTxtQueue() {
         },
       },
     });
-    logger.info("Text generation queue created");
+    logger.info("LLMs TXT generation queue created");
   }
   return generateLlmsTxtQueue;
 }

@@ -28,7 +28,8 @@ export async function generateLLMsTextStatusController(
   return res.status(200).json({
     success: generation.status === "failed" ? false : true,
     data: data ?? {
-      generatedText: generation.generatedText,
+      llmstxt: generation.generatedText,
+      fullText: generation.fullText,
       url: generation.url,
     },
     status: generation.status,

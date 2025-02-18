@@ -100,3 +100,21 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 ###
 DELETE {{baseUrl}}/v1/crawl/c94136f9-86c1-4a97-966c-1c8e0274778f HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
+
+### Generate LLMs TXT
+# @name generateLlmsTxt
+POST {{baseUrl}}/v1/generate-llmstxt HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json
+
+{
+  "url": "https://ericciarla.com"
+}
+
+
+### Check Generate LLMs TXT Status
+@generateLlmsTxtId = {{generateLlmsTxt.response.body.$.id}}
+# @name generateLlmsTxtStatus
+GET {{baseUrl}}/v1/generate-llmstxt/{{generateLlmsTxtId}} HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+

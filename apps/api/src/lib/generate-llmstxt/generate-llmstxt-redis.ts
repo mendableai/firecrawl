@@ -10,7 +10,7 @@ export interface GenerationData {
   url: string;
   maxTokens: number;
   generatedText: string;
-  fullText?: string;
+  fullText: string;
   error?: string;
 }
 
@@ -18,7 +18,7 @@ export interface GenerationData {
 const GENERATION_TTL = 24 * 60 * 60;
 
 export async function saveGeneratedLlmsTxt(id: string, data: GenerationData): Promise<void> {
-  _logger.debug("Saving generation " + id + " to Redis...");
+  _logger.debug("Saving llmstxt generation " + id + " to Redis...");
   await redisConnection.set("generation:" + id, JSON.stringify(data));
   await redisConnection.expire("generation:" + id, GENERATION_TTL);
 }
@@ -57,10 +57,12 @@ export async function updateGeneratedLlmsTxtStatus(
   id: string,
   status: "processing" | "completed" | "failed",
   generatedText?: string,
+  fullText?: string,
   error?: string,
 ): Promise<void> {
   const updates: Partial<GenerationData> = { status };
   if (generatedText !== undefined) updates.generatedText = generatedText;
+  if (fullText !== undefined) updates.fullText = fullText;
   if (error !== undefined) updates.error = error;
   
   await updateGeneratedLlmsTxt(id, updates);
