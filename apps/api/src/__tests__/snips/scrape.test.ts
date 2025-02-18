@@ -1,11 +1,11 @@
 import request from "supertest";
 import { configDotenv } from "dotenv";
-import { ScrapeRequestInput } from "../../controllers/v1/types";
+import { Document, ScrapeRequestInput } from "../../controllers/v1/types";
 
 configDotenv();
 const TEST_URL = "http://127.0.0.1:3002";
 
-async function scrape(body: ScrapeRequestInput) {
+async function scrapeRaw(body: ScrapeRequestInput) {
   return await request(TEST_URL)
     .post("/v1/scrape")
     .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
@@ -13,10 +13,16 @@ async function scrape(body: ScrapeRequestInput) {
     .send(body);
 }
 
-function expectScrapeToSucceed(response: Awaited<ReturnType<typeof scrape>>) {
+function expectScrapeToSucceed(response: Awaited<ReturnType<typeof scrapeRaw>>) {
   expect(response.statusCode).toBe(200);
   expect(response.body.success).toBe(true);
   expect(typeof response.body.data).toBe("object");
+}
+
+async function scrape(body: ScrapeRequestInput): Promise<Document> {
+  const raw = await scrapeRaw(body);
+  expectScrapeToSucceed(raw);
+  return raw.body.data;
 }
 
 describe("Scrape tests", () => {
@@ -30,8 +36,7 @@ describe("Scrape tests", () => {
       useMock: "mocking-works-properly",
     });
 
-    expectScrapeToSucceed(response);
-    expect(response.body.data.markdown).toBe(
+    expect(response.markdown).toBe(
       "this is fake data coming from the mocking system!",
     );
   }, 10000);
@@ -42,8 +47,7 @@ describe("Scrape tests", () => {
         url: "https://canyoublockit.com/testing/",
       });
 
-      expectScrapeToSucceed(response);
-      expect(response.body.data.markdown).not.toContain(".g.doubleclick.net/");
+      expect(response.markdown).not.toContain(".g.doubleclick.net/");
     }, 10000);
 
     it.concurrent("doesn't block ads if explicitly disabled", async () => {
@@ -52,8 +56,7 @@ describe("Scrape tests", () => {
         blockAds: false,
       });
 
-      expectScrapeToSucceed(response);
-      expect(response.body.data.markdown).toContain(".g.doubleclick.net/");
+      expect(response.markdown).toContain(".g.doubleclick.net/");
     }, 10000);
   });
   
@@ -62,8 +65,6 @@ describe("Scrape tests", () => {
       const response = await scrape({
         url: "https://iplocation.com",
       });
-  
-      expectScrapeToSucceed(response);
     }, 10000);
 
     it.concurrent("works with country US", async () => {
@@ -72,8 +73,7 @@ describe("Scrape tests", () => {
         location: { country: "US" },
       });
   
-      expectScrapeToSucceed(response);
-      expect(response.body.data.markdown).toContain("| Country | United States |");
+      expect(response.markdown).toContain("| Country | United States |");
     }, 10000);
   });
 
@@ -84,8 +84,7 @@ describe("Scrape tests", () => {
         formats: ["rawHtml"],
       });
 
-      expectScrapeToSucceed(response);
-      const obj = JSON.parse(response.body.data.rawHtml);
+      const obj = JSON.parse(response.rawHtml!);
       expect(obj.id).toBe(1);
     }, 25000); // TODO: mock and shorten
   });
@@ -97,8 +96,7 @@ describe("Scrape tests", () => {
         formats: ["screenshot"]
       });
   
-      expectScrapeToSucceed(response);
-      expect(typeof response.body.data.screenshot).toBe("string");
+      expect(typeof response.screenshot).toBe("string");
     }, 15000);
 
     it.concurrent("screenshot@fullPage format works", async () => {
@@ -107,8 +105,44 @@ describe("Scrape tests", () => {
         formats: ["screenshot@fullPage"]
       });
   
-      expectScrapeToSucceed(response);
-      expect(typeof response.body.data.screenshot).toBe("string");
+      expect(typeof response.screenshot).toBe("string");
     }, 15000);
-  })
+  });
+
+  describe("JSON format", () => {
+    it.concurrent("works", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev",
+        formats: ["json"],
+        jsonOptions: {
+          prompt: "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source.",
+          schema: {
+            type: "object",
+            properties: {
+              company_mission: {
+                type: "string",
+              },
+              supports_sso: {
+                type: "boolean",
+              },
+              is_open_source: {
+                type: "boolean",
+              },
+            },
+            required: ["company_mission", "supports_sso", "is_open_source"],
+          },
+        },
+      });
+  
+      expect(response).toHaveProperty("json");
+      expect(response.json).toHaveProperty("company_mission");
+      expect(typeof response.json.company_mission).toBe("string");
+      expect(response.json).toHaveProperty("supports_sso");
+      expect(response.json.supports_sso).toBe(false);
+      expect(typeof response.json.supports_sso).toBe("boolean");
+      expect(response.json).toHaveProperty("is_open_source");
+      expect(response.json.is_open_source).toBe(true);
+      expect(typeof response.json.is_open_source).toBe("boolean");
+    }, 30000);
+  });
 });
