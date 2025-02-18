@@ -394,23 +394,33 @@ const processDeepResearchJobInternal = async (
   }, jobLockExtendInterval);
 
   try {
-    // TODO: Implement the actual deep research logic here
-    // This will involve:
-    // 1. Search phase
-    // 2. Extract phase
-    // 3. Analysis phase
-    // 4. Synthesis phase
-    // Each phase should update the job status in Redis
-
-    // For now, we'll just mark it as completed
-    await updateDeepResearch(job.data.researchId, {
-      status: "completed",
-      finalAnalysis: "Deep research implementation pending",
-    });
-
-    // Move job to completed state in Redis
-    await job.moveToCompleted(null, token, false);
-    return null;
+    const result = await performDeepResearch({
+      researchId: job.data.researchId,
+      teamId: job.data.teamId,
+      plan: job.data.plan,
+      topic: job.data.request.topic,
+      maxDepth: job.data.request.maxDepth,
+      timeLimit: job.data.request.timeLimit,
+    });  
+    
+    if(result.success) {
+      // Move job to completed state in Redis and update research status
+      await job.moveToCompleted(result, token, false);
+      await updateDeepResearch(job.data.researchId, {
+        status: "completed",
+        finalAnalysis: result.data.analysis,
+      });
+      return result;
+    } else {
+      // If the deep research failed but didn't throw an error
+      const error = new Error("Deep research failed without specific error");
+      await job.moveToFailed(error, token, false);
+      await updateDeepResearch(job.data.researchId, {
+        status: "failed",
+        error: error.message,
+      });
+      return { success: false, error: error.message };
+    }
   } catch (error) {
     logger.error(`🚫 Job errored ${job.id} - ${error}`, { error });
 
@@ -432,7 +442,7 @@ const processDeepResearchJobInternal = async (
       error: error.message || "Unknown error occurred",
     });
 
-    return error;
+    return { success: false, error: error.message || "Unknown error occurred" };
   } finally {
     clearInterval(extendLockInterval);
   }

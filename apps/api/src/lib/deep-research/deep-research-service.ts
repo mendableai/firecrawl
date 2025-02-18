@@ -1,11 +1,26 @@
 import { logger as _logger } from "../logger";
-import { DeepResearchActivity, DeepResearchFinding, DeepResearchSource, updateDeepResearch } from "./deep-research-redis";
+import {
+  DeepResearchActivity,
+  DeepResearchFinding,
+  DeepResearchSource,
+  updateDeepResearch,
+} from "./deep-research-redis";
 import { generateText } from "../llm/generate";
 import { search } from "../../search";
 import { performExtraction } from "../extract/extraction-service";
-import { ExtractRequest, ExtractResponse, SearchResponse } from "../../controllers/v1/types";
+import {
+  RequestWithAuth,
+  SearchRequest,
+  SearchResponse,
+  Document,
+} from "../../controllers/v1/types";
 import { Response } from "express";
 import { PlanType } from "../../types";
+import {
+  searchAndScrapeSearchResult,
+  searchController,
+} from "../../controllers/v1/search";
+import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
 
 interface DeepResearchServiceOptions {
   researchId: string;
@@ -25,12 +40,66 @@ interface AnalysisResult {
   urlToSearch?: string;
 }
 
+async function generateSearchQueries(
+  topic: string,
+  findings: DeepResearchFinding[] = [],
+): Promise<{ query: string; researchGoal: string }[]> {
+  const { extract } = await generateOpenAICompletions(
+    _logger.child({
+      method: "generateSearchQueries",
+    }),
+    {
+      mode: "llm",
+      systemPrompt:
+        "You are an expert research agent that generates search queries to explore topics deeply and thoroughly. Today's date is " +
+        new Date().toISOString().split("T")[0],
+      schema: {
+        type: "object",
+        properties: {
+          queries: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                query: {
+                  type: "string",
+                  description: "The search query to use",
+                },
+                researchGoal: {
+                  type: "string",
+                  description:
+                    "The specific goal this query aims to achieve and how it advances the research",
+                },
+              },
+            },
+          },
+        },
+      },
+      prompt: `Generate a list of 3-5 search queries to deeply research this topic: "${topic}"
+      ${findings.length > 0 ? `\nBased on these previous findings, generate more specific queries:\n${findings.map((f) => `- ${f.text}`).join("\n")}` : ""}
+      
+      Each query should:
+      1. Be specific and focused on a particular aspect
+      2. Use advanced search operators when helpful
+      3. Target high-quality sources
+      4. Build upon previous findings when available
+      
+      Return queries that will help uncover different aspects and perspectives of the topic.`,
+    },
+    "",
+    undefined,
+    true,
+  );
+
+  return extract.queries;
+}
 
 export async function performDeepResearch(options: DeepResearchServiceOptions) {
   const { researchId, teamId, plan, timeLimit } = options;
+  console.log("Starting deep research");
   const startTime = Date.now();
   let currentTopic = options.topic;
-  
+
   const logger = _logger.child({
     module: "deep-research",
     method: "performDeepResearch",
@@ -66,24 +135,29 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
     });
   };
 
-  const analyzeAndPlan = async (findings: DeepResearchFinding[]): Promise<AnalysisResult | null> => {
+  const analyzeAndPlan = async (
+    findings: DeepResearchFinding[],
+  ): Promise<AnalysisResult | null> => {
     try {
       const timeElapsed = Date.now() - startTime;
       const timeRemaining = timeLimit * 1000 - timeElapsed;
-      const timeRemainingMinutes = Math.round((timeRemaining / 1000 / 60) * 10) / 10;
+      const timeRemainingMinutes =
+        Math.round((timeRemaining / 1000 / 60) * 10) / 10;
 
       const result = await generateText({
         model: "gpt-4o-mini",
         messages: [
           {
             role: "system",
-            content: "You are a research agent analyzing findings. Your goal is to synthesize information and identify gaps for further research."
+            content:
+              "You are an expert research agent that is analyzing findings. Your goal is to synthesize information and identify gaps for further research. Today's date is " +
+              new Date().toISOString().split("T")[0],
           },
           {
             role: "user",
             content: `You are researching: ${currentTopic}
             You have ${timeRemainingMinutes} minutes remaining to complete the research but you don't need to use all of it.
-            Current findings: ${findings.map((f) => `[From ${f.source}]: ${f.text}`).join('\n')}
+            Current findings: ${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}
             What has been learned? What gaps remain? What specific aspects should be investigated next if any?
             If you need to search for more information, include a nextSearchTopic.
             If you need to search for more information in a specific URL, include a urlToSearch.
@@ -100,10 +174,10 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
                 "nextSearchTopic": "optional topic",
                 "urlToSearch": "optional url"
               }
-            }`
-          }
+            }`,
+          },
         ],
-        temperature: 0.7,
+        temperature: 0.1,
       });
 
       try {
@@ -120,7 +194,11 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
   };
 
   try {
+    console.log("Starting research loop");
+    console.log("Current depth", researchState.currentDepth);
+    console.log("Max depth", options.maxDepth);
     while (researchState.currentDepth < options.maxDepth) {
+      console.log("Current depth", researchState.currentDepth);
       const timeElapsed = Date.now() - startTime;
       if (timeElapsed >= timeLimit * 1000) {
         break;
@@ -135,27 +213,72 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       await addActivity({
         type: "search",
         status: "pending",
-        message: `Searching for "${currentTopic}"`,
+        message: `Generating search queries for "${currentTopic}"`,
         timestamp: new Date().toISOString(),
         depth: researchState.currentDepth,
       });
 
-      const searchTopic = researchState.nextSearchTopic || currentTopic;
-      
-      // Direct integration with search service
-      const searchResults = await search({
-        query: searchTopic,
-        advanced: false,
-        num_results: 5,
-        lang: "en",
-        country: "us"
+      const searchQueries = (
+        await generateSearchQueries(currentTopic, researchState.findings)
+      ).slice(0, 3);
+
+      // Log that we're starting multiple searches
+      await addActivity({
+        type: "search",
+        status: "pending",
+        message: `Starting ${searchQueries.length} parallel searches for "${currentTopic}"`,
+        timestamp: new Date().toISOString(),
+        depth: researchState.currentDepth,
       });
+
+      console.log("Starting searches");
+      console.log(searchQueries);
+
+      // Run all searches in parallel
+      const searchPromises = searchQueries.map(async (searchQuery) => {
+        await addActivity({
+          type: "search",
+          status: "pending",
+          message: `Searching for "${searchQuery.query}" - Goal: ${searchQuery.researchGoal}`,
+          timestamp: new Date().toISOString(),
+          depth: researchState.currentDepth,
+        });
+
+        const response = await searchAndScrapeSearchResult(searchQuery.query, {
+          teamId: options.teamId,
+          plan: options.plan as PlanType,
+          origin: "deep-research",
+          timeout: 30000,
+          scrapeOptions: {
+            formats: ["markdown"],
+            onlyMainContent: true,
+            waitFor: 0,
+            mobile: false,
+            parsePDF: false,
+            useMock: "none",
+            skipTlsVerification: false,
+            removeBase64Images: false,
+            fastMode: false,
+            blockAds: false,
+          },
+        });
+        if (response.length > 0) {
+          return response;
+        }
+        return [];
+      });
+
+      // Wait for all searches to complete
+      const searchResultsArrays = await Promise.all(searchPromises);
+
+      // Flatten results array
+      const searchResults = searchResultsArrays.flat();
 
       if (!searchResults || searchResults.length === 0) {
         await addActivity({
           type: "search",
           status: "error",
-          message: `No results found for "${searchTopic}"`,
+          message: `No results found for any queries about "${currentTopic}"`,
           timestamp: new Date().toISOString(),
           depth: researchState.currentDepth,
         });
@@ -165,7 +288,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       await addActivity({
         type: "search",
         status: "complete",
-        message: `Found ${searchResults.length} relevant results`,
+        message: `Found ${searchResults.length} relevant results across ${searchQueries.length} parallel queries`,
         timestamp: new Date().toISOString(),
         depth: researchState.currentDepth,
       });
@@ -173,62 +296,13 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       // Add sources from search results
       for (const result of searchResults) {
         await updateDeepResearch(researchId, {
-          sources: [{
-            url: result.url,
-            title: result.title,
-            description: result.description,
-          }]
-        });
-      }
-
-      // Extract phase using the extraction service
-      const extractResult = await performExtraction(researchId, {
-        request: {
-          urls: [
-            ...(researchState.urlToSearch ? [researchState.urlToSearch] : []),
-            ...searchResults.slice(0, 3).map(r => r.url)
-          ],
-          prompt: `Extract key information about ${currentTopic}. Focus on facts, data, and expert opinions.`,
-          schema: {
-            type: "object",
-            properties: {
-              relevantInformation: {
-                type: "string",
-                description: "The relevant information about the topic from this source"
-              }
+          sources: [
+            {
+              url: result.url || "",
+              title: result.title || "",
+              description: result.description || "",
             },
-            required: ["relevantInformation"]
-          },
-          showSources: true,
-          allowExternalLinks: false,
-          ignoreSitemap: true,
-          includeSubdomains: false,
-          enableWebSearch: false,
-          timeout: 60000,
-          origin: "deep-research",
-          urlTrace: false,
-          __experimental_streamSteps: false,
-          __experimental_llmUsage: false,
-          __experimental_showSources: true,
-          __experimental_cacheMode: "direct"
-        },
-        teamId,
-        plan: plan as PlanType,
-      });
-
-      if (extractResult.success && extractResult.data) {
-        interface ExtractionData {
-          relevantInformation: string;
-        }
-        
-        const newFindings = Object.entries(extractResult.data).map(([_, value]) => ({
-          text: (value as ExtractionData).relevantInformation,
-          source: extractResult.sources?.[(value as ExtractionData).relevantInformation]?.[0] || "unknown"
-        }));
-
-        researchState.findings.push(...newFindings);
-        await updateDeepResearch(researchId, {
-          findings: newFindings
+          ],
         });
       }
 
@@ -242,7 +316,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       });
 
       const analysis = await analyzeAndPlan(researchState.findings);
-      
+
       if (!analysis) {
         await addActivity({
           type: "analyze",
@@ -296,15 +370,26 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       messages: [
         {
           role: "system",
-          content: "You are a research synthesizer. Create a comprehensive analysis based on the provided findings and summaries."
+          content:
+            "You are an expert research analyst who creates comprehensive, well-structured reports. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations.",
         },
         {
           role: "user",
-          content: `Create a comprehensive long analysis of ${currentTopic} based on these findings:
-          ${researchState.findings.map((f) => `[From ${f.source}]: ${f.text}`).join('\n')}
-          ${researchState.summaries.map((s) => `[Summary]: ${s}`).join('\n')}
-          Provide all the thoughts processes including findings details, key insights, conclusions, and any remaining uncertainties. Include citations to sources where appropriate. This analysis should be very comprehensive and full of details. It is expected to be very long, detailed and comprehensive.`
-        }
+          content: `Create a comprehensive research report on "${options.topic}" based on the collected findings and analysis.
+
+
+Use this research data:
+${researchState.findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}
+${researchState.summaries.map((s) => `[Summary]: ${s}`).join("\n")}
+
+Requirements:
+- Format the report in Markdown with proper headers and sections
+- Include specific citations to sources where appropriate
+- Provide detailed analysis in each section
+- Make it comprehensive and thorough (aim for 2+ pages worth of content)
+- Include all relevant findings and insights from the research
+- Use bullet points and lists where appropriate for readability`,
+        },
       ],
       temperature: 0.7,
     });
@@ -326,6 +411,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       success: true,
       data: {
         findings: researchState.findings,
+        finalAnalysis: finalAnalysis.text,
         analysis: finalAnalysis.text,
         completedSteps: researchState.completedSteps,
         totalSteps: researchState.totalExpectedSteps,
@@ -335,8 +421,8 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
     logger.error("Deep research error:", error);
     await updateDeepResearch(researchId, {
       status: "failed",
-      error: error.message
+      error: error.message,
     });
     throw error;
   }
-} 
+}

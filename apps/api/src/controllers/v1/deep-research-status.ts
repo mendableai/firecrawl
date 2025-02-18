@@ -29,6 +29,7 @@ export async function deepResearchStatusController(
     success: research.status === "failed" ? false : true,
     data: data ?? {
       findings: research.findings,
+      finalAnalysis: research.finalAnalysis,
       analysis: research.finalAnalysis,
       completedSteps: research.completedSteps,
       totalSteps: research.totalExpectedSteps,
