@@ -574,7 +574,7 @@ const workerFun = async (queue: Queue, processJobFn: (token: string, job: Job) =
     }
 
     try {
-      const job = await queue.getNextJob(token);
+      const job = await worker.getNextJob(token);
       if (job) {
         if (job.id) {
           runningJobs.add(job.id);
