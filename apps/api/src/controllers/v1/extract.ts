@@ -57,7 +57,7 @@ export async function extractController(
     extractId,
   };
 
-  if (
+  if (!selfHosted &&
     (await getTeamIdSyncB(req.auth.team_id)) &&
     req.body.origin !== "api-sdk" &&
     req.body.origin !== "website"
@@ -75,6 +75,16 @@ export async function extractController(
     showLLMUsage: req.body.__experimental_llmUsage,
     showSources: req.body.__experimental_showSources || req.body.showSources,
   });
+
+  const jobOptions = {
+    jobId: extractId,
+    removeOnComplete: selfHosted ? false : {
+      age: 90000, // 25 hours
+    },
+    removeOnFail: selfHosted ? false : {
+      age: 90000,
+    },
+  };
 
   if (Sentry.isInitialized()) {
     const size = JSON.stringify(jobData).length;
@@ -96,13 +106,11 @@ export async function extractController(
             baggage: Sentry.spanToBaggageHeader(span),
             size,
           },
-        }, { jobId: extractId });
+        }, jobOptions);
       },
     );
   } else {
-    await getExtractQueue().add(extractId, jobData, {
-      jobId: extractId,
-    });
+    await getExtractQueue().add(extractId, jobData, jobOptions);
   }
 
   return res.status(200).json({

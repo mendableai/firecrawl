@@ -2,12 +2,14 @@ import { Response } from "express";
 import { supabaseGetJobsById } from "../../lib/supabase-jobs";
 import { RequestWithAuth } from "./types";
 import { getExtract, getExtractExpiry } from "../../lib/extract/extract-redis";
+import { getExtractQueue } from "../../services/queue-service";
 
 export async function extractStatusController(
   req: RequestWithAuth<{ jobId: string }, any, any>,
   res: Response,
 ) {
   const extract = await getExtract(req.params.jobId);
+  const selfHosted = process.env.USE_DB_AUTHENTICATION !== "true";
 
   if (!extract) {
     return res.status(404).json({
@@ -19,15 +21,25 @@ export async function extractStatusController(
   let data: any[] = [];
 
   if (extract.status === "completed") {
-    const jobData = await supabaseGetJobsById([req.params.jobId]);
-    if (!jobData || jobData.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: "Job not found",
-      });
+    if (selfHosted) {
+      const job = await getExtractQueue().getJob(req.params.jobId);
+      if (!job) {
+        return res.status(404).json({
+          success: false,
+          error: "Job not found",
+        });
+      }
+      data = [job.returnvalue];
+    } else {
+      const jobData = await supabaseGetJobsById([req.params.jobId]);
+      if (!jobData || jobData.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: "Job not found",
+        });
+      }
+      data = jobData[0].docs;
     }
-
-    data = jobData[0].docs;
   }
 
   // console.log(extract.sources);
