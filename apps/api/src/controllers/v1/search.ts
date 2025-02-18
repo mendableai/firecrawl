@@ -106,7 +106,7 @@ async function scrapeSearchResult(
     });
 
     let statusCode = 0;
-    if (error.message.includes("Could not scrape url")) {
+    if (error?.message?.includes("Could not scrape url")) {
       statusCode = 403;
     }
     // Return a minimal document with SERP results at top level
