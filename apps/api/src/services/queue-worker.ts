@@ -474,7 +474,8 @@ const processGenerateLlmsTxtJobInternal = async (
       teamId: job.data.teamId,
       plan: job.data.plan,
       url: job.data.request.url,
-      maxTokens: job.data.request.maxTokens,
+      maxUrls: job.data.request.maxUrls,
+      showFullText: job.data.request.showFullText,
     });
 
     if (result.success) {

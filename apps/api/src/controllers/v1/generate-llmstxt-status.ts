@@ -8,6 +8,7 @@ export async function generateLLMsTextStatusController(
   res: Response,
 ) {
   const generation = await getGeneratedLlmsTxt(req.params.jobId);
+  const showFullText = generation?.showFullText ?? false;
 
   if (!generation) {
     return res.status(404).json({
@@ -24,14 +25,21 @@ export async function generateLLMsTextStatusController(
       data = jobData[0].docs;
     }
   }
+  if (showFullText) {
+    data = {
+      llmstxt: generation.generatedText,
+      fullText: generation.fullText,
+    };
+  } else {
+    data = {
+      llmstxt: generation.generatedText,
+    };
+  }
 
   return res.status(200).json({
     success: generation.status === "failed" ? false : true,
-    data: data ?? {
-      llmstxt: generation.generatedText,
-      fullText: generation.fullText,
-      url: generation.url,
-    },
+    
+    data: data,
     status: generation.status,
     error: generation?.error ?? undefined,
     expiresAt: (await getGeneratedLlmsTxtExpiry(req.params.jobId)).toISOString(),

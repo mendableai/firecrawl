@@ -7,7 +7,8 @@ import { z } from "zod";
 
 export const generateLLMsTextRequestSchema = z.object({
   url: z.string().url().describe('The URL to generate text from'),
-  maxTokens: z.number().min(100).max(4000).default(2000).describe('Maximum number of tokens to generate'),
+  maxUrls: z.number().min(1).max(100).default(10).describe('Maximum number of URLs to process'),
+  showFullText: z.boolean().default(false).describe('Whether to show the full LLMs-full.txt in the response'),
   __experimental_stream: z.boolean().optional(),
 });
 
@@ -46,7 +47,8 @@ export async function generateLLMsTextController(
     createdAt: Date.now(),
     status: "processing",
     url: req.body.url,
-    maxTokens: req.body.maxTokens,
+    maxUrls: req.body.maxUrls,
+    showFullText: req.body.showFullText,
     generatedText: "",
     fullText: "",
   });

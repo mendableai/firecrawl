@@ -13,7 +13,8 @@ interface GenerateLLMsTextServiceOptions {
   teamId: string;
   plan: string;
   url: string;
-  maxTokens: number;
+  maxUrls: number;
+  showFullText: boolean;
 }
 
 function createExpressResponse<T>(): Response {
@@ -35,7 +36,7 @@ const DescriptionSchema = z.object({
 
 export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOptions) {
   const openai = new OpenAI();
-  const { generationId, teamId, plan, url, maxTokens } = options;
+  const { generationId, teamId, plan, url, maxUrls, showFullText } = options;
   
   const logger = _logger.child({
     module: "generate-llmstxt",
@@ -47,7 +48,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
     // First, get all URLs from the map controller
     const mockMapReq = {
       auth: { team_id: teamId, plan },
-      body: { url },
+      body: { url, limit: maxUrls, includeSubdomains: false },
     };
 
    
@@ -128,6 +129,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
       status: "completed",
       generatedText: llmstxt,
       fullText: llmsFulltxt,
+      showFullText: showFullText,
     });
 
     return {
@@ -135,6 +137,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
       data: {
         generatedText: llmstxt,
         fullText: llmsFulltxt,
+        showFullText: showFullText,
       },
     };
 
