@@ -26,7 +26,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
     researchId,
   });
 
-  console.log("[Deep Research] Starting research with options:", options);
+  logger.debug("[Deep Research] Starting research with options:", options);
 
   const state = new ResearchStateManager(
     researchId,
@@ -40,10 +40,10 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
 
   try {
     while (!state.hasReachedMaxDepth()) {
-      console.log("[Deep Research] Current depth:", state.getCurrentDepth());
+      logger.debug("[Deep Research] Current depth:", state.getCurrentDepth());
       const timeElapsed = Date.now() - startTime;
       if (timeElapsed >= timeLimit * 1000) {
-        console.log("[Deep Research] Time limit reached, stopping research");
+        logger.debug("[Deep Research] Time limit reached, stopping research");
         break;
       }
 
@@ -59,7 +59,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       });
 
       const nextSearchTopic = state.getNextSearchTopic();
-      console.log("[Deep Research] Next search topic:", nextSearchTopic);
+      logger.debug("[Deep Research] Next search topic:", nextSearchTopic);
 
       const searchQueries = (
         await llmService.generateSearchQueries(
@@ -68,7 +68,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         )
       ).slice(0, 3);
 
-      console.log("[Deep Research] Generated search queries:", searchQueries);
+      logger.debug("[Deep Research] Generated search queries:", searchQueries);
 
       await state.addActivity({
         type: "search",
@@ -112,10 +112,10 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       const searchResultsArrays = await Promise.all(searchPromises);
       const searchResults = searchResultsArrays.flat();
 
-      console.log("[Deep Research] Search results count:", searchResults.length);
+      logger.debug("[Deep Research] Search results count:", searchResults.length);
 
       if (!searchResults || searchResults.length === 0) {
-        console.log("[Deep Research] No results found for topic:", currentTopic);
+        logger.debug("[Deep Research] No results found for topic:", currentTopic);
         await state.addActivity({
           type: "search",
           status: "error",
@@ -135,10 +135,10 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         return true;
       });
 
-      console.log("[Deep Research] New unique results count:", newSearchResults.length);
+      logger.debug("[Deep Research] New unique results count:", newSearchResults.length);
 
       if (newSearchResults.length === 0) {
-        console.log("[Deep Research] No new unique results found for topic:", currentTopic);
+        logger.debug("[Deep Research] No new unique results found for topic:", currentTopic);
         await state.addActivity({
           type: "search",
           status: "error",
@@ -174,7 +174,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       });
 
       const timeRemaining = timeLimit * 1000 - (Date.now() - startTime);
-      console.log("[Deep Research] Time remaining (ms):", timeRemaining);
+      logger.debug("[Deep Research] Time remaining (ms):", timeRemaining);
       
       const analysis = await llmService.analyzeAndPlan(
         state.getFindings(),
@@ -183,7 +183,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       );
 
       if (!analysis) {
-        console.log("[Deep Research] Analysis failed");
+        logger.debug("[Deep Research] Analysis failed");
         await state.addActivity({
           type: "analyze",
           status: "error",
@@ -194,13 +194,13 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
 
         state.incrementFailedAttempts();
         if (state.hasReachedMaxFailedAttempts()) {
-          console.log("[Deep Research] Max failed attempts reached");
+          logger.debug("[Deep Research] Max failed attempts reached");
           break;
         }
         continue;
       }
 
-      console.log("[Deep Research] Analysis result:", {
+      logger.debug("[Deep Research] Analysis result:", {
         nextTopic: analysis.nextSearchTopic,
         shouldContinue: analysis.shouldContinue,
         gapsCount: analysis.gaps.length
@@ -217,16 +217,16 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       });
 
       if (!analysis.shouldContinue || analysis.gaps.length === 0) {
-        console.log("[Deep Research] No more gaps to research, ending search");
+        logger.debug("[Deep Research] No more gaps to research, ending search");
         break;
       }
 
       currentTopic = analysis.gaps[0] || currentTopic;
-      console.log("[Deep Research] Next topic to research:", currentTopic);
+      logger.debug("[Deep Research] Next topic to research:", currentTopic);
     }
 
     // Final synthesis
-    console.log("[Deep Research] Starting final synthesis");
+    logger.debug("[Deep Research] Starting final synthesis");
     await state.addActivity({
       type: "synthesis",
       status: "processing",
@@ -252,7 +252,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
     
 
     const progress = state.getProgress();
-    console.log("[Deep Research] Research completed successfully");
+    logger.debug("[Deep Research] Research completed successfully");
 
     // Log job with token usage and sources
     await logJob({
@@ -279,8 +279,6 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       success: true,
       data: {
         finalAnalysis: finalAnalysis,
-        completedSteps: progress.completedSteps,
-        totalSteps: progress.totalSteps,
       },
     };
   } catch (error: any) {

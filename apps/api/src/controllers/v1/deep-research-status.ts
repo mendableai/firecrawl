@@ -1,6 +1,9 @@
 import { Response } from "express";
 import { RequestWithAuth } from "./types";
-import { getDeepResearch, getDeepResearchExpiry } from "../../lib/deep-research/deep-research-redis";
+import {
+  getDeepResearch,
+  getDeepResearchExpiry,
+} from "../../lib/deep-research/deep-research-redis";
 import { supabaseGetJobsById } from "../../lib/supabase-jobs";
 
 export async function deepResearchStatusController(
@@ -16,18 +19,14 @@ export async function deepResearchStatusController(
     });
   }
 
-  console.log("[Deep Research] Research status:", research);
+  let data: any = null;
 
-  // let data: any = null;
-
-  // if (research.status === "completed") {
-  //   const jobData = await supabaseGetJobsById([req.params.jobId]);
-  //   if (jobData && jobData.length > 0) {
-  //     data = jobData[0].docs[0];
-  //   }
-  // }
-
-  console.log("[Deep Research] Research data:", {status: research.status });
+  if (research.status === "completed") {
+    const jobData = await supabaseGetJobsById([req.params.jobId]);
+    if (jobData && jobData.length > 0) {
+      data = jobData[0].docs[0];
+    }
+  }
 
   return res.status(200).json({
     success: research.status === "failed" ? false : true,
@@ -45,4 +44,4 @@ export async function deepResearchStatusController(
     sources: research.sources,
     // summaries: research.summaries,
   });
-} 
+}
