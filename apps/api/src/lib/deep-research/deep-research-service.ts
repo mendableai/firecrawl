@@ -6,21 +6,12 @@ import {
   updateDeepResearch,
 } from "./deep-research-redis";
 import { generateText } from "../llm/generate";
-import { search } from "../../search";
-import { performExtraction } from "../extract/extraction-service";
-import {
-  RequestWithAuth,
-  SearchRequest,
-  SearchResponse,
-  Document,
-} from "../../controllers/v1/types";
-import { Response } from "express";
 import { PlanType } from "../../types";
+import { searchAndScrapeSearchResult } from "../../controllers/v1/search";
 import {
-  searchAndScrapeSearchResult,
-  searchController,
-} from "../../controllers/v1/search";
-import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
+  generateOpenAICompletions,
+  truncateText,
+} from "../../scraper/scrapeURL/transformers/llmExtract";
 
 interface DeepResearchServiceOptions {
   researchId: string;
@@ -51,7 +42,7 @@ async function generateSearchQueries(
     {
       mode: "llm",
       systemPrompt:
-        "You are an expert research agent that generates search queries to explore topics deeply and thoroughly. Today's date is " +
+        "You are an expert research agent that generates search queries (SERP) to explore topics deeply and thoroughly. Do not generate repated queries. Today's date is " +
         new Date().toISOString().split("T")[0],
       schema: {
         type: "object",
@@ -76,15 +67,13 @@ async function generateSearchQueries(
         },
       },
       prompt: `Generate a list of 3-5 search queries to deeply research this topic: "${topic}"
-      ${findings.length > 0 ? `\nBased on these previous findings, generate more specific queries:\n${findings.map((f) => `- ${f.text}`).join("\n")}` : ""}
+      ${findings.length > 0 ? `\nBased on these previous findings, generate more specific queries:\n${findings.map((f) => `- ${truncateText(f.text, 15000)}`).join("\n")}` : ""}
       
-      Each query should:
-      1. Be specific and focused on a particular aspect
-      2. Use advanced search operators when helpful
-      3. Target high-quality sources
-      4. Build upon previous findings when available
+      Each query should be specific and focused on a particular aspect.
+      Build upon previous findings when available.
+      Every search query is a new SERP query so make sure the whole context is added without overwhelming the search engine.
       
-      Return queries that will help uncover different aspects and perspectives of the topic.`,
+      If applicaable, return queries that will help uncover different aspects and perspectives of the topic - always folowing the users intent. Include the topic on the queries.`,
     },
     "",
     undefined,
@@ -155,7 +144,8 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
           },
           {
             role: "user",
-            content: `You are researching: ${currentTopic}
+            content: truncateText(
+              `You are researching: ${currentTopic}
             You have ${timeRemainingMinutes} minutes remaining to complete the research but you don't need to use all of it.
             Current findings: ${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}
             What has been learned? What gaps remain? What specific aspects should be investigated next if any?
@@ -175,6 +165,8 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
                 "urlToSearch": "optional url"
               }
             }`,
+              120000,
+            ),
           },
         ],
         temperature: 0.1,
@@ -294,17 +286,17 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       });
 
       // Add sources from search results
-      for (const result of searchResults) {
-        await updateDeepResearch(researchId, {
-          sources: [
-            {
-              url: result.url || "",
-              title: result.title || "",
-              description: result.description || "",
-            },
-          ],
-        });
-      }
+      // await updateDeepResearch(researchId, {
+      //   findings: searchResults.map((result) => ({
+      //     text: result.markdown ?? "",
+      //     source: result.url ?? "",
+      //   })),
+      // });
+
+      researchState.findings = searchResults.map((result) => ({
+        text: result.markdown ?? "",
+        source: result.url ?? "",
+      }));
 
       // Analysis phase
       await addActivity({
@@ -365,17 +357,21 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       depth: researchState.currentDepth,
     });
 
+    console.log("Final synthesis");
+
     const finalAnalysis = await generateText({
       model: "gpt-4o-mini",
       messages: [
         {
           role: "system",
           content:
-            "You are an expert research analyst who creates comprehensive, well-structured reports. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations.",
+            "You are an expert research analyst who creates comprehensive, well-structured reports. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations. Today's date is " +
+            new Date().toISOString().split("T")[0],
         },
         {
           role: "user",
-          content: `Create a comprehensive research report on "${options.topic}" based on the collected findings and analysis.
+          content: truncateText(
+            `Create a comprehensive research report on "${options.topic}" based on the collected findings and analysis.
 
 
 Use this research data:
@@ -389,6 +385,8 @@ Requirements:
 - Make it comprehensive and thorough (aim for 2+ pages worth of content)
 - Include all relevant findings and insights from the research
 - Use bullet points and lists where appropriate for readability`,
+            120000,
+          ),
         },
       ],
       temperature: 0.7,

@@ -86,6 +86,26 @@ function normalizeSchema(x: any): any {
   }
 }
 
+export function truncateText(text: string, maxTokens: number): string {
+  const modifier = 3; // Estimate: 1 token ≈ 3 characters
+  try {
+    const encoder = encoding_for_model("gpt-4o");
+    const tokens = encoder.encode(text);
+    
+    if (tokens.length <= maxTokens) {
+      return text;
+    }
+
+    // Use character-based estimation for trimming
+    const estimatedLength = maxTokens * modifier;
+    return text.slice(0, estimatedLength);
+  } catch (error) {
+    // Fallback using same character-based estimation
+    return text.slice(0, maxTokens * modifier);
+  }
+}
+
+
 export async function generateOpenAICompletions(
   logger: Logger,
   options: ExtractOptions,
