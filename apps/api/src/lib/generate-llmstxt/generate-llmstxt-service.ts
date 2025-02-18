@@ -49,7 +49,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
       body: { url },
     };
 
-    logger.info("Getting URLs from map controller");
+    _logger.debug("Getting URLs from map controller");
     const mapResult = await mapController(mockMapReq as any, createExpressResponse<MapResponse>());
     const mapResponse = mapResult as unknown as MapResponse;
 
@@ -71,7 +71,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
       },
     };
 
-    logger.info("Scraping URLs");
+    _logger.debug("Scraping URLs");
     const scrapeResult = await scrapeController(mockScrapeReq as any, createExpressResponse<ScrapeResponse>());
     const scrapeResponse = scrapeResult as unknown as ScrapeResponse;
 
@@ -81,13 +81,12 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
 
     // Process each scraped result
     const documents = Array.isArray(scrapeResponse.data) ? scrapeResponse.data : [scrapeResponse.data];
-    const totalDocs = documents.length;
 
     for (let i = 0; i < documents.length; i++) {
       const result = documents[i];
       if (!result.markdown) continue;
 
-      logger.info(`Generating description for ${result.metadata?.url}`);
+      _logger.debug(`Generating description for ${result.metadata?.url}`);
       
       const completion = await openai.beta.chat.completions.parse({
         model: "gpt-4o-mini",
@@ -119,7 +118,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
           fullText: llmsFulltxt,
         });
       } catch (error) {
-        logger.error(`Failed to parse GPT response for ${result.metadata?.url}:`, error);
+        logger.error(`Failed to parse LLM response for ${result.metadata?.url}:`, error);
         continue;
       }
     }
