@@ -110,5 +110,33 @@ describe("Scrape tests", () => {
       expectScrapeToSucceed(response);
       expect(typeof response.body.data.screenshot).toBe("string");
     }, 15000);
-  })
+  });
+
+  describe("Proxy API (f-e dependant)", () => {
+    it.concurrent("undefined works", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev",
+      });
+  
+      expectScrapeToSucceed(response);
+    }, 15000);
+
+    it.concurrent("basic works", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev",
+        proxy: "basic",
+      });
+  
+      expectScrapeToSucceed(response);
+    }, 15000);
+
+    it.concurrent("stealth works", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev",
+        proxy: "stealth",
+      });
+  
+      expectScrapeToSucceed(response);
+    }, 15000);
+  });
 });
