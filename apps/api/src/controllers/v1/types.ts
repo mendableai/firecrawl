@@ -221,6 +221,54 @@ const baseScrapeOptions = z
   })
   .strict(strictMessage);
 
+const extractRefine = (obj) => {
+  const hasExtractFormat = obj.formats?.includes("extract");
+  const hasExtractOptions = obj.extract !== undefined;
+  const hasJsonFormat = obj.formats?.includes("json");
+  const hasJsonOptions = obj.jsonOptions !== undefined;
+  return (
+    (hasExtractFormat && hasExtractOptions) ||
+    (!hasExtractFormat && !hasExtractOptions) ||
+    (hasJsonFormat && hasJsonOptions) ||
+    (!hasJsonFormat && !hasJsonOptions)
+  );
+};
+const extractRefineOpts = {
+  message:
+    "When 'extract' or 'json' format is specified, corresponding options must be provided, and vice versa",
+};
+const extractTransform = (obj) => {
+  // Handle timeout
+  if (
+    (obj.formats?.includes("extract") ||
+      obj.extract ||
+      obj.formats?.includes("json") ||
+      obj.jsonOptions) &&
+    !obj.timeout
+  ) {
+    obj = { ...obj, timeout: 60000 };
+  }
+
+  if (obj.formats?.includes("json")) {
+    obj.formats.push("extract");
+  }
+
+  // Convert JSON options to extract options if needed
+  if (obj.jsonOptions && !obj.extract) {
+    obj = {
+      ...obj,
+      extract: {
+        prompt: obj.jsonOptions.prompt,
+        systemPrompt: obj.jsonOptions.systemPrompt,
+        schema: obj.jsonOptions.schema,
+        mode: "llm",
+      },
+    };
+  }
+
+  return obj;
+}
+
 export const scrapeOptions = baseScrapeOptions.refine(
   (obj) => {
     if (!obj.actions) return true;
@@ -229,7 +277,8 @@ export const scrapeOptions = baseScrapeOptions.refine(
   {
     message: `Total wait time (waitFor + wait actions) cannot exceed ${ACTIONS_MAX_WAIT_TIME} seconds`,
   }
-);
+).refine(extractRefine, extractRefineOpts)
+.transform(extractTransform);
 
 export type ScrapeOptions = z.infer<typeof baseScrapeOptions>;
 
@@ -281,7 +330,9 @@ export const extractV1Options = z
   .transform((obj) => ({
     ...obj,
     allowExternalLinks: obj.allowExternalLinks || obj.enableWebSearch,
-  }));
+  }))
+  .refine(x => extractRefine(x.scrapeOptions), extractRefineOpts)
+  .transform(x => extractTransform(x.scrapeOptions));
 
 export type ExtractV1Options = z.infer<typeof extractV1Options>;
 export const extractRequestSchema = extractV1Options;
@@ -295,55 +346,8 @@ export const scrapeRequestSchema = baseScrapeOptions
     timeout: z.number().int().positive().finite().safe().default(30000),
   })
   .strict(strictMessage)
-  .refine(
-    (obj) => {
-      const hasExtractFormat = obj.formats?.includes("extract");
-      const hasExtractOptions = obj.extract !== undefined;
-      const hasJsonFormat = obj.formats?.includes("json");
-      const hasJsonOptions = obj.jsonOptions !== undefined;
-      return (
-        (hasExtractFormat && hasExtractOptions) ||
-        (!hasExtractFormat && !hasExtractOptions) ||
-        (hasJsonFormat && hasJsonOptions) ||
-        (!hasJsonFormat && !hasJsonOptions)
-      );
-    },
-    {
-      message:
-        "When 'extract' or 'json' format is specified, corresponding options must be provided, and vice versa",
-    },
-  )
-  .transform((obj) => {
-    // Handle timeout
-    if (
-      (obj.formats?.includes("extract") ||
-        obj.extract ||
-        obj.formats?.includes("json") ||
-        obj.jsonOptions) &&
-      !obj.timeout
-    ) {
-      obj = { ...obj, timeout: 60000 };
-    }
-
-    if (obj.formats?.includes("json")) {
-      obj.formats.push("extract");
-    }
-
-    // Convert JSON options to extract options if needed
-    if (obj.jsonOptions && !obj.extract) {
-      obj = {
-        ...obj,
-        extract: {
-          prompt: obj.jsonOptions.prompt,
-          systemPrompt: obj.jsonOptions.systemPrompt,
-          schema: obj.jsonOptions.schema,
-          mode: "llm",
-        },
-      };
-    }
-
-    return obj;
-  });
+  .refine(extractRefine, extractRefineOpts)
+  .transform(extractTransform);
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
 export type ScrapeRequestInput = z.input<typeof scrapeRequestSchema>;
@@ -375,20 +379,8 @@ export const batchScrapeRequestSchema = baseScrapeOptions
     ignoreInvalidURLs: z.boolean().default(false),
   })
   .strict(strictMessage)
-  .refine(
-    (obj) => {
-      const hasExtractFormat = obj.formats?.includes("extract");
-      const hasExtractOptions = obj.extract !== undefined;
-      return (
-        (hasExtractFormat && hasExtractOptions) ||
-        (!hasExtractFormat && !hasExtractOptions)
-      );
-    },
-    {
-      message:
-        "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
-    },
-  );
+  .refine(extractRefine, extractRefineOpts)
+  .transform(extractTransform);
 
 export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
   .extend({
@@ -399,22 +391,11 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
     ignoreInvalidURLs: z.boolean().default(false),
   })
   .strict(strictMessage)
-  .refine(
-    (obj) => {
-      const hasExtractFormat = obj.formats?.includes("extract");
-      const hasExtractOptions = obj.extract !== undefined;
-      return (
-        (hasExtractFormat && hasExtractOptions) ||
-        (!hasExtractFormat && !hasExtractOptions)
-      );
-    },
-    {
-      message:
-        "When 'extract' format is specified, 'extract' options must be provided, and vice versa",
-    },
-  );
+  .refine(extractRefine, extractRefineOpts)
+  .transform(extractTransform);
 
 export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
+export type BatchScrapeRequestInput = z.input<typeof batchScrapeRequestSchema>;
 
 const crawlerOptions = z
   .object({
@@ -452,7 +433,9 @@ export const crawlRequestSchema = crawlerOptions
     webhook: webhookSchema.optional(),
     limit: z.number().default(10000),
   })
-  .strict(strictMessage);
+  .strict(strictMessage)
+  .refine(x => extractRefine(x.scrapeOptions), extractRefineOpts)
+  .transform(x => extractTransform(x.scrapeOptions));
 
 // export type CrawlRequest = {
 //   url: string;
@@ -936,7 +919,9 @@ export const searchRequestSchema = z
   })
   .strict(
     "Unrecognized key in body -- please review the v1 API documentation for request body changes",
-  );
+  )
+  .refine(x => extractRefine(x.scrapeOptions), extractRefineOpts)
+  .transform(x => extractTransform(x.scrapeOptions));
 
 export type SearchRequest = z.infer<typeof searchRequestSchema>;
 

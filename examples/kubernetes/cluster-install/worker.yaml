@@ -19,8 +19,11 @@ spec:
           image: ghcr.io/winkk-dev/firecrawl:latest
           imagePullPolicy: Always
           args: [ "pnpm", "run", "workers" ]
+          env:
+            - name: FLY_PROCESS_GROUP
+              value: "worker"
           envFrom:
             - configMapRef:
                 name: firecrawl-config
-          #- secretRef:
-          #    name: firecrawl-secret
+            - secretRef:
+                name: firecrawl-secret
