@@ -16,21 +16,23 @@ export async function deepResearchStatusController(
     });
   }
 
+  console.log("[Deep Research] Research status:", research);
+
   let data: any = null;
 
   if (research.status === "completed") {
     const jobData = await supabaseGetJobsById([req.params.jobId]);
     if (jobData && jobData.length > 0) {
-      data = jobData[0].docs;
+      data = jobData[0].docs[0];
     }
   }
+
+  console.log("[Deep Research] Research data:", data);
 
   return res.status(200).json({
     success: research.status === "failed" ? false : true,
     data: data ?? {
-      findings: research.findings,
       finalAnalysis: research.finalAnalysis,
-      analysis: research.finalAnalysis,
       completedSteps: research.completedSteps,
       totalSteps: research.totalExpectedSteps,
     },

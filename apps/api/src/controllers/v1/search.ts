@@ -31,9 +31,10 @@ export async function searchAndScrapeSearchResult(
     scrapeOptions: ScrapeOptions;
   }
 ): Promise<Document[]> {
-  const searchResults = await search({
-    query,
-    num_results: 5
+  try {
+    const searchResults = await search({
+      query,
+      num_results: 5
   });
 
   const documents = await Promise.all(
@@ -49,7 +50,10 @@ export async function searchAndScrapeSearchResult(
     )
   );
 
-  return documents;
+    return documents;
+  } catch (error) {
+    return [];
+  }
 }
 
 async function scrapeSearchResult(

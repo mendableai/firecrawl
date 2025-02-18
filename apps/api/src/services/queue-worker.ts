@@ -394,6 +394,7 @@ const processDeepResearchJobInternal = async (
   }, jobLockExtendInterval);
 
   try {
+    console.log("[Deep Research] Starting deep research: ", job.data.researchId);
     const result = await performDeepResearch({
       researchId: job.data.researchId,
       teamId: job.data.teamId,
@@ -405,20 +406,19 @@ const processDeepResearchJobInternal = async (
     
     if(result.success) {
       // Move job to completed state in Redis and update research status
+      
       await job.moveToCompleted(result, token, false);
-      await updateDeepResearch(job.data.researchId, {
-        status: "completed",
-        finalAnalysis: result.data.analysis,
-      });
+
       return result;
     } else {
       // If the deep research failed but didn't throw an error
       const error = new Error("Deep research failed without specific error");
-      await job.moveToFailed(error, token, false);
       await updateDeepResearch(job.data.researchId, {
         status: "failed",
         error: error.message,
       });
+      await job.moveToFailed(error, token, false);
+
       return { success: false, error: error.message };
     }
   } catch (error) {

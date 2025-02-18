@@ -9,13 +9,12 @@ import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/
 import { truncateText } from "../../scraper/scrapeURL/transformers/llmExtract";
 
 interface AnalysisResult {
-  summary: string;
   gaps: string[];
   nextSteps: string[];
   shouldContinue: boolean;
   nextSearchTopic?: string;
-  urlToSearch?: string;
 }
+
 export class ResearchStateManager {
   private findings: DeepResearchFinding[] = [];
   private summaries: string[] = [];
@@ -26,6 +25,7 @@ export class ResearchStateManager {
   private readonly maxFailedAttempts: number = 3;
   private completedSteps: number = 0;
   private readonly totalExpectedSteps: number;
+  private seenUrls: Set<string> = new Set();
 
   constructor(
     private readonly researchId: string,
@@ -33,8 +33,22 @@ export class ResearchStateManager {
     private readonly plan: string,
     private readonly maxDepth: number,
     private readonly logger: Logger,
+    private readonly topic: string,
   ) {
     this.totalExpectedSteps = maxDepth * 5; // 5 steps per depth level
+    this.nextSearchTopic = topic;
+  }
+
+  hasSeenUrl(url: string): boolean {
+    return this.seenUrls.has(url);
+  }
+
+  addSeenUrl(url: string): void {
+    this.seenUrls.add(url);
+  }
+
+  getSeenUrls(): Set<string> {
+    return this.seenUrls;
   }
 
   async addActivity(activity: DeepResearchActivity): Promise<void> {
@@ -55,7 +69,9 @@ export class ResearchStateManager {
   }
 
   async addFindings(findings: DeepResearchFinding[]): Promise<void> {
-    this.findings = [...this.findings, ...findings];
+    // Only keep the most recent 50 findings
+    // To avoid memory issues for now
+    this.findings = [...this.findings, ...findings].slice(-50);
     await updateDeepResearch(this.researchId, {
       findings: findings,
     });
@@ -166,11 +182,9 @@ export class ResearchLLMService {
           
           Each query should be specific and focused on a particular aspect.
           Build upon previous findings when available.
+          Be specific and go deep, not wide - always following the original topic/
           Every search query is a new SERP query so make sure the whole context is added without overwhelming the search engine.
-          
-          The first SERP query you generate should be a very concise, simple version of the topic. 
-
-          If applicable, return queries that will help uncover different aspects and perspectives of the topic - always following the users intent. Include the topic on the queries.`,
+          The first SERP query you generate should be a very concise, simple version of the topic. `,
       },
       "",
       undefined,
@@ -204,14 +218,12 @@ export class ResearchLLMService {
               analysis: {
                 type: "object",
                 properties: {
-                  summary: { type: "string" },
                   gaps: { type: "array", items: { type: "string" } },
                   nextSteps: { type: "array", items: { type: "string" } },
                   shouldContinue: { type: "boolean" },
                   nextSearchTopic: { type: "string" },
-                  urlToSearch: { type: "string" },
                 },
-                required: ["summary", "gaps", "nextSteps", "shouldContinue"],
+                required: ["gaps", "nextSteps", "shouldContinue"],
               },
             },
           },
@@ -220,8 +232,7 @@ export class ResearchLLMService {
               You have ${timeRemainingMinutes} minutes remaining to complete the research but you don't need to use all of it.
               Current findings: ${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}
               What has been learned? What gaps remain, if any? What specific aspects should be investigated next if any?
-              If you need to search for more information, include a nextSearchTopic.
-              If you need to search for more information in a specific URL, include a urlToSearch.
+              If you need to search for more information inside the same topic pick a sub-topic by including a nextSearchTopic -which should be highly related to the original topic/users'query.
               Important: If less than 1 minute remains, set shouldContinue to false to allow time for final synthesis.
               If I have enough information, set shouldContinue to false.`,
             120000,
@@ -273,7 +284,7 @@ export class ResearchLLMService {
             - Make it comprehensive and thorough (aim for 2+ pages worth of content)
             - Include all relevant findings and insights from the research
             - Use bullet points and lists where appropriate for readability`,
-          120000,
+          100000,
         ),
       },
       "",

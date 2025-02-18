@@ -3,6 +3,8 @@ import { updateDeepResearch } from "./deep-research-redis";
 import { PlanType } from "../../types";
 import { searchAndScrapeSearchResult } from "../../controllers/v1/search";
 import { ResearchLLMService, ResearchStateManager } from "./research-manager";
+import { logJob } from "../../services/logging/log_job";
+import { updateExtract } from "../extract/extract-redis";
 
 interface DeepResearchServiceOptions {
   researchId: string;
@@ -24,19 +26,24 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
     researchId,
   });
 
+  console.log("[Deep Research] Starting research with options:", options);
+
   const state = new ResearchStateManager(
     researchId,
     teamId,
     plan,
     options.maxDepth,
     logger,
+    options.topic,
   );
   const llmService = new ResearchLLMService(logger);
 
   try {
     while (!state.hasReachedMaxDepth()) {
+      console.log("[Deep Research] Current depth:", state.getCurrentDepth());
       const timeElapsed = Date.now() - startTime;
       if (timeElapsed >= timeLimit * 1000) {
+        console.log("[Deep Research] Time limit reached, stopping research");
         break;
       }
 
@@ -51,12 +58,17 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         depth: state.getCurrentDepth(),
       });
 
+      const nextSearchTopic = state.getNextSearchTopic();
+      console.log("[Deep Research] Next search topic:", nextSearchTopic);
+
       const searchQueries = (
         await llmService.generateSearchQueries(
-          currentTopic,
+          nextSearchTopic,
           state.getFindings(),
         )
-      ).slice(0, 5);
+      ).slice(0, 3);
+
+      console.log("[Deep Research] Generated search queries:", searchQueries);
 
       await state.addActivity({
         type: "search",
@@ -80,7 +92,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
           teamId: options.teamId,
           plan: options.plan as PlanType,
           origin: "deep-research",
-          timeout: 30000,
+          timeout: 15000,
           scrapeOptions: {
             formats: ["markdown"],
             onlyMainContent: true,
@@ -100,7 +112,10 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       const searchResultsArrays = await Promise.all(searchPromises);
       const searchResults = searchResultsArrays.flat();
 
+      console.log("[Deep Research] Search results count:", searchResults.length);
+
       if (!searchResults || searchResults.length === 0) {
+        console.log("[Deep Research] No results found for topic:", currentTopic);
         await state.addActivity({
           type: "search",
           status: "error",
@@ -111,16 +126,39 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         continue;
       }
 
+      // Filter out already seen URLs and track new ones
+      const newSearchResults = searchResults.filter(result => {
+        if (!result.url || state.hasSeenUrl(result.url)) {
+          return false;
+        }
+        state.addSeenUrl(result.url);
+        return true;
+      });
+
+      console.log("[Deep Research] New unique results count:", newSearchResults.length);
+
+      if (newSearchResults.length === 0) {
+        console.log("[Deep Research] No new unique results found for topic:", currentTopic);
+        await state.addActivity({
+          type: "search",
+          status: "error",
+          message: `Found ${searchResults.length} results but all URLs were already processed for "${currentTopic}"`,
+          timestamp: new Date().toISOString(),
+          depth: state.getCurrentDepth(),
+        });
+        continue;
+      }
+
       await state.addActivity({
         type: "search",
         status: "complete",
-        message: `Found ${searchResults.length} relevant results across ${searchQueries.length} parallel queries`,
+        message: `Found ${newSearchResults.length} new relevant results across ${searchQueries.length} parallel queries`,
         timestamp: new Date().toISOString(),
         depth: state.getCurrentDepth(),
       });
 
       await state.addFindings(
-        searchResults.map((result) => ({
+        newSearchResults.map((result) => ({
           text: result.markdown ?? "",
           source: result.url ?? "",
         })),
@@ -136,6 +174,8 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       });
 
       const timeRemaining = timeLimit * 1000 - (Date.now() - startTime);
+      console.log("[Deep Research] Time remaining (ms):", timeRemaining);
+      
       const analysis = await llmService.analyzeAndPlan(
         state.getFindings(),
         currentTopic,
@@ -143,6 +183,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       );
 
       if (!analysis) {
+        console.log("[Deep Research] Analysis failed");
         await state.addActivity({
           type: "analyze",
           status: "error",
@@ -153,31 +194,39 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
 
         state.incrementFailedAttempts();
         if (state.hasReachedMaxFailedAttempts()) {
+          console.log("[Deep Research] Max failed attempts reached");
           break;
         }
         continue;
       }
 
+      console.log("[Deep Research] Analysis result:", {
+        nextTopic: analysis.nextSearchTopic,
+        shouldContinue: analysis.shouldContinue,
+        gapsCount: analysis.gaps.length
+      });
+
       state.setNextSearchTopic(analysis.nextSearchTopic || "");
-      state.setUrlToSearch(analysis.urlToSearch || "");
-      await state.addSummary(analysis.summary);
 
       await state.addActivity({
         type: "analyze",
         status: "complete",
-        message: analysis.summary,
+        message: "Analyzed findings",
         timestamp: new Date().toISOString(),
         depth: state.getCurrentDepth(),
       });
 
       if (!analysis.shouldContinue || analysis.gaps.length === 0) {
+        console.log("[Deep Research] No more gaps to research, ending search");
         break;
       }
 
       currentTopic = analysis.gaps[0] || currentTopic;
+      console.log("[Deep Research] Next topic to research:", currentTopic);
     }
 
     // Final synthesis
+    console.log("[Deep Research] Starting final synthesis");
     await state.addActivity({
       type: "synthesis",
       status: "pending",
@@ -206,17 +255,44 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
     });
 
     const progress = state.getProgress();
+    console.log("[Deep Research] Research completed successfully");
+
+    // Log job with token usage and sources
+    logJob({
+      job_id: researchId,
+      success: true,
+      message: "Research completed",
+      num_docs: 1,
+      docs: [{ finalAnalysis: finalAnalysis }],
+      time_taken: (new Date().getTime() - Date.now()) / 1000,
+      team_id: teamId,
+      mode: "deep-research",
+      url: options.topic,
+      scrapeOptions: options,
+      origin: "api",
+      num_tokens: 0,
+      tokens_billed: 0,
+      sources: {},
+    }).then(() => {
+      updateDeepResearch(researchId, {
+        status: "completed",
+        finalAnalysis: finalAnalysis,
+      }).catch((error) => {
+        logger.error(
+          `Failed to update research ${researchId} status to completed: ${error}`,
+        );
+      });
+    });
     return {
       success: true,
       data: {
-        findings: state.getFindings(),
         finalAnalysis: finalAnalysis,
-        analysis: finalAnalysis,
         completedSteps: progress.completedSteps,
         totalSteps: progress.totalSteps,
       },
     };
   } catch (error: any) {
+    console.error("[Deep Research] Error:", error);
     logger.error("Deep research error:", error);
     await updateDeepResearch(researchId, {
       status: "failed",

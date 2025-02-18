@@ -1372,13 +1372,13 @@ export default class FirecrawlApp {
             return researchStatus;
           }
 
-          if (researchStatus.status === "completed") {
+          if (researchStatus.status === "completed" && researchStatus.data) {
             return researchStatus;
           } else if (researchStatus.status === "failed") {
             throw new FirecrawlError(`Research job failed. Error: ${researchStatus.error}`, 500);
           }
           await new Promise(resolve => setTimeout(resolve, 1000)); // Polling interval
-        } while (researchStatus.status === "processing");
+        } while (researchStatus.status === "processing" || researchStatus.status === "completed");
       }
       throw new FirecrawlError(`Failed to start research. No job ID returned.`, 500);
     } catch (error: any) {
