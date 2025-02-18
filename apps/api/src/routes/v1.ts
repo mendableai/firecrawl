@@ -31,6 +31,8 @@ import { searchController } from "../controllers/v1/search";
 import { crawlErrorsController } from "../controllers/v1/crawl-errors";
 import { generateLLMsTextController } from "../controllers/v1/generate-llmstxt";
 import { generateLLMsTextStatusController } from "../controllers/v1/generate-llmstxt-status";
+import { deepResearchController } from "../controllers/v1/deep-research";
+import { deepResearchStatusController } from "../controllers/v1/deep-research-status";
 
 function checkCreditsMiddleware(
   minimum?: number,
@@ -252,6 +254,19 @@ v1Router.get(
   "/generate-llmstxt/:jobId",
   authMiddleware(RateLimiterMode.ExtractStatus),
   wrap(generateLLMsTextStatusController),
+);
+
+v1Router.post(
+  "/deep-research",
+  authMiddleware(RateLimiterMode.Extract),
+  checkCreditsMiddleware(1),
+  wrap(deepResearchController),
+);
+
+v1Router.get(
+  "/deep-research/:jobId",
+  authMiddleware(RateLimiterMode.ExtractStatus),
+  wrap(deepResearchStatusController),
 );
 
 // v1Router.post("/crawlWebsitePreview", crawlPreviewController);

@@ -18,6 +18,7 @@ export const extractQueueName = "{extractQueue}";
 export const loggingQueueName = "{loggingQueue}";
 export const indexQueueName = "{indexQueue}";
 export const generateLlmsTxtQueueName = "{generateLlmsTxtQueue}";
+export const deepResearchQueueName = "{deepResearchQueue}";
 
 export function getScrapeQueue() {
   if (!scrapeQueue) {
@@ -89,6 +90,24 @@ export function getGenerateLlmsTxtQueue() {
     logger.info("LLMs TXT generation queue created");
   }
   return generateLlmsTxtQueue;
+}
+
+export function getDeepResearchQueue() {
+  if (!deepResearchQueue) {
+    deepResearchQueue = new Queue(deepResearchQueueName, {
+      connection: redisConnection,
+      defaultJobOptions: {
+        removeOnComplete: {
+          age: 90000, // 25 hours
+        },
+        removeOnFail: {
+          age: 90000, // 25 hours
+        },
+      },
+    });
+    logger.info("Deep research queue created");
+  }
+  return deepResearchQueue;
 }
 
 // === REMOVED IN FAVOR OF POLLING -- NOT RELIABLE
