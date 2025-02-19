@@ -19,12 +19,15 @@ jobs:
           - 6379:6379
     steps:
       - uses: actions/checkout@v3
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "20"
-      - name: Install pnpm
-        run: npm install -g pnpm
+          cache: "pnpm"
       - name: Install dependencies
         run: pnpm install
         working-directory: ./apps/api
