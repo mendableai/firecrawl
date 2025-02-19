@@ -67,6 +67,7 @@ export const featureFlags = [
   "mobile",
   "skipTlsVerification",
   "useFastMode",
+  "stealthProxy",
 ] as const;
 
 export type FeatureFlag = (typeof featureFlags)[number];
@@ -87,6 +88,7 @@ export const featureFlagOptions: {
   location: { priority: 10 },
   mobile: { priority: 10 },
   skipTlsVerification: { priority: 10 },
+  stealthProxy: { priority: 20 },
 } as const;
 
 export type EngineScrapeResult = {
@@ -145,6 +147,7 @@ export const engineOptions: {
       mobile: false,
       skipTlsVerification: false,
       useFastMode: false,
+      stealthProxy: false,
     },
     quality: 1000, // cache should always be tried first
   },
@@ -161,6 +164,7 @@ export const engineOptions: {
       mobile: true,
       skipTlsVerification: true,
       useFastMode: false,
+      stealthProxy: true,
     },
     quality: 50,
   },
@@ -177,6 +181,7 @@ export const engineOptions: {
       mobile: false,
       skipTlsVerification: false,
       useFastMode: false,
+      stealthProxy: true,
     },
     quality: 40,
   },
@@ -193,6 +198,7 @@ export const engineOptions: {
       mobile: false,
       skipTlsVerification: false,
       useFastMode: false,
+      stealthProxy: false,
     },
     quality: 30,
   },
@@ -209,6 +215,7 @@ export const engineOptions: {
       mobile: false,
       skipTlsVerification: false,
       useFastMode: false,
+      stealthProxy: false,
     },
     quality: 29,
   },
@@ -225,6 +232,7 @@ export const engineOptions: {
       mobile: false,
       skipTlsVerification: false,
       useFastMode: false,
+      stealthProxy: false,
     },
     quality: 20,
   },
@@ -241,6 +249,7 @@ export const engineOptions: {
       mobile: false,
       skipTlsVerification: false,
       useFastMode: true,
+      stealthProxy: true,
     },
     quality: 10,
   },
@@ -257,6 +266,7 @@ export const engineOptions: {
       mobile: false,
       skipTlsVerification: false,
       useFastMode: true,
+      stealthProxy: false,
     },
     quality: 5,
   },
@@ -273,6 +283,7 @@ export const engineOptions: {
       mobile: false,
       skipTlsVerification: false,
       useFastMode: true,
+      stealthProxy: true, // kinda...
     },
     quality: -10,
   },
@@ -289,6 +300,7 @@ export const engineOptions: {
       mobile: false,
       skipTlsVerification: false,
       useFastMode: true,
+      stealthProxy: true, // kinda...
     },
     quality: -10,
   },

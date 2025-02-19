@@ -94,6 +94,7 @@ export interface CrawlScrapeOptions {
   skipTlsVerification?: boolean;
   removeBase64Images?: boolean;
   blockAds?: boolean;
+  proxy?: "basic" | "stealth";
 }
 
 export type Action = {
