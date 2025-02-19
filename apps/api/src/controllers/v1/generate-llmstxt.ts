@@ -1,18 +1,13 @@
 import { Response } from "express";
-import { RequestWithAuth } from "./types";
+import {
+  GenerateLLMsTextRequest,
+  generateLLMsTextRequestSchema,
+  RequestWithAuth,
+} from "./types";
 import { getGenerateLlmsTxtQueue } from "../../services/queue-service";
 import * as Sentry from "@sentry/node";
 import { saveGeneratedLlmsTxt } from "../../lib/generate-llmstxt/generate-llmstxt-redis";
 import { z } from "zod";
-
-export const generateLLMsTextRequestSchema = z.object({
-  url: z.string().url().describe('The URL to generate text from'),
-  maxUrls: z.number().min(1).max(100).default(10).describe('Maximum number of URLs to process'),
-  showFullText: z.boolean().default(false).describe('Whether to show the full LLMs-full.txt in the response'),
-  __experimental_stream: z.boolean().optional(),
-});
-
-export type GenerateLLMsTextRequest = z.infer<typeof generateLLMsTextRequestSchema>;
 
 export type GenerateLLMsTextResponse = {
   success: boolean;
@@ -66,14 +61,18 @@ export async function generateLLMsTextController(
         },
       },
       async (span) => {
-        await getGenerateLlmsTxtQueue().add(generationId, {
-          ...jobData,
-          sentry: {
-            trace: Sentry.spanToTraceHeader(span),
-            baggage: Sentry.spanToBaggageHeader(span),
-            size,
+        await getGenerateLlmsTxtQueue().add(
+          generationId,
+          {
+            ...jobData,
+            sentry: {
+              trace: Sentry.spanToTraceHeader(span),
+              baggage: Sentry.spanToBaggageHeader(span),
+              size,
+            },
           },
-        }, { jobId: generationId });
+          { jobId: generationId },
+        );
       },
     );
   } else {
