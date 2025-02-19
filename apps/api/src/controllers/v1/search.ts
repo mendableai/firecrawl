@@ -31,9 +31,10 @@ export async function searchAndScrapeSearchResult(
     scrapeOptions: ScrapeOptions;
   }
 ): Promise<Document[]> {
-  const searchResults = await search({
-    query,
-    num_results: 5
+  try {
+    const searchResults = await search({
+      query,
+      num_results: 5
   });
 
   const documents = await Promise.all(
@@ -49,7 +50,10 @@ export async function searchAndScrapeSearchResult(
     )
   );
 
-  return documents;
+    return documents;
+  } catch (error) {
+    return [];
+  }
 }
 
 async function scrapeSearchResult(
@@ -106,7 +110,7 @@ async function scrapeSearchResult(
     });
 
     let statusCode = 0;
-    if (error.message.includes("Could not scrape url")) {
+    if (error?.message?.includes("Could not scrape url")) {
       statusCode = 403;
     }
     // Return a minimal document with SERP results at top level

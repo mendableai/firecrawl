@@ -1,6 +1,9 @@
 import { Response } from "express";
 import { RequestWithAuth } from "./types";
-import { getDeepResearch, getDeepResearchExpiry } from "../../lib/deep-research/deep-research-redis";
+import {
+  getDeepResearch,
+  getDeepResearchExpiry,
+} from "../../lib/deep-research/deep-research-redis";
 import { supabaseGetJobsById } from "../../lib/supabase-jobs";
 
 export async function deepResearchStatusController(
@@ -21,26 +24,24 @@ export async function deepResearchStatusController(
   if (research.status === "completed") {
     const jobData = await supabaseGetJobsById([req.params.jobId]);
     if (jobData && jobData.length > 0) {
-      data = jobData[0].docs;
+      data = jobData[0].docs[0];
     }
   }
 
   return res.status(200).json({
     success: research.status === "failed" ? false : true,
-    data: data ?? {
-      findings: research.findings,
+    data: {
       finalAnalysis: research.finalAnalysis,
-      analysis: research.finalAnalysis,
-      completedSteps: research.completedSteps,
-      totalSteps: research.totalExpectedSteps,
+      // completedSteps: research.completedSteps,
+      // totalSteps: research.totalExpectedSteps,
     },
-    status: research.status,
     error: research?.error ?? undefined,
     expiresAt: (await getDeepResearchExpiry(req.params.jobId)).toISOString(),
     currentDepth: research.currentDepth,
     maxDepth: research.maxDepth,
+    status: research.status,
     activities: research.activities,
     sources: research.sources,
-    summaries: research.summaries,
+    // summaries: research.summaries,
   });
-} 
+}

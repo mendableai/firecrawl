@@ -27,6 +27,8 @@ export type FireEngineScrapeRequestCommon = {
   instantReturn?: boolean; // default: false
   geolocation?: { country?: string; languages?: string[] };
 
+  mobileProxy?: boolean; // leave it undefined if user doesn't specify
+
   timeout?: number;
 };
 

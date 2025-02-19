@@ -12,7 +12,7 @@ export enum DeepResearchStep {
 
 export type DeepResearchActivity = {
   type: 'search' | 'extract' | 'analyze' | 'reasoning' | 'synthesis' | 'thought';
-  status: 'pending' | 'complete' | 'error';
+  status: 'processing' | 'complete' | 'error';
   message: string;
   timestamp: string;
   depth: number;
@@ -76,9 +76,9 @@ export async function updateDeepResearch(
       ? [...(current.activities || []), ...research.activities]
       : current.activities,
     // Append new findings if provided  
-    findings: research.findings
-      ? [...(current.findings || []), ...research.findings]
-      : current.findings,
+    // findings: research.findings
+    //   ? [...(current.findings || []), ...research.findings]
+    //   : current.findings,
     // Append new sources if provided
     sources: research.sources
       ? [...(current.sources || []), ...research.sources]

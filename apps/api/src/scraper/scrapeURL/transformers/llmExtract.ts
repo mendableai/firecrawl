@@ -86,6 +86,38 @@ function normalizeSchema(x: any): any {
   }
 }
 
+export function truncateText(text: string, maxTokens: number): string {
+  const modifier = 3; // Estimate: 1 token ≈ 3-4 characters for safety
+  try {
+    const encoder = encoding_for_model("gpt-4o");
+    // Continuously trim the text until its token count is within the limit.
+    while (true) {
+      const tokens = encoder.encode(text);
+      if (tokens.length <= maxTokens) {
+        return text;
+      }
+      // Calculate a new length using a more conservative approach
+      // Instead of scaling the entire text, we'll remove a smaller portion
+      const ratio = maxTokens / tokens.length;
+      const newLength = Math.max(
+        Math.ceil(text.length * ratio),
+        Math.floor(text.length * 0.8)  // Never remove more than 20% at once
+      );
+      if (newLength <= 0) {
+        return "";
+      }
+      text = text.slice(0, newLength);
+    }
+  } catch (error) {
+    // Fallback using character-based estimation.
+    if (text.length <= maxTokens * modifier) {
+      return text;
+    }
+    return text.slice(0, maxTokens * modifier);
+  }
+}
+
+
 export async function generateOpenAICompletions(
   logger: Logger,
   options: ExtractOptions,
