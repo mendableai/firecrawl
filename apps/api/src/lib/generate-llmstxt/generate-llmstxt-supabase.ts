@@ -33,6 +33,14 @@ export async function getLlmsTextFromCache(
       return null;
     }
 
+    // Check if data is older than 1 week
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    
+    if (!data || new Date(data.updated_at) < oneWeekAgo) {
+      return null;
+    }
+
     return data;
   } catch (error) {
     logger.error("Failed to fetch LLMs text from cache", { error, originUrl });
@@ -53,28 +61,47 @@ export async function saveLlmsTextToCache(
   const originUrl = normalizeUrlOnlyHostname(url);
 
   try {
-    // First check if there's an existing entry with fewer URLs
+    // First check if there's an existing entry
     const { data: existingData } = await supabase_service
       .from("llm_texts")
       .select("*")
       .eq("origin_url", originUrl)
       .single();
 
-    // Always update the entry for the origin URL
-    const { error } = await supabase_service
-      .from("llm_texts")
-      .update({
-        llmstxt,
-        llmstxt_full,
-        max_urls: maxUrls,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("origin_url", originUrl);
+    if (existingData) {
+      // Update existing entry
+      const { error } = await supabase_service
+        .from("llm_texts")
+        .update({
+          llmstxt,
+          llmstxt_full,
+          max_urls: maxUrls,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("origin_url", originUrl);
 
-    if (error) {
-      logger.error("Error saving LLMs text to cache", { error, originUrl });
+      if (error) {
+        logger.error("Error updating LLMs text in cache", { error, originUrl });
+      } else {
+        logger.debug("Successfully updated cached LLMs text", { originUrl, maxUrls });
+      }
     } else {
-      logger.debug("Successfully cached LLMs text", { originUrl, maxUrls });
+      // Insert new entry
+      const { error } = await supabase_service
+        .from("llm_texts")
+        .insert({
+          origin_url: originUrl,
+          llmstxt,
+          llmstxt_full,
+          max_urls: maxUrls,
+          updated_at: new Date().toISOString(),
+        });
+
+      if (error) {
+        logger.error("Error inserting LLMs text to cache", { error, originUrl });
+      } else {
+        logger.debug("Successfully inserted new cached LLMs text", { originUrl, maxUrls });
+      }
     }
   } catch (error) {
     logger.error("Failed to save LLMs text to cache", { error, originUrl });

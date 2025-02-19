@@ -28,6 +28,19 @@ const DescriptionSchema = z.object({
   title: z.string(),
 });
 
+// Helper function to remove page separators
+function removePageSeparators(text: string): string {
+  return text.replace(/<\|firecrawl-page-\d+-lllmstxt\|>\n/g, '');
+}
+
+// Helper function to limit pages in full text
+function limitPages(fullText: string, maxPages: number): string {
+  const pages = fullText.split(/<\|firecrawl-page-\d+-lllmstxt\|>\n/);
+  // First element is the header, so we start from index 1
+  const limitedPages = pages.slice(0, maxPages + 1);
+  return limitedPages.join('');
+}
+
 export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOptions) {
   const openai = new OpenAI();
   const { generationId, teamId, plan, url, maxUrls, showFullText, subId } = options;
@@ -45,20 +58,23 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
     if (cachedResult) {
       logger.info("Found cached LLMs text", { url });
       
+      // Limit pages and remove separators before returning
+      const limitedFullText = limitPages(cachedResult.llmstxt_full, maxUrls);
+      const cleanFullText = removePageSeparators(limitedFullText);
+      
       // Update final result with cached text
       await updateGeneratedLlmsTxt(generationId, {
         status: "completed",
         generatedText: cachedResult.llmstxt,
-        fullText: cachedResult.llmstxt_full,
+        fullText: cleanFullText,
         showFullText: showFullText,
       });
 
-      
       return {
         success: true,
         data: {
           generatedText: cachedResult.llmstxt,
-          fullText: cachedResult.llmstxt_full,
+          fullText: cleanFullText,
           showFullText: showFullText,
         },
       };
@@ -144,25 +160,29 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
         if (!result) continue;
         
         llmstxt += `- [${result.title}](${result.url}): ${result.description}\n`;
-        llmsFulltxt += `## ${result.title}\n${result.markdown}\n\n`;
+        llmsFulltxt += `<|firecrawl-page-${i + batchResults.indexOf(result) + 1}-lllmstxt|>\n## ${result.title}\n${result.markdown}\n\n`;
       }
 
       // Update progress after each batch
       await updateGeneratedLlmsTxt(generationId, {
         status: "processing",
         generatedText: llmstxt,
-        fullText: llmsFulltxt,
+        fullText: removePageSeparators(llmsFulltxt),
       });
     }
 
     // After successful generation, save to cache
     await saveLlmsTextToCache(url, llmstxt, llmsFulltxt, maxUrls);
 
+    // Limit pages and remove separators before final update
+    const limitedFullText = limitPages(llmsFulltxt, maxUrls);
+    const cleanFullText = removePageSeparators(limitedFullText);
+
     // Update final result with both generated text and full text
     await updateGeneratedLlmsTxt(generationId, {
       status: "completed",
       generatedText: llmstxt,
-      fullText: llmsFulltxt,
+      fullText: cleanFullText,
       showFullText: showFullText,
     });
 
@@ -197,7 +217,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
       success: true,
       data: {
         generatedText: llmstxt,
-        fullText: llmsFulltxt,
+        fullText: cleanFullText,
         showFullText: showFullText,
       },
     };
