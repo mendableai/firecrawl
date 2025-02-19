@@ -1,33 +1,23 @@
 import { logger as _logger } from "../logger";
 import { updateGeneratedLlmsTxt } from "./generate-llmstxt-redis";
-import { mapController } from "../../controllers/v1/map";
-import { scrapeController } from "../../controllers/v1/scrape";
+import { getMapResults } from "../../controllers/v1/map";
 import { MapResponse, ScrapeResponse, Document } from "../../controllers/v1/types";
 import { Response } from "express";
 import OpenAI from "openai";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
+import { scrapeDocument } from "../extract/document-scraper";
+import { PlanType } from "../../types";
 
 interface GenerateLLMsTextServiceOptions {
   generationId: string;
   teamId: string;
-  plan: string;
+  plan: PlanType;
   url: string;
   maxUrls: number;
   showFullText: boolean;
 }
 
-function createExpressResponse<T>(): Response {
-  const res = {} as Response;
-  res.status = () => res;
-  res.json = (data: T) => data as any;
-  res.send = () => res;
-  res.sendStatus = () => res;
-  res.links = () => res;
-  res.jsonp = () => res;
-  res.sendFile = () => res;
-  return res;
-}
 
 const DescriptionSchema = z.object({
   description: z.string(),
@@ -47,49 +37,50 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
 
   try {
     // First, get all URLs from the map controller
-    const mockMapReq = {
-      auth: { team_id: teamId, plan },
-      body: { url, limit: maxUrls, includeSubdomains: false },
-    };
+    const mapResult = await getMapResults({
+      url,
+      teamId,
+      plan,
+      limit: maxUrls,
+      includeSubdomains: false,
+      ignoreSitemap: false,
+      includeMetadata: true,
+    });
 
-   
-    const mapResult = await mapController(mockMapReq as any, createExpressResponse<MapResponse>());
-    const mapResponse = mapResult as unknown as MapResponse;
-
-    if (!mapResponse.success) {
-      throw new Error(`Failed to map URLs`, { cause: mapResponse.error });
+    if (!mapResult || !mapResult.links) {
+      throw new Error(`Failed to map URLs`);
     }
 
-    _logger.debug("Mapping URLs", mapResponse.links);
+    _logger.debug("Mapping URLs", mapResult.links);
 
-    const urls = mapResponse.links;
+    const urls = mapResult.links;
     let llmstxt = `# ${url} llms.txt\n\n`;
     let llmsFulltxt = `# ${url} llms-full.txt\n\n`;
 
 
     // Scrape each URL
     for (const url of urls) {
-      const mockScrapeReq = {
-        auth: { team_id: teamId, plan },
-        body: {
-          url,
-          formats: ["markdown"],
-          onlyMainContent: true,
-        },
-      };
-
       _logger.debug(`Scraping URL: ${url}`);
-      const scrapeResult = await scrapeController(mockScrapeReq as any, createExpressResponse<ScrapeResponse>());
-      const scrapeResponse = scrapeResult as unknown as ScrapeResponse;
+      const document = await scrapeDocument(
+        {
+          url,
+          teamId,
+          plan,
+          origin: url,
+          timeout: 30000,
+          isSingleUrl: true,
+        },
+        [],
+        logger,
+        { onlyMainContent: true }
+      );
 
-      if (!scrapeResponse.success) {
-        logger.error(`Failed to scrape URL ${url}`, { error: scrapeResponse.error });
+      if (!document) {
+        logger.error(`Failed to scrape URL ${url}`);
         continue;
       }
 
       // Process scraped result
-      const document = Array.isArray(scrapeResponse.data) ? scrapeResponse.data[0] : scrapeResponse.data;
-      
       if (!document.markdown) continue;
 
       _logger.debug(`Generating description for ${document.metadata?.url}`);
