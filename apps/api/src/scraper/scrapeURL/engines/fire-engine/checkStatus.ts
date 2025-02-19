@@ -84,6 +84,7 @@ export async function fireEngineCheckStatus(
   logger: Logger,
   jobId: string,
   mock: MockState | null,
+  abort?: AbortSignal,
 ): Promise<FireEngineCheckStatusSuccess> {
   const fireEngineURL = process.env.FIRE_ENGINE_BETA_URL!;
 

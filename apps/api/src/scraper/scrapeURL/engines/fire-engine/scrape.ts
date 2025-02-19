@@ -74,6 +74,7 @@ export async function fireEngineScrape<
   logger: Logger,
   request: FireEngineScrapeRequestCommon & Engine,
   mock: MockState | null,
+  abort?: AbortSignal,
 ): Promise<z.infer<typeof schema>> {
   const fireEngineURL = process.env.FIRE_ENGINE_BETA_URL!;
 
@@ -103,6 +104,7 @@ export async function fireEngineScrape<
         schema,
         tryCount: 3,
         mock,
+        abort,
       });
     },
   );

@@ -12,10 +12,11 @@ import { supabase_service } from "../../services/supabase";
  */
 import { withAuth } from "../../lib/withAuth";
 
-async function querySitemapIndexFunction(url: string) {
+async function querySitemapIndexFunction(url: string, abort?: AbortSignal) {
   const originUrl = normalizeUrlOnlyHostname(url);
 
   for (let attempt = 1; attempt <= 3; attempt++) {
+    abort?.throwIfAborted();
     try {
       const { data, error } = await supabase_service
         .from("crawl_maps")

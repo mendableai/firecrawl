@@ -16,6 +16,7 @@ export async function fireEngineMap(
     numResults: number;
     page?: number;
   },
+  abort?: AbortSignal,
 ): Promise<SearchResult[]> {
   try {
     let data = JSON.stringify({
@@ -42,6 +43,7 @@ export async function fireEngineMap(
         "X-Disable-Cache": "true",
       },
       body: data,
+      signal: abort,
     });
 
     if (response.ok) {
