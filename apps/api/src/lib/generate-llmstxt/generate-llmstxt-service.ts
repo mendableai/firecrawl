@@ -42,6 +42,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
     module: "generate-llmstxt",
     method: "performGenerateLlmsTxt",
     generationId,
+    teamId,
   });
 
   try {
@@ -56,7 +57,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
     const mapResponse = mapResult as unknown as MapResponse;
 
     if (!mapResponse.success) {
-      throw new Error(`Failed to map URLs: ${mapResponse.error}`);
+      throw new Error(`Failed to map URLs`, { cause: mapResponse.error });
     }
 
     _logger.debug("Mapping URLs", mapResponse.links);
@@ -82,7 +83,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
       const scrapeResponse = scrapeResult as unknown as ScrapeResponse;
 
       if (!scrapeResponse.success) {
-        logger.error(`Failed to scrape URL ${url}: ${scrapeResponse.error}`);
+        logger.error(`Failed to scrape URL ${url}`, { error: scrapeResponse.error });
         continue;
       }
 
@@ -119,7 +120,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
           fullText: llmsFulltxt,
         });
       } catch (error) {
-        logger.error(`Failed to parse LLM response for ${document.metadata?.url}:`, error);
+        logger.error(`Failed to parse LLM response for ${document.metadata?.url}`, { error });
         continue;
       }
     }
@@ -142,7 +143,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
     };
 
   } catch (error: any) {
-    logger.error("Generate LLMs text error:", error);
+    logger.error("Generate LLMs text error", { error });
 
     await updateGeneratedLlmsTxt(generationId, {
       status: "failed",
