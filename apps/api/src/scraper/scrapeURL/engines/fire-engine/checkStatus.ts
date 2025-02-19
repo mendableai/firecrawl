@@ -10,6 +10,7 @@ import {
   UnsupportedFileError,
 } from "../../error";
 import { MockState } from "../../lib/mock";
+import { fireEngineURL } from "./scrape";
 
 const successSchema = z.object({
   jobId: z.string(),
@@ -85,8 +86,6 @@ export async function fireEngineCheckStatus(
   jobId: string,
   mock: MockState | null,
 ): Promise<FireEngineCheckStatusSuccess> {
-  const fireEngineURL = process.env.FIRE_ENGINE_BETA_URL!;
-
   const status = await Sentry.startSpan(
     {
       name: "fire-engine: Check status",

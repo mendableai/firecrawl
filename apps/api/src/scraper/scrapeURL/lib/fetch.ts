@@ -2,6 +2,7 @@ import { Logger } from "winston";
 import { z, ZodError } from "zod";
 import * as Sentry from "@sentry/node";
 import { MockState, saveMock } from "./mock";
+import { fireEngineURL } from "../engines/fire-engine/scrape";
 
 export type RobustFetchParams<Schema extends z.Schema<any>> = {
   url: string;
@@ -126,14 +127,13 @@ export async function robustFetch<
     const makeRequestTypeId = (
       request: (typeof mock)["requests"][number]["options"],
     ) => {
-      let trueUrl = (process.env.FIRE_ENGINE_BETA_URL && request.url.startsWith(process.env.FIRE_ENGINE_BETA_URL))
-        ? request.url.replace(process.env.FIRE_ENGINE_BETA_URL, "<fire-engine>")
+      let trueUrl = request.url.startsWith(fireEngineURL)
+        ? request.url.replace(fireEngineURL, "<fire-engine>")
         : request.url;
       
       let out = trueUrl + ";" + request.method;
       if (
-        process.env.FIRE_ENGINE_BETA_URL &&
-        (trueUrl.startsWith("<fire-engine>")) &&
+        trueUrl.startsWith("<fire-engine>") &&
         request.method === "POST"
       ) {
         out += "f-e;" + request.body?.engine + ";" + request.body?.url;

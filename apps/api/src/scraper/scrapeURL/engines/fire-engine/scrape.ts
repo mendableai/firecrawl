@@ -65,6 +65,8 @@ const schema = z.object({
   processing: z.boolean(),
 });
 
+export const fireEngineURL = process.env.FIRE_ENGINE_BETA_URL ?? "<mock-fire-engine-url>";
+
 export async function fireEngineScrape<
   Engine extends
     | FireEngineScrapeRequestChromeCDP
@@ -75,10 +77,6 @@ export async function fireEngineScrape<
   request: FireEngineScrapeRequestCommon & Engine,
   mock: MockState | null,
 ): Promise<z.infer<typeof schema>> {
-  const fireEngineURL = process.env.FIRE_ENGINE_BETA_URL!;
-
-  // TODO: retries
-
   const scrapeRequest = await Sentry.startSpan(
     {
       name: "fire-engine: Scrape",
