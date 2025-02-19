@@ -8,6 +8,7 @@ env:
   REDIS_URL: redis://localhost:6379
   HOST: 0.0.0.0
   ENV: ${{ secrets.ENV }}
+  TEST_SUITE_SELF_HOSTED: true
 
 jobs:
   test:
