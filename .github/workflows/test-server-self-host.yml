@@ -6,6 +6,7 @@ on:
 env:
   PORT: 3002
   REDIS_URL: redis://localhost:6379
+  HOST: 0.0.0.0
   ENV: ${{ secrets.ENV }}
 
 jobs:
@@ -42,7 +43,6 @@ jobs:
         id: start_workers
       - name: Run snippet tests
         run: |
-          sleep 5
           npm run test:snips
         working-directory: ./apps/api
       - name: Kill instances
