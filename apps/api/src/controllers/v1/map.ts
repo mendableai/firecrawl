@@ -5,6 +5,7 @@ import {
   mapRequestSchema,
   RequestWithAuth,
   scrapeOptions,
+  TimeoutSignal,
 } from "./types";
 import { crawlToCrawler, StoredCrawl } from "../../lib/crawl-redis";
 import { MapResponse, MapRequest } from "./types";
@@ -53,6 +54,7 @@ export async function getMapResults({
   origin,
   includeMetadata = false,
   allowExternalLinks,
+  abort = new AbortController().signal, // noop
 }: {
   url: string;
   search?: string;
@@ -65,6 +67,7 @@ export async function getMapResults({
   origin?: string;
   includeMetadata?: boolean;
   allowExternalLinks?: boolean;
+  abort?: AbortSignal;
 }): Promise<MapResult> {
   const id = uuidv4();
   let links: string[] = [url];
@@ -87,8 +90,8 @@ export async function getMapResults({
   const crawler = crawlToCrawler(id, sc);
 
   try {
-    sc.robots = await crawler.getRobotsTxt();
-    await crawler.importRobotsTxt(sc.robots);
+    sc.robots = await crawler.getRobotsTxt(false, abort);
+    crawler.importRobotsTxt(sc.robots);
   } catch (_) {}
 
   // If sitemapOnly is true, only get links from sitemap
@@ -102,6 +105,7 @@ export async function getMapResults({
       true,
       true,
       30000,
+      abort,
     );
     if (sitemap > 0) {
       links = links
@@ -144,7 +148,7 @@ export async function getMapResults({
         return fireEngineMap(mapUrl, {
           numResults: resultsPerPage,
           page: page,
-        });
+        }, abort);
       };
 
       pagePromises = Array.from({ length: maxPages }, (_, i) =>
@@ -157,7 +161,7 @@ export async function getMapResults({
 
     // Parallelize sitemap index query with search results
     const [sitemapIndexResult, ...searchResults] = await Promise.all([
-      querySitemapIndex(url),
+      querySitemapIndex(url, abort),
       ...(cachedResult ? [] : pagePromises),
     ]);
 
@@ -178,6 +182,7 @@ export async function getMapResults({
           true,
           false,
           30000,
+          abort,
         );
       } catch (e) {
         logger.warn("tryGetSitemap threw an error", { error: e });
@@ -277,6 +282,7 @@ export async function mapController(
   req.body = mapRequestSchema.parse(req.body);
 
   let result: Awaited<ReturnType<typeof getMapResults>>;
+  const abort = new AbortController();
   try {
     result = await Promise.race([
       getMapResults({
@@ -289,13 +295,17 @@ export async function mapController(
         origin: req.body.origin,
         teamId: req.auth.team_id,
         plan: req.auth.plan,
+        abort: abort.signal,
       }),
       ...(req.body.timeout !== undefined ? [
-        new Promise((resolve, reject) => setTimeout(() => reject("timeout"), req.body.timeout))
+        new Promise((resolve, reject) => setTimeout(() => {
+          abort.abort(new TimeoutSignal());
+          reject(new TimeoutSignal());
+        }, req.body.timeout))
       ] : []),
     ]) as any;
   } catch (error) {
-    if (error === "timeout") {
+    if (error instanceof TimeoutSignal || error === "timeout") {
       return res.status(408).json({
         success: false,
         error: "Request timed out",

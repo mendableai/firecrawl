@@ -76,6 +76,7 @@ export async function fireEngineScrape<
   logger: Logger,
   request: FireEngineScrapeRequestCommon & Engine,
   mock: MockState | null,
+  abort?: AbortSignal,
 ): Promise<z.infer<typeof schema>> {
   const scrapeRequest = await Sentry.startSpan(
     {
@@ -101,6 +102,7 @@ export async function fireEngineScrape<
         schema,
         tryCount: 3,
         mock,
+        abort,
       });
     },
   );

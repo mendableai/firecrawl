@@ -85,6 +85,7 @@ export async function fireEngineCheckStatus(
   logger: Logger,
   jobId: string,
   mock: MockState | null,
+  abort?: AbortSignal,
 ): Promise<FireEngineCheckStatusSuccess> {
   const status = await Sentry.startSpan(
     {

@@ -1004,3 +1004,9 @@ export const generateLLMsTextRequestSchema = z.object({
 export type GenerateLLMsTextRequest = z.infer<
   typeof generateLLMsTextRequestSchema
 >;
+
+export class TimeoutSignal extends Error {
+  constructor() {
+    super("Operation timed out")
+  }
+}

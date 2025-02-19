@@ -2,6 +2,7 @@ import { Logger } from "winston";
 import { z, ZodError } from "zod";
 import * as Sentry from "@sentry/node";
 import { MockState, saveMock } from "./mock";
+import { TimeoutSignal } from "../../../controllers/v1/types";
 import { fireEngineURL } from "../engines/fire-engine/scrape";
 
 export type RobustFetchParams<Schema extends z.Schema<any>> = {
@@ -18,6 +19,7 @@ export type RobustFetchParams<Schema extends z.Schema<any>> = {
   tryCount?: number;
   tryCooldown?: number;
   mock: MockState | null;
+  abort?: AbortSignal;
 };
 
 export async function robustFetch<
@@ -36,7 +38,10 @@ export async function robustFetch<
   tryCount = 1,
   tryCooldown,
   mock,
+  abort,
 }: RobustFetchParams<Schema>): Promise<Output> {
+  abort?.throwIfAborted();
+  
   const params = {
     url,
     logger,
@@ -48,6 +53,7 @@ export async function robustFetch<
     ignoreFailure,
     tryCount,
     tryCooldown,
+    abort,
   };
 
   let response: {
@@ -71,6 +77,7 @@ export async function robustFetch<
               : {}),
           ...(headers !== undefined ? headers : {}),
         },
+        signal: abort,
         ...(body instanceof FormData
           ? {
               body,
@@ -82,7 +89,9 @@ export async function robustFetch<
             : {}),
       });
     } catch (error) {
-      if (!ignoreFailure) {
+      if (error instanceof TimeoutSignal) {
+        throw error;
+      } else if (!ignoreFailure) {
         Sentry.captureException(error);
         if (tryCount > 1) {
           logger.debug(
