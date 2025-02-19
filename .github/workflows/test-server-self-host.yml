@@ -19,7 +19,10 @@ jobs:
     name: Run tests
     strategy:
       matrix:
-        openai: [true, false]
+        includes:
+          - {}
+          - openai: "openai"
+          - serper: "serper"
     runs-on: ubuntu-latest
     services:
       redis:
@@ -27,7 +30,8 @@ jobs:
         ports:
           - 6379:6379
     env:
-      OPENAI_API_KEY: ${{ matrix.openai == true && secrets.OPENAI_API_KEY || '' }}
+      OPENAI_API_KEY: ${{ matrix.openai == "openai" && secrets.OPENAI_API_KEY || '' }}
+      SERPER_API_KEY: ${{ matrix.serper == "serper" && secrets.SERPER_API_KEY || '' }}
     steps:
       - uses: actions/checkout@v3
       - name: Install pnpm
