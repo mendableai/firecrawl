@@ -24,7 +24,6 @@ client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 firecrawl_api_key = os.getenv("FIRECRAWL_API_KEY")
 serp_api_key = os.getenv("SERP_API_KEY")
 
-# Add this debug print (remember to remove it before committing)
 if not firecrawl_api_key:
     print(f"{Colors.RED}Warning: FIRECRAWL_API_KEY not found in environment variables{Colors.RESET}")
 
@@ -34,12 +33,11 @@ def search_google(query):
     search = GoogleSearch({"q": query, "api_key": serp_api_key})
     results = search.get_dict().get("organic_results", [])
     
-    print(f"{Colors.CYAN}Found {len(results)} search results{Colors.RESET}")
     if results:
-        print("First result:", results[0])
+        print("Finding Results...")
     return results
 
-def select_urls_with_r1(company, objective, serp_results):
+def select_urls_with_gemini(company, objective, serp_results):
     """
     Use Gemini 2.0 Flash to select URLs from SERP results.
     Returns a list of URLs.
@@ -53,13 +51,12 @@ def select_urls_with_r1(company, objective, serp_results):
         print(f"{Colors.CYAN}Prepared {len(serp_data)} valid results for processing{Colors.RESET}")
 
         prompt = (
-            "You are a URL selector that always responds with valid JSON. "
+            "You are a URL selector that always responds with valid JSON. You select URLs from the SERP results relevant to the company and objective. Your response must be a JSON object with a 'selected_urls' array property containing strings.\n\n"
             f"Company: {company}\n"
             f"Objective: {objective}\n"
             f"SERP Results: {json.dumps(serp_data)}\n\n"
             "Return a JSON object with a property 'selected_urls' that contains an array "
-            "of URLs most likely to help meet the objective. Add a /* to the end of the URL if you think it should search all of the pages in the site. "
-            "Do not return any social media links. For example: {\"selected_urls\": [\"https://example.com\", \"https://example2.com\"]}"
+            "of URLs most likely to help meet the objective. Add a /* to the end of the URL if you think it should search all of the pages in the site. Do not return any social media links. For example: {\"selected_urls\": [\"https://example.com\", \"https://example2.com\"]}"
         )
 
         print(f"{Colors.CYAN}Calling Gemini API...{Colors.RESET}")
@@ -67,35 +64,50 @@ def select_urls_with_r1(company, objective, serp_results):
         response = client.models.generate_content(
             model="gemini-2.0-flash",
             contents=prompt
-        )
+        )       
 
-        print(f"{Colors.CYAN}Gemini response: {response.text}{Colors.RESET}")
+        # Get response text and clean it up
+        response_text = response.text.strip()
+        
+        # Remove markdown code block if present
+        if response_text.startswith('```'):
+            response_text = response_text.split('\n', 1)[1]  # Remove first line
+        if response_text.endswith('```'):
+            response_text = response_text.rsplit('\n', 1)[0]  # Remove last line
+        if response_text.startswith('json'):
+            response_text = response_text.split('\n', 1)[1]  # Remove "json" line
+            
+        response_text = response_text.strip()
 
         try:
-            # Remove the markdown code block markers if they exist
-            cleaned_response = response.text.replace('```json\n', '').replace('\n```', '')
-            result = json.loads(cleaned_response)
-            
+            result = json.loads(response_text)
             if isinstance(result, dict) and "selected_urls" in result:
                 urls = result["selected_urls"]
             else:
-                urls = []
-        except json.JSONDecodeError as e:
-            print(f"{Colors.RED}JSON parsing error: {e}{Colors.RESET}")
-            urls = []
+                urls = [line.strip() for line in response_text.split('\n') 
+                       if line.strip().startswith(('http://', 'https://'))]
+        except json.JSONDecodeError:
+            print(f"{Colors.YELLOW}Failed to parse JSON, falling back to text parsing{Colors.RESET}")
+            # If JSON parsing fails, fall back to text parsing
+            urls = [line.strip() for line in response_text.split('\n') 
+                   if line.strip().startswith(('http://', 'https://'))]
 
-        if not urls:
+        # Clean up URLs - remove wildcards and trailing slashes
+        cleaned_urls = [url.replace('/*', '').rstrip('/') for url in urls]
+        cleaned_urls = [url for url in cleaned_urls if url]
+
+        if not cleaned_urls:
             print(f"{Colors.YELLOW}No valid URLs found.{Colors.RESET}")
             return []
 
         print(f"{Colors.CYAN}Selected URLs for extraction:{Colors.RESET}")
-        for url in urls:
+        for url in cleaned_urls:
             print(f"- {url}")
 
-        return urls
+        return cleaned_urls
 
     except Exception as e:
-        print(f"{Colors.RED}Error selecting URLs: {e}{Colors.RESET}")
+        print(f"{Colors.RED}Error selecting URLs: {str(e)}{Colors.RESET}")
         return []
 
 def extract_company_info(urls, prompt, company, api_key):
@@ -103,7 +115,7 @@ def extract_company_info(urls, prompt, company, api_key):
         print(f"{Colors.RED}Error: Firecrawl API key is missing or invalid{Colors.RESET}")
         return None
         
-    print(f"{Colors.YELLOW}Using API key: {api_key[:8]}...{Colors.RESET}")  # Only show first 8 chars for security
+    
     """Use requests to call Firecrawl's extract endpoint with selected URLs."""
     print(f"{Colors.YELLOW}Extracting structured data from the provided URLs using Firecrawl...{Colors.RESET}")
     
@@ -187,13 +199,13 @@ def main():
     objective = input(f"{Colors.BLUE}Enter what information you want about the company: {Colors.RESET}")
     
     # Make the search query more specific
-    serp_results = search_google(f"{company} company pricing website")
+    serp_results = search_google(f"{company}")
     if not serp_results:
         print(f"{Colors.RED}No search results found.{Colors.RESET}")
         return
     
     # Use Gemini 2.0 Flash for URL selection
-    selected_urls = select_urls_with_r1(company, objective, serp_results)
+    selected_urls = select_urls_with_gemini(company, objective, serp_results)
     
     if not selected_urls:
         print(f"{Colors.RED}No URLs were selected.{Colors.RESET}")
