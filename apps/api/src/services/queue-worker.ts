@@ -405,6 +405,7 @@ const processDeepResearchJobInternal = async (
       topic: job.data.request.topic,
       maxDepth: job.data.request.maxDepth,
       timeLimit: job.data.request.timeLimit,
+      subId: job.data.subId,
     });  
     
     if(result.success) {
@@ -474,6 +475,7 @@ const processGenerateLlmsTxtJobInternal = async (
       url: job.data.request.url,
       maxUrls: job.data.request.maxUrls,
       showFullText: job.data.request.showFullText,
+      subId: job.data.subId,
     });
 
     if (result.success) {

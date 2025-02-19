@@ -9,6 +9,8 @@ import { z } from "zod";
 import { scrapeDocument } from "../extract/document-scraper";
 import { PlanType } from "../../types";
 import { getLlmsTextFromCache, saveLlmsTextToCache } from "./generate-llmstxt-supabase";
+import { billTeam } from "../../services/billing/credit_billing";
+import { logJob } from "../../services/logging/log_job";
 
 interface GenerateLLMsTextServiceOptions {
   generationId: string;
@@ -17,6 +19,7 @@ interface GenerateLLMsTextServiceOptions {
   url: string;
   maxUrls: number;
   showFullText: boolean;
+  subId?: string;
 }
 
 
@@ -27,8 +30,8 @@ const DescriptionSchema = z.object({
 
 export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOptions) {
   const openai = new OpenAI();
-  const { generationId, teamId, plan, url, maxUrls, showFullText } = options;
-  
+  const { generationId, teamId, plan, url, maxUrls, showFullText, subId } = options;
+  const startTime = Date.now();
   const logger = _logger.child({
     module: "generate-llmstxt",
     method: "performGenerateLlmsTxt",
@@ -151,6 +154,33 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
       fullText: llmsFulltxt,
       showFullText: showFullText,
     });
+
+    // Log job with token usage and sources
+    await logJob({
+      job_id: generationId,
+      success: true,
+      message: "LLMs text generation completed",
+      num_docs: urls.length,
+      docs: [{ llmstxt: llmstxt, llmsfulltxt: llmsFulltxt }],
+      time_taken: (Date.now() - startTime) / 1000,
+      team_id: teamId,
+      mode: "llmstxt",
+      url: url,
+      scrapeOptions: options,
+      origin: "api",
+      num_tokens: 0,
+      tokens_billed: 0,
+      sources: {},
+    });
+
+    // Bill team for usage
+    billTeam(teamId, subId, urls.length, logger).catch(
+      (error) => {
+        logger.error(
+          `Failed to bill team ${teamId} for ${urls.length} urls`, { teamId, count: urls.length, error },
+        );
+      },
+    );
 
     return {
       success: true,
