@@ -19,10 +19,8 @@ jobs:
     name: Run tests
     strategy:
       matrix:
-        includes:
-          - {}
-          - openai: "openai"
-          - serper: "serper"
+        openai: ["openai", ""]
+        serper: ["serper", ""]
     runs-on: ubuntu-latest
     services:
       redis:
