@@ -1,7 +1,11 @@
 name: Self-hosted Server Test Suite
 
 on:
-  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - apps/api/**
 
 env:
   PORT: 3002
