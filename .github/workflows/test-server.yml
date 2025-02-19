@@ -1,8 +1,11 @@
-name: CI/CD
+name: Server Test Suite
+
 on:
   pull_request:
     branches:
       - main
+    paths:
+      - apps/api/**
   # schedule:
   #   - cron: '0 */4 * * *'
 
@@ -31,8 +34,8 @@ env:
   ENV: ${{ secrets.ENV }}
 
 jobs:
-  pre-deploy:
-    name: Pre-deploy checks
+  test:
+    name: Run tests
     runs-on: ubuntu-latest
     services:
       redis:
