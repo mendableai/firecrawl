@@ -30,7 +30,7 @@ async function batchScrape(body: BatchScrapeRequestInput): ReturnType<typeof bat
         x = await batchScrapeStatus(bss.body.id);
         expect(x.statusCode).toBe(200);
         expect(typeof x.body.status).toBe("string");
-    } while (x.body.status !== "completed")
+    } while (x.body.status === "scraping");
 
     expectBatchScrapeToSucceed(x);
     return x;
@@ -53,40 +53,51 @@ function expectBatchScrapeToSucceed(response: Awaited<ReturnType<typeof batchScr
 }
 
 describe("Batch scrape tests", () => {
-  describe("JSON format", () => {
     it.concurrent("works", async () => {
         const response = await batchScrape({
-            urls: ["http://firecrawl.dev"],
-            formats: ["json"],
-            jsonOptions: {
-                prompt: "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source.",
-                schema: {
-                    type: "object",
-                    properties: {
-                        company_mission: {
-                            type: "string",
-                        },
-                        supports_sso: {
-                            type: "boolean",
-                        },
-                        is_open_source: {
-                            type: "boolean",
+            urls: ["http://firecrawl.dev"]
+        });
+        
+        expect(response.body.data[0]).toHaveProperty("markdown");
+        expect(response.body.data[0].markdown).toContain("Firecrawl");
+    }, 30000);
+
+    if (!process.env.TEST_SUITE_SELF_HOSTED) {
+        describe("JSON format", () => {
+            it.concurrent("works", async () => {
+                const response = await batchScrape({
+                    urls: ["http://firecrawl.dev"],
+                    formats: ["json"],
+                    jsonOptions: {
+                        prompt: "Based on the information on the page, find what the company's mission is and whether it supports SSO, and whether it is open source.",
+                        schema: {
+                            type: "object",
+                            properties: {
+                                company_mission: {
+                                    type: "string",
+                                },
+                                supports_sso: {
+                                    type: "boolean",
+                                },
+                                is_open_source: {
+                                    type: "boolean",
+                                },
+                            },
+                            required: ["company_mission", "supports_sso", "is_open_source"],
                         },
                     },
-                    required: ["company_mission", "supports_sso", "is_open_source"],
-                },
-            },
+                });
+            
+                expect(response.body.data[0]).toHaveProperty("json");
+                expect(response.body.data[0].json).toHaveProperty("company_mission");
+                expect(typeof response.body.data[0].json.company_mission).toBe("string");
+                expect(response.body.data[0].json).toHaveProperty("supports_sso");
+                expect(response.body.data[0].json.supports_sso).toBe(false);
+                expect(typeof response.body.data[0].json.supports_sso).toBe("boolean");
+                expect(response.body.data[0].json).toHaveProperty("is_open_source");
+                expect(response.body.data[0].json.is_open_source).toBe(true);
+                expect(typeof response.body.data[0].json.is_open_source).toBe("boolean");
+            }, 30000);
         });
-      
-        expect(response.body.data[0]).toHaveProperty("json");
-        expect(response.body.data[0].json).toHaveProperty("company_mission");
-        expect(typeof response.body.data[0].json.company_mission).toBe("string");
-        expect(response.body.data[0].json).toHaveProperty("supports_sso");
-        expect(response.body.data[0].json.supports_sso).toBe(false);
-        expect(typeof response.body.data[0].json.supports_sso).toBe("boolean");
-        expect(response.body.data[0].json).toHaveProperty("is_open_source");
-        expect(response.body.data[0].json.is_open_source).toBe(true);
-        expect(typeof response.body.data[0].json.is_open_source).toBe("boolean");
-    }, 30000);
-  });
+    }
 });

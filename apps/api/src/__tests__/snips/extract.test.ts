@@ -30,7 +30,7 @@ async function extract(body: ExtractRequestInput): Promise<ExtractResponse> {
         x = await extractStatus(es.body.id);
         expect(x.statusCode).toBe(200);
         expect(typeof x.body.status).toBe("string");
-    } while (x.body.status !== "completed");
+    } while (x.body.status === "processing");
 
     expectExtractToSucceed(x);
     return x.body;
@@ -51,31 +51,37 @@ function expectExtractToSucceed(response: Awaited<ReturnType<typeof extractStatu
 }
 
 describe("Extract tests", () => {
-    it.concurrent("works", async () => {
-        const res = await extract({
-            urls: ["https://firecrawl.dev"],
-            schema: {
-                "type": "object",
-                "properties": {
-                    "company_mission": {
-                        "type": "string"
+    if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY) {
+        it.concurrent("works", async () => {
+            const res = await extract({
+                urls: ["https://firecrawl.dev"],
+                schema: {
+                    "type": "object",
+                    "properties": {
+                        "company_mission": {
+                            "type": "string"
+                        },
+                        "is_open_source": {
+                            "type": "boolean"
+                        }
                     },
-                    "is_open_source": {
-                        "type": "boolean"
-                    }
+                    "required": [
+                        "company_mission",
+                        "is_open_source"
+                    ]
                 },
-                "required": [
-                    "company_mission",
-                    "is_open_source"
-                ]
-            },
-            origin: "api-sdk",
-        });
+                origin: "api-sdk",
+            });
 
-        expect(res.data).toHaveProperty("company_mission");
-        expect(typeof res.data.company_mission).toBe("string")
-        expect(res.data).toHaveProperty("is_open_source");
-        expect(typeof res.data.is_open_source).toBe("boolean");
-        expect(res.data.is_open_source).toBe(true);
-    }, 60000);
+            expect(res.data).toHaveProperty("company_mission");
+            expect(typeof res.data.company_mission).toBe("string")
+            expect(res.data).toHaveProperty("is_open_source");
+            expect(typeof res.data.is_open_source).toBe("boolean");
+            expect(res.data.is_open_source).toBe(true);
+        }, 60000);
+    } else {
+        it.concurrent("dummy test", () => {
+            expect(true).toBe(true);
+        });
+    }
 });

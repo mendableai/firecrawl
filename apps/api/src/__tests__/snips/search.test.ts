@@ -27,8 +27,8 @@ async function search(body: SearchRequestInput): Promise<Document> {
   return raw.body.data;
 }
 
-describe("Scrape tests", () => {
-  it("works", async () => {
+describe("Search tests", () => {
+  it.concurrent("works", async () => {
     await search({
       query: "firecrawl"
     });
