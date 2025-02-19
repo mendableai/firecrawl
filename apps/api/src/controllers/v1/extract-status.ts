@@ -1,7 +1,15 @@
 import { Response } from "express";
-import { supabaseGetJobsById } from "../../lib/supabase-jobs";
 import { RequestWithAuth } from "./types";
 import { getExtract, getExtractExpiry } from "../../lib/extract/extract-redis";
+import { getJob, PseudoJob } from "./crawl-status";
+import { getExtractQueue } from "../../services/queue-service";
+import { ExtractResult } from "../../lib/extract/extraction-service";
+
+
+
+export async function getExtractJob(id: string): Promise<PseudoJob<ExtractResult> | null> {
+  return await getJob(getExtractQueue, id);
+}
 
 export async function extractStatusController(
   req: RequestWithAuth<{ jobId: string }, any, any>,
@@ -16,21 +24,19 @@ export async function extractStatusController(
     });
   }
 
-  let data: any[] = [];
+  let data: ExtractResult | [] = [];
 
   if (extract.status === "completed") {
-    const jobData = await supabaseGetJobsById([req.params.jobId]);
-    if (!jobData || jobData.length === 0) {
+    const jobData = await getExtractJob(req.params.jobId);
+    if (!jobData) {
       return res.status(404).json({
         success: false,
         error: "Job not found",
       });
     }
-
-    data = jobData[0].docs;
+    data = jobData.returnvalue?.data ?? [];
   }
 
-  // console.log(extract.sources);
   return res.status(200).json({
     success: extract.status === "failed" ? false : true,
     data: data,

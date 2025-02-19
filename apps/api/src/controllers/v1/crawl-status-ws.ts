@@ -98,7 +98,7 @@ async function crawlStatusWS(
       .filter((x) => x[1] === "completed" || x[1] === "failed")
       .map((x) => x[0]);
     const newlyDoneJobs: Job[] = (
-      await Promise.all(newlyDoneJobIDs.map((x) => getJob(x)))
+      await Promise.all(newlyDoneJobIDs.map((x) => getJob(getScrapeQueue, x)))
     ).filter((x) => x !== undefined) as Job[];
 
     for (const job of newlyDoneJobs) {
@@ -154,7 +154,7 @@ async function crawlStatusWS(
 
   jobIDs = validJobIDs; // Use validJobIDs instead of jobIDs for further processing
 
-  const doneJobs = await getJobs(doneJobIDs);
+  const doneJobs = await getJobs(getScrapeQueue, doneJobIDs);
   const data = doneJobs.map((x) => x.returnvalue);
 
   await send(ws, {
