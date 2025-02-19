@@ -49,6 +49,18 @@ describe("Scrape tests", () => {
     expect(response.markdown).toContain("Firecrawl");
   }, 10000);
 
+  describe("JSON scrape support", () => {
+    it.concurrent("returns parseable JSON", async () => {
+      const response = await scrape({
+        url: "https://jsonplaceholder.typicode.com/todos/1",
+        formats: ["rawHtml"],
+      });
+
+      const obj = JSON.parse(response.rawHtml!);
+      expect(obj.id).toBe(1);
+    }, 25000); // TODO: mock and shorten
+  });
+
   if (!process.env.TEST_SUITE_SELF_HOSTED) {
     describe("Ad blocking (f-e dependant)", () => {
       it.concurrent("blocks ads by default", async () => {
@@ -86,19 +98,7 @@ describe("Scrape tests", () => {
       }, 10000);
     });
 
-    describe("JSON scrape support", () => {
-      it.concurrent("returns parseable JSON", async () => {
-        const response = await scrape({
-          url: "https://jsonplaceholder.typicode.com/todos/1",
-          formats: ["rawHtml"],
-        });
-
-        const obj = JSON.parse(response.rawHtml!);
-        expect(obj.id).toBe(1);
-      }, 25000); // TODO: mock and shorten
-    });
-
-    describe("Screenshot", () => {
+    describe("Screenshot (f-e/sb dependant)", () => {
       it.concurrent("screenshot format works", async () => {
         const response = await scrape({
           url: "http://firecrawl.dev",
@@ -117,7 +117,31 @@ describe("Scrape tests", () => {
         expect(typeof response.screenshot).toBe("string");
       }, 30000);
     });
+  
+    describe("Proxy API (f-e dependant)", () => {
+      it.concurrent("undefined works", async () => {
+        await scrape({
+          url: "http://firecrawl.dev",
+        });
+      }, 15000);
 
+      it.concurrent("basic works", async () => {
+        await scrape({
+          url: "http://firecrawl.dev",
+          proxy: "basic",
+        });
+      }, 15000);
+
+      it.concurrent("stealth works", async () => {
+        await scrape({
+          url: "http://firecrawl.dev",
+          proxy: "stealth",
+        });
+      }, 15000);
+    });
+  }
+
+  if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY) {
     describe("JSON format", () => {
       it.concurrent("works", async () => {
         const response = await scrape({
@@ -153,28 +177,6 @@ describe("Scrape tests", () => {
         expect(response.json.is_open_source).toBe(true);
         expect(typeof response.json.is_open_source).toBe("boolean");
       }, 30000);
-    });
-  
-    describe("Proxy API (f-e dependant)", () => {
-      it.concurrent("undefined works", async () => {
-        await scrape({
-          url: "http://firecrawl.dev",
-        });
-      }, 15000);
-
-      it.concurrent("basic works", async () => {
-        await scrape({
-          url: "http://firecrawl.dev",
-          proxy: "basic",
-        });
-      }, 15000);
-
-      it.concurrent("stealth works", async () => {
-        await scrape({
-          url: "http://firecrawl.dev",
-          proxy: "stealth",
-        });
-      }, 15000);
     });
   }
 });
