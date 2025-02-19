@@ -264,6 +264,7 @@ export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
   includeSubdomains?: boolean;
   origin?: string;
   showSources?: boolean;
+  scrapeOptions?: CrawlScrapeOptions;
 }
 
 /**
