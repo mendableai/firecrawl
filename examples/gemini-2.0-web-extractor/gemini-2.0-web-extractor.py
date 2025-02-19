@@ -24,7 +24,7 @@ client = genai.Client(api_key=os.getenv("GOOGLE_API_KEY"))
 firecrawl_api_key = os.getenv("FIRECRAWL_API_KEY")
 serp_api_key = os.getenv("SERP_API_KEY")
 
-# Add this debug print (remember to remove it before committing)
+
 if not firecrawl_api_key:
     print(f"{Colors.RED}Warning: FIRECRAWL_API_KEY not found in environment variables{Colors.RESET}")
 
@@ -167,7 +167,7 @@ def poll_firecrawl_result(extraction_id, api_key, interval=10, max_attempts=60):
                 print(json.dumps(data['data'], indent=2))
                 return data['data']
             elif data.get('success') and not data.get('data'):
-                if attempt % 6 == 0:  # Show progress every minute
+                if attempt % 6 == 0:  
                     print(f"{Colors.YELLOW}Still processing... (attempt {attempt}/{max_attempts}){Colors.RESET}")
                 time.sleep(interval)
             else:
