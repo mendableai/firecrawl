@@ -8,6 +8,7 @@ import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { scrapeDocument } from "../extract/document-scraper";
 import { PlanType } from "../../types";
+import { getLlmsTextFromCache, saveLlmsTextToCache } from "./generate-llmstxt-supabase";
 
 interface GenerateLLMsTextServiceOptions {
   generationId: string;
@@ -36,6 +37,30 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
   });
 
   try {
+    // Check cache first
+    const cachedResult = await getLlmsTextFromCache(url, maxUrls);
+    if (cachedResult) {
+      logger.info("Found cached LLMs text", { url });
+      
+      // Update final result with cached text
+      await updateGeneratedLlmsTxt(generationId, {
+        status: "completed",
+        generatedText: cachedResult.llmstxt,
+        fullText: cachedResult.llmstxt_full,
+        showFullText: showFullText,
+      });
+
+      return {
+        success: true,
+        data: {
+          generatedText: cachedResult.llmstxt,
+          fullText: cachedResult.llmstxt_full,
+          showFullText: showFullText,
+        },
+      };
+    }
+
+    // If not in cache, proceed with generation
     // First, get all URLs from the map controller
     const mapResult = await getMapResults({
       url,
@@ -115,6 +140,9 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
         continue;
       }
     }
+
+    // After successful generation, save to cache
+    await saveLlmsTextToCache(url, llmstxt, llmsFulltxt, maxUrls);
 
     // Update final result with both generated text and full text
     await updateGeneratedLlmsTxt(generationId, {

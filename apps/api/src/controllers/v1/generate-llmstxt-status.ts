@@ -19,12 +19,6 @@ export async function generateLLMsTextStatusController(
 
   let data: any = null;
 
-  if (generation.status === "completed") {
-    const jobData = await supabaseGetJobsById([req.params.jobId]);
-    if (jobData && jobData.length > 0) {
-      data = jobData[0].docs;
-    }
-  }
   if (showFullText) {
     data = {
       llmstxt: generation.generatedText,
