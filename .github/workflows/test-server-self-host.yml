@@ -41,6 +41,8 @@ jobs:
         run: npm run workers > worker.log 2>&1 &
         working-directory: ./apps/api
         id: start_workers
+      - name: Wait for server
+        run: pnpx wait-on tcp:3002 -t 15s
       - name: Run snippet tests
         run: |
           npm run test:snips
