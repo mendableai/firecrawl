@@ -21,6 +21,7 @@ jobs:
         with:
           node-version: "20"
           cache: "npm"
+          cache-dependency-path: './apps/js-sdk/firecrawl/package-lock.json'
       - name: Install dependencies
         run: npm install
         working-directory: ./apps/js-sdk/firecrawl

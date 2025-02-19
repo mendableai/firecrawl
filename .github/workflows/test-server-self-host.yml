@@ -28,6 +28,7 @@ jobs:
         with:
           node-version: "20"
           cache: "pnpm"
+          cache-dependency-path: './apps/api/pnpm-lock.yaml'
       - name: Install dependencies
         run: pnpm install
         working-directory: ./apps/api
