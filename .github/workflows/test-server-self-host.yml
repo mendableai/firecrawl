@@ -65,7 +65,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Logs (openai: ${{ matrix.openai }}, serper: ${{ matrix.serper }})
+          name: "Logs (openai: ${{ matrix.openai }}, serper: ${{ matrix.serper }})"
           path: |
             ./apps/api/api.log
             ./apps/api/worker.log
