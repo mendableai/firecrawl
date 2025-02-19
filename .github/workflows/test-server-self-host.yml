@@ -42,6 +42,7 @@ jobs:
         id: start_workers
       - name: Run snippet tests
         run: |
+          sleep 5
           npm run test:snips
         working-directory: ./apps/api
       - name: Kill instances
