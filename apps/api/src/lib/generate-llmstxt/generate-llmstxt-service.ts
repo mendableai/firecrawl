@@ -53,6 +53,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
         showFullText: showFullText,
       });
 
+      
       return {
         success: true,
         data: {
@@ -86,62 +87,72 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
     let llmsFulltxt = `# ${url} llms-full.txt\n\n`;
 
 
-    // Scrape each URL
-    for (const url of urls) {
-      _logger.debug(`Scraping URL: ${url}`);
-      const document = await scrapeDocument(
-        {
-          url,
-          teamId,
-          plan,
-          origin: url,
-          timeout: 30000,
-          isSingleUrl: true,
-        },
-        [],
-        logger,
-        { onlyMainContent: true }
-      );
-
-      if (!document) {
-        logger.error(`Failed to scrape URL ${url}`);
-        continue;
-      }
-
-      // Process scraped result
-      if (!document.markdown) continue;
-
-      _logger.debug(`Generating description for ${document.metadata?.url}`);
+    // Process URLs in batches of 10
+    for (let i = 0; i < urls.length; i += 10) {
+      const batch = urls.slice(i, i + 10);
       
-      const completion = await openai.beta.chat.completions.parse({
-        model: "gpt-4o-mini",
-        messages: [
-          {
-            role: "user", 
-            content: `Generate a 9-10 word description and a 3-4 word title of the entire page based on ALL the content one will find on the page for this url: ${document.metadata?.url}. This will help in a user finding the page for its intended purpose. Here is the content: ${document.markdown}`
+      const batchResults = await Promise.all(batch.map(async (url) => {
+        _logger.debug(`Scraping URL: ${url}`);
+        try {
+          const document = await scrapeDocument(
+            {
+              url,
+              teamId,
+              plan,
+              origin: url,
+              timeout: 30000,
+              isSingleUrl: true,
+            },
+            [],
+            logger,
+            { onlyMainContent: true }
+          );
+
+          if (!document || !document.markdown) {
+            logger.error(`Failed to scrape URL ${url}`);
+            return null;
           }
-        ],
-        response_format: zodResponseFormat(DescriptionSchema, "description")
-      });
 
-      try {
-        const parsedResponse = completion.choices[0].message.parsed;
-        const description = parsedResponse!.description;
-        const title = parsedResponse!.title;
+          _logger.debug(`Generating description for ${document.metadata?.url}`);
+          
+          const completion = await openai.beta.chat.completions.parse({
+            model: "gpt-4o-mini",
+            messages: [
+              {
+                role: "user", 
+                content: `Generate a 9-10 word description and a 3-4 word title of the entire page based on ALL the content one will find on the page for this url: ${document.metadata?.url}. This will help in a user finding the page for its intended purpose. Here is the content: ${document.markdown}`
+              }
+            ],
+            response_format: zodResponseFormat(DescriptionSchema, "description")
+          });
+
+          const parsedResponse = completion.choices[0].message.parsed;
+          return {
+            title: parsedResponse!.title,
+            description: parsedResponse!.description,
+            url: document.metadata?.url,
+            markdown: document.markdown
+          };
+        } catch (error) {
+          logger.error(`Failed to process URL ${url}`, { error });
+          return null;
+        }
+      }));
+
+      // Process successful results from batch
+      for (const result of batchResults) {
+        if (!result) continue;
         
-        llmstxt += `- [${title}](${document.metadata?.url}): ${description}\n`;
-        llmsFulltxt += `## ${title}\n${document.markdown}\n\n`;
-
-        // Update progress with both generated text and full text
-        await updateGeneratedLlmsTxt(generationId, {
-          status: "processing", 
-          generatedText: llmstxt,
-          fullText: llmsFulltxt,
-        });
-      } catch (error) {
-        logger.error(`Failed to parse LLM response for ${document.metadata?.url}`, { error });
-        continue;
+        llmstxt += `- [${result.title}](${result.url}): ${result.description}\n`;
+        llmsFulltxt += `## ${result.title}\n${result.markdown}\n\n`;
       }
+
+      // Update progress after each batch
+      await updateGeneratedLlmsTxt(generationId, {
+        status: "processing",
+        generatedText: llmstxt,
+        fullText: llmsFulltxt,
+      });
     }
 
     // After successful generation, save to cache
