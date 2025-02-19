@@ -21,7 +21,7 @@ export async function deepResearchStatusController(
 
   let data: any = null;
 
-  if (research.status === "completed") {
+  if (research.status === "completed" && process.env.USE_DB_AUTHENTICATION === "true") {
     const jobData = await supabaseGetJobsById([req.params.jobId]);
     if (jobData && jobData.length > 0) {
       data = jobData[0].docs[0];

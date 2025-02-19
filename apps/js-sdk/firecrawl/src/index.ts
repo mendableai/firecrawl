@@ -414,6 +414,48 @@ export interface DeepResearchStatusResponse {
 }
 
 /**
+ * Parameters for LLMs.txt generation operations.
+ */
+export interface GenerateLLMsTextParams {
+  /**
+   * Maximum number of URLs to process (1-100)
+   * @default 10
+   */
+  maxUrls?: number;
+  /**
+   * Whether to show the full LLMs-full.txt in the response
+   * @default false
+   */
+  showFullText?: boolean;
+  /**
+   * Experimental flag for streaming
+   */
+  __experimental_stream?: boolean;
+}
+
+/**
+ * Response interface for LLMs.txt generation operations.
+ */
+export interface GenerateLLMsTextResponse {
+  success: boolean;
+  id: string;
+}
+
+/**
+ * Status response interface for LLMs.txt generation operations.
+ */
+export interface GenerateLLMsTextStatusResponse {
+  success: boolean;
+  data: {
+    llmstxt: string;
+    llmsfulltxt?: string;
+  };
+  status: "processing" | "completed" | "failed";
+  error?: string;
+  expiresAt: string;
+}
+
+/**
  * Main class for interacting with the Firecrawl API.
  * Provides methods for scraping, searching, crawling, and mapping web content.
  */
@@ -1449,6 +1491,118 @@ export default class FirecrawlApp {
         throw new FirecrawlError("Deep research job not found", 404);
       } else {
         this.handleError(response, "check deep research status");
+      }
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new FirecrawlError(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`, error.response.status);
+      } else {
+        throw new FirecrawlError(error.message, 500);
+      }
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Generates LLMs.txt for a given URL and polls until completion.
+   * @param url - The URL to generate LLMs.txt from.
+   * @param params - Parameters for the LLMs.txt generation operation.
+   * @returns The final generation results.
+   */
+  async generateLLMsText(url: string, params?: GenerateLLMsTextParams): Promise<GenerateLLMsTextStatusResponse | ErrorResponse> {
+    try {
+      const response = await this.asyncGenerateLLMsText(url, params);
+      
+      if (!response.success || 'error' in response) {
+        return { success: false, error: 'error' in response ? response.error : 'Unknown error' };
+      }
+
+      if (!response.id) {
+        throw new FirecrawlError(`Failed to start LLMs.txt generation. No job ID returned.`, 500);
+      }
+
+      const jobId = response.id;
+      let generationStatus;
+
+      while (true) {
+        generationStatus = await this.checkGenerateLLMsTextStatus(jobId);
+        
+        if ('error' in generationStatus && !generationStatus.success) {
+          return generationStatus;
+        }
+
+        if (generationStatus.status === "completed") {
+          return generationStatus;
+        }
+
+        if (generationStatus.status === "failed") {
+          throw new FirecrawlError(
+            `LLMs.txt generation job ${generationStatus.status}. Error: ${generationStatus.error}`, 
+            500
+          );
+        }
+
+        if (generationStatus.status !== "processing") {
+          break;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+
+      return { success: false, error: "LLMs.txt generation job terminated unexpectedly" };
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500, error.response?.data?.details);
+    }
+  }
+
+  /**
+   * Initiates a LLMs.txt generation operation without polling.
+   * @param url - The URL to generate LLMs.txt from.
+   * @param params - Parameters for the LLMs.txt generation operation.
+   * @returns The response containing the generation job ID.
+   */
+  async asyncGenerateLLMsText(url: string, params?: GenerateLLMsTextParams): Promise<GenerateLLMsTextResponse | ErrorResponse> {
+    const headers = this.prepareHeaders();
+    try {
+      const response: AxiosResponse = await this.postRequest(
+        `${this.apiUrl}/v1/llmstxt`,
+        { url, ...params },
+        headers
+      );
+
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "start LLMs.txt generation");
+      }
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new FirecrawlError(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`, error.response.status);
+      } else {
+        throw new FirecrawlError(error.message, 500);
+      }
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Checks the status of a LLMs.txt generation operation.
+   * @param id - The ID of the LLMs.txt generation operation.
+   * @returns The current status and results of the generation operation.
+   */
+  async checkGenerateLLMsTextStatus(id: string): Promise<GenerateLLMsTextStatusResponse | ErrorResponse> {
+    const headers = this.prepareHeaders();
+    try {
+      const response: AxiosResponse = await this.getRequest(
+        `${this.apiUrl}/v1/llmstxt/${id}`,
+        headers
+      );
+
+      if (response.status === 200) {
+        return response.data;
+      } else if (response.status === 404) {
+        throw new FirecrawlError("LLMs.txt generation job not found", 404);
+      } else {
+        this.handleError(response, "check LLMs.txt generation status");
       }
     } catch (error: any) {
       if (error.response?.data?.error) {

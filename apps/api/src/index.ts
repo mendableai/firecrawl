@@ -8,6 +8,7 @@ import {
   getExtractQueue,
   getScrapeQueue,
   getIndexQueue,
+  getGenerateLlmsTxtQueue,
   getDeepResearchQueue,
 } from "./services/queue-service";
 import { v0Router } from "./routes/v0";
@@ -55,6 +56,7 @@ const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
     new BullAdapter(getScrapeQueue()),
     new BullAdapter(getExtractQueue()),
     new BullAdapter(getIndexQueue()),
+    new BullAdapter(getGenerateLlmsTxtQueue()),
     new BullAdapter(getDeepResearchQueue()),
   ],
   serverAdapter: serverAdapter,

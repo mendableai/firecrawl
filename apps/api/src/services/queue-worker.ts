@@ -11,6 +11,7 @@ import {
   extractQueueName,
   deepResearchQueueName,
   getIndexQueue,
+  getGenerateLlmsTxtQueue,
 } from "./queue-service";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
@@ -69,6 +70,8 @@ import { billTeam } from "./billing/credit_billing";
 import { saveCrawlMap } from "./indexing/crawl-maps-index";
 import { updateDeepResearch } from "../lib/deep-research/deep-research-redis";
 import { performDeepResearch } from "../lib/deep-research/deep-research-service";
+import { performGenerateLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt-service";
+import { updateGeneratedLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt-redis";
 
 configDotenv();
 
@@ -437,6 +440,76 @@ const processDeepResearchJobInternal = async (
 
     await updateDeepResearch(job.data.researchId, {
       status: "failed",
+      error: error.message || "Unknown error occurred",
+    });
+
+    return { success: false, error: error.message || "Unknown error occurred" };
+  } finally {
+    clearInterval(extendLockInterval);
+  }
+};
+
+const processGenerateLlmsTxtJobInternal = async (
+  token: string,
+  job: Job & { id: string },
+) => {
+  const logger = _logger.child({
+    module: "generate-llmstxt-worker",
+    method: "processJobInternal", 
+    jobId: job.id,
+    generateId: job.data.generateId,
+    teamId: job.data?.teamId ?? undefined,
+  });
+
+  const extendLockInterval = setInterval(async () => {
+    logger.info(`🔄 Worker extending lock on job ${job.id}`);
+    await job.extendLock(token, jobLockExtensionTime);
+  }, jobLockExtendInterval);
+
+  try {
+    const result = await performGenerateLlmsTxt({
+      generationId: job.data.generationId,
+      teamId: job.data.teamId,
+      plan: job.data.plan,
+      url: job.data.request.url,
+      maxUrls: job.data.request.maxUrls,
+      showFullText: job.data.request.showFullText,
+    });
+
+    if (result.success) {
+      await job.moveToCompleted(result, token, false);
+      await updateGeneratedLlmsTxt(job.data.generateId, {
+        status: "completed",
+        generatedText: result.data.generatedText,
+        fullText: result.data.fullText,
+      });
+      return result;
+    } else {
+      const error = new Error("LLMs text generation failed without specific error");
+      await job.moveToFailed(error, token, false);
+      await updateGeneratedLlmsTxt(job.data.generateId, {
+        status: "failed",
+        error: error.message,
+      });
+      return { success: false, error: error.message };
+    }
+  } catch (error) {
+    logger.error(`🚫 Job errored ${job.id} - ${error}`, { error });
+
+    Sentry.captureException(error, {
+      data: {
+        job: job.id,
+      },
+    });
+
+    try {
+      await job.moveToFailed(error, token, false);
+    } catch (e) {
+      logger.error("Failed to move job to failed state in Redis", { error });
+    }
+
+    await updateGeneratedLlmsTxt(job.data.generateId, {
+      status: "failed", 
       error: error.message || "Unknown error occurred",
     });
 
@@ -1170,6 +1243,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     workerFun(getScrapeQueue(), processJobInternal),
     workerFun(getExtractQueue(), processExtractJobInternal),
     workerFun(getDeepResearchQueue(), processDeepResearchJobInternal),
+    workerFun(getGenerateLlmsTxtQueue(), processGenerateLlmsTxtJobInternal),
   ]);
 
   console.log("All workers exited. Waiting for all jobs to finish...");

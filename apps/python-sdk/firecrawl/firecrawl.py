@@ -33,6 +33,14 @@ class SearchParams(pydantic.BaseModel):
     timeout: Optional[int] = 60000
     scrapeOptions: Optional[Dict[str, Any]] = None
 
+class GenerateLLMsTextParams(pydantic.BaseModel):
+    """
+    Parameters for the LLMs.txt generation operation.
+    """
+    maxUrls: Optional[int] = 10
+    showFullText: Optional[bool] = False
+    __experimental_stream: Optional[bool] = None
+
 class FirecrawlApp:
     class SearchResponse(pydantic.BaseModel):
         """
@@ -755,6 +763,123 @@ class FirecrawlApp:
                 self._handle_error(response, "async extract")
         except Exception as e:
             raise ValueError(str(e), 500)
+
+    def generate_llms_text(self, url: str, params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> Dict[str, Any]:
+        """
+        Generate LLMs.txt for a given URL and poll until completion.
+
+        Args:
+            url (str): The URL to generate LLMs.txt from.
+            params (Optional[Union[Dict[str, Any], GenerateLLMsTextParams]]): Parameters for the LLMs.txt generation.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the generation results. The structure includes:
+                - 'success' (bool): Indicates if the generation was successful.
+                - 'status' (str): The final status of the generation job.
+                - 'data' (Dict): The generated LLMs.txt data.
+                - 'error' (Optional[str]): Error message if the generation failed.
+                - 'expiresAt' (str): ISO 8601 formatted date-time string indicating when the data expires.
+
+        Raises:
+            Exception: If the generation job fails or an error occurs during status checks.
+        """
+        if params is None:
+            params = {}
+
+        if isinstance(params, dict):
+            generation_params = GenerateLLMsTextParams(**params)
+        else:
+            generation_params = params
+
+        response = self.async_generate_llms_text(url, generation_params)
+        if not response.get('success') or 'id' not in response:
+            return response
+
+        job_id = response['id']
+        while True:
+            status = self.check_generate_llms_text_status(job_id)
+            
+            if status['status'] == 'completed':
+                return status
+            elif status['status'] == 'failed':
+                raise Exception(f'LLMs.txt generation failed. Error: {status.get("error")}')
+            elif status['status'] != 'processing':
+                break
+
+            time.sleep(2)  # Polling interval
+
+        return {'success': False, 'error': 'LLMs.txt generation job terminated unexpectedly'}
+
+    def async_generate_llms_text(self, url: str, params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> Dict[str, Any]:
+        """
+        Initiate an asynchronous LLMs.txt generation operation.
+
+        Args:
+            url (str): The URL to generate LLMs.txt from.
+            params (Optional[Union[Dict[str, Any], GenerateLLMsTextParams]]): Parameters for the LLMs.txt generation.
+
+        Returns:
+            Dict[str, Any]: A dictionary containing the generation initiation response. The structure includes:
+                - 'success' (bool): Indicates if the generation initiation was successful.
+                - 'id' (str): The unique identifier for the generation job.
+
+        Raises:
+            Exception: If the generation job initiation fails.
+        """
+        if params is None:
+            params = {}
+
+        if isinstance(params, dict):
+            generation_params = GenerateLLMsTextParams(**params)
+        else:
+            generation_params = params
+
+        headers = self._prepare_headers()
+        json_data = {'url': url, **generation_params.dict(exclude_none=True)}
+
+        try:
+            response = self._post_request(f'{self.api_url}/v1/llmstxt', json_data, headers)
+            if response.status_code == 200:
+                try:
+                    return response.json()
+                except:
+                    raise Exception('Failed to parse Firecrawl response as JSON.')
+            else:
+                self._handle_error(response, 'start LLMs.txt generation')
+        except Exception as e:
+            raise ValueError(str(e))
+
+        return {'success': False, 'error': 'Internal server error'}
+
+    def check_generate_llms_text_status(self, id: str) -> Dict[str, Any]:
+        """
+        Check the status of a LLMs.txt generation operation.
+
+        Args:
+            id (str): The ID of the LLMs.txt generation operation.
+
+        Returns:
+            Dict[str, Any]: The current status and results of the generation operation.
+
+        Raises:
+            Exception: If the status check fails.
+        """
+        headers = self._prepare_headers()
+        try:
+            response = self._get_request(f'{self.api_url}/v1/llmstxt/{id}', headers)
+            if response.status_code == 200:
+                try:
+                    return response.json()
+                except:
+                    raise Exception('Failed to parse Firecrawl response as JSON.')
+            elif response.status_code == 404:
+                raise Exception('LLMs.txt generation job not found')
+            else:
+                self._handle_error(response, 'check LLMs.txt generation status')
+        except Exception as e:
+            raise ValueError(str(e))
+
+        return {'success': False, 'error': 'Internal server error'}
 
     def _prepare_headers(self, idempotency_key: Optional[str] = None) -> Dict[str, str]:
         """
