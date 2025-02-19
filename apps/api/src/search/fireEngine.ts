@@ -29,9 +29,7 @@ export async function fireEngineMap(
     });
 
     if (!process.env.FIRE_ENGINE_BETA_URL) {
-      console.warn(
-        "(v1/map Beta) Results might differ from cloud offering currently.",
-      );
+      logger.warn("(v1/map Beta) Results might differ from cloud offering currently.");
       return [];
     }
 

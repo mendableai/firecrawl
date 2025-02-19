@@ -3,10 +3,6 @@ import { Document } from "../../../controllers/v1/types";
 import { logger } from "../../logger";
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 const pinecone = new Pinecone({
   apiKey: process.env.PINECONE_API_KEY!,
 });
@@ -27,6 +23,10 @@ export interface PageMetadata {
 }
 
 async function getEmbedding(text: string) {
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+  
   const embedding = await openai.embeddings.create({
     model: "text-embedding-3-small",
     input: text,

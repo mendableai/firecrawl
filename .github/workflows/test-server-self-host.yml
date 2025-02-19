@@ -1,22 +1,35 @@
 name: Self-hosted Server Test Suite
 
 on:
-  workflow_dispatch:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - apps/api/**
 
 env:
   PORT: 3002
   REDIS_URL: redis://localhost:6379
+  HOST: 0.0.0.0
   ENV: ${{ secrets.ENV }}
+  TEST_SUITE_SELF_HOSTED: true
 
 jobs:
   test:
     name: Run tests
+    strategy:
+      matrix:
+        openai: [true, false]
+        serper: [true, false]
     runs-on: ubuntu-latest
     services:
       redis:
         image: redis
         ports:
           - 6379:6379
+    env:
+      OPENAI_API_KEY: ${{ matrix.openai == true && secrets.OPENAI_API_KEY || '' }}
+      SERPER_API_KEY: ${{ matrix.serper == true && secrets.SERPER_API_KEY || '' }}
     steps:
       - uses: actions/checkout@v3
       - name: Install pnpm
@@ -40,6 +53,8 @@ jobs:
         run: npm run workers > worker.log 2>&1 &
         working-directory: ./apps/api
         id: start_workers
+      - name: Wait for server
+        run: pnpx wait-on tcp:3002 -t 15s
       - name: Run snippet tests
         run: |
           npm run test:snips
@@ -50,7 +65,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Logs
+          name: Logs (openai ${{ matrix.openai }}, serper ${{ matrix.serper }})
           path: |
             ./apps/api/api.log
             ./apps/api/worker.log
