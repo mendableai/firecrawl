@@ -349,6 +349,70 @@ export interface CrawlErrorsResponse {
 };
 
 /**
+ * Parameters for deep research operations.
+ * Defines options for conducting deep research on a topic.
+ */
+export interface DeepResearchParams {
+  /**
+   * Maximum depth of research iterations (1-10)
+   * @default 7
+   */
+  maxDepth?: number;
+  /**
+   * Time limit in seconds (30-300)
+   * @default 270
+   */
+  timeLimit?: number;
+  /**
+   * Experimental flag for streaming steps
+   */
+  __experimental_streamSteps?: boolean;
+}
+
+/**
+ * Response interface for deep research operations.
+ */
+export interface DeepResearchResponse {
+  success: boolean;
+  id: string;
+}
+
+/**
+ * Status response interface for deep research operations.
+ */
+export interface DeepResearchStatusResponse {
+  success: boolean;
+  data: {
+    findings: Array<{
+      text: string;
+      source: string;
+    }>;
+    finalAnalysis: string;
+    analysis: string;
+    completedSteps: number;
+    totalSteps: number;
+  };
+  status: "processing" | "completed" | "failed";
+  error?: string;
+  expiresAt: string;
+  currentDepth: number;
+  maxDepth: number;
+  activities: Array<{
+    type: string;
+    status: string;
+    message: string;
+    timestamp: string;
+    depth: number;
+  }>;
+  sources: Array<{
+    url: string;
+    title: string;
+    description: string;
+  }>;
+  summaries: string[];
+}
+
+/**
  * Main class for interacting with the Firecrawl API.
  * Provides methods for scraping, searching, crawling, and mapping web content.
  */
@@ -1280,6 +1344,119 @@ export default class FirecrawlApp {
         response.status
       );
     }
+  }
+
+  /**
+   * Initiates a deep research operation on a given topic and polls until completion.
+   * @param params - Parameters for the deep research operation.
+   * @returns The final research results.
+   */
+  async __deepResearch(topic: string, params: DeepResearchParams): Promise<DeepResearchStatusResponse | ErrorResponse> {
+    try {
+      const response = await this.__asyncDeepResearch(topic, params);
+      
+      if (!response.success || 'error' in response) {
+        return { success: false, error: 'error' in response ? response.error : 'Unknown error' };
+      }
+
+      if (!response.id) {
+        throw new FirecrawlError(`Failed to start research. No job ID returned.`, 500);
+      }
+
+      const jobId = response.id;
+      let researchStatus;
+
+      while (true) {
+        // console.log("Checking research status...");
+        researchStatus = await this.__checkDeepResearchStatus(jobId);
+        // console.log("Research status:", researchStatus);
+        
+        if ('error' in researchStatus && !researchStatus.success) {
+          return researchStatus;
+        }
+
+        if (researchStatus.status === "completed") {
+          return researchStatus;
+        }
+
+        if (researchStatus.status === "failed") {
+          throw new FirecrawlError(
+            `Research job ${researchStatus.status}. Error: ${researchStatus.error}`, 
+            500
+          );
+        }
+
+        if (researchStatus.status !== "processing") {
+          break;
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 2000));
+      }
+      // console.log("Research status finished:", researchStatus);
+
+      return { success: false, error: "Research job terminated unexpectedly" };
+    } catch (error: any) {
+      throw new FirecrawlError(error.message, 500, error.response?.data?.details);
+    }
+  }
+
+  /**
+   * Initiates a deep research operation on a given topic without polling.
+   * @param params - Parameters for the deep research operation.
+   * @returns The response containing the research job ID.
+   */
+  async __asyncDeepResearch(topic: string, params: DeepResearchParams): Promise<DeepResearchResponse | ErrorResponse> {
+    const headers = this.prepareHeaders();
+    try {
+      const response: AxiosResponse = await this.postRequest(
+        `${this.apiUrl}/v1/deep-research`,
+        { topic, ...params },
+        headers
+      );
+
+      if (response.status === 200) {
+        return response.data;
+      } else {
+        this.handleError(response, "start deep research");
+      }
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new FirecrawlError(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`, error.response.status);
+      } else {
+        throw new FirecrawlError(error.message, 500);
+      }
+    }
+    return { success: false, error: "Internal server error." };
+  }
+
+  /**
+   * Checks the status of a deep research operation.
+   * @param id - The ID of the deep research operation.
+   * @returns The current status and results of the research operation.
+   */
+  async __checkDeepResearchStatus(id: string): Promise<DeepResearchStatusResponse | ErrorResponse> {
+    const headers = this.prepareHeaders();
+    try {
+      const response: AxiosResponse = await this.getRequest(
+        `${this.apiUrl}/v1/deep-research/${id}`,
+        headers
+      );
+
+      if (response.status === 200) {
+        return response.data;
+      } else if (response.status === 404) {
+        throw new FirecrawlError("Deep research job not found", 404);
+      } else {
+        this.handleError(response, "check deep research status");
+      }
+    } catch (error: any) {
+      if (error.response?.data?.error) {
+        throw new FirecrawlError(`Request failed with status code ${error.response.status}. Error: ${error.response.data.error} ${error.response.data.details ? ` - ${JSON.stringify(error.response.data.details)}` : ''}`, error.response.status);
+      } else {
+        throw new FirecrawlError(error.message, 500);
+      }
+    }
+    return { success: false, error: "Internal server error." };
   }
 }
 
