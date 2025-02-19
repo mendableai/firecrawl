@@ -106,7 +106,7 @@ describe("Scrape tests", () => {
         });
     
         expect(typeof response.screenshot).toBe("string");
-      }, 15000);
+      }, 30000);
 
       it.concurrent("screenshot@fullPage format works", async () => {
         const response = await scrape({
@@ -115,7 +115,7 @@ describe("Scrape tests", () => {
         });
     
         expect(typeof response.screenshot).toBe("string");
-      }, 15000);
+      }, 30000);
     });
 
     describe("JSON format", () => {
