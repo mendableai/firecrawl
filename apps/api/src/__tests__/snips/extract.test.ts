@@ -30,7 +30,7 @@ async function extract(body: ExtractRequestInput): Promise<ExtractResponse> {
         x = await extractStatus(es.body.id);
         expect(x.statusCode).toBe(200);
         expect(typeof x.body.status).toBe("string");
-    } while (x.body.status !== "completed");
+    } while (x.body.status === "processing");
 
     expectExtractToSucceed(x);
     return x.body;

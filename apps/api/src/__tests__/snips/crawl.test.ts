@@ -30,7 +30,7 @@ async function crawl(body: CrawlRequestInput): ReturnType<typeof crawlStatus> {
         x = await crawlStatus(cs.body.id);
         expect(x.statusCode).toBe(200);
         expect(typeof x.body.status).toBe("string");
-    } while (x.body.status !== "completed")
+    } while (x.body.status === "scraping");
 
     expectCrawlToSucceed(x);
     return x;

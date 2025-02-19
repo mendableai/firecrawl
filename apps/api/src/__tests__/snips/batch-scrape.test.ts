@@ -30,7 +30,7 @@ async function batchScrape(body: BatchScrapeRequestInput): ReturnType<typeof bat
         x = await batchScrapeStatus(bss.body.id);
         expect(x.statusCode).toBe(200);
         expect(typeof x.body.status).toBe("string");
-    } while (x.body.status !== "completed")
+    } while (x.body.status === "scraping");
 
     expectBatchScrapeToSucceed(x);
     return x;
