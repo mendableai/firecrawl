@@ -1,0 +1,59 @@
+import os
+import json
+import time
+from firecrawl import FirecrawlApp
+from urllib.parse import urlparse, urljoin
+
+app = FirecrawlApp(api_key="fc-fb63db6e33ca4fddb5d72b48a043ef03")
+
+# Base URL
+base_url = "https://www.petsathome.com"
+
+# Directory to save crawled pages
+save_directory = "crawled_pages"
+os.makedirs(save_directory, exist_ok=True)
+
+# To avoid duplicate crawling
+visited_urls = set()
+
+def get_internal_links(page_data):
+    """Extract internal links from the crawled page"""
+    links = set()
+    if "extractedLinks" in page_data:
+        for link in page_data["extractedLinks"]:
+            if link.startswith(base_url):  # Ensure it's an internal link
+                links.add(link)
+    return links
+
+def save_page(url, data):
+    """Save crawled page content with a structured filename"""
+    parsed_url = urlparse(url)
+    filename = parsed_url.path.strip("/").replace("/", "_") or "index"
+    filepath = os.path.join(save_directory, f"{filename}.json")
+
+    with open(filepath, 'w', encoding='utf-8') as file:
+        json.dump(data, file, indent=4)
+
+    print(f"Saved: {filepath}")
+
+def crawl_website(url):
+    """Recursive function to crawl and save pages"""
+    if url in visited_urls:
+        return
+    visited_urls.add(url)
+
+    # Crawl the page
+    print(f"Crawling: {url}")
+    crawl_status = app.crawl_url(url, params={"limit": 50, "scrapeOptions": {"formats": ["markdown"]}})
+
+    # Save page
+    save_page(url, crawl_status)
+
+    # Extract and crawl new links
+    new_links = get_internal_links(crawl_status)
+    for link in new_links:
+        crawl_website(link)  # Recursively crawl new links
+    time.sleep(1)  # Delay to avoid overloading the server
+
+# Start crawling from the homepage
+crawl_website(base_url)
