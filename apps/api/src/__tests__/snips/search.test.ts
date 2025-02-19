@@ -28,15 +28,9 @@ async function search(body: SearchRequestInput): Promise<Document> {
 }
 
 describe("Search tests", () => {
-  if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.SERPER_API_KEY) {
-    it.concurrent("works", async () => {
-      await search({
-        query: "firecrawl"
-      });
-    }, 15000);
-  } else {
-    it.concurrent("dummy test", () => {
-      expect(true).toBe(true);
+  it.concurrent("works", async () => {
+    await search({
+      query: "firecrawl"
     });
-  }
+  }, 15000);
 });
