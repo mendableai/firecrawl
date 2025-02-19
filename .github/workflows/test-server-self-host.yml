@@ -29,14 +29,23 @@ jobs:
         run: pnpm install
         working-directory: ./apps/api
       - name: Start the application
-        run: npm start &
+        run: npm start > api.log 2>&1 &
         working-directory: ./apps/api
         id: start_app
       - name: Start workers
-        run: npm run workers &
+        run: npm run workers > worker.log 2>&1 &
         working-directory: ./apps/api
         id: start_workers
       - name: Run snippet tests
         run: |
           npm run test:snips
         working-directory: ./apps/api
+        continue-on-error: true
+      - name: Kill instances
+        run: pkill -9 node
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Logs
+          path: |
+            ./apps/api/api.log
+            ./apps/api/worker.log
