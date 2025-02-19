@@ -245,7 +245,7 @@ export class ResearchLLMService {
 
       return extract.analysis;
     } catch (error) {
-      this.logger.error("Analysis error:", error);
+      this.logger.error("Analysis error", { error });
       return null;
     }
   }
