@@ -9,18 +9,18 @@ import { extractConfig } from "./config";
 import { updateExtract } from "./extract-redis";
 import { ExtractStep } from "./extract-redis";
 import type { Logger } from "winston";
-import OpenAI from "openai";
+import { generateText } from "ai";
+import { openai } from '@ai-sdk/openai';
+import { TiktokenModel } from "@dqbd/tiktoken/tiktoken";
 
 export async function generateBasicCompletion(prompt: string) {
-  const openai = new OpenAI();
-  const model = process.env.MODEL_NAME || "gpt-4o";
-
-  const completion = await openai.chat.completions.create({
-    temperature: 0,
-    model,
-    messages: [{ role: "user", content: prompt }],
+  const model = process.env.MODEL_NAME ? openai(process.env.MODEL_NAME as TiktokenModel) : openai("gpt-4o");
+  const { text } = await generateText({
+    model: model,
+    prompt: prompt,
+    temperature: 0
   });
-  return completion.choices[0].message.content;
+  return text;
 }
 interface ProcessUrlOptions {
   url: string;
