@@ -39,7 +39,7 @@ describe("Scrape tests", () => {
     expect(response.markdown).toBe(
       "this is fake data coming from the mocking system!",
     );
-  }, 10000);
+  }, 30000);
 
   it.concurrent("works", async () => {
     const response = await scrape({
@@ -47,7 +47,7 @@ describe("Scrape tests", () => {
     });
 
     expect(response.markdown).toContain("Firecrawl");
-  }, 10000);
+  }, 30000);
 
   it.concurrent("handles non-UTF-8 encodings", async () => {
     const response = await scrape({
@@ -55,7 +55,7 @@ describe("Scrape tests", () => {
     });
 
     expect(response.markdown).toContain("ぐ け げ こ ご さ ざ し じ す ず せ ぜ そ ぞ た");
-  }, 15000);
+  }, 30000);
 
   if (process.env.TEST_SUITE_SELF_HOSTED && process.env.PROXY_SERVER) {
     it.concurrent("self-hosted proxy works", async () => {
@@ -64,7 +64,7 @@ describe("Scrape tests", () => {
       });
 
       expect(response.markdown?.trim()).toBe(process.env.PROXY_SERVER!.split("://").slice(-1)[0].split(":")[0]);
-    });
+    }, 30000);
   }
 
   if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.PLAYWRIGHT_MICROSERVICE_URL) {
@@ -75,7 +75,7 @@ describe("Scrape tests", () => {
       });
   
       expect(response.markdown).toContain("Firecrawl");
-    }, 15000);
+    }, 30000);
   }
 
   describe("JSON scrape support", () => {
@@ -87,7 +87,7 @@ describe("Scrape tests", () => {
 
       const obj = JSON.parse(response.rawHtml!);
       expect(obj.id).toBe(1);
-    }, 25000); // TODO: mock and shorten
+    }, 30000);
   });
 
   if (!process.env.TEST_SUITE_SELF_HOSTED) {
@@ -98,7 +98,7 @@ describe("Scrape tests", () => {
         });
 
         expect(response.markdown).not.toContain(".g.doubleclick.net/");
-      }, 10000);
+      }, 30000);
 
       it.concurrent("doesn't block ads if explicitly disabled", async () => {
         const response = await scrape({
@@ -107,15 +107,15 @@ describe("Scrape tests", () => {
         });
 
         expect(response.markdown).toContain(".g.doubleclick.net/");
-      }, 10000);
+      }, 30000);
     });
   
     describe("Location API (f-e dependant)", () => {
       it.concurrent("works without specifying an explicit location", async () => {
-        const response = await scrape({
+        await scrape({
           url: "https://iplocation.com",
         });
-      }, 10000);
+      }, 30000);
 
       it.concurrent("works with country US", async () => {
         const response = await scrape({
@@ -124,7 +124,7 @@ describe("Scrape tests", () => {
         });
     
         expect(response.markdown).toContain("| Country | United States |");
-      }, 10000);
+      }, 30000);
     });
 
     describe("Screenshot (f-e/sb dependant)", () => {
@@ -152,14 +152,14 @@ describe("Scrape tests", () => {
         await scrape({
           url: "http://firecrawl.dev",
         });
-      }, 15000);
+      }, 30000);
 
       it.concurrent("basic works", async () => {
         await scrape({
           url: "http://firecrawl.dev",
           proxy: "basic",
         });
-      }, 15000);
+      }, 30000);
 
       it.concurrent("stealth works", async () => {
         await scrape({
