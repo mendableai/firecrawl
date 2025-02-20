@@ -1,13 +1,6 @@
 import { logger as _logger } from "../logger";
 import { updateGeneratedLlmsTxt } from "./generate-llmstxt-redis";
 import { getMapResults } from "../../controllers/v1/map";
-import {
-  MapResponse,
-  ScrapeResponse,
-  Document,
-} from "../../controllers/v1/types";
-import { Response } from "express";
-import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 import { scrapeDocument } from "../extract/document-scraper";
 import { PlanType } from "../../types";
