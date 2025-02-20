@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - apps/api/**
+      - apps/playwright-service-ts/**
 
 env:
   PORT: 3002
@@ -21,6 +22,8 @@ jobs:
       matrix:
         openai: [true, false]
         serper: [true, false]
+        playwright: [true, false]
+      fail-fast: false
     runs-on: ubuntu-latest
     services:
       redis:
@@ -30,6 +33,7 @@ jobs:
     env:
       OPENAI_API_KEY: ${{ matrix.openai == true && secrets.OPENAI_API_KEY || '' }}
       SERPER_API_KEY: ${{ matrix.serper == true && secrets.SERPER_API_KEY || '' }}
+      PLAYWRIGHT_MICROSERVICE_URL: ${{ matrix.playwright == true && 'http://localhost:3003/scrape' || '' }}
     steps:
       - uses: actions/checkout@v3
       - name: Install pnpm
@@ -45,16 +49,30 @@ jobs:
       - name: Install dependencies
         run: pnpm install
         working-directory: ./apps/api
-      - name: Start the application
+      - name: Install Playwright dependencies
+        if: matrix.playwright == true
+        run: |
+          pnpm install
+          pnpm exec playwright install-deps
+          pnpm exec playwright install
+        working-directory: ./apps/playwright-service-ts
+      - name: Start server
         run: npm start > api.log 2>&1 &
         working-directory: ./apps/api
-        id: start_app
-      - name: Start workers
+      - name: Start worker
         run: npm run workers > worker.log 2>&1 &
         working-directory: ./apps/api
-        id: start_workers
+      - name: Start playwright
+        if: matrix.playwright == true
+        run: npm run dev > playwright.log 2>&1 &
+        working-directory: ./apps/playwright-service-ts
+        env:
+          PORT: 3003
       - name: Wait for server
         run: pnpx wait-on tcp:3002 -t 15s
+      - name: Wait for playwright
+        if: matrix.playwright == true
+        run: pnpx wait-on tcp:3003 -t 15s
       - name: Run snippet tests
         run: |
           npm run test:snips
@@ -65,7 +83,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Logs (openai ${{ matrix.openai }}, serper ${{ matrix.serper }})
+          name: Logs (openai ${{ matrix.openai }}, serper ${{ matrix.serper }}, playwright ${{ matrix.playwright }})
           path: |
             ./apps/api/api.log
             ./apps/api/worker.log
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.playwright
+        with:
+          name: Playwright Logs (openai ${{ matrix.openai }}, serper ${{ matrix.serper }})
+          path: |
+            ./apps/playwright-service-ts/playwright.log

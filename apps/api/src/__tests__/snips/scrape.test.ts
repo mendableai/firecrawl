@@ -26,7 +26,7 @@ async function scrape(body: ScrapeRequestInput): Promise<Document> {
 }
 
 describe("Scrape tests", () => {
-  it("mocking works properly", async () => {
+  it.concurrent("mocking works properly", async () => {
     // depends on falsified mock mocking-works-properly
     // this test will fail if mock is bypassed with real data -- firecrawl.dev will never have
     // that as its actual markdown output
@@ -41,13 +41,24 @@ describe("Scrape tests", () => {
     );
   }, 10000);
 
-  it("works", async () => {
+  it.concurrent("works", async () => {
     const response = await scrape({
       url: "http://firecrawl.dev"
     });
 
     expect(response.markdown).toContain("Firecrawl");
   }, 10000);
+
+  if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.PLAYWRIGHT_MICROSERVICE_URL) {
+    it.concurrent("waitFor works", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev",
+        waitFor: 2000,
+      });
+  
+      expect(response.markdown).toContain("Firecrawl");
+    }, 15000);
+  }
 
   describe("JSON scrape support", () => {
     it.concurrent("returns parseable JSON", async () => {
