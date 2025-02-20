@@ -54,6 +54,7 @@ USE_DB_AUTHENTICATION=false
 # Experimental: Use Ollama
 # OLLAMA_BASE_URL=http://localhost:11434/v1
 # MODEL_NAME=deepseek-r1:7b
+# MODEL_EMBEDDING_NAME=nomic-embed-text
 
 ## === Proxy ===
 # PROXY_SERVER can be a full URL (e.g. http://0.1.2.3:1234) or just an IP and port combo (e.g. 0.1.2.3:1234)
