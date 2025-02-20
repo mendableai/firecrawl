@@ -7,6 +7,7 @@ import {
   InsecureConnectionError,
   makeSecureDispatcher,
 } from "../utils/safeFetch";
+import { MockState, saveMock } from "../../lib/mock";
 
 export async function scrapeURLWithFetch(
   meta: Meta,
@@ -14,44 +15,95 @@ export async function scrapeURLWithFetch(
 ): Promise<EngineScrapeResult> {
   const timeout = timeToRun ?? 300000;
 
-  let response: undici.Response;
-  try {
-    response = await Promise.race([
-      undici.fetch(meta.url, {
-        dispatcher: await makeSecureDispatcher(meta.url),
-        redirect: "follow",
-        headers: meta.options.headers,
-      }),
-      (async () => {
-        await new Promise((resolve) =>
-          setTimeout(() => resolve(null), timeout),
+  const mockOptions = {
+    url: meta.url,
+
+    // irrelevant
+    method: "GET",
+    ignoreResponse: false,
+    ignoreFailure: false,
+    tryCount: 1,
+  };
+
+  let response: {
+    url: string;
+    body: string,
+    status: number;
+    headers: any;
+  };
+
+  if (meta.mock !== null) {
+    const makeRequestTypeId = (
+      request: MockState["requests"][number]["options"],
+    ) => request.url + ";" + request.method;
+
+    const thisId = makeRequestTypeId(mockOptions);
+    const matchingMocks = meta.mock.requests
+      .filter((x) => makeRequestTypeId(x.options) === thisId)
+      .sort((a, b) => a.time - b.time);
+    const nextI = meta.mock.tracker[thisId] ?? 0;
+    meta.mock.tracker[thisId] = nextI + 1;
+
+    if (!matchingMocks[nextI]) {
+      throw new Error("Failed to mock request -- no mock targets found.");
+    }
+
+    response = {
+      ...matchingMocks[nextI].result,
+    };
+  } else {
+    try {
+      const x = await Promise.race([
+        undici.fetch(meta.url, {
+          dispatcher: await makeSecureDispatcher(meta.url),
+          redirect: "follow",
+          headers: meta.options.headers,
+          signal: meta.internalOptions.abort,
+        }),
+        (async () => {
+          await new Promise((resolve) =>
+            setTimeout(() => resolve(null), timeout),
+          );
+          throw new TimeoutError(
+            "Fetch was unable to scrape the page before timing out",
+            { cause: { timeout } },
+          );
+        })(),
+      ]);
+
+      response = {
+        url: x.url,
+        body: await x.text(),
+        status: x.status,
+        headers: [...x.headers],
+      };
+
+      if (meta.mock === null) {
+        await saveMock(
+          mockOptions,
+          response,
         );
-        throw new TimeoutError(
-          "Fetch was unable to scrape the page before timing out",
-          { cause: { timeout } },
-        );
-      })(),
-    ]);
-  } catch (error) {
-    if (
-      error instanceof TypeError &&
-      error.cause instanceof InsecureConnectionError
-    ) {
-      throw error.cause;
-    } else {
-      throw error;
+      }
+    } catch (error) {
+      if (
+        error instanceof TypeError &&
+        error.cause instanceof InsecureConnectionError
+      ) {
+        throw error.cause;
+      } else {
+        throw error;
+      }
     }
   }
 
-  specialtyScrapeCheck(
+  await specialtyScrapeCheck(
     meta.logger.child({ method: "scrapeURLWithFetch/specialtyScrapeCheck" }),
     Object.fromEntries(response.headers as any),
   );
 
   return {
     url: response.url,
-    html: await response.text(),
+    html: response.body,
     statusCode: response.status,
-    // TODO: error?
   };
 }

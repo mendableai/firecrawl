@@ -24,8 +24,9 @@ import * as Sentry from "@sentry/node";
 import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import { fireEngineDelete } from "./delete";
-import { MockState, saveMock } from "../../lib/mock";
+import { MockState } from "../../lib/mock";
 import { getInnerJSON } from "../../../../lib/html-transformer";
+import { TimeoutSignal } from "../../../../controllers/v1/types";
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -40,6 +41,7 @@ async function performFireEngineScrape<
   request: FireEngineScrapeRequestCommon & Engine,
   timeout: number,
   mock: MockState | null,
+  abort?: AbortSignal,
 ): Promise<FireEngineCheckStatusSuccess> {
   const scrape = await fireEngineScrape(
     logger.child({ method: "fireEngineScrape" }),
@@ -84,6 +86,7 @@ async function performFireEngineScrape<
         logger.child({ method: "fireEngineCheckStatus" }),
         scrape.jobId,
         mock,
+        abort,
       );
     } catch (error) {
       if (error instanceof StillProcessingError) {
@@ -107,6 +110,16 @@ async function performFireEngineScrape<
           jobId: scrape.jobId,
         });
         throw error;
+      } else if (error instanceof TimeoutSignal) {
+        fireEngineDelete(
+          logger.child({
+            method: "performFireEngineScrape/fireEngineDelete",
+            afterError: error,
+          }),
+          scrape.jobId,
+          mock,
+        );
+        throw error;
       } else {
         Sentry.captureException(error);
         errors.push(error);
@@ -120,11 +133,12 @@ async function performFireEngineScrape<
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 
-  specialtyScrapeCheck(
+  await specialtyScrapeCheck(
     logger.child({
       method: "performFireEngineScrape/specialtyScrapeCheck",
     }),
     status.responseHeaders,
+    status,
   );
 
   const contentType = (Object.entries(status.responseHeaders ?? {}).find(
@@ -219,6 +233,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     request,
     timeout,
     meta.mock,
+    meta.internalOptions.abort,
   );
 
   if (
@@ -298,6 +313,7 @@ export async function scrapeURLWithFireEnginePlaywright(
     request,
     timeout,
     meta.mock,
+    meta.internalOptions.abort,
   );
 
   if (!response.url) {
@@ -353,6 +369,7 @@ export async function scrapeURLWithFireEngineTLSClient(
     request,
     timeout,
     meta.mock,
+    meta.internalOptions.abort,
   );
 
   if (!response.url) {

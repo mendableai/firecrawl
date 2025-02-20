@@ -13,13 +13,13 @@ x-common-service: &common-service
 
 services:
   playwright-service:
-    build: apps/playwright-service
+    build: apps/playwright-service-ts
     environment:
-      - PORT=3000
-      - PROXY_SERVER=${PROXY_SERVER}
-      - PROXY_USERNAME=${PROXY_USERNAME}
-      - PROXY_PASSWORD=${PROXY_PASSWORD}
-      - BLOCK_MEDIA=${BLOCK_MEDIA}
+      PORT: 3000
+      PROXY_SERVER: ${PROXY_SERVER}
+      PROXY_USERNAME: ${PROXY_USERNAME}
+      PROXY_PASSWORD: ${PROXY_PASSWORD}
+      BLOCK_MEDIA: ${BLOCK_MEDIA}
     networks:
       - backend
 
@@ -28,7 +28,7 @@ services:
     environment:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       REDIS_RATE_LIMIT_URL: ${REDIS_URL:-redis://redis:6379}
-      PLAYWRIGHT_MICROSERVICE_URL: ${PLAYWRIGHT_MICROSERVICE_URL:-http://playwright-service:3000}
+      PLAYWRIGHT_MICROSERVICE_URL: ${PLAYWRIGHT_MICROSERVICE_URL:-http://playwright-service:3000/scrape}
       USE_DB_AUTHENTICATION: ${USE_DB_AUTHENTICATION}
       PORT: ${PORT:-3002}
       NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE}
@@ -51,6 +51,9 @@ services:
       SERPER_API_KEY: ${SERPER_API_KEY}
       SEARCHAPI_API_KEY: ${SEARCHAPI_API_KEY}
       LOGGING_LEVEL: ${LOGGING_LEVEL}
+      PROXY_SERVER: ${PROXY_SERVER}
+      PROXY_USERNAME: ${PROXY_USERNAME}
+      PROXY_PASSWORD: ${PROXY_PASSWORD}
       FLY_PROCESS_GROUP: app
     depends_on:
       - redis
@@ -64,7 +67,7 @@ services:
     environment:
       REDIS_URL: ${REDIS_URL:-redis://redis:6379}
       REDIS_RATE_LIMIT_URL: ${REDIS_URL:-redis://redis:6379}
-      PLAYWRIGHT_MICROSERVICE_URL: ${PLAYWRIGHT_MICROSERVICE_URL:-http://playwright-service:3000}
+      PLAYWRIGHT_MICROSERVICE_URL: ${PLAYWRIGHT_MICROSERVICE_URL:-http://playwright-service:3000/scrape}
       USE_DB_AUTHENTICATION: ${USE_DB_AUTHENTICATION}
       PORT: ${PORT:-3002}
       NUM_WORKERS_PER_QUEUE: ${NUM_WORKERS_PER_QUEUE}
@@ -85,6 +88,9 @@ services:
       HOST: ${HOST:-0.0.0.0}
       SELF_HOSTED_WEBHOOK_URL: ${SELF_HOSTED_WEBHOOK_URL}
       LOGGING_LEVEL: ${LOGGING_LEVEL}
+      PROXY_SERVER: ${PROXY_SERVER}
+      PROXY_USERNAME: ${PROXY_USERNAME}
+      PROXY_PASSWORD: ${PROXY_PASSWORD}
       FLY_PROCESS_GROUP: worker
     depends_on:
       - redis

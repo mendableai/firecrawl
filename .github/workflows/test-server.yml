@@ -1,0 +1,89 @@
+name: Server Test Suite
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - apps/api/**
+  # schedule:
+  #   - cron: '0 */4 * * *'
+
+env:
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}
+  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+  HOST: ${{ secrets.HOST }}
+  LLAMAPARSE_API_KEY: ${{ secrets.LLAMAPARSE_API_KEY }}
+  POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
+  POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
+  NUM_WORKERS_PER_QUEUE: ${{ secrets.NUM_WORKERS_PER_QUEUE }}
+  OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+  PLAYWRIGHT_MICROSERVICE_URL: ${{ secrets.PLAYWRIGHT_MICROSERVICE_URL }}
+  PORT: ${{ secrets.PORT }}
+  REDIS_URL: ${{ secrets.REDIS_URL }}
+  SCRAPING_BEE_API_KEY: ${{ secrets.SCRAPING_BEE_API_KEY }}
+  SUPABASE_ANON_TOKEN: ${{ secrets.SUPABASE_ANON_TOKEN }}
+  SUPABASE_SERVICE_TOKEN: ${{ secrets.SUPABASE_SERVICE_TOKEN }}
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
+  HDX_NODE_BETA_MODE: 1
+  FIRE_ENGINE_BETA_URL: ${{ secrets.FIRE_ENGINE_BETA_URL }}
+  USE_DB_AUTHENTICATION: ${{ secrets.USE_DB_AUTHENTICATION }}
+  SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
+  ENV: ${{ secrets.ENV }}
+  USE_GO_MARKDOWN_PARSER: true
+
+jobs:
+  test:
+    name: Run tests
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis
+        ports:
+          - 6379:6379
+    steps:
+      - uses: actions/checkout@v3
+      - name: Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
+          oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
+          tags: tag:ci
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+          cache: "pnpm"
+          cache-dependency-path: './apps/api/pnpm-lock.yaml'
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: ./apps/api
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.19'
+          cache-dependency-path: ./apps/api/sharedLibs/go-html-to-md/go.sum
+      - name: Build go-html-to-md
+        run: |
+          go mod tidy
+          go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go
+          chmod +x html-to-markdown.so
+        working-directory: ./apps/api/sharedLibs/go-html-to-md
+      - name: Start the application
+        run: npm start &
+        working-directory: ./apps/api
+        id: start_app
+      - name: Start workers
+        run: npm run workers &
+        working-directory: ./apps/api
+        id: start_workers
+      - name: Run snippet tests
+        run: |
+          npm run test:snips
+        working-directory: ./apps/api

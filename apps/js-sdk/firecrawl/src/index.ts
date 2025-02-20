@@ -535,7 +535,7 @@ export default class FirecrawlApp {
       const response: AxiosResponse = await axios.post(
         this.apiUrl + `/v1/scrape`,
         jsonData,
-        { headers }
+        { headers, timeout: params?.timeout !== undefined ? (params.timeout + 5000) : undefined },
       );
       if (response.status === 200) {
         const responseData = response.data;
@@ -1262,7 +1262,7 @@ export default class FirecrawlApp {
     data: any,
     headers: AxiosRequestHeaders
   ): Promise<AxiosResponse> {
-    return axios.post(url, data, { headers });
+    return axios.post(url, data, { headers, timeout: (data?.timeout ? (data.timeout + 5000) : undefined) });
   }
 
   /**

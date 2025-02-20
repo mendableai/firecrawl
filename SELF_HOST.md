@@ -34,62 +34,72 @@ Self-hosting Firecrawl is ideal for those who need full control over their scrap
 
 2. Set environment variables
 
-Create an `.env` in the root directory you can copy over the template in `apps/api/.env.example`
-
-To start, we won't set up authentication or any optional subservices (pdf parsing, JS blocking support, AI features)
+Create an `.env` in the root directory using the template below.
 
 `.env:`
 ```
 # ===== Required ENVS ======
-NUM_WORKERS_PER_QUEUE=8
 PORT=3002
 HOST=0.0.0.0
-REDIS_URL=redis://redis:6379
-REDIS_RATE_LIMIT_URL=redis://redis:6379
 
-## To turn on DB authentication, you need to set up Supabase.
+# To turn on DB authentication, you need to set up Supabase.
 USE_DB_AUTHENTICATION=false
 
 # ===== Optional ENVS ======
 
-# Supabase Setup (used to support DB authentication, advanced logging, etc.)
-SUPABASE_ANON_TOKEN=
-SUPABASE_URL=
-SUPABASE_SERVICE_TOKEN=
+## === AI features (JSON format on scrape, /extract API) ===
+# Provide your OpenAI API key here to enable AI features
+# OPENAI_API_KEY=
 
-# Other Optionals
-TEST_API_KEY= # use if you've set up authentication and want to test with a real API key
-SCRAPING_BEE_API_KEY= # use if you'd like to use as a fallback scraper
-OPENAI_API_KEY= # add for LLM-dependent features (e.g., image alt generation)
-BULL_AUTH_KEY= @
-PLAYWRIGHT_MICROSERVICE_URL=  # set if you'd like to run a playwright fallback
-LLAMAPARSE_API_KEY= #Set if you have a llamaparse key you'd like to use to parse pdfs
-SLACK_WEBHOOK_URL= # set if you'd like to send slack server health status messages
-POSTHOG_API_KEY= # set if you'd like to send posthog events like job logs
-POSTHOG_HOST= # set if you'd like to send posthog events like job logs
+## === Proxy ===
+# PROXY_SERVER can be a full URL (e.g. http://0.1.2.3:1234) or just an IP and port combo (e.g. 0.1.2.3:1234)
+# Do not uncomment PROXY_USERNAME and PROXY_PASSWORD if your proxy is unauthenticated
+# PROXY_SERVER=
+# PROXY_USERNAME=
+# PROXY_PASSWORD=
+
+## === /search API ===
+# By default, the /search API will use Google search.
+
+# You can specify a SearXNG server with the JSON format enabled, if you'd like to use that instead of direct Google.
+# You can also customize the engines and categories parameters, but the defaults should also work just fine.
+# SEARXNG_ENDPOINT=http://your.searxng.server
+# SEARXNG_ENGINES=
+# SEARXNG_CATEGORIES=
+
+## === Other ===
+
+# Supabase Setup (used to support DB authentication, advanced logging, etc.)
+# SUPABASE_ANON_TOKEN=
+# SUPABASE_URL=
+# SUPABASE_SERVICE_TOKEN=
+
+# Use if you've set up authentication and want to test with a real API key
+# TEST_API_KEY=
+
+# You can add this to enable ScrapingBee as a fallback scraping engine.
+# SCRAPING_BEE_API_KEY=
+
+# This key lets you access the queue admin panel. Change this if your deployment is publicly accessible.
+BULL_AUTH_KEY=CHANGEME
+
+# This is now autoconfigured by the docker-compose.yaml. You shouldn't need to set it.
+# PLAYWRIGHT_MICROSERVICE_URL=http://playwright-service:3000/scrape
+# REDIS_URL=redis://redis:6379
+# REDIS_RATE_LIMIT_URL=redis://redis:6379
+
+# Set if you have a llamaparse key you'd like to use to parse pdfs
+# LLAMAPARSE_API_KEY=
+
+# Set if you'd like to send server health status messages to Slack
+# SLACK_WEBHOOK_URL=
+
+# Set if you'd like to send posthog events like job logs
+# POSTHOG_API_KEY=
+# POSTHOG_HOST=
 ```
 
-3.  *(Optional) Running with TypeScript Playwright Service*
-    
-    *   Update the `docker-compose.yml` file to change the Playwright service:
-        
-        ```plaintext
-            build: apps/playwright-service
-        ```
-        TO
-        ```plaintext
-            build: apps/playwright-service-ts
-        ```
-        
-    *   Set the `PLAYWRIGHT_MICROSERVICE_URL` in your `.env` file:
-        
-        ```plaintext
-        PLAYWRIGHT_MICROSERVICE_URL=http://localhost:3000/scrape
-        ```
-        
-    *   Don't forget to set the proxy server in your `.env` file as needed.
-
-4.  Build and run the Docker containers:
+3.  Build and run the Docker containers:
     
     ```bash
     docker compose build
@@ -98,9 +108,9 @@ POSTHOG_HOST= # set if you'd like to send posthog events like job logs
 
 This will run a local instance of Firecrawl which can be accessed at `http://localhost:3002`.
 
-You should be able to see the Bull Queue Manager UI on `http://localhost:3002/admin/@/queues`.
+You should be able to see the Bull Queue Manager UI on `http://localhost:3002/admin/CHANGEME/queues`.
 
-5. *(Optional)* Test the API
+4. *(Optional)* Test the API
 
 If you’d like to test the crawl endpoint, you can run this:
 
@@ -108,7 +118,7 @@ If you’d like to test the crawl endpoint, you can run this:
   curl -X POST http://localhost:3002/v1/crawl \
       -H 'Content-Type: application/json' \
       -d '{
-        "url": "https://mendable.ai"
+        "url": "https://firecrawl.dev"
       }'
   ```   
 

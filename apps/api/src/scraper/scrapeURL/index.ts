@@ -1,7 +1,7 @@
 import { Logger } from "winston";
 import * as Sentry from "@sentry/node";
 
-import { Document, ScrapeOptions } from "../../controllers/v1/types";
+import { Document, ScrapeOptions, TimeoutSignal } from "../../controllers/v1/types";
 import { logger as _logger } from "../../lib/logger";
 import {
   buildFallbackList,
@@ -16,6 +16,7 @@ import {
   AddFeatureError,
   EngineError,
   NoEnginesLeftError,
+  PDFAntibotError,
   RemoveFeatureError,
   SiteError,
   TimeoutError,
@@ -49,6 +50,11 @@ export type Meta = {
   logs: any[];
   featureFlags: Set<FeatureFlag>;
   mock: MockState | null;
+  pdfPrefetch: {
+    filePath: string;
+    url?: string;
+    status: number;
+  } | null | undefined; // undefined: no prefetch yet, null: prefetch came back empty
 };
 
 function buildFeatureFlags(
@@ -151,6 +157,7 @@ async function buildMetaObject(
       options.useMock !== undefined
         ? await loadMock(options.useMock, _logger)
         : null,
+    pdfPrefetch: undefined,
   };
 }
 
@@ -165,6 +172,7 @@ export type InternalOptions = {
   disableSmartWaitCache?: boolean; // Passed along to fire-engine
   isBackgroundIndex?: boolean;
   fromCache?: boolean; // Indicates if the document was retrieved from cache
+  abort?: AbortSignal;
 };
 
 export type EngineResultsTracker = {
@@ -222,6 +230,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       : undefined;
 
   for (const { engine, unsupportedFeatures } of fallbackList) {
+    meta.internalOptions.abort?.throwIfAborted();
     const startedAt = Date.now();
     try {
       meta.logger.info("Scraping via " + engine + "...");
@@ -307,6 +316,10 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         throw error;
       } else if (error instanceof UnsupportedFileError) {
         throw error;
+      } else if (error instanceof PDFAntibotError) {
+        throw error;
+      } else if (error instanceof TimeoutSignal) {
+        throw error;
       } else {
         Sentry.captureException(error);
         meta.logger.warn(
@@ -390,6 +403,9 @@ export async function scrapeURL(
           meta.featureFlags = new Set(
             [...meta.featureFlags].concat(error.featureFlags),
           );
+          if (error.pdfPrefetch) {
+            meta.pdfPrefetch = error.pdfPrefetch;
+          }
         } else if (
           error instanceof RemoveFeatureError &&
           meta.internalOptions.forceEngine === undefined
@@ -404,6 +420,21 @@ export async function scrapeURL(
               (x) => !error.featureFlags.includes(x),
             ),
           );
+        } else if (
+          error instanceof PDFAntibotError &&
+          meta.internalOptions.forceEngine === undefined
+        ) {
+          if (meta.pdfPrefetch !== undefined) {
+            meta.logger.error("PDF was prefetched and still blocked by antibot, failing");
+            throw error;
+          } else {
+            meta.logger.debug("PDF was blocked by anti-bot, prefetching with chrome-cdp");
+            meta.featureFlags = new Set(
+              [...meta.featureFlags].filter(
+                (x) => x !== "pdf",
+              ),
+            );
+          }
         } else {
           throw error;
         }
@@ -433,6 +464,8 @@ export async function scrapeURL(
       meta.logger.warn("scrapeURL: Tried to scrape unsupported file", {
         error,
       });
+    } else if (error instanceof TimeoutSignal) {
+      throw error;
     } else {
       Sentry.captureException(error);
       meta.logger.error("scrapeURL: Unexpected error happened", { error });

@@ -9,7 +9,7 @@
     "format": "prettier --write \"src/**/*.(js|ts)\"",
     "flyio": "node dist/src/index.js",
     "start:dev": "nodemon --exec ts-node src/index.ts",
-    "build": "tsc && pnpm sentry:sourcemaps",
+    "build": "tsc",
     "build:nosentry": "tsc",
     "test": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='src/__tests__/e2e_noAuth/*'",
     "test:local-no-auth": "npx jest --detectOpenHandles --forceExit --openHandlesTimeout=120000 --watchAll=false --testPathIgnorePatterns='src/__tests__/e2e_withAuth/*'",
@@ -56,6 +56,7 @@
     "typescript": "^5.4.2"
   },
   "dependencies": {
+    "jsdom": "^26.0.0",
     "@anthropic-ai/sdk": "^0.24.3",
     "@apidevtools/json-schema-ref-parser": "^11.7.3",
     "@brillout/import": "^0.2.2",

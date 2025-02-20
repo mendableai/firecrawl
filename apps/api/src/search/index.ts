@@ -4,6 +4,7 @@ import { googleSearch } from "./googlesearch";
 import { fireEngineMap } from "./fireEngine";
 import { searchapi_search } from "./searchapi";
 import { serper_search } from "./serper";
+import { searxng_search } from "./searxng";
 
 export async function search({
   query,
@@ -51,6 +52,16 @@ export async function search({
         location,
       });
     }
+    if (process.env.SEARXNG_ENDPOINT) {
+      return await searxng_search(query, {
+        num_results,
+        tbs,
+        filter,
+        lang,
+        country,
+        location,
+      });
+    }
     return await googleSearch(
       query,
       advanced,
@@ -64,7 +75,7 @@ export async function search({
       timeout,
     );
   } catch (error) {
-    logger.error(`Error in search function: ${error}`);
+    logger.error(`Error in search function`, { error });
     return [];
   }
 }

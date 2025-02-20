@@ -52,7 +52,6 @@ import { configDotenv } from "dotenv";
 import { scrapeOptions } from "../controllers/v1/types";
 import { getRateLimiterPoints } from "./rate-limiter";
 import {
-  calculateJobTimeToRun,
   cleanOldConcurrencyLimitEntries,
   pushConcurrencyLimitActiveJob,
   removeConcurrencyLimitActiveJob,
@@ -247,6 +246,11 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
       extendInterval: jobLockExtendInterval,
       extensionTime: jobLockExtensionTime,
     });
+
+    if (job.data?.mode !== "kickoff" && job.data?.team_id) {
+      await pushConcurrencyLimitActiveJob(job.data.team_id, job.id, 60 * 1000); // 60s lock renew, just like in the queue
+    }
+
     await job.extendLock(token, jobLockExtensionTime);
   }, jobLockExtendInterval);
 
@@ -597,7 +601,7 @@ const workerFun = async (
           // we are 1 under the limit, assuming the job insertion logic never over-inserts. - MG
           const nextJob = await takeConcurrencyLimitedJob(job.data.team_id);
           if (nextJob !== null) {
-            await pushConcurrencyLimitActiveJob(job.data.team_id, nextJob.id, calculateJobTimeToRun(nextJob));
+            await pushConcurrencyLimitActiveJob(job.data.team_id, nextJob.id, 60 * 1000); // 60s initial timeout
 
             await queue.add(
               nextJob.id,

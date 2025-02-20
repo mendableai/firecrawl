@@ -1,9 +1,5 @@
 import OpenAI from "openai";
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 interface Message {
   role: "system" | "user" | "assistant";
   content: string;
@@ -18,6 +14,10 @@ interface GenerateTextOptions {
 
 export async function generateText(options: GenerateTextOptions) {
   const { model, messages, temperature = 0.7, maxTokens } = options;
+
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
 
   const completion = await openai.chat.completions.create({
     model,

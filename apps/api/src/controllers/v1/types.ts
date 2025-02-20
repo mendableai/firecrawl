@@ -501,6 +501,7 @@ export const mapRequestSchema = crawlerOptions
     sitemapOnly: z.boolean().default(false),
     limit: z.number().min(1).max(5000).default(5000),
     timeout: z.number().positive().finite().optional(),
+    useMock: z.string().optional(),
   })
   .strict(strictMessage);
 
@@ -1004,3 +1005,9 @@ export const generateLLMsTextRequestSchema = z.object({
 export type GenerateLLMsTextRequest = z.infer<
   typeof generateLLMsTextRequestSchema
 >;
+
+export class TimeoutSignal extends Error {
+  constructor() {
+    super("Operation timed out")
+  }
+}

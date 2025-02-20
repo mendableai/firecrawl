@@ -305,6 +305,7 @@ export async function performLLMExtract(
   document: Document,
 ): Promise<Document> {
   if (meta.options.formats.includes("extract")) {
+    meta.internalOptions.abort?.throwIfAborted();
     const { extract, warning } = await generateOpenAICompletions(
       meta.logger.child({
         method: "performLLMExtract/generateOpenAICompletions",

@@ -13,13 +13,13 @@ import {
   getDoneJobsOrderedLength,
   isCrawlKickoffFinished,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue } from "../../services/queue-service";
+import { getScrapeQueue, QueueFunction } from "../../services/queue-service";
 import {
   supabaseGetJobById,
   supabaseGetJobsById,
 } from "../../lib/supabase-jobs";
 import { configDotenv } from "dotenv";
-import type { Job, JobState } from "bullmq";
+import type { Job, JobState, Queue } from "bullmq";
 import { logger } from "../../lib/logger";
 import { supabase_service } from "../../services/supabase";
 import { getConcurrencyLimitedJobs } from "../../lib/concurrency-limit";
@@ -245,7 +245,7 @@ export async function crawlStatusController(
 
   let totalCount = jobIDs.length;
 
-  if (totalCount === 0) {
+  if (totalCount === 0 && process.env.USE_DB_AUTHENTICATION === "true") {
     const x = await supabase_service
       .from('firecrawl_jobs')
       .select('*', { count: 'exact', head: true })
