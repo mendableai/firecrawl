@@ -47,6 +47,13 @@ USE_DB_AUTHENTICATION=false
 
 # ===== Optional ENVS ======
 
+# Proxy configuration (this will be used by both fetch and playwright engines)
+# PROXY_SERVER can be a full URL (e.g. http://0.1.2.3:1234) or just an IP and port combo (e.g. 0.1.2.3:1234)
+# Do not uncomment PROXY_USERNAME and PROXY_PASSWORD if your proxy is unauthenticated
+# PROXY_SERVER=
+# PROXY_USERNAME=
+# PROXY_PASSWORD=
+
 # Supabase Setup (used to support DB authentication, advanced logging, etc.)
 # SUPABASE_ANON_TOKEN=
 # SUPABASE_URL=

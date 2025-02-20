@@ -24,6 +24,7 @@ jobs:
         openai: [true, false]
         serper: [true, false]
         playwright: [true, false]
+        proxy: [true, false]
       fail-fast: false
     runs-on: ubuntu-latest
     services:
@@ -35,6 +36,9 @@ jobs:
       OPENAI_API_KEY: ${{ matrix.openai == true && secrets.OPENAI_API_KEY || '' }}
       SERPER_API_KEY: ${{ matrix.serper == true && secrets.SERPER_API_KEY || '' }}
       PLAYWRIGHT_MICROSERVICE_URL: ${{ matrix.playwright == true && 'http://localhost:3003/scrape' || '' }}
+      PROXY_SERVER: ${{ matrix.proxy == true && secrets.PROXY_SERVER || '' }}
+      PROXY_USERNAME: ${{ matrix.proxy == true && secrets.PROXY_SERVER || '' }}
+      PROXY_PASSWORD: ${{ matrix.proxy == true && secrets.PROXY_PASSWORD || '' }}
     steps:
       - uses: actions/checkout@v3
       - name: Install pnpm
@@ -95,13 +99,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Logs (openai ${{ matrix.openai }}, serper ${{ matrix.serper }}, playwright ${{ matrix.playwright }})
+          name: Logs (openai ${{ matrix.openai }}, serper ${{ matrix.serper }}, playwright ${{ matrix.playwright }}}, proxy ${{ matrix.proxy }})
           path: |
             ./apps/api/api.log
             ./apps/api/worker.log
       - uses: actions/upload-artifact@v4
         if: always() && matrix.playwright
         with:
-          name: Playwright Logs (openai ${{ matrix.openai }}, serper ${{ matrix.serper }})
+          name: Playwright Logs (openai ${{ matrix.openai }}, serper ${{ matrix.serper }}, proxy ${{ matrix.proxy }})
           path: |
             ./apps/playwright-service-ts/playwright.log
