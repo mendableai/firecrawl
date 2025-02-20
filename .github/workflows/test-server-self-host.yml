@@ -51,7 +51,7 @@ jobs:
         if: matrix.playwright == true
         run: |
           pnpm install
-          sudo pnpm exec playwright install-deps
+          pnpm exec playwright install-deps
           pnpm exec playwright install
         working-directory: ./apps/playwright-service-ts
       - name: Start server
