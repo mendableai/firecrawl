@@ -34,9 +34,7 @@ Self-hosting Firecrawl is ideal for those who need full control over their scrap
 
 2. Set environment variables
 
-Create an `.env` in the root directory you can copy over the template in `apps/api/.env.example`
-
-To start, we won't set up authentication or any optional subservices (pdf parsing, JS blocking support, AI features)
+Create an `.env` in the root directory using the template below.
 
 `.env:`
 ```
