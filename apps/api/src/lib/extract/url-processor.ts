@@ -11,10 +11,14 @@ import { ExtractStep } from "./extract-redis";
 import type { Logger } from "winston";
 import { generateText } from "ai";
 import { openai } from '@ai-sdk/openai';
-import { TiktokenModel } from "@dqbd/tiktoken/tiktoken";
+import { createOllama } from "ollama-ai-provider/dist";
+
+const modelAdapter = process.env.OLLAMA_BASE_URL ? createOllama({
+  baseURL: process.env.OLLAMA_BASE_URL!,
+}) : openai;
 
 export async function generateBasicCompletion(prompt: string) {
-  const model = process.env.MODEL_NAME ? openai(process.env.MODEL_NAME as TiktokenModel) : openai("gpt-4o");
+  const model = process.env.MODEL_NAME ? modelAdapter(process.env.MODEL_NAME) : modelAdapter("gpt-4o");
   const { text } = await generateText({
     model: model,
     prompt: prompt,

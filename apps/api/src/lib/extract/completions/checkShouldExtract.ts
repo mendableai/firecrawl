@@ -7,7 +7,12 @@ import {
   buildShouldExtractUserPrompt,
 } from "../build-prompts";
 import { openai } from "@ai-sdk/openai";
-import { TiktokenModel } from "@dqbd/tiktoken/tiktoken";
+import { createOllama } from "ollama-ai-provider";
+
+const modelAdapter = process.env.OLLAMA_BASE_URL ? createOllama({
+  baseURL: process.env.OLLAMA_BASE_URL!,
+}) : openai;
+
 export async function checkShouldExtract(
   prompt: string,
   multiEntitySchema: any,
@@ -31,9 +36,9 @@ export async function checkShouldExtract(
     },
     markdown: buildDocument(doc),
     isExtractEndpoint: true,
-    model: (process.env.MODEL_NAME as TiktokenModel)
-      ? openai(process.env.MODEL_NAME as TiktokenModel)
-      : openai("gpt-4o-mini"),
+    model: process.env.MODEL_NAME
+      ? modelAdapter(process.env.MODEL_NAME!)
+      : modelAdapter("gpt-4o-mini"),
   });
 
   return {

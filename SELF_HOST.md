@@ -52,8 +52,7 @@ USE_DB_AUTHENTICATION=false
 # OPENAI_API_KEY=
 
 # Experimental: Use Ollama
-# OPENAI_API_KEY=ollama
-# OPENAI_BASE_URL=http://localhost:11434/v1
+# OLLAMA_BASE_URL=http://localhost:11434/v1
 # MODEL_NAME=deepseek-r1:7b
 
 ## === Proxy ===

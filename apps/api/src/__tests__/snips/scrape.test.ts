@@ -180,7 +180,7 @@ describe("Scrape tests", () => {
     });
   }
 
-  if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY) {
+  if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY || process.env.OLLAMA_BASE_URL) {
     describe("JSON format", () => {
       it.concurrent("works", async () => {
         const response = await scrape({

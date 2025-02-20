@@ -7,8 +7,6 @@ import {
 } from "./deep-research-redis";
 import { generateCompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { truncateText } from "../../scraper/scrapeURL/transformers/llmExtract";
-import { openai } from "@ai-sdk/openai";
-import { TiktokenModel } from "@dqbd/tiktoken/tiktoken";
 
 interface AnalysisResult {
   gaps: string[];
