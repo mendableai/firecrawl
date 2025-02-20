@@ -1,8 +1,14 @@
 import requests
 import argparse
 import sys
+import os
 
 def main():
+    # TODO: remove this
+    print(f"Current working directory: {os.getcwd()}")
+    print(f"Script location: {os.path.abspath(__file__)}")
+    print(f"Directory contents: {os.listdir('.')}")
+
     parser = argparse.ArgumentParser(description='Run evaluation benchmark')
     parser.add_argument('--label', required=True, help='Label for the evaluation run')
     parser.add_argument('--api-url', required=True, help='API URL')
