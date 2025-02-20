@@ -24,6 +24,7 @@ jobs:
         ai: ["openai", "no-ai"]
         search: ["searxng", "google"]
         engine: ["playwright", "fetch"]
+        proxy: ["proxy", "no-proxy"]
       fail-fast: false
     runs-on: ubuntu-latest
     services:
@@ -35,6 +36,9 @@ jobs:
       OPENAI_API_KEY: ${{ matrix.ai == 'openai' && secrets.OPENAI_API_KEY || '' }}
       SEARXNG_ENDPOINT: ${{ matrix.search == 'searxng' && 'http://localhost:3434' || '' }}
       PLAYWRIGHT_MICROSERVICE_URL: ${{ matrix.engine == 'playwright' && 'http://localhost:3003/scrape' || '' }}
+      PROXY_SERVER: ${{ matrix.proxy == 'proxy' && secrets.PROXY_SERVER || '' }}
+      PROXY_USERNAME: ${{ matrix.proxy == 'proxy' && secrets.PROXY_USERNAME || '' }}
+      PROXY_PASSWORD: ${{ matrix.proxy == 'proxy' && secrets.PROXY_PASSWORD || '' }}
     steps:
       - uses: actions/checkout@v3
       - name: Install pnpm
@@ -115,20 +119,20 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Logs (${{ matrix.ai }}, ${{ matrix.search }}, ${{ matrix.engine }})
+          name: Logs (${{ matrix.ai }}, ${{ matrix.search }}, ${{ matrix.engine }}, ${{ matrix.proxy }})
           path: |
             ./apps/api/api.log
             ./apps/api/worker.log
       - uses: actions/upload-artifact@v4
         if: always() && matrix.playwright
         with:
-          name: Playwright Logs (${{ matrix.ai }}, ${{ matrix.search }})
+          name: Playwright Logs (${{ matrix.ai }}, ${{ matrix.search }}, ${{ matrix.proxy }})
           path: |
             ./apps/playwright-service-ts/playwright.log
       - uses: actions/upload-artifact@v4
         if: always() && matrix.search == 'searxng'
         with:
-          name: SearXNG (${{ matrix.ai }}, ${{ matrix.engine }})
+          name: SearXNG (${{ matrix.ai }}, ${{ matrix.engine }}, ${{ matrix.proxy }})
           path: |
             ./searxng/searxng.log
             ./searxng/settings.yml

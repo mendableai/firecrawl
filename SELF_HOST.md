@@ -51,6 +51,13 @@ USE_DB_AUTHENTICATION=false
 # Provide your OpenAI API key here to enable AI features
 # OPENAI_API_KEY=
 
+## === Proxy ===
+# PROXY_SERVER can be a full URL (e.g. http://0.1.2.3:1234) or just an IP and port combo (e.g. 0.1.2.3:1234)
+# Do not uncomment PROXY_USERNAME and PROXY_PASSWORD if your proxy is unauthenticated
+# PROXY_SERVER=
+# PROXY_USERNAME=
+# PROXY_PASSWORD=
+
 ## === /search API ===
 # By default, the /search API will use Google search.
 

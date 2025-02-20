@@ -15,11 +15,11 @@ services:
   playwright-service:
     build: apps/playwright-service-ts
     environment:
-      - PORT=3000
-      - PROXY_SERVER=${PROXY_SERVER}
-      - PROXY_USERNAME=${PROXY_USERNAME}
-      - PROXY_PASSWORD=${PROXY_PASSWORD}
-      - BLOCK_MEDIA=${BLOCK_MEDIA}
+      PORT: 3000
+      PROXY_SERVER: ${PROXY_SERVER}
+      PROXY_USERNAME: ${PROXY_USERNAME}
+      PROXY_PASSWORD: ${PROXY_PASSWORD}
+      BLOCK_MEDIA: ${BLOCK_MEDIA}
     networks:
       - backend
 
@@ -51,6 +51,9 @@ services:
       SERPER_API_KEY: ${SERPER_API_KEY}
       SEARCHAPI_API_KEY: ${SEARCHAPI_API_KEY}
       LOGGING_LEVEL: ${LOGGING_LEVEL}
+      PROXY_SERVER: ${PROXY_SERVER}
+      PROXY_USERNAME: ${PROXY_USERNAME}
+      PROXY_PASSWORD: ${PROXY_PASSWORD}
       FLY_PROCESS_GROUP: app
     depends_on:
       - redis
@@ -85,6 +88,9 @@ services:
       HOST: ${HOST:-0.0.0.0}
       SELF_HOSTED_WEBHOOK_URL: ${SELF_HOSTED_WEBHOOK_URL}
       LOGGING_LEVEL: ${LOGGING_LEVEL}
+      PROXY_SERVER: ${PROXY_SERVER}
+      PROXY_USERNAME: ${PROXY_USERNAME}
+      PROXY_PASSWORD: ${PROXY_PASSWORD}
       FLY_PROCESS_GROUP: worker
     depends_on:
       - redis

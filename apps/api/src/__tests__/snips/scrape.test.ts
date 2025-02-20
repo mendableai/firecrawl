@@ -49,6 +49,16 @@ describe("Scrape tests", () => {
     expect(response.markdown).toContain("Firecrawl");
   }, 10000);
 
+  if (process.env.TEST_SUITE_SELF_HOSTED && process.env.PROXY_SERVER) {
+    it.concurrent("self-hosted proxy works", async () => {
+      const response = await scrape({
+        url: "https://icanhazip.com"
+      });
+
+      expect(response.markdown?.trim()).toBe(process.env.PROXY_SERVER!.split("://").slice(-1)[0].split(":")[0]);
+    });
+  }
+
   if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.PLAYWRIGHT_MICROSERVICE_URL) {
     it.concurrent("waitFor works", async () => {
       const response = await scrape({

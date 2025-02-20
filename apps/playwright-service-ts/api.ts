@@ -139,7 +139,7 @@ const scrapePage = async (page: Page, url: string, waitUntil: 'load' | 'networki
   if (response) {
     headers = await response.allHeaders();
     const ct = Object.entries(headers).find(x => x[0].toLowerCase() === "content-type");
-    if (ct && ct[1].includes("application/json")) {
+    if (ct && (ct[1].includes("application/json") || ct[1].includes("text/plain"))) {
       content = (await response.body()).toString("utf8"); // TODO: determine real encoding
     }
   }

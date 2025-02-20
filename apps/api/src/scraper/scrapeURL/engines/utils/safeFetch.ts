@@ -43,14 +43,24 @@ export function makeSecureDispatcher(
   url: string,
   options?: undici.Agent.Options,
 ) {
-  const agent = new undici.Agent({
+  const agentOpts: undici.Agent.Options = {
     connect: {
       rejectUnauthorized: false, // bypass SSL failures -- this is fine
       // lookup: secureLookup,
     },
     maxRedirections: 5000,
     ...options,
-  });
+  };
+
+  const agent = process.env.PROXY_SERVER
+    ? new undici.ProxyAgent({
+      uri: process.env.PROXY_SERVER.includes("://") ? process.env.PROXY_SERVER : ("http://" + process.env.PROXY_SERVER),
+      token: process.env.PROXY_USERNAME
+        ? `Basic ${Buffer.from(process.env.PROXY_USERNAME + ":" + (process.env.PROXY_PASSWORD ?? "")).toString("base64")}`
+        : undefined,
+      ...agentOpts,
+    })
+    : new undici.Agent(agentOpts);
 
   agent.on("connect", (_, targets) => {
     const client: undici.Client = targets.slice(-1)[0] as undici.Client;
