@@ -1,7 +1,7 @@
 import { Logger } from "winston";
 import * as Sentry from "@sentry/node";
 
-import { Document, ScrapeOptions } from "../../controllers/v1/types";
+import { Document, ScrapeOptions, TimeoutSignal } from "../../controllers/v1/types";
 import { logger as _logger } from "../../lib/logger";
 import {
   buildFallbackList,
@@ -172,6 +172,7 @@ export type InternalOptions = {
   disableSmartWaitCache?: boolean; // Passed along to fire-engine
   isBackgroundIndex?: boolean;
   fromCache?: boolean; // Indicates if the document was retrieved from cache
+  abort?: AbortSignal;
 };
 
 export type EngineResultsTracker = {
@@ -229,6 +230,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       : undefined;
 
   for (const { engine, unsupportedFeatures } of fallbackList) {
+    meta.internalOptions.abort?.throwIfAborted();
     const startedAt = Date.now();
     try {
       meta.logger.info("Scraping via " + engine + "...");
@@ -315,6 +317,8 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       } else if (error instanceof UnsupportedFileError) {
         throw error;
       } else if (error instanceof PDFAntibotError) {
+        throw error;
+      } else if (error instanceof TimeoutSignal) {
         throw error;
       } else {
         Sentry.captureException(error);
@@ -460,6 +464,8 @@ export async function scrapeURL(
       meta.logger.warn("scrapeURL: Tried to scrape unsupported file", {
         error,
       });
+    } else if (error instanceof TimeoutSignal) {
+      throw error;
     } else {
       Sentry.captureException(error);
       meta.logger.error("scrapeURL: Unexpected error happened", { error });

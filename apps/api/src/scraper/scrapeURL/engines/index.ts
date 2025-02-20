@@ -310,7 +310,12 @@ export function buildFallbackList(meta: Meta): {
   engine: Engine;
   unsupportedFeatures: Set<FeatureFlag>;
 }[] {
-  const _engines = [...engines];
+  const _engines: Engine[] = [
+    ...engines,
+    
+    // enable fire-engine in self-hosted testing environment when mocks are supplied
+    ...((!useFireEngine && meta.mock !== null) ? ["fire-engine;chrome-cdp", "fire-engine;playwright", "fire-engine;tlsclient"] as Engine[] : [])
+  ];
 
   if (meta.internalOptions.useCache !== true) {
     const cacheIndex = _engines.indexOf("cache");

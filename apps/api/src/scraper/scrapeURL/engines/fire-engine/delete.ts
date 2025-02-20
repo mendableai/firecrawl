@@ -3,14 +3,13 @@ import * as Sentry from "@sentry/node";
 
 import { robustFetch } from "../../lib/fetch";
 import { MockState } from "../../lib/mock";
+import { fireEngineURL } from "./scrape";
 
 export async function fireEngineDelete(
   logger: Logger,
   jobId: string,
   mock: MockState | null,
 ) {
-  const fireEngineURL = process.env.FIRE_ENGINE_BETA_URL!;
-
   await Sentry.startSpan(
     {
       name: "fire-engine: Delete scrape",

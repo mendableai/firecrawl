@@ -1,8 +1,7 @@
-import { axiosTimeout } from "../../lib/timeout";
 import { parseStringPromise } from "xml2js";
 import { WebCrawler } from "./crawler";
 import { scrapeURL } from "../scrapeURL";
-import { scrapeOptions } from "../../controllers/v1/types";
+import { scrapeOptions, TimeoutSignal } from "../../controllers/v1/types";
 import type { Logger } from "winston";
 const useFireEngine =
   process.env.FIRE_ENGINE_BETA_URL !== "" &&
@@ -20,6 +19,7 @@ export async function getLinksFromSitemap(
   logger: Logger,
   crawlId: string,
   sitemapsHit: Set<string>,
+  abort?: AbortSignal,
 ): Promise<number> {
   if (sitemapsHit.size >= 20) {
     return 0;
@@ -44,7 +44,8 @@ export async function getLinksFromSitemap(
             "fetch",
             ...((mode === "fire-engine" && useFireEngine) ? ["fire-engine;tlsclient" as const] : []),
           ],
-          v0DisableJsDom: true
+          v0DisableJsDom: true,
+          abort,
         },
       );
 
@@ -69,14 +70,18 @@ export async function getLinksFromSitemap(
         return 0;
       }
     } catch (error) {
-      logger.error(`Request failed for sitemap fetch`, {
-        method: "getLinksFromSitemap",
-        mode,
-        sitemapUrl,
-        error,
-      });
-
-      return 0;
+      if (error instanceof TimeoutSignal) {
+        throw error;
+      } else {
+        logger.error(`Request failed for sitemap fetch`, {
+          method: "getLinksFromSitemap",
+          mode,
+          sitemapUrl,
+          error,
+        });
+  
+        return 0;
+      }
     }
 
     const parsed = await parseStringPromise(content);
@@ -90,7 +95,7 @@ export async function getLinksFromSitemap(
         .map((sitemap) => sitemap.loc[0].trim());
 
       const sitemapPromises: Promise<number>[] = sitemapUrls.map((sitemapUrl) =>
-        getLinksFromSitemap({ sitemapUrl, urlsHandler, mode }, logger, crawlId, sitemapsHit),
+        getLinksFromSitemap({ sitemapUrl, urlsHandler, mode }, logger, crawlId, sitemapsHit, abort),
       );
 
       const results = await Promise.all(sitemapPromises);
@@ -114,6 +119,7 @@ export async function getLinksFromSitemap(
             logger,
             crawlId,
             sitemapsHit,
+            abort,
           ),
         );
         count += (await Promise.all(sitemapPromises)).reduce(
@@ -150,57 +156,4 @@ export async function getLinksFromSitemap(
   }
 
   return 0;
-}
-
-export const fetchSitemapData = async (
-  url: string,
-  timeout?: number,
-): Promise<SitemapEntry[] | null> => {
-  const sitemapUrl = url.endsWith("/sitemap.xml") ? url : `${url}/sitemap.xml`;
-  try {
-    const fetchResponse = await scrapeURL(
-      "sitemap",
-      sitemapUrl,
-      scrapeOptions.parse({
-        formats: ["rawHtml"],
-        timeout: timeout || axiosTimeout,
-      }),
-      { forceEngine: "fetch" },
-    );
-
-    if (
-      fetchResponse.success &&
-      fetchResponse.document.metadata.statusCode >= 200 &&
-      fetchResponse.document.metadata.statusCode < 300
-    ) {
-      const xml = fetchResponse.document.rawHtml!;
-      const parsedXml = await parseStringPromise(xml);
-
-      const sitemapData: SitemapEntry[] = [];
-      if (parsedXml.urlset && parsedXml.urlset.url) {
-        for (const urlElement of parsedXml.urlset.url) {
-          const sitemapEntry: SitemapEntry = { loc: urlElement.loc[0] };
-          if (urlElement.lastmod) sitemapEntry.lastmod = urlElement.lastmod[0];
-          if (urlElement.changefreq)
-            sitemapEntry.changefreq = urlElement.changefreq[0];
-          if (urlElement.priority)
-            sitemapEntry.priority = Number(urlElement.priority[0]);
-          sitemapData.push(sitemapEntry);
-        }
-      }
-
-      return sitemapData;
-    }
-    return null;
-  } catch (error) {
-    // Error handling for failed sitemap fetch
-  }
-  return [];
-};
-
-export interface SitemapEntry {
-  loc: string;
-  lastmod?: string;
-  changefreq?: string;
-  priority?: number;
 }

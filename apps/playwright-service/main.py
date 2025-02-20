@@ -104,6 +104,8 @@ async def root(body: UrlModel):
     json_compatible_item_data = {
         "content": page_content,
         "pageStatusCode": page_status_code,
-        "pageError": page_error
-      }
+    }
+    
+    if page_error is not None:
+        json_compatible_item_data["pageError"] = page_error
     return JSONResponse(content=json_compatible_item_data)
