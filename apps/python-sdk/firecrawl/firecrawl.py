@@ -433,7 +433,7 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'map')
 
-    def batch_scrape_urls(self, urls: list[str],
+    def batch_scrape_urls(self, urls: List[str],
                   params: Optional[Dict[str, Any]] = None,
                   poll_interval: Optional[int] = 2,
                   idempotency_key: Optional[str] = None) -> Any:
@@ -441,7 +441,7 @@ class FirecrawlApp:
         Initiate a batch scrape job for the specified URLs using the Firecrawl API.
 
         Args:
-            urls (list[str]): The URLs to scrape.
+            urls (List[str]): The URLs to scrape.
             params (Optional[Dict[str, Any]]): Additional parameters for the scraper.
             poll_interval (Optional[int]): Time in seconds between status checks when waiting for job completion. Defaults to 2 seconds.
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
@@ -476,12 +476,12 @@ class FirecrawlApp:
             self._handle_error(response, 'start batch scrape job')
 
 
-    def async_batch_scrape_urls(self, urls: list[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+    def async_batch_scrape_urls(self, urls: List[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
         """
         Initiate a crawl job asynchronously.
 
         Args:
-            urls (list[str]): The URLs to scrape.
+            urls (List[str]): The URLs to scrape.
             params (Optional[Dict[str, Any]]): Additional parameters for the scraper.
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
 
@@ -505,12 +505,12 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'start batch scrape job')
     
-    def batch_scrape_urls_and_watch(self, urls: list[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> 'CrawlWatcher':
+    def batch_scrape_urls_and_watch(self, urls: List[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> 'CrawlWatcher':
         """
         Initiate a batch scrape job and return a CrawlWatcher to monitor the job via WebSocket.
 
         Args:
-            urls (list[str]): The URLs to scrape.
+            urls (List[str]): The URLs to scrape.
             params (Optional[Dict[str, Any]]): Additional parameters for the scraper.
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
 
