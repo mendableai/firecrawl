@@ -1,4 +1,4 @@
-import { embed } from "ai/dist";
+import { embed } from "ai";
 import { configDotenv } from "dotenv";
 import { getEmbeddingModel } from "./generic-ai";
 
