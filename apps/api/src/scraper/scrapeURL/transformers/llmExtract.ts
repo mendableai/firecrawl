@@ -196,33 +196,37 @@ export async function generateCompletions({
   }
 
   let schema = options.schema;
-  if (schema) {
-    schema = removeDefaultProperty(schema);
-  }
+  // Normalize the bad json schema users write (mogery)
+  if (schema && !(schema instanceof z.ZodType)) {
+    // let schema = options.schema;
+    if (schema) {
+      schema = removeDefaultProperty(schema);
+    }
 
-  if (schema && schema.type === "array") {
-    schema = {
-      type: "object",
-      properties: {
-        items: options.schema,
-      },
-      required: ["items"],
-      additionalProperties: false,
-    };
-  } else if (schema && typeof schema === "object" && !schema.type) {
-    schema = {
-      type: "object",
-      properties: Object.fromEntries(
-        Object.entries(schema).map(([key, value]) => {
-          return [key, removeDefaultProperty(value)];
-        }),
-      ),
-      required: Object.keys(schema),
-      additionalProperties: false,
-    };
-  }
+    if (schema && schema.type === "array") {
+      schema = {
+        type: "object",
+        properties: {
+          items: options.schema,
+        },
+        required: ["items"],
+        additionalProperties: false,
+      };
+    } else if (schema && typeof schema === "object" && !schema.type) {
+      schema = {
+        type: "object",
+        properties: Object.fromEntries(
+          Object.entries(schema).map(([key, value]) => {
+            return [key, removeDefaultProperty(value)];
+          }),
+        ),
+        required: Object.keys(schema),
+        additionalProperties: false,
+      };
+    }
 
-  schema = normalizeSchema(schema);
+    schema = normalizeSchema(schema);
+  }
 
   try {
     const prompt = options.prompt !== undefined
@@ -248,10 +252,12 @@ export async function generateCompletions({
       system: options.systemPrompt,
       ...(schema && { schema: schema instanceof z.ZodType ? schema : jsonSchema(schema) }),
       ...(!schema && { output: 'no-schema' as const }),
-      ...repairConfig,
-      onError: (error: Error) => {
-        console.error(error);
-      }
+      // ...repairConfig,
+      ...(!schema && {
+        onError: (error: Error) => {
+          console.error(error);
+        }
+      })
     } satisfies Parameters<typeof generateObject>[0];
 
     const result = await generateObject(generateObjectConfig);
