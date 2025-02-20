@@ -94,7 +94,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
           teamId: options.teamId,
           plan: options.plan as PlanType,
           origin: "deep-research",
-          timeout: 15000,
+          timeout: 10000,
           scrapeOptions: {
             formats: ["markdown"],
             onlyMainContent: true,

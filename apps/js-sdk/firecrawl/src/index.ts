@@ -1391,10 +1391,22 @@ export default class FirecrawlApp {
 
   /**
    * Initiates a deep research operation on a given topic and polls until completion.
+   * @param topic - The topic to research.
    * @param params - Parameters for the deep research operation.
+   * @param onActivity - Optional callback to receive activity updates in real-time.
    * @returns The final research results.
    */
-  async __deepResearch(topic: string, params: DeepResearchParams): Promise<DeepResearchStatusResponse | ErrorResponse> {
+  async __deepResearch(
+    topic: string, 
+    params: DeepResearchParams,
+    onActivity?: (activity: {
+      type: string;
+      status: string;
+      message: string;
+      timestamp: string;
+      depth: number;
+    }) => void
+  ): Promise<DeepResearchStatusResponse | ErrorResponse> {
     try {
       const response = await this.__asyncDeepResearch(topic, params);
       
@@ -1408,14 +1420,22 @@ export default class FirecrawlApp {
 
       const jobId = response.id;
       let researchStatus;
+      let lastActivityCount = 0;
 
       while (true) {
-        // console.log("Checking research status...");
         researchStatus = await this.__checkDeepResearchStatus(jobId);
-        // console.log("Research status:", researchStatus);
         
         if ('error' in researchStatus && !researchStatus.success) {
           return researchStatus;
+        }
+
+        // Stream new activities through the callback if provided
+        if (onActivity && researchStatus.activities) {
+          const newActivities = researchStatus.activities.slice(lastActivityCount);
+          for (const activity of newActivities) {
+            onActivity(activity);
+          }
+          lastActivityCount = researchStatus.activities.length;
         }
 
         if (researchStatus.status === "completed") {
@@ -1435,7 +1455,6 @@ export default class FirecrawlApp {
 
         await new Promise(resolve => setTimeout(resolve, 2000));
       }
-      // console.log("Research status finished:", researchStatus);
 
       return { success: false, error: "Research job terminated unexpectedly" };
     } catch (error: any) {
