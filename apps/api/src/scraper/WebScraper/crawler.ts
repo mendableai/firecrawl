@@ -207,7 +207,8 @@ export class WebCrawler {
     fromMap: boolean = false,
     onlySitemap: boolean = false,
     timeout: number = 120000,
-    abort?: AbortSignal
+    abort?: AbortSignal,
+    mock?: string,
   ): Promise<number> {
     this.logger.debug(`Fetching sitemap links from ${this.initialUrl}`, {
       method: "tryGetSitemap",
@@ -263,10 +264,10 @@ export class WebCrawler {
     try {
       let count = (await Promise.race([
         Promise.all([
-          this.tryFetchSitemapLinks(this.initialUrl, _urlsHandler, abort),
+          this.tryFetchSitemapLinks(this.initialUrl, _urlsHandler, abort, mock),
           ...this.robots
             .getSitemaps()
-            .map((x) => this.tryFetchSitemapLinks(x, _urlsHandler, abort)),
+            .map((x) => this.tryFetchSitemapLinks(x, _urlsHandler, abort, mock)),
         ]).then((results) => results.reduce((a, x) => a + x, 0)),
         timeoutPromise,
       ])) as number;
@@ -559,6 +560,7 @@ export class WebCrawler {
     url: string,
     urlsHandler: (urls: string[]) => unknown,
     abort?: AbortSignal,
+    mock?: string,
   ): Promise<number> {
     const sitemapUrl = url.endsWith(".xml")
       ? url
@@ -574,6 +576,7 @@ export class WebCrawler {
         this.jobId,
         this.sitemapsHit,
         abort,
+        mock,
       );
     } catch (error) {
       if (error instanceof TimeoutSignal) {
@@ -621,6 +624,7 @@ export class WebCrawler {
             this.jobId,
             this.sitemapsHit,
             abort,
+            mock,
           );
         } catch (error) {
           if (error instanceof TimeoutSignal) {
@@ -655,6 +659,7 @@ export class WebCrawler {
           this.jobId,
           this.sitemapsHit,
           abort,
+          mock,
         );
       } catch (error) {
         if (error instanceof TimeoutSignal) {
@@ -674,6 +679,7 @@ export class WebCrawler {
               this.jobId,
               this.sitemapsHit,
               abort,
+              mock,
             );
           }
         }
