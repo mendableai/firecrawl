@@ -29,6 +29,10 @@ import { creditUsageController } from "../controllers/v1/credit-usage";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 import { searchController } from "../controllers/v1/search";
 import { crawlErrorsController } from "../controllers/v1/crawl-errors";
+import { generateLLMsTextController } from "../controllers/v1/generate-llmstxt";
+import { generateLLMsTextStatusController } from "../controllers/v1/generate-llmstxt-status";
+import { deepResearchController } from "../controllers/v1/deep-research";
+import { deepResearchStatusController } from "../controllers/v1/deep-research-status";
 
 function checkCreditsMiddleware(
   minimum?: number,
@@ -48,8 +52,9 @@ function checkCreditsMiddleware(
         req.acuc = chunk;
       }
       if (!success) {
+        const currencyName = req.acuc.is_extract ? "tokens" : "credits"
         logger.error(
-          `Insufficient credits: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`,
+          `Insufficient ${currencyName}: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`,
           {
             teamId: req.auth.team_id,
             minimum,
@@ -62,7 +67,7 @@ function checkCreditsMiddleware(
           return res.status(402).json({
             success: false,
             error:
-              "Insufficient credits to perform this request. For more credits, you can upgrade your plan at https://firecrawl.dev/pricing or try changing the request limit to a lower value.",
+              "Insufficient " + currencyName + " to perform this request. For more " + currencyName + ", you can upgrade your plan at " + (currencyName === "credits" ? "https://firecrawl.dev/pricing or try changing the request limit to a lower value" : "https://www.firecrawl.dev/extract#pricing") + ".",
           });
         }
       }
@@ -165,7 +170,7 @@ v1Router.post(
 
 v1Router.post(
   "/batch/scrape",
-  authMiddleware(RateLimiterMode.Crawl),
+  authMiddleware(RateLimiterMode.Scrape),
   checkCreditsMiddleware(),
   blocklistMiddleware,
   idempotencyMiddleware,
@@ -237,6 +242,31 @@ v1Router.get(
   "/extract/:jobId",
   authMiddleware(RateLimiterMode.ExtractStatus),
   wrap(extractStatusController),
+);
+
+v1Router.post(
+  "/llmstxt",
+  authMiddleware(RateLimiterMode.Extract),
+  wrap(generateLLMsTextController),
+);
+
+v1Router.get(
+  "/llmstxt/:jobId",
+  authMiddleware(RateLimiterMode.ExtractStatus),
+  wrap(generateLLMsTextStatusController),
+);
+
+v1Router.post(
+  "/deep-research",
+  authMiddleware(RateLimiterMode.Extract),
+  checkCreditsMiddleware(1),
+  wrap(deepResearchController),
+);
+
+v1Router.get(
+  "/deep-research/:jobId",
+  authMiddleware(RateLimiterMode.ExtractStatus),
+  wrap(deepResearchStatusController),
 );
 
 // v1Router.post("/crawlWebsitePreview", crawlPreviewController);

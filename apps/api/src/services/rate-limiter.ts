@@ -16,6 +16,7 @@ export const CONCURRENCY_LIMIT: Omit<Record<PlanType, number>, ""> = {
   etier1a: 200,
   etier2a: 300,
   etierscale1: 150,
+  etierscale2: 200,
   testSuite: 200,
   devB: 120,
   etier2d: 250,
@@ -42,6 +43,7 @@ const RATE_LIMITS = {
     etier1a: 1000,
     etier2a: 300,
     etierscale1: 150,
+    etierscale2: 300,
     // extract ops
     extract_starter: 20,
     extract_explorer: 100,
@@ -63,6 +65,7 @@ const RATE_LIMITS = {
     etier1a: 1000,
     etier2a: 2500,
     etierscale1: 1500,
+    etierscale2: 2500,
     // extract ops
     extract_starter: 20,
     extract_explorer: 100,
@@ -84,6 +87,7 @@ const RATE_LIMITS = {
     etier1a: 1000,
     etier2a: 2500,
     etierscale1: 1500,
+    etierscale2: 2500,
     // extract ops
     extract_starter: 20,
     extract_explorer: 100,
@@ -105,6 +109,7 @@ const RATE_LIMITS = {
     etier1a: 1000,
     etier2a: 2500,
     etierscale1: 1500,
+    etierscale2: 2500,
     // extract ops
     extract_starter: 20,
     extract_explorer: 100,
@@ -126,6 +131,7 @@ const RATE_LIMITS = {
     etier1a: 1000,
     etier2a: 1000,
     etierscale1: 1000,
+    etierscale2: 1000,
     extract_starter: 20,
     extract_explorer: 100,
     extract_pro: 1000,

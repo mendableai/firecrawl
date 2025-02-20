@@ -184,14 +184,6 @@ export async function getCrawlJobCount(id: string): Promise<number> {
   return await redisConnection.scard("crawl:" + id + ":jobs");
 }
 
-export async function getThrottledJobs(teamId: string): Promise<string[]> {
-  return await redisConnection.zrangebyscore(
-    "concurrency-limiter:" + teamId + ":throttled",
-    Date.now(),
-    Infinity,
-  );
-}
-
 export function normalizeURL(url: string, sc: StoredCrawl): string {
   const urlO = new URL(url);
   if (!sc.crawlerOptions || sc.crawlerOptions.ignoreQueryParameters) {

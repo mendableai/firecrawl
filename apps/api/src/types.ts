@@ -188,6 +188,7 @@ export type PlanType =
   | "etier2c"
   | "etier1a"
   | "etierscale1"
+  | "etierscale2"
   | "etier2a"
   | "free"
   | "testSuite"

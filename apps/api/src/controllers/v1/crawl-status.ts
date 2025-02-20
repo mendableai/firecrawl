@@ -11,18 +11,18 @@ import {
   getCrawlJobs,
   getDoneJobsOrdered,
   getDoneJobsOrderedLength,
-  getThrottledJobs,
   isCrawlKickoffFinished,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue } from "../../services/queue-service";
+import { getScrapeQueue, QueueFunction } from "../../services/queue-service";
 import {
   supabaseGetJobById,
   supabaseGetJobsById,
 } from "../../lib/supabase-jobs";
 import { configDotenv } from "dotenv";
-import type { Job, JobState } from "bullmq";
+import type { Job, JobState, Queue } from "bullmq";
 import { logger } from "../../lib/logger";
 import { supabase_service } from "../../services/supabase";
+import { getConcurrencyLimitedJobs } from "../../lib/concurrency-limit";
 configDotenv();
 
 export type PseudoJob<T> = {
@@ -137,16 +137,17 @@ export async function crawlStatusController(
       async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
     ),
   );
-  const throttledJobs = new Set(...(await getThrottledJobs(req.auth.team_id)));
 
-  const throttledJobsSet = new Set(throttledJobs);
+  const throttledJobsSet = await getConcurrencyLimitedJobs(req.auth.team_id);
 
   const validJobStatuses: [string, JobState | "unknown"][] = [];
   const validJobIDs: string[] = [];
 
   for (const [id, status] of jobStatuses) {
-    if (
-      !throttledJobsSet.has(id) &&
+    if (throttledJobsSet.has(id)) {
+      validJobStatuses.push([id, "prioritized"]);
+      validJobIDs.push(id);
+    } else if (
       status !== "failed" &&
       status !== "unknown"
     ) {
@@ -244,7 +245,7 @@ export async function crawlStatusController(
 
   let totalCount = jobIDs.length;
 
-  if (totalCount === 0) {
+  if (totalCount === 0 && process.env.USE_DB_AUTHENTICATION === "true") {
     const x = await supabase_service
       .from('firecrawl_jobs')
       .select('*', { count: 'exact', head: true })

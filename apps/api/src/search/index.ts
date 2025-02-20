@@ -64,7 +64,7 @@ export async function search({
       timeout,
     );
   } catch (error) {
-    logger.error(`Error in search function: ${error}`);
+    logger.error(`Error in search function`, { error });
     return [];
   }
 }

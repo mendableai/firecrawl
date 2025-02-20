@@ -4,9 +4,6 @@ env:
   DOTNET_VERSION: '6.0.x'
 
 on:
-  push:
-    branches:
-      - mog/webscraper-refactor
   workflow_dispatch:
 
 jobs:

@@ -21,6 +21,7 @@ export async function scrapeURLWithFetch(
         dispatcher: await makeSecureDispatcher(meta.url),
         redirect: "follow",
         headers: meta.options.headers,
+        signal: meta.internalOptions.abort,
       }),
       (async () => {
         await new Promise((resolve) =>
@@ -43,7 +44,7 @@ export async function scrapeURLWithFetch(
     }
   }
 
-  specialtyScrapeCheck(
+  await specialtyScrapeCheck(
     meta.logger.child({ method: "scrapeURLWithFetch/specialtyScrapeCheck" }),
     Object.fromEntries(response.headers as any),
   );

@@ -69,27 +69,7 @@ POSTHOG_API_KEY= # set if you'd like to send posthog events like job logs
 POSTHOG_HOST= # set if you'd like to send posthog events like job logs
 ```
 
-3.  *(Optional) Running with TypeScript Playwright Service*
-    
-    *   Update the `docker-compose.yml` file to change the Playwright service:
-        
-        ```plaintext
-            build: apps/playwright-service
-        ```
-        TO
-        ```plaintext
-            build: apps/playwright-service-ts
-        ```
-        
-    *   Set the `PLAYWRIGHT_MICROSERVICE_URL` in your `.env` file:
-        
-        ```plaintext
-        PLAYWRIGHT_MICROSERVICE_URL=http://localhost:3000/scrape
-        ```
-        
-    *   Don't forget to set the proxy server in your `.env` file as needed.
-
-4.  Build and run the Docker containers:
+3.  Build and run the Docker containers:
     
     ```bash
     docker compose build

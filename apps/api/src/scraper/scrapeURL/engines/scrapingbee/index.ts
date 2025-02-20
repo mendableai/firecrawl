@@ -3,7 +3,7 @@ import { Meta } from "../..";
 import { EngineScrapeResult } from "..";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import { AxiosError, type AxiosResponse } from "axios";
-import { EngineError } from "../../error";
+import { EngineError, TimeoutError } from "../../error";
 
 const client = new ScrapingBeeClient(process.env.SCRAPING_BEE_API_KEY!);
 
@@ -17,23 +17,26 @@ export function scrapeURLWithScrapingBee(
     let response: AxiosResponse<any>;
     const timeout = (timeToRun ?? 300000) + meta.options.waitFor;
     try {
-      response = await client.get({
-        url: meta.url,
-        params: {
-          timeout,
-          wait_browser: wait_browser,
-          wait: meta.options.waitFor,
-          transparent_status_code: true,
-          json_response: true,
-          screenshot: meta.options.formats.includes("screenshot"),
-          screenshot_full_page: meta.options.formats.includes(
-            "screenshot@fullPage",
-          ),
-        },
-        headers: {
-          "ScrapingService-Request": "TRUE", // this is sent to the page, not to ScrapingBee - mogery
-        },
-      });
+      response = await Promise.race<AxiosResponse<any>>([
+        client.get({
+          url: meta.url,
+          params: {
+            timeout,
+            wait_browser: wait_browser,
+            wait: meta.options.waitFor,
+            transparent_status_code: true,
+            json_response: true,
+            screenshot: meta.options.formats.includes("screenshot"),
+            screenshot_full_page: meta.options.formats.includes(
+              "screenshot@fullPage",
+            ),
+          },
+          headers: {
+            "ScrapingService-Request": "TRUE", // this is sent to the page, not to ScrapingBee - mogery
+          },
+        }),
+        new Promise((_, reject) => setTimeout(() => reject(new TimeoutError("ScrapingBee timed out")), timeout + 5000)),
+      ]);
     } catch (error) {
       if (error instanceof AxiosError && error.response !== undefined) {
         response = error.response;
@@ -69,7 +72,7 @@ export function scrapeURLWithScrapingBee(
       });
     }
 
-    specialtyScrapeCheck(
+    await specialtyScrapeCheck(
       meta.logger.child({
         method: "scrapeURLWithScrapingBee/specialtyScrapeCheck",
       }),

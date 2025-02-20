@@ -1,8 +1,11 @@
-name: CI/CD
+name: Server Test Suite
+
 on:
   pull_request:
     branches:
       - main
+    paths:
+      - apps/api/**
   # schedule:
   #   - cron: '0 */4 * * *'
 
@@ -27,11 +30,12 @@ env:
   HDX_NODE_BETA_MODE: 1
   FIRE_ENGINE_BETA_URL: ${{ secrets.FIRE_ENGINE_BETA_URL }}
   USE_DB_AUTHENTICATION: ${{ secrets.USE_DB_AUTHENTICATION }}
+  SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
   ENV: ${{ secrets.ENV }}
 
 jobs:
-  pre-deploy:
-    name: Pre-deploy checks
+  test:
+    name: Run tests
     runs-on: ubuntu-latest
     services:
       redis:
@@ -46,12 +50,16 @@ jobs:
           oauth-client-id: ${{ secrets.TS_OAUTH_CLIENT_ID }}
           oauth-secret: ${{ secrets.TS_OAUTH_SECRET }}
           tags: tag:ci
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
       - name: Set up Node.js
         uses: actions/setup-node@v3
         with:
           node-version: "20"
-      - name: Install pnpm
-        run: npm install -g pnpm
+          cache: "pnpm"
+          cache-dependency-path: './apps/api/pnpm-lock.yaml'
       - name: Install dependencies
         run: pnpm install
         working-directory: ./apps/api

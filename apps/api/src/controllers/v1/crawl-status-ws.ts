@@ -17,7 +17,6 @@ import {
   getCrawlJobs,
   getDoneJobsOrdered,
   getDoneJobsOrderedLength,
-  getThrottledJobs,
   isCrawlFinished,
   isCrawlFinishedLocked,
 } from "../../lib/crawl-redis";
@@ -25,6 +24,7 @@ import { getScrapeQueue } from "../../services/queue-service";
 import { getJob, getJobs } from "./crawl-status";
 import * as Sentry from "@sentry/node";
 import { Job, JobState } from "bullmq";
+import { getConcurrencyLimitedJobs } from "../../lib/concurrency-limit";
 
 type ErrorMessage = {
   type: "error";
@@ -127,16 +127,16 @@ async function crawlStatusWS(
       async (x) => [x, await getScrapeQueue().getJobState(x)] as const,
     ),
   );
-  const throttledJobs = new Set(...(await getThrottledJobs(req.auth.team_id)));
-
-  const throttledJobsSet = new Set(throttledJobs);
-
+  const throttledJobsSet = await getConcurrencyLimitedJobs(req.auth.team_id);
+  
   const validJobStatuses: [string, JobState | "unknown"][] = [];
   const validJobIDs: string[] = [];
 
   for (const [id, status] of jobStatuses) {
-    if (
-      !throttledJobsSet.has(id) &&
+    if (throttledJobsSet.has(id)) {
+      validJobStatuses.push([id, "prioritized"]);
+      validJobIDs.push(id);
+    } else if (
       status !== "failed" &&
       status !== "unknown"
     ) {

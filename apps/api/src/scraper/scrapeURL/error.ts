@@ -1,4 +1,4 @@
-import { EngineResultsTracker } from ".";
+import { EngineResultsTracker, Meta } from ".";
 import { Engine, FeatureFlag } from "./engines";
 
 export class EngineError extends Error {
@@ -28,10 +28,12 @@ export class NoEnginesLeftError extends Error {
 
 export class AddFeatureError extends Error {
   public featureFlags: FeatureFlag[];
+  public pdfPrefetch: Meta["pdfPrefetch"];
 
-  constructor(featureFlags: FeatureFlag[]) {
+  constructor(featureFlags: FeatureFlag[], pdfPrefetch?: Meta["pdfPrefetch"]) {
     super("New feature flags have been discovered: " + featureFlags.join(", "));
     this.featureFlags = featureFlags;
+    this.pdfPrefetch = pdfPrefetch;
   }
 }
 
@@ -70,5 +72,11 @@ export class UnsupportedFileError extends Error {
   constructor(reason: string) {
     super("Scrape resulted in unsupported file: " + reason);
     this.reason = reason;
+  }
+}
+
+export class PDFAntibotError extends Error {
+  constructor() {
+    super("PDF scrape was prevented by anti-bot")
   }
 }

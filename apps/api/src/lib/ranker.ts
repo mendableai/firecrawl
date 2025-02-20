@@ -1,14 +1,13 @@
-import axios from "axios";
 import { configDotenv } from "dotenv";
 import OpenAI from "openai";
 
 configDotenv();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
-
 async function getEmbedding(text: string) {
+  const openai = new OpenAI({
+    apiKey: process.env.OPENAI_API_KEY,
+  });
+
   const embedding = await openai.embeddings.create({
     model: "text-embedding-3-small",
     input: text,
