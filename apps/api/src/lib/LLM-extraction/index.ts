@@ -67,7 +67,7 @@ export async function generateCompletions(
 
 export async function generateBasicCompletion(prompt: string) {
   const openai = new OpenAI();
-  const model = "gpt-4o";
+  const model = process.env.MODEL_NAME || "gpt-4o";
 
   const completion = await openai.chat.completions.create({
     temperature: 0,

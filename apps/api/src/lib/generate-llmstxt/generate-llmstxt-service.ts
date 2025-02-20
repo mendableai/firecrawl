@@ -132,7 +132,7 @@ export async function performGenerateLlmsTxt(options: GenerateLLMsTextServiceOpt
           _logger.debug(`Generating description for ${document.metadata?.url}`);
           
           const completion = await openai.beta.chat.completions.parse({
-            model: "gpt-4o-mini",
+            model: process.env.MODEL_NAME || "gpt-4o-mini",
             messages: [
               {
                 role: "user", 
