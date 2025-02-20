@@ -34,7 +34,7 @@ jobs:
     env:
       OPENAI_API_KEY: ${{ matrix.openai == true && secrets.OPENAI_API_KEY || '' }}
       SERPER_API_KEY: ${{ matrix.search == 'serper' && secrets.SERPER_API_KEY || '' }}
-      SEARXNG_ENDPOINT: ${{ matrix.search == 'searxng' && 'https://search.url4irl.com' || '' }}
+      SEARXNG_ENDPOINT: ${{ matrix.search == 'searxng' && 'http://localhost:3434' || '' }}
       PLAYWRIGHT_MICROSERVICE_URL: ${{ matrix.playwright == true && 'http://localhost:3003/scrape' || '' }}
     steps:
       - uses: actions/checkout@v3
@@ -69,6 +69,20 @@ jobs:
           go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go
           chmod +x html-to-markdown.so
         working-directory: ./apps/api/sharedLibs/go-html-to-md
+      - name: Set up SearXNG
+        if: matrix.search == 'searxng'
+        run: |
+          mkdir searxng
+
+          echo "use_default_settings: true
+          search:
+            formats: [html, json, csv]
+          server:
+            secret_key: 'fcsecret'" > searxng/settings.yml
+          
+          docker run -d -p 3434:8080 -v "${PWD}/searxng:/etc/searxng" --name searxng searxng/searxng
+          pnpx wait-on tcp:3434 -t 30s
+        working-directory: ./
       - name: Start server
         run: npm start > api.log 2>&1 &
         working-directory: ./apps/api
@@ -93,6 +107,12 @@ jobs:
       - name: Kill instances
         if: always()
         run: pkill -9 node
+      - name: Kill SearXNG
+        if: always() && matrix.search == 'searxng'
+        run: |
+          docker logs searxng > searxng/searxng.log 2>&1
+          docker kill searxng
+        working-directory: ./
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -106,3 +126,10 @@ jobs:
           name: Playwright Logs (openai ${{ matrix.openai }}, search ${{ matrix.search }})
           path: |
             ./apps/playwright-service-ts/playwright.log
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.search == 'searxng'
+        with:
+          name: SearXNG (openai ${{ matrix.openai }}, playwright ${{ matrix.playwright }})
+          path: |
+            ./searxng/searxng.log
+            ./searxng/settings.yml
