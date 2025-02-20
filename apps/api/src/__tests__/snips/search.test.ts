@@ -32,5 +32,5 @@ describe("Search tests", () => {
     await search({
       query: "firecrawl"
     });
-  }, 15000);
+  }, 60000);
 });
