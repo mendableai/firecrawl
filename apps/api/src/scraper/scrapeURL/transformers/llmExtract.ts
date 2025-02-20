@@ -252,7 +252,7 @@ export async function generateCompletions({
       system: options.systemPrompt,
       ...(schema && { schema: schema instanceof z.ZodType ? schema : jsonSchema(schema) }),
       ...(!schema && { output: 'no-schema' as const }),
-      // ...repairConfig,
+      ...repairConfig,
       ...(!schema && {
         onError: (error: Error) => {
           console.error(error);
