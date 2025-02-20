@@ -10,16 +10,11 @@ on:
   #   - cron: '0 */4 * * *'
 
 env:
-  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
   BULL_AUTH_KEY: ${{ secrets.BULL_AUTH_KEY }}
-  FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
   HOST: ${{ secrets.HOST }}
-  LLAMAPARSE_API_KEY: ${{ secrets.LLAMAPARSE_API_KEY }}
   POSTHOG_API_KEY: ${{ secrets.POSTHOG_API_KEY }}
   POSTHOG_HOST: ${{ secrets.POSTHOG_HOST }}
-  NUM_WORKERS_PER_QUEUE: ${{ secrets.NUM_WORKERS_PER_QUEUE }}
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-  PLAYWRIGHT_MICROSERVICE_URL: ${{ secrets.PLAYWRIGHT_MICROSERVICE_URL }}
   PORT: ${{ secrets.PORT }}
   REDIS_URL: ${{ secrets.REDIS_URL }}
   SCRAPING_BEE_API_KEY: ${{ secrets.SCRAPING_BEE_API_KEY }}
@@ -27,11 +22,12 @@ env:
   SUPABASE_SERVICE_TOKEN: ${{ secrets.SUPABASE_SERVICE_TOKEN }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
-  HDX_NODE_BETA_MODE: 1
   FIRE_ENGINE_BETA_URL: ${{ secrets.FIRE_ENGINE_BETA_URL }}
-  USE_DB_AUTHENTICATION: ${{ secrets.USE_DB_AUTHENTICATION }}
+  USE_DB_AUTHENTICATION: true
   SERPER_API_KEY: ${{ secrets.SERPER_API_KEY }}
   ENV: ${{ secrets.ENV }}
+  RUNPOD_MU_POD_ID: ${{ secrets.RUNPOD_MU_POD_ID }}
+  RUNPOD_MU_API_KEY: ${{ secrets.RUNPOD_MU_API_KEY }}
   USE_GO_MARKDOWN_PARSER: true
 
 jobs:
