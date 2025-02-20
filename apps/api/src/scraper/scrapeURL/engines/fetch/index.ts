@@ -8,6 +8,7 @@ import {
   makeSecureDispatcher,
 } from "../utils/safeFetch";
 import { MockState, saveMock } from "../../lib/mock";
+import { TextDecoder } from "util";
 
 export async function scrapeURLWithFetch(
   meta: Meta,
@@ -71,9 +72,20 @@ export async function scrapeURLWithFetch(
         })(),
       ]);
 
+      const buf = Buffer.from(await x.arrayBuffer());
+      let text = buf.toString("utf8");
+      const charset = (text.match(/charset=["']?(.+?)["']?>/) ?? [])[1]
+      try {
+        if (charset) {
+          text = new TextDecoder(charset.trim()).decode(buf);
+        }
+      } catch (error) {
+        meta.logger.warn("Failed to re-parse with correct charset", { charset, error })
+      }
+
       response = {
         url: x.url,
-        body: await x.text(),
+        body: text,
         status: x.status,
         headers: [...x.headers],
       };
