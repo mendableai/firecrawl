@@ -11,7 +11,7 @@ import { EngineResultsTracker, Meta } from "..";
 import { logger } from "../../../lib/logger";
 import { modelPrices } from "../../../lib/extract/usage/model-prices";
 import { openai } from '@ai-sdk/openai';
-import { generateObject, LanguageModel } from 'ai';
+import { generateObject, generateText, LanguageModel } from 'ai';
 import { z } from 'zod';
 import { jsonSchema } from 'ai';
 
@@ -226,23 +226,30 @@ export async function generateOpenAICompletions({
   schema = normalizeSchema(schema);
 
   try {
-    const result = schema 
-      ? await generateObject({
+    const prompt = options.prompt !== undefined
+      ? `Transform the following content into structured JSON output based on the provided schema and this user request: ${options.prompt}. If schema is provided, strictly follow it.\n\n${markdown}`
+      : `Transform the following content into structured JSON output based on the provided schema if any.\n\n${markdown}`;
+
+    const result = await generateObject({
+      model: model,
+      prompt: prompt,
+      system: options.systemPrompt,
+      experimental_repairText: async ({ text, error }) => {
+        const { text: fixedText } = await generateText({
           model: model,
-          schema: jsonSchema(schema),
-          prompt: options.prompt !== undefined
-            ? `Transform the following content into structured JSON output based on the provided schema and this user request: ${options.prompt}. If schema is provided, strictly follow it.\n\n${markdown}`
-            : `Transform the following content into structured JSON output based on the provided schema if any.\n\n${markdown}`,
-          system: options.systemPrompt,
-        })
-      : await generateObject({
-          model: model,
-          prompt: options.prompt !== undefined
-            ? `Transform the following content into structured JSON output based on the provided schema and this user request: ${options.prompt}. If schema is provided, strictly follow it.\n\n${markdown}`
-            : `Transform the following content into structured JSON output based on the provided schema if any.\n\n${markdown}`,
-          system: options.systemPrompt,
-          output: 'no-schema'
+          prompt: `Fix this JSON that had the following error: ${error}\n\nOriginal text:\n${text}\n\nReturn only the fixed JSON, no explanation.`,
+          system: "You are a JSON repair expert. Your only job is to fix malformed JSON and return valid JSON that matches the original structure and intent as closely as possible. Do not include any explanation or commentary - only return the fixed JSON."
         });
+        return fixedText;
+      },
+      ...(schema && { 
+        schema: jsonSchema(schema),
+        output: 'schema'
+      }),
+      ...(!schema && {
+        output: 'no-schema'
+      })
+    });
 
     extract = result.object;
 
