@@ -51,6 +51,11 @@ USE_DB_AUTHENTICATION=false
 # Provide your OpenAI API key here to enable AI features
 # OPENAI_API_KEY=
 
+# Experimental: Use Ollama
+# OPENAI_API_KEY=ollama
+# OPENAI_BASE_URL=http://localhost:11434/v1
+# MODEL_NAME=deepseek-r1:7b
+
 ## === Proxy ===
 # PROXY_SERVER can be a full URL (e.g. http://0.1.2.3:1234) or just an IP and port combo (e.g. 0.1.2.3:1234)
 # Do not uncomment PROXY_USERNAME and PROXY_PASSWORD if your proxy is unauthenticated
