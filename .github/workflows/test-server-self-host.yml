@@ -16,12 +16,12 @@ env:
 
 jobs:
   test:
+    name: Run tests
     strategy:
       matrix:
         openai: [true, false]
         serper: [true, false]
         playwright: [true, false]
-    name: Run tests (openai: ${{ matrix.openai }}, serper: ${{ matrix.serper }}, playwright: ${{ matrix.playwright }})
     runs-on: ubuntu-latest
     services:
       redis:
