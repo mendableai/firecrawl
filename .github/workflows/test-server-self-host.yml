@@ -22,7 +22,7 @@ jobs:
     strategy:
       matrix:
         openai: [true, false]
-        serper: [true, false]
+        search: ["serper", "searxng", false]
         playwright: [true, false]
       fail-fast: false
     runs-on: ubuntu-latest
@@ -33,7 +33,8 @@ jobs:
           - 6379:6379
     env:
       OPENAI_API_KEY: ${{ matrix.openai == true && secrets.OPENAI_API_KEY || '' }}
-      SERPER_API_KEY: ${{ matrix.serper == true && secrets.SERPER_API_KEY || '' }}
+      SERPER_API_KEY: ${{ matrix.search == 'serper' && secrets.SERPER_API_KEY || '' }}
+      SEARXNG_ENDPOINT: ${{ matrix.search == 'searxng' && 'https://search.url4irl.com' || '' }}
       PLAYWRIGHT_MICROSERVICE_URL: ${{ matrix.playwright == true && 'http://localhost:3003/scrape' || '' }}
     steps:
       - uses: actions/checkout@v3
@@ -95,13 +96,13 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Logs (openai ${{ matrix.openai }}, serper ${{ matrix.serper }}, playwright ${{ matrix.playwright }})
+          name: Logs (openai ${{ matrix.openai }}, search ${{ matrix.search }}, playwright ${{ matrix.playwright }})
           path: |
             ./apps/api/api.log
             ./apps/api/worker.log
       - uses: actions/upload-artifact@v4
         if: always() && matrix.playwright
         with:
-          name: Playwright Logs (openai ${{ matrix.openai }}, serper ${{ matrix.serper }})
+          name: Playwright Logs (openai ${{ matrix.openai }}, search ${{ matrix.search }})
           path: |
             ./apps/playwright-service-ts/playwright.log
