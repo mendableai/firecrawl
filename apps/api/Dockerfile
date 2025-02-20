@@ -19,8 +19,7 @@ RUN --mount=type=cache,id=pnpm,target=/pnpm/store pnpm install --frozen-lockfile
 
 RUN apt-get clean && apt-get update -qq && apt-get install -y ca-certificates && update-ca-certificates
 RUN pnpm install
-RUN --mount=type=secret,id=SENTRY_AUTH_TOKEN \
-    bash -c 'export SENTRY_AUTH_TOKEN="$(cat /run/secrets/SENTRY_AUTH_TOKEN)"; if [ -z $SENTRY_AUTH_TOKEN ]; then pnpm run build:nosentry; else pnpm run build; fi'
+RUN pnpm run build
 
 # Install Go
 FROM golang:1.19 AS go-base
