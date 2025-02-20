@@ -1,6 +1,7 @@
 import axios from "axios";
 import dotenv from "dotenv";
 import { SearchResult } from "../../src/lib/entities";
+import { logger } from "../lib/logger"
 
 dotenv.config();
 
@@ -30,10 +31,7 @@ export async function searxng_search(
     format: "json"
   };
 
-  const url = process.env.SEARXNG_ENDPOINT as string;
-  if (!url) {
-    console.error(`SEARXNG_ENDPOINT environment variable is not set`);
-  }
+  const url = process.env.SEARXNG_ENDPOINT!;
   // Remove trailing slash if it exists
   const cleanedUrl = url.endsWith('/') ? url.slice(0, -1) : url;
 
@@ -60,7 +58,7 @@ export async function searxng_search(
       return [];
     }
   } catch (error) {
-    console.error(`There was an error searching for content: ${error.message}`);
+    logger.error(`There was an error searching for content`, { error });
     return [];
   }
 }
