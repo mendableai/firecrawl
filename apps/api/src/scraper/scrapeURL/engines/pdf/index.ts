@@ -76,17 +76,34 @@ export async function scrapePDF(
   timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
   if (!meta.options.parsePDF) {
-    const file = await fetchFileToBuffer(meta.url, {
-      headers: meta.options.headers,
-    });
-    const content = file.buffer.toString("base64");
-    return {
-      url: file.response.url,
-      statusCode: file.response.status,
-
-      html: content,
-      markdown: content,
-    };
+    if (meta.pdfPrefetch !== undefined && meta.pdfPrefetch !== null) {
+      const content = (await readFile(meta.pdfPrefetch.filePath)).toString("base64");
+      return {
+        url: meta.pdfPrefetch.url ?? meta.url,
+        statusCode: meta.pdfPrefetch.status,
+  
+        html: content,
+        markdown: content,
+      };
+    } else {
+      const file = await fetchFileToBuffer(meta.url, {
+        headers: meta.options.headers,
+      });
+  
+      const ct = file.response.headers.get("Content-Type");
+      if (ct && !ct.includes("application/pdf")) { // if downloaded file wasn't a PDF
+        throw new PDFAntibotError();
+      }
+  
+      const content = file.buffer.toString("base64");
+      return {
+        url: file.response.url,
+        statusCode: file.response.status,
+  
+        html: content,
+        markdown: content,
+      };
+    }
   }
 
   const { response, tempFilePath } = (meta.pdfPrefetch !== undefined && meta.pdfPrefetch !== null)
