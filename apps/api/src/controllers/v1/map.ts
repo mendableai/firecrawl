@@ -55,6 +55,7 @@ export async function getMapResults({
   includeMetadata = false,
   allowExternalLinks,
   abort = new AbortController().signal, // noop
+  mock,
 }: {
   url: string;
   search?: string;
@@ -68,6 +69,7 @@ export async function getMapResults({
   includeMetadata?: boolean;
   allowExternalLinks?: boolean;
   abort?: AbortSignal;
+  mock?: string;
 }): Promise<MapResult> {
   const id = uuidv4();
   let links: string[] = [url];
@@ -106,6 +108,7 @@ export async function getMapResults({
       true,
       30000,
       abort,
+      mock,
     );
     if (sitemap > 0) {
       links = links
@@ -296,6 +299,7 @@ export async function mapController(
         teamId: req.auth.team_id,
         plan: req.auth.plan,
         abort: abort.signal,
+        mock: req.body.useMock,
       }),
       ...(req.body.timeout !== undefined ? [
         new Promise((resolve, reject) => setTimeout(() => {

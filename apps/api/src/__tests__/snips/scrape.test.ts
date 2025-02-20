@@ -76,7 +76,7 @@ describe("Scrape tests", () => {
     describe("Ad blocking (f-e dependant)", () => {
       it.concurrent("blocks ads by default", async () => {
         const response = await scrape({
-          url: "https://canyoublockit.com/testing/",
+          url: "https://www.allrecipes.com/recipe/18185/yum/",
         });
 
         expect(response.markdown).not.toContain(".g.doubleclick.net/");
@@ -84,7 +84,7 @@ describe("Scrape tests", () => {
 
       it.concurrent("doesn't block ads if explicitly disabled", async () => {
         const response = await scrape({
-          url: "https://canyoublockit.com/testing/",
+          url: "https://www.allrecipes.com/recipe/18185/yum/",
           blockAds: false,
         });
 

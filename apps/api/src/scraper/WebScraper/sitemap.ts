@@ -20,6 +20,7 @@ export async function getLinksFromSitemap(
   crawlId: string,
   sitemapsHit: Set<string>,
   abort?: AbortSignal,
+  mock?: string,
 ): Promise<number> {
   if (sitemapsHit.size >= 20) {
     return 0;
@@ -38,7 +39,7 @@ export async function getLinksFromSitemap(
       const response = await scrapeURL(
         "sitemap;" + crawlId,
         sitemapUrl,
-        scrapeOptions.parse({ formats: ["rawHtml"] }),
+        scrapeOptions.parse({ formats: ["rawHtml"], useMock: mock }),
         {
           forceEngine: [
             "fetch",
@@ -95,7 +96,7 @@ export async function getLinksFromSitemap(
         .map((sitemap) => sitemap.loc[0].trim());
 
       const sitemapPromises: Promise<number>[] = sitemapUrls.map((sitemapUrl) =>
-        getLinksFromSitemap({ sitemapUrl, urlsHandler, mode }, logger, crawlId, sitemapsHit, abort),
+        getLinksFromSitemap({ sitemapUrl, urlsHandler, mode }, logger, crawlId, sitemapsHit, abort, mock),
       );
 
       const results = await Promise.all(sitemapPromises);
@@ -120,6 +121,7 @@ export async function getLinksFromSitemap(
             crawlId,
             sitemapsHit,
             abort,
+            mock,
           ),
         );
         count += (await Promise.all(sitemapPromises)).reduce(
