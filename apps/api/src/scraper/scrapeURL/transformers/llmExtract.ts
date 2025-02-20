@@ -121,7 +121,7 @@ export function truncateText(text: string, maxTokens: number): string {
   }
 }
 
-export async function generateOpenAICompletions({
+export async function generateCompletions({
   logger,
   options,
   markdown,
@@ -295,9 +295,9 @@ export async function performLLMExtract(
 ): Promise<Document> {
   if (meta.options.formats.includes("extract")) {
     meta.internalOptions.abort?.throwIfAborted();
-    const { extract, warning } = await generateOpenAICompletions({
+    const { extract, warning } = await generateCompletions({
       logger: meta.logger.child({
-        method: "performLLMExtract/generateOpenAICompletions",
+        method: "performLLMExtract/generateCompletions",
       }),
       options: meta.options.extract!,
       markdown: document.markdown,

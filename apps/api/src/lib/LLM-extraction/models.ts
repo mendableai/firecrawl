@@ -42,7 +42,7 @@ function prepareOpenAIDoc(
   return [[{ type: "text", text: extractionTarget }], numTokens];
 }
 
-export async function generateOpenAICompletions({
+export async function generateCompletions({
   client,
   model = process.env.MODEL_NAME || "gpt-4o-mini",
   document,

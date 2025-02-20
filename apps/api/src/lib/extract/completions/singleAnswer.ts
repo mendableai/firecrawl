@@ -1,5 +1,5 @@
 import { logger } from "../../../lib/logger";
-import { generateOpenAICompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
+import { generateCompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { buildDocument } from "../build-document";
 import { Document, TokenUsage } from "../../../controllers/v1/types";
 
@@ -20,8 +20,8 @@ export async function singleAnswerCompletion({
   tokenUsage: TokenUsage;
   sources: string[];
 }> {
-  const completion = await generateOpenAICompletions({
-    logger: logger.child({ module: "extract", method: "generateOpenAICompletions" }),
+  const completion = await generateCompletions({
+    logger: logger.child({ module: "extract", method: "generateCompletions" }),
     options: {
       mode: "llm",
       systemPrompt:

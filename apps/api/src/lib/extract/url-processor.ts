@@ -3,14 +3,25 @@ import { getMapResults } from "../../controllers/v1/map";
 import { PlanType } from "../../types";
 import { removeDuplicateUrls } from "../validateUrl";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
-import { generateBasicCompletion } from "../LLM-extraction";
 import { buildPreRerankPrompt, buildRefrasedPrompt } from "./build-prompts";
 import { rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
 import { updateExtract } from "./extract-redis";
 import { ExtractStep } from "./extract-redis";
 import type { Logger } from "winston";
+import OpenAI from "openai";
 
+export async function generateBasicCompletion(prompt: string) {
+  const openai = new OpenAI();
+  const model = process.env.MODEL_NAME || "gpt-4o";
+
+  const completion = await openai.chat.completions.create({
+    temperature: 0,
+    model,
+    messages: [{ role: "user", content: prompt }],
+  });
+  return completion.choices[0].message.content;
+}
 interface ProcessUrlOptions {
   url: string;
   prompt?: string;

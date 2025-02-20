@@ -5,7 +5,7 @@ import {
   DeepResearchSource,
   updateDeepResearch,
 } from "./deep-research-redis";
-import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
+import { generateCompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { truncateText } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { openai } from "@ai-sdk/openai";
 import { TiktokenModel } from "@dqbd/tiktoken/tiktoken";
@@ -148,7 +148,7 @@ export class ResearchLLMService {
     topic: string,
     findings: DeepResearchFinding[] = [],
   ): Promise<{ query: string; researchGoal: string }[]> {
-    const { extract } = await generateOpenAICompletions({
+    const { extract } = await generateCompletions({
       logger: this.logger.child({
         method: "generateSearchQueries",
       }),
@@ -203,7 +203,7 @@ export class ResearchLLMService {
       const timeRemainingMinutes =
         Math.round((timeRemaining / 1000 / 60) * 10) / 10;
 
-      const { extract } = await generateOpenAICompletions({
+      const { extract } = await generateCompletions({
         logger: this.logger.child({
           method: "analyzeAndPlan",
         }),
@@ -253,7 +253,7 @@ export class ResearchLLMService {
     findings: DeepResearchFinding[],
     summaries: string[],
   ): Promise<string> {
-    const { extract } = await generateOpenAICompletions({
+    const { extract } = await generateCompletions({
       logger: this.logger.child({
         method: "generateFinalAnalysis",
       }),

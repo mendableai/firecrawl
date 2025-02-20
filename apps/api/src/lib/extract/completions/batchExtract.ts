@@ -1,5 +1,5 @@
 import { logger } from "../../../lib/logger";
-import { generateOpenAICompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
+import { generateCompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { buildDocument } from "../build-document";
 import { ExtractResponse, TokenUsage } from "../../../controllers/v1/types";
 import { Document } from "../../../controllers/v1/types";
@@ -30,9 +30,9 @@ export async function batchExtractPromise(
   warning?: string;
   sources: string[];
 }> {
-  const completion = await generateOpenAICompletions({
+  const completion = await generateCompletions({
     logger: logger.child({
-      method: "extractService/generateOpenAICompletions",
+      method: "extractService/generateCompletions",
     }),
     options: {
       mode: "llm",

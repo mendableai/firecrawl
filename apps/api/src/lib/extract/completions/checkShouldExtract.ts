@@ -1,7 +1,7 @@
 import { logger } from "../../../lib/logger";
 import { buildDocument } from "../build-document";
 import { Document, TokenUsage } from "../../../controllers/v1/types";
-import { generateOpenAICompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
+import { generateCompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
 import {
   buildShouldExtractSystemPrompt,
   buildShouldExtractUserPrompt,
@@ -13,7 +13,7 @@ export async function checkShouldExtract(
   multiEntitySchema: any,
   doc: Document,
 ): Promise<{ tokenUsage: TokenUsage; extract: boolean }> {
-  const shouldExtractCheck = await generateOpenAICompletions({
+  const shouldExtractCheck = await generateCompletions({
     logger: logger.child({ method: "extractService/checkShouldExtract" }),
     options: {
       mode: "llm",
