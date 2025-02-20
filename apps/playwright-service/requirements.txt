@@ -1,4 +1,0 @@
-hypercorn==0.17.3
-fastapi==0.111.0
-playwright==1.44.0
-uvicorn
