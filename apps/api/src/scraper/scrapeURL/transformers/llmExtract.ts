@@ -14,6 +14,7 @@ import { openai } from '@ai-sdk/openai';
 import { createOllama } from 'ollama-ai-provider';
 import { generateObject, generateText, LanguageModel } from 'ai';
 import { jsonSchema } from 'ai';
+import { getModel } from "../../../lib/generic-ai";
 
 // Get max tokens from model prices
 const getModelLimits = (model: string) => {
@@ -121,17 +122,13 @@ export function truncateText(text: string, maxTokens: number): string {
   }
 }
 
-const modelAdapter = process.env.OLLAMA_BASE_URL ? createOllama({
-  baseURL: process.env.OLLAMA_BASE_URL!,
-}) : openai;
-
 export async function generateCompletions({
   logger,
   options,
   markdown,
   previousWarning,
   isExtractEndpoint,
-  model = process.env.MODEL_NAME ? modelAdapter(process.env.MODEL_NAME) : modelAdapter("gpt-4o-mini"),
+  model = getModel("gpt-4o-mini"),
 }: {
   model?: LanguageModel; 
   logger: Logger;
