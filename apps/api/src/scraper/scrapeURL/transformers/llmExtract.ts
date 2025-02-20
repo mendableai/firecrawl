@@ -11,8 +11,8 @@ import { EngineResultsTracker, Meta } from "..";
 import { logger } from "../../../lib/logger";
 import { modelPrices } from "../../../lib/extract/usage/model-prices";
 import { openai } from '@ai-sdk/openai';
+import { createOllama } from 'ollama-ai-provider';
 import { generateObject, generateText, LanguageModel } from 'ai';
-import { z } from 'zod';
 import { jsonSchema } from 'ai';
 
 // Get max tokens from model prices
@@ -121,13 +121,17 @@ export function truncateText(text: string, maxTokens: number): string {
   }
 }
 
+const modelAdapter = process.env.OLLAMA_BASE_URL ? createOllama({
+  baseURL: process.env.OLLAMA_BASE_URL!,
+}) : openai;
+
 export async function generateCompletions({
   logger,
   options,
   markdown,
   previousWarning,
   isExtractEndpoint,
-  model = process.env.MODEL_NAME as TiktokenModel ? openai(process.env.MODEL_NAME as TiktokenModel) : openai("gpt-4o-mini"),
+  model = process.env.MODEL_NAME ? modelAdapter(process.env.MODEL_NAME) : modelAdapter("gpt-4o-mini"),
 }: {
   model?: LanguageModel; 
   logger: Logger;
