@@ -52,7 +52,7 @@ USE_DB_AUTHENTICATION=false
 # OPENAI_API_KEY=
 
 # Experimental: Use Ollama
-# OLLAMA_BASE_URL=http://localhost:11434/v1
+# OLLAMA_BASE_URL=http://localhost:11434/api
 # MODEL_NAME=deepseek-r1:7b
 # MODEL_EMBEDDING_NAME=nomic-embed-text
 
