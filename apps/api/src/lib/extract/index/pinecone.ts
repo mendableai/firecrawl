@@ -28,7 +28,7 @@ async function getEmbedding(text: string) {
   });
   
   const embedding = await openai.embeddings.create({
-    model: "text-embedding-3-small",
+    model: process.env.EMBEDDING_MODEL_NAME || "text-embedding-3-small",
     input: text,
     encoding_format: "float",
   });

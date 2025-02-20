@@ -124,7 +124,7 @@ export async function generateOpenAICompletions(
   markdown?: string,
   previousWarning?: string,
   isExtractEndpoint?: boolean,
-  model: TiktokenModel = (process.env.MODEL_NAME as TiktokenModel) ??
+  model: TiktokenModel = (process.env.MODEL_NAME as TiktokenModel) ||
     "gpt-4o-mini",
 ): Promise<{
   extract: any;
@@ -151,15 +151,21 @@ export async function generateOpenAICompletions(
 
   // count number of tokens
   let numTokens = 0;
-  const encoder = encoding_for_model(model as TiktokenModel);
   try {
     // Encode the message into tokens
-    const tokens = encoder.encode(markdown);
-
-    // Return the number of tokens
-    numTokens = tokens.length;
+    const encoder = encoding_for_model(model as TiktokenModel);
+    
+    try {
+      const tokens = encoder.encode(markdown);
+      numTokens = tokens.length;
+    } catch (e) {
+      throw e;
+    } finally {
+      // Free the encoder resources after use
+      encoder.free();
+    }
   } catch (error) {
-    logger.warn("Calculating num tokens of string failed", { error, markdown });
+    logger.warn("Calculating num tokens of string failed", { error });
 
     markdown = markdown.slice(0, maxTokensSafe * modifier);
 
@@ -168,9 +174,6 @@ export async function generateOpenAICompletions(
       maxTokensSafe +
       ") we support.";
     warning = previousWarning === undefined ? w : w + " " + previousWarning;
-  } finally {
-    // Free the encoder resources after use
-    encoder.free();
   }
 
   if (numTokens > maxTokensSafe) {
@@ -247,7 +250,7 @@ export async function generateOpenAICompletions(
       : { type: "json_object" },
   });
 
-  if (jsonCompletion.choices[0].message.refusal !== null) {
+  if (jsonCompletion.choices[0].message.refusal !== null && jsonCompletion.choices[0].message.refusal !== undefined) {
     throw new LLMRefusalError(jsonCompletion.choices[0].message.refusal);
   }
 
@@ -351,7 +354,7 @@ export async function generateSchemaFromPrompt(prompt: string): Promise<any> {
   for (const temp of temperatures) {
     try {
       const result = await openai.beta.chat.completions.parse({
-        model: "gpt-4o",
+        model: process.env.MODEL_NAME || "gpt-4o",
         temperature: temp,
         messages: [
           {
@@ -392,7 +395,7 @@ Return a valid JSON schema object with properties that would capture the informa
         },
       });
 
-      if (result.choices[0].message.refusal !== null) {
+      if (result.choices[0].message.refusal !== null && result.choices[0].message.refusal !== undefined) {
         throw new Error("LLM refused to generate schema");
       }
 

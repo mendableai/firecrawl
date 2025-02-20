@@ -27,7 +27,7 @@
 // export async function generateBasicCompletion(prompt: string) {
 //   const openai = new OpenAI();
 //   const model: TiktokenModel =
-//     (process.env.MODEL_NAME as TiktokenModel) ?? "gpt-4o-mini";
+//     (process.env.MODEL_NAME as TiktokenModel) || "gpt-4o-mini";
 
 //   const completion = await openai.chat.completions.create({
 //     model,
@@ -48,7 +48,7 @@
 // }> {
 //   const openai = new OpenAI();
 //   const model: TiktokenModel =
-//     (process.env.MODEL_NAME as TiktokenModel) ?? "gpt-4o-mini";
+//     (process.env.MODEL_NAME as TiktokenModel) || "gpt-4o-mini";
 
 //   let extractionContent = pagesContent;
 //   let numTokens = 0;
@@ -109,7 +109,7 @@
 //       : { type: "json_object" },
 //   });
 
-//   if (jsonCompletion.choices[0].message.refusal !== null) {
+//   if (jsonCompletion.choices[0].message.refusal !== null && jsonCompletion.choices[0].message.refusal !== undefined) {
 //     throw new LLMRefusalError(jsonCompletion.choices[0].message.refusal);
 //   }
 

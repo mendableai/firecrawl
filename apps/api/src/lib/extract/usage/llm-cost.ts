@@ -26,7 +26,7 @@ export function estimateTotalCost(tokenUsage: TokenUsage[]): number {
 export function estimateCost(tokenUsage: TokenUsage): number {
   let totalCost = 0;
   try {
-    let model = tokenUsage.model ?? process.env.MODEL_NAME ?? "gpt-4o-mini";
+    let model = tokenUsage.model ?? (process.env.MODEL_NAME || "gpt-4o-mini");
     const pricing = modelPrices[model] as ModelPricing;
 
     if (!pricing) {
