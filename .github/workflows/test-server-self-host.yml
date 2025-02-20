@@ -16,14 +16,16 @@ env:
   ENV: ${{ secrets.ENV }}
   TEST_SUITE_SELF_HOSTED: true
   USE_GO_MARKDOWN_PARSER: true
+  HAS_OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY != '' && true || false }}
+  HAS_SERPER_API_KEY: ${{ secrets.SERPER_API_KEY != '' && true || false }}
 
 jobs:
   test:
     name: Run tests
     strategy:
       matrix:
-        openai: ${{ secrets.OPENAI_API_KEY != '' && [true, false] || [false] }}
-        serper: ${{ secrets.SERPER_API_KEY != '' && [true, false] || [false] }}
+        openai: ${{ env.HAS_OPENAI_API_KEY == true && [true, false] || [false] }}
+        serper: ${{ env.HAS_SERPER_API_KEY == true && [true, false] || [false] }}
         playwright: [true, false]
       fail-fast: false
     runs-on: ubuntu-latest
