@@ -21,9 +21,9 @@ jobs:
     name: Run tests
     strategy:
       matrix:
-        openai: [true, false]
-        serper: [true, false]
-        playwright: [true, false]
+        ai: ["openai", "no-ai"]
+        search: ["searxng", "google"]
+        engine: ["playwright", "fetch"]
       fail-fast: false
     runs-on: ubuntu-latest
     services:
@@ -32,9 +32,9 @@ jobs:
         ports:
           - 6379:6379
     env:
-      OPENAI_API_KEY: ${{ matrix.openai == true && secrets.OPENAI_API_KEY || '' }}
-      SERPER_API_KEY: ${{ matrix.serper == true && secrets.SERPER_API_KEY || '' }}
-      PLAYWRIGHT_MICROSERVICE_URL: ${{ matrix.playwright == true && 'http://localhost:3003/scrape' || '' }}
+      OPENAI_API_KEY: ${{ matrix.ai == 'openai' && secrets.OPENAI_API_KEY || '' }}
+      SEARXNG_ENDPOINT: ${{ matrix.search == 'searxng' && 'http://localhost:3434' || '' }}
+      PLAYWRIGHT_MICROSERVICE_URL: ${{ matrix.engine == 'playwright' && 'http://localhost:3003/scrape' || '' }}
     steps:
       - uses: actions/checkout@v3
       - name: Install pnpm
@@ -51,7 +51,7 @@ jobs:
         run: pnpm install
         working-directory: ./apps/api
       - name: Install Playwright dependencies
-        if: matrix.playwright == true
+        if: matrix.engine == 'playwright'
         run: |
           pnpm install
           pnpm exec playwright install-deps
@@ -68,6 +68,20 @@ jobs:
           go build -o html-to-markdown.so -buildmode=c-shared html-to-markdown.go
           chmod +x html-to-markdown.so
         working-directory: ./apps/api/sharedLibs/go-html-to-md
+      - name: Set up SearXNG
+        if: matrix.search == 'searxng'
+        run: |
+          mkdir searxng
+
+          echo "use_default_settings: true
+          search:
+            formats: [html, json, csv]
+          server:
+            secret_key: 'fcsecret'" > searxng/settings.yml
+          
+          docker run -d -p 3434:8080 -v "${PWD}/searxng:/etc/searxng" --name searxng searxng/searxng
+          pnpx wait-on tcp:3434 -t 30s
+        working-directory: ./
       - name: Start server
         run: npm start > api.log 2>&1 &
         working-directory: ./apps/api
@@ -75,7 +89,7 @@ jobs:
         run: npm run workers > worker.log 2>&1 &
         working-directory: ./apps/api
       - name: Start playwright
-        if: matrix.playwright == true
+        if: matrix.engine == 'playwright'
         run: npm run dev > playwright.log 2>&1 &
         working-directory: ./apps/playwright-service-ts
         env:
@@ -83,7 +97,7 @@ jobs:
       - name: Wait for server
         run: pnpx wait-on tcp:3002 -t 15s
       - name: Wait for playwright
-        if: matrix.playwright == true
+        if: matrix.engine == 'playwright'
         run: pnpx wait-on tcp:3003 -t 15s
       - name: Run snippet tests
         run: |
@@ -92,16 +106,29 @@ jobs:
       - name: Kill instances
         if: always()
         run: pkill -9 node
+      - name: Kill SearXNG
+        if: always() && matrix.search == 'searxng'
+        run: |
+          docker logs searxng > searxng/searxng.log 2>&1
+          docker kill searxng
+        working-directory: ./
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: Logs (openai ${{ matrix.openai }}, serper ${{ matrix.serper }}, playwright ${{ matrix.playwright }})
+          name: Logs (${{ matrix.ai }}, ${{ matrix.search }}, ${{ matrix.engine }})
           path: |
             ./apps/api/api.log
             ./apps/api/worker.log
       - uses: actions/upload-artifact@v4
         if: always() && matrix.playwright
         with:
-          name: Playwright Logs (openai ${{ matrix.openai }}, serper ${{ matrix.serper }})
+          name: Playwright Logs (${{ matrix.ai }}, ${{ matrix.search }})
           path: |
             ./apps/playwright-service-ts/playwright.log
+      - uses: actions/upload-artifact@v4
+        if: always() && matrix.search == 'searxng'
+        with:
+          name: SearXNG (${{ matrix.ai }}, ${{ matrix.engine }})
+          path: |
+            ./searxng/searxng.log
+            ./searxng/settings.yml
