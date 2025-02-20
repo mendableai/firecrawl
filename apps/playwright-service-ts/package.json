@@ -19,6 +19,7 @@
     "user-agents": "^1.1.410"
   },
   "devDependencies": {
+    "@types/body-parser": "^1.19.5",
     "@types/express": "^4.17.21",
     "@types/node": "^20.14.9",
     "@types/user-agents": "^1.0.4",
