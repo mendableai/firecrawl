@@ -6,15 +6,16 @@ import {
   buildShouldExtractSystemPrompt,
   buildShouldExtractUserPrompt,
 } from "../build-prompts";
-
+import { openai } from "@ai-sdk/openai";
+import { TiktokenModel } from "@dqbd/tiktoken/tiktoken";
 export async function checkShouldExtract(
   prompt: string,
   multiEntitySchema: any,
   doc: Document,
 ): Promise<{ tokenUsage: TokenUsage; extract: boolean }> {
-  const shouldExtractCheck = await generateOpenAICompletions(
-    logger.child({ method: "extractService/checkShouldExtract" }),
-    {
+  const shouldExtractCheck = await generateOpenAICompletions({
+    logger: logger.child({ method: "extractService/checkShouldExtract" }),
+    options: {
       mode: "llm",
       systemPrompt: buildShouldExtractSystemPrompt(),
       prompt: buildShouldExtractUserPrompt(prompt, multiEntitySchema),
@@ -28,10 +29,12 @@ export async function checkShouldExtract(
         required: ["extract"],
       },
     },
-    buildDocument(doc),
-    undefined,
-    true,
-  );
+    markdown: buildDocument(doc),
+    isExtractEndpoint: true,
+    model: (process.env.MODEL_NAME as TiktokenModel)
+      ? openai(process.env.MODEL_NAME as TiktokenModel)
+      : openai("gpt-4o-mini"),
+  });
 
   return {
     tokenUsage: shouldExtractCheck.totalUsage,

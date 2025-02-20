@@ -10,6 +10,10 @@ import { Logger } from "winston";
 import { EngineResultsTracker, Meta } from "..";
 import { logger } from "../../../lib/logger";
 import { modelPrices } from "../../../lib/extract/usage/model-prices";
+import { openai } from '@ai-sdk/openai';
+import { generateObject, LanguageModel } from 'ai';
+import { z } from 'zod';
+import { jsonSchema } from 'ai';
 
 // Get max tokens from model prices
 const getModelLimits = (model: string) => {
@@ -117,16 +121,21 @@ export function truncateText(text: string, maxTokens: number): string {
   }
 }
 
-
-export async function generateOpenAICompletions(
-  logger: Logger,
-  options: ExtractOptions,
-  markdown?: string,
-  previousWarning?: string,
-  isExtractEndpoint?: boolean,
-  model: TiktokenModel = (process.env.MODEL_NAME as TiktokenModel) ??
-    "gpt-4o-mini",
-): Promise<{
+export async function generateOpenAICompletions({
+  logger,
+  options,
+  markdown,
+  previousWarning,
+  isExtractEndpoint,
+  model = openai(process.env.MODEL_NAME as TiktokenModel) ?? openai("gpt-4o-mini"),
+}: {
+  model?: LanguageModel; 
+  logger: Logger;
+  options: ExtractOptions;
+  markdown?: string;
+  previousWarning?: string;
+  isExtractEndpoint?: boolean;
+}): Promise<{
   extract: any;
   numTokens: number;
   warning: string | undefined;
@@ -136,13 +145,11 @@ export async function generateOpenAICompletions(
   let extract: any;
   let warning: string | undefined;
 
-  const openai = new OpenAI();
-
   if (markdown === undefined) {
     throw new Error("document.markdown is undefined -- this is unexpected");
   }
 
-  const { maxInputTokens, maxOutputTokens } = getModelLimits(model);
+  const { maxInputTokens, maxOutputTokens } = getModelLimits(model.modelId);
 
   // Ratio of 4 was way too high, now 3.5.
   const modifier = 3.5; // tokens to characters ratio
@@ -151,7 +158,7 @@ export async function generateOpenAICompletions(
 
   // count number of tokens
   let numTokens = 0;
-  const encoder = encoding_for_model(model as TiktokenModel);
+  const encoder = encoding_for_model(model.modelId as TiktokenModel);
   try {
     // Encode the message into tokens
     const tokens = encoder.encode(markdown);
@@ -215,89 +222,58 @@ export async function generateOpenAICompletions(
 
   schema = normalizeSchema(schema);
 
-  const jsonCompletion = await openai.beta.chat.completions.parse({
-    model,
-    temperature: 0,
-    messages: [
-      {
-        role: "system",
-        content: options.systemPrompt,
-      },
-      {
-        role: "user",
-        content: [{ type: "text", text: markdown }],
-      },
-      {
-        role: "user",
-        content:
-          options.prompt !== undefined
-            ? `Transform the above content into structured JSON output based on the provided schema if any and the following user request: ${options.prompt}. If schema is provided, strictly follow it.`
-            : "Transform the above content into structured JSON output based on the provided schema if any.",
-      },
-    ],
-    response_format: options.schema
-      ? {
-          type: "json_schema",
-          json_schema: {
-            name: "schema",
-            schema: schema,
-            strict: true,
-          },
-        }
-      : { type: "json_object" },
-  });
+  try {
+    const result = schema 
+      ? await generateObject({
+          model: model,
+          schema: jsonSchema(schema),
+          prompt: options.prompt !== undefined
+            ? `Transform the following content into structured JSON output based on the provided schema and this user request: ${options.prompt}. If schema is provided, strictly follow it.\n\n${markdown}`
+            : `Transform the following content into structured JSON output based on the provided schema if any.\n\n${markdown}`,
+          system: options.systemPrompt,
+        })
+      : await generateObject({
+          model: model,
+          prompt: options.prompt !== undefined
+            ? `Transform the following content into structured JSON output based on the provided schema and this user request: ${options.prompt}. If schema is provided, strictly follow it.\n\n${markdown}`
+            : `Transform the following content into structured JSON output based on the provided schema if any.\n\n${markdown}`,
+          system: options.systemPrompt,
+          output: 'no-schema'
+        });
 
-  if (jsonCompletion.choices[0].message.refusal !== null) {
-    throw new LLMRefusalError(jsonCompletion.choices[0].message.refusal);
-  }
+    extract = result.object;
 
-  extract = jsonCompletion.choices[0].message.parsed;
-
-  if (extract === null && jsonCompletion.choices[0].message.content !== null) {
-    try {
-      if (!isExtractEndpoint) {
-        extract = JSON.parse(jsonCompletion.choices[0].message.content);
-      } else {
-        const extractData = JSON.parse(
-          jsonCompletion.choices[0].message.content,
-        );
-        extract = options.schema ? extractData.data.extract : extractData;
-      }
-    } catch (e) {
-      logger.error("Failed to parse returned JSON, no schema specified.", {
-        error: e,
-      });
-      throw new LLMRefusalError(
-        "Failed to parse returned JSON. Please specify a schema in the extract object.",
-      );
+    // If the users actually wants the items object, they can specify it as 'required' in the schema
+    // otherwise, we just return the items array
+    if (
+      options.schema &&
+      options.schema.type === "array" &&
+      !schema?.required?.includes("items")
+    ) {
+      extract = extract?.items;
     }
-  }
 
-  const promptTokens = jsonCompletion.usage?.prompt_tokens ?? 0;
-  const completionTokens = jsonCompletion.usage?.completion_tokens ?? 0;
+    // Since generateObject doesn't provide token usage, we'll estimate it
+    const promptTokens = numTokens;
+    const completionTokens = result?.usage?.completionTokens ?? 0;
 
-  // If the users actually wants the items object, they can specify it as 'required' in the schema
-  // otherwise, we just return the items array
-  if (
-    options.schema &&
-    options.schema.type === "array" &&
-    !schema?.required?.includes("items")
-  ) {
-    extract = extract?.items;
+    return {
+      extract,
+      warning,
+      numTokens,
+      totalUsage: {
+        promptTokens,
+        completionTokens,
+        totalTokens: promptTokens + completionTokens,
+      },
+      model: model.modelId,
+    };
+  } catch (error) {
+    if (error.message?.includes('refused')) {
+      throw new LLMRefusalError(error.message);
+    }
+    throw error;
   }
-  // num tokens (just user prompt tokenized) | deprecated
-  // totalTokens = promptTokens + completionTokens
-  return {
-    extract,
-    warning,
-    numTokens,
-    totalUsage: {
-      promptTokens,
-      completionTokens,
-      totalTokens: promptTokens + completionTokens,
-    },
-    model,
-  };
 }
 
 export async function performLLMExtract(
@@ -306,14 +282,14 @@ export async function performLLMExtract(
 ): Promise<Document> {
   if (meta.options.formats.includes("extract")) {
     meta.internalOptions.abort?.throwIfAborted();
-    const { extract, warning } = await generateOpenAICompletions(
-      meta.logger.child({
+    const { extract, warning } = await generateOpenAICompletions({
+      logger: meta.logger.child({
         method: "performLLMExtract/generateOpenAICompletions",
       }),
-      meta.options.extract!,
-      document.markdown,
-      document.warning,
-    );
+      options: meta.options.extract!,
+      markdown: document.markdown,
+      previousWarning: document.warning
+    });
 
     if (meta.options.formats.includes("json")) {
       document.json = extract;

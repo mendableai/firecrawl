@@ -30,11 +30,11 @@ export async function batchExtractPromise(
   warning?: string;
   sources: string[];
 }> {
-  const completion = await generateOpenAICompletions(
-    logger.child({
+  const completion = await generateOpenAICompletions({
+    logger: logger.child({
       method: "extractService/generateOpenAICompletions",
     }),
-    {
+    options: {
       mode: "llm",
       systemPrompt: buildBatchExtractSystemPrompt(
         systemPrompt,
@@ -44,10 +44,9 @@ export async function batchExtractPromise(
       prompt: buildBatchExtractPrompt(prompt),
       schema: multiEntitySchema,
     },
-    buildDocument(doc),
-    undefined,
-    true,
-  );
+    markdown: buildDocument(doc),
+    isExtractEndpoint: true
+  });
 
   return {
     extract: completion.extract,
