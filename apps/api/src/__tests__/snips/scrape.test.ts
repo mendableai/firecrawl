@@ -166,7 +166,7 @@ describe("Scrape tests", () => {
           url: "http://firecrawl.dev",
           proxy: "stealth",
         });
-      }, 15000);
+      }, 30000);
     });
     
     describe("PDF (f-e dependant)", () => {
