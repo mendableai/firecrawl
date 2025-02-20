@@ -47,12 +47,27 @@ USE_DB_AUTHENTICATION=false
 
 # ===== Optional ENVS ======
 
-# Proxy configuration (this will be used by both fetch and playwright engines)
+## === AI features (JSON format on scrape, /extract API) ===
+# Provide your OpenAI API key here to enable AI features
+# OPENAI_API_KEY=
+
+## === Proxy ===
 # PROXY_SERVER can be a full URL (e.g. http://0.1.2.3:1234) or just an IP and port combo (e.g. 0.1.2.3:1234)
 # Do not uncomment PROXY_USERNAME and PROXY_PASSWORD if your proxy is unauthenticated
 # PROXY_SERVER=
 # PROXY_USERNAME=
 # PROXY_PASSWORD=
+
+## === /search API ===
+# By default, the /search API will use Google search.
+
+# You can specify a SearXNG server with the JSON format enabled, if you'd like to use that instead of direct Google.
+# You can also customize the engines and categories parameters, but the defaults should also work just fine.
+# SEARXNG_ENDPOINT=http://your.searxng.server
+# SEARXNG_ENGINES=
+# SEARXNG_CATEGORIES=
+
+## === Other ===
 
 # Supabase Setup (used to support DB authentication, advanced logging, etc.)
 # SUPABASE_ANON_TOKEN=
@@ -64,9 +79,6 @@ USE_DB_AUTHENTICATION=false
 
 # You can add this to enable ScrapingBee as a fallback scraping engine.
 # SCRAPING_BEE_API_KEY=
-
-# Needed for JSON format on scrape and /extract endpoint
-# OPENAI_API_KEY=
 
 # This key lets you access the queue admin panel. Change this if your deployment is publicly accessible.
 BULL_AUTH_KEY=CHANGEME

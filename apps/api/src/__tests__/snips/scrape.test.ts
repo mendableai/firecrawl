@@ -55,7 +55,7 @@ describe("Scrape tests", () => {
         url: "https://icanhazip.com"
       });
 
-      expect(response.markdown?.trim() === process.env.PROXY_SERVER!.split("://").slice(-1)[0].split(":")[0]).toBe(true);
+      expect(response.markdown?.trim()).toBe(process.env.PROXY_SERVER!.split("://").slice(-1)[0].split(":")[0]);
     });
   }
 
