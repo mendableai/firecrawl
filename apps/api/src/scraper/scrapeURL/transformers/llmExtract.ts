@@ -127,7 +127,7 @@ export async function generateOpenAICompletions({
   markdown,
   previousWarning,
   isExtractEndpoint,
-  model = openai(process.env.MODEL_NAME as TiktokenModel) ?? openai("gpt-4o-mini"),
+  model = process.env.MODEL_NAME as TiktokenModel ? openai(process.env.MODEL_NAME as TiktokenModel) : openai("gpt-4o-mini"),
 }: {
   model?: LanguageModel; 
   logger: Logger;
@@ -230,10 +230,7 @@ export async function generateOpenAICompletions({
       ? `Transform the following content into structured JSON output based on the provided schema and this user request: ${options.prompt}. If schema is provided, strictly follow it.\n\n${markdown}`
       : `Transform the following content into structured JSON output based on the provided schema if any.\n\n${markdown}`;
 
-    const result = await generateObject({
-      model: model,
-      prompt: prompt,
-      system: options.systemPrompt,
+    const repairConfig = {
       experimental_repairText: async ({ text, error }) => {
         const { text: fixedText } = await generateText({
           model: model,
@@ -241,16 +238,22 @@ export async function generateOpenAICompletions({
           system: "You are a JSON repair expert. Your only job is to fix malformed JSON and return valid JSON that matches the original structure and intent as closely as possible. Do not include any explanation or commentary - only return the fixed JSON."
         });
         return fixedText;
-      },
-      ...(schema && { 
-        schema: jsonSchema(schema),
-        output: 'schema'
-      }),
-      ...(!schema && {
-        output: 'no-schema'
-      })
-    });
+      }
+    };
 
+    const generateObjectConfig = {
+      model: model,
+      prompt: prompt,
+      system: options.systemPrompt,
+      ...(schema && { schema: jsonSchema(schema) }),
+      ...(!schema && { output: 'no-schema' as const }),
+      ...repairConfig,
+      onError: (error: Error) => {
+        console.error(error);
+      }
+    } satisfies Parameters<typeof generateObject>[0];
+
+    const result = await generateObject(generateObjectConfig);
     extract = result.object;
 
     // If the users actually wants the items object, they can specify it as 'required' in the schema
