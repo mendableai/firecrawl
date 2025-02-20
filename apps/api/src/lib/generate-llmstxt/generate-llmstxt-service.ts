@@ -30,7 +30,7 @@ interface GenerateLLMsTextServiceOptions {
   subId?: string;
 }
 
-const DescriptionSchema = z.object({
+const descriptionSchema = z.object({
   description: z.string(),
   title: z.string(),
 });
@@ -148,7 +148,7 @@ export async function performGenerateLlmsTxt(
               options: {
                 systemPrompt: "",
                 mode: "llm",
-                schema: DescriptionSchema,
+                schema: descriptionSchema,
                 prompt: `Generate a 9-10 word description and a 3-4 word title of the entire page based on ALL the content one will find on the page for this url: ${document.metadata?.url}. This will help in a user finding the page for its intended purpose.`,
               },
               markdown: document.markdown,

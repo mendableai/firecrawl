@@ -240,6 +240,7 @@ export async function generateCompletions({
       }
     };
 
+
     const generateObjectConfig = {
       model: model,
       prompt: prompt,
