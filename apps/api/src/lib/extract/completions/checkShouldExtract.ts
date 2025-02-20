@@ -7,7 +7,6 @@ import {
   buildShouldExtractUserPrompt,
 } from "../build-prompts";
 import { openai } from "@ai-sdk/openai";
-import { TiktokenModel } from "@dqbd/tiktoken/tiktoken";
 import { createOllama } from "ollama-ai-provider";
 
 const modelAdapter = process.env.OLLAMA_BASE_URL ? createOllama({
