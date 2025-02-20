@@ -8,10 +8,7 @@ import {
 } from "../build-prompts";
 import { openai } from "@ai-sdk/openai";
 import { createOllama } from "ollama-ai-provider";
-
-const modelAdapter = process.env.OLLAMA_BASE_URL ? createOllama({
-  baseURL: process.env.OLLAMA_BASE_URL!,
-}) : openai;
+import { getModel } from "../../../lib/generic-ai";
 
 export async function checkShouldExtract(
   prompt: string,
@@ -36,9 +33,7 @@ export async function checkShouldExtract(
     },
     markdown: buildDocument(doc),
     isExtractEndpoint: true,
-    model: process.env.MODEL_NAME
-      ? modelAdapter(process.env.MODEL_NAME!)
-      : modelAdapter("gpt-4o-mini"),
+    model: getModel("gpt-4o-mini"),
   });
 
   return {

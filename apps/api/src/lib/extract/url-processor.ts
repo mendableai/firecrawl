@@ -6,21 +6,13 @@ import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { buildPreRerankPrompt, buildRefrasedPrompt } from "./build-prompts";
 import { rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
-import { updateExtract } from "./extract-redis";
-import { ExtractStep } from "./extract-redis";
 import type { Logger } from "winston";
 import { generateText } from "ai";
-import { openai } from '@ai-sdk/openai';
-import { createOllama } from "ollama-ai-provider/dist";
-
-const modelAdapter = process.env.OLLAMA_BASE_URL ? createOllama({
-  baseURL: process.env.OLLAMA_BASE_URL!,
-}) : openai;
+import { getModel } from "../generic-ai";
 
 export async function generateBasicCompletion(prompt: string) {
-  const model = process.env.MODEL_NAME ? modelAdapter(process.env.MODEL_NAME) : modelAdapter("gpt-4o");
   const { text } = await generateText({
-    model: model,
+    model: getModel("gpt-4o"),
     prompt: prompt,
     temperature: 0
   });
