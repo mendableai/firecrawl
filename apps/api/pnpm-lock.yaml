@@ -251,9 +251,6 @@ importers:
       zod:
         specifier: ^3.24.2
         version: 3.24.2
-      zod-to-json-schema:
-        specifier: ^3.23.1
-        version: 3.23.1(zod@3.24.2)
     devDependencies:
       '@flydotio/dockerfile':
         specifier: ^0.4.10
