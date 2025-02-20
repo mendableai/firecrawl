@@ -6,8 +6,6 @@ import {
   buildShouldExtractSystemPrompt,
   buildShouldExtractUserPrompt,
 } from "../build-prompts";
-import { openai } from "@ai-sdk/openai";
-import { createOllama } from "ollama-ai-provider";
 import { getModel } from "../../../lib/generic-ai";
 
 export async function checkShouldExtract(

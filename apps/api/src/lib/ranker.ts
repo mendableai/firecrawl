@@ -1,12 +1,12 @@
 import { embed } from "ai/dist";
-import { openai } from "@ai-sdk/openai";
 import { configDotenv } from "dotenv";
+import { getEmbeddingModel } from "./generic-ai";
 
 configDotenv();
 
 async function getEmbedding(text: string) {
   const { embedding } = await embed({
-    model: openai.embedding('text-embedding-3-small'),
+    model: getEmbeddingModel("text-embedding-3-small"),
     value: text,
   });
 

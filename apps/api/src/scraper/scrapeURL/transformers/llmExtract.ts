@@ -10,8 +10,6 @@ import { Logger } from "winston";
 import { EngineResultsTracker, Meta } from "..";
 import { logger } from "../../../lib/logger";
 import { modelPrices } from "../../../lib/extract/usage/model-prices";
-import { openai } from '@ai-sdk/openai';
-import { createOllama } from 'ollama-ai-provider';
 import { generateObject, generateText, LanguageModel } from 'ai';
 import { jsonSchema } from 'ai';
 import { getModel } from "../../../lib/generic-ai";
