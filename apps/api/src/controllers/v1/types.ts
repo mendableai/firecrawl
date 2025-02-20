@@ -244,10 +244,11 @@ const extractRefine = (obj) => {
   const hasJsonFormat = obj.formats?.includes("json");
   const hasJsonOptions = obj.jsonOptions !== undefined;
   return (
-    (hasExtractFormat && hasExtractOptions) ||
-    (!hasExtractFormat && !hasExtractOptions) ||
-    (hasJsonFormat && hasJsonOptions) ||
-    (!hasJsonFormat && !hasJsonOptions)
+    (hasExtractFormat && hasExtractOptions)
+    || (!hasExtractFormat && !hasExtractOptions)
+  ) && (
+    (hasJsonFormat && hasJsonOptions)
+    || (!hasJsonFormat && !hasJsonOptions)
   );
 };
 const extractRefineOpts = {
@@ -261,7 +262,7 @@ const extractTransform = (obj) => {
       obj.extract ||
       obj.formats?.includes("json") ||
       obj.jsonOptions) &&
-    !obj.timeout
+    (obj.timeout === 30000)
   ) {
     obj = { ...obj, timeout: 60000 };
   }
