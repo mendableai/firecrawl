@@ -1,8 +1,8 @@
-import { openai } from '@ai-sdk/openai';
-import { createOllama } from "ollama-ai-provider/dist";
+import { createOpenAI, openai } from '@ai-sdk/openai';
 
-const modelAdapter = process.env.OLLAMA_BASE_URL ? createOllama({
+const modelAdapter = process.env.OLLAMA_BASE_URL ? createOpenAI({
     baseURL: process.env.OLLAMA_BASE_URL!,
+    apiKey: "ollama",
 }) : openai;
 
 export function getModel(name: string) {
