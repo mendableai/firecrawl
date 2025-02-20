@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - apps/api/**
+      - apps/playwright-service-ts/**
 
 env:
   PORT: 3002
@@ -22,6 +23,7 @@ jobs:
         openai: [true, false]
         serper: [true, false]
         playwright: [true, false]
+      fail-fast: false
     runs-on: ubuntu-latest
     services:
       redis:
