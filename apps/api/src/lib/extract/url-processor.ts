@@ -3,14 +3,21 @@ import { getMapResults } from "../../controllers/v1/map";
 import { PlanType } from "../../types";
 import { removeDuplicateUrls } from "../validateUrl";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
-import { generateBasicCompletion } from "../LLM-extraction";
 import { buildPreRerankPrompt, buildRefrasedPrompt } from "./build-prompts";
 import { rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
-import { updateExtract } from "./extract-redis";
-import { ExtractStep } from "./extract-redis";
 import type { Logger } from "winston";
+import { generateText } from "ai";
+import { getModel } from "../generic-ai";
 
+export async function generateBasicCompletion(prompt: string) {
+  const { text } = await generateText({
+    model: getModel("gpt-4o"),
+    prompt: prompt,
+    temperature: 0
+  });
+  return text;
+}
 interface ProcessUrlOptions {
   url: string;
   prompt?: string;

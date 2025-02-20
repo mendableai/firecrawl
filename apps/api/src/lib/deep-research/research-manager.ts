@@ -5,7 +5,7 @@ import {
   DeepResearchSource,
   updateDeepResearch,
 } from "./deep-research-redis";
-import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
+import { generateCompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { truncateText } from "../../scraper/scrapeURL/transformers/llmExtract";
 
 interface AnalysisResult {
@@ -146,11 +146,11 @@ export class ResearchLLMService {
     topic: string,
     findings: DeepResearchFinding[] = [],
   ): Promise<{ query: string; researchGoal: string }[]> {
-    const { extract } = await generateOpenAICompletions(
-      this.logger.child({
+    const { extract } = await generateCompletions({
+      logger: this.logger.child({
         method: "generateSearchQueries",
       }),
-      {
+      options: {
         mode: "llm",
         systemPrompt:
           "You are an expert research agent that generates search queries (SERP) to explore topics deeply and thoroughly. Do not generate repeated queries. Today's date is " +
@@ -186,10 +186,8 @@ export class ResearchLLMService {
           Every search query is a new SERP query so make sure the whole context is added without overwhelming the search engine.
           The first SERP query you generate should be a very concise, simple version of the topic. `,
       },
-      "",
-      undefined,
-      true,
-    );
+      markdown: ""
+    });
 
     return extract.queries;
   }
@@ -203,11 +201,11 @@ export class ResearchLLMService {
       const timeRemainingMinutes =
         Math.round((timeRemaining / 1000 / 60) * 10) / 10;
 
-      const { extract } = await generateOpenAICompletions(
-        this.logger.child({
+      const { extract } = await generateCompletions({
+        logger: this.logger.child({
           method: "analyzeAndPlan",
         }),
-        {
+        options: {
           mode: "llm",
           systemPrompt:
             "You are an expert research agent that is analyzing findings. Your goal is to synthesize information and identify gaps for further research. Today's date is " +
@@ -238,10 +236,8 @@ export class ResearchLLMService {
             120000,
           ),
         },
-        "",
-        undefined,
-        true,
-      );
+        markdown: "",
+      });
 
       return extract.analysis;
     } catch (error) {
@@ -255,11 +251,11 @@ export class ResearchLLMService {
     findings: DeepResearchFinding[],
     summaries: string[],
   ): Promise<string> {
-    const { extract } = await generateOpenAICompletions(
-      this.logger.child({
+    const { extract } = await generateCompletions({
+      logger: this.logger.child({
         method: "generateFinalAnalysis",
       }),
-      {
+      options: {
         mode: "llm",
         systemPrompt:
           "You are an expert research analyst who creates comprehensive, well-structured reports. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations. Today's date is " +
@@ -287,11 +283,8 @@ export class ResearchLLMService {
           100000,
         ),
       },
-      "",
-      undefined,
-      true,
-      "gpt-4o"
-    );
+      markdown: "",
+    });
 
     return extract.report;
   }

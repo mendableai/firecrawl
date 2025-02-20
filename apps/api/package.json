@@ -56,7 +56,7 @@
     "typescript": "^5.4.2"
   },
   "dependencies": {
-    "jsdom": "^26.0.0",
+    "@ai-sdk/openai": "^1.1.13",
     "@anthropic-ai/sdk": "^0.24.3",
     "@apidevtools/json-schema-ref-parser": "^11.7.3",
     "@brillout/import": "^0.2.2",
@@ -72,6 +72,7 @@
     "@supabase/supabase-js": "^2.44.2",
     "@types/express-ws": "^3.0.4",
     "@types/ws": "^8.5.12",
+    "ai": "^4.1.45",
     "ajv": "^8.16.0",
     "async": "^3.2.5",
     "async-mutex": "^0.5.0",
@@ -96,6 +97,7 @@
     "ioredis": "^5.4.1",
     "ip-address": "^10.0.1",
     "joplin-turndown-plugin-gfm": "^1.0.12",
+    "jsdom": "^26.0.0",
     "json-schema-to-zod": "^2.3.0",
     "keyword-extractor": "^0.0.28",
     "koffi": "^2.9.0",
@@ -109,7 +111,7 @@
     "moment": "^2.29.4",
     "mongoose": "^8.4.4",
     "natural": "^7.0.7",
-    "openai": "^4.57.0",
+    "ollama-ai-provider": "^1.2.0",
     "pdf-parse": "^1.1.1",
     "pos": "^0.4.2",
     "posthog-node": "^4.0.1",
@@ -134,8 +136,7 @@
     "wordpos": "^2.1.0",
     "ws": "^8.18.0",
     "xml2js": "^0.6.2",
-    "zod": "^3.23.8",
-    "zod-to-json-schema": "^3.23.1"
+    "zod": "^3.24.2"
   },
   "nodemonConfig": {
     "ignore": [

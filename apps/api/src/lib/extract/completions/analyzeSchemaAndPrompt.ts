@@ -1,12 +1,16 @@
-import { generateSchemaFromPrompt } from "../../../scraper/scrapeURL/transformers/llmExtract";
+import {
+  generateCompletions,
+  generateSchemaFromPrompt,
+} from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { TokenUsage } from "../../../controllers/v1/types";
 import { z } from "zod";
 import {
   buildAnalyzeSchemaPrompt,
   buildAnalyzeSchemaUserPrompt,
 } from "../build-prompts";
-import OpenAI from "openai";
 import { logger } from "../../../lib/logger";
+import { jsonSchema } from "ai";
+import { getModel } from "../../../lib/generic-ai";
 
 export async function analyzeSchemaAndPrompt(
   urls: string[],
@@ -25,6 +29,8 @@ export async function analyzeSchemaAndPrompt(
 
   const schemaString = JSON.stringify(schema);
 
+  const model = getModel("gpt-4o");
+
   const checkSchema = z
     .object({
       isMultiEntity: z.boolean(),
@@ -37,61 +43,28 @@ export async function analyzeSchemaAndPrompt(
       "isMultiEntity was true, but no multiEntityKeys",
     );
 
-  const model = process.env.MODEL_NAME || "gpt-4o";
-
-  const openai = new OpenAI();
-  const result = await openai.beta.chat.completions.parse({
-    model,
-    messages: [
-      {
-        role: "system",
-        content: buildAnalyzeSchemaPrompt(),
-      },
-      {
-        role: "user",
-        content: buildAnalyzeSchemaUserPrompt(schemaString, prompt, urls),
-      },
-    ],
-    response_format: {
-      type: "json_schema",
-      json_schema: {
-        schema: {
-          type: "object",
-          properties: {
-            isMultiEntity: { type: "boolean" },
-            multiEntityKeys: { type: "array", items: { type: "string" } },
-            reasoning: { type: "string" },
-            keyIndicators: { type: "array", items: { type: "string" } },
-          },
-          required: [
-            "isMultiEntity",
-            "multiEntityKeys",
-            "reasoning",
-            "keyIndicators",
-          ],
-          additionalProperties: false,
-        },
-        name: "checkSchema",
-      },
-    },
-  });
-
-  const tokenUsage: TokenUsage = {
-    promptTokens: result.usage?.prompt_tokens ?? 0,
-    completionTokens: result.usage?.completion_tokens ?? 0,
-    totalTokens: result.usage?.total_tokens ?? 0,
-    model: model,
-  };
-
   try {
+    const { extract: result, totalUsage } = await generateCompletions({
+      logger,
+      options: {
+        mode: "llm",
+        schema: checkSchema,
+        prompt: buildAnalyzeSchemaUserPrompt(schemaString, prompt, urls),
+        systemPrompt: buildAnalyzeSchemaPrompt(),
+      },
+      markdown: "",
+      model,
+    });
+
     const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
-      checkSchema.parse(result.choices[0].message.parsed);
+      checkSchema.parse(result);
+
     return {
       isMultiEntity,
       multiEntityKeys,
       reasoning,
       keyIndicators,
-      tokenUsage,
+      tokenUsage: totalUsage,
     };
   } catch (e) {
     logger.warn("(analyzeSchemaAndPrompt) Error parsing schema analysis", {
@@ -104,6 +77,11 @@ export async function analyzeSchemaAndPrompt(
     multiEntityKeys: [],
     reasoning: "",
     keyIndicators: [],
-    tokenUsage,
+    tokenUsage: {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      model: model.modelId,
+    },
   };
 }

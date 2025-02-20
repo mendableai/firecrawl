@@ -1,20 +1,16 @@
+import { embed } from "ai";
 import { configDotenv } from "dotenv";
-import OpenAI from "openai";
+import { getEmbeddingModel } from "./generic-ai";
 
 configDotenv();
 
 async function getEmbedding(text: string) {
-  const openai = new OpenAI({
-    apiKey: process.env.OPENAI_API_KEY,
+  const { embedding } = await embed({
+    model: getEmbeddingModel("text-embedding-3-small"),
+    value: text,
   });
 
-  const embedding = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: text,
-    encoding_format: "float",
-  });
-
-  return embedding.data[0].embedding;
+  return embedding;
 }
 
 const cosineSimilarity = (vec1: number[], vec2: number[]): number => {

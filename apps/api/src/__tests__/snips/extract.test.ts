@@ -51,7 +51,7 @@ function expectExtractToSucceed(response: Awaited<ReturnType<typeof extractStatu
 }
 
 describe("Extract tests", () => {
-    if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY) {
+    if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY || process.env.OLLAMA_BASE_URL) {
         it.concurrent("works", async () => {
             const res = await extract({
                 urls: ["https://firecrawl.dev"],

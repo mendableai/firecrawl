@@ -1,5 +1,5 @@
 import { logger } from "../../../lib/logger";
-import { generateOpenAICompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
+import { generateCompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { buildDocument } from "../build-document";
 import { Document, TokenUsage } from "../../../controllers/v1/types";
 
@@ -20,9 +20,9 @@ export async function singleAnswerCompletion({
   tokenUsage: TokenUsage;
   sources: string[];
 }> {
-  const completion = await generateOpenAICompletions(
-    logger.child({ module: "extract", method: "generateOpenAICompletions" }),
-    {
+  const completion = await generateCompletions({
+    logger: logger.child({ module: "extract", method: "generateCompletions" }),
+    options: {
       mode: "llm",
       systemPrompt:
         (systemPrompt ? `${systemPrompt}\n` : "") +
@@ -31,10 +31,9 @@ export async function singleAnswerCompletion({
       prompt: "Today is: " + new Date().toISOString() + "\n" + prompt,
       schema: rSchema,
     },
-    singleAnswerDocs.map((x) => buildDocument(x)).join("\n"),
-    undefined,
-    true,
-  );
+    markdown: singleAnswerDocs.map((x) => buildDocument(x)).join("\n"),
+    isExtractEndpoint: true
+  });
   return { 
     extract: completion.extract, 
     tokenUsage: completion.totalUsage,

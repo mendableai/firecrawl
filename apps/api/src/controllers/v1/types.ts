@@ -65,6 +65,7 @@ export const extractOptions = z
         "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required.",
       ),
     prompt: z.string().max(10000).optional(),
+    temperature: z.number().optional(),
   })
   .strict(strictMessage);
 
@@ -244,10 +245,11 @@ const extractRefine = (obj) => {
   const hasJsonFormat = obj.formats?.includes("json");
   const hasJsonOptions = obj.jsonOptions !== undefined;
   return (
-    (hasExtractFormat && hasExtractOptions) ||
-    (!hasExtractFormat && !hasExtractOptions) ||
-    (hasJsonFormat && hasJsonOptions) ||
-    (!hasJsonFormat && !hasJsonOptions)
+    (hasExtractFormat && hasExtractOptions)
+    || (!hasExtractFormat && !hasExtractOptions)
+  ) && (
+    (hasJsonFormat && hasJsonOptions)
+    || (!hasJsonFormat && !hasJsonOptions)
   );
 };
 const extractRefineOpts = {
@@ -261,7 +263,7 @@ const extractTransform = (obj) => {
       obj.extract ||
       obj.formats?.includes("json") ||
       obj.jsonOptions) &&
-    !obj.timeout
+    (obj.timeout === 30000)
   ) {
     obj = { ...obj, timeout: 60000 };
   }
