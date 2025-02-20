@@ -133,11 +133,12 @@ async function performFireEngineScrape<
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 
-  specialtyScrapeCheck(
+  await specialtyScrapeCheck(
     logger.child({
       method: "performFireEngineScrape/specialtyScrapeCheck",
     }),
     status.responseHeaders,
+    status,
   );
 
   const contentType = (Object.entries(status.responseHeaders ?? {}).find(

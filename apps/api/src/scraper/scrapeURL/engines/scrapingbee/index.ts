@@ -72,7 +72,7 @@ export function scrapeURLWithScrapingBee(
       });
     }
 
-    specialtyScrapeCheck(
+    await specialtyScrapeCheck(
       meta.logger.child({
         method: "scrapeURLWithScrapingBee/specialtyScrapeCheck",
       }),
