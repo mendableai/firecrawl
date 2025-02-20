@@ -21,8 +21,8 @@ jobs:
     name: Run tests
     strategy:
       matrix:
-        openai: [true, false]
-        serper: [true, false]
+        openai: ${{ secrets.OPENAI_API_KEY != '' && [true, false] || [false] }}
+        serper: ${{ secrets.SERPER_API_KEY != '' && [true, false] || [false] }}
         playwright: [true, false]
       fail-fast: false
     runs-on: ubuntu-latest
