@@ -6,6 +6,7 @@ on:
       - main
     paths:
       - apps/api/**
+      - .github/workflows/test-server.yml
   # schedule:
   #   - cron: '0 */4 * * *'
 

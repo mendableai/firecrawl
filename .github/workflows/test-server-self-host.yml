@@ -7,6 +7,7 @@ on:
     paths:
       - apps/api/**
       - apps/playwright-service-ts/**
+      - .github/workflows/test-server-self-host.yml
 
 env:
   PORT: 3002
