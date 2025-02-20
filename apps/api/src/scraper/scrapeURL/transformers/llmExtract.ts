@@ -245,6 +245,7 @@ export async function generateCompletions({
     const generateObjectConfig = {
       model: model,
       prompt: prompt,
+      temperature: options.temperature ?? 0,
       system: options.systemPrompt,
       ...(schema && { schema: jsonSchema(schema) }),
       ...(!schema && { output: 'no-schema' as const }),
@@ -333,20 +334,20 @@ export function removeDefaultProperty(schema: any): any {
 }
 
 export async function generateSchemaFromPrompt(prompt: string): Promise<any> {
-  const openai = new OpenAI();
-
+  const model = getModel("gpt-4o");
   const temperatures = [0, 0.1, 0.3]; // Different temperatures to try
   let lastError: Error | null = null;
 
   for (const temp of temperatures) {
     try {
-      const result = await openai.beta.chat.completions.parse({
-        model: process.env.MODEL_NAME || "gpt-4o",
-        temperature: temp,
-        messages: [
-          {
-            role: "system",
-            content: `You are a schema generator for a web scraping system. Generate a JSON schema based on the user's prompt.
+      const { extract } = await generateCompletions({
+        logger: logger.child({
+          method: "generateSchemaFromPrompt/generateCompletions",
+        }),
+        model: model,
+        options: {
+          mode: "llm",
+          systemPrompt: `You are a schema generator for a web scraping system. Generate a JSON schema based on the user's prompt.
 Consider:
 1. The type of data being requested
 2. Required fields vs optional fields
@@ -371,28 +372,14 @@ Optionals are not supported.
 DO NOT USE FORMATS.
 Keep it simple. Don't create too many properties, just the ones that are needed. Don't invent properties.
 Return a valid JSON schema object with properties that would capture the information requested in the prompt.`,
-          },
-          {
-            role: "user",
-            content: `Generate a JSON schema for extracting the following information: ${prompt}`,
-          },
-        ],
-        response_format: {
-          type: "json_object",
+          prompt: `Generate a JSON schema for extracting the following information: ${prompt}`,
+          temperature: temp 
         },
+        markdown: prompt
       });
 
-      if (result.choices[0].message.refusal !== null && result.choices[0].message.refusal !== undefined) {
-        throw new Error("LLM refused to generate schema");
-      }
+      return extract;
 
-      let schema;
-      try {
-        schema = JSON.parse(result.choices[0].message.content ?? "");
-        return schema;
-      } catch (e) {
-        throw new Error("Failed to parse schema JSON from LLM response");
-      }
     } catch (error) {
       lastError = error as Error;
       logger.warn(`Failed attempt with temperature ${temp}: ${error.message}`);
