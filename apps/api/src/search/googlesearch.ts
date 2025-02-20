@@ -1,6 +1,5 @@
 import axios from "axios";
 import { JSDOM } from 'jsdom';
-import * as querystring from "querystring";
 import { SearchResult } from "../../src/lib/entities";
 import { logger } from "../../src/lib/logger";
 import https from 'https';

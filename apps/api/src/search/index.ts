@@ -1,7 +1,6 @@
 import { logger } from "../../src/lib/logger";
 import { SearchResult } from "../../src/lib/entities";
 import { googleSearch } from "./googlesearch";
-import { fireEngineMap } from "./fireEngine";
 import { searchapi_search } from "./searchapi";
 import { serper_search } from "./serper";
 import { searxng_search } from "./searxng";
