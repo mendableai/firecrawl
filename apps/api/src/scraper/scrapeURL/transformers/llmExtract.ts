@@ -1,4 +1,3 @@
-import OpenAI from "openai";
 import { encoding_for_model } from "@dqbd/tiktoken";
 import { TiktokenModel } from "@dqbd/tiktoken";
 import {
@@ -13,6 +12,7 @@ import { modelPrices } from "../../../lib/extract/usage/model-prices";
 import { generateObject, generateText, LanguageModel } from 'ai';
 import { jsonSchema } from 'ai';
 import { getModel } from "../../../lib/generic-ai";
+import { z } from "zod";
 
 // Get max tokens from model prices
 const getModelLimits = (model: string) => {
@@ -246,7 +246,7 @@ export async function generateCompletions({
       prompt: prompt,
       temperature: options.temperature ?? 0,
       system: options.systemPrompt,
-      ...(schema && { schema: jsonSchema(schema) }),
+      ...(schema && { schema: schema instanceof z.ZodType ? schema : jsonSchema(schema) }),
       ...(!schema && { output: 'no-schema' as const }),
       ...repairConfig,
       onError: (error: Error) => {
