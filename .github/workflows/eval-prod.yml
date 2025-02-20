@@ -12,7 +12,7 @@ on:
       - completed
     branches:
       - main
-
+  workflow_dispatch:
 
 jobs:
   run-eval-benchmark-prod:
