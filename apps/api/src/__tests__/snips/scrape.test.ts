@@ -49,6 +49,14 @@ describe("Scrape tests", () => {
     expect(response.markdown).toContain("Firecrawl");
   }, 10000);
 
+  it.concurrent("handles non-UTF-8 encodings", async () => {
+    const response = await scrape({
+      url: "https://www.rtpro.yamaha.co.jp/RT/docs/misc/kanji-sjis.html",
+    });
+
+    expect(response.markdown).toContain("ぐ け げ こ ご さ ざ し じ す ず せ ぜ そ ぞ た");
+  }, 15000);
+
   if (process.env.TEST_SUITE_SELF_HOSTED && process.env.PROXY_SERVER) {
     it.concurrent("self-hosted proxy works", async () => {
       const response = await scrape({
@@ -158,7 +166,7 @@ describe("Scrape tests", () => {
           url: "http://firecrawl.dev",
           proxy: "stealth",
         });
-      }, 15000);
+      }, 30000);
     });
     
     describe("PDF (f-e dependant)", () => {
