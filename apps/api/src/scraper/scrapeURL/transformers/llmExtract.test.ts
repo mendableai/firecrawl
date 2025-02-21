@@ -1,5 +1,5 @@
 import { removeDefaultProperty } from "./llmExtract";
-import { truncateText } from "./llmExtract";
+import { trimToTokenLimit } from "./llmExtract";
 import { encoding_for_model } from "@dqbd/tiktoken";
 
 jest.mock("@dqbd/tiktoken", () => ({
@@ -46,10 +46,13 @@ describe("removeDefaultProperty", () => {
   });
 });
 
-describe("truncateText", () => {
+
+describe("trimToTokenLimit", () => {
   const mockEncode = jest.fn();
+  const mockFree = jest.fn();
   const mockEncoder = {
     encode: mockEncode,
+    free: mockFree,
   };
 
   beforeEach(() => {
@@ -57,84 +60,214 @@ describe("truncateText", () => {
     (encoding_for_model as jest.Mock).mockReturnValue(mockEncoder);
   });
 
-  it("should return the original text if it's within token limit", () => {
-    const text = "This is a short text";
+  it("should return original text if within token limit", () => {
+    const text = "This is a test text";
     mockEncode.mockReturnValue(new Array(5)); // Simulate 5 tokens
 
-    const result = truncateText(text, 10);
-    expect(result).toBe(text);
+    const result = trimToTokenLimit(text, 10, "gpt-4o");
+    
+    expect(result).toEqual({
+      text,
+      numTokens: 5,
+      warning: undefined
+    });
     expect(mockEncode).toHaveBeenCalledWith(text);
+    expect(mockFree).toHaveBeenCalled();
   });
 
-  it("should truncate text that exceeds token limit", () => {
-    const text = "This is a longer text that needs truncation";
-    mockEncode.mockReturnValue(new Array(20)); // Simulate 20 tokens
+  it("should trim text and return warning when exceeding token limit", () => {
+    const text = "This is a longer text that needs to be trimmed";
+    mockEncode
+      .mockReturnValueOnce(new Array(20)) // First call for full text
+      .mockReturnValueOnce(new Array(8)); // Second call for trimmed text
 
-    const result = truncateText(text, 10);
-    expect(result.length).toBeLessThan(text.length);
-    expect(mockEncode).toHaveBeenCalled();
+    const result = trimToTokenLimit(text, 10, "gpt-4o");
+    
+    expect(result.text.length).toBeLessThan(text.length);
+    expect(result.numTokens).toBe(8);
+    expect(result.warning).toContain("automatically trimmed");
+    expect(mockEncode).toHaveBeenCalledTimes(2);
+    expect(mockFree).toHaveBeenCalled();
   });
 
-  it("should handle empty string", () => {
-    const text = "";
-    mockEncode.mockReturnValue([]);
+  it("should append previous warning if provided", () => {
+    const text = "This is a test text that is too long";
+    const previousWarning = "Previous warning message";
+    mockEncode
+      .mockReturnValueOnce(new Array(15))
+      .mockReturnValueOnce(new Array(8));
 
-    const result = truncateText(text, 10);
-    expect(result).toBe("");
-    expect(mockEncode).toHaveBeenCalledWith("");
+    const result = trimToTokenLimit(text, 10, "gpt-4o", previousWarning);
+    
+    expect(result.warning).toContain("automatically trimmed");
+    expect(result.warning).toContain(previousWarning);
   });
 
-  it("should use character-based fallback when encoder throws error", () => {
-    const text = "This is some text";
+  it("should use fallback approach when encoder throws error", () => {
+    const text = "This is some text to test fallback";
     mockEncode.mockImplementation(() => {
       throw new Error("Encoder error");
     });
 
-    const result = truncateText(text, 5);
-    // With modifier of 3, should truncate to approximately 15 characters
-    expect(result.length).toBeLessThanOrEqual(15);
+    const result = trimToTokenLimit(text, 10, "gpt-4o");
+    
+    expect(result.text.length).toBeLessThanOrEqual(30); // 10 tokens * 3 chars per token
+    expect(result.numTokens).toBe(10);
+    expect(result.warning).toContain("Failed to derive number of LLM tokens");
   });
 
-  it("should handle very short max token limits", () => {
+  it("should handle empty text", () => {
+    const text = "";
+    mockEncode.mockReturnValue([]);
+
+    const result = trimToTokenLimit(text, 10, "gpt-4o");
+    
+    expect(result).toEqual({
+      text: "",
+      numTokens: 0,
+      warning: undefined
+    });
+    expect(mockFree).toHaveBeenCalled();
+  });
+
+  it("should handle large token limits (128k)", () => {
+    const text = "A".repeat(384000); // Assuming ~3 chars per token, this would be ~128k tokens
+    mockEncode
+      .mockReturnValueOnce(new Array(130000)) // First check shows it's too long
+      .mockReturnValueOnce(new Array(127000)); // Second check shows it's within limit after trim
+
+    const result = trimToTokenLimit(text, 128000, "gpt-4o");
+    
+    expect(result.text.length).toBeLessThan(text.length);
+    expect(result.numTokens).toBe(127000);
+    expect(result.warning).toContain("automatically trimmed");
+    expect(mockEncode).toHaveBeenCalledTimes(2);
+    expect(mockFree).toHaveBeenCalled();
+  });
+
+  it("should handle large token limits (512k) with 32k context window", () => {
+    const text = "A".repeat(1536000); // Assuming ~3 chars per token, this would be ~512k tokens
+    mockEncode
+      .mockReturnValueOnce(new Array(520000)) // First check shows it's too long
+      .mockReturnValueOnce(new Array(32000)); // Second check shows it's within context limit after trim
+
+    const result = trimToTokenLimit(text, 32000, "gpt-4o");
+    
+    expect(result.text.length).toBeLessThan(text.length);
+    expect(result.numTokens).toBe(32000);
+    expect(result.warning).toContain("automatically trimmed");
+    expect(mockEncode).toHaveBeenCalledTimes(2);
+    expect(mockFree).toHaveBeenCalled();
+  });
+
+  it("should preserve text when under token limit", () => {
     const text = "Short text";
+    mockEncode.mockReturnValue(new Array(5)); // 5 tokens
+
+    const result = trimToTokenLimit(text, 10, "gpt-4o");
+    
+    expect(result.text).toBe(text);
+    expect(result.numTokens).toBe(5);
+    expect(result.warning).toBeUndefined();
+    expect(mockFree).toHaveBeenCalled();
+  });
+
+  it("should append new warning to previous warning", () => {
+    const text = "A".repeat(300);
+    const previousWarning = "Previous warning message";
+    mockEncode
+      .mockReturnValueOnce(new Array(100))
+      .mockReturnValueOnce(new Array(50));
+
+    const result = trimToTokenLimit(text, 50, "gpt-4o", previousWarning);
+    
+    expect(result.warning).toContain("automatically trimmed");
+    expect(result.warning).toContain(previousWarning);
+    expect(mockFree).toHaveBeenCalled();
+  });
+
+  it("should handle encoder initialization failure gracefully", () => {
+    const text = "Sample text";
+    (encoding_for_model as jest.Mock).mockImplementationOnce(() => {
+      throw new Error("Encoder initialization failed");
+    });
+
+    const result = trimToTokenLimit(text, 10, "gpt-4o");
+    
+    expect(result.text.length).toBeLessThanOrEqual(30); // 10 tokens * 3 chars
+    expect(result.warning).toContain("Failed to derive number of LLM tokens");
+    expect(mockFree).not.toHaveBeenCalled();
+  });
+
+  it("should handle encoding errors during trimming", () => {
+    const text = "Sample text";
+    mockEncode.mockImplementation(() => {
+      throw new Error("Encoding failed");
+    });
+
+    const result = trimToTokenLimit(text, 10, "gpt-4o");
+    
+    expect(result.text.length).toBeLessThanOrEqual(30);
+    expect(result.warning).toContain("Failed to derive number of LLM tokens");
+    expect(mockFree).toHaveBeenCalled();
+  });
+
+  it("should handle very small token limits", () => {
+    const text = "This is a test sentence that should be trimmed significantly";
+    mockEncode
+      .mockReturnValueOnce(new Array(20))
+      .mockReturnValueOnce(new Array(3));
+
+    const result = trimToTokenLimit(text, 3, "gpt-4o");
+    
+    expect(result.text.length).toBeLessThan(text.length);
+    expect(result.numTokens).toBe(3);
+    expect(result.warning).toContain("automatically trimmed");
+    expect(mockFree).toHaveBeenCalled();
+  });
+
+  it("should handle unicode characters", () => {
+    const text = "Hello 👋 World 🌍";
+    mockEncode
+      .mockReturnValueOnce(new Array(8))
+      .mockReturnValueOnce(new Array(4));
+
+    const result = trimToTokenLimit(text, 4, "gpt-4o");
+    
+    expect(result.text.length).toBeLessThan(text.length);
+    expect(result.numTokens).toBe(4);
+    expect(result.warning).toContain("automatically trimmed");
+    expect(mockFree).toHaveBeenCalled();
+  });
+
+  it("should handle multiple trimming iterations", () => {
+    const text = "A".repeat(1000);
+    mockEncode
+      .mockReturnValueOnce(new Array(300))
+      .mockReturnValueOnce(new Array(200))
+      .mockReturnValueOnce(new Array(100))
+      .mockReturnValueOnce(new Array(50));
+
+    const result = trimToTokenLimit(text, 50, "gpt-4o");
+    
+    expect(result.text.length).toBeLessThan(text.length);
+    expect(result.numTokens).toBe(50);
+    expect(result.warning).toContain("automatically trimmed");
+    expect(mockEncode).toHaveBeenCalledTimes(4);
+    expect(mockFree).toHaveBeenCalled();
+  });
+
+  it("should handle exact token limit match", () => {
+    const text = "Exact token limit text";
     mockEncode.mockReturnValue(new Array(10));
 
-    const result = truncateText(text, 1);
-    expect(result.length).toBeLessThan(text.length);
+    const result = trimToTokenLimit(text, 10, "gpt-4o");
+    
+    expect(result.text).toBe(text);
+    expect(result.numTokens).toBe(10);
+    expect(result.warning).toBeUndefined();
+    expect(mockFree).toHaveBeenCalled();
   });
 
-  it("should handle zero max tokens", () => {
-    const text = "Some text";
-    mockEncode.mockReturnValue(new Array(2));
-
-    const result = truncateText(text, 0);
-    expect(result).toBe("");
-  });
-
-  it("should handle extremely large text exceeding model context", () => {
-    // Create a very large text (e.g., 100,000 characters)
-    const text = "a".repeat(100000);
-    
-    // First call: simulate 25000 tokens
-    mockEncode.mockReturnValueOnce(new Array(25000));
-    // Subsequent calls: simulate gradually decreasing token counts
-    // This simulates the iterative truncation process
-    mockEncode
-      .mockReturnValueOnce(new Array(20000))
-      .mockReturnValueOnce(new Array(15000))
-      .mockReturnValueOnce(new Array(12000))
-      .mockReturnValueOnce(new Array(9000));
-
-    const result = truncateText(text, 10000); // Common model context limit
-    
-    // The result should be significantly shorter but not empty
-    expect(result.length).toBeLessThan(text.length);
-    expect(result.length).toBeGreaterThan(0);
-    // Given our new conservative approach, we should have a substantial amount of text
-    expect(result.length).toBeGreaterThan(30000); // At least 30% of original
-    expect(mockEncode).toHaveBeenCalled();
-    
-    // Log the actual length for verification
-    console.log("Result length:", result.length, "characters");
-  });
+  
 });
