@@ -78,7 +78,12 @@ services:
     command: [ "pnpm", "run", "workers" ]
 
   redis:
+    # NOTE: If you want to use Valkey (open source) instead of Redis (source available),
+    # uncomment the Valkey statement and comment out the Redis statement.
+    # Using Valkey with Firecrawl is untested and not guaranteed to work. Use with caution.
     image: redis:alpine
+    # image: valkey/valkey:alpine
+
     networks:
       - backend
     command: redis-server --bind 0.0.0.0
