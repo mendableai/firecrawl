@@ -74,6 +74,9 @@ importers:
       axios-retry:
         specifier: ^4.5.0
         version: 4.5.0(axios@1.7.2)
+      body-parser:
+        specifier: ^1.20.1
+        version: 1.20.2
       bottleneck:
         specifier: ^2.19.5
         version: 2.19.5
@@ -110,6 +113,9 @@ importers:
       escape-html:
         specifier: ^1.0.3
         version: 1.0.3
+      express:
+        specifier: ^4.18.2
+        version: 4.19.2
       express-rate-limit:
         specifier: ^7.3.1
         version: 7.3.1(express@4.19.2)
@@ -158,6 +164,9 @@ importers:
       luxon:
         specifier: ^3.4.3
         version: 3.4.4
+      mammoth:
+        specifier: ^1.7.2
+        version: 1.7.2
       marked:
         specifier: ^14.1.2
         version: 14.1.2
@@ -209,6 +218,9 @@ importers:
       stripe:
         specifier: ^16.1.0
         version: 16.1.0
+      supabase:
+        specifier: ^1.77.9
+        version: 1.172.2
       systeminformation:
         specifier: ^5.22.11
         version: 5.22.11
@@ -252,9 +264,6 @@ importers:
         specifier: ^3.24.2
         version: 3.24.2
     devDependencies:
-      '@flydotio/dockerfile':
-        specifier: ^0.4.10
-        version: 0.4.11
       '@jest/globals':
         specifier: ^29.7.0
         version: 29.7.0
@@ -288,30 +297,18 @@ importers:
       '@types/supertest':
         specifier: ^6.0.2
         version: 6.0.2
-      body-parser:
-        specifier: ^1.20.1
-        version: 1.20.2
-      express:
-        specifier: ^4.18.2
-        version: 4.19.2
       jest:
         specifier: ^29.6.3
         version: 29.7.0(@types/node@20.14.1)(ts-node@10.9.2(@types/node@20.14.1)(typescript@5.4.5))
       jest-fetch-mock:
         specifier: ^3.0.3
         version: 3.0.3(encoding@0.1.13)
-      mammoth:
-        specifier: ^1.7.2
-        version: 1.7.2
       nodemon:
         specifier: ^2.0.20
         version: 2.0.22
       prettier:
         specifier: ^3.4.2
         version: 3.4.2
-      supabase:
-        specifier: ^1.77.9
-        version: 1.172.2
       supertest:
         specifier: ^6.3.3
         version: 6.3.4
@@ -772,11 +769,6 @@ packages:
 
   '@dqbd/tiktoken@1.0.17':
     resolution: {integrity: sha512-v2gz0V6DiuR2TsALM32TkBThf6LdjLbxe6HS/nx9/KJxuDX0Z7SGX7N7PvQfqIvRyus42jI9poVUqezc/j/aQw==}
-
-  '@flydotio/dockerfile@0.4.11':
-    resolution: {integrity: sha512-L52UAfrOhmAn3T4TxpeRofQOSO+Kctg+uraB4nLzo4mvvh+4Z7HYxSi7Dnq0Kirz+xx6fDIc4OMNT1EdaORecA==}
-    engines: {node: '>=16.0.0'}
-    hasBin: true
 
   '@ioredis/commands@1.2.0':
     resolution: {integrity: sha512-Sx1pU8EM64o2BrqNpEO1CNLtKQwyhuXuqyfH7oGKCk+1a33d2r5saW8zNwm3j6BTExtjrv2BxTgzzkMwts6vGg==}
@@ -2367,10 +2359,6 @@ packages:
 
   diff@4.0.2:
     resolution: {integrity: sha512-58lmxKSA4BNyLz+HHMUzlOEpg09FV+ev6ZMe3vJihgdxzgcwZ8VoEEPmALCZG9LmqfVoNMMKpttIYTVG6uDY7A==}
-    engines: {node: '>=0.3.1'}
-
-  diff@5.2.0:
-    resolution: {integrity: sha512-uIFDxqpRZGZ6ThOk84hEfqWoHx2devRFvpTZcTHur85vImfaxUbTW9Ryh4CpCuDnToOP1CEtXKIgytHBPVff5A==}
     engines: {node: '>=0.3.1'}
 
   dingbat-to-unicode@1.0.1:
@@ -4280,9 +4268,6 @@ packages:
     resolution: {integrity: sha512-7++dFhtcx3353uBaq8DDR4NuxBetBzC7ZQOhmTQInHEd6bSrXdiEyzCvG07Z44UYdLShWUyXt5M/yhz8ekcb1A==}
     engines: {node: '>=8'}
 
-  shell-quote@1.8.1:
-    resolution: {integrity: sha512-6j1W9l1iAs/4xYBI1SYOVZyFcCis9b4KCLQ8fgAGG07QvzaRLVVRQvAy85yNmmZSjYjg4MWh4gNvlPujU/5LpA==}
-
   shimmer@1.2.1:
     resolution: {integrity: sha512-sQTKC1Re/rM6XyFM6fIAGHRPVGvyXfgzIDvzoq608vM+jeyVD0Tu1E6Np0Kc2zAIFWIj963V2800iF/9LPieQw==}
 
@@ -5729,14 +5714,6 @@ snapshots:
   '@devil7softwares/pos@1.0.2': {}
 
   '@dqbd/tiktoken@1.0.17': {}
-
-  '@flydotio/dockerfile@0.4.11':
-    dependencies:
-      chalk: 5.3.0
-      diff: 5.2.0
-      ejs: 3.1.10
-      shell-quote: 1.8.1
-      yargs: 17.7.2
 
   '@ioredis/commands@1.2.0': {}
 
@@ -7728,8 +7705,6 @@ snapshots:
   diff-sequences@29.6.3: {}
 
   diff@4.0.2: {}
-
-  diff@5.2.0: {}
 
   dingbat-to-unicode@1.0.1: {}
 
@@ -9833,8 +9808,6 @@ snapshots:
       shebang-regex: 3.0.0
 
   shebang-regex@3.0.0: {}
-
-  shell-quote@1.8.1: {}
 
   shimmer@1.2.1: {}
 
