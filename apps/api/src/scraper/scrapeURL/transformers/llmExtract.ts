@@ -105,7 +105,6 @@ export function trimToTokenLimit(text: string, maxTokens: number, modelId: strin
       const numTokens = tokens.length;
       
       if (numTokens <= maxTokens) {
-        encoder.free();
         return { text, numTokens };
       }
 
