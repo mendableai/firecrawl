@@ -34,6 +34,10 @@ const emailTemplates: Record<
     subject: "Auto recharge failed - Firecrawl",
     html: "Hey there,<br/><p>Your auto recharge failed. Please try again manually. If the issue persists, please reach out to us at <a href='mailto:help@firecrawl.com'>help@firecrawl.com</a></p><br/>Thanks,<br/>Firecrawl Team<br/>",
   },
+  [NotificationType.AUTO_RECHARGE_FREQUENT]: {
+    subject: "Consider upgrading your plan - Firecrawl",
+    html: "Hey there,<br/><p>We've noticed frequent auto-recharges on your account. To optimize your costs and get better features, we recommend upgrading to a higher tier plan with:</p><ul><li>More included credits</li><li>Better pricing per credit</li><li>Higher rate limits</li></ul><p>View our plans at <a href='https://firecrawl.dev/pricing'>firecrawl.dev/pricing</a>. If none fit your needs, email us at <a href='mailto:help@firecrawl.com'>help@firecrawl.com</a> with 'Scale pricing' in the subject and we'll quickly help you move to a scale plan.</p><br/>Thanks,<br/>Firecrawl Team<br/>",
+  },
   [NotificationType.CONCURRENCY_LIMIT_REACHED]: {
     subject: "You could be scraping faster - Firecrawl",
     html: `Hey there,

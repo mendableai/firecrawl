@@ -5,7 +5,7 @@ import { redlock } from "../redlock";
 import { supabase_service } from "../supabase";
 import { createPaymentIntent } from "./stripe";
 import { issueCredits } from "./issue_credits";
-import { sendNotification } from "../notification/email_notification";
+import { sendNotification, sendNotificationWithCustomDays } from "../notification/email_notification";
 import { NotificationType } from "../../types";
 import { deleteKey, getValue, setValue } from "../redis";
 import { redisRateLimitClient } from "../rate-limiter";
@@ -179,6 +179,26 @@ export async function autoCharge(
                   hourlyCounterKey,
                   HOURLY_COUNTER_EXPIRY,
                 );
+
+                try {
+                  // Check for frequent auto-recharges in the past week
+                  const weeklyAutoRechargeKey = `auto-recharge-weekly:${chunk.team_id}`;
+                  const weeklyRecharges = await redisRateLimitClient.incr(weeklyAutoRechargeKey);
+                  // Set expiry for 7 days if not already set
+                await redisRateLimitClient.expire(weeklyAutoRechargeKey, 7 * 24 * 60 * 60);
+
+                // If this is the second auto-recharge in a week, send notification
+                if (weeklyRecharges >= 2) {
+                  await sendNotificationWithCustomDays(
+                    chunk.team_id,
+                    NotificationType.AUTO_RECHARGE_FREQUENT,
+                    7, // Send at most once per week
+                    false
+                  );
+                }
+                } catch (error) {
+                  logger.error(`Error sending frequent auto-recharge notification: ${error}`);
+                }
 
                 await sendNotification(
                   chunk.team_id,
