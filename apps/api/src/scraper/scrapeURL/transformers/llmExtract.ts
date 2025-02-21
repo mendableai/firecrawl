@@ -110,7 +110,7 @@ export function trimToTokenLimit(text: string, maxTokens: number, modelId: strin
 
       const modifier = 3;
       // Start with 3 chars per token estimation
-      let currentText = text.slice(0, (maxTokens * modifier) - 1);
+      let currentText = text.slice(0, Math.floor(maxTokens * modifier) - 1);
       
       // Keep trimming until we're under the token limit
       while (true) {
@@ -125,7 +125,7 @@ export function trimToTokenLimit(text: string, maxTokens: number, modelId: strin
         }
         const overflow = currentTokens.length * modifier - maxTokens - 1;
         // If still over limit, remove another chunk
-        currentText = currentText.slice(0, currentText.length - overflow);
+        currentText = currentText.slice(0, Math.floor(currentText.length - overflow));
       }
 
     } catch (e) {
@@ -135,9 +135,9 @@ export function trimToTokenLimit(text: string, maxTokens: number, modelId: strin
     }
   } catch (error) {
     // Fallback to a more conservative character-based approach
-    const estimatedCharsPerToken = 3;
+    const estimatedCharsPerToken = 2.8;
     const safeLength = maxTokens * estimatedCharsPerToken;
-    const trimmedText = text.slice(0, safeLength);
+    const trimmedText = text.slice(0, Math.floor(safeLength));
     
     const warning = `Failed to derive number of LLM tokens the extraction might use -- the input has been automatically trimmed to the maximum number of tokens (${maxTokens}) we support.`;
     
