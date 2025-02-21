@@ -57,13 +57,13 @@ services:
     environment:
       <<: *common-env
       HOST: ${HOST:-0.0.0.0}
-      PORT: 3002
+      PORT: ${INTERNAL_PORT:-3002}
       FLY_PROCESS_GROUP: app
     depends_on:
       - redis
       - playwright-service
     ports:
-      - "${PORT:-3002}:3002"
+      - "${PORT:-3002}:${INTERNAL_PORT:-3002}"
     command: [ "pnpm", "run", "start:production" ]
 
   worker:
