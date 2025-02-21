@@ -5,8 +5,7 @@ import {
   DeepResearchSource,
   updateDeepResearch,
 } from "./deep-research-redis";
-import { generateCompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
-import { truncateText } from "../../scraper/scrapeURL/transformers/llmExtract";
+import { generateCompletions, trimToTokenLimit } from "../../scraper/scrapeURL/transformers/llmExtract";
 
 interface AnalysisResult {
   gaps: string[];
@@ -178,7 +177,7 @@ export class ResearchLLMService {
           },
         },
         prompt: `Generate a list of 3-5 search queries to deeply research this topic: "${topic}"
-          ${findings.length > 0 ? `\nBased on these previous findings, generate more specific queries:\n${truncateText(findings.map((f) => `- ${f.text}`).join("\n"), 10000)}` : ""}
+          ${findings.length > 0 ? `\nBased on these previous findings, generate more specific queries:\n${trimToTokenLimit(findings.map((f) => `- ${f.text}`).join("\n"), 10000).text}` : ""}
           
           Each query should be specific and focused on a particular aspect.
           Build upon previous findings when available.
@@ -225,7 +224,7 @@ export class ResearchLLMService {
               },
             },
           },
-          prompt: truncateText(
+          prompt: trimToTokenLimit(
             `You are researching: ${currentTopic}
               You have ${timeRemainingMinutes} minutes remaining to complete the research but you don't need to use all of it.
               Current findings: ${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}
@@ -234,7 +233,7 @@ export class ResearchLLMService {
               Important: If less than 1 minute remains, set shouldContinue to false to allow time for final synthesis.
               If I have enough information, set shouldContinue to false.`,
             120000,
-          ),
+          ).text,
         },
         markdown: "",
       });
@@ -266,7 +265,7 @@ export class ResearchLLMService {
             report: { type: "string" },
           },
         },
-        prompt: truncateText(
+        prompt: trimToTokenLimit(
           `Create a comprehensive research report on "${topic}" based on the collected findings and analysis.
   
             Research data:
@@ -281,7 +280,7 @@ export class ResearchLLMService {
             - Cite sources
             - Use bullet points and lists where appropriate for readability`,
           100000,
-        ),
+        ).text,
       },
       markdown: "",
     });

@@ -89,34 +89,63 @@ function normalizeSchema(x: any): any {
   }
 }
 
-export function truncateText(text: string, maxTokens: number): string {
-  const modifier = 3; // Estimate: 1 token ≈ 3-4 characters for safety
+
+
+interface TrimResult {
+  text: string;
+  numTokens: number;
+  warning?: string;
+}
+
+export function trimToTokenLimit(text: string, maxTokens: number, modelId: string="gpt-4o", previousWarning?: string): TrimResult {
   try {
-    const encoder = encoding_for_model("gpt-4o");
-    // Continuously trim the text until its token count is within the limit.
-    while (true) {
+    const encoder = encoding_for_model(modelId as TiktokenModel);
+    try {
       const tokens = encoder.encode(text);
-      if (tokens.length <= maxTokens) {
-        return text;
+      const numTokens = tokens.length;
+      
+      if (numTokens <= maxTokens) {
+        return { text, numTokens };
       }
-      // Calculate a new length using a more conservative approach
-      // Instead of scaling the entire text, we'll remove a smaller portion
-      const ratio = maxTokens / tokens.length;
-      const newLength = Math.max(
-        Math.ceil(text.length * ratio),
-        Math.floor(text.length * 0.8)  // Never remove more than 20% at once
-      );
-      if (newLength <= 0) {
-        return "";
+
+      const modifier = 3;
+      // Start with 3 chars per token estimation
+      let currentText = text.slice(0, Math.floor(maxTokens * modifier) - 1);
+      
+      // Keep trimming until we're under the token limit
+      while (true) {
+        const currentTokens = encoder.encode(currentText);
+        if (currentTokens.length <= maxTokens) {
+          const warning = `The extraction content would have used more tokens (${numTokens}) than the maximum we allow (${maxTokens}). -- the input has been automatically trimmed.`;
+          return {
+            text: currentText,
+            numTokens: currentTokens.length,
+            warning: previousWarning ? `${warning} ${previousWarning}` : warning
+          };
+        }
+        const overflow = currentTokens.length * modifier - maxTokens - 1;
+        // If still over limit, remove another chunk
+        currentText = currentText.slice(0, Math.floor(currentText.length - overflow));
       }
-      text = text.slice(0, newLength);
+
+    } catch (e) {
+      throw e;
+    } finally {
+      encoder.free();
     }
   } catch (error) {
-    // Fallback using character-based estimation.
-    if (text.length <= maxTokens * modifier) {
-      return text;
-    }
-    return text.slice(0, maxTokens * modifier);
+    // Fallback to a more conservative character-based approach
+    const estimatedCharsPerToken = 2.8;
+    const safeLength = maxTokens * estimatedCharsPerToken;
+    const trimmedText = text.slice(0, Math.floor(safeLength));
+    
+    const warning = `Failed to derive number of LLM tokens the extraction might use -- the input has been automatically trimmed to the maximum number of tokens (${maxTokens}) we support.`;
+    
+    return {
+      text: trimmedText,
+      numTokens: maxTokens, // We assume we hit the max in this fallback case
+      warning: previousWarning ? `${warning} ${previousWarning}` : warning
+    };
   }
 }
 
@@ -149,51 +178,19 @@ export async function generateCompletions({
   }
 
   const { maxInputTokens, maxOutputTokens } = getModelLimits(model.modelId);
-
-  // Ratio of 4 was way too high, now 3.5.
-  const modifier = 3.5; // tokens to characters ratio
   // Calculate 80% of max input tokens (for content)
   const maxTokensSafe = Math.floor(maxInputTokens * 0.8);
 
-  // count number of tokens
-  let numTokens = 0;
-  try {
-    // Encode the message into tokens
-    const encoder = encoding_for_model(model.modelId as TiktokenModel);
-    
-    try {
-      const tokens = encoder.encode(markdown);
-      numTokens = tokens.length;
-    } catch (e) {
-      throw e;
-    } finally {
-      // Free the encoder resources after use
-      encoder.free();
-    }
-  } catch (error) {
-    logger.warn("Calculating num tokens of string failed", { error });
+  // Use the new trimming function
+  const { text: trimmedMarkdown, numTokens, warning: trimWarning } = trimToTokenLimit(
+    markdown,
+    maxTokensSafe,
+    model.modelId,
+    previousWarning
+  );
 
-    markdown = markdown.slice(0, maxTokensSafe * modifier);
-
-    let w =
-      "Failed to derive number of LLM tokens the extraction might use -- the input has been automatically trimmed to the maximum number of tokens (" +
-      maxTokensSafe +
-      ") we support.";
-    warning = previousWarning === undefined ? w : w + " " + previousWarning;
-  }
-
-  if (numTokens > maxTokensSafe) {
-    // trim the document to the maximum number of tokens, tokens != characters
-    markdown = markdown.slice(0, maxTokensSafe * modifier);
-
-    const w =
-      "The extraction content would have used more tokens (" +
-      numTokens +
-      ") than the maximum we allow (" +
-      maxTokensSafe +
-      "). -- the input has been automatically trimmed.";
-    warning = previousWarning === undefined ? w : w + " " + previousWarning;
-  }
+  markdown = trimmedMarkdown;
+  warning = trimWarning;
 
   let schema = options.schema;
   // Normalize the bad json schema users write (mogery)
