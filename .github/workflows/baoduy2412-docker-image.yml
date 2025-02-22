@@ -30,15 +30,3 @@ jobs:
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-
-  # Redis
-  # firecrawl_redis:
-  #   uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
-  #   with:
-  #     dockerFile: 'apps/redis/Dockerfile'
-  #     context: './apps/redis'
-  #     imageName: 'baoduy2412/firecrawl-redis'
-  #     platforms: linux/arm64,linux/amd64
-  #   secrets:
-  #     DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-  #     DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
