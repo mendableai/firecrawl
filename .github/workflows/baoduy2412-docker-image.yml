@@ -3,56 +3,42 @@ name: Build-Docker
 on:
   push:
     branches:
-    - master
-    - main
+      - master
+      - main
 
 jobs:
   # API
   firecrawl_api:
     uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
     with:
-      dockerFile: 'apps/api/Dockerfile'
-      context: './apps/api'
-      imageName: 'baoduy2412/firecrawl-api'
-      platforms: linux/arm64,linux/amd64
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-  
-  # Playwright TS
-  firecrawl_playwright_ts:
-    uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
-    with:
-      dockerFile: 'apps/playwright-service-ts/Dockerfile'
-      context: './apps/playwright-service-ts'
-      imageName: 'baoduy2412/firecrawl-playwright-ts'
+      dockerFile: "apps/api/Dockerfile"
+      context: "./apps/api"
+      imageName: "baoduy2412/firecrawl-api"
       platforms: linux/arm64,linux/amd64
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
-  # Playwright
-  firecrawl_playwright:
+  # Playwright TS
+  firecrawl_playwright_ts:
     uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
     with:
-      dockerFile: 'apps/playwright-service/Dockerfile'
-      context: './apps/playwright-service'
-      imageName: 'baoduy2412/firecrawl-playwright'
+      dockerFile: "apps/playwright-service-ts/Dockerfile"
+      context: "./apps/playwright-service-ts"
+      imageName: "baoduy2412/firecrawl-playwright-ts"
       platforms: linux/arm64,linux/amd64
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
 
   # Redis
-  firecrawl_redis:
-    uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
-    with:
-      dockerFile: 'apps/redis/Dockerfile'
-      context: './apps/redis'
-      imageName: 'baoduy2412/firecrawl-redis'
-      platforms: linux/arm64,linux/amd64
-    secrets:
-      DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
-      DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
-
-      
+  # firecrawl_redis:
+  #   uses: baoduy/ShareWorkflows/.github/workflows/docker-publish.yaml@main
+  #   with:
+  #     dockerFile: 'apps/redis/Dockerfile'
+  #     context: './apps/redis'
+  #     imageName: 'baoduy2412/firecrawl-redis'
+  #     platforms: linux/arm64,linux/amd64
+  #   secrets:
+  #     DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
+  #     DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
