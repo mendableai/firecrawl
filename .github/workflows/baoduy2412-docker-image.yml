@@ -19,6 +19,7 @@ jobs:
       context: "./apps/api"
       imageName: "baoduy2412/firecrawl-api"
       platforms: linux/arm64,linux/amd64
+      readmeFile: README.md
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
@@ -31,6 +32,7 @@ jobs:
       context: "./apps/playwright-service-ts"
       imageName: "baoduy2412/firecrawl-playwright-ts"
       platforms: linux/arm64,linux/amd64
+      readmeFile: README.md
     secrets:
       DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
       DOCKER_TOKEN: ${{ secrets.DOCKER_TOKEN }}
