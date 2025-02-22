@@ -6,6 +6,10 @@ on:
       - master
       - main
 
+concurrency:
+  group: build-docker-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   # API
   firecrawl_api:
