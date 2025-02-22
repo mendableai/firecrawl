@@ -147,7 +147,7 @@ export const checkAndUpdateURLForMap = (url: string) => {
   }
 
   // remove any query params
-  url = url.split("?")[0].trim();
+  // url = url.split("?")[0].trim();
 
   return { urlObj: typedUrlObj, url: url };
 };

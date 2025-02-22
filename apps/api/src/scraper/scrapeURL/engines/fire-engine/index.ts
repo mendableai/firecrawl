@@ -24,8 +24,9 @@ import * as Sentry from "@sentry/node";
 import { Action } from "../../../../lib/entities";
 import { specialtyScrapeCheck } from "../utils/specialtyHandler";
 import { fireEngineDelete } from "./delete";
-import { MockState, saveMock } from "../../lib/mock";
+import { MockState } from "../../lib/mock";
 import { getInnerJSON } from "../../../../lib/html-transformer";
+import { TimeoutSignal } from "../../../../controllers/v1/types";
 
 // This function does not take `Meta` on purpose. It may not access any
 // meta values to construct the request -- that must be done by the
@@ -40,6 +41,7 @@ async function performFireEngineScrape<
   request: FireEngineScrapeRequestCommon & Engine,
   timeout: number,
   mock: MockState | null,
+  abort?: AbortSignal,
 ): Promise<FireEngineCheckStatusSuccess> {
   const scrape = await fireEngineScrape(
     logger.child({ method: "fireEngineScrape" }),
@@ -84,6 +86,7 @@ async function performFireEngineScrape<
         logger.child({ method: "fireEngineCheckStatus" }),
         scrape.jobId,
         mock,
+        abort,
       );
     } catch (error) {
       if (error instanceof StillProcessingError) {
@@ -107,6 +110,16 @@ async function performFireEngineScrape<
           jobId: scrape.jobId,
         });
         throw error;
+      } else if (error instanceof TimeoutSignal) {
+        fireEngineDelete(
+          logger.child({
+            method: "performFireEngineScrape/fireEngineDelete",
+            afterError: error,
+          }),
+          scrape.jobId,
+          mock,
+        );
+        throw error;
       } else {
         Sentry.captureException(error);
         errors.push(error);
@@ -120,11 +133,12 @@ async function performFireEngineScrape<
     await new Promise((resolve) => setTimeout(resolve, 250));
   }
 
-  specialtyScrapeCheck(
+  await specialtyScrapeCheck(
     logger.child({
       method: "performFireEngineScrape/specialtyScrapeCheck",
     }),
     status.responseHeaders,
+    status,
   );
 
   const contentType = (Object.entries(status.responseHeaders ?? {}).find(
@@ -167,6 +181,9 @@ export async function scrapeURLWithFireEngineChromeCDP(
         ]
       : []),
 
+    // Include specified actions
+    ...(meta.options.actions ?? []),
+
     // Transform screenshot format into an action (unsupported by chrome-cdp)
     ...(meta.options.formats.includes("screenshot") ||
     meta.options.formats.includes("screenshot@fullPage")
@@ -177,9 +194,6 @@ export async function scrapeURLWithFireEngineChromeCDP(
           },
         ]
       : []),
-
-    // Include specified actions
-    ...(meta.options.actions ?? []),
   ];
 
   const totalWait = actions.reduce(
@@ -207,6 +221,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     timeout, // TODO: better timeout logic
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
     blockAds: meta.options.blockAds,
+    mobileProxy: meta.options.proxy === undefined ? undefined : meta.options.proxy === "stealth" ? true : false,
     // TODO: scrollXPaths
   };
 
@@ -218,6 +233,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     request,
     timeout,
     meta.mock,
+    meta.internalOptions.abort,
   );
 
   if (
@@ -228,8 +244,10 @@ export async function scrapeURLWithFireEngineChromeCDP(
       "Transforming screenshots from actions into screenshot field",
       { screenshots: response.screenshots },
     );
-    response.screenshot = (response.screenshots ?? [])[0];
-    (response.screenshots ?? []).splice(0, 1);
+    if (response.screenshots) {
+      response.screenshot = response.screenshots.slice(-1)[0];
+      response.screenshots = response.screenshots.slice(0, -1);
+    }
     meta.logger.debug("Screenshot transformation done", {
       screenshots: response.screenshots,
       screenshot: response.screenshot,
@@ -282,6 +300,7 @@ export async function scrapeURLWithFireEnginePlaywright(
     wait: meta.options.waitFor,
     geolocation: meta.options.geolocation ?? meta.options.location,
     blockAds: meta.options.blockAds,
+    mobileProxy: meta.options.proxy === undefined ? undefined : meta.options.proxy === "stealth" ? true : false,
 
     timeout,
   };
@@ -294,6 +313,7 @@ export async function scrapeURLWithFireEnginePlaywright(
     request,
     timeout,
     meta.mock,
+    meta.internalOptions.abort,
   );
 
   if (!response.url) {
@@ -336,6 +356,7 @@ export async function scrapeURLWithFireEngineTLSClient(
     atsv: meta.internalOptions.atsv,
     geolocation: meta.options.geolocation ?? meta.options.location,
     disableJsDom: meta.internalOptions.v0DisableJsDom,
+    mobileProxy: meta.options.proxy === undefined ? undefined : meta.options.proxy === "stealth" ? true : false,
 
     timeout,
   };
@@ -348,6 +369,7 @@ export async function scrapeURLWithFireEngineTLSClient(
     request,
     timeout,
     meta.mock,
+    meta.internalOptions.abort,
   );
 
   if (!response.url) {

@@ -1,21 +1,17 @@
 import axios from "axios";
-import * as cheerio from "cheerio"; // TODO: rustify
-import * as querystring from "querystring";
+import { JSDOM } from 'jsdom';
 import { SearchResult } from "../../src/lib/entities";
 import { logger } from "../../src/lib/logger";
+import https from 'https';
 
-const _useragent_list = [
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:66.0) Gecko/20100101 Firefox/66.0",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/111.0.0.0 Safari/537.36 Edg/111.0.1661.62",
-  "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:109.0) Gecko/20100101 Firefox/111.0",
-];
+const getRandomInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min;
 
-function get_useragent(): string {
-  return _useragent_list[Math.floor(Math.random() * _useragent_list.length)];
+export function get_useragent(): string {
+    const lynx_version = `Lynx/${getRandomInt(2, 3)}.${getRandomInt(8, 9)}.${getRandomInt(0, 2)}`;
+    const libwww_version = `libwww-FM/${getRandomInt(2, 3)}.${getRandomInt(13, 15)}`;
+    const ssl_mm_version = `SSL-MM/${getRandomInt(1, 2)}.${getRandomInt(3, 5)}`;
+    const openssl_version = `OpenSSL/${getRandomInt(1, 3)}.${getRandomInt(0, 4)}.${getRandomInt(0, 9)}`;
+    return `${lynx_version} ${libwww_version} ${ssl_mm_version} ${openssl_version}`;
 }
 
 async function _req(
@@ -31,9 +27,10 @@ async function _req(
 ) {
   const params = {
     q: term,
-    num: results, // Number of results to return
+    num: results+2, // Number of results to return
     hl: lang,
     gl: country,
+    safe: "active",
     start: start,
   };
   if (tbs) {
@@ -42,18 +39,25 @@ async function _req(
   if (filter) {
     params["filter"] = filter;
   }
+  var agent = get_useragent();
   try {
     const resp = await axios.get("https://www.google.com/search", {
       headers: {
-        "User-Agent": get_useragent(),
+        "User-Agent": agent,
+          "Accept": "*/*"
       },
       params: params,
       proxy: proxies,
       timeout: timeout,
+      httpsAgent: new https.Agent({
+        rejectUnauthorized: true 
+      }),
+      withCredentials: true
     });
     return resp;
   } catch (error) {
     if (error.response && error.response.status === 429) {
+      logger.warn("Google Search: Too many requests, try again later.", error.response);
       throw new Error("Google Search: Too many requests, try again later.");
     }
     throw error;
@@ -100,34 +104,42 @@ export async function googleSearch(
         tbs,
         filter,
       );
-      const $ = cheerio.load(resp.data);
-      const result_block = $("div.g");
+      const dom = new JSDOM(resp.data);
+      const document = dom.window.document;
+      const result_block = document.querySelectorAll("div.ezO2md");
+      let new_results = 0;
+      let unique = true;
+      let fetched_results = 0;
+
+      const fetched_links = new Set<string>();
       if (result_block.length === 0) {
         start += 1;
         attempts += 1;
       } else {
-        attempts = 0; // Reset attempts if we have results
+        attempts = 0;
       }
-      result_block.each((index, element) => {
-        const linkElement = $(element).find("a");
-        const link =
-          linkElement && linkElement.attr("href")
-            ? linkElement.attr("href")
-            : null;
-        const title = $(element).find("h3");
-        const ogImage = $(element).find("img").eq(1).attr("src");
-        const description_box = $(element).find(
-          "div[style='-webkit-line-clamp:2']",
-        );
-        const answerBox = $(element).find(".mod").text();
-        if (description_box) {
-          const description = description_box.text();
-          if (link && title && description) {
-            start += 1;
-            results.push(new SearchResult(link, title.text(), description));
+
+      for (const result of result_block) {
+          const link_tag = result.querySelector("a[href]") as HTMLAnchorElement;
+          const title_tag = link_tag ? link_tag.querySelector("span.CVA68e") : null;
+          const description_tag = result.querySelector("span.FrIlee");
+
+          if (link_tag && title_tag && description_tag) {
+              const link = decodeURIComponent(link_tag.href.split("&")[0].replace("/url?q=", ""));
+              if (fetched_links.has(link) && unique) continue;
+              fetched_links.add(link);
+              const title = title_tag.textContent || "";
+              const description = description_tag.textContent || "";
+              fetched_results++;
+              new_results++;
+              if (link && title && description) {
+                start += 1
+                  results.push(new SearchResult(link, title, description));
+              }
+              if (fetched_results >= num_results) break;
           }
-        }
-      });
+      }
+
       await new Promise((resolve) =>
         setTimeout(resolve, sleep_interval * 1000),
       );

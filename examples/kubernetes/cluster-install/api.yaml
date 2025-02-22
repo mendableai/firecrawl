@@ -21,11 +21,14 @@ spec:
           args: [ "pnpm", "run", "start:production" ]
           ports:
             - containerPort: 3002
+          env:
+            - name: FLY_PROCESS_GROUP
+              value: "app"
           envFrom:
             - configMapRef:
                 name: firecrawl-config
-          #- secretRef:
-          #    name: firecrawl-secret
+            - secretRef:
+                name: firecrawl-secret
           livenessProbe:
             httpGet:
               path: /v0/health/liveness

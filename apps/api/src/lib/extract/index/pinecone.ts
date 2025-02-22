@@ -1,11 +1,8 @@
 import { Pinecone } from "@pinecone-database/pinecone";
 import { Document } from "../../../controllers/v1/types";
 import { logger } from "../../logger";
-import OpenAI from "openai";
-
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { embed } from "ai";
+import { getEmbeddingModel } from "../../generic-ai";
 
 const pinecone = new Pinecone({
   apiKey: process.env.PINECONE_API_KEY!,
@@ -27,13 +24,12 @@ export interface PageMetadata {
 }
 
 async function getEmbedding(text: string) {
-  const embedding = await openai.embeddings.create({
-    model: "text-embedding-3-small",
-    input: text,
-    encoding_format: "float",
+  const { embedding } = await embed({
+    model: getEmbeddingModel("text-embedding-3-small"),
+    value: text,
   });
 
-  return embedding.data[0].embedding;
+  return embedding;
 }
 
 function normalizeUrl(url: string) {

@@ -7,9 +7,10 @@ import * as Sentry from "@sentry/node";
 import escapeHtml from "escape-html";
 import PdfParse from "pdf-parse";
 import { downloadFile, fetchFileToBuffer } from "../utils/downloadFile";
-import { RemoveFeatureError, UnsupportedFileError } from "../../error";
+import { PDFAntibotError, RemoveFeatureError, UnsupportedFileError } from "../../error";
 import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
+import type { Response } from "undici";
 
 type PDFProcessorResult = { html: string; markdown?: string };
 
@@ -75,22 +76,49 @@ export async function scrapePDF(
   timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
   if (!meta.options.parsePDF) {
-    const file = await fetchFileToBuffer(meta.url, {
-      headers: meta.options.headers,
-    });
-    const content = file.buffer.toString("base64");
-    return {
-      url: file.response.url,
-      statusCode: file.response.status,
-
-      html: content,
-      markdown: content,
-    };
+    if (meta.pdfPrefetch !== undefined && meta.pdfPrefetch !== null) {
+      const content = (await readFile(meta.pdfPrefetch.filePath)).toString("base64");
+      return {
+        url: meta.pdfPrefetch.url ?? meta.url,
+        statusCode: meta.pdfPrefetch.status,
+  
+        html: content,
+        markdown: content,
+      };
+    } else {
+      const file = await fetchFileToBuffer(meta.url, {
+        headers: meta.options.headers,
+      });
+  
+      const ct = file.response.headers.get("Content-Type");
+      if (ct && !ct.includes("application/pdf")) { // if downloaded file wasn't a PDF
+        throw new PDFAntibotError();
+      }
+  
+      const content = file.buffer.toString("base64");
+      return {
+        url: file.response.url,
+        statusCode: file.response.status,
+  
+        html: content,
+        markdown: content,
+      };
+    }
   }
 
-  const { response, tempFilePath } = await downloadFile(meta.id, meta.url, {
-    headers: meta.options.headers,
-  });
+  const { response, tempFilePath } = (meta.pdfPrefetch !== undefined && meta.pdfPrefetch !== null)
+    ? { response: meta.pdfPrefetch, tempFilePath: meta.pdfPrefetch.filePath }
+    : await downloadFile(meta.id, meta.url, {
+      headers: meta.options.headers,
+    });
+  
+  if ((response as any).headers) { // if downloadFile was used
+    const r: Response = response as any;
+    const ct = r.headers.get("Content-Type");
+    if (ct && !ct.includes("application/pdf")) { // if downloaded file wasn't a PDF
+      throw new PDFAntibotError();
+    }
+  }
 
   let result: PDFProcessorResult | null = null;
 
@@ -142,7 +170,7 @@ export async function scrapePDF(
   await unlink(tempFilePath);
 
   return {
-    url: response.url,
+    url: response.url ?? meta.url,
     statusCode: response.status,
     html: result?.html ?? "",
     markdown: result?.markdown ?? "",

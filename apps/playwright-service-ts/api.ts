@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import bodyParser from 'body-parser';
-import { chromium, Browser, BrowserContext, Route, Request as PlaywrightRequest } from 'playwright';
+import { chromium, Browser, BrowserContext, Route, Request as PlaywrightRequest, Page } from 'playwright';
 import dotenv from 'dotenv';
 import UserAgent from 'user-agents';
 import { getError } from './helpers/get_error';
@@ -119,7 +119,7 @@ const isValidUrl = (urlString: string): boolean => {
   }
 };
 
-const scrapePage = async (page: any, url: string, waitUntil: 'load' | 'networkidle', waitAfterLoad: number, timeout: number, checkSelector: string | undefined) => {
+const scrapePage = async (page: Page, url: string, waitUntil: 'load' | 'networkidle', waitAfterLoad: number, timeout: number, checkSelector: string | undefined) => {
   console.log(`Navigating to ${url} with waitUntil: ${waitUntil} and timeout: ${timeout}ms`);
   const response = await page.goto(url, { waitUntil, timeout });
 
@@ -135,9 +135,19 @@ const scrapePage = async (page: any, url: string, waitUntil: 'load' | 'networkid
     }
   }
 
+  let headers = null, content = await page.content();
+  if (response) {
+    headers = await response.allHeaders();
+    const ct = Object.entries(headers).find(x => x[0].toLowerCase() === "content-type");
+    if (ct && (ct[1].includes("application/json") || ct[1].includes("text/plain"))) {
+      content = (await response.body()).toString("utf8"); // TODO: determine real encoding
+    }
+  }
+
   return {
-    content: await page.content(),
+    content,
     status: response ? response.status() : null,
+    headers,
   };
 };
 
@@ -175,40 +185,35 @@ app.post('/scrape', async (req: Request, res: Response) => {
     await page.setExtraHTTPHeaders(headers);
   }
 
-  let pageContent;
-  let pageStatusCode: number | null = null;
+  let result: Awaited<ReturnType<typeof scrapePage>>;
   try {
     // Strategy 1: Normal
     console.log('Attempting strategy 1: Normal load');
-    const result = await scrapePage(page, url, 'load', wait_after_load, timeout, check_selector);
-    pageContent = result.content;
-    pageStatusCode = result.status;
+    result = await scrapePage(page, url, 'load', wait_after_load, timeout, check_selector);
   } catch (error) {
     console.log('Strategy 1 failed, attempting strategy 2: Wait until networkidle');
     try {
       // Strategy 2: Wait until networkidle
-      const result = await scrapePage(page, url, 'networkidle', wait_after_load, timeout, check_selector);
-      pageContent = result.content;
-      pageStatusCode = result.status;
+      result = await scrapePage(page, url, 'networkidle', wait_after_load, timeout, check_selector);
     } catch (finalError) {
       await page.close();
       return res.status(500).json({ error: 'An error occurred while fetching the page.' });
     }
   }
 
-  const pageError = pageStatusCode !== 200 ? getError(pageStatusCode) : undefined;
+  const pageError = result.status !== 200 ? getError(result.status) : undefined;
 
   if (!pageError) {
     console.log(`✅ Scrape successful!`);
   } else {
-    console.log(`🚨 Scrape failed with status code: ${pageStatusCode} ${pageError}`);
+    console.log(`🚨 Scrape failed with status code: ${result.status} ${pageError}`);
   }
 
   await page.close();
 
   res.json({
-    content: pageContent,
-    pageStatusCode,
+    content: result.content,
+    pageStatusCode: result.status,
     ...(pageError && { pageError })
   });
 });

@@ -20,6 +20,42 @@ import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import * as Sentry from "@sentry/node";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
+// Used for deep research
+export async function searchAndScrapeSearchResult(
+  query: string,
+  options: {
+    teamId: string;
+    plan: PlanType | undefined;
+    origin: string;
+    timeout: number;
+    scrapeOptions: ScrapeOptions;
+  }
+): Promise<Document[]> {
+  try {
+    const searchResults = await search({
+      query,
+      num_results: 5
+  });
+
+  const documents = await Promise.all(
+    searchResults.map(result => 
+      scrapeSearchResult(
+        {
+          url: result.url,
+          title: result.title,
+          description: result.description
+        },
+        options
+      )
+    )
+  );
+
+    return documents;
+  } catch (error) {
+    return [];
+  }
+}
+
 async function scrapeSearchResult(
   searchResult: { url: string; title: string; description: string },
   options: {
@@ -74,7 +110,7 @@ async function scrapeSearchResult(
     });
 
     let statusCode = 0;
-    if (error.message.includes("Could not scrape url")) {
+    if (error?.message?.includes("Could not scrape url")) {
       statusCode = 403;
     }
     // Return a minimal document with SERP results at top level

@@ -5,7 +5,7 @@ import { logger } from "../logger";
 import { CohereClient } from "cohere-ai";
 import { extractConfig } from "./config";
 import { searchSimilarPages } from "./index/pinecone";
-import { generateOpenAICompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
+import { generateCompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { buildRerankerUserPrompt } from "./build-prompts";
 import { buildRerankerSystemPrompt } from "./build-prompts";
 import { dumpToFile } from "./helpers/dump-to-file";
@@ -221,22 +221,21 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
           });
 
           // dumpToFile(new Date().toISOString(),[buildRerankerSystemPrompt(), buildRerankerUserPrompt(searchQuery), schema, linksContent])
-          const completionPromise = generateOpenAICompletions(
-            logger.child({
+          const completionPromise = generateCompletions({
+            logger: logger.child({
               method: "rerankLinksWithLLM",
               chunk: chunkIndex + 1,
               retry,
             }),
-            {
+            options: {
               mode: "llm",
               systemPrompt: buildRerankerSystemPrompt(),
               prompt: buildRerankerUserPrompt(searchQuery),
               schema: schema,
             },
-            linksContent,
-            undefined,
-            true
-          );
+            markdown: linksContent,
+            isExtractEndpoint: true
+          });
 
           const completion = await Promise.race([
             completionPromise,

@@ -2,6 +2,8 @@ import { Logger } from "winston";
 import { z, ZodError } from "zod";
 import * as Sentry from "@sentry/node";
 import { MockState, saveMock } from "./mock";
+import { TimeoutSignal } from "../../../controllers/v1/types";
+import { fireEngineURL } from "../engines/fire-engine/scrape";
 
 export type RobustFetchParams<Schema extends z.Schema<any>> = {
   url: string;
@@ -17,6 +19,7 @@ export type RobustFetchParams<Schema extends z.Schema<any>> = {
   tryCount?: number;
   tryCooldown?: number;
   mock: MockState | null;
+  abort?: AbortSignal;
 };
 
 export async function robustFetch<
@@ -35,7 +38,10 @@ export async function robustFetch<
   tryCount = 1,
   tryCooldown,
   mock,
+  abort,
 }: RobustFetchParams<Schema>): Promise<Output> {
+  abort?.throwIfAborted();
+  
   const params = {
     url,
     logger,
@@ -47,6 +53,7 @@ export async function robustFetch<
     ignoreFailure,
     tryCount,
     tryCooldown,
+    abort,
   };
 
   let response: {
@@ -70,6 +77,7 @@ export async function robustFetch<
               : {}),
           ...(headers !== undefined ? headers : {}),
         },
+        signal: abort,
         ...(body instanceof FormData
           ? {
               body,
@@ -81,7 +89,9 @@ export async function robustFetch<
             : {}),
       });
     } catch (error) {
-      if (!ignoreFailure) {
+      if (error instanceof TimeoutSignal) {
+        throw error;
+      } else if (!ignoreFailure) {
         Sentry.captureException(error);
         if (tryCount > 1) {
           logger.debug(
@@ -126,14 +136,13 @@ export async function robustFetch<
     const makeRequestTypeId = (
       request: (typeof mock)["requests"][number]["options"],
     ) => {
-      let trueUrl = (process.env.FIRE_ENGINE_BETA_URL && request.url.startsWith(process.env.FIRE_ENGINE_BETA_URL))
-        ? request.url.replace(process.env.FIRE_ENGINE_BETA_URL, "<fire-engine>")
+      let trueUrl = request.url.startsWith(fireEngineURL)
+        ? request.url.replace(fireEngineURL, "<fire-engine>")
         : request.url;
       
       let out = trueUrl + ";" + request.method;
       if (
-        process.env.FIRE_ENGINE_BETA_URL &&
-        (trueUrl.startsWith("<fire-engine>")) &&
+        trueUrl.startsWith("<fire-engine>") &&
         request.method === "POST"
       ) {
         out += "f-e;" + request.body?.engine + ";" + request.body?.url;

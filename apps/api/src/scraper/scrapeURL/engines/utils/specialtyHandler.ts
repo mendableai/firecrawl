@@ -1,9 +1,30 @@
 import { Logger } from "winston";
 import { AddFeatureError } from "../../error";
+import { FireEngineCheckStatusSuccess } from "../fire-engine/checkStatus";
+import path from "path";
+import os from "os";
+import { writeFile } from "fs/promises";
+import { Meta } from "../..";
 
-export function specialtyScrapeCheck(
+async function feResToPdfPrefetch(feRes: FireEngineCheckStatusSuccess | undefined): Promise<Meta["pdfPrefetch"]> {
+  if (!feRes?.file) {
+    return null;
+  }
+
+  const filePath = path.join(os.tmpdir(), `tempFile-${crypto.randomUUID()}.pdf`);
+  await writeFile(filePath, Buffer.from(feRes.file.content, "base64"))
+
+  return {
+    status: feRes.pageStatusCode,
+    url: feRes.url,
+    filePath,
+  };
+}
+
+export async function specialtyScrapeCheck(
   logger: Logger,
   headers: Record<string, string> | undefined,
+  feRes?: FireEngineCheckStatusSuccess,
 ) {
   const contentType = (Object.entries(headers ?? {}).find(
     (x) => x[0].toLowerCase() === "content-type",
@@ -18,7 +39,7 @@ export function specialtyScrapeCheck(
     contentType.startsWith("application/pdf;")
   ) {
     // .pdf
-    throw new AddFeatureError(["pdf"]);
+    throw new AddFeatureError(["pdf"], await feResToPdfPrefetch(feRes));
   } else if (
     contentType ===
       "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
