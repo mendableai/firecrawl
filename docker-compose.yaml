@@ -56,7 +56,7 @@ services:
     <<: *common-service
     environment:
       <<: *common-env
-      HOST: ${HOST:-0.0.0.0}
+      HOST: "0.0.0.0"
       PORT: ${INTERNAL_PORT:-3002}
       FLY_PROCESS_GROUP: app
     depends_on:
