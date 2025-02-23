@@ -56,6 +56,10 @@ USE_DB_AUTHENTICATION=false
 # MODEL_NAME=deepseek-r1:7b
 # MODEL_EMBEDDING_NAME=nomic-embed-text
 
+# Experimental: Use any OpenAI-compatible API
+# OPENAI_BASE_URL=https://example.com/v1
+# OPENAI_API_KEY=
+
 ## === Proxy ===
 # PROXY_SERVER can be a full URL (e.g. http://0.1.2.3:1234) or just an IP and port combo (e.g. 0.1.2.3:1234)
 # Do not uncomment PROXY_USERNAME and PROXY_PASSWORD if your proxy is unauthenticated
