@@ -108,7 +108,7 @@ async function crawlStatusWS(
           data: job.returnvalue,
         });
       } else {
-        return close(ws, 3000, { type: "error", error: job.failedReason });
+        // Crawl errors are ignored.
       }
     }
 
