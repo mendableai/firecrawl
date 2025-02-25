@@ -3,12 +3,13 @@ import { getMapResults } from "../../controllers/v1/map";
 import { PlanType } from "../../types";
 import { removeDuplicateUrls } from "../validateUrl";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
-import { buildPreRerankPrompt, buildRefrasedPrompt } from "./build-prompts";
+import { buildPreRerankPrompt, buildRefrasedPrompt} from "./build-prompts";
 import { rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
 import type { Logger } from "winston";
 import { generateText } from "ai";
 import { getModel } from "../generic-ai";
+import { generateCompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
 
 export async function generateBasicCompletion(prompt: string) {
   const { text } = await generateText({
@@ -209,6 +210,73 @@ export async function processUrl(
     logger.info("Generated rephrased prompt.", {
       rephrasedPrompt,
     });
+
+    const globTest = await generateCompletions({
+      logger: logger.child({
+        method: "processUrl/globTest",
+      }),
+      options: {
+        mode: "llm",
+        systemPrompt: `\
+You are a relevance expert. Your are trying to filter down a list of URLs to \
+select which ones hold the data the customer wants. First, you have to determine \
+whether there is a common base URL for each page the user may want, based on the \
+supplied list of links from the website.
+
+Return only a single URL, the base URL, that represents the common base for all \
+pages the customer wants to extract data from. If there is no common base, or the \
+request requires semantic filtering of URLs, and cannot be done via base filtering, \
+return an empty string.
+
+For example, here's a query you may get:
+
+"User request: Extract all blog post titles"
+
+Example URLs:
+ - https://stripe.com
+ - https://stripe.com/about
+ - https://stripe.com/pricing
+ - https://stripe.com/blog-posts
+ - https://stripe.com/blog/launch-week
+ - https://stripe.com/signin
+ - https://stripe.com/auth/callback
+
+The expected response from you would be: "https://stripe.com/blog/"
+
+Another example:
+
+"User request: Extract all the red wines"
+
+Example URLs:
+ - https://www.winery.com/wines/Merlot
+ - https://www.winery.com/wines/Pinot-Noir
+ - https://www.winery.com/wines/Cabernet-Sauvignon
+ - https://www.winery.com/wines/Syrah
+ - https://www.winery.com/wines/Chardonnay
+ - https://www.winery.com/wines/Sauvignon-Blanc
+
+The expected response from you would be: "", an empty string, since this requires semantic filtering.`,
+        prompt: `User request: ${options.prompt ?? searchQuery}`,
+        schema: {
+          type: "object",
+          properties: {
+            base_url: {
+              type: "string",
+            },
+          },
+          required: ["base_url"],
+        },
+      },
+      markdown: mappedLinks.slice(0, 1000).map((x) => `- ${x.url}`).join("\n"),
+      isExtractEndpoint: true,
+    });
+
+    const baseURL = globTest?.extract?.base_url;
+    if (baseURL && typeof baseURL === "string" && baseURL.trim().length > 0) {
+      const links = mappedLinks.map(x => x.url).filter(x => x.startsWith(baseURL));
+      logger.info("Got a base URL from the glob test", { baseURL, linksCount: links.length });
+      return links;
+    }
 
     logger.info("Reranking pass 1 (threshold 0.8)...");
     const rerankerResult = await rerankLinksWithLLM({
