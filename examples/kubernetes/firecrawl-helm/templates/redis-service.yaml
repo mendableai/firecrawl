@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "firecrawl.fullname" . }}-redis
+spec:
+  type: {{ .Values.service.redis.type }}
+  selector:
+    app: {{ include "firecrawl.name" . }}-redis
+  ports:
+    - protocol: TCP
+      port: {{ .Values.service.redis.port }}
+      targetPort: {{ .Values.service.redis.port }}
