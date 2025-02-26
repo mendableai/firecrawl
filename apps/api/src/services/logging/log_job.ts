@@ -23,6 +23,10 @@ function cleanOfNull<T>(x: T): T {
 
 async function indexJob(job: FirecrawlJob): Promise<void> {
   try {
+    if (job.mode !== "single_urls" && job.mode !== "scrape") {
+      return;
+    }
+
     const response = await fetch(`${process.env.FIRE_INDEX_SERVER_URL}/api/jobs`, {
       method: 'POST',
       headers: {
