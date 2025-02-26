@@ -74,7 +74,7 @@ export async function scrapeURLWithFetch(
 
       const buf = Buffer.from(await x.arrayBuffer());
       let text = buf.toString("utf8");
-      const charset = (text.match(/charset=["']?(.+?)["']?>/) ?? [])[1]
+      const charset = (text.match(/<meta\b[^>]*charset\s*=\s*["']?([^"'\s\/>]+)/i) ?? [])[1]
       try {
         if (charset) {
           text = new TextDecoder(charset.trim()).decode(buf);
