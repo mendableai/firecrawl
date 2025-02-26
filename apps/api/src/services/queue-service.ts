@@ -10,6 +10,7 @@ let loggingQueue: Queue;
 let indexQueue: Queue;
 let deepResearchQueue: Queue;
 let generateLlmsTxtQueue: Queue;
+let billingQueue: Queue;
 
 export const redisConnection = new IORedis(process.env.REDIS_URL!, {
   maxRetriesPerRequest: null,
@@ -21,6 +22,7 @@ export const loggingQueueName = "{loggingQueue}";
 export const indexQueueName = "{indexQueue}";
 export const generateLlmsTxtQueueName = "{generateLlmsTxtQueue}";
 export const deepResearchQueueName = "{deepResearchQueue}";
+export const billingQueueName = "{billingQueue}";
 
 export function getScrapeQueue() {
   if (!scrapeQueue) {
@@ -110,6 +112,24 @@ export function getDeepResearchQueue() {
     logger.info("Deep research queue created");
   }
   return deepResearchQueue;
+}
+
+export function getBillingQueue() {
+  if (!billingQueue) {
+    billingQueue = new Queue(billingQueueName, {
+      connection: redisConnection,
+      defaultJobOptions: {
+        removeOnComplete: {
+          age: 90000, // 25 hours
+        },
+        removeOnFail: {
+          age: 90000, // 25 hours
+        },
+      },
+    });
+    logger.info("Billing queue created");
+  }
+  return billingQueue;
 }
 
 // === REMOVED IN FAVOR OF POLLING -- NOT RELIABLE
