@@ -365,6 +365,11 @@ export interface DeepResearchParams {
    */
   timeLimit?: number;
   /**
+   * Maximum number of URLs to analyze (1-1000)
+   * @default 20
+   */
+  maxUrls?: number;
+  /**
    * Experimental flag for streaming steps
    */
   __experimental_streamSteps?: boolean;
