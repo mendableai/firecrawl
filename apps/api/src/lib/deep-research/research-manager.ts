@@ -25,7 +25,7 @@ export class ResearchStateManager {
   private completedSteps: number = 0;
   private readonly totalExpectedSteps: number;
   private seenUrls: Set<string> = new Set();
-
+  private sources: DeepResearchSource[] = [];
   constructor(
     private readonly researchId: string,
     private readonly teamId: string,
@@ -61,9 +61,9 @@ export class ResearchStateManager {
     });
   }
 
-  async addSource(source: DeepResearchSource): Promise<void> {
+  async addSources(sources: DeepResearchSource[]): Promise<void> {
     await updateDeepResearch(this.researchId, {
-      sources: [source],
+      sources: sources,
     });
   }
 
@@ -135,6 +135,10 @@ export class ResearchStateManager {
 
   getUrlToSearch(): string {
     return this.urlToSearch;
+  }
+
+  getSources(): DeepResearchSource[] {
+    return this.sources;
   }
 }
 
@@ -254,17 +258,12 @@ export class ResearchLLMService {
       logger: this.logger.child({
         method: "generateFinalAnalysis",
       }),
+      mode: "no-object",
       options: {
         mode: "llm",
         systemPrompt:
           "You are an expert research analyst who creates comprehensive, well-structured reports. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations. Today's date is " +
           new Date().toISOString().split("T")[0],
-        schema: {
-          type: "object",
-          properties: {
-            report: { type: "string" },
-          },
-        },
         prompt: trimToTokenLimit(
           `Create a comprehensive research report on "${topic}" based on the collected findings and analysis.
   
@@ -285,6 +284,6 @@ export class ResearchLLMService {
       markdown: "",
     });
 
-    return extract.report;
+    return extract;
   }
 }

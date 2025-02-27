@@ -156,6 +156,7 @@ export async function generateCompletions({
   previousWarning,
   isExtractEndpoint,
   model = getModel("gpt-4o-mini"),
+  mode = "object",
 }: {
   model?: LanguageModel; 
   logger: Logger;
@@ -163,6 +164,7 @@ export async function generateCompletions({
   markdown?: string;
   previousWarning?: string;
   isExtractEndpoint?: boolean;
+  mode?: "object" | "no-object";
 }): Promise<{
   extract: any;
   numTokens: number;
@@ -192,43 +194,66 @@ export async function generateCompletions({
   markdown = trimmedMarkdown;
   warning = trimWarning;
 
-  let schema = options.schema;
-  // Normalize the bad json schema users write (mogery)
-  if (schema && !(schema instanceof z.ZodType)) {
-    // let schema = options.schema;
-    if (schema) {
-      schema = removeDefaultProperty(schema);
-    }
-
-    if (schema && schema.type === "array") {
-      schema = {
-        type: "object",
-        properties: {
-          items: options.schema,
-        },
-        required: ["items"],
-        additionalProperties: false,
-      };
-    } else if (schema && typeof schema === "object" && !schema.type) {
-      schema = {
-        type: "object",
-        properties: Object.fromEntries(
-          Object.entries(schema).map(([key, value]) => {
-            return [key, removeDefaultProperty(value)];
-          }),
-        ),
-        required: Object.keys(schema),
-        additionalProperties: false,
-      };
-    }
-
-    schema = normalizeSchema(schema);
-  }
-
   try {
     const prompt = options.prompt !== undefined
       ? `Transform the following content into structured JSON output based on the provided schema and this user request: ${options.prompt}. If schema is provided, strictly follow it.\n\n${markdown}`
       : `Transform the following content into structured JSON output based on the provided schema if any.\n\n${markdown}`;
+
+    if (mode === "no-object") {
+      const result = await generateText({
+        model: model,
+        prompt: options.prompt + (markdown ? `\n\nData:${markdown}` : ""),
+        temperature: options.temperature ?? 0,
+        system: options.systemPrompt,
+      });
+
+      extract = result.text;
+      
+      return {
+        extract,
+        warning,
+        numTokens,
+        totalUsage: {
+          promptTokens: numTokens,
+          completionTokens: result.usage?.completionTokens ?? 0,
+          totalTokens: numTokens + (result.usage?.completionTokens ?? 0),
+        },
+        model: model.modelId,
+      };
+    }
+
+    let schema = options.schema;
+    // Normalize the bad json schema users write (mogery)
+    if (schema && !(schema instanceof z.ZodType)) {
+      // let schema = options.schema;
+      if (schema) {
+        schema = removeDefaultProperty(schema);
+      }
+
+      if (schema && schema.type === "array") {
+        schema = {
+          type: "object",
+          properties: {
+            items: options.schema,
+          },
+          required: ["items"],
+          additionalProperties: false,
+        };
+      } else if (schema && typeof schema === "object" && !schema.type) {
+        schema = {
+          type: "object",
+          properties: Object.fromEntries(
+            Object.entries(schema).map(([key, value]) => {
+              return [key, removeDefaultProperty(value)];
+            }),
+          ),
+          required: Object.keys(schema),
+          additionalProperties: false,
+        };
+      }
+
+      schema = normalizeSchema(schema);
+    }
 
     const repairConfig = {
       experimental_repairText: async ({ text, error }) => {
@@ -240,7 +265,6 @@ export async function generateCompletions({
         return fixedText;
       }
     };
-
 
     const generateObjectConfig = {
       model: model,
