@@ -8,6 +8,7 @@ import { z } from "zod";
 export const deepResearchRequestSchema = z.object({
   topic: z.string().describe('The topic or question to research'),
   maxDepth: z.number().min(1).max(10).default(7).describe('Maximum depth of research iterations'),
+  maxUrls: z.number().min(1).max(1000).default(20).describe('Maximum number of URLs to analyze'),
   timeLimit: z.number().min(30).max(600).default(300).describe('Time limit in seconds'),
   __experimental_streamSteps: z.boolean().optional(),
 });

@@ -32,6 +32,8 @@ export async function deepResearchStatusController(
     success: research.status === "failed" ? false : true,
     data: {
       finalAnalysis: research.finalAnalysis,
+      sources: research.sources,
+      activities: research.activities,
       // completedSteps: research.completedSteps,
       // totalSteps: research.totalExpectedSteps,
     },
@@ -40,6 +42,7 @@ export async function deepResearchStatusController(
     currentDepth: research.currentDepth,
     maxDepth: research.maxDepth,
     status: research.status,
+    // DO NOT remove - backwards compatibility
     activities: research.activities,
     sources: research.sources,
     // summaries: research.summaries,

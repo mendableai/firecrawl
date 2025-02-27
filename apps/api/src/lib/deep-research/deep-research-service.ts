@@ -13,14 +13,16 @@ interface DeepResearchServiceOptions {
   plan: string;
   topic: string;
   maxDepth: number;
+  maxUrls: number;
   timeLimit: number;
   subId?: string;
 }
 
 export async function performDeepResearch(options: DeepResearchServiceOptions) {
-  const { researchId, teamId, plan, timeLimit, subId } = options;
+  const { researchId, teamId, plan, timeLimit, subId, maxUrls } = options;
   const startTime = Date.now();
   let currentTopic = options.topic;
+  let urlsAnalyzed = 0;
 
   const logger = _logger.child({
     module: "deep-research",
@@ -41,7 +43,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
   const llmService = new ResearchLLMService(logger);
 
   try {
-    while (!state.hasReachedMaxDepth()) {
+    while (!state.hasReachedMaxDepth() && urlsAnalyzed < maxUrls) {
       logger.debug("[Deep Research] Current depth:", state.getCurrentDepth());
       const timeElapsed = Date.now() - startTime;
       if (timeElapsed >= timeLimit * 1000) {
@@ -135,14 +137,22 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       }
 
       // Filter out already seen URLs and track new ones
-      const newSearchResults = searchResults.filter((result) => {
+      const newSearchResults = searchResults.filter(async (result) => {
         if (!result.url || state.hasSeenUrl(result.url)) {
           return false;
         }
         state.addSeenUrl(result.url);
+        
+        urlsAnalyzed++;
         return true;
       });
 
+      await state.addSources(newSearchResults.map((result) => ({
+        url: result.url ?? "",
+        title: result.title ?? "",
+        description: result.description ?? "",
+        icon: result.metadata?.favicon ?? "",
+      })));
       logger.debug(
         "[Deep Research] New unique results count:",
         { length: newSearchResults.length },
@@ -272,7 +282,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       success: true,
       message: "Research completed",
       num_docs: 1,
-      docs: [{ finalAnalysis: finalAnalysis }],
+      docs: [{ finalAnalysis: finalAnalysis, sources: state.getSources() }],
       time_taken: (Date.now() - startTime) / 1000,
       team_id: teamId,
       mode: "deep-research",
@@ -281,17 +291,16 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       origin: "api",
       num_tokens: 0,
       tokens_billed: 0,
-      sources: {},
     });
     await updateDeepResearch(researchId, {
       status: "completed",
       finalAnalysis: finalAnalysis,
     });
-    // Bill team for usage
-    billTeam(teamId, subId, state.getFindings().length, logger).catch(
+    // Bill team for usage based on URLs analyzed
+    billTeam(teamId, subId, urlsAnalyzed, logger).catch(
       (error) => {
         logger.error(
-          `Failed to bill team ${teamId} for ${state.getFindings().length} findings`, { teamId, count: state.getFindings().length, error },
+          `Failed to bill team ${teamId} for ${urlsAnalyzed} URLs analyzed`, { teamId, count: urlsAnalyzed, error },
         );
       },
     );
