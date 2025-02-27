@@ -501,7 +501,7 @@ export const mapRequestSchema = crawlerOptions
     search: z.string().optional(),
     ignoreSitemap: z.boolean().default(false),
     sitemapOnly: z.boolean().default(false),
-    limit: z.number().min(1).max(5000).default(5000),
+    limit: z.number().min(1).max(30000).default(5000),
     timeout: z.number().positive().finite().optional(),
     useMock: z.string().optional(),
   })
