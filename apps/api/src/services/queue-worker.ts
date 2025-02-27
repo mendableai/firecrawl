@@ -12,6 +12,7 @@ import {
   deepResearchQueueName,
   getIndexQueue,
   getGenerateLlmsTxtQueue,
+  getBillingQueue,
 } from "./queue-service";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
@@ -1119,16 +1120,38 @@ async function processJob(job: Job & { id: string }, token: string) {
         creditsToBeBilled = 5;
       }
 
-      if (job.data.team_id !== process.env.BACKGROUND_INDEX_TEAM_ID!) {
-        billTeam(job.data.team_id, undefined, creditsToBeBilled, logger).catch(
-          (error) => {
-            logger.error(
-              `Failed to bill team ${job.data.team_id} for ${creditsToBeBilled} credits`,
-              { error },
-            );
-            // Optionally, you could notify an admin or add to a retry queue here
-          },
-        );
+      if (job.data.team_id !== process.env.BACKGROUND_INDEX_TEAM_ID! && process.env.USE_DB_AUTHENTICATION === "true") {
+        try {
+          const billingJobId = uuidv4();
+          logger.debug(`Adding billing job to queue for team ${job.data.team_id}`, {
+            billingJobId,
+            credits: creditsToBeBilled,
+            is_extract: job.data.scrapeOptions.extract,
+          });
+          
+          // Add directly to the billing queue - the billing worker will handle the rest
+          await getBillingQueue().add(
+            "bill_team",
+            {
+              team_id: job.data.team_id,
+              subscription_id: undefined,
+              credits: creditsToBeBilled,
+              is_extract: job.data.scrapeOptions.extract,
+              timestamp: new Date().toISOString(),
+              originating_job_id: job.id
+            },
+            {
+              jobId: billingJobId,
+              priority: 10,
+            }
+          );
+        } catch (error) {
+          logger.error(
+            `Failed to add billing job to queue for team ${job.data.team_id} for ${creditsToBeBilled} credits`,
+            { error },
+          );
+          Sentry.captureException(error);
+        }
       }
     }
 
