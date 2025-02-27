@@ -44,6 +44,7 @@ export async function deepResearchStatusController(
     status: research.status,
     // DO NOT remove - backwards compatibility
     activities: research.activities,
+    sources: research.sources,
     // summaries: research.summaries,
   });
 }
