@@ -109,6 +109,9 @@ export class WebCrawler {
 
         // Check if the link exceeds the maximum depth allowed
         if (depth > maxDepth) {
+          if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+            this.logger.debug(`${link} DEPTH FAIL`);
+          }
           return false;
         }
 
@@ -119,6 +122,9 @@ export class WebCrawler {
               new RegExp(excludePattern).test(path),
             )
           ) {
+            if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+              this.logger.debug(`${link} EXCLUDE FAIL`);
+            }
             return false;
           }
         }
@@ -130,6 +136,9 @@ export class WebCrawler {
               new RegExp(includePattern).test(path),
             )
           ) {
+            if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+              this.logger.debug(`${link} INCLUDE FAIL`);
+            }
             return false;
           }
         }
@@ -140,6 +149,9 @@ export class WebCrawler {
         try {
           normalizedLink = new URL(link);
         } catch (_) {
+          if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+            this.logger.debug(`${link} URL PARSE FAIL`);
+          }
           return false;
         }
         const initialHostname = normalizedInitialUrl.hostname.replace(
@@ -158,6 +170,9 @@ export class WebCrawler {
           if (
             !normalizedLink.pathname.startsWith(normalizedInitialUrl.pathname)
           ) {
+            if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+              this.logger.debug(`${link} BACKWARDS FAIL ${normalizedLink.pathname} ${normalizedInitialUrl.pathname}`);
+            }
             return false;
           }
         }
@@ -171,13 +186,22 @@ export class WebCrawler {
             method: "filterLinks",
             link,
           });
+          if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+            this.logger.debug(`${link} ROBOTS FAIL`);
+          }
           return false;
         }
 
         if (this.isFile(link)) {
+          if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+            this.logger.debug(`${link} FILE FAIL`);
+          }
           return false;
         }
 
+        if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+          this.logger.debug(`${link} OK`);
+        }
         return true;
       })
       .slice(0, limit);
