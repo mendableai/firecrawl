@@ -973,7 +973,13 @@ async function processJob(job: Job & { id: string }, token: string) {
           ); // TODO: make this its own error type that is ignored by error tracking
         }
 
-        if (job.data.isCrawlSourceScrape) {
+        // Only re-set originUrl if it's different from the current hostname
+        // This is only done on this condition to handle cross-domain redirects
+        // If this would be done for non-crossdomain redirects, but also for e.g.
+        // redirecting / -> /introduction (like our docs site does), it would
+        // break crawling the entire site without allowBackwardsCrawling - mogery
+        const isHostnameDifferent = normalizeUrlOnlyHostname(doc.metadata.url) !== normalizeUrlOnlyHostname(doc.metadata.sourceURL);
+        if (job.data.isCrawlSourceScrape && isHostnameDifferent) {
           // TODO: re-fetch sitemap for redirect target domain
           sc.originUrl = doc.metadata.url;
           await saveCrawl(job.data.crawl_id, sc);
