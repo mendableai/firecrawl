@@ -75,10 +75,14 @@ jobs:
         run: npm start &
         working-directory: ./apps/api
         id: start_app
-      - name: Start workers
+      - name: Start worker
         run: npm run workers &
         working-directory: ./apps/api
         id: start_workers
+      - name: Start index worker
+        run: npm run index-worker &
+        working-directory: ./apps/api
+        id: start_index_worker
       - name: Run snippet tests
         run: |
           npm run test:snips

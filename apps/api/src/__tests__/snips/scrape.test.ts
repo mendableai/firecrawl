@@ -1,29 +1,4 @@
-import request from "supertest";
-import { configDotenv } from "dotenv";
-import { Document, ScrapeRequestInput } from "../../controllers/v1/types";
-
-configDotenv();
-const TEST_URL = "http://127.0.0.1:3002";
-
-async function scrapeRaw(body: ScrapeRequestInput) {
-  return await request(TEST_URL)
-    .post("/v1/scrape")
-    .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-    .set("Content-Type", "application/json")
-    .send(body);
-}
-
-function expectScrapeToSucceed(response: Awaited<ReturnType<typeof scrapeRaw>>) {
-  expect(response.statusCode).toBe(200);
-  expect(response.body.success).toBe(true);
-  expect(typeof response.body.data).toBe("object");
-}
-
-async function scrape(body: ScrapeRequestInput): Promise<Document> {
-  const raw = await scrapeRaw(body);
-  expectScrapeToSucceed(raw);
-  return raw.body.data;
-}
+import { scrape } from "./lib";
 
 describe("Scrape tests", () => {
   it.concurrent("mocking works properly", async () => {

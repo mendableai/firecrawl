@@ -1132,7 +1132,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           logger.debug(`Adding billing job to queue for team ${job.data.team_id}`, {
             billingJobId,
             credits: creditsToBeBilled,
-            is_extract: job.data.scrapeOptions.extract,
+            is_extract: false,
           });
           
           // Add directly to the billing queue - the billing worker will handle the rest
@@ -1142,7 +1142,7 @@ async function processJob(job: Job & { id: string }, token: string) {
               team_id: job.data.team_id,
               subscription_id: undefined,
               credits: creditsToBeBilled,
-              is_extract: job.data.scrapeOptions.extract,
+              is_extract: false,
               timestamp: new Date().toISOString(),
               originating_job_id: job.id
             },
