@@ -1404,6 +1404,7 @@ export default class FirecrawlApp {
    * @param query - The query to research.
    * @param params - Parameters for the deep research operation.
    * @param onActivity - Optional callback to receive activity updates in real-time.
+   * @param onSource - Optional callback to receive source updates in real-time.
    * @returns The final research results.
    */
   async deepResearch(
@@ -1415,6 +1416,12 @@ export default class FirecrawlApp {
       message: string;
       timestamp: string;
       depth: number;
+    }) => void,
+    onSource?: (source: {
+      url: string;
+      title?: string;
+      description?: string;
+      icon?: string;
     }) => void
   ): Promise<DeepResearchStatusResponse | ErrorResponse> {
     try {
@@ -1431,6 +1438,7 @@ export default class FirecrawlApp {
       const jobId = response.id;
       let researchStatus;
       let lastActivityCount = 0;
+      let lastSourceCount = 0;
 
       while (true) {
         researchStatus = await this.checkDeepResearchStatus(jobId);
@@ -1446,6 +1454,15 @@ export default class FirecrawlApp {
             onActivity(activity);
           }
           lastActivityCount = researchStatus.activities.length;
+        }
+
+        // Stream new sources through the callback if provided
+        if (onSource && researchStatus.sources) {
+          const newSources = researchStatus.sources.slice(lastSourceCount);
+          for (const source of newSources) {
+            onSource(source);
+          }
+          lastSourceCount = researchStatus.sources.length;
         }
 
         if (researchStatus.status === "completed") {

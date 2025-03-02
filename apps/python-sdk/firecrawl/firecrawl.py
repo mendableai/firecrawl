@@ -1099,7 +1099,8 @@ class FirecrawlApp:
         raise requests.exceptions.HTTPError(message, response=response)
 
     def deep_research(self, query: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None, 
-                     on_activity: Optional[Callable[[Dict[str, Any]], None]] = None) -> Dict[str, Any]:
+                     on_activity: Optional[Callable[[Dict[str, Any]], None]] = None,
+                     on_source: Optional[Callable[[Dict[str, Any]], None]] = None) -> Dict[str, Any]:
         """
         Initiates a deep research operation on a given query and polls until completion.
 
@@ -1133,6 +1134,10 @@ class FirecrawlApp:
             if on_activity and 'activities' in status:
                 for activity in status['activities']:
                     on_activity(activity)
+            
+            if on_source and 'sources' in status:
+                for source in status['sources']:
+                    on_source(source)
             
             if status['status'] == 'completed':
                 return status
