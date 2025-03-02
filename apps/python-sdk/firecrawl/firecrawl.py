@@ -1176,7 +1176,7 @@ class FirecrawlApp:
         json_data = {'query': query, **research_params.dict(exclude_none=True)}
 
         try:
-            response = self._post_request(f'{self.api_url}/v1/research', json_data, headers)
+            response = self._post_request(f'{self.api_url}/v1/deep-research', json_data, headers)
             if response.status_code == 200:
                 try:
                     return response.json()
@@ -1204,7 +1204,7 @@ class FirecrawlApp:
         """
         headers = self._prepare_headers()
         try:
-            response = self._get_request(f'{self.api_url}/v1/research/{id}', headers)
+            response = self._get_request(f'{self.api_url}/v1/deep-research/{id}', headers)
             if response.status_code == 200:
                 try:
                     return response.json()
