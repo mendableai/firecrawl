@@ -3,6 +3,11 @@ import { batchScrape, crawl, creditUsage, extract, map, scrape, search, tokenUsa
 const sleep = (ms: number) => new Promise(x => setTimeout(() => x(true), ms));
 const sleepForBatchBilling = () => sleep(20000);
 
+beforeAll(async () => {
+    // Wait for previous test runs to stop billing processing
+    await sleep(40000);
+}, 50000);
+
 describe("Billing tests", () => {
     if (process.env.TEST_SUITE_SELF_HOSTED) {
         it("dummy", () => {
