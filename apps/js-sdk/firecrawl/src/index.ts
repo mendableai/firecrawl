@@ -389,14 +389,19 @@ export interface DeepResearchResponse {
 export interface DeepResearchStatusResponse {
   success: boolean;
   data: {
-    findings: Array<{
-      text: string;
-      source: string;
-    }>;
     finalAnalysis: string;
-    analysis: string;
-    completedSteps: number;
-    totalSteps: number;
+    activities: Array<{
+      type: string;
+      status: string;
+      message: string;
+      timestamp: string;
+      depth: number;
+    }>;
+    sources: Array<{
+      url: string;
+      title: string;
+      description: string;
+    }>;
   };
   status: "processing" | "completed" | "failed";
   error?: string;
