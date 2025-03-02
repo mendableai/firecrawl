@@ -1128,16 +1128,23 @@ class FirecrawlApp:
             return response
 
         job_id = response['id']
+        last_activity_count = 0
+        last_source_count = 0
+
         while True:
             status = self.check_deep_research_status(job_id)
             
             if on_activity and 'activities' in status:
-                for activity in status['activities']:
+                new_activities = status['activities'][last_activity_count:]
+                for activity in new_activities:
                     on_activity(activity)
+                last_activity_count = len(status['activities'])
             
             if on_source and 'sources' in status:
-                for source in status['sources']:
+                new_sources = status['sources'][last_source_count:]
+                for source in new_sources:
                     on_source(source)
+                last_source_count = len(status['sources'])
             
             if status['status'] == 'completed':
                 return status
