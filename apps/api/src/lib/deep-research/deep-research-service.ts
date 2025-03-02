@@ -56,7 +56,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       await state.addActivity({
         type: "search",
         status: "processing",
-        message: `Generating search queries for "${currentTopic}"`,
+        message: `Generating deeper search queries for "${currentTopic}"`,
         timestamp: new Date().toISOString(),
         depth: state.getCurrentDepth(),
       });
@@ -191,7 +191,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       await state.addActivity({
         type: "analyze",
         status: "processing",
-        message: "Analyzing findings",
+        message: "Analyzing findings and planning next steps",
         timestamp: new Date().toISOString(),
         depth: state.getCurrentDepth(),
       });
