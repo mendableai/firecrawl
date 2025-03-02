@@ -12,7 +12,7 @@ Classes:
 import logging
 import os
 import time
-from typing import Any, Dict, Optional, List, Union
+from typing import Any, Dict, Optional, List, Union, Callable
 import json
 
 import requests
@@ -40,6 +40,38 @@ class GenerateLLMsTextParams(pydantic.BaseModel):
     maxUrls: Optional[int] = 10
     showFullText: Optional[bool] = False
     __experimental_stream: Optional[bool] = None
+
+class DeepResearchParams(pydantic.BaseModel):
+    """
+    Parameters for the deep research operation.
+    """
+    maxDepth: Optional[int] = 7
+    timeLimit: Optional[int] = 270
+    maxUrls: Optional[int] = 20
+    __experimental_streamSteps: Optional[bool] = None
+
+class DeepResearchResponse(pydantic.BaseModel):
+    """
+    Response from the deep research operation.
+    """
+    success: bool
+    id: str
+    error: Optional[str] = None
+
+class DeepResearchStatusResponse(pydantic.BaseModel):
+    """
+    Status response from the deep research operation.
+    """
+    success: bool
+    data: Optional[Dict[str, Any]] = None
+    status: str
+    error: Optional[str] = None
+    expiresAt: str
+    currentDepth: int
+    maxDepth: int
+    activities: List[Dict[str, Any]]
+    sources: List[Dict[str, Any]]
+    summaries: List[str]
 
 class FirecrawlApp:
     class SearchResponse(pydantic.BaseModel):
@@ -1065,6 +1097,127 @@ class FirecrawlApp:
 
         # Raise an HTTPError with the custom message and attach the response
         raise requests.exceptions.HTTPError(message, response=response)
+
+    def deep_research(self, query: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None, 
+                     on_activity: Optional[Callable[[Dict[str, Any]], None]] = None,
+                     on_source: Optional[Callable[[Dict[str, Any]], None]] = None) -> Dict[str, Any]:
+        """
+        Initiates a deep research operation on a given query and polls until completion.
+
+        Args:
+            query (str): The query to research.
+            params (Optional[Union[Dict[str, Any], DeepResearchParams]]): Parameters for the deep research operation.
+            on_activity (Optional[Callable[[Dict[str, Any]], None]]): Optional callback to receive activity updates in real-time.
+
+        Returns:
+            Dict[str, Any]: The final research results.
+
+        Raises:
+            Exception: If the research operation fails.
+        """
+        if params is None:
+            params = {}
+
+        if isinstance(params, dict):
+            research_params = DeepResearchParams(**params)
+        else:
+            research_params = params
+
+        response = self.async_deep_research(query, research_params)
+        if not response.get('success') or 'id' not in response:
+            return response
+
+        job_id = response['id']
+        while True:
+            status = self.check_deep_research_status(job_id)
+            
+            if on_activity and 'activities' in status:
+                for activity in status['activities']:
+                    on_activity(activity)
+            
+            if on_source and 'sources' in status:
+                for source in status['sources']:
+                    on_source(source)
+            
+            if status['status'] == 'completed':
+                return status
+            elif status['status'] == 'failed':
+                raise Exception(f'Deep research failed. Error: {status.get("error")}')
+            elif status['status'] != 'processing':
+                break
+
+            time.sleep(2)  # Polling interval
+
+        return {'success': False, 'error': 'Deep research job terminated unexpectedly'}
+
+    def async_deep_research(self, query: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None) -> Dict[str, Any]:
+        """
+        Initiates an asynchronous deep research operation.
+
+        Args:
+            query (str): The query to research.
+            params (Optional[Union[Dict[str, Any], DeepResearchParams]]): Parameters for the deep research operation.
+
+        Returns:
+            Dict[str, Any]: The response from the deep research initiation.
+
+        Raises:
+            Exception: If the research initiation fails.
+        """
+        if params is None:
+            params = {}
+
+        if isinstance(params, dict):
+            research_params = DeepResearchParams(**params)
+        else:
+            research_params = params
+
+        headers = self._prepare_headers()
+        json_data = {'query': query, **research_params.dict(exclude_none=True)}
+
+        try:
+            response = self._post_request(f'{self.api_url}/v1/research', json_data, headers)
+            if response.status_code == 200:
+                try:
+                    return response.json()
+                except:
+                    raise Exception('Failed to parse Firecrawl response as JSON.')
+            else:
+                self._handle_error(response, 'start deep research')
+        except Exception as e:
+            raise ValueError(str(e))
+
+        return {'success': False, 'error': 'Internal server error'}
+
+    def check_deep_research_status(self, id: str) -> Dict[str, Any]:
+        """
+        Check the status of a deep research operation.
+
+        Args:
+            id (str): The ID of the deep research operation.
+
+        Returns:
+            Dict[str, Any]: The current status and results of the research operation.
+
+        Raises:
+            Exception: If the status check fails.
+        """
+        headers = self._prepare_headers()
+        try:
+            response = self._get_request(f'{self.api_url}/v1/research/{id}', headers)
+            if response.status_code == 200:
+                try:
+                    return response.json()
+                except:
+                    raise Exception('Failed to parse Firecrawl response as JSON.')
+            elif response.status_code == 404:
+                raise Exception('Deep research job not found')
+            else:
+                self._handle_error(response, 'check deep research status')
+        except Exception as e:
+            raise ValueError(str(e))
+
+        return {'success': False, 'error': 'Internal server error'}
 
 class CrawlWatcher:
     def __init__(self, id: str, app: FirecrawlApp):
