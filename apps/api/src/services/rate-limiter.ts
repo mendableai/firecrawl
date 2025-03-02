@@ -237,6 +237,7 @@ const testSuiteTokens = [
   "824abcd", // don't remove (s-ai)
   "0966288",
   "226556f",
+  "0a18c9e", // gh
 ];
 
 const manual = ["69be9e74-7624-4990-b20d-08e0acc70cf6"];
