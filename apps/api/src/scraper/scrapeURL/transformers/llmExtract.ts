@@ -257,10 +257,29 @@ export async function generateCompletions({
 
     const repairConfig = {
       experimental_repairText: async ({ text, error }) => {
+        // AI may output a markdown JSON code block. Remove it - mogery
+        if (typeof text === "string" && text.trim().startsWith("```")) {
+          if (text.trim().startsWith("```json")) {
+            text = text.trim().slice("```json".length).trim();
+          } else {
+            text = text.trim().slice("```".length).trim();
+          }
+
+          if (text.trim().endsWith("```")) {
+            text = text.trim().slice(0, -"```".length).trim();
+          }
+
+          // If this fixes the JSON, just return it. If not, continue - mogery
+          try {
+            JSON.parse(text);
+            return text;
+          } catch (_) {}
+        }
+
         const { text: fixedText } = await generateText({
           model: model,
           prompt: `Fix this JSON that had the following error: ${error}\n\nOriginal text:\n${text}\n\nReturn only the fixed JSON, no explanation.`,
-          system: "You are a JSON repair expert. Your only job is to fix malformed JSON and return valid JSON that matches the original structure and intent as closely as possible. Do not include any explanation or commentary - only return the fixed JSON."
+          system: "You are a JSON repair expert. Your only job is to fix malformed JSON and return valid JSON that matches the original structure and intent as closely as possible. Do not include any explanation or commentary - only return the fixed JSON. Do not return it in a Markdown code block, just plain JSON."
         });
         return fixedText;
       }
