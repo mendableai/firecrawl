@@ -21,7 +21,10 @@ export async function deepResearchStatusController(
 
   let data: any = null;
 
-  if (research.status === "completed" && process.env.USE_DB_AUTHENTICATION === "true") {
+  if (
+    research.status === "completed" &&
+    process.env.USE_DB_AUTHENTICATION === "true"
+  ) {
     const jobData = await supabaseGetJobsById([req.params.jobId]);
     if (jobData && jobData.length > 0) {
       data = jobData[0].docs[0];
@@ -42,8 +45,11 @@ export async function deepResearchStatusController(
     currentDepth: research.currentDepth,
     maxDepth: research.maxDepth,
     status: research.status,
+    totalUrls: research.sources.length,
     // DO NOT remove - backwards compatibility
+    //@deprecated
     activities: research.activities,
+    //@deprecated
     sources: research.sources,
     // summaries: research.summaries,
   });
