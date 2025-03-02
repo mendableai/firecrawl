@@ -296,7 +296,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       finalAnalysis: finalAnalysis,
     });
     // Bill team for usage based on URLs analyzed
-    billTeam(teamId, subId, urlsAnalyzed, logger).catch(
+    billTeam(teamId, subId, Math.min(urlsAnalyzed, options.maxUrls), logger).catch(
       (error) => {
         logger.error(
           `Failed to bill team ${teamId} for ${urlsAnalyzed} URLs analyzed`, { teamId, count: urlsAnalyzed, error },
