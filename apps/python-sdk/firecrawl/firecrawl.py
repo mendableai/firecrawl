@@ -1098,13 +1098,13 @@ class FirecrawlApp:
         # Raise an HTTPError with the custom message and attach the response
         raise requests.exceptions.HTTPError(message, response=response)
 
-    def deep_research(self, topic: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None, 
+    def deep_research(self, query: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None, 
                      on_activity: Optional[Callable[[Dict[str, Any]], None]] = None) -> Dict[str, Any]:
         """
-        Initiates a deep research operation on a given topic and polls until completion.
+        Initiates a deep research operation on a given query and polls until completion.
 
         Args:
-            topic (str): The topic to research.
+            query (str): The query to research.
             params (Optional[Union[Dict[str, Any], DeepResearchParams]]): Parameters for the deep research operation.
             on_activity (Optional[Callable[[Dict[str, Any]], None]]): Optional callback to receive activity updates in real-time.
 
@@ -1122,7 +1122,7 @@ class FirecrawlApp:
         else:
             research_params = params
 
-        response = self.async_deep_research(topic, research_params)
+        response = self.async_deep_research(query, research_params)
         if not response.get('success') or 'id' not in response:
             return response
 
@@ -1145,12 +1145,12 @@ class FirecrawlApp:
 
         return {'success': False, 'error': 'Deep research job terminated unexpectedly'}
 
-    def async_deep_research(self, topic: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None) -> Dict[str, Any]:
+    def async_deep_research(self, query: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None) -> Dict[str, Any]:
         """
         Initiates an asynchronous deep research operation.
 
         Args:
-            topic (str): The topic to research.
+            query (str): The query to research.
             params (Optional[Union[Dict[str, Any], DeepResearchParams]]): Parameters for the deep research operation.
 
         Returns:
@@ -1168,7 +1168,7 @@ class FirecrawlApp:
             research_params = params
 
         headers = self._prepare_headers()
-        json_data = {'topic': topic, **research_params.dict(exclude_none=True)}
+        json_data = {'query': query, **research_params.dict(exclude_none=True)}
 
         try:
             response = self._post_request(f'{self.api_url}/v1/research', json_data, headers)

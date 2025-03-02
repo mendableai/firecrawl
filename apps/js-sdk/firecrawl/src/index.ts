@@ -351,7 +351,7 @@ export interface CrawlErrorsResponse {
 
 /**
  * Parameters for deep research operations.
- * Defines options for conducting deep research on a topic.
+ * Defines options for conducting deep research on a query.
  */
 export interface DeepResearchParams {
   /**
@@ -1400,14 +1400,14 @@ export default class FirecrawlApp {
   }
 
   /**
-   * Initiates a deep research operation on a given topic and polls until completion.
-   * @param topic - The topic to research.
+   * Initiates a deep research operation on a given query and polls until completion.
+   * @param query - The query to research.
    * @param params - Parameters for the deep research operation.
    * @param onActivity - Optional callback to receive activity updates in real-time.
    * @returns The final research results.
    */
   async deepResearch(
-    topic: string, 
+    query: string, 
     params: DeepResearchParams,
     onActivity?: (activity: {
       type: string;
@@ -1418,7 +1418,7 @@ export default class FirecrawlApp {
     }) => void
   ): Promise<DeepResearchStatusResponse | ErrorResponse> {
     try {
-      const response = await this.asyncDeepResearch(topic, params);
+      const response = await this.asyncDeepResearch(query, params);
       
       if (!response.success || 'error' in response) {
         return { success: false, error: 'error' in response ? response.error : 'Unknown error' };
@@ -1473,16 +1473,16 @@ export default class FirecrawlApp {
   }
 
   /**
-   * Initiates a deep research operation on a given topic without polling.
+   * Initiates a deep research operation on a given query without polling.
    * @param params - Parameters for the deep research operation.
    * @returns The response containing the research job ID.
    */
-  async asyncDeepResearch(topic: string, params: DeepResearchParams): Promise<DeepResearchResponse | ErrorResponse> {
+  async asyncDeepResearch(query: string, params: DeepResearchParams): Promise<DeepResearchResponse | ErrorResponse> {
     const headers = this.prepareHeaders();
     try {
       const response: AxiosResponse = await this.postRequest(
         `${this.apiUrl}/v1/deep-research`,
-        { topic, ...params },
+        { query, ...params },
         headers
       );
 

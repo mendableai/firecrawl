@@ -407,7 +407,7 @@ const processDeepResearchJobInternal = async (
       researchId: job.data.researchId,
       teamId: job.data.teamId,
       plan: job.data.plan,
-      topic: job.data.request.topic,
+      query: job.data.request.query,
       maxDepth: job.data.request.maxDepth,
       timeLimit: job.data.request.timeLimit,
       subId: job.data.subId,
