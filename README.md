@@ -281,7 +281,6 @@ curl -X POST https://api.firecrawl.dev/v1/extract \
         },
         "required": [
           "company_mission",
-          "supports_sso",
           "is_open_source",
           "is_in_yc"
         ]
