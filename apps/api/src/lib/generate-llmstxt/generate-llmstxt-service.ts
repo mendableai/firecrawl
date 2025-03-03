@@ -64,7 +64,7 @@ function limitLlmsTxtEntries(llmstxt: string, maxEntries: number): string {
 export async function performGenerateLlmsTxt(
   options: GenerateLLMsTextServiceOptions,
 ) {
-  const { generationId, teamId, plan, url, maxUrls, showFullText, subId } =
+  const { generationId, teamId, plan, url, maxUrls = 100, showFullText, subId } =
     options;
   const startTime = Date.now();
   const logger = _logger.child({
