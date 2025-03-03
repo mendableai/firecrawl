@@ -64,8 +64,8 @@ export async function setCachedACUC(
         throw signal.error;
       }
 
-      // Cache for 10 minutes
-      await setValue(cacheKeyACUC, JSON.stringify(acuc), 600, true);
+      // Cache for 1 hour. - mogery
+      await setValue(cacheKeyACUC, JSON.stringify(acuc), 3600, true);
     });
   } catch (error) {
     logger.error(`Error updating cached ACUC ${cacheKeyACUC}: ${error}`);
