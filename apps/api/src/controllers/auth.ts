@@ -6,7 +6,7 @@ import {
   PlanType,
   RateLimiterMode,
 } from "../types";
-import { supabase_service } from "../services/supabase";
+import { supabase_rr_service } from "../services/supabase";
 import { withAuth } from "../lib/withAuth";
 import { RateLimiterRedis } from "rate-limiter-flexible";
 import { sendNotification } from "../services/notification/email_notification";
@@ -100,7 +100,7 @@ export async function getACUC(
       ? "auth_credit_usage_chunk_extract"
       : "auth_credit_usage_chunk_test_22_credit_pack_n_extract";
     while (retries < maxRetries) {
-      ({ data, error } = await supabase_service.rpc(
+      ({ data, error } = await supabase_rr_service.rpc(
         rpcName,
         { input_key: api_key },
         { get: true },
