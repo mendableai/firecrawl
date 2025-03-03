@@ -1,6 +1,6 @@
 # Pick your baseUrl here:
 @baseUrl = http://localhost:3002
-# @baseUrl = https://api.firecrawl.dev
+#@baseUrl = https://api.firecrawl.dev
 
 ### Scrape Website
 # @name scrape
@@ -102,21 +102,21 @@ DELETE {{baseUrl}}/v1/crawl/c94136f9-86c1-4a97-966c-1c8e0274778f HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
 ### Generate LLMs TXT
-# @name llmsTxt
+# @name generateLlmsTxt
 POST {{baseUrl}}/v1/llmstxt HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
   "url": "https://firecrawl.dev",
-  "maxUrls": 2,
+  "maxUrls": 1,
   "showFullText": false
 }
 
 
 ### Check Generate LLMs TXT Status
-@llmsTxtId = {{llmsTxt.response.body.$.id}}
-# @name llmsTxtStatus
-GET {{baseUrl}}/v1/llmstxt/{{llmsTxtId}} HTTP/1.1
+@generateLlmsTxtId = {{generateLlmsTxt.response.body.$.id}}
+# @name generateLlmsTxtStatus
+GET {{baseUrl}}/v1/llmstxt/{{generateLlmsTxtId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
