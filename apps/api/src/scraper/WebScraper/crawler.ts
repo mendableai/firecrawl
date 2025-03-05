@@ -179,7 +179,7 @@ export class WebCrawler {
 
         const isAllowed = this.ignoreRobotsTxt
           ? true
-          : (this.robots.isAllowed(link, "FireCrawlAgent") ?? true);
+          : ((this.robots.isAllowed(link, "FireCrawlAgent") || this.robots.isAllowed(link, "FirecrawlAgent")) ?? true);
         // Check if the link is disallowed by robots.txt
         if (!isAllowed) {
           this.logger.debug(`Link disallowed by robots.txt: ${link}`, {
@@ -453,7 +453,7 @@ export class WebCrawler {
     return ignoreRobotsTxt
       ? true
       : this.robots
-        ? (this.robots.isAllowed(url, "FireCrawlAgent") ?? true)
+        ? ((this.robots.isAllowed(url, "FireCrawlAgent") || this.robots.isAllowed(url, "FirecrawlAgent")) ?? true)
         : true;
   }
 
