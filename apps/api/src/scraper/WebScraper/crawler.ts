@@ -28,6 +28,7 @@ export class WebCrawler {
   private allowExternalContentLinks: boolean;
   private allowSubdomains: boolean;
   private ignoreRobotsTxt: boolean;
+  private regexOnFullURL: boolean;
   private logger: typeof _logger;
   private sitemapsHit: Set<string> = new Set();
 
@@ -45,6 +46,7 @@ export class WebCrawler {
     allowExternalContentLinks = false,
     allowSubdomains = false,
     ignoreRobotsTxt = false,
+    regexOnFullURL = false,
   }: {
     jobId: string;
     initialUrl: string;
@@ -59,6 +61,7 @@ export class WebCrawler {
     allowExternalContentLinks?: boolean;
     allowSubdomains?: boolean;
     ignoreRobotsTxt?: boolean;
+    regexOnFullURL?: boolean;
   }) {
     this.jobId = jobId;
     this.initialUrl = initialUrl;
@@ -76,6 +79,7 @@ export class WebCrawler {
     this.allowExternalContentLinks = allowExternalContentLinks ?? false;
     this.allowSubdomains = allowSubdomains ?? false;
     this.ignoreRobotsTxt = ignoreRobotsTxt ?? false;
+    this.regexOnFullURL = regexOnFullURL ?? false;
     this.logger = _logger.child({ crawlId: this.jobId, module: "WebCrawler" });
   }
 
@@ -115,11 +119,13 @@ export class WebCrawler {
           return false;
         }
 
+        const excincPath = this.regexOnFullURL ? link : path;
+
         // Check if the link should be excluded
         if (this.excludes.length > 0 && this.excludes[0] !== "") {
           if (
             this.excludes.some((excludePattern) =>
-              new RegExp(excludePattern).test(path),
+              new RegExp(excludePattern).test(excincPath),
             )
           ) {
             if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
@@ -133,7 +139,7 @@ export class WebCrawler {
         if (this.includes.length > 0 && this.includes[0] !== "") {
           if (
             !this.includes.some((includePattern) =>
-              new RegExp(includePattern).test(path),
+              new RegExp(includePattern).test(excincPath),
             )
           ) {
             if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {

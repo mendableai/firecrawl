@@ -1,7 +1,7 @@
 import { configDotenv } from "dotenv";
 configDotenv();
 
-import { ScrapeRequestInput, Document, ExtractRequestInput, ExtractResponse, CrawlRequestInput, MapRequestInput, BatchScrapeRequestInput, SearchRequestInput } from "../../controllers/v1/types";
+import { ScrapeRequestInput, Document, ExtractRequestInput, ExtractResponse, CrawlRequestInput, MapRequestInput, BatchScrapeRequestInput, SearchRequestInput, CrawlStatusResponse } from "../../controllers/v1/types";
 import request from "supertest";
 
 // =========================================
@@ -69,7 +69,7 @@ function expectCrawlToSucceed(response: Awaited<ReturnType<typeof crawlStatus>>)
     expect(response.body.data.length).toBeGreaterThan(0);
 }
 
-export async function crawl(body: CrawlRequestInput): ReturnType<typeof crawlStatus> {
+export async function crawl(body: CrawlRequestInput): Promise<CrawlStatusResponse> {
     const cs = await crawlStart(body);
     expectCrawlStartToSucceed(cs);
 
@@ -82,7 +82,7 @@ export async function crawl(body: CrawlRequestInput): ReturnType<typeof crawlSta
     } while (x.body.status === "scraping");
 
     expectCrawlToSucceed(x);
-    return x;
+    return x.body;
 }
 
 // =========================================
