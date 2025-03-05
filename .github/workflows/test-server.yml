@@ -21,6 +21,7 @@ env:
   SUPABASE_ANON_TOKEN: ${{ secrets.SUPABASE_ANON_TOKEN }}
   SUPABASE_SERVICE_TOKEN: ${{ secrets.SUPABASE_SERVICE_TOKEN }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_REPLICA_URL: ${{ secrets.SUPABASE_REPLICA_URL }}
   TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
   FIRE_ENGINE_BETA_URL: ${{ secrets.FIRE_ENGINE_BETA_URL }}
   USE_DB_AUTHENTICATION: true
@@ -87,10 +88,3 @@ jobs:
         run: |
           npm run test:snips
         working-directory: ./apps/api
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Logs
-          path: |
-            ./apps/api/api.log
-            ./apps/api/worker.log
