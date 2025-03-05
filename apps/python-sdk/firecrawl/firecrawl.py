@@ -675,6 +675,7 @@ class FirecrawlApp:
             'allowExternalLinks': params.get('allow_external_links', params.get('allowExternalLinks', False)),
             'enableWebSearch': params.get('enable_web_search', params.get('enableWebSearch', False)),
             'showSources': params.get('show_sources', params.get('showSources', False)),
+            'systemPrompt': params.get('system_prompt', params.get('systemPrompt', None)),
             'schema': schema,
             'origin': 'api-sdk'
         }
