@@ -669,16 +669,22 @@ class FirecrawlApp:
                 schema = schema.model_json_schema()
             # Otherwise assume it's already a JSON schema dict
 
-        jsonData = {'urls': urls, **params}
         request_data = {
-            **jsonData,
+            'urls': urls,
             'allowExternalLinks': params.get('allow_external_links', params.get('allowExternalLinks', False)),
-            'enableWebSearch': params.get('enable_web_search', params.get('enableWebSearch', False)),
+            'enableWebSearch': params.get('enable_web_search', params.get('enableWebSearch', False)), 
             'showSources': params.get('show_sources', params.get('showSources', False)),
-            'systemPrompt': params.get('system_prompt', params.get('systemPrompt', None)),
             'schema': schema,
             'origin': 'api-sdk'
         }
+
+        # Only add prompt and systemPrompt if they exist
+        if params.get('prompt'):
+            request_data['prompt'] = params['prompt']
+        if params.get('system_prompt'):
+            request_data['systemPrompt'] = params['system_prompt']
+        elif params.get('systemPrompt'):  # Check legacy field name
+            request_data['systemPrompt'] = params['systemPrompt']
 
         try:
             # Send the initial extract request
