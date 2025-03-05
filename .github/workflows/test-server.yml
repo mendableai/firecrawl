@@ -72,11 +72,11 @@ jobs:
           chmod +x html-to-markdown.so
         working-directory: ./apps/api/sharedLibs/go-html-to-md
       - name: Start the application
-        run: npm start &
+        run: npm start > api.log 2>&1 &
         working-directory: ./apps/api
         id: start_app
       - name: Start worker
-        run: npm run workers &
+        run: npm run workers > worker.log 2>&1 &
         working-directory: ./apps/api
         id: start_workers
       - name: Start index worker
@@ -87,3 +87,10 @@ jobs:
         run: |
           npm run test:snips
         working-directory: ./apps/api
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: Logs
+          path: |
+            ./apps/api/api.log
+            ./apps/api/worker.log
