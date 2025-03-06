@@ -49,7 +49,7 @@ def test_scrape_url_invalid_api_key():
 #     assert "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." in str(excinfo.value)
 
 def test_successful_response_with_valid_preview_token():
-    app = FirecrawlApp(api_url=API_URL, api_key="this_is_just_a_preview_token")
+    app = FirecrawlApp(api_url=API_URL, api_key=os.getenv('PREVIEW_TOKEN'))
     response = app.scrape_url('https://roastmywebsite.ai')
     assert response is not None
     assert "_Roast_" in response['markdown']
@@ -327,7 +327,7 @@ def test_invalid_api_key_on_map():
 #     assert "URL is blocked. Firecrawl currently does not support social media scraping due to policy restrictions." in str(excinfo.value)
 
 def test_successful_response_with_valid_preview_token_on_map():
-    app = FirecrawlApp(api_key="this_is_just_a_preview_token", api_url=API_URL)
+    app = FirecrawlApp(api_key=os.getenv('PREVIEW_TOKEN'), api_url=API_URL)
     response = app.map_url('https://roastmywebsite.ai')
     assert response is not None
     assert len(response) > 0
