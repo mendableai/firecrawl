@@ -100,7 +100,7 @@ export async function getACUC(
       ? "auth_credit_usage_chunk_extract"
       : "auth_credit_usage_chunk_test_22_credit_pack_n_extract";
     while (retries < maxRetries) {
-      const client = supabase_rr_service;
+      const client = Math.random() > 0.75 ? supabase_rr_service : supabase_service;
       ({ data, error } = await client.rpc(
         rpcName,
         { input_key: api_key },
