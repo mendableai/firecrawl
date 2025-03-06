@@ -24,7 +24,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
 
     const incomingIP = (req.headers["x-forwarded-for"] ||
       req.socket.remoteAddress) as string;
-    const iptoken = incomingIP + "this_is_just_a_preview_token";
+    const iptoken = incomingIP + process.env.PREVIEW_TOKEN;
     const team_id = `preview_${iptoken}`;
 
     if (!auth.success) {

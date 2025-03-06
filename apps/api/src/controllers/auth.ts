@@ -200,7 +200,7 @@ export async function supaAuthenticateUser(
   let priceId: string | null = null;
   let chunk: AuthCreditUsageChunk | null = null;
   let plan: PlanType = "free";
-  if (token == "this_is_just_a_preview_token") {
+  if (token == process.env.PREVIEW_TOKEN) {
     if (mode == RateLimiterMode.CrawlStatus) {
       rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
     } else if (mode == RateLimiterMode.ExtractStatus) {
@@ -295,7 +295,7 @@ export async function supaAuthenticateUser(
   }
 
   const team_endpoint_token =
-    token === "this_is_just_a_preview_token" ? iptoken : teamId;
+    token === process.env.PREVIEW_TOKEN ? iptoken : teamId;
 
   try {
     await rateLimiter.consume(team_endpoint_token);
@@ -325,7 +325,7 @@ export async function supaAuthenticateUser(
   }
 
   if (
-    token === "this_is_just_a_preview_token" &&
+    token === process.env.PREVIEW_TOKEN &&
     (mode === RateLimiterMode.Scrape ||
       mode === RateLimiterMode.Preview ||
       mode === RateLimiterMode.Map ||
