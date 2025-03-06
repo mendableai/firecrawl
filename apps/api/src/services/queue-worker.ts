@@ -1112,6 +1112,11 @@ async function processJob(job: Job & { id: string }, token: string) {
               // });
             }
           }
+
+          // Only run check after adding new jobs for discovery - mogery
+          if (job.data.isCrawlSourceScrape && crawler.filterLinks([doc.metadata.url ?? doc.metadata.sourceURL!], 1, sc.crawlerOptions?.maxDepth ?? 10).length === 0) {
+            throw new Error("Source URL is not allowed by includePaths/excludePaths rules")
+          }
         }
       }
 

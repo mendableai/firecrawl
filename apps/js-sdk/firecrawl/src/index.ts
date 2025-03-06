@@ -173,6 +173,7 @@ export interface CrawlParams {
   };
   deduplicateSimilarURLs?: boolean;
   ignoreQueryParameters?: boolean;
+  regexOnFullURL?: boolean;
 }
 
 /**
