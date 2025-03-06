@@ -25,7 +25,7 @@ describe("Crawl tests", () => {
     it.concurrent("filters URLs properly when using regexOnFullURL", async () => {
         const res = await crawl({
             url: "https://firecrawl.dev/pricing",
-            includePaths: ["^https://firecrawl.dev/pricing$"],
+            includePaths: ["^https://(www\\.)?firecrawl\\.dev/pricing$"],
             regexOnFullURL: true,
             limit: 10,
         });
