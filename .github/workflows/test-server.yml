@@ -21,6 +21,7 @@ env:
   SUPABASE_ANON_TOKEN: ${{ secrets.SUPABASE_ANON_TOKEN }}
   SUPABASE_SERVICE_TOKEN: ${{ secrets.SUPABASE_SERVICE_TOKEN }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_REPLICA_URL: ${{ secrets.SUPABASE_REPLICA_URL }}
   TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
   FIRE_ENGINE_BETA_URL: ${{ secrets.FIRE_ENGINE_BETA_URL }}
   USE_DB_AUTHENTICATION: true
@@ -72,17 +73,19 @@ jobs:
           chmod +x html-to-markdown.so
         working-directory: ./apps/api/sharedLibs/go-html-to-md
       - name: Start the application
-        run: npm start &
+        run: npm start > api.log 2>&1 &
         working-directory: ./apps/api
         id: start_app
       - name: Start worker
-        run: npm run workers &
+        run: npm run workers > worker.log 2>&1 &
         working-directory: ./apps/api
         id: start_workers
       - name: Start index worker
         run: npm run index-worker &
         working-directory: ./apps/api
         id: start_index_worker
+      - name: Wait for API
+        run: pnpx wait-on tcp:3002 -t 15s
       - name: Run snippet tests
         run: |
           npm run test:snips

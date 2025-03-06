@@ -125,13 +125,18 @@ describe("Billing tests", () => {
                 })
             ]);
             
+            expect(crawl1.success).toBe(true);
+            expect(crawl2.success).toBe(true);
+            
             // sum: x+5y credits
 
             await sleepForBatchBilling();
 
             const rc2 = (await creditUsage()).remaining_credits;
 
-            expect(rc1 - rc2).toBe(crawl1.body.completed + crawl2.body.completed * 5);
+            if (crawl1.success && crawl2.success) {
+                expect(rc1 - rc2).toBe(crawl1.completed + crawl2.completed * 5);
+            }
         }, 300000);
 
         it("bills map correctly", async () => {

@@ -15,6 +15,7 @@ env:
   ENV: ${{ secrets.ENV }}
   TEST_SUITE_SELF_HOSTED: true
   USE_GO_MARKDOWN_PARSER: true
+  FIRECRAWL_DEBUG_FILTER_LINKS: true
 
 jobs:
   test:

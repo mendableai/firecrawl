@@ -398,6 +398,7 @@ export function crawlToCrawler(
       sc.crawlerOptions?.allowExternalContentLinks ?? false,
     allowSubdomains: sc.crawlerOptions?.allowSubdomains ?? false,
     ignoreRobotsTxt: sc.crawlerOptions?.ignoreRobotsTxt ?? false,
+    regexOnFullURL: sc.crawlerOptions?.regexOnFullURL ?? false,
   });
 
   if (sc.robots !== undefined) {
