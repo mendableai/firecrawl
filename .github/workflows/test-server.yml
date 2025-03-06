@@ -84,6 +84,8 @@ jobs:
         run: npm run index-worker &
         working-directory: ./apps/api
         id: start_index_worker
+      - name: Wait for API
+        run: pnpx wait-on tcp:3002 -t 15s
       - name: Run snippet tests
         run: |
           npm run test:snips
