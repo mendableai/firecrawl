@@ -137,8 +137,8 @@ const RATE_LIMITS = {
     extract_pro: 1000,
   },
   preview: {
-    free: 0,
-    default: 0,
+    free: 5,
+    default: 5,
   },
   account: {
     free: 100,
