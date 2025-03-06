@@ -37,7 +37,7 @@ def test_scrape_url_invalid_api_key():
 #     assert "Unexpected error during scrape URL: Status code 403. Firecrawl currently does not support social media scraping due to policy restrictions. We're actively working on building support for it." in str(excinfo.value)
 
 def test_successful_response_with_valid_preview_token():
-    app = FirecrawlApp(api_url=API_URL, api_key="this_is_just_a_preview_token", version='v0')
+    app = FirecrawlApp(api_url=API_URL, api_key=os.getenv('PREVIEW_TOKEN'), version='v0')
     response = app.scrape_url('https://roastmywebsite.ai')
     assert response is not None
     assert 'content' in response
