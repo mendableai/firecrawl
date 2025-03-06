@@ -2,7 +2,7 @@
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
 import { getACUC } from "../../controllers/auth";
 import { redlock } from "../redlock";
-import { supabase_service } from "../supabase";
+import { supabase_rr_service, supabase_service } from "../supabase";
 import { createPaymentIntent } from "./stripe";
 import { issueCredits } from "./issue_credits";
 import { sendNotification, sendNotificationWithCustomDays } from "../notification/email_notification";
@@ -124,7 +124,7 @@ export async function autoCharge(
           if (chunk.sub_user_id) {
             // Fetch the customer's Stripe information
             const { data: customer, error: customersError } =
-              await supabase_service
+              await supabase_rr_service
                 .from("customers")
                 .select("id, stripe_customer_id")
                 .eq("id", chunk.sub_user_id)
