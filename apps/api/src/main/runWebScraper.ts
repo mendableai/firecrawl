@@ -146,25 +146,25 @@ export async function runWebScraper({
       EngineResultsTracker[Engine],
       undefined
     >;
-    // ScrapeEvents.insert(bull_job_id, {
-    //   type: "scrape",
-    //   url,
-    //   method: engine,
-    //   result: {
-    //     success: result.state === "success",
-    //     response_code:
-    //       result.state === "success" ? result.result.statusCode : undefined,
-    //     response_size:
-    //       result.state === "success" ? result.result.html.length : undefined,
-    //     error:
-    //       result.state === "error"
-    //         ? result.error
-    //         : result.state === "timeout"
-    //           ? "Timed out"
-    //           : undefined,
-    //     time_taken: result.finishedAt - result.startedAt,
-    //   },
-    // });
+    ScrapeEvents.insert(bull_job_id, {
+      type: "scrape",
+      url,
+      method: engine,
+      result: {
+        success: result.state === "success",
+        response_code:
+          result.state === "success" ? result.result.statusCode : undefined,
+        response_size:
+          result.state === "success" ? result.result.html.length : undefined,
+        error:
+          result.state === "error"
+            ? result.error
+            : result.state === "timeout"
+              ? "Timed out"
+              : undefined,
+        time_taken: result.finishedAt - result.startedAt,
+      },
+    });
   }
 
   if (error === undefined && response?.success) {
@@ -219,7 +219,7 @@ const saveJob = async (
       //     // I think the job won't exist here anymore
       //   }
     }
-    // ScrapeEvents.logJobEvent(job, "completed");
+    ScrapeEvents.logJobEvent(job, "completed");
   } catch (error) {
     _logger.error(`🐂 Failed to update job status`, {
       module: "runWebScraper",
