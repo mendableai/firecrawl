@@ -100,7 +100,8 @@ export async function getACUC(
       ? "auth_credit_usage_chunk_extract"
       : "auth_credit_usage_chunk_test_22_credit_pack_n_extract";
     while (retries < maxRetries) {
-      const client = Math.random() > 0.75 ? supabase_rr_service : supabase_service;
+      const client =
+        Math.random() > 0.5 ? supabase_rr_service : supabase_service;
       ({ data, error } = await client.rpc(
         rpcName,
         { input_key: api_key },
@@ -200,6 +201,11 @@ export async function supaAuthenticateUser(
   let priceId: string | null = null;
   let chunk: AuthCreditUsageChunk | null = null;
   let plan: PlanType = "free";
+  if (token == "this_is_just_a_preview_token") {
+    throw new Error(
+      "Unauthenticated Playground calls are temporarily disabled due to abuse. Please sign up.",
+    );
+  }
   if (token == process.env.PREVIEW_TOKEN) {
     if (mode == RateLimiterMode.CrawlStatus) {
       rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);

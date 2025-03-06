@@ -1,13 +1,10 @@
 import { NotificationType } from "../../types";
 import { withAuth } from "../../lib/withAuth";
 import { sendNotification } from "../notification/email_notification";
-import { supabase_service } from "../supabase";
+import { supabase_rr_service, supabase_service } from "../supabase";
 import { logger } from "../../lib/logger";
 import * as Sentry from "@sentry/node";
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
-import { getACUC, setCachedACUC } from "../../controllers/auth";
-import { issueCredits } from "./issue_credits";
-import { redlock } from "../redlock";
 import { autoCharge } from "./auto_charge";
 import { getValue, setValue } from "../redis";
 import { queueBillingOperation } from "./batch_billing";
@@ -117,7 +114,7 @@ export async function supaCheckTeamCredits(
     isAutoRechargeEnabled = parsedData.auto_recharge;
     autoRechargeThreshold = parsedData.auto_recharge_threshold;
   } else {
-    const { data, error } = await supabase_service
+    const { data, error } = await supabase_rr_service
       .from("teams")
       .select("auto_recharge, auto_recharge_threshold")
       .eq("id", team_id)
