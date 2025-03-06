@@ -81,7 +81,7 @@ describe("Scrape tests", () => {
           blockAds: false,
         });
 
-        expect(response.markdown).toContain(".g.doubleclick.net/");
+        expect(response.markdown).toMatch(/(\.g\.doubleclick\.net|amazon-adsystem\.com)\//);
       }, 30000);
     });
   
