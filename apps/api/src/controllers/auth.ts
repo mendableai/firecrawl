@@ -201,6 +201,8 @@ export async function supaAuthenticateUser(
   let chunk: AuthCreditUsageChunk | null = null;
   let plan: PlanType = "free";
   if (token == "this_is_just_a_preview_token") {
+    throw new Error("Unauthenticated Playground calls are temporarily disabled due to abuse. Please sign up.");
+
     if (mode == RateLimiterMode.CrawlStatus) {
       rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
     } else if (mode == RateLimiterMode.ExtractStatus) {
