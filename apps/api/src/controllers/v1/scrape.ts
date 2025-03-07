@@ -32,6 +32,7 @@ export async function scrapeController(
     team_id: req.auth.team_id,
     basePriority: 10,
   });
+  // 
 
   await addScrapeJob(
     {
