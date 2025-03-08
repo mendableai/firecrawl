@@ -1,11 +1,6 @@
 name: Publish JS SDK
 
-on:
-  push:
-    branches:
-      - main
-    paths:
-      - apps/js-sdk/firecrawl/package.json
+on: []
 
 env:
   TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
