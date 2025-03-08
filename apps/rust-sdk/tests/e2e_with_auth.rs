@@ -26,7 +26,7 @@ async fn test_successful_response_with_valid_preview_token() {
     let api_url = env::var("API_URL").unwrap();
     let app = FirecrawlApp::new_selfhosted(
         api_url,
-        Some("this_is_just_a_preview_token"),
+        Some(env::var("PREVIEW_TOKEN").unwrap()),
     )
     .unwrap();
     let result = app

@@ -67,6 +67,7 @@ const urlBlocklist = [
   "vMdzZ33BXoyWVZnAPOBcrg==",
   "l8GDVI8w/ueHnNzdN1ODuQ==",
   "+yz9bnYYMnC0trJZGJwf6Q==",
+  "oTdhIjEjqdT2pEvyxD1Ssg==",
 ]
 
 const allowedKeywords = [

@@ -1,5 +1,5 @@
 import { Request } from "express";
-import { supabase_service } from "../supabase";
+import { supabase_rr_service, supabase_service } from "../supabase";
 import { validate as isUuid } from "uuid";
 import { logger } from "../../../src/lib/logger";
 
@@ -18,7 +18,7 @@ export async function validateIdempotencyKey(req: Request): Promise<boolean> {
     return false;
   }
 
-  const { data, error } = await supabase_service
+  const { data, error } = await supabase_rr_service
     .from("idempotency_keys")
     .select("key")
     .eq("key", idempotencyKey);

@@ -1,0 +1,34 @@
+name: Publish JS SDK
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - apps/js-sdk/firecrawl/package.json
+
+env:
+  TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: "20"
+      - name: Authenticate
+        run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
+      - name: Publish
+        run: |
+          npm ci
+          npm run build
+          npm publish --access public
+          sed -i 's/"name": "@mendable\/firecrawl-js"/"name": "@mendable\/firecrawl"/g' package.json
+          npm publish --access public
+          sed -i 's/"name": "@mendable\/firecrawl"/"name": "firecrawl"/g' package.json
+          npm publish --access public
+        working-directory: ./apps/js-sdk/firecrawl

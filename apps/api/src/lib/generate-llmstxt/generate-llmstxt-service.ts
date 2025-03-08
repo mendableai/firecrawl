@@ -41,10 +41,30 @@ function limitPages(fullText: string, maxPages: number): string {
   return limitedPages.join("");
 }
 
+// Helper function to limit llmstxt entries
+function limitLlmsTxtEntries(llmstxt: string, maxEntries: number): string {
+  // Split by newlines
+  const lines = llmstxt.split('\n');
+  
+  // Find the header line (starts with #)
+  const headerIndex = lines.findIndex(line => line.startsWith('#'));
+  if (headerIndex === -1) return llmstxt;
+  
+  // Get the header and the entries
+  const header = lines[headerIndex];
+  const entries = lines.filter(line => line.startsWith('- ['));
+  
+  // Take only the requested number of entries
+  const limitedEntries = entries.slice(0, maxEntries);
+  
+  // Reconstruct the text
+  return `${header}\n\n${limitedEntries.join('\n')}`;
+}
+
 export async function performGenerateLlmsTxt(
   options: GenerateLLMsTextServiceOptions,
 ) {
-  const { generationId, teamId, plan, url, maxUrls, showFullText, subId } =
+  const { generationId, teamId, plan, url, maxUrls = 100, showFullText, subId } =
     options;
   const startTime = Date.now();
   const logger = _logger.child({
@@ -55,19 +75,25 @@ export async function performGenerateLlmsTxt(
   });
 
   try {
+    // Enforce max URL limit
+    const effectiveMaxUrls = Math.min(maxUrls, 5000);
+
     // Check cache first
-    const cachedResult = await getLlmsTextFromCache(url, maxUrls);
+    const cachedResult = await getLlmsTextFromCache(url, effectiveMaxUrls);
     if (cachedResult) {
       logger.info("Found cached LLMs text", { url });
 
       // Limit pages and remove separators before returning
-      const limitedFullText = limitPages(cachedResult.llmstxt_full, maxUrls);
+      const limitedFullText = limitPages(cachedResult.llmstxt_full, effectiveMaxUrls);
       const cleanFullText = removePageSeparators(limitedFullText);
+      
+      // Limit llmstxt entries to match maxUrls
+      const limitedLlmsTxt = limitLlmsTxtEntries(cachedResult.llmstxt, effectiveMaxUrls);
 
       // Update final result with cached text
       await updateGeneratedLlmsTxt(generationId, {
         status: "completed",
-        generatedText: cachedResult.llmstxt,
+        generatedText: limitedLlmsTxt,
         fullText: cleanFullText,
         showFullText: showFullText,
       });
@@ -75,7 +101,7 @@ export async function performGenerateLlmsTxt(
       return {
         success: true,
         data: {
-          generatedText: cachedResult.llmstxt,
+          generatedText: limitedLlmsTxt,
           fullText: cleanFullText,
           showFullText: showFullText,
         },
@@ -88,7 +114,7 @@ export async function performGenerateLlmsTxt(
       url,
       teamId,
       plan,
-      limit: maxUrls,
+      limit: effectiveMaxUrls,
       includeSubdomains: false,
       ignoreSitemap: false,
       includeMetadata: true,
@@ -177,10 +203,10 @@ export async function performGenerateLlmsTxt(
     }
 
     // After successful generation, save to cache
-    await saveLlmsTextToCache(url, llmstxt, llmsFulltxt, maxUrls);
+    await saveLlmsTextToCache(url, llmstxt, llmsFulltxt, effectiveMaxUrls);
 
     // Limit pages and remove separators before final update
-    const limitedFullText = limitPages(llmsFulltxt, maxUrls);
+    const limitedFullText = limitPages(llmsFulltxt, effectiveMaxUrls);
     const cleanFullText = removePageSeparators(limitedFullText);
 
     // Update final result with both generated text and full text

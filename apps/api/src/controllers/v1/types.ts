@@ -448,6 +448,7 @@ const crawlerOptions = z
     ignoreSitemap: z.boolean().default(false),
     deduplicateSimilarURLs: z.boolean().default(true),
     ignoreQueryParameters: z.boolean().default(false),
+    regexOnFullURL: z.boolean().default(false),
   })
   .strict(strictMessage);
 
@@ -501,7 +502,7 @@ export const mapRequestSchema = crawlerOptions
     search: z.string().optional(),
     ignoreSitemap: z.boolean().default(false),
     sitemapOnly: z.boolean().default(false),
-    limit: z.number().min(1).max(5000).default(5000),
+    limit: z.number().min(1).max(30000).default(5000),
     timeout: z.number().positive().finite().optional(),
     useMock: z.string().optional(),
   })
@@ -791,6 +792,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     ignoreSitemap: x.ignoreSitemap,
     deduplicateSimilarURLs: x.deduplicateSimilarURLs,
     ignoreQueryParameters: x.ignoreQueryParameters,
+    regexOnFullURL: x.regexOnFullURL,
   };
 }
 
@@ -811,6 +813,7 @@ export function fromLegacyCrawlerOptions(x: any): {
       ignoreSitemap: x.ignoreSitemap,
       deduplicateSimilarURLs: x.deduplicateSimilarURLs,
       ignoreQueryParameters: x.ignoreQueryParameters,
+      regexOnFullURL: x.regexOnFullURL,
     }),
     internalOptions: {
       v0CrawlOnlyUrls: x.returnOnlyUrls,

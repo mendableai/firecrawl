@@ -28,6 +28,7 @@ export class WebCrawler {
   private allowExternalContentLinks: boolean;
   private allowSubdomains: boolean;
   private ignoreRobotsTxt: boolean;
+  private regexOnFullURL: boolean;
   private logger: typeof _logger;
   private sitemapsHit: Set<string> = new Set();
 
@@ -45,6 +46,7 @@ export class WebCrawler {
     allowExternalContentLinks = false,
     allowSubdomains = false,
     ignoreRobotsTxt = false,
+    regexOnFullURL = false,
   }: {
     jobId: string;
     initialUrl: string;
@@ -59,6 +61,7 @@ export class WebCrawler {
     allowExternalContentLinks?: boolean;
     allowSubdomains?: boolean;
     ignoreRobotsTxt?: boolean;
+    regexOnFullURL?: boolean;
   }) {
     this.jobId = jobId;
     this.initialUrl = initialUrl;
@@ -76,6 +79,7 @@ export class WebCrawler {
     this.allowExternalContentLinks = allowExternalContentLinks ?? false;
     this.allowSubdomains = allowSubdomains ?? false;
     this.ignoreRobotsTxt = ignoreRobotsTxt ?? false;
+    this.regexOnFullURL = regexOnFullURL ?? false;
     this.logger = _logger.child({ crawlId: this.jobId, module: "WebCrawler" });
   }
 
@@ -109,16 +113,24 @@ export class WebCrawler {
 
         // Check if the link exceeds the maximum depth allowed
         if (depth > maxDepth) {
+          if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+            this.logger.debug(`${link} DEPTH FAIL`);
+          }
           return false;
         }
+
+        const excincPath = this.regexOnFullURL ? link : path;
 
         // Check if the link should be excluded
         if (this.excludes.length > 0 && this.excludes[0] !== "") {
           if (
             this.excludes.some((excludePattern) =>
-              new RegExp(excludePattern).test(path),
+              new RegExp(excludePattern).test(excincPath),
             )
           ) {
+            if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+              this.logger.debug(`${link} EXCLUDE FAIL`);
+            }
             return false;
           }
         }
@@ -127,9 +139,12 @@ export class WebCrawler {
         if (this.includes.length > 0 && this.includes[0] !== "") {
           if (
             !this.includes.some((includePattern) =>
-              new RegExp(includePattern).test(path),
+              new RegExp(includePattern).test(excincPath),
             )
           ) {
+            if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+              this.logger.debug(`${link} INCLUDE FAIL`);
+            }
             return false;
           }
         }
@@ -140,6 +155,9 @@ export class WebCrawler {
         try {
           normalizedLink = new URL(link);
         } catch (_) {
+          if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+            this.logger.debug(`${link} URL PARSE FAIL`);
+          }
           return false;
         }
         const initialHostname = normalizedInitialUrl.hostname.replace(
@@ -158,26 +176,38 @@ export class WebCrawler {
           if (
             !normalizedLink.pathname.startsWith(normalizedInitialUrl.pathname)
           ) {
+            if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+              this.logger.debug(`${link} BACKWARDS FAIL ${normalizedLink.pathname} ${normalizedInitialUrl.pathname}`);
+            }
             return false;
           }
         }
 
         const isAllowed = this.ignoreRobotsTxt
           ? true
-          : (this.robots.isAllowed(link, "FireCrawlAgent") ?? true);
+          : ((this.robots.isAllowed(link, "FireCrawlAgent") || this.robots.isAllowed(link, "FirecrawlAgent")) ?? true);
         // Check if the link is disallowed by robots.txt
         if (!isAllowed) {
           this.logger.debug(`Link disallowed by robots.txt: ${link}`, {
             method: "filterLinks",
             link,
           });
+          if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+            this.logger.debug(`${link} ROBOTS FAIL`);
+          }
           return false;
         }
 
         if (this.isFile(link)) {
+          if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+            this.logger.debug(`${link} FILE FAIL`);
+          }
           return false;
         }
 
+        if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+          this.logger.debug(`${link} OK`);
+        }
         return true;
       })
       .slice(0, limit);
@@ -429,7 +459,7 @@ export class WebCrawler {
     return ignoreRobotsTxt
       ? true
       : this.robots
-        ? (this.robots.isAllowed(url, "FireCrawlAgent") ?? true)
+        ? ((this.robots.isAllowed(url, "FireCrawlAgent") || this.robots.isAllowed(url, "FirecrawlAgent")) ?? true)
         : true;
   }
 

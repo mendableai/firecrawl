@@ -89,6 +89,8 @@ export async function updateDeepResearch(
       : current.summaries
   };
 
+  
+
   await redisConnection.set("deep-research:" + id, JSON.stringify(updatedResearch));
   await redisConnection.expire("deep-research:" + id, DEEP_RESEARCH_TTL);
 }

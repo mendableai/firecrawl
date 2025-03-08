@@ -21,6 +21,47 @@ function cleanOfNull<T>(x: T): T {
   }
 }
 
+async function indexJob(job: FirecrawlJob): Promise<void> {
+  try {
+    if (job.mode !== "single_urls" && job.mode !== "scrape") {
+      return;
+    }
+
+    const response = await fetch(`${process.env.FIRE_INDEX_SERVER_URL}/api/jobs`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: job.url,
+        mode: job.mode || "scrape",
+        docs: job.docs,
+        origin: job.origin,
+        success: job.success,
+        time_taken: job.time_taken,
+        num_tokens: job.num_tokens,
+        page_options: job.scrapeOptions,
+        date_added: new Date().toISOString(),
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      logger.error(`Failed to send job to external server: ${response.status} ${response.statusText}`, {
+        error: errorData,
+        scrapeId: job.job_id,
+      });
+    } else {
+      logger.debug("Job sent to external server successfully!", { scrapeId: job.job_id });
+    }
+  } catch (error) {
+    logger.error(`Error sending job to external server: ${error.message}`, {
+      error,
+      scrapeId: job.job_id,
+    });
+  }
+}
+
 export async function logJob(job: FirecrawlJob, force: boolean = false) {
   try {
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
@@ -61,6 +102,11 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       crawl_id: job.crawl_id,
       tokens_billed: job.tokens_billed,
     };
+
+    // Send job to external server
+    if (process.env.FIRE_INDEX_SERVER_URL) {
+      indexJob(job);
+    }
 
     if (force) {
       let i = 0,

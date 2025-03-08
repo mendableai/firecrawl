@@ -62,15 +62,6 @@ describe("E2E Tests for API Routes", () => {
       expect(response.body.error).toContain(BLOCKLISTED_URL_MESSAGE);
     });
 
-    // tested on rate limit test
-    // it.concurrent("should return a successful response with a valid preview token", async () => {
-    //   const response = await request(TEST_URL)
-    //     .post("/v0/scrape")
-    //     .set("Authorization", `Bearer this_is_just_a_preview_token`)
-    //     .set("Content-Type", "application/json")
-    //     .send({ url: "https://roastmywebsite.ai" });
-    //   expect(response.statusCode).toBe(200);
-    // }, 30000); // 30 seconds timeout
 
     it.concurrent(
       "should return a successful response with a valid API key",
@@ -1087,19 +1078,6 @@ describe("E2E Tests for API Routes", () => {
       },
       3000,
     );
-
-    // it.concurrent("should return a successful response with a valid API key for crawlWebsitePreview", async () => {
-    //   const response = await request(TEST_URL)
-    //     .post("/v0/crawlWebsitePreview")
-    //     .set("Authorization", `Bearer this_is_just_a_preview_token`)
-    //     .set("Content-Type", "application/json")
-    //     .send({ url: "https://firecrawl.dev" });
-    //   expect(response.statusCode).toBe(200);
-    //   expect(response.body).toHaveProperty("jobId");
-    //   expect(response.body.jobId).toMatch(
-    //     /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/
-    //   );
-    // });
   });
 
   describe("POST /v0/search", () => {
@@ -1724,7 +1702,7 @@ describe("E2E Tests for API Routes", () => {
         for (let i = 0; i < 5; i++) {
           const response = await request(TEST_URL)
             .post("/v0/scrape")
-            .set("Authorization", `Bearer this_is_just_a_preview_token`)
+            .set("Authorization", `Bearer ${process.env.PREVIEW_TOKEN}`)
             .set("Content-Type", "application/json")
             .send({ url: "https://www.scrapethissite.com" });
 
@@ -1732,7 +1710,7 @@ describe("E2E Tests for API Routes", () => {
         }
         const response = await request(TEST_URL)
           .post("/v0/scrape")
-          .set("Authorization", `Bearer this_is_just_a_preview_token`)
+          .set("Authorization", `Bearer ${process.env.PREVIEW_TOKEN}`)
           .set("Content-Type", "application/json")
           .send({ url: "https://www.scrapethissite.com" });
 

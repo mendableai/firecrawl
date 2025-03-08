@@ -12,6 +12,7 @@ import {
   deepResearchQueueName,
   getIndexQueue,
   getGenerateLlmsTxtQueue,
+  getBillingQueue,
 } from "./queue-service";
 import { startWebScraperPipeline } from "../main/runWebScraper";
 import { callWebhook } from "./webhook";
@@ -406,10 +407,11 @@ const processDeepResearchJobInternal = async (
       researchId: job.data.researchId,
       teamId: job.data.teamId,
       plan: job.data.plan,
-      topic: job.data.request.topic,
+      query: job.data.request.query,
       maxDepth: job.data.request.maxDepth,
       timeLimit: job.data.request.timeLimit,
       subId: job.data.subId,
+      maxUrls: job.data.request.maxUrls,
     });  
     
     if(result.success) {
@@ -971,7 +973,13 @@ async function processJob(job: Job & { id: string }, token: string) {
           ); // TODO: make this its own error type that is ignored by error tracking
         }
 
-        if (job.data.isCrawlSourceScrape) {
+        // Only re-set originUrl if it's different from the current hostname
+        // This is only done on this condition to handle cross-domain redirects
+        // If this would be done for non-crossdomain redirects, but also for e.g.
+        // redirecting / -> /introduction (like our docs site does), it would
+        // break crawling the entire site without allowBackwardsCrawling - mogery
+        const isHostnameDifferent = normalizeUrlOnlyHostname(doc.metadata.url) !== normalizeUrlOnlyHostname(doc.metadata.sourceURL);
+        if (job.data.isCrawlSourceScrape && isHostnameDifferent) {
           // TODO: re-fetch sitemap for redirect target domain
           sc.originUrl = doc.metadata.url;
           await saveCrawl(job.data.crawl_id, sc);
@@ -1104,6 +1112,11 @@ async function processJob(job: Job & { id: string }, token: string) {
               // });
             }
           }
+
+          // Only run check after adding new jobs for discovery - mogery
+          if (job.data.isCrawlSourceScrape && crawler.filterLinks([doc.metadata.url ?? doc.metadata.sourceURL!], 1, sc.crawlerOptions?.maxDepth ?? 10).length === 0) {
+            throw new Error("Source URL is not allowed by includePaths/excludePaths rules")
+          }
         }
       }
 
@@ -1118,16 +1131,38 @@ async function processJob(job: Job & { id: string }, token: string) {
         creditsToBeBilled = 5;
       }
 
-      if (job.data.team_id !== process.env.BACKGROUND_INDEX_TEAM_ID!) {
-        billTeam(job.data.team_id, undefined, creditsToBeBilled, logger).catch(
-          (error) => {
-            logger.error(
-              `Failed to bill team ${job.data.team_id} for ${creditsToBeBilled} credits`,
-              { error },
-            );
-            // Optionally, you could notify an admin or add to a retry queue here
-          },
-        );
+      if (job.data.team_id !== process.env.BACKGROUND_INDEX_TEAM_ID! && process.env.USE_DB_AUTHENTICATION === "true") {
+        try {
+          const billingJobId = uuidv4();
+          logger.debug(`Adding billing job to queue for team ${job.data.team_id}`, {
+            billingJobId,
+            credits: creditsToBeBilled,
+            is_extract: false,
+          });
+          
+          // Add directly to the billing queue - the billing worker will handle the rest
+          await getBillingQueue().add(
+            "bill_team",
+            {
+              team_id: job.data.team_id,
+              subscription_id: undefined,
+              credits: creditsToBeBilled,
+              is_extract: false,
+              timestamp: new Date().toISOString(),
+              originating_job_id: job.id
+            },
+            {
+              jobId: billingJobId,
+              priority: 10,
+            }
+          );
+        } catch (error) {
+          logger.error(
+            `Failed to add billing job to queue for team ${job.data.team_id} for ${creditsToBeBilled} credits`,
+            { error },
+          );
+          Sentry.captureException(error);
+        }
       }
     }
 

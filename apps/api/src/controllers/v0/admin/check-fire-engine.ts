@@ -30,6 +30,7 @@ export async function checkFireEngine(req: Request, res: Response) {
             },
             body: JSON.stringify({
               url,
+              engine: "chrome-cdp",
             }),
             signal: controller.signal,
           },
