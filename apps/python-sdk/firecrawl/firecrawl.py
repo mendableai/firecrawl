@@ -875,7 +875,7 @@ class FirecrawlApp:
             generation_params = params
 
         headers = self._prepare_headers()
-        json_data = {'url': url, **generation_params.dict(exclude_none=True)}
+        json_data = {'url': url.lower(), **generation_params.dict(exclude_none=True)}
 
         try:
             response = self._post_request(f'{self.api_url}/v1/llmstxt', json_data, headers)

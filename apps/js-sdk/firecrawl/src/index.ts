@@ -1747,7 +1747,7 @@ export default class FirecrawlApp {
     try {
       const response: AxiosResponse = await this.postRequest(
         `${this.apiUrl}/v1/llmstxt`,
-        { url, ...params },
+        { url: url.toLowerCase(), ...params },
         headers
       );
 
