@@ -26,7 +26,7 @@ export async function searxng_search(
     // location: options.location, //not possible with SearXNG
     // num: options.num_results, //not possible with SearXNG
     engines: process.env.SEARXNG_ENGINES || "",
-    categories: process.env.SEARXNG_CATEGORIES || "general",
+    categories: process.env.SEARXNG_CATEGORIES || "",
     pageno: options.page ?? 1,
     format: "json"
   };
