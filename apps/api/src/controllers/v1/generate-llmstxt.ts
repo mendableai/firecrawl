@@ -24,7 +24,12 @@ export async function generateLLMsTextController(
   req: RequestWithAuth<{}, GenerateLLMsTextResponse, GenerateLLMsTextRequest>,
   res: Response<GenerateLLMsTextResponse>,
 ) {
-  req.body = generateLLMsTextRequestSchema.parse(req.body);
+  req.body = generateLLMsTextRequestSchema.parse(
+    {
+      ...req.body,
+      url: req.body.url.toLowerCase(),
+    }
+  );
 
   const generationId = crypto.randomUUID();
   const jobData = {
