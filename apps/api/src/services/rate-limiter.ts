@@ -276,7 +276,7 @@ export function getRateLimiter(
     return devBRateLimiter;
   }
 
-  if (teamId && teamId === process.env.ETIER1A_TEAM_ID) {
+  if (teamId && (teamId === process.env.ETIER1A_TEAM_ID || teamId === process.env.ETIER1A_TEAM_ID_O)) {
     return etier1aRateLimiter;
   }
 
@@ -310,7 +310,7 @@ export function getConcurrencyLimitMax(
     return CONCURRENCY_LIMIT.devB;
   }
 
-  if (teamId && teamId === process.env.ETIER1A_TEAM_ID) {
+  if (teamId && (teamId === process.env.ETIER1A_TEAM_ID || teamId === process.env.ETIER1A_TEAM_ID_O)) {
     return CONCURRENCY_LIMIT.etier1a;
   }
 
