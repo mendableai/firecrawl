@@ -236,10 +236,16 @@ export async function search(body: SearchRequestInput): Promise<Document[]> {
 // =========================================
 
 export async function creditUsage(): Promise<{ remaining_credits: number }> {
-    return (await request(TEST_URL)
-        .get("/v1/team/credit-usage")
-        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-        .set("Content-Type", "application/json")).body.data;
+    const req = (await request(TEST_URL)
+    .get("/v1/team/credit-usage")
+    .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    .set("Content-Type", "application/json"));
+
+    if (req.status !== 200) {
+        throw req.body;
+    }
+
+    return req.body.data;
 }
 
 export async function tokenUsage(): Promise<{ remaining_tokens: number }> {

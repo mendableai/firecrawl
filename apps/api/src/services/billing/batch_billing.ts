@@ -10,8 +10,8 @@ import { getACUC, setCachedACUC } from "../../controllers/auth";
 const BATCH_KEY = "billing_batch";
 const BATCH_LOCK_KEY = "billing_batch_lock";
 const BATCH_SIZE = 50; // Batch size for processing
-const BATCH_TIMEOUT = 30000; // 15 seconds processing interval
-const LOCK_TIMEOUT = 60000; // 30 seconds lock timeout
+const BATCH_TIMEOUT = 15000; // 15 seconds processing interval
+const LOCK_TIMEOUT = 30000; // 30 seconds lock timeout
 
 // Define interfaces for billing operations
 interface BillingOperation {
@@ -281,7 +281,7 @@ async function supaBillTeam(
   _logger.info(`Batch billing team ${team_id} for ${credits} credits`);
 
   // Perform the actual database operation
-  const { data, error } = await supabase_service.rpc("bill_team_w_extract_3", {
+  const { data, error } = await supabase_service.rpc("bill_team_4_tally", {
     _team_id: team_id,
     sub_id: subscription_id ?? null,
     fetch_subscription: subscription_id === undefined,
