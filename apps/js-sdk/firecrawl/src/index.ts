@@ -160,6 +160,7 @@ export interface CrawlParams {
   includePaths?: string[];
   excludePaths?: string[];
   maxDepth?: number;
+  maxDiscoveryDepth?: number;
   limit?: number;
   allowBackwardLinks?: boolean;
   allowExternalLinks?: boolean;

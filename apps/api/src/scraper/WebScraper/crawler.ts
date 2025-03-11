@@ -31,6 +31,8 @@ export class WebCrawler {
   private regexOnFullURL: boolean;
   private logger: typeof _logger;
   private sitemapsHit: Set<string> = new Set();
+  private maxDiscoveryDepth: number | undefined;
+  private currentDiscoveryDepth: number;
 
   constructor({
     jobId,
@@ -47,6 +49,8 @@ export class WebCrawler {
     allowSubdomains = false,
     ignoreRobotsTxt = false,
     regexOnFullURL = false,
+    maxDiscoveryDepth,
+    currentDiscoveryDepth,
   }: {
     jobId: string;
     initialUrl: string;
@@ -62,6 +66,8 @@ export class WebCrawler {
     allowSubdomains?: boolean;
     ignoreRobotsTxt?: boolean;
     regexOnFullURL?: boolean;
+    maxDiscoveryDepth?: number;
+    currentDiscoveryDepth?: number;
   }) {
     this.jobId = jobId;
     this.initialUrl = initialUrl;
@@ -81,6 +87,8 @@ export class WebCrawler {
     this.ignoreRobotsTxt = ignoreRobotsTxt ?? false;
     this.regexOnFullURL = regexOnFullURL ?? false;
     this.logger = _logger.child({ crawlId: this.jobId, module: "WebCrawler" });
+    this.maxDiscoveryDepth = maxDiscoveryDepth;
+    this.currentDiscoveryDepth = currentDiscoveryDepth ?? 0;
   }
 
   public filterLinks(
@@ -89,6 +97,11 @@ export class WebCrawler {
     maxDepth: number,
     fromMap: boolean = false,
   ): string[] {
+    if (this.currentDiscoveryDepth === this.maxDiscoveryDepth) {
+      this.logger.debug("Max discovery depth hit, filtering off all links", { currentDiscoveryDepth: this.currentDiscoveryDepth, maxDiscoveryDepth: this.maxDiscoveryDepth });
+      return [];
+    }
+
     // If the initial URL is a sitemap.xml, skip filtering
     if (this.initialUrl.endsWith("sitemap.xml") && fromMap) {
       return sitemapLinks.slice(0, limit);

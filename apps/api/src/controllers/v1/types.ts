@@ -440,6 +440,7 @@ const crawlerOptions = z
     includePaths: z.string().array().default([]),
     excludePaths: z.string().array().default([]),
     maxDepth: z.number().default(10), // default?
+    maxDiscoveryDepth: z.number().optional(),
     limit: z.number().default(10000), // default?
     allowBackwardLinks: z.boolean().default(false), // >> TODO: CHANGE THIS NAME???
     allowExternalLinks: z.boolean().default(false),
@@ -793,6 +794,8 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     deduplicateSimilarURLs: x.deduplicateSimilarURLs,
     ignoreQueryParameters: x.ignoreQueryParameters,
     regexOnFullURL: x.regexOnFullURL,
+    maxDiscoveryDepth: x.maxDiscoveryDepth,
+    currentDiscoveryDepth: 0,
   };
 }
 
@@ -814,7 +817,8 @@ export function fromLegacyCrawlerOptions(x: any): {
       deduplicateSimilarURLs: x.deduplicateSimilarURLs,
       ignoreQueryParameters: x.ignoreQueryParameters,
       regexOnFullURL: x.regexOnFullURL,
-    }),
+      maxDiscoveryDepth: x.maxDiscoveryDepth,
+   }),
     internalOptions: {
       v0CrawlOnlyUrls: x.returnOnlyUrls,
     },
