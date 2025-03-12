@@ -47,7 +47,7 @@ const RATE_LIMITS = {
     // extract ops
     extract_starter: 100,
     extract_explorer: 500,
-    extract_pro: 5000,
+    extract_pro: 1000,
   },
   scrape: {
     default: 100,
@@ -69,7 +69,7 @@ const RATE_LIMITS = {
     // extract ops
     extract_starter: 100,
     extract_explorer: 500,
-    extract_pro: 5000,
+    extract_pro: 1000,
   },
   search: {
     default: 100,
@@ -91,7 +91,7 @@ const RATE_LIMITS = {
     // extract ops
     extract_starter: 100,
     extract_explorer: 500,
-    extract_pro: 5000,
+    extract_pro: 1000,
   },
   map: {
     default: 100,
@@ -113,7 +113,7 @@ const RATE_LIMITS = {
     // extract ops
     extract_starter: 100,
     extract_explorer: 500,
-    extract_pro: 5000,
+    extract_pro: 1000,
   },
   extract: {
     default: 100,
@@ -121,20 +121,20 @@ const RATE_LIMITS = {
     starter: 500,
     standard: 500,
     standardOld: 500,
-    scale: 1500,
+    scale: 1000,
     hobby: 100,
     standardNew: 500,
     standardnew: 500,
-    growth: 1500,
-    growthdouble: 1500,
-    etier2c: 5000,
-    etier1a: 5000,
-    etier2a: 5000,
-    etierscale1: 5000,
-    etierscale2: 5000,
+    growth: 1000,
+    growthdouble: 1000,
+    etier2c: 1000,
+    etier1a: 1000,
+    etier2a: 1000,
+    etierscale1: 1000,
+    etierscale2: 1000,
     extract_starter: 100,
     extract_explorer: 500,
-    extract_pro: 5000,
+    extract_pro: 1000,
   },
   preview: {
     free: 5,
