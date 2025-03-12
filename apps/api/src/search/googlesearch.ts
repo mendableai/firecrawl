@@ -57,7 +57,10 @@ async function _req(
     return resp;
   } catch (error) {
     if (error.response && error.response.status === 429) {
-      logger.warn("Google Search: Too many requests, try again later.", error.response);
+      logger.warn("Google Search: Too many requests, try again later.", {
+          status: error.response.status,
+          statusText: error.response.statusText
+      });
       throw new Error("Google Search: Too many requests, try again later.");
     }
     throw error;
