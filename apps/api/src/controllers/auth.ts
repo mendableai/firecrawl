@@ -111,6 +111,7 @@ export async function getACUC(
 
       logger.warn(
         `Failed to retrieve authentication and credit usage data after ${retries}, trying again...`,
+        { error }
       );
       retries++;
       if (retries === maxRetries) {
