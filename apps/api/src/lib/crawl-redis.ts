@@ -379,6 +379,7 @@ export function crawlToCrawler(
   id: string,
   sc: StoredCrawl,
   newBase?: string,
+  crawlerOptions?: any,
 ): WebCrawler {
   const crawler = new WebCrawler({
     jobId: id,
@@ -399,6 +400,8 @@ export function crawlToCrawler(
     allowSubdomains: sc.crawlerOptions?.allowSubdomains ?? false,
     ignoreRobotsTxt: sc.crawlerOptions?.ignoreRobotsTxt ?? false,
     regexOnFullURL: sc.crawlerOptions?.regexOnFullURL ?? false,
+    maxDiscoveryDepth: sc.crawlerOptions?.maxDiscoveryDepth,
+    currentDiscoveryDepth: crawlerOptions?.currentDiscoveryDepth ?? 0,
   });
 
   if (sc.robots !== undefined) {
