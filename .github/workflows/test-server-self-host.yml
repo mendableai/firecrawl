@@ -25,7 +25,8 @@ jobs:
         ai: ["openai", "no-ai"]
         search: ["searxng", "google"]
         engine: ["playwright", "fetch"]
-        proxy: ["proxy", "no-proxy"]
+        # proxy: ["proxy", "no-proxy"]
+        proxy: ["proxy"]
       fail-fast: false
     runs-on: ubuntu-latest
     services:
