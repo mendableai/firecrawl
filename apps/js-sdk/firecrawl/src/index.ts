@@ -1130,15 +1130,14 @@ export default class FirecrawlApp {
     try {
       if (!params?.schema) {
         jsonSchema = undefined;
-      } else if (params.schema instanceof zt.ZodType) {
-        jsonSchema = zodToJsonSchema(params.schema);
+      } else if (typeof params.schema === "object" && params.schema !== null && Object.getPrototypeOf(params.schema)?.constructor?.name?.startsWith("Zod")) {
+        jsonSchema = zodToJsonSchema(params.schema as zt.ZodType);
       } else {
         jsonSchema = params.schema;
       }
     } catch (error: any) {
       throw new FirecrawlError("Invalid schema. Schema must be either a valid Zod schema or JSON schema object.", 400);
     }
-
     
     try {
       const response: AxiosResponse = await this.postRequest(
