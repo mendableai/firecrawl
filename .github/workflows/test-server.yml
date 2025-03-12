@@ -90,3 +90,13 @@ jobs:
         run: |
           npm run test:snips
         working-directory: ./apps/api
+      - name: Kill instances
+        if: always()
+        run: pkill -9 node
+      # - uses: actions/upload-artifact@v4
+      #   if: always()
+      #   with:
+      #     name: Logs
+      #     path: |
+      #       ./apps/api/api.log
+      #       ./apps/api/worker.log
