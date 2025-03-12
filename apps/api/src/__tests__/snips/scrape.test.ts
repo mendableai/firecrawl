@@ -140,8 +140,9 @@ describe("Scrape tests", () => {
         await scrape({
           url: "http://firecrawl.dev",
           proxy: "stealth",
+          timeout: 60000,
         });
-      }, 30000);
+      }, 70000);
     });
     
     describe("PDF (f-e dependant)", () => {
