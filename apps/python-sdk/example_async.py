@@ -73,42 +73,6 @@ async def example_llm_extraction():
 
     print(llm_extraction_result['extract'])
 
-    # Define schema to extract contents into using json schema
-    json_schema = {
-      "type": "object",
-      "properties": {
-        "top": {
-          "type": "array",
-          "items": {
-            "type": "object",
-            "properties": {
-              "title": {"type": "string"},
-              "points": {"type": "number"},
-              "by": {"type": "string"},
-              "commentsURL": {"type": "string"}
-            },
-            "required": ["title", "points", "by", "commentsURL"]
-          },
-          "minItems": 5,
-          "maxItems": 5,
-          "description": "Top 5 stories on Hacker News"
-        }
-      },
-      "required": ["top"]
-    }
-
-    app2 = AsyncFirecrawlApp(api_key="fc-", version="v0")
-
-    llm_extraction_result = await app2.scrape_url('https://news.ycombinator.com', {
-        'extractorOptions': {
-            'extractionSchema': json_schema,
-            'mode': 'llm-extraction'
-        },
-        'pageOptions':{
-            'onlyMainContent': True
-        }
-    })
-
 async def example_map_and_extract():
     # Map a website:
     map_result = await app.map_url('https://firecrawl.dev', { 'search': 'blog' })
@@ -153,10 +117,8 @@ async def example_websocket_crawl():
     await watcher.connect()
 
 async def main():
-    # Apply nest_asyncio to allow nested event loops
     nest_asyncio.apply()
     
-    # Run all the examples
     await example_scrape()
     await example_batch_scrape()
     await example_crawl()
