@@ -89,9 +89,6 @@ const HOST = process.env.HOST ?? "localhost";
 function startServer(port = DEFAULT_PORT) {
   const server = app.listen(Number(port), HOST, () => {
     logger.info(`Worker ${process.pid} listening on port ${port}`);
-    logger.info(
-      `For the Queue UI, open: http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`,
-    );
   });
 
   const exitHandler = () => {
