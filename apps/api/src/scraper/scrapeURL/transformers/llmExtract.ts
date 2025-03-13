@@ -365,7 +365,37 @@ export async function performLLMExtract(
 export function removeDefaultProperty(schema: any): any {
   if (typeof schema !== "object" || schema === null) return schema;
 
-  const { default: _, ...rest } = schema;
+  const rest = { ...schema };
+  
+  // unsupported global keys
+  delete rest.default;
+
+  // unsupported object keys
+  delete rest.patternProperties;
+  delete rest.unevaluatedProperties;
+  delete rest.propertyNames;
+  delete rest.minProperties;
+  delete rest.maxProperties;
+
+  // unsupported string keys
+  delete rest.minLength;
+  delete rest.maxLength;
+  delete rest.pattern;
+  delete rest.format;
+
+  // unsupported number keys
+  delete rest.minimum;
+  delete rest.maximum;
+  delete rest.multipleOf;
+
+  // unsupported array keys
+  delete rest.unevaluatedItems;
+  delete rest.contains;
+  delete rest.minContains;
+  delete rest.maxContains;
+  delete rest.minItems;
+  delete rest.maxItems;
+  delete rest.uniqueItems;
 
   for (const key in rest) {
     if (Array.isArray(rest[key])) {
