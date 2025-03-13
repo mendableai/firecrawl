@@ -4,11 +4,11 @@ import Redis from "ioredis";
 
 export const CONCURRENCY_LIMIT: Omit<Record<PlanType, number>, ""> = {
   free: 2,
-  hobby: 4,
-  starter: 10,
-  standard: 10,
-  standardNew: 10,
-  standardnew: 10,
+  hobby: 5,
+  starter: 50,
+  standard: 50,
+  standardNew: 50,
+  standardnew: 50,
   scale: 100,
   growth: 100,
   growthdouble: 100,
