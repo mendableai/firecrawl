@@ -12,14 +12,221 @@ Classes:
 import logging
 import os
 import time
-from typing import Any, Dict, Optional, List, Union, Callable
+from typing import Any, Dict, Optional, List, Union, Callable, Literal, TypeVar, Generic
 import json
+from datetime import datetime
 
 import requests
 import pydantic
 import websockets
 
 logger : logging.Logger = logging.getLogger("firecrawl")
+
+T = TypeVar('T')
+
+class FirecrawlDocumentMetadata(pydantic.BaseModel):
+    """Metadata for a Firecrawl document."""
+    title: Optional[str] = None
+    description: Optional[str] = None
+    language: Optional[str] = None
+    keywords: Optional[str] = None
+    robots: Optional[str] = None
+    ogTitle: Optional[str] = None
+    ogDescription: Optional[str] = None
+    ogUrl: Optional[str] = None
+    ogImage: Optional[str] = None
+    ogAudio: Optional[str] = None
+    ogDeterminer: Optional[str] = None
+    ogLocale: Optional[str] = None
+    ogLocaleAlternate: Optional[List[str]] = None
+    ogSiteName: Optional[str] = None
+    ogVideo: Optional[str] = None
+    dctermsCreated: Optional[str] = None
+    dcDateCreated: Optional[str] = None
+    dcDate: Optional[str] = None
+    dctermsType: Optional[str] = None
+    dcType: Optional[str] = None
+    dctermsAudience: Optional[str] = None
+    dctermsSubject: Optional[str] = None
+    dcSubject: Optional[str] = None
+    dcDescription: Optional[str] = None
+    dctermsKeywords: Optional[str] = None
+    modifiedTime: Optional[str] = None
+    publishedTime: Optional[str] = None
+    articleTag: Optional[str] = None
+    articleSection: Optional[str] = None
+    sourceURL: Optional[str] = None
+    statusCode: Optional[int] = None
+    error: Optional[str] = None
+
+class ActionsResult(pydantic.BaseModel):
+    """Result of actions performed during scraping."""
+    screenshots: List[str]
+
+class FirecrawlDocument(pydantic.BaseModel, Generic[T]):
+    """Document retrieved or processed by Firecrawl."""
+    url: Optional[str] = None
+    markdown: Optional[str] = None
+    html: Optional[str] = None
+    rawHtml: Optional[str] = None
+    links: Optional[List[str]] = None
+    extract: Optional[T] = None
+    json: Optional[T] = None
+    screenshot: Optional[str] = None
+    metadata: Optional[FirecrawlDocumentMetadata] = None
+    actions: Optional[ActionsResult] = None
+    title: Optional[str] = None  # v1 search only
+    description: Optional[str] = None  # v1 search only
+
+class LocationConfig(pydantic.BaseModel):
+    """Location configuration for scraping."""
+    country: Optional[str] = None
+    languages: Optional[List[str]] = None
+
+class WebhookConfig(pydantic.BaseModel):
+    """Configuration for webhooks."""
+    url: str
+    headers: Optional[Dict[str, str]] = None
+    metadata: Optional[Dict[str, str]] = None
+    events: Optional[List[Literal["completed", "failed", "page", "started"]]] = None
+
+class CrawlScrapeOptions(pydantic.BaseModel):
+    """Parameters for scraping operations."""
+    formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None
+    headers: Optional[Dict[str, str]] = None
+    includeTags: Optional[List[str]] = None
+    excludeTags: Optional[List[str]] = None
+    onlyMainContent: Optional[bool] = None
+    waitFor: Optional[int] = None
+    timeout: Optional[int] = None
+    location: Optional[LocationConfig] = None
+    mobile: Optional[bool] = None
+    skipTlsVerification: Optional[bool] = None
+    removeBase64Images: Optional[bool] = None
+    blockAds: Optional[bool] = None
+    proxy: Optional[Literal["basic", "stealth"]] = None
+
+class Action(pydantic.BaseModel):
+    """Action to perform during scraping."""
+    type: Literal["wait", "click", "screenshot", "write", "press", "scroll", "scrape", "executeJavascript"]
+    milliseconds: Optional[int] = None
+    selector: Optional[str] = None
+    fullPage: Optional[bool] = None
+    text: Optional[str] = None
+    key: Optional[str] = None
+    direction: Optional[Literal["up", "down"]] = None
+    script: Optional[str] = None
+
+class ExtractConfig(pydantic.BaseModel):
+    """Configuration for extraction."""
+    prompt: Optional[str] = None
+    schema: Optional[Any] = None
+    systemPrompt: Optional[str] = None
+
+class ScrapeParams(CrawlScrapeOptions):
+    """Parameters for scraping operations."""
+    extract: Optional[ExtractConfig] = None
+    jsonOptions: Optional[ExtractConfig] = None
+    actions: Optional[List[Action]] = None
+
+class ScrapeResponse(FirecrawlDocument[T], Generic[T]):
+    """Response from scraping operations."""
+    success: bool = True
+    warning: Optional[str] = None
+    error: Optional[str] = None
+
+class BatchScrapeResponse(pydantic.BaseModel):
+    """Response from batch scrape operations."""
+    id: Optional[str] = None
+    url: Optional[str] = None
+    success: bool = True
+    error: Optional[str] = None
+    invalidURLs: Optional[List[str]] = None
+
+class BatchScrapeStatusResponse(pydantic.BaseModel):
+    """Response from batch scrape status checks."""
+    success: bool = True
+    status: Literal["scraping", "completed", "failed", "cancelled"]
+    completed: int
+    total: int
+    creditsUsed: int
+    expiresAt: datetime
+    next: Optional[str] = None
+    data: List[FirecrawlDocument]
+
+class CrawlParams(pydantic.BaseModel):
+    """Parameters for crawling operations."""
+    includePaths: Optional[List[str]] = None
+    excludePaths: Optional[List[str]] = None
+    maxDepth: Optional[int] = None
+    maxDiscoveryDepth: Optional[int] = None
+    limit: Optional[int] = None
+    allowBackwardLinks: Optional[bool] = None
+    allowExternalLinks: Optional[bool] = None
+    ignoreSitemap: Optional[bool] = None
+    scrapeOptions: Optional[CrawlScrapeOptions] = None
+    webhook: Optional[Union[str, WebhookConfig]] = None
+    deduplicateSimilarURLs: Optional[bool] = None
+    ignoreQueryParameters: Optional[bool] = None
+    regexOnFullURL: Optional[bool] = None
+
+class CrawlResponse(pydantic.BaseModel):
+    """Response from crawling operations."""
+    id: Optional[str] = None
+    url: Optional[str] = None
+    success: bool = True
+    error: Optional[str] = None
+
+class CrawlStatusResponse(pydantic.BaseModel):
+    """Response from crawl status checks."""
+    success: bool = True
+    status: Literal["scraping", "completed", "failed", "cancelled"]
+    completed: int
+    total: int
+    creditsUsed: int
+    expiresAt: datetime
+    next: Optional[str] = None
+    data: List[FirecrawlDocument]
+
+class CrawlErrorsResponse(pydantic.BaseModel):
+    """Response from crawl/batch scrape error monitoring."""
+    errors: List[Dict[str, str]]  # {id: str, timestamp: str, url: str, error: str}
+    robotsBlocked: List[str]
+
+class MapParams(pydantic.BaseModel):
+    """Parameters for mapping operations."""
+    search: Optional[str] = None
+    ignoreSitemap: Optional[bool] = None
+    includeSubdomains: Optional[bool] = None
+    sitemapOnly: Optional[bool] = None
+    limit: Optional[int] = None
+    timeout: Optional[int] = None
+
+class MapResponse(pydantic.BaseModel):
+    """Response from mapping operations."""
+    success: bool = True
+    links: Optional[List[str]] = None
+    error: Optional[str] = None
+
+class ExtractParams(pydantic.BaseModel):
+    """Parameters for extracting information from URLs."""
+    prompt: Optional[str] = None
+    schema: Optional[Any] = None
+    systemPrompt: Optional[str] = None
+    allowExternalLinks: Optional[bool] = None
+    enableWebSearch: Optional[bool] = None
+    includeSubdomains: Optional[bool] = None
+    origin: Optional[str] = None
+    showSources: Optional[bool] = None
+    scrapeOptions: Optional[CrawlScrapeOptions] = None
+
+class ExtractResponse(pydantic.BaseModel, Generic[T]):
+    """Response from extract operations."""
+    success: bool = True
+    data: Optional[T] = None
+    error: Optional[str] = None
+    warning: Optional[str] = None
+    sources: Optional[List[str]] = None
 
 class SearchParams(pydantic.BaseModel):
     query: str
@@ -32,6 +239,13 @@ class SearchParams(pydantic.BaseModel):
     origin: Optional[str] = "api"
     timeout: Optional[int] = 60000
     scrapeOptions: Optional[Dict[str, Any]] = None
+
+class SearchResponse(pydantic.BaseModel):
+    """Response from search operations."""
+    success: bool = True
+    data: List[FirecrawlDocument]
+    warning: Optional[str] = None
+    error: Optional[str] = None
 
 class GenerateLLMsTextParams(pydantic.BaseModel):
     """
@@ -73,40 +287,21 @@ class DeepResearchStatusResponse(pydantic.BaseModel):
     sources: List[Dict[str, Any]]
     summaries: List[str]
 
+class GenerateLLMsTextResponse(pydantic.BaseModel):
+    """Response from LLMs.txt generation operations."""
+    success: bool = True
+    id: str
+    error: Optional[str] = None
+
+class GenerateLLMsTextStatusResponse(pydantic.BaseModel):
+    """Status response from LLMs.txt generation operations."""
+    success: bool = True
+    data: Optional[Dict[str, str]] = None  # {llmstxt: str, llmsfulltxt?: str}
+    status: Literal["processing", "completed", "failed"]
+    error: Optional[str] = None
+    expiresAt: str
+
 class FirecrawlApp:
-    class SearchResponse(pydantic.BaseModel):
-        """
-        Response from the search operation.
-        """
-        success: bool
-        data: List[Dict[str, Any]]
-        warning: Optional[str] = None
-        error: Optional[str] = None
-
-    class ExtractParams(pydantic.BaseModel):
-        """
-        Parameters for the extract operation.
-        """
-        prompt: Optional[str] = None
-        schema_: Optional[Any] = pydantic.Field(None, alias='schema')
-        system_prompt: Optional[str] = None
-        allow_external_links: Optional[bool] = False
-        enable_web_search: Optional[bool] = False
-        # Just for backwards compatibility
-        enableWebSearch: Optional[bool] = False
-        show_sources: Optional[bool] = False
-
-
-
-
-    class ExtractResponse(pydantic.BaseModel):
-        """
-        Response from the extract operation.
-        """
-        success: bool
-        data: Optional[Any] = None
-        error: Optional[str] = None
-
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
         """
         Initialize the FirecrawlApp instance with API key, API URL.
@@ -125,19 +320,42 @@ class FirecrawlApp:
             
         logger.debug(f"Initialized FirecrawlApp with API URL: {self.api_url}")
 
-    def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> ScrapeResponse[Any]:
         """
-        Scrape the specified URL using the Firecrawl API.
+        Scrape and extract content from a URL.
 
         Args:
-            url (str): The URL to scrape.
-            params (Optional[Dict[str, Any]]): Additional parameters for the scrape request.
+          url (str): Target URL to scrape
+
+          params (Optional[Dict[str, Any]]): See ScrapeParams model for configuration:
+
+            Content Options:
+            * formats - Content types to retrieve (markdown/html/etc)
+            * includeTags - HTML tags to include
+            * excludeTags - HTML tags to exclude
+            * onlyMainContent - Extract main content only
+                  
+            Request Options:
+            * headers - Custom HTTP headers
+            * timeout - Request timeout (ms)
+            * mobile - Use mobile user agent
+            * proxy - Proxy type (basic/stealth)
+                  
+            Extraction Options:
+            * extract - Content extraction settings
+            * jsonOptions - JSON extraction settings
+            * actions - Actions to perform
 
         Returns:
-            Any: The scraped data if the request is successful.
+          ScrapeResponse with:
+          
+          * Requested content formats
+          * Page metadata
+          * Extraction results
+          * Success/error status
 
         Raises:
-            Exception: If the scrape request fails.
+          Exception: If scraping fails
         """
 
         headers = self._prepare_headers()
@@ -193,16 +411,35 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'scrape URL')
 
-    def search(self, query: str, params: Optional[Union[Dict[str, Any], SearchParams]] = None) -> Dict[str, Any]:
+    def search(self, query: str, params: Optional[Union[Dict[str, Any], SearchParams]] = None) -> SearchResponse:
         """
-        Search for content using the Firecrawl API.
+        Search for content using Firecrawl.
 
         Args:
-            query (str): The search query string.
-            params (Optional[Union[Dict[str, Any], SearchParams]]): Additional search parameters.
+          query (str): Search query string
+
+          params (Optional[Union[Dict[str, Any], SearchParams]]): See SearchParams model:
+
+            Search Options:
+            * limit - Max results (default: 5)
+            * tbs - Time filter (e.g. "qdr:d")
+            * filter - Custom result filter
+                
+            Localization:
+            * lang - Language code (default: "en")
+            * country - Country code (default: "us")
+            * location - Geo-targeting
+            
+            Request Options:
+            * timeout - Request timeout (ms)
+            * scrapeOptions - Result scraping config, check ScrapeParams model for more details
 
         Returns:
-            Dict[str, Any]: The search response containing success status and search results.
+          SearchResponse
+
+
+        Raises:
+          Exception: If search fails
         """
         if params is None:
             params = {}
@@ -230,28 +467,46 @@ class FirecrawlApp:
     def crawl_url(self, url: str,
                   params: Optional[Dict[str, Any]] = None,
                   poll_interval: Optional[int] = 2,
-                  idempotency_key: Optional[str] = None) -> Any:
+                  idempotency_key: Optional[str] = None) -> CrawlStatusResponse:
         """
-        Initiate a crawl job for the specified URL using the Firecrawl API.
+        Crawl a website starting from a URL.
 
         Args:
-            url (str): The URL to crawl.
-            params (Optional[Dict[str, Any]]): Additional parameters for the crawl request.
-            poll_interval (Optional[int]): Time in seconds between status checks when waiting for job completion. Defaults to 2 seconds.
-            idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+          url (str): Target URL to start crawling from
+
+          params (Optional[Dict[str, Any]]): See CrawlParams model for configuration:
+
+            URL Discovery:
+            * includePaths - Patterns of URLs to include
+            * excludePaths - Patterns of URLs to exclude
+            * maxDepth - Maximum crawl depth
+            * maxDiscoveryDepth - Maximum depth for finding new URLs
+            * limit - Maximum pages to crawl
+
+            Link Following:
+            * allowBackwardLinks - Follow parent directory links
+            * allowExternalLinks - Follow external domain links  
+            * ignoreSitemap - Skip sitemap.xml processing
+
+            Advanced:
+            * scrapeOptions - Page scraping configuration
+            * webhook - Notification webhook settings
+            * deduplicateSimilarURLs - Remove similar URLs
+            * ignoreQueryParameters - Ignore URL parameters
+            * regexOnFullURL - Apply regex to full URLs
+
+          poll_interval: Seconds between status checks (default: 2)
+          
+          idempotency_key: Request deduplication key
 
         Returns:
-            Dict[str, Any]: A dictionary containing the crawl results. The structure includes:
-                - 'success' (bool): Indicates if the crawl was successful.
-                - 'status' (str): The final status of the crawl job (e.g., 'completed').
-                - 'completed' (int): Number of scraped pages that completed.
-                - 'total' (int): Total number of scraped pages.
-                - 'creditsUsed' (int): Estimated number of API credits used for this crawl.
-                - 'expiresAt' (str): ISO 8601 formatted date-time string indicating when the crawl data expires.
-                - 'data' (List[Dict]): List of all the scraped pages.
+          CrawlStatusResponse with:
+          * Crawling status and progress
+          * Crawled page contents
+          * Success/error information
 
         Raises:
-            Exception: If the crawl job initiation or monitoring fails.
+          Exception: If crawl fails
         """
         endpoint = f'/v1/crawl'
         headers = self._prepare_headers(idempotency_key)
@@ -270,20 +525,45 @@ class FirecrawlApp:
             self._handle_error(response, 'start crawl job')
 
 
-    def async_crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+    def async_crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> CrawlResponse:
         """
-        Initiate a crawl job asynchronously.
+        Start an asynchronous crawl job.
 
         Args:
-            url (str): The URL to crawl.
-            params (Optional[Dict[str, Any]]): Additional parameters for the crawl request.
-            idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+            url (str): Target URL to start crawling from
+
+            params (Optional[Dict[str, Any]]): See CrawlParams model:
+
+              URL Discovery:
+              * includePaths - Patterns of URLs to include
+              * excludePaths - Patterns of URLs to exclude
+              * maxDepth - Maximum crawl depth
+              * maxDiscoveryDepth - Maximum depth for finding new URLs
+              * limit - Maximum pages to crawl
+
+              Link Following:
+              * allowBackwardLinks - Follow parent directory links
+              * allowExternalLinks - Follow external domain links  
+              * ignoreSitemap - Skip sitemap.xml processing
+
+              Advanced:
+              * scrapeOptions - Page scraping configuration
+              * webhook - Notification webhook settings
+              * deduplicateSimilarURLs - Remove similar URLs
+              * ignoreQueryParameters - Ignore URL parameters
+              * regexOnFullURL - Apply regex to full URLs
+
+            idempotency_key: Unique key to prevent duplicate requests
 
         Returns:
-            Dict[str, Any]: A dictionary containing the crawl initiation response. The structure includes:
-                - 'success' (bool): Indicates if the crawl initiation was successful.
-                - 'id' (str): The unique identifier for the crawl job.
-                - 'url' (str): The URL to check the status of the crawl job.
+            CrawlResponse with:
+            * success - Whether crawl started successfully
+            * id - Unique identifier for the crawl job
+            * url - Status check URL for the crawl
+            * error - Error message if start failed
+
+        Raises:
+            Exception: If crawl initiation fails
         """
         endpoint = f'/v1/crawl'
         headers = self._prepare_headers(idempotency_key)
@@ -299,18 +579,31 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'start crawl job')
 
-    def check_crawl_status(self, id: str) -> Any:
+    def check_crawl_status(self, id: str) -> CrawlStatusResponse:
         """
-        Check the status of a crawl job using the Firecrawl API.
+        Check the status and results of a crawl job.
 
         Args:
-            id (str): The ID of the crawl job.
+            id: Unique identifier for the crawl job
 
         Returns:
-            Any: The status of the crawl job.
+            CrawlStatusResponse containing:
+
+            Status Information:
+            * status - Current state (scraping/completed/failed/cancelled)
+            * completed - Number of pages crawled
+            * total - Total pages to crawl
+            * creditsUsed - API credits consumed
+            * expiresAt - Data expiration timestamp
+            
+            Results:
+            * data - List of crawled documents
+            * next - URL for next page of results (if paginated)
+            * success - Whether status check succeeded
+            * error - Error message if failed
 
         Raises:
-            Exception: If the status check request fails.
+            Exception: If status check fails
         """
         endpoint = f'/v1/crawl/{id}'
 
@@ -369,7 +662,7 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'check crawl status')
     
-    def check_crawl_errors(self, id: str) -> Dict[str, Any]:
+    def check_crawl_errors(self, id: str) -> CrawlErrorsResponse:
         """
         Returns information about crawl errors.
 
@@ -427,16 +720,32 @@ class FirecrawlApp:
         else:
             raise Exception("Crawl job failed to start")
 
-    def map_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> Any:
+    def map_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> MapResponse:
         """
-        Perform a map search using the Firecrawl API.
+        Map and discover links from a URL.
 
         Args:
-            url (str): The URL to perform the map search on.
-            params (Optional[Dict[str, Any]]): Additional parameters for the map search.
+            url: Target URL to map
+
+            params: See MapParams model:
+
+                Discovery Options:
+                * search - Filter pattern for URLs
+                * ignoreSitemap - Skip sitemap.xml
+                * includeSubdomains - Include subdomain links
+                * sitemapOnly - Only use sitemap.xml
+                
+                Limits:
+                * limit - Max URLs to return
+                * timeout - Request timeout (ms)
 
         Returns:
-            List[str]: A list of URLs discovered during the map search.
+            MapResponse with:
+            * Discovered URLs
+            * Success/error status
+
+        Raises:
+            Exception: If mapping fails
         """
         endpoint = f'/v1/map'
         headers = self._prepare_headers()
@@ -469,28 +778,44 @@ class FirecrawlApp:
     def batch_scrape_urls(self, urls: List[str],
                   params: Optional[Dict[str, Any]] = None,
                   poll_interval: Optional[int] = 2,
-                  idempotency_key: Optional[str] = None) -> Any:
+                  idempotency_key: Optional[str] = None) -> BatchScrapeStatusResponse:
         """
-        Initiate a batch scrape job for the specified URLs using the Firecrawl API.
+        Batch scrape multiple URLs and monitor until completion.
 
         Args:
-            urls (List[str]): The URLs to scrape.
-            params (Optional[Dict[str, Any]]): Additional parameters for the scraper.
-            poll_interval (Optional[int]): Time in seconds between status checks when waiting for job completion. Defaults to 2 seconds.
-            idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
+            urls: URLs to scrape
+
+            params: See ScrapeParams model:
+
+                Content Options:
+                * formats - Content formats to retrieve
+                * includeTags - HTML tags to include
+                * excludeTags - HTML tags to exclude
+                * onlyMainContent - Extract main content only
+                
+                Request Options:
+                * headers - Custom HTTP headers
+                * timeout - Request timeout (ms)
+                * mobile - Use mobile user agent
+                * proxy - Proxy type
+                
+                Extraction Options:
+                * extract - Content extraction config
+                * jsonOptions - JSON extraction config
+                * actions - Actions to perform
+
+            poll_interval: Seconds between status checks (default: 2)
+
+            idempotency_key: Request deduplication key
 
         Returns:
-            Dict[str, Any]: A dictionary containing the scrape results. The structure includes:
-                - 'success' (bool): Indicates if the batch scrape was successful.
-                - 'status' (str): The final status of the batch scrape job (e.g., 'completed').
-                - 'completed' (int): Number of scraped pages that completed.
-                - 'total' (int): Total number of scraped pages.
-                - 'creditsUsed' (int): Estimated number of API credits used for this batch scrape.
-                - 'expiresAt' (str): ISO 8601 formatted date-time string indicating when the batch scrape data expires.
-                - 'data' (List[Dict]): List of all the scraped pages.
+            BatchScrapeStatusResponse with:
+            * Scraping status and progress
+            * Scraped content for each URL
+            * Success/error information
 
         Raises:
-            Exception: If the batch scrape job initiation or monitoring fails.
+            Exception: If batch scrape fails
         """
         endpoint = f'/v1/batch/scrape'
         headers = self._prepare_headers(idempotency_key)
@@ -509,9 +834,13 @@ class FirecrawlApp:
             self._handle_error(response, 'start batch scrape job')
 
 
-    def async_batch_scrape_urls(self, urls: List[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+    def async_batch_scrape_urls(
+            self,
+            urls: List[str],
+            params: Optional[Dict[str, Any]] = None,
+            idempotency_key: Optional[str] = None) -> BatchScrapeResponse:
         """
-        Initiate a crawl job asynchronously.
+        Initiate a batch scrape job asynchronously.
 
         Args:
             urls (List[str]): The URLs to scrape.
@@ -519,7 +848,7 @@ class FirecrawlApp:
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
 
         Returns:
-            Dict[str, Any]: A dictionary containing the batch scrape initiation response. The structure includes:
+            BatchScrapeResponse: A dictionary containing the batch scrape initiation response. The structure includes:
                 - 'success' (bool): Indicates if the batch scrape initiation was successful.
                 - 'id' (str): The unique identifier for the batch scrape job.
                 - 'url' (str): The URL to check the status of the batch scrape job.
@@ -538,13 +867,17 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'start batch scrape job')
     
-    def batch_scrape_urls_and_watch(self, urls: List[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> 'CrawlWatcher':
+    def batch_scrape_urls_and_watch(
+            self,
+            urls: List[str],
+            params: Optional[ScrapeParams] = None,
+            idempotency_key: Optional[str] = None) -> 'CrawlWatcher':
         """
         Initiate a batch scrape job and return a CrawlWatcher to monitor the job via WebSocket.
 
         Args:
             urls (List[str]): The URLs to scrape.
-            params (Optional[Dict[str, Any]]): Additional parameters for the scraper.
+            params (Optional[ScrapeParams]): Additional parameters for the scraper.
             idempotency_key (Optional[str]): A unique uuid key to ensure idempotency of requests.
 
         Returns:
@@ -556,7 +889,7 @@ class FirecrawlApp:
         else:
             raise Exception("Batch scrape job failed to start")
     
-    def check_batch_scrape_status(self, id: str) -> Any:
+    def check_batch_scrape_status(self, id: str) -> BatchScrapeStatusResponse:
         """
         Check the status of a batch scrape job using the Firecrawl API.
 
@@ -564,7 +897,7 @@ class FirecrawlApp:
             id (str): The ID of the batch scrape job.
 
         Returns:
-            Any: The status of the batch scrape job.
+            BatchScrapeStatusResponse: The status of the batch scrape job.
 
         Raises:
             Exception: If the status check request fails.
@@ -626,7 +959,7 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'check batch scrape status')
 
-    def check_batch_scrape_errors(self, id: str) -> Dict[str, Any]:
+    def check_batch_scrape_errors(self, id: str) -> CrawlErrorsResponse:
         """
         Returns information about batch scrape errors.
 
@@ -634,7 +967,13 @@ class FirecrawlApp:
             id (str): The ID of the crawl job.
 
         Returns:
-            Dict[str, Any]: Information about crawl errors.
+            CrawlErrorsResponse: A response containing:
+                - errors (List[Dict[str, str]]): List of errors with fields:
+                    - id (str): Error ID
+                    - timestamp (str): When the error occurred
+                    - url (str): URL that caused the error
+                    - error (str): Error message
+                - robotsBlocked (List[str]): List of URLs blocked by robots.txt
         """
         headers = self._prepare_headers()
         response = self._get_request(f'{self.api_url}/v1/batch/scrape/{id}/errors', headers)
@@ -646,16 +985,40 @@ class FirecrawlApp:
         else:
             self._handle_error(response, "check batch scrape errors")
 
-    def extract(self, urls: List[str], params: Optional[ExtractParams] = None) -> Any:
+    def extract(
+            self,
+            urls: List[str],
+            params: Optional[ExtractParams] = None) -> ExtractResponse[Any]:
         """
-        Extracts information from a URL using the Firecrawl API.
+        Extract structured information from URLs.
 
         Args:
-            urls (List[str]): The URLs to extract information from.
-            params (Optional[ExtractParams]): Additional parameters for the extract request.
+            urls: URLs to extract from
+
+            params: See ExtractParams model:
+
+                Extraction Config:
+                * prompt - Custom extraction prompt
+                * schema - JSON schema/Pydantic model
+                * systemPrompt - System context
+                
+                Behavior Options:
+                * allowExternalLinks - Follow external links
+                * enableWebSearch - Enable web search
+                * includeSubdomains - Include subdomains
+                * showSources - Include source URLs
+                
+                Scraping Options:
+                * scrapeOptions - Page scraping config
 
         Returns:
-            Union[ExtractResponse, ErrorResponse]: The response from the extract operation.
+            ExtractResponse with:
+            * Structured data matching schema
+            * Source information if requested
+            * Success/error status
+
+        Raises:
+            ValueError: If prompt/schema missing or extraction fails
         """
         headers = self._prepare_headers()
 
@@ -715,10 +1078,7 @@ class FirecrawlApp:
                             except:
                                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
                             if status_data['status'] == 'completed':
-                                if status_data['success']:
-                                    return status_data
-                                else:
-                                    raise Exception(f'Failed to extract. Error: {status_data["error"]}')
+                                return status_data
                             elif status_data['status'] in ['failed', 'cancelled']:
                                 raise Exception(f'Extract job {status_data["status"]}. Error: {status_data["error"]}')
                         else:
@@ -734,7 +1094,7 @@ class FirecrawlApp:
 
         return {'success': False, 'error': "Internal server error."}
     
-    def get_extract_status(self, job_id: str) -> Dict[str, Any]:
+    def get_extract_status(self, job_id: str) -> ExtractResponse[Any]:
         """
         Retrieve the status of an extract job.
 
@@ -742,7 +1102,7 @@ class FirecrawlApp:
             job_id (str): The ID of the extract job.
 
         Returns:
-            Dict[str, Any]: The status of the extract job.
+            ExtractResponse[Any]: The status of the extract job.
 
         Raises:
             ValueError: If there is an error retrieving the status.
@@ -760,20 +1120,32 @@ class FirecrawlApp:
         except Exception as e:
             raise ValueError(str(e), 500)
 
-    def async_extract(self, urls: List[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> Dict[str, Any]:
+    def async_extract(self, urls: List[str], params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> ExtractResponse[Any]:
         """
         Initiate an asynchronous extract job.
 
         Args:
-            urls (List[str]): The URLs to extract data from.
-            params (Optional[Dict[str, Any]]): Additional parameters for the extract request.
-            idempotency_key (Optional[str]): A unique key to ensure idempotency of requests.
+            urls (List[str]): List of URLs to extract information from. Must be valid HTTP/HTTPS URLs.
+            params (Optional[Dict[str, Any]]): Extraction configuration parameters:
+                - prompt (str, optional): Custom prompt for extraction
+                - schema (Any, optional): JSON schema or Pydantic model for structured extraction
+                - systemPrompt (str, optional): System prompt for extraction
+                - allowExternalLinks (bool, optional): Allow following external links
+                - enableWebSearch (bool, optional): Enable web search during extraction
+                - includeSubdomains (bool, optional): Include content from subdomains
+                - origin (str, optional): Source of the extraction request
+                - showSources (bool, optional): Include source URLs in response
+                - scrapeOptions (CrawlScrapeOptions, optional): Configuration for scraping pages
+            idempotency_key (Optional[str]): Unique identifier to prevent duplicate requests.
 
         Returns:
-            Dict[str, Any]: The response from the extract operation.
+            ExtractResponse[Any]: A response containing:
+                - success (bool): Whether the extraction initiation was successful
+                - id (str): The unique identifier for the extract job
+                - error (str, optional): Error message if initiation failed
 
         Raises:
-            ValueError: If there is an error initiating the extract job.
+            ValueError: If neither prompt nor schema is provided, or if there is an error during initiation.
         """
         headers = self._prepare_headers(idempotency_key)
         
@@ -804,24 +1176,32 @@ class FirecrawlApp:
         except Exception as e:
             raise ValueError(str(e), 500)
 
-    def generate_llms_text(self, url: str, params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> Dict[str, Any]:
+    def generate_llms_text(
+            self,
+            url: str,
+            params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> GenerateLLMsTextStatusResponse:
         """
         Generate LLMs.txt for a given URL and poll until completion.
 
         Args:
-            url (str): The URL to generate LLMs.txt from.
-            params (Optional[Union[Dict[str, Any], GenerateLLMsTextParams]]): Parameters for the LLMs.txt generation.
+            url: Target URL to generate LLMs.txt from
+
+            params: See GenerateLLMsTextParams model:
+
+                Generation Options:
+                * maxUrls - Maximum URLs to process (default: 10)
+                * showFullText - Include full text in output (default: False)
+                * __experimental_stream - Enable streaming of generation progress
 
         Returns:
-            Dict[str, Any]: A dictionary containing the generation results. The structure includes:
-                - 'success' (bool): Indicates if the generation was successful.
-                - 'status' (str): The final status of the generation job.
-                - 'data' (Dict): The generated LLMs.txt data.
-                - 'error' (Optional[str]): Error message if the generation failed.
-                - 'expiresAt' (str): ISO 8601 formatted date-time string indicating when the data expires.
+            GenerateLLMsTextStatusResponse with:
+            * Generated LLMs.txt content
+            * Full version if requested
+            * Generation status
+            * Success/error information
 
         Raises:
-            Exception: If the generation job fails or an error occurs during status checks.
+            Exception: If generation fails
         """
         if params is None:
             params = {}
@@ -850,18 +1230,25 @@ class FirecrawlApp:
 
         return {'success': False, 'error': 'LLMs.txt generation job terminated unexpectedly'}
 
-    def async_generate_llms_text(self, url: str, params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> Dict[str, Any]:
+    def async_generate_llms_text(
+            self,
+            url: str,
+            params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> GenerateLLMsTextResponse:
         """
         Initiate an asynchronous LLMs.txt generation operation.
 
         Args:
-            url (str): The URL to generate LLMs.txt from.
-            params (Optional[Union[Dict[str, Any], GenerateLLMsTextParams]]): Parameters for the LLMs.txt generation.
+            url (str): The target URL to generate LLMs.txt from. Must be a valid HTTP/HTTPS URL.
+            params (Optional[Union[Dict[str, Any], GenerateLLMsTextParams]]): Generation configuration parameters:
+                - maxUrls (int, optional): Maximum number of URLs to process (default: 10)
+                - showFullText (bool, optional): Include full text in output (default: False)
+                - __experimental_stream (bool, optional): Enable streaming of generation progress
 
         Returns:
-            Dict[str, Any]: A dictionary containing the generation initiation response. The structure includes:
-                - 'success' (bool): Indicates if the generation initiation was successful.
-                - 'id' (str): The unique identifier for the generation job.
+            GenerateLLMsTextResponse: A response containing:
+                - success (bool): Whether the generation initiation was successful
+                - id (str): The unique identifier for the generation job
+                - error (str, optional): Error message if initiation failed
 
         Raises:
             Exception: If the generation job initiation fails.
@@ -891,15 +1278,22 @@ class FirecrawlApp:
 
         return {'success': False, 'error': 'Internal server error'}
 
-    def check_generate_llms_text_status(self, id: str) -> Dict[str, Any]:
+    def check_generate_llms_text_status(self, id: str) -> GenerateLLMsTextStatusResponse:
         """
         Check the status of a LLMs.txt generation operation.
 
         Args:
-            id (str): The ID of the LLMs.txt generation operation.
+            id (str): The unique identifier of the LLMs.txt generation job to check status for.
 
         Returns:
-            Dict[str, Any]: The current status and results of the generation operation.
+            GenerateLLMsTextStatusResponse: A response containing:
+                - success (bool): Whether the generation was successful
+                - status (str): Status of generation ("processing", "completed", "failed")
+                - data (Dict[str, str], optional): Generated text with fields:
+                    - llmstxt (str): Generated LLMs.txt content
+                    - llmsfulltxt (str, optional): Full version if requested
+                - error (str, optional): Error message if generation failed
+                - expiresAt (str): When the generated data expires
 
         Raises:
             Exception: If the status check fails.
@@ -921,7 +1315,9 @@ class FirecrawlApp:
 
         return {'success': False, 'error': 'Internal server error'}
 
-    def _prepare_headers(self, idempotency_key: Optional[str] = None) -> Dict[str, str]:
+    def _prepare_headers(
+            self,
+            idempotency_key: Optional[str] = None) -> Dict[str, str]:
         """
         Prepare the headers for API requests.
 
@@ -943,11 +1339,13 @@ class FirecrawlApp:
             'Authorization': f'Bearer {self.api_key}',
         }
 
-    def _post_request(self, url: str,
-                      data: Dict[str, Any],
-                      headers: Dict[str, str],
-                      retries: int = 3,
-                      backoff_factor: float = 0.5) -> requests.Response:
+    def _post_request(
+            self,
+            url: str,
+            data: Dict[str, Any],
+            headers: Dict[str, str],
+            retries: int = 3,
+            backoff_factor: float = 0.5) -> requests.Response:
         """
         Make a POST request with retries.
 
@@ -972,10 +1370,12 @@ class FirecrawlApp:
                 return response
         return response
 
-    def _get_request(self, url: str,
-                     headers: Dict[str, str],
-                     retries: int = 3,
-                     backoff_factor: float = 0.5) -> requests.Response:
+    def _get_request(
+            self,
+            url: str,
+            headers: Dict[str, str],
+            retries: int = 3,
+            backoff_factor: float = 0.5) -> requests.Response:
         """
         Make a GET request with retries.
 
@@ -999,10 +1399,12 @@ class FirecrawlApp:
                 return response
         return response
     
-    def _delete_request(self, url: str,
-                        headers: Dict[str, str],
-                        retries: int = 3,
-                        backoff_factor: float = 0.5) -> requests.Response:
+    def _delete_request(
+            self,
+            url: str,
+            headers: Dict[str, str],
+            retries: int = 3,
+            backoff_factor: float = 0.5) -> requests.Response:
         """
         Make a DELETE request with retries.
 
@@ -1026,16 +1428,21 @@ class FirecrawlApp:
                 return response
         return response
 
-    def _monitor_job_status(self, id: str, headers: Dict[str, str], poll_interval: int) -> Any:
+    def _monitor_job_status(
+            self,
+            id: str,
+            headers: Dict[str, str],
+            poll_interval: int) -> CrawlStatusResponse:
         """
         Monitor the status of a crawl job until completion.
 
         Args:
             id (str): The ID of the crawl job.
             headers (Dict[str, str]): The headers to include in the status check requests.
-            poll_interval (int): Secounds between status checks.
+            poll_interval (int): Seconds between status checks.
+
         Returns:
-            Any: The crawl results if the job is completed successfully.
+            CrawlStatusResponse: The crawl results if the job is completed successfully.
 
         Raises:
             Exception: If the job fails or an error occurs during status checks.
@@ -1073,7 +1480,10 @@ class FirecrawlApp:
             else:
                 self._handle_error(status_response, 'check crawl status')
 
-    def _handle_error(self, response: requests.Response, action: str) -> None:
+    def _handle_error(
+            self,
+            response: requests.Response,
+            action: str) -> None:
         """
         Handle errors from API responses.
 
@@ -1105,22 +1515,47 @@ class FirecrawlApp:
         # Raise an HTTPError with the custom message and attach the response
         raise requests.exceptions.HTTPError(message, response=response)
 
-    def deep_research(self, query: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None, 
-                     on_activity: Optional[Callable[[Dict[str, Any]], None]] = None,
-                     on_source: Optional[Callable[[Dict[str, Any]], None]] = None) -> Dict[str, Any]:
+    def deep_research(
+            self,
+            query: str,
+            params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None, 
+            on_activity: Optional[Callable[[Dict[str, Any]], None]] = None,
+            on_source: Optional[Callable[[Dict[str, Any]], None]] = None) -> DeepResearchStatusResponse:
         """
         Initiates a deep research operation on a given query and polls until completion.
 
         Args:
-            query (str): The query to research.
-            params (Optional[Union[Dict[str, Any], DeepResearchParams]]): Parameters for the deep research operation.
-            on_activity (Optional[Callable[[Dict[str, Any]], None]]): Optional callback to receive activity updates in real-time.
+            query: Research query or topic to investigate
+
+            params: See DeepResearchParams model:
+                Research Settings:
+                * maxDepth - Maximum research depth (default: 7)
+                * timeLimit - Time limit in seconds (default: 270)
+                * maxUrls - Maximum URLs to process (default: 20)
+
+            Callbacks:
+            * on_activity - Progress callback receiving:
+                {type, status, message, timestamp, depth}
+            * on_source - Source discovery callback receiving:
+                {url, title, description}
 
         Returns:
-            Dict[str, Any]: The final research results.
+            DeepResearchResponse containing:
+
+            Status:
+            * success - Whether research completed successfully
+            * status - Current state (processing/completed/failed)
+            * error - Error message if failed
+            
+            Results:
+            * id - Unique identifier for the research job
+            * data - Research findings and analysis
+            * sources - List of discovered sources
+            * activities - Research progress log
+            * summaries - Generated research summaries
 
         Raises:
-            Exception: If the research operation fails.
+            Exception: If research fails
         """
         if params is None:
             params = {}
@@ -1164,16 +1599,26 @@ class FirecrawlApp:
 
         return {'success': False, 'error': 'Deep research job terminated unexpectedly'}
 
-    def async_deep_research(self, query: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None) -> Dict[str, Any]:
+    def async_deep_research(
+            self,
+            query: str,
+            params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None) -> DeepResearchResponse:
         """
         Initiates an asynchronous deep research operation.
 
         Args:
-            query (str): The query to research.
-            params (Optional[Union[Dict[str, Any], DeepResearchParams]]): Parameters for the deep research operation.
+            query (str): The research query to investigate. Should be a clear, specific question or topic.
+            params (Optional[Union[Dict[str, Any], DeepResearchParams]]): Research configuration parameters:
+                - maxDepth (int, optional): Maximum depth of research exploration (default: 7)
+                - timeLimit (int, optional): Time limit in seconds for research (default: 270)
+                - maxUrls (int, optional): Maximum number of URLs to process (default: 20)
+                - __experimental_streamSteps (bool, optional): Enable streaming of research steps
 
         Returns:
-            Dict[str, Any]: The response from the deep research initiation.
+            DeepResearchResponse: A response containing:
+                - success (bool): Whether the research initiation was successful
+                - id (str): The unique identifier for the research job
+                - error (str, optional): Error message if initiation failed
 
         Raises:
             Exception: If the research initiation fails.
@@ -1203,7 +1648,7 @@ class FirecrawlApp:
 
         return {'success': False, 'error': 'Internal server error'}
 
-    def check_deep_research_status(self, id: str) -> Dict[str, Any]:
+    def check_deep_research_status(self, id: str) -> DeepResearchStatusResponse:
         """
         Check the status of a deep research operation.
 
@@ -1211,7 +1656,19 @@ class FirecrawlApp:
             id (str): The ID of the deep research operation.
 
         Returns:
-            Dict[str, Any]: The current status and results of the research operation.
+            DeepResearchResponse containing:
+
+            Status:
+            * success - Whether research completed successfully
+            * status - Current state (processing/completed/failed)
+            * error - Error message if failed
+            
+            Results:
+            * id - Unique identifier for the research job
+            * data - Research findings and analysis
+            * sources - List of discovered sources
+            * activities - Research progress log
+            * summaries - Generated research summaries
 
         Raises:
             Exception: If the status check fails.
@@ -1232,8 +1689,18 @@ class FirecrawlApp:
             raise ValueError(str(e))
 
         return {'success': False, 'error': 'Internal server error'}
-
 class CrawlWatcher:
+    """
+    A class to watch and handle crawl job events via WebSocket connection.
+
+    Attributes:
+        id (str): The ID of the crawl job to watch
+        app (FirecrawlApp): The FirecrawlApp instance
+        data (List[Dict[str, Any]]): List of crawled documents/data
+        status (str): Current status of the crawl job
+        ws_url (str): WebSocket URL for the crawl job
+        event_handlers (dict): Dictionary of event type to list of handler functions
+    """
     def __init__(self, id: str, app: FirecrawlApp):
         self.id = id
         self.app = app
@@ -1246,25 +1713,54 @@ class CrawlWatcher:
             'document': []
         }
 
-    async def connect(self):
+    async def connect(self) -> None:
+        """
+        Establishes WebSocket connection and starts listening for messages.
+        """
         async with websockets.connect(self.ws_url, extra_headers={"Authorization": f"Bearer {self.app.api_key}"}) as websocket:
             await self._listen(websocket)
 
-    async def _listen(self, websocket):
+    async def _listen(self, websocket) -> None:
+        """
+        Listens for incoming WebSocket messages and handles them.
+
+        Args:
+            websocket: The WebSocket connection object
+        """
         async for message in websocket:
             msg = json.loads(message)
             await self._handle_message(msg)
 
-    def add_event_listener(self, event_type: str, handler):
+    def add_event_listener(self, event_type: str, handler: Callable[[Dict[str, Any]], None]) -> None:
+        """
+        Adds an event handler function for a specific event type.
+
+        Args:
+            event_type (str): Type of event to listen for ('done', 'error', or 'document')
+            handler (Callable): Function to handle the event
+        """
         if event_type in self.event_handlers:
             self.event_handlers[event_type].append(handler)
 
-    def dispatch_event(self, event_type: str, detail: Dict[str, Any]):
+    def dispatch_event(self, event_type: str, detail: Dict[str, Any]) -> None:
+        """
+        Dispatches an event to all registered handlers for that event type.
+
+        Args:
+            event_type (str): Type of event to dispatch
+            detail (Dict[str, Any]): Event details/data to pass to handlers
+        """
         if event_type in self.event_handlers:
             for handler in self.event_handlers[event_type]:
                 handler(detail)
 
-    async def _handle_message(self, msg: Dict[str, Any]):
+    async def _handle_message(self, msg: Dict[str, Any]) -> None:
+        """
+        Handles incoming WebSocket messages based on their type.
+
+        Args:
+            msg (Dict[str, Any]): The message to handle
+        """
         if msg['type'] == 'done':
             self.status = 'completed'
             self.dispatch_event('done', {'status': self.status, 'data': self.data, 'id': self.id})
