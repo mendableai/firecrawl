@@ -506,6 +506,7 @@ export const mapRequestSchema = crawlerOptions
     limit: z.number().min(1).max(30000).default(5000),
     timeout: z.number().positive().finite().optional(),
     useMock: z.string().optional(),
+    filterByPath: z.boolean().default(true),
   })
   .strict(strictMessage);
 
