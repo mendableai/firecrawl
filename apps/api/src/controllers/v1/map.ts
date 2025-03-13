@@ -254,9 +254,9 @@ export async function getMapResults({
       try {
         const urlObj = new URL(url);
         const urlPath = urlObj.pathname;
-        // Only keep URLs with paths that start with the original URL's path
-        // Skip the filtering if the original URL has no specific path (just /)
-        if (urlPath && urlPath !== '/') {
+        // Only apply path filtering if the URL has a significant path (not just '/' or empty)
+        // This means we only filter by path if the user has not selected a root domain
+        if (urlPath && urlPath !== '/' && urlPath.length > 1) {
           links = links.filter(link => {
             try {
               const linkObj = new URL(link);
