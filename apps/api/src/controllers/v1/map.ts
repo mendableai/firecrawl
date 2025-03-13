@@ -250,7 +250,7 @@ export async function getMapResults({
     }
 
     // Filter by path if enabled
-    if (filterByPath) {
+    if (filterByPath && !allowExternalLinks) {
       try {
         const urlObj = new URL(url);
         const urlPath = urlObj.pathname;
