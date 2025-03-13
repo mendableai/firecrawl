@@ -567,7 +567,8 @@ const workerFun = async (
     const token = uuidv4();
     const canAcceptConnection = await monitor.acceptConnection();
     if (!canAcceptConnection) {
-      console.log("Cant accept connection");
+      console.log("Can't accept connection due to RAM/CPU load");
+      logger.info("Can't accept connection due to RAM/CPU load");
       cantAcceptConnectionCount++;
 
       if (cantAcceptConnectionCount >= 25) {
