@@ -456,7 +456,7 @@ export class WebCrawler {
         }
       }).filter(x => x !== null) as string[])];
     } catch (error) {
-      this.logger.error("Failed to call html-transformer! Falling back to cheerio...", {
+      this.logger.warn("Failed to call html-transformer! Falling back to cheerio...", {
         error,
         module: "scrapeURL", method: "extractMetadata"
       });

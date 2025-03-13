@@ -26,7 +26,7 @@ export async function extractMetadata(
   try {
     return await extractMetadataRust(meta, html);
   } catch (error) {
-    meta.logger.error("Failed to call html-transformer! Falling back to cheerio...", {
+    meta.logger.warn("Failed to call html-transformer! Falling back to cheerio...", {
       error,
       module: "scrapeURL", method: "extractMetadata"
     });
