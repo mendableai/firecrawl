@@ -271,7 +271,7 @@ export class WebCrawler {
         return urlsHandler(urls);
       } else {
         let filteredLinks = this.filterLinks(
-          [...new Set(urls)],
+          [...new Set(urls)].filter(x => this.filterURL(x, this.initialUrl) !== null),
           leftOfLimit,
           this.maxCrawledDepth,
           fromMap,
