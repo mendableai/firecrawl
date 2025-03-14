@@ -1855,7 +1855,10 @@ class CrawlWatcher:
         """
         Establishes WebSocket connection and starts listening for messages.
         """
-        async with websockets.connect(self.ws_url, extra_headers={"Authorization": f"Bearer {self.app.api_key}"}) as websocket:
+        async with websockets.connect(
+            self.ws_url,
+            additional_headers=[("Authorization", f"Bearer {self.app.api_key}")]
+        ) as websocket:
             await self._listen(websocket)
 
     async def _listen(self, websocket) -> None:
@@ -3231,7 +3234,10 @@ class AsyncCrawlWatcher(CrawlWatcher):
         """
         Establishes async WebSocket connection and starts listening for messages.
         """
-        async with websockets.connect(self.ws_url, extra_headers={"Authorization": f"Bearer {self.app.api_key}"}) as websocket:
+        async with websockets.connect(
+            self.ws_url,
+            additional_headers=[("Authorization", f"Bearer {self.app.api_key}")]
+        ) as websocket:
             await self._listen(websocket)
 
     async def _listen(self, websocket) -> None:
