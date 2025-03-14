@@ -24,7 +24,7 @@ import { logger } from "../../lib/logger";
 import Redis from "ioredis";
 import { querySitemapIndex } from "../../scraper/WebScraper/sitemap-index";
 import { getIndexQueue } from "../../services/queue-service";
-
+import { getHtmlFromUrl } from "../../lib/html-utils";
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
 
@@ -100,6 +100,9 @@ export async function getMapResults({
 
   // If sitemapOnly is true, only get links from sitemap
   if (crawlerOptions.sitemapOnly) {
+    logger.debug("DFF: Getting sitemap only", {
+      url,
+    });
     const sitemap = await crawler.tryGetSitemap(
       (urls) => {
         urls.forEach((x) => {
@@ -194,6 +197,33 @@ export async function getMapResults({
       }
     }
 
+    // TODO: scrape the url and extract the links
+    const html = await getHtmlFromUrl(url);
+    logger.debug("DFF: Got html", {
+      html: html.slice(0, 500),
+    });
+    
+    // Extract links with their text to create MapDocument objects
+    const linksWithText = await crawler.extractLinksWithTextFromHTML(html, url);
+    logger.debug("DFF: Found links with text in scraped html", {
+      linksWithText: linksWithText.slice(0, 5),
+    });
+    
+    // Add these as MapDocument objects
+    const newMapResults = linksWithText.map(link => ({
+      url: link.url,
+      description: link.description
+    }));
+    
+    // Extract just the URLs from linksWithText rather than calling extractLinksFromHTML again
+    const foundLinks = linksWithText.map(link => link.url);
+    logger.debug("DFF: Found links in scraped html", {
+      foundLinks: foundLinks.slice(0, 5),
+    });
+    
+    // Add the urls to the links array
+    links.push(...foundLinks);
+
     if (!cachedResult) {
       allResults = searchResults;
     }
@@ -201,6 +231,9 @@ export async function getMapResults({
     mapResults = allResults
       .flat()
       .filter((result) => result !== null && result !== undefined);
+      
+    // Merge in the map results from the scraped HTML
+    mapResults = [...mapResults, ...newMapResults];
 
     const minumumCutoff = Math.min(MAX_MAP_LIMIT, limit);
     if (mapResults.length > minumumCutoff) {

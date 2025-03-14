@@ -21,6 +21,7 @@ type TransformHtmlOptions = {
 class RustHTMLTransformer {
   private static instance: RustHTMLTransformer;
   private _extractLinks: KoffiFunction;
+  private _extractLinksWithLinktext: KoffiFunction;
   private _extractMetadata: KoffiFunction;
   private _transformHtml: KoffiFunction;
   private _freeString: KoffiFunction;
@@ -32,6 +33,7 @@ class RustHTMLTransformer {
     const cstn = "CString:" + crypto.randomUUID();
     const freedResultString = koffi.disposable(cstn, "string", this._freeString);
     this._extractLinks = lib.func("extract_links", freedResultString, ["string"]);
+    this._extractLinksWithLinktext = lib.func("extract_links_with_linktext", freedResultString, ["string"]);
     this._extractMetadata = lib.func("extract_metadata", freedResultString, ["string"]);
     this._transformHtml = lib.func("transform_html", freedResultString, ["string"]);
     this._getInnerJSON = lib.func("get_inner_json", freedResultString, ["string"]);
@@ -52,6 +54,18 @@ class RustHTMLTransformer {
   public async extractLinks(html: string): Promise<string[]> {
     return new Promise<string[]>((resolve, reject) => {
       this._extractLinks.async(html, (err: Error, res: string) => {
+        if (err) {
+          reject(err);
+        } else {
+          resolve(JSON.parse(res));
+        }
+      });
+    });
+  }
+
+  public async extractLinksWithLinktext(html: string): Promise<Array<{ url: string; text: string }>> {
+    return new Promise<Array<{ url: string; text: string }>>((resolve, reject) => {
+      this._extractLinksWithLinktext.async(html, (err: Error, res: string) => {
         if (err) {
           reject(err);
         } else {
@@ -140,4 +154,15 @@ export async function getInnerJSON(
 ): Promise<string> {
   const converter = await RustHTMLTransformer.getInstance();
   return await converter.getInnerJSON(html);
+}
+
+export async function extractLinksWithLinktext(
+  html: string | null | undefined,
+): Promise<Array<{ url: string; text: string }>> {
+  if (!html) {
+    return [];
+  }
+
+  const converter = await RustHTMLTransformer.getInstance();
+  return await converter.extractLinksWithLinktext(html);
 }

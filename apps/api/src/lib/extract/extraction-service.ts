@@ -126,6 +126,9 @@ export async function performExtraction(
   });
   
   // Process URLs
+  logger.debug("DFF: Processing the following URLs: ", {
+    urls: request.urls,
+  });
   const urlPromises = request.urls.map((url) =>
     processUrl(
       {

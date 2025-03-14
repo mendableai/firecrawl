@@ -8,7 +8,7 @@ import { axiosTimeout } from "../../lib/timeout";
 import { logger as _logger } from "../../lib/logger";
 import https from "https";
 import { redisConnection } from "../../services/queue-service";
-import { extractLinks } from "../../lib/html-transformer";
+import { extractLinks, extractLinksWithLinktext } from "../../lib/html-transformer";
 import { TimeoutSignal } from "../../controllers/v1/types";
 export class WebCrawler {
   private jobId: string;
@@ -416,6 +416,26 @@ export class WebCrawler {
     return (await extractLinks(html)).filter(x => this.filterURL(x, url));
   }
 
+  private async extractLinkWithLinktextFromHTMLRust(html: string, url: string) {
+    // Get links with text from Rust function
+    const links = await extractLinksWithLinktext(html);
+    
+    // Filter and process links based on crawler policies
+    return links.filter(link => {
+      // Apply URL filtering rules from the crawler
+      const filteredUrl = this.filterURL(link.url, url);
+      
+      if (filteredUrl) {
+        // Replace the original URL with the filtered/normalized one
+        link.url = filteredUrl;
+        return true;
+      }
+      
+      // Skip links that don't pass filtering rules
+      return false;
+    });
+  }
+
   private extractLinksFromHTMLCheerio(html: string, url: string) {
     let links: string[] = [];
 
@@ -463,6 +483,24 @@ export class WebCrawler {
     }
 
     return this.extractLinksFromHTMLCheerio(html, url);
+  }
+
+  public async extractLinksWithTextFromHTML(html: string, url: string): Promise<Array<{ url: string; description: string }>> {
+    try {
+      const links = await this.extractLinkWithLinktextFromHTMLRust(html, url);
+      return links.map(link => ({
+        url: new URL(link.url, url).href,
+        description: link.text.trim()
+      }));
+    } catch (error) {
+      this.logger.warn("Failed to extract links with text from HTML", {
+        error,
+        module: "WebCrawler", 
+        method: "extractLinksWithText"
+      });
+      // Just return an empty array instead of falling back to Cheerio
+      return [];
+    }
   }
 
   private isRobotsAllowed(
