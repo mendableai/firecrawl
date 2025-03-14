@@ -108,16 +108,46 @@ class CrawlScrapeOptions(pydantic.BaseModel):
     blockAds: Optional[bool] = None
     proxy: Optional[Literal["basic", "stealth"]] = None
 
-class Action(pydantic.BaseModel):
-    """Action to perform during scraping."""
-    type: Literal["wait", "click", "screenshot", "write", "press", "scroll", "scrape", "executeJavascript"]
-    milliseconds: Optional[int] = None
+class WaitAction(pydantic.BaseModel):
+    """Wait action to perform during scraping."""
+    type: Literal["wait"]
+    milliseconds: int
     selector: Optional[str] = None
+
+class ScreenshotAction(pydantic.BaseModel):
+    """Screenshot action to perform during scraping."""
+    type: Literal["screenshot"]
     fullPage: Optional[bool] = None
-    text: Optional[str] = None
-    key: Optional[str] = None
-    direction: Optional[Literal["up", "down"]] = None
-    script: Optional[str] = None
+
+class ClickAction(pydantic.BaseModel):
+    """Click action to perform during scraping."""
+    type: Literal["click"]
+    selector: str
+
+class WriteAction(pydantic.BaseModel):
+    """Write action to perform during scraping."""
+    type: Literal["write"]
+    text: str
+
+class PressAction(pydantic.BaseModel):
+    """Press action to perform during scraping."""
+    type: Literal["press"]
+    key: str
+
+class ScrollAction(pydantic.BaseModel):
+    """Scroll action to perform during scraping."""
+    type: Literal["scroll"]
+    direction: Literal["up", "down"]
+    selector: Optional[str] = None
+
+class ScrapeAction(pydantic.BaseModel):
+    """Scrape action to perform during scraping."""
+    type: Literal["scrape"]
+
+class ExecuteJavascriptAction(pydantic.BaseModel):
+    """Execute javascript action to perform during scraping."""
+    type: Literal["executeJavascript"]
+    script: str
 
 class ExtractConfig(pydantic.BaseModel):
     """Configuration for extraction."""
@@ -129,7 +159,7 @@ class ScrapeParams(CrawlScrapeOptions):
     """Parameters for scraping operations."""
     extract: Optional[ExtractConfig] = None
     jsonOptions: Optional[ExtractConfig] = None
-    actions: Optional[List[Action]] = None
+    actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None
 
 class ScrapeResponse(FirecrawlDocument[T], Generic[T]):
     """Response from scraping operations."""
@@ -240,7 +270,7 @@ class SearchParams(pydantic.BaseModel):
     location: Optional[str] = None
     origin: Optional[str] = "api"
     timeout: Optional[int] = 60000
-    scrapeOptions: Optional[Dict[str, Any]] = None
+    scrapeOptions: Optional[CrawlScrapeOptions] = None
 
 class SearchResponse(pydantic.BaseModel):
     """Response from search operations."""
@@ -295,10 +325,14 @@ class GenerateLLMsTextResponse(pydantic.BaseModel):
     id: str
     error: Optional[str] = None
 
+class GenerateLLMsTextStatusResponseData(pydantic.BaseModel):
+    llmstxt: str
+    llmsfulltxt: Optional[str] = None
+
 class GenerateLLMsTextStatusResponse(pydantic.BaseModel):
     """Status response from LLMs.txt generation operations."""
     success: bool = True
-    data: Optional[Dict[str, str]] = None  # {llmstxt: str, llmsfulltxt?: str}
+    data: Optional[GenerateLLMsTextStatusResponseData] = None
     status: Literal["processing", "completed", "failed"]
     error: Optional[str] = None
     expiresAt: str
@@ -322,13 +356,16 @@ class FirecrawlApp:
             
         logger.debug(f"Initialized FirecrawlApp with API URL: {self.api_url}")
 
-    def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> ScrapeResponse[Any]:
+    def scrape_url(
+            self,
+            url: str,
+            params: Optional[ScrapeParams] = None) -> ScrapeResponse[Any]:
         """
         Scrape and extract content from a URL.
 
         Args:
           url (str): Target URL to scrape
-          params (Optional[Dict[str, Any]]): See ScrapeParams model for configuration:
+          params (Optional[ScrapeParams]): See ScrapeParams model for configuration:
             Content Options:
             * formats - Content types to retrieve (markdown/html/etc)
             * includeTags - HTML tags to include
@@ -410,7 +447,10 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'scrape URL')
 
-    def search(self, query: str, params: Optional[Union[Dict[str, Any], SearchParams]] = None) -> SearchResponse:
+    def search(
+            self,
+            query: str,
+            params: Optional[Union[Dict[str, Any], SearchParams]] = None) -> SearchResponse:
         """
         Search for content using Firecrawl.
 
@@ -520,14 +560,18 @@ class FirecrawlApp:
             self._handle_error(response, 'start crawl job')
 
 
-    def async_crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> CrawlResponse:
+    def async_crawl_url(
+            self,
+            url: str,
+            params: Optional[CrawlParams] = None,
+            idempotency_key: Optional[str] = None) -> CrawlResponse:
         """
         Start an asynchronous crawl job.
 
         Args:
             url (str): Target URL to start crawling from
 
-            params (Optional[Dict[str, Any]]): See CrawlParams model:
+            params (Optional[CrawlParams]): See CrawlParams model:
 
               URL Discovery:
               * includePaths - Patterns of URLs to include
@@ -754,7 +798,10 @@ class FirecrawlApp:
         else:
             raise Exception("Crawl job failed to start")
 
-    def map_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> MapResponse:
+    def map_url(
+            self,
+            url: str,
+            params: Optional[MapParams] = None) -> MapResponse:
         """
         Map and discover links from a URL.
 
@@ -1891,7 +1938,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                         if response.status == 502:
                             await asyncio.sleep(backoff_factor * (2 ** attempt))
                             continue
-                        if response.status != 200:
+                        if response.status >= 300: 
                             await self._handle_error(response, "make POST request")
                         return await response.json()
                 except aiohttp.ClientError as e:
@@ -1930,7 +1977,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                         if response.status == 502:
                             await asyncio.sleep(backoff_factor * (2 ** attempt))
                             continue
-                        if response.status != 200:
+                        if response.status >= 300:  # Accept any 2xx status code as success
                             await self._handle_error(response, "make GET request")
                         return await response.json()
                 except aiohttp.ClientError as e:
@@ -2060,13 +2107,16 @@ class AsyncFirecrawlApp(FirecrawlApp):
         else:
             raise Exception("Batch scrape job failed to start")
 
-    async def scrape_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> ScrapeResponse[Any]:
+    async def scrape_url(
+            self,
+            url: str,
+            params: Optional[ScrapeParams] = None) -> ScrapeResponse[Any]:
         """
         Asynchronously scrape and extract content from a URL.
 
         Args:
             url (str): Target URL to scrape
-            params (Optional[Dict[str, Any]]): See ScrapeParams model for configuration:
+            params (Optional[ScrapeParams]): See ScrapeParams model for configuration:
               Content Options:
               * formats - Content types to retrieve (markdown/html/etc)
               * includeTags - HTML tags to include
@@ -2122,7 +2172,10 @@ class AsyncFirecrawlApp(FirecrawlApp):
         else:
             raise Exception(f'Failed to scrape URL. Error: {response}')
 
-    async def batch_scrape_urls(self, urls: List[str], params: Optional[ScrapeParams] = None) -> BatchScrapeStatusResponse:
+    async def batch_scrape_urls(
+            self,
+            urls: List[str],
+            params: Optional[ScrapeParams] = None) -> BatchScrapeStatusResponse:
         """
         Asynchronously scrape multiple URLs and monitor until completion.
 
@@ -2282,13 +2335,17 @@ class AsyncFirecrawlApp(FirecrawlApp):
         else:
             raise Exception(f'Failed to start crawl. Error: {response.get("error")}')
 
-    async def async_crawl_url(self, url: str, params: Optional[Dict[str, Any]] = None, idempotency_key: Optional[str] = None) -> CrawlResponse:
+    async def async_crawl_url(
+            self,
+            url: str,
+            params: Optional[CrawlParams] = None,
+            idempotency_key: Optional[str] = None) -> CrawlResponse:
         """
         Initiate an asynchronous crawl job without waiting for completion.
 
         Args:
             url (str): Target URL to start crawling from
-            params (Optional[Dict[str, Any]]): See CrawlParams model:
+            params (Optional[CrawlParams]): See CrawlParams model:
               URL Discovery:
               * includePaths - Patterns of URLs to include
               * excludePaths - Patterns of URLs to exclude
@@ -2442,13 +2499,16 @@ class AsyncFirecrawlApp(FirecrawlApp):
             else:
                 raise Exception(f'Job failed or was stopped. Status: {status_data["status"]}')
 
-    async def map_url(self, url: str, params: Optional[Dict[str, Any]] = None) -> MapResponse:
+    async def map_url(
+            self,
+            url: str,
+            params: Optional[MapParams] = None) -> MapResponse:
         """
         Asynchronously map and discover links from a URL.
 
         Args:
           url (str): Target URL to map
-          params (Optional[Dict[str, Any]]): See MapParams model:
+          params (Optional[MapParams]): See MapParams model:
             Discovery Options:
             * search - Filter pattern for URLs
             * ignoreSitemap - Skip sitemap.xml
@@ -2486,7 +2546,10 @@ class AsyncFirecrawlApp(FirecrawlApp):
         else:
             raise Exception(f'Failed to map URL. Error: {response}')
 
-    async def extract(self, urls: List[str], params: Optional[ExtractParams] = None) -> ExtractResponse[Any]:
+    async def extract(
+            self,
+            urls: List[str],
+            params: Optional[ExtractParams] = None) -> ExtractResponse[Any]:
         """
         Asynchronously extract structured information from URLs.
 
@@ -2792,7 +2855,10 @@ class AsyncFirecrawlApp(FirecrawlApp):
         except Exception as e:
             raise ValueError(str(e))
 
-    async def generate_llms_text(self, url: str, params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> GenerateLLMsTextStatusResponse:
+    async def generate_llms_text(
+            self,
+            url: str,
+            params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> GenerateLLMsTextStatusResponse:
         """
         Generate LLMs.txt for a given URL and monitor until completion.
 
@@ -2843,7 +2909,10 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
         return {'success': False, 'error': 'LLMs.txt generation job terminated unexpectedly'}
 
-    async def async_generate_llms_text(self, url: str, params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> GenerateLLMsTextResponse:
+    async def async_generate_llms_text(
+            self,
+            url: str,
+            params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> GenerateLLMsTextResponse:
         """
         Initiate an asynchronous LLMs.txt generation job without waiting for completion.
 
@@ -2996,7 +3065,10 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
         return {'success': False, 'error': 'Deep research job terminated unexpectedly'}
 
-    async def async_deep_research(self, query: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None) -> DeepResearchResponse:
+    async def async_deep_research(
+            self,
+            query: str,
+            params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None) -> DeepResearchResponse:
         """
         Initiate an asynchronous deep research job without waiting for completion.
 
@@ -3069,7 +3141,10 @@ class AsyncFirecrawlApp(FirecrawlApp):
         except Exception as e:
             raise ValueError(str(e))
 
-    async def search(self, query: str, params: Optional[Union[Dict[str, Any], SearchParams]] = None) -> SearchResponse:
+    async def search(
+            self,
+            query: str,
+            params: Optional[Union[Dict[str, Any], SearchParams]] = None) -> SearchResponse:
         """
         Asynchronously search for content using Firecrawl.
 
