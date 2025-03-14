@@ -1624,20 +1624,34 @@ class FirecrawlApp:
         except:
             raise requests.exceptions.HTTPError(f'Failed to parse Firecrawl error response as JSON. Status code: {response.status_code}', response=response)
         
-
-        if response.status_code == 402:
-            message = f"Payment Required: Failed to {action}. {error_message} - {error_details}"
-        elif response.status_code == 408:
-            message = f"Request Timeout: Failed to {action} as the request timed out. {error_message} - {error_details}"
-        elif response.status_code == 409:
-            message = f"Conflict: Failed to {action} due to a conflict. {error_message} - {error_details}"
-        elif response.status_code == 500:
-            message = f"Internal Server Error: Failed to {action}. {error_message} - {error_details}"
-        else:
-            message = f"Unexpected error during {action}: Status code {response.status_code}. {error_message} - {error_details}"
+        message = self._get_error_message(response.status_code, action, error_message, error_details)
 
         # Raise an HTTPError with the custom message and attach the response
         raise requests.exceptions.HTTPError(message, response=response)
+
+    def _get_error_message(self, status_code: int, action: str, error_message: str, error_details: str) -> str:
+        """
+        Generate a standardized error message based on HTTP status code.
+        
+        Args:
+            status_code (int): The HTTP status code from the response
+            action (str): Description of the action that was being performed
+            error_message (str): The error message from the API response
+            error_details (str): Additional error details from the API response
+            
+        Returns:
+            str: A formatted error message
+        """
+        if status_code == 402:
+            return f"Payment Required: Failed to {action}. {error_message} - {error_details}"
+        elif status_code == 408:
+            return f"Request Timeout: Failed to {action} as the request timed out. {error_message} - {error_details}"
+        elif status_code == 409:
+            return f"Conflict: Failed to {action} due to a conflict. {error_message} - {error_details}"
+        elif status_code == 500:
+            return f"Internal Server Error: Failed to {action}. {error_message} - {error_details}"
+        else:
+            return f"Unexpected error during {action}: Status code {status_code}. {error_message} - {error_details}"
 
     def deep_research(
             self,
@@ -1905,86 +1919,96 @@ class AsyncFirecrawlApp(FirecrawlApp):
     Asynchronous version of FirecrawlApp that implements async methods using aiohttp.
     Provides non-blocking alternatives to all FirecrawlApp operations.
     """
-    
-    async def _async_post_request(
+
+    async def _async_request(
             self,
+            method: str,
             url: str,
-            data: Dict[str, Any],
             headers: Dict[str, str],
+            data: Optional[Dict[str, Any]] = None,
             retries: int = 3,
             backoff_factor: float = 0.5) -> Dict[str, Any]:
+        """
+        Generic async request method with exponential backoff retry logic.
+
+        Args:
+            method (str): The HTTP method to use (e.g., "GET" or "POST").
+            url (str): The URL to send the request to.
+            headers (Dict[str, str]): Headers to include in the request.
+            data (Optional[Dict[str, Any]]): The JSON data to include in the request body (only for POST requests).
+            retries (int): Maximum number of retry attempts (default: 3).
+            backoff_factor (float): Factor to calculate delay between retries (default: 0.5).
+                Delay will be backoff_factor * (2 ** retry_count).
+
+        Returns:
+            Dict[str, Any]: The parsed JSON response from the server.
+
+        Raises:
+            aiohttp.ClientError: If the request fails after all retries.
+            Exception: If max retries are exceeded or other errors occur.
+        """
+        async with aiohttp.ClientSession() as session:
+            for attempt in range(retries):
+                try:
+                    async with session.request(
+                        method=method, url=url, headers=headers, json=data
+                    ) as response:
+                        if response.status == 502:
+                            await asyncio.sleep(backoff_factor * (2 ** attempt))
+                            continue
+                        if response.status >= 300:
+                            await self._handle_error(response, f"make {method} request")
+                        return await response.json()
+                except aiohttp.ClientError as e:
+                    if attempt == retries - 1:
+                        raise e
+                    await asyncio.sleep(backoff_factor * (2 ** attempt))
+            raise Exception("Max retries exceeded")
+
+    async def _async_post_request(
+            self, url: str, data: Dict[str, Any], headers: Dict[str, str],
+            retries: int = 3, backoff_factor: float = 0.5) -> Dict[str, Any]:
         """
         Make an async POST request with exponential backoff retry logic.
 
         Args:
-            url (str): The URL to send the POST request to
-            data (Dict[str, Any]): The JSON data to include in the request body
-            headers (Dict[str, str]): Headers to include in the request
-            retries (int): Maximum number of retry attempts (default: 3)
-            backoff_factor (float): Factor to calculate delay between retries (default: 0.5)
-                Delay will be backoff_factor * (2 ** retry_count)
+            url (str): The URL to send the POST request to.
+            data (Dict[str, Any]): The JSON data to include in the request body.
+            headers (Dict[str, str]): Headers to include in the request.
+            retries (int): Maximum number of retry attempts (default: 3).
+            backoff_factor (float): Factor to calculate delay between retries (default: 0.5).
+                Delay will be backoff_factor * (2 ** retry_count).
 
         Returns:
-            Dict[str, Any]: The parsed JSON response from the server
+            Dict[str, Any]: The parsed JSON response from the server.
 
         Raises:
-            aiohttp.ClientError: If the request fails after all retries
-            Exception: If max retries are exceeded or other errors occur
+            aiohttp.ClientError: If the request fails after all retries.
+            Exception: If max retries are exceeded or other errors occur.
         """
-        async with aiohttp.ClientSession() as session:
-            for attempt in range(retries):
-                try:
-                    async with session.post(url, headers=headers, json=data) as response:
-                        if response.status == 502:
-                            await asyncio.sleep(backoff_factor * (2 ** attempt))
-                            continue
-                        if response.status >= 300: 
-                            await self._handle_error(response, "make POST request")
-                        return await response.json()
-                except aiohttp.ClientError as e:
-                    if attempt == retries - 1:
-                        raise e
-                    await asyncio.sleep(backoff_factor * (2 ** attempt))
-            raise Exception("Max retries exceeded")
+        return await self._async_request("POST", url, headers, data, retries, backoff_factor)
 
     async def _async_get_request(
-            self,
-            url: str,
-            headers: Dict[str, str],
-            retries: int = 3,
-            backoff_factor: float = 0.5) -> Dict[str, Any]:
+            self, url: str, headers: Dict[str, str],
+            retries: int = 3, backoff_factor: float = 0.5) -> Dict[str, Any]:
         """
         Make an async GET request with exponential backoff retry logic.
 
         Args:
-            url (str): The URL to send the GET request to
-            headers (Dict[str, str]): Headers to include in the request
-            retries (int): Maximum number of retry attempts (default: 3)
-            backoff_factor (float): Factor to calculate delay between retries (default: 0.5)
-                Delay will be backoff_factor * (2 ** retry_count)
+            url (str): The URL to send the GET request to.
+            headers (Dict[str, str]): Headers to include in the request.
+            retries (int): Maximum number of retry attempts (default: 3).
+            backoff_factor (float): Factor to calculate delay between retries (default: 0.5).
+                Delay will be backoff_factor * (2 ** retry_count).
 
         Returns:
-            Dict[str, Any]: The parsed JSON response from the server
+            Dict[str, Any]: The parsed JSON response from the server.
 
         Raises:
-            aiohttp.ClientError: If the request fails after all retries
-            Exception: If max retries are exceeded or other errors occur
+            aiohttp.ClientError: If the request fails after all retries.
+            Exception: If max retries are exceeded or other errors occur.
         """
-        async with aiohttp.ClientSession() as session:
-            for attempt in range(retries):
-                try:
-                    async with session.get(url, headers=headers) as response:
-                        if response.status == 502:
-                            await asyncio.sleep(backoff_factor * (2 ** attempt))
-                            continue
-                        if response.status >= 300:  # Accept any 2xx status code as success
-                            await self._handle_error(response, "make GET request")
-                        return await response.json()
-                except aiohttp.ClientError as e:
-                    if attempt == retries - 1:
-                        raise e
-                    await asyncio.sleep(backoff_factor * (2 ** attempt))
-            raise Exception("Max retries exceeded")
+        return await self._async_request("GET", url, headers, None, retries, backoff_factor)
 
     async def _handle_error(self, response: aiohttp.ClientResponse, action: str) -> None:
         """
@@ -2009,18 +2033,24 @@ class AsyncFirecrawlApp(FirecrawlApp):
         except:
             raise aiohttp.ClientError(f'Failed to parse Firecrawl error response as JSON. Status code: {response.status}')
 
-        if response.status == 402:
-            message = f"Payment Required: Failed to {action}. {error_message} - {error_details}"
-        elif response.status == 408:
-            message = f"Request Timeout: Failed to {action} as the request timed out. {error_message} - {error_details}"
-        elif response.status == 409:
-            message = f"Conflict: Failed to {action} due to a conflict. {error_message} - {error_details}"
-        elif response.status == 500:
-            message = f"Internal Server Error: Failed to {action}. {error_message} - {error_details}"
-        else:
-            message = f"Unexpected error during {action}: Status code {response.status}. {error_message} - {error_details}"
+        message = await self._get_async_error_message(response.status, action, error_message, error_details)
 
         raise aiohttp.ClientError(message)
+
+    async def _get_async_error_message(self, status_code: int, action: str, error_message: str, error_details: str) -> str:
+        """
+        Generate a standardized error message based on HTTP status code for async operations.
+        
+        Args:
+            status_code (int): The HTTP status code from the response
+            action (str): Description of the action that was being performed
+            error_message (str): The error message from the API response
+            error_details (str): Additional error details from the API response
+            
+        Returns:
+            str: A formatted error message
+        """
+        return self._get_error_message(status_code, action, error_message, error_details)
 
     async def crawl_url_and_watch(
             self,
@@ -3248,15 +3278,22 @@ class AsyncCrawlWatcher(CrawlWatcher):
         except:
             raise aiohttp.ClientError(f'Failed to parse Firecrawl error response as JSON. Status code: {response.status}')
 
-        if response.status == 402:
-            message = f"Payment Required: Failed to {action}. {error_message} - {error_details}"
-        elif response.status == 408:
-            message = f"Request Timeout: Failed to {action} as the request timed out. {error_message} - {error_details}"
-        elif response.status == 409:
-            message = f"Conflict: Failed to {action} due to a conflict. {error_message} - {error_details}"
-        elif response.status == 500:
-            message = f"Internal Server Error: Failed to {action}. {error_message} - {error_details}"
-        else:
-            message = f"Unexpected error during {action}: Status code {response.status}. {error_message} - {error_details}"
+        # Use the app's method to get the error message
+        message = await self.app._get_async_error_message(response.status, action, error_message, error_details)
 
         raise aiohttp.ClientError(message)
+
+    async def _get_async_error_message(self, status_code: int, action: str, error_message: str, error_details: str) -> str:
+        """
+        Generate a standardized error message based on HTTP status code for async operations.
+        
+        Args:
+            status_code (int): The HTTP status code from the response
+            action (str): Description of the action that was being performed
+            error_message (str): The error message from the API response
+            error_details (str): Additional error details from the API response
+            
+        Returns:
+            str: A formatted error message
+        """
+        return self._get_error_message(status_code, action, error_message, error_details)
