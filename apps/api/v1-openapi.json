@@ -2047,23 +2047,23 @@
               "properties": {
                 "url": {
                   "type": "string",
-                  "description": "URL du résultat"
+                  "description": "URL of the result"
                 },
                 "title": {
                   "type": "string",
-                  "description": "Titre du résultat"
+                  "description": "Title of the result"
                 },
                 "description": {
                   "type": "string",
-                  "description": "Description du résultat"
+                  "description": "Description of the result"
                 },
                 "source": {
                   "type": "string",
-                  "description": "Source du résultat (pour les actualités)"
+                  "description": "Source of the result (for news)"
                 },
                 "date": {
                   "type": "string",
-                  "description": "Date de publication (pour les actualités)"
+                  "description": "Publication date (for news)"
                 }
               }
             }
