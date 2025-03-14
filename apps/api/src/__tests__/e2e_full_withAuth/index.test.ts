@@ -1113,6 +1113,43 @@ describe("E2E Tests for API Routes", () => {
       },
       30000,
     ); // 30 seconds timeout
+
+    it.concurrent("should return news results when using tbm=nws parameter", async () => {
+      const response = await request(TEST_URL)
+        .post("/v0/search")
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .set("Content-Type", "application/json")
+        .send({ 
+          query: "artificial intelligence", 
+          searchOptions: { 
+            tbm: "nws",
+            limit: 3,
+            lang: "en",
+            country: "us" 
+          },
+          pageOptions: {
+            fetchPageContent: false // Set to false to just get the search results without content
+          }
+        });
+      
+      expect(response.statusCode).toBe(200);
+      expect(response.body).toHaveProperty("success");
+      expect(response.body.success).toBe(true);
+      expect(response.body).toHaveProperty("data");
+      expect(Array.isArray(response.body.data)).toBe(true);
+      
+      // Check if we have at least one result
+      if (response.body.data.length > 0) {
+        const firstResult = response.body.data[0];
+        expect(firstResult).toHaveProperty("url");
+        expect(firstResult).toHaveProperty("title");
+        expect(firstResult).toHaveProperty("description");
+        
+        // Check for news-specific fields
+        expect(firstResult).toHaveProperty("source");
+        expect(firstResult).toHaveProperty("date");
+      }
+    }, 30000); // 30 seconds timeout
   });
 
   describe("GET /v0/crawl/status/:jobId", () => {
