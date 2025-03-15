@@ -1332,12 +1332,14 @@ export default class FirecrawlApp {
     checkInterval: number
   ): Promise<CrawlStatusResponse | ErrorResponse> {
     try {
+      let failedTries = 0;
       while (true) {
         let statusResponse: AxiosResponse = await this.getRequest(
           `${this.apiUrl}/v1/crawl/${id}`,
           headers
         );
         if (statusResponse.status === 200) {
+          failedTries = 0;
           let statusData = statusResponse.data;
             if (statusData.status === "completed") {
               if ("data" in statusData) {
@@ -1369,7 +1371,10 @@ export default class FirecrawlApp {
             );
           }
         } else {
-          this.handleError(statusResponse, "check crawl status");
+          failedTries++;
+          if (failedTries >= 3) {
+            this.handleError(statusResponse, "check crawl status");
+          }
         }
       }
     } catch (error: any) {
