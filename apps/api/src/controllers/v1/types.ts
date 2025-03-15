@@ -114,6 +114,7 @@ export const actionsSchema = z
       z.object({
         type: z.literal("click"),
         selector: z.string(),
+        all: z.boolean().default(false),
       }),
       z.object({
         type: z.literal("screenshot"),
