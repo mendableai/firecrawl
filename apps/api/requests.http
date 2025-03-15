@@ -120,3 +120,18 @@ content-type: application/json
 GET {{baseUrl}}/v1/llmstxt/{{generateLlmsTxtId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
+### News Search Example
+POST http://localhost:3002/v0/search HTTP/1.1
+Authorization: Bearer fc-
+content-type: application/json
+
+{
+  "query": "artificial intelligence",
+  "searchOptions": {
+    "limit": 5,
+    "tbm": "nws",
+    "lang": "en",
+    "country": "us"
+  }
+}
+
