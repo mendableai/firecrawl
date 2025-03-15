@@ -104,6 +104,7 @@ export type Action = {
 } | {
   type: "click",
   selector: string,
+  all?: boolean,
 } | {
   type: "screenshot",
   fullPage?: boolean,
