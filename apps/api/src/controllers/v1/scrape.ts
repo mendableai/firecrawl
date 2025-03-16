@@ -23,6 +23,7 @@ export async function scrapeController(
   const preNormalizedBody = { ...req.body };
  
   logger.debug("Scrape " + jobId + " starting", {
+    scrapeId: jobId,
     request: req.body,
     originalRequest: preNormalizedBody,
     teamId: req.auth.team_id,
