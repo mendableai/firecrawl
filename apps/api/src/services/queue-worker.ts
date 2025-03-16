@@ -924,7 +924,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     }
 
     if (job.data.concurrencyLimited) {
-      doc.warning = "This scrape job was throttled because you reached your concurrency limit. You can upgrade to a higher plan to increase your concurrency limit." + (doc.warning ? " " + doc.warning : "");
+      doc.warning = "This scrape job was throttled at your current concurrency limit. If you'd like to scrape faster, you can upgrade your plan." + (doc.warning ? " " + doc.warning : "");
     }
 
     const data = {
