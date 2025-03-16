@@ -1002,7 +1002,7 @@ export const generateLLMsTextRequestSchema = z.object({
   maxUrls: z
     .number()
     .min(1)
-    .max(100)
+    .max(5000)
     .default(10)
     .describe("Maximum number of URLs to process"),
   showFullText: z
