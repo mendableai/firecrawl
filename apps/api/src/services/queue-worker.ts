@@ -923,6 +923,10 @@ async function processJob(job: Job & { id: string }, token: string) {
       delete doc.rawHtml;
     }
 
+    if (job.data.concurrencyLimited) {
+      doc.warning = "This scrape job was throttled at your current concurrency limit. If you'd like to scrape faster, you can upgrade your plan." + (doc.warning ? " " + doc.warning : "");
+    }
+
     const data = {
       success: true,
       result: {

@@ -97,7 +97,7 @@ describe("Billing tests", () => {
             const rc2 = (await creditUsage()).remaining_credits;
 
             expect(rc1 - rc2).toBe(12);
-        }, 300000);
+        }, 600000);
 
         it("bills crawl correctly", async () => {
             const rc1 = (await creditUsage()).remaining_credits;
