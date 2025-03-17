@@ -14,6 +14,7 @@ interface DeepResearchServiceOptions {
   maxDepth: number;
   maxUrls: number;
   timeLimit: number;
+  analysisPrompt: string;
   subId?: string;
 }
 
@@ -262,6 +263,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       options.query,
       state.getFindings(),
       state.getSummaries(),
+      options.analysisPrompt,
     );
 
     await state.addActivity({
