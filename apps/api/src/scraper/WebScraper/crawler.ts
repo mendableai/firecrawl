@@ -384,7 +384,6 @@ export class WebCrawler {
           await redisConnection.expire(
             "crawl:" + this.jobId + ":robots_blocked",
             24 * 60 * 60,
-            "NX",
           );
         })();
       }
