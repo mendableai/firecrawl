@@ -1644,6 +1644,8 @@ class FirecrawlApp:
         """
         if status_code == 402:
             return f"Payment Required: Failed to {action}. {error_message} - {error_details}"
+        elif status_code == 403:
+            return f"Website Not Supported: Failed to {action}. Please contact help@firecrawl.com to activate"
         elif status_code == 408:
             return f"Request Timeout: Failed to {action} as the request timed out. {error_message} - {error_details}"
         elif status_code == 409:
@@ -2024,6 +2026,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Raises:
             aiohttp.ClientError: With a detailed error message based on the response status:
                 - 402: Payment Required
+                - 403: This website is no longer supported
                 - 408: Request Timeout
                 - 409: Conflict
                 - 500: Internal Server Error
