@@ -1126,7 +1126,7 @@ export default class FirecrawlApp {
   async extract<T extends zt.ZodSchema = any>(urls?: string[], params?: ExtractParams<T>): Promise<ExtractResponse<zt.infer<T>> | ErrorResponse> {
     const headers = this.prepareHeaders();
 
-    let jsonData: { urls?: string[] } & ExtractParams<T> = { urls: urls || [],  ...params };
+    let jsonData: { urls?: string[] } & ExtractParams<T> = { urls: urls,  ...params };
     let jsonSchema: any;
     try {
       if (!params?.schema) {
