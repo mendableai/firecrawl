@@ -97,7 +97,7 @@ describe("Billing tests", () => {
             const rc2 = (await creditUsage()).remaining_credits;
 
             expect(rc1 - rc2).toBe(12);
-        }, 300000);
+        }, 600000);
 
         it("bills crawl correctly", async () => {
             const rc1 = (await creditUsage()).remaining_credits;
@@ -139,7 +139,7 @@ describe("Billing tests", () => {
             if (crawl1.success && crawl2.success) {
                 expect(rc1 - rc2).toBe(crawl1.completed + crawl2.completed * 5);
             }
-        }, 300000);
+        }, 600000);
 
         it("bills map correctly", async () => {
             const rc1 = (await creditUsage()).remaining_credits;

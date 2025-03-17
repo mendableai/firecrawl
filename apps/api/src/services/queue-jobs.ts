@@ -84,6 +84,8 @@ async function addScrapeJobRaw(
       //   logger.error("Error sending notification (concurrency limit reached): ", error);
       // });
     }
+    
+    webScraperOptions.concurrencyLimited = true;
 
     await _addScrapeJobToConcurrencyQueue(
       webScraperOptions,

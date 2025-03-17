@@ -52,7 +52,18 @@ function checkCreditsMiddleware(
       if (chunk) {
         req.acuc = chunk;
       }
+      req.account = { remainingCredits };
       if (!success) {
+        if (!minimum && req.body && (req.body as any).limit !== undefined && remainingCredits > 0) {
+          logger.warn("Adjusting limit to remaining credits", {
+            teamId: req.auth.team_id,
+            remainingCredits,
+            request: req.body,
+          });
+          (req.body as any).limit = remainingCredits;
+          return next();
+        }
+
         const currencyName = req.acuc.is_extract ? "tokens" : "credits"
         logger.error(
           `Insufficient ${currencyName}: ${JSON.stringify({ team_id: req.auth.team_id, minimum, remainingCredits })}`,
@@ -72,7 +83,6 @@ function checkCreditsMiddleware(
           });
         }
       }
-      req.account = { remainingCredits };
       next();
     })().catch((err) => next(err));
   };
