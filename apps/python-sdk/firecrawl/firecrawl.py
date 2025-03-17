@@ -681,6 +681,8 @@ class FirecrawlApp:
             'origin': 'api-sdk'
         }
 
+        if not request_data['urls']:
+            request_data['urls'] = []
         # Only add prompt and systemPrompt if they exist
         if params.get('prompt'):
             request_data['prompt'] = params['prompt']
