@@ -1119,14 +1119,14 @@ export default class FirecrawlApp {
   /**
    * Extracts information from URLs using the Firecrawl API.
    * Currently in Beta. Expect breaking changes on future minor versions.
-   * @param url - The URL to extract information from.
+   * @param urls - The URLs to extract information from. Optional if using other methods for data extraction.
    * @param params - Additional parameters for the extract request.
    * @returns The response from the extract operation.
    */
-  async extract<T extends zt.ZodSchema = any>(urls: string[], params?: ExtractParams<T>): Promise<ExtractResponse<zt.infer<T>> | ErrorResponse> {
+  async extract<T extends zt.ZodSchema = any>(urls?: string[], params?: ExtractParams<T>): Promise<ExtractResponse<zt.infer<T>> | ErrorResponse> {
     const headers = this.prepareHeaders();
 
-    let jsonData: { urls: string[] } & ExtractParams<T> = { urls,  ...params };
+    let jsonData: { urls?: string[] } & ExtractParams<T> = { urls: urls,  ...params };
     let jsonSchema: any;
     try {
       if (!params?.schema) {

@@ -646,12 +646,12 @@ class FirecrawlApp:
         else:
             self._handle_error(response, "check batch scrape errors")
 
-    def extract(self, urls: List[str], params: Optional[ExtractParams] = None) -> Any:
+    def extract(self, urls: Optional[List[str]] = None, params: Optional[ExtractParams] = None) -> Any:
         """
         Extracts information from a URL using the Firecrawl API.
 
         Args:
-            urls (List[str]): The URLs to extract information from.
+            urls (Optional[List[str]]): The URLs to extract information from.
             params (Optional[ExtractParams]): Additional parameters for the extract request.
 
         Returns:
@@ -661,6 +661,9 @@ class FirecrawlApp:
 
         if not params or (not params.get('prompt') and not params.get('schema')):
             raise ValueError("Either prompt or schema is required")
+
+        if not urls and not params.get('prompt'):
+            raise ValueError("Either urls or prompt is required")
 
         schema = params.get('schema')
         if schema:
