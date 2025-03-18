@@ -253,6 +253,7 @@ export class ResearchLLMService {
     topic: string,
     findings: DeepResearchFinding[],
     summaries: string[],
+    analysisPrompt: string,
   ): Promise<string> {
     const { extract } = await generateCompletions({
       logger: this.logger.child({
@@ -265,7 +266,9 @@ export class ResearchLLMService {
           "You are an expert research analyst who creates comprehensive, well-structured reports. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations. Today's date is " +
           new Date().toISOString().split("T")[0],
         prompt: trimToTokenLimit(
-          `Create a comprehensive research report on "${topic}" based on the collected findings and analysis.
+          analysisPrompt
+            ? `${analysisPrompt}\n\nResearch data:\n${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}`
+            : `Create a comprehensive research report on "${topic}" based on the collected findings and analysis.
   
             Research data:
             ${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}
