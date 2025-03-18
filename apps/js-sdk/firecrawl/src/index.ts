@@ -372,6 +372,10 @@ export interface DeepResearchParams {
    */
   maxUrls?: number;
   /**
+   * The prompt to use for the final analysis
+   */
+  analysisPrompt?: string;
+  /**
    * Experimental flag for streaming steps
    */
   __experimental_streamSteps?: boolean;
