@@ -29,6 +29,28 @@ describe("Extract tests", () => {
             expect(typeof res.data.is_open_source).toBe("boolean");
             expect(res.data.is_open_source).toBe(true);
         }, 60000);
+
+        it.concurrent("works with unsupported JSON schema parameters", async () => {
+            const res = await extract({
+                urls: ["https://firecrawl.dev"],
+                schema: {
+                    "type": "object",
+                    "properties": {
+                        "company_name": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9]+$"
+                        },
+                    },
+                    "required": [
+                        "company_name"
+                    ]
+                },
+                origin: "api-sdk",
+            });
+
+            expect(res.data).toHaveProperty("company_name");
+            expect(typeof res.data.company_name).toBe("string")
+        }, 60000);
     } else {
         it.concurrent("dummy test", () => {
             expect(true).toBe(true);

@@ -139,7 +139,7 @@ export async function searchController(
     let limit = req.body.limit;
 
     // Buffer results by 50% to account for filtered URLs
-    const num_results_buffer = Math.floor(limit * 1.5);
+    const num_results_buffer = Math.floor(limit * 2);
 
     let searchResults = await search({
       query: req.body.query,

@@ -104,6 +104,7 @@ export type Action = {
 } | {
   type: "click",
   selector: string,
+  all?: boolean,
 } | {
   type: "screenshot",
   fullPage?: boolean,
@@ -160,6 +161,7 @@ export interface CrawlParams {
   includePaths?: string[];
   excludePaths?: string[];
   maxDepth?: number;
+  maxDiscoveryDepth?: number;
   limit?: number;
   allowBackwardLinks?: boolean;
   allowExternalLinks?: boolean;
@@ -370,6 +372,10 @@ export interface DeepResearchParams {
    * @default 20
    */
   maxUrls?: number;
+  /**
+   * The prompt to use for the final analysis
+   */
+  analysisPrompt?: string;
   /**
    * Experimental flag for streaming steps
    */
@@ -1118,27 +1124,26 @@ export default class FirecrawlApp {
   /**
    * Extracts information from URLs using the Firecrawl API.
    * Currently in Beta. Expect breaking changes on future minor versions.
-   * @param url - The URL to extract information from.
+   * @param urls - The URLs to extract information from. Optional if using other methods for data extraction.
    * @param params - Additional parameters for the extract request.
    * @returns The response from the extract operation.
    */
-  async extract<T extends zt.ZodSchema = any>(urls: string[], params?: ExtractParams<T>): Promise<ExtractResponse<zt.infer<T>> | ErrorResponse> {
+  async extract<T extends zt.ZodSchema = any>(urls?: string[], params?: ExtractParams<T>): Promise<ExtractResponse<zt.infer<T>> | ErrorResponse> {
     const headers = this.prepareHeaders();
 
-    let jsonData: { urls: string[] } & ExtractParams<T> = { urls,  ...params };
+    let jsonData: { urls?: string[] } & ExtractParams<T> = { urls: urls,  ...params };
     let jsonSchema: any;
     try {
       if (!params?.schema) {
         jsonSchema = undefined;
-      } else if (params.schema instanceof zt.ZodType) {
-        jsonSchema = zodToJsonSchema(params.schema);
+      } else if (typeof params.schema === "object" && params.schema !== null && Object.getPrototypeOf(params.schema)?.constructor?.name?.startsWith("Zod")) {
+        jsonSchema = zodToJsonSchema(params.schema as zt.ZodType);
       } else {
         jsonSchema = params.schema;
       }
     } catch (error: any) {
       throw new FirecrawlError("Invalid schema. Schema must be either a valid Zod schema or JSON schema object.", 400);
     }
-
     
     try {
       const response: AxiosResponse = await this.postRequest(
@@ -1332,12 +1337,14 @@ export default class FirecrawlApp {
     checkInterval: number
   ): Promise<CrawlStatusResponse | ErrorResponse> {
     try {
+      let failedTries = 0;
       while (true) {
         let statusResponse: AxiosResponse = await this.getRequest(
           `${this.apiUrl}/v1/crawl/${id}`,
           headers
         );
         if (statusResponse.status === 200) {
+          failedTries = 0;
           let statusData = statusResponse.data;
             if (statusData.status === "completed") {
               if ("data" in statusData) {
@@ -1369,7 +1376,10 @@ export default class FirecrawlApp {
             );
           }
         } else {
-          this.handleError(statusResponse, "check crawl status");
+          failedTries++;
+          if (failedTries >= 3) {
+            this.handleError(statusResponse, "check crawl status");
+          }
         }
       }
     } catch (error: any) {
@@ -1383,7 +1393,7 @@ export default class FirecrawlApp {
    * @param {string} action - The action being performed when the error occurred.
    */
   handleError(response: AxiosResponse, action: string): void {
-    if ([400, 402, 408, 409, 500].includes(response.status)) {
+    if ([400, 402, 403, 408, 409, 500].includes(response.status)) {
       const errorMessage: string =
         response.data.error || "Unknown error occurred";
       const details = response.data.details ? ` - ${JSON.stringify(response.data.details)}` : '';
