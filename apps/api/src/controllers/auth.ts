@@ -100,7 +100,7 @@ export async function getACUC(
       const client =
         Math.random() > (2/3) ? supabase_rr_service : supabase_service;
       ({ data, error } = await client.rpc(
-        "auth_credit_usage_chunk_24_tally",
+        "auth_credit_usage_chunk_25_tally",
         { input_key: api_key, i_is_extract: isExtract, tally_untallied_credits: true },
         { get: true },
       ));
