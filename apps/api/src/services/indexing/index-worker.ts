@@ -156,7 +156,8 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
     const canAcceptConnection = await monitor.acceptConnection();
 
     if (!canAcceptConnection) {
-      logger.info("Cant accept connection");
+      console.log("Can't accept connection due to RAM/CPU load");
+      logger.info("Can't accept connection due to RAM/CPU load");
       cantAcceptConnectionCount++;
 
       if (cantAcceptConnectionCount >= 25) {

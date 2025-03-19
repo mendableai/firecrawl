@@ -41,7 +41,7 @@ export async function extractLinks(html: string, baseUrl: string): Promise<strin
   try {
     return await extractLinksRust(html, baseUrl);
   } catch (error) {
-    logger.error("Failed to call html-transformer! Falling back to cheerio...", {
+    logger.warn("Failed to call html-transformer! Falling back to cheerio...", {
       error,
       module: "scrapeURL", method: "extractLinks"
     });

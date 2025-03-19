@@ -65,7 +65,7 @@ export const htmlTransform = async (
       only_main_content: scrapeOptions.onlyMainContent,
     })
   } catch (error) {
-    logger.error("Failed to call html-transformer! Falling back to cheerio...", {
+    logger.warn("Failed to call html-transformer! Falling back to cheerio...", {
         error,
         module: "scrapeURL", method: "extractLinks"
       });

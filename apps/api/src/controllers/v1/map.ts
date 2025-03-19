@@ -56,6 +56,7 @@ export async function getMapResults({
   allowExternalLinks,
   abort = new AbortController().signal, // noop
   mock,
+  filterByPath = true,
 }: {
   url: string;
   search?: string;
@@ -70,6 +71,7 @@ export async function getMapResults({
   allowExternalLinks?: boolean;
   abort?: AbortSignal;
   mock?: string;
+  filterByPath?: boolean;
 }): Promise<MapResult> {
   const id = uuidv4();
   let links: string[] = [url];
@@ -247,6 +249,29 @@ export async function getMapResults({
       links = links.filter((x) => isSameSubdomain(x, url));
     }
 
+    // Filter by path if enabled
+    if (filterByPath && !allowExternalLinks) {
+      try {
+        const urlObj = new URL(url);
+        const urlPath = urlObj.pathname;
+        // Only apply path filtering if the URL has a significant path (not just '/' or empty)
+        // This means we only filter by path if the user has not selected a root domain
+        if (urlPath && urlPath !== '/' && urlPath.length > 1) {
+          links = links.filter(link => {
+            try {
+              const linkObj = new URL(link);
+              return linkObj.pathname.startsWith(urlPath);
+            } catch (e) {
+              return false;
+            }
+          });
+        }
+      } catch (e) {
+        // If URL parsing fails, continue without path filtering
+        logger.warn(`Failed to parse URL for path filtering: ${url}`, { error: e });
+      }
+    }
+
     // remove duplicates that could be due to http/https or www
     links = removeDuplicateUrls(links);
   }
@@ -300,6 +325,7 @@ export async function mapController(
         plan: req.auth.plan,
         abort: abort.signal,
         mock: req.body.useMock,
+        filterByPath: req.body.filterByPath !== false,
       }),
       ...(req.body.timeout !== undefined ? [
         new Promise((resolve, reject) => setTimeout(() => {

@@ -309,6 +309,7 @@ class DeepResearchParams(pydantic.BaseModel):
     maxDepth: Optional[int] = 7
     timeLimit: Optional[int] = 270
     maxUrls: Optional[int] = 20
+    analysisPrompt: Optional[str] = None
     __experimental_streamSteps: Optional[bool] = None
 
 class DeepResearchResponse(pydantic.BaseModel):
@@ -1126,7 +1127,7 @@ class FirecrawlApp:
 
     def extract(
             self,
-            urls: List[str],
+            urls: Optional[List[str]] = None,
             params: Optional[ExtractParams] = None) -> ExtractResponse[Any]:
         """
         Extract structured information from URLs.
@@ -1164,6 +1165,9 @@ class FirecrawlApp:
         if not params or (not params.get('prompt') and not params.get('schema')):
             raise ValueError("Either prompt or schema is required")
 
+        if not urls and not params.get('prompt'):
+            raise ValueError("Either urls or prompt is required")
+
         schema = params.get('schema')
         if schema:
             if hasattr(schema, 'model_json_schema'):
@@ -1180,6 +1184,8 @@ class FirecrawlApp:
             'origin': f'python-sdk@{get_version()}'
         }
 
+        if not request_data['urls']:
+            request_data['urls'] = []
         # Only add prompt and systemPrompt if they exist
         if params.get('prompt'):
             request_data['prompt'] = params['prompt']
@@ -1669,6 +1675,8 @@ class FirecrawlApp:
         """
         if status_code == 402:
             return f"Payment Required: Failed to {action}. {error_message} - {error_details}"
+        elif status_code == 403:
+            message = f"Website Not Supported: Failed to {action}. {error_message} - {error_details}"
         elif status_code == 408:
             return f"Request Timeout: Failed to {action} as the request timed out. {error_message} - {error_details}"
         elif status_code == 409:
