@@ -92,7 +92,7 @@ Used to crawl a URL and all accessible subpages. This submits a crawl job and re
 ```bash
 curl -X POST https://api.firecrawl.dev/v1/crawl \
     -H 'Content-Type: application/json' \
-    -H 'Authorization: Bearer fc-YOUR_API_KEY' \
+    -H 'Authorization: Bearer YOUR_API_KEY' \
     -d '{
       "url": "https://docs.firecrawl.dev",
       "limit": 10,
