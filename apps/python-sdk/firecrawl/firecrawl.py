@@ -15,12 +15,27 @@ import time
 from typing import Any, Dict, Optional, List, Union, Callable, Literal, TypeVar, Generic
 import json
 from datetime import datetime
+import re
 
 import requests
 import pydantic
 import websockets
 import aiohttp
 import asyncio
+
+def get_version():
+  try:
+      from pathlib import Path
+      package_path = os.path.dirname(__file__)
+      version_file = Path(os.path.join(package_path, '__init__.py')).read_text()
+      version_match = re.search(r"^__version__ = ['\"]([^'\"]*)['\"]", version_file, re.M)
+      if version_match:
+          return version_match.group(1).strip()
+  except Exception:
+      print("Failed to get version from __init__.py")
+      return None
+
+version = get_version()
 
 logger : logging.Logger = logging.getLogger("firecrawl")
 
@@ -424,6 +439,7 @@ class FirecrawlApp:
                 if key not in ['jsonOptions']:
                     scrape_params[key] = value
 
+            scrape_params['origin'] = f"python-sdk@{version}"
 
         endpoint = f'/v1/scrape'
         # Make the POST request with the prepared headers and JSON data
@@ -489,10 +505,13 @@ class FirecrawlApp:
             search_params = params
             search_params.query = query
 
+        params_dict = search_params.dict(exclude_none=True)
+        params_dict['origin'] = f"python-sdk@{version}"
+
         response = requests.post(
             f"{self.api_url}/v1/search",
             headers={"Authorization": f"Bearer {self.api_key}"},
-            json=search_params.dict(exclude_none=True)
+            json=params_dict
         )
 
         if response.status_code != 200:
@@ -548,6 +567,7 @@ class FirecrawlApp:
         json_data = {'url': url}
         if params:
             json_data.update(params)
+        json_data['origin'] = f"python-sdk@{version}"
         response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
         if response.status_code == 200:
             try:
@@ -609,6 +629,7 @@ class FirecrawlApp:
         json_data = {'url': url}
         if params:
             json_data.update(params)
+        json_data['origin'] = f"python-sdk@{version}"
         response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
         if response.status_code == 200:
             try:
@@ -835,6 +856,7 @@ class FirecrawlApp:
         json_data = {'url': url}
         if params:
             json_data.update(params)
+        json_data['origin'] = f"python-sdk@{version}"
 
         # Make the POST request with the prepared headers and JSON data
         response = requests.post(
@@ -897,6 +919,7 @@ class FirecrawlApp:
         json_data = {'urls': urls}
         if params:
             json_data.update(params)
+        json_data['origin'] = f"python-sdk@{version}"
         response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
         if response.status_code == 200:
             try:
@@ -953,6 +976,7 @@ class FirecrawlApp:
         json_data = {'urls': urls}
         if params:
             json_data.update(params)
+        json_data['origin'] = f"python-sdk@{version}"
         response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
         if response.status_code == 200:
             try:
@@ -1153,7 +1177,7 @@ class FirecrawlApp:
             'enableWebSearch': params.get('enable_web_search', params.get('enableWebSearch', False)), 
             'showSources': params.get('show_sources', params.get('showSources', False)),
             'schema': schema,
-            'origin': 'api-sdk'
+            'origin': f'python-sdk@{get_version()}'
         }
 
         # Only add prompt and systemPrompt if they exist
@@ -1284,7 +1308,7 @@ class FirecrawlApp:
             **jsonData,
             'allowExternalLinks': params.get('allow_external_links', False) if params else False,
             'schema': schema,
-            'origin': 'api-sdk'
+            'origin': f'python-sdk@{version}'
         }
 
         try:
@@ -1387,6 +1411,7 @@ class FirecrawlApp:
 
         headers = self._prepare_headers()
         json_data = {'url': url, **generation_params.dict(exclude_none=True)}
+        json_data['origin'] = f"python-sdk@{version}"
 
         try:
             response = self._post_request(f'{self.api_url}/v1/llmstxt', json_data, headers)
@@ -1770,6 +1795,7 @@ class FirecrawlApp:
 
         headers = self._prepare_headers()
         json_data = {'query': query, **research_params.dict(exclude_none=True)}
+        json_data['origin'] = f"python-sdk@{version}"
 
         try:
             response = self._post_request(f'{self.api_url}/v1/deep-research', json_data, headers)
@@ -2178,7 +2204,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             Exception: If scraping fails
         """
         headers = self._prepare_headers()
-        scrape_params = {'url': url}
+        scrape_params = {'url': url, 'origin': f'python-sdk@{version}'}
 
         if params:
             extract = params.get('extract', {})
@@ -2245,6 +2271,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         json_data = {'urls': urls}
         if params:
             json_data.update(params)
+            json_data['origin'] = f"python-sdk@{version}"
 
         endpoint = f'/v1/batch/scrape'
         response = await self._async_post_request(
@@ -2301,6 +2328,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         json_data = {'urls': urls}
         if params:
             json_data.update(params)
+        json_data['origin'] = f"python-sdk@{version}"
 
         endpoint = f'/v1/batch/scrape'
         return await self._async_post_request(
@@ -2355,6 +2383,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         json_data = {'url': url}
         if params:
             json_data.update(params)
+        json_data['origin'] = f"python-sdk@{version}"
 
         endpoint = f'/v1/crawl'
         response = await self._async_post_request(
@@ -2413,6 +2442,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         json_data = {'url': url}
         if params:
             json_data.update(params)
+        json_data['origin'] = f"python-sdk@{version}"
 
         endpoint = f'/v1/crawl'
         return await self._async_post_request(
@@ -2564,6 +2594,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         json_data = {'url': url}
         if params:
             json_data.update(params)
+        json_data['origin'] = f"python-sdk@{version}"
 
         endpoint = f'/v1/map'
         response = await self._async_post_request(
@@ -2628,7 +2659,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             'enableWebSearch': params.get('enable_web_search', params.get('enableWebSearch', False)),
             'showSources': params.get('show_sources', params.get('showSources', False)),
             'schema': schema,
-            'origin': 'api-sdk'
+            'origin': f'python-sdk@{version}'
         }
 
         if params.get('prompt'):
@@ -2876,7 +2907,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             **jsonData,
             'allowExternalLinks': params.get('allow_external_links', False) if params else False,
             'schema': schema,
-            'origin': 'api-sdk'
+            'origin': f'python-sdk@{version}'
         }
 
         try:
@@ -2975,6 +3006,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
         headers = self._prepare_headers()
         json_data = {'url': url, **generation_params.dict(exclude_none=True)}
+        json_data['origin'] = f"python-sdk@{version}"
 
         try:
             return await self._async_post_request(
@@ -3132,7 +3164,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
         headers = self._prepare_headers()
         json_data = {'query': query, **research_params.dict(exclude_none=True)}
-
+        json_data['origin'] = f"python-sdk@{version}"
         try:
             return await self._async_post_request(
                 f'{self.api_url}/v1/deep-research',
@@ -3217,9 +3249,12 @@ class AsyncFirecrawlApp(FirecrawlApp):
             search_params = params
             search_params.query = query
 
+        search_params_dict = search_params.dict(exclude_none=True)
+        search_params_dict['origin'] = f"python-sdk@{version}"
+
         return await self._async_post_request(
             f"{self.api_url}/v1/search",
-            search_params.dict(exclude_none=True),
+            search_params_dict,
             {"Authorization": f"Bearer {self.api_key}"}
         )
 
