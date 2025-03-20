@@ -49,6 +49,7 @@ class DeepResearchParams(pydantic.BaseModel):
     timeLimit: Optional[int] = 270
     maxUrls: Optional[int] = 20
     analysisPrompt: Optional[str] = None
+    systemPrompt: Optional[str] = None
     __experimental_streamSteps: Optional[bool] = None
 
 class DeepResearchResponse(pydantic.BaseModel):

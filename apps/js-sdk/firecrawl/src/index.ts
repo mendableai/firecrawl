@@ -377,6 +377,10 @@ export interface DeepResearchParams {
    */
   analysisPrompt?: string;
   /**
+   * The system prompt to use for the research agent
+   */
+  systemPrompt?: string;
+  /**
    * Experimental flag for streaming steps
    */
   __experimental_streamSteps?: boolean;

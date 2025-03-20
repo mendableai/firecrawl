@@ -11,6 +11,7 @@ export const deepResearchRequestSchema = z.object({
   maxUrls: z.number().min(1).max(1000).default(20).describe('Maximum number of URLs to analyze'),
   timeLimit: z.number().min(30).max(600).default(300).describe('Time limit in seconds'),
   analysisPrompt: z.string().describe('The prompt to use for the final analysis').optional(),
+  systemPrompt: z.string().describe('The system prompt to use for the research agent').optional(),
   // @deprecated Use query instead
   topic: z.string().describe('The topic or question to research').optional(),
 }).refine(data => data.query || data.topic, {

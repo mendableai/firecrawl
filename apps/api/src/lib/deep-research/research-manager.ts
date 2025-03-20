@@ -50,13 +50,13 @@ export class ResearchStateManager {
     return this.seenUrls;
   }
 
-  async addActivity(activity: DeepResearchActivity): Promise<void> {
-    if (activity.status === "complete") {
+  async addActivity(activities: DeepResearchActivity[]): Promise<void> {
+    if (activities.some(activity => activity.status === "complete")) {
       this.completedSteps++;
     }
 
     await updateDeepResearch(this.researchId, {
-      activities: [activity],
+      activities: activities,
       completedSteps: this.completedSteps,
     });
   }
@@ -199,6 +199,7 @@ export class ResearchLLMService {
     findings: DeepResearchFinding[],
     currentTopic: string,
     timeRemaining: number,
+    systemPrompt: string,
   ): Promise<AnalysisResult | null> {
     try {
       const timeRemainingMinutes =
@@ -211,6 +212,7 @@ export class ResearchLLMService {
         options: {
           mode: "llm",
           systemPrompt:
+            systemPrompt +
             "You are an expert research agent that is analyzing findings. Your goal is to synthesize information and identify gaps for further research. Today's date is " +
             new Date().toISOString().split("T")[0],
           schema: {

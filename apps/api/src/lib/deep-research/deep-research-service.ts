@@ -15,6 +15,7 @@ interface DeepResearchServiceOptions {
   maxUrls: number;
   timeLimit: number;
   analysisPrompt: string;
+  systemPrompt: string;
   subId?: string;
 }
 
@@ -54,13 +55,13 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       await state.incrementDepth();
 
       // Search phase
-      await state.addActivity({
+      await state.addActivity([{
         type: "search",
         status: "processing",
         message: `Generating deeper search queries for "${currentTopic}"`,
         timestamp: new Date().toISOString(),
         depth: state.getCurrentDepth(),
-      });
+      }]);
 
       const nextSearchTopic = state.getNextSearchTopic();
       logger.debug("[Deep Research] Next search topic:", { nextSearchTopic });
@@ -74,23 +75,23 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
 
       logger.debug("[Deep Research] Generated search queries:", { searchQueries });
 
-      await state.addActivity({
+      await state.addActivity([{
         type: "search",
         status: "processing",
         message: `Starting ${searchQueries.length} parallel searches for "${currentTopic}"`,
         timestamp: new Date().toISOString(),
         depth: state.getCurrentDepth(),
-      });
+      }]);
+      await state.addActivity(searchQueries.map(searchQuery => ({
+        type: "search",
+        status: "processing", 
+        message: `Searching for "${searchQuery.query}" - Goal: ${searchQuery.researchGoal}`,
+        timestamp: new Date().toISOString(),
+        depth: state.getCurrentDepth(),
+      })))
 
       // Run all searches in parallel
       const searchPromises = searchQueries.map(async (searchQuery) => {
-        await state.addActivity({
-          type: "search",
-          status: "processing",
-          message: `Searching for "${searchQuery.query}" - Goal: ${searchQuery.researchGoal}`,
-          timestamp: new Date().toISOString(),
-          depth: state.getCurrentDepth(),
-        });
 
         const response = await searchAndScrapeSearchResult(searchQuery.query, {
           teamId: options.teamId,
@@ -126,13 +127,13 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
           "[Deep Research] No results found for topic:",
           { currentTopic },
         );
-        await state.addActivity({
+        await state.addActivity([{
           type: "search",
           status: "error",
           message: `No results found for any queries about "${currentTopic}"`,
           timestamp: new Date().toISOString(),
           depth: state.getCurrentDepth(),
-        });
+        }]);
         continue;
       }
 
@@ -163,23 +164,23 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
           "[Deep Research] No new unique results found for topic:",
           { currentTopic },
         );
-        await state.addActivity({
+        await state.addActivity([{
           type: "search",
           status: "error",
           message: `Found ${searchResults.length} results but all URLs were already processed for "${currentTopic}"`,
           timestamp: new Date().toISOString(),
           depth: state.getCurrentDepth(),
-        });
+        }]);
         continue;
       }
 
-      await state.addActivity({
+      await state.addActivity([{
         type: "search",
         status: "complete",
         message: `Found ${newSearchResults.length} new relevant results across ${searchQueries.length} parallel queries`,
         timestamp: new Date().toISOString(),
         depth: state.getCurrentDepth(),
-      });
+      }]);
 
       await state.addFindings(
         newSearchResults.map((result) => ({
@@ -189,13 +190,13 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       );
 
       // Analysis phase
-      await state.addActivity({
+      await state.addActivity([{
         type: "analyze",
         status: "processing",
         message: "Analyzing findings and planning next steps",
         timestamp: new Date().toISOString(),
         depth: state.getCurrentDepth(),
-      });
+      }]);
 
       const timeRemaining = timeLimit * 1000 - (Date.now() - startTime);
       logger.debug("[Deep Research] Time remaining (ms):", { timeRemaining });
@@ -204,17 +205,18 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         state.getFindings(),
         currentTopic,
         timeRemaining,
+        options.systemPrompt ?? "",
       );
 
       if (!analysis) {
         logger.debug("[Deep Research] Analysis failed");
-        await state.addActivity({
+        await state.addActivity([{
           type: "analyze",
           status: "error",
           message: "Failed to analyze findings",
           timestamp: new Date().toISOString(),
           depth: state.getCurrentDepth(),
-        });
+        }]);
 
         state.incrementFailedAttempts();
         if (state.hasReachedMaxFailedAttempts()) {
@@ -232,13 +234,13 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
 
       state.setNextSearchTopic(analysis.nextSearchTopic || "");
 
-      await state.addActivity({
+      await state.addActivity([{
         type: "analyze",
         status: "complete",
         message: "Analyzed findings",
         timestamp: new Date().toISOString(),
         depth: state.getCurrentDepth(),
-      });
+      }]);
 
       if (!analysis.shouldContinue || analysis.gaps.length === 0) {
         logger.debug("[Deep Research] No more gaps to research, ending search");
@@ -251,13 +253,13 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
 
     // Final synthesis
     logger.debug("[Deep Research] Starting final synthesis");
-    await state.addActivity({
+    await state.addActivity([{
       type: "synthesis",
       status: "processing",
       message: "Preparing final analysis",
       timestamp: new Date().toISOString(),
       depth: state.getCurrentDepth(),
-    });
+    }]);
 
     const finalAnalysis = await llmService.generateFinalAnalysis(
       options.query,
@@ -266,13 +268,13 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       options.analysisPrompt,
     );
 
-    await state.addActivity({
+    await state.addActivity([{
       type: "synthesis",
       status: "complete",
       message: "Research completed",
       timestamp: new Date().toISOString(),
       depth: state.getCurrentDepth(),
-    });
+    }]);
 
     const progress = state.getProgress();
     logger.debug("[Deep Research] Research completed successfully");
