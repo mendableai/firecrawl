@@ -34,6 +34,7 @@ import { generateLLMsTextStatusController } from "../controllers/v1/generate-llm
 import { deepResearchController } from "../controllers/v1/deep-research";
 import { deepResearchStatusController } from "../controllers/v1/deep-research-status";
 import { tokenUsageController } from "../controllers/v1/token-usage";
+import { extractRerankOnlyController } from "../controllers/v1/extract-rerank-only";
 
 function checkCreditsMiddleware(
   minimum?: number,
@@ -247,6 +248,13 @@ v1Router.post(
   authMiddleware(RateLimiterMode.Extract),
   checkCreditsMiddleware(1),
   wrap(extractController),
+);
+
+v1Router.post(
+  "/extract-rerank-only",
+  authMiddleware(RateLimiterMode.Extract),
+  checkCreditsMiddleware(1),
+  wrap(extractRerankOnlyController),
 );
 
 v1Router.get(

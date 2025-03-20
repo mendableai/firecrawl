@@ -67,27 +67,47 @@ content-type: application/json
 
 ### Extract Firecrawl Title
 # @name extractFirecrawl
-POST {{baseUrl}}/v1/extract HTTP/1.1
+POST {{baseUrl}}/v1/extract-rerank-only HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
   "urls": [
-    "https://firecrawl.dev/blog"
+    "https://sephora.com/shop/fragrances-for-men",
+    "https://sephora.com/*"
   ],
   "origin": "api-sdk",
-  "prompt": "Extract all the blog titles from the page, is multity entity = true",
+  "prompt": "extract metadata (such as the brand name, perfume product name, fragrance family, scent type, key notes, and ingredients) for all perfume products for men.",
   "schema": {
     "type": "object",
     "properties": {
-      "blog_titles": {
+      "products": {
         "type": "array",
         "items": {
-          "type": "string"
+          "type": "object",
+          "properties": {
+            "key_notes": {
+              "type": "string"
+            },
+            "brand_name": {
+              "type": "string"
+            },
+            "scent_type": {
+              "type": "string"
+            },
+            "ingredients": {
+              "type": "string"
+            },
+            "fragrance_family": {
+              "type": "string"
+            },
+            "perfume_product_name": {
+              "type": "string"
+            }
+          }
         }
       }
-    },
-    "required": ["blog_titles"]
+    }
   }
 }
 
