@@ -314,7 +314,7 @@ export function getConcurrencyLimitMax(
     return CONCURRENCY_LIMIT.etier1a;
   }
 
-  if (teamId && teamId === process.env.ETIER2A_TEAM_ID) {
+  if (teamId && (teamId === process.env.ETIER2A_TEAM_ID || teamId === process.env.ETIER2A_TEAM_ID_B)) {
     return CONCURRENCY_LIMIT.etier2a;
   }
 
