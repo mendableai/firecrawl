@@ -280,7 +280,7 @@ export function getRateLimiter(
     return etier1aRateLimiter;
   }
 
-  if (teamId && teamId === process.env.ETIER2A_TEAM_ID) {
+  if (teamId && (teamId === process.env.ETIER2A_TEAM_ID || teamId === process.env.ETIER2A_TEAM_ID_B)) {
     return etier2aRateLimiter;
   }
 
