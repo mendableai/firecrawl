@@ -5,6 +5,7 @@ import { searchAndScrapeSearchResult } from "../../controllers/v1/search";
 import { ResearchLLMService, ResearchStateManager } from "./research-manager";
 import { logJob } from "../../services/logging/log_job";
 import { billTeam } from "../../services/billing/credit_billing";
+import { ExtractOptions } from "../../controllers/v1/types";
 
 interface DeepResearchServiceOptions {
   researchId: string;
@@ -16,6 +17,8 @@ interface DeepResearchServiceOptions {
   timeLimit: number;
   analysisPrompt: string;
   systemPrompt: string;
+  formats: string[];
+  jsonOptions: ExtractOptions;
   subId?: string;
 }
 
@@ -261,12 +264,26 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       depth: state.getCurrentDepth(),
     }]);
 
-    const finalAnalysis = await llmService.generateFinalAnalysis(
-      options.query,
-      state.getFindings(),
-      state.getSummaries(),
-      options.analysisPrompt,
-    );
+    let finalAnalysis = "";
+    let finalAnalysisJson = null;
+    if(options.formats.includes('json')) {
+      finalAnalysisJson = await llmService.generateFinalAnalysis(
+        options.query,
+        state.getFindings(),
+        state.getSummaries(),
+        options.analysisPrompt,
+        options.formats,
+        options.jsonOptions,
+      );
+    }
+    if(options.formats.includes('markdown')) {
+      finalAnalysis = await llmService.generateFinalAnalysis(
+        options.query,
+        state.getFindings(),
+        state.getSummaries(),
+        options.analysisPrompt,
+      );
+    }
 
     await state.addActivity([{
       type: "synthesis",
@@ -285,7 +302,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       success: true,
       message: "Research completed",
       num_docs: 1,
-      docs: [{ finalAnalysis: finalAnalysis, sources: state.getSources() }],
+      docs: [{ finalAnalysis: finalAnalysis, sources: state.getSources(), json: finalAnalysisJson }],
       time_taken: (Date.now() - startTime) / 1000,
       team_id: teamId,
       mode: "deep-research",
@@ -298,6 +315,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
     await updateDeepResearch(researchId, {
       status: "completed",
       finalAnalysis: finalAnalysis,
+      json: finalAnalysisJson,
     });
     // Bill team for usage based on URLs analyzed
     billTeam(teamId, subId, Math.min(urlsAnalyzed, options.maxUrls), logger).catch(
@@ -312,6 +330,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       data: {
         finalAnalysis: finalAnalysis,
         sources: state.getSources(),
+        json: finalAnalysisJson,
       },
     };
   } catch (error: any) {
