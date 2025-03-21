@@ -20,6 +20,14 @@ x-common-env: &common-env
   REDIS_RATE_LIMIT_URL: ${REDIS_URL:-redis://redis:6379}
   PLAYWRIGHT_MICROSERVICE_URL: ${PLAYWRIGHT_MICROSERVICE_URL:-http://playwright-service:3000/scrape}
   USE_DB_AUTHENTICATION: ${USE_DB_AUTHENTICATION}
+  USE_SELF_HOSTED_STORAGE: ${USE_SELF_HOSTED_STORAGE:-true}
+  MINIO_ENDPOINT: ${MINIO_ENDPOINT:-minio}
+  MINIO_PORT: ${MINIO_PORT:-9000}
+  MINIO_PUBLIC_ENDPOINT: ${MINIO_PUBLIC_ENDPOINT:-localhost}
+  MINIO_PUBLIC_PORT: ${MINIO_PUBLIC_PORT:-9000}
+  MINIO_ACCESS_KEY: ${MINIO_ACCESS_KEY:-minioadmin}
+  MINIO_SECRET_KEY: ${MINIO_SECRET_KEY:-minioadmin}
+  MINIO_USE_SSL: ${MINIO_USE_SSL:-false}
   OPENAI_API_KEY: ${OPENAI_API_KEY}
   OPENAI_BASE_URL: ${OPENAI_BASE_URL}
   MODEL_NAME: ${MODEL_NAME}
@@ -67,6 +75,7 @@ services:
     depends_on:
       - redis
       - playwright-service
+      - minio
     ports:
       - "${PORT:-3002}:${INTERNAL_PORT:-3002}"
     command: [ "pnpm", "run", "start:production" ]
@@ -80,6 +89,7 @@ services:
       - redis
       - playwright-service
       - api
+      - minio
     command: [ "pnpm", "run", "workers" ]
 
   redis:
@@ -93,6 +103,29 @@ services:
       - backend
     command: redis-server --bind 0.0.0.0
 
+  minio:
+    image: minio/minio:latest
+    ports:
+      - "${MINIO_PUBLIC_PORT:-9000}:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-minioadmin}
+      MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-minioadmin}
+    volumes:
+      - minio-data:/data
+    networks:
+      - backend
+    command: server /data --console-address ":9001"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 20s
+      retries: 3
+
 networks:
   backend:
     driver: bridge
+
+volumes:
+  minio-data:
+    driver: local
