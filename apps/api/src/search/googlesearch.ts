@@ -3,6 +3,7 @@ import { JSDOM } from 'jsdom';
 import { SearchResult } from "../../src/lib/entities";
 import { logger } from "../../src/lib/logger";
 import https from 'https';
+import * as cheerio from 'cheerio';
 
 const getRandomInt = (min: number, max: number): number => Math.floor(Math.random() * (max - min + 1)) + min;
 
@@ -24,8 +25,9 @@ async function _req(
   timeout: number,
   tbs: string | undefined = undefined,
   filter: string | undefined = undefined,
+  tbm: string | undefined = undefined,
 ) {
-  const params = {
+  const params: any = {
     q: term,
     num: results+2, // Number of results to return
     hl: lang,
@@ -38,6 +40,9 @@ async function _req(
   }
   if (filter) {
     params["filter"] = filter;
+  }
+  if (tbm) {
+    params["tbm"] = tbm;
   }
   var agent = get_useragent();
   try {
@@ -71,13 +76,14 @@ export async function googleSearch(
   term: string,
   advanced = false,
   num_results = 7,
-  tbs = undefined as string | undefined,
-  filter = undefined as string | undefined,
+  tbs: string | undefined = undefined,
+  filter: string | undefined = undefined,
   lang = "en",
   country = "us",
-  proxy = undefined as string | undefined,
+  proxy: string | undefined = undefined,
   sleep_interval = 0,
   timeout = 5000,
+  tbm: string | undefined = undefined,
 ): Promise<SearchResult[]> {
   let proxies: any = null;
   if (proxy) {
@@ -106,41 +112,72 @@ export async function googleSearch(
         timeout,
         tbs,
         filter,
+        tbm,
       );
-      const dom = new JSDOM(resp.data);
-      const document = dom.window.document;
-      const result_block = document.querySelectorAll("div.ezO2md");
-      let new_results = 0;
-      let unique = true;
-      let fetched_results = 0;
 
-      const fetched_links = new Set<string>();
-      if (result_block.length === 0) {
-        start += 1;
-        attempts += 1;
+      if (tbm === 'nws') {
+        // Use cheerio for news search results
+        const $ = cheerio.load(resp.data);
+        const result_block = $("div[data-news-cluster-id]");
+        
+        if (result_block.length === 0) {
+          start += 1;
+          attempts += 1;
+        } else {
+          attempts = 0; // Reset attempts if we have results
+        }
+        
+        result_block.each((index, element) => {
+          const $element = $(element);
+          const linkElement = $element.find("a").first();
+          const link = linkElement.attr("href");
+          const title = $element.find("div[role='heading']").text().trim();
+          const description = $element.find("div").filter((i, el) => $(el).text().length > 100).first().text().trim();
+          const source = $element.find("div").filter((i, el) => $(el).find("g-img").length > 0).text().trim();
+          const date = $element.find("div").filter((i, el) => $(el).text().includes("Il y a")).text().trim();
+
+          if (link && title && description) {
+            start += 1;
+            results.push(new SearchResult(link, title, description, source, date));
+          }
+        });
       } else {
-        attempts = 0;
-      }
+        // Use JSDOM for regular search results
+        const dom = new JSDOM(resp.data);
+        const document = dom.window.document;
+        const result_block = document.querySelectorAll("div.ezO2md");
+        let new_results = 0;
+        let unique = true;
+        let fetched_results = 0;
 
-      for (const result of result_block) {
+        const fetched_links = new Set<string>();
+        if (result_block.length === 0) {
+          start += 1;
+          attempts += 1;
+        } else {
+          attempts = 0;
+        }
+
+        for (const result of result_block) {
           const link_tag = result.querySelector("a[href]") as HTMLAnchorElement;
           const title_tag = link_tag ? link_tag.querySelector("span.CVA68e") : null;
           const description_tag = result.querySelector("span.FrIlee");
 
           if (link_tag && title_tag && description_tag) {
-              const link = decodeURIComponent(link_tag.href.split("&")[0].replace("/url?q=", ""));
-              if (fetched_links.has(link) && unique) continue;
-              fetched_links.add(link);
-              const title = title_tag.textContent || "";
-              const description = description_tag.textContent || "";
-              fetched_results++;
-              new_results++;
-              if (link && title && description) {
-                start += 1
-                  results.push(new SearchResult(link, title, description));
-              }
-              if (fetched_results >= num_results) break;
+            const link = decodeURIComponent(link_tag.href.split("&")[0].replace("/url?q=", ""));
+            if (fetched_links.has(link) && unique) continue;
+            fetched_links.add(link);
+            const title = title_tag.textContent || "";
+            const description = description_tag.textContent || "";
+            fetched_results++;
+            new_results++;
+            if (link && title && description) {
+              start += 1
+              results.push(new SearchResult(link, title, description));
+            }
+            if (fetched_results >= num_results) break;
           }
+        }
       }
 
       await new Promise((resolve) =>
