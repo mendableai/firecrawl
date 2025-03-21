@@ -356,7 +356,7 @@ export interface CrawlErrorsResponse {
  * Parameters for deep research operations.
  * Defines options for conducting deep research on a query.
  */
-export interface DeepResearchParams {
+export interface DeepResearchParams<LLMSchema extends zt.ZodSchema = any>  {
   /**
    * Maximum depth of research iterations (1-10)
    * @default 7
@@ -377,9 +377,25 @@ export interface DeepResearchParams {
    */
   analysisPrompt?: string;
   /**
+   * The system prompt to use for the research agent
+   */
+  systemPrompt?: string;
+  /**
+   * The formats to use for the final analysis
+   */
+  formats?: ("markdown" | "json")[];
+  /**
+   * The JSON options to use for the final analysis
+   */
+  jsonOptions?:{
+    prompt?: string;
+    schema?: LLMSchema;
+    systemPrompt?: string;
+  };
+  /** 
    * Experimental flag for streaming steps
    */
-  __experimental_streamSteps?: boolean;
+  // __experimental_streamSteps?: boolean;
 }
 
 /**
@@ -1420,7 +1436,7 @@ export default class FirecrawlApp {
    */
   async deepResearch(
     query: string, 
-    params: DeepResearchParams,
+    params: DeepResearchParams<zt.ZodSchema>,
     onActivity?: (activity: {
       type: string;
       status: string;
@@ -1505,12 +1521,31 @@ export default class FirecrawlApp {
    * @param params - Parameters for the deep research operation.
    * @returns The response containing the research job ID.
    */
-  async asyncDeepResearch(query: string, params: DeepResearchParams): Promise<DeepResearchResponse | ErrorResponse> {
+  async asyncDeepResearch(query: string, params: DeepResearchParams<zt.ZodSchema>): Promise<DeepResearchResponse | ErrorResponse> {
     const headers = this.prepareHeaders();
+    let jsonData: any = { query, ...params };
+
+    if (jsonData?.jsonOptions?.schema) {
+      let schema = jsonData.jsonOptions.schema;
+      // Try parsing the schema as a Zod schema
+      try {
+        schema = zodToJsonSchema(schema);
+      } catch (error) {
+        
+      }
+      jsonData = {
+        ...jsonData,
+        jsonOptions: {
+          ...jsonData.jsonOptions,
+          schema: schema,
+        },
+      };
+    }
+
     try {
       const response: AxiosResponse = await this.postRequest(
         `${this.apiUrl}/v1/deep-research`,
-        { query, ...params },
+        jsonData,
         headers
       );
 

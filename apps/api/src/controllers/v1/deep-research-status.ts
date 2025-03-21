@@ -37,6 +37,7 @@ export async function deepResearchStatusController(
       finalAnalysis: research.finalAnalysis,
       sources: research.sources,
       activities: research.activities,
+      json: research.json,
       // completedSteps: research.completedSteps,
       // totalSteps: research.totalExpectedSteps,
     },

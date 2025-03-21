@@ -413,6 +413,9 @@ const processDeepResearchJobInternal = async (
       subId: job.data.subId,
       maxUrls: job.data.request.maxUrls,
       analysisPrompt: job.data.request.analysisPrompt,
+      systemPrompt: job.data.request.systemPrompt,
+      formats: job.data.request.formats,
+      jsonOptions: job.data.request.jsonOptions,
     });  
     
     if(result.success) {
