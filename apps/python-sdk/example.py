@@ -47,7 +47,7 @@ while attempts > 0 and crawl_status['status'] != 'completed':
     attempts -= 1
     time.sleep(1)
 
-crawl_status = app.get_crawl_status(async_result['id'])
+crawl_status = app.check_crawl_status(async_result['id'])
 print(crawl_status)
 
 # LLM Extraction:
