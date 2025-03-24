@@ -6,7 +6,7 @@ import {
   updateDeepResearch,
 } from "./deep-research-redis";
 import { generateCompletions, trimToTokenLimit } from "../../scraper/scrapeURL/transformers/llmExtract";
-
+import { ExtractOptions } from "../../controllers/v1/types";
 interface AnalysisResult {
   gaps: string[];
   nextSteps: string[];
@@ -50,13 +50,13 @@ export class ResearchStateManager {
     return this.seenUrls;
   }
 
-  async addActivity(activity: DeepResearchActivity): Promise<void> {
-    if (activity.status === "complete") {
+  async addActivity(activities: DeepResearchActivity[]): Promise<void> {
+    if (activities.some(activity => activity.status === "complete")) {
       this.completedSteps++;
     }
 
     await updateDeepResearch(this.researchId, {
-      activities: [activity],
+      activities: activities,
       completedSteps: this.completedSteps,
     });
   }
@@ -199,6 +199,7 @@ export class ResearchLLMService {
     findings: DeepResearchFinding[],
     currentTopic: string,
     timeRemaining: number,
+    systemPrompt: string,
   ): Promise<AnalysisResult | null> {
     try {
       const timeRemainingMinutes =
@@ -211,6 +212,7 @@ export class ResearchLLMService {
         options: {
           mode: "llm",
           systemPrompt:
+            systemPrompt +
             "You are an expert research agent that is analyzing findings. Your goal is to synthesize information and identify gaps for further research. Today's date is " +
             new Date().toISOString().split("T")[0],
           schema: {
@@ -254,33 +256,48 @@ export class ResearchLLMService {
     findings: DeepResearchFinding[],
     summaries: string[],
     analysisPrompt: string,
-  ): Promise<string> {
+    formats?: string[],
+    jsonOptions?: ExtractOptions,
+  ): Promise<any> {
+    if(!formats) {
+      formats = ['markdown'];
+    }
+    if(!jsonOptions) {
+      jsonOptions = undefined;
+    }
+    
     const { extract } = await generateCompletions({
       logger: this.logger.child({
         method: "generateFinalAnalysis",
       }),
-      mode: "no-object",
+      mode: formats.includes('json') ? 'object' : 'no-object',
       options: {
         mode: "llm",
-        systemPrompt:
-          "You are an expert research analyst who creates comprehensive, well-structured reports. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations. Today's date is " +
-          new Date().toISOString().split("T")[0],
+        ...(formats.includes('json') && {
+          ...jsonOptions
+        }),
+        systemPrompt: formats.includes('json') 
+          ? "You are an expert research analyst who creates comprehensive, structured analysis following the provided JSON schema exactly."
+          : "You are an expert research analyst who creates comprehensive, well-structured reports. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations. Today's date is " +
+            new Date().toISOString().split("T")[0],
         prompt: trimToTokenLimit(
           analysisPrompt
             ? `${analysisPrompt}\n\nResearch data:\n${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}`
-            : `Create a comprehensive research report on "${topic}" based on the collected findings and analysis.
+            : formats.includes('json')
+              ? `Analyze the following research data on "${topic}" and structure the output according to the provided schema: Schema: ${JSON.stringify(jsonOptions?.schema)}\n\nFindings:\n\n${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}`
+              : `Create a comprehensive research report on "${topic}" based on the collected findings and analysis.
   
-            Research data:
-            ${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}
-  
-            Requirements:
-            - Format the report in Markdown with proper headers and sections
-            - Include specific citations to sources where appropriate
-            - Provide detailed analysis in each section
-            - Make it comprehensive and thorough (aim for 4+ pages worth of content)
-            - Include all relevant findings and insights from the research
-            - Cite sources
-            - Use bullet points and lists where appropriate for readability`,
+                Research data:
+                ${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}
+    
+                Requirements:
+                - Format the report in Markdown with proper headers and sections
+                - Include specific citations to sources where appropriate
+                - Provide detailed analysis in each section
+                - Make it comprehensive and thorough (aim for 4+ pages worth of content)
+                - Include all relevant findings and insights from the research
+                - Cite sources
+                - Use bullet points and lists where appropriate for readability`,
           100000,
         ).text,
       },

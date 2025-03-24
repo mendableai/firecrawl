@@ -49,6 +49,7 @@ class DeepResearchParams(pydantic.BaseModel):
     timeLimit: Optional[int] = 270
     maxUrls: Optional[int] = 20
     analysisPrompt: Optional[str] = None
+    systemPrompt: Optional[str] = None
     __experimental_streamSteps: Optional[bool] = None
 
 class DeepResearchResponse(pydantic.BaseModel):
@@ -1171,7 +1172,6 @@ class FirecrawlApp:
             time.sleep(2)  # Polling interval
 
         return {'success': False, 'error': 'Deep research job terminated unexpectedly'}
-
     def async_deep_research(self, query: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None) -> Dict[str, Any]:
         """
         Initiates an asynchronous deep research operation.
@@ -1195,7 +1195,14 @@ class FirecrawlApp:
             research_params = params
 
         headers = self._prepare_headers()
+        
         json_data = {'query': query, **research_params.dict(exclude_none=True)}
+
+        # Handle json options schema if present
+        if 'jsonOptions' in json_data:
+            json_opts = json_data['jsonOptions']
+            if json_opts and 'schema' in json_opts and hasattr(json_opts['schema'], 'schema'):
+                json_data['jsonOptions']['schema'] = json_opts['schema'].schema()
 
         try:
             response = self._post_request(f'{self.api_url}/v1/deep-research', json_data, headers)

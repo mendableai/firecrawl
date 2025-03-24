@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { RequestWithAuth } from "./types";
+import { extractOptions, RequestWithAuth } from "./types";
 import { getDeepResearchQueue } from "../../services/queue-service";
 import * as Sentry from "@sentry/node";
 import { saveDeepResearch } from "../../lib/deep-research/deep-research-redis";
@@ -11,10 +11,19 @@ export const deepResearchRequestSchema = z.object({
   maxUrls: z.number().min(1).max(1000).default(20).describe('Maximum number of URLs to analyze'),
   timeLimit: z.number().min(30).max(600).default(300).describe('Time limit in seconds'),
   analysisPrompt: z.string().describe('The prompt to use for the final analysis').optional(),
+  systemPrompt: z.string().describe('The system prompt to use for the research agent').optional(),
+  formats: z.array(z.enum(['markdown', 'json'])).default(['markdown']),
   // @deprecated Use query instead
   topic: z.string().describe('The topic or question to research').optional(),
+  jsonOptions: extractOptions.optional(),
 }).refine(data => data.query || data.topic, {
   message: "Either query or topic must be provided"
+}).refine((obj) => {
+  const hasJsonFormat = obj.formats?.includes("json");
+  const hasJsonOptions = obj.jsonOptions !== undefined;
+  return (hasJsonFormat && hasJsonOptions) || (!hasJsonFormat && !hasJsonOptions);
+}, {
+  message: "When 'json' format is specified, jsonOptions must be provided, and vice versa"
 }).transform(data => ({
   ...data,
   query: data.topic || data.query // Use topic as query if provided
