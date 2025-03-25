@@ -1,36 +1,39 @@
-import { supabase_rr_service } from "../../../services/supabase";
+import { supabase_rr_service, supabase_service } from "../../../services/supabase";
 import { Document } from "../../../controllers/v1/types";
 import { Meta } from "../index";
 
 export async function deriveDiff(meta: Meta, document: Document): Promise<Document> {
   if (meta.options.formats.includes("diff")) {
-    const { data, error } = await supabase_rr_service
-        .from("firecrawl_jobs")
-        .select()
-        .eq("team_id", meta.internalOptions.teamId)
-        .eq("url", document.metadata.url ?? document.metadata.sourceURL ?? meta.url)
-        .contains("page_options->>'formats'", "markdown")
-        .order("date_added", { ascending: false })
-        .limit(1)
-        .single();
+    const res = await supabase_service
+        .rpc("diff_get_last_scrape_1", {
+            i_team_id: meta.internalOptions.teamId,
+            i_url: document.metadata.sourceURL ?? meta.url,
+        });
 
-    if (data) {
-        const previousMarkdown = data.docs[0].markdown;
+    const data: {
+        o_docs: Document[],
+        o_date_added: string,
+    } | undefined | null = res.data[0] as any;
+
+    if (data && data.o_docs.length > 0) {
+        const previousMarkdown = data.o_docs[0].markdown!;
         const currentMarkdown = document.markdown!;
 
+        const transformer = (x: string) => [...x.replace(/\s+/g, "").replace(/\[iframe\]\(.+?\)/g, "")].sort().join("");
+
         document.diff = {
-            previousScrapeAt: data.date_added,
-            changeStatus: previousMarkdown.replace(/\s+/g, "") === currentMarkdown.replace(/\s+/g, "") ? "same" : "changed",
+            previousScrapeAt: data.o_date_added,
+            changeStatus: transformer(previousMarkdown) === transformer(currentMarkdown) ? "same" : "changed",
             visibility: "visible",
         }
-    } else if (!error) {
+    } else if (!res.error) {
         document.diff = {
             previousScrapeAt: null,
             changeStatus: "new",
             visibility: "visible",
         }
     } else {
-        meta.logger.error("Error fetching previous scrape", { error });
+        meta.logger.error("Error fetching previous scrape", { error: res.error });
         document.warning = "Diffing failed, please try again later." + (document.warning ? ` ${document.warning}` : "");
     }
   }
