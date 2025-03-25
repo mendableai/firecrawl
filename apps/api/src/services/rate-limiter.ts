@@ -241,6 +241,7 @@ const testSuiteTokens = [
 ];
 
 const manual = ["69be9e74-7624-4990-b20d-08e0acc70cf6"];
+const manual_etier2c = ["77545e01-9cec-4fa9-8356-883fc66ac13e"];
 
 function makePlanKey(plan?: string) {
   return plan ? plan.replace("-", "") : "default"; // "default"
@@ -288,7 +289,7 @@ export function getRateLimiter(
     return etier2aRateLimiter;
   }
 
-  if (teamId && manual.includes(teamId)) {
+  if (teamId && (manual.includes(teamId) || manual_etier2c.includes(teamId))) {
     return manualRateLimiter;
   }
 
@@ -324,6 +325,10 @@ export function getConcurrencyLimitMax(
 
   if (teamId && manual.includes(teamId)) {
     return CONCURRENCY_LIMIT.manual;
+  }
+
+  if (teamId && manual_etier2c.includes(teamId)) {
+    return CONCURRENCY_LIMIT.etier2c;
   }
 
   return CONCURRENCY_LIMIT[plan] ?? 10;
