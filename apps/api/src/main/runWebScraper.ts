@@ -97,6 +97,7 @@ export async function runWebScraper({
       response = await scrapeURL(bull_job_id, url, scrapeOptions, {
         priority,
         ...internalOptions,
+        teamId: internalOptions?.teamId ?? team_id,
       });
       if (!response.success) {
         if (response.error instanceof Error) {

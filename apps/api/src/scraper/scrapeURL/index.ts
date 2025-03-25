@@ -173,6 +173,7 @@ export type InternalOptions = {
   isBackgroundIndex?: boolean;
   fromCache?: boolean; // Indicates if the document was retrieved from cache
   abort?: AbortSignal;
+  teamId: string;
 };
 
 export type EngineResultsTracker = {
@@ -383,7 +384,7 @@ export async function scrapeURL(
   id: string,
   url: string,
   options: ScrapeOptions,
-  internalOptions: InternalOptions = {},
+  internalOptions: InternalOptions,
 ): Promise<ScrapeUrlResponse> {
   const meta = await buildMetaObject(id, url, options, internalOptions);
   try {
