@@ -31,7 +31,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-basic",
         "https://www.roastmywebsite.ai/",
         scrapeOptions.parse({}),
-        { forceEngine },
+        { forceEngine, teamId: "test" },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -78,7 +78,7 @@ describe("Standalone scrapeURL tests", () => {
         scrapeOptions.parse({
           formats: ["markdown", "html"],
         }),
-        { forceEngine },
+        { forceEngine, teamId: "test" },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -102,7 +102,7 @@ describe("Standalone scrapeURL tests", () => {
         scrapeOptions.parse({
           onlyMainContent: false,
         }),
-        { forceEngine },
+        { forceEngine, teamId: "test" },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -125,7 +125,7 @@ describe("Standalone scrapeURL tests", () => {
           onlyMainContent: false,
           excludeTags: [".nav", "#footer", "strong"],
         }),
-        { forceEngine },
+        { forceEngine, teamId: "test" },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -145,7 +145,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-400",
         "https://httpstat.us/400",
         scrapeOptions.parse({}),
-        { forceEngine },
+        { forceEngine, teamId: "test" },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -163,7 +163,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-401",
         "https://httpstat.us/401",
         scrapeOptions.parse({}),
-        { forceEngine },
+        { forceEngine, teamId: "test" },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -181,7 +181,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-403",
         "https://httpstat.us/403",
         scrapeOptions.parse({}),
-        { forceEngine },
+        { forceEngine, teamId: "test" },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -199,7 +199,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-404",
         "https://httpstat.us/404",
         scrapeOptions.parse({}),
-        { forceEngine },
+        { forceEngine, teamId: "test" },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -217,7 +217,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-405",
         "https://httpstat.us/405",
         scrapeOptions.parse({}),
-        { forceEngine },
+        { forceEngine, teamId: "test" },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -235,7 +235,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-500",
         "https://httpstat.us/500",
         scrapeOptions.parse({}),
-        { forceEngine },
+        { forceEngine, teamId: "test" },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -253,7 +253,7 @@ describe("Standalone scrapeURL tests", () => {
         "test:scrape-redirect",
         "https://scrapethissite.com/",
         scrapeOptions.parse({}),
-        { forceEngine },
+        { forceEngine, teamId: "test" },
       );
 
       // expect(out.logs.length).toBeGreaterThan(0);
@@ -285,7 +285,7 @@ describe("Standalone scrapeURL tests", () => {
           scrapeOptions.parse({
             formats: ["screenshot"],
           }),
-          { forceEngine },
+          { forceEngine, teamId: "test" },
         );
 
         // expect(out.logs.length).toBeGreaterThan(0);
@@ -313,7 +313,7 @@ describe("Standalone scrapeURL tests", () => {
           scrapeOptions.parse({
             formats: ["screenshot@fullPage"],
           }),
-          { forceEngine },
+          { forceEngine, teamId: "test" },
         );
 
         // expect(out.logs.length).toBeGreaterThan(0);
@@ -341,6 +341,7 @@ describe("Standalone scrapeURL tests", () => {
       "test:scrape-pdf",
       "https://arxiv.org/pdf/astro-ph/9301001.pdf",
       scrapeOptions.parse({}),
+      { teamId: "test" },
     );
 
     // expect(out.logs.length).toBeGreaterThan(0);
@@ -359,6 +360,7 @@ describe("Standalone scrapeURL tests", () => {
       "test:scrape-docx",
       "https://nvca.org/wp-content/uploads/2019/06/NVCA-Model-Document-Stock-Purchase-Agreement.docx",
       scrapeOptions.parse({}),
+      { teamId: "test" },
     );
 
     // expect(out.logs.length).toBeGreaterThan(0);
@@ -395,6 +397,7 @@ describe("Standalone scrapeURL tests", () => {
           },
         },
       }),
+      { teamId: "test" },
     );
 
     // expect(out.logs.length).toBeGreaterThan(0);
@@ -430,6 +433,7 @@ describe("Standalone scrapeURL tests", () => {
           },
         },
       }),
+      { teamId: "test" },
     );
 
     // expect(out.logs.length).toBeGreaterThan(0);
@@ -451,7 +455,7 @@ describe("Standalone scrapeURL tests", () => {
     async (i) => {
       const url = "https://www.scrapethissite.com/?i=" + i;
       const id = "test:concurrent:" + url;
-      const out = await scrapeURL(id, url, scrapeOptions.parse({}));
+      const out = await scrapeURL(id, url, scrapeOptions.parse({}), { teamId: "test" });
 
       const replacer = (key: string, value: any) => {
         if (value instanceof Error) {

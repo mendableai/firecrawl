@@ -8,7 +8,7 @@ import { performLLMExtract } from "./llmExtract";
 import { uploadScreenshot } from "./uploadScreenshot";
 import { removeBase64Images } from "./removeBase64Images";
 import { saveToCache } from "./cache";
-
+import { deriveDiff } from "./diff";
 export type Transformer = (
   meta: Meta,
   document: Document,
@@ -148,6 +148,17 @@ export function coerceFieldsToFormats(
     );
   }
 
+  if (!formats.has("diff") && document.diff !== undefined) {
+    meta.logger.warn(
+      "Removed diff from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
+    );
+    delete document.diff;
+  } else if (formats.has("diff") && document.diff === undefined) {
+    meta.logger.warn(
+      "Request had format diff, but there was no diff field in the result.",
+    );
+  }
+
   if (meta.options.actions === undefined || meta.options.actions.length === 0) {
     delete document.actions;
   }
@@ -164,6 +175,7 @@ export const transformerStack: Transformer[] = [
   deriveMetadataFromRawHTML,
   uploadScreenshot,
   performLLMExtract,
+  deriveDiff,
   coerceFieldsToFormats,
   removeBase64Images,
 ];

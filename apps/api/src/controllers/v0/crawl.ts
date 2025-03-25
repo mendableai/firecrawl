@@ -158,6 +158,7 @@ export async function crawlController(req: Request, res: Response) {
       pageOptions,
       undefined,
       undefined,
+      team_id
     );
     internalOptions.disableSmartWaitCache = true; // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
 

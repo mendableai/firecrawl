@@ -85,7 +85,7 @@ export async function getMapResults({
       scrapeOptions: undefined,
     },
     scrapeOptions: scrapeOptions.parse({}),
-    internalOptions: {},
+    internalOptions: { teamId },
     team_id: teamId,
     createdAt: Date.now(),
     plan: plan,

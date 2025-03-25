@@ -47,6 +47,7 @@ export async function getLinksFromSitemap(
           ],
           v0DisableJsDom: true,
           abort,
+          teamId: "sitemap",
         },
       );
 
