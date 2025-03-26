@@ -134,7 +134,7 @@ def find_relevant_page_via_map(objective, url, app):
 
         print(
             f"{Colors.YELLOW}Analyzing objective to determine optimal search parameter...{Colors.RESET}")
-        # Use gemini-pro instead of gemini-2.0-flash
+
         response = client.models.generate_content(
             model=model_name,
             contents=[map_prompt]
