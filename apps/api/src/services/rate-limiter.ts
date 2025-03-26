@@ -192,7 +192,7 @@ export const devBRateLimiter = new RateLimiterRedis({
 export const manualRateLimiter = new RateLimiterRedis({
   storeClient: redisRateLimitClient,
   keyPrefix: "manual",
-  points: 2000,
+  points: 10000,
   duration: 60, // Duration in seconds
 });
 
