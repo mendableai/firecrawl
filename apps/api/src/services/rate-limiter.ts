@@ -240,7 +240,7 @@ const testSuiteTokens = [
   "0a18c9e", // gh
 ];
 
-const manual = ["69be9e74-7624-4990-b20d-08e0acc70cf6"];
+const manual = ["69be9e74-7624-4990-b20d-08e0acc70cf6", "9661a311-3d75-45d2-bb70-71004d995873"];
 const manual_etier2c = ["77545e01-9cec-4fa9-8356-883fc66ac13e"];
 
 function makePlanKey(plan?: string) {
