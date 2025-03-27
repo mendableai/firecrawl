@@ -1,9 +1,9 @@
-import { supabase_rr_service, supabase_service } from "../../../services/supabase";
+import { supabase_service } from "../../../services/supabase";
 import { Document } from "../../../controllers/v1/types";
 import { Meta } from "../index";
 
 export async function deriveDiff(meta: Meta, document: Document): Promise<Document> {
-  if (meta.options.formats.includes("diff")) {
+  if (meta.options.formats.includes("monitor")) {
     const res = await supabase_service
         .rpc("diff_get_last_scrape_1", {
             i_team_id: meta.internalOptions.teamId,
@@ -13,7 +13,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
     const data: {
         o_docs: Document[],
         o_date_added: string,
-    } | undefined | null = res.data[0] as any;
+    } | undefined | null = (res.data ?? [])[0] as any;
 
     if (data && data.o_docs.length > 0) {
         const previousMarkdown = data.o_docs[0].markdown!;
@@ -21,20 +21,20 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
 
         const transformer = (x: string) => [...x.replace(/\s+/g, "").replace(/\[iframe\]\(.+?\)/g, "")].sort().join("");
 
-        document.diff = {
+        document.monitor = {
             previousScrapeAt: data.o_date_added,
-            changeStatus: transformer(previousMarkdown) === transformer(currentMarkdown) ? "same" : "changed",
-            visibility: "visible",
+            changeStatus: document.metadata.statusCode === 404 ? "removed" : transformer(previousMarkdown) === transformer(currentMarkdown) ? "same" : "changed",
+            visibility: meta.internalOptions.urlInvisibleInCurrentCrawl ? "hidden" : "visible",
         }
     } else if (!res.error) {
-        document.diff = {
+        document.monitor = {
             previousScrapeAt: null,
-            changeStatus: "new",
-            visibility: "visible",
+            changeStatus: document.metadata.statusCode === 404 ? "removed" : "new",
+            visibility: meta.internalOptions.urlInvisibleInCurrentCrawl ? "hidden" : "visible",
         }
     } else {
         meta.logger.error("Error fetching previous scrape", { error: res.error });
-        document.warning = "Diffing failed, please try again later." + (document.warning ? ` ${document.warning}` : "");
+        document.warning = "Monitoring failed, please try again later." + (document.warning ? ` ${document.warning}` : "");
     }
   }
   
