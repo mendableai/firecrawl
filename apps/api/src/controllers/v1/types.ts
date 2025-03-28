@@ -541,6 +541,10 @@ export type Document = {
   actions?: {
     screenshots?: string[];
     scrapes?: ScrapeActionContent[];
+    javascriptReturns?: {
+      type: string,
+      value: unknown
+    }[];
   };
   metadata: {
     title?: string;

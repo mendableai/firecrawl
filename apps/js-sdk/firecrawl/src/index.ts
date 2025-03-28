@@ -141,6 +141,14 @@ export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchem
 
 export interface ActionsResult {
   screenshots: string[];
+  scrapes: ({
+    url: string;
+    html: string;
+  })[];
+  javascriptReturns: {
+    type: string;
+    value: unknown
+  }[];
 }
 
 /**
