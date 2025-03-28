@@ -455,6 +455,31 @@
                       "limit": {
                         "type": "integer",
                         "description": "Maximum number of results. Max is 20 during beta."
+                      },
+                      "tbm": {
+                        "type": "string",
+                        "description": "Type of search. Use 'nws' for news search.",
+                        "enum": ["nws"]
+                      },
+                      "tbs": {
+                        "type": "string",
+                        "description": "Time-based filtering parameter for Google search."
+                      },
+                      "filter": {
+                        "type": "string",
+                        "description": "Filter parameter for Google search."
+                      },
+                      "lang": {
+                        "type": "string",
+                        "description": "Language code for the search (e.g. 'en', 'fr')."
+                      },
+                      "country": {
+                        "type": "string",
+                        "description": "Country code for the search (e.g. 'us', 'fr')."
+                      },
+                      "location": {
+                        "type": "string",
+                        "description": "Geographic location for the search."
                       }
                     }
                   }
