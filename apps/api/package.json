@@ -51,6 +51,9 @@
     "typescript": "^5.4.2"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^1.2.2",
+    "@ai-sdk/google": "^1.2.3",
+    "@ai-sdk/groq": "^1.2.1",
     "@ai-sdk/openai": "^1.1.13",
     "@anthropic-ai/sdk": "^0.24.3",
     "@apidevtools/json-schema-ref-parser": "^11.7.3",
@@ -60,6 +63,7 @@
     "@devil7softwares/pos": "^1.0.2",
     "@dqbd/tiktoken": "^1.0.17",
     "@nangohq/node": "^0.40.8",
+    "@openrouter/ai-sdk-provider": "^0.4.5",
     "@pinecone-database/pinecone": "^4.0.0",
     "@sentry/cli": "^2.33.1",
     "@sentry/node": "^8.26.0",
