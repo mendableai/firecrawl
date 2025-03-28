@@ -9,8 +9,7 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-  "url":"https://firecrawl.dev/pricing",
-  "formats": ["markdown", "monitor"]
+  "url":"https://firecrawl.dev"
 }
 
 ### Crawl Website
@@ -20,10 +19,7 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-  "url":"https://firecrawl.dev/pricing",
-  "scrapeOptions": {
-    "formats": ["markdown", "monitor"]
-  }
+  "url":"https://firecrawl.dev"
 }
 
 ### Check Crawl Status
