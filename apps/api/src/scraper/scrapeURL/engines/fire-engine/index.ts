@@ -274,6 +274,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
           actions: {
             screenshots: response.screenshots ?? [],
             scrapes: response.actionContent ?? [],
+            javascriptReturns: (response.actionResults ?? []).filter(x => x.type === "executeJavascript").map(x => JSON.parse((x.result as any as { return: string }).return)),
           },
         }
       : {}),

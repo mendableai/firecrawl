@@ -42,6 +42,36 @@ const successSchema = z.object({
     })
     .array()
     .optional(),
+  actionResults: z.union([
+    z.object({
+      idx: z.number(),
+      type: z.literal("screenshot"),
+      result: z.object({
+        path: z.string(),
+      }),
+    }),
+    z.object({
+      idx: z.number(),
+      type: z.literal("scrape"),
+      result: z.union([
+        z.object({
+          url: z.string(),
+          html: z.string(),
+        }),
+        z.object({
+          url: z.string(),
+          accessibility: z.string(),
+        }),
+      ]),
+    }),
+    z.object({
+      idx: z.number(),
+      type: z.literal("executeJavascript"),
+      result: z.object({
+        return: z.string(),
+      }),
+    }),
+  ]).array().optional(),
 
   // chrome-cdp only -- file download handler
   file: z
@@ -138,7 +168,7 @@ export async function fireEngineCheckStatus(
     } else if (
       typeof status.error === "string" &&
       // TODO: improve this later
-      status.error.includes("Element")
+      (status.error.includes("Element") || status.error.includes("Javascript execution failed"))
     ) {
       throw new ActionError(status.error.split("Error: ")[1]);
     } else {
