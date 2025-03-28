@@ -21,12 +21,16 @@ const providerList = {
 };
 
 export function getModel(name: string, provider: string = defaultProvider) {
-  return providerList[provider](name);
+  return process.env.MODEL_NAME
+    ? providerList[provider](process.env.MODEL_NAME)
+    : providerList[provider](name);
 }
 
 export function getEmbeddingModel(
   name: string,
   provider: string = defaultProvider,
 ) {
-  return providerList[provider].embedding(name);
+  return process.env.MODEL_EMBEDDING_NAME
+    ? providerList[provider].embedding(process.env.MODEL_EMBEDDING_NAME)
+    : providerList[provider].embedding(name);
 }
