@@ -19,8 +19,8 @@ export async function analyzeSchemaAndPrompt(
 ): Promise<{
   isMultiEntity: boolean;
   multiEntityKeys: string[];
-  reasoning?: string;
-  keyIndicators?: string[];
+  reasoning: string;
+  keyIndicators: string[];
   tokenUsage: TokenUsage;
 }> {
   if (!schema) {

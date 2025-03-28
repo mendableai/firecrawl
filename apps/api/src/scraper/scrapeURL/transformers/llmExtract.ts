@@ -13,6 +13,18 @@ import { generateObject, generateText, LanguageModel } from 'ai';
 import { jsonSchema } from 'ai';
 import { getModel } from "../../../lib/generic-ai";
 import { z } from "zod";
+import fs from 'fs/promises';
+
+// TODO: fix this, it's horrible
+type LanguageModelV1ProviderMetadata = {
+  anthropic?: {
+    thinking?: {
+      type: 'enabled' | 'disabled';
+      budgetTokens?: number;
+    };
+    tool_choice?: "auto" | "none" | "required";
+  };
+};
 
 // Get max tokens from model prices
 const getModelLimits = (model: string) => {
@@ -157,6 +169,7 @@ export async function generateCompletions({
   isExtractEndpoint,
   model = getModel("gpt-4o-mini"),
   mode = "object",
+  providerOptions
 }: {
   model?: LanguageModel; 
   logger: Logger;
@@ -165,6 +178,7 @@ export async function generateCompletions({
   previousWarning?: string;
   isExtractEndpoint?: boolean;
   mode?: "object" | "no-object";
+  providerOptions?: LanguageModelV1ProviderMetadata;
 }): Promise<{
   extract: any;
   numTokens: number;
@@ -191,8 +205,9 @@ export async function generateCompletions({
     previousWarning
   );
 
-  markdown = trimmedMarkdown;
-  warning = trimWarning;
+  // WE USE BIG MODELS NOW
+  // markdown = trimmedMarkdown;
+  // warning = trimWarning;
 
   try {
     const prompt = options.prompt !== undefined
@@ -203,8 +218,13 @@ export async function generateCompletions({
       const result = await generateText({
         model: model,
         prompt: options.prompt + (markdown ? `\n\nData:${markdown}` : ""),
-        temperature: options.temperature ?? 0,
+        // temperature: options.temperature ?? 0,
         system: options.systemPrompt,
+        providerOptions: {
+          anthropic: {
+            thinking: { type: 'enabled', budgetTokens: 12000 },
+          }
+        }
       });
 
       extract = result.text;
@@ -279,7 +299,12 @@ export async function generateCompletions({
         const { text: fixedText } = await generateText({
           model: model,
           prompt: `Fix this JSON that had the following error: ${error}\n\nOriginal text:\n${text}\n\nReturn only the fixed JSON, no explanation.`,
-          system: "You are a JSON repair expert. Your only job is to fix malformed JSON and return valid JSON that matches the original structure and intent as closely as possible. Do not include any explanation or commentary - only return the fixed JSON. Do not return it in a Markdown code block, just plain JSON."
+          system: "You are a JSON repair expert. Your only job is to fix malformed JSON and return valid JSON that matches the original structure and intent as closely as possible. Do not include any explanation or commentary - only return the fixed JSON. Do not return it in a Markdown code block, just plain JSON.",
+          providerOptions: {
+            anthropic: {
+              thinking: { type: 'enabled', budgetTokens: 12000 },
+            }        
+          }
         });
         return fixedText;
       }
@@ -288,7 +313,8 @@ export async function generateCompletions({
     const generateObjectConfig = {
       model: model,
       prompt: prompt,
-      temperature: options.temperature ?? 0,
+      providerOptions: providerOptions || undefined,
+      // temperature: options.temperature ?? 0,
       system: options.systemPrompt,
       ...(schema && { schema: schema instanceof z.ZodType ? schema : jsonSchema(schema) }),
       ...(!schema && { output: 'no-schema' as const }),
@@ -300,8 +326,20 @@ export async function generateCompletions({
       })
     } satisfies Parameters<typeof generateObject>[0];
 
+    console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    const now = new Date().getTime()
+    console.log(now)
+    console.log({generateObjectConfig})
+
+    await fs.writeFile(`logs/generateObjectConfig-${now}.json`, JSON.stringify(generateObjectConfig, null, 2))
+
     const result = await generateObject(generateObjectConfig);
     extract = result.object;
+
+    const now2 = new Date().getTime()
+    console.log('>>>>>>', now2-now)
+    console.log({extract})
+    console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
     // If the users actually wants the items object, they can specify it as 'required' in the schema
     // otherwise, we just return the items array

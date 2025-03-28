@@ -40,7 +40,7 @@ import { getCachedDocs, saveCachedDocs } from "./helpers/cached-docs";
 import { normalizeUrl } from "../canonical-url";
 import { search } from "../../search";
 import { buildRephraseToSerpPrompt } from "./build-prompts";
-
+import fs from "fs/promises";
 interface ExtractServiceOptions {
   request: ExtractRequest;
   teamId: string;
@@ -86,6 +86,10 @@ export async function performExtraction(
   let totalUrlsScraped = 0;
   let sources: Record<string, string[]> = {};
 
+  let log = {
+    extractId,
+    request
+  };
 
   const logger = _logger.child({
     module: "extract",
@@ -148,6 +152,51 @@ export async function performExtraction(
     ],
   });
 
+  let reqSchema = request.schema;
+  if (!reqSchema && request.prompt) {
+    reqSchema = await generateSchemaFromPrompt(request.prompt);
+    logger.debug("Generated request schema.", {
+      originalSchema: request.schema,
+      schema: reqSchema,
+    });
+  }
+
+  if (reqSchema) {
+    reqSchema = await dereferenceSchema(reqSchema);
+  }
+
+  logger.debug("Transformed schema.", {
+    originalSchema: request.schema,
+    schema: reqSchema,
+  });
+
+
+  let rSchema = reqSchema;
+
+  // agent evaluates if the schema or the prompt has an array with big amount of items
+  // also it checks if the schema any other properties that are not arrays
+  // if so, it splits the results into 2 types of completions:
+  // 1. the first one is a completion that will extract the array of items
+  // 2. the second one is multiple completions that will extract the items from the array
+  let startAnalyze = Date.now();
+  const {
+    isMultiEntity,
+    multiEntityKeys,
+    reasoning,
+    keyIndicators,
+    tokenUsage: schemaAnalysisTokenUsage,
+  } = await analyzeSchemaAndPrompt(urls, reqSchema, request.prompt ?? "");
+
+  logger.debug("Analyzed schema.", {
+    isMultiEntity,
+    multiEntityKeys,
+    reasoning,
+    keyIndicators,
+  });
+
+  // Track schema analysis tokens
+  tokenUsage.push(schemaAnalysisTokenUsage);
+
   let startMap = Date.now();
   let aggMapLinks: string[] = [];
   logger.debug("Processing URLs...", {
@@ -166,6 +215,11 @@ export async function performExtraction(
         limit: request.limit,
         includeSubdomains: request.includeSubdomains,
         schema: request.schema,
+        log,
+        isMultiEntity,
+        reasoning,
+        multiEntityKeys,
+        keyIndicators,
       },
       urlTraces,
       (links: string[]) => {
@@ -190,6 +244,9 @@ export async function performExtraction(
   logger.debug("Processed URLs.", {
     linkCount: links.length,
   });
+
+  log['links'] = links;
+  log['linksLength'] = links.length;
 
   if (links.length === 0) {
     logger.error("0 links! Bailing.", {
@@ -217,55 +274,8 @@ export async function performExtraction(
     ],
   });
 
-  let reqSchema = request.schema;
-  if (!reqSchema && request.prompt) {
-    reqSchema = await generateSchemaFromPrompt(request.prompt);
-    logger.debug("Generated request schema.", {
-      originalSchema: request.schema,
-      schema: reqSchema,
-    });
-  }
-
-  if (reqSchema) {
-    reqSchema = await dereferenceSchema(reqSchema);
-  }
-
-  logger.debug("Transformed schema.", {
-    originalSchema: request.schema,
-    schema: reqSchema,
-  });
-
-  // agent evaluates if the schema or the prompt has an array with big amount of items
-  // also it checks if the schema any other properties that are not arrays
-  // if so, it splits the results into 2 types of completions:
-  // 1. the first one is a completion that will extract the array of items
-  // 2. the second one is multiple completions that will extract the items from the array
-  let startAnalyze = Date.now();
-  const {
-    isMultiEntity,
-    multiEntityKeys,
-    reasoning,
-    keyIndicators,
-    tokenUsage: schemaAnalysisTokenUsage,
-  } = await analyzeSchemaAndPrompt(links, reqSchema, request.prompt ?? "");
-
-  logger.debug("Analyzed schema.", {
-    isMultiEntity,
-    multiEntityKeys,
-    reasoning,
-    keyIndicators,
-  });
-
-  // Track schema analysis tokens
-  tokenUsage.push(schemaAnalysisTokenUsage);
-
-  // console.log("\nIs Multi Entity:", isMultiEntity);
-  // console.log("\nMulti Entity Keys:", multiEntityKeys);
-  // console.log("\nReasoning:", reasoning);
-  // console.log("\nKey Indicators:", keyIndicators);
-
-  let rSchema = reqSchema;
   if (isMultiEntity && reqSchema) {
+    log['isMultiEntity'] = true;
     logger.debug("=== MULTI-ENTITY ===");
 
     const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
@@ -303,6 +313,7 @@ export async function performExtraction(
 
     logger.debug("Starting multi-entity scrape...");
     let startScrape = Date.now();
+    log['docsSizeBeforeMultiEntityScrape'] = docsMap.size;
     
     const scrapePromises = links.map((url) => {
       if (!docsMap.has(normalizeUrl(url))) {
@@ -335,6 +346,8 @@ export async function performExtraction(
     let multyEntityDocs = (await Promise.all(scrapePromises)).filter(
       (doc): doc is Document => doc !== null,
     );
+
+    log['docsSizeAfterMultiEntityScrape'] = scrapePromises.length;
 
     logger.debug("Multi-entity scrape finished.", {
       docCount: multyEntityDocs.length,
@@ -387,50 +400,50 @@ export async function performExtraction(
           });
 
           // Check if page should be extracted before proceeding
-          const { extract, tokenUsage: shouldExtractCheckTokenUsage } = await checkShouldExtract(
-            request.prompt ?? "",
-            multiEntitySchema,
-            doc,
-          );
+          // const { extract, tokenUsage: shouldExtractCheckTokenUsage } = await checkShouldExtract(
+          //   request.prompt ?? "",
+          //   multiEntitySchema,
+          //   doc,
+          // );
 
-          tokenUsage.push(shouldExtractCheckTokenUsage);
+          // tokenUsage.push(shouldExtractCheckTokenUsage);
 
-          if (!extract) {
-            logger.info(
-              `Skipping extraction for ${doc.metadata.url} as content is irrelevant`,
-            );
-            return null;
-          }
-          // Add confidence score to schema with 5 levels
-          const schemaWithConfidence = {
-            ...multiEntitySchema,
-            properties: {
-              ...multiEntitySchema.properties,
-              is_content_relevant: {
-                type: "boolean",
-                description:
-                  "Determine if this content is relevant to the prompt. Return true ONLY if the content contains information that directly helps answer the prompt. Return false if the content is irrelevant or unlikely to contain useful information.",
-              },
-            },
-            required: [
-              ...(multiEntitySchema.required || []),
-              "is_content_relevant",
-            ],
-          };
+          // if (!extract) {
+          //   logger.info(
+          //     `Skipping extraction for ${doc.metadata.url} as content is irrelevant`,
+          //   );
+          //   return null;
+          // }
+          // // Add confidence score to schema with 5 levels
+          // const schemaWithConfidence = {
+          //   ...multiEntitySchema,
+          //   properties: {
+          //     ...multiEntitySchema.properties,
+          //     is_content_relevant: {
+          //       type: "boolean",
+          //       description:
+          //         "Determine if this content is relevant to the prompt. Return true ONLY if the content contains information that directly helps answer the prompt. Return false if the content is irrelevant or unlikely to contain useful information.",
+          //     },
+          //   },
+          //   required: [
+          //     ...(multiEntitySchema.required || []),
+          //     "is_content_relevant",
+          //   ],
+          // };
 
-          await updateExtract(extractId, {
-            status: "processing",
-            steps: [
-              {
-                step: ExtractStep.MULTI_ENTITY_EXTRACT,
-                startedAt: startScrape,
-                finishedAt: Date.now(),
-                discoveredLinks: [
-                  doc.metadata.url || doc.metadata.sourceURL || "",
-                ],
-              },
-            ],
-          });
+          // await updateExtract(extractId, {
+          //   status: "processing",
+          //   steps: [
+          //     {
+          //       step: ExtractStep.MULTI_ENTITY_EXTRACT,
+          //       startedAt: startScrape,
+          //       finishedAt: Date.now(),
+          //       discoveredLinks: [
+          //         doc.metadata.url || doc.metadata.sourceURL || "",
+          //       ],
+          //     },
+          //   ],
+          // });
 
           const completionPromise = batchExtractPromise(multiEntitySchema, links, request.prompt ?? "", request.systemPrompt ?? "", doc);
 
@@ -502,6 +515,7 @@ export async function performExtraction(
       logger.debug("All multi-entity completion chunks finished.", {
         completionCount: multiEntityCompletions.length,
       });
+      log['multiEntityCompletionsLength'] = multiEntityCompletions.length;
     }
 
     try {
@@ -545,6 +559,7 @@ export async function performExtraction(
     rSchema.properties &&
     Object.keys(rSchema.properties).length > 0
   ) {
+    log['isSingleEntity'] = true;
     logger.debug("=== SINGLE PAGES ===", {
       linkCount: links.length,
       schema: rSchema,
@@ -567,6 +582,7 @@ export async function performExtraction(
         },
       ],
     });
+    log['docsSizeBeforeSingleEntityScrape'] = docsMap.size;
     const scrapePromises = links.map((url) => {
       if (!docsMap.has(normalizeUrl(url))) {
         return scrapeDocument(
@@ -592,6 +608,7 @@ export async function performExtraction(
 
     try {
       const results = await Promise.all(scrapePromises);
+      log['docsSizeAfterSingleEntityScrape'] = docsMap.size;
 
       for (const doc of results) {
         if (doc?.metadata?.url) {
@@ -644,6 +661,7 @@ export async function performExtraction(
 
     // Generate completions
     logger.debug("Generating singleAnswer completions...");
+    log['singleAnswerDocsLength'] = singleAnswerDocs.length;
     let { extract: completionResult, tokenUsage: singleAnswerTokenUsage, sources: singleAnswerSources } = await singleAnswerCompletion({
       singleAnswerDocs,
       rSchema,
@@ -689,6 +707,9 @@ export async function performExtraction(
     //   });
     // }
   }
+
+  log['singleAnswerResult'] = singleAnswerResult;
+  log['multiEntityResult'] = multiEntityResult;
 
   let finalResult = reqSchema
     ? await mixSchemaObjects(
@@ -802,6 +823,8 @@ export async function performExtraction(
       logger.error("Error saving cached docs", { error });
     }
   }
+
+  fs.writeFile(`logs/${request.urls?.[0].replaceAll("https://", "").replaceAll("http://", "").replaceAll("/", "-").replaceAll(".", "-")}-extract-${extractId}.json`, JSON.stringify(log, null, 2));
 
   return {
     success: true,
