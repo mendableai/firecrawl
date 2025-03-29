@@ -246,7 +246,7 @@ export async function crawlStatusController(
   let totalCount = jobIDs.length;
 
   if (totalCount === 0 && process.env.USE_DB_AUTHENTICATION === "true") {
-    const x = await supabase_rr_service
+    const x = await supabase_service
       .from('firecrawl_jobs')
       .select('*', { count: 'exact', head: true })
       .eq("crawl_id", req.params.jobId)

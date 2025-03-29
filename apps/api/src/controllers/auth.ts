@@ -97,8 +97,7 @@ export async function getACUC(
       mode === RateLimiterMode.Extract ||
       mode === RateLimiterMode.ExtractStatus;
     while (retries < maxRetries) {
-      const client =
-        Math.random() > (2/3) ? supabase_rr_service : supabase_service;
+      const client = supabase_service;
       ({ data, error } = await client.rpc(
         "auth_credit_usage_chunk_26_tally",
         { input_key: api_key, i_is_extract: isExtract, tally_untallied_credits: true },
