@@ -8,7 +8,7 @@ import * as Sentry from "@sentry/node";
  * @returns {any | null} Job
  */
 export const supabaseGetJobById = async (jobId: string) => {
-  const { data, error } = await supabase_rr_service
+  const { data, error } = await supabase_service
     .from("firecrawl_jobs")
     .select("*")
     .eq("job_id", jobId)
@@ -31,7 +31,7 @@ export const supabaseGetJobById = async (jobId: string) => {
  * @returns {any[]} Jobs
  */
 export const supabaseGetJobsById = async (jobIds: string[]) => {
-  const { data, error } = await supabase_rr_service
+  const { data, error } = await supabase_service
     .from("firecrawl_jobs")
     .select()
     .in("job_id", jobIds);
@@ -55,7 +55,7 @@ export const supabaseGetJobsById = async (jobIds: string[]) => {
  * @returns {any[]} Jobs
  */
 export const supabaseGetJobsByCrawlId = async (crawlId: string) => {
-  const { data, error } = await supabase_rr_service
+  const { data, error } = await supabase_service
     .from("firecrawl_jobs")
     .select()
     .eq("crawl_id", crawlId);
@@ -74,7 +74,7 @@ export const supabaseGetJobsByCrawlId = async (crawlId: string) => {
 };
 
 export const supabaseGetJobByIdOnlyData = async (jobId: string) => {
-  const { data, error } = await supabase_rr_service
+  const { data, error } = await supabase_service
     .from("firecrawl_jobs")
     .select("docs, team_id")
     .eq("job_id", jobId)
