@@ -99,7 +99,7 @@ export async function getACUC(
     while (retries < maxRetries) {
       const client = supabase_service;
       ({ data, error } = await client.rpc(
-        "auth_credit_usage_chunk_26_tally",
+        "auth_credit_usage_chunk_27_tally",
         { input_key: api_key, i_is_extract: isExtract, tally_untallied_credits: true },
         { get: true },
       ));
