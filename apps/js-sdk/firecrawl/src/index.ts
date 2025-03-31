@@ -922,6 +922,7 @@ export default class FirecrawlApp {
    * @param pollInterval - Time in seconds for job status checks.
    * @param idempotencyKey - Optional idempotency key for the request.
    * @param webhook - Optional webhook for the batch scrape.
+   * @param ignoreInvalidURLs - Optional flag to ignore invalid URLs.
    * @returns The response from the crawl operation.
    */
   async batchScrapeUrls(
