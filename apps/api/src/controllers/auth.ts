@@ -401,6 +401,7 @@ function getPlanByPriceId(price_id: string | null): PlanType {
     case process.env.STRIPE_PRICE_ID_ETIER_SCALE_1_YEARLY_FIRECRAWL:
       return "etierscale1";
     case process.env.STRIPE_PRICE_ID_ETIER_SCALE_2_YEARLY:
+    case process.env.STRIPE_PRICE_ID_ETIER_SCALE_2_MONTHLY:
       return "etierscale2";
     case process.env.STRIPE_PRICE_ID_EXTRACT_STARTER_MONTHLY:
     case process.env.STRIPE_PRICE_ID_EXTRACT_STARTER_YEARLY:
