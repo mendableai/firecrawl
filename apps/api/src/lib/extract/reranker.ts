@@ -9,7 +9,7 @@ import { generateCompletions } from "../../scraper/scrapeURL/transformers/llmExt
 import { buildRerankerUserPrompt } from "./build-prompts";
 import { buildRerankerSystemPrompt } from "./build-prompts";
 import { dumpToFile } from "./helpers/dump-to-file";
-import { getAnthropic, getGemini, getGroq, getModel, getOpenAI } from "../generic-ai";
+import { getModel } from "../generic-ai";
 import fs from "fs/promises";
 
 const THRESHOLD_FOR_SINGLEPAGE = 0.6;
@@ -178,15 +178,28 @@ export type RerankerOptions = {
   keyIndicators: string[];
 };
 
-export async function rerankLinksWithLLM(options: RerankerOptions): Promise<RerankerResult> {
-  const { links, searchQuery, urlTraces, isMultiEntity, reasoning, multiEntityKeys, keyIndicators } = options;
+export async function rerankLinksWithLLM(
+  options: RerankerOptions,
+): Promise<RerankerResult> {
+  const {
+    links,
+    searchQuery,
+    urlTraces,
+    isMultiEntity,
+    reasoning,
+    multiEntityKeys,
+    keyIndicators,
+  } = options;
   const chunkSize = 5000;
   const chunks: MapDocument[][] = [];
   const TIMEOUT_MS = 60000;
   const MAX_RETRIES = 2;
   let totalTokensUsed = 0;
 
-  await fs.writeFile(`logs/links-${crypto.randomUUID()}.txt`, JSON.stringify(links, null, 2));
+  await fs.writeFile(
+    `logs/links-${crypto.randomUUID()}.txt`,
+    JSON.stringify(links, null, 2),
+  );
 
   // Split links into chunks of 200
   for (let i = 0; i < links.length; i += chunkSize) {
@@ -205,7 +218,11 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
           properties: {
             url: { type: "string" },
             relevanceScore: { type: "number" },
-            reason: { type: "string", description: "The reason why you chose the score for this link given the intent." },
+            reason: {
+              type: "string",
+              description:
+                "The reason why you chose the score for this link given the intent.",
+            },
           },
           required: ["url", "relevanceScore", "reason"],
         },
@@ -218,7 +235,6 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
     chunks.map(async (chunk, chunkIndex) => {
       // console.log(`Processing chunk ${chunkIndex + 1}/${chunks.length} with ${chunk.length} links`);
 
-      
       const linksContent = chunk
         .map(
           (link) =>
@@ -226,7 +242,10 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
         )
         .join("\n\n");
 
-      fs.writeFile(`logs/links-content-${crypto.randomUUID()}.txt`, linksContent);
+      fs.writeFile(
+        `logs/links-content-${crypto.randomUUID()}.txt`,
+        linksContent,
+      );
 
       for (let retry = 0; retry <= MAX_RETRIES; retry++) {
         try {
@@ -234,18 +253,21 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
             setTimeout(() => resolve(null), TIMEOUT_MS);
           });
 
-          const systemPrompt = `You are analyzing URLs for ${isMultiEntity ? 'collecting multiple items' : 'specific information'}.
+          const systemPrompt = `You are analyzing URLs for ${isMultiEntity ? "collecting multiple items" : "specific information"}.
           The user's query is: ${searchQuery}
-          ${isMultiEntity 
-            ? `IMPORTANT: This is a multi-entity extraction task looking for ${multiEntityKeys.join(', ')}.
+          ${
+            isMultiEntity
+              ? `IMPORTANT: This is a multi-entity extraction task looking for ${multiEntityKeys.join(", ")}.
                Score URLs higher if they contain ANY instance of the target entities.
-               Key indicators to look for: ${keyIndicators.join(', ')}`
-            : `IMPORTANT: This is a specific information task.
+               Key indicators to look for: ${keyIndicators.join(", ")}`
+              : `IMPORTANT: This is a specific information task.
                Score URLs based on precision and relevance to answering the query.`
           }
         
           Scoring guidelines:
-          ${isMultiEntity ? `
+          ${
+            isMultiEntity
+              ? `
           - 1.0: Contains ANY instance of target entities, even just one. Give this score if page has any relevant entity. If you are not sure if this page is relevant or not, give it a score of 1.0
           - 0.8: Contains entity but may be incomplete information
           - 0.6: Mentions entity type but no clear instance
@@ -253,21 +275,22 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
           - Below 0.4: No mention of relevant entities, or duplicates
           
           Reason: ${reasoning}
-          ` : `
+          `
+              : `
           - 1.0: Contains direct, authoritative answer to query. Give this score if unsure about relevance. If you are not sure if this page is relevant or not, give it a score of 1.0
           - 0.8: Contains information that directly helps answer the query
           - 0.6: Contains related information that partially answers query
           - Below 0.6: Information too general or not focused on query
-          `}`;
+          `
+          }`;
 
           // dumpToFile(new Date().toISOString(),[buildRerankerSystemPrompt(), buildRerankerUserPrompt(searchQuery), schema, linksContent])
           // const gemini = getGemini();
-          const model = getOpenAI()
           // const model = getGemini()
           let completion: any;
           try {
             const completionPromise = generateCompletions({
-              model: model("o3-mini"),
+              model: getModel("o3-mini", "openai"),
               logger: logger.child({
                 method: "rerankLinksWithLLM",
                 chunk: chunkIndex + 1,
@@ -287,27 +310,46 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
               //   },
               // },
               markdown: linksContent,
-              isExtractEndpoint: true
+              isExtractEndpoint: true,
             });
 
-            completion = await completionPromise
+            completion = await completionPromise;
             // completion = await Promise.race([
             //   completionPromise,
             //   timeoutPromise,
             // ]);
 
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!˜")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log({ completion })
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            
+            console.log(
+              "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!˜",
+            );
+            console.log(
+              "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            );
+            console.log(
+              "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            );
+            console.log(
+              "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            );
+            console.log(
+              "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            );
+            console.log(
+              "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            );
+            console.log({ completion });
+            console.log(
+              "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            );
+            console.log(
+              "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            );
+            console.log(
+              "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            );
+            console.log(
+              "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
+            );
           } catch (error) {
             console.warn(
               `Error processing chunk ${chunkIndex + 1} attempt ${retry + 1}:`,
@@ -315,7 +357,10 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
             );
           }
 
-          await fs.writeFile(`logs/reranker-${crypto.randomUUID()}.json`, JSON.stringify(completion, null, 2));
+          await fs.writeFile(
+            `logs/reranker-${crypto.randomUUID()}.json`,
+            JSON.stringify(completion, null, 2),
+          );
 
           if (!completion) {
             // console.log(`Chunk ${chunkIndex + 1}: Timeout on attempt ${retry + 1}`);
@@ -356,13 +401,18 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
   // Map back to MapDocument format, keeping ALL links for testing
   const relevantLinks = flattenedResults
     .map((result) => {
-      if (result.relevanceScore > (isMultiEntity ? THRESHOLD_FOR_MULTIENTITY : THRESHOLD_FOR_SINGLEPAGE)) {
+      if (
+        result.relevanceScore >
+        (isMultiEntity ? THRESHOLD_FOR_MULTIENTITY : THRESHOLD_FOR_SINGLEPAGE)
+      ) {
         const link = links.find((link) => link.url === result.url);
         if (link) {
-          return { 
-            ...link, 
-            relevanceScore: result.relevanceScore ? parseFloat(result.relevanceScore) : 0, 
-            reason: result.reason 
+          return {
+            ...link,
+            relevanceScore: result.relevanceScore
+              ? parseFloat(result.relevanceScore)
+              : 0,
+            reason: result.reason,
           };
         }
       }
@@ -371,15 +421,21 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
     .filter((link): link is NonNullable<typeof link> => link !== undefined);
 
   // Add debug logging for testing
-  fs.writeFile(`logs/reranker-aaa-${crypto.randomUUID()}.json`, JSON.stringify(
-  {
-    totalResults: relevantLinks.length,
-    scores: relevantLinks.map(l => ({
-      url: l.url,
-      score: l.relevanceScore,
-      reason: l.reason
-    }))
-  }, null, 2));
+  fs.writeFile(
+    `logs/reranker-aaa-${crypto.randomUUID()}.json`,
+    JSON.stringify(
+      {
+        totalResults: relevantLinks.length,
+        scores: relevantLinks.map((l) => ({
+          url: l.url,
+          score: l.relevanceScore,
+          reason: l.reason,
+        })),
+      },
+      null,
+      2,
+    ),
+  );
 
   return {
     mapDocument: relevantLinks,

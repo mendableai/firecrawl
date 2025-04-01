@@ -8,19 +8,16 @@ import { rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
 import type { Logger } from "winston";
 import { generateText } from "ai";
-import { getAnthropic, getGemini, getGroq, getModel } from "../generic-ai";
+import { getModel } from "../generic-ai";
 
 export async function generateBasicCompletion(prompt: string) {
-
-  const anthropic = getAnthropic();
-
   const { text } = await generateText({
-    model: anthropic("claude-3-7-sonnet-latest"),
+    model: getModel("claude-3-7-sonnet-latest", "anthropic"),
     prompt: prompt,
     providerOptions: {
       anthropic: {
-        thinking: { type: 'enabled', budgetTokens: 12000 },
-      }
+        thinking: { type: "enabled", budgetTokens: 12000 },
+      },
     },
     // temperature: 0.7
   });
@@ -109,7 +106,7 @@ export async function processUrl(
       linkCount: allUrls.length,
       uniqueLinkCount: uniqueUrls.length,
     });
-    options.log['uniqueUrlsLength-1'] = uniqueUrls.length;
+    options.log["uniqueUrlsLength-1"] = uniqueUrls.length;
 
     // Track all discovered URLs
     uniqueUrls.forEach((discoveredUrl) => {
@@ -164,7 +161,7 @@ export async function processUrl(
       });
     }
 
-    options.log['uniqueUrlsLength-2'] = uniqueUrls.length;
+    options.log["uniqueUrlsLength-2"] = uniqueUrls.length;
 
     // Track all discovered URLs
     uniqueUrls.forEach((discoveredUrl) => {
@@ -241,7 +238,7 @@ export async function processUrl(
     logger.info("Reranked! (pass 1)", {
       linkCount: mappedLinks.length,
     });
-    options.log['rerankerResult-1'] = mappedLinks.length;
+    options.log["rerankerResult-1"] = mappedLinks.length;
     // 2nd Pass, useful for when the first pass returns too many links
     if (mappedLinks.length > 100) {
       logger.info("Reranking (pass 2)...");
@@ -260,7 +257,7 @@ export async function processUrl(
         linkCount: mappedLinks.length,
       });
     }
-    options.log['rerankerResult-2'] = mappedLinks.length;
+    options.log["rerankerResult-2"] = mappedLinks.length;
 
     // dumpToFile(
     //   "llm-links.txt",

@@ -7,7 +7,8 @@ import {
   buildBatchExtractPrompt,
   buildBatchExtractSystemPrompt,
 } from "../build-prompts";
-import { getGemini } from "../../generic-ai";
+import { getModel } from "../../generic-ai";
+
 import fs from "fs/promises";
 /**
  * Batch extract information from a list of URLs using a multi-entity schema.
@@ -31,7 +32,7 @@ export async function batchExtractPromise(
   warning?: string;
   sources: string[];
 }> {
-  const gemini = getGemini();
+  const gemini = getModel("gemini-2.0-flash", "google");
   const completion = await generateCompletions({
     logger: logger.child({
       method: "extractService/generateCompletions",
@@ -50,12 +51,15 @@ export async function batchExtractPromise(
     isExtractEndpoint: true,
     model: gemini("gemini-2.0-flash"),
   });
-  await fs.writeFile(`logs/batchExtract-${crypto.randomUUID()}.json`, JSON.stringify(completion, null, 2));
+  await fs.writeFile(
+    `logs/batchExtract-${crypto.randomUUID()}.json`,
+    JSON.stringify(completion, null, 2),
+  );
 
   return {
     extract: completion.extract,
     numTokens: completion.numTokens,
     totalUsage: completion.totalUsage,
-    sources: [doc.metadata.url || doc.metadata.sourceURL || ""]
+    sources: [doc.metadata.url || doc.metadata.sourceURL || ""],
   };
 }
