@@ -148,14 +148,14 @@ export function coerceFieldsToFormats(
     );
   }
 
-  if (!formats.has("monitor") && document.monitor !== undefined) {
+  if (!formats.has("compare") && document.compare !== undefined) {
     meta.logger.warn(
-      "Removed monitor from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
+      "Removed compare from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
     );
-    delete document.monitor;
-  } else if (formats.has("monitor") && document.monitor === undefined) {
+    delete document.compare;
+  } else if (formats.has("compare") && document.compare === undefined) {
     meta.logger.warn(
-      "Request had format monitor, but there was no monitor field in the result.",
+      "Request had format compare, but there was no compare field in the result.",
     );
   }
 

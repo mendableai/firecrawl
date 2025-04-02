@@ -3,7 +3,7 @@ import { Document } from "../../../controllers/v1/types";
 import { Meta } from "../index";
 
 export async function deriveDiff(meta: Meta, document: Document): Promise<Document> {
-  if (meta.options.formats.includes("monitor")) {
+  if (meta.options.formats.includes("compare")) {
     const res = await supabase_service
         .rpc("diff_get_last_scrape_1", {
             i_team_id: meta.internalOptions.teamId,
@@ -21,20 +21,20 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
 
         const transformer = (x: string) => [...x.replace(/\s+/g, "").replace(/\[iframe\]\(.+?\)/g, "")].sort().join("");
 
-        document.monitor = {
+        document.compare = {
             previousScrapeAt: data.o_date_added,
             changeStatus: document.metadata.statusCode === 404 ? "removed" : transformer(previousMarkdown) === transformer(currentMarkdown) ? "same" : "changed",
             visibility: meta.internalOptions.urlInvisibleInCurrentCrawl ? "hidden" : "visible",
         }
     } else if (!res.error) {
-        document.monitor = {
+        document.compare = {
             previousScrapeAt: null,
             changeStatus: document.metadata.statusCode === 404 ? "removed" : "new",
             visibility: meta.internalOptions.urlInvisibleInCurrentCrawl ? "hidden" : "visible",
         }
     } else {
         meta.logger.error("Error fetching previous scrape", { error: res.error });
-        document.warning = "Monitoring failed, please try again later." + (document.warning ? ` ${document.warning}` : "");
+        document.warning = "Comparing failed, please try again later." + (document.warning ? ` ${document.warning}` : "");
     }
   }
   
