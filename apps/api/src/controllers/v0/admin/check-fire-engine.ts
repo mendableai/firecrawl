@@ -16,7 +16,7 @@ export async function checkFireEngine(req: Request, res: Response) {
     const timeout = setTimeout(() => controller.abort(), 30000);
 
     const urls = ["https://roastmywebsite.ai", "https://example.com"];
-    let lastError: string | null = null;
+    let lastError: any = null;
 
     for (const url of urls) {
       try {
@@ -57,7 +57,11 @@ export async function checkFireEngine(req: Request, res: Response) {
     }
 
     // If we get here, all retries failed
-    logger.error(lastError);
+    logger.error("An error occurred while checking fire-engine", {
+      module: "admin",
+      method: "checkFireEngine",
+      error: lastError,
+    });
     Sentry.captureException(lastError);
     return res.status(500).json({
       success: false,
