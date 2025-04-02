@@ -124,7 +124,7 @@ export async function autoCharge(
           if (chunk.sub_user_id) {
             // Fetch the customer's Stripe information
             const { data: customer, error: customersError } =
-              await supabase_service
+              await supabase_rr_service
                 .from("customers")
                 .select("id, stripe_customer_id")
                 .eq("id", chunk.sub_user_id)
