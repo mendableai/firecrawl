@@ -2,7 +2,7 @@ import { logger } from "../../../lib/logger";
 import { generateCompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { buildDocument } from "../build-document";
 import { Document, TokenUsage } from "../../../controllers/v1/types";
-import { getGemini } from "../../../lib/generic-ai";
+import { getGemini, getOpenAI } from "../../../lib/generic-ai";
 import fs from "fs/promises";
 
 export async function singleAnswerCompletion({
@@ -22,7 +22,11 @@ export async function singleAnswerCompletion({
   tokenUsage: TokenUsage;
   sources: string[];
 }> {
-  const gemini = getGemini();
+
+  const openai = getOpenAI();
+  const model = openai("gpt-4o-mini");
+  // const gemini = getGemini();
+  // const model = gemini("gemini-2.0-flash");
   const completion = await generateCompletions({
     logger: logger.child({ module: "extract", method: "generateCompletions" }),
     options: {
@@ -35,12 +39,17 @@ export async function singleAnswerCompletion({
     },
     markdown: singleAnswerDocs.map((x) => buildDocument(x)).join("\n"),
     isExtractEndpoint: true,
-    model: gemini("gemini-2.0-flash"),
+    model: model,
   });
   await fs.writeFile(`logs/singleAnswer-${crypto.randomUUID()}.json`, JSON.stringify(completion, null, 2));
   return { 
     extract: completion.extract, 
-    tokenUsage: completion.totalUsage,
+    tokenUsage: {
+      promptTokens: completion.totalUsage.promptTokens ?? 0,
+      completionTokens: completion.totalUsage.completionTokens ?? 0,
+      totalTokens: completion.totalUsage.totalTokens ?? 0,
+      model: model.modelId,
+    },
     sources: singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || "")
   };
 }

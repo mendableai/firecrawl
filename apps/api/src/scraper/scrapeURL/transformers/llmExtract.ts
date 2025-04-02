@@ -14,6 +14,7 @@ import { jsonSchema } from 'ai';
 import { getModel } from "../../../lib/generic-ai";
 import { z } from "zod";
 import fs from 'fs/promises';
+import { calculateTokens } from "../../../lib/extract/usage/llm-cost";
 
 // TODO: fix this, it's horrible
 type LanguageModelV1ProviderMetadata = {
@@ -228,15 +229,19 @@ export async function generateCompletions({
       });
 
       extract = result.text;
-      
+
+      const completionTokens = calculateTokens(result.text, model.modelId);
+      const promptTokens = calculateTokens(options.systemPrompt + options.prompt + (markdown ? `\n\nData:${markdown}` : ""), model.modelId);
+
       return {
         extract,
         warning,
         numTokens,
         totalUsage: {
-          promptTokens: numTokens,
-          completionTokens: result.usage?.completionTokens ?? 0,
-          totalTokens: numTokens + (result.usage?.completionTokens ?? 0),
+          promptTokens: promptTokens,
+          completionTokens: completionTokens,
+          totalTokens: promptTokens + completionTokens,
+          model: model.modelId,
         },
         model: model.modelId,
       };
@@ -326,20 +331,20 @@ export async function generateCompletions({
       })
     } satisfies Parameters<typeof generateObject>[0];
 
-    console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
     const now = new Date().getTime()
-    console.log(now)
-    console.log({generateObjectConfig})
+    // console.log(now)
+    // console.log({generateObjectConfig})
 
     await fs.writeFile(`logs/generateObjectConfig-${now}.json`, JSON.stringify(generateObjectConfig, null, 2))
 
     const result = await generateObject(generateObjectConfig);
     extract = result.object;
 
-    const now2 = new Date().getTime()
-    console.log('>>>>>>', now2-now)
-    console.log({extract})
-    console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+    // const now2 = new Date().getTime()
+    // console.log('>>>>>>', now2-now)
+    // console.log({extract})
+    // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
 
     // If the users actually wants the items object, they can specify it as 'required' in the schema
     // otherwise, we just return the items array
@@ -352,17 +357,18 @@ export async function generateCompletions({
     }
 
     // Since generateObject doesn't provide token usage, we'll estimate it
-    const promptTokens = numTokens;
-    const completionTokens = result?.usage?.completionTokens ?? 0;
+    const promptTokens = calculateTokens(options.systemPrompt + options.prompt, model.modelId);
+    const completionTokens = calculateTokens(JSON.stringify(result.object), model.modelId);
 
     return {
       extract,
       warning,
       numTokens,
       totalUsage: {
-        promptTokens,
-        completionTokens,
+        promptTokens: promptTokens,
+        completionTokens: completionTokens,
         totalTokens: promptTokens + completionTokens,
+        model: model.modelId,
       },
       model: model.modelId,
     };
@@ -446,14 +452,15 @@ export function removeDefaultProperty(schema: any): any {
   return rest;
 }
 
-export async function generateSchemaFromPrompt(prompt: string): Promise<any> {
-  const model = getModel("gpt-4o");
+export async function generateSchemaFromPrompt(prompt: string): Promise<{schema: any, tokenUsage: TokenUsage}> {
+  const modelId = "gpt-4o";
+  const model = getModel(modelId);
   const temperatures = [0, 0.1, 0.3]; // Different temperatures to try
   let lastError: Error | null = null;
 
   for (const temp of temperatures) {
     try {
-      const { extract } = await generateCompletions({
+      const { extract, totalUsage } = await generateCompletions({
         logger: logger.child({
           method: "generateSchemaFromPrompt/generateCompletions",
         }),
@@ -491,7 +498,15 @@ Return a valid JSON schema object with properties that would capture the informa
         markdown: prompt
       });
 
-      return extract;
+      return {
+        schema: extract,
+        tokenUsage: {
+          promptTokens: totalUsage.promptTokens ?? 0,
+          completionTokens: totalUsage.completionTokens ?? 0,
+          totalTokens: totalUsage.totalTokens ?? 0,
+          model: totalUsage.model ?? ""
+        }
+      };
 
     } catch (error) {
       lastError = error as Error;

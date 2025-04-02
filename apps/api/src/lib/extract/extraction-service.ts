@@ -29,6 +29,7 @@ import { areMergeable } from "./helpers/merge-null-val-objs";
 import { CUSTOM_U_TEAMS } from "./config";
 import {
   calculateFinalResultCost,
+  estimateCostV2,
   estimateTotalCost,
 } from "./usage/llm-cost";
 import { analyzeSchemaAndPrompt } from "./completions/analyzeSchemaAndPrompt";
@@ -91,6 +92,9 @@ export async function performExtraction(
     request
   };
 
+  // Token tracking
+  let tokenUsage: TokenUsage[] = [];
+
   const logger = _logger.child({
     module: "extract",
     method: "performExtraction",
@@ -103,8 +107,9 @@ export async function performExtraction(
       prompt: request.prompt,
     });
     const rephrasedPrompt = await generateBasicCompletion(buildRephraseToSerpPrompt(request.prompt));
+    tokenUsage.push(rephrasedPrompt.tokenUsage);
     const searchResults = await search({
-      query:  rephrasedPrompt.replace('"', "").replace("'", ""),
+      query: rephrasedPrompt.completion.replace('"', "").replace("'", ""),
       num_results: 10,
     });
 
@@ -137,9 +142,6 @@ export async function performExtraction(
     }
   }
 
-  // Token tracking
-  let tokenUsage: TokenUsage[] = [];
-
   await updateExtract(extractId, {
     status: "processing",
     steps: [
@@ -154,7 +156,9 @@ export async function performExtraction(
 
   let reqSchema = request.schema;
   if (!reqSchema && request.prompt) {
-    reqSchema = await generateSchemaFromPrompt(request.prompt);
+    const { schema, tokenUsage: usage } = await generateSchemaFromPrompt(request.prompt);
+    reqSchema = schema;
+    tokenUsage.push(usage);
     logger.debug("Generated request schema.", {
       originalSchema: request.schema,
       schema: reqSchema,
@@ -194,8 +198,11 @@ export async function performExtraction(
     keyIndicators,
   });
 
+  fs.writeFile("logs/tokenUsage-1.json", JSON.stringify(tokenUsage, null, 2));
+
   // Track schema analysis tokens
   tokenUsage.push(schemaAnalysisTokenUsage);
+  fs.writeFile("logs/tokenUsage-2.json", JSON.stringify(tokenUsage, null, 2));
 
   let startMap = Date.now();
   let aggMapLinks: string[] = [];
@@ -240,7 +247,28 @@ export async function performExtraction(
   );
 
   const processedUrls = await Promise.all(urlPromises);
-  const links = processedUrls.flat().filter((url) => url);
+
+  await fs.writeFile("logs/processedUrls.json", JSON.stringify(processedUrls, null, 2));
+
+  processedUrls.forEach(x => {
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+    tokenUsage = tokenUsage.concat(x.tokenUsage);
+  });
+
+  await fs.writeFile("logs/tokenUsage-3.json", JSON.stringify(tokenUsage, null, 2));
+
+  const links = processedUrls.flatMap(x => x.urls).filter((url) => url);
   logger.debug("Processed URLs.", {
     linkCount: links.length,
   });
@@ -769,6 +797,10 @@ export async function performExtraction(
   //     finalResult = schemaValidation.extract;
   //   }
   // }
+
+  // await fs.writeFile("logs/tokenUsage-4.json", JSON.stringify(tokenUsage, null, 2));
+  const cost = estimateCostV2(tokenUsage);
+  await fs.writeFile("logs/cost.json", '\n' + JSON.stringify({cost}, null, 2), {flag: 'a'});
 
   const totalTokensUsed = tokenUsage.reduce((a, b) => a + b.totalTokens, 0);
   const llmUsage = estimateTotalCost(tokenUsage);

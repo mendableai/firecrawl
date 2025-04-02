@@ -1,4 +1,4 @@
-import { MapDocument, URLTrace } from "../../controllers/v1/types";
+import { MapDocument, TokenUsage, URLTrace } from "../../controllers/v1/types";
 import { getMapResults } from "../../controllers/v1/map";
 import { PlanType } from "../../types";
 import { removeDuplicateUrls } from "../validateUrl";
@@ -8,14 +8,19 @@ import { rerankLinksWithLLM } from "./reranker";
 import { extractConfig } from "./config";
 import type { Logger } from "winston";
 import { generateText } from "ai";
-import { getAnthropic, getGemini, getGroq, getModel } from "../generic-ai";
+import { getAnthropic, getGemini, getGroq, getModel, getOpenAI } from "../generic-ai";
+import { calculateTokens } from "./usage/llm-cost";
+import fs from "fs/promises";
 
-export async function generateBasicCompletion(prompt: string) {
+export async function generateBasicCompletion(prompt: string): Promise<{completion: string, tokenUsage: TokenUsage}> {
 
-  const anthropic = getAnthropic();
+  // const anthropic = getAnthropic();
+  // const model = anthropic("claude-3-7-sonnet-latest");
+  const openai = getOpenAI();
+  const model = openai("gpt-4o");
 
-  const { text } = await generateText({
-    model: anthropic("claude-3-7-sonnet-latest"),
+  const { text, usage } = await generateText({
+    model: model,
     prompt: prompt,
     providerOptions: {
       anthropic: {
@@ -24,8 +29,21 @@ export async function generateBasicCompletion(prompt: string) {
     },
     // temperature: 0.7
   });
-  return text;
+
+  const promptTokens = calculateTokens(prompt, model.modelId);
+  const completionTokens = calculateTokens(text, model.modelId);
+
+  return {
+    completion: text,
+    tokenUsage: {
+      promptTokens: promptTokens,
+      completionTokens: completionTokens,
+      totalTokens: promptTokens + completionTokens,
+      model: model.modelId,
+    }
+  };
 }
+
 interface ProcessUrlOptions {
   url: string;
   prompt?: string;
@@ -48,7 +66,12 @@ export async function processUrl(
   urlTraces: URLTrace[],
   updateExtractCallback: (links: string[]) => void,
   logger: Logger,
-): Promise<string[]> {
+): Promise<{
+  urls: string[];
+  tokenUsage: TokenUsage[];
+}> {
+  let tokenUsage: TokenUsage[] = [];
+
   const trace: URLTrace = {
     url: options.url,
     status: "mapped",
@@ -61,13 +84,19 @@ export async function processUrl(
   if (!options.url.includes("/*") && !options.allowExternalLinks) {
     if (!isUrlBlocked(options.url)) {
       trace.usedInCompletion = true;
-      return [options.url];
+      return {
+        urls: [options.url],
+        tokenUsage,
+      };
     }
     logger.warn("URL is blocked");
     trace.status = "error";
     trace.error = "URL is blocked";
     trace.usedInCompletion = false;
-    return [];
+    return {
+      urls: [],
+      tokenUsage,
+    };
   }
 
   const baseUrl = options.url.replace("/*", "");
@@ -75,14 +104,12 @@ export async function processUrl(
 
   let searchQuery = options.prompt;
   if (options.prompt) {
-    searchQuery =
-      (
-        await generateBasicCompletion(
-          buildRefrasedPrompt(options.prompt, baseUrl),
-        )
-      )
-        ?.replace('"', "")
-        .replace("/", "") ?? options.prompt;
+    const { completion, tokenUsage: usage } = await generateBasicCompletion(
+      buildRefrasedPrompt(options.prompt, baseUrl),
+    )
+      
+    searchQuery = completion?.replace('"', "").replace("/", "") ?? options.prompt;
+    tokenUsage.push(usage);
   }
 
   try {
@@ -202,12 +229,13 @@ export async function processUrl(
 
     let rephrasedPrompt = options.prompt ?? searchQuery;
     try {
-      rephrasedPrompt =
-        (await generateBasicCompletion(
-          buildPreRerankPrompt(rephrasedPrompt, options.schema, baseUrl),
-        )) ??
+      const { completion, tokenUsage: usage } = await generateBasicCompletion(
+        buildPreRerankPrompt(rephrasedPrompt, options.schema, baseUrl),
+      )
+      rephrasedPrompt = completion ??
         "Extract the data according to the schema: " +
           JSON.stringify(options.schema, null, 2);
+      tokenUsage.push(usage);
     } catch (error) {
       console.error("Error generating search query from schema:", error);
       rephrasedPrompt =
@@ -236,8 +264,8 @@ export async function processUrl(
       multiEntityKeys: options.multiEntityKeys,
       keyIndicators: options.keyIndicators,
     });
+    tokenUsage = tokenUsage.concat(rerankerResult.tokenUsage);
     mappedLinks = rerankerResult.mapDocument;
-    let tokensUsed = rerankerResult.tokensUsed;
     logger.info("Reranked! (pass 1)", {
       linkCount: mappedLinks.length,
     });
@@ -254,13 +282,17 @@ export async function processUrl(
         multiEntityKeys: options.multiEntityKeys,
         keyIndicators: options.keyIndicators,
       });
+      tokenUsage = tokenUsage.concat(rerankerResult.tokenUsage);
       mappedLinks = rerankerResult.mapDocument;
-      tokensUsed += rerankerResult.tokensUsed;
+      // tokensUsed += rerankerResult.tokensUsed;
       logger.info("Reranked! (pass 2)", {
         linkCount: mappedLinks.length,
       });
     }
     options.log['rerankerResult-2'] = mappedLinks.length;
+
+    await fs.writeFile(`logs/tokenUsage-5.json`, JSON.stringify(tokenUsage, null, 2));
+
 
     // dumpToFile(
     //   "llm-links.txt",
@@ -269,11 +301,17 @@ export async function processUrl(
     // );
     // Remove title and description from mappedLinks
     mappedLinks = mappedLinks.map((link) => ({ url: link.url }));
-    return mappedLinks.map((x) => x.url);
+    return {
+      urls: mappedLinks.map((x) => x.url),
+      tokenUsage,
+    };
   } catch (error) {
     trace.status = "error";
     trace.error = error.message;
     trace.usedInCompletion = false;
-    return [];
+    return {
+      urls: [],
+      tokenUsage,
+    };
   }
 }

@@ -1,4 +1,4 @@
-import { MapDocument, URLTrace } from "../../controllers/v1/types";
+import { MapDocument, TokenUsage, URLTrace } from "../../controllers/v1/types";
 import { performRanking } from "../ranker";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { logger } from "../logger";
@@ -165,7 +165,7 @@ function filterAndProcessLinks(
 
 export type RerankerResult = {
   mapDocument: (MapDocument & { relevanceScore?: number; reason?: string })[];
-  tokensUsed: number;
+  tokenUsage: TokenUsage[];
 };
 
 export type RerankerOptions = {
@@ -184,7 +184,13 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
   const chunks: MapDocument[][] = [];
   const TIMEOUT_MS = 60000;
   const MAX_RETRIES = 2;
-  let totalTokensUsed = 0;
+  let tokenUsage: TokenUsage[] = [];
+
+  const openAI = getOpenAI()
+  // const model = openAI("o3-mini")
+  const model = openAI("gpt-4o-mini")
+  // let totalTokensUsed = 0;
+  // let promptTokens = 0;
 
   await fs.writeFile(`logs/links-${crypto.randomUUID()}.txt`, JSON.stringify(links, null, 2));
 
@@ -262,12 +268,12 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
 
           // dumpToFile(new Date().toISOString(),[buildRerankerSystemPrompt(), buildRerankerUserPrompt(searchQuery), schema, linksContent])
           // const gemini = getGemini();
-          const model = getOpenAI()
+          // const model = getOpenAI()
           // const model = getGemini()
           let completion: any;
           try {
             const completionPromise = generateCompletions({
-              model: model("o3-mini"),
+              model,
               logger: logger.child({
                 method: "rerankLinksWithLLM",
                 chunk: chunkIndex + 1,
@@ -296,17 +302,20 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
             //   timeoutPromise,
             // ]);
 
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!˜")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log({ completion })
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-            console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+
+            
+
+            // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!˜")
+            // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            // console.log({ completion })
+            // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+            // console.log("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
             
           } catch (error) {
             console.warn(
@@ -327,7 +336,8 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
             return [];
           }
 
-          totalTokensUsed += completion.numTokens || 0;
+          tokenUsage.push(completion.totalUsage);
+          // totalTokensUsed += completion;
           // console.log(`Chunk ${chunkIndex + 1}: Found ${completion.extract.relevantLinks.length} relevant links`);
           return completion.extract.relevantLinks;
         } catch (error) {
@@ -370,19 +380,21 @@ export async function rerankLinksWithLLM(options: RerankerOptions): Promise<Rera
     })
     .filter((link): link is NonNullable<typeof link> => link !== undefined);
 
+  await fs.writeFile(`logs/reranker-tokenUsage.json`, JSON.stringify(tokenUsage, null, 2));
+
   // Add debug logging for testing
-  fs.writeFile(`logs/reranker-aaa-${crypto.randomUUID()}.json`, JSON.stringify(
-  {
-    totalResults: relevantLinks.length,
-    scores: relevantLinks.map(l => ({
-      url: l.url,
-      score: l.relevanceScore,
-      reason: l.reason
-    }))
-  }, null, 2));
+  // fs.writeFile(`logs/reranker-aaa-${crypto.randomUUID()}.json`, JSON.stringify(
+  // {
+  //   totalResults: relevantLinks.length,
+  //   scores: relevantLinks.map(l => ({
+  //     url: l.url,
+  //     score: l.relevanceScore,
+  //     reason: l.reason
+  //   }))
+  // }, null, 2));
 
   return {
     mapDocument: relevantLinks,
-    tokensUsed: totalTokensUsed,
+    tokenUsage: tokenUsage,
   };
 }

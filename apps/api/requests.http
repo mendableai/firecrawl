@@ -65,6 +65,8 @@ content-type: application/json
   "sitemapOnly": true
 }
 
+
+
 ### Extract Firecrawl Title
 # @name extractFirecrawl
 POST {{baseUrl}}/v1/extract HTTP/1.1
@@ -73,10 +75,11 @@ content-type: application/json
 
 {
   "urls": [
-    "https://firecrawl.dev/blog"
+    "https://firecrawl.dev/blog",
+    "https://firecrawl.dev/blog/*"
   ],
   "origin": "api-sdk",
-  "prompt": "Extract all the blog titles from the page, is multity entity = true",
+  "prompt": "Extract all the blog titles from page, is multity entity = true",
   "schema": {
     "type": "object",
     "properties": {

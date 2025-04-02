@@ -7,7 +7,7 @@ import {
   buildBatchExtractPrompt,
   buildBatchExtractSystemPrompt,
 } from "../build-prompts";
-import { getGemini } from "../../generic-ai";
+import { getGemini, getOpenAI } from "../../generic-ai";
 import fs from "fs/promises";
 /**
  * Batch extract information from a list of URLs using a multi-entity schema.
@@ -31,7 +31,11 @@ export async function batchExtractPromise(
   warning?: string;
   sources: string[];
 }> {
-  const gemini = getGemini();
+  const openai = getOpenAI();
+  const model = openai("gpt-4o-mini");
+
+  // const gemini = getGemini();
+  // const model = gemini("gemini-2.0-flash");
   const completion = await generateCompletions({
     logger: logger.child({
       method: "extractService/generateCompletions",
@@ -48,14 +52,19 @@ export async function batchExtractPromise(
     },
     markdown: buildDocument(doc),
     isExtractEndpoint: true,
-    model: gemini("gemini-2.0-flash"),
+    model: model,
   });
   await fs.writeFile(`logs/batchExtract-${crypto.randomUUID()}.json`, JSON.stringify(completion, null, 2));
 
   return {
     extract: completion.extract,
-    numTokens: completion.numTokens,
-    totalUsage: completion.totalUsage,
+    numTokens: completion.totalUsage.totalTokens,
+    totalUsage: {
+      promptTokens: completion.totalUsage.promptTokens ?? 0,
+      completionTokens: completion.totalUsage.completionTokens ?? 0,
+      totalTokens: completion.totalUsage.totalTokens ?? 0,
+      model: model.modelId,
+    },
     sources: [doc.metadata.url || doc.metadata.sourceURL || ""]
   };
 }
