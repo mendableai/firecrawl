@@ -66,6 +66,7 @@ export async function scrapeHelper(
     extractorOptions,
     timeout,
     crawlerOptions,
+    team_id,
   );
 
   await addScrapeJob(
@@ -297,6 +298,7 @@ export async function scrapeController(req: Request, res: Response) {
       pageOptions,
       extractorOptions,
       timeout,
+      team_id,
     );
 
     logJob({

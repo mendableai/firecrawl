@@ -84,6 +84,18 @@ describe("Scrape tests", () => {
     //     expect(response.markdown).toMatch(/(\.g\.doubleclick\.net|amazon-adsystem\.com)\//);
     //   }, 30000);
     // });
+
+    describe("Compare format", () => {
+      it.concurrent("works", async () => {
+        const response = await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "compare"],
+        });
+
+        expect(response.compare).toBeDefined();
+        expect(response.compare?.previousScrapeAt).not.toBeNull();
+      });
+    });
   
     describe("Location API (f-e dependant)", () => {
       it.concurrent("works without specifying an explicit location", async () => {
