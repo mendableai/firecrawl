@@ -230,15 +230,18 @@ export async function extractData({
         }),
       );
     }
+    console.log("smartscrapeResults", smartscrapeResults);
 
     const scrapedPages = smartscrapeResults.map(
       (result) => result.scrapedPages,
     );
-    const htmls = scrapedPages.map((page) => page.html);
+    console.log("scrapedPages", scrapedPages);
+    const htmls = scrapedPages.flat().map((page) => page.html);
+    console.log("htmls", htmls);
     const markdowns = await Promise.all(
       htmls.map(async (html) => await parseMarkdown(html)),
     );
-
+    console.log("markdowns", markdowns);
     extractedData = await Promise.all(
       markdowns.map(async (markdown) => {
         const newExtractOptions = {
