@@ -20,9 +20,9 @@ const getModelLimits = (model: string) => {
   if (!modelConfig) {
     // Default fallback values
     return {
-      maxInputTokens: 8192,
-      maxOutputTokens: 4096,
-      maxTokens: 12288,
+      maxInputTokens: 65536,
+      maxOutputTokens: 65536,
+      maxTokens: 65536,
     };
   }
   return {

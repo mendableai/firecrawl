@@ -232,7 +232,7 @@ export async function crawlStatusController(
 
   const data = doneJobs.map((x) => x.returnvalue);
 
-  const protocol = process.env.ENV === "local" ? req.protocol : "https";
+  const protocol = req.protocol;
   const nextURL = new URL(
     `${protocol}://${req.get("host")}/v1/${isBatch ? "batch/scrape" : "crawl"}/${req.params.jobId}`,
   );
@@ -246,7 +246,7 @@ export async function crawlStatusController(
   let totalCount = jobIDs.length;
 
   if (totalCount === 0 && process.env.USE_DB_AUTHENTICATION === "true") {
-    const x = await supabase_rr_service
+    const x = await supabase_service
       .from('firecrawl_jobs')
       .select('*', { count: 'exact', head: true })
       .eq("crawl_id", req.params.jobId)

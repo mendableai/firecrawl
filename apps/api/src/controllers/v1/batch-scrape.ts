@@ -82,7 +82,7 @@ export async function batchScrapeController(
     : {
         crawlerOptions: null,
         scrapeOptions: req.body,
-        internalOptions: { disableSmartWaitCache: true, teamId: req.auth.team_id }, // NOTE: smart wait disabled for batch scrapes to ensure contentful scrape, speed does not matter
+        internalOptions: { disableSmartWaitCache: true }, // NOTE: smart wait disabled for batch scrapes to ensure contentful scrape, speed does not matter
         team_id: req.auth.team_id,
         createdAt: Date.now(),
         plan: req.auth.plan,
@@ -162,7 +162,7 @@ export async function batchScrapeController(
     );
   }
 
-  const protocol = process.env.ENV === "local" ? req.protocol : "https";
+  const protocol = req.protocol;
 
   return res.status(200).json({
     success: true,

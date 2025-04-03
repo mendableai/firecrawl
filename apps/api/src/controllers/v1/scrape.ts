@@ -50,7 +50,7 @@ export async function scrapeController(
       mode: "single_urls",
       team_id: req.auth.team_id,
       scrapeOptions: req.body,
-      internalOptions: { teamId: req.auth.team_id },
+      internalOptions: {},
       plan: req.auth.plan!,
       origin: req.body.origin,
       is_scrape: true,

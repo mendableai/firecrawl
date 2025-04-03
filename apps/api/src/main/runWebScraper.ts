@@ -51,7 +51,6 @@ export async function startWebScraperPipeline({
     priority: job.opts.priority,
     is_scrape: job.data.is_scrape ?? false,
     is_crawl: !!(job.data.crawl_id && job.data.crawlerOptions !== null),
-    urlInvisibleInCurrentCrawl: job.data.crawlerOptions?.urlInvisibleInCurrentCrawl ?? false,
   });
 }
 
@@ -67,7 +66,6 @@ export async function runWebScraper({
   priority,
   is_scrape = false,
   is_crawl = false,
-  urlInvisibleInCurrentCrawl = false,
 }: RunWebScraperParams): Promise<ScrapeUrlResponse> {
   const logger = _logger.child({
     method: "runWebScraper",
@@ -99,8 +97,6 @@ export async function runWebScraper({
       response = await scrapeURL(bull_job_id, url, scrapeOptions, {
         priority,
         ...internalOptions,
-        urlInvisibleInCurrentCrawl,
-        teamId: internalOptions?.teamId ?? team_id,
       });
       if (!response.success) {
         if (response.error instanceof Error) {

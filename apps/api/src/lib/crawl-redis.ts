@@ -154,20 +154,20 @@ export async function finishCrawlKickoff(id: string) {
   );
 }
 
-export async function finishCrawlPre(id: string) {
+export async function finishCrawl(id: string) {
   if (await isCrawlFinished(id)) {
-    _logger.debug("Marking crawl as pre-finished.", {
+    _logger.debug("Marking crawl as finished.", {
       module: "crawl-redis",
-      method: "finishCrawlPre",
+      method: "finishCrawl",
       crawlId: id,
     });
-    const set = await redisConnection.setnx("crawl:" + id + ":finished_pre", "yes");
-    await redisConnection.expire("crawl:" + id + ":finished_pre", 24 * 60 * 60);
+    const set = await redisConnection.setnx("crawl:" + id + ":finish", "yes");
+    await redisConnection.expire("crawl:" + id + ":finish", 24 * 60 * 60);
     return set === 1;
   } else {
-    _logger.debug("Crawl can not be pre-finished yet, not marking as finished.", {
+    _logger.debug("Crawl can not be finished yet, not marking as finished.", {
       module: "crawl-redis",
-      method: "finishCrawlPre",
+      method: "finishCrawl",
       crawlId: id,
       jobs_done: await redisConnection.scard("crawl:" + id + ":jobs_done"),
       jobs: await redisConnection.scard("crawl:" + id + ":jobs"),
@@ -175,16 +175,6 @@ export async function finishCrawlPre(id: string) {
         (await redisConnection.get("crawl:" + id + ":kickoff:finish")) !== null,
     });
   }
-}
-
-export async function finishCrawl(id: string) {
-  _logger.debug("Marking crawl as finished.", {
-    module: "crawl-redis",
-    method: "finishCrawl",
-    crawlId: id,
-  });
-  await redisConnection.set("crawl:" + id + ":finish", "yes");
-  await redisConnection.expire("crawl:" + id + ":finish", 24 * 60 * 60);
 }
 
 export async function getCrawlJobs(id: string): Promise<string[]> {
@@ -260,7 +250,7 @@ export function generateURLPermutations(url: string | URL): URL[] {
     return [urlWithHTML, urlWithPHP, urlWithSlash, urlWithBare];
   });
 
-  return [...new Set(permutations.map(x => x.href))].map(x => new URL(x));
+  return permutations;
 }
 
 export async function lockURL(

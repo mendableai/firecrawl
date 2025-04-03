@@ -59,7 +59,6 @@ export interface RunWebScraperParams {
   priority?: number;
   is_scrape?: boolean;
   is_crawl?: boolean;
-  urlInvisibleInCurrentCrawl?: boolean;
 }
 
 export type RunWebScraperResult =

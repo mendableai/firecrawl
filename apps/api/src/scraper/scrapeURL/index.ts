@@ -162,8 +162,6 @@ async function buildMetaObject(
 }
 
 export type InternalOptions = {
-  teamId: string;
-  
   priority?: number; // Passed along to fire-engine
   forceEngine?: Engine | Engine[];
   atsv?: boolean; // anti-bot solver, beta
@@ -175,7 +173,6 @@ export type InternalOptions = {
   isBackgroundIndex?: boolean;
   fromCache?: boolean; // Indicates if the document was retrieved from cache
   abort?: AbortSignal;
-  urlInvisibleInCurrentCrawl?: boolean;
 };
 
 export type EngineResultsTracker = {
@@ -386,7 +383,7 @@ export async function scrapeURL(
   id: string,
   url: string,
   options: ScrapeOptions,
-  internalOptions: InternalOptions,
+  internalOptions: InternalOptions = {},
 ): Promise<ScrapeUrlResponse> {
   const meta = await buildMetaObject(id, url, options, internalOptions);
   try {

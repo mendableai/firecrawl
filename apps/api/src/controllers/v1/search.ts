@@ -83,7 +83,7 @@ async function scrapeSearchResult(
         mode: "single_urls" as Mode,
         team_id: options.teamId,
         scrapeOptions: options.scrapeOptions,
-        internalOptions: { teamId: options.teamId },
+        internalOptions: {},
         plan: options.plan || "free",
         origin: options.origin,
         is_scrape: true,

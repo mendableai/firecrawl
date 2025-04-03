@@ -11,8 +11,7 @@ RUN npx playwright install --with-deps
 
 RUN npm run build
 
-ARG PORT
-ENV PORT=${PORT}
+ENV PORT=3000
 
 EXPOSE ${PORT}
 

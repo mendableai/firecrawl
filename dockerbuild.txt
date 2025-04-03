@@ -1,0 +1,5 @@
+docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t logicalsight/firecrawl:1.0.2 \
+  ./apps/api \
+  --push

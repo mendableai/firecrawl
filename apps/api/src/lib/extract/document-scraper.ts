@@ -44,7 +44,6 @@ export async function scrapeDocument(
         scrapeOptions: scrapeOptions.parse({ ...internalScrapeOptions }),
         internalOptions: {
           useCache: true,
-          teamId: options.teamId,
         },
         plan: options.plan,
         origin: options.origin,

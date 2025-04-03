@@ -99,7 +99,6 @@ export async function crawlPreviewController(req: Request, res: Response) {
       pageOptions,
       undefined,
       undefined,
-      team_id
     );
 
     const sc: StoredCrawl = {

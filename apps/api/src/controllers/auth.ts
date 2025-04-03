@@ -97,8 +97,7 @@ export async function getACUC(
       mode === RateLimiterMode.Extract ||
       mode === RateLimiterMode.ExtractStatus;
     while (retries < maxRetries) {
-      const client =
-        Math.random() > (2/3) ? supabase_rr_service : supabase_service;
+      const client = supabase_service;
       ({ data, error } = await client.rpc(
         "auth_credit_usage_chunk_27_tally",
         { input_key: api_key, i_is_extract: isExtract, tally_untallied_credits: true },
@@ -402,7 +401,6 @@ function getPlanByPriceId(price_id: string | null): PlanType {
     case process.env.STRIPE_PRICE_ID_ETIER_SCALE_1_YEARLY_FIRECRAWL:
       return "etierscale1";
     case process.env.STRIPE_PRICE_ID_ETIER_SCALE_2_YEARLY:
-    case process.env.STRIPE_PRICE_ID_ETIER_SCALE_2_MONTHLY:
       return "etierscale2";
     case process.env.STRIPE_PRICE_ID_EXTRACT_STARTER_MONTHLY:
     case process.env.STRIPE_PRICE_ID_EXTRACT_STARTER_YEARLY:
@@ -417,4 +415,3 @@ function getPlanByPriceId(price_id: string | null): PlanType {
       return "free";
   }
 }
-

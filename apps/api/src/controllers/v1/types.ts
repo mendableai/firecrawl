@@ -20,8 +20,7 @@ export type Format =
   | "links"
   | "screenshot"
   | "screenshot@fullPage"
-  | "extract"
-  | "compare";
+  | "extract";
 
 export const url = z.preprocess(
   (x) => {
@@ -166,7 +165,6 @@ const baseScrapeOptions = z
         "screenshot@fullPage",
         "extract",
         "json",
-        "compare",
       ])
       .array()
       .optional()
@@ -174,10 +172,6 @@ const baseScrapeOptions = z
       .refine(
         (x) => !(x.includes("screenshot") && x.includes("screenshot@fullPage")),
         "You may only specify either screenshot or screenshot@fullPage",
-      )
-      .refine(
-        (x) => !x.includes("compare") || x.includes("markdown"),
-        "The compare format requires the markdown format to be specified as well",
       ),
     headers: z.record(z.string(), z.string()).optional(),
     includeTags: z.string().array().optional(),
@@ -552,11 +546,6 @@ export type Document = {
       value: unknown
     }[];
   };
-  compare?: {
-    previousScrapeAt: string | null;
-    changeStatus: "new" | "same" | "changed" | "removed";
-    visibility: "visible" | "hidden";
-  }
   metadata: {
     title?: string;
     description?: string;
@@ -823,7 +812,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
   };
 }
 
-export function fromLegacyCrawlerOptions(x: any, teamId: string): {
+export function fromLegacyCrawlerOptions(x: any): {
   crawlOptions: CrawlerOptions;
   internalOptions: InternalOptions;
 } {
@@ -845,7 +834,6 @@ export function fromLegacyCrawlerOptions(x: any, teamId: string): {
    }),
     internalOptions: {
       v0CrawlOnlyUrls: x.returnOnlyUrls,
-      teamId,
     },
   };
 }
@@ -859,7 +847,6 @@ export function fromLegacyScrapeOptions(
   pageOptions: PageOptions,
   extractorOptions: ExtractorOptions | undefined,
   timeout: number | undefined,
-  teamId: string,
 ): { scrapeOptions: ScrapeOptions; internalOptions: InternalOptions } {
   return {
     scrapeOptions: scrapeOptions.parse({
@@ -909,7 +896,6 @@ export function fromLegacyScrapeOptions(
     internalOptions: {
       atsv: pageOptions.atsv,
       v0DisableJsDom: pageOptions.disableJsDom,
-      teamId,
     },
     // TODO: fallback, fetchPageContent, replaceAllPathsWithAbsolutePaths, includeLinks
   };
@@ -920,15 +906,13 @@ export function fromLegacyCombo(
   extractorOptions: ExtractorOptions | undefined,
   timeout: number | undefined,
   crawlerOptions: any,
-  teamId: string,
 ): { scrapeOptions: ScrapeOptions; internalOptions: InternalOptions } {
   const { scrapeOptions, internalOptions: i1 } = fromLegacyScrapeOptions(
     pageOptions,
     extractorOptions,
     timeout,
-    teamId,
   );
-  const { internalOptions: i2 } = fromLegacyCrawlerOptions(crawlerOptions, teamId);
+  const { internalOptions: i2 } = fromLegacyCrawlerOptions(crawlerOptions);
   return { scrapeOptions, internalOptions: Object.assign(i1, i2) };
 }
 
