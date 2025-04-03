@@ -7,31 +7,70 @@ import {
 import { smartScrape } from "./smartScrape";
 import { parseMarkdown } from "../../../lib/html-to-markdown";
 
+const commonSmartScrapeProperties = {
+  shouldUseSmartscrape: {
+    type: "boolean",
+    description:
+      "Set to `true` if any of the extractedData is null and you think you can find the information by performing user-like interactions (e.g., clicking buttons/accordions to reveal hidden text, scrolling down to load more content). SmartScrape can perform these actions to access the data.",
+  },
+  // Note: extractedData is added dynamically in prepareSmartScrapeSchema
+};
+
+// Define common properties for reasoning and prompt
+const commonReasoningPromptProperties = {
+  smartscrape_reasoning: {
+    type: ["string", "null"],
+    // Using the more detailed multi-step description as the common one
+    description:
+      "Reasoning for why a SmartScrape step/action is needed. Explain which data is missing or requires interaction.",
+  },
+  smartscrape_prompt: {
+    type: ["string", "null"],
+    // Using the more detailed multi-step description as the common one
+    description:
+      "Prompt detailing the specific actions SmartScrape should perform (e.g., 'click button X', 'scroll down').",
+  },
+};
+
+// Schema for single-step SmartScrape interaction
 const smartScrapeWrapperSchemaDefinition = {
   type: "object",
   properties: {
+    ...commonSmartScrapeProperties, // Include shared base properties
+    ...commonReasoningPromptProperties, // Include shared reasoning/prompt properties
     // extractedData will be added dynamically
-    shouldUseSmartscrape: {
-      type: "boolean",
-      description:
-        "Set to `true` if any of the extractedData is null and you think you can find the information by performing user-like interactions (e.g., clicking buttons/accordions to reveal hidden text, scrolling down to load more content). SmartScrape can perform these actions to access the data.",
-    },
-    smartscrape_reasoning: {
-      type: ["string", "null"],
-      description:
-        "Fill this only if shouldUseSmartscrape is true. Reasoning for why you think the page requires or doesnt require smartscrape. If it does explain which data you can't get with the initial page load.",
-    },
-    smartscrape_prompt: {
-      type: ["string", "null"],
-      description:
-        "Prompt to use for Smartscrape refinement if shouldUseSmartscrape is true. Explain exactly what actions smartscrape should do. Smartscrape is a tool that can perform actions on the page like clicking, scrolling, etc. It cant extract data it will just return the pages and we will handle the extraction.",
-    },
   },
-  additionalProperties: false, // Keep this for the top-level wrapper
+  additionalProperties: false,
   required: ["extractedData", "shouldUseSmartscrape"],
-  // Note: Dynamically adding 'smartscrape_reasoning' and 'smartscrape_prompt' to required
-  // based on shouldUseSmartscrape is complex in standard JSON schema and might depend on the LLM's interpretation.
-  // Keeping extractedData and shouldUseSmartscrape as the base requirements.
+};
+
+// Schema for multi-step SmartScrape interaction
+const multiSmartScrapeWrapperSchemaDefinition = {
+  type: "object",
+  properties: {
+    ...commonSmartScrapeProperties, // Include shared base properties
+    smartScrapePages: {
+      type: "array",
+      description:
+        "Make an entry for each page we want to run smart scrape on.",
+      items: {
+        type: "object",
+        properties: {
+          page_index: {
+            // Specific to items within the array
+            type: "number",
+            description: "The index of the page in the SmartScrape process.",
+          },
+          ...commonReasoningPromptProperties, // Include shared reasoning/prompt properties here too
+        },
+        // required: ["page_index", "smartscrape_reasoning", "smartscrape_prompt"], // If needed per step
+        // additionalProperties: false,
+      },
+    },
+    // extractedData will be added dynamically
+  },
+  additionalProperties: false,
+  required: ["extractedData", "shouldUseSmartscrape"],
 };
 
 //TODO: go over and check
@@ -107,15 +146,23 @@ export function makeSchemaNullable(schema: any): any {
 export function prepareSmartScrapeSchema(
   originalSchema: any | z.ZodTypeAny | undefined,
   logger: Logger,
+  isSingleUrl: boolean,
 ) {
   // Make the user's schema nullable *and* ensure nested objects have additionalProperties:false
   const nullableAndStrictSchema = makeSchemaNullable(originalSchema);
 
+  let smartScrapeWrapScehma;
+  if (isSingleUrl) {
+    smartScrapeWrapScehma = smartScrapeWrapperSchemaDefinition;
+  } else {
+    smartScrapeWrapScehma = multiSmartScrapeWrapperSchemaDefinition;
+  }
+
   const wrappedSchema = {
-    ...smartScrapeWrapperSchemaDefinition, // Uses the wrapper defined above
+    ...smartScrapeWrapScehma, // Uses the wrapper defined above
     properties: {
       extractedData: nullableAndStrictSchema, // Nest the modified original schema
-      ...smartScrapeWrapperSchemaDefinition.properties, // Add smartscrape fields
+      ...smartScrapeWrapScehma.properties, // Add smartscrape fields
     },
     // required is inherited from smartScrapeWrapperSchemaDefinition
     // additionalProperties:false is inherited from smartScrapeWrapperSchemaDefinition for the top level
@@ -130,17 +177,17 @@ export function prepareSmartScrapeSchema(
 
 export async function extractData({
   extractOptions,
-  url,
+  urls,
 }: {
   extractOptions: GenerateCompletionsOptions;
-  url: string;
+  urls: string[];
 }): Promise<{ extractedDataArray: any[]; warning: any }> {
   //WRAP SCHEMA
   const schema = extractOptions.options.schema;
   const logger = extractOptions.logger;
-
+  const isSingleUrl = urls.length === 0;
   console.log("!!!!!!!!!!!!!!!!!!hereee");
-  const { schemaToUse } = prepareSmartScrapeSchema(schema, logger);
+  const { schemaToUse } = prepareSmartScrapeSchema(schema, logger, isSingleUrl);
   const extractOptionsNewSchema = {
     ...extractOptions,
     options: { ...extractOptions.options, schema: schemaToUse },
@@ -160,18 +207,34 @@ export async function extractData({
   //   smartscrape_prompt,
   // } = processSmartScrapeResult(extract, logger);
 
-  const shouldUseSmartscrape = extract?.shouldUseSmartscrape;
-  const smartscrape_reasoning = extract?.smartscrape_reasoning;
-  const smartscrape_prompt = extract?.smartscrape_prompt;
   let extractedData = extract?.extractedData;
 
-  console.log("shouldUseSmartscrape", shouldUseSmartscrape);
-  console.log("smartscrape_reasoning", smartscrape_reasoning);
-  console.log("smartscrape_prompt", smartscrape_prompt);
-  if (shouldUseSmartscrape) {
-    const smartscrapeResult = await smartScrape(url, smartscrape_prompt);
+  console.log("shouldUseSmartscrape", extract?.shouldUseSmartscrape);
+  console.log("smartscrape_reasoning", extract?.smartscrape_reasoning);
+  console.log("smartscrape_prompt", extract?.smartscrape_prompt);
+  if (extract?.shouldUseSmartscrape) {
+    let smartscrapeResults;
+    if (isSingleUrl) {
+      smartscrapeResults = [
+        await smartScrape(urls[0], extract?.smartscrape_prompt),
+      ];
+    } else {
+      const pages = extract?.smartscrapePages;
+      //do it async promiseall instead
+      smartscrapeResults = await Promise.all(
+        pages.map(async (page) => {
+          return await smartScrape(
+            urls[page.page_index],
+            page.smartscrape_prompt,
+          );
+        }),
+      );
+    }
 
-    const htmls = smartscrapeResult.scrapedPages.map((page) => page.html);
+    const scrapedPages = smartscrapeResults.map(
+      (result) => result.scrapedPages,
+    );
+    const htmls = scrapedPages.map((page) => page.html);
     const markdowns = await Promise.all(
       htmls.map(async (html) => await parseMarkdown(html)),
     );
