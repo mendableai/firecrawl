@@ -15,6 +15,7 @@ import { getModel } from "../../../lib/generic-ai";
 import { z } from "zod";
 import fs from "fs/promises";
 import Ajv from "ajv";
+import { extractData } from "../lib/extractSmartScrape";
 
 // TODO: fix this, it's horrible
 type LanguageModelV1ProviderMetadata = {
@@ -168,7 +169,16 @@ export function trimToTokenLimit(
     };
   }
 }
-
+export type GenerateCompletionsOptions = {
+  model?: LanguageModel;
+  logger: Logger;
+  options: ExtractOptions;
+  markdown?: string;
+  previousWarning?: string;
+  isExtractEndpoint?: boolean;
+  mode?: "object" | "no-object";
+  providerOptions?: LanguageModelV1ProviderMetadata;
+};
 export async function generateCompletions({
   logger,
   options,
@@ -178,16 +188,7 @@ export async function generateCompletions({
   model = getModel("gpt-4o-mini"),
   mode = "object",
   providerOptions,
-}: {
-  model?: LanguageModel;
-  logger: Logger;
-  options: ExtractOptions;
-  markdown?: string;
-  previousWarning?: string;
-  isExtractEndpoint?: boolean;
-  mode?: "object" | "no-object";
-  providerOptions?: LanguageModelV1ProviderMetadata;
-}): Promise<{
+}: GenerateCompletionsOptions): Promise<{
   extract: any;
   numTokens: number;
   warning: string | undefined;
@@ -397,118 +398,110 @@ export async function performLLMExtract(
   document: Document,
 ): Promise<Document> {
   if (meta.options.formats.includes("extract")) {
-    const originalOptions = meta.options.extract!;
-    let generationOptions = { ...originalOptions }; // Start with original options
-    let schemaWasWrapped = false;
+    // const originalOptions = meta.options.extract!;
 
-    if (originalOptions.schema) {
-      const wrappedSchema = {
-        type: "object",
-        properties: {
-          extractedData: originalOptions.schema, // Nest the original schema
-          shouldUseSmartscrape: {
-            type: "boolean",
-            description:
-              "Set to `true` if any of the extractedData is null and you think you can find the information by performing user-like interactions (e.g., clicking buttons/accordions to reveal hidden text, scrolling down to load more content). SmartScrape can perform these actions to access the data.",
-          },
-          smartscrape_reasoning: {
-            type: "string",
-            description:
-              "Fill this only if shouldUseSmartscrape is true. Reasoning for why you think the page requires or doesnt require smartscrape. If it does explain which data you can't get with the initial page load.",
-          },
-          smartscrape_prompt: {
-            type: "string",
-            description:
-              "Prompt to use for Smartscrape refinement if shouldUseSmartscrape is true. Explain exactly what actions smartscrape should do. Smartscrape is a tool that can perform actions on the page like clicking, scrolling, etc.",
-          },
-        },
-        required: ["reasoning", "shouldUseSmartscrape"],
-        // Conditionally require 'prompt' if 'shouldUseSmartscrape' is true
-        // if: {
-        //   properties: {
-        //     shouldUseSmartscrape: { const: true },
-        //   },
-        //   required: ["shouldUseSmartscrape"],
-        // },
-        // then: {
-        //   required: ["prompt"],
-        // },
-      };
+    // let generationOptions = { ...originalOptions }; // Start with original options
 
-      // Update generationOptions to use the wrapped schema
-      generationOptions.schema = wrappedSchema;
-      schemaWasWrapped = true;
-      meta.logger.info("Using wrapped schema for LLM extraction.", {
-        wrappedSchema,
-      });
-    } else {
-      meta.logger.info(
-        "No original schema provided, proceeding without wrapping.",
-      );
-    }
-
-    meta.internalOptions.abort?.throwIfAborted();
-    const { extract, warning, totalUsage, model } = await generateCompletions({
+    const generationOptions: GenerateCompletionsOptions = {
       logger: meta.logger.child({
         method: "performLLMExtract/generateCompletions",
       }),
-      options: generationOptions, // Pass potentially modified options
+      options: meta.options.extract!,
       markdown: document.markdown,
       previousWarning: document.warning,
-      // model: getModel("deepseek-ai/DeepSeek-R1", "deepinfra"),
-      // model: getModel("deepseek-ai/DeepSeek-V3-0324", "deepinfra"),
-
-      // model: getModel("gemini-2.5-pro-exp-03-25", "google"),
+      // ... existing model and provider options ...
+      // model: getModel("o3-mini", "openai"), // Keeping existing model selection
       // model: getModel("o3-mini", "openai"),
+      // model: getModel("qwen-qwq-32b", "groq"),
+      model: getModel("gemini-2.5-pro-exp-03-25", "google"),
+    };
 
-      // model: getModel("gemini-2.0-flash", "google"),
-      // model: getModel("accounts/fireworks/models/deepseek-r1", "fireworks"),
-      // model: getModel("gpt-4o-mini", "openai"),
-      // model: getModel("gemini-2.5-pro-exp-03-25", "google"),
-      // model: getModel("o3-mini", "openai"),
-      model: getModel("qwen-qwq-32b", "groq"),
-
-      // model: getModel("claude-3-7-sonnet", "anthropic"),
-      providerOptions: {
-        anthropic: {
-          thinking: { type: "enabled", budgetTokens: 12000 },
-        },
-      },
+    const { extractedDataArray, warning } = await extractData({
+      extractOptions: generationOptions,
+      url: meta.url,
     });
 
-    // Log token usage
-    meta.logger.info("LLM extraction token usage", {
-      model: model,
-      promptTokens: totalUsage.promptTokens,
-      completionTokens: totalUsage.completionTokens,
-      totalTokens: totalUsage.totalTokens,
-    });
+    //TODO: add merge here
+    const extractedData = extractedDataArray[0];
 
-    // Extract the actual data if the schema was wrapped
-    let finalExtract = schemaWasWrapped ? extract?.extractedData : extract;
-    console.log({ extract });
-    // Double-check extraction if wrapping occurred but extractedData is missing
-    if (
-      schemaWasWrapped &&
-      finalExtract === undefined &&
-      extract?.hasOwnProperty("extractedData")
-    ) {
-      finalExtract = extract.extractedData;
-    } else if (schemaWasWrapped && finalExtract === undefined) {
-      // Log a warning if wrapping occurred but the expected structure wasn't returned
-      meta.logger.warn(
-        "Schema was wrapped, but LLM result did not contain expected 'extractedData' property.",
-        { extractResult: extract },
-      );
-    }
+    // // Prepare the schema, potentially wrapping it
+    // const { schemaToUse, schemaWasWrapped } = prepareSmartScrapeSchema(
+    //   originalOptions.schema,
+    //   meta.logger,
+    // );
+
+    // // Update generationOptions with the potentially wrapped schema
+    // generationOptions.schema = schemaToUse;
+
+    // meta.internalOptions.abort?.throwIfAborted();
+    // const {
+    //   extract: rawExtract,
+    //   warning,
+    //   totalUsage,
+    //   model,
+    // } = await generateCompletions({
+    //   logger: meta.logger.child({
+    //     method: "performLLMExtract/generateCompletions",
+    //   }),
+    //   options: generationOptions, // Use the potentially modified options
+    //   markdown: document.markdown,
+    //   previousWarning: document.warning,
+    //   // ... existing model and provider options ...
+    //   model: getModel("o3-mini", "openai"), // Keeping existing model selection
+    //   providerOptions: {
+    //     anthropic: {
+    //       thinking: { type: "enabled", budgetTokens: 12000 },
+    //     },
+    //   },
+    // });
+
+    // // Log token usage
+    // meta.logger.info("LLM extraction token usage", {
+    //   model: model,
+    //   promptTokens: totalUsage.promptTokens,
+    //   completionTokens: totalUsage.completionTokens,
+    //   totalTokens: totalUsage.totalTokens,
+    // });
+
+    // // Process the result to extract data and SmartScrape decision
+    // const {
+    //   extractedData,
+    //   shouldUseSmartscrape,
+    //   smartscrape_reasoning,
+    //   smartscrape_prompt,
+    // } = processSmartScrapeResult(rawExtract, schemaWasWrapped, meta.logger);
+
+    // // Log the SmartScrape decision if applicable
+    // if (schemaWasWrapped) {
+    //   meta.logger.info("SmartScrape decision processing result", {
+    //     shouldUseSmartscrape,
+    //     smartscrape_reasoning,
+    //     // Don't log the full prompt potentially
+    //     smartscrape_prompt_present: !!smartscrape_prompt,
+    //     extractedDataIsPresent:
+    //       extractedData !== undefined && extractedData !== null,
+    //   });
+
+    //   // TODO: Implement logic to ACTUALLY trigger SmartScrape based on the result
+    //   // For example:
+    //   // if (shouldUseSmartscrape && smartscrape_prompt) {
+    //   //   meta.logger.info("Triggering SmartScrape refinement...", { reason: smartscrape_reasoning, prompt: smartscrape_prompt });
+    //   //   // Call the smartScrape function (which needs to be implemented/imported)
+    //   //   // const smartScrapedDocs = await smartScrape(meta.url, smartscrape_prompt);
+    //   //   // Process/merge smartScrapedDocs with extractedData
+    //   //   // ... potentially update finalExtract ...
+    //   // } else {
+    //   //   meta.logger.info("SmartScrape not required based on LLM output.");
+    //   // }
+    // }
 
     // Assign the final extracted data
     if (meta.options.formats.includes("json")) {
-      document.json = finalExtract;
+      document.json = extractedData;
     } else {
-      document.extract = finalExtract;
+      document.extract = extractedData;
     }
-    document.warning = warning;
+    // document.warning = warning;
   }
 
   return document;
