@@ -698,7 +698,6 @@ export async function performExtraction(
     singleAnswerResult = transformArrayToObject(rSchema, completionResult);
 
     singleAnswerResult = deduplicateObjectsArray(singleAnswerResult);
-
     // Track single answer extraction tokens and sources
     if (completionResult) {
       tokenUsage.push(singleAnswerTokenUsage);
@@ -717,8 +716,8 @@ export async function performExtraction(
       }
     }
 
-    singleAnswerResult = completionResult;
-    singleAnswerCompletions = singleAnswerResult;
+    // singleAnswerResult = completionResult;
+    // singleAnswerCompletions = singleAnswerResult;
 
     // Update token usage in traces
     // if (completions && completions.numTokens) {
