@@ -1,5 +1,8 @@
 import { logger } from "../../../lib/logger";
-import { generateCompletions, GenerateCompletionsOptions } from "../../../scraper/scrapeURL/transformers/llmExtract";
+import {
+  generateCompletions,
+  GenerateCompletionsOptions,
+} from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { buildDocument } from "../build-document";
 import { Document, TokenUsage } from "../../../controllers/v1/types";
 import { getModel } from "../../../lib/generic-ai";
@@ -32,15 +35,17 @@ export async function singleAnswerCompletion({
       systemPrompt:
         (systemPrompt ? `${systemPrompt}\n` : "") +
         "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. In case you can't find the information and the string is required, instead of 'N/A' or 'Not speficied', return an empty string: '', if it's not a string and you can't find the information, return null. Be concise and follow the schema always if provided.",
-        prompt: "Today is: " + new Date().toISOString() + ".\n" + prompt,
-        schema: rSchema,
-      },
-      markdown: singleAnswerDocs.map((x, i) => `[ID: ${i}]` + buildDocument(x)).join("\n"),
-      isExtractEndpoint: true,
-      model: getModel("gemini-2.0-flash", "google"),
-    };
+      prompt: "Today is: " + new Date().toISOString() + ".\n" + prompt,
+      schema: rSchema,
+    },
+    markdown: singleAnswerDocs
+      .map((x, i) => `[ID: ${i}]` + buildDocument(x))
+      .join("\n"),
+    isExtractEndpoint: true,
+    model: getModel("gemini-2.0-flash", "google"),
+  };
 
-    const { extractedDataArray, warning } = await extractData({
+  const { extractedDataArray, warning } = await extractData({
     extractOptions: generationOptions,
     urls,
   });
@@ -57,7 +62,6 @@ export async function singleAnswerCompletion({
       (doc) => doc.metadata.url || doc.metadata.sourceURL || "",
     ),
   };
-
 
   // const completion = await generateCompletions({
   //   logger: logger.child({ module: "extract", method: "generateCompletions" }),
@@ -79,7 +83,7 @@ export async function singleAnswerCompletion({
   // );
   return {
     extract: completion.extract,
-    tokenUsage: completion.totalUsage,
+    tokenUsage: completion.tokenUsage,
     sources: singleAnswerDocs.map(
       (doc) => doc.metadata.url || doc.metadata.sourceURL || "",
     ),
