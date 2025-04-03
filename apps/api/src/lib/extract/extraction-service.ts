@@ -455,10 +455,10 @@ export async function performExtraction(
           );
 
           // Race between timeout and completion
-          const multiEntityCompletion = (await Promise.race([
-            completionPromise,
-            timeoutPromise,
-          ])) as Awaited<ReturnType<typeof generateCompletions>>;
+          const multiEntityCompletion = await completionPromise as Awaited<ReturnType<typeof batchExtractPromise>>;
+
+          // TODO: merge multiEntityCompletion.extract to fit the multiEntitySchema
+          
 
           // Track multi-entity extraction tokens
           if (multiEntityCompletion) {
@@ -513,14 +513,16 @@ export async function performExtraction(
           return null;
         }
       });
-
       // Wait for current chunk to complete before processing next chunk
       const chunkResults = await Promise.all(chunkPromises);
       const validResults = chunkResults.filter(
         (result): result is { extract: any; url: string } => result !== null,
       );
       extractionResults.push(...validResults);
-      multiEntityCompletions.push(...validResults.map((r) => r.extract));
+      // Merge all extracts from valid results into a single array
+      const extractArrays = validResults.map(r => Array.isArray(r.extract) ? r.extract : [r.extract]);
+      const mergedExtracts = extractArrays.flat();
+      multiEntityCompletions.push(...mergedExtracts);
       logger.debug("All multi-entity completion chunks finished.", {
         completionCount: multiEntityCompletions.length,
       });
@@ -682,6 +684,7 @@ export async function performExtraction(
       tokenUsage: singleAnswerTokenUsage,
       sources: singleAnswerSources,
     } = await singleAnswerCompletion({
+      url: request.urls?.[0] || "",
       singleAnswerDocs,
       rSchema,
       links,
@@ -689,6 +692,13 @@ export async function performExtraction(
       systemPrompt: request.systemPrompt ?? "",
     });
     logger.debug("Done generating singleAnswer completions.");
+
+    singleAnswerResult = transformArrayToObject(
+      rSchema,
+      completionResult,
+    );
+
+    singleAnswerResult = deduplicateObjectsArray(singleAnswerResult);
 
     // Track single answer extraction tokens and sources
     if (completionResult) {

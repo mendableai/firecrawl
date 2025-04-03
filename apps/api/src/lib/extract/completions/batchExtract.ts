@@ -1,5 +1,5 @@
 import { logger } from "../../../lib/logger";
-import { generateCompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
+import { generateCompletions, GenerateCompletionsOptions } from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { buildDocument } from "../build-document";
 import { ExtractResponse, TokenUsage } from "../../../controllers/v1/types";
 import { Document } from "../../../controllers/v1/types";
@@ -10,6 +10,7 @@ import {
 import { getModel } from "../../generic-ai";
 
 import fs from "fs/promises";
+import { extractData } from "../../../scraper/scrapeURL/lib/extractSmartScrape";
 /**
  * Batch extract information from a list of URLs using a multi-entity schema.
  * @param multiEntitySchema - The schema for the multi-entity extraction
@@ -26,14 +27,13 @@ export async function batchExtractPromise(
   systemPrompt: string,
   doc: Document,
 ): Promise<{
-  extract: any;
+  extract: any; // array of extracted data
   numTokens: number;
   totalUsage: TokenUsage;
   warning?: string;
   sources: string[];
 }> {
-  const gemini = getModel("gemini-2.0-flash", "google");
-  const completion = await generateCompletions({
+  const generationOptions: GenerateCompletionsOptions = {
     logger: logger.child({
       method: "extractService/generateCompletions",
     }),
@@ -49,17 +49,30 @@ export async function batchExtractPromise(
     },
     markdown: buildDocument(doc),
     isExtractEndpoint: true,
-    model: gemini("gemini-2.0-flash"),
+    model: getModel("gemini-2.0-flash", "google"),
+  };
+
+  const { extractedDataArray, warning } = await extractData({
+    extractOptions: generationOptions,
+    url: doc.metadata.sourceURL || doc.metadata.url || "",
   });
+
   await fs.writeFile(
-    `logs/batchExtract-${crypto.randomUUID()}.json`,
-    JSON.stringify(completion, null, 2),
+    `logs/extractedDataArray-${crypto.randomUUID()}.json`,
+    JSON.stringify(extractedDataArray, null, 2),
   );
 
+  // TODO: fix this
   return {
-    extract: completion.extract,
-    numTokens: completion.numTokens,
-    totalUsage: completion.totalUsage,
+    extract: extractedDataArray,
+    numTokens: 0,
+    totalUsage: {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      model: "gemini-2.0-flash",
+    },
+    warning: warning,
     sources: [doc.metadata.url || doc.metadata.sourceURL || ""],
-  };
+  }
 }
