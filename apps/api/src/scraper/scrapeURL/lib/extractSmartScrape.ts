@@ -11,7 +11,7 @@ const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
     type: "boolean",
     description:
-      "Set to `true` if any of the extractedData is null and you think you can find the information by performing user-like interactions (e.g., clicking buttons/accordions to reveal hidden text, scrolling down to load more content). SmartScrape can perform these actions to access the data.",
+      "Set to `true` if any of the extractedData is null and you think you can find the information by performing user-like interactions (e.g., clicking buttons/accordions to reveal hidden text). SmartScrape can perform these actions to access the data.",
   },
   // Note: extractedData is added dynamically in prepareSmartScrapeSchema
 };
@@ -22,13 +22,13 @@ const commonReasoningPromptProperties = {
     type: ["string", "null"],
     // Using the more detailed multi-step description as the common one
     description:
-      "Reasoning for why a SmartScrape step/action is needed. Explain which data is missing or requires interaction.",
+      "Reasoning for why a SmartScrape is needed. Explain which data is missing or requires interaction.",
   },
   smartscrape_prompt: {
     type: ["string", "null"],
     // Using the more detailed multi-step description as the common one
     description:
-      "Prompt detailing the specific actions SmartScrape should perform (e.g., 'click button X', 'scroll down').",
+      "Prompt detailing the specific actions SmartScrape should perform (e.g., 'click button X''). Dont mention anything about extraction, smartscrape just returns page content",
   },
 };
 
@@ -52,7 +52,7 @@ const multiSmartScrapeWrapperSchemaDefinition = {
     smartScrapePages: {
       type: "array",
       description:
-        "Make an entry for each page we want to run smart scrape on.",
+        "Make an entry for each page we want to run smart scrape on, no matter how many actions it should be one entry per page.",
       items: {
         type: "object",
         properties: {
@@ -185,7 +185,7 @@ export async function extractData({
   //WRAP SCHEMA
   const schema = extractOptions.options.schema;
   const logger = extractOptions.logger;
-  const isSingleUrl = urls.length === 0;
+  const isSingleUrl = urls.length === 1;
   console.log("!!!!!!!!!!!!!!!!!!hereee");
   const { schemaToUse } = prepareSmartScrapeSchema(schema, logger, isSingleUrl);
   const extractOptionsNewSchema = {
@@ -239,15 +239,18 @@ export async function extractData({
         }),
       );
     }
+    console.log("smartscrapeResults", smartscrapeResults);
 
     const scrapedPages = smartscrapeResults.map(
       (result) => result.scrapedPages,
     );
-    const htmls = scrapedPages.map((page) => page.html);
+    console.log("scrapedPages", scrapedPages);
+    const htmls = scrapedPages.flat().map((page) => page.html);
+    console.log("htmls", htmls);
     const markdowns = await Promise.all(
       htmls.map(async (html) => await parseMarkdown(html)),
     );
-
+    console.log("markdowns", markdowns);
     extractedData = await Promise.all(
       markdowns.map(async (markdown) => {
         const newExtractOptions = {

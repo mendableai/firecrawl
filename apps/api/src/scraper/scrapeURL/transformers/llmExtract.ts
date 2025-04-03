@@ -413,6 +413,7 @@ export async function performLLMExtract(
       // model: getModel("o3-mini", "openai"), // Keeping existing model selection
       // model: getModel("o3-mini", "openai"),
       // model: getModel("qwen-qwq-32b", "groq"),
+      // model: getModel("gemini-2.0-flash", "google"),
       model: getModel("gemini-2.5-pro-exp-03-25", "google"),
     };
 

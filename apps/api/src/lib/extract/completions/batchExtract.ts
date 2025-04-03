@@ -1,5 +1,8 @@
 import { logger } from "../../../lib/logger";
-import { generateCompletions, GenerateCompletionsOptions } from "../../../scraper/scrapeURL/transformers/llmExtract";
+import {
+  generateCompletions,
+  GenerateCompletionsOptions,
+} from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { buildDocument } from "../build-document";
 import { ExtractResponse, TokenUsage } from "../../../controllers/v1/types";
 import { Document } from "../../../controllers/v1/types";
@@ -74,5 +77,5 @@ export async function batchExtractPromise(
     },
     warning: warning,
     sources: [doc.metadata.url || doc.metadata.sourceURL || ""],
-  }
+  };
 }

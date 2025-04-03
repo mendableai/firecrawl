@@ -1,5 +1,8 @@
 import { logger } from "../../../lib/logger";
-import { generateCompletions, GenerateCompletionsOptions } from "../../../scraper/scrapeURL/transformers/llmExtract";
+import {
+  generateCompletions,
+  GenerateCompletionsOptions,
+} from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { buildDocument } from "../build-document";
 import { Document, TokenUsage } from "../../../controllers/v1/types";
 import { getModel } from "../../../lib/generic-ai";
@@ -39,7 +42,7 @@ export async function singleAnswerCompletion({
       model: getModel("gemini-2.0-flash", "google"),
     };
 
-    const { extractedDataArray, warning } = await extractData({
+  const { extractedDataArray, warning } = await extractData({
     extractOptions: generationOptions,
     urls: singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || ""),
   });
@@ -56,7 +59,6 @@ export async function singleAnswerCompletion({
       (doc) => doc.metadata.url || doc.metadata.sourceURL || "",
     ),
   };
-
 
   // const completion = await generateCompletions({
   //   logger: logger.child({ module: "extract", method: "generateCompletions" }),
@@ -78,12 +80,7 @@ export async function singleAnswerCompletion({
   // );
   return {
     extract: completion.extract,
-    tokenUsage: {
-      promptTokens: 0,
-      completionTokens: 0,
-      totalTokens: 0,
-      model: "gemini-2.0-flash",
-    },
+    tokenUsage: completion.tokenUsage,
     sources: singleAnswerDocs.map(
       (doc) => doc.metadata.url || doc.metadata.sourceURL || "",
     ),

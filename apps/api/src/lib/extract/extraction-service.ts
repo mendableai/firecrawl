@@ -455,10 +455,11 @@ export async function performExtraction(
           );
 
           // Race between timeout and completion
-          const multiEntityCompletion = await completionPromise as Awaited<ReturnType<typeof batchExtractPromise>>;
+          const multiEntityCompletion = (await completionPromise) as Awaited<
+            ReturnType<typeof batchExtractPromise>
+          >;
 
           // TODO: merge multiEntityCompletion.extract to fit the multiEntitySchema
-          
 
           // Track multi-entity extraction tokens
           if (multiEntityCompletion) {
@@ -520,7 +521,9 @@ export async function performExtraction(
       );
       extractionResults.push(...validResults);
       // Merge all extracts from valid results into a single array
-      const extractArrays = validResults.map(r => Array.isArray(r.extract) ? r.extract : [r.extract]);
+      const extractArrays = validResults.map((r) =>
+        Array.isArray(r.extract) ? r.extract : [r.extract],
+      );
       const mergedExtracts = extractArrays.flat();
       multiEntityCompletions.push(...mergedExtracts);
       logger.debug("All multi-entity completion chunks finished.", {
@@ -692,10 +695,7 @@ export async function performExtraction(
     });
     logger.debug("Done generating singleAnswer completions.");
 
-    singleAnswerResult = transformArrayToObject(
-      rSchema,
-      completionResult,
-    );
+    singleAnswerResult = transformArrayToObject(rSchema, completionResult);
 
     singleAnswerResult = deduplicateObjectsArray(singleAnswerResult);
 
