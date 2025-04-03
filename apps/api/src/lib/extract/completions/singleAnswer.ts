@@ -11,20 +11,19 @@ export async function singleAnswerCompletion({
   rSchema,
   links,
   prompt,
-  systemPrompt,
-  urls,
+  systemPrompt
 }: {
   singleAnswerDocs: Document[];
   rSchema: any;
   links: string[];
   prompt: string;
   systemPrompt: string;
-  urls: string[];
 }): Promise<{
   extract: any;
   tokenUsage: TokenUsage;
   sources: string[];
 }> {
+  const docsPrompt = `Today is: ` + new Date().toISOString() + `.\n` + prompt;
   const generationOptions: GenerateCompletionsOptions = {
     logger: logger.child({ module: "extract", method: "generateCompletions" }),
     options: {
@@ -32,17 +31,17 @@ export async function singleAnswerCompletion({
       systemPrompt:
         (systemPrompt ? `${systemPrompt}\n` : "") +
         "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. In case you can't find the information and the string is required, instead of 'N/A' or 'Not speficied', return an empty string: '', if it's not a string and you can't find the information, return null. Be concise and follow the schema always if provided.",
-        prompt: "Today is: " + new Date().toISOString() + ".\n" + prompt,
+        prompt: docsPrompt,
         schema: rSchema,
       },
-      markdown: singleAnswerDocs.map((x, i) => `[ID: ${i}]` + buildDocument(x)).join("\n"),
+      markdown: `${singleAnswerDocs.map((x, i) => `[START_PAGE (ID: ${i})]` + buildDocument(x)).join("\n")} [END_PAGE]\n`,
       isExtractEndpoint: true,
       model: getModel("gemini-2.0-flash", "google"),
     };
 
     const { extractedDataArray, warning } = await extractData({
     extractOptions: generationOptions,
-    urls,
+    urls: singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || ""),
   });
 
   const completion = {
@@ -79,7 +78,12 @@ export async function singleAnswerCompletion({
   // );
   return {
     extract: completion.extract,
-    tokenUsage: completion.totalUsage,
+    tokenUsage: {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      model: "gemini-2.0-flash",
+    },
     sources: singleAnswerDocs.map(
       (doc) => doc.metadata.url || doc.metadata.sourceURL || "",
     ),

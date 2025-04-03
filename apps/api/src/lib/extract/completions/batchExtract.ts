@@ -54,7 +54,7 @@ export async function batchExtractPromise(
 
   const { extractedDataArray, warning } = await extractData({
     extractOptions: generationOptions,
-    url: doc.metadata.sourceURL || doc.metadata.url || "",
+    urls: [doc.metadata.sourceURL || doc.metadata.url || ""],
   });
 
   await fs.writeFile(

@@ -195,9 +195,18 @@ export async function extractData({
   console.log("schema", schema);
   console.log("schemaToUse", schemaToUse);
 
-  const { extract, warning, totalUsage } = await generateCompletions(
-    extractOptionsNewSchema,
-  );
+  let extract, warning, totalUsage;
+
+  try {
+    const { extract: x, warning: y, totalUsage: z } = await generateCompletions(
+      extractOptionsNewSchema,
+    );
+    extract = x;
+    warning = y;
+    totalUsage = z;
+  } catch (error) {
+    console.log("failed during extractSmartScrape.ts:generateCompletions", error);
+  }
   console.log("extract", extract);
 
   // const {

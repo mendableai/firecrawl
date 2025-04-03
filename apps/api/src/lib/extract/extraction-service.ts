@@ -684,7 +684,6 @@ export async function performExtraction(
       tokenUsage: singleAnswerTokenUsage,
       sources: singleAnswerSources,
     } = await singleAnswerCompletion({
-      url: request.urls?.[0] || "",
       singleAnswerDocs,
       rSchema,
       links,

@@ -418,7 +418,7 @@ export async function performLLMExtract(
 
     const { extractedDataArray, warning } = await extractData({
       extractOptions: generationOptions,
-      url: meta.url,
+      urls: [meta.url],
     });
 
     //TODO: add merge here
