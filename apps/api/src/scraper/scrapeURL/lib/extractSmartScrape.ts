@@ -6,6 +6,7 @@ import {
 } from "../transformers/llmExtract";
 import { smartScrape } from "./smartScrape";
 import { parseMarkdown } from "../../../lib/html-to-markdown";
+import { getModel } from "../../../lib/generic-ai";
 
 const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
@@ -199,7 +200,7 @@ export async function extractData({
 
   try {
     const { extract: x, warning: y, totalUsage: z } = await generateCompletions(
-      extractOptionsNewSchema,
+      { ...extractOptionsNewSchema, model: getModel("gemini-2.5-pro-exp-03-25", "google") }
     );
     extract = x;
     warning = y;
