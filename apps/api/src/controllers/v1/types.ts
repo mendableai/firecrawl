@@ -62,7 +62,17 @@ export const extractOptions = z
       .string()
       .max(10000)
       .default(
-        "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required.",
+        `You are an expert web data extractor. Your task is to analyze the provided markdown content from a web page and generate a JSON object based *strictly* on the provided schema.
+
+Key Instructions:
+1.  **Schema Adherence:** Populate the JSON object according to the structure defined in the schema.
+2.  **Content Grounding:** Extract information *only* if it is explicitly present in the provided markdown. Do NOT infer or fabricate information.
+3.  **Missing Information:** If a piece of information required by the schema cannot be found in the markdown, use \`null\` for that field's value.
+4.  **SmartScrape Recommendation:**
+    *   Assess if the *full* required data seems unavailable in the current markdown likely because user interaction (like clicking or scrolling) is needed to reveal it.
+    *   If interaction seems necessary to get the complete data, set \`shouldUseSmartscrape\` to \`true\` in your response and provide a clear \`reasoning\` and \`prompt\` for the SmartScrape tool.
+    *   Otherwise, set \`shouldUseSmartscrape\` to \`false\`.
+5.  **Output Format:** Your final output MUST be a single, valid JSON object conforming precisely to the schema. Do not include any explanatory text outside the JSON structure.`,
       ),
     prompt: z.string().max(10000).optional(),
     temperature: z.number().optional(),
@@ -246,11 +256,9 @@ const extractRefine = (obj) => {
   const hasJsonFormat = obj.formats?.includes("json");
   const hasJsonOptions = obj.jsonOptions !== undefined;
   return (
-    (hasExtractFormat && hasExtractOptions)
-    || (!hasExtractFormat && !hasExtractOptions)
-  ) && (
-    (hasJsonFormat && hasJsonOptions)
-    || (!hasJsonFormat && !hasJsonOptions)
+    ((hasExtractFormat && hasExtractOptions) ||
+      (!hasExtractFormat && !hasExtractOptions)) &&
+    ((hasJsonFormat && hasJsonOptions) || (!hasJsonFormat && !hasJsonOptions))
   );
 };
 const extractRefineOpts = {
@@ -264,7 +272,7 @@ const extractTransform = (obj) => {
       obj.extract ||
       obj.formats?.includes("json") ||
       obj.jsonOptions) &&
-    (obj.timeout === 30000)
+    obj.timeout === 30000
   ) {
     obj = { ...obj, timeout: 60000 };
   }
@@ -356,12 +364,9 @@ export const extractV1Options = z
       .optional(),
   })
   .strict(strictMessage)
-  .refine(
-    (obj) => obj.urls || obj.prompt,
-    {
-      message: "Either 'urls' or 'prompt' must be provided.",
-    },
-  )
+  .refine((obj) => obj.urls || obj.prompt, {
+    message: "Either 'urls' or 'prompt' must be provided.",
+  })
   .transform((obj) => ({
     ...obj,
     allowExternalLinks: obj.allowExternalLinks || obj.enableWebSearch,
@@ -542,8 +547,8 @@ export type Document = {
     screenshots?: string[];
     scrapes?: ScrapeActionContent[];
     javascriptReturns?: {
-      type: string,
-      value: unknown
+      type: string;
+      value: unknown;
     }[];
   };
   metadata: {
@@ -831,7 +836,7 @@ export function fromLegacyCrawlerOptions(x: any): {
       ignoreQueryParameters: x.ignoreQueryParameters,
       regexOnFullURL: x.regexOnFullURL,
       maxDiscoveryDepth: x.maxDiscoveryDepth,
-   }),
+    }),
     internalOptions: {
       v0CrawlOnlyUrls: x.returnOnlyUrls,
     },
@@ -1030,6 +1035,6 @@ export type GenerateLLMsTextRequest = z.infer<
 
 export class TimeoutSignal extends Error {
   constructor() {
-    super("Operation timed out")
+    super("Operation timed out");
   }
 }

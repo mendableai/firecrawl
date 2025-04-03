@@ -72,7 +72,6 @@ type completions = {
   sources?: string[];
 };
 
-
 export async function performExtraction(
   extractId: string,
   options: ExtractServiceOptions,
@@ -89,7 +88,7 @@ export async function performExtraction(
 
   let log = {
     extractId,
-    request
+    request,
   };
 
   // Token tracking
@@ -113,7 +112,7 @@ export async function performExtraction(
       num_results: 10,
     });
 
-    request.urls = searchResults.map(result => result.url) as string[];
+    request.urls = searchResults.map((result) => result.url) as string[];
   }
   if (request.urls && request.urls.length === 0) {
     logger.error("No search results found", {
@@ -128,7 +127,11 @@ export async function performExtraction(
 
   const urls = request.urls || ([] as string[]);
 
-  if (request.__experimental_cacheMode == "load" && request.__experimental_cacheKey && urls) {
+  if (
+    request.__experimental_cacheMode == "load" &&
+    request.__experimental_cacheKey &&
+    urls
+  ) {
     logger.debug("Loading cached docs...");
     try {
       const cache = await getCachedDocs(urls, request.__experimental_cacheKey);
@@ -174,7 +177,6 @@ export async function performExtraction(
     schema: reqSchema,
   });
 
-
   let rSchema = reqSchema;
 
   // agent evaluates if the schema or the prompt has an array with big amount of items
@@ -209,7 +211,7 @@ export async function performExtraction(
   logger.debug("Processing URLs...", {
     urlCount: request.urls?.length || 0,
   });
-  
+
   const urlPromises = urls.map((url) =>
     processUrl(
       {
@@ -273,8 +275,8 @@ export async function performExtraction(
     linkCount: links.length,
   });
 
-  log['links'] = links;
-  log['linksLength'] = links.length;
+  log["links"] = links;
+  log["linksLength"] = links.length;
 
   if (links.length === 0) {
     logger.error("0 links! Bailing.", {
@@ -303,7 +305,7 @@ export async function performExtraction(
   });
 
   if (isMultiEntity && reqSchema) {
-    log['isMultiEntity'] = true;
+    log["isMultiEntity"] = true;
     logger.debug("=== MULTI-ENTITY ===");
 
     const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
@@ -341,8 +343,8 @@ export async function performExtraction(
 
     logger.debug("Starting multi-entity scrape...");
     let startScrape = Date.now();
-    log['docsSizeBeforeMultiEntityScrape'] = docsMap.size;
-    
+    log["docsSizeBeforeMultiEntityScrape"] = docsMap.size;
+
     const scrapePromises = links.map((url) => {
       if (!docsMap.has(normalizeUrl(url))) {
         return scrapeDocument(
@@ -365,7 +367,7 @@ export async function performExtraction(
 
             // Needs to be true for multi-entity to work properly
             onlyMainContent: true,
-          }
+          },
         );
       }
       return docsMap.get(normalizeUrl(url));
@@ -375,7 +377,7 @@ export async function performExtraction(
       (doc): doc is Document => doc !== null,
     );
 
-    log['docsSizeAfterMultiEntityScrape'] = scrapePromises.length;
+    log["docsSizeAfterMultiEntityScrape"] = scrapePromises.length;
 
     logger.debug("Multi-entity scrape finished.", {
       docCount: multyEntityDocs.length,
@@ -409,7 +411,7 @@ export async function performExtraction(
     const chunkSize = 50;
     const timeoutCompletion = 45000; // 45 second timeout
     const chunks: Document[][] = [];
-    const extractionResults: {extract: any, url: string}[] = [];
+    const extractionResults: { extract: any; url: string }[] = [];
 
     // Split into chunks
     for (let i = 0; i < multyEntityDocs.length; i += chunkSize) {
@@ -473,7 +475,13 @@ export async function performExtraction(
           //   ],
           // });
 
-          const completionPromise = batchExtractPromise(multiEntitySchema, links, request.prompt ?? "", request.systemPrompt ?? "", doc);
+          const completionPromise = batchExtractPromise(
+            multiEntitySchema,
+            links,
+            request.prompt ?? "",
+            request.systemPrompt ?? "",
+            doc,
+          );
 
           // Race between timeout and completion
           const multiEntityCompletion = (await Promise.race([
@@ -484,11 +492,11 @@ export async function performExtraction(
           // Track multi-entity extraction tokens
           if (multiEntityCompletion) {
             tokenUsage.push(multiEntityCompletion.totalUsage);
-            
+
             if (multiEntityCompletion.extract) {
               return {
                 extract: multiEntityCompletion.extract,
-                url: doc.metadata.url || doc.metadata.sourceURL || ""
+                url: doc.metadata.url || doc.metadata.sourceURL || "",
               };
             }
           }
@@ -537,38 +545,46 @@ export async function performExtraction(
 
       // Wait for current chunk to complete before processing next chunk
       const chunkResults = await Promise.all(chunkPromises);
-      const validResults = chunkResults.filter((result): result is {extract: any, url: string} => result !== null);
+      const validResults = chunkResults.filter(
+        (result): result is { extract: any; url: string } => result !== null,
+      );
       extractionResults.push(...validResults);
-      multiEntityCompletions.push(...validResults.map(r => r.extract));
+      multiEntityCompletions.push(...validResults.map((r) => r.extract));
       logger.debug("All multi-entity completion chunks finished.", {
         completionCount: multiEntityCompletions.length,
       });
-      log['multiEntityCompletionsLength'] = multiEntityCompletions.length;
+      log["multiEntityCompletionsLength"] = multiEntityCompletions.length;
     }
 
     try {
       // Use SourceTracker to handle source tracking
       const sourceTracker = new SourceTracker();
-      
+
       // Transform and merge results while preserving sources
-      sourceTracker.transformResults(extractionResults, multiEntitySchema, false);
-      
+      sourceTracker.transformResults(
+        extractionResults,
+        multiEntitySchema,
+        false,
+      );
+
       multiEntityResult = transformArrayToObject(
         multiEntitySchema,
         multiEntityCompletions,
       );
-      
+
       // Track sources before deduplication
       sourceTracker.trackPreDeduplicationSources(multiEntityResult);
-      
+
       // Apply deduplication and merge
       multiEntityResult = deduplicateObjectsArray(multiEntityResult);
       multiEntityResult = mergeNullValObjs(multiEntityResult);
-      
-      // Map sources to final deduplicated/merged items
-      const multiEntitySources = sourceTracker.mapSourcesToFinalItems(multiEntityResult, multiEntityKeys);
-      Object.assign(sources, multiEntitySources);
 
+      // Map sources to final deduplicated/merged items
+      const multiEntitySources = sourceTracker.mapSourcesToFinalItems(
+        multiEntityResult,
+        multiEntityKeys,
+      );
+      Object.assign(sources, multiEntitySources);
     } catch (error) {
       logger.error(`Failed to transform array to object`, { error });
       return {
@@ -587,7 +603,7 @@ export async function performExtraction(
     rSchema.properties &&
     Object.keys(rSchema.properties).length > 0
   ) {
-    log['isSingleEntity'] = true;
+    log["isSingleEntity"] = true;
     logger.debug("=== SINGLE PAGES ===", {
       linkCount: links.length,
       schema: rSchema,
@@ -610,7 +626,7 @@ export async function performExtraction(
         },
       ],
     });
-    log['docsSizeBeforeSingleEntityScrape'] = docsMap.size;
+    log["docsSizeBeforeSingleEntityScrape"] = docsMap.size;
     const scrapePromises = links.map((url) => {
       if (!docsMap.has(normalizeUrl(url))) {
         return scrapeDocument(
@@ -628,7 +644,7 @@ export async function performExtraction(
             url,
             isMultiEntity: false,
           }),
-          request.scrapeOptions
+          request.scrapeOptions,
         );
       }
       return docsMap.get(normalizeUrl(url));
@@ -636,7 +652,7 @@ export async function performExtraction(
 
     try {
       const results = await Promise.all(scrapePromises);
-      log['docsSizeAfterSingleEntityScrape'] = docsMap.size;
+      log["docsSizeAfterSingleEntityScrape"] = docsMap.size;
 
       for (const doc of results) {
         if (doc?.metadata?.url) {
@@ -689,8 +705,12 @@ export async function performExtraction(
 
     // Generate completions
     logger.debug("Generating singleAnswer completions...");
-    log['singleAnswerDocsLength'] = singleAnswerDocs.length;
-    let { extract: completionResult, tokenUsage: singleAnswerTokenUsage, sources: singleAnswerSources } = await singleAnswerCompletion({
+    log["singleAnswerDocsLength"] = singleAnswerDocs.length;
+    let {
+      extract: completionResult,
+      tokenUsage: singleAnswerTokenUsage,
+      sources: singleAnswerSources,
+    } = await singleAnswerCompletion({
       singleAnswerDocs,
       rSchema,
       links,
@@ -702,12 +722,16 @@ export async function performExtraction(
     // Track single answer extraction tokens and sources
     if (completionResult) {
       tokenUsage.push(singleAnswerTokenUsage);
-      
+
       // Add sources for top-level properties in single answer
       if (rSchema?.properties) {
-        Object.keys(rSchema.properties).forEach(key => {
+        Object.keys(rSchema.properties).forEach((key) => {
           if (completionResult[key] !== undefined) {
-            sources[key] = singleAnswerSources || singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || "");
+            sources[key] =
+              singleAnswerSources ||
+              singleAnswerDocs.map(
+                (doc) => doc.metadata.url || doc.metadata.sourceURL || "",
+              );
           }
         });
       }
@@ -736,8 +760,8 @@ export async function performExtraction(
     // }
   }
 
-  log['singleAnswerResult'] = singleAnswerResult;
-  log['multiEntityResult'] = multiEntityResult;
+  log["singleAnswerResult"] = singleAnswerResult;
+  log["multiEntityResult"] = multiEntityResult;
 
   let finalResult = reqSchema
     ? await mixSchemaObjects(
@@ -847,16 +871,25 @@ export async function performExtraction(
 
   logger.debug("Done!");
 
-  if (request.__experimental_cacheMode == "save" && request.__experimental_cacheKey) {
+  if (
+    request.__experimental_cacheMode == "save" &&
+    request.__experimental_cacheKey
+  ) {
     logger.debug("Saving cached docs...");
     try {
-      await saveCachedDocs([...docsMap.values()], request.__experimental_cacheKey);
+      await saveCachedDocs(
+        [...docsMap.values()],
+        request.__experimental_cacheKey,
+      );
     } catch (error) {
       logger.error("Error saving cached docs", { error });
     }
   }
 
-  fs.writeFile(`logs/${request.urls?.[0].replaceAll("https://", "").replaceAll("http://", "").replaceAll("/", "-").replaceAll(".", "-")}-extract-${extractId}.json`, JSON.stringify(log, null, 2));
+  // fs.writeFile(
+  //   `logs/${request.urls?.[0].replaceAll("https://", "").replaceAll("http://", "").replaceAll("/", "-").replaceAll(".", "-")}-extract-${extractId}.json`,
+  //   JSON.stringify(log, null, 2),
+  // );
 
   return {
     success: true,

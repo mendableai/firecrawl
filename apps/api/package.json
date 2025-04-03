@@ -51,7 +51,9 @@
     "typescript": "^5.4.2"
   },
   "dependencies": {
-    "@ai-sdk/anthropic": "^1.2.2",
+    "@ai-sdk/anthropic": "^1.2.4",
+    "@ai-sdk/deepinfra": "^0.2.4",
+    "@ai-sdk/fireworks": "^0.2.4",
     "@ai-sdk/google": "^1.2.3",
     "@ai-sdk/groq": "^1.2.1",
     "@ai-sdk/openai": "^1.1.13",
@@ -63,6 +65,7 @@
     "@devil7softwares/pos": "^1.0.2",
     "@dqbd/tiktoken": "^1.0.17",
     "@nangohq/node": "^0.40.8",
+    "@openrouter/ai-sdk-provider": "^0.4.5",
     "@pinecone-database/pinecone": "^4.0.0",
     "@sentry/cli": "^2.33.1",
     "@sentry/node": "^8.26.0",
@@ -70,7 +73,7 @@
     "@supabase/supabase-js": "^2.44.2",
     "@types/express-ws": "^3.0.4",
     "@types/ws": "^8.5.12",
-    "ai": "^4.2.8",
+    "ai": "^4.2.10",
     "ajv": "^8.16.0",
     "async": "^3.2.5",
     "async-mutex": "^0.5.0",

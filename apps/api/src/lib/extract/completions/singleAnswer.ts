@@ -2,7 +2,7 @@ import { logger } from "../../../lib/logger";
 import { generateCompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { buildDocument } from "../build-document";
 import { Document, TokenUsage } from "../../../controllers/v1/types";
-import { getGemini, getOpenAI } from "../../../lib/generic-ai";
+import { getModel } from "../../../lib/generic-ai";
 import fs from "fs/promises";
 
 export async function singleAnswerCompletion({
@@ -22,11 +22,7 @@ export async function singleAnswerCompletion({
   tokenUsage: TokenUsage;
   sources: string[];
 }> {
-
-  const openai = getOpenAI();
-  const model = openai("gpt-4o-mini");
-  // const gemini = getGemini();
-  // const model = gemini("gemini-2.0-flash");
+  const model = getModel("gpt-4", "openai");
   const completion = await generateCompletions({
     logger: logger.child({ module: "extract", method: "generateCompletions" }),
     options: {
