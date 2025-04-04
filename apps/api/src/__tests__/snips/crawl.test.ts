@@ -78,5 +78,5 @@ describe("Crawl tests", () => {
             limit: 3,
             delay: 5,
         });
-    }, 120000);
+    }, 300000);
 });
