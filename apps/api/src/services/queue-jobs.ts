@@ -230,8 +230,7 @@ export async function addScrapeJobs(
 
   // equals 2x the max concurrency
   if(addToCQ.length > maxConcurrency) {
-    logger.info("Concurrency limited 2x (multiple) - Concurrency queue jobs: " + addToCQ.length + "Max concurrency: " + maxConcurrency + "Team ID: " + jobs[0].data.team_id);
-
+    logger.info(`Concurrency limited 2x (multiple) - Concurrency queue jobs: ${addToCQ.length} Max concurrency: ${maxConcurrency} Team ID: ${jobs[0].data.team_id}`);
     // Only send notification if it's not a crawl or batch scrape
     if (!isCrawlOrBatchScrape(dontAddToCCQ[0].data)) {
       const shouldSendNotification = await shouldSendConcurrencyLimitNotification(dontAddToCCQ[0].data.team_id);
