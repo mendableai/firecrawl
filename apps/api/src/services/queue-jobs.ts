@@ -63,6 +63,8 @@ async function _addCrawlScrapeJobToConcurrencyQueue(
     },
     priority: jobPriority,
   });
+  
+  await _addScrapeJobToBullMQ(webScraperOptions, options, jobId, jobPriority);
 }
 
 export async function _addScrapeJobToBullMQ(
@@ -105,6 +107,7 @@ async function addScrapeJobRaw(
       jobId,
       jobPriority
     );
+    await _addScrapeJobToBullMQ(webScraperOptions, options, jobId, jobPriority);
     return;
   }
 
