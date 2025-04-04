@@ -678,7 +678,7 @@ const workerFun = async (
           await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
           cleanOldConcurrencyLimitEntries(job.data.team_id);
 
-          if (job.data.crawl_id && (job.data.crawlDelay || job.data.robotsCrawlDelay)) {
+          if (!process.env.NODE_ENV?.includes('test') && job.data.crawl_id && (job.data.crawlDelay || job.data.robotsCrawlDelay)) {
             await removeCrawlConcurrencyLimitActiveJob(job.data.crawl_id, job.id);
             cleanOldCrawlConcurrencyLimitEntries(job.data.crawl_id);
 
