@@ -695,7 +695,6 @@ const workerFun = async (
                 nextCrawlJob.id,
                 {
                   ...nextCrawlJob.data,
-                  concurrencyLimitHit: true,
                 },
                 {
                   ...nextCrawlJob.opts,
