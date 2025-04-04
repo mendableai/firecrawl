@@ -134,14 +134,12 @@ async function addScrapeJobRaw(
       logger.info("Concurrency limited 2x (single) - ", "Concurrency queue jobs: ", concurrencyQueueJobs, "Max concurrency: ", maxConcurrency, "Team ID: ", webScraperOptions.team_id);
 
       // Only send notification if it's not a crawl or batch scrape
-      if (!isCrawlOrBatchScrape(webScraperOptions)) {
         const shouldSendNotification = await shouldSendConcurrencyLimitNotification(webScraperOptions.team_id);
         if (shouldSendNotification) {
           sendNotificationWithCustomDays(webScraperOptions.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false).catch((error) => {
             logger.error("Error sending notification (concurrency limit reached): ", error);
           });
         }
-      }
     }
 
     webScraperOptions.concurrencyLimited = true;
