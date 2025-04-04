@@ -53,18 +53,16 @@ async function _addCrawlScrapeJobToConcurrencyQueue(
   jobId: string,
   jobPriority: number,
 ) {
-  if (webScraperOptions.crawl_id && webScraperOptions.crawlerOptions?.delay) {
-    await pushCrawlConcurrencyLimitedJob(webScraperOptions.crawl_id, {
-      id: jobId,
-      data: webScraperOptions,
-      opts: {
-        ...options,
-        priority: jobPriority,
-        jobId: jobId,
-      },
+  await pushCrawlConcurrencyLimitedJob(webScraperOptions.crawl_id, {
+    id: jobId,
+    data: webScraperOptions,
+    opts: {
+      ...options,
       priority: jobPriority,
-    });
-  }
+      jobId: jobId,
+    },
+    priority: jobPriority,
+  });
 }
 
 export async function _addScrapeJobToBullMQ(
@@ -99,7 +97,7 @@ async function addScrapeJobRaw(
   jobPriority: number,
 ) {
   const hasCrawlDelay = webScraperOptions.crawl_id && webScraperOptions.crawlerOptions?.delay;
-  
+
   if (hasCrawlDelay) {
     await _addCrawlScrapeJobToConcurrencyQueue(
       webScraperOptions,
@@ -107,10 +105,9 @@ async function addScrapeJobRaw(
       jobId,
       jobPriority
     );
-    await _addScrapeJobToBullMQ(webScraperOptions, options, jobId, jobPriority);
     return;
   }
-  
+
   let concurrencyLimited = false;
   let currentActiveConcurrency = 0;
   let maxConcurrency = 0;
@@ -134,7 +131,7 @@ async function addScrapeJobRaw(
     // No need to 2x as if there are more than the max concurrency in the concurrency queue, it is already 2x
     if(concurrencyQueueJobs > maxConcurrency) {
       logger.info("Concurrency limited 2x (single) - ", "Concurrency queue jobs: ", concurrencyQueueJobs, "Max concurrency: ", maxConcurrency, "Team ID: ", webScraperOptions.team_id);
-      
+
       // Only send notification if it's not a crawl or batch scrape
       if (!isCrawlOrBatchScrape(webScraperOptions)) {
         const shouldSendNotification = await shouldSendConcurrencyLimitNotification(webScraperOptions.team_id);
@@ -145,7 +142,7 @@ async function addScrapeJobRaw(
         }
       }
     }
-    
+
     webScraperOptions.concurrencyLimited = true;
 
     await _addScrapeJobToConcurrencyQueue(
@@ -232,7 +229,7 @@ export async function addScrapeJobs(
   // equals 2x the max concurrency
   if(addToCQ.length > maxConcurrency) {
     logger.info("Concurrency limited 2x (multiple) - ", "Concurrency queue jobs: ", addToCQ.length, "Max concurrency: ", maxConcurrency, "Team ID: ", jobs[0].data.team_id);
-    
+
     // Only send notification if it's not a crawl or batch scrape
     if (!isCrawlOrBatchScrape(jobs[0].data)) {
       const shouldSendNotification = await shouldSendConcurrencyLimitNotification(jobs[0].data.team_id);
@@ -298,9 +295,9 @@ export async function addScrapeJobs(
               size,
             },
           };
-          
+
           const hasCrawlDelay = jobData.crawl_id && jobData.crawlerOptions?.delay;
-          
+
           if (hasCrawlDelay) {
             await _addCrawlScrapeJobToConcurrencyQueue(
               jobData,
