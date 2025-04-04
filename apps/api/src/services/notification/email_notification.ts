@@ -273,7 +273,7 @@ export async function sendNotificationWithCustomDays(
         },
       ]);
 
-    if (process.env.SLACK_ADMIN_WEBHOOK_URL && emails.length > 0) {
+    if (process.env.SLACK_ADMIN_WEBHOOK_URL && emails.length > 0 && notificationType !== NotificationType.CONCURRENCY_LIMIT_REACHED) {
       sendSlackWebhook(
         `${getNotificationString(notificationType)}: Team ${team_id}, with email ${emails[0].email}.`,
         false,
