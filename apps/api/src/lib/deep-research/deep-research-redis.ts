@@ -45,6 +45,7 @@ export type StoredDeepResearch = {
   activities: DeepResearchActivity[];
   summaries: string[];
   finalAnalysis?: string;
+  json?: any;
 };
 
 // TTL of 6 hours

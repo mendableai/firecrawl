@@ -15,6 +15,8 @@ export function getNotificationString(
       return "Auto-recharge successful";
     case NotificationType.AUTO_RECHARGE_FAILED:
       return "Auto-recharge failed";
+    case NotificationType.CONCURRENCY_LIMIT_REACHED:
+      return "Concurrency limit reached";
     default:
       return "Unknown notification type";
   }

@@ -1,6 +1,6 @@
 import { getScrapeQueue } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
-import { PlanType, WebScraperOptions } from "../types";
+import { NotificationType, PlanType, WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
 import {
   cleanOldConcurrencyLimitEntries,
@@ -11,6 +11,19 @@ import {
 } from "../lib/concurrency-limit";
 import { logger } from "../lib/logger";
 import { getConcurrencyLimitMax } from "./rate-limiter";
+import { sendNotificationWithCustomDays } from './notification/email_notification';
+import { shouldSendConcurrencyLimitNotification } from './notification/notification-check';
+
+/**
+ * Checks if a job is a crawl or batch scrape based on its options
+ * @param options The job options containing crawlerOptions and crawl_id
+ * @returns true if the job is either a crawl or batch scrape
+ */
+function isCrawlOrBatchScrape(options: { crawlerOptions?: any; crawl_id?: string }): boolean {
+  // If crawlerOptions exists, it's a crawl
+  // If crawl_id exists but no crawlerOptions, it's a batch scrape
+  return !!options.crawlerOptions || !!options.crawl_id;
+}
 
 async function _addScrapeJobToConcurrencyQueue(
   webScraperOptions: any,
@@ -80,9 +93,14 @@ async function addScrapeJobRaw(
     // No need to 2x as if there are more than the max concurrency in the concurrency queue, it is already 2x
     if(concurrencyQueueJobs > maxConcurrency) {
       logger.info("Concurrency limited 2x (single) - ", "Concurrency queue jobs: ", concurrencyQueueJobs, "Max concurrency: ", maxConcurrency, "Team ID: ", webScraperOptions.team_id);
-      // sendNotificationWithCustomDays(webScraperOptions.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 10, false).catch((error) => {
-      //   logger.error("Error sending notification (concurrency limit reached): ", error);
-      // });
+      
+      // Only send notification if it's not a crawl or batch scrape
+        const shouldSendNotification = await shouldSendConcurrencyLimitNotification(webScraperOptions.team_id);
+        if (shouldSendNotification) {
+          sendNotificationWithCustomDays(webScraperOptions.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false).catch((error) => {
+            logger.error("Error sending notification (concurrency limit reached): ", error);
+          });
+        }
     }
     
     webScraperOptions.concurrencyLimited = true;
@@ -171,9 +189,14 @@ export async function addScrapeJobs(
   // equals 2x the max concurrency
   if(addToCQ.length > maxConcurrency) {
     logger.info("Concurrency limited 2x (multiple) - ", "Concurrency queue jobs: ", addToCQ.length, "Max concurrency: ", maxConcurrency, "Team ID: ", jobs[0].data.team_id);
-    // sendNotificationWithCustomDays(jobs[0].data.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 10, false).catch((error) => {
-    //   logger.error("Error sending notification (concurrency limit reached): ", error);
-    // });
+    
+    // Only send notification if it's not a crawl or batch scrape
+      const shouldSendNotification = await shouldSendConcurrencyLimitNotification(jobs[0].data.team_id);
+      if (shouldSendNotification) {
+        sendNotificationWithCustomDays(jobs[0].data.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false).catch((error) => {
+          logger.error("Error sending notification (concurrency limit reached): ", error);
+        });
+      }
   }
 
   await Promise.all(
