@@ -275,7 +275,7 @@ export class WebCrawler {
 
     const _urlsHandler = async (urls: string[]) => {
       if (fromMap && onlySitemap) {
-        return urlsHandler(urls);
+        return await urlsHandler(urls);
       } else {
         let filteredLinks = this.filterLinks(
           [...new Set(urls)].filter(x => this.filterURL(x, this.initialUrl) !== null),
@@ -302,7 +302,7 @@ export class WebCrawler {
           "NX",
         );
         if (uniqueURLs.length > 0) {
-          return urlsHandler(uniqueURLs);
+          return await urlsHandler(uniqueURLs);
         }
       }
     };

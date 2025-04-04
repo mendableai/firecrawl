@@ -687,9 +687,7 @@ const workerFun = async (
 
             const nextCrawlJob = await takeCrawlConcurrencyLimitedJob(job.data.crawl_id);
             if (nextCrawlJob !== null) {
-              logger.info("!!! Delaying job by " + delayInMs + "ms", { crawlId: job.data.crawl_id, jobId: nextCrawlJob.id, delayInMs });
               await new Promise(resolve => setTimeout(resolve, delayInMs));
-              logger.info("!!! Pushing job to crawl concurrency limit", { crawlId: job.data.crawl_id, jobId: nextCrawlJob.id });
 
               await pushCrawlConcurrencyLimitActiveJob(job.data.crawl_id, nextCrawlJob.id, 60 * 1000);
 
@@ -910,21 +908,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
             lockedJobs.map((x) => x.opts.jobId),
           );
           logger.debug("Adding scrape jobs to BullMQ...");
-          if (job.data.crawlerOptions?.delay) {
-            const jobsWithDelay = lockedJobs.map(j => ({
-              ...j,
-              data: {
-                ...j.data,
-                crawlerOptions: {
-                  ...j.data.crawlerOptions,
-                  delay: job.data.crawlerOptions.delay
-                }
-              }
-            }));
-            await addScrapeJobs(jobsWithDelay);
-          } else {
-            await addScrapeJobs(lockedJobs);
-          }
+          await addScrapeJobs(lockedJobs);
         });
 
     if (sitemap === 0) {
