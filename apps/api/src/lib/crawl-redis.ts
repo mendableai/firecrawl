@@ -13,6 +13,8 @@ export type StoredCrawl = {
   team_id: string;
   plan?: string;
   robots?: string;
+  robotsCrawlDelay?: number;
+  crawlDelay?: number;
   cancelled?: boolean;
   createdAt: number;
 };

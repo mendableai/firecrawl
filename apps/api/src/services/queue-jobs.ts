@@ -4,10 +4,14 @@ import { NotificationType, PlanType, WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
 import {
   cleanOldConcurrencyLimitEntries,
+  cleanOldCrawlConcurrencyLimitEntries,
   getConcurrencyLimitActiveJobs,
   getConcurrencyQueueJobsCount,
+  getCrawlConcurrencyQueueJobsCount,
   pushConcurrencyLimitActiveJob,
   pushConcurrencyLimitedJob,
+  pushCrawlConcurrencyLimitActiveJob,
+  pushCrawlConcurrencyLimitedJob,
 } from "../lib/concurrency-limit";
 import { logger } from "../lib/logger";
 import { getConcurrencyLimitMax } from "./rate-limiter";
@@ -41,6 +45,19 @@ async function _addScrapeJobToConcurrencyQueue(
     },
     priority: jobPriority,
   });
+
+  if (webScraperOptions.crawl_id && (webScraperOptions.crawlDelay || webScraperOptions.robotsCrawlDelay)) {
+    await pushCrawlConcurrencyLimitedJob(webScraperOptions.crawl_id, {
+      id: jobId,
+      data: webScraperOptions,
+      opts: {
+        ...options,
+        priority: jobPriority,
+        jobId: jobId,
+      },
+      priority: jobPriority,
+    });
+  }
 }
 
 export async function _addScrapeJobToBullMQ(
@@ -55,6 +72,10 @@ export async function _addScrapeJobToBullMQ(
     webScraperOptions.plan
   ) {
     await pushConcurrencyLimitActiveJob(webScraperOptions.team_id, jobId, 60 * 1000); // 60s default timeout
+    
+    if (webScraperOptions.crawl_id && (webScraperOptions.crawlDelay || webScraperOptions.robotsCrawlDelay)) {
+      await pushCrawlConcurrencyLimitActiveJob(webScraperOptions.crawl_id, jobId, 60 * 1000);
+    }
   }
 
   await getScrapeQueue().add(jobId, webScraperOptions, {

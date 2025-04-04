@@ -55,9 +55,13 @@ import { scrapeOptions } from "../controllers/v1/types";
 import { getRateLimiterPoints } from "./rate-limiter";
 import {
   cleanOldConcurrencyLimitEntries,
+  cleanOldCrawlConcurrencyLimitEntries,
   pushConcurrencyLimitActiveJob,
+  pushCrawlConcurrencyLimitActiveJob,
   removeConcurrencyLimitActiveJob,
+  removeCrawlConcurrencyLimitActiveJob,
   takeConcurrencyLimitedJob,
+  takeCrawlConcurrencyLimitedJob,
 } from "../lib/concurrency-limit";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
@@ -674,7 +678,34 @@ const workerFun = async (
           await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
           cleanOldConcurrencyLimitEntries(job.data.team_id);
 
-          // Queue up next job, if it exists
+          if (job.data.crawl_id && (job.data.crawlDelay || job.data.robotsCrawlDelay)) {
+            await removeCrawlConcurrencyLimitActiveJob(job.data.crawl_id, job.id);
+            cleanOldCrawlConcurrencyLimitEntries(job.data.crawl_id);
+
+            const delayInSeconds = job.data.crawlDelay || job.data.robotsCrawlDelay;
+            const delayInMs = delayInSeconds * 1000;
+            
+            await new Promise(resolve => setTimeout(resolve, delayInMs));
+            
+            const nextCrawlJob = await takeCrawlConcurrencyLimitedJob(job.data.crawl_id);
+            if (nextCrawlJob !== null) {
+              await pushCrawlConcurrencyLimitActiveJob(job.data.crawl_id, nextCrawlJob.id, 60 * 1000);
+              
+              await queue.add(
+                nextCrawlJob.id,
+                {
+                  ...nextCrawlJob.data,
+                  concurrencyLimitHit: true,
+                },
+                {
+                  ...nextCrawlJob.opts,
+                  jobId: nextCrawlJob.id,
+                  priority: nextCrawlJob.priority,
+                },
+              );
+            }
+          }
+
           // No need to check if we're under the limit here -- if the current job is finished,
           // we are 1 under the limit, assuming the job insertion logic never over-inserts. - MG
           const nextJob = await takeConcurrencyLimitedJob(job.data.team_id);
