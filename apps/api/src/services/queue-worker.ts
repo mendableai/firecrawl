@@ -685,10 +685,12 @@ const workerFun = async (
             const delayInSeconds = job.data.crawlerOptions.delay;
             const delayInMs = delayInSeconds * 1000;
 
-            await new Promise(resolve => setTimeout(resolve, delayInMs));
-
             const nextCrawlJob = await takeCrawlConcurrencyLimitedJob(job.data.crawl_id);
             if (nextCrawlJob !== null) {
+              logger.info("!!! Delaying job by " + delayInMs + "ms", { crawlId: job.data.crawl_id, jobId: nextCrawlJob.id, delayInMs });
+              await new Promise(resolve => setTimeout(resolve, delayInMs));
+              logger.info("!!! Pushing job to crawl concurrency limit", { crawlId: job.data.crawl_id, jobId: nextCrawlJob.id });
+
               await pushCrawlConcurrencyLimitActiveJob(job.data.crawl_id, nextCrawlJob.id, 60 * 1000);
 
               await queue.add(
