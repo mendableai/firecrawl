@@ -107,7 +107,6 @@ async function addScrapeJobRaw(
       jobId,
       jobPriority
     );
-    await _addScrapeJobToBullMQ(webScraperOptions, options, jobId, jobPriority);
     return;
   }
 
