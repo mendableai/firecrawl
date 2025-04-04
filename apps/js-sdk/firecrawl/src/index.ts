@@ -1873,6 +1873,7 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
   public data: FirecrawlDocument<undefined>[];
   public status: CrawlStatusResponse["status"];
   public id: string;
+  private closed = false;
 
   constructor(id: string, app: FirecrawlApp) {
     super();
@@ -1883,7 +1884,11 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
     (async () => {
       try {
         const isows = await import("isows");
-        this.ws = new isows.WebSocket(`${app.apiUrl.replace("http", "ws")}/v1/crawl/${id}/watch`);
+        this.ws = new isows.WebSocket(`${app.apiUrl.replace("http", "ws")}/v1/crawl/${id}`);
+        if (this.closed) {
+          this.ws.close();
+          return;
+        }
         
         type ErrorMessage = {
           type: "error",
@@ -1985,6 +1990,9 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
   }
 
   close() {
-    this.ws.close();
+    this.closed = true;
+    if (this.ws) {
+      this.ws.close();
+    }
   }
 }
