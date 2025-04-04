@@ -35,18 +35,16 @@ async function _addScrapeJobToConcurrencyQueue(
   jobId: string,
   jobPriority: number,
 ) {
-  if (!webScraperOptions.crawl_id || !webScraperOptions.crawlerOptions?.delay) {
-    await pushConcurrencyLimitedJob(webScraperOptions.team_id, {
-      id: jobId,
-      data: webScraperOptions,
-      opts: {
-        ...options,
-        priority: jobPriority,
-        jobId: jobId,
-      },
+  await pushConcurrencyLimitedJob(webScraperOptions.team_id, {
+    id: jobId,
+    data: webScraperOptions,
+    opts: {
+      ...options,
       priority: jobPriority,
-    });
-  }
+      jobId: jobId,
+    },
+    priority: jobPriority,
+  });
 }
 
 async function _addCrawlScrapeJobToConcurrencyQueue(
@@ -80,12 +78,10 @@ export async function _addScrapeJobToBullMQ(
     webScraperOptions.team_id &&
     webScraperOptions.plan
   ) {
-    if (!webScraperOptions.crawl_id || !webScraperOptions.crawlerOptions?.delay) {
-      await pushConcurrencyLimitActiveJob(webScraperOptions.team_id, jobId, 60 * 1000); // 60s default timeout
-    }
-    
     if (webScraperOptions.crawl_id && webScraperOptions.crawlerOptions?.delay) {
       await pushCrawlConcurrencyLimitActiveJob(webScraperOptions.crawl_id, jobId, 60 * 1000);
+    } else {
+      await pushConcurrencyLimitActiveJob(webScraperOptions.team_id, jobId, 60 * 1000); // 60s default timeout
     }
   }
 
@@ -111,55 +107,53 @@ async function addScrapeJobRaw(
       jobId,
       jobPriority
     );
+    await _addScrapeJobToBullMQ(webScraperOptions, options, jobId, jobPriority);
+    return;
   }
   
-  if (!hasCrawlDelay) {
-    let concurrencyLimited = false;
-    let currentActiveConcurrency = 0;
-    let maxConcurrency = 0;
+  let concurrencyLimited = false;
+  let currentActiveConcurrency = 0;
+  let maxConcurrency = 0;
 
-    if (
-      webScraperOptions &&
-      webScraperOptions.team_id
-    ) {
-      const now = Date.now();
-      maxConcurrency = getConcurrencyLimitMax(webScraperOptions.plan ?? "free", webScraperOptions.team_id);
-      cleanOldConcurrencyLimitEntries(webScraperOptions.team_id, now);
-      currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(webScraperOptions.team_id, now)).length;
-      concurrencyLimited = currentActiveConcurrency >= maxConcurrency;
-    }
+  if (
+    webScraperOptions &&
+    webScraperOptions.team_id
+  ) {
+    const now = Date.now();
+    maxConcurrency = getConcurrencyLimitMax(webScraperOptions.plan ?? "free", webScraperOptions.team_id);
+    cleanOldConcurrencyLimitEntries(webScraperOptions.team_id, now);
+    currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(webScraperOptions.team_id, now)).length;
+    concurrencyLimited = currentActiveConcurrency >= maxConcurrency;
+  }
 
-    const concurrencyQueueJobs = await getConcurrencyQueueJobsCount(webScraperOptions.team_id);
+  const concurrencyQueueJobs = await getConcurrencyQueueJobsCount(webScraperOptions.team_id);
 
-    if (concurrencyLimited) {
-      // Detect if they hit their concurrent limit
-      // If above by 2x, send them an email
-      // No need to 2x as if there are more than the max concurrency in the concurrency queue, it is already 2x
-      if(concurrencyQueueJobs > maxConcurrency) {
-        logger.info("Concurrency limited 2x (single) - ", "Concurrency queue jobs: ", concurrencyQueueJobs, "Max concurrency: ", maxConcurrency, "Team ID: ", webScraperOptions.team_id);
-        
-        // Only send notification if it's not a crawl or batch scrape
-        if (!isCrawlOrBatchScrape(webScraperOptions)) {
-          const shouldSendNotification = await shouldSendConcurrencyLimitNotification(webScraperOptions.team_id);
-          if (shouldSendNotification) {
-            sendNotificationWithCustomDays(webScraperOptions.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false).catch((error) => {
-              logger.error("Error sending notification (concurrency limit reached): ", error);
-            });
-          }
+  if (concurrencyLimited) {
+    // Detect if they hit their concurrent limit
+    // If above by 2x, send them an email
+    // No need to 2x as if there are more than the max concurrency in the concurrency queue, it is already 2x
+    if(concurrencyQueueJobs > maxConcurrency) {
+      logger.info("Concurrency limited 2x (single) - ", "Concurrency queue jobs: ", concurrencyQueueJobs, "Max concurrency: ", maxConcurrency, "Team ID: ", webScraperOptions.team_id);
+      
+      // Only send notification if it's not a crawl or batch scrape
+      if (!isCrawlOrBatchScrape(webScraperOptions)) {
+        const shouldSendNotification = await shouldSendConcurrencyLimitNotification(webScraperOptions.team_id);
+        if (shouldSendNotification) {
+          sendNotificationWithCustomDays(webScraperOptions.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false).catch((error) => {
+            logger.error("Error sending notification (concurrency limit reached): ", error);
+          });
         }
       }
-      
-      webScraperOptions.concurrencyLimited = true;
-
-      await _addScrapeJobToConcurrencyQueue(
-        webScraperOptions,
-        options,
-        jobId,
-        jobPriority,
-      );
-    } else {
-      await _addScrapeJobToBullMQ(webScraperOptions, options, jobId, jobPriority);
     }
+    
+    webScraperOptions.concurrencyLimited = true;
+
+    await _addScrapeJobToConcurrencyQueue(
+      webScraperOptions,
+      options,
+      jobId,
+      jobPriority,
+    );
   } else {
     await _addScrapeJobToBullMQ(webScraperOptions, options, jobId, jobPriority);
   }
