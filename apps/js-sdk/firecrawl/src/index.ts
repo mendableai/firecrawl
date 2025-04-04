@@ -1869,129 +1869,116 @@ interface CrawlWatcherEvents {
 }
 
 export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
-  private ws!: WebSocket;
+  private ws: WebSocket;
   public data: FirecrawlDocument<undefined>[];
   public status: CrawlStatusResponse["status"];
   public id: string;
-  private closed = false;
 
   constructor(id: string, app: FirecrawlApp) {
     super();
-    this.data = [];
-    this.status = "scraping";
     this.id = id;
+    // replace `http` with `ws` (`http://` -> `ws://` and `https://` -> `wss://`)
+    const wsUrl = app.apiUrl.replace(/^http/, "ws");
+    this.ws = new WebSocket(`${wsUrl}/v1/crawl/${id}`, app.apiKey);
+    this.status = "scraping";
+    this.data = [];
 
-    (async () => {
-      try {
-        this.ws = new WebSocket(`${app.apiUrl.replace("http", "ws")}/v1/crawl/${id}`, app.apiKey);
-        if (this.closed) {
-          this.ws.close();
-          return;
-        }
-        
-        type ErrorMessage = {
-          type: "error",
-          error: string,
-        }
-        
-        type CatchupMessage = {
-          type: "catchup",
-          data: CrawlStatusResponse,
-        }
-        
-        type DocumentMessage = {
-          type: "document",
-          data: FirecrawlDocument<undefined>,
-        }
-        
-        type DoneMessage = { type: "done" }
-        
-        type Message = ErrorMessage | CatchupMessage | DoneMessage | DocumentMessage;
+    type ErrorMessage = {
+      type: "error",
+      error: string,
+    }
+    
+    type CatchupMessage = {
+      type: "catchup",
+      data: CrawlStatusResponse,
+    }
+    
+    type DocumentMessage = {
+      type: "document",
+      data: FirecrawlDocument<undefined>,
+    }
+    
+    type DoneMessage = { type: "done" }
+    
+    type Message = ErrorMessage | CatchupMessage | DoneMessage | DocumentMessage;
 
-        const messageHandler = (msg: Message) => {
-          if (msg.type === "done") {
-            this.status = "completed";
-            this.dispatchTypedEvent("done", new CustomEvent("done", {
-              detail: {
-                status: this.status,
-                data: this.data,
-                id: this.id,
-              },
-            }));
-          } else if (msg.type === "error") {
-            this.status = "failed";
-            this.dispatchTypedEvent("error", new CustomEvent("error", {
-              detail: {
-                status: this.status,
-                data: this.data,
-                error: msg.error,
-                id: this.id,
-              },
-            }));
-          } else if (msg.type === "catchup") {
-            this.status = msg.data.status;
-            this.data.push(...(msg.data.data ?? []));
-            for (const doc of this.data) {
-              this.dispatchTypedEvent("document", new CustomEvent("document", {
-                detail: {
-                  ...doc,
-                  id: this.id,
-                },
-              }));
-            }
-          } else if (msg.type === "document") {
-            this.dispatchTypedEvent("document", new CustomEvent("document", {
-              detail: {
-                ...msg.data,
-                id: this.id,
-              },
-            }));
-          }
-        }
-
-        this.ws.onmessage = ((ev: MessageEvent) => {
-          if (typeof ev.data !== "string") {
-            this.ws.close();
-            return;
-          }
-          try {
-            const msg = JSON.parse(ev.data) as Message;
-            messageHandler(msg);
-          } catch (error) {
-            console.error("Error on message", error);
-          }
-        }).bind(this);
-
-        this.ws.onclose = ((ev: CloseEvent) => {
-          try {
-            const msg = JSON.parse(ev.reason) as Message;
-            messageHandler(msg);
-          } catch (error) {
-            console.error("Error on close", error);
-          }
-        }).bind(this);
-
-        this.ws.onerror = ((_: Event) => {
-          this.status = "failed"
-          this.dispatchTypedEvent("error", new CustomEvent("error", {
+    const messageHandler = (msg: Message) => {
+      if (msg.type === "done") {
+        this.status = "completed";
+        this.dispatchTypedEvent("done", new CustomEvent("done", {
+          detail: {
+            status: this.status,
+            data: this.data,
+            id: this.id,
+          },
+        }));
+      } else if (msg.type === "error") {
+        this.status = "failed";
+        this.dispatchTypedEvent("error", new CustomEvent("error", {
+          detail: {
+            status: this.status,
+            data: this.data,
+            error: msg.error,
+            id: this.id,
+          },
+        }));
+      } else if (msg.type === "catchup") {
+        this.status = msg.data.status;
+        this.data.push(...(msg.data.data ?? []));
+        for (const doc of this.data) {
+          this.dispatchTypedEvent("document", new CustomEvent("document", {
             detail: {
-              status: this.status,
-              data: this.data,
-              error: "WebSocket error",
+              ...doc,
               id: this.id,
             },
           }));
-        }).bind(this);
-      } catch (error) {
-        throw new Error("Error initializing WebSocket", { cause: error });
+        }
+      } else if (msg.type === "document") {
+        this.dispatchTypedEvent("document", new CustomEvent("document", {
+          detail: {
+            ...msg.data,
+            id: this.id,
+          },
+        }));
       }
-    })();
+    }
+
+    this.ws.onmessage = ((ev: MessageEvent) => {
+      if (typeof ev.data !== "string") {
+        this.ws.close();
+        return;
+      }
+      try {
+        const msg = JSON.parse(ev.data) as Message;
+        messageHandler(msg);
+      } catch (error) {
+        console.error("Error on message", error);
+      }
+    }).bind(this);
+
+    this.ws.onclose = ((ev: CloseEvent) => {
+      try {
+        const msg = JSON.parse(ev.reason) as Message;
+        messageHandler(msg);
+      } catch (error) {
+        console.error("Error on close", error);
+      }
+    }).bind(this);
+
+    this.ws.onerror = ((_: Event) => {
+      this.status = "failed"
+      this.dispatchTypedEvent("error", new CustomEvent("error", {
+        detail: {
+          status: this.status,
+          data: this.data,
+          error: "WebSocket error",
+          id: this.id,
+        },
+      }));
+    }).bind(this);
   }
 
   close() {
-    this.closed = true;
-    if (this.ws) {
-      this.ws.close();
-    }
+    this.ws.close();
   }
 }
