@@ -63,8 +63,7 @@ async function _addCrawlScrapeJobToConcurrencyQueue(
     },
     priority: jobPriority,
   });
-  
-  await _addScrapeJobToBullMQ(webScraperOptions, options, jobId, jobPriority);
+  // NEVER ADD THESE TO BULLMQ!!! THEY ARE ADDED IN QUEUE-WORKER!!! SHOOOOO!!! - mogery
 }
 
 export async function _addScrapeJobToBullMQ(
