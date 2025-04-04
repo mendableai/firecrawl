@@ -621,6 +621,7 @@ _It is the sole responsibility of the end users to respect websites' policies wh
 
 ## Contributors
 
+<!-- Thanks to all our contributors, including Devin AI! -->
 <a href="https://github.com/mendableai/firecrawl/graphs/contributors">
   <img alt="contributors" src="https://contrib.rocks/image?repo=mendableai/firecrawl"/>
 </a>
