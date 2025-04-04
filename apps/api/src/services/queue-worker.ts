@@ -908,7 +908,21 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
             lockedJobs.map((x) => x.opts.jobId),
           );
           logger.debug("Adding scrape jobs to BullMQ...");
-          await addScrapeJobs(lockedJobs);
+          if (job.data.crawlerOptions?.delay) {
+            const jobsWithDelay = lockedJobs.map(j => ({
+              ...j,
+              data: {
+                ...j.data,
+                crawlerOptions: {
+                  ...j.data.crawlerOptions,
+                  delay: job.data.crawlerOptions.delay
+                }
+              }
+            }));
+            await addScrapeJobs(jobsWithDelay);
+          } else {
+            await addScrapeJobs(lockedJobs);
+          }
         });
 
     if (sitemap === 0) {
