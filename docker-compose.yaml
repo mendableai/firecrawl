@@ -5,6 +5,7 @@ x-common-service: &common-service
   # uncomment the build: statement and comment out the image: statement
   # image: ghcr.io/mendableai/firecrawl
   build: apps/api
+  image: firecrawl
 
   ulimits:
     nofile:
