@@ -491,8 +491,8 @@ const processDeepResearchJobInternal = async (
       systemPrompt: job.data.request.systemPrompt,
       formats: job.data.request.formats,
       jsonOptions: job.data.request.jsonOptions,
-    });  
-    
+    });
+
     if(result.success) {
       // Move job to completed state in Redis and update research status
       await job.moveToCompleted(result, token, false);
@@ -541,7 +541,7 @@ const processGenerateLlmsTxtJobInternal = async (
 ) => {
   const logger = _logger.child({
     module: "generate-llmstxt-worker",
-    method: "processJobInternal", 
+    method: "processJobInternal",
     jobId: job.id,
     generateId: job.data.generateId,
     teamId: job.data?.teamId ?? undefined,
@@ -596,7 +596,7 @@ const processGenerateLlmsTxtJobInternal = async (
     }
 
     await updateGeneratedLlmsTxt(job.data.generateId, {
-      status: "failed", 
+      status: "failed",
       error: error.message || "Unknown error occurred",
     });
 
@@ -678,19 +678,19 @@ const workerFun = async (
           await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
           cleanOldConcurrencyLimitEntries(job.data.team_id);
 
-          if (!process.env.NODE_ENV?.includes('test') && job.data.crawl_id && (job.data.crawlDelay || job.data.robotsCrawlDelay)) {
+          if (job.data.crawl_id && job.data.crawlerOptions?.delay) {
             await removeCrawlConcurrencyLimitActiveJob(job.data.crawl_id, job.id);
             cleanOldCrawlConcurrencyLimitEntries(job.data.crawl_id);
 
-            const delayInSeconds = job.data.crawlDelay || job.data.robotsCrawlDelay;
+            const delayInSeconds = job.data.crawlerOptions.delay;
             const delayInMs = delayInSeconds * 1000;
-            
+
             await new Promise(resolve => setTimeout(resolve, delayInMs));
-            
+
             const nextCrawlJob = await takeCrawlConcurrencyLimitedJob(job.data.crawl_id);
             if (nextCrawlJob !== null) {
               await pushCrawlConcurrencyLimitActiveJob(job.data.crawl_id, nextCrawlJob.id, 60 * 1000);
-              
+
               await queue.add(
                 nextCrawlJob.id,
                 {
@@ -1255,7 +1255,7 @@ async function processJob(job: Job & { id: string }, token: string) {
             credits: creditsToBeBilled,
             is_extract: false,
           });
-          
+
           // Add directly to the billing queue - the billing worker will handle the rest
           await getBillingQueue().add(
             "bill_team",

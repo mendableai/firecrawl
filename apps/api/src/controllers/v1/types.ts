@@ -821,6 +821,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     regexOnFullURL: x.regexOnFullURL,
     maxDiscoveryDepth: x.maxDiscoveryDepth,
     currentDiscoveryDepth: 0,
+    delay: x.crawlDelay,
   };
 }
 
