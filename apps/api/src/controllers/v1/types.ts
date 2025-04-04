@@ -464,7 +464,7 @@ const crawlerOptions = z
     deduplicateSimilarURLs: z.boolean().default(true),
     ignoreQueryParameters: z.boolean().default(false),
     regexOnFullURL: z.boolean().default(false),
-    crawlDelay: z.number().positive().optional(),
+    delay: z.number().positive().optional(),
   })
   .strict(strictMessage);
 
@@ -821,7 +821,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     regexOnFullURL: x.regexOnFullURL,
     maxDiscoveryDepth: x.maxDiscoveryDepth,
     currentDiscoveryDepth: 0,
-    delay: x.crawlDelay,
+    delay: x.delay,
   };
 }
 
@@ -844,6 +844,7 @@ export function fromLegacyCrawlerOptions(x: any, teamId: string): {
       ignoreQueryParameters: x.ignoreQueryParameters,
       regexOnFullURL: x.regexOnFullURL,
       maxDiscoveryDepth: x.maxDiscoveryDepth,
+      delay: x.delay,
    }),
     internalOptions: {
       v0CrawlOnlyUrls: x.returnOnlyUrls,
