@@ -1883,8 +1883,7 @@ export class CrawlWatcher extends TypedEventTarget<CrawlWatcherEvents> {
 
     (async () => {
       try {
-        const isows = await import("isows");
-        this.ws = new isows.WebSocket(`${app.apiUrl.replace("http", "ws")}/v1/crawl/${id}`);
+        this.ws = new WebSocket(`${app.apiUrl.replace("http", "ws")}/v1/crawl/${id}`, app.apiKey);
         if (this.closed) {
           this.ws.close();
           return;

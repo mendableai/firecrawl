@@ -30,16 +30,11 @@
     "zod": "^3.23.8",
     "zod-to-json-schema": "^3.23.0"
   },
-  "optionalDependencies": {
-    "isows": "^1.0.4"
-  },
   "bugs": {
     "url": "https://github.com/mendableai/firecrawl/issues"
   },
   "homepage": "https://github.com/mendableai/firecrawl#readme",
   "devDependencies": {
-    "uuid": "^9.0.1",
-    "dotenv": "^16.4.5",
     "@jest/globals": "^29.7.0",
     "@types/axios": "^0.14.0",
     "@types/dotenv": "^8.2.0",
@@ -47,10 +42,12 @@
     "@types/mocha": "^10.0.6",
     "@types/node": "^20.12.12",
     "@types/uuid": "^9.0.8",
+    "dotenv": "^16.4.5",
     "jest": "^29.7.0",
     "ts-jest": "^29.2.2",
     "tsup": "^8.2.4",
-    "typescript": "^5.4.5"
+    "typescript": "^5.4.5",
+    "uuid": "^9.0.1"
   },
   "keywords": [
     "firecrawl",
@@ -60,5 +57,8 @@
     "scraper",
     "api",
     "sdk"
-  ]
+  ],
+  "engines": {
+    "node": ">=22.0.0"
+  }
 }
