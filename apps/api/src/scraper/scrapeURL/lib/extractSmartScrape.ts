@@ -27,9 +27,10 @@ const commonReasoningPromptProperties = {
   },
   smartscrape_prompt: {
     type: ["string", "null"],
-    // Using the more detailed multi-step description as the common one
-    description:
-      "Prompt detailing the specific actions SmartScrape should perform (e.g., 'click button X''). Dont mention anything about extraction, smartscrape just returns page content",
+    description: `A clear, outcome-focused prompt describing what information to find on the page. 
+      Example: "Find the product specifications in the expandable section" rather than "Click the button to reveal product specs".
+      Used by the smart scraping agent to determine what actions to take.
+      Dont mention anything about extraction, smartscrape just returns page content.`
   },
 };
 
@@ -199,12 +200,12 @@ export async function extractData({
   let extract, warning, totalUsage;
 
   try {
-    const { extract: x, warning: y, totalUsage: z } = await generateCompletions(
+    const { extract: e, warning: w, totalUsage: t } = await generateCompletions(
       { ...extractOptionsNewSchema, model: getModel("gemini-2.5-pro-exp-03-25", "google") }
     );
-    extract = x;
-    warning = y;
-    totalUsage = z;
+    extract = e;
+    warning = w;
+    totalUsage = t;
   } catch (error) {
     console.log("failed during extractSmartScrape.ts:generateCompletions", error);
   }
@@ -222,52 +223,56 @@ export async function extractData({
   console.log("shouldUseSmartscrape", extract?.shouldUseSmartscrape);
   console.log("smartscrape_reasoning", extract?.smartscrape_reasoning);
   console.log("smartscrape_prompt", extract?.smartscrape_prompt);
-  if (extract?.shouldUseSmartscrape) {
-    let smartscrapeResults;
-    if (isSingleUrl) {
-      smartscrapeResults = [
-        await smartScrape(urls[0], extract?.smartscrape_prompt),
-      ];
-    } else {
-      const pages = extract?.smartscrapePages;
-      //do it async promiseall instead
-      smartscrapeResults = await Promise.all(
-        pages.map(async (page) => {
-          return await smartScrape(
-            urls[page.page_index],
-            page.smartscrape_prompt,
-          );
+  try {
+    if (extract?.shouldUseSmartscrape) {
+      let smartscrapeResults;
+      if (isSingleUrl) {
+        smartscrapeResults = [
+          await smartScrape(urls[0], extract?.smartscrape_prompt),
+        ];
+      } else {
+        const pages = extract?.smartscrapePages;
+        //do it async promiseall instead
+        smartscrapeResults = await Promise.all(
+          pages.map(async (page) => {
+            return await smartScrape(
+              urls[page.page_index],
+              page.smartscrape_prompt,
+            );
+          }),
+        );
+      }
+      console.log("smartscrapeResults", smartscrapeResults);
+
+      const scrapedPages = smartscrapeResults.map(
+        (result) => result.scrapedPages,
+      );
+      console.log("scrapedPages", scrapedPages);
+      const htmls = scrapedPages.flat().map((page) => page.html);
+      console.log("htmls", htmls);
+      const markdowns = await Promise.all(
+        htmls.map(async (html) => await parseMarkdown(html)),
+      );
+      console.log("markdowns", markdowns);
+      extractedData = await Promise.all(
+        markdowns.map(async (markdown) => {
+          const newExtractOptions = {
+            ...extractOptions,
+            markdown: markdown,
+          };
+          const { extract, warning, totalUsage, model } =
+            await generateCompletions(newExtractOptions);
+          return extract;
         }),
       );
+
+      // console.log("markdowns", markdowns);
+      // extractedData = smartscrapeResult;
+    } else {
+      extractedData = [extractedData];
     }
-    console.log("smartscrapeResults", smartscrapeResults);
-
-    const scrapedPages = smartscrapeResults.map(
-      (result) => result.scrapedPages,
-    );
-    console.log("scrapedPages", scrapedPages);
-    const htmls = scrapedPages.flat().map((page) => page.html);
-    console.log("htmls", htmls);
-    const markdowns = await Promise.all(
-      htmls.map(async (html) => await parseMarkdown(html)),
-    );
-    console.log("markdowns", markdowns);
-    extractedData = await Promise.all(
-      markdowns.map(async (markdown) => {
-        const newExtractOptions = {
-          ...extractOptions,
-          markdown: markdown,
-        };
-        const { extract, warning, totalUsage, model } =
-          await generateCompletions(newExtractOptions);
-        return extract;
-      }),
-    );
-
-    // console.log("markdowns", markdowns);
-    // extractedData = smartscrapeResult;
-  } else {
-    extractedData = [extractedData];
+  } catch (error) {
+    console.error(">>>>>>>extractSmartScrape.ts error>>>>>\n", error);
   }
 
   return { extractedDataArray: extractedData, warning: warning };

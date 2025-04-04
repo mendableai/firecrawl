@@ -46,32 +46,52 @@ export async function smartScrape(
   try {
     logger.info("Initiating smart scrape request", { url, prompt });
 
-    // Pass schema type as generic parameter to robustFetch
+    // Pass schema type as generic parameter to robustFeth
     const response = await robustFetch<typeof smartScrapeResultSchema>({
       url: `${process.env.SMART_SCRAPE_API_URL}/smart-scrape`,
       method: "POST",
       body: {
         url,
         prompt,
-        thinkingModel: {
-          model: "gemini-2.5-pro-exp-03-25",
-          provider: "google",
-          supportTools: true,
-          toolChoice: "required",
-          cost: {
-            input: 1.3,
-            output: 5,
+        models: {
+          thinkingModel: {
+            model: "gemini-2.5-pro-exp-03-25",
+            provider: "google",
+            supportTools: true,
+            toolChoice: "required",
+            cost: {
+              input: 1.3,
+              output: 5,
+            },
           },
-        },
-        toolModel: {
-          model: "gemini-2.0-flash",
-          provider: "google",
-        },
+          toolModel: {
+            model: "gemini-2.0-flash",
+            provider: "google",
+          }
+        }
       },
       schema: smartScrapeResultSchema, // Pass the schema instance for validation
       logger,
       mock: null, // Keep mock null if not mocking
     });
+
+    // Check if the response indicates a 500 error
+    // Use type assertion to handle the error response structure
+    const errorResponse = response as unknown as { 
+      success: boolean; 
+      error?: string; 
+      details?: string;
+    };
+    
+    if (errorResponse && errorResponse.success === false && errorResponse.error) {
+      logger.error("Smart scrape returned error response", {
+        url,
+        prompt,
+        error: errorResponse.error,
+        details: errorResponse.details || "No details provided"
+      });
+      throw new Error(`Smart scrape failed: ${errorResponse.error}${errorResponse.details ? ` - ${errorResponse.details}` : ''}`);
+    }
 
     logger.info("Smart scrape successful", {
       url,
@@ -80,9 +100,34 @@ export async function smartScrape(
     });
     return response; // The response type now matches SmartScrapeResult
   } catch (error) {
-    logger.error("Smart scrape request failed", { url, prompt, error });
+    // Safely extract error information without circular references
+    const errorInfo = {
+      message: error instanceof Error ? error.message : String(error),
+      name: error instanceof Error ? error.name : 'Unknown',
+      stack: error instanceof Error ? error.stack : undefined,
+      // Extract cause safely if it exists
+      cause: error instanceof Error && error.cause
+        ? (error.cause instanceof Error
+            ? { message: error.cause.message, name: error.cause.name, stack: error.cause.stack }
+            : typeof error.cause === 'object'
+              ? {
+                  ...Object.fromEntries(
+                    Object.entries(error.cause)
+                      .filter(([_, v]) => v !== null && typeof v !== 'object')
+                  ),
+                  error: (error.cause as any)?.error?.message || (error.cause as any)?.error
+                }
+              : String(error.cause))
+        : undefined
+    };
+    
+    logger.error("Smart scrape request failed", { 
+      url, 
+      prompt, 
+      error: JSON.stringify(errorInfo)
+    });
+    
     // Rethrowing the error to be handled by the caller
-    // Consider more specific error handling or wrapping if needed
     throw new Error(`Failed to smart scrape URL: ${url}`, { cause: error });
   }
 }

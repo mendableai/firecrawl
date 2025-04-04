@@ -55,10 +55,18 @@ export async function batchExtractPromise(
     model: getModel("gemini-2.0-flash", "google"),
   };
 
-  const { extractedDataArray, warning } = await extractData({
-    extractOptions: generationOptions,
-    urls: [doc.metadata.sourceURL || doc.metadata.url || ""],
-  });
+  let extractedDataArray: any[] = [];
+  let warning: string | undefined;
+  try {
+    const { extractedDataArray: e, warning: w } = await extractData({
+      extractOptions: generationOptions,
+      urls: [doc.metadata.sourceURL || doc.metadata.url || ""],
+    });
+    extractedDataArray = e;
+    warning = w;
+  } catch (error) {
+    console.error(">>>>>>>error>>>>>\n", error);
+  }
 
   await fs.writeFile(
     `logs/extractedDataArray-${crypto.randomUUID()}.json`,

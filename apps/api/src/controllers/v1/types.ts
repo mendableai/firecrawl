@@ -69,9 +69,12 @@ Key Instructions:
 2.  **Content Grounding:** Extract information *only* if it is explicitly present in the provided markdown. Do NOT infer or fabricate information.
 3.  **Missing Information:** If a piece of information required by the schema cannot be found in the markdown, use \`null\` for that field's value.
 4.  **SmartScrape Recommendation:**
-    *   Assess if the *full* required data seems unavailable in the current markdown likely because user interaction (like clicking or scrolling) is needed to reveal it.
-    *   If interaction seems necessary to get the complete data, set \`shouldUseSmartscrape\` to \`true\` in your response and provide a clear \`reasoning\` and \`prompt\` for the SmartScrape tool.
-    *   Otherwise, set \`shouldUseSmartscrape\` to \`false\`.
+    *   Assess if the *full* required data seems unavailable in the current markdown likely because:
+        - Content requires user interaction to reveal (e.g., clicking buttons, hovering, scrolling)
+        - Content uses pagination (e.g., "Load More" buttons, numbered pagination, infinite scroll)
+        - Content is dynamically loaded after user actions
+    *   If the content requires user interaction or pagination to be fully accessible, set \`shouldUseSmartscrape\` to \`true\` in your response and provide a clear \`reasoning\` and \`prompt\` for the SmartScrape tool.
+    *   If the content is simply JavaScript rendered but doesn't require interaction, set \`shouldUseSmartscrape\` to \`false\`.
 5.  **Output Format:** Your final output MUST be a single, valid JSON object conforming precisely to the schema. Do not include any explanatory text outside the JSON structure.`,
       ),
     prompt: z.string().max(10000).optional(),

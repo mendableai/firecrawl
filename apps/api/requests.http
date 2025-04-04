@@ -12,7 +12,6 @@ content-type: application/json
   "url":"https://firecrawl.dev"
 }
 
-
 ### Crawl Website
 # @name crawl
 POST {{baseUrl}}/v1/crawl HTTP/1.1
@@ -73,22 +72,32 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-  "urls": [
-    "https://firecrawl.dev/blog"
+  "urls":[
+    "https://firecrawl-e2e-test-git-main-rafaelsideguides-projects.vercel.app/numbered-large-pagination/with-params"
   ],
-  "origin": "api-sdk",
-  "prompt": "Extract all the blog titles from the page, is multity entity = true",
-  "schema": {
-    "type": "object",
-    "properties": {
-      "blog_titles": {
-        "type": "array",
-        "items": {
-          "type": "string"
+  "origin":"api-sdk",
+  "prompt":"Get all products in the page. Use the pagination buttons to navigate. It has 1200 products.",
+  "schema":{
+    "type":"object",
+    "properties":{
+      "products": {
+        "type":"array",
+        "items":{
+          "type":"object",
+          "properties":{
+            "name":{
+              "type":"string"
+            },
+            "description":{
+              "type":"string"
+            }
+          }
         }
       }
     },
-    "required": ["blog_titles"]
+    "required":[
+      "products"
+    ]
   }
 }
 
@@ -121,91 +130,3 @@ content-type: application/json
 GET {{baseUrl}}/v1/llmstxt/{{generateLlmsTxtId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
-### Scrape with JSON Schema Extraction
-# @name scrapeWithSchema
-POST {{baseUrl}}/v1/scrape HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
-content-type: application/json
-
-{
-  "url": "https://firecrawl.dev",
-  "formats": ["json"],
-  "jsonOptions": {
-    "schema": {
-      "type": "object",
-      "properties": {
-        "description": { 
-          "type": "string",
-          "description": "Describe the site"
-        },
-        "respect_robots_txt": {
-          "type": ["boolean","null"],
-          "description": "Does firecrawl respect the robots.txt files?"
-        }
-      },
-      "required": ["description", "respect_robots_txt"]
-    }
-    // "systemPrompt": "You are an expert web scraper." // Optional system prompt
-  }
-}
-
-
-### Scrape with JSON Schema Extraction
-# @name scrapeWithSchema
-POST {{baseUrl}}/v1/scrape HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
-content-type: application/json
-
-{
-  "url": "https://firecrawl.dev",
-  "formats": ["json"],
-  "jsonOptions": {
-    "schema": {
-      "type": "object",
-      "properties": {
-        "description": { 
-          "type": "string",
-          "description": "Describe the site"
-        }
-
-      },
-      "required": ["description" ]
-    }
-    // "systemPrompt": "You are an expert web scraper." // Optional system prompt
-  }
-}
-
-### Scrape to Extract Array of Titles
-# @name scrapeItemsArray
-POST {{baseUrl}}/v1/scrape HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
-content-type: application/json
-
-{
-  "url": "https://firecrawl-e2e-test-git-main-rafaelsideguides-projects.vercel.app/load-more/with-params",
-    "formats": ["json"],
-  "jsonOptions": {
-    "prompt": "Extract all the main article or blog post titles from the page into an array.",
-    "schema": {
-      "type": "object",
-      "properties": {
-        "items": {
-          "type": "array",
-          "description": "An array containing the extracted items.",
-          "items": { 
-            "type": "object",
-            "properties": {
-              "title": {
-                "type": "string",
-                "description": "The title of a single article or blog post."
-              }
-            },
-            "required": ["title"] 
-          }
-        }
-      },
-      "required": ["items"] 
-    }
-    // "systemPrompt": "You are an expert structured data extractor." 
-  }
-}
