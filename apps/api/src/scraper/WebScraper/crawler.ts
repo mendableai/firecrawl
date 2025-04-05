@@ -23,6 +23,7 @@ export class WebCrawler {
   private limit: number;
   private robotsTxtUrl: string;
   public robots: Robot;
+  private robotsCrawlDelay: number | null = null;
   private generateImgAltText: boolean;
   private allowBackwardCrawling: boolean;
   private allowExternalContentLinks: boolean;
@@ -243,6 +244,12 @@ export class WebCrawler {
 
   public importRobotsTxt(txt: string) {
     this.robots = robotsParser(this.robotsTxtUrl, txt);
+    const delay = this.robots.getCrawlDelay("FireCrawlAgent") || this.robots.getCrawlDelay("FirecrawlAgent");
+    this.robotsCrawlDelay = delay !== undefined ? delay : null;
+  }
+  
+  public getRobotsCrawlDelay(): number | null {
+    return this.robotsCrawlDelay;
   }
 
   public async tryGetSitemap(
@@ -268,7 +275,7 @@ export class WebCrawler {
 
     const _urlsHandler = async (urls: string[]) => {
       if (fromMap && onlySitemap) {
-        return urlsHandler(urls);
+        return await urlsHandler(urls);
       } else {
         let filteredLinks = this.filterLinks(
           [...new Set(urls)].filter(x => this.filterURL(x, this.initialUrl) !== null),
@@ -295,7 +302,7 @@ export class WebCrawler {
           "NX",
         );
         if (uniqueURLs.length > 0) {
-          return urlsHandler(uniqueURLs);
+          return await urlsHandler(uniqueURLs);
         }
       }
     };
