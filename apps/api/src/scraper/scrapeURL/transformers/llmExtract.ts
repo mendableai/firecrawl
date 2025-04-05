@@ -74,9 +74,9 @@ function normalizeSchema(x: any): any {
     return {
       ...x,
       properties: Object.fromEntries(
-        Object.entries(x.properties).map(([k, v]) => [k, normalizeSchema(v)]),
+        Object.entries(x.properties || {}).map(([k, v]) => [k, normalizeSchema(v)]),
       ),
-      required: Object.keys(x.properties),
+      required: Object.keys(x.properties || {}),
       additionalProperties: false,
     };
   } else if (x && x.type === "array") {

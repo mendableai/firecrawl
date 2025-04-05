@@ -118,7 +118,19 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
 
       const lastUrlsSet = new Set(lastUrls);
 
-      const univistedUrls = Array.from(lastUrlsSet).filter(x => !visitedUrls.has(x));
+      const crawler = crawlToCrawler(
+        job.data.crawl_id,
+        sc,
+        sc.originUrl!,
+        job.data.crawlerOptions,
+      );
+
+      const univistedUrls = crawler.filterLinks(
+        Array.from(lastUrlsSet).filter(x => !visitedUrls.has(x)),
+        Infinity,
+        sc.crawlerOptions.maxDepth ?? 10,
+      );
+      
       const addableJobCount = sc.crawlerOptions.limit === undefined ? Infinity : (sc.crawlerOptions.limit - await getDoneJobsOrderedLength(job.data.crawl_id));
 
       console.log(sc.originUrl!, univistedUrls, visitedUrls, lastUrls, addableJobCount);
