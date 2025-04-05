@@ -8,8 +8,8 @@ mod error;
 pub mod map;
 pub mod scrape;
 
-pub use error::FirecrawlError;
 use error::FirecrawlAPIError;
+pub use error::FirecrawlError;
 
 #[derive(Clone, Debug)]
 pub struct FirecrawlApp {
@@ -26,9 +26,12 @@ impl FirecrawlApp {
         FirecrawlApp::new_selfhosted(CLOUD_API_URL, Some(api_key))
     }
 
-    pub fn new_selfhosted(api_url: impl AsRef<str>, api_key: Option<impl AsRef<str>>) -> Result<Self, FirecrawlError> {
+    pub fn new_selfhosted(
+        api_url: impl AsRef<str>,
+        api_key: Option<impl AsRef<str>>,
+    ) -> Result<Self, FirecrawlError> {
         let url = api_url.as_ref().to_string();
-        
+
         if url == CLOUD_API_URL && api_key.is_none() {
             return Err(FirecrawlError::APIError(
                 "Configuration".to_string(),
@@ -36,7 +39,7 @@ impl FirecrawlApp {
                     success: false,
                     error: "API key is required for cloud service".to_string(),
                     details: None,
-                }
+                },
             ));
         }
 
@@ -73,27 +76,37 @@ impl FirecrawlApp {
             .text()
             .await
             .map_err(|e| FirecrawlError::ResponseParseErrorText(e))
-            .and_then(|response_json| serde_json::from_str::<Value>(&response_json).map_err(|e| FirecrawlError::ResponseParseError(e)))
+            .and_then(|response_json| {
+                serde_json::from_str::<Value>(&response_json)
+                    .map_err(|e| FirecrawlError::ResponseParseError(e))
+            })
             .and_then(|response_value| {
                 if response_value["success"].as_bool().unwrap_or(false) {
-                    Ok(serde_json::from_value::<T>(response_value).map_err(|e| FirecrawlError::ResponseParseError(e))?)
+                    Ok(serde_json::from_value::<T>(response_value)
+                        .map_err(|e| FirecrawlError::ResponseParseError(e))?)
                 } else {
                     Err(FirecrawlError::APIError(
                         action.as_ref().to_string(),
-                        serde_json::from_value(response_value).map_err(|e| FirecrawlError::ResponseParseError(e))?
+                        serde_json::from_value(response_value)
+                            .map_err(|e| FirecrawlError::ResponseParseError(e))?,
                     ))
                 }
             });
 
         match &response {
             Ok(_) => response,
-            Err(FirecrawlError::ResponseParseError(_)) | Err(FirecrawlError::ResponseParseErrorText(_)) => {
+            Err(FirecrawlError::ResponseParseError(_))
+            | Err(FirecrawlError::ResponseParseErrorText(_)) => {
                 if is_success {
                     response
                 } else {
-                    Err(FirecrawlError::HttpRequestFailed(action.as_ref().to_string(), status.as_u16(), status.as_str().to_string()))
+                    Err(FirecrawlError::HttpRequestFailed(
+                        action.as_ref().to_string(),
+                        status.as_u16(),
+                        status.as_str().to_string(),
+                    ))
                 }
-            },
+            }
             Err(_) => response,
         }
     }
