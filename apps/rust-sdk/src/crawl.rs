@@ -208,6 +208,12 @@ pub struct CrawlStatus {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct CancelCrawlResponse {
+    pub status: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct CrawlAsyncResponse {
     success: bool,
 
@@ -234,7 +240,7 @@ impl FirecrawlApp {
 
         let response = self
             .client
-            .post(&format!("{}{}/crawl", self.api_url, API_VERSION))
+            .post(format!("{}{}/crawl", self.api_url, API_VERSION))
             .headers(headers.clone())
             .json(&body)
             .send()
@@ -292,7 +298,7 @@ impl FirecrawlApp {
     ) -> Result<CrawlStatus, FirecrawlError> {
         let response = self
             .client
-            .get(&format!(
+            .get(format!(
                 "{}{}/crawl/{}",
                 self.api_url,
                 API_VERSION,
@@ -339,17 +345,119 @@ impl FirecrawlApp {
                 }
                 CrawlStatusTypes::Failed => {
                     break Err(FirecrawlError::CrawlJobFailed(
-                        format!("Crawl job failed."),
+                        "Crawl job failed".into(),
                         status_data,
                     ));
                 }
                 CrawlStatusTypes::Cancelled => {
                     break Err(FirecrawlError::CrawlJobFailed(
-                        format!("Crawl job was cancelled."),
+                        "Crawl job was cancelled.".into(),
                         status_data,
                     ));
                 }
             }
         }
+    }
+
+    /// Cancel an asynchronous crawl job using the Firecrawl API.
+    ///
+    /// # Returns
+    ///
+    /// A response indicating whether the cancellation was successful, or a FirecrawlError if the request fails.
+    pub async fn cancel_crawl(
+        &self,
+        id: impl AsRef<str>,
+    ) -> Result<CancelCrawlResponse, FirecrawlError> {
+        let response = self
+            .client
+            .delete(format!(
+                "{}{}/crawl/{}",
+                self.api_url,
+                API_VERSION,
+                id.as_ref()
+            ))
+            .headers(self.prepare_headers(None))
+            .send()
+            .await
+            .map_err(|e| {
+                FirecrawlError::HttpError(format!("Cancelling crawl {}", id.as_ref()), e)
+            })?;
+
+        self.handle_response(response, "crawl_cancel").await
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[tokio::test]
+    #[ignore = "Makes real network request"]
+    async fn test_real_cancel_crawl() {
+        let api_url = std::env::var("FIRECRAWL_API_URL")
+            .expect("Please set the FIRECRAWL_API_URL environment variable");
+        let app = FirecrawlApp::new_selfhosted(api_url, None::<&str>).unwrap();
+
+        // First start a crawl job
+        let crawl_response = app
+            .crawl_url_async("https://example.com", None)
+            .await
+            .unwrap();
+
+        // Then cancel it
+        let cancel_response = app.cancel_crawl(crawl_response.id).await.unwrap();
+
+        assert_eq!(cancel_response.status, "cancelled");
+    }
+
+    #[tokio::test]
+    async fn test_cancel_crawl_with_mock() {
+        let mut server = mockito::Server::new_async().await;
+
+        // Set up the mock for the cancel request
+        let mock = server
+            .mock("DELETE", "/v1/crawl/test-crawl-id")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(
+                json!({
+                    "success": null,
+                    "status": "cancelled"
+                })
+                .to_string(),
+            )
+            .create();
+
+        let app = FirecrawlApp::new_selfhosted(server.url(), Some("test_key")).unwrap();
+        let response = app.cancel_crawl("test-crawl-id").await.unwrap();
+
+        assert_eq!(response.status, "cancelled");
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_cancel_crawl_error_response() {
+        let mut server = mockito::Server::new_async().await;
+
+        // Set up the mock for an error response
+        let mock = server
+            .mock("DELETE", "/v1/crawl/invalid-id")
+            .with_status(404)
+            .with_header("content-type", "application/json")
+            .with_body(
+                json!({
+                    "success": false,
+                    "error": "Crawl job not found"
+                })
+                .to_string(),
+            )
+            .create();
+
+        let app = FirecrawlApp::new_selfhosted(server.url(), Some("test_key")).unwrap();
+        let result = app.cancel_crawl("invalid-id").await;
+
+        assert!(result.is_err());
+        mock.assert();
     }
 }
