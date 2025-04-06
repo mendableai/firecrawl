@@ -6,6 +6,7 @@ pub mod batch_scrape;
 pub mod crawl;
 pub mod document;
 mod error;
+pub mod extract;
 pub mod map;
 pub mod scrape;
 pub mod search;
@@ -79,11 +80,12 @@ impl FirecrawlApp {
             .await
             .map_err(|e| FirecrawlError::ResponseParseErrorText(e))
             .and_then(|response_json| {
-                //#[cfg(debug_assertions)]
-                //println!("Response JSON: {:?}", response_json);
-
                 serde_json::from_str::<Value>(&response_json)
                     .map_err(|e| FirecrawlError::ResponseParseError(e))
+                    .inspect(|data| {
+                        #[cfg(debug_assertions)]
+                        println!("Response JSON: {:#?}", data);
+                    })
             })
             .and_then(|response_value| {
                 if action.as_ref().starts_with("crawl_") // no success in check/cancel crawl responses
