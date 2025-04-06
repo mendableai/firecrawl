@@ -6,7 +6,7 @@ use serde_json::Value;
 #[serde(rename_all = "camelCase")]
 pub struct DocumentMetadata {
     // firecrawl specific
-    #[serde(rename = "sourceURL")]
+    #[serde(rename = "sourceURL", alias = "url")]
     pub source_url: String,
     pub status_code: u16,
     pub error: Option<String>,

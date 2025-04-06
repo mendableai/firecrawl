@@ -7,6 +7,7 @@ pub mod document;
 mod error;
 pub mod map;
 pub mod scrape;
+pub mod search;
 
 use error::FirecrawlAPIError;
 pub use error::FirecrawlError;
@@ -77,6 +78,9 @@ impl FirecrawlApp {
             .await
             .map_err(|e| FirecrawlError::ResponseParseErrorText(e))
             .and_then(|response_json| {
+                #[cfg(debug_assertions)]
+                println!("Response JSON: {:?}", response_json);
+
                 serde_json::from_str::<Value>(&response_json)
                     .map_err(|e| FirecrawlError::ResponseParseError(e))
             })
