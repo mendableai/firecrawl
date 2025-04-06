@@ -16,7 +16,7 @@ pub struct MapOptions {
     pub include_subdomains: Option<bool>,
 
     /// Maximum number of links to return (default: `5000`)
-    pub exclude_tags: Option<u32>,
+    pub limit: Option<u32>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]

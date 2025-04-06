@@ -23,6 +23,7 @@ log = "^0.4"
 thiserror = "^1.0"
 uuid = { version = "^1.10", features = ["v4"] }
 tokio = { version = "^1", features = ["full"] }
+futures = "0.3.31"
 
 [dev-dependencies]
 clippy = "^0.0.302"
@@ -31,6 +32,7 @@ dotenvy = "^0.15"
 tokio = { version = "1", features = ["full"] }
 mockito = "1.7.0"
 clap = { version ="4.5.35", features = ["derive"] }
+axum = { version = "0.8.3", features = ["tokio", "macros"] }
 
 [build-dependencies]
 tokio = { version = "1", features = ["full"] }
