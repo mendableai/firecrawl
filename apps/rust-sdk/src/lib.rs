@@ -85,7 +85,7 @@ impl FirecrawlApp {
                     .map_err(|e| FirecrawlError::ResponseParseError(e))
             })
             .and_then(|response_value| {
-                if action.as_ref() == "crawl_cancel" // no success in crawl responses
+                if action.as_ref().starts_with("crawl_") // no success in check/cancel crawl responses
                     || response_value["success"].as_bool().unwrap_or(false)
                 {
                     Ok(serde_json::from_value::<T>(response_value)

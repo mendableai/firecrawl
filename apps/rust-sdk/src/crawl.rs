@@ -208,6 +208,23 @@ pub struct CrawlStatus {
 
 #[derive(Deserialize, Serialize, Debug, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct CrawlError {
+    pub id: String,
+    pub timestamp: Option<String>,
+    pub url: String,
+    pub error: String,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct CrawlErrorsResponse {
+    pub errors: Vec<CrawlError>,
+    #[serde(rename = "robotsBlocked")]
+    pub robots_blocked: Vec<String>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct CancelCrawlResponse {
     pub status: String,
 }
@@ -385,6 +402,33 @@ impl FirecrawlApp {
 
         self.handle_response(response, "crawl_cancel").await
     }
+
+    /// Returns information about crawl errors.
+    ///
+    /// # Returns
+    ///
+    /// A response containing information about crawl errors, or a FirecrawlError if the request fails.
+    pub async fn check_crawl_errors(
+        &self,
+        id: impl AsRef<str>,
+    ) -> Result<CrawlErrorsResponse, FirecrawlError> {
+        let response = self
+            .client
+            .get(format!(
+                "{}{}/crawl/{}/errors",
+                self.api_url,
+                API_VERSION,
+                id.as_ref()
+            ))
+            .headers(self.prepare_headers(None))
+            .send()
+            .await
+            .map_err(|e| {
+                FirecrawlError::HttpError(format!("Checking errors for crawl {}", id.as_ref()), e)
+            })?;
+
+        self.handle_response(response, "crawl_check").await
+    }
 }
 
 #[cfg(test)]
@@ -456,6 +500,99 @@ mod tests {
 
         let app = FirecrawlApp::new_selfhosted(server.url(), Some("test_key")).unwrap();
         let result = app.cancel_crawl("invalid-id").await;
+
+        assert!(result.is_err());
+        mock.assert();
+    }
+
+    #[tokio::test]
+    #[ignore = "Makes real network request"]
+    async fn test_real_check_crawl_errors() {
+        let api_url = std::env::var("FIRECRAWL_API_URL")
+            .expect("Please set the FIRECRAWL_API_URL environment variable");
+        let app = FirecrawlApp::new_selfhosted(api_url, None::<&str>).unwrap();
+
+        // First start a crawl job
+        let crawl_response = app
+            .crawl_url_async("https://no-wer-agg.invalid", None)
+            .await
+            .unwrap();
+
+        // Check for errors
+        let errors_response = app.check_crawl_errors(crawl_response.id).await.unwrap();
+        println!("{errors_response:?}");
+
+        tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+
+        assert!(
+            !errors_response.errors.is_empty(),
+            "WARN: Error returned related to Supabase not in my environment. It may fail"
+        );
+    }
+
+    #[tokio::test]
+    async fn test_check_crawl_errors_with_mock() {
+        let mut server = mockito::Server::new_async().await;
+
+        // Set up the mock for the check errors request
+        let mock = server
+            .mock("GET", "/v1/crawl/test-crawl-id/errors")
+            .with_status(200)
+            .with_header("content-type", "application/json")
+            .with_body(
+                json!({
+                    "success": true,
+                    "errors": [
+                        {
+                            "id": "error1",
+                            "timestamp": "2023-01-01T00:00:00Z",
+                            "url": "https://example.com/error-page",
+                            "error": "Failed to load page"
+                        }
+                    ],
+                    "robotsBlocked": [
+                        "https://example.com/blocked-by-robots"
+                    ]
+                })
+                .to_string(),
+            )
+            .create();
+
+        let app = FirecrawlApp::new_selfhosted(server.url(), Some("test_key")).unwrap();
+        let response = app.check_crawl_errors("test-crawl-id").await.unwrap();
+
+        assert_eq!(response.errors.len(), 1);
+        assert_eq!(response.errors[0].id, "error1");
+        assert_eq!(response.errors[0].url, "https://example.com/error-page");
+        assert_eq!(response.errors[0].error, "Failed to load page");
+        assert_eq!(response.robots_blocked.len(), 1);
+        assert_eq!(
+            response.robots_blocked[0],
+            "https://example.com/blocked-by-robots"
+        );
+        mock.assert();
+    }
+
+    #[tokio::test]
+    async fn test_check_crawl_errors_error_response() {
+        let mut server = mockito::Server::new_async().await;
+
+        // Set up the mock for an error response
+        let mock = server
+            .mock("GET", "/v1/crawl/invalid-id/errors")
+            .with_status(404)
+            .with_header("content-type", "application/json")
+            .with_body(
+                json!({
+                    "success": false,
+                    "error": "Crawl job not found"
+                })
+                .to_string(),
+            )
+            .create();
+
+        let app = FirecrawlApp::new_selfhosted(server.url(), Some("test_key")).unwrap();
+        let result = app.check_crawl_errors("invalid-id").await;
 
         assert!(result.is_err());
         mock.assert();
