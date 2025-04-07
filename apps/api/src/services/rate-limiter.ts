@@ -240,8 +240,9 @@ const testSuiteTokens = [
   "0a18c9e", // gh
 ];
 
+const manual_growth = ["22a07b64-cbfe-4924-9273-e3f01709cdf2"];
 const manual = ["69be9e74-7624-4990-b20d-08e0acc70cf6", "9661a311-3d75-45d2-bb70-71004d995873"];
-const manual_etier2c = ["77545e01-9cec-4fa9-8356-883fc66ac13e"];
+const manual_etier2c = ["77545e01-9cec-4fa9-8356-883fc66ac13e", "778c62c4-306f-4039-b372-eb20174760c0"];
 
 function makePlanKey(plan?: string) {
   return plan ? plan.replace("-", "") : "default"; // "default"
@@ -329,6 +330,10 @@ export function getConcurrencyLimitMax(
 
   if (teamId && manual_etier2c.includes(teamId)) {
     return CONCURRENCY_LIMIT.etier2c;
+  }
+
+  if (teamId && manual_growth.includes(teamId)) {
+    return CONCURRENCY_LIMIT.growth;
   }
 
   return CONCURRENCY_LIMIT[plan] ?? 10;

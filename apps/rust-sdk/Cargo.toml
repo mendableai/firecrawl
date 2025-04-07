@@ -26,7 +26,6 @@ tokio = { version = "^1", features = ["full"] }
 
 [dev-dependencies]
 clippy = "^0.0.302"
-rustfmt = "^0.10"
 assert_matches = "^1.5"
 dotenvy = "^0.15"
 tokio = { version = "1", features = ["full"] }
