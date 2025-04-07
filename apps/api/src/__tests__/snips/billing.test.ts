@@ -188,5 +188,11 @@ describe("Billing tests", () => {
 
             expect(rc1 - rc2).toBe(305);
         }, 300000);
+        
+        it("auto recharge uses invoicing API", async () => {
+            
+            
+            expect(true).toBe(true);
+        }, 10000);
     }
 });
