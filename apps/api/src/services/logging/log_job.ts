@@ -1,10 +1,10 @@
-import { ExtractorOptions } from "./../../lib/entities";
 import { supabase_service } from "../supabase";
 import { FirecrawlJob } from "../../types";
 import { posthog } from "../posthog";
 import "dotenv/config";
 import { logger } from "../../lib/logger";
 import { configDotenv } from "dotenv";
+import { Storage } from "@google-cloud/storage";
 configDotenv();
 
 function cleanOfNull<T>(x: T): T {
@@ -18,6 +18,43 @@ function cleanOfNull<T>(x: T): T {
     return x.replaceAll("\u0000", "") as T;
   } else {
     return x;
+  }
+}
+
+
+async function saveJobToGCS(job: FirecrawlJob, bucketName: string): Promise<void> {
+  try {
+    const storage = new Storage();
+    const bucket = storage.bucket(bucketName);
+    const blob = bucket.file(`${job.job_id}.json`);
+    await blob.save(JSON.stringify(job.docs), {
+      contentType: "application/json",
+    });
+    await blob.setMetadata({
+      metadata: {
+        job_id: job.job_id ?? null,
+        success: job.success,
+        message: job.message ?? null,
+        num_docs: job.num_docs,
+        time_taken: job.time_taken,
+        team_id: (job.team_id === "preview" || job.team_id?.startsWith("preview_"))? null : job.team_id,
+        mode: job.mode,
+        url: job.url,
+        crawler_options: job.crawlerOptions,
+        page_options: job.scrapeOptions,
+        origin: job.origin,
+        num_tokens: job.num_tokens ?? null,
+        retry: !!job.retry,
+        crawl_id: job.crawl_id ?? null,
+        tokens_billed: job.tokens_billed ?? null,
+      },
+    })
+  } catch (error) {
+    logger.error(`Error saving job to GCS`, {
+      error,
+      scrapeId: job.job_id,
+      jobId: job.job_id,
+    });
   }
 }
 
@@ -106,6 +143,10 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
     // Send job to external server
     if (process.env.FIRE_INDEX_SERVER_URL) {
       indexJob(job);
+    }
+
+    if (process.env.GCS_BUCKET_NAME) {
+      await saveJobToGCS(job, process.env.GCS_BUCKET_NAME);
     }
 
     if (force) {
