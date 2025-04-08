@@ -21,26 +21,23 @@ load_dotenv()
 
 # Initialize clients
 together_api_key = os.getenv("TOGETHER_API_KEY")
+if not together_api_key:
+    print(f"{Colors.RED}Error: TOGETHER_API_KEY not found in environment variables{Colors.RESET}")
+    
+client = Together(api_key=together_api_key)
 firecrawl_api_key = os.getenv("FIRECRAWL_API_KEY")
 serp_api_key = os.getenv("SERP_API_KEY")
 
-if not together_api_key:
-    print(f"{Colors.RED}Warning: TOGETHER_API_KEY not found in environment variables{Colors.RESET}")
 if not firecrawl_api_key:
     print(f"{Colors.RED}Warning: FIRECRAWL_API_KEY not found in environment variables{Colors.RESET}")
-
-# Initialize Together AI client
-together_client = Together(api_key=together_api_key)
 
 def search_google(query):
     """Search Google using SerpAPI and return top results."""
     print(f"{Colors.YELLOW}Searching Google for '{query}'...{Colors.RESET}")
     search = GoogleSearch({"q": query, "api_key": serp_api_key})
-    results = search.get_dict().get("organic_results", [])
-    print(f"{Colors.CYAN}Found {len(results)} search results{Colors.RESET}")
-    return results
+    return search.get_dict().get("organic_results", [])
 
-def select_urls_with_llama(company, objective, serp_results):
+def select_urls_with_gemini(company, objective, serp_results):
     """
     Use Llama 4 Maverick to select URLs from SERP results.
     Returns a list of URLs.
@@ -49,33 +46,47 @@ def select_urls_with_llama(company, objective, serp_results):
         serp_data = [{"title": r.get("title"), "link": r.get("link"), "snippet": r.get("snippet")} 
                      for r in serp_results if r.get("link")]
         
-        print(f"{Colors.CYAN}Processing {len(serp_data)} valid search results{Colors.RESET}")
+        print(f"{Colors.CYAN}Found {len(serp_data)} search results to analyze{Colors.RESET}")
+        
+        if not serp_data:
+            print(f"{Colors.YELLOW}No search results found to analyze{Colors.RESET}")
+            return []
 
         prompt = (
-            "You are a URL selection assistant. Your task is to analyze search results and select relevant URLs.\n\n"
-            "IMPORTANT: You must respond ONLY with a JSON object containing selected URLs. Do not include any explanation or additional text.\n\n"
+            "Task: Select the most relevant URLs from search results, prioritizing official sources.\n\n"
             "Instructions:\n"
-            "1. Analyze the search results for information about the specified company\n"
-            "2. Select URLs that are most likely to contain the requested information\n"
-            "3. Return EXACTLY in this format: {\"selected_urls\": [\"url1\", \"url2\"]}\n"
-            "4. Do not include social media links\n"
-            "5. DO NOT include any explanation or analysis in your response\n"
-            "6. ONLY output the JSON object\n\n"
+            "1. PRIORITIZE official company websites, documentation, and press releases first\n"
+            "2. Select ONLY URLs that directly contain information about the requested topic\n"
+            "3. Return ONLY a JSON object with the following structure: {\"selected_urls\": [\"url1\", \"url2\"]}\n"
+            "4. Do not include social media links (Twitter, LinkedIn, Facebook, etc.)\n"
+            "5. Exclude any LinkedIn URLs as they cannot be accessed\n"
+            "6. Select a MAXIMUM of 3 most relevant URLs\n"
+            "7. Order URLs by relevance: official sources first, then trusted news/industry sources\n"
+            "8. IMPORTANT: Only output the JSON object, no other text or explanation\n\n"
             f"Company: {company}\n"
             f"Information Needed: {objective}\n"
             f"Search Results: {json.dumps(serp_data, indent=2)}\n\n"
-            "YOUR RESPONSE MUST BE ONLY THE JSON OBJECT. NO OTHER TEXT."
+            "Response Format: {\"selected_urls\": [\"https://example.com\", \"https://example2.com\"]}\n\n"
+            "Remember: Prioritize OFFICIAL sources and limit to 3 MOST RELEVANT URLs only."
         )
-        
+
         try:
-            print(f"{Colors.YELLOW}Asking Llama to analyze URLs...{Colors.RESET}")
-            response = together_client.chat.completions.create(
+            print(f"{Colors.YELLOW}Calling Together AI model...{Colors.RESET}")
+            response = client.chat.completions.create(
                 model="meta-llama/Llama-4-Maverick-17B-128E-Instruct-FP8",
                 messages=[{"role": "user", "content": prompt}],
-                temperature=0.1  # Lower temperature for more focused responses
             )
+            print(f"{Colors.GREEN}Got response from Together AI{Colors.RESET}")
+            print(f"{Colors.CYAN}Raw response: {response.choices[0].message.content}{Colors.RESET}")
+            
             cleaned_response = response.choices[0].message.content.strip()
-            print(f"{Colors.MAGENTA}Llama response: {cleaned_response}{Colors.RESET}")
+
+            # Find the JSON object in the response
+            import re
+            json_match = re.search(r'\{[\s\S]*"selected_urls"[\s\S]*\}', cleaned_response)
+            if json_match:
+                cleaned_response = json_match.group(0)
+                print(f"{Colors.CYAN}Extracted JSON: {cleaned_response}{Colors.RESET}")
 
             # Clean the response text
             if cleaned_response.startswith('```'):
@@ -84,24 +95,16 @@ def select_urls_with_llama(company, objective, serp_results):
                     cleaned_response = cleaned_response[4:]
             cleaned_response = cleaned_response.strip()
 
-            # Try to find JSON object in the response
-            json_start = cleaned_response.find('{')
-            json_end = cleaned_response.rfind('}') + 1
-            if json_start != -1 and json_end != -1:
-                cleaned_response = cleaned_response[json_start:json_end]
-
             try:
                 # Parse JSON response
                 result = json.loads(cleaned_response)
                 if isinstance(result, dict) and "selected_urls" in result:
                     urls = result["selected_urls"]
                 else:
-                    print(f"{Colors.YELLOW}Response not in expected format. Falling back to text parsing...{Colors.RESET}")
-                    # Fallback to text parsing
-                    urls = [line.strip() for line in cleaned_response.split('\n') 
-                           if line.strip().startswith(('http://', 'https://'))]
-            except json.JSONDecodeError:
-                print(f"{Colors.YELLOW}Could not parse JSON response. Falling back to text parsing...{Colors.RESET}")
+                    print(f"{Colors.YELLOW}Response did not contain the expected 'selected_urls' key{Colors.RESET}")
+                    urls = []
+            except json.JSONDecodeError as e:
+                print(f"{Colors.YELLOW}Failed to parse JSON: {str(e)}{Colors.RESET}")
                 # Fallback to text parsing
                 urls = [line.strip() for line in cleaned_response.split('\n') 
                        if line.strip().startswith(('http://', 'https://'))]
@@ -121,7 +124,7 @@ def select_urls_with_llama(company, objective, serp_results):
             return cleaned_urls
 
         except Exception as e:
-            print(f"{Colors.RED}Error with Together AI API call: {str(e)}{Colors.RESET}")
+            print(f"{Colors.RED}Error calling Together AI: {str(e)}{Colors.RESET}")
             return []
 
     except Exception as e:
@@ -144,13 +147,18 @@ def extract_company_info(urls, prompt, company, api_key):
     }
     
     try:
+        print(f"{Colors.CYAN}Making request to Firecrawl API...{Colors.RESET}")
         response = requests.post(
             "https://api.firecrawl.dev/v1/extract",
             headers=headers,
             json=payload,
-            timeout=30
+            timeout=120  # Increased timeout to 120 seconds
         )
         
+        if response.status_code != 200:
+            print(f"{Colors.RED}API returned status code {response.status_code}: {response.text}{Colors.RESET}")
+            return None
+            
         data = response.json()
         
         if not data.get('success'):
@@ -162,8 +170,12 @@ def extract_company_info(urls, prompt, company, api_key):
             print(f"{Colors.RED}No extraction ID found in response.{Colors.RESET}")
             return None
 
-        return poll_firecrawl_result(extraction_id, api_key)
+        return poll_firecrawl_result(extraction_id, api_key, interval=5, max_attempts=120)  # Increased polling attempts
 
+    except requests.exceptions.Timeout:
+        print(f"{Colors.RED}Request timed out. The operation might still be processing in the background.{Colors.RESET}")
+        print(f"{Colors.YELLOW}You may want to try again with fewer URLs or a more specific prompt.{Colors.RESET}")
+        return None
     except requests.exceptions.RequestException as e:
         print(f"{Colors.RED}Request failed: {e}{Colors.RESET}")
         return None
@@ -223,7 +235,7 @@ def main():
         print(f"{Colors.RED}No search results found.{Colors.RESET}")
         return
     
-    selected_urls = select_urls_with_llama(company, objective, serp_results)
+    selected_urls = select_urls_with_gemini(company, objective, serp_results)
     
     if not selected_urls:
         print(f"{Colors.RED}No URLs were selected.{Colors.RESET}")
