@@ -742,15 +742,27 @@ export type AuthCreditUsageChunk = {
   sub_id: string | null;
   sub_current_period_start: string | null;
   sub_current_period_end: string | null;
+  sub_user_id: string | null;
   price_id: string | null;
   price_credits: number; // credit limit with assoicated price, or free_credits (500) if free plan
   credits_used: number;
   coupon_credits: number; // do not rely on this number to be up to date after calling a billTeam
-  coupons: any[];
   adjusted_credits_used: number; // credits this period minus coupons used
   remaining_credits: number;
-  sub_user_id: string | null;
   total_credits_sum: number;
+  rate_limits: {
+    crawl: number;
+    scrape: number;
+    search: number;
+    map: number;
+    extract: number;
+    preview: number;
+    crawlStatus: number;
+    extractStatus: number;
+  };
+  concurrency: number;
+
+  // appended on JS-side
   is_extract?: boolean;
 };
 
