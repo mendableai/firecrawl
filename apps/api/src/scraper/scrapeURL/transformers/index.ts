@@ -148,14 +148,14 @@ export function coerceFieldsToFormats(
     );
   }
 
-  if (!formats.has("changes") && document.changes !== undefined) {
+  if (!formats.has("changeTracking") && document.changeTracking !== undefined) {
     meta.logger.warn(
-      "Removed changes from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
+      "Removed changeTracking from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
     );
-    delete document.changes;
-  } else if (formats.has("changes") && document.changes === undefined) {
+    delete document.changeTracking;
+  } else if (formats.has("changeTracking") && document.changeTracking === undefined) {
     meta.logger.warn(
-      "Request had format changes, but there was no changes field in the result.",
+      "Request had format changeTracking, but there was no changeTracking field in the result.",
     );
   }
 
