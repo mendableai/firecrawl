@@ -148,14 +148,14 @@ export function coerceFieldsToFormats(
     );
   }
 
-  if (!formats.has("compare") && document.compare !== undefined) {
+  if (!formats.has("changeTracking") && document.changeTracking !== undefined) {
     meta.logger.warn(
-      "Removed compare from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
+      "Removed changeTracking from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
     );
-    delete document.compare;
-  } else if (formats.has("compare") && document.compare === undefined) {
+    delete document.changeTracking;
+  } else if (formats.has("changeTracking") && document.changeTracking === undefined) {
     meta.logger.warn(
-      "Request had format compare, but there was no compare field in the result.",
+      "Request had format changeTracking, but there was no changeTracking field in the result.",
     );
   }
 

@@ -68,7 +68,7 @@ export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult
   screenshot?: string;
   metadata?: FirecrawlDocumentMetadata;
   actions: ActionsSchema;
-  compare?: {
+  changeTracking?: {
     previousScrapeAt: string | null;
     changeStatus: "new" | "same" | "changed" | "removed";
     visibility: "visible" | "hidden";
@@ -83,7 +83,7 @@ export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult
  * Defines the options and configurations available for scraping web content.
  */
 export interface CrawlScrapeOptions {
-  formats?: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "screenshot@fullPage" | "extract" | "json" | "compare")[];
+  formats?: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "screenshot@fullPage" | "extract" | "json" | "changeTracking")[];
   headers?: Record<string, string>;
   includeTags?: string[];
   excludeTags?: string[];
