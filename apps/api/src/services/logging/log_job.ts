@@ -25,7 +25,7 @@ function cleanOfNull<T>(x: T): T {
 async function saveJobToGCS(job: FirecrawlJob, bucketName: string): Promise<void> {
   try {
     const storage = new Storage({
-      credentials: process.env.GCS_CREDENTIALS ? JSON.parse(process.env.GCS_CREDENTIALS) : undefined,
+      credentials: process.env.GCS_CREDENTIALS ? JSON.parse(atob(process.env.GCS_CREDENTIALS)) : undefined,
     });
     const bucket = storage.bucket(bucketName);
     const blob = bucket.file(`${job.job_id}.json`);
