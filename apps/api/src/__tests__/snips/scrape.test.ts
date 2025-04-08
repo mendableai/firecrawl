@@ -85,15 +85,15 @@ describe("Scrape tests", () => {
     //   }, 30000);
     // });
 
-    describe("Compare format", () => {
+    describe("Changes format", () => {
       it.concurrent("works", async () => {
         const response = await scrape({
           url: "https://example.com",
-          formats: ["markdown", "compare"],
+          formats: ["markdown", "changes"],
         });
 
-        expect(response.compare).toBeDefined();
-        expect(response.compare?.previousScrapeAt).not.toBeNull();
+        expect(response.changes).toBeDefined();
+        expect(response.changes?.previousScrapeAt).not.toBeNull();
       });
     });
   

@@ -21,7 +21,7 @@ export type Format =
   | "screenshot"
   | "screenshot@fullPage"
   | "extract"
-  | "compare";
+  | "changes";
 
 export const url = z.preprocess(
   (x) => {
@@ -166,7 +166,7 @@ const baseScrapeOptions = z
         "screenshot@fullPage",
         "extract",
         "json",
-        "compare",
+        "changes",
       ])
       .array()
       .optional()
@@ -176,8 +176,8 @@ const baseScrapeOptions = z
         "You may only specify either screenshot or screenshot@fullPage",
       )
       .refine(
-        (x) => !x.includes("compare") || x.includes("markdown"),
-        "The compare format requires the markdown format to be specified as well",
+        (x) => !x.includes("changes") || x.includes("markdown"),
+        "The changes format requires the markdown format to be specified as well",
       ),
     headers: z.record(z.string(), z.string()).optional(),
     includeTags: z.string().array().optional(),
@@ -552,7 +552,7 @@ export type Document = {
       value: unknown
     }[];
   };
-  compare?: {
+  changes?: {
     previousScrapeAt: string | null;
     changeStatus: "new" | "same" | "changed" | "removed";
     visibility: "visible" | "hidden";
