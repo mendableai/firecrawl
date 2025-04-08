@@ -161,7 +161,9 @@ export async function getMapResults({
       );
       allResults = await Promise.all(pagePromises);
 
-      await redis.set(cacheKey, JSON.stringify(allResults), "EX", 48 * 60 * 60); // Cache for 48 hours
+      if (allResults.flat().filter(result => result !== null && result !== undefined).length > 0) {
+        await redis.set(cacheKey, JSON.stringify(allResults), "EX", 48 * 60 * 60); // Cache for 48 hours
+      }
     }
 
     // Parallelize sitemap index query with search results

@@ -31,4 +31,23 @@ describe("Map tests", () => {
     expect(response.body.success).toBe(true);
     expect(response.body.links.some(x => x.match(/^https:\/\/www\.hfea\.gov\.uk\/choose-a-clinic\/clinic-search\/results\/?\?options=\d+$/))).toBe(true);
   }, 60000);
+
+  it.concurrent("does not include non-existent child URLs in parent results", async () => {
+    const nonExistentPath = "/non-existent-path-" + Date.now(); // Use timestamp to ensure uniqueness
+    const childUrl = "https://firecrawl.dev" + nonExistentPath;
+    
+    await map({
+      url: childUrl,
+      useMock: "map-non-existent-child",
+    });
+    
+    const parentResponse = await map({
+      url: "https://firecrawl.dev",
+      useMock: "map-parent-after-child",
+    });
+    
+    expect(parentResponse.statusCode).toBe(200);
+    expect(parentResponse.body.success).toBe(true);
+    expect(parentResponse.body.links.some(link => link.includes(nonExistentPath))).toBe(false);
+  }, 30000);
 });
