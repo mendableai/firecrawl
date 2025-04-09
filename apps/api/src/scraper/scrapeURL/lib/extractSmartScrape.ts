@@ -243,18 +243,18 @@ export async function extractData({
           }),
         );
       }
-      console.log("smartscrapeResults", smartscrapeResults);
+      // console.log("smartscrapeResults", smartscrapeResults);
 
       const scrapedPages = smartscrapeResults.map(
         (result) => result.scrapedPages,
       );
-      console.log("scrapedPages", scrapedPages);
+      // console.log("scrapedPages", scrapedPages);
       const htmls = scrapedPages.flat().map((page) => page.html);
-      console.log("htmls", htmls);
+      // console.log("htmls", htmls);
       const markdowns = await Promise.all(
         htmls.map(async (html) => await parseMarkdown(html)),
       );
-      console.log("markdowns", markdowns);
+      // console.log("markdowns", markdowns);
       extractedData = await Promise.all(
         markdowns.map(async (markdown) => {
           const newExtractOptions = {

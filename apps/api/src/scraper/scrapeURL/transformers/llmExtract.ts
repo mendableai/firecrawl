@@ -186,10 +186,10 @@ export async function generateCompletions({
   markdown,
   previousWarning,
   isExtractEndpoint,
-  model = getModel("gpt-4o-mini"),
+  model = getModel("gpt-4o-mini", "openai"),
   mode = "object",
   providerOptions,
-  retryModel = getModel("claude-3-7-sonnet-latest", "anthropic"),
+  retryModel = getModel("claude-3-5-sonnet-20240620", "anthropic"),
 }: GenerateCompletionsOptions): Promise<{
   extract: any;
   numTokens: number;
