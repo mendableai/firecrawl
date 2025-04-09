@@ -3,7 +3,6 @@ import { generateCompletions } from "../../../scraper/scrapeURL/transformers/llm
 import { buildDocument } from "../build-document";
 import { Document, TokenUsage } from "../../../controllers/v1/types";
 import { getModel } from "../../../lib/generic-ai";
-import fs from "fs/promises";
 
 export async function singleAnswerCompletion({
   singleAnswerDocs,
@@ -37,7 +36,6 @@ export async function singleAnswerCompletion({
     isExtractEndpoint: true,
     model: model,
   });
-  await fs.writeFile(`logs/singleAnswer-${crypto.randomUUID()}.json`, JSON.stringify(completion, null, 2));
   return { 
     extract: completion.extract, 
     tokenUsage: {

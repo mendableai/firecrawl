@@ -8,9 +8,7 @@ import { searchSimilarPages } from "./index/pinecone";
 import { generateCompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { buildRerankerUserPrompt } from "./build-prompts";
 import { buildRerankerSystemPrompt } from "./build-prompts";
-import { dumpToFile } from "./helpers/dump-to-file";
 import { getModel } from "../generic-ai";
-import fs from "fs/promises";
 
 const THRESHOLD_FOR_SINGLEPAGE = 0.6;
 const THRESHOLD_FOR_MULTIENTITY = 0.45;
@@ -198,11 +196,6 @@ export async function rerankLinksWithLLM(
 
   const model = getModel("gpt-4", "openai");
 
-  await fs.writeFile(
-    `logs/links-${crypto.randomUUID()}.txt`,
-    JSON.stringify(links, null, 2),
-  );
-
   // Split links into chunks of 200
   for (let i = 0; i < links.length; i += chunkSize) {
     chunks.push(links.slice(i, i + chunkSize));
@@ -243,11 +236,6 @@ export async function rerankLinksWithLLM(
             `URL: ${link.url}${link.title ? `\nTitle: ${link.title}` : ""}${link.description ? `\nDescription: ${link.description}` : ""}`,
         )
         .join("\n\n");
-
-      fs.writeFile(
-        `logs/links-content-${crypto.randomUUID()}.txt`,
-        linksContent,
-      );
 
       for (let retry = 0; retry <= MAX_RETRIES; retry++) {
         try {
@@ -327,11 +315,6 @@ export async function rerankLinksWithLLM(
             );
           }
 
-          await fs.writeFile(
-            `logs/reranker-${crypto.randomUUID()}.json`,
-            JSON.stringify(completion, null, 2),
-          );
-
           if (!completion) {
             // console.log(`Chunk ${chunkIndex + 1}: Timeout on attempt ${retry + 1}`);
             continue;
@@ -390,24 +373,6 @@ export async function rerankLinksWithLLM(
       return undefined;
     })
     .filter((link): link is NonNullable<typeof link> => link !== undefined);
-
-  await fs.writeFile(`logs/reranker-tokenUsage.json`, JSON.stringify(tokenUsage, null, 2));
-
-  // fs.writeFile(
-  //   `logs/reranker-aaa-${crypto.randomUUID()}.json`,
-  //   JSON.stringify(
-  //     {
-  //       totalResults: relevantLinks.length,
-  //       scores: relevantLinks.map((l) => ({
-  //         url: l.url,
-  //         score: l.relevanceScore,
-  //         reason: l.reason,
-  //       })),
-  //     },
-  //     null,
-  //     2,
-  //   ),
-  // );
 
   return {
     mapDocument: relevantLinks,

@@ -8,7 +8,6 @@ import {
   buildBatchExtractSystemPrompt,
 } from "../build-prompts";
 import { getModel } from "../../generic-ai";
-import fs from "fs/promises";
 /**
  * Batch extract information from a list of URLs using a multi-entity schema.
  * @param multiEntitySchema - The schema for the multi-entity extraction
@@ -50,10 +49,6 @@ export async function batchExtractPromise(
     isExtractEndpoint: true,
     model: model,
   });
-  await fs.writeFile(
-    `logs/batchExtract-${crypto.randomUUID()}.json`,
-    JSON.stringify(completion, null, 2),
-  );
 
   return {
     extract: completion.extract,

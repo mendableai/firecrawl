@@ -10,7 +10,6 @@ import type { Logger } from "winston";
 import { generateText } from "ai";
 import { getModel } from "../generic-ai";
 import { calculateTokens } from "./usage/llm-cost";
-import fs from "fs/promises";
 
 export async function generateBasicCompletion(prompt: string): Promise<{completion: string, tokenUsage: TokenUsage}> {
   const model = getModel("gpt-4", "openai");
@@ -285,14 +284,6 @@ export async function processUrl(
     }
     options.log["rerankerResult-2"] = mappedLinks.length;
 
-    await fs.writeFile(`logs/tokenUsage-5.json`, JSON.stringify(tokenUsage, null, 2));
-
-
-    // dumpToFile(
-    //   "llm-links.txt",
-    //   mappedLinks,
-    //   (link, index) => `${index + 1}. URL: ${link.url}, Title: ${link.title}, Description: ${link.description}`
-    // );
     // Remove title and description from mappedLinks
     mappedLinks = mappedLinks.map((link) => ({ url: link.url }));
     return {

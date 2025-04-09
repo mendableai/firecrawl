@@ -356,13 +356,6 @@ export async function generateCompletions({
     const result = await generateObject(generateObjectConfig);
     extract = result.object;
 
-    const now2 = new Date().getTime();
-    console.log(">>>>>>", now2 - now);
-    console.log({ extract });
-    console.log(
-      "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
-    );
-
     // If the users actually wants the items object, they can specify it as 'required' in the schema
     // otherwise, we just return the items array
     if (

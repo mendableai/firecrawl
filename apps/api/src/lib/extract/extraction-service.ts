@@ -41,7 +41,7 @@ import { getCachedDocs, saveCachedDocs } from "./helpers/cached-docs";
 import { normalizeUrl } from "../canonical-url";
 import { search } from "../../search";
 import { buildRephraseToSerpPrompt } from "./build-prompts";
-import fs from "fs/promises";
+
 interface ExtractServiceOptions {
   request: ExtractRequest;
   teamId: string;
@@ -200,11 +200,8 @@ export async function performExtraction(
     keyIndicators,
   });
 
-  fs.writeFile("logs/tokenUsage-1.json", JSON.stringify(tokenUsage, null, 2));
-
   // Track schema analysis tokens
   tokenUsage.push(schemaAnalysisTokenUsage);
-  fs.writeFile("logs/tokenUsage-2.json", JSON.stringify(tokenUsage, null, 2));
 
   let startMap = Date.now();
   let aggMapLinks: string[] = [];
@@ -250,25 +247,9 @@ export async function performExtraction(
 
   const processedUrls = await Promise.all(urlPromises);
 
-  await fs.writeFile("logs/processedUrls.json", JSON.stringify(processedUrls, null, 2));
-
   processedUrls.forEach(x => {
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    console.log(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
     tokenUsage = tokenUsage.concat(x.tokenUsage);
   });
-
-  await fs.writeFile("logs/tokenUsage-3.json", JSON.stringify(tokenUsage, null, 2));
 
   const links = processedUrls.flatMap(x => x.urls).filter((url) => url);
   logger.debug("Processed URLs.", {
@@ -822,10 +803,6 @@ export async function performExtraction(
   //   }
   // }
 
-  // await fs.writeFile("logs/tokenUsage-4.json", JSON.stringify(tokenUsage, null, 2));
-  const cost = estimateCostV2(tokenUsage);
-  await fs.writeFile("logs/cost.json", '\n' + JSON.stringify({cost}, null, 2), {flag: 'a'});
-
   const totalTokensUsed = tokenUsage.reduce((a, b) => a + b.totalTokens, 0);
   const llmUsage = estimateTotalCost(tokenUsage);
   let tokensToBill = calculateFinalResultCost(finalResult);
@@ -885,11 +862,6 @@ export async function performExtraction(
       logger.error("Error saving cached docs", { error });
     }
   }
-
-  // fs.writeFile(
-  //   `logs/${request.urls?.[0].replaceAll("https://", "").replaceAll("http://", "").replaceAll("/", "-").replaceAll(".", "-")}-extract-${extractId}.json`,
-  //   JSON.stringify(log, null, 2),
-  // );
 
   return {
     success: true,
