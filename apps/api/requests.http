@@ -120,3 +120,14 @@ content-type: application/json
 GET {{baseUrl}}/v1/llmstxt/{{generateLlmsTxtId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
+
+### Search
+# @name search
+POST {{baseUrl}}/v1/search HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json
+
+{
+  "query": "firecrawl",
+  "limit": 50
+}
