@@ -175,15 +175,19 @@ export class SearchResult {
   url: string;
   title: string;
   description: string;
+  source?: string;
+  date?: string;
 
-  constructor(url: string, title: string, description: string) {
+  constructor(url: string, title: string, description: string, source?: string, date?: string) {
     this.url = url;
     this.title = title;
     this.description = description;
+    this.source = source;
+    this.date = date;
   }
 
   toString(): string {
-    return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description})`;
+    return `SearchResult(url=${this.url}, title=${this.title}, description=${this.description}, source=${this.source}, date=${this.date})`;
   }
 }
 

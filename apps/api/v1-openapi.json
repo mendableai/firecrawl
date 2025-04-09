@@ -1465,6 +1465,129 @@
         }
       }
     },
+    "/search": {
+      "post": {
+        "summary": "Search for information based on options",
+        "operationId": "search",
+        "tags": ["Search"],
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "query": {
+                    "type": "string",
+                    "description": "The search query"
+                  },
+                  "searchOptions": {
+                    "type": "object",
+                    "properties": {
+                      "limit": {
+                        "type": "integer",
+                        "description": "Maximum number of results. Max is 20 during beta."
+                      },
+                      "tbm": {
+                        "type": "string",
+                        "description": "Type of search. Use 'nws' for news search.",
+                        "enum": ["nws"]
+                      },
+                      "tbs": {
+                        "type": "string",
+                        "description": "Time-based filtering parameter for Google search."
+                      },
+                      "filter": {
+                        "type": "string",
+                        "description": "Filter parameter for Google search."
+                      },
+                      "lang": {
+                        "type": "string",
+                        "description": "Language code for the search (e.g. 'en', 'fr')."
+                      },
+                      "country": {
+                        "type": "string",
+                        "description": "Country code for the search (e.g. 'us', 'fr')."
+                      },
+                      "location": {
+                        "type": "string",
+                        "description": "Geographic location for the search."
+                      }
+                    }
+                  }
+                },
+                "required": ["query"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Successful response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SearchResponse"
+                }
+              }
+            }
+          },
+          "402": {
+            "description": "Payment required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Payment required to access this resource."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Too many requests",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "Request rate limit exceeded. Please wait and try again later."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Server error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "error": {
+                      "type": "string",
+                      "example": "An unexpected error occurred on the server."
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/team/credit-usage": {
       "get": {
         "summary": "Get remaining credits for the authenticated team",
@@ -1906,6 +2029,42 @@
               },
               "<property2>": {
                 "type": "number"
+              }
+            }
+          }
+        }
+      },
+      "SearchResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "url": {
+                  "type": "string",
+                  "description": "URL of the result"
+                },
+                "title": {
+                  "type": "string",
+                  "description": "Title of the result"
+                },
+                "description": {
+                  "type": "string",
+                  "description": "Description of the result"
+                },
+                "source": {
+                  "type": "string",
+                  "description": "Source of the result (for news)"
+                },
+                "date": {
+                  "type": "string",
+                  "description": "Publication date (for news)"
+                }
               }
             }
           }
