@@ -4,7 +4,6 @@ import { logger as _logger } from "../logger";
 export interface GenerationData {
   id: string;
   team_id: string;
-  plan: string;
   createdAt: number;
   status: "processing" | "completed" | "failed";
   url: string;

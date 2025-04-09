@@ -1,7 +1,6 @@
 import {
   getRateLimiter,
   serverRateLimiter,
-  testSuiteRateLimiter,
   redisRateLimitClient,
 } from "./rate-limiter";
 import { RateLimiterMode } from "../../src/types";

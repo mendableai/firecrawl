@@ -3,7 +3,6 @@ import { getRateLimiter, isTestSuiteToken } from "../services/rate-limiter";
 import {
   AuthResponse,
   NotificationType,
-  PlanType,
   RateLimiterMode,
 } from "../types";
 import { supabase_rr_service, supabase_service } from "../services/supabase";
@@ -192,13 +191,12 @@ export async function supaAuthenticateUser(
   const iptoken = incomingIP + token;
 
   let rateLimiter: RateLimiterRedis;
-  let subscriptionData: { team_id: string; plan: string } | null = null;
+  let subscriptionData: { team_id: string} | null = null;
   let normalizedApi: string;
 
   let teamId: string | null = null;
   let priceId: string | null = null;
   let chunk: AuthCreditUsageChunk | null = null;
-  let plan: PlanType = "free";
   if (token == "this_is_just_a_preview_token") {
     throw new Error(
       "Unauthenticated Playground calls are temporarily disabled due to abuse. Please sign up.",
@@ -213,7 +211,6 @@ export async function supaAuthenticateUser(
       rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
     }
     teamId = `preview_${iptoken}`;
-    plan = "free";
   } else {
     normalizedApi = parseApi(token);
     if (!normalizedApiIsUuid(normalizedApi)) {
@@ -237,65 +234,13 @@ export async function supaAuthenticateUser(
     teamId = chunk.team_id;
     priceId = chunk.price_id;
 
-    plan = getPlanByPriceId(priceId);
     subscriptionData = {
       team_id: teamId,
-      plan,
     };
-    switch (mode) {
-      case RateLimiterMode.Crawl:
-        rateLimiter = getRateLimiter(
-          RateLimiterMode.Crawl,
-          token,
-          subscriptionData.plan,
-        );
-        break;
-      case RateLimiterMode.Scrape:
-        rateLimiter = getRateLimiter(
-          RateLimiterMode.Scrape,
-          token,
-          subscriptionData.plan,
-          teamId,
-        );
-        break;
-      case RateLimiterMode.Search:
-        rateLimiter = getRateLimiter(
-          RateLimiterMode.Search,
-          token,
-          subscriptionData.plan,
-        );
-        break;
-      case RateLimiterMode.Map:
-        rateLimiter = getRateLimiter(
-          RateLimiterMode.Map,
-          token,
-          subscriptionData.plan,
-        );
-        break;
-      case RateLimiterMode.Extract:
-        rateLimiter = getRateLimiter(
-          RateLimiterMode.Extract,
-          token,
-          subscriptionData.plan,
-        );
-        break;
-      case RateLimiterMode.ExtractStatus:
-        rateLimiter = getRateLimiter(RateLimiterMode.ExtractStatus, token);
-        break;
-      case RateLimiterMode.CrawlStatus:
-        rateLimiter = getRateLimiter(RateLimiterMode.CrawlStatus, token);
-        break;
-
-      case RateLimiterMode.Preview:
-        rateLimiter = getRateLimiter(RateLimiterMode.Preview, token);
-        break;
-      default:
-        rateLimiter = getRateLimiter(RateLimiterMode.Crawl, token);
-        break;
-      // case RateLimiterMode.Search:
-      //   rateLimiter = await searchRateLimiter(RateLimiterMode.Search, token);
-      //   break;
-    }
+    rateLimiter = getRateLimiter(
+      mode ?? RateLimiterMode.Crawl,
+      chunk.rate_limits,
+    );
   }
 
   const team_endpoint_token =
@@ -307,8 +252,8 @@ export async function supaAuthenticateUser(
     logger.error(`Rate limit exceeded: ${rateLimiterRes}`, {
       teamId,
       priceId,
-      plan: subscriptionData?.plan,
       mode,
+      rateLimits: chunk?.rate_limits,
       rateLimiterRes,
     });
     const secs = Math.round(rateLimiterRes.msBeforeNext / 1000) || 1;
@@ -342,7 +287,6 @@ export async function supaAuthenticateUser(
       success: true,
       team_id: `preview_${iptoken}`,
       chunk: null,
-      plan: "free",
     };
     // check the origin of the request and make sure its from firecrawl.dev
     // const origin = req.headers.origin;
@@ -356,65 +300,9 @@ export async function supaAuthenticateUser(
     // return { success: false, error: "Unauthorized: Invalid token", status: 401 };
   }
 
-  if (token && isTestSuiteToken(token)) {
-    return {
-      success: true,
-      team_id: teamId ?? undefined,
-      // Now we have a test suite plan
-      plan: "testSuite",
-      chunk,
-    };
-  }
-
   return {
     success: true,
     team_id: teamId ?? undefined,
-    plan: (subscriptionData?.plan ?? "") as PlanType,
     chunk,
   };
 }
-function getPlanByPriceId(price_id: string | null): PlanType {
-  switch (price_id) {
-    case process.env.STRIPE_PRICE_ID_STARTER:
-      return "starter";
-    case process.env.STRIPE_PRICE_ID_STANDARD:
-      return "standard";
-    case process.env.STRIPE_PRICE_ID_SCALE:
-      return "scale";
-    case process.env.STRIPE_PRICE_ID_HOBBY:
-    case process.env.STRIPE_PRICE_ID_HOBBY_YEARLY:
-      return "hobby";
-    case process.env.STRIPE_PRICE_ID_STANDARD_NEW:
-    case process.env.STRIPE_PRICE_ID_STANDARD_NEW_YEARLY:
-      return "standardnew";
-    case process.env.STRIPE_PRICE_ID_GROWTH:
-    case process.env.STRIPE_PRICE_ID_GROWTH_YEARLY:
-    case process.env.STRIPE_PRICE_ID_SCALE_2M:
-      return "growth";
-    case process.env.STRIPE_PRICE_ID_GROWTH_DOUBLE_MONTHLY:
-      return "growthdouble";
-    case process.env.STRIPE_PRICE_ID_ETIER2C:
-      return "etier2c";
-    case process.env.STRIPE_PRICE_ID_ETIER1A_MONTHLY: //ocqh
-      return "etier1a";
-    case process.env.STRIPE_PRICE_ID_ETIER_SCALE_1_MONTHLY:
-    case process.env.STRIPE_PRICE_ID_ETIER_SCALE_1_YEARLY:
-    case process.env.STRIPE_PRICE_ID_ETIER_SCALE_1_YEARLY_FIRECRAWL:
-      return "etierscale1";
-    case process.env.STRIPE_PRICE_ID_ETIER_SCALE_2_YEARLY:
-    case process.env.STRIPE_PRICE_ID_ETIER_SCALE_2_MONTHLY:
-      return "etierscale2";
-    case process.env.STRIPE_PRICE_ID_EXTRACT_STARTER_MONTHLY:
-    case process.env.STRIPE_PRICE_ID_EXTRACT_STARTER_YEARLY:
-      return "extract_starter";
-    case process.env.STRIPE_PRICE_ID_EXTRACT_EXPLORER_MONTHLY:
-    case process.env.STRIPE_PRICE_ID_EXTRACT_EXPLORER_YEARLY:
-      return "extract_explorer";
-    case process.env.STRIPE_PRICE_ID_EXTRACT_PRO_MONTHLY:
-    case process.env.STRIPE_PRICE_ID_EXTRACT_PRO_YEARLY:
-      return "extract_pro";
-    default:
-      return "free";
-  }
-}
-

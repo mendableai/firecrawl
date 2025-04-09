@@ -9,8 +9,6 @@ import {
   getConcurrencyQueueJobsCount,
   ConcurrencyLimitedJob,
 } from "../lib/concurrency-limit";
-import { CONCURRENCY_LIMIT, getConcurrencyLimitMax } from "../services/rate-limiter";
-import { PlanType } from "../types";
 
 // Mock Redis client
 jest.mock("../services/queue-service", () => ({
@@ -191,7 +189,7 @@ describe("Concurrency Limit", () => {
     });
 
     it("should return default limit for unknown plan", () => {
-      const result = getConcurrencyLimitMax("unknown" as PlanType);
+      const result = getConcurrencyLimitMax("unknown");
       expect(result).toBe(10);
     });
 

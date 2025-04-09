@@ -2,7 +2,6 @@ import { Request, Response } from "express";
 import { z } from "zod";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
-import { PlanType } from "../../types";
 import { countries } from "../../lib/validate-country";
 import {
   ExtractorOptions,
@@ -729,7 +728,6 @@ export type CrawlErrorsResponse =
 
 type AuthObject = {
   team_id: string;
-  plan: PlanType | undefined;
 };
 
 type Account = {
@@ -750,6 +748,10 @@ export type AuthCreditUsageChunk = {
   adjusted_credits_used: number; // credits this period minus coupons used
   remaining_credits: number;
   total_credits_sum: number;
+  plan_priority: {
+    bucketLimit: number;
+    planModifier: number;
+  };
   rate_limits: {
     crawl: number;
     scrape: number;

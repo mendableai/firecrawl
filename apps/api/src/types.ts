@@ -37,7 +37,6 @@ export interface WebScraperOptions {
   scrapeOptions: ScrapeOptions;
   internalOptions?: InternalOptions;
   team_id: string;
-  plan: string;
   origin?: string;
   crawl_id?: string;
   sitemapped?: boolean;
@@ -144,7 +143,6 @@ export type AuthResponse =
       success: true;
       team_id: string;
       api_key?: string;
-      plan?: PlanType;
       chunk: AuthCreditUsageChunk | null;
     }
   | {
@@ -177,30 +175,6 @@ export type ScrapeLog = {
   ipv4_support?: boolean | null;
   ipv6_support?: boolean | null;
 };
-
-export type PlanType =
-  | "starter"
-  | "standard"
-  | "scale"
-  | "hobby"
-  | "standardnew"
-  | "standardNew"
-  | "growth"
-  | "growthdouble"
-  | "etier2c"
-  | "etier1a"
-  | "etierscale1"
-  | "etierscale2"
-  | "etier2a"
-  | "free"
-  | "testSuite"
-  | "devB"
-  | "etier2d"
-  | "manual"
-  | "extract_starter"
-  | "extract_explorer"
-  | "extract_pro"
-  | "";
 
 export type WebhookEventType =
   | "crawl.page"

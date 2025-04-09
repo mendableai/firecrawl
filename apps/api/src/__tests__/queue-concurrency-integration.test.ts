@@ -6,8 +6,7 @@ import {
   takeConcurrencyLimitedJob,
   removeConcurrencyLimitActiveJob,
 } from "../lib/concurrency-limit";
-import { getConcurrencyLimitMax } from "../services/rate-limiter";
-import { WebScraperOptions, PlanType } from "../types";
+import { WebScraperOptions } from "../types";
 
 // Mock all the dependencies
 const mockAdd = jest.fn();
@@ -32,7 +31,7 @@ jest.mock("uuid", () => ({
 
 describe("Queue Concurrency Integration", () => {
   const mockTeamId = "test-team-id";
-  const mockPlan = "standard" as PlanType;
+  const mockPlan = "standard";
   const mockNow = Date.now();
 
   const defaultScrapeOptions = {
@@ -77,7 +76,6 @@ describe("Queue Concurrency Integration", () => {
       url: "https://test.com",
       mode: "single_urls",
       team_id: mockTeamId,
-      plan: mockPlan,
       scrapeOptions: defaultScrapeOptions,
       crawlerOptions: null,
     };

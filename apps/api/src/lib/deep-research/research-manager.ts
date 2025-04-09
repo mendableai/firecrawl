@@ -29,7 +29,6 @@ export class ResearchStateManager {
   constructor(
     private readonly researchId: string,
     private readonly teamId: string,
-    private readonly plan: string,
     private readonly maxDepth: number,
     private readonly logger: Logger,
     private readonly topic: string,
