@@ -16,25 +16,39 @@ export async function saveJobToGCS(job: FirecrawlJob): Promise<void> {
         await blob.save(JSON.stringify(job.docs), {
             contentType: "application/json",
         });
-        await blob.setMetadata({
-            metadata: {
-                job_id: job.job_id ?? null,
-                success: job.success,
-                message: job.message ?? null,
-                num_docs: job.num_docs,
-                time_taken: job.time_taken,
-                team_id: (job.team_id === "preview" || job.team_id?.startsWith("preview_")) ? null : job.team_id,
-                mode: job.mode,
-                url: job.url,
-                crawler_options: job.crawlerOptions,
-                page_options: job.scrapeOptions,
-                origin: job.origin,
-                num_tokens: job.num_tokens ?? null,
-                retry: !!job.retry,
-                crawl_id: job.crawl_id ?? null,
-                tokens_billed: job.tokens_billed ?? null,
-            },
-        })
+        for (let i = 0; i < 3; i++) {
+            try {
+                await blob.setMetadata({
+                    metadata: {
+                        job_id: job.job_id ?? null,
+                        success: job.success,
+                        message: job.message ?? null,
+                        num_docs: job.num_docs,
+                        time_taken: job.time_taken,
+                        team_id: (job.team_id === "preview" || job.team_id?.startsWith("preview_")) ? null : job.team_id,
+                        mode: job.mode,
+                        url: job.url,
+                        crawler_options: job.crawlerOptions,
+                        page_options: job.scrapeOptions,
+                        origin: job.origin,
+                        num_tokens: job.num_tokens ?? null,
+                        retry: !!job.retry,
+                        crawl_id: job.crawl_id ?? null,
+                        tokens_billed: job.tokens_billed ?? null,
+                    },
+                });
+                break;
+            } catch (error) {
+                logger.error(`Error saving job metadata to GCS`, {
+                    error,
+                    scrapeId: job.job_id,
+                    jobId: job.job_id,
+                });
+                if (i === 2) {
+                    throw error;
+                }
+            }
+        }
     } catch (error) {
         logger.error(`Error saving job to GCS`, {
             error,
