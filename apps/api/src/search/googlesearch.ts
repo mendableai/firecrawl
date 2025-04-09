@@ -70,7 +70,7 @@ async function _req(
 export async function googleSearch(
   term: string,
   advanced = false,
-  num_results = 7,
+  num_results = 5,
   tbs = undefined as string | undefined,
   filter = undefined as string | undefined,
   lang = "en",
