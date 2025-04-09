@@ -49,6 +49,11 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
   if (!bullJob && !dbJob) return null;
 
   const data = gcsJob ?? dbJob?.docs ?? bullJob?.returnvalue;
+  if (gcsJob === null && data) {
+    logger.warn("GCS Job not found", {
+      jobId: id,
+    });
+  }
 
   const job: PseudoJob<any> = {
     id,
@@ -99,6 +104,11 @@ export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
     if (!bullJob && !dbJob) continue;
 
     const data = gcsJob ?? dbJob?.docs ?? bullJob?.returnvalue;
+    if (gcsJob === null && data) {
+      logger.warn("GCS Job not found", {
+        jobId: id,
+      });
+    }
 
     const job: PseudoJob<any> = {
       id,
