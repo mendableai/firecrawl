@@ -1,4 +1,5 @@
 import { crawl } from "./lib";
+import { describe, it, expect } from "@jest/globals";
 
 describe("Crawl tests", () => {
     it.concurrent("works", async () => {
@@ -70,4 +71,12 @@ describe("Crawl tests", () => {
             }
         }
     }, 120000);
+
+    it.concurrent("delay parameter works", async () => {
+        await crawl({
+            url: "https://firecrawl.dev",
+            limit: 3,
+            delay: 5,
+        });
+    }, 300000);
 });
