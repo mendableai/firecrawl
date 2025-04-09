@@ -89,7 +89,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       success: job.success,
       message: job.message,
       num_docs: job.num_docs,
-      docs: cleanOfNull(job.docs),
+      docs: (job.mode === "single_urls" || job.mode === "scrape") ? null : cleanOfNull(job.docs),
       time_taken: job.time_taken,
       team_id: (job.team_id === "preview" || job.team_id?.startsWith("preview_"))? null : job.team_id,
       mode: job.mode,
