@@ -91,7 +91,6 @@ export async function getJobFromGCS(jobId: string): Promise<Document[] | null> {
         }
         const [content] = await blob.download();
         const x = JSON.parse(content.toString());
-        console.log("Downloaded file ", jobId, x);
         return x;
     } catch (error) {
         logger.error(`Error getting job from GCS`, {
