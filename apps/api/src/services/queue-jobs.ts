@@ -12,7 +12,7 @@ import {
 import { logger } from "../lib/logger";
 import { sendNotificationWithCustomDays } from './notification/email_notification';
 import { shouldSendConcurrencyLimitNotification } from './notification/notification-check';
-import { getACUC } from "../controllers/auth";
+import { getACUC, getACUCTeam } from "../controllers/auth";
 
 /**
  * Checks if a job is a crawl or batch scrape based on its options
@@ -78,7 +78,7 @@ async function addScrapeJobRaw(
     webScraperOptions.team_id
   ) {
     const now = Date.now();
-    maxConcurrency = (await getACUC(webScraperOptions.team_id))?.concurrency ?? 2;
+    maxConcurrency = (await getACUCTeam(webScraperOptions.team_id))?.concurrency ?? 2;
     cleanOldConcurrencyLimitEntries(webScraperOptions.team_id, now);
     currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(webScraperOptions.team_id, now)).length;
     concurrencyLimited = currentActiveConcurrency >= maxConcurrency;
@@ -171,7 +171,7 @@ export async function addScrapeJobs(
 
   if (jobs[0].data && jobs[0].data.team_id) {
     const now = Date.now();
-    maxConcurrency = (await getACUC(jobs[0].data.team_id))?.concurrency ?? 2;
+    maxConcurrency = (await getACUCTeam(jobs[0].data.team_id))?.concurrency ?? 2;
     cleanOldConcurrencyLimitEntries(jobs[0].data.team_id, now);
 
     currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(jobs[0].data.team_id, now)).length;

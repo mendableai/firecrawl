@@ -15,7 +15,7 @@ import { deleteKey, getValue } from "../services/redis";
 import { setValue } from "../services/redis";
 import { validate } from "uuid";
 import * as Sentry from "@sentry/node";
-import { AuthCreditUsageChunk } from "./v1/types";
+import { AuthCreditUsageChunk, AuthCreditUsageChunkFromTeam } from "./v1/types";
 // const { data, error } = await supabase_service
 //     .from('api_keys')
 //     .select(`
@@ -37,12 +37,13 @@ function normalizedApiIsUuid(potentialUuid: string): boolean {
 
 export async function setCachedACUC(
   api_key: string,
+  is_extract: boolean,
   acuc:
     | AuthCreditUsageChunk
     | null
     | ((acuc: AuthCreditUsageChunk) => AuthCreditUsageChunk | null),
 ) {
-  const cacheKeyACUC = `acuc_${api_key}`;
+  const cacheKeyACUC = `acuc_${api_key}_${is_extract ? "extract" : "scrape"}`;
   const redLockKey = `lock_${cacheKeyACUC}`;
 
   try {
@@ -77,7 +78,11 @@ export async function getACUC(
   useCache = true,
   mode?: RateLimiterMode,
 ): Promise<AuthCreditUsageChunk | null> {
-  const cacheKeyACUC = `acuc_${api_key}_${mode}`;
+  let isExtract =
+      mode === RateLimiterMode.Extract ||
+      mode === RateLimiterMode.ExtractStatus;
+
+  const cacheKeyACUC = `acuc_${api_key}_${isExtract ? "extract" : "scrape"}`;
 
   if (useCache) {
     const cachedACUC = await getValue(cacheKeyACUC);
@@ -91,10 +96,6 @@ export async function getACUC(
     let error;
     let retries = 0;
     const maxRetries = 5;
-
-    let isExtract =
-      mode === RateLimiterMode.Extract ||
-      mode === RateLimiterMode.ExtractStatus;
     while (retries < maxRetries) {
       const client =
         Math.random() > (2/3) ? supabase_rr_service : supabase_service;
@@ -129,7 +130,112 @@ export async function getACUC(
 
     // NOTE: Should we cache null chunks? - mogery
     if (chunk !== null && useCache) {
-      setCachedACUC(api_key, chunk);
+      setCachedACUC(api_key, isExtract, chunk);
+    }
+
+    return chunk ? { ...chunk, is_extract: isExtract } : null;
+  } else {
+    return null;
+  }
+}
+
+export async function setCachedACUCTeam(
+  team_id: string,
+  is_extract: boolean,
+  acuc:
+    | AuthCreditUsageChunkFromTeam
+    | null
+    | ((acuc: AuthCreditUsageChunkFromTeam) => AuthCreditUsageChunkFromTeam | null),
+) {
+  const cacheKeyACUC = `acuc_team_${team_id}_${is_extract ? "extract" : "scrape"}`;
+  const redLockKey = `lock_${cacheKeyACUC}`;
+
+  try {
+    await redlock.using([redLockKey], 10000, {}, async (signal) => {
+      if (typeof acuc === "function") {
+        acuc = acuc(JSON.parse((await getValue(cacheKeyACUC)) ?? "null"));
+
+        if (acuc === null) {
+          if (signal.aborted) {
+            throw signal.error;
+          }
+
+          return;
+        }
+      }
+
+      if (signal.aborted) {
+        throw signal.error;
+      }
+
+      // Cache for 1 hour. - mogery
+      await setValue(cacheKeyACUC, JSON.stringify(acuc), 3600, true);
+    });
+  } catch (error) {
+    logger.error(`Error updating cached ACUC ${cacheKeyACUC}: ${error}`);
+  }
+}
+
+export async function getACUCTeam(
+  team_id: string,
+  cacheOnly = false,
+  useCache = true,
+  mode?: RateLimiterMode,
+): Promise<AuthCreditUsageChunkFromTeam | null> {
+  let isExtract =
+      mode === RateLimiterMode.Extract ||
+      mode === RateLimiterMode.ExtractStatus;
+
+  const cacheKeyACUC = `acuc_team_${team_id}_${isExtract ? "extract" : "scrape"}`;
+
+  if (useCache) {
+    const cachedACUC = await getValue(cacheKeyACUC);
+    if (cachedACUC !== null) {
+      return JSON.parse(cachedACUC);
+    }
+  }
+
+  if (!cacheOnly) {
+    let data;
+    let error;
+    let retries = 0;
+    const maxRetries = 5;
+    
+    while (retries < maxRetries) {
+      const client =
+        Math.random() > (2/3) ? supabase_rr_service : supabase_service;
+      ({ data, error } = await client.rpc(
+        "auth_credit_usage_chunk_28_from_team",
+        { input_team: team_id, i_is_extract: isExtract, tally_untallied_credits: true },
+        { get: true },
+      ));
+
+      if (!error) {
+        break;
+      }
+
+      logger.warn(
+        `Failed to retrieve authentication and credit usage data after ${retries}, trying again...`,
+        { error }
+      );
+      retries++;
+      if (retries === maxRetries) {
+        throw new Error(
+          "Failed to retrieve authentication and credit usage data after 3 attempts: " +
+            JSON.stringify(error),
+        );
+      }
+
+      // Wait for a short time before retrying
+      await new Promise((resolve) => setTimeout(resolve, 200));
+    }
+
+    const chunk: AuthCreditUsageChunk | null =
+      data.length === 0 ? null : data[0].team_id === null ? null : data[0];
+
+    // NOTE: Should we cache null chunks? - mogery
+    if (chunk !== null && useCache) {
+      setCachedACUCTeam(team_id, isExtract, chunk);
     }
 
     return chunk ? { ...chunk, is_extract: isExtract } : null;

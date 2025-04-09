@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { RequestWithAuth } from "./types";
-import { getACUC } from "../auth";
+import { getACUC, getACUCTeam } from "../auth";
 import { logger } from "../../lib/logger";
 import { RateLimiterMode } from "../../types";
 
@@ -21,7 +21,7 @@ export async function tokenUsageController(
     }
 
     // Otherwise fetch fresh data
-    const chunk = await getACUC(req.auth.team_id, false, true, RateLimiterMode.Extract);
+    const chunk = await getACUCTeam(req.auth.team_id, false, true, RateLimiterMode.Extract);
     if (!chunk) {
       res.status(404).json({
         success: false,

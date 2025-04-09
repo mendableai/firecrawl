@@ -768,6 +768,8 @@ export type AuthCreditUsageChunk = {
   is_extract?: boolean;
 };
 
+export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;
+
 export interface RequestWithMaybeACUC<
   ReqParams = {},
   ReqBody = undefined,

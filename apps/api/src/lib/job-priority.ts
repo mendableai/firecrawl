@@ -1,4 +1,4 @@
-import { getACUC } from "../controllers/auth";
+import { getACUC, getACUCTeam } from "../controllers/auth";
 import { redisConnection } from "../services/queue-service";
 import { logger } from "./logger";
 
@@ -40,7 +40,7 @@ export async function getJobPriority({
   }
 
   try {
-    const acuc = await getACUC(team_id);
+    const acuc = await getACUCTeam(team_id);
 
     const setKey = SET_KEY_PREFIX + team_id;
 

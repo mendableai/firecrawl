@@ -172,34 +172,6 @@ describe("Concurrency Limit", () => {
     });
   });
 
-  describe("getConcurrencyLimitMax", () => {
-    it("should return correct limit for free plan", () => {
-      const result = getConcurrencyLimitMax("free");
-      expect(result).toBe(2);
-    });
-
-    it("should return correct limit for standard plan", () => {
-      const result = getConcurrencyLimitMax("standard");
-      expect(result).toBe(CONCURRENCY_LIMIT.standard);
-    });
-
-    it("should return correct limit for scale plan", () => {
-      const result = getConcurrencyLimitMax("scale");
-      expect(result).toBe(CONCURRENCY_LIMIT.scale);
-    });
-
-    it("should return default limit for unknown plan", () => {
-      const result = getConcurrencyLimitMax("unknown");
-      expect(result).toBe(10);
-    });
-
-    it("should handle special team IDs", () => {
-      process.env.DEV_B_TEAM_ID = "dev-b-team";
-      const result = getConcurrencyLimitMax("free", "dev-b-team");
-      expect(result).toBe(120);
-    });
-  });
-
   describe("Integration Scenarios", () => {
     it("should handle complete job lifecycle", async () => {
       const mockJob: ConcurrencyLimitedJob = {
