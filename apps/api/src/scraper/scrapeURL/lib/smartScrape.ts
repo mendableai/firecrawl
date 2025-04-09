@@ -55,14 +55,16 @@ export async function smartScrape(
         prompt,
         models: {
           thinkingModel: {
-            model: "gemini-2.5-pro-exp-03-25",
-            provider: "google",
+            model: "gemini-2.5-pro-preview-03-25",
+            provider: "vertex",
             supportTools: true,
             toolChoice: "required",
             cost: {
               input: 1.3,
               output: 5,
             },
+            retryModel: "qwen-qwq-32b",
+            retryProvider: "groq"
           },
           toolModel: {
             model: "gemini-2.0-flash",

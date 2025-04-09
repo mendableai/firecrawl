@@ -6,6 +6,8 @@ import { google } from "@ai-sdk/google";
 import { createOpenRouter } from "@openrouter/ai-sdk-provider";
 import { fireworks } from "@ai-sdk/fireworks";
 import { deepinfra } from "@ai-sdk/deepinfra";
+import { createVertex } from "@ai-sdk/google-vertex";
+
 type Provider =
   | "openai"
   | "ollama"
@@ -14,7 +16,8 @@ type Provider =
   | "google"
   | "openrouter"
   | "fireworks"
-  | "deepinfra";
+  | "deepinfra"
+  | "vertex";
 const defaultProvider: Provider = process.env.OLLAMA_BASE_URL
   ? "ollama"
   : "openai";
@@ -32,6 +35,13 @@ const providerList: Record<Provider, any> = {
   }),
   fireworks, //FIREWORKS_API_KEY
   deepinfra, //DEEPINFRA_API_KEY
+  vertex: createVertex({
+    project: "firecrawl",
+    location: "us-central1",
+    googleAuthOptions: {
+      keyFile: "./gke-key.json",
+    },
+  }),
 };
 
 export function getModel(name: string, provider: Provider = defaultProvider) {

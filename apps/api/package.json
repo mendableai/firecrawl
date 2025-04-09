@@ -55,6 +55,7 @@
     "@ai-sdk/deepinfra": "^0.2.4",
     "@ai-sdk/fireworks": "^0.2.4",
     "@ai-sdk/google": "^1.2.3",
+    "@ai-sdk/google-vertex": "^2.2.13",
     "@ai-sdk/groq": "^1.2.1",
     "@ai-sdk/openai": "^1.1.13",
     "@anthropic-ai/sdk": "^0.24.3",

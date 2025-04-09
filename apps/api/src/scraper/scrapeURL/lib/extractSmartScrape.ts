@@ -7,6 +7,7 @@ import {
 import { smartScrape } from "./smartScrape";
 import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { getModel } from "../../../lib/generic-ai";
+import { TokenUsage } from "../../../controllers/v1/types";
 
 const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
@@ -184,6 +185,9 @@ export async function extractData({
   extractOptions: GenerateCompletionsOptions;
   urls: string[];
 }): Promise<{ extractedDataArray: any[]; warning: any }> {
+  // TODO: receive from user
+  const useSmartScrape = true;
+
   //WRAP SCHEMA
   const schema = extractOptions.options.schema;
   const logger = extractOptions.logger;
@@ -197,26 +201,23 @@ export async function extractData({
   console.log("schema", schema);
   console.log("schemaToUse", schemaToUse);
 
-  let extract, warning, totalUsage;
+  let extract: any,
+    warning: string | undefined,
+    totalUsage: TokenUsage | undefined;
 
+  // checks if using smartScrape is needed for this case
   try {
     const { extract: e, warning: w, totalUsage: t } = await generateCompletions(
-      { ...extractOptionsNewSchema, model: getModel("gemini-2.5-pro-exp-03-25", "google") }
-    );
+      { ...extractOptionsNewSchema,
+        model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
+        retryModel: getModel("o3-mini", "openai"),
+      });
     extract = e;
     warning = w;
     totalUsage = t;
   } catch (error) {
     console.log("failed during extractSmartScrape.ts:generateCompletions", error);
   }
-  console.log("extract", extract);
-
-  // const {
-  //   extractedData,
-  //   shouldUseSmartscrape,
-  //   smartscrape_reasoning,
-  //   smartscrape_prompt,
-  // } = processSmartScrapeResult(extract, logger);
 
   let extractedData = extract?.extractedData;
 
@@ -224,7 +225,7 @@ export async function extractData({
   console.log("smartscrape_reasoning", extract?.smartscrape_reasoning);
   console.log("smartscrape_prompt", extract?.smartscrape_prompt);
   try {
-    if (extract?.shouldUseSmartscrape) {
+    if (useSmartScrape && extract?.shouldUseSmartscrape) {
       let smartscrapeResults;
       if (isSingleUrl) {
         smartscrapeResults = [
