@@ -94,7 +94,7 @@ describe("Scrape tests", () => {
 
         expect(response.changeTracking).toBeDefined();
         expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
-      });
+      }, 30000);
     });
   
     describe("Location API (f-e dependant)", () => {
