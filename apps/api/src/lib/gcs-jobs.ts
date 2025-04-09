@@ -13,9 +13,25 @@ export async function saveJobToGCS(job: FirecrawlJob): Promise<void> {
         const storage = new Storage({ credentials });
         const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
         const blob = bucket.file(`${job.job_id}.json`);
-        await blob.save(JSON.stringify(job.docs), {
-            contentType: "application/json",
-        });
+        for (let i = 0; i < 3; i++) {
+            try {
+                await blob.save(JSON.stringify(job.docs), { 
+                    contentType: "application/json",
+                });
+                break;
+            } catch (error) {
+                if (i === 2) {
+                    throw error;
+                } else {
+                    logger.error(`Error saving job to GCS, retrying`, {
+                        error,
+                        scrapeId: job.job_id,
+                        jobId: job.job_id,
+                        i,
+                    });
+                }
+            }
+        }
         for (let i = 0; i < 3; i++) {
             try {
                 await blob.setMetadata({
@@ -39,13 +55,15 @@ export async function saveJobToGCS(job: FirecrawlJob): Promise<void> {
                 });
                 break;
             } catch (error) {
-                logger.error(`Error saving job metadata to GCS`, {
-                    error,
-                    scrapeId: job.job_id,
-                    jobId: job.job_id,
-                });
                 if (i === 2) {
                     throw error;
+                } else {
+                    logger.error(`Error saving job metadata to GCS, retrying`, {
+                        error,
+                        scrapeId: job.job_id,
+                        jobId: job.job_id,
+                        i,
+                    });
                 }
             }
         }
