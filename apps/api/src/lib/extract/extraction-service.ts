@@ -91,6 +91,7 @@ export async function performExtraction(
     module: "extract",
     method: "performExtraction",
     extractId,
+    teamId,
   });
 
   // If no URLs are provided, generate URLs from the prompt
