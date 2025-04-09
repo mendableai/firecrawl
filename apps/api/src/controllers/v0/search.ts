@@ -72,6 +72,7 @@ export async function searchHelper(
     undefined,
     60000,
     crawlerOptions,
+    team_id,
   );
 
   if (justSearch) {

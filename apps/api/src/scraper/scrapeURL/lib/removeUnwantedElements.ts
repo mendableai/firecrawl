@@ -49,7 +49,21 @@ const excludeNonMainTags = [
   "#cookie",
 ];
 
-const forceIncludeMainTags = ["#main"];
+const forceIncludeMainTags = [
+  "#main",
+  ".swoogo-cols",
+  ".swoogo-text",
+  ".swoogo-table-div",
+  ".swoogo-space",
+  ".swoogo-alert",
+  ".swoogo-sponsors",
+  ".swoogo-title",
+  ".swoogo-tabs",
+  ".swoogo-logo",
+  ".swoogo-image",
+  ".swoogo-button",
+  ".swoogo-agenda"
+];
 
 export const htmlTransform = async (
   html: string,

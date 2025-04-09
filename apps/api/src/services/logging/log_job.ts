@@ -1,10 +1,10 @@
-import { ExtractorOptions } from "./../../lib/entities";
 import { supabase_service } from "../supabase";
 import { FirecrawlJob } from "../../types";
 import { posthog } from "../posthog";
 import "dotenv/config";
 import { logger } from "../../lib/logger";
 import { configDotenv } from "dotenv";
+import { saveJobToGCS } from "../../lib/gcs-jobs";
 configDotenv();
 
 function cleanOfNull<T>(x: T): T {
@@ -106,6 +106,10 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
     // Send job to external server
     if (process.env.FIRE_INDEX_SERVER_URL) {
       indexJob(job);
+    }
+
+    if (process.env.GCS_BUCKET_NAME) {
+      await saveJobToGCS(job);
     }
 
     if (force) {
