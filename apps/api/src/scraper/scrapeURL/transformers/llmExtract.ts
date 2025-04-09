@@ -341,18 +341,6 @@ export async function generateCompletions({
       }),
     } satisfies Parameters<typeof generateObject>[0];
 
-    console.log(
-      "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!",
-    );
-    const now = new Date().getTime();
-    console.log(now);
-    console.log({ generateObjectConfig });
-
-    await fs.writeFile(
-      `logs/generateObjectConfig-${now}.json`,
-      JSON.stringify(generateObjectConfig, null, 2),
-    );
-
     const result = await generateObject(generateObjectConfig);
     extract = result.object;
 
