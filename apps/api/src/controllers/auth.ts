@@ -246,16 +246,30 @@ export async function getACUCTeam(
 
 export async function clearACUC(api_key: string): Promise<void> {
   // Delete cache for all rate limiter modes
-  const modes = Object.values(RateLimiterMode);
+  const modes = [true, false];
   await Promise.all(
     modes.map(async (mode) => {
-      const cacheKey = `acuc_${api_key}_${mode}`;
+      const cacheKey = `acuc_${api_key}_${mode ? "extract" : "scrape"}`;
       await deleteKey(cacheKey);
     }),
   );
 
   // Also clear the base cache key
   await deleteKey(`acuc_${api_key}`);
+}
+
+export async function clearACUCTeam(team_id: string): Promise<void> {
+  // Delete cache for all rate limiter modes
+  const modes = [true, false];
+  await Promise.all(
+    modes.map(async (mode) => {
+      const cacheKey = `acuc_team_${team_id}_${mode ? "extract" : "scrape"}`;
+      await deleteKey(cacheKey);
+    }),
+  );
+
+  // Also clear the base cache key
+  await deleteKey(`acuc_team_${team_id}`);
 }
 
 export async function authenticateUser(

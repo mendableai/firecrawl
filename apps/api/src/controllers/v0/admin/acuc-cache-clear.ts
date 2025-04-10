@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { supabase_service } from "../../../services/supabase";
-import { clearACUC } from "../../auth";
+import { clearACUC, clearACUCTeam } from "../../auth";
 import { logger } from "../../../lib/logger";
 
 export async function acucCacheClearController(req: Request, res: Response) {
@@ -13,6 +13,7 @@ export async function acucCacheClearController(req: Request, res: Response) {
       .eq("team_id", team_id);
 
     await Promise.all((keys.data ?? []).map((x) => clearACUC(x.key)));
+    await clearACUCTeam(team_id);
 
     logger.info(`ACUC cache cleared for team ${team_id}`);
     res.json({ ok: true });
