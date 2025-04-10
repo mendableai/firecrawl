@@ -101,6 +101,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       retry: !!job.retry,
       crawl_id: job.crawl_id,
       tokens_billed: job.tokens_billed,
+      is_migrated: true,
     };
 
     // Send job to external server
