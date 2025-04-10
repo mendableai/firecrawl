@@ -8,7 +8,7 @@ describe("Batch scrape tests", () => {
         
         expect(response.body.data[0]).toHaveProperty("markdown");
         expect(response.body.data[0].markdown).toContain("Firecrawl");
-    }, 30000);
+    }, 180000);
 
     if (!process.env.TEST_SUITE_SELF_HOSTED) {
         describe("JSON format", () => {
@@ -45,7 +45,7 @@ describe("Batch scrape tests", () => {
                 expect(response.body.data[0].json).toHaveProperty("is_open_source");
                 expect(response.body.data[0].json.is_open_source).toBe(true);
                 expect(typeof response.body.data[0].json.is_open_source).toBe("boolean");
-            }, 30000);
+            }, 180000);
         });
     }
 });

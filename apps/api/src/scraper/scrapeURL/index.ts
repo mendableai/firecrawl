@@ -230,7 +230,9 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   const timeToRun =
     meta.options.timeout !== undefined
       ? Math.round(meta.options.timeout / Math.min(fallbackList.length, 2))
-      : undefined;
+      : (!meta.options.actions && !meta.options.jsonOptions && !meta.options.extract)
+        ? Math.round(120000 / Math.min(fallbackList.length, 2))
+        : undefined;
 
   for (const { engine, unsupportedFeatures } of fallbackList) {
     meta.internalOptions.abort?.throwIfAborted();
