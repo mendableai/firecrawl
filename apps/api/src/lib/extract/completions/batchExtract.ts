@@ -14,6 +14,16 @@ import { getModel } from "../../generic-ai";
 
 import fs from "fs/promises";
 import { extractData } from "../../../scraper/scrapeURL/lib/extractSmartScrape";
+
+type BatchExtractOptions = {
+  multiEntitySchema: any;
+  links: string[];
+  prompt: string;
+  systemPrompt: string;
+  doc: Document;
+  useAgent: boolean;
+};
+
 /**
  * Batch extract information from a list of URLs using a multi-entity schema.
  * @param multiEntitySchema - The schema for the multi-entity extraction
@@ -23,19 +33,16 @@ import { extractData } from "../../../scraper/scrapeURL/lib/extractSmartScrape";
  * @param doc - The document to extract information from
  * @returns The completion promise
  */
-export async function batchExtractPromise(
-  multiEntitySchema: any,
-  links: string[],
-  prompt: string,
-  systemPrompt: string,
-  doc: Document,
-): Promise<{
+export async function batchExtractPromise(options: BatchExtractOptions): Promise<{
   extract: any; // array of extracted data
   numTokens: number;
   totalUsage: TokenUsage;
   warning?: string;
   sources: string[];
 }> {
+  const { multiEntitySchema, links, prompt, systemPrompt, doc, useAgent } = options;
+
+
   const generationOptions: GenerateCompletionsOptions = {
     logger: logger.child({
       method: "extractService/generateCompletions",
@@ -61,6 +68,7 @@ export async function batchExtractPromise(
     const { extractedDataArray: e, warning: w } = await extractData({
       extractOptions: generationOptions,
       urls: [doc.metadata.sourceURL || doc.metadata.url || ""],
+      useAgent,
     });
     extractedDataArray = e;
     warning = w;
@@ -68,10 +76,10 @@ export async function batchExtractPromise(
     console.error(">>>>>>>error>>>>>\n", error);
   }
 
-  await fs.writeFile(
-    `logs/extractedDataArray-${crypto.randomUUID()}.json`,
-    JSON.stringify(extractedDataArray, null, 2),
-  );
+  // await fs.writeFile(
+  //   `logs/extractedDataArray-${crypto.randomUUID()}.json`,
+  //   JSON.stringify(extractedDataArray, null, 2),
+  // );
 
   // TODO: fix this
   return {

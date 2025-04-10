@@ -181,12 +181,12 @@ export function prepareSmartScrapeSchema(
 export async function extractData({
   extractOptions,
   urls,
+  useAgent
 }: {
   extractOptions: GenerateCompletionsOptions;
   urls: string[];
+  useAgent: boolean;
 }): Promise<{ extractedDataArray: any[]; warning: any }> {
-  // TODO: receive from user
-  const useSmartScrape = true;
 
   //WRAP SCHEMA
   const schema = extractOptions.options.schema;
@@ -225,7 +225,11 @@ export async function extractData({
   console.log("smartscrape_reasoning", extract?.smartscrape_reasoning);
   console.log("smartscrape_prompt", extract?.smartscrape_prompt);
   try {
-    if (useSmartScrape && extract?.shouldUseSmartscrape) {
+    console.log('=========================================')
+    console.log("useAgent", useAgent);
+    console.log('=========================================')
+
+    if (useAgent && extract?.shouldUseSmartscrape) {
       let smartscrapeResults;
       if (isSingleUrl) {
         smartscrapeResults = [

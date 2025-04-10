@@ -45,6 +45,7 @@ interface ExtractServiceOptions {
   subId?: string;
   cacheMode?: "load" | "save" | "direct";
   cacheKey?: string;
+  agent?: boolean;
 }
 
 export interface ExtractResult {
@@ -72,7 +73,7 @@ export async function performExtraction(
   extractId: string,
   options: ExtractServiceOptions,
 ): Promise<ExtractResult> {
-  const { request, teamId, plan, subId } = options;
+  const { request, teamId, plan, subId, agent } = options;
   const urlTraces: URLTrace[] = [];
   let docsMap: Map<string, Document> = new Map();
   let singleAnswerCompletions: completions | null = null;
@@ -102,7 +103,7 @@ export async function performExtraction(
       buildRephraseToSerpPrompt(request.prompt),
     );
     const searchResults = await search({
-      query: rephrasedPrompt.replace('"', "").replace("'", ""),
+      query: rephrasedPrompt?.replace('"', "").replace("'", "") || "",
       num_results: 10,
     });
 
@@ -400,59 +401,14 @@ export async function performExtraction(
             setTimeout(() => resolve(null), timeoutCompletion);
           });
 
-          // Check if page should be extracted before proceeding
-          // const { extract, tokenUsage: shouldExtractCheckTokenUsage } = await checkShouldExtract(
-          //   request.prompt ?? "",
-          //   multiEntitySchema,
-          //   doc,
-          // );
-
-          // tokenUsage.push(shouldExtractCheckTokenUsage);
-
-          // if (!extract) {
-          //   logger.info(
-          //     `Skipping extraction for ${doc.metadata.url} as content is irrelevant`,
-          //   );
-          //   return null;
-          // }
-          // // Add confidence score to schema with 5 levels
-          // const schemaWithConfidence = {
-          //   ...multiEntitySchema,
-          //   properties: {
-          //     ...multiEntitySchema.properties,
-          //     is_content_relevant: {
-          //       type: "boolean",
-          //       description:
-          //         "Determine if this content is relevant to the prompt. Return true ONLY if the content contains information that directly helps answer the prompt. Return false if the content is irrelevant or unlikely to contain useful information.",
-          //     },
-          //   },
-          //   required: [
-          //     ...(multiEntitySchema.required || []),
-          //     "is_content_relevant",
-          //   ],
-          // };
-
-          // await updateExtract(extractId, {
-          //   status: "processing",
-          //   steps: [
-          //     {
-          //       step: ExtractStep.MULTI_ENTITY_EXTRACT,
-          //       startedAt: startScrape,
-          //       finishedAt: Date.now(),
-          //       discoveredLinks: [
-          //         doc.metadata.url || doc.metadata.sourceURL || "",
-          //       ],
-          //     },
-          //   ],
-          // });
-
-          const completionPromise = batchExtractPromise(
+          const completionPromise = batchExtractPromise({
             multiEntitySchema,
             links,
-            request.prompt ?? "",
-            request.systemPrompt ?? "",
+            prompt: request.prompt ?? "",
+            systemPrompt: request.systemPrompt ?? "",
             doc,
-          );
+            useAgent: request.agent,
+          });
 
           // Race between timeout and completion
           const multiEntityCompletion = (await completionPromise) as Awaited<
@@ -526,43 +482,105 @@ export async function performExtraction(
       );
       const mergedExtracts = extractArrays.flat();
       multiEntityCompletions.push(...mergedExtracts);
+      multiEntityCompletions = multiEntityCompletions.filter((c) => c !== null);
       logger.debug("All multi-entity completion chunks finished.", {
         completionCount: multiEntityCompletions.length,
       });
       log["multiEntityCompletionsLength"] = multiEntityCompletions.length;
+      const validResultsLog = `[${new Date().toISOString()}] Multi-entity results.\nValid results: ${JSON.stringify(validResults, null, 2)}\nextractArrays: ${JSON.stringify(extractArrays, null, 2)}\nmergedExtracts: ${JSON.stringify(mergedExtracts, null, 2)}\nmultiEntityCompletions: ${JSON.stringify(multiEntityCompletions, null, 2)}\n`;
+      await fs.appendFile('logs/multi-entity.log', validResultsLog);
     }
 
     try {
       // Use SourceTracker to handle source tracking
       const sourceTracker = new SourceTracker();
+      logger.debug("Created SourceTracker instance");
 
       // Transform and merge results while preserving sources
-      sourceTracker.transformResults(
-        extractionResults,
-        multiEntitySchema,
-        false,
-      );
+      try {
+        sourceTracker.transformResults(
+          extractionResults,
+          multiEntitySchema,
+          false,
+        );
+        logger.debug("Successfully transformed results with sourceTracker");
+      } catch (error) {
+        const errorLog = `[${new Date().toISOString()}] Error in sourceTracker.transformResults: ${JSON.stringify(error, null, 2)}\n`;
+        await fs.appendFile('logs/extraction-errors.log', errorLog);
+        logger.error(`Error in sourceTracker.transformResults:`, { error });
+        throw error;
+      }
 
-      multiEntityResult = transformArrayToObject(
-        multiEntitySchema,
-        multiEntityCompletions,
-      );
+      try {
+        multiEntityResult = transformArrayToObject(
+          multiEntitySchema,
+          multiEntityCompletions,
+        );
+        logger.debug("Successfully transformed array to object");
+      } catch (error) {
+        const errorLog = `[${new Date().toISOString()}] Error in transformArrayToObject: ${JSON.stringify(error, null, 2)}\n`;
+        await fs.appendFile('logs/extraction-errors.log', errorLog);
+        logger.error(`Error in transformArrayToObject:`, { error });
+        throw error;
+      }
 
       // Track sources before deduplication
-      sourceTracker.trackPreDeduplicationSources(multiEntityResult);
+      try {
+        sourceTracker.trackPreDeduplicationSources(multiEntityResult);
+        logger.debug("Successfully tracked pre-deduplication sources");
+      } catch (error) {
+        const errorLog = `[${new Date().toISOString()}] Error in trackPreDeduplicationSources: ${JSON.stringify(error, null, 2)}\n`;
+        await fs.appendFile('logs/extraction-errors.log', errorLog);
+        logger.error(`Error in trackPreDeduplicationSources:`, { error });
+        throw error;
+      }
 
       // Apply deduplication and merge
-      multiEntityResult = deduplicateObjectsArray(multiEntityResult);
-      multiEntityResult = mergeNullValObjs(multiEntityResult);
+      try {
+        multiEntityResult = deduplicateObjectsArray(multiEntityResult);
+        logger.debug("Successfully deduplicated objects array");
+      } catch (error) {
+        const errorLog = `[${new Date().toISOString()}] Error in deduplicateObjectsArray: ${JSON.stringify(error, null, 2)}\n`;
+        await fs.appendFile('logs/extraction-errors.log', errorLog);
+        logger.error(`Error in deduplicateObjectsArray:`, { error });
+        throw error;
+      }
+
+      try {
+        multiEntityResult = mergeNullValObjs(multiEntityResult);
+        logger.debug("Successfully merged null value objects");
+      } catch (error) {
+        const errorLog = `[${new Date().toISOString()}] Error in mergeNullValObjs: ${JSON.stringify(error, null, 2)}\n`;
+        await fs.appendFile('logs/extraction-errors.log', errorLog);
+        logger.error(`Error in mergeNullValObjs:`, { error });
+        throw error;
+      }
 
       // Map sources to final deduplicated/merged items
-      const multiEntitySources = sourceTracker.mapSourcesToFinalItems(
-        multiEntityResult,
-        multiEntityKeys,
-      );
-      Object.assign(sources, multiEntitySources);
+      try {
+        const multiEntitySources = sourceTracker.mapSourcesToFinalItems(
+          multiEntityResult,
+          multiEntityKeys,
+        );
+        Object.assign(sources, multiEntitySources);
+        logger.debug("Successfully mapped sources to final items");
+      } catch (error) {
+        const errorLog = `[${new Date().toISOString()}] Error in mapSourcesToFinalItems: ${JSON.stringify(error, null, 2)}\n`;
+        await fs.appendFile('logs/extraction-errors.log', errorLog);
+        logger.error(`Error in mapSourcesToFinalItems:`, { error });
+        throw error;
+      }
     } catch (error) {
-      logger.error(`Failed to transform array to object`, { error });
+      const errorLog = `[${new Date().toISOString()}] Failed to transform array to object\nError: ${JSON.stringify(error, null, 2)}\nStack: ${error.stack}\nMultiEntityResult: ${JSON.stringify(multiEntityResult, null, 2)}\nMultiEntityCompletions: ${JSON.stringify(multiEntityCompletions, null, 2)}\nMultiEntitySchema: ${JSON.stringify(multiEntitySchema, null, 2)}\n\n`;
+      await fs.appendFile('logs/extraction-errors.log', errorLog);
+      logger.error(`Failed to transform array to object`, { 
+        error,
+        errorMessage: error.message,
+        errorStack: error.stack,
+        multiEntityResult: JSON.stringify(multiEntityResult),
+        multiEntityCompletions: JSON.stringify(multiEntityCompletions),
+        multiEntitySchema: JSON.stringify(multiEntitySchema)
+      });
       return {
         success: false,
         error:
@@ -692,6 +710,7 @@ export async function performExtraction(
       links,
       prompt: request.prompt ?? "",
       systemPrompt: request.systemPrompt ?? "",
+      useAgent: request.agent,
     });
     logger.debug("Done generating singleAnswer completions.");
 

@@ -389,11 +389,11 @@ export async function generateCompletions({
       }),
     } satisfies Parameters<typeof generateObject>[0];
 
-    const now = new Date().getTime();
-    await fs.writeFile(
-      `logs/generateObjectConfig-${now}.json`,
-      JSON.stringify(generateObjectConfig, null, 2),
-    );
+    // const now = new Date().getTime();
+    // await fs.writeFile(
+    //   `logs/generateObjectConfig-${now}.json`,
+    //   JSON.stringify(generateObjectConfig, null, 2),
+    // );
 
     let result: { object: any, usage: TokenUsage } | undefined;
     try {
@@ -503,19 +503,21 @@ export async function performLLMExtract(
       // ... existing model and provider options ...
       // model: getModel("o3-mini", "openai"), // Keeping existing model selection
       // model: getModel("o3-mini", "openai"),
-      model: getModel("qwen-qwq-32b", "groq"),
+      // model: getModel("qwen-qwq-32b", "groq"),
       // model: getModel("gemini-2.0-flash", "google"),
       // model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
-      retryModel: getModel("o3-mini", "openai"),
+      model: getModel("o3-mini", "openai"),
+      retryModel: getModel("gemini-2.5-pro-preview-03-25", "vertex")
     };
 
     const { extractedDataArray, warning } = await extractData({
       extractOptions: generationOptions,
       urls: [meta.url],
+      useAgent: meta.options.extract?.agent ?? false
     });
 
-    //TODO: add merge here
-    const extractedData = extractedDataArray[0];
+    // IMPORTANT: here it only get's the last page!!!
+    const extractedData = extractedDataArray[extractedDataArray.length - 1] ?? undefined;
 
     // // Prepare the schema, potentially wrapping it
     // const { schemaToUse, schemaWasWrapped } = prepareSmartScrapeSchema(

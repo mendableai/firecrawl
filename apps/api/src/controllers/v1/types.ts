@@ -79,6 +79,7 @@ Key Instructions:
       ),
     prompt: z.string().max(10000).optional(),
     temperature: z.number().optional(),
+    agent: z.boolean().default(false).optional(),
   })
   .strict(strictMessage);
 
@@ -250,6 +251,11 @@ const baseScrapeOptions = z
     useMock: z.string().optional(),
     blockAds: z.boolean().default(true),
     proxy: z.enum(["basic", "stealth"]).optional(),
+    agent: z
+      .object({
+        prompt: z.string().optional(),
+      })
+      .optional(),
   })
   .strict(strictMessage);
 
@@ -292,6 +298,7 @@ const extractTransform = (obj) => {
         prompt: obj.jsonOptions.prompt,
         systemPrompt: obj.jsonOptions.systemPrompt,
         schema: obj.jsonOptions.schema,
+        agent: obj.jsonOptions.agent,
         mode: "llm",
       },
     };
@@ -365,6 +372,7 @@ export const extractV1Options = z
       .enum(["direct", "save", "load"])
       .default("direct")
       .optional(),
+    agent: z.boolean().default(false),
   })
   .strict(strictMessage)
   .refine((obj) => obj.urls || obj.prompt, {

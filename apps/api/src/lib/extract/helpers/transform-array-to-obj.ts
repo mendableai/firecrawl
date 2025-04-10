@@ -91,6 +91,10 @@ export function transformArrayToObject(
   // Iterate over each item in the arrayData
   arrayData.forEach((item) => {
     let currentItem = item;
+    // Skip null items
+    if (currentItem === null) {
+      return;
+    }
     arrayKeyParts.forEach((part) => {
       if (currentItem[part]) {
         currentItem = currentItem[part];

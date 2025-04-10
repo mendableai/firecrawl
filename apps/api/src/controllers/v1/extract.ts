@@ -55,6 +55,7 @@ export async function extractController(
     plan: req.auth.plan,
     subId: req.acuc?.sub_id,
     extractId,
+    agent: req.body.agent,
   };
 
   if (

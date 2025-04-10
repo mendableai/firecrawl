@@ -65,6 +65,59 @@ content-type: application/json
   "sitemapOnly": true
 }
 
+### Scrape JSON ModeractFirecrawl
+POST {{baseUrl}}/v1/scrape HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json
+
+{
+  "url": "https://firecrawl-e2e-test-git-main-rafaelsideguides-projects.vercel.app/numbered-pagination/with-params",
+  "origin":"api-sdk",
+  "agent": {
+    "prompt": "Get the data from the last page. Use the pagination buttons to navigate."
+  }
+}
+
+### Scrape JSON Mode
+# @name extractFirecrawl
+POST {{baseUrl}}/v1/scrape HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json
+
+{
+  "url": "https://firecrawl-e2e-test-git-main-rafaelsideguides-projects.vercel.app/numbered-pagination/with-params",
+  "origin":"api-sdk",
+  "formats": [ "json" ],
+  "timeout": 160000,
+  "jsonOptions": {
+    "prompt":"Get all products in the page. Use the pagination buttons to navigate. It has 50 products.",
+    "agent": true,
+    "schema":{
+      "type":"object",
+      "properties":{
+        "products": {
+          "type":"array",
+          "items":{
+            "type":"object",
+            "properties":{
+              "name":{
+                "type":"string"
+              },
+              "description":{
+                "type":"string"
+              }
+            }
+          }
+        }
+      },
+      "required":[
+        "products"
+      ]
+    }
+  }
+}
+
+
 ### Extract Firecrawl Title
 # @name extractFirecrawl
 POST {{baseUrl}}/v1/extract HTTP/1.1
@@ -73,10 +126,11 @@ content-type: application/json
 
 {
   "urls":[
-    "https://firecrawl-e2e-test-git-main-rafaelsideguides-projects.vercel.app/numbered-large-pagination/with-params"
+    "https://firecrawl-e2e-test-git-main-rafaelsideguides-projects.vercel.app/numbered-pagination/with-params"
   ],
   "origin":"api-sdk",
-  "prompt":"Get all products in the page. Use the pagination buttons to navigate. It has 1200 products.",
+  "prompt":"Get all products in the page. Use the pagination buttons to navigate. It has 50 products.",
+  "agent": true,
   "schema":{
     "type":"object",
     "properties":{

@@ -11,17 +11,38 @@ import { generateText } from "ai";
 import { getModel } from "../generic-ai";
 
 export async function generateBasicCompletion(prompt: string) {
-  const { text } = await generateText({
-    model: getModel("claude-3-7-sonnet-latest", "anthropic"),
-    prompt: prompt,
-    providerOptions: {
-      anthropic: {
-        thinking: { type: "enabled", budgetTokens: 12000 },
-      },
-    },
-    // temperature: 0.7
-  });
-  return text;
+  try {
+    const result = await generateText({
+      model: getModel("gpt-4o", "openai"),
+      prompt: prompt,
+      providerOptions: {
+        anthropic: {
+          thinking: { type: "enabled", budgetTokens: 12000 },
+        },
+      }
+    });
+    return result.text;
+  } catch (error) {
+    console.error("Error generating basic completion:", error);
+    if (error?.type == "rate_limit_error") {
+      try {
+        const result = await generateText({
+          model: getModel("gpt-4o-mini", "openai"), 
+          prompt: prompt,
+          providerOptions: {
+            anthropic: {
+              thinking: { type: "enabled", budgetTokens: 12000 },
+            },
+          }
+        });
+        return result.text;
+      } catch (fallbackError) {
+        console.error("Error generating basic completion with fallback model:", fallbackError);
+        return null;
+      }
+    }
+    return null;
+  }
 }
 interface ProcessUrlOptions {
   url: string;

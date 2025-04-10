@@ -6,7 +6,6 @@ import {
 import { buildDocument } from "../build-document";
 import { Document, TokenUsage } from "../../../controllers/v1/types";
 import { getModel } from "../../../lib/generic-ai";
-import fs from "fs/promises";
 import { extractData } from "../../../scraper/scrapeURL/lib/extractSmartScrape";
 
 export async function singleAnswerCompletion({
@@ -14,13 +13,15 @@ export async function singleAnswerCompletion({
   rSchema,
   links,
   prompt,
-  systemPrompt
+  systemPrompt,
+  useAgent
 }: {
   singleAnswerDocs: Document[];
   rSchema: any;
   links: string[];
   prompt: string;
   systemPrompt: string;
+  useAgent: boolean;
 }): Promise<{
   extract: any;
   tokenUsage: TokenUsage;
@@ -45,6 +46,7 @@ export async function singleAnswerCompletion({
   const { extractedDataArray, warning } = await extractData({
     extractOptions: generationOptions,
     urls: singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || ""),
+    useAgent,
   });
 
   const completion = {

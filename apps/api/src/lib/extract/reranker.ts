@@ -196,10 +196,10 @@ export async function rerankLinksWithLLM(
   const MAX_RETRIES = 2;
   let totalTokensUsed = 0;
 
-  await fs.writeFile(
-    `logs/links-${crypto.randomUUID()}.txt`,
-    JSON.stringify(links, null, 2),
-  );
+  // await fs.writeFile(
+  //   `logs/links-${crypto.randomUUID()}.txt`,
+  //   JSON.stringify(links, null, 2),
+  // );
 
   // Split links into chunks of 200
   for (let i = 0; i < links.length; i += chunkSize) {
@@ -242,10 +242,10 @@ export async function rerankLinksWithLLM(
         )
         .join("\n\n");
 
-      fs.writeFile(
-        `logs/links-content-${crypto.randomUUID()}.txt`,
-        linksContent,
-      );
+      // fs.writeFile(
+      //   `logs/links-content-${crypto.randomUUID()}.txt`,
+      //   linksContent,
+      // );
 
       for (let retry = 0; retry <= MAX_RETRIES; retry++) {
         try {
@@ -322,10 +322,10 @@ export async function rerankLinksWithLLM(
             );
           }
 
-          await fs.writeFile(
-            `logs/reranker-${crypto.randomUUID()}.json`,
-            JSON.stringify(completion, null, 2),
-          );
+          // await fs.writeFile(
+          //   `logs/reranker-${crypto.randomUUID()}.json`,
+          //   JSON.stringify(completion, null, 2),
+          // );
 
           if (!completion) {
             // console.log(`Chunk ${chunkIndex + 1}: Timeout on attempt ${retry + 1}`);
@@ -386,21 +386,21 @@ export async function rerankLinksWithLLM(
     .filter((link): link is NonNullable<typeof link> => link !== undefined);
 
   // Add debug logging for testing
-  fs.writeFile(
-    `logs/reranker-aaa-${crypto.randomUUID()}.json`,
-    JSON.stringify(
-      {
-        totalResults: relevantLinks.length,
-        scores: relevantLinks.map((l) => ({
-          url: l.url,
-          score: l.relevanceScore,
-          reason: l.reason,
-        })),
-      },
-      null,
-      2,
-    ),
-  );
+  // fs.writeFile(
+  //   `logs/reranker-aaa-${crypto.randomUUID()}.json`,
+  //   JSON.stringify(
+  //     {
+  //       totalResults: relevantLinks.length,
+  //       scores: relevantLinks.map((l) => ({
+  //         url: l.url,
+  //         score: l.relevanceScore,
+  //         reason: l.reason,
+  //       })),
+  //     },
+  //     null,
+  //     2,
+  //   ),
+  // );
 
   return {
     mapDocument: relevantLinks,
