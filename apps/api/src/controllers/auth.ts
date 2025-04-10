@@ -136,7 +136,7 @@ export async function getACUC(
     const maxRetries = 5;
     while (retries < maxRetries) {
       const client =
-        Math.random() > (2/3) ? supabase_rr_service : supabase_service;
+        /* Math.random() > (2/3) ? supabase_rr_service : */ supabase_service;
       ({ data, error } = await client.rpc(
         "auth_credit_usage_chunk_28",
         { input_key: api_key, i_is_extract: isExtract, tally_untallied_credits: true },
@@ -247,7 +247,7 @@ export async function getACUCTeam(
     
     while (retries < maxRetries) {
       const client =
-        Math.random() > (2/3) ? supabase_rr_service : supabase_service;
+        /* Math.random() > (2/3) ? supabase_rr_service : */ supabase_service;
       ({ data, error } = await client.rpc(
         "auth_credit_usage_chunk_28_from_team",
         { input_team: team_id, i_is_extract: isExtract, tally_untallied_credits: true },
