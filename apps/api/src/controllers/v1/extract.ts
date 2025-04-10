@@ -22,7 +22,6 @@ export async function oldExtract(
     const result = await performExtraction(extractId, {
       request: req.body,
       teamId: req.auth.team_id,
-      plan: req.auth.plan ?? "free",
       subId: req.acuc?.sub_id ?? undefined,
     });
 
@@ -52,7 +51,6 @@ export async function extractController(
   const jobData = {
     request: req.body,
     teamId: req.auth.team_id,
-    plan: req.auth.plan,
     subId: req.acuc?.sub_id,
     extractId,
   };
@@ -68,7 +66,6 @@ export async function extractController(
   await saveExtract(extractId, {
     id: extractId,
     team_id: req.auth.team_id,
-    plan: req.auth.plan,
     createdAt: Date.now(),
     status: "processing",
     showSteps: req.body.__experimental_streamSteps,

@@ -1,6 +1,6 @@
 import { getScrapeQueue } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
-import { NotificationType, PlanType, WebScraperOptions } from "../types";
+import { NotificationType, WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
 import {
   cleanOldConcurrencyLimitEntries,
@@ -10,9 +10,9 @@ import {
   pushConcurrencyLimitedJob,
 } from "../lib/concurrency-limit";
 import { logger } from "../lib/logger";
-import { getConcurrencyLimitMax } from "./rate-limiter";
 import { sendNotificationWithCustomDays } from './notification/email_notification';
 import { shouldSendConcurrencyLimitNotification } from './notification/notification-check';
+import { getACUC, getACUCTeam } from "../controllers/auth";
 
 /**
  * Checks if a job is a crawl or batch scrape based on its options
@@ -51,8 +51,7 @@ export async function _addScrapeJobToBullMQ(
 ) {
   if (
     webScraperOptions &&
-    webScraperOptions.team_id &&
-    webScraperOptions.plan
+    webScraperOptions.team_id
   ) {
     await pushConcurrencyLimitActiveJob(webScraperOptions.team_id, jobId, 60 * 1000); // 60s default timeout
   }
@@ -79,7 +78,7 @@ async function addScrapeJobRaw(
     webScraperOptions.team_id
   ) {
     const now = Date.now();
-    maxConcurrency = getConcurrencyLimitMax(webScraperOptions.plan ?? "free", webScraperOptions.team_id);
+    maxConcurrency = (await getACUCTeam(webScraperOptions.team_id))?.concurrency ?? 2;
     cleanOldConcurrencyLimitEntries(webScraperOptions.team_id, now);
     currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(webScraperOptions.team_id, now)).length;
     concurrencyLimited = currentActiveConcurrency >= maxConcurrency;
@@ -170,9 +169,9 @@ export async function addScrapeJobs(
   let currentActiveConcurrency = 0;
   let maxConcurrency = 0;
 
-  if (jobs[0].data && jobs[0].data.team_id && jobs[0].data.plan) {
+  if (jobs[0].data && jobs[0].data.team_id) {
     const now = Date.now();
-    maxConcurrency = getConcurrencyLimitMax(jobs[0].data.plan as PlanType, jobs[0].data.team_id);
+    maxConcurrency = (await getACUCTeam(jobs[0].data.team_id))?.concurrency ?? 2;
     cleanOldConcurrencyLimitEntries(jobs[0].data.team_id, now);
 
     currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(jobs[0].data.team_id, now)).length;

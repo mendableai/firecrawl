@@ -24,7 +24,6 @@ export type ExtractedStep = {
 export type StoredExtract = {
   id: string;
   team_id: string;
-  plan?: string;
   createdAt: number;
   status: "processing" | "completed" | "failed" | "cancelled";
   error?: any;

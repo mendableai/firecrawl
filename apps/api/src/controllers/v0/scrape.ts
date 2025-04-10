@@ -5,7 +5,7 @@ import {
   checkTeamCredits,
 } from "../../services/billing/credit_billing";
 import { authenticateUser } from "../auth";
-import { PlanType, RateLimiterMode } from "../../types";
+import { RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
 import {
   fromLegacyCombo,
@@ -39,7 +39,6 @@ export async function scrapeHelper(
   pageOptions: PageOptions,
   extractorOptions: ExtractorOptions,
   timeout: number,
-  plan?: PlanType,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -59,7 +58,7 @@ export async function scrapeHelper(
     };
   }
 
-  const jobPriority = await getJobPriority({ plan, team_id, basePriority: 10 });
+  const jobPriority = await getJobPriority({ team_id, basePriority: 10 });
 
   const { scrapeOptions, internalOptions } = fromLegacyCombo(
     pageOptions,
@@ -76,7 +75,6 @@ export async function scrapeHelper(
       team_id,
       scrapeOptions,
       internalOptions,
-      plan: plan!,
       origin: req.body.origin ?? defaultOrigin,
       is_scrape: true,
     },
@@ -180,7 +178,7 @@ export async function scrapeController(req: Request, res: Response) {
       return res.status(auth.status).json({ error: auth.error });
     }
 
-    const { team_id, plan, chunk } = auth;
+    const { team_id, chunk } = auth;
 
     redisConnection.sadd("teams_using_v0", team_id)
       .catch(error => logger.error("Failed to add team to teams_using_v0", { error, team_id }));
@@ -240,7 +238,6 @@ export async function scrapeController(req: Request, res: Response) {
       pageOptions,
       extractorOptions,
       timeout,
-      plan,
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;

@@ -1,6 +1,5 @@
 import { logger as _logger } from "../logger";
 import { updateDeepResearch } from "./deep-research-redis";
-import { PlanType } from "../../types";
 import { searchAndScrapeSearchResult } from "../../controllers/v1/search";
 import { ResearchLLMService, ResearchStateManager } from "./research-manager";
 import { logJob } from "../../services/logging/log_job";
@@ -10,7 +9,6 @@ import { ExtractOptions } from "../../controllers/v1/types";
 interface DeepResearchServiceOptions {
   researchId: string;
   teamId: string;
-  plan: string;
   query: string;
   maxDepth: number;
   maxUrls: number;
@@ -23,7 +21,7 @@ interface DeepResearchServiceOptions {
 }
 
 export async function performDeepResearch(options: DeepResearchServiceOptions) {
-  const { researchId, teamId, plan, timeLimit, subId, maxUrls } = options;
+  const { researchId, teamId, timeLimit, subId, maxUrls } = options;
   const startTime = Date.now();
   let currentTopic = options.query;
   let urlsAnalyzed = 0;
@@ -39,7 +37,6 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
   const state = new ResearchStateManager(
     researchId,
     teamId,
-    plan,
     options.maxDepth,
     logger,
     options.query,
@@ -98,7 +95,6 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
 
         const response = await searchAndScrapeSearchResult(searchQuery.query, {
           teamId: options.teamId,
-          plan: options.plan as PlanType,
           origin: "deep-research",
           timeout: 10000,
           scrapeOptions: {

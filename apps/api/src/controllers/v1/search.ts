@@ -13,7 +13,7 @@ import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
-import { PlanType, Mode } from "../../types";
+import { Mode } from "../../types";
 import { getScrapeQueue } from "../../services/queue-service";
 import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
@@ -25,7 +25,6 @@ export async function searchAndScrapeSearchResult(
   query: string,
   options: {
     teamId: string;
-    plan: PlanType | undefined;
     origin: string;
     timeout: number;
     scrapeOptions: ScrapeOptions;
@@ -60,7 +59,6 @@ async function scrapeSearchResult(
   searchResult: { url: string; title: string; description: string },
   options: {
     teamId: string;
-    plan: PlanType | undefined;
     origin: string;
     timeout: number;
     scrapeOptions: ScrapeOptions;
@@ -68,7 +66,6 @@ async function scrapeSearchResult(
 ): Promise<Document> {
   const jobId = uuidv4();
   const jobPriority = await getJobPriority({
-    plan: options.plan as PlanType,
     team_id: options.teamId,
     basePriority: 10,
   });
@@ -84,7 +81,6 @@ async function scrapeSearchResult(
         team_id: options.teamId,
         scrapeOptions: options.scrapeOptions,
         internalOptions: { teamId: options.teamId },
-        plan: options.plan || "free",
         origin: options.origin,
         is_scrape: true,
       },
@@ -190,7 +186,6 @@ export async function searchController(
     const scrapePromises = searchResults.map((result) =>
       scrapeSearchResult(result, {
         teamId: req.auth.team_id,
-        plan: req.auth.plan,
         origin: req.body.origin,
         timeout: req.body.timeout,
         scrapeOptions: req.body.scrapeOptions,

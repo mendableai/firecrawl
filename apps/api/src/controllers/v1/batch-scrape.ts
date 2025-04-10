@@ -40,7 +40,6 @@ export async function batchScrapeController(
     module: "api/v1",
     method: "batchScrapeController",
     teamId: req.auth.team_id,
-    plan: req.auth.plan,
   });
 
   let urls = req.body.urls;
@@ -85,7 +84,6 @@ export async function batchScrapeController(
         internalOptions: { disableSmartWaitCache: true, teamId: req.auth.team_id }, // NOTE: smart wait disabled for batch scrapes to ensure contentful scrape, speed does not matter
         team_id: req.auth.team_id,
         createdAt: Date.now(),
-        plan: req.auth.plan,
       };
 
   if (!req.body.appendToId) {
@@ -99,7 +97,6 @@ export async function batchScrapeController(
   if (urls.length > 1000) {
     // set base to 21
     jobPriority = await getJobPriority({
-      plan: req.auth.plan,
       team_id: req.auth.team_id,
       basePriority: 21,
     });
@@ -116,7 +113,6 @@ export async function batchScrapeController(
         url: x,
         mode: "single_urls" as const,
         team_id: req.auth.team_id,
-        plan: req.auth.plan!,
         crawlerOptions: null,
         scrapeOptions,
         origin: "api",

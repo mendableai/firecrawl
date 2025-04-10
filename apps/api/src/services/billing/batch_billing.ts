@@ -4,7 +4,7 @@ import { supabase_service } from "../supabase";
 import * as Sentry from "@sentry/node";
 import { Queue } from "bullmq";
 import { withAuth } from "../../lib/withAuth";
-import { getACUC, setCachedACUC } from "../../controllers/auth";
+import { getACUC, setCachedACUC, setCachedACUCTeam } from "../../controllers/auth";
 
 // Configuration constants
 const BATCH_KEY = "billing_batch";
@@ -298,7 +298,17 @@ async function supaBillTeam(
   // Update cached ACUC to reflect the new credit usage
   (async () => {
     for (const apiKey of (data ?? []).map((x) => x.api_key)) {
-      await setCachedACUC(apiKey, (acuc) =>
+      await setCachedACUC(apiKey, is_extract, (acuc) =>
+        acuc
+          ? {
+              ...acuc,
+              credits_used: acuc.credits_used + credits,
+              adjusted_credits_used: acuc.adjusted_credits_used + credits,
+              remaining_credits: acuc.remaining_credits - credits,
+            }
+          : null,
+      );
+      await setCachedACUCTeam(team_id, is_extract, (acuc) =>
         acuc
           ? {
               ...acuc,

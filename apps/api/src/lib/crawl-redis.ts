@@ -11,7 +11,6 @@ export type StoredCrawl = {
   scrapeOptions: Omit<ScrapeOptions, "timeout">;
   internalOptions: InternalOptions;
   team_id: string;
-  plan?: string;
   robots?: string;
   cancelled?: boolean;
   createdAt: number;
@@ -24,7 +23,6 @@ export async function saveCrawl(id: string, crawl: StoredCrawl) {
     method: "saveCrawl",
     crawlId: id,
     teamId: crawl.team_id,
-    plan: crawl.plan,
   });
   await redisConnection.set("crawl:" + id, JSON.stringify(crawl));
   await redisConnection.expire("crawl:" + id, 24 * 60 * 60);
@@ -274,7 +272,6 @@ export async function lockURL(
     method: "lockURL",
     preNormalizedURL: url,
     teamId: sc.team_id,
-    plan: sc.plan,
   });
 
   if (typeof sc.crawlerOptions?.limit === "number") {
@@ -335,7 +332,6 @@ export async function lockURLs(
     module: "crawl-redis",
     method: "lockURL",
     teamId: sc.team_id,
-    plan: sc.plan,
   });
 
   // Add to visited_unique set

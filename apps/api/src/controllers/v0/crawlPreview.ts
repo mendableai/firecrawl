@@ -31,8 +31,6 @@ export async function crawlPreviewController(req: Request, res: Response) {
       return res.status(auth.status).json({ error: auth.error });
     }
 
-    const { plan } = auth;
-
     let url = req.body.url;
     if (!url) {
       return res.status(400).json({ error: "Url is required" });
@@ -108,7 +106,6 @@ export async function crawlPreviewController(req: Request, res: Response) {
       scrapeOptions,
       internalOptions,
       team_id,
-      plan,
       robots,
       createdAt: Date.now(),
     };
@@ -130,7 +127,6 @@ export async function crawlPreviewController(req: Request, res: Response) {
                 url,
                 mode: "single_urls",
                 team_id,
-                plan: plan!,
                 crawlerOptions,
                 scrapeOptions,
                 internalOptions,
@@ -153,7 +149,6 @@ export async function crawlPreviewController(req: Request, res: Response) {
           url,
           mode: "single_urls",
           team_id,
-          plan: plan!,
           crawlerOptions,
           scrapeOptions,
           internalOptions,

@@ -3,7 +3,6 @@ import { updateGeneratedLlmsTxt } from "./generate-llmstxt-redis";
 import { getMapResults } from "../../controllers/v1/map";
 import { z } from "zod";
 import { scrapeDocument } from "../extract/document-scraper";
-import { PlanType } from "../../types";
 import {
   getLlmsTextFromCache,
   saveLlmsTextToCache,
@@ -16,7 +15,6 @@ import { generateCompletions } from "../../scraper/scrapeURL/transformers/llmExt
 interface GenerateLLMsTextServiceOptions {
   generationId: string;
   teamId: string;
-  plan: PlanType;
   url: string;
   maxUrls: number;
   showFullText: boolean;
@@ -64,7 +62,7 @@ function limitLlmsTxtEntries(llmstxt: string, maxEntries: number): string {
 export async function performGenerateLlmsTxt(
   options: GenerateLLMsTextServiceOptions,
 ) {
-  const { generationId, teamId, plan, url, maxUrls = 100, showFullText, subId } =
+  const { generationId, teamId, url, maxUrls = 100, showFullText, subId } =
     options;
   const startTime = Date.now();
   const logger = _logger.child({
@@ -113,7 +111,6 @@ export async function performGenerateLlmsTxt(
     const mapResult = await getMapResults({
       url,
       teamId,
-      plan,
       limit: effectiveMaxUrls,
       includeSubdomains: false,
       ignoreSitemap: false,
@@ -142,7 +139,6 @@ export async function performGenerateLlmsTxt(
               {
                 url,
                 teamId,
-                plan,
                 origin: url,
                 timeout: 30000,
                 isSingleUrl: true,

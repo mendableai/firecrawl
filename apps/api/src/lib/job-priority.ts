@@ -1,5 +1,5 @@
-import { redisConnection } from "../../src/services/queue-service";
-import { PlanType } from "../../src/types";
+import { getACUC, getACUCTeam } from "../controllers/auth";
+import { redisConnection } from "../services/queue-service";
 import { logger } from "./logger";
 
 const SET_KEY_PREFIX = "limit_team_id:";
@@ -29,11 +29,9 @@ export async function deleteJobPriority(team_id, job_id) {
 }
 
 export async function getJobPriority({
-  plan,
   team_id,
   basePriority = 10,
 }: {
-  plan: PlanType | undefined;
   team_id: string;
   basePriority?: number;
 }): Promise<number> {
@@ -42,52 +40,16 @@ export async function getJobPriority({
   }
 
   try {
+    const acuc = await getACUCTeam(team_id);
+
     const setKey = SET_KEY_PREFIX + team_id;
 
     // Get the length of the set
     const setLength = await redisConnection.scard(setKey);
 
     // Determine the priority based on the plan and set length
-    let planModifier = 1;
-    let bucketLimit = 0;
-
-    switch (plan) {
-      case "testSuite":
-        bucketLimit = 1000;
-        planModifier = 0.25;
-        break;
-      case "free":
-        bucketLimit = 25;
-        planModifier = 0.5;
-        break;
-      case "hobby":
-        bucketLimit = 100;
-        planModifier = 0.3;
-        break;
-      case "standard":
-      case "standardnew":
-        bucketLimit = 200;
-        planModifier = 0.2;
-        break;
-      case "growth":
-      case "growthdouble":
-        bucketLimit = 400;
-        planModifier = 0.1;
-        break;
-      case "etier2c":
-        bucketLimit = 1000;
-        planModifier = 0.05;
-        break;
-      case "etier1a":
-        bucketLimit = 1000;
-        planModifier = 0.05;
-        break;
-
-      default:
-        bucketLimit = 25;
-        planModifier = 1;
-        break;
-    }
+    let planModifier = acuc?.plan_priority.planModifier ?? 1;
+    let bucketLimit = acuc?.plan_priority.bucketLimit ?? 25;
 
     // if length set is smaller than set, just return base priority
     if (setLength <= bucketLimit) {
@@ -100,7 +62,7 @@ export async function getJobPriority({
     }
   } catch (e) {
     logger.error(
-      `Get job priority failed: ${team_id}, ${plan}, ${basePriority}`,
+      `Get job priority failed: ${team_id}, ${basePriority}`,
     );
     return basePriority;
   }
