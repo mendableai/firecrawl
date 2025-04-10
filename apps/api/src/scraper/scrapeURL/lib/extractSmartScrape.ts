@@ -209,7 +209,7 @@ export async function extractData({
   try {
     const { extract: e, warning: w, totalUsage: t } = await generateCompletions(
       { ...extractOptionsNewSchema,
-        model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
+        model: getModel("gemini-2.5-pro-preview-03-25", "google"),
         retryModel: getModel("o3-mini", "openai"),
       });
     extract = e;
