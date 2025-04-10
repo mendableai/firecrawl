@@ -82,13 +82,15 @@ class RacedRedirectError extends Error {
   }
 }
 
+const MAX_CONCURRENT_JOBS_PER_WORKER = Number(process.env.MAX_CONCURRENT_JOBS_PER_WORKER || 5);
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const workerLockDuration = Number(process.env.WORKER_LOCK_DURATION) || 60000;
 const workerStalledCheckInterval =
   Number(process.env.WORKER_STALLED_CHECK_INTERVAL) || 30000;
 const jobLockExtendInterval =
-  Number(process.env.JOB_LOCK_EXTEND_INTERVAL) || 15000;
+  Number(process.env.JOB_LOCK_EXTEND_INTERVAL) || 10000;
 const jobLockExtensionTime =
   Number(process.env.JOB_LOCK_EXTENSION_TIME) || 60000;
 
@@ -335,7 +337,17 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
       await pushConcurrencyLimitActiveJob(job.data.team_id, job.id, 60 * 1000); // 60s lock renew, just like in the queue
     }
 
-    await job.extendLock(token, jobLockExtensionTime);
+    try {
+      await job.extendLock(token, jobLockExtensionTime);
+    } catch (error) {
+      logger.warn(`Failed to extend lock for job ${job.id}, retrying...`);
+      // Immediate retry
+      try {
+        await job.extendLock(token, jobLockExtensionTime);
+      } catch (retryError) {
+        logger.error(`Failed to extend lock after retry for job ${job.id}`);
+      }
+    }
   }, jobLockExtendInterval);
 
   await addJobPriority(job.data.team_id, job.id);
@@ -549,7 +561,7 @@ const processGenerateLlmsTxtJobInternal = async (
 ) => {
   const logger = _logger.child({
     module: "generate-llmstxt-worker",
-    method: "processJobInternal", 
+    method: "processJobInternal",
     jobId: job.id,
     generateId: job.data.generateId,
     teamId: job.data?.teamId ?? undefined,
@@ -604,7 +616,7 @@ const processGenerateLlmsTxtJobInternal = async (
     }
 
     await updateGeneratedLlmsTxt(job.data.generateId, {
-      status: "failed", 
+      status: "failed",
       error: error.message || "Unknown error occurred",
     });
 
@@ -634,88 +646,278 @@ const workerFun = async (
 ) => {
   const logger = _logger.child({ module: "queue-worker", method: "workerFun" });
 
-  const worker = new Worker(queue.name, null, {
-    connection: redisConnection,
-    lockDuration: 1 * 60 * 1000, // 1 minute
-    // lockRenewTime: 15 * 1000, // 15 seconds
-    stalledInterval: 30 * 1000, // 30 seconds
-    maxStalledCount: 10, // 10 times
-  });
-
-  worker.startStalledCheckTimer();
-
   const monitor = await systemMonitor;
 
-  while (true) {
-    if (isShuttingDown) {
-      console.log("No longer accepting new jobs. SIGINT");
-      break;
-    }
-    const token = uuidv4();
-    const canAcceptConnection = await monitor.acceptConnection();
-    if (!canAcceptConnection) {
-      console.log("Can't accept connection due to RAM/CPU load");
-      logger.info("Can't accept connection due to RAM/CPU load");
-      cantAcceptConnectionCount++;
+  // Track memory snapshots to detect leaks and pressure trends
+  const memorySnapshots: number[] = [];
+  const snapshotInterval = 30_000; // 30 seconds
+  let lastSnapshotTime = Date.now();
 
-      if (cantAcceptConnectionCount >= 25) {
-        logger.error("WORKER STALLED", {
-          cpuUsage: await monitor.checkCpuUsage(),
-          memoryUsage: await monitor.checkMemoryUsage(),
+  // Worker lifecycle management
+  let jobsProcessedCount = 0;
+  const maxJobsBeforeRecycle = 1000; // Consider recycling after 1000 jobs
+  const gcThreshold = 0.75; // Try to GC when memory is above 75%
+
+  // Worker restart tracking (similar to previous implementation)
+  let restartCount = 0;
+  const maxRestarts = 10;
+  const initialBackoffMs = 1000;
+
+  // Function to check and manage system resources
+  async function manageResources(worker: Worker): Promise<boolean> {
+    // Take memory snapshot if needed
+    const now = Date.now();
+    if (now - lastSnapshotTime > snapshotInterval) {
+      const memoryUsage = await monitor.checkMemoryUsage();
+      memorySnapshots.push(memoryUsage);
+      // Keep last 20 snapshots (10 minutes of history)
+      if (memorySnapshots.length > 20) memorySnapshots.shift();
+      lastSnapshotTime = now;
+
+      // Log memory trend
+      if (memorySnapshots.length >= 3) {
+        const trend = memorySnapshots[memorySnapshots.length - 1] - memorySnapshots[memorySnapshots.length - 3];
+        logger.info(`Memory trend over last 90 seconds: ${(trend * 100).toFixed(2)}%`, {
+          currentMemory: memorySnapshots[memorySnapshots.length - 1]
         });
       }
+    }
 
-      await sleep(cantAcceptConnectionInterval); // more sleep
-      continue;
+    // Check if we can accept a new job
+    const canAcceptConnection = await monitor.acceptConnection();
+
+    if (!canAcceptConnection) {
+      const memoryUsage = await monitor.checkMemoryUsage();
+      const cpuUsage = await monitor.checkCpuUsage();
+
+      cantAcceptConnectionCount++;
+      logger.info("Can't accept connection due to RAM/CPU load", {
+            cpuUsage,
+            memoryUsage,
+          });
+
+      // After 10 consecutive rejections, try more aggressive measures
+      if (cantAcceptConnectionCount >= 10) {
+        logger.warn("Worker under sustained resource pressure", {
+          cpuUsage,
+          memoryUsage,
+          cantAcceptConnectionCount,
+        });
+
+        // Try garbage collection if memory is high
+        if (memoryUsage > gcThreshold && global.gc) {
+          logger.info("Attempting to free memory with garbage collection", {
+            cpuUsage,
+            memoryUsage,
+          });
+          try {
+            global.gc();
+          } catch (e) {
+            logger.error("Failed to run garbage collection", { error: e });
+          }
+        }
+
+        // After 25 consecutive rejections, take more drastic action
+        if (cantAcceptConnectionCount >= 25) {
+          logger.error("WORKER STALLED", {
+            cpuUsage,
+            memoryUsage,
+          });
+
+          // If memory is very high, consider recycling the worker
+          if (memoryUsage > 0.85) {
+            logger.warn("Memory pressure too high, scheduling worker restart", {
+            cpuUsage,
+            memoryUsage,
+          });
+
+            // Close worker gracefully and return false to trigger restart
+            try {
+              await worker.close();
+            } catch (closeError) {
+              logger.error("Error closing worker due to memory pressure", {
+                cpuUsage,
+                memoryUsage,
+                error: closeError });
+            }
+
+            return false; // Signal to restart the worker
+          }
+        }
+      }
     } else {
       cantAcceptConnectionCount = 0;
     }
 
-    const job = await worker.getNextJob(token);
-    if (job) {
-      if (job.id) {
-        runningJobs.add(job.id);
+    // Consider recycling after processing many jobs to prevent memory buildup
+    if (jobsProcessedCount > maxJobsBeforeRecycle) {
+      logger.info(`Worker has processed ${jobsProcessedCount} jobs, scheduling recycling`);
+
+      try {
+        await worker.close();
+      } catch (closeError) {
+        logger.error("Error closing worker during scheduled recycling", { error: closeError });
       }
 
-      async function afterJobDone(job: Job<any, any, string>) {
-        if (job.id) {
-          runningJobs.delete(job.id);
+      return false; // Signal to restart the worker
+    }
+
+    return true; // Continue with current worker
+  }
+
+  // Function to create and run a worker with improved resource management
+  async function createAndRunWorker() {
+    try {
+      // Create worker with same configuration as before
+      const worker = new Worker(queue.name, null, {
+        connection: redisConnection,
+        lockDuration: 1 * 60 * 1000, // 1 minute
+        // lockRenewTime: 15 * 1000, // 15 seconds
+        stalledInterval: 30 * 1000,  // 30 seconds
+        maxStalledCount: 10, // 10 times
+      });
+
+      // Add error handler to capture worker failures
+      worker.on("error", async (err) => {
+        logger.error(`Worker error in queue ${queue.name}:`, { error: err });
+
+        if (!isShuttingDown) {
+          // Attempt to restart the worker if not shutting down
+          await handleWorkerFailure(worker, err);
+        }
+      });
+
+      // Also handle worker closing unexpectedly
+      worker.on("closed", async () => {
+        logger.warn(`Worker for queue ${queue.name} closed unexpectedly`);
+
+        if (!isShuttingDown) {
+          await handleWorkerFailure(worker, new Error("Worker closed unexpectedly"));
+        }
+      });
+
+      worker.startStalledCheckTimer();
+
+      const monitor = await systemMonitor;
+
+      // Job processing loop with improved resource management
+      while (true) {
+        if (isShuttingDown) {
+          logger.info("No longer accepting new jobs due to shutdown signal");
+          break;
+        }
+        const token = uuidv4();
+
+        // Check resource state and determine if we should continue or restart
+        const shouldContinue = await manageResources(worker);
+        if (!shouldContinue) {
+          logger.info("Resource manager has requested worker recycling");
+          break; // Exit loop to trigger worker restart
         }
 
-        if (job.id && job.data && job.data.team_id && job.data.plan) {
-          await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
-          cleanOldConcurrencyLimitEntries(job.data.team_id);
 
-          // Queue up next job, if it exists
-          // No need to check if we're under the limit here -- if the current job is finished,
-          // we are 1 under the limit, assuming the job insertion logic never over-inserts. - MG
-          const nextJob = await takeConcurrencyLimitedJob(job.data.team_id);
-          if (nextJob !== null) {
-            await pushConcurrencyLimitActiveJob(job.data.team_id, nextJob.id, 60 * 1000); // 60s initial timeout
+        // Skip job fetch if we can't accept new connections
+        if (cantAcceptConnectionCount > 0) {
+          const memoryUsage = await monitor.checkMemoryUsage();
+          const cpuUsage = await monitor.checkCpuUsage();
 
-            await queue.add(
-              nextJob.id,
+          logger.info("Can't accept connection due to RAM/CPU load", {
+            cpuUsage,
+            memoryUsage,
+          });
+          await sleep(cantAcceptConnectionInterval);
+          continue;
+        }
+
+        const job = runningJobs.size < MAX_CONCURRENT_JOBS_PER_WORKER ?
+          await worker.getNextJob(token) : null;
+        if (job) {
+          jobsProcessedCount++; // Track total jobs processed by this worker instance
+
+          if (job.id) {
+            runningJobs.add(job.id);
+          }
+
+          // Existing afterJobDone function remains unchanged
+          async function afterJobDone(job: Job<any, any, string>) {
+            if (job.id) {
+              runningJobs.delete(job.id);
+            }
+
+            if (job.id && job.data && job.data.team_id && job.data.plan) {
+              await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
+              cleanOldConcurrencyLimitEntries(job.data.team_id);
+
+              // Queue up next job, if it exists
+              const nextJob = await takeConcurrencyLimitedJob(job.data.team_id);
+              if (nextJob !== null) {
+                await pushConcurrencyLimitActiveJob(job.data.team_id, nextJob.id, 60 * 1000);
+
+                await queue.add(
+                  nextJob.id,
+                  {
+                    ...nextJob.data,
+                    concurrencyLimitHit: true,
+                  },
+                  {
+                    ...nextJob.opts,
+                    jobId: nextJob.id,
+                    priority: nextJob.priority,
+                  },
+                );
+              }
+            }
+          }
+
+          if (job.data && job.data.sentry && Sentry.isInitialized()) {
+            Sentry.continueTrace(
               {
-                ...nextJob.data,
-                concurrencyLimitHit: true,
+                sentryTrace: job.data.sentry.trace,
+                baggage: job.data.sentry.baggage,
               },
-              {
-                ...nextJob.opts,
-                jobId: nextJob.id,
-                priority: nextJob.priority,
+              () => {
+                Sentry.startSpan(
+                  {
+                    name: "Scrape job",
+                    attributes: {
+                      job: job.id,
+                      worker: process.env.FLY_MACHINE_ID ?? worker.id,
+                    },
+                  },
+                  async (span) => {
+                    await Sentry.startSpan(
+                      {
+                        name: "Process scrape job",
+                        op: "queue.process",
+                        attributes: {
+                          "messaging.message.id": job.id,
+                          "messaging.destination.name": getScrapeQueue().name,
+                          "messaging.message.body.size": job.data.sentry.size,
+                          "messaging.message.receive.latency":
+                            Date.now() - (job.processedOn ?? job.timestamp),
+                          "messaging.message.retry.count": job.attemptsMade,
+                        },
+                      },
+                      async () => {
+                        let res;
+                        try {
+                          res = await processJobInternal(token, job);
+                        } finally {
+                          await afterJobDone(job);
+                        }
+
+                        if (res !== null) {
+                          span.setStatus({ code: 2 }); // ERROR
+                        } else {
+                          span.setStatus({ code: 1 }); // OK
+                        }
+                      },
+                    );
+                  },
+                );
               },
             );
-          }
-        }
-      }
-
-      if (job.data && job.data.sentry && Sentry.isInitialized()) {
-        Sentry.continueTrace(
-          {
-            sentryTrace: job.data.sentry.trace,
-            baggage: job.data.sentry.baggage,
-          },
-          () => {
+          } else {
             Sentry.startSpan(
               {
                 name: "Scrape job",
@@ -724,61 +926,66 @@ const workerFun = async (
                   worker: process.env.FLY_MACHINE_ID ?? worker.id,
                 },
               },
-              async (span) => {
-                await Sentry.startSpan(
-                  {
-                    name: "Process scrape job",
-                    op: "queue.process",
-                    attributes: {
-                      "messaging.message.id": job.id,
-                      "messaging.destination.name": getScrapeQueue().name,
-                      "messaging.message.body.size": job.data.sentry.size,
-                      "messaging.message.receive.latency":
-                        Date.now() - (job.processedOn ?? job.timestamp),
-                      "messaging.message.retry.count": job.attemptsMade,
-                    },
-                  },
-                  async () => {
-                    let res;
-                    try {
-                      res = await processJobInternal(token, job);
-                    } finally {
-                      await afterJobDone(job);
-                    }
-
-                    if (res !== null) {
-                      span.setStatus({ code: 2 }); // ERROR
-                    } else {
-                      span.setStatus({ code: 1 }); // OK
-                    }
-                  },
-                );
+              () => {
+                processJobInternal(token, job).finally(() => afterJobDone(job));
               },
             );
-          },
-        );
-      } else {
-        Sentry.startSpan(
-          {
-            name: "Scrape job",
-            attributes: {
-              job: job.id,
-              worker: process.env.FLY_MACHINE_ID ?? worker.id,
-            },
-          },
-          () => {
-            processJobInternal(token, job).finally(() => afterJobDone(job));
-          },
-        );
+          }
+
+          await sleep(gotJobInterval);
+        } else {
+          await sleep(connectionMonitorInterval);
+        }
       }
 
-      await sleep(gotJobInterval);
-    } else {
-      await sleep(connectionMonitorInterval);
+      return worker;
+    } catch (error) {
+      logger.error(`Error creating/running worker for queue ${queue.name}:`, { error });
+      await handleWorkerFailure(null, error);
     }
   }
-};
 
+  // Handler for worker failures with exponential backoff
+  async function handleWorkerFailure(worker: Worker | null, error: Error) {
+    if (isShuttingDown) return;
+
+    try {
+      // If worker exists and hasn't already closed, try to close it gracefully
+      if (worker && !worker.closing) {
+        await worker.close();
+      }
+    } catch (closeError) {
+      logger.error(`Error closing failed worker:`, { error: closeError });
+    }
+
+    // Increment restart count and check against max restarts
+    restartCount++;
+
+    if (restartCount > maxRestarts) {
+      logger.error(`Exceeded maximum worker restarts (${maxRestarts}) for queue ${queue.name}. Stopping retries.`);
+      return;
+    }
+
+    // Calculate backoff with exponential delay and jitter
+    const backoffMs = Math.min(30000, initialBackoffMs * Math.pow(2, restartCount - 1));
+    const jitterMs = Math.floor(Math.random() * (backoffMs * 0.2));
+    const delayMs = backoffMs + jitterMs;
+
+    logger.info(`Restarting worker for queue ${queue.name} in ${delayMs}ms (attempt ${restartCount})`);
+
+    // Wait before restarting
+    await sleep(delayMs);
+
+    // Reset some counters that might be relevant for the new worker
+    cantAcceptConnectionCount = 0;
+
+    // Create and run a new worker
+    return createAndRunWorker();
+  }
+
+  // Start the initial worker
+  return createAndRunWorker();
+};
 async function processKickoffJob(job: Job & { id: string }, token: string) {
   const logger = _logger.child({
     module: "queue-worker",
@@ -1236,7 +1443,7 @@ async function processJob(job: Job & { id: string }, token: string) {
             credits: creditsToBeBilled,
             is_extract: false,
           });
-          
+
           // Add directly to the billing queue - the billing worker will handle the rest
           await getBillingQueue().add(
             "bill_team",
