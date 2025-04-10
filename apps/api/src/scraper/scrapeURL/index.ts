@@ -231,7 +231,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
     meta.options.timeout !== undefined
       ? Math.round(meta.options.timeout / Math.min(fallbackList.length, 2))
       : (!meta.options.actions && !meta.options.jsonOptions && !meta.options.extract)
-        ? 120000
+        ? Math.round(120000 / Math.min(fallbackList.length, 2))
         : undefined;
 
   for (const { engine, unsupportedFeatures } of fallbackList) {
