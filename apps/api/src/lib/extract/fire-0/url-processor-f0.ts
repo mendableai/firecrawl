@@ -1,68 +1,34 @@
-import { MapDocument, URLTrace } from "../../controllers/v1/types";
-import { getMapResults } from "../../controllers/v1/map";
-import { PlanType } from "../../types";
-import { removeDuplicateUrls } from "../validateUrl";
-import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
-import { buildPreRerankPrompt, buildRefrasedPrompt } from "./build-prompts";
-import { rerankLinksWithLLM } from "./reranker";
-import { extractConfig } from "./config";
+import { MapDocument, URLTrace } from "../../../controllers/v1/types";
+import { getMapResults } from "../../../controllers/v1/map";
+import { removeDuplicateUrls } from "../../validateUrl";
+import { isUrlBlocked } from "../../../scraper/WebScraper/utils/blocklist";
+import { buildPreRerankPrompt, buildRefrasedPrompt } from "../build-prompts";
+import { rerankLinksWithLLM_F0 } from "./reranker-f0";
+import { extractConfig } from "../config";
 import type { Logger } from "winston";
 import { generateText } from "ai";
-import { getModel } from "../generic-ai";
+import { getModel } from "../../generic-ai";
 
-
-export async function generateBasicCompletion(prompt: string) {
-  try {
-    const result = await generateText({
-      model: getModel("gpt-4o", "openai"),
-      prompt: prompt,
-      providerOptions: {
-        anthropic: {
-          thinking: { type: "enabled", budgetTokens: 12000 },
-        },
-      }
-    });
-    return result.text;
-  } catch (error) {
-    console.error("Error generating basic completion:", error);
-    if (error?.type == "rate_limit_error") {
-      try {
-        const result = await generateText({
-          model: getModel("gpt-4o-mini", "openai"), 
-          prompt: prompt,
-          providerOptions: {
-            anthropic: {
-              thinking: { type: "enabled", budgetTokens: 12000 },
-            },
-          }
-        });
-        return result.text;
-      } catch (fallbackError) {
-        console.error("Error generating basic completion with fallback model:", fallbackError);
-        return null;
-      }
-    }
-    return null;
-  }
+export async function generateBasicCompletion_FO(prompt: string) {
+  const { text } = await generateText({
+    model: getModel("gpt-4o"),
+    prompt: prompt,
+    temperature: 0
+  });
+  return text;
 }
 interface ProcessUrlOptions {
   url: string;
   prompt?: string;
   schema?: any;
   teamId: string;
-  plan: PlanType;
   allowExternalLinks?: boolean;
   origin?: string;
   limit?: number;
   includeSubdomains?: boolean;
-  log?: any;
-  isMultiEntity: boolean;
-  reasoning: string;
-  multiEntityKeys: string[];
-  keyIndicators: string[];
 }
 
-export async function processUrl(
+export async function processUrl_F0(
   options: ProcessUrlOptions,
   urlTraces: URLTrace[],
   updateExtractCallback: (links: string[]) => void,
@@ -96,7 +62,7 @@ export async function processUrl(
   if (options.prompt) {
     searchQuery =
       (
-        await generateBasicCompletion(
+        await generateBasicCompletion_FO(
           buildRefrasedPrompt(options.prompt, baseUrl),
         )
       )
@@ -112,7 +78,6 @@ export async function processUrl(
       url: baseUrl,
       search: searchQuery,
       teamId: options.teamId,
-      plan: options.plan,
       allowExternalLinks: options.allowExternalLinks,
       origin: options.origin,
       limit: options.limit,
@@ -128,7 +93,6 @@ export async function processUrl(
       linkCount: allUrls.length,
       uniqueLinkCount: uniqueUrls.length,
     });
-    options.log["uniqueUrlsLength-1"] = uniqueUrls.length;
 
     // Track all discovered URLs
     uniqueUrls.forEach((discoveredUrl) => {
@@ -150,7 +114,6 @@ export async function processUrl(
       const retryMapResults = await getMapResults({
         url: baseUrl,
         teamId: options.teamId,
-        plan: options.plan,
         allowExternalLinks: options.allowExternalLinks,
         origin: options.origin,
         limit: options.limit,
@@ -182,8 +145,6 @@ export async function processUrl(
         }
       });
     }
-
-    options.log["uniqueUrlsLength-2"] = uniqueUrls.length;
 
     // Track all discovered URLs
     uniqueUrls.forEach((discoveredUrl) => {
@@ -222,7 +183,7 @@ export async function processUrl(
     let rephrasedPrompt = options.prompt ?? searchQuery;
     try {
       rephrasedPrompt =
-        (await generateBasicCompletion(
+        (await generateBasicCompletion_FO(
           buildPreRerankPrompt(rephrasedPrompt, options.schema, baseUrl),
         )) ??
         "Extract the data according to the schema: " +
@@ -246,32 +207,24 @@ export async function processUrl(
     });
 
     logger.info("Reranking pass 1 (threshold 0.8)...");
-    const rerankerResult = await rerankLinksWithLLM({
+    const rerankerResult = await rerankLinksWithLLM_F0({
       links: mappedLinks,
       searchQuery: rephrasedPrompt,
       urlTraces,
-      isMultiEntity: options.isMultiEntity,
-      reasoning: options.reasoning,
-      multiEntityKeys: options.multiEntityKeys,
-      keyIndicators: options.keyIndicators,
     });
     mappedLinks = rerankerResult.mapDocument;
     let tokensUsed = rerankerResult.tokensUsed;
     logger.info("Reranked! (pass 1)", {
       linkCount: mappedLinks.length,
     });
-    options.log["rerankerResult-1"] = mappedLinks.length;
+
     // 2nd Pass, useful for when the first pass returns too many links
     if (mappedLinks.length > 100) {
       logger.info("Reranking (pass 2)...");
-      const rerankerResult = await rerankLinksWithLLM({
+      const rerankerResult = await rerankLinksWithLLM_F0({
         links: mappedLinks,
         searchQuery: rephrasedPrompt,
         urlTraces,
-        isMultiEntity: options.isMultiEntity,
-        reasoning: options.reasoning,
-        multiEntityKeys: options.multiEntityKeys,
-        keyIndicators: options.keyIndicators,
       });
       mappedLinks = rerankerResult.mapDocument;
       tokensUsed += rerankerResult.tokensUsed;
@@ -279,7 +232,6 @@ export async function processUrl(
         linkCount: mappedLinks.length,
       });
     }
-    options.log["rerankerResult-2"] = mappedLinks.length;
 
     // dumpToFile(
     //   "llm-links.txt",
