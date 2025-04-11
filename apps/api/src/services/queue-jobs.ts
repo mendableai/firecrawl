@@ -1,6 +1,6 @@
 import { getScrapeQueue } from "./queue-service";
 import { v4 as uuidv4 } from "uuid";
-import { NotificationType, WebScraperOptions } from "../types";
+import { NotificationType, RateLimiterMode, WebScraperOptions } from "../types";
 import * as Sentry from "@sentry/node";
 import {
   cleanOldConcurrencyLimitEntries,
@@ -78,7 +78,7 @@ async function addScrapeJobRaw(
     webScraperOptions.team_id
   ) {
     const now = Date.now();
-    maxConcurrency = (await getACUCTeam(webScraperOptions.team_id))?.concurrency ?? 2;
+    maxConcurrency = (await getACUCTeam(webScraperOptions.team_id, false, true, webScraperOptions.is_extract ? RateLimiterMode.Extract : RateLimiterMode.Crawl))?.concurrency ?? 2;
     cleanOldConcurrencyLimitEntries(webScraperOptions.team_id, now);
     currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(webScraperOptions.team_id, now)).length;
     concurrencyLimited = currentActiveConcurrency >= maxConcurrency;
@@ -171,7 +171,7 @@ export async function addScrapeJobs(
 
   if (jobs[0].data && jobs[0].data.team_id) {
     const now = Date.now();
-    maxConcurrency = (await getACUCTeam(jobs[0].data.team_id))?.concurrency ?? 2;
+    maxConcurrency = (await getACUCTeam(jobs[0].data.team_id, false, true, jobs[0].data.from_extract ? RateLimiterMode.Extract : RateLimiterMode.Crawl))?.concurrency ?? 2;
     cleanOldConcurrencyLimitEntries(jobs[0].data.team_id, now);
 
     currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(jobs[0].data.team_id, now)).length;

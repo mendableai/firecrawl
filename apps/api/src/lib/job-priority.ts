@@ -1,3 +1,4 @@
+import { RateLimiterMode } from "../types";
 import { getACUC, getACUCTeam } from "../controllers/auth";
 import { redisConnection } from "../services/queue-service";
 import { logger } from "./logger";
@@ -31,16 +32,18 @@ export async function deleteJobPriority(team_id, job_id) {
 export async function getJobPriority({
   team_id,
   basePriority = 10,
+  from_extract = false,
 }: {
   team_id: string;
   basePriority?: number;
+  from_extract?: boolean;
 }): Promise<number> {
   if (team_id === "d97c4ceb-290b-4957-8432-2b2a02727d95") {
     return 50;
   }
 
   try {
-    const acuc = await getACUCTeam(team_id);
+    const acuc = await getACUCTeam(team_id, false, true, from_extract ? RateLimiterMode.Extract : RateLimiterMode.Crawl);
 
     const setKey = SET_KEY_PREFIX + team_id;
 
