@@ -7,6 +7,8 @@ import {
 } from "./deep-research-redis";
 import { generateCompletions, trimToTokenLimit } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { ExtractOptions } from "../../controllers/v1/types";
+import { openai } from "@ai-sdk/openai/dist";
+import { getModel } from "../generic-ai";
 interface AnalysisResult {
   gaps: string[];
   nextSteps: string[];
@@ -277,7 +279,7 @@ export class ResearchLLMService {
         }),
         systemPrompt: formats.includes('json') 
           ? "You are an expert research analyst who creates comprehensive, structured analysis following the provided JSON schema exactly."
-          : "You are an expert research analyst who creates comprehensive, well-structured reports. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations. Today's date is " +
+          : "You are an expert research analyst who creates comprehensive, well-structured reports.  Don't begin the report by saying 'Here is the report', nor 'Below is the report', nor something similar. ALWAYS start with a great title that reflects the research topic and findings. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations. Today's date is " +
             new Date().toISOString().split("T")[0],
         prompt: trimToTokenLimit(
           analysisPrompt
@@ -296,11 +298,17 @@ export class ResearchLLMService {
                 - Make it comprehensive and thorough (aim for 4+ pages worth of content)
                 - Include all relevant findings and insights from the research
                 - Cite sources
-                - Use bullet points and lists where appropriate for readability`,
+                - Cite sources throughout the report
+                - Use bullet points and lists where appropriate for readability
+                - Don't begin the report by saying "Here is the report", nor "Below is the report", nor something similar.
+                - ALWAYS Start with a great title that reflects the research topic and findings - concise and to the point. That's the first thing you should output.
+                
+                Begin!`,
           100000,
         ).text,
       },
       markdown: "",
+      model: getModel('o3-mini'),
     });
 
     return extract;
