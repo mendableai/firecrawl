@@ -154,7 +154,7 @@ export function prepareSmartScrapeSchema(
   isSingleUrl: boolean,
 ) {
   // Make the user's schema nullable *and* ensure nested objects have additionalProperties:false
-  const nullableAndStrictSchema = makeSchemaNullable(originalSchema);
+  const nullableAndStrictSchema = originalSchema;
 
   let smartScrapeWrapScehma;
   if (isSingleUrl) {
