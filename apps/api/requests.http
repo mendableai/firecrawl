@@ -173,11 +173,6 @@ content-type: application/json
       "Lawyer": {
         "type": "object",
         "title": "Lawyer",
-        "required": [
-          "name",
-          "email",
-          "title"
-        ],
         "properties": {
           "name": {
             "type": "string",
@@ -214,8 +209,7 @@ content-type: application/json
                 "type": "null"
               }
             ],
-            "title": "Phone-Number",
-            "default": null
+            "title": "Phone-Number"
           },
           "practice-areas": {
             "type": "array",
@@ -229,9 +223,6 @@ content-type: application/json
       "PracticeArea": {
         "type": "object",
         "title": "PracticeArea",
-        "required": [
-          "area"
-        ],
         "properties": {
           "area": {
             "type": "string",
@@ -241,9 +232,6 @@ content-type: application/json
       }
     },
     "title": "LawyersSchema",
-    "required": [
-      "lawyers"
-    ],
     "properties": {
       "lawyers": {
         "type": "array",

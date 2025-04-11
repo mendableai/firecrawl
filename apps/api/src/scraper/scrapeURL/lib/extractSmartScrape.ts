@@ -194,6 +194,7 @@ export async function extractData({
   const logger = extractOptions.logger;
   const isSingleUrl = urls.length === 1;
   
+  // TODO: remove the "required" fields here!! it breaks o3-mini
   const { schemaToUse } = prepareSmartScrapeSchema(schema, logger, isSingleUrl);
   const extractOptionsNewSchema = {
     ...extractOptions,
@@ -210,8 +211,8 @@ export async function extractData({
   try {
     const { extract: e, warning: w, totalUsage: t } = await generateCompletions(
       { ...extractOptionsNewSchema,
-        model: getModel("o3-mini", "openai"),
-        retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
+        model: getModel("gemini-2.5-pro-preview-03-25", "google"),
+        retryModel: getModel("o3-mini", "openai"),
       });
     extract = e;
     warning = w;
