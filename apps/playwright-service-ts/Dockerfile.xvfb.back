@@ -1,0 +1,46 @@
+# === Stage 1: Build ===
+FROM node:18-slim AS builder
+
+WORKDIR /app
+
+# Install build tools and playwright dependencies early for caching
+RUN apt-get update && apt-get install -y \
+    wget \
+    gnupg \
+    ca-certificates \
+    xvfb \
+    && rm -rf /var/lib/apt/lists/*
+
+# Copy only package files first to install dependencies (Docker layer caching)
+COPY package*.json ./
+RUN npm install
+
+# Copy rest of the source and build
+COPY . .
+RUN npm run build
+
+# === Stage 2: Runtime ===
+FROM node:18-slim
+
+# Install minimal dependencies including xvfb for virtual display
+RUN apt-get update && apt-get install -y \
+    xvfb \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy built files and node_modules from builder
+COPY --from=builder /app /app
+
+# Install Playwright (browsers + deps)
+RUN npx playwright install --with-deps
+
+# Optional: Create non-root user for safer container
+RUN useradd -m puser
+USER puser
+
+ENV PORT=3000
+EXPOSE ${PORT}
+
+# Use xvfb-run for headed browser emulation
+CMD [ "xvfb-run", "-a", "npm", "start" ]

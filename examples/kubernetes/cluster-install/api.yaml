@@ -12,13 +12,11 @@ spec:
       labels:
         app: api
     spec:
-      imagePullSecrets:
-        - name: docker-registry-secret
       containers:
         - name: api
           image: ghcr.io/winkk-dev/firecrawl:latest
           imagePullPolicy: Always
-          args: [ "pnpm", "run", "start:production" ]
+          args: ["pnpm", "run", "start:production"]
           ports:
             - containerPort: 3002
           env:

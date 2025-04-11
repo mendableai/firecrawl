@@ -1,5 +1,11 @@
 docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t logicalsight/firecrawl:1.0.2 \
+  -t logicalsight/firecrawl:1.0.4 \
   ./apps/api \
+  --push
+
+ docker buildx build \
+  --platform linux/amd64,linux/arm64 \
+  -t logicalsight/firecrawl-playwright:1.0.6-xvfb-ms-1.51.1-jammy-1 \
+  ./apps/playwright-service-ts \
   --push

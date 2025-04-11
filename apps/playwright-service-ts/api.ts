@@ -25,6 +25,7 @@ const BLOCK_MEDIA =
 const PROXY_SERVER = process.env.PROXY_SERVER || null;
 const PROXY_USERNAME = process.env.PROXY_USERNAME || null;
 const PROXY_PASSWORD = process.env.PROXY_PASSWORD || null;
+const HEADED_MODE = process.env.HEADED_MODE === "true";
 
 const AD_SERVING_DOMAINS = [
   "doubleclick.net",
@@ -55,7 +56,7 @@ let context: BrowserContext;
 
 const initializeBrowser = async () => {
   browser = await chromium.launch({
-    headless: true,
+    headless: !HEADED_MODE,
     args: [
       "--no-sandbox",
       "--disable-setuid-sandbox",
