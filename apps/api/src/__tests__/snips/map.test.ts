@@ -31,4 +31,16 @@ describe("Map tests", () => {
     expect(response.body.success).toBe(true);
     expect(response.body.links.some(x => x.match(/^https:\/\/www\.hfea\.gov\.uk\/choose-a-clinic\/clinic-search\/results\/?\?options=\d+$/))).toBe(true);
   }, 60000);
+
+  it.concurrent("properly filters URLs in results", async () => {
+    let response = await map({
+      url: "https://www.hfea.gov.uk",
+      sitemapOnly: true,
+      useMock: "map-query-params",
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.body.success).toBe(true);
+    expect(response.body.links.every(link => link.startsWith("http"))).toBe(true);
+  }, 60000);
 });
