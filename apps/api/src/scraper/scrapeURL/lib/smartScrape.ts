@@ -55,16 +55,16 @@ export async function smartScrape(
         prompt,
         models: {
           thinkingModel: {
-            model: "o3-mini",
-            provider: "openai",
+            model: "gemini-2.5-pro-preview-03-25",
+            provider: "google",
             supportTools: true,
             toolChoice: "required",
             cost: {
               input: 1.3,
               output: 5,
             },
-            retryModel: "gemini-2.5-pro-preview-03-25",
-            retryProvider: "google"
+            retryModel: "o3-mini",
+            retryProvider: "openai"
           },
           toolModel: {
             model: "gemini-2.0-flash",
