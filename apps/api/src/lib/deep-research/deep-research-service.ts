@@ -109,7 +109,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
             fastMode: false,
             blockAds: false,
           },
-        });
+        }, logger);
         return response.length > 0 ? response : [];
       });
 

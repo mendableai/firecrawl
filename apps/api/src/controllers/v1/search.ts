@@ -1,5 +1,4 @@
 import { Response } from "express";
-import { logger } from "../../lib/logger";
 import {
   Document,
   RequestWithAuth,
@@ -19,6 +18,8 @@ import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import * as Sentry from "@sentry/node";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { logger as _logger } from "../../lib/logger";
+import type { Logger } from "winston";
 
 // Used for deep research
 export async function searchAndScrapeSearchResult(
@@ -28,7 +29,8 @@ export async function searchAndScrapeSearchResult(
     origin: string;
     timeout: number;
     scrapeOptions: ScrapeOptions;
-  }
+  },
+  logger: Logger,
 ): Promise<Document[]> {
   try {
     const searchResults = await search({
@@ -44,7 +46,8 @@ export async function searchAndScrapeSearchResult(
           title: result.title,
           description: result.description
         },
-        options
+        options,
+        logger
       )
     )
   );
@@ -63,6 +66,7 @@ async function scrapeSearchResult(
     timeout: number;
     scrapeOptions: ScrapeOptions;
   },
+  logger: Logger,
 ): Promise<Document> {
   const jobId = uuidv4();
   const jobPriority = await getJobPriority({
@@ -74,6 +78,12 @@ async function scrapeSearchResult(
     if (isUrlBlocked(searchResult.url)) {
       throw new Error("Could not scrape url: " + BLOCKLISTED_URL_MESSAGE);
     }
+    logger.info("Adding scrape job", {
+      scrapeId: jobId,
+      url: searchResult.url,
+      teamId: options.teamId,
+      origin: options.origin,
+    });
     await addScrapeJob(
       {
         url: searchResult.url,
@@ -90,6 +100,12 @@ async function scrapeSearchResult(
     );
 
     const doc = await waitForJob<Document>(jobId, options.timeout);
+    logger.info("Scrape job completed", {
+      scrapeId: jobId,
+      url: searchResult.url,
+      teamId: options.teamId,
+      origin: options.origin,
+    });
     await getScrapeQueue().remove(jobId);
 
     // Move SERP results to top level
@@ -101,6 +117,7 @@ async function scrapeSearchResult(
     };
   } catch (error) {
     logger.error(`Error in scrapeSearchResult: ${error}`, {
+      scrapeId: jobId,
       url: searchResult.url,
       teamId: options.teamId,
     });
@@ -126,16 +143,30 @@ export async function searchController(
   req: RequestWithAuth<{}, SearchResponse, SearchRequest>,
   res: Response<SearchResponse>,
 ) {
+  const jobId = uuidv4();
+  let logger = _logger.child({
+    jobId,
+    teamId: req.auth.team_id,
+    module: "search",
+    method: "searchController",
+  });
+
   try {
     req.body = searchRequestSchema.parse(req.body);
 
-    const jobId = uuidv4();
+    logger = logger.child({
+      query: req.body.query,
+      origin: req.body.origin,
+    });
+
     const startTime = new Date().getTime();
 
     let limit = req.body.limit;
 
     // Buffer results by 50% to account for filtered URLs
     const num_results_buffer = Math.floor(limit * 2);
+
+    logger.info("Searching for results");
 
     let searchResults = await search({
       query: req.body.query,
@@ -148,12 +179,17 @@ export async function searchController(
       location: req.body.location,
     });
 
+    logger.info("Searching completed", {
+      num_results: searchResults.length,
+    });
+
     // Filter blocked URLs early to avoid unnecessary billing
     if (searchResults.length > limit) {
       searchResults = searchResults.slice(0, limit);
     }
 
     if (searchResults.length === 0) {
+      logger.info("No search results found");
       return res.status(200).json({
         success: true,
         data: [],
@@ -183,16 +219,20 @@ export async function searchController(
     }
 
     // Scrape each non-blocked result, handling timeouts individually
+    logger.info("Scraping search results");
     const scrapePromises = searchResults.map((result) =>
       scrapeSearchResult(result, {
         teamId: req.auth.team_id,
         origin: req.body.origin,
         timeout: req.body.timeout,
         scrapeOptions: req.body.scrapeOptions,
-      }),
+      }, logger),
     );
 
     const docs = await Promise.all(scrapePromises);
+    logger.info("Scraping completed", {
+      num_docs: docs.length,
+    });
 
     // Bill for successful scrapes only
     billTeam(req.auth.team_id, req.acuc?.sub_id, docs.length).catch((error) => {
@@ -207,6 +247,10 @@ export async function searchController(
         doc.serpResults || (doc.markdown && doc.markdown.trim().length > 0),
     );
 
+    logger.info("Filtering completed", {
+      num_docs: filteredDocs.length,
+    });
+
     if (filteredDocs.length === 0) {
       return res.status(200).json({
         success: true,
@@ -217,6 +261,11 @@ export async function searchController(
 
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
+
+    logger.info("Logging job", {
+      num_docs: filteredDocs.length,
+      time_taken: timeTakenInSeconds,
+    });
 
     logJob({
       job_id: jobId,
