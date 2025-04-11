@@ -255,7 +255,7 @@ export async function generateCompletions({
         };
       } catch (error) {
         lastError = error as Error;
-        if (error.message?.includes("Quota exceeded") || error.message?.includes("rate limit")) {
+        if (error.message?.includes("Quota exceeded") || error.message?.includes("You exceeded your current quota") || error.message?.includes("rate limit")) {
           logger.warn("Quota exceeded, retrying with fallback model", { error: lastError.message });
           currentModel = retryModel;
           try {
@@ -400,7 +400,7 @@ export async function generateCompletions({
       result = await generateObject(generateObjectConfig);
     } catch (error) {
       lastError = error as Error;
-      if (error.message?.includes("Quota exceeded") || error.message?.includes("rate limit")) {
+      if (error.message?.includes("Quota exceeded") || error.message?.includes("You exceeded your current quota") || error.message?.includes("rate limit")) {
         logger.warn("Quota exceeded, retrying with fallback model", { error: lastError.message });
         currentModel = retryModel;
         try {

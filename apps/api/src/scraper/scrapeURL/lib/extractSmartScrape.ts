@@ -9,6 +9,8 @@ import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { getModel } from "../../../lib/generic-ai";
 import { TokenUsage } from "../../../controllers/v1/types";
 
+
+
 const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
     type: "boolean",
@@ -188,18 +190,17 @@ export async function extractData({
   useAgent: boolean;
 }): Promise<{ extractedDataArray: any[]; warning: any }> {
 
-  //WRAP SCHEMA
   const schema = extractOptions.options.schema;
   const logger = extractOptions.logger;
   const isSingleUrl = urls.length === 1;
-  console.log("!!!!!!!!!!!!!!!!!!hereee");
+  
   const { schemaToUse } = prepareSmartScrapeSchema(schema, logger, isSingleUrl);
   const extractOptionsNewSchema = {
     ...extractOptions,
     options: { ...extractOptions.options, schema: schemaToUse },
   };
-  console.log("schema", schema);
-  console.log("schemaToUse", schemaToUse);
+  // console.log("schema", schema);
+  // console.log("schemaToUse", schemaToUse);
 
   let extract: any,
     warning: string | undefined,
@@ -209,25 +210,26 @@ export async function extractData({
   try {
     const { extract: e, warning: w, totalUsage: t } = await generateCompletions(
       { ...extractOptionsNewSchema,
-        model: getModel("gemini-2.5-pro-preview-03-25", "google"),
-        retryModel: getModel("o3-mini", "openai"),
+        model: getModel("o3-mini", "openai"),
+        retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
       });
     extract = e;
     warning = w;
     totalUsage = t;
   } catch (error) {
-    console.log("failed during extractSmartScrape.ts:generateCompletions", error);
+    logger.error("failed during extractSmartScrape.ts:generateCompletions", error);
+    // console.log("failed during extractSmartScrape.ts:generateCompletions", error);
   }
 
   let extractedData = extract?.extractedData;
 
-  console.log("shouldUseSmartscrape", extract?.shouldUseSmartscrape);
-  console.log("smartscrape_reasoning", extract?.smartscrape_reasoning);
-  console.log("smartscrape_prompt", extract?.smartscrape_prompt);
+  // console.log("shouldUseSmartscrape", extract?.shouldUseSmartscrape);
+  // console.log("smartscrape_reasoning", extract?.smartscrape_reasoning);
+  // console.log("smartscrape_prompt", extract?.smartscrape_prompt);
   try {
-    console.log('=========================================')
-    console.log("useAgent", useAgent);
-    console.log('=========================================')
+    // console.log('=========================================')
+    // console.log("useAgent", useAgent);
+    // console.log('=========================================')
 
     if (useAgent && extract?.shouldUseSmartscrape) {
       let smartscrapeResults;

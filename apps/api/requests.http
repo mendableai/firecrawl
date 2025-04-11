@@ -155,6 +155,107 @@ content-type: application/json
   }
 }
 
+### Extract Firecrawl Title
+# @name extractFirecrawl
+POST {{baseUrl}}/v1/extract HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json
+
+{
+  "urls":[
+    "https://dfwcaraccidentlawyers.com/*"
+  ],
+  "origin":"api-sdk",
+  "prompt":"Extract the lawyers data from the website",
+  "schema": {
+    "type": "object",
+    "$defs": {
+      "Lawyer": {
+        "type": "object",
+        "title": "Lawyer",
+        "required": [
+          "name",
+          "email",
+          "title"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "email": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          },
+          "phone-number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Phone-Number",
+            "default": null
+          },
+          "practice-areas": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/PracticeArea"
+            },
+            "title": "Practice-Areas"
+          }
+        }
+      },
+      "PracticeArea": {
+        "type": "object",
+        "title": "PracticeArea",
+        "required": [
+          "area"
+        ],
+        "properties": {
+          "area": {
+            "type": "string",
+            "title": "Area"
+          }
+        }
+      }
+    },
+    "title": "LawyersSchema",
+    "required": [
+      "lawyers"
+    ],
+    "properties": {
+      "lawyers": {
+        "type": "array",
+        "items": {
+          "$ref": "#/$defs/Lawyer"
+        },
+        "title": "Lawyers"
+      }
+    }
+  }
+}
+
 ###
 @extractFirecrawlId = {{extractFirecrawl.response.body.$.id}}
 # @name extractFirecrawlStatus 
