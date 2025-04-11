@@ -279,7 +279,7 @@ export class ResearchLLMService {
         }),
         systemPrompt: formats.includes('json') 
           ? "You are an expert research analyst who creates comprehensive, structured analysis following the provided JSON schema exactly."
-          : "You are an expert research analyst who creates comprehensive, well-structured reports. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations. Today's date is " +
+          : "You are an expert research analyst who creates comprehensive, well-structured reports.  Don't begin the report by saying 'Here is the report', nor 'Below is the report', nor something similar. ALWAYS start with a great title that reflects the research topic and findings. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations. Today's date is " +
             new Date().toISOString().split("T")[0],
         prompt: trimToTokenLimit(
           analysisPrompt
@@ -301,7 +301,9 @@ export class ResearchLLMService {
                 - Cite sources throughout the report
                 - Use bullet points and lists where appropriate for readability
                 - Don't begin the report by saying "Here is the report", nor "Below is the report", nor something similar.
-                - Start with a great title that reflects the research topic and findings.`,
+                - ALWAYS Start with a great title that reflects the research topic and findings - concise and to the point. That's the first thing you should output.
+                
+                Begin!`,
           100000,
         ).text,
       },
