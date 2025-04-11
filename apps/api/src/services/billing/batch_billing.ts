@@ -122,7 +122,7 @@ export async function processBillingBatch() {
           group.is_extract
         );
         
-        logger.info(`✅ Successfully billed team ${group.team_id} for ${group.total_credits} credits`);
+        logger.info(`✅ Successfully billed team ${group.team_id} for ${group.total_credits} ${group.is_extract ? 'tokens' : 'credits'}`);
       } catch (error) {
         logger.error(`❌ Failed to bill team ${group.team_id}`, { error, group });
         Sentry.captureException(error, {

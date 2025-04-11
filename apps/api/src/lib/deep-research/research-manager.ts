@@ -7,6 +7,8 @@ import {
 } from "./deep-research-redis";
 import { generateCompletions, trimToTokenLimit } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { ExtractOptions } from "../../controllers/v1/types";
+import { openai } from "@ai-sdk/openai/dist";
+import { getModel } from "../generic-ai";
 interface AnalysisResult {
   gaps: string[];
   nextSteps: string[];
@@ -296,11 +298,14 @@ export class ResearchLLMService {
                 - Make it comprehensive and thorough (aim for 4+ pages worth of content)
                 - Include all relevant findings and insights from the research
                 - Cite sources
-                - Use bullet points and lists where appropriate for readability`,
+                - Cite sources throughout the report
+                - Use bullet points and lists where appropriate for readability
+                - Don't begin the report by saying "Here is the report" or anything similar.`,
           100000,
         ).text,
       },
       markdown: "",
+      model: getModel('o3-mini'),
     });
 
     return extract;
