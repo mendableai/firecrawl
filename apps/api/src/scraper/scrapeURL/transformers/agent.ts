@@ -23,8 +23,8 @@ export async function performAgent(
     }
 
     const prompt = meta.options.agent?.prompt ?? undefined
-    
-    let smartscrapeResults = await smartScrape(url, prompt)
+    const sessionId = meta.options.agent?.sessionId ?? undefined
+    let smartscrapeResults = await smartScrape(url, prompt, sessionId)
 
     const html = smartscrapeResults.scrapedPages[smartscrapeResults.scrapedPages.length - 1].html
 

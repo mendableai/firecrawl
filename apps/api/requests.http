@@ -167,6 +167,7 @@ content-type: application/json
   ],
   "origin":"api-sdk",
   "prompt":"Extract the lawyers data from the website",
+  "agent": true,
   "schema": {
     "type": "object",
     "$defs": {

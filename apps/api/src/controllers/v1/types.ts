@@ -254,6 +254,22 @@ const baseScrapeOptions = z
     agent: z
       .object({
         prompt: z.string().optional(),
+        sessionId: z
+          .string()
+          .optional()
+          .refine(
+            (val) => {
+              if (!val) return true;
+              const parts = val.split('-');
+              return parts.length === 3 && 
+                     parts[0] === 'fc' && 
+                     parts[1].length === 4 && 
+                     parts[2].length <= 22;
+            },
+            {
+              message: "Invalid sessionId format.",
+            },
+          )
       })
       .optional(),
   })

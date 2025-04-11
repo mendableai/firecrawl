@@ -42,6 +42,7 @@ type SmartScrapeResult = z.infer<typeof smartScrapeResultSchema>;
 export async function smartScrape(
   url: string,
   prompt: string,
+  sessionId?: string,
 ): Promise<SmartScrapeResult> {
   try {
     logger.info("Initiating smart scrape request", { url, prompt });
@@ -53,6 +54,7 @@ export async function smartScrape(
       body: {
         url,
         prompt,
+        sessionId,
         models: {
           thinkingModel: {
             model: "gemini-2.5-pro-preview-03-25",
