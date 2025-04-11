@@ -300,7 +300,8 @@ export class ResearchLLMService {
                 - Cite sources
                 - Cite sources throughout the report
                 - Use bullet points and lists where appropriate for readability
-                - Don't begin the report by saying "Here is the report" or anything similar.`,
+                - Don't begin the report by saying "Here is the report", nor "Below is the report", nor something similar.
+                - Start with a great title that reflects the research topic and findings.`,
           100000,
         ).text,
       },
