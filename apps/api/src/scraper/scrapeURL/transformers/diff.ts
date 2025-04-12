@@ -28,7 +28,7 @@ async function extractDataWithSchema(content: string, meta: Meta): Promise<any> 
 }
 
 function compareExtractedData(previousData: any, currentData: any): any {
-    const result: Record<string, { old: any, new: any }> = {};
+    const result: Record<string, { previous: any, current: any }> = {};
     
     const allKeys = new Set([
         ...Object.keys(previousData || {}),
@@ -41,8 +41,8 @@ function compareExtractedData(previousData: any, currentData: any): any {
         
         if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
             result[key] = {
-                old: oldValue,
-                new: newValue
+                previous: oldValue,
+                current: newValue
             };
         }
     }
