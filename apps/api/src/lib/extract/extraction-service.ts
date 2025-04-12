@@ -4,7 +4,6 @@ import {
   TokenUsage,
   URLTrace,
 } from "../../controllers/v1/types";
-import { PlanType } from "../../types";
 import { logger as _logger } from "../logger";
 import { generateBasicCompletion, processUrl } from "./url-processor";
 import { scrapeDocument } from "./document-scraper";
@@ -41,7 +40,6 @@ import fs from "fs/promises";
 interface ExtractServiceOptions {
   request: ExtractRequest;
   teamId: string;
-  plan: PlanType;
   subId?: string;
   cacheMode?: "load" | "save" | "direct";
   cacheKey?: string;
@@ -73,7 +71,7 @@ export async function performExtraction(
   extractId: string,
   options: ExtractServiceOptions,
 ): Promise<ExtractResult> {
-  const { request, teamId, plan, subId, agent } = options;
+  const { request, teamId, subId } = options;
   const urlTraces: URLTrace[] = [];
   let docsMap: Map<string, Document> = new Map();
   let singleAnswerCompletions: completions | null = null;
@@ -92,6 +90,7 @@ export async function performExtraction(
     module: "extract",
     method: "performExtraction",
     extractId,
+    teamId,
   });
 
   // If no URLs are provided, generate URLs from the prompt
@@ -211,7 +210,6 @@ export async function performExtraction(
         url,
         prompt: request.prompt,
         teamId,
-        plan,
         allowExternalLinks: request.allowExternalLinks,
         origin: request.origin,
         limit: request.limit,
@@ -323,7 +321,6 @@ export async function performExtraction(
           {
             url,
             teamId,
-            plan,
             origin: request.origin || "api",
             timeout,
           },
@@ -627,7 +624,6 @@ export async function performExtraction(
           {
             url,
             teamId,
-            plan,
             origin: request.origin || "api",
             timeout,
           },

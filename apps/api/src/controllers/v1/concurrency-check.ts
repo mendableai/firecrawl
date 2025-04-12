@@ -1,13 +1,10 @@
-import { authenticateUser } from "../auth";
 import {
   ConcurrencyCheckParams,
   ConcurrencyCheckResponse,
   RequestWithAuth,
 } from "./types";
-import { RateLimiterMode, PlanType } from "../../types";
 import { Response } from "express";
 import { redisConnection } from "../../services/queue-service";
-import { getConcurrencyLimitMax } from "../../services/rate-limiter";
 
 // Basically just middleware and error wrapping
 export async function concurrencyCheckController(
@@ -22,14 +19,9 @@ export async function concurrencyCheckController(
     Infinity,
   );
 
-  const maxConcurrency = getConcurrencyLimitMax(
-    req.auth.plan as PlanType,
-    req.auth.team_id,
-  );
-
   return res.status(200).json({
     success: true,
     concurrency: activeJobsOfTeam.length,
-    maxConcurrency: maxConcurrency,
+    maxConcurrency: req.acuc.concurrency,
   });
 }

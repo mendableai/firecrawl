@@ -1,6 +1,5 @@
 import { MapDocument, URLTrace } from "../../controllers/v1/types";
 import { getMapResults } from "../../controllers/v1/map";
-import { PlanType } from "../../types";
 import { removeDuplicateUrls } from "../validateUrl";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { buildPreRerankPrompt, buildRefrasedPrompt } from "./build-prompts";
@@ -50,7 +49,6 @@ interface ProcessUrlOptions {
   prompt?: string;
   schema?: any;
   teamId: string;
-  plan: PlanType;
   allowExternalLinks?: boolean;
   origin?: string;
   limit?: number;
@@ -112,7 +110,6 @@ export async function processUrl(
       url: baseUrl,
       search: searchQuery,
       teamId: options.teamId,
-      plan: options.plan,
       allowExternalLinks: options.allowExternalLinks,
       origin: options.origin,
       limit: options.limit,
@@ -150,7 +147,6 @@ export async function processUrl(
       const retryMapResults = await getMapResults({
         url: baseUrl,
         teamId: options.teamId,
-        plan: options.plan,
         allowExternalLinks: options.allowExternalLinks,
         origin: options.origin,
         limit: options.limit,

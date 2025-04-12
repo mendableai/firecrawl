@@ -1,6 +1,5 @@
 import { Response } from "express";
 import { supabaseGetJobByIdOnlyData } from "../../lib/supabase-jobs";
-import { scrapeStatusRateLimiter } from "../../services/rate-limiter";
 
 export async function scrapeStatusController(req: any, res: any) {
   const allowedTeams = [

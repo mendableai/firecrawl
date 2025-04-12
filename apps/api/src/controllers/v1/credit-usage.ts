@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import { RequestWithAuth } from "./types";
-import { getACUC } from "../auth";
+import { getACUCTeam } from "../auth";
 import { logger } from "../../lib/logger";
 
 export async function creditUsageController(
@@ -20,7 +20,7 @@ export async function creditUsageController(
     }
 
     // Otherwise fetch fresh data
-    const chunk = await getACUC(req.auth.team_id);
+    const chunk = await getACUCTeam(req.auth.team_id);
     if (!chunk) {
       res.status(404).json({
         success: false,

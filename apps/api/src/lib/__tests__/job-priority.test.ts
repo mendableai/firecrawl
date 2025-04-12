@@ -4,7 +4,7 @@ import {
   deleteJobPriority,
 } from "../job-priority";
 import { redisConnection } from "../../services/queue-service";
-import { PlanType } from "../../types";
+import {  } from "../../types";
 
 jest.mock("../../services/queue-service", () => ({
   redisConnection: {
@@ -46,14 +46,14 @@ describe("Job Priority Tests", () => {
 
   test("getJobPriority should return correct priority based on plan and set length", async () => {
     const team_id = "team1";
-    const plan: PlanType = "standard";
+    const plan = "standard";
     (redisConnection.scard as jest.Mock).mockResolvedValue(150);
 
-    const priority = await getJobPriority({ plan, team_id });
+    const priority = await getJobPriority({ team_id });
     expect(priority).toBe(10);
 
     (redisConnection.scard as jest.Mock).mockResolvedValue(250);
-    const priorityExceeded = await getJobPriority({ plan, team_id });
+    const priorityExceeded = await getJobPriority({ team_id });
     expect(priorityExceeded).toBe(20); // basePriority + Math.ceil((250 - 200) * 0.4)
   });
 
@@ -61,23 +61,23 @@ describe("Job Priority Tests", () => {
     const team_id = "team1";
 
     (redisConnection.scard as jest.Mock).mockResolvedValue(50);
-    let plan: PlanType = "hobby";
-    let priority = await getJobPriority({ plan, team_id });
+    let plan = "hobby";
+    let priority = await getJobPriority({ team_id });
     expect(priority).toBe(10);
 
     (redisConnection.scard as jest.Mock).mockResolvedValue(150);
     plan = "hobby";
-    priority = await getJobPriority({ plan, team_id });
+    priority = await getJobPriority({ team_id });
     expect(priority).toBe(25); // basePriority + Math.ceil((150 - 50) * 0.3)
 
     (redisConnection.scard as jest.Mock).mockResolvedValue(25);
     plan = "free";
-    priority = await getJobPriority({ plan, team_id });
+    priority = await getJobPriority({ team_id });
     expect(priority).toBe(10);
 
     (redisConnection.scard as jest.Mock).mockResolvedValue(60);
     plan = "free";
-    priority = await getJobPriority({ plan, team_id });
+    priority = await getJobPriority({ team_id });
     expect(priority).toBe(28); // basePriority + Math.ceil((60 - 25) * 0.5)
   });
 

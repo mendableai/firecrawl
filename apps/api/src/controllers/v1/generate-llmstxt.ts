@@ -30,7 +30,6 @@ export async function generateLLMsTextController(
   const jobData = {
     request: req.body,
     teamId: req.auth.team_id,
-    plan: req.auth.plan,
     subId: req.acuc?.sub_id,
     generationId,
   };
@@ -38,7 +37,6 @@ export async function generateLLMsTextController(
   await saveGeneratedLlmsTxt(generationId, {
     id: generationId,
     team_id: req.auth.team_id,
-    plan: req.auth.plan!, // Add non-null assertion since plan is required
     createdAt: Date.now(),
     status: "processing",
     url: req.body.url,

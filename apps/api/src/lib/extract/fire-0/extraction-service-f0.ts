@@ -5,40 +5,46 @@ import {
     URLTrace,
   } from "../../../controllers/v1/types";
   import { logger as _logger } from "../../logger";
-  import { generateBasicCompletion, generateBasicCompletion_F0, processUrl } from "../url-processor";
-  import { scrapeDocument } from "../document-scraper";
-  import {
-    generateCompletions,
-    generateSchemaFromPrompt,
-  } from "../../../scraper/scrapeURL/transformers/llmExtract";
+  import { scrapeDocument_F0 } from "./document-scraper-f0";
   import { billTeam } from "../../../services/billing/credit_billing";
   import { logJob } from "../../../services/logging/log_job";
   import { _addScrapeJobToBullMQ } from "../../../services/queue-jobs";
-  import { dereferenceSchema } from "./../helpers/dereference-schema";
-  import { spreadSchemas } from "./../helpers/spread-schemas";
-  import { transformArrayToObject } from "./../helpers/transform-array-to-obj";
-  import { mixSchemaObjects } from "./../helpers/mix-schema-objs";
+  import { dereferenceSchema } from "../helpers/dereference-schema";
+  import { spreadSchemas } from "../helpers/spread-schemas";
+  import { transformArrayToObject } from "../helpers/transform-array-to-obj";
+  import { mixSchemaObjects } from "../helpers/mix-schema-objs";
   import Ajv from "ajv";
   const ajv = new Ajv();
   
-  import { ExtractStep, updateExtract } from "./../extract-redis";
-  import { deduplicateObjectsArray } from "./../helpers/deduplicate-objs-array";
-  import { mergeNullValObjs } from "./../helpers/merge-null-val-objs";
-  import { areMergeable } from "./../helpers/merge-null-val-objs";
-  import { CUSTOM_U_TEAMS } from "./../config";
+  import { ExtractStep, updateExtract } from "../extract-redis";
+  import { deduplicateObjectsArray } from "../helpers/deduplicate-objs-array";
+  import { mergeNullValObjs } from "../helpers/merge-null-val-objs";
+  import { areMergeable } from "../helpers/merge-null-val-objs";
+  import { CUSTOM_U_TEAMS } from "../config";
   import {
     calculateFinalResultCost,
     estimateTotalCost,
   } from "../usage/llm-cost";
-  import { analyzeSchemaAndPrompt } from "../completions/analyzeSchemaAndPrompt";
-  import { checkShouldExtract } from "../completions/checkShouldExtract";
-  import { batchExtractPromise } from "../completions/batchExtract";
   import { singleAnswerCompletion } from "../completions/singleAnswer";
   import { SourceTracker } from "../helpers/source-tracker";
   import { getCachedDocs, saveCachedDocs } from "../helpers/cached-docs";
   import { normalizeUrl } from "../../canonical-url";
   import { search } from "../../../search";
-  import { buildRephraseToSerpPrompt } from "../build-prompts";
+import { buildRephraseToSerpPrompt_F0 } from "./build-prompts-f0";
+import { processUrl_F0, generateBasicCompletion_FO } from "./url-processor-f0";
+import { generateCompletions_F0, generateSchemaFromPrompt_F0 } from "./llmExtract-f0";
+import { dereferenceSchema_F0 } from "./helpers/dereference-schema-f0";
+import { analyzeSchemaAndPrompt_F0 } from "./completions/analyzeSchemaAndPrompt";
+import { checkShouldExtract_F0 } from "./completions/checkShouldExtract-f0";
+import { batchExtractPromise_F0 } from "./completions/batchExtract-f0";
+import { transformArrayToObject_F0 } from "./helpers/transform-array-to-obj-f0";
+import { deduplicateObjectsArray_F0 } from "./helpers/deduplicate-objs-array-f0";
+import { mergeNullValObjs_F0 } from "./helpers/merge-null-val-objs-f0";
+import { mixSchemaObjects_F0 } from "./helpers/mix-schema-objs-f0";
+import { singleAnswerCompletion_F0 } from "./completions/singleAnswer-f0";
+import { calculateFinalResultCost_F0, estimateTotalCost_F0 } from "./usage/llm-cost-f0";
+import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
+
   
   interface ExtractServiceOptions {
     request: ExtractRequest;
@@ -97,7 +103,7 @@ import {
       logger.debug("Generating URLs from prompt...", {
         prompt: request.prompt,
       });
-      const rephrasedPrompt = await generateBasicCompletion_F0(buildRephraseToSerpPrompt(request.prompt));
+      const rephrasedPrompt = await generateBasicCompletion_FO(buildRephraseToSerpPrompt_F0(request.prompt));
       const searchResults = await search({
         query:  rephrasedPrompt.replace('"', "").replace("'", ""),
         num_results: 10,
@@ -154,7 +160,7 @@ import {
     });
     
     const urlPromises = urls.map((url) =>
-      processUrl(
+      processUrl_F0(
         {
           url,
           prompt: request.prompt,
@@ -217,7 +223,7 @@ import {
   
     let reqSchema = request.schema;
     if (!reqSchema && request.prompt) {
-      reqSchema = await generateSchemaFromPrompt(request.prompt);
+      reqSchema = await generateSchemaFromPrompt_F0(request.prompt);
       logger.debug("Generated request schema.", {
         originalSchema: request.schema,
         schema: reqSchema,
@@ -225,7 +231,7 @@ import {
     }
   
     if (reqSchema) {
-      reqSchema = await dereferenceSchema(reqSchema);
+      reqSchema = await dereferenceSchema_F0(reqSchema);
     }
   
     logger.debug("Transformed schema.", {
@@ -245,7 +251,7 @@ import {
       reasoning,
       keyIndicators,
       tokenUsage: schemaAnalysisTokenUsage,
-    } = await analyzeSchemaAndPrompt(links, reqSchema, request.prompt ?? "");
+    } = await analyzeSchemaAndPrompt_F0(links, reqSchema, request.prompt ?? "");
   
     logger.debug("Analyzed schema.", {
       isMultiEntity,
@@ -304,7 +310,7 @@ import {
       
       const scrapePromises = links.map((url) => {
         if (!docsMap.has(normalizeUrl(url))) {
-          return scrapeDocument(
+          return scrapeDocument_F0(
             {
               url,
               teamId,
@@ -384,7 +390,7 @@ import {
             });
   
             // Check if page should be extracted before proceeding
-            const { extract, tokenUsage: shouldExtractCheckTokenUsage } = await checkShouldExtract(
+            const { extract, tokenUsage: shouldExtractCheckTokenUsage } = await checkShouldExtract_F0(
               request.prompt ?? "",
               multiEntitySchema,
               doc,
@@ -429,13 +435,13 @@ import {
               ],
             });
   
-            const completionPromise = batchExtractPromise(multiEntitySchema, links, request.prompt ?? "", request.systemPrompt ?? "", doc);
+            const completionPromise = batchExtractPromise_F0(multiEntitySchema, links, request.prompt ?? "", request.systemPrompt ?? "", doc);
   
             // Race between timeout and completion
             const multiEntityCompletion = (await Promise.race([
               completionPromise,
               timeoutPromise,
-            ])) as Awaited<ReturnType<typeof generateCompletions>>;
+            ])) as Awaited<ReturnType<typeof generateCompletions_F0>>;
   
             // Track multi-entity extraction tokens
             if (multiEntityCompletion) {
@@ -503,25 +509,25 @@ import {
   
       try {
         // Use SourceTracker to handle source tracking
-        const sourceTracker = new SourceTracker();
+        const sourceTracker = new SourceTracker_F0();
         
         // Transform and merge results while preserving sources
-        sourceTracker.transformResults(extractionResults, multiEntitySchema, false);
+        sourceTracker.transformResults_F0(extractionResults, multiEntitySchema, false);
         
-        multiEntityResult = transformArrayToObject(
+        multiEntityResult = transformArrayToObject_F0(
           multiEntitySchema,
           multiEntityCompletions,
         );
         
         // Track sources before deduplication
-        sourceTracker.trackPreDeduplicationSources(multiEntityResult);
+        sourceTracker.trackPreDeduplicationSources_F0(multiEntityResult);
         
         // Apply deduplication and merge
-        multiEntityResult = deduplicateObjectsArray(multiEntityResult);
-        multiEntityResult = mergeNullValObjs(multiEntityResult);
+        multiEntityResult = deduplicateObjectsArray_F0(multiEntityResult);
+        multiEntityResult = mergeNullValObjs_F0(multiEntityResult);
         
         // Map sources to final deduplicated/merged items
-        const multiEntitySources = sourceTracker.mapSourcesToFinalItems(multiEntityResult, multiEntityKeys);
+        const multiEntitySources = sourceTracker.mapSourcesToFinalItems_F0(multiEntityResult, multiEntityKeys);
         Object.assign(sources, multiEntitySources);
   
       } catch (error) {
@@ -566,7 +572,7 @@ import {
       });
       const scrapePromises = links.map((url) => {
         if (!docsMap.has(normalizeUrl(url))) {
-          return scrapeDocument(
+          return scrapeDocument_F0(
             {
               url,
               teamId,
@@ -640,12 +646,12 @@ import {
   
       // Generate completions
       logger.debug("Generating singleAnswer completions...");
-      let { extract: completionResult, tokenUsage: singleAnswerTokenUsage, sources: singleAnswerSources } = await singleAnswerCompletion({
+      let { extract: completionResult, tokenUsage: singleAnswerTokenUsage, sources: singleAnswerSources } = await singleAnswerCompletion_F0({
         singleAnswerDocs,
         rSchema,
         links,
         prompt: request.prompt ?? "",
-        systemPrompt: request.systemPrompt ?? "",
+        systemPrompt: request.systemPrompt ?? ""
       });
       logger.debug("Done generating singleAnswer completions.");
   
@@ -687,7 +693,7 @@ import {
     }
   
     let finalResult = reqSchema
-      ? await mixSchemaObjects(
+      ? await mixSchemaObjects_F0(
           reqSchema,
           singleAnswerResult,
           multiEntityResult,
@@ -746,8 +752,8 @@ import {
     // }
   
     const totalTokensUsed = tokenUsage.reduce((a, b) => a + b.totalTokens, 0);
-    const llmUsage = estimateTotalCost(tokenUsage);
-    let tokensToBill = calculateFinalResultCost(finalResult);
+    const llmUsage = estimateTotalCost_F0(tokenUsage);
+    let tokensToBill = calculateFinalResultCost_F0(finalResult);
   
     if (CUSTOM_U_TEAMS.includes(teamId)) {
       tokensToBill = 1;

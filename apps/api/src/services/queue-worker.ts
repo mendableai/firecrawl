@@ -28,6 +28,7 @@ import {
   addCrawlJobs,
   crawlToCrawler,
   finishCrawl,
+  finishCrawlPre,
   finishCrawlKickoff,
   generateURLPermutations,
   getCrawl,
@@ -47,11 +48,9 @@ import {
   deleteJobPriority,
   getJobPriority,
 } from "../../src/lib/job-priority";
-import { PlanType, RateLimiterMode } from "../types";
 import { getJobs } from "..//controllers/v1/crawl-status";
 import { configDotenv } from "dotenv";
 import { scrapeOptions } from "../controllers/v1/types";
-import { getRateLimiterPoints } from "./rate-limiter";
 import {
   cleanOldConcurrencyLimitEntries,
   pushConcurrencyLimitActiveJob,
@@ -100,7 +99,88 @@ const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 const runningJobs: Set<string> = new Set();
 
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
-  if (await finishCrawl(job.data.crawl_id)) {
+  if (await finishCrawlPre(job.data.crawl_id)) {
+    if (job.data.crawlerOptions && !await redisConnection.exists("crawl:" + job.data.crawl_id + ":invisible_urls")) {
+      await redisConnection.set("crawl:" + job.data.crawl_id + ":invisible_urls", "done", "EX", 60 * 60 * 24);
+
+      const sc = (await getCrawl(job.data.crawl_id))!;
+
+      const visitedUrls = new Set(await redisConnection.smembers(
+        "crawl:" + job.data.crawl_id + ":visited_unique",
+      ));
+
+      const lastUrls: string[] = ((await supabase_service.rpc("diff_get_last_crawl_urls", {
+        i_team_id: job.data.team_id,
+        i_url: sc.originUrl!,
+      })).data ?? []).map(x => x.url);
+
+      const lastUrlsSet = new Set(lastUrls);
+
+      const crawler = crawlToCrawler(
+        job.data.crawl_id,
+        sc,
+        sc.originUrl!,
+        job.data.crawlerOptions,
+      );
+
+      const univistedUrls = crawler.filterLinks(
+        Array.from(lastUrlsSet).filter(x => !visitedUrls.has(x)),
+        Infinity,
+        sc.crawlerOptions.maxDepth ?? 10,
+      );
+      
+      const addableJobCount = sc.crawlerOptions.limit === undefined ? Infinity : (sc.crawlerOptions.limit - await getDoneJobsOrderedLength(job.data.crawl_id));
+
+      console.log(sc.originUrl!, univistedUrls, visitedUrls, lastUrls, addableJobCount);
+
+      if (univistedUrls.length !== 0 && addableJobCount > 0) {
+        const jobs = univistedUrls.slice(0, addableJobCount).map((url) => {
+          const uuid = uuidv4();
+          return {
+            name: uuid,
+            data: {
+              url,
+              mode: "single_urls" as const,
+              team_id: job.data.team_id,
+              crawlerOptions: {
+                ...job.data.crawlerOptions,
+                urlInvisibleInCurrentCrawl: true,
+              },
+              scrapeOptions: job.data.scrapeOptions,
+              internalOptions: sc.internalOptions,
+              origin: job.data.origin,
+              crawl_id: job.data.crawl_id,
+              sitemapped: true,
+              webhook: job.data.webhook,
+              v1: job.data.v1,
+            },
+            opts: {
+              jobId: uuid,
+              priority: 20,
+            },
+          };
+        });
+
+        const lockedIds = await lockURLsIndividually(
+          job.data.crawl_id,
+          sc,
+          jobs.map((x) => ({ id: x.opts.jobId, url: x.data.url })),
+        );
+        const lockedJobs = jobs.filter((x) =>
+          lockedIds.find((y) => y.id === x.opts.jobId),
+        );
+        await addCrawlJobs(
+          job.data.crawl_id,
+          lockedJobs.map((x) => x.opts.jobId),
+        );
+        await addScrapeJobs(lockedJobs);
+
+        return;
+      }
+    }
+
+    await finishCrawl(job.data.crawl_id);
+
     (async () => {
       const originUrl = sc.originUrl
         ? normalizeUrlOnlyHostname(sc.originUrl)
@@ -324,7 +404,6 @@ const processExtractJobInternal = async (
     const result = await performExtraction(job.data.extractId, {
       request: job.data.request,
       teamId: job.data.teamId,
-      plan: job.data.plan,
       subId: job.data.subId,
     });
 
@@ -406,7 +485,6 @@ const processDeepResearchJobInternal = async (
     const result = await performDeepResearch({
       researchId: job.data.researchId,
       teamId: job.data.teamId,
-      plan: job.data.plan,
       query: job.data.request.query,
       maxDepth: job.data.request.maxDepth,
       timeLimit: job.data.request.timeLimit,
@@ -481,7 +559,6 @@ const processGenerateLlmsTxtJobInternal = async (
     const result = await performGenerateLlmsTxt({
       generationId: job.data.generationId,
       teamId: job.data.teamId,
-      plan: job.data.plan,
       url: job.data.request.url,
       maxUrls: job.data.request.maxUrls,
       showFullText: job.data.request.showFullText,
@@ -599,7 +676,7 @@ const workerFun = async (
           runningJobs.delete(job.id);
         }
 
-        if (job.id && job.data && job.data.team_id && job.data.plan) {
+        if (job.id && job.data && job.data.team_id) {
           await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
           cleanOldConcurrencyLimitEntries(job.data.team_id);
 
@@ -722,7 +799,6 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
         crawlerOptions: job.data.crawlerOptions,
         scrapeOptions: scrapeOptions.parse(job.data.scrapeOptions),
         internalOptions: sc.internalOptions,
-        plan: job.data.plan!,
         origin: job.data.origin,
         crawl_id: job.data.crawl_id,
         webhook: job.data.webhook,
@@ -761,7 +837,6 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
           });
 
           let jobPriority = await getJobPriority({
-            plan: job.data.plan,
             team_id: job.data.team_id,
             basePriority: 21,
           });
@@ -775,7 +850,6 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
                 url,
                 mode: "single_urls" as const,
                 team_id: job.data.team_id,
-                plan: job.data.plan!,
                 crawlerOptions: job.data.crawlerOptions,
                 scrapeOptions: job.data.scrapeOptions,
                 internalOptions: sc.internalOptions,
@@ -1072,7 +1146,6 @@ async function processJob(job: Job & { id: string }, token: string) {
             if (await lockURL(job.data.crawl_id, sc, link)) {
               // This seems to work really welel
               const jobPriority = await getJobPriority({
-                plan: sc.plan as PlanType,
                 team_id: sc.team_id,
                 basePriority: job.data.crawl_id ? 20 : 10,
               });
@@ -1086,7 +1159,6 @@ async function processJob(job: Job & { id: string }, token: string) {
                 { jobPriority, url: link },
               );
 
-              // console.log("plan: ",  sc.plan);
               // console.log("team_id: ", sc.team_id)
               // console.log("base priority: ", job.data.crawl_id ? 20 : 10)
               // console.log("job priority: " , jobPriority, "\n\n\n")
@@ -1102,7 +1174,6 @@ async function processJob(job: Job & { id: string }, token: string) {
                     ...sc.crawlerOptions,
                     currentDiscoveryDepth: (job.data.crawlerOptions?.currentDiscoveryDepth ?? 0) + 1,
                   },
-                  plan: job.data.plan,
                   origin: job.data.origin,
                   crawl_id: job.data.crawl_id,
                   webhook: job.data.webhook,

@@ -105,9 +105,9 @@ export function authMiddleware(
         }
       }
 
-      const { team_id, plan, chunk } = auth;
+      const { team_id, chunk } = auth;
 
-      req.auth = { team_id, plan };
+      req.auth = { team_id };
       req.acuc = chunk ?? undefined;
       if (chunk) {
         req.account = { remainingCredits: chunk.remaining_credits };

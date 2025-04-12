@@ -1,5 +1,4 @@
 import { Document, ScrapeOptions, URLTrace, scrapeOptions } from "../../controllers/v1/types";
-import { PlanType } from "../../types";
 import { logger } from "../logger";
 import { getScrapeQueue } from "../../services/queue-service";
 import { waitForJob } from "../../services/queue-jobs";
@@ -10,7 +9,6 @@ import type { Logger } from "winston";
 interface ScrapeDocumentOptions {
   url: string;
   teamId: string;
-  plan: PlanType;
   origin: string;
   timeout: number;
   isSingleUrl?: boolean;
@@ -31,9 +29,9 @@ export async function scrapeDocument(
   async function attemptScrape(timeout: number) {
     const jobId = crypto.randomUUID();
     const jobPriority = await getJobPriority({
-      plan: options.plan,
       team_id: options.teamId,
       basePriority: 10,
+      from_extract: true,
     });
 
     await addScrapeJob(
@@ -44,10 +42,11 @@ export async function scrapeDocument(
         scrapeOptions: scrapeOptions.parse({ ...internalScrapeOptions }),
         internalOptions: {
           useCache: true,
+          teamId: options.teamId,
         },
-        plan: options.plan,
         origin: options.origin,
         is_scrape: true,
+        from_extract: true,
       },
       {},
       jobId,
