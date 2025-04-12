@@ -112,6 +112,49 @@ describe("Scrape tests", () => {
           expect(response.changeTracking?.diff?.structured.files).toBeInstanceOf(Array);
         }
       }, 30000);
+      
+      it.concurrent("includes structured output when requested", async () => {
+        const response = await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking", "changeTracking@structured"],
+          changeTrackingOptions: {
+            prompt: "Summarize the changes between the previous and current content",
+            systemPrompt: "You are a helpful assistant that summarizes changes between document versions."
+          }
+        });
+
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
+        
+        if (response.changeTracking?.changeStatus === "changed") {
+          expect(response.changeTracking?.structured).toBeDefined();
+        }
+      }, 30000);
+      
+      it.concurrent("supports schema-based extraction for change tracking", async () => {
+        const response = await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking", "changeTracking@structured"],
+          changeTrackingOptions: {
+            schema: {
+              type: "object",
+              properties: {
+                summary: { type: "string" },
+                significantChanges: { type: "boolean" }
+              }
+            }
+          }
+        });
+
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
+        
+        if (response.changeTracking?.changeStatus === "changed") {
+          expect(response.changeTracking?.structured).toBeDefined();
+          expect(response.changeTracking?.structured).toHaveProperty("summary");
+          expect(response.changeTracking?.structured).toHaveProperty("significantChanges");
+        }
+      }, 30000);
     });
   
     describe("Location API (f-e dependant)", () => {

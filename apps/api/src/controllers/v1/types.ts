@@ -21,7 +21,8 @@ export type Format =
   | "screenshot@fullPage"
   | "extract"
   | "changeTracking"
-  | "changeTracking@diff-git";
+  | "changeTracking@diff-git"
+  | "changeTracking@structured";
 
 export const url = z.preprocess(
   (x) => {
@@ -168,6 +169,7 @@ const baseScrapeOptions = z
         "json",
         "changeTracking",
         "changeTracking@diff-git",
+        "changeTracking@structured",
       ])
       .array()
       .optional()
@@ -183,6 +185,10 @@ const baseScrapeOptions = z
       .refine(
         (x) => !x.includes("changeTracking@diff-git") || x.includes("changeTracking"),
         "The changeTracking@diff-git format requires the changeTracking format to be specified as well",
+      )
+      .refine(
+        (x) => !x.includes("changeTracking@structured") || x.includes("changeTracking"),
+        "The changeTracking@structured format requires the changeTracking format to be specified as well",
       ),
     headers: z.record(z.string(), z.string()).optional(),
     includeTags: z.string().array().optional(),
@@ -201,6 +207,15 @@ const baseScrapeOptions = z
     extract: extractOptions.optional(),
     // New
     jsonOptions: extractOptions.optional(),
+    changeTrackingOptions: z
+      .object({
+        prompt: z.string().optional(),
+        systemPrompt: z.string().optional(),
+        schema: z.any().optional(),
+        temperature: z.number().optional().default(0),
+        mode: z.enum(["llm"]).optional().default("llm"),
+      })
+      .optional(),
     mobile: z.boolean().default(false),
     parsePDF: z.boolean().default(true),
     actions: actionsSchema.optional(),
@@ -581,6 +596,7 @@ export type Document = {
         }>;
       };
     };
+    structured?: any;
   }
   metadata: {
     title?: string;

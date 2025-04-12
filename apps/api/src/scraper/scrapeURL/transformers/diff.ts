@@ -4,6 +4,7 @@ import { Meta } from "../index";
 import { getJob } from "../../../controllers/v1/crawl-status";
 import gitDiff from 'git-diff';
 import parseDiff from 'parse-diff';
+import { generateCompletions } from "./llmExtract";
 
 export async function deriveDiff(meta: Meta, document: Document): Promise<Document> {
   if (meta.options.formats.includes("changeTracking")) {
@@ -85,6 +86,32 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
                         }))
                     }
                 };
+            }
+        }
+        
+        if (meta.options.formats.includes("changeTracking@structured") && 
+            meta.options.changeTrackingOptions && changeStatus === "changed") {
+            try {
+                const { extract } = await generateCompletions({
+                    logger: meta.logger.child({
+                        method: "deriveDiff/generateCompletions",
+                    }),
+                    options: {
+                        mode: "llm",
+                        systemPrompt: meta.options.changeTrackingOptions.systemPrompt || 
+                            "Analyze the differences between the previous and current content and provide a structured summary of the changes.",
+                        schema: meta.options.changeTrackingOptions.schema,
+                        prompt: meta.options.changeTrackingOptions.prompt,
+                        temperature: meta.options.changeTrackingOptions.temperature
+                    },
+                    markdown: `Previous Content:\n${previousMarkdown}\n\nCurrent Content:\n${currentMarkdown}`,
+                    previousWarning: document.warning
+                });
+                
+                document.changeTracking.structured = extract;
+            } catch (error) {
+                meta.logger.error("Error generating structured diff with LLM", { error });
+                document.warning = "Structured diff generation failed." + (document.warning ? ` ${document.warning}` : "");
             }
         }
     } else if (!res.error) {

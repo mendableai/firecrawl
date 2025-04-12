@@ -165,6 +165,13 @@ export function coerceFieldsToFormats(
     );
     delete document.changeTracking.diff;
   }
+  
+  if (document.changeTracking && !formats.has("changeTracking@structured") && document.changeTracking.structured !== undefined) {
+    meta.logger.warn(
+      "Removed structured from changeTracking because changeTracking@structured wasn't in formats.",
+    );
+    delete document.changeTracking.structured;
+  }
 
   if (meta.options.actions === undefined || meta.options.actions.length === 0) {
     delete document.actions;
