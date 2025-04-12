@@ -56,7 +56,7 @@ const strictMessage =
 
 export const agentOptionsExtract = z
   .object({
-    id: z.string().default("FIRE-1"),
+    model: z.string().default("FIRE-1"),
   })
   .strict(strictMessage);
 
@@ -270,7 +270,7 @@ const baseScrapeOptions = z
     proxy: z.enum(["basic", "stealth"]).optional(),
     agent: z
       .object({
-        id: z.string().default("FIRE-1"),
+        model: z.string().default("FIRE-1"),
         prompt: z.string().optional(),
         sessionId: z
           .string()
