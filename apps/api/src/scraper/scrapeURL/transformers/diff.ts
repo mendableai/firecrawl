@@ -37,7 +37,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
             visibility: meta.internalOptions.urlInvisibleInCurrentCrawl ? "hidden" : "visible",
         }
         
-        if (meta.options.formats.includes("changeTracking@diff-git") && changeStatus === "changed") {
+        if (meta.options.changeTrackingOptions?.modes?.includes("git-diff") && changeStatus === "changed") {
             const diffText = gitDiff(previousMarkdown, currentMarkdown, {
                 color: false,
                 wordDiff: false
@@ -89,7 +89,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
             }
         }
         
-        if (meta.options.formats.includes("changeTracking@structured") && 
+        if (meta.options.changeTrackingOptions?.modes?.includes("structured") && 
             meta.options.changeTrackingOptions && changeStatus === "changed") {
             try {
                 const { extract } = await generateCompletions({
