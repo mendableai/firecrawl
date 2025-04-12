@@ -6,6 +6,50 @@ import gitDiff from 'git-diff';
 import parseDiff from 'parse-diff';
 import { generateCompletions } from "./llmExtract";
 
+async function extractDataWithSchema(content: string, meta: Meta): Promise<any> {
+    try {
+        const { extract } = await generateCompletions({
+            logger: meta.logger.child({
+                method: "extractDataWithSchema/generateCompletions",
+            }),
+            options: {
+                mode: "llm",
+                schema: meta.options.changeTrackingOptions?.schema,
+                systemPrompt: "Extract the requested information from the content based on the provided schema.",
+                temperature: meta.options.changeTrackingOptions?.temperature || 0
+            },
+            markdown: content
+        });
+        return extract;
+    } catch (error) {
+        meta.logger.error("Error extracting data with schema", { error });
+        return null;
+    }
+}
+
+function compareExtractedData(previousData: any, currentData: any): any {
+    const result: Record<string, { old: any, new: any }> = {};
+    
+    const allKeys = new Set([
+        ...Object.keys(previousData || {}),
+        ...Object.keys(currentData || {})
+    ]);
+    
+    for (const key of allKeys) {
+        const oldValue = previousData?.[key];
+        const newValue = currentData?.[key];
+        
+        if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+            result[key] = {
+                old: oldValue,
+                new: newValue
+            };
+        }
+    }
+    
+    return result;
+}
+
 export async function deriveDiff(meta: Meta, document: Document): Promise<Document> {
   if (meta.options.formats.includes("changeTracking")) {
     const res = await supabase_service
@@ -92,23 +136,33 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
         if (meta.options.changeTrackingOptions?.modes?.includes("structured") && 
             meta.options.changeTrackingOptions && changeStatus === "changed") {
             try {
-                const { extract } = await generateCompletions({
-                    logger: meta.logger.child({
-                        method: "deriveDiff/generateCompletions",
-                    }),
-                    options: {
-                        mode: "llm",
-                        systemPrompt: meta.options.changeTrackingOptions.systemPrompt || 
-                            "Analyze the differences between the previous and current content and provide a structured summary of the changes.",
-                        schema: meta.options.changeTrackingOptions.schema,
-                        prompt: meta.options.changeTrackingOptions.prompt,
-                        temperature: meta.options.changeTrackingOptions.temperature
-                    },
-                    markdown: `Previous Content:\n${previousMarkdown}\n\nCurrent Content:\n${currentMarkdown}`,
-                    previousWarning: document.warning
-                });
+                const previousData = meta.options.changeTrackingOptions.schema ? 
+                    await extractDataWithSchema(previousMarkdown, meta) : null;
                 
-                document.changeTracking.structured = extract;
+                const currentData = meta.options.changeTrackingOptions.schema ? 
+                    await extractDataWithSchema(currentMarkdown, meta) : null;
+                
+                if (previousData && currentData) {
+                    document.changeTracking.structured = compareExtractedData(previousData, currentData);
+                } else {
+                    const { extract } = await generateCompletions({
+                        logger: meta.logger.child({
+                            method: "deriveDiff/generateCompletions",
+                        }),
+                        options: {
+                            mode: "llm",
+                            systemPrompt: meta.options.changeTrackingOptions.systemPrompt || 
+                                "Analyze the differences between the previous and current content and provide a structured summary of the changes.",
+                            schema: meta.options.changeTrackingOptions.schema,
+                            prompt: meta.options.changeTrackingOptions.prompt,
+                            temperature: meta.options.changeTrackingOptions.temperature
+                        },
+                        markdown: `Previous Content:\n${previousMarkdown}\n\nCurrent Content:\n${currentMarkdown}`,
+                        previousWarning: document.warning
+                    });
+                    
+                    document.changeTracking.structured = extract;
+                }
             } catch (error) {
                 meta.logger.error("Error generating structured diff with LLM", { error });
                 document.warning = "Structured diff generation failed." + (document.warning ? ` ${document.warning}` : "");

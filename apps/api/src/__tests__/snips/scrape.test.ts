@@ -144,8 +144,17 @@ describe("Scrape tests", () => {
             schema: {
               type: "object",
               properties: {
-                summary: { type: "string" },
-                significantChanges: { type: "boolean" }
+                pricing: { 
+                  type: "object",
+                  properties: {
+                    amount: { type: "number" },
+                    currency: { type: "string" }
+                  }
+                },
+                features: { 
+                  type: "array", 
+                  items: { type: "string" } 
+                }
               }
             }
           }
@@ -156,8 +165,14 @@ describe("Scrape tests", () => {
         
         if (response.changeTracking?.changeStatus === "changed") {
           expect(response.changeTracking?.structured).toBeDefined();
-          expect(response.changeTracking?.structured).toHaveProperty("summary");
-          expect(response.changeTracking?.structured).toHaveProperty("significantChanges");
+          if (response.changeTracking?.structured.pricing) {
+            expect(response.changeTracking?.structured.pricing).toHaveProperty("old");
+            expect(response.changeTracking?.structured.pricing).toHaveProperty("new");
+          }
+          if (response.changeTracking?.structured.features) {
+            expect(response.changeTracking?.structured.features).toHaveProperty("old");
+            expect(response.changeTracking?.structured.features).toHaveProperty("new");
+          }
         }
       }, 30000);
       
