@@ -54,6 +54,14 @@ export const url = z.preprocess(
 const strictMessage =
   "Unrecognized key in body -- please review the v1 API documentation for request body changes";
 
+export const agentOptionsExtract = z
+  .object({
+    id: z.string().default("FIRE-1"),
+  })
+  .strict(strictMessage);
+
+export type AgentOptions = z.infer<typeof agentOptionsExtract>;
+
 export const extractOptions = z
   .object({
     mode: z.enum(["llm"]).default("llm"),
@@ -64,7 +72,7 @@ export const extractOptions = z
       .default(""),
     prompt: z.string().max(10000).optional(),
     temperature: z.number().optional(),
-    agent: z.boolean().default(false).optional(),
+    agent: agentOptionsExtract.optional(),
   })
   .strict(strictMessage)
   .transform((data) => ({
@@ -262,6 +270,7 @@ const baseScrapeOptions = z
     proxy: z.enum(["basic", "stealth"]).optional(),
     agent: z
       .object({
+        id: z.string().default("FIRE-1"),
         prompt: z.string().optional(),
         sessionId: z
           .string()
@@ -397,7 +406,7 @@ export const extractV1Options = z
       .enum(["direct", "save", "load"])
       .default("direct")
       .optional(),
-    agent: z.boolean().default(false),
+    agent: agentOptionsExtract.optional(),
   })
   .strict(strictMessage)
   .refine((obj) => obj.urls || obj.prompt, {
