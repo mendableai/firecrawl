@@ -9,24 +9,12 @@ import {
   import { billTeam } from "../../../services/billing/credit_billing";
   import { logJob } from "../../../services/logging/log_job";
   import { _addScrapeJobToBullMQ } from "../../../services/queue-jobs";
-  import { dereferenceSchema } from "../helpers/dereference-schema";
-  import { spreadSchemas } from "../helpers/spread-schemas";
-  import { transformArrayToObject } from "../helpers/transform-array-to-obj";
-  import { mixSchemaObjects } from "../helpers/mix-schema-objs";
+  import { spreadSchemas_F0 } from "./helpers/spread-schemas-f0";
   import Ajv from "ajv";
   const ajv = new Ajv();
   
   import { ExtractStep, updateExtract } from "../extract-redis";
-  import { deduplicateObjectsArray } from "../helpers/deduplicate-objs-array";
-  import { mergeNullValObjs } from "../helpers/merge-null-val-objs";
-  import { areMergeable } from "../helpers/merge-null-val-objs";
   import { CUSTOM_U_TEAMS } from "../config";
-  import {
-    calculateFinalResultCost,
-    estimateTotalCost,
-  } from "../usage/llm-cost";
-  import { singleAnswerCompletion } from "../completions/singleAnswer";
-  import { SourceTracker } from "../helpers/source-tracker";
   import { getCachedDocs, saveCachedDocs } from "../helpers/cached-docs";
   import { normalizeUrl } from "../../canonical-url";
   import { search } from "../../../search";
@@ -272,7 +260,7 @@ import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
     if (isMultiEntity && reqSchema) {
       logger.debug("=== MULTI-ENTITY ===");
   
-      const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
+      const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas_F0(
         reqSchema,
         multiEntityKeys,
       );
