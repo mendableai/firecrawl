@@ -1,12 +1,27 @@
 declare module 'parse-diff' {
-  interface Change {
-    type: string;
-    normal?: boolean;
-    ln?: number;
-    ln1?: number;
-    ln2?: number;
+  interface NormalChange {
+    type: 'normal';
+    normal: true;
+    ln1: number;
+    ln2: number;
     content: string;
   }
+
+  interface AddChange {
+    type: 'add';
+    add: true;
+    ln: number;
+    content: string;
+  }
+
+  interface DeleteChange {
+    type: 'del';
+    del: true;
+    ln: number;
+    content: string;
+  }
+
+  type Change = NormalChange | AddChange | DeleteChange;
 
   interface Chunk {
     content: string;
@@ -18,11 +33,14 @@ declare module 'parse-diff' {
   }
 
   interface File {
-    from: string | null;
-    to: string | null;
     chunks: Chunk[];
     deletions: number;
     additions: number;
+    from: string | null;
+    to: string | null;
+    index?: string[];
+    newMode?: string;
+    oldMode?: string;
     binary?: boolean;
   }
 
