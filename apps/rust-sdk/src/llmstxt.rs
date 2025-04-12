@@ -345,8 +345,8 @@ mod tests {
                     "success": true,
                     "status": "completed",
                     "data": {
-                        "llmsText": "Allow: /about\nDisallow: /admin\n",
-                        "fullText": "# LLMs.txt\n\nAllow: /about\nDisallow: /admin\n"
+                        "llmstxt": "Allow: /about\nDisallow: /admin\n",
+                        "llmsfulltxt": "# LLMs.txt\n\nAllow: /about\nDisallow: /admin\n"
                     },
                     "expiresAt": "2023-01-01T00:00:00Z"
                 })
