@@ -513,7 +513,7 @@ export async function performLLMExtract(
     const { extractedDataArray, warning } = await extractData({
       extractOptions: generationOptions,
       urls: [meta.url],
-      useAgent: meta.options.extract?.agent?.id.toLowerCase().includes("fire-1") ?? false
+      useAgent: meta.options.extract?.agent?.model.toLowerCase().includes("fire-1") ?? false
     });
 
     // IMPORTANT: here it only get's the last page!!!

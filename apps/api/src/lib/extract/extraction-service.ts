@@ -404,7 +404,7 @@ export async function performExtraction(
             prompt: request.prompt ?? "",
             systemPrompt: request.systemPrompt ?? "",
             doc,
-            useAgent: request.agent?.id.toLowerCase().includes("fire-1") ?? false,
+            useAgent: request.agent?.model.toLowerCase().includes("fire-1") ?? false,
           });
 
           // Race between timeout and completion
@@ -706,7 +706,7 @@ export async function performExtraction(
       links,
       prompt: request.prompt ?? "",
       systemPrompt: request.systemPrompt ?? "",
-      useAgent: request.agent?.id.toLowerCase().includes("fire-1") ?? false,
+      useAgent: request.agent?.model.toLowerCase().includes("fire-1") ?? false,
     });
     logger.debug("Done generating singleAnswer completions.");
 
