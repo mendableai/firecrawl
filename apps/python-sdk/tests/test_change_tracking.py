@@ -21,7 +21,7 @@ class TestChangeTracking(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        app = FirecrawlApp(api_key='test_key')
+        app = FirecrawlApp(api_key='TEST_API_KEY')
         result = app.scrape_url('https://example.com', {
             'formats': ['markdown', 'changeTracking']
         })
@@ -79,7 +79,7 @@ class TestChangeTracking(unittest.TestCase):
         }
         mock_post.return_value = mock_response
 
-        app = FirecrawlApp(api_key='test_key')
+        app = FirecrawlApp(api_key='TEST_API_KEY')
         result = app.scrape_url('https://example.com', {
             'formats': ['markdown', 'changeTracking'],
             'changeTrackingOptions': {
