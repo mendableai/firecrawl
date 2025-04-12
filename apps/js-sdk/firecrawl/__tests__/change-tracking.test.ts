@@ -25,7 +25,7 @@ describe('Change Tracking Tests', () => {
       }
     });
 
-    const app = new FirecrawlApp({ apiKey: 'TEST_API_KEY' });
+    const app = new FirecrawlApp({ apiKey: 'dummy-api-key-for-testing' });
     const result = await app.scrapeUrl('https://example.com', {
       formats: ['markdown', 'changeTracking']
     });
@@ -84,7 +84,7 @@ describe('Change Tracking Tests', () => {
       }
     });
 
-    const app = new FirecrawlApp({ apiKey: 'TEST_API_KEY' });
+    const app = new FirecrawlApp({ apiKey: 'dummy-api-key-for-testing' });
     const result = await app.scrapeUrl('https://example.com', {
       formats: ['markdown', 'changeTracking'],
       changeTrackingOptions: {
