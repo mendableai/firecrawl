@@ -133,7 +133,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
             }
         }
         
-        if (meta.options.changeTrackingOptions?.modes?.includes("structured") && 
+        if (meta.options.changeTrackingOptions?.modes?.includes("json") && 
             meta.options.changeTrackingOptions && changeStatus === "changed") {
             try {
                 const previousData = meta.options.changeTrackingOptions.schema ? 

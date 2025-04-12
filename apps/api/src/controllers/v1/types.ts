@@ -203,7 +203,7 @@ const baseScrapeOptions = z
         schema: z.any().optional(),
         temperature: z.number().optional().default(0),
         mode: z.enum(["llm"]).optional().default("llm"),
-        modes: z.enum(["structured", "git-diff"]).array().optional().default([]),
+        modes: z.enum(["json", "git-diff"]).array().optional().default([]),
       })
       .optional(),
     mobile: z.boolean().default(false),

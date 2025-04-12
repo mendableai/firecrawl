@@ -121,7 +121,7 @@ describe("Scrape tests", () => {
           url: "https://example.com",
           formats: ["markdown", "changeTracking"],
           changeTrackingOptions: {
-            modes: ["structured"],
+            modes: ["json"],
             prompt: "Summarize the changes between the previous and current content",
             systemPrompt: "You are a helpful assistant that summarizes changes between document versions."
           }
@@ -140,7 +140,7 @@ describe("Scrape tests", () => {
           url: "https://example.com",
           formats: ["markdown", "changeTracking"],
           changeTrackingOptions: {
-            modes: ["structured"],
+            modes: ["json"],
             schema: {
               type: "object",
               properties: {
@@ -181,7 +181,7 @@ describe("Scrape tests", () => {
           url: "https://example.com",
           formats: ["markdown", "changeTracking"],
           changeTrackingOptions: {
-            modes: ["git-diff", "structured"],
+            modes: ["git-diff", "json"],
             schema: {
               type: "object",
               properties: {
