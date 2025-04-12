@@ -104,7 +104,7 @@ export async function scrapeController(
     // Don't bill if we're early returning
     return;
   }
-  if (req.body.extract && req.body.formats.includes("extract")) {
+  if ((req.body.extract && req.body.formats?.includes("extract")) || (req.body.formats?.includes("changeTracking") && req.body.changeTrackingOptions?.modes?.includes("json"))) {
     creditsToBeBilled = 5;
   }
 

@@ -20,6 +20,7 @@ export type Format =
   | "screenshot"
   | "screenshot@fullPage"
   | "extract"
+  | "json"
   | "changeTracking";
 
 export const url = z.preprocess(
@@ -195,6 +196,13 @@ const baseScrapeOptions = z
     extract: extractOptions.optional(),
     // New
     jsonOptions: extractOptions.optional(),
+    changeTrackingOptions: z
+      .object({
+        prompt: z.string().optional(),
+        schema: z.any().optional(),
+        modes: z.enum(["json", "git-diff"]).array().optional().default([]),
+      })
+      .optional(),
     mobile: z.boolean().default(false),
     parsePDF: z.boolean().default(true),
     actions: actionsSchema.optional(),
@@ -555,6 +563,27 @@ export type Document = {
     previousScrapeAt: string | null;
     changeStatus: "new" | "same" | "changed" | "removed";
     visibility: "visible" | "hidden";
+    diff?: {
+      text: string;
+      json: {
+        files: Array<{
+          from: string | null;
+          to: string | null;
+          chunks: Array<{
+            content: string;
+            changes: Array<{
+              type: string;
+              normal?: boolean;
+              ln?: number;
+              ln1?: number;
+              ln2?: number;
+              content: string;
+            }>;
+          }>;
+        }>;
+      };
+    };
+    json?: any;
   }
   metadata: {
     title?: string;
