@@ -74,7 +74,7 @@ export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult
     visibility: "visible" | "hidden";
     diff?: {
       text: string;
-      structured: {
+      json: {
         files: Array<{
           from: string | null;
           to: string | null;
@@ -92,6 +92,7 @@ export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult
         }>;
       };
     };
+    json?: any;
   };
   // v1 search only
   title?: string;
@@ -159,6 +160,11 @@ export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchem
     prompt?: string;
     schema?: LLMSchema;
     systemPrompt?: string;
+  }
+  changeTrackingOptions?: {
+    prompt?: string;
+    schema?: any;
+    modes?: ("json" | "git-diff")[];
   }
   actions?: ActionsSchema;
 }
