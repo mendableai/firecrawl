@@ -130,7 +130,9 @@ content-type: application/json
   ],
   "origin":"api-sdk",
   "prompt":"Get all products in the page. Use smart-scrape. Use the pagination buttons to navigate. It has 50 products.",
-  "agent": true,
+  "agent": {
+    "id": "fire-1"
+  },
   "schema":{
     "type":"object",
     "properties":{

@@ -433,7 +433,7 @@ const processExtractJobInternal = async (
   try {
     let result: ExtractResult | null = null;
 
-    if (job.data.request.agent === true) {
+    if (job.data.request.agent.id === "fire-1") {
       result = await performExtraction(job.data.extractId, {
         request: job.data.request,
         teamId: job.data.teamId,
