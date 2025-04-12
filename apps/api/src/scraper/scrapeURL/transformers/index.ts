@@ -170,11 +170,11 @@ export function coerceFieldsToFormats(
   
   if (document.changeTracking && 
       (!meta.options.changeTrackingOptions?.modes?.includes("json")) && 
-      document.changeTracking.structured !== undefined) {
+      document.changeTracking.json !== undefined) {
     meta.logger.warn(
       "Removed structured from changeTracking because structured mode wasn't specified in changeTrackingOptions.modes.",
     );
-    delete document.changeTracking.structured;
+    delete document.changeTracking.json;
   }
 
   if (meta.options.actions === undefined || meta.options.actions.length === 0) {

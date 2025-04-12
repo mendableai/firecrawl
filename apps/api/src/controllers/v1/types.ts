@@ -568,7 +568,7 @@ export type Document = {
     visibility: "visible" | "hidden";
     diff?: {
       text: string;
-      structured: {
+      json: {
         files: Array<{
           from: string | null;
           to: string | null;
@@ -586,7 +586,7 @@ export type Document = {
         }>;
       };
     };
-    structured?: any;
+    json?: any;
   }
   metadata: {
     title?: string;

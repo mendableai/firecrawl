@@ -91,7 +91,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
                 const diffStructured = parseDiff(diffText);
                 document.changeTracking.diff = {
                     text: diffText,
-                    structured: {
+                    json: {
                         files: diffStructured.map(file => ({
                             from: file.from || null,
                             to: file.to || null,
@@ -143,7 +143,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
                     await extractDataWithSchema(currentMarkdown, meta) : null;
                 
                 if (previousData && currentData) {
-                    document.changeTracking.structured = compareExtractedData(previousData, currentData);
+                    document.changeTracking.json = compareExtractedData(previousData, currentData);
                 } else {
                     const { extract } = await generateCompletions({
                         logger: meta.logger.child({
@@ -161,7 +161,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
                         previousWarning: document.warning
                     });
                     
-                    document.changeTracking.structured = extract;
+                    document.changeTracking.json = extract;
                 }
             } catch (error) {
                 meta.logger.error("Error generating structured diff with LLM", { error });

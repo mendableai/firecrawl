@@ -111,8 +111,8 @@ describe("Scrape tests", () => {
         if (response.changeTracking?.changeStatus === "changed") {
           expect(response.changeTracking?.diff).toBeDefined();
           expect(response.changeTracking?.diff?.text).toBeDefined();
-          expect(response.changeTracking?.diff?.structured).toBeDefined();
-          expect(response.changeTracking?.diff?.structured.files).toBeInstanceOf(Array);
+          expect(response.changeTracking?.diff?.json).toBeDefined();
+          expect(response.changeTracking?.diff?.json.files).toBeInstanceOf(Array);
         }
       }, 30000);
       
@@ -131,7 +131,7 @@ describe("Scrape tests", () => {
         expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
         
         if (response.changeTracking?.changeStatus === "changed") {
-          expect(response.changeTracking?.structured).toBeDefined();
+          expect(response.changeTracking?.json).toBeDefined();
         }
       }, 30000);
       
@@ -164,14 +164,14 @@ describe("Scrape tests", () => {
         expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
         
         if (response.changeTracking?.changeStatus === "changed") {
-          expect(response.changeTracking?.structured).toBeDefined();
-          if (response.changeTracking?.structured.pricing) {
-            expect(response.changeTracking?.structured.pricing).toHaveProperty("old");
-            expect(response.changeTracking?.structured.pricing).toHaveProperty("new");
+          expect(response.changeTracking?.json).toBeDefined();
+          if (response.changeTracking?.json.pricing) {
+            expect(response.changeTracking?.json.pricing).toHaveProperty("old");
+            expect(response.changeTracking?.json.pricing).toHaveProperty("new");
           }
-          if (response.changeTracking?.structured.features) {
-            expect(response.changeTracking?.structured.features).toHaveProperty("old");
-            expect(response.changeTracking?.structured.features).toHaveProperty("new");
+          if (response.changeTracking?.json.features) {
+            expect(response.changeTracking?.json.features).toHaveProperty("old");
+            expect(response.changeTracking?.json.features).toHaveProperty("new");
           }
         }
       }, 30000);
@@ -198,11 +198,11 @@ describe("Scrape tests", () => {
         if (response.changeTracking?.changeStatus === "changed") {
           expect(response.changeTracking?.diff).toBeDefined();
           expect(response.changeTracking?.diff?.text).toBeDefined();
-          expect(response.changeTracking?.diff?.structured).toBeDefined();
+          expect(response.changeTracking?.diff?.json).toBeDefined();
           
-          expect(response.changeTracking?.structured).toBeDefined();
-          expect(response.changeTracking?.structured).toHaveProperty("summary");
-          expect(response.changeTracking?.structured).toHaveProperty("changes");
+          expect(response.changeTracking?.json).toBeDefined();
+          expect(response.changeTracking?.json).toHaveProperty("summary");
+          expect(response.changeTracking?.json).toHaveProperty("changes");
         }
       }, 30000);
     });
