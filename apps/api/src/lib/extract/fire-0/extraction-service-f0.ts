@@ -22,7 +22,7 @@ import { buildRephraseToSerpPrompt_F0 } from "./build-prompts-f0";
 import { processUrl_F0, generateBasicCompletion_FO } from "./url-processor-f0";
 import { generateCompletions_F0, generateSchemaFromPrompt_F0 } from "./llmExtract-f0";
 import { dereferenceSchema_F0 } from "./helpers/dereference-schema-f0";
-import { analyzeSchemaAndPrompt_F0 } from "./completions/analyzeSchemaAndPrompt";
+import { analyzeSchemaAndPrompt_F0 } from "./completions/analyzeSchemaAndPrompt-f0";
 import { checkShouldExtract_F0 } from "./completions/checkShouldExtract-f0";
 import { batchExtractPromise_F0 } from "./completions/batchExtract-f0";
 import { transformArrayToObject_F0 } from "./helpers/transform-array-to-obj-f0";
