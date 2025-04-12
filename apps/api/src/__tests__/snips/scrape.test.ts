@@ -123,7 +123,6 @@ describe("Scrape tests", () => {
           changeTrackingOptions: {
             modes: ["json"],
             prompt: "Summarize the changes between the previous and current content",
-            systemPrompt: "You are a helpful assistant that summarizes changes between document versions."
           }
         });
 
