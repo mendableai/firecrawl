@@ -199,10 +199,7 @@ const baseScrapeOptions = z
     changeTrackingOptions: z
       .object({
         prompt: z.string().optional(),
-        systemPrompt: z.string().optional(),
         schema: z.any().optional(),
-        temperature: z.number().optional().default(0),
-        mode: z.enum(["llm"]).optional().default("llm"),
         modes: z.enum(["json", "git-diff"]).array().optional().default([]),
       })
       .optional(),
