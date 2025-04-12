@@ -7,6 +7,7 @@ pub mod crawl;
 pub mod document;
 mod error;
 pub mod extract;
+pub mod llmstxt;
 pub mod map;
 pub mod scrape;
 pub mod search;
