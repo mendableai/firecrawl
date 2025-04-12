@@ -20,9 +20,8 @@ export type Format =
   | "screenshot"
   | "screenshot@fullPage"
   | "extract"
-  | "changeTracking"
-  | "changeTracking@diff-git"
-  | "changeTracking@structured";
+  | "json"
+  | "changeTracking";
 
 export const url = z.preprocess(
   (x) => {
@@ -168,8 +167,6 @@ const baseScrapeOptions = z
         "extract",
         "json",
         "changeTracking",
-        "changeTracking@diff-git",
-        "changeTracking@structured",
       ])
       .array()
       .optional()
@@ -181,14 +178,6 @@ const baseScrapeOptions = z
       .refine(
         (x) => !x.includes("changeTracking") || x.includes("markdown"),
         "The changeTracking format requires the markdown format to be specified as well",
-      )
-      .refine(
-        (x) => !x.includes("changeTracking@diff-git") || x.includes("changeTracking"),
-        "The changeTracking@diff-git format requires the changeTracking format to be specified as well",
-      )
-      .refine(
-        (x) => !x.includes("changeTracking@structured") || x.includes("changeTracking"),
-        "The changeTracking@structured format requires the changeTracking format to be specified as well",
       ),
     headers: z.record(z.string(), z.string()).optional(),
     includeTags: z.string().array().optional(),
@@ -214,6 +203,7 @@ const baseScrapeOptions = z
         schema: z.any().optional(),
         temperature: z.number().optional().default(0),
         mode: z.enum(["llm"]).optional().default("llm"),
+        modes: z.enum(["json", "git-diff"]).array().optional().default([]),
       })
       .optional(),
     mobile: z.boolean().default(false),
@@ -578,7 +568,7 @@ export type Document = {
     visibility: "visible" | "hidden";
     diff?: {
       text: string;
-      structured: {
+      json: {
         files: Array<{
           from: string | null;
           to: string | null;
@@ -596,7 +586,7 @@ export type Document = {
         }>;
       };
     };
-    structured?: any;
+    json?: any;
   }
   metadata: {
     title?: string;

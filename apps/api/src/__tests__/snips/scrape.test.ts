@@ -99,7 +99,10 @@ describe("Scrape tests", () => {
       it.concurrent("includes git diff when requested", async () => {
         const response = await scrape({
           url: "https://example.com",
-          formats: ["markdown", "changeTracking", "changeTracking@diff-git"],
+          formats: ["markdown", "changeTracking"],
+          changeTrackingOptions: {
+            modes: ["git-diff"]
+          }
         });
 
         expect(response.changeTracking).toBeDefined();
@@ -108,16 +111,17 @@ describe("Scrape tests", () => {
         if (response.changeTracking?.changeStatus === "changed") {
           expect(response.changeTracking?.diff).toBeDefined();
           expect(response.changeTracking?.diff?.text).toBeDefined();
-          expect(response.changeTracking?.diff?.structured).toBeDefined();
-          expect(response.changeTracking?.diff?.structured.files).toBeInstanceOf(Array);
+          expect(response.changeTracking?.diff?.json).toBeDefined();
+          expect(response.changeTracking?.diff?.json.files).toBeInstanceOf(Array);
         }
       }, 30000);
       
       it.concurrent("includes structured output when requested", async () => {
         const response = await scrape({
           url: "https://example.com",
-          formats: ["markdown", "changeTracking", "changeTracking@structured"],
+          formats: ["markdown", "changeTracking"],
           changeTrackingOptions: {
+            modes: ["json"],
             prompt: "Summarize the changes between the previous and current content",
             systemPrompt: "You are a helpful assistant that summarizes changes between document versions."
           }
@@ -127,20 +131,30 @@ describe("Scrape tests", () => {
         expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
         
         if (response.changeTracking?.changeStatus === "changed") {
-          expect(response.changeTracking?.structured).toBeDefined();
+          expect(response.changeTracking?.json).toBeDefined();
         }
       }, 30000);
       
       it.concurrent("supports schema-based extraction for change tracking", async () => {
         const response = await scrape({
           url: "https://example.com",
-          formats: ["markdown", "changeTracking", "changeTracking@structured"],
+          formats: ["markdown", "changeTracking"],
           changeTrackingOptions: {
+            modes: ["json"],
             schema: {
               type: "object",
               properties: {
-                summary: { type: "string" },
-                significantChanges: { type: "boolean" }
+                pricing: { 
+                  type: "object",
+                  properties: {
+                    amount: { type: "number" },
+                    currency: { type: "string" }
+                  }
+                },
+                features: { 
+                  type: "array", 
+                  items: { type: "string" } 
+                }
               }
             }
           }
@@ -150,9 +164,45 @@ describe("Scrape tests", () => {
         expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
         
         if (response.changeTracking?.changeStatus === "changed") {
-          expect(response.changeTracking?.structured).toBeDefined();
-          expect(response.changeTracking?.structured).toHaveProperty("summary");
-          expect(response.changeTracking?.structured).toHaveProperty("significantChanges");
+          expect(response.changeTracking?.json).toBeDefined();
+          if (response.changeTracking?.json.pricing) {
+            expect(response.changeTracking?.json.pricing).toHaveProperty("old");
+            expect(response.changeTracking?.json.pricing).toHaveProperty("new");
+          }
+          if (response.changeTracking?.json.features) {
+            expect(response.changeTracking?.json.features).toHaveProperty("old");
+            expect(response.changeTracking?.json.features).toHaveProperty("new");
+          }
+        }
+      }, 30000);
+      
+      it.concurrent("supports both git-diff and structured modes together", async () => {
+        const response = await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking"],
+          changeTrackingOptions: {
+            modes: ["git-diff", "json"],
+            schema: {
+              type: "object",
+              properties: {
+                summary: { type: "string" },
+                changes: { type: "array", items: { type: "string" } }
+              }
+            }
+          }
+        });
+
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
+        
+        if (response.changeTracking?.changeStatus === "changed") {
+          expect(response.changeTracking?.diff).toBeDefined();
+          expect(response.changeTracking?.diff?.text).toBeDefined();
+          expect(response.changeTracking?.diff?.json).toBeDefined();
+          
+          expect(response.changeTracking?.json).toBeDefined();
+          expect(response.changeTracking?.json).toHaveProperty("summary");
+          expect(response.changeTracking?.json).toHaveProperty("changes");
         }
       }, 30000);
     });

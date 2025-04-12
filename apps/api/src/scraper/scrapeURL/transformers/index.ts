@@ -159,18 +159,22 @@ export function coerceFieldsToFormats(
     );
   }
 
-  if (document.changeTracking && !formats.has("changeTracking@diff-git") && document.changeTracking.diff !== undefined) {
+  if (document.changeTracking && 
+      (!meta.options.changeTrackingOptions?.modes?.includes("git-diff")) && 
+      document.changeTracking.diff !== undefined) {
     meta.logger.warn(
-      "Removed diff from changeTracking because changeTracking@diff-git wasn't in formats.",
+      "Removed diff from changeTracking because git-diff mode wasn't specified in changeTrackingOptions.modes.",
     );
     delete document.changeTracking.diff;
   }
   
-  if (document.changeTracking && !formats.has("changeTracking@structured") && document.changeTracking.structured !== undefined) {
+  if (document.changeTracking && 
+      (!meta.options.changeTrackingOptions?.modes?.includes("json")) && 
+      document.changeTracking.json !== undefined) {
     meta.logger.warn(
-      "Removed structured from changeTracking because changeTracking@structured wasn't in formats.",
+      "Removed structured from changeTracking because structured mode wasn't specified in changeTrackingOptions.modes.",
     );
-    delete document.changeTracking.structured;
+    delete document.changeTracking.json;
   }
 
   if (meta.options.actions === undefined || meta.options.actions.length === 0) {
