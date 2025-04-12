@@ -61,8 +61,16 @@ export const extractOptions = z
     systemPrompt: z
       .string()
       .max(10000)
-      .default(
-        `You are an expert web data extractor. Your task is to analyze the provided markdown content from a web page and generate a JSON object based *strictly* on the provided schema.
+      .default(""),
+    prompt: z.string().max(10000).optional(),
+    temperature: z.number().optional(),
+    agent: z.boolean().default(false).optional(),
+  })
+  .strict(strictMessage)
+  .transform((data) => ({
+    ...data,
+    systemPrompt: data.agent 
+      ? `You are an expert web data extractor. Your task is to analyze the provided markdown content from a web page and generate a JSON object based *strictly* on the provided schema.
 
 Key Instructions:
 1.  **Schema Adherence:** Populate the JSON object according to the structure defined in the schema.
@@ -75,13 +83,9 @@ Key Instructions:
         - Content is dynamically loaded after user actions
     *   If the content requires user interaction or pagination to be fully accessible, set \`shouldUseSmartscrape\` to \`true\` in your response and provide a clear \`reasoning\` and \`prompt\` for the SmartScrape tool.
     *   If the content is simply JavaScript rendered but doesn't require interaction, set \`shouldUseSmartscrape\` to \`false\`.
-5.  **Output Format:** Your final output MUST be a single, valid JSON object conforming precisely to the schema. Do not include any explanatory text outside the JSON structure.`,
-      ),
-    prompt: z.string().max(10000).optional(),
-    temperature: z.number().optional(),
-    agent: z.boolean().default(false).optional(),
-  })
-  .strict(strictMessage);
+5.  **Output Format:** Your final output MUST be a single, valid JSON object conforming precisely to the schema. Do not include any explanatory text outside the JSON structure.`
+      : "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required."
+  }));
 
 export type ExtractOptions = z.infer<typeof extractOptions>;
 
