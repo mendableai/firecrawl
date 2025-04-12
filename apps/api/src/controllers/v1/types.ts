@@ -20,7 +20,8 @@ export type Format =
   | "screenshot"
   | "screenshot@fullPage"
   | "extract"
-  | "changeTracking";
+  | "changeTracking"
+  | "changeTracking@diff-git";
 
 export const url = z.preprocess(
   (x) => {
@@ -166,6 +167,7 @@ const baseScrapeOptions = z
         "extract",
         "json",
         "changeTracking",
+        "changeTracking@diff-git",
       ])
       .array()
       .optional()
@@ -177,6 +179,10 @@ const baseScrapeOptions = z
       .refine(
         (x) => !x.includes("changeTracking") || x.includes("markdown"),
         "The changeTracking format requires the markdown format to be specified as well",
+      )
+      .refine(
+        (x) => !x.includes("changeTracking@diff-git") || x.includes("changeTracking"),
+        "The changeTracking@diff-git format requires the changeTracking format to be specified as well",
       ),
     headers: z.record(z.string(), z.string()).optional(),
     includeTags: z.string().array().optional(),
@@ -555,6 +561,26 @@ export type Document = {
     previousScrapeAt: string | null;
     changeStatus: "new" | "same" | "changed" | "removed";
     visibility: "visible" | "hidden";
+    diff?: {
+      text: string;
+      structured: {
+        files: Array<{
+          from: string | null;
+          to: string | null;
+          chunks: Array<{
+            content: string;
+            changes: Array<{
+              type: string;
+              normal?: boolean;
+              ln?: number;
+              ln1?: number;
+              ln2?: number;
+              content: string;
+            }>;
+          }>;
+        }>;
+      };
+    };
   }
   metadata: {
     title?: string;

@@ -159,6 +159,13 @@ export function coerceFieldsToFormats(
     );
   }
 
+  if (document.changeTracking && !formats.has("changeTracking@diff-git") && document.changeTracking.diff !== undefined) {
+    meta.logger.warn(
+      "Removed diff from changeTracking because changeTracking@diff-git wasn't in formats.",
+    );
+    delete document.changeTracking.diff;
+  }
+
   if (meta.options.actions === undefined || meta.options.actions.length === 0) {
     delete document.actions;
   }

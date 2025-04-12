@@ -95,6 +95,23 @@ describe("Scrape tests", () => {
         expect(response.changeTracking).toBeDefined();
         expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
       }, 30000);
+
+      it.concurrent("includes git diff when requested", async () => {
+        const response = await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking", "changeTracking@diff-git"],
+        });
+
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
+        
+        if (response.changeTracking?.changeStatus === "changed") {
+          expect(response.changeTracking?.diff).toBeDefined();
+          expect(response.changeTracking?.diff?.text).toBeDefined();
+          expect(response.changeTracking?.diff?.structured).toBeDefined();
+          expect(response.changeTracking?.diff?.structured.files).toBeInstanceOf(Array);
+        }
+      }, 30000);
     });
   
     describe("Location API (f-e dependant)", () => {

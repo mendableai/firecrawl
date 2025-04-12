@@ -2,6 +2,8 @@ import { supabase_service } from "../../../services/supabase";
 import { Document } from "../../../controllers/v1/types";
 import { Meta } from "../index";
 import { getJob } from "../../../controllers/v1/crawl-status";
+import gitDiff from 'git-diff';
+import parseDiff from 'parse-diff';
 
 export async function deriveDiff(meta: Meta, document: Document): Promise<Document> {
   if (meta.options.formats.includes("changeTracking")) {
@@ -27,11 +29,44 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
         const currentMarkdown = document.markdown!;
 
         const transformer = (x: string) => [...x.replace(/\s+/g, "").replace(/\[iframe\]\(.+?\)/g, "")].sort().join("");
+        const isChanged = transformer(previousMarkdown) !== transformer(currentMarkdown);
+        const changeStatus = document.metadata.statusCode === 404 ? "removed" : isChanged ? "changed" : "same";
 
         document.changeTracking = {
             previousScrapeAt: data.o_date_added,
-            changeStatus: document.metadata.statusCode === 404 ? "removed" : transformer(previousMarkdown) === transformer(currentMarkdown) ? "same" : "changed",
+            changeStatus,
             visibility: meta.internalOptions.urlInvisibleInCurrentCrawl ? "hidden" : "visible",
+        }
+        
+        if (meta.options.formats.includes("changeTracking@diff-git") && changeStatus === "changed") {
+            const diffText = gitDiff(previousMarkdown, currentMarkdown, {
+                color: false,
+                wordDiff: false
+            });
+            
+            if (diffText) {
+                const diffStructured = parseDiff(diffText);
+                document.changeTracking.diff = {
+                    text: diffText,
+                    structured: {
+                        files: diffStructured.map(file => ({
+                            from: file.from || null,
+                            to: file.to || null,
+                            chunks: file.chunks.map(chunk => ({
+                                content: chunk.content,
+                                changes: chunk.changes.map(change => ({
+                                    type: change.type,
+                                    normal: (change as any).normal,
+                                    ln: (change as any).ln,
+                                    ln1: (change as any).ln1,
+                                    ln2: (change as any).ln2,
+                                    content: change.content
+                                }))
+                            }))
+                        }))
+                    }
+                };
+            }
         }
     } else if (!res.error) {
         document.changeTracking = {

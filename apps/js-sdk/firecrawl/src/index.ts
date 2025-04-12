@@ -72,6 +72,26 @@ export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult
     previousScrapeAt: string | null;
     changeStatus: "new" | "same" | "changed" | "removed";
     visibility: "visible" | "hidden";
+    diff?: {
+      text: string;
+      structured: {
+        files: Array<{
+          from: string | null;
+          to: string | null;
+          chunks: Array<{
+            content: string;
+            changes: Array<{
+              type: string;
+              normal?: boolean;
+              ln?: number;
+              ln1?: number;
+              ln2?: number;
+              content: string;
+            }>;
+          }>;
+        }>;
+      };
+    };
   };
   // v1 search only
   title?: string;
@@ -83,7 +103,7 @@ export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult
  * Defines the options and configurations available for scraping web content.
  */
 export interface CrawlScrapeOptions {
-  formats?: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "screenshot@fullPage" | "extract" | "json" | "changeTracking")[];
+  formats?: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "screenshot@fullPage" | "extract" | "json" | "changeTracking" | "changeTracking@diff-git")[];
   headers?: Record<string, string>;
   includeTags?: string[];
   excludeTags?: string[];
