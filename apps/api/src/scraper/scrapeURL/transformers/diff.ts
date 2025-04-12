@@ -22,8 +22,6 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
         returnvalue: Document,
     } | null = data?.o_job_id ? await getJob(data.o_job_id) : null;
 
-    console.log(data, job);
-
     if (data && job && job?.returnvalue) {
         const previousMarkdown = job.returnvalue.markdown!;
         const currentMarkdown = document.markdown!;
@@ -56,10 +54,10 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
                                 content: chunk.content,
                                 changes: chunk.changes.map(change => ({
                                     type: change.type,
-                                    normal: (change as any).normal,
-                                    ln: (change as any).ln,
-                                    ln1: (change as any).ln1,
-                                    ln2: (change as any).ln2,
+                                    normal: change.normal,
+                                    ln: change.ln,
+                                    ln1: change.ln1,
+                                    ln2: change.ln2,
                                     content: change.content
                                 }))
                             }))
