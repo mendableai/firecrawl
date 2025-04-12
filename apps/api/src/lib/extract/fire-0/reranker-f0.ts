@@ -5,6 +5,7 @@ import { CohereClient } from "cohere-ai";
 import { extractConfig } from "../config";
 import { generateCompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { performRanking_F0 } from "./ranker-f0";
+import { buildRerankerSystemPrompt_F0, buildRerankerUserPrompt_F0 } from "./build-prompts-f0";
 
 const cohere = new CohereClient({
   token: process.env.COHERE_API_KEY,
@@ -225,8 +226,8 @@ export async function rerankLinksWithLLM_F0(options: RerankerOptions): Promise<R
             }),
             options: {
               mode: "llm",
-              systemPrompt: buildRerankerSystemPrompt(),
-              prompt: buildRerankerUserPrompt(searchQuery),
+              systemPrompt: buildRerankerSystemPrompt_F0(),
+              prompt: buildRerankerUserPrompt_F0(searchQuery),
               schema: schema,
             },
             markdown: linksContent,

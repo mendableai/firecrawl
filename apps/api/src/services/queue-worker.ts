@@ -61,7 +61,7 @@ import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
 import { indexPage } from "../lib/extract/index/pinecone";
 import { Document } from "../controllers/v1/types";
-import { performExtraction } from "../lib/extract/extraction-service";
+import { ExtractResult, performExtraction } from "../lib/extract/extraction-service";
 import { supabase_service } from "../services/supabase";
 import { normalizeUrl, normalizeUrlOnlyHostname } from "../lib/canonical-url";
 import { saveExtract, updateExtract } from "../lib/extract/extract-redis";
@@ -71,6 +71,7 @@ import { updateDeepResearch } from "../lib/deep-research/deep-research-redis";
 import { performDeepResearch } from "../lib/deep-research/deep-research-service";
 import { performGenerateLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt-service";
 import { updateGeneratedLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt-redis";
+import { performExtraction_F0 } from "../lib/extract/fire-0/extraction-service-f0";
 
 configDotenv();
 
@@ -401,13 +402,24 @@ const processExtractJobInternal = async (
   }, jobLockExtendInterval);
 
   try {
-    const result = await performExtraction(job.data.extractId, {
-      request: job.data.request,
+
+    let result: ExtractResult | null = null;
+    console.log(job.data.request.agent);
+    if(job.data.request.agent === true){
+      result = await performExtraction(job.data.extractId, {
+        request: job.data.request,
       teamId: job.data.teamId,
       subId: job.data.subId,
-    });
+      });
+    } else {
+      result = await performExtraction_F0(job.data.extractId, {
+        request: job.data.request,
+        teamId: job.data.teamId,
+        subId: job.data.subId,
+      });
+    }
 
-    if (result.success) {
+    if (result && result.success) {
       // Move job to completed state in Redis
       await job.moveToCompleted(result, token, false);
       return result;
@@ -418,7 +430,7 @@ const processExtractJobInternal = async (
       await updateExtract(job.data.extractId, {
         status: "failed",
         error:
-          result.error ??
+          result?.error ??
           "Unknown error, please contact help@firecrawl.com. Extract id: " +
             job.data.extractId,
       });

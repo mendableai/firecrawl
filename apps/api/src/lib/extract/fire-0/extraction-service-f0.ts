@@ -64,7 +64,7 @@ import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
   };
   
   
-  export async function performExtraction(
+  export async function performExtraction_F0(
     extractId: string,
     options: ExtractServiceOptions,
   ): Promise<ExtractResult> {
