@@ -16,7 +16,7 @@ async function extractDataWithSchema(content: string, meta: Meta): Promise<any> 
                 mode: "llm",
                 schema: meta.options.changeTrackingOptions?.schema,
                 systemPrompt: "Extract the requested information from the content based on the provided schema.",
-                temperature: meta.options.changeTrackingOptions?.temperature || 0
+                temperature: 0
             },
             markdown: content
         });
@@ -151,11 +151,10 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
                         }),
                         options: {
                             mode: "llm",
-                            systemPrompt: meta.options.changeTrackingOptions.systemPrompt || 
-                                "Analyze the differences between the previous and current content and provide a structured summary of the changes.",
+                            systemPrompt: "Analyze the differences between the previous and current content and provide a structured summary of the changes.",
                             schema: meta.options.changeTrackingOptions.schema,
                             prompt: meta.options.changeTrackingOptions.prompt,
-                            temperature: meta.options.changeTrackingOptions.temperature
+                            temperature: 0
                         },
                         markdown: `Previous Content:\n${previousMarkdown}\n\nCurrent Content:\n${currentMarkdown}`,
                         previousWarning: document.warning
