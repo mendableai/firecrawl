@@ -1,13 +1,13 @@
 [package]
 name = "firecrawl"
 author= "Mendable.ai"
-version = "1.0.0"
+version = "1.1.0"
 edition = "2021"
 license = "MIT"
 homepage = "https://www.firecrawl.dev/"
 repository ="https://github.com/mendableai/firecrawl"
 description = "Rust SDK for Firecrawl API."
-authors = ["Gergő Móricz <mogery@firecrawl.dev>", "sanix-darker <sanixdk@gmail.com>"]
+authors = ["Gergő Móricz <mogery@firecrawl.dev>", "sanix-darker <sanixdk@gmail.com>", "kkharji <kkharji@protonmail.com>"]
 
 [lib]
 path = "src/lib.rs"
