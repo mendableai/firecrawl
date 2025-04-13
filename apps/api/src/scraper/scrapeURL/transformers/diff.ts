@@ -86,9 +86,10 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
                 color: false,
                 wordDiff: false
             });
-            
+            meta.logger.debug("Diff text", { diffText });
             if (diffText) {
                 const diffStructured = parseDiff(diffText);
+                meta.logger.debug("Diff structured", { diffStructured });
                 document.changeTracking.diff = {
                     text: diffText,
                     json: {
