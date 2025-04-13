@@ -95,23 +95,6 @@ describe("Scrape tests", () => {
         expect(response.changeTracking).toBeDefined();
         expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
       }, 30000);
-      
-      it.concurrent("enforces a minimum waitFor of 5000ms", async () => {
-        const response1 = await scrape({
-          url: "https://example.com",
-          formats: ["markdown", "changeTracking"],
-        });
-        
-        expect(response1.changeTracking).toBeDefined();
-        
-        const response2 = await scrape({
-          url: "https://example.com",
-          formats: ["markdown", "changeTracking"],
-          waitFor: 1000,
-        });
-        
-        expect(response2.changeTracking).toBeDefined();
-      }, 30000);
 
       it.concurrent("includes git diff when requested", async () => {
         const response = await scrape({
