@@ -1,6 +1,7 @@
 import {
   Document,
   ExtractRequest,
+  isAgentExtractModelValid,
   TokenUsage,
   URLTrace,
 } from "../../controllers/v1/types";
@@ -404,7 +405,7 @@ export async function performExtraction(
             prompt: request.prompt ?? "",
             systemPrompt: request.systemPrompt ?? "",
             doc,
-            useAgent: request.agent?.model.toLowerCase().includes("fire-1") ?? false,
+            useAgent: isAgentExtractModelValid(request.agent?.model)
           });
 
           // Race between timeout and completion
@@ -706,7 +707,7 @@ export async function performExtraction(
       links,
       prompt: request.prompt ?? "",
       systemPrompt: request.systemPrompt ?? "",
-      useAgent: request.agent?.model.toLowerCase().includes("fire-1") ?? false,
+      useAgent: isAgentExtractModelValid(request.agent?.model),
     });
     logger.debug("Done generating singleAnswer completions.");
 
