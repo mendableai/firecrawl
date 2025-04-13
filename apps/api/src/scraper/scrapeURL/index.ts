@@ -390,6 +390,9 @@ export async function scrapeURL(
   options: ScrapeOptions,
   internalOptions: InternalOptions,
 ): Promise<ScrapeUrlResponse> {
+  if (options.formats.includes("changeTracking") && options.waitFor < 5000) {
+    options.waitFor = 5000;
+  }
   const meta = await buildMetaObject(id, url, options, internalOptions);
   try {
     while (true) {
