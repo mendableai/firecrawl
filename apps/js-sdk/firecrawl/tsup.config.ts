@@ -8,7 +8,7 @@ export default defineConfig({
   clean: true,
   platform: "node",
   target: "node22",
-  noExternal: ["typescript-event-target", "axios"],
+  noExternal: ["typescript-event-target"],
   esbuildOptions(options) {
     options.define = {
       ...options.define,
