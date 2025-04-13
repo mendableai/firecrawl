@@ -59,6 +59,7 @@ services:
 
   api:
     <<: *common-service
+    container_name: firecrawl
     environment:
       <<: *common-env
       HOST: "0.0.0.0"
