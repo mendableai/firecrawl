@@ -282,6 +282,10 @@ const extractTransform = (obj) => {
     obj = { ...obj, timeout: 60000 };
   }
 
+  if (obj.formats?.includes("changeTracking") && obj.waitFor < 5000) {
+    obj = { ...obj, waitFor: 5000 };
+  }
+
   if (obj.formats?.includes("json")) {
     obj.formats.push("extract");
   }
