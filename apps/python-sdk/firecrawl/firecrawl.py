@@ -170,8 +170,12 @@ class FirecrawlApp:
 
             # Include any other params directly at the top level of scrape_params
             for key, value in params.items():
-                if key not in ['jsonOptions']:
+                if key not in ['jsonOptions', 'agent']:
                     scrape_params[key] = value
+                    
+            agent = params.get('agent')
+            if agent:
+                scrape_params['agent'] = agent
 
 
         endpoint = f'/v1/scrape'
