@@ -5,7 +5,7 @@
 ### Scrape Website
 # @name scrape
 POST {{baseUrl}}/v1/scrape HTTP/1.1
-Authorization: Bearer ddbee7c2-4283-4e62-ae23-b0d157d24656
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
