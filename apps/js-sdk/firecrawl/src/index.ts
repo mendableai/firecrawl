@@ -270,6 +270,10 @@ export interface MapResponse {
  * Parameters for extracting information from URLs.
  * Defines options for extracting information from URLs.
  */
+export interface AgentOptions {
+  model?: string;
+}
+
 export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
   prompt?: string;
   schema?: LLMSchema | object;
@@ -280,6 +284,7 @@ export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
   origin?: string;
   showSources?: boolean;
   scrapeOptions?: CrawlScrapeOptions;
+  agent?: AgentOptions;
 }
 
 /**
