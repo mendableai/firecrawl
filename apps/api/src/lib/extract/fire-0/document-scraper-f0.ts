@@ -53,7 +53,7 @@ export async function scrapeDocument_F0(
       jobPriority,
     );
 
-    const doc = await waitForJob<Document>(jobId, timeout);
+    const doc = await waitForJob(jobId, timeout);
     await getScrapeQueue().remove(jobId);
 
     if (trace) {
