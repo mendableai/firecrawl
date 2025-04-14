@@ -5,6 +5,7 @@ import { waitForJob } from "../../services/queue-jobs";
 import { addScrapeJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../job-priority";
 import type { Logger } from "winston";
+import { getJobFromGCS } from "../gcs-jobs";
 
 interface ScrapeDocumentOptions {
   url: string;
@@ -53,7 +54,18 @@ export async function scrapeDocument(
       jobPriority,
     );
 
-    const doc = await waitForJob<Document>(jobId, timeout);
+    let doc: Document;
+    if (!process.env.GCS_BUCKET_NAME) {
+      doc = await waitForJob<Document>(jobId, timeout);
+    } else {
+      await waitForJob<Document>(jobId, timeout);
+      const docs = await getJobFromGCS(jobId);
+      if (!docs || docs.length === 0) {
+        throw new Error("Job not found in GCS");
+      }
+      doc = docs[0];
+    }
+    
     await getScrapeQueue().remove(jobId);
 
     if (trace) {

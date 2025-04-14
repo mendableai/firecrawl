@@ -22,6 +22,7 @@ import {
   fromLegacyScrapeOptions,
   toLegacyDocument,
 } from "../v1/types";
+import { getJobFromGCS } from "../../lib/gcs-jobs";
 
 export async function searchHelper(
   jobId: string,
@@ -123,7 +124,20 @@ export async function searchHelper(
 
   const docs = (
     await Promise.all(
-      jobDatas.map((x) => waitForJob<Document>(x.opts.jobId, 60000)),
+      jobDatas.map(async (x) => {
+        let doc: Document;
+        if (!process.env.GCS_BUCKET_NAME) {
+          doc = await waitForJob<Document>(x.opts.jobId, 60000);
+        } else {
+          await waitForJob<Document>(x.opts.jobId, 60000);
+          const docs = await getJobFromGCS(x.opts.jobId);
+          if (!docs || docs.length === 0) {
+            throw new Error("Job not found in GCS");
+          }
+          doc = docs[0];
+        }
+        return doc;
+      }),
     )
   ).map((x) => toLegacyDocument(x, internalOptions));
 
