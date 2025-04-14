@@ -64,8 +64,8 @@ export async function setCachedACUC(
         throw signal.error;
       }
 
-      // Cache for 1 hour. - mogery
-      await setValue(cacheKeyACUC, JSON.stringify(acuc), 3600, true);
+      // Cache for 10 minutes. - mogery
+      await setValue(cacheKeyACUC, JSON.stringify(acuc), 600, true);
     });
   } catch (error) {
     logger.error(`Error updating cached ACUC ${cacheKeyACUC}: ${error}`);
@@ -160,14 +160,14 @@ export async function getACUC(
 
   const cacheKeyACUC = `acuc_${api_key}_${isExtract ? "extract" : "scrape"}`;
 
-  // if (useCache) {
-  //   const cachedACUC = await getValue(cacheKeyACUC);
-  //   if (cachedACUC !== null) {
-  //     return JSON.parse(cachedACUC);
-  //   }
-  // }
+  if (useCache) {
+    const cachedACUC = await getValue(cacheKeyACUC);
+    if (cachedACUC !== null) {
+      return JSON.parse(cachedACUC);
+    }
+  }
 
-  // if (!cacheOnly) {
+  if (!cacheOnly) {
     let data;
     let error;
     let retries = 0;
@@ -205,14 +205,14 @@ export async function getACUC(
       data.length === 0 ? null : data[0].team_id === null ? null : data[0];
 
     // NOTE: Should we cache null chunks? - mogery
-    // if (chunk !== null && useCache) {
-    //   setCachedACUC(api_key, isExtract, chunk);
-    // }
+    if (chunk !== null && useCache) {
+      setCachedACUC(api_key, isExtract, chunk);
+    }
 
     return chunk ? { ...chunk, is_extract: isExtract } : null;
-  // } else {
-  //   return null;
-  // }
+  } else {
+    return null;
+  }
 }
 
 export async function setCachedACUCTeam(
@@ -244,8 +244,8 @@ export async function setCachedACUCTeam(
         throw signal.error;
       }
 
-      // Cache for 1 hour. - mogery
-      await setValue(cacheKeyACUC, JSON.stringify(acuc), 3600, true);
+      // Cache for 10 minutes. - mogery
+      await setValue(cacheKeyACUC, JSON.stringify(acuc), 600, true);
     });
   } catch (error) {
     logger.error(`Error updating cached ACUC ${cacheKeyACUC}: ${error}`);
@@ -275,14 +275,14 @@ export async function getACUCTeam(
 
   const cacheKeyACUC = `acuc_team_${team_id}_${isExtract ? "extract" : "scrape"}`;
 
-  // if (useCache) {
-  //   const cachedACUC = await getValue(cacheKeyACUC);
-  //   if (cachedACUC !== null) {
-  //     return JSON.parse(cachedACUC);
-  //   }
-  // }
+  if (useCache) {
+    const cachedACUC = await getValue(cacheKeyACUC);
+    if (cachedACUC !== null) {
+      return JSON.parse(cachedACUC);
+    }
+  }
 
-  // if (!cacheOnly) {
+  if (!cacheOnly) {
     let data;
     let error;
     let retries = 0;
@@ -321,14 +321,14 @@ export async function getACUCTeam(
       data.length === 0 ? null : data[0].team_id === null ? null : data[0];
 
     // NOTE: Should we cache null chunks? - mogery
-    // if (chunk !== null && useCache) {
-    //   setCachedACUC(api_key, chunk);
-    // }
+    if (chunk !== null && useCache) {
+      setCachedACUCTeam(team_id, isExtract, chunk);
+    }
 
     return chunk ? { ...chunk, is_extract: isExtract } : null;
-  // } else {
-  //   return null;
-  // }
+  } else {
+    return null;
+  }
 }
 
 export async function clearACUC(api_key: string): Promise<void> {
