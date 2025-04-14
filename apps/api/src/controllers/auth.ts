@@ -393,7 +393,7 @@ export async function supaAuthenticateUser(
     };
   }
 
-  const incomingIP = (req.headers["x-forwarded-for"] ||
+  const incomingIP = (req.headers["x-preview-ip"] || req.headers["x-forwarded-for"] ||
     req.socket.remoteAddress) as string;
   const iptoken = incomingIP + token;
 
