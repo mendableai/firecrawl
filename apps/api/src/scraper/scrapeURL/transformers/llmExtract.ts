@@ -691,7 +691,7 @@ DO NOT USE FORMATS.
 Keep it simple. Don't create too many properties, just the ones that are needed. Don't invent properties.
 Return a valid JSON schema object with properties that would capture the information requested in the prompt.`,
           prompt: `Generate a JSON schema for extracting the following information: ${prompt}`,
-          temperature: temp,
+          // temperature: temp,
         },
         markdown: prompt,
       });
