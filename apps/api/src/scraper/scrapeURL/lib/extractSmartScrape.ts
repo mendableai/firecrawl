@@ -8,6 +8,7 @@ import { smartScrape } from "./smartScrape";
 import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { getModel } from "../../../lib/generic-ai";
 import { TokenUsage } from "../../../controllers/v1/types";
+import type { SmartScrapeResult } from "./smartScrape";
 
 const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
@@ -235,12 +236,12 @@ export async function extractData({
     console.log('=========================================')
 
     if (useAgent && extract?.shouldUseSmartscrape) {
-      let smartscrapeResults;
+      let smartscrapeResults: SmartScrapeResult[];
       if (isSingleUrl) {
         smartscrapeResults = [
           await smartScrape(urls[0], extract?.smartscrape_prompt),
         ];
-        smartScrapeCost += smartscrapeResults[0].cost;
+        smartScrapeCost += smartscrapeResults[0].tokenUsage;
       } else {
         const pages = extract?.smartscrapePages;
         //do it async promiseall instead
@@ -252,7 +253,7 @@ export async function extractData({
             );
           }),
         );
-        smartScrapeCost += smartscrapeResults.reduce((acc, result) => acc + result.cost, 0);
+        smartScrapeCost += smartscrapeResults.reduce((acc, result) => acc + result.tokenUsage, 0);
       }
       // console.log("smartscrapeResults", smartscrapeResults);
 
@@ -272,8 +273,9 @@ export async function extractData({
             ...extractOptions,
             markdown: markdown,
           };
-          const { extract, warning, totalUsage, model } =
+          const { extract, warning, totalUsage, model, cost } =
             await generateCompletions(newExtractOptions);
+          otherCost += cost;
           return extract;
         }),
       );

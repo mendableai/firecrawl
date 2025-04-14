@@ -34,7 +34,7 @@ const smartScrapeResultSchema = z.object({
 });
 
 // Infer the TypeScript type from the Zod schema
-type SmartScrapeResult = z.infer<typeof smartScrapeResultSchema>;
+export type SmartScrapeResult = z.infer<typeof smartScrapeResultSchema>;
 
 /**
  * Sends a POST request to the internal /smart-scrape endpoint to extract
