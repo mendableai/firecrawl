@@ -72,6 +72,38 @@ export async function setCachedACUC(
   }
 }
 
+const mockPreviewACUC: (team_id: string) => AuthCreditUsageChunkFromTeam = (team_id) => ({
+  api_key: "preview",
+  team_id,
+  sub_id: "bypass",
+  sub_current_period_start: new Date().toISOString(),
+  sub_current_period_end: new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  sub_user_id: "bypass",
+  price_id: "bypass",
+  rate_limits: {
+    crawl: 2,
+    scrape: 10,
+    extract: 10,
+    search: 5,
+    map: 5,
+    preview: 5,
+    crawlStatus: 500,
+    extractStatus: 500,
+  },
+  price_credits: 99999999,
+  credits_used: 0,
+  coupon_credits: 99999999,
+  adjusted_credits_used: 0,
+  remaining_credits: 99999999,
+  total_credits_sum: 99999999,
+  plan_priority: {
+    bucketLimit: 25,
+    planModifier: 0.1,
+  },
+  concurrency: 2,
+  is_extract: false,
+});
+
 const mockACUC: () => AuthCreditUsageChunk = () => ({
   api_key: "bypass",
   team_id: "bypass",
@@ -223,6 +255,12 @@ export async function getACUCTeam(
   let isExtract =
       mode === RateLimiterMode.Extract ||
       mode === RateLimiterMode.ExtractStatus;
+
+  if (team_id.startsWith("preview")) {
+    const acuc = mockPreviewACUC(team_id);
+    acuc.is_extract = isExtract;
+    return acuc;
+  }
   
   if (process.env.USE_DB_AUTHENTICATION !== "true") {
     const acuc = mockACUC();
