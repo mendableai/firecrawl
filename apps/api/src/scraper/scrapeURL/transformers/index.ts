@@ -159,6 +159,24 @@ export function coerceFieldsToFormats(
     );
   }
 
+  if (document.changeTracking && 
+      (!meta.options.changeTrackingOptions?.modes?.includes("git-diff")) && 
+      document.changeTracking.diff !== undefined) {
+    meta.logger.warn(
+      "Removed diff from changeTracking because git-diff mode wasn't specified in changeTrackingOptions.modes.",
+    );
+    delete document.changeTracking.diff;
+  }
+  
+  if (document.changeTracking && 
+      (!meta.options.changeTrackingOptions?.modes?.includes("json")) && 
+      document.changeTracking.json !== undefined) {
+    meta.logger.warn(
+      "Removed structured from changeTracking because structured mode wasn't specified in changeTrackingOptions.modes.",
+    );
+    delete document.changeTracking.json;
+  }
+
   if (meta.options.actions === undefined || meta.options.actions.length === 0) {
     delete document.actions;
   }
