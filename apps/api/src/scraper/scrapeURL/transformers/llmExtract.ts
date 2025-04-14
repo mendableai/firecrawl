@@ -170,6 +170,49 @@ export function trimToTokenLimit(
     };
   }
 }
+
+export function calculateCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number
+) {
+  const modelCosts = {
+    "openai/o3-mini": { input_cost: 1.1, output_cost: 4.4 },
+    "google/gemini-2.0-flash-001": { input_cost: 0.15, output_cost: 0.6 },
+    "deepseek/deepseek-r1": { input_cost: 0.55, output_cost: 2.19 },
+    "google/gemini-2.0-flash-thinking-exp:free": {
+      input_cost: 0.55,
+      output_cost: 2.19,
+    },
+  };
+  let modelCost = modelCosts[model] || { input_cost: 0, output_cost: 0 };
+  //gemini-2.5-pro-exp-03-25 pricing
+  if (
+    model === "gemini-2.5-pro-exp-03-25" ||
+    model === "gemini-2.5-pro-preview-03-25"
+  ) {
+    let inputCost = 0;
+    let outputCost = 0;
+    if (inputTokens <= 200000) {
+      inputCost = 1.25;
+    } else {
+      inputCost = 2.5;
+    }
+    if (outputTokens <= 200000) {
+      outputCost = 10.0;
+    } else {
+      outputCost = 15.0;
+    }
+    modelCost = { input_cost: inputCost, output_cost: outputCost };
+  }
+  const totalCost =
+    (inputTokens * modelCost.input_cost +
+      outputTokens * modelCost.output_cost) /
+    1_000_000;
+
+  return totalCost;
+}
+
 export type GenerateCompletionsOptions = {
   model?: LanguageModel;
   logger: Logger;
@@ -197,6 +240,7 @@ export async function generateCompletions({
   warning: string | undefined;
   totalUsage: TokenUsage;
   model: string;
+  cost: number;
 }> {
   let extract: any;
   let warning: string | undefined;
@@ -253,6 +297,7 @@ export async function generateCompletions({
             totalTokens: numTokens + (result.usage?.completionTokens ?? 0),
           },
           model: currentModel.modelId,
+          cost: calculateCost(currentModel.modelId, numTokens, result.usage?.completionTokens ?? 0)
         };
       } catch (error) {
         lastError = error as Error;
@@ -283,6 +328,7 @@ export async function generateCompletions({
                 totalTokens: numTokens + (result.usage?.completionTokens ?? 0),
               },
               model: currentModel.modelId,
+              cost: calculateCost(currentModel.modelId, numTokens, result.usage?.completionTokens ?? 0)
             };
           } catch (retryError) {
             lastError = retryError as Error;
@@ -470,6 +516,7 @@ export async function generateCompletions({
         totalTokens: promptTokens + completionTokens,
       },
       model: currentModel.modelId,
+      cost: calculateCost(currentModel.modelId, promptTokens, completionTokens)
     };
   } catch (error) {
     lastError = error as Error;
@@ -511,11 +558,27 @@ export async function performLLMExtract(
       retryModel: getModel("gemini-2.5-pro-exp-03-25", "vertex")
     };
 
-    const { extractedDataArray, warning } = await extractData({
+    const { extractedDataArray, warning, smartScrapeCost, otherCost } = await extractData({
       extractOptions: generationOptions,
       urls: [meta.url],
       useAgent: isAgentExtractModelValid(meta.options.extract?.agent?.model)
     });
+
+    if (document.metadata.costTracking) {
+      document.metadata.costTracking.smartScrapeCallCount++;
+      document.metadata.costTracking.smartScrapeCost += smartScrapeCost;
+      document.metadata.costTracking.otherCallCount++;
+      document.metadata.costTracking.otherCost += otherCost;
+      document.metadata.costTracking.totalCost += smartScrapeCost + otherCost;
+    } else {
+      document.metadata.costTracking = {
+        smartScrapeCallCount: 1,
+        smartScrapeCost: smartScrapeCost,
+        otherCallCount: 1,
+        otherCost: otherCost,
+        totalCost: smartScrapeCost + otherCost,
+      };
+    }
 
     // IMPORTANT: here it only get's the last page!!!
     const extractedData = extractedDataArray[extractedDataArray.length - 1] ?? undefined;
@@ -649,7 +712,7 @@ export function removeDefaultProperty(schema: any): any {
   return rest;
 }
 
-export async function generateSchemaFromPrompt(prompt: string): Promise<any> {
+export async function generateSchemaFromPrompt(prompt: string): Promise<{ extract: any, cost: number }> {
   const model = getModel("qwen-qwq-32b", "groq");
   const retryModel = getModel("gpt-4o", "openai");
   const temperatures = [0, 0.1, 0.3]; // Different temperatures to try
@@ -657,7 +720,7 @@ export async function generateSchemaFromPrompt(prompt: string): Promise<any> {
 
   for (const temp of temperatures) {
     try {
-      const { extract } = await generateCompletions({
+      const { extract, cost } = await generateCompletions({
         logger: logger.child({
           method: "generateSchemaFromPrompt/generateCompletions",
         }),
@@ -696,7 +759,7 @@ Return a valid JSON schema object with properties that would capture the informa
         markdown: prompt,
       });
 
-      return extract;
+      return { extract, cost };
     } catch (error) {
       lastError = error as Error;
       logger.warn(`Failed attempt with temperature ${temp}: ${error.message}`);

@@ -162,6 +162,8 @@ export async function scrapeHelper(
     }
   }
 
+  delete doc.metadata.costTracking;
+
   return {
     success: true,
     data: toLegacyDocument(doc, internalOptions),
@@ -312,6 +314,7 @@ export async function scrapeController(req: Request, res: Response) {
       scrapeOptions,
       origin: origin,
       num_tokens: numTokens,
+      cost_tracking: (result.data as V0Document).metadata?.costTracking,
     });
 
     return res.status(result.returnCode).json(result);

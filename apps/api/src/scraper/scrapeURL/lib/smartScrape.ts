@@ -115,8 +115,6 @@ export async function smartScrape(
       sessionId: response.sessionId,
     });
 
-    await fs.appendFile('logs/smart-scrape-cost.json', JSON.stringify(response.tokenUsage, null, 2) + '\n')
-
     return response; // The response type now matches SmartScrapeResult
   } catch (error) {
     // Safely extract error information without circular references

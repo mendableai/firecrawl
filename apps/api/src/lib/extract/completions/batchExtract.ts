@@ -39,6 +39,8 @@ export async function batchExtractPromise(options: BatchExtractOptions): Promise
   totalUsage: TokenUsage;
   warning?: string;
   sources: string[];
+  smartScrapeCost: number;
+  otherCost: number;
 }> {
   const { multiEntitySchema, links, prompt, systemPrompt, doc, useAgent } = options;
 
@@ -64,14 +66,17 @@ export async function batchExtractPromise(options: BatchExtractOptions): Promise
 
   let extractedDataArray: any[] = [];
   let warning: string | undefined;
+  let smCost = 0, oCost = 0;
   try {
-    const { extractedDataArray: e, warning: w } = await extractData({
+    const { extractedDataArray: e, warning: w, smartScrapeCost, otherCost } = await extractData({
       extractOptions: generationOptions,
       urls: [doc.metadata.sourceURL || doc.metadata.url || ""],
       useAgent,
     });
     extractedDataArray = e;
     warning = w;
+    smCost = smartScrapeCost;
+    oCost = otherCost;
   } catch (error) {
     console.error(">>>>>>>error>>>>>\n", error);
   }
@@ -93,5 +98,7 @@ export async function batchExtractPromise(options: BatchExtractOptions): Promise
     },
     warning: warning,
     sources: [doc.metadata.url || doc.metadata.sourceURL || ""],
+    smartScrapeCost: smCost,
+    otherCost: oCost,
   };
 }

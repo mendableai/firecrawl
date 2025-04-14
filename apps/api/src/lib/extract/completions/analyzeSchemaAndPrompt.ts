@@ -22,6 +22,7 @@ export async function analyzeSchemaAndPrompt(
   reasoning: string;
   keyIndicators: string[];
   tokenUsage: TokenUsage;
+  cost: number;
 }> {
   if (!schema) {
     schema = await generateSchemaFromPrompt(prompt);
@@ -44,7 +45,7 @@ export async function analyzeSchemaAndPrompt(
     );
 
   try {
-    const { extract: result, totalUsage } = await generateCompletions({
+    const { extract: result, totalUsage, cost } = await generateCompletions({
       logger,
       options: {
         mode: "llm",
@@ -65,6 +66,7 @@ export async function analyzeSchemaAndPrompt(
       reasoning,
       keyIndicators,
       tokenUsage: totalUsage,
+      cost,
     };
   } catch (e) {
     logger.warn("(analyzeSchemaAndPrompt) Error parsing schema analysis", {
@@ -83,5 +85,6 @@ export async function analyzeSchemaAndPrompt(
       totalTokens: 0,
       model: model.modelId,
     },
+    cost: 0,
   };
 }

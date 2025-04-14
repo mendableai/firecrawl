@@ -29,7 +29,6 @@ import { areMergeable } from "./helpers/merge-null-val-objs";
 import { CUSTOM_U_TEAMS } from "./config";
 import { calculateFinalResultCost, estimateTotalCost } from "./usage/llm-cost";
 import { analyzeSchemaAndPrompt } from "./completions/analyzeSchemaAndPrompt";
-import { checkShouldExtract } from "./completions/checkShouldExtract";
 import { batchExtractPromise } from "./completions/batchExtract";
 import { singleAnswerCompletion } from "./completions/singleAnswer";
 import { SourceTracker } from "./helpers/source-tracker";
@@ -68,6 +67,14 @@ type completions = {
   sources?: string[];
 };
 
+export type CostTracking = {
+  smartScrapeCallCount: number;
+  smartScrapeCost: number;
+  otherCallCount: number;
+  otherCost: number;
+  totalCost: number;
+};
+
 export async function performExtraction(
   extractId: string,
   options: ExtractServiceOptions,
@@ -81,6 +88,13 @@ export async function performExtraction(
   let singleAnswerResult: any = {};
   let totalUrlsScraped = 0;
   let sources: Record<string, string[]> = {};
+  let costTracking: CostTracking = {
+    smartScrapeCallCount: 0,
+    smartScrapeCost: 0,
+    otherCallCount: 0,
+    otherCost: 0,
+    totalCost: 0,
+  };
 
   let log = {
     extractId,
@@ -102,8 +116,14 @@ export async function performExtraction(
     const rephrasedPrompt = await generateBasicCompletion(
       buildRephraseToSerpPrompt(request.prompt),
     );
+    let rptxt = rephrasedPrompt?.text.replace('"', "").replace("'", "") || "";
+    if (rephrasedPrompt) {
+      costTracking.otherCallCount++;
+      costTracking.otherCost += rephrasedPrompt.cost;
+      costTracking.totalCost += rephrasedPrompt.cost;
+    }
     const searchResults = await search({
-      query: rephrasedPrompt?.replace('"', "").replace("'", "") || "",
+      query: rptxt,
       num_results: 10,
     });
 
@@ -157,7 +177,10 @@ export async function performExtraction(
 
   let reqSchema = request.schema;
   if (!reqSchema && request.prompt) {
-    reqSchema = await generateSchemaFromPrompt(request.prompt);
+    const schemaGenRes = await generateSchemaFromPrompt(request.prompt);
+    reqSchema = schemaGenRes.extract;
+
+
     logger.debug("Generated request schema.", {
       originalSchema: request.schema,
       schema: reqSchema,
@@ -187,6 +210,7 @@ export async function performExtraction(
     reasoning,
     keyIndicators,
     tokenUsage: schemaAnalysisTokenUsage,
+    cost: schemaAnalysisCost,
   } = await analyzeSchemaAndPrompt(urls, reqSchema, request.prompt ?? "");
 
   logger.debug("Analyzed schema.", {
@@ -195,6 +219,10 @@ export async function performExtraction(
     reasoning,
     keyIndicators,
   });
+
+  costTracking.otherCallCount++;
+  costTracking.otherCost += schemaAnalysisCost;
+  costTracking.totalCost += schemaAnalysisCost;
 
   // Track schema analysis tokens
   tokenUsage.push(schemaAnalysisTokenUsage);
@@ -237,6 +265,7 @@ export async function performExtraction(
         });
       },
       logger.child({ module: "extract", method: "processUrl", url }),
+      costTracking,
     ),
   );
 
@@ -418,6 +447,12 @@ export async function performExtraction(
           // Track multi-entity extraction tokens
           if (multiEntityCompletion) {
             tokenUsage.push(multiEntityCompletion.totalUsage);
+
+            costTracking.smartScrapeCallCount += 1;
+            costTracking.smartScrapeCost += multiEntityCompletion.smartScrapeCost;
+            costTracking.otherCallCount += 1;
+            costTracking.otherCost += multiEntityCompletion.otherCost;
+            costTracking.totalCost += multiEntityCompletion.smartScrapeCost + multiEntityCompletion.otherCost;
 
             if (multiEntityCompletion.extract) {
               return {
@@ -701,6 +736,8 @@ export async function performExtraction(
       extract: completionResult,
       tokenUsage: singleAnswerTokenUsage,
       sources: singleAnswerSources,
+      smartScrapeCost: singleAnswerSmartScrapeCost,
+      otherCost: singleAnswerOtherCost,
     } = await singleAnswerCompletion({
       singleAnswerDocs,
       rSchema,
@@ -709,6 +746,11 @@ export async function performExtraction(
       systemPrompt: request.systemPrompt ?? "",
       useAgent: isAgentExtractModelValid(request.agent?.model),
     });
+    costTracking.smartScrapeCost += singleAnswerSmartScrapeCost;
+    costTracking.smartScrapeCallCount += 1;
+    costTracking.otherCost += singleAnswerOtherCost;
+    costTracking.otherCallCount += 1;
+    costTracking.totalCost += singleAnswerSmartScrapeCost + singleAnswerOtherCost;
     logger.debug("Done generating singleAnswer completions.");
 
     singleAnswerResult = transformArrayToObject(rSchema, completionResult);
@@ -848,6 +890,7 @@ export async function performExtraction(
     num_tokens: totalTokensUsed,
     tokens_billed: tokensToBill,
     sources,
+    cost_tracking: costTracking,
   }).then(() => {
     updateExtract(extractId, {
       status: "completed",

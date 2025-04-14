@@ -9,8 +9,6 @@ import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { getModel } from "../../../lib/generic-ai";
 import { TokenUsage } from "../../../controllers/v1/types";
 
-
-
 const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
     type: "boolean",
@@ -188,12 +186,13 @@ export async function extractData({
   extractOptions: GenerateCompletionsOptions;
   urls: string[];
   useAgent: boolean;
-}): Promise<{ extractedDataArray: any[]; warning: any }> {
+}): Promise<{ extractedDataArray: any[]; warning: any; smartScrapeCost: number; otherCost: number }> {
 
   const schema = extractOptions.options.schema;
   const logger = extractOptions.logger;
   const isSingleUrl = urls.length === 1;
-  
+  let smartScrapeCost = 0;
+  let otherCost = 0;
   // TODO: remove the "required" fields here!! it breaks o3-mini
   const { schemaToUse } = prepareSmartScrapeSchema(schema, logger, isSingleUrl);
   const extractOptionsNewSchema = {
@@ -209,7 +208,7 @@ export async function extractData({
 
   // checks if using smartScrape is needed for this case
   try {
-    const { extract: e, warning: w, totalUsage: t } = await generateCompletions(
+    const { extract: e, warning: w, totalUsage: t, cost: c } = await generateCompletions(
       { ...extractOptionsNewSchema,
         model: getModel("gemini-2.5-pro-preview-03-25", "google"),
         retryModel: getModel("gemini-2.5-pro-exp-03-25", "vertex"),
@@ -217,6 +216,7 @@ export async function extractData({
     extract = e;
     warning = w;
     totalUsage = t;
+    otherCost += c;
   } catch (error) {
     logger.error("failed during extractSmartScrape.ts:generateCompletions", error);
     // console.log("failed during extractSmartScrape.ts:generateCompletions", error);
@@ -240,6 +240,7 @@ export async function extractData({
         smartscrapeResults = [
           await smartScrape(urls[0], extract?.smartscrape_prompt),
         ];
+        smartScrapeCost += smartscrapeResults[0].cost;
       } else {
         const pages = extract?.smartscrapePages;
         //do it async promiseall instead
@@ -251,6 +252,7 @@ export async function extractData({
             );
           }),
         );
+        smartScrapeCost += smartscrapeResults.reduce((acc, result) => acc + result.cost, 0);
       }
       // console.log("smartscrapeResults", smartscrapeResults);
 
@@ -285,5 +287,5 @@ export async function extractData({
     console.error(">>>>>>>extractSmartScrape.ts error>>>>>\n", error);
   }
 
-  return { extractedDataArray: extractedData, warning: warning };
+  return { extractedDataArray: extractedData, warning: warning, smartScrapeCost: smartScrapeCost, otherCost: otherCost };
 }

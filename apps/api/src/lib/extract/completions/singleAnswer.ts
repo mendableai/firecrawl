@@ -26,6 +26,8 @@ export async function singleAnswerCompletion({
   extract: any;
   tokenUsage: TokenUsage;
   sources: string[];
+  smartScrapeCost: number;
+  otherCost: number;
 }> {
   const docsPrompt = `Today is: ` + new Date().toISOString() + `.\n` + prompt;
   const generationOptions: GenerateCompletionsOptions = {
@@ -43,7 +45,7 @@ export async function singleAnswerCompletion({
       model: getModel("gemini-2.0-flash", "google"),
     };
 
-  const { extractedDataArray, warning } = await extractData({
+  const { extractedDataArray, warning, smartScrapeCost, otherCost } = await extractData({
     extractOptions: generationOptions,
     urls: singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || ""),
     useAgent,
@@ -86,5 +88,7 @@ export async function singleAnswerCompletion({
     sources: singleAnswerDocs.map(
       (doc) => doc.metadata.url || doc.metadata.sourceURL || "",
     ),
+    smartScrapeCost,
+    otherCost,
   };
 }

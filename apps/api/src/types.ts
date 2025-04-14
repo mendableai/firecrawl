@@ -7,6 +7,7 @@ import {
 } from "./controllers/v1/types";
 import { ExtractorOptions, Document } from "./lib/entities";
 import { InternalOptions } from "./scraper/scrapeURL";
+import type { CostTracking } from "./lib/extract/extraction-service";
 
 type Mode = "crawl" | "single_urls" | "sitemap";
 
@@ -90,6 +91,7 @@ export interface FirecrawlJob {
   crawl_id?: string;
   tokens_billed?: number;
   sources?: Record<string, string[]>;
+  cost_tracking?: CostTracking;
 }
 
 export interface FirecrawlScrapeResponse {

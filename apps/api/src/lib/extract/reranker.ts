@@ -166,6 +166,7 @@ function filterAndProcessLinks(
 export type RerankerResult = {
   mapDocument: (MapDocument & { relevanceScore?: number; reason?: string })[];
   tokensUsed: number;
+  cost: number;
 };
 
 export type RerankerOptions = {
@@ -230,6 +231,8 @@ export async function rerankLinksWithLLM(
     },
     required: ["relevantLinks"],
   };
+
+  let totalCost = 0;
 
   const results = await Promise.all(
     chunks.map(async (chunk, chunkIndex) => {
@@ -314,7 +317,7 @@ export async function rerankLinksWithLLM(
             });
 
             completion = await completionPromise;
- 
+            totalCost += completion.cost;
           } catch (error) {
             console.warn(
               `Error processing chunk ${chunkIndex + 1} attempt ${retry + 1}:`,
@@ -405,5 +408,6 @@ export async function rerankLinksWithLLM(
   return {
     mapDocument: relevantLinks,
     tokensUsed: totalTokensUsed,
+    cost: totalCost,
   };
 }

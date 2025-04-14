@@ -136,7 +136,10 @@ export async function scrapeController(
     scrapeOptions: req.body,
     origin: origin,
     num_tokens: numTokens,
+    cost_tracking: doc?.metadata?.costTracking,
   });
+
+  delete doc.metadata.costTracking;
 
   return res.status(200).json({
     success: true,

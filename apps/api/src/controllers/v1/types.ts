@@ -387,6 +387,7 @@ export const scrapeOptions = baseScrapeOptions
 export type ScrapeOptions = z.infer<typeof baseScrapeOptions>;
 
 import Ajv from "ajv";
+import type { CostTracking } from "../../lib/extract/extraction-service";
 
 const ajv = new Ajv();
 
@@ -665,6 +666,7 @@ export type Document = {
     ogLocaleAlternate?: string[];
     ogSiteName?: string;
     ogVideo?: string;
+    favicon?: string;
     dcTermsCreated?: string;
     dcDateCreated?: string;
     dcDate?: string;
@@ -684,7 +686,8 @@ export type Document = {
     statusCode: number;
     scrapeId?: string;
     error?: string;
-    [key: string]: string | string[] | number | undefined;
+    costTracking?: CostTracking;
+    // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };
   serpResults?: {
     title: string;
