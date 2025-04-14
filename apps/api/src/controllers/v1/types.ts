@@ -343,6 +343,10 @@ const extractTransform = (obj) => {
     obj = { ...obj, timeout: 60000 };
   }
 
+  if (obj.agent) {
+    obj = { ...obj, timeout: 300000 };
+  }
+
   if (obj.formats?.includes("json")) {
     obj.formats.push("extract");
   }
