@@ -72,6 +72,38 @@ export async function setCachedACUC(
   }
 }
 
+const mockPreviewACUC: (team_id: string, is_extract: boolean) => AuthCreditUsageChunk = (team_id, is_extract) => ({
+  api_key: "preview",
+  team_id,
+  sub_id: "bypass",
+  sub_current_period_start: new Date().toISOString(),
+  sub_current_period_end: new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+  sub_user_id: "bypass",
+  price_id: "bypass",
+  rate_limits: {
+    crawl: 2,
+    scrape: 10,
+    extract: 10,
+    search: 5,
+    map: 5,
+    preview: 5,
+    crawlStatus: 500,
+    extractStatus: 500,
+  },
+  price_credits: 99999999,
+  credits_used: 0,
+  coupon_credits: 99999999,
+  adjusted_credits_used: 0,
+  remaining_credits: 99999999,
+  total_credits_sum: 99999999,
+  plan_priority: {
+    bucketLimit: 25,
+    planModifier: 0.1,
+  },
+  concurrency: is_extract ? 200 : 2,
+  is_extract,
+});
+
 const mockACUC: () => AuthCreditUsageChunk = () => ({
   api_key: "bypass",
   team_id: "bypass",
@@ -113,6 +145,12 @@ export async function getACUC(
   let isExtract =
       mode === RateLimiterMode.Extract ||
       mode === RateLimiterMode.ExtractStatus;
+
+  if (api_key === process.env.PREVIEW_TOKEN) {
+    const acuc = mockPreviewACUC(api_key, isExtract);
+    acuc.is_extract = isExtract;
+    return acuc;
+  }
   
   if (process.env.USE_DB_AUTHENTICATION !== "true") {
     const acuc = mockACUC();
@@ -138,7 +176,7 @@ export async function getACUC(
       const client =
         Math.random() > (2/3) ? supabase_rr_service : supabase_service;
       ({ data, error } = await client.rpc(
-        "auth_credit_usage_chunk_28",
+        "auth_credit_usage_chunk_30",
         { input_key: api_key, i_is_extract: isExtract, tally_untallied_credits: true },
         { get: true },
       ));
@@ -223,6 +261,11 @@ export async function getACUCTeam(
   let isExtract =
       mode === RateLimiterMode.Extract ||
       mode === RateLimiterMode.ExtractStatus;
+
+  if (team_id.startsWith("preview")) {
+    const acuc = mockPreviewACUC(team_id, isExtract);
+    return acuc;
+  }
   
   if (process.env.USE_DB_AUTHENTICATION !== "true") {
     const acuc = mockACUC();
@@ -249,7 +292,7 @@ export async function getACUCTeam(
       const client =
         Math.random() > (2/3) ? supabase_rr_service : supabase_service;
       ({ data, error } = await client.rpc(
-        "auth_credit_usage_chunk_28_from_team",
+        "auth_credit_usage_chunk_30_from_team",
         { input_team: team_id, i_is_extract: isExtract, tally_untallied_credits: true },
         { get: true },
       ));
@@ -350,7 +393,7 @@ export async function supaAuthenticateUser(
     };
   }
 
-  const incomingIP = (req.headers["x-forwarded-for"] ||
+  const incomingIP = (req.headers["x-preview-ip"] || req.headers["x-forwarded-for"] ||
     req.socket.remoteAddress) as string;
   const iptoken = incomingIP + token;
 

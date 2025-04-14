@@ -75,6 +75,16 @@ class DeepResearchStatusResponse(pydantic.BaseModel):
     sources: List[Dict[str, Any]]
     summaries: List[str]
 
+class ChangeTrackingData(pydantic.BaseModel):
+    """
+    Data for the change tracking format.
+    """
+    previousScrapeAt: Optional[str] = None
+    changeStatus: str  # "new" | "same" | "changed" | "removed"
+    visibility: str  # "visible" | "hidden"
+    diff: Optional[Dict[str, Any]] = None
+    json: Optional[Any] = None
+
 class FirecrawlApp:
     class SearchResponse(pydantic.BaseModel):
         """
@@ -168,9 +178,13 @@ class FirecrawlApp:
                     json['schema'] = json['schema'].schema()
                 scrape_params['jsonOptions'] = json
 
+            change_tracking = params.get("changeTrackingOptions", {})
+            if change_tracking:
+                scrape_params['changeTrackingOptions'] = change_tracking
+
             # Include any other params directly at the top level of scrape_params
             for key, value in params.items():
-                if key not in ['jsonOptions', 'agent']:
+                if key not in ['jsonOptions', 'changeTrackingOptions', 'agent']:
                     scrape_params[key] = value
                     
             agent = params.get('agent')
