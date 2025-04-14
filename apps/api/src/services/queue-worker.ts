@@ -353,11 +353,11 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
       if (result.success) {
         try {
           if (
-            job.data.crawl_id &&
-            process.env.USE_DB_AUTHENTICATION === "true"
+            process.env.USE_DB_AUTHENTICATION === "true" &&
+            (job.data.crawl_id || process.env.GCS_BUCKET_NAME)
           ) {
             logger.debug(
-              "Job succeeded -- has crawl associated, putting null in Redis",
+              "Job succeeded -- putting null in Redis",
             );
             await job.moveToCompleted(null, token, false);
           } else {
