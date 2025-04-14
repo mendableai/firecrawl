@@ -71,12 +71,14 @@ export async function scrapeController(
     if (!process.env.GCS_BUCKET_NAME) {
       doc = await waitForJob<Document>(jobId, timeout + totalWait); // TODO: better types for this
     } else {
-      await waitForJob<Document>(jobId, timeout + totalWait);
-      const docs = await getJobFromGCS(jobId);
-      if (!docs || docs.length === 0) {
-        throw new Error("Job not found in GCS");
+      doc = await waitForJob<Document>(jobId, timeout + totalWait);
+      if (!doc) {
+        const docs = await getJobFromGCS(jobId);
+        if (!docs || docs.length === 0) {
+          throw new Error("Job not found in GCS");
+        }
+        doc = docs[0];
       }
-      doc = docs[0];
     }
   } catch (e) {
     logger.error(`Error in scrapeController: ${e}`, {

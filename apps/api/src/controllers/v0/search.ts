@@ -129,12 +129,14 @@ export async function searchHelper(
         if (!process.env.GCS_BUCKET_NAME) {
           doc = await waitForJob<Document>(x.opts.jobId, 60000);
         } else {
-          await waitForJob<Document>(x.opts.jobId, 60000);
-          const docs = await getJobFromGCS(x.opts.jobId);
-          if (!docs || docs.length === 0) {
-            throw new Error("Job not found in GCS");
+          doc = await waitForJob<Document>(x.opts.jobId, 60000);
+          if (!doc) {
+            const docs = await getJobFromGCS(x.opts.jobId);
+            if (!docs || docs.length === 0) {
+              throw new Error("Job not found in GCS");
+            }
+            doc = docs[0];
           }
-          doc = docs[0];
         }
         return doc;
       }),

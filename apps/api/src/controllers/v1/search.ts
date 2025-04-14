@@ -104,12 +104,14 @@ async function scrapeSearchResult(
     if (!process.env.GCS_BUCKET_NAME) {
       doc = await waitForJob<Document>(jobId, options.timeout);
     } else {
-      await waitForJob<Document>(jobId, options.timeout);
-      const docs = await getJobFromGCS(jobId);
-      if (!docs || docs.length === 0) {
-        throw new Error("Job not found in GCS");
+      doc = await waitForJob<Document>(jobId, options.timeout);
+      if (!doc) {
+        const docs = await getJobFromGCS(jobId);
+        if (!docs || docs.length === 0) {
+          throw new Error("Job not found in GCS");
+        }
+        doc = docs[0];
       }
-      doc = docs[0];
     }
     
     logger.info("Scrape job completed", {
