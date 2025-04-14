@@ -353,11 +353,11 @@ const processJobInternal = async (token: string, job: Job & { id: string }) => {
       if (result.success) {
         try {
           if (
-            job.data.crawl_id &&
-            process.env.USE_DB_AUTHENTICATION === "true"
+            process.env.USE_DB_AUTHENTICATION === "true" &&
+            (job.data.crawl_id || process.env.GCS_BUCKET_NAME)
           ) {
             logger.debug(
-              "Job succeeded -- has crawl associated, putting null in Redis",
+              "Job succeeded -- putting null in Redis",
             );
             await job.moveToCompleted(null, token, false);
           } else {
@@ -1207,6 +1207,21 @@ async function processJob(job: Job & { id: string }, token: string) {
 
       await finishCrawlIfNeeded(job, sc);
     } else {
+      await logJob({
+        job_id: job.id,
+        success: true,
+        message: "Scrape completed",
+        num_docs: 1,
+        docs: [doc],
+        time_taken: timeTakenInSeconds,
+        team_id: job.data.team_id,
+        mode: "scrape",
+        url: job.data.url,
+        scrapeOptions: job.data.scrapeOptions,
+        origin: job.data.origin,
+        num_tokens: 0, // TODO: fix
+      });
+      
       indexJob(job, doc);
     }
 

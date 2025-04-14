@@ -20,6 +20,7 @@ import * as Sentry from "@sentry/node";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { logger as _logger } from "../../lib/logger";
 import type { Logger } from "winston";
+import { getJobFromGCS } from "../../lib/gcs-jobs";
 
 // Used for deep research
 export async function searchAndScrapeSearchResult(
@@ -99,7 +100,8 @@ async function scrapeSearchResult(
       jobPriority,
     );
 
-    const doc = await waitForJob<Document>(jobId, options.timeout);
+    const doc: Document = await waitForJob(jobId, options.timeout);
+    
     logger.info("Scrape job completed", {
       scrapeId: jobId,
       url: searchResult.url,

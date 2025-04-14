@@ -13,6 +13,8 @@ import { logger } from "../lib/logger";
 import { sendNotificationWithCustomDays } from './notification/email_notification';
 import { shouldSendConcurrencyLimitNotification } from './notification/notification-check';
 import { getACUC, getACUCTeam } from "../controllers/auth";
+import { getJobFromGCS } from "../lib/gcs-jobs";
+import { Document } from "../controllers/v1/types";
 
 /**
  * Checks if a job is a crawl or batch scrape based on its options
@@ -263,10 +265,10 @@ export async function addScrapeJobs(
   );
 }
 
-export function waitForJob<T = unknown>(
+export function waitForJob(
   jobId: string,
   timeout: number,
-): Promise<T> {
+): Promise<Document> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
     const int = setInterval(async () => {
@@ -277,7 +279,18 @@ export function waitForJob<T = unknown>(
         const state = await getScrapeQueue().getJobState(jobId);
         if (state === "completed") {
           clearInterval(int);
-          resolve((await getScrapeQueue().getJob(jobId))!.returnvalue);
+          let doc: Document;
+          doc = (await getScrapeQueue().getJob(jobId))!.returnvalue;
+
+          if (!doc) {
+            const docs = await getJobFromGCS(jobId);
+            if (!docs || docs.length === 0) {
+              throw new Error("Job not found in GCS");
+            }
+            doc = docs[0];
+          }
+
+          resolve(doc);
         } else if (state === "failed") {
           // console.log("failed", (await getScrapeQueue().getJob(jobId)).failedReason);
           const job = await getScrapeQueue().getJob(jobId);
