@@ -141,6 +141,7 @@ export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchem
     systemPrompt?: string;
   }
   actions?: ActionsSchema;
+  agent?: AgentOptions;
 }
 
 export interface ActionsResult {
@@ -270,6 +271,21 @@ export interface MapResponse {
  * Parameters for extracting information from URLs.
  * Defines options for extracting information from URLs.
  */
+export interface AgentOptions {
+  model?: string;
+  prompt?: string;
+  sessionId?: string;
+}
+
+/**
+ * Parameters for extracting information from URLs.
+ * Defines options for extracting information from URLs.
+ */
+export interface AgentOptionsExtract {
+  model?: string;
+  sessionId?: string;
+}
+
 export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
   prompt?: string;
   schema?: LLMSchema | object;
@@ -280,6 +296,7 @@ export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
   origin?: string;
   showSources?: boolean;
   scrapeOptions?: CrawlScrapeOptions;
+  agent?: AgentOptionsExtract;
 }
 
 /**
