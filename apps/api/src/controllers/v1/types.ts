@@ -850,6 +850,8 @@ export type AuthCreditUsageChunk = {
     preview: number;
     crawlStatus: number;
     extractStatus: number;
+    extractAgentPreview?: number;
+    scrapeAgentPreview?: number;
   };
   concurrency: number;
 

@@ -6,6 +6,7 @@ import { crawlStatusController } from "../controllers/v1/crawl-status";
 import { mapController } from "../controllers/v1/map";
 import {
   ErrorResponse,
+  isAgentExtractModelValid,
   RequestWithACUC,
   RequestWithAuth,
   RequestWithMaybeAuth,
@@ -93,6 +94,14 @@ export function authMiddleware(
 ): (req: RequestWithMaybeAuth, res: Response, next: NextFunction) => void {
   return (req, res, next) => {
     (async () => {
+      if (rateLimiterMode === RateLimiterMode.Extract && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
+        rateLimiterMode = RateLimiterMode.ExtractAgentPreview;
+      }
+
+      if (rateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
+        rateLimiterMode = RateLimiterMode.ScrapeAgentPreview;
+      }
+
       const auth = await authenticateUser(req, res, rateLimiterMode);
 
       if (!auth.success) {

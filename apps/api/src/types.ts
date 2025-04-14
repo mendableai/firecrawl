@@ -132,11 +132,13 @@ export enum RateLimiterMode {
   Crawl = "crawl",
   CrawlStatus = "crawlStatus",
   Scrape = "scrape",
+  ScrapeAgentPreview = "scrapeAgentPreview",
   Preview = "preview",
   Search = "search",
   Map = "map",
   Extract = "extract",
   ExtractStatus = "extractStatus",
+  ExtractAgentPreview = "extractAgentPreview",
 }
 
 export type AuthResponse =
