@@ -97,6 +97,7 @@ class FirecrawlApp:
         # Just for backwards compatibility
         enableWebSearch: Optional[bool] = False
         show_sources: Optional[bool] = False
+        agent: Optional[Dict[str, Any]] = None
 
 
 
@@ -692,6 +693,9 @@ class FirecrawlApp:
             request_data['systemPrompt'] = params['system_prompt']
         elif params.get('systemPrompt'):  # Check legacy field name
             request_data['systemPrompt'] = params['systemPrompt']
+            
+        if params.get('agent'):
+            request_data['agent'] = params['agent']
 
         try:
             # Send the initial extract request
