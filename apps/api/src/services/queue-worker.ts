@@ -1207,6 +1207,21 @@ async function processJob(job: Job & { id: string }, token: string) {
 
       await finishCrawlIfNeeded(job, sc);
     } else {
+      await logJob({
+        job_id: job.id,
+        success: true,
+        message: "Scrape completed",
+        num_docs: 1,
+        docs: [doc],
+        time_taken: timeTakenInSeconds,
+        team_id: job.data.team_id,
+        mode: "scrape",
+        url: job.data.url,
+        scrapeOptions: job.data.scrapeOptions,
+        origin: job.data.origin,
+        num_tokens: 0, // TODO: fix
+      });
+      
       indexJob(job, doc);
     }
 
