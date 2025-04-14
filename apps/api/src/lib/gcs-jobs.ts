@@ -1,6 +1,7 @@
 import { FirecrawlJob } from "../types";
 import { Storage } from "@google-cloud/storage";
 import { logger } from "./logger";
+import { Document } from "../controllers/v1/types";
 
 const credentials = process.env.GCS_CREDENTIALS ? JSON.parse(atob(process.env.GCS_CREDENTIALS)) : undefined;
 

@@ -30,6 +30,7 @@ import { fromLegacyScrapeOptions } from "../v1/types";
 import { ZodError } from "zod";
 import { Document as V0Document } from "./../../lib/entities";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { getJobFromGCS } from "../../lib/gcs-jobs";
 
 export async function scrapeHelper(
   jobId: string,
@@ -93,7 +94,7 @@ export async function scrapeHelper(
     },
     async (span) => {
       try {
-        doc = await waitForJob<Document>(jobId, timeout);
+        doc = await waitForJob(jobId, timeout);
       } catch (e) {
         if (
           e instanceof Error &&

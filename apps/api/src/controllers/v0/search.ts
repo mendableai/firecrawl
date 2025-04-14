@@ -22,6 +22,7 @@ import {
   fromLegacyScrapeOptions,
   toLegacyDocument,
 } from "../v1/types";
+import { getJobFromGCS } from "../../lib/gcs-jobs";
 
 export async function searchHelper(
   jobId: string,
@@ -123,7 +124,7 @@ export async function searchHelper(
 
   const docs = (
     await Promise.all(
-      jobDatas.map((x) => waitForJob<Document>(x.opts.jobId, 60000)),
+      jobDatas.map((x) => waitForJob(x.opts.jobId, 60000)),
     )
   ).map((x) => toLegacyDocument(x, internalOptions));
 

@@ -13,6 +13,8 @@ import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
 import { getScrapeQueue } from "../../services/queue-service";
+import { getJob } from "./crawl-status";
+import { getJobFromGCS } from "../../lib/gcs-jobs";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -66,7 +68,7 @@ export async function scrapeController(
 
   let doc: Document;
   try {
-    doc = await waitForJob<Document>(jobId, timeout + totalWait); // TODO: better types for this
+    doc = await waitForJob(jobId, timeout + totalWait);
   } catch (e) {
     logger.error(`Error in scrapeController: ${e}`, {
       jobId,
