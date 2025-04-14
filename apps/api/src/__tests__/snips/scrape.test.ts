@@ -1,4 +1,35 @@
 import { scrape } from "./lib";
+import path from 'path';
+import crypto from 'crypto';
+import { deriveDiff } from '../../scraper/scrapeURL/transformers/diff'; // Import deriveDiff
+import { Meta } from '../../scraper/scrapeURL'; // Import Meta type
+import { Document } from '../../controllers/v1/types'; // Import Document type
+
+const mockReadFile = jest.fn();
+const mockWriteFile = jest.fn();
+const mockMkdir = jest.fn();
+jest.mock('fs/promises', () => ({
+  readFile: jest.fn(),
+  writeFile: jest.fn(),
+  mkdir: jest.fn().mockResolvedValue(undefined), // Keep mock implementation here if simple
+}));
+
+const fsPromises = require('fs/promises');
+fsPromises.readFile = mockReadFile;
+fsPromises.writeFile = mockWriteFile;
+fsPromises.mkdir = mockMkdir;
+
+const mockSupabaseRpc = jest.fn(); // Keep the reference for test assertions if needed
+jest.mock('../../services/supabase', () => ({
+    supabase_service: {
+        rpc: jest.fn(),
+    },
+    supabase_rr_service: {} // Mock rr service if needed
+}));
+
+const supabase = require('../../services/supabase');
+supabase.supabase_service.rpc = mockSupabaseRpc;
+
 
 describe("Scrape tests", () => {
   it.concurrent("mocking works properly", async () => {
@@ -205,6 +236,342 @@ describe("Scrape tests", () => {
         }
       }, 30000);
     });
+
+    describe("File-based Change Tracking (USE_DB_AUTHENTICATION=false)", () => {
+      const MOCK_URL = "http://file-cache-test.com";
+      const MOCK_MARKDOWN_V1 = "# Version 1";
+      const MOCK_MARKDOWN_V2 = "# Version 2";
+      const MOCK_CACHE_DIR = path.join(__dirname, '..', '..', '..', 'data', 'scrape_cache');
+      const MOCK_HASH = crypto.createHash('sha256').update(MOCK_URL).digest('hex');
+      const MOCK_FILE_PATH = path.join(MOCK_CACHE_DIR, `${MOCK_HASH}.json`);
+
+      let originalDbAuthValue: string | undefined;
+      beforeAll(() => {
+        originalDbAuthValue = process.env.USE_DB_AUTHENTICATION;
+        process.env.USE_DB_AUTHENTICATION = "false"; // Force file-based logic for these tests
+      });
+
+      afterAll(() => {
+        process.env.USE_DB_AUTHENTICATION = originalDbAuthValue; // Restore original value
+        jest.unmock('fs/promises'); // Clean up mock
+      });
+
+      beforeEach(() => {
+        mockReadFile.mockReset();
+        mockWriteFile.mockReset();
+        mockMkdir.mockReset().mockResolvedValue(undefined);
+      });
+
+      it("should return 'new' status when no cache file exists and write cache", async () => {
+        mockReadFile.mockRejectedValue({ code: 'ENOENT' });
+
+        const mockMeta: Meta = { // Use full Meta type
+            id: 'test-id', // Added required id
+            url: MOCK_URL,
+            options: { // Match ScrapeOptions defaults and requirements
+                formats: ["changeTracking", "markdown"], // Added markdown as required
+                changeTrackingOptions: { modes: [] },
+                onlyMainContent: true, // Default from schema
+                waitFor: 0, // Default from schema
+                mobile: false, // Default from schema
+                parsePDF: true, // Default from schema
+                skipTlsVerification: false, // Default from schema
+                removeBase64Images: true, // Default from schema
+                fastMode: false, // Default from schema
+                blockAds: true, // Default from schema
+                headers: {},
+                includeTags: undefined,
+                excludeTags: undefined,
+                timeout: undefined, // No default in base schema, transform might set one
+                extract: undefined,
+                jsonOptions: undefined,
+                actions: undefined,
+                location: undefined,
+                geolocation: undefined, // Deprecated but in schema
+                useMock: undefined,
+                proxy: undefined,
+            },
+            internalOptions: { teamId: 'test-team-id', urlInvisibleInCurrentCrawl: false },
+            logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn(), child: jest.fn().mockReturnThis() } as any,
+            logs: [], // Added required logs
+            featureFlags: new Set(), // Added required featureFlags
+            mock: null, // Added required mock
+            pdfPrefetch: undefined, // Added required pdfPrefetch
+        };
+        const mockDocument: Document = {
+
+            metadata: { sourceURL: MOCK_URL, statusCode: 200 },
+            markdown: MOCK_MARKDOWN_V1,
+        };
+
+        const resultDocument = await deriveDiff(mockMeta as Meta, mockDocument);
+
+        expect(resultDocument.changeTracking?.changeStatus).toBe("new");
+        expect(resultDocument.changeTracking?.previousScrapeAt).toBeNull();
+        const expectedCacheDir = path.join(__dirname, '..', '..', '..', 'data', 'scrape_cache');
+        expect(mockMkdir).toHaveBeenCalledWith(expectedCacheDir, { recursive: true });
+        expect(mockReadFile).toHaveBeenCalledWith(MOCK_FILE_PATH, 'utf-8');
+        expect(mockWriteFile).toHaveBeenCalledTimes(1);
+        expect(mockWriteFile).toHaveBeenCalledWith(
+          MOCK_FILE_PATH,
+          expect.stringContaining(`"markdown": "${MOCK_MARKDOWN_V1}"`)
+        );
+      }, 30000);
+
+      it("should return 'same' status when cache matches and overwrite cache", async () => {
+        const previousTimestamp = new Date(Date.now() - 1000 * 60 * 60).toISOString();
+        const cacheContent = JSON.stringify({ markdown: MOCK_MARKDOWN_V1, scrapedAt: previousTimestamp });
+        mockReadFile.mockResolvedValue(cacheContent);
+
+        const mockMeta: Partial<Meta> = {
+            url: MOCK_URL,
+            options: {
+                formats: ["changeTracking", "markdown"], // Added markdown as it's required by changeTracking
+                changeTrackingOptions: { modes: [] },
+                onlyMainContent: true, // Default from schema
+                waitFor: 0, // Default from schema
+                mobile: false, // Default from schema
+                parsePDF: true, // Default from schema
+                skipTlsVerification: false, // Default from schema
+                removeBase64Images: true, // Default from schema
+                fastMode: false, // Default from schema
+                blockAds: true, // Default from schema
+                headers: {},
+                includeTags: undefined,
+                excludeTags: undefined,
+                timeout: undefined, // No default in base schema, but transform might set one
+                extract: undefined,
+                jsonOptions: undefined,
+                actions: undefined,
+                location: undefined,
+                geolocation: undefined, // Deprecated but in schema
+                useMock: undefined,
+                proxy: undefined,
+            },
+            internalOptions: { teamId: 'test-team-id', urlInvisibleInCurrentCrawl: false },
+            logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn(), child: jest.fn().mockReturnThis() } as any,
+        };
+        const mockDocument: Document = {
+
+            metadata: { sourceURL: MOCK_URL, statusCode: 200 },
+            markdown: MOCK_MARKDOWN_V1, // Same markdown as cache
+        };
+
+        const resultDocument = await deriveDiff(mockMeta as Meta, mockDocument);
+
+        expect(resultDocument.changeTracking?.changeStatus).toBe("same");
+        expect(resultDocument.changeTracking?.previousScrapeAt).toBe(previousTimestamp);
+        expect(mockWriteFile).toHaveBeenCalledTimes(1);
+        const writtenData = JSON.parse(mockWriteFile.mock.calls[0][1]);
+        expect(writtenData.markdown).toBe(MOCK_MARKDOWN_V1);
+        expect(new Date(writtenData.scrapedAt) > new Date(previousTimestamp)).toBe(true);
+      }, 30000);
+
+      it("should return 'changed' status when cache differs and overwrite cache", async () => {
+        const previousTimestamp = new Date(Date.now() - 1000 * 60 * 60).toISOString();
+        const cacheContent = JSON.stringify({ markdown: MOCK_MARKDOWN_V1, scrapedAt: previousTimestamp });
+        mockReadFile.mockResolvedValue(cacheContent);
+
+        const mockMeta: Partial<Meta> = {
+            url: MOCK_URL,
+            options: {
+                formats: ["changeTracking", "markdown"], // Added markdown as it's required by changeTracking
+                changeTrackingOptions: { modes: [] },
+                onlyMainContent: true, // Default from schema
+                waitFor: 0, // Default from schema
+                mobile: false, // Default from schema
+                parsePDF: true, // Default from schema
+                skipTlsVerification: false, // Default from schema
+                removeBase64Images: true, // Default from schema
+                fastMode: false, // Default from schema
+                blockAds: true, // Default from schema
+                headers: {},
+                includeTags: undefined,
+                excludeTags: undefined,
+                timeout: undefined, // No default in base schema, but transform might set one
+                extract: undefined,
+                jsonOptions: undefined,
+                actions: undefined,
+                location: undefined,
+                geolocation: undefined, // Deprecated but in schema
+                useMock: undefined,
+                proxy: undefined,
+            },
+            internalOptions: { teamId: 'test-team-id', urlInvisibleInCurrentCrawl: false },
+            logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn(), child: jest.fn().mockReturnThis() } as any,
+        };
+        const mockDocument: Document = {
+
+            metadata: { sourceURL: MOCK_URL, statusCode: 200 },
+            markdown: MOCK_MARKDOWN_V2, // Different markdown
+        };
+
+        const resultDocument = await deriveDiff(mockMeta as Meta, mockDocument);
+
+        expect(resultDocument.changeTracking?.changeStatus).toBe("changed");
+        expect(resultDocument.changeTracking?.previousScrapeAt).toBe(previousTimestamp);
+        expect(mockWriteFile).toHaveBeenCalledTimes(1);
+        const writtenData = JSON.parse(mockWriteFile.mock.calls[0][1]);
+        expect(writtenData.markdown).toBe(MOCK_MARKDOWN_V2);
+        expect(new Date(writtenData.scrapedAt) > new Date(previousTimestamp)).toBe(true);
+      }, 30000);
+
+      it("should return 'removed' status on 404 and not write cache", async () => {
+        const previousTimestamp = new Date(Date.now() - 1000 * 60 * 60).toISOString();
+        const cacheContent = JSON.stringify({ markdown: MOCK_MARKDOWN_V1, scrapedAt: previousTimestamp });
+        mockReadFile.mockResolvedValue(cacheContent);
+
+        const mockMeta: Partial<Meta> = {
+            url: MOCK_URL,
+            options: {
+                formats: ["changeTracking", "markdown"], // Added markdown as it's required by changeTracking
+                changeTrackingOptions: { modes: [] },
+                onlyMainContent: true, // Default from schema
+                waitFor: 0, // Default from schema
+                mobile: false, // Default from schema
+                parsePDF: true, // Default from schema
+                skipTlsVerification: false, // Default from schema
+                removeBase64Images: true, // Default from schema
+                fastMode: false, // Default from schema
+                blockAds: true, // Default from schema
+                headers: {},
+                includeTags: undefined,
+                excludeTags: undefined,
+                timeout: undefined, // No default in base schema, but transform might set one
+                extract: undefined,
+                jsonOptions: undefined,
+                actions: undefined,
+                location: undefined,
+                geolocation: undefined, // Deprecated but in schema
+                useMock: undefined,
+                proxy: undefined,
+            },
+            internalOptions: { teamId: 'test-team-id', urlInvisibleInCurrentCrawl: false },
+            logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn(), child: jest.fn().mockReturnThis() } as any,
+        };
+        const mockDocument: Document = {
+
+            metadata: { sourceURL: MOCK_URL, statusCode: 404 }, // Simulate 404
+            markdown: "", // Markdown might be empty or irrelevant for 404
+        };
+
+        const resultDocument = await deriveDiff(mockMeta as Meta, mockDocument);
+
+        expect(resultDocument.changeTracking?.changeStatus).toBe("removed");
+        expect(resultDocument.changeTracking?.previousScrapeAt).toBe(previousTimestamp);
+        expect(mockWriteFile).not.toHaveBeenCalled();
+      }, 30000);
+
+      it("should handle cache read errors gracefully", async () => {
+        const readError = new Error("Disk read error");
+        mockReadFile.mockRejectedValue(readError);
+
+        const mockMeta: Meta = { // Use full Meta type
+            id: 'test-id-' + Math.random().toString(36).substring(7), // Added required id with unique value
+            url: MOCK_URL,
+            options: { // Ensure all required fields from ScrapeRequestInput['pageOptions'] are present
+                formats: ["changeTracking", "markdown"], // Added markdown as it's required by changeTracking
+                changeTrackingOptions: { modes: [] },
+                onlyMainContent: true, // Default from schema
+                waitFor: 0, // Default from schema
+                mobile: false, // Default from schema
+                parsePDF: true, // Default from schema
+                skipTlsVerification: false, // Default from schema
+                removeBase64Images: true, // Default from schema
+                fastMode: false, // Default from schema
+                blockAds: true, // Default from schema
+                headers: {},
+                includeTags: undefined,
+                excludeTags: undefined,
+                timeout: undefined, // No default in base schema, but transform might set one
+                extract: undefined,
+                jsonOptions: undefined,
+                actions: undefined,
+                location: undefined,
+                geolocation: undefined, // Deprecated but in schema
+                useMock: undefined,
+                proxy: undefined,
+            },
+            internalOptions: { teamId: 'test-team-id', urlInvisibleInCurrentCrawl: false },
+            logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn(), child: jest.fn().mockReturnThis() } as any,
+            logs: [], // Added required logs
+            featureFlags: new Set(), // Added required featureFlags
+            mock: null, // Added required mock
+            pdfPrefetch: undefined, // Added required pdfPrefetch
+        };
+
+        const mockDocument: Document = {
+
+             metadata: { sourceURL: MOCK_URL, statusCode: 200 },
+             markdown: MOCK_MARKDOWN_V1,
+         };
+
+        const resultDocument = await deriveDiff(mockMeta as Meta, mockDocument);
+
+        expect(resultDocument.changeTracking).toBeUndefined(); // Change tracking object won't be populated
+        expect(resultDocument.warning).toContain("Comparing failed (cache read error)");
+        expect(mockWriteFile).not.toHaveBeenCalled(); // Write shouldn't happen if read failed
+      }, 30000);
+
+      it("should NOT use fs when USE_DB_AUTHENTICATION is true", async () => {
+         process.env.USE_DB_AUTHENTICATION = "true"; // Set for this test
+
+        const mockDocument: Document = {
+
+             metadata: { sourceURL: MOCK_URL, statusCode: 200 },
+             markdown: MOCK_MARKDOWN_V1,
+         };
+        const mockMeta: Meta = { // Use full Meta type
+            id: 'test-id-' + Math.random().toString(36).substring(7), // Added required id with unique value
+            url: MOCK_URL,
+            options: { // Ensure all required fields from ScrapeRequestInput['pageOptions'] are present
+                formats: ["changeTracking", "markdown"], // Added markdown as it's required by changeTracking
+                changeTrackingOptions: { modes: [] },
+                onlyMainContent: true, // Default from schema
+                waitFor: 0, // Default from schema
+                mobile: false, // Default from schema
+                parsePDF: true, // Default from schema
+                skipTlsVerification: false, // Default from schema
+                removeBase64Images: true, // Default from schema
+                fastMode: false, // Default from schema
+                blockAds: true, // Default from schema
+                headers: {},
+                includeTags: undefined,
+                excludeTags: undefined,
+                timeout: undefined, // No default in base schema, but transform might set one
+                extract: undefined,
+                jsonOptions: undefined,
+                actions: undefined,
+                location: undefined,
+                geolocation: undefined, // Deprecated but in schema
+                useMock: undefined,
+                proxy: undefined,
+            },
+            internalOptions: { teamId: 'test-team-id', urlInvisibleInCurrentCrawl: false },
+            logger: { debug: jest.fn(), info: jest.fn(), warn: jest.fn(), error: jest.fn(), child: jest.fn().mockReturnThis() } as any,
+            logs: [], // Added required logs
+            featureFlags: new Set(), // Added required featureFlags
+            mock: null, // Added required mock
+            pdfPrefetch: undefined, // Added required pdfPrefetch
+        };
+
+
+
+
+
+         await deriveDiff(mockMeta as Meta, mockDocument);
+
+         expect(mockReadFile).not.toHaveBeenCalled();
+         expect(mockWriteFile).not.toHaveBeenCalled();
+         expect(mockMkdir).not.toHaveBeenCalled();
+         expect(mockSupabaseRpc).toHaveBeenCalledWith("diff_get_last_scrape_3", expect.any(Object)); // Verify DB path was attempted
+
+         process.env.USE_DB_AUTHENTICATION = "false"; // Restore for subsequent tests in the suite
+         jest.unmock('../../services/supabase'); // Clean up supabase mock
+      }, 30000);
+
+    }); // End describe File-based Change Tracking
+
   
     describe("Location API (f-e dependant)", () => {
       it.concurrent("works without specifying an explicit location", async () => {
