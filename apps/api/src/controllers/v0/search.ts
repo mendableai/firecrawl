@@ -124,22 +124,7 @@ export async function searchHelper(
 
   const docs = (
     await Promise.all(
-      jobDatas.map(async (x) => {
-        let doc: Document;
-        if (!process.env.GCS_BUCKET_NAME) {
-          doc = await waitForJob<Document>(x.opts.jobId, 60000);
-        } else {
-          doc = await waitForJob<Document>(x.opts.jobId, 60000);
-          if (!doc) {
-            const docs = await getJobFromGCS(x.opts.jobId);
-            if (!docs || docs.length === 0) {
-              throw new Error("Job not found in GCS");
-            }
-            doc = docs[0];
-          }
-        }
-        return doc;
-      }),
+      jobDatas.map((x) => waitForJob(x.opts.jobId, 60000)),
     )
   ).map((x) => toLegacyDocument(x, internalOptions));
 
