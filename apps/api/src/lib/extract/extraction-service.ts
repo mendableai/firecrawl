@@ -404,7 +404,7 @@ export async function performExtraction(
             prompt: request.prompt ?? "",
             systemPrompt: request.systemPrompt ?? "",
             doc,
-            useAgent: request.agent?.model.toLowerCase().includes("fire-1") ?? false,
+            useAgent: request.agent?.model == "fire-1" || false,
           });
 
           // Race between timeout and completion

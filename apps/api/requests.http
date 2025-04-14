@@ -74,7 +74,8 @@ content-type: application/json
   "url": "https://firecrawl-e2e-test-git-main-rafaelsideguides-projects.vercel.app/numbered-pagination/with-params",
   "origin":"api-sdk",
   "agent": {
-    "prompt": "Get the data from the last page. Use the pagination buttons to navigate."
+    "prompt": "Get the data from the last page. Use the pagination buttons to navigate.",
+    "sessionId": "fc-1234-919192"
   }
 }
 
@@ -169,7 +170,7 @@ content-type: application/json
   ],
   "origin":"api-sdk",
   "prompt":"Extract the lawyers data from the website",
-  "agent": true,
+  "agent": { "model": "fire-1" },
   "schema": {
     "type": "object",
     "$defs": {

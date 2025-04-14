@@ -212,7 +212,7 @@ export async function extractData({
     const { extract: e, warning: w, totalUsage: t } = await generateCompletions(
       { ...extractOptionsNewSchema,
         model: getModel("gemini-2.5-pro-preview-03-25", "google"),
-        retryModel: getModel("o3-mini", "openai"),
+        retryModel: getModel("gemini-2.5-pro-exp-03-25", "vertex"),
       });
     extract = e;
     warning = w;
@@ -228,9 +228,11 @@ export async function extractData({
   // console.log("smartscrape_reasoning", extract?.smartscrape_reasoning);
   // console.log("smartscrape_prompt", extract?.smartscrape_prompt);
   try {
-    // console.log('=========================================')
-    // console.log("useAgent", useAgent);
-    // console.log('=========================================')
+    console.log('=========================================')
+    console.log("useAgent:", useAgent, "shouldUseSmartscrape:", extract?.shouldUseSmartscrape)
+    console.log("url:", urls)
+    console.log("prompt:", extract?.smartscrape_prompt)
+    console.log('=========================================')
 
     if (useAgent && extract?.shouldUseSmartscrape) {
       let smartscrapeResults;

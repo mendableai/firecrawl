@@ -1,6 +1,10 @@
 import { z } from "zod";
 import { logger } from "../../../lib/logger";
 import { robustFetch } from "./fetch";
+import fs from 'fs/promises'
+import { configDotenv } from 'dotenv';
+
+configDotenv();
 
 // Define schemas outside the function scope
 const tokenUsageDetailSchema = z.object({
@@ -13,7 +17,7 @@ const tokenUsageDetailSchema = z.object({
 const scrapedPageSchema = z.object({
   html: z.string(),
   reason: z.string(),
-  page: z.number().int(),
+  page: z.union([z.string(), z.number()]),
 });
 
 // Main schema for the structure returned by the smart-scrape endpoint
@@ -21,10 +25,12 @@ const smartScrapeResultSchema = z.object({
   sessionId: z.string(),
   success: z.boolean(),
   scrapedPages: z.array(scrapedPageSchema),
-  tokenUsage: z.record(
-    z.string(), // Key is the model name (string)
-    tokenUsageDetailSchema, // Value matches the detail schema
-  ),
+  tokenUsage: z.number(),
+  
+  // z.record(
+  //   z.string(), // Key is the model name (string)
+  //   tokenUsageDetailSchema, // Value matches the detail schema
+  // ),
 });
 
 // Infer the TypeScript type from the Zod schema
@@ -47,6 +53,12 @@ export async function smartScrape(
   try {
     logger.info("Initiating smart scrape request", { url, prompt });
 
+    console.log('>>>>askjdhakshdaol>>>>>', {
+      url,
+      prompt,
+      userProvidedId: sessionId ?? undefined,
+    })
+
     // Pass schema type as generic parameter to robustFeth
     const response = await robustFetch<typeof smartScrapeResultSchema>({
       url: `${process.env.SMART_SCRAPE_API_URL}/smart-scrape`,
@@ -54,7 +66,7 @@ export async function smartScrape(
       body: {
         url,
         prompt,
-        sessionId,
+        userProvidedId: sessionId ?? undefined,
         models: {
           thinkingModel: {
             model: "gemini-2.5-pro-preview-03-25",
@@ -102,6 +114,9 @@ export async function smartScrape(
       prompt,
       sessionId: response.sessionId,
     });
+
+    await fs.appendFile('logs/smart-scrape-cost.json', JSON.stringify(response.tokenUsage, null, 2) + '\n')
+
     return response; // The response type now matches SmartScrapeResult
   } catch (error) {
     // Safely extract error information without circular references

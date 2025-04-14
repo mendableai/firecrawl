@@ -301,7 +301,7 @@ importers:
         specifier: ^1.0.4
         version: 1.0.4
       '@types/express':
-        specifier: ^4.17.17
+        specifier: ^4.17.21
         version: 4.17.21
       '@types/jest':
         specifier: ^29.5.12
