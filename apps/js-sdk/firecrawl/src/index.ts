@@ -273,6 +273,8 @@ export interface MapResponse {
  */
 export interface AgentOptions {
   model?: string;
+  prompt?: string;
+  sessionId?: string;
 }
 
 export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
