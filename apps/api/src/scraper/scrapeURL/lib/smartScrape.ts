@@ -115,6 +115,8 @@ export async function smartScrape(
       sessionId: response.sessionId,
     });
 
+    logger.info("Smart scrape cost $" + response.tokenUsage);
+
     return response; // The response type now matches SmartScrapeResult
   } catch (error) {
     // Safely extract error information without circular references
