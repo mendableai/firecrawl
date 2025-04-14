@@ -187,13 +187,15 @@ export async function extractData({
   extractOptions: GenerateCompletionsOptions;
   urls: string[];
   useAgent: boolean;
-}): Promise<{ extractedDataArray: any[]; warning: any; smartScrapeCost: number; otherCost: number }> {
+}): Promise<{ extractedDataArray: any[]; warning: any; smartScrapeCallCount: number; otherCallCount: number; smartScrapeCost: number; otherCost: number }> {
 
   const schema = extractOptions.options.schema;
   const logger = extractOptions.logger;
   const isSingleUrl = urls.length === 1;
   let smartScrapeCost = 0;
   let otherCost = 0;
+  let smartScrapeCallCount = 0;
+  let otherCallCount = 0;
   // TODO: remove the "required" fields here!! it breaks o3-mini
   const { schemaToUse } = prepareSmartScrapeSchema(schema, logger, isSingleUrl);
   const extractOptionsNewSchema = {
@@ -218,6 +220,7 @@ export async function extractData({
     warning = w;
     totalUsage = t;
     otherCost += c;
+    otherCallCount++;
   } catch (error) {
     logger.error("failed during extractSmartScrape.ts:generateCompletions", error);
     // console.log("failed during extractSmartScrape.ts:generateCompletions", error);
@@ -242,6 +245,7 @@ export async function extractData({
           await smartScrape(urls[0], extract?.smartscrape_prompt),
         ];
         smartScrapeCost += smartscrapeResults[0].tokenUsage;
+        smartScrapeCallCount++;
       } else {
         const pages = extract?.smartscrapePages;
         //do it async promiseall instead
@@ -254,6 +258,7 @@ export async function extractData({
           }),
         );
         smartScrapeCost += smartscrapeResults.reduce((acc, result) => acc + result.tokenUsage, 0);
+        smartScrapeCallCount += pages.length;
       }
       // console.log("smartscrapeResults", smartscrapeResults);
 
@@ -276,6 +281,7 @@ export async function extractData({
           const { extract, warning, totalUsage, model, cost } =
             await generateCompletions(newExtractOptions);
           otherCost += cost;
+          otherCallCount++;
           return extract;
         }),
       );
@@ -289,5 +295,5 @@ export async function extractData({
     console.error(">>>>>>>extractSmartScrape.ts error>>>>>\n", error);
   }
 
-  return { extractedDataArray: extractedData, warning: warning, smartScrapeCost: smartScrapeCost, otherCost: otherCost };
+  return { extractedDataArray: extractedData, warning: warning, smartScrapeCallCount: smartScrapeCallCount, otherCallCount: otherCallCount, smartScrapeCost: smartScrapeCost, otherCost: otherCost };
 }

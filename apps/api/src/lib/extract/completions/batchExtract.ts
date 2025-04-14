@@ -41,6 +41,8 @@ export async function batchExtractPromise(options: BatchExtractOptions): Promise
   sources: string[];
   smartScrapeCost: number;
   otherCost: number;
+  smartScrapeCallCount: number;
+  otherCallCount: number;
 }> {
   const { multiEntitySchema, links, prompt, systemPrompt, doc, useAgent } = options;
 
@@ -66,9 +68,9 @@ export async function batchExtractPromise(options: BatchExtractOptions): Promise
 
   let extractedDataArray: any[] = [];
   let warning: string | undefined;
-  let smCost = 0, oCost = 0;
+  let smCost = 0, oCost = 0, smCallCount = 0, oCallCount = 0;
   try {
-    const { extractedDataArray: e, warning: w, smartScrapeCost, otherCost } = await extractData({
+    const { extractedDataArray: e, warning: w, smartScrapeCost, otherCost, smartScrapeCallCount, otherCallCount } = await extractData({
       extractOptions: generationOptions,
       urls: [doc.metadata.sourceURL || doc.metadata.url || ""],
       useAgent,
@@ -77,6 +79,8 @@ export async function batchExtractPromise(options: BatchExtractOptions): Promise
     warning = w;
     smCost = smartScrapeCost;
     oCost = otherCost;
+    smCallCount = smartScrapeCallCount;
+    oCallCount = otherCallCount;
   } catch (error) {
     console.error(">>>>>>>error>>>>>\n", error);
   }
@@ -100,5 +104,7 @@ export async function batchExtractPromise(options: BatchExtractOptions): Promise
     sources: [doc.metadata.url || doc.metadata.sourceURL || ""],
     smartScrapeCost: smCost,
     otherCost: oCost,
+    smartScrapeCallCount: smCallCount,
+    otherCallCount: oCallCount,
   };
 }

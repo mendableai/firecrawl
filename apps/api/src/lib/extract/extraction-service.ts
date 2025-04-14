@@ -448,9 +448,9 @@ export async function performExtraction(
           if (multiEntityCompletion) {
             tokenUsage.push(multiEntityCompletion.totalUsage);
 
-            costTracking.smartScrapeCallCount += 1;
+            costTracking.smartScrapeCallCount += multiEntityCompletion.smartScrapeCallCount;
             costTracking.smartScrapeCost += multiEntityCompletion.smartScrapeCost;
-            costTracking.otherCallCount += 1;
+            costTracking.otherCallCount += multiEntityCompletion.otherCallCount;
             costTracking.otherCost += multiEntityCompletion.otherCost;
             costTracking.totalCost += multiEntityCompletion.smartScrapeCost + multiEntityCompletion.otherCost;
 
@@ -738,6 +738,8 @@ export async function performExtraction(
       sources: singleAnswerSources,
       smartScrapeCost: singleAnswerSmartScrapeCost,
       otherCost: singleAnswerOtherCost,
+      smartScrapeCallCount: singleAnswerSmartScrapeCallCount,
+      otherCallCount: singleAnswerOtherCallCount,
     } = await singleAnswerCompletion({
       singleAnswerDocs,
       rSchema,
@@ -747,9 +749,9 @@ export async function performExtraction(
       useAgent: isAgentExtractModelValid(request.agent?.model),
     });
     costTracking.smartScrapeCost += singleAnswerSmartScrapeCost;
-    costTracking.smartScrapeCallCount += 1;
+    costTracking.smartScrapeCallCount += singleAnswerSmartScrapeCallCount;
     costTracking.otherCost += singleAnswerOtherCost;
-    costTracking.otherCallCount += 1;
+    costTracking.otherCallCount += singleAnswerOtherCallCount;
     costTracking.totalCost += singleAnswerSmartScrapeCost + singleAnswerOtherCost;
     logger.debug("Done generating singleAnswer completions.");
 
