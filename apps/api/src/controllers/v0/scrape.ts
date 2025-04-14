@@ -94,7 +94,7 @@ export async function scrapeHelper(
     },
     async (span) => {
       try {
-        if (process.env.GCS_BUCKET_NAME) {
+        if (!process.env.GCS_BUCKET_NAME) {
           doc = await waitForJob<Document>(jobId, timeout); // TODO: better types for this
         } else {
           await waitForJob<Document>(jobId, timeout);

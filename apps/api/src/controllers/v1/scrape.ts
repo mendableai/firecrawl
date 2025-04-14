@@ -68,7 +68,7 @@ export async function scrapeController(
 
   let doc: Document;
   try {
-    if (process.env.GCS_BUCKET_NAME) {
+    if (!process.env.GCS_BUCKET_NAME) {
       doc = await waitForJob<Document>(jobId, timeout + totalWait); // TODO: better types for this
     } else {
       await waitForJob<Document>(jobId, timeout + totalWait);
