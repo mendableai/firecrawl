@@ -503,6 +503,8 @@ export const scrapeRequestSchema = baseScrapeOptions
       .object({
         model: z.string().default(agentExtractModelValue),
         prompt: z.string().optional(),
+        sessionId: z.string().optional(),
+        waitBeforeClosingMs: z.number().optional(),
       })
       .optional(),
     extract: extractOptionsWithAgent.optional(),
