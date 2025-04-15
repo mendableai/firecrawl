@@ -308,6 +308,15 @@ const baseScrapeOptions = z
   })
   .strict(strictMessage);
 
+const fire1Refine = (obj) => {
+  if (obj.agent?.model?.toLowerCase() === "fire-1" && obj.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
+    return false;
+  }
+  return true;
+}
+const fire1RefineOpts = {
+  message: "You may only specify the FIRE-1 model in agent or jsonOptions.agent, but not both.",
+};
 const extractRefine = (obj) => {
   const hasExtractFormat = obj.formats?.includes("extract");
   const hasExtractOptions = obj.extract !== undefined;
@@ -382,6 +391,7 @@ export const scrapeOptions = baseScrapeOptions
     },
   )
   .refine(extractRefine, extractRefineOpts)
+  .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
 export type ScrapeOptions = z.infer<typeof baseScrapeOptions>;
@@ -449,6 +459,10 @@ export const extractV1Options = z
     (x) => (x.scrapeOptions ? extractRefine(x.scrapeOptions) : true),
     extractRefineOpts,
   )
+  .refine(
+    (x) => (x.scrapeOptions ? fire1Refine(x.scrapeOptions) : true),
+    fire1RefineOpts,
+  )
   .transform((x) => ({
     ...x,
     scrapeOptions: x.scrapeOptions
@@ -470,6 +484,7 @@ export const scrapeRequestSchema = baseScrapeOptions
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
+  .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
@@ -505,6 +520,7 @@ export const batchScrapeRequestSchema = baseScrapeOptions
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
+  .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
 export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
@@ -517,6 +533,7 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
+  .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
 export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
@@ -562,6 +579,7 @@ export const crawlRequestSchema = crawlerOptions
   })
   .strict(strictMessage)
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
+  .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
   .transform((x) => ({
     ...x,
     scrapeOptions: extractTransform(x.scrapeOptions),
@@ -1116,6 +1134,7 @@ export const searchRequestSchema = z
     "Unrecognized key in body -- please review the v1 API documentation for request body changes",
   )
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
+  .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
   .transform((x) => ({
     ...x,
     scrapeOptions: extractTransform(x.scrapeOptions),
