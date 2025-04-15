@@ -1,5 +1,5 @@
 import { parseApi } from "../lib/parseApi";
-import { getRateLimiter, isTestSuiteToken } from "../services/rate-limiter";
+import { getRateLimiter } from "../services/rate-limiter";
 import {
   AuthResponse,
   NotificationType,
