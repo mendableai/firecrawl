@@ -109,6 +109,9 @@ export async function scrapeController(
   if ((req.body.extract && req.body.formats?.includes("extract")) || (req.body.formats?.includes("changeTracking") && req.body.changeTrackingOptions?.modes?.includes("json"))) {
     creditsToBeBilled = 5;
   }
+  if (req.body.agent?.model?.toLowerCase() === "fire-1") {
+    creditsToBeBilled = 150;
+  }
 
   billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(
     (error) => {

@@ -1304,6 +1304,9 @@ async function processJob(job: Job & { id: string }, token: string) {
       if (job.data.scrapeOptions.extract) {
         creditsToBeBilled = 5;
       }
+      if (job.data.scrapeOptions.agent?.model?.toLowerCase() === "fire-1") {
+        creditsToBeBilled = 150;
+      }
 
       if (
         job.data.team_id !== process.env.BACKGROUND_INDEX_TEAM_ID! &&
