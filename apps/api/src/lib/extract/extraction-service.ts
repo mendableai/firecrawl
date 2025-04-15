@@ -520,8 +520,6 @@ export async function performExtraction(
         completionCount: multiEntityCompletions.length,
       });
       log["multiEntityCompletionsLength"] = multiEntityCompletions.length;
-      const validResultsLog = `[${new Date().toISOString()}] Multi-entity results.\nValid results: ${JSON.stringify(validResults, null, 2)}\nextractArrays: ${JSON.stringify(extractArrays, null, 2)}\nmergedExtracts: ${JSON.stringify(mergedExtracts, null, 2)}\nmultiEntityCompletions: ${JSON.stringify(multiEntityCompletions, null, 2)}\n`;
-      await fs.appendFile('logs/multi-entity.log', validResultsLog);
     }
 
     try {
