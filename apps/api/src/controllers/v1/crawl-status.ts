@@ -280,11 +280,9 @@ export async function crawlStatusController(
     completed: doneJobsLength,
     total: totalCount,
     creditsUsed: totalCount * (
-      sc.scrapeOptions?.agent?.model?.toLowerCase() === "fire-1"
-        ? 150
-        : sc.scrapeOptions?.extract
-          ? 5
-          : 1
+      sc.scrapeOptions?.extract
+        ? 5
+        : 1
     ),
     expiresAt: (await getCrawlExpiry(req.params.jobId)).toISOString(),
     next:

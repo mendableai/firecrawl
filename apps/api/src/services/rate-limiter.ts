@@ -39,7 +39,6 @@ export function getRateLimiter(
   mode: RateLimiterMode,
   rate_limits: AuthCreditUsageChunk["rate_limits"] | null,
 ): RateLimiterRedis {
-  console.log(mode, rate_limits?.[mode], fallbackRateLimits[mode]);
   return createRateLimiter(
     `${mode}`,
     (rate_limits?.[mode] ?? fallbackRateLimits?.[mode] ?? 500),

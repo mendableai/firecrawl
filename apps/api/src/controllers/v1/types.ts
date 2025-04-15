@@ -76,11 +76,29 @@ export const extractOptions = z
       .default(""),
     prompt: z.string().max(10000).optional(),
     temperature: z.number().optional(),
-    agent: z.object({
-      model: z.string().default(agentExtractModelValue),
-      
-    }).optional(),
-    
+  })
+  .strict(strictMessage)
+  .transform((data) => ({
+    ...data,
+    systemPrompt: "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required."
+  }));
+
+export const extractOptionsWithAgent = z
+  .object({
+    mode: z.enum(["llm"]).default("llm"),
+    schema: z.any().optional(),
+    systemPrompt: z
+      .string()
+      .max(10000)
+      .default(""),
+    prompt: z.string().max(10000).optional(),
+    temperature: z.number().optional(),
+    agent: z
+      .object({
+        model: z.string().default(agentExtractModelValue),
+        prompt: z.string().optional(),
+      })
+      .optional(),
   })
   .strict(strictMessage)
   .transform((data) => ({
@@ -283,28 +301,6 @@ const baseScrapeOptions = z
     useMock: z.string().optional(),
     blockAds: z.boolean().default(true),
     proxy: z.enum(["basic", "stealth"]).optional(),
-    agent: z
-      .object({
-        model: z.string().default(agentExtractModelValue),
-        prompt: z.string().optional(),
-        sessionId: z
-          .string()
-          .optional()
-          .refine(
-            (val) => {
-              if (!val) return true;
-              const parts = val.split('-');
-              return parts.length === 3 && 
-                     parts[0] === 'fc' && 
-                     parts[1].length === 4 && 
-                     parts[2].length <= 22;
-            },
-            {
-              message: "Invalid sessionId format.",
-            },
-          )
-      })
-      .optional(),
   })
   .strict(strictMessage);
 
@@ -378,6 +374,16 @@ const extractTransform = (obj) => {
 };
 
 export const scrapeOptions = baseScrapeOptions
+  .extend({
+    agent: z
+      .object({
+        model: z.string().default(agentExtractModelValue),
+        prompt: z.string().optional(),
+      })
+      .optional(),
+    extract: extractOptionsWithAgent.optional(),
+    jsonOptions: extractOptionsWithAgent.optional(),
+  })
   .refine(
     (obj) => {
       if (!obj.actions) return true;
@@ -394,7 +400,7 @@ export const scrapeOptions = baseScrapeOptions
   .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
-export type ScrapeOptions = z.infer<typeof baseScrapeOptions>;
+export type ScrapeOptions = z.infer<typeof scrapeOptions>;
 
 import Ajv from "ajv";
 import type { CostTracking } from "../../lib/extract/extraction-service";
@@ -431,7 +437,7 @@ export const extractV1Options = z
     includeSubdomains: z.boolean().default(true),
     allowExternalLinks: z.boolean().default(false),
     enableWebSearch: z.boolean().default(false),
-    scrapeOptions: scrapeOptions.default({ onlyMainContent: false }).optional(),
+    scrapeOptions: baseScrapeOptions.default({ onlyMainContent: false }).optional(),
     origin: z.string().optional().default("api"),
     urlTrace: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().default(60000),
@@ -479,6 +485,14 @@ export const scrapeRequestSchema = baseScrapeOptions
   .omit({ timeout: true })
   .extend({
     url,
+    agent: z
+      .object({
+        model: z.string().default(agentExtractModelValue),
+        prompt: z.string().optional(),
+      })
+      .optional(),
+    extract: extractOptionsWithAgent.optional(),
+    jsonOptions: extractOptionsWithAgent.optional(),
     origin: z.string().optional().default("api"),
     timeout: z.number().int().positive().finite().safe().default(30000),
   })
@@ -573,7 +587,7 @@ export const crawlRequestSchema = crawlerOptions
   .extend({
     url,
     origin: z.string().optional().default("api"),
-    scrapeOptions: scrapeOptions.default({}),
+    scrapeOptions: baseScrapeOptions.default({}),
     webhook: webhookSchema.optional(),
     limit: z.number().default(10000),
   })
