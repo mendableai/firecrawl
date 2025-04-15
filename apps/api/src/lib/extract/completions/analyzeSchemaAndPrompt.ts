@@ -24,8 +24,11 @@ export async function analyzeSchemaAndPrompt(
   tokenUsage: TokenUsage;
   cost: number;
 }> {
+  let cost = 0;
   if (!schema) {
-    schema = await generateSchemaFromPrompt(prompt);
+    const genRes = await generateSchemaFromPrompt(prompt);
+    schema = genRes.extract;
+    cost = genRes.cost;
   }
 
   const schemaString = JSON.stringify(schema);
@@ -45,7 +48,7 @@ export async function analyzeSchemaAndPrompt(
     );
 
   try {
-    const { extract: result, totalUsage, cost } = await generateCompletions({
+    const { extract: result, totalUsage, cost: cost2 } = await generateCompletions({
       logger,
       options: {
         mode: "llm",
@@ -56,6 +59,7 @@ export async function analyzeSchemaAndPrompt(
       markdown: "",
       model,
     });
+    cost += cost2;
 
     const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
       checkSchema.parse(result);

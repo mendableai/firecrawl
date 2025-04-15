@@ -3,6 +3,7 @@ import { z } from "zod";
 import {
   generateCompletions,
   GenerateCompletionsOptions,
+  generateSchemaFromPrompt,
 } from "../transformers/llmExtract";
 import { smartScrape } from "./smartScrape";
 import { parseMarkdown } from "../../../lib/html-to-markdown";
@@ -195,7 +196,7 @@ export async function extractData({
   smartScrapeCost: number;
   otherCost: number;
 }> {
-  const schema = extractOptions.options.schema;
+  let schema = extractOptions.options.schema;
   const logger = extractOptions.logger;
   const isSingleUrl = urls.length === 1;
   let smartScrapeCost = 0;
@@ -203,6 +204,15 @@ export async function extractData({
   let smartScrapeCallCount = 0;
   let otherCallCount = 0;
   // TODO: remove the "required" fields here!! it breaks o3-mini
+
+  if (!schema && extractOptions.options.prompt) {
+    logger.info("Generating schema from prompt");
+    const genRes = await generateSchemaFromPrompt(extractOptions.options.prompt);
+    otherCallCount++;
+    otherCost += genRes.cost;
+    schema = genRes.extract;
+  }
+
   const { schemaToUse } = prepareSmartScrapeSchema(schema, logger, isSingleUrl);
   const extractOptionsNewSchema = {
     ...extractOptions,

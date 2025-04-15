@@ -179,7 +179,9 @@ export async function performExtraction(
   if (!reqSchema && request.prompt) {
     const schemaGenRes = await generateSchemaFromPrompt(request.prompt);
     reqSchema = schemaGenRes.extract;
-
+    costTracking.otherCallCount++;
+    costTracking.otherCost += schemaGenRes.cost;
+    costTracking.totalCost += schemaGenRes.cost;
 
     logger.debug("Generated request schema.", {
       originalSchema: request.schema,
