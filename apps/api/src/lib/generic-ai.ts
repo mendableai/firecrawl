@@ -38,7 +38,9 @@ const providerList: Record<Provider, any> = {
   vertex: createVertex({
     project: "firecrawl",
     location: "us-central1",
-    googleAuthOptions: {
+    googleAuthOptions: process.env.VERTEX_CREDENTIALS ? {
+      credentials: JSON.parse(atob(process.env.VERTEX_CREDENTIALS)),
+    } : {
       keyFile: "./gke-key.json",
     },
   }),
