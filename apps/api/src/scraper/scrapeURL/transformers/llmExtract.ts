@@ -759,8 +759,8 @@ export function removeDefaultProperty(schema: any): any {
 export async function generateSchemaFromPrompt(
   prompt: string,
 ): Promise<{ extract: any; cost: number }> {
-  const model = getModel("qwen-qwq-32b", "groq");
-  const retryModel = getModel("gpt-4o", "openai");
+  const model = getModel("gpt-4o", "openai");
+  const retryModel = getModel("gpt-4o-mini", "openai");
   const temperatures = [0, 0.1, 0.3]; // Different temperatures to try
   let lastError: Error | null = null;
 
