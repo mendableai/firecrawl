@@ -299,22 +299,6 @@ export async function scrapeController(req: Request, res: Response) {
       team_id,
     );
 
-    logJob({
-      job_id: jobId,
-      success: result.success,
-      message: result.error,
-      num_docs: 1,
-      docs: [doc],
-      time_taken: timeTakenInSeconds,
-      team_id: team_id,
-      mode: "scrape",
-      url: req.body.url,
-      crawlerOptions: crawlerOptions,
-      scrapeOptions,
-      origin: origin,
-      num_tokens: numTokens,
-    });
-
     return res.status(result.returnCode).json(result);
   } catch (error) {
     Sentry.captureException(error);
