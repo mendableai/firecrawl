@@ -352,6 +352,10 @@ const extractTransform = (obj) => {
     obj = { ...obj, timeout: 300000 };
   }
 
+  if (obj.proxy === "stealth" && obj.timeout === 30000) {
+    obj = { ...obj, timeout: 120000 };
+  }
+
   if (obj.formats?.includes("json")) {
     obj.formats.push("extract");
   }
