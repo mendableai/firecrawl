@@ -1,8 +1,8 @@
 import { z } from "zod";
 import { logger } from "../../../lib/logger";
 import { robustFetch } from "./fetch";
-import fs from 'fs/promises'
-import { configDotenv } from 'dotenv';
+import fs from "fs/promises";
+import { configDotenv } from "dotenv";
 
 configDotenv();
 
@@ -26,7 +26,7 @@ const smartScrapeResultSchema = z.object({
   success: z.boolean(),
   scrapedPages: z.array(scrapedPageSchema),
   tokenUsage: z.number(),
-  
+
   // z.record(
   //   z.string(), // Key is the model name (string)
   //   tokenUsageDetailSchema, // Value matches the detail schema
@@ -53,11 +53,11 @@ export async function smartScrape(
   try {
     logger.info("Initiating smart scrape request", { url, prompt });
 
-    console.log('>>>>askjdhakshdaol>>>>>', {
+    console.log(">>>>askjdhakshdaol>>>>>", {
       url,
       prompt,
       userProvidedId: sessionId ?? undefined,
-    })
+    });
 
     // Pass schema type as generic parameter to robustFeth
     const response = await robustFetch<typeof smartScrapeResultSchema>({
@@ -70,21 +70,19 @@ export async function smartScrape(
         models: {
           thinkingModel: {
             model: "gemini-2.5-pro-preview-03-25",
-            provider: "google",
+            provider: "vertex",
             supportTools: true,
             toolChoice: "required",
             cost: {
               input: 1.3,
               output: 5,
             },
-            retryModel: "o3-mini",
-            retryProvider: "openai"
           },
           toolModel: {
             model: "gemini-2.0-flash",
             provider: "google",
-          }
-        }
+          },
+        },
       },
       schema: smartScrapeResultSchema, // Pass the schema instance for validation
       logger,
@@ -93,20 +91,26 @@ export async function smartScrape(
 
     // Check if the response indicates a 500 error
     // Use type assertion to handle the error response structure
-    const errorResponse = response as unknown as { 
-      success: boolean; 
-      error?: string; 
+    const errorResponse = response as unknown as {
+      success: boolean;
+      error?: string;
       details?: string;
     };
-    
-    if (errorResponse && errorResponse.success === false && errorResponse.error) {
+
+    if (
+      errorResponse &&
+      errorResponse.success === false &&
+      errorResponse.error
+    ) {
       logger.error("Smart scrape returned error response", {
         url,
         prompt,
         error: errorResponse.error,
-        details: errorResponse.details || "No details provided"
+        details: errorResponse.details || "No details provided",
       });
-      throw new Error(`Smart scrape failed: ${errorResponse.error}${errorResponse.details ? ` - ${errorResponse.details}` : ''}`);
+      throw new Error(
+        `Smart scrape failed: ${errorResponse.error}${errorResponse.details ? ` - ${errorResponse.details}` : ""}`,
+      );
     }
 
     logger.info("Smart scrape successful", {
@@ -122,30 +126,38 @@ export async function smartScrape(
     // Safely extract error information without circular references
     const errorInfo = {
       message: error instanceof Error ? error.message : String(error),
-      name: error instanceof Error ? error.name : 'Unknown',
+      name: error instanceof Error ? error.name : "Unknown",
       stack: error instanceof Error ? error.stack : undefined,
       // Extract cause safely if it exists
-      cause: error instanceof Error && error.cause
-        ? (error.cause instanceof Error
-            ? { message: error.cause.message, name: error.cause.name, stack: error.cause.stack }
-            : typeof error.cause === 'object'
+      cause:
+        error instanceof Error && error.cause
+          ? error.cause instanceof Error
+            ? {
+                message: error.cause.message,
+                name: error.cause.name,
+                stack: error.cause.stack,
+              }
+            : typeof error.cause === "object"
               ? {
                   ...Object.fromEntries(
-                    Object.entries(error.cause)
-                      .filter(([_, v]) => v !== null && typeof v !== 'object')
+                    Object.entries(error.cause).filter(
+                      ([_, v]) => v !== null && typeof v !== "object",
+                    ),
                   ),
-                  error: (error.cause as any)?.error?.message || (error.cause as any)?.error
+                  error:
+                    (error.cause as any)?.error?.message ||
+                    (error.cause as any)?.error,
                 }
-              : String(error.cause))
-        : undefined
+              : String(error.cause)
+          : undefined,
     };
-    
-    logger.error("Smart scrape request failed", { 
-      url, 
-      prompt, 
-      error: JSON.stringify(errorInfo)
+
+    logger.error("Smart scrape request failed", {
+      url,
+      prompt,
+      error: JSON.stringify(errorInfo),
     });
-    
+
     // Rethrowing the error to be handled by the caller
     throw new Error(`Failed to smart scrape URL: ${url}`, { cause: error });
   }

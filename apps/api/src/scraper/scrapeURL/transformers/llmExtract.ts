@@ -10,7 +10,12 @@ import { Logger } from "winston";
 import { EngineResultsTracker, Meta } from "..";
 import { logger } from "../../../lib/logger";
 import { modelPrices } from "../../../lib/extract/usage/model-prices";
-import { generateObject, generateText, LanguageModel, NoObjectGeneratedError } from "ai";
+import {
+  generateObject,
+  generateText,
+  LanguageModel,
+  NoObjectGeneratedError,
+} from "ai";
 import { jsonSchema } from "ai";
 import { getModel } from "../../../lib/generic-ai";
 import { z } from "zod";
@@ -89,7 +94,10 @@ function normalizeSchema(x: any): any {
     return {
       ...x,
       properties: Object.fromEntries(
-        Object.entries(x.properties || {}).map(([k, v]) => [k, normalizeSchema(v)]),
+        Object.entries(x.properties || {}).map(([k, v]) => [
+          k,
+          normalizeSchema(v),
+        ]),
       ),
       required: Object.keys(x.properties || {}),
       additionalProperties: false,
@@ -174,7 +182,7 @@ export function trimToTokenLimit(
 export function calculateCost(
   model: string,
   inputTokens: number,
-  outputTokens: number
+  outputTokens: number,
 ) {
   const modelCosts = {
     "openai/o3-mini": { input_cost: 1.1, output_cost: 4.4 },
@@ -251,7 +259,9 @@ export async function generateCompletions({
     throw new Error("document.markdown is undefined -- this is unexpected");
   }
 
-  const { maxInputTokens, maxOutputTokens } = getModelLimits(currentModel.modelId);
+  const { maxInputTokens, maxOutputTokens } = getModelLimits(
+    currentModel.modelId,
+  );
   // Calculate 80% of max input tokens (for content)
   const maxTokensSafe = Math.floor(maxInputTokens * 0.8);
 
@@ -297,12 +307,22 @@ export async function generateCompletions({
             totalTokens: numTokens + (result.usage?.completionTokens ?? 0),
           },
           model: currentModel.modelId,
-          cost: calculateCost(currentModel.modelId, numTokens, result.usage?.completionTokens ?? 0)
+          cost: calculateCost(
+            currentModel.modelId,
+            numTokens,
+            result.usage?.completionTokens ?? 0,
+          ),
         };
       } catch (error) {
         lastError = error as Error;
-        if (error.message?.includes("Quota exceeded") || error.message?.includes("You exceeded your current quota") || error.message?.includes("rate limit")) {
-          logger.warn("Quota exceeded, retrying with fallback model", { error: lastError.message });
+        if (
+          error.message?.includes("Quota exceeded") ||
+          error.message?.includes("You exceeded your current quota") ||
+          error.message?.includes("rate limit")
+        ) {
+          logger.warn("Quota exceeded, retrying with fallback model", {
+            error: lastError.message,
+          });
           currentModel = retryModel;
           try {
             const result = await generateText({
@@ -328,13 +348,17 @@ export async function generateCompletions({
                 totalTokens: numTokens + (result.usage?.completionTokens ?? 0),
               },
               model: currentModel.modelId,
-              cost: calculateCost(currentModel.modelId, numTokens, result.usage?.completionTokens ?? 0)
+              cost: calculateCost(
+                currentModel.modelId,
+                numTokens,
+                result.usage?.completionTokens ?? 0,
+              ),
             };
           } catch (retryError) {
             lastError = retryError as Error;
-            logger.error("Failed with fallback model", { 
+            logger.error("Failed with fallback model", {
               originalError: lastError.message,
-              model: currentModel.modelId 
+              model: currentModel.modelId,
             });
             throw lastError;
           }
@@ -442,13 +466,19 @@ export async function generateCompletions({
     //   JSON.stringify(generateObjectConfig, null, 2),
     // );
 
-    let result: { object: any, usage: TokenUsage } | undefined;
+    let result: { object: any; usage: TokenUsage } | undefined;
     try {
       result = await generateObject(generateObjectConfig);
     } catch (error) {
       lastError = error as Error;
-      if (error.message?.includes("Quota exceeded") || error.message?.includes("You exceeded your current quota") || error.message?.includes("rate limit")) {
-        logger.warn("Quota exceeded, retrying with fallback model", { error: lastError.message });
+      if (
+        error.message?.includes("Quota exceeded") ||
+        error.message?.includes("You exceeded your current quota") ||
+        error.message?.includes("rate limit")
+      ) {
+        logger.warn("Quota exceeded, retrying with fallback model", {
+          error: lastError.message,
+        });
         currentModel = retryModel;
         try {
           const retryConfig = {
@@ -458,17 +488,23 @@ export async function generateCompletions({
           result = await generateObject(retryConfig);
         } catch (retryError) {
           lastError = retryError as Error;
-          logger.error("Failed with fallback model", { 
+          logger.error("Failed with fallback model", {
             originalError: lastError.message,
-            model: currentModel.modelId 
+            model: currentModel.modelId,
           });
           throw lastError;
         }
       } else if (NoObjectGeneratedError.isInstance(error)) {
         console.log("No object generated", error);
-        if (error.text && error.text.startsWith("```json") && error?.text.endsWith("```")) {
+        if (
+          error.text &&
+          error.text.startsWith("```json") &&
+          error?.text.endsWith("```")
+        ) {
           try {
-            extract = JSON.parse(error.text.slice("```json".length, -"```".length).trim());
+            extract = JSON.parse(
+              error.text.slice("```json".length, -"```".length).trim(),
+            );
             result = {
               object: extract,
               usage: {
@@ -479,7 +515,9 @@ export async function generateCompletions({
             };
           } catch (parseError) {
             lastError = parseError as Error;
-            logger.error("Failed to parse JSON from error text", { error: lastError.message });
+            logger.error("Failed to parse JSON from error text", {
+              error: lastError.message,
+            });
             throw lastError;
           }
         } else {
@@ -489,7 +527,7 @@ export async function generateCompletions({
         throw lastError;
       }
     }
-    
+
     extract = result?.object;
 
     // If the users actually wants the items object, they can specify it as 'required' in the schema
@@ -516,17 +554,17 @@ export async function generateCompletions({
         totalTokens: promptTokens + completionTokens,
       },
       model: currentModel.modelId,
-      cost: calculateCost(currentModel.modelId, promptTokens, completionTokens)
+      cost: calculateCost(currentModel.modelId, promptTokens, completionTokens),
     };
   } catch (error) {
     lastError = error as Error;
     if (error.message?.includes("refused")) {
       throw new LLMRefusalError(error.message);
     }
-    logger.error("LLM extraction failed", { 
+    logger.error("LLM extraction failed", {
       error: lastError.message,
       model: currentModel.modelId,
-      mode
+      mode,
     });
     throw lastError;
   }
@@ -554,15 +592,16 @@ export async function performLLMExtract(
       // model: getModel("qwen-qwq-32b", "groq"),
       // model: getModel("gemini-2.0-flash", "google"),
       // model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
-      model: getModel("gemini-2.5-pro-exp-03-25", "google"),
-      retryModel: getModel("gemini-2.5-pro-exp-03-25", "vertex")
+      model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
+      retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
     };
 
-    const { extractedDataArray, warning, smartScrapeCost, otherCost } = await extractData({
-      extractOptions: generationOptions,
-      urls: [meta.url],
-      useAgent: isAgentExtractModelValid(meta.options.extract?.agent?.model)
-    });
+    const { extractedDataArray, warning, smartScrapeCost, otherCost } =
+      await extractData({
+        extractOptions: generationOptions,
+        urls: [meta.url],
+        useAgent: isAgentExtractModelValid(meta.options.extract?.agent?.model),
+      });
 
     if (document.metadata.costTracking) {
       document.metadata.costTracking.smartScrapeCallCount++;
@@ -581,7 +620,8 @@ export async function performLLMExtract(
     }
 
     // IMPORTANT: here it only get's the last page!!!
-    const extractedData = extractedDataArray[extractedDataArray.length - 1] ?? undefined;
+    const extractedData =
+      extractedDataArray[extractedDataArray.length - 1] ?? undefined;
 
     // // Prepare the schema, potentially wrapping it
     // const { schemaToUse, schemaWasWrapped } = prepareSmartScrapeSchema(
@@ -712,7 +752,9 @@ export function removeDefaultProperty(schema: any): any {
   return rest;
 }
 
-export async function generateSchemaFromPrompt(prompt: string): Promise<{ extract: any, cost: number }> {
+export async function generateSchemaFromPrompt(
+  prompt: string,
+): Promise<{ extract: any; cost: number }> {
   const model = getModel("qwen-qwq-32b", "groq");
   const retryModel = getModel("gpt-4o", "openai");
   const temperatures = [0, 0.1, 0.3]; // Different temperatures to try

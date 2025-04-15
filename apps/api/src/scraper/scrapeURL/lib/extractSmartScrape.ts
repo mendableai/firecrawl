@@ -32,7 +32,7 @@ const commonReasoningPromptProperties = {
     description: `A clear, outcome-focused prompt describing what information to find on the page. 
       Example: "Find the product specifications in the expandable section" rather than "Click the button to reveal product specs".
       Used by the smart scraping agent to determine what actions to take.
-      Dont mention anything about extraction, smartscrape just returns page content.`
+      Dont mention anything about extraction, smartscrape just returns page content.`,
   },
 };
 
@@ -182,13 +182,19 @@ export function prepareSmartScrapeSchema(
 export async function extractData({
   extractOptions,
   urls,
-  useAgent
+  useAgent,
 }: {
   extractOptions: GenerateCompletionsOptions;
   urls: string[];
   useAgent: boolean;
-}): Promise<{ extractedDataArray: any[]; warning: any; smartScrapeCallCount: number; otherCallCount: number; smartScrapeCost: number; otherCost: number }> {
-
+}): Promise<{
+  extractedDataArray: any[];
+  warning: any;
+  smartScrapeCallCount: number;
+  otherCallCount: number;
+  smartScrapeCost: number;
+  otherCost: number;
+}> {
   const schema = extractOptions.options.schema;
   const logger = extractOptions.logger;
   const isSingleUrl = urls.length === 1;
@@ -211,18 +217,26 @@ export async function extractData({
 
   // checks if using smartScrape is needed for this case
   try {
-    const { extract: e, warning: w, totalUsage: t, cost: c } = await generateCompletions(
-      { ...extractOptionsNewSchema,
-        model: getModel("gemini-2.5-pro-preview-03-25", "google"),
-        retryModel: getModel("gemini-2.5-pro-exp-03-25", "vertex"),
-      });
+    const {
+      extract: e,
+      warning: w,
+      totalUsage: t,
+      cost: c,
+    } = await generateCompletions({
+      ...extractOptionsNewSchema,
+      model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
+      retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
+    });
     extract = e;
     warning = w;
     totalUsage = t;
     otherCost += c;
     otherCallCount++;
   } catch (error) {
-    logger.error("failed during extractSmartScrape.ts:generateCompletions", error);
+    logger.error(
+      "failed during extractSmartScrape.ts:generateCompletions",
+      error,
+    );
     // console.log("failed during extractSmartScrape.ts:generateCompletions", error);
   }
 
@@ -232,11 +246,16 @@ export async function extractData({
   // console.log("smartscrape_reasoning", extract?.smartscrape_reasoning);
   // console.log("smartscrape_prompt", extract?.smartscrape_prompt);
   try {
-    console.log('=========================================')
-    console.log("useAgent:", useAgent, "shouldUseSmartscrape:", extract?.shouldUseSmartscrape)
-    console.log("url:", urls)
-    console.log("prompt:", extract?.smartscrape_prompt)
-    console.log('=========================================')
+    console.log("=========================================");
+    console.log(
+      "useAgent:",
+      useAgent,
+      "shouldUseSmartscrape:",
+      extract?.shouldUseSmartscrape,
+    );
+    console.log("url:", urls);
+    console.log("prompt:", extract?.smartscrape_prompt);
+    console.log("=========================================");
 
     if (useAgent && extract?.shouldUseSmartscrape) {
       let smartscrapeResults: SmartScrapeResult[];
@@ -257,7 +276,10 @@ export async function extractData({
             );
           }),
         );
-        smartScrapeCost += smartscrapeResults.reduce((acc, result) => acc + result.tokenUsage, 0);
+        smartScrapeCost += smartscrapeResults.reduce(
+          (acc, result) => acc + result.tokenUsage,
+          0,
+        );
         smartScrapeCallCount += pages.length;
       }
       // console.log("smartscrapeResults", smartscrapeResults);
@@ -295,5 +317,12 @@ export async function extractData({
     console.error(">>>>>>>extractSmartScrape.ts error>>>>>\n", error);
   }
 
-  return { extractedDataArray: extractedData, warning: warning, smartScrapeCallCount: smartScrapeCallCount, otherCallCount: otherCallCount, smartScrapeCost: smartScrapeCost, otherCost: otherCost };
+  return {
+    extractedDataArray: extractedData,
+    warning: warning,
+    smartScrapeCallCount: smartScrapeCallCount,
+    otherCallCount: otherCallCount,
+    smartScrapeCost: smartScrapeCost,
+    otherCost: otherCost,
+  };
 }
