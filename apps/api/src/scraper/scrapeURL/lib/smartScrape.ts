@@ -53,12 +53,6 @@ export async function smartScrape(
   try {
     logger.info("Initiating smart scrape request", { url, prompt });
 
-    console.log(">>>>askjdhakshdaol>>>>>", {
-      url,
-      prompt,
-      userProvidedId: sessionId ?? undefined,
-    });
-
     // Pass schema type as generic parameter to robustFeth
     const response = await robustFetch<typeof smartScrapeResultSchema>({
       url: `${process.env.SMART_SCRAPE_API_URL}/smart-scrape`,
