@@ -279,7 +279,13 @@ export async function crawlStatusController(
     status,
     completed: doneJobsLength,
     total: totalCount,
-    creditsUsed: totalCount,
+    creditsUsed: totalCount * (
+      sc.scrapeOptions?.agent?.model?.toLowerCase() === "fire-1"
+        ? 150
+        : sc.scrapeOptions?.extract
+          ? 5
+          : 1
+    ),
     expiresAt: (await getCrawlExpiry(req.params.jobId)).toISOString(),
     next:
       status !== "scraping" && start + data.length === doneJobsLength // if there's not gonna be any documents after this
