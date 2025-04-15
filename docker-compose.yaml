@@ -54,6 +54,8 @@ services:
       PROXY_USERNAME: ${PROXY_USERNAME}
       PROXY_PASSWORD: ${PROXY_PASSWORD}
       BLOCK_MEDIA: ${BLOCK_MEDIA}
+    ports:
+      - "3003:3000"
     networks:
       - backend
 
