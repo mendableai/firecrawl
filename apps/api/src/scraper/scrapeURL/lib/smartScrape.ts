@@ -97,9 +97,11 @@ export async function smartScrape(
       errorResponse.error
     ) {
       if (errorResponse.error === "Cost limit exceeded") {
-        throw new Error("Cost limit exceeded");
+        throw new Error("Cost limit exceeded", {
+          cause: { tokenUsage: (errorResponse as any).tokenUsage },
+        });
       }
-      
+
       logger.error("Smart scrape returned error response", {
         url,
         prompt,

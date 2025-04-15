@@ -596,7 +596,7 @@ export async function performLLMExtract(
       retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
     };
 
-    const { extractedDataArray, warning, smartScrapeCost, otherCost } =
+    const { extractedDataArray, warning, smartScrapeCost, otherCost, costLimitExceededTokenUsage } =
       await extractData({
         extractOptions: generationOptions,
         urls: [meta.url],
@@ -613,6 +613,9 @@ export async function performLLMExtract(
       document.metadata.costTracking.otherCallCount++;
       document.metadata.costTracking.otherCost += otherCost;
       document.metadata.costTracking.totalCost += smartScrapeCost + otherCost;
+      if (costLimitExceededTokenUsage) {
+        document.metadata.costTracking.costLimitExceededTokenUsage = costLimitExceededTokenUsage;
+      }
     } else {
       document.metadata.costTracking = {
         smartScrapeCallCount: 1,

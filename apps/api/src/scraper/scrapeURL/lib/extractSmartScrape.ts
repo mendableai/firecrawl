@@ -195,6 +195,7 @@ export async function extractData({
   otherCallCount: number;
   smartScrapeCost: number;
   otherCost: number;
+  costLimitExceededTokenUsage: number | null;
 }> {
   let schema = extractOptions.options.schema;
   const logger = extractOptions.logger;
@@ -203,6 +204,7 @@ export async function extractData({
   let otherCost = 0;
   let smartScrapeCallCount = 0;
   let otherCallCount = 0;
+  let costLimitExceededTokenUsage: number | null = null;
   // TODO: remove the "required" fields here!! it breaks o3-mini
 
   if (!schema && extractOptions.options.prompt) {
@@ -326,6 +328,7 @@ export async function extractData({
   } catch (error) {
     console.error(">>>>>>>extractSmartScrape.ts error>>>>>\n", error);
     if (error instanceof Error && error.message === "Cost limit exceeded") {
+      costLimitExceededTokenUsage = (error as any).cause.tokenUsage;
       warning = "Smart scrape cost limit exceeded." + (warning ? " " + warning : "")
     } else {
       throw error;
@@ -339,5 +342,6 @@ export async function extractData({
     otherCallCount: otherCallCount,
     smartScrapeCost: smartScrapeCost,
     otherCost: otherCost,
+    costLimitExceededTokenUsage: costLimitExceededTokenUsage,
   };
 }

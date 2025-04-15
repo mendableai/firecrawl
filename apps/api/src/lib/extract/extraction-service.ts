@@ -73,6 +73,7 @@ export type CostTracking = {
   otherCallCount: number;
   otherCost: number;
   totalCost: number;
+  costLimitExceededTokenUsage?: number;
 };
 
 export async function performExtraction(
