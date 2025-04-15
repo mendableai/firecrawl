@@ -379,11 +379,14 @@ export const scrapeOptions = baseScrapeOptions
       .object({
         model: z.string().default(agentExtractModelValue),
         prompt: z.string().optional(),
+        sessionId: z.string().optional(),
+        waitBeforeClosingMs: z.number().optional(),
       })
       .optional(),
     extract: extractOptionsWithAgent.optional(),
     jsonOptions: extractOptionsWithAgent.optional(),
   })
+  .strict(strictMessage)
   .refine(
     (obj) => {
       if (!obj.actions) return true;
@@ -400,7 +403,16 @@ export const scrapeOptions = baseScrapeOptions
   .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
-export type ScrapeOptions = z.infer<typeof scrapeOptions>;
+export type ScrapeOptions = z.infer<typeof baseScrapeOptions> & {
+  extract: z.infer<typeof extractOptionsWithAgent>,
+  jsonOptions: z.infer<typeof extractOptionsWithAgent>,
+  agent: {
+    model: string,
+    prompt: string,
+    sessionId?: string,
+    waitBeforeClosingMs?: number,
+  },
+};
 
 import Ajv from "ajv";
 import type { CostTracking } from "../../lib/extract/extraction-service";
