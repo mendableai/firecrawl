@@ -315,6 +315,11 @@ export async function extractData({
     }
   } catch (error) {
     console.error(">>>>>>>extractSmartScrape.ts error>>>>>\n", error);
+    if (error instanceof Error && error.message === "Cost limit exceeded") {
+      warning = "Smart scrape cost limit exceeded." + (warning ? " " + warning : "")
+    } else {
+      throw error;
+    }
   }
 
   return {

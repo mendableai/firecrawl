@@ -4,15 +4,13 @@ import {
 import { Meta } from "..";
 import { logger } from "../../../lib/logger";
 import { parseMarkdown } from "../../../lib/html-to-markdown";
-import { smartScrape } from "../lib/smartScrape";
+import { smartScrape, SmartScrapeResult } from "../lib/smartScrape";
 
 
 export async function performAgent(
   meta: Meta,
   document: Document,
 ): Promise<Document> {
-  // TODO: add token usage!!!!
-
   if (meta.options.agent?.prompt) {
     const url: string | undefined = document.url || document.metadata.sourceURL
 
@@ -24,7 +22,19 @@ export async function performAgent(
 
     const prompt = meta.options.agent?.prompt ?? undefined
     const sessionId = meta.options.agent?.sessionId ?? undefined
-    let smartscrapeResults = await smartScrape(url, prompt, sessionId)
+
+    let smartscrapeResults: SmartScrapeResult;
+    try {
+      smartscrapeResults = await smartScrape(url, prompt, sessionId)
+    } catch (error) {
+      if (error instanceof Error && error.message === "Cost limit exceeded") {
+        logger.error("Cost limit exceeded", { error })
+        document.warning = "Smart scrape cost limit exceeded." + (document.warning ? " " + document.warning : "")
+        return document;
+      } else {
+        throw error;
+      }
+    }
 
     const html = smartscrapeResults.scrapedPages[smartscrapeResults.scrapedPages.length - 1].html
 

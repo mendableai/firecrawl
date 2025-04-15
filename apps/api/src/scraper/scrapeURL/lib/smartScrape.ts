@@ -96,6 +96,10 @@ export async function smartScrape(
       errorResponse.success === false &&
       errorResponse.error
     ) {
+      if (errorResponse.error === "Cost limit exceeded") {
+        throw new Error("Cost limit exceeded");
+      }
+      
       logger.error("Smart scrape returned error response", {
         url,
         prompt,
