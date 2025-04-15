@@ -1,6 +1,7 @@
 import { z } from "zod";
 import {
   AuthCreditUsageChunk,
+  BaseScrapeOptions,
   ScrapeOptions,
   Document as V1Document,
   webhookSchema,
@@ -35,7 +36,7 @@ export interface WebScraperOptions {
   url: string;
   mode: Mode;
   crawlerOptions?: any;
-  scrapeOptions: ScrapeOptions;
+  scrapeOptions: BaseScrapeOptions;
   internalOptions?: InternalOptions;
   team_id: string;
   origin?: string;

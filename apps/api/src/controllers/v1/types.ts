@@ -403,10 +403,12 @@ export const scrapeOptions = baseScrapeOptions
   .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
-export type ScrapeOptions = z.infer<typeof baseScrapeOptions> & {
-  extract: z.infer<typeof extractOptionsWithAgent>,
-  jsonOptions: z.infer<typeof extractOptionsWithAgent>,
-  agent: {
+export type BaseScrapeOptions = z.infer<typeof baseScrapeOptions>;
+
+export type ScrapeOptions = BaseScrapeOptions & {
+  extract?: z.infer<typeof extractOptionsWithAgent>,
+  jsonOptions?: z.infer<typeof extractOptionsWithAgent>,
+  agent?: {
     model: string,
     prompt: string,
     sessionId?: string,
