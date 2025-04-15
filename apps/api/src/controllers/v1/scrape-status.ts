@@ -29,10 +29,6 @@ export async function scrapeStatusController(req: any, res: any) {
 
   const data = job?.docs[0];
 
-  if (data) {
-    delete data.metadata.costTracking;
-  }
-
   return res.status(200).json({
     success: true,
     data,

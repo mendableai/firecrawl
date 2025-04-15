@@ -125,23 +125,11 @@ export async function scrapeController(
     }
   }
 
-  logJob({
-    job_id: jobId,
-    success: true,
-    message: "Scrape completed",
-    num_docs: 1,
-    docs: [doc],
-    time_taken: timeTakenInSeconds,
-    team_id: req.auth.team_id,
-    mode: "scrape",
-    url: req.body.url,
-    scrapeOptions: req.body,
-    origin: origin,
-    num_tokens: numTokens,
-    cost_tracking: doc?.metadata?.costTracking,
-  });
+  const cost_tracking = doc?.metadata?.costTracking;
 
-  delete doc.metadata.costTracking;
+  if (doc && doc.metadata) {
+    delete doc.metadata.costTracking;
+  }
 
   return res.status(200).json({
     success: true,

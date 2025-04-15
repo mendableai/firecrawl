@@ -65,10 +65,6 @@ export async function getJobs(crawlId: string, ids: string[]): Promise<PseudoJob
         failedReason: (bullJob ? bullJob.failedReason : dbJob!.message) || undefined,
       }
 
-      if (job.returnvalue) {
-        delete job.returnvalue.metadata.costTracking;
-      }
-  
       jobs.push(job);
     }
   

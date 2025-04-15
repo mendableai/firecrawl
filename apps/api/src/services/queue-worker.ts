@@ -1271,6 +1271,10 @@ async function processJob(job: Job & { id: string }, token: string) {
 
       await finishCrawlIfNeeded(job, sc);
     } else {
+      const cost_tracking = doc?.metadata?.costTracking;
+
+      delete doc.metadata.costTracking;
+      
       await logJob({
         job_id: job.id,
         success: true,
@@ -1284,6 +1288,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         scrapeOptions: job.data.scrapeOptions,
         origin: job.data.origin,
         num_tokens: 0, // TODO: fix
+        cost_tracking,
       });
       
       indexJob(job, doc);

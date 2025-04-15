@@ -163,8 +163,6 @@ export async function scrapeHelper(
     }
   }
 
-  delete doc.metadata.costTracking;
-
   return {
     success: true,
     data: toLegacyDocument(doc, internalOptions),
@@ -293,30 +291,6 @@ export async function scrapeController(req: Request, res: Response) {
         delete (doc as V0Document).markdown;
       }
     }
-
-    const { scrapeOptions } = fromLegacyScrapeOptions(
-      pageOptions,
-      extractorOptions,
-      timeout,
-      team_id,
-    );
-
-    logJob({
-      job_id: jobId,
-      success: result.success,
-      message: result.error,
-      num_docs: 1,
-      docs: [doc],
-      time_taken: timeTakenInSeconds,
-      team_id: team_id,
-      mode: "scrape",
-      url: req.body.url,
-      crawlerOptions: crawlerOptions,
-      scrapeOptions,
-      origin: origin,
-      num_tokens: numTokens,
-      cost_tracking: (result.data as V0Document).metadata?.costTracking,
-    });
 
     return res.status(result.returnCode).json(result);
   } catch (error) {

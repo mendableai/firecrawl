@@ -68,10 +68,6 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
     failedReason: (bullJob ? bullJob.failedReason : dbJob!.message) || undefined,
   }
 
-  if (job.returnvalue) {
-    delete job.returnvalue.metadata.costTracking;
-  }
-
   return job;
 }
 
@@ -125,10 +121,6 @@ export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
       },
       timestamp: bullJob ? bullJob.timestamp : new Date(dbJob!.date_added).valueOf(),
       failedReason: (bullJob ? bullJob.failedReason : dbJob!.message) || undefined,
-    }
-
-    if (job.returnvalue) {
-      delete job.returnvalue.metadata.costTracking;
     }
 
     jobs.push(job);
