@@ -898,6 +898,7 @@ export async function performExtraction(
       status: "completed",
       llmUsage,
       sources,
+      costTracking,
     }).catch((error) => {
       logger.error(
         `Failed to update extract ${extractId} status to completed: ${error}`,

@@ -435,6 +435,7 @@ export const extractV1Options = z
       .default("direct")
       .optional(),
     agent: agentOptionsExtract.optional(),
+    __experimental_showCostTracking: z.boolean().default(false),
   })
   .strict(strictMessage)
   .refine((obj) => obj.urls || obj.prompt, {
