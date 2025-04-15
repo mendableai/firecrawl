@@ -3,23 +3,26 @@
     "rootDir": "./src",
     "lib": ["ES2022", "DOM"],
 
-
     // or higher
     "target": "ES2022",
 
-    "module": "commonjs",
+    "module": "NodeNext",
     "esModuleInterop": true,
     "sourceMap": true,
     "outDir": "./dist/src",
-    "moduleResolution": "node",
+    "moduleResolution": "NodeNext",
     "baseUrl": ".",
     "strictNullChecks": true,
 
-    "paths": {
-      "*": ["node_modules/*", "src/types/*"],
-    },
-
-    "inlineSources": true,
+    "inlineSources": true
   },
-  "include": ["src/","src/**/*", "services/db/supabase.ts", "utils/utils.ts", "services/db/supabaseEmbeddings.ts", "utils/EventEmmitter.ts", "src/services/queue-service.ts"]
+  "include": [
+    "src/",
+    "src/**/*",
+    "services/db/supabase.ts",
+    "utils/utils.ts",
+    "services/db/supabaseEmbeddings.ts",
+    "utils/EventEmmitter.ts",
+    "src/services/queue-service.ts"
+  ]
 }
