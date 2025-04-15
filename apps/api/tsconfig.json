@@ -13,6 +13,7 @@
     "moduleResolution": "NodeNext",
     "baseUrl": ".",
     "strictNullChecks": true,
+    "skipLibCheck": true,
 
     "inlineSources": true
   },
