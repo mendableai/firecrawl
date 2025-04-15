@@ -64,7 +64,7 @@ export async function getJobs(crawlId: string, ids: string[]): Promise<PseudoJob
         timestamp: bullJob ? bullJob.timestamp : new Date(dbJob!.date_added).valueOf(),
         failedReason: (bullJob ? bullJob.failedReason : dbJob!.message) || undefined,
       }
-  
+
       jobs.push(job);
     }
   

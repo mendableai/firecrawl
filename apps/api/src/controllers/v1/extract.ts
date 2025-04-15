@@ -53,6 +53,7 @@ export async function extractController(
     teamId: req.auth.team_id,
     subId: req.acuc?.sub_id,
     extractId,
+    agent: req.body.agent,
   };
 
   if (
@@ -71,6 +72,7 @@ export async function extractController(
     showSteps: req.body.__experimental_streamSteps,
     showLLMUsage: req.body.__experimental_llmUsage,
     showSources: req.body.__experimental_showSources || req.body.showSources,
+    showCostTracking: req.body.__experimental_showCostTracking,
   });
 
   if (Sentry.isInitialized()) {

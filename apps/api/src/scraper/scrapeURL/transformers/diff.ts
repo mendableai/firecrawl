@@ -6,9 +6,9 @@ import gitDiff from 'git-diff';
 import parseDiff from 'parse-diff';
 import { generateCompletions } from "./llmExtract";
 
-async function extractDataWithSchema(content: string, meta: Meta): Promise<any> {
+async function extractDataWithSchema(content: string, meta: Meta): Promise<{ extract: any, cost: number } | null> {
     try {
-        const { extract } = await generateCompletions({
+        const { extract, cost } = await generateCompletions({
             logger: meta.logger.child({
                 method: "extractDataWithSchema/generateCompletions",
             }),
@@ -20,7 +20,7 @@ async function extractDataWithSchema(content: string, meta: Meta): Promise<any> 
             },
             markdown: content
         });
-        return extract;
+        return { extract, cost };
     } catch (error) {
         meta.logger.error("Error extracting data with schema", { error });
         return null;
@@ -144,7 +144,20 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
                     await extractDataWithSchema(currentMarkdown, meta) : null;
                 
                 if (previousData && currentData) {
-                    document.changeTracking.json = compareExtractedData(previousData, currentData);
+                    document.changeTracking.json = compareExtractedData(previousData.extract, currentData.extract);
+
+                    if (document.metadata.costTracking) {
+                        document.metadata.costTracking.otherCallCount += 2;
+                        document.metadata.costTracking.otherCost = document.metadata.costTracking.otherCost + previousData.cost + currentData.cost;
+                    } else {
+                        document.metadata.costTracking = {
+                            smartScrapeCallCount: 0,
+                            smartScrapeCost: 0,
+                            otherCallCount: 2,
+                            otherCost: previousData.cost + currentData.cost,
+                            totalCost: previousData.cost + currentData.cost
+                        }
+                    }
                 } else {
                     const { extract } = await generateCompletions({
                         logger: meta.logger.child({

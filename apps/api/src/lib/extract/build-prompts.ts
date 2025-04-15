@@ -10,7 +10,7 @@ Provide a rephrased search query that:
 4. Is concise and focused
 5. Short is better than long
 6. It is a search engine, not a chatbot
-7. Concise
+7. Concise, no more than 3 words besides the site
 
 Return only the rephrased search query, without any explanation or additional text.`;
 }
@@ -40,7 +40,20 @@ to determine their relevance to the user's query and intent.
 }
 
 export function buildRerankerUserPrompt(searchQuery: string): string {
-  return `Given these URLs and their content, identify which ones are relevant to the user's extraction request: "${searchQuery}". Return an array of relevant links with their relevance scores (0-1). Higher scores should be given to URLs that directly address the user's extraction request. Be very mindful with the links you select, as if they are not that relevant it may affect the quality of the extraction. Only include URLs that have a relevancy score of 0.6+.`;
+  return `Given these URLs and their content, analyze their relevance to this extraction request: "${searchQuery}".
+
+For each URL, consider:
+1. How well it matches the extraction needs
+2. The quantity and quality of extractable information
+3. Whether the content structure matches what we're looking for
+
+Score each URL from 0-1 based on the scoring guidelines provided in the system prompt.
+
+Provide detailed reasoning for each URL to explain why you assigned that score, considering:
+- Content relevance
+- Information completeness
+- Structure suitability
+- Potential extraction value`;
 }
 
 // Multi entity schema anlayzer
@@ -73,7 +86,7 @@ export function buildAnalyzeSchemaUserPrompt(
   urls: string[],
 ): string {
   return `Classify the query as Single-Answer or Multi-Entity. For Multi-Entity, return keys with large arrays; otherwise, return none:
-Schema: ${schemaString}\nPrompt: ${prompt}\nRelevant URLs: ${urls}`;
+Schema: ${schemaString}\nPrompt: ${prompt}\n URLs: ${urls}`;
 }
 
 // Should Extract
@@ -97,8 +110,7 @@ export function buildBatchExtractSystemPrompt(
 ): string {
   return (
     (systemPrompt ? `${systemPrompt}\n` : "") +
-    `Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. In case you can't find the information and the string is required, instead of 'N/A' or 'Not speficied', return an empty string: '', if it's not a string and you can't find the information, return null. Be concise and follow the schema always if provided. If the document provided is not relevant to the prompt nor to the final user schema ${JSON.stringify(multiEntitySchema)}, return null. Here are the urls the user provided of which he wants to extract information from: ` +
-    links.join(", ")
+    `Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. In case you can't find the information and the string is required, instead of 'N/A' or 'Not speficied', return an empty string: '', if it's not a string and you can't find the information, return null. Be concise and follow the schema always if provided. If the document provided is not relevant to the prompt nor to the final user schema ${JSON.stringify(multiEntitySchema)}, return null.`
   );
 }
 

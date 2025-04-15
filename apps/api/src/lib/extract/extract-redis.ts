@@ -1,5 +1,6 @@
 import { redisConnection } from "../../services/queue-service";
 import { logger as _logger } from "../logger";
+import { CostTracking } from "./extraction-service";
 
 export enum ExtractStep {
   INITIAL = "initial",
@@ -32,6 +33,8 @@ export type StoredExtract = {
   showLLMUsage?: boolean;
   showSources?: boolean;
   llmUsage?: number;
+  showCostTracking?: boolean;
+  costTracking?: CostTracking;
   sources?: {
     [key: string]: string[];
   };

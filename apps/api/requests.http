@@ -1,6 +1,6 @@
 # Pick your baseUrl here:
-@baseUrl = http://localhost:3002
-#@baseUrl = https://api.firecrawl.dev
+# @baseUrl = http://localhost:3002
+@baseUrl = https://api.firecrawl.dev
 
 ### Scrape Website
 # @name scrape
@@ -9,7 +9,7 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-  "url":"https://firecrawl.dev"
+  "url": "https://firecrawl.dev"
 }
 
 ### Crawl Website
@@ -64,38 +64,6 @@ content-type: application/json
   "url": "firecrawl.dev",
   "sitemapOnly": true
 }
-
-### Extract Firecrawl Title
-# @name extractFirecrawl
-POST {{baseUrl}}/v1/extract HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
-content-type: application/json
-
-{
-  "urls": [
-    "https://firecrawl.dev/blog"
-  ],
-  "origin": "api-sdk",
-  "prompt": "Extract all the blog titles from the page, is multity entity = true",
-  "schema": {
-    "type": "object",
-    "properties": {
-      "blog_titles": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      }
-    },
-    "required": ["blog_titles"]
-  }
-}
-
-###
-@extractFirecrawlId = {{extractFirecrawl.response.body.$.id}}
-# @name extractFirecrawlStatus 
-GET {{baseUrl}}/v1/extract/{{extractFirecrawlId}} HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
 ###
 DELETE {{baseUrl}}/v1/crawl/c94136f9-86c1-4a97-966c-1c8e0274778f HTTP/1.1

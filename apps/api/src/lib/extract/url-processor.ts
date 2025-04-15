@@ -8,14 +8,42 @@ import { extractConfig } from "./config";
 import type { Logger } from "winston";
 import { generateText } from "ai";
 import { getModel } from "../generic-ai";
+import { calculateCost } from "../../scraper/scrapeURL/transformers/llmExtract";
+import type { CostTracking } from "./extraction-service";
 
-export async function generateBasicCompletion(prompt: string) {
-  const { text } = await generateText({
-    model: getModel("gpt-4o"),
-    prompt: prompt,
-    temperature: 0
-  });
-  return text;
+export async function generateBasicCompletion(prompt: string): Promise<{ text: string, cost: number } | null> {
+  try {
+    const result = await generateText({
+      model: getModel("gpt-4o", "openai"),
+      prompt: prompt,
+      providerOptions: {
+        anthropic: {
+          thinking: { type: "enabled", budgetTokens: 12000 },
+        },
+      }
+    });
+    return { text: result.text, cost: calculateCost("openai/gpt-4o", result.usage?.promptTokens ?? 0, result.usage?.completionTokens ?? 0) };
+  } catch (error) {
+    console.error("Error generating basic completion:", error);
+    if (error?.type == "rate_limit_error") {
+      try {
+        const result = await generateText({
+          model: getModel("gpt-4o-mini", "openai"), 
+          prompt: prompt,
+          providerOptions: {
+            anthropic: {
+              thinking: { type: "enabled", budgetTokens: 12000 },
+            },
+          }
+        });
+        return { text: result.text, cost: calculateCost("openai/gpt-4o-mini", result.usage?.promptTokens ?? 0, result.usage?.completionTokens ?? 0) };
+      } catch (fallbackError) {
+        console.error("Error generating basic completion with fallback model:", fallbackError);
+        return null;
+      }
+    }
+    return null;
+  }
 }
 interface ProcessUrlOptions {
   url: string;
@@ -26,6 +54,11 @@ interface ProcessUrlOptions {
   origin?: string;
   limit?: number;
   includeSubdomains?: boolean;
+  log?: any;
+  isMultiEntity: boolean;
+  reasoning: string;
+  multiEntityKeys: string[];
+  keyIndicators: string[];
 }
 
 export async function processUrl(
@@ -33,6 +66,7 @@ export async function processUrl(
   urlTraces: URLTrace[],
   updateExtractCallback: (links: string[]) => void,
   logger: Logger,
+  costTracking: CostTracking,
 ): Promise<string[]> {
   const trace: URLTrace = {
     url: options.url,
@@ -60,14 +94,16 @@ export async function processUrl(
 
   let searchQuery = options.prompt;
   if (options.prompt) {
-    searchQuery =
-      (
-        await generateBasicCompletion(
-          buildRefrasedPrompt(options.prompt, baseUrl),
-        )
-      )
-        ?.replace('"', "")
-        .replace("/", "") ?? options.prompt;
+    const res = await generateBasicCompletion(
+      buildRefrasedPrompt(options.prompt, baseUrl),
+    );
+
+    if (res) {
+      searchQuery = res.text.replace('"', "").replace("/", "") ?? options.prompt;
+      costTracking.otherCallCount++;
+      costTracking.otherCost += res.cost;
+      costTracking.totalCost += res.cost;
+    }
   }
 
   try {
@@ -93,6 +129,7 @@ export async function processUrl(
       linkCount: allUrls.length,
       uniqueLinkCount: uniqueUrls.length,
     });
+    options.log["uniqueUrlsLength-1"] = uniqueUrls.length;
 
     // Track all discovered URLs
     uniqueUrls.forEach((discoveredUrl) => {
@@ -146,6 +183,8 @@ export async function processUrl(
       });
     }
 
+    options.log["uniqueUrlsLength-2"] = uniqueUrls.length;
+
     // Track all discovered URLs
     uniqueUrls.forEach((discoveredUrl) => {
       if (!urlTraces.some((t) => t.url === discoveredUrl)) {
@@ -182,12 +221,20 @@ export async function processUrl(
 
     let rephrasedPrompt = options.prompt ?? searchQuery;
     try {
-      rephrasedPrompt =
-        (await generateBasicCompletion(
-          buildPreRerankPrompt(rephrasedPrompt, options.schema, baseUrl),
-        )) ??
-        "Extract the data according to the schema: " +
+      const res = await generateBasicCompletion(
+        buildPreRerankPrompt(rephrasedPrompt, options.schema, baseUrl),
+      );
+
+      if (res) {
+        rephrasedPrompt = res.text;
+        costTracking.otherCallCount++;
+        costTracking.otherCost += res.cost;
+        costTracking.totalCost += res.cost;
+      } else {
+        rephrasedPrompt =
+          "Extract the data according to the schema: " +
           JSON.stringify(options.schema, null, 2);
+      }
     } catch (error) {
       console.error("Error generating search query from schema:", error);
       rephrasedPrompt =
@@ -211,13 +258,20 @@ export async function processUrl(
       links: mappedLinks,
       searchQuery: rephrasedPrompt,
       urlTraces,
+      isMultiEntity: options.isMultiEntity,
+      reasoning: options.reasoning,
+      multiEntityKeys: options.multiEntityKeys,
+      keyIndicators: options.keyIndicators,
     });
+    costTracking.otherCallCount++;
+    costTracking.otherCost += rerankerResult.cost;
+    costTracking.totalCost += rerankerResult.cost;
     mappedLinks = rerankerResult.mapDocument;
     let tokensUsed = rerankerResult.tokensUsed;
     logger.info("Reranked! (pass 1)", {
       linkCount: mappedLinks.length,
     });
-
+    options.log["rerankerResult-1"] = mappedLinks.length;
     // 2nd Pass, useful for when the first pass returns too many links
     if (mappedLinks.length > 100) {
       logger.info("Reranking (pass 2)...");
@@ -225,13 +279,21 @@ export async function processUrl(
         links: mappedLinks,
         searchQuery: rephrasedPrompt,
         urlTraces,
+        isMultiEntity: options.isMultiEntity,
+        reasoning: options.reasoning,
+        multiEntityKeys: options.multiEntityKeys,
+        keyIndicators: options.keyIndicators,
       });
+      costTracking.otherCallCount++;
+      costTracking.otherCost += rerankerResult.cost;
+      costTracking.totalCost += rerankerResult.cost;
       mappedLinks = rerankerResult.mapDocument;
       tokensUsed += rerankerResult.tokensUsed;
       logger.info("Reranked! (pass 2)", {
         linkCount: mappedLinks.length,
       });
     }
+    options.log["rerankerResult-2"] = mappedLinks.length;
 
     // dumpToFile(
     //   "llm-links.txt",

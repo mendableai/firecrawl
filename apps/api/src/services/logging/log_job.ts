@@ -102,6 +102,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       crawl_id: job.crawl_id,
       tokens_billed: job.tokens_billed,
       is_migrated: true,
+      cost_tracking: job.cost_tracking,
     };
 
     // Send job to external server
@@ -181,6 +182,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
           num_tokens: job.num_tokens,
           retry: job.retry,
           tokens_billed: job.tokens_billed,
+          cost_tracking: job.cost_tracking,
         },
       };
       if (job.mode !== "single_urls") {

@@ -19,12 +19,16 @@ export async function analyzeSchemaAndPrompt(
 ): Promise<{
   isMultiEntity: boolean;
   multiEntityKeys: string[];
-  reasoning?: string;
-  keyIndicators?: string[];
+  reasoning: string;
+  keyIndicators: string[];
   tokenUsage: TokenUsage;
+  cost: number;
 }> {
+  let cost = 0;
   if (!schema) {
-    schema = await generateSchemaFromPrompt(prompt);
+    const genRes = await generateSchemaFromPrompt(prompt);
+    schema = genRes.extract;
+    cost = genRes.cost;
   }
 
   const schemaString = JSON.stringify(schema);
@@ -44,7 +48,7 @@ export async function analyzeSchemaAndPrompt(
     );
 
   try {
-    const { extract: result, totalUsage } = await generateCompletions({
+    const { extract: result, totalUsage, cost: cost2 } = await generateCompletions({
       logger,
       options: {
         mode: "llm",
@@ -55,6 +59,7 @@ export async function analyzeSchemaAndPrompt(
       markdown: "",
       model,
     });
+    cost += cost2;
 
     const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
       checkSchema.parse(result);
@@ -65,6 +70,7 @@ export async function analyzeSchemaAndPrompt(
       reasoning,
       keyIndicators,
       tokenUsage: totalUsage,
+      cost,
     };
   } catch (e) {
     logger.warn("(analyzeSchemaAndPrompt) Error parsing schema analysis", {
@@ -83,5 +89,6 @@ export async function analyzeSchemaAndPrompt(
       totalTokens: 0,
       model: model.modelId,
     },
+    cost: 0,
   };
 }

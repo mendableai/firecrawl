@@ -1,6 +1,7 @@
 import {
   Document,
   ExtractRequest,
+  isAgentExtractModelValid,
   TokenUsage,
   URLTrace,
 } from "../../controllers/v1/types";
@@ -26,12 +27,8 @@ import { deduplicateObjectsArray } from "./helpers/deduplicate-objs-array";
 import { mergeNullValObjs } from "./helpers/merge-null-val-objs";
 import { areMergeable } from "./helpers/merge-null-val-objs";
 import { CUSTOM_U_TEAMS } from "./config";
-import {
-  calculateFinalResultCost,
-  estimateTotalCost,
-} from "./usage/llm-cost";
+import { calculateFinalResultCost, estimateTotalCost } from "./usage/llm-cost";
 import { analyzeSchemaAndPrompt } from "./completions/analyzeSchemaAndPrompt";
-import { checkShouldExtract } from "./completions/checkShouldExtract";
 import { batchExtractPromise } from "./completions/batchExtract";
 import { singleAnswerCompletion } from "./completions/singleAnswer";
 import { SourceTracker } from "./helpers/source-tracker";
@@ -39,13 +36,14 @@ import { getCachedDocs, saveCachedDocs } from "./helpers/cached-docs";
 import { normalizeUrl } from "../canonical-url";
 import { search } from "../../search";
 import { buildRephraseToSerpPrompt } from "./build-prompts";
-
+import fs from "fs/promises";
 interface ExtractServiceOptions {
   request: ExtractRequest;
   teamId: string;
   subId?: string;
   cacheMode?: "load" | "save" | "direct";
   cacheKey?: string;
+  agent?: boolean;
 }
 
 export interface ExtractResult {
@@ -69,6 +67,14 @@ type completions = {
   sources?: string[];
 };
 
+export type CostTracking = {
+  smartScrapeCallCount: number;
+  smartScrapeCost: number;
+  otherCallCount: number;
+  otherCost: number;
+  totalCost: number;
+  costLimitExceededTokenUsage?: number;
+};
 
 export async function performExtraction(
   extractId: string,
@@ -83,7 +89,18 @@ export async function performExtraction(
   let singleAnswerResult: any = {};
   let totalUrlsScraped = 0;
   let sources: Record<string, string[]> = {};
+  let costTracking: CostTracking = {
+    smartScrapeCallCount: 0,
+    smartScrapeCost: 0,
+    otherCallCount: 0,
+    otherCost: 0,
+    totalCost: 0,
+  };
 
+  let log = {
+    extractId,
+    request,
+  };
 
   const logger = _logger.child({
     module: "extract",
@@ -97,13 +114,21 @@ export async function performExtraction(
     logger.debug("Generating URLs from prompt...", {
       prompt: request.prompt,
     });
-    const rephrasedPrompt = await generateBasicCompletion(buildRephraseToSerpPrompt(request.prompt));
+    const rephrasedPrompt = await generateBasicCompletion(
+      buildRephraseToSerpPrompt(request.prompt),
+    );
+    let rptxt = rephrasedPrompt?.text.replace('"', "").replace("'", "") || "";
+    if (rephrasedPrompt) {
+      costTracking.otherCallCount++;
+      costTracking.otherCost += rephrasedPrompt.cost;
+      costTracking.totalCost += rephrasedPrompt.cost;
+    }
     const searchResults = await search({
-      query:  rephrasedPrompt.replace('"', "").replace("'", ""),
+      query: rptxt,
       num_results: 10,
     });
 
-    request.urls = searchResults.map(result => result.url) as string[];
+    request.urls = searchResults.map((result) => result.url) as string[];
   }
   if (request.urls && request.urls.length === 0) {
     logger.error("No search results found", {
@@ -118,7 +143,11 @@ export async function performExtraction(
 
   const urls = request.urls || ([] as string[]);
 
-  if (request.__experimental_cacheMode == "load" && request.__experimental_cacheKey && urls) {
+  if (
+    request.__experimental_cacheMode == "load" &&
+    request.__experimental_cacheKey &&
+    urls
+  ) {
     logger.debug("Loading cached docs...");
     try {
       const cache = await getCachedDocs(urls, request.__experimental_cacheKey);
@@ -147,12 +176,66 @@ export async function performExtraction(
     ],
   });
 
+  let reqSchema = request.schema;
+  if (!reqSchema && request.prompt) {
+    const schemaGenRes = await generateSchemaFromPrompt(request.prompt);
+    reqSchema = schemaGenRes.extract;
+    costTracking.otherCallCount++;
+    costTracking.otherCost += schemaGenRes.cost;
+    costTracking.totalCost += schemaGenRes.cost;
+
+    logger.debug("Generated request schema.", {
+      originalSchema: request.schema,
+      schema: reqSchema,
+    });
+  }
+
+  if (reqSchema) {
+    reqSchema = await dereferenceSchema(reqSchema);
+  }
+
+  logger.debug("Transformed schema.", {
+    originalSchema: request.schema,
+    schema: reqSchema,
+  });
+
+  let rSchema = reqSchema;
+
+  // agent evaluates if the schema or the prompt has an array with big amount of items
+  // also it checks if the schema any other properties that are not arrays
+  // if so, it splits the results into 2 types of completions:
+  // 1. the first one is a completion that will extract the array of items
+  // 2. the second one is multiple completions that will extract the items from the array
+  let startAnalyze = Date.now();
+  const {
+    isMultiEntity,
+    multiEntityKeys,
+    reasoning,
+    keyIndicators,
+    tokenUsage: schemaAnalysisTokenUsage,
+    cost: schemaAnalysisCost,
+  } = await analyzeSchemaAndPrompt(urls, reqSchema, request.prompt ?? "");
+
+  logger.debug("Analyzed schema.", {
+    isMultiEntity,
+    multiEntityKeys,
+    reasoning,
+    keyIndicators,
+  });
+
+  costTracking.otherCallCount++;
+  costTracking.otherCost += schemaAnalysisCost;
+  costTracking.totalCost += schemaAnalysisCost;
+
+  // Track schema analysis tokens
+  tokenUsage.push(schemaAnalysisTokenUsage);
+
   let startMap = Date.now();
   let aggMapLinks: string[] = [];
   logger.debug("Processing URLs...", {
     urlCount: request.urls?.length || 0,
   });
-  
+
   const urlPromises = urls.map((url) =>
     processUrl(
       {
@@ -164,6 +247,11 @@ export async function performExtraction(
         limit: request.limit,
         includeSubdomains: request.includeSubdomains,
         schema: request.schema,
+        log,
+        isMultiEntity,
+        reasoning,
+        multiEntityKeys,
+        keyIndicators,
       },
       urlTraces,
       (links: string[]) => {
@@ -180,6 +268,7 @@ export async function performExtraction(
         });
       },
       logger.child({ module: "extract", method: "processUrl", url }),
+      costTracking,
     ),
   );
 
@@ -188,6 +277,9 @@ export async function performExtraction(
   logger.debug("Processed URLs.", {
     linkCount: links.length,
   });
+
+  log["links"] = links;
+  log["linksLength"] = links.length;
 
   if (links.length === 0) {
     logger.error("0 links! Bailing.", {
@@ -215,55 +307,8 @@ export async function performExtraction(
     ],
   });
 
-  let reqSchema = request.schema;
-  if (!reqSchema && request.prompt) {
-    reqSchema = await generateSchemaFromPrompt(request.prompt);
-    logger.debug("Generated request schema.", {
-      originalSchema: request.schema,
-      schema: reqSchema,
-    });
-  }
-
-  if (reqSchema) {
-    reqSchema = await dereferenceSchema(reqSchema);
-  }
-
-  logger.debug("Transformed schema.", {
-    originalSchema: request.schema,
-    schema: reqSchema,
-  });
-
-  // agent evaluates if the schema or the prompt has an array with big amount of items
-  // also it checks if the schema any other properties that are not arrays
-  // if so, it splits the results into 2 types of completions:
-  // 1. the first one is a completion that will extract the array of items
-  // 2. the second one is multiple completions that will extract the items from the array
-  let startAnalyze = Date.now();
-  const {
-    isMultiEntity,
-    multiEntityKeys,
-    reasoning,
-    keyIndicators,
-    tokenUsage: schemaAnalysisTokenUsage,
-  } = await analyzeSchemaAndPrompt(links, reqSchema, request.prompt ?? "");
-
-  logger.debug("Analyzed schema.", {
-    isMultiEntity,
-    multiEntityKeys,
-    reasoning,
-    keyIndicators,
-  });
-
-  // Track schema analysis tokens
-  tokenUsage.push(schemaAnalysisTokenUsage);
-
-  // console.log("\nIs Multi Entity:", isMultiEntity);
-  // console.log("\nMulti Entity Keys:", multiEntityKeys);
-  // console.log("\nReasoning:", reasoning);
-  // console.log("\nKey Indicators:", keyIndicators);
-
-  let rSchema = reqSchema;
   if (isMultiEntity && reqSchema) {
+    log["isMultiEntity"] = true;
     logger.debug("=== MULTI-ENTITY ===");
 
     const { singleAnswerSchema, multiEntitySchema } = await spreadSchemas(
@@ -301,7 +346,8 @@ export async function performExtraction(
 
     logger.debug("Starting multi-entity scrape...");
     let startScrape = Date.now();
-    
+    log["docsSizeBeforeMultiEntityScrape"] = docsMap.size;
+
     const scrapePromises = links.map((url) => {
       if (!docsMap.has(normalizeUrl(url))) {
         return scrapeDocument(
@@ -323,7 +369,7 @@ export async function performExtraction(
 
             // Needs to be true for multi-entity to work properly
             onlyMainContent: true,
-          }
+          },
         );
       }
       return docsMap.get(normalizeUrl(url));
@@ -332,6 +378,8 @@ export async function performExtraction(
     let multyEntityDocs = (await Promise.all(scrapePromises)).filter(
       (doc): doc is Document => doc !== null,
     );
+
+    log["docsSizeAfterMultiEntityScrape"] = scrapePromises.length;
 
     logger.debug("Multi-entity scrape finished.", {
       docCount: multyEntityDocs.length,
@@ -365,7 +413,7 @@ export async function performExtraction(
     const chunkSize = 50;
     const timeoutCompletion = 45000; // 45 second timeout
     const chunks: Document[][] = [];
-    const extractionResults: {extract: any, url: string}[] = [];
+    const extractionResults: { extract: any; url: string }[] = [];
 
     // Split into chunks
     for (let i = 0; i < multyEntityDocs.length; i += chunkSize) {
@@ -383,68 +431,36 @@ export async function performExtraction(
             setTimeout(() => resolve(null), timeoutCompletion);
           });
 
-          // Check if page should be extracted before proceeding
-          const { extract, tokenUsage: shouldExtractCheckTokenUsage } = await checkShouldExtract(
-            request.prompt ?? "",
+          const completionPromise = batchExtractPromise({
             multiEntitySchema,
+            links,
+            prompt: request.prompt ?? "",
+            systemPrompt: request.systemPrompt ?? "",
             doc,
-          );
-
-          tokenUsage.push(shouldExtractCheckTokenUsage);
-
-          if (!extract) {
-            logger.info(
-              `Skipping extraction for ${doc.metadata.url} as content is irrelevant`,
-            );
-            return null;
-          }
-          // Add confidence score to schema with 5 levels
-          const schemaWithConfidence = {
-            ...multiEntitySchema,
-            properties: {
-              ...multiEntitySchema.properties,
-              is_content_relevant: {
-                type: "boolean",
-                description:
-                  "Determine if this content is relevant to the prompt. Return true ONLY if the content contains information that directly helps answer the prompt. Return false if the content is irrelevant or unlikely to contain useful information.",
-              },
-            },
-            required: [
-              ...(multiEntitySchema.required || []),
-              "is_content_relevant",
-            ],
-          };
-
-          await updateExtract(extractId, {
-            status: "processing",
-            steps: [
-              {
-                step: ExtractStep.MULTI_ENTITY_EXTRACT,
-                startedAt: startScrape,
-                finishedAt: Date.now(),
-                discoveredLinks: [
-                  doc.metadata.url || doc.metadata.sourceURL || "",
-                ],
-              },
-            ],
+            useAgent: isAgentExtractModelValid(request.agent?.model)
           });
 
-          const completionPromise = batchExtractPromise(multiEntitySchema, links, request.prompt ?? "", request.systemPrompt ?? "", doc);
-
           // Race between timeout and completion
-          const multiEntityCompletion = (await Promise.race([
-            completionPromise,
-            timeoutPromise,
-          ])) as Awaited<ReturnType<typeof generateCompletions>>;
+          const multiEntityCompletion = (await completionPromise) as Awaited<
+            ReturnType<typeof batchExtractPromise>
+          >;
+
+          // TODO: merge multiEntityCompletion.extract to fit the multiEntitySchema
 
           // Track multi-entity extraction tokens
           if (multiEntityCompletion) {
             tokenUsage.push(multiEntityCompletion.totalUsage);
-            
+
+            costTracking.smartScrapeCallCount += multiEntityCompletion.smartScrapeCallCount;
+            costTracking.smartScrapeCost += multiEntityCompletion.smartScrapeCost;
+            costTracking.otherCallCount += multiEntityCompletion.otherCallCount;
+            costTracking.otherCost += multiEntityCompletion.otherCost;
+            costTracking.totalCost += multiEntityCompletion.smartScrapeCost + multiEntityCompletion.otherCost;
+
             if (multiEntityCompletion.extract) {
               return {
                 extract: multiEntityCompletion.extract,
-                url: doc.metadata.url || doc.metadata.sourceURL || ""
+                url: doc.metadata.url || doc.metadata.sourceURL || "",
               };
             }
           }
@@ -490,42 +506,115 @@ export async function performExtraction(
           return null;
         }
       });
-
       // Wait for current chunk to complete before processing next chunk
       const chunkResults = await Promise.all(chunkPromises);
-      const validResults = chunkResults.filter((result): result is {extract: any, url: string} => result !== null);
+      const validResults = chunkResults.filter(
+        (result): result is { extract: any; url: string } => result !== null,
+      );
       extractionResults.push(...validResults);
-      multiEntityCompletions.push(...validResults.map(r => r.extract));
+      // Merge all extracts from valid results into a single array
+      const extractArrays = validResults.map((r) =>
+        Array.isArray(r.extract) ? r.extract : [r.extract],
+      );
+      const mergedExtracts = extractArrays.flat();
+      multiEntityCompletions.push(...mergedExtracts);
+      multiEntityCompletions = multiEntityCompletions.filter((c) => c !== null);
       logger.debug("All multi-entity completion chunks finished.", {
         completionCount: multiEntityCompletions.length,
       });
+      log["multiEntityCompletionsLength"] = multiEntityCompletions.length;
     }
 
     try {
       // Use SourceTracker to handle source tracking
       const sourceTracker = new SourceTracker();
-      
-      // Transform and merge results while preserving sources
-      sourceTracker.transformResults(extractionResults, multiEntitySchema, false);
-      
-      multiEntityResult = transformArrayToObject(
-        multiEntitySchema,
-        multiEntityCompletions,
-      );
-      
-      // Track sources before deduplication
-      sourceTracker.trackPreDeduplicationSources(multiEntityResult);
-      
-      // Apply deduplication and merge
-      multiEntityResult = deduplicateObjectsArray(multiEntityResult);
-      multiEntityResult = mergeNullValObjs(multiEntityResult);
-      
-      // Map sources to final deduplicated/merged items
-      const multiEntitySources = sourceTracker.mapSourcesToFinalItems(multiEntityResult, multiEntityKeys);
-      Object.assign(sources, multiEntitySources);
+      logger.debug("Created SourceTracker instance");
 
+      // Transform and merge results while preserving sources
+      try {
+        sourceTracker.transformResults(
+          extractionResults,
+          multiEntitySchema,
+          false,
+        );
+        logger.debug("Successfully transformed results with sourceTracker");
+      } catch (error) {
+        const errorLog = `[${new Date().toISOString()}] Error in sourceTracker.transformResults: ${JSON.stringify(error, null, 2)}\n`;
+        await fs.appendFile('logs/extraction-errors.log', errorLog);
+        logger.error(`Error in sourceTracker.transformResults:`, { error });
+        throw error;
+      }
+
+      try {
+        multiEntityResult = transformArrayToObject(
+          multiEntitySchema,
+          multiEntityCompletions,
+        );
+        logger.debug("Successfully transformed array to object");
+      } catch (error) {
+        const errorLog = `[${new Date().toISOString()}] Error in transformArrayToObject: ${JSON.stringify(error, null, 2)}\n`;
+        await fs.appendFile('logs/extraction-errors.log', errorLog);
+        logger.error(`Error in transformArrayToObject:`, { error });
+        throw error;
+      }
+
+      // Track sources before deduplication
+      try {
+        sourceTracker.trackPreDeduplicationSources(multiEntityResult);
+        logger.debug("Successfully tracked pre-deduplication sources");
+      } catch (error) {
+        const errorLog = `[${new Date().toISOString()}] Error in trackPreDeduplicationSources: ${JSON.stringify(error, null, 2)}\n`;
+        await fs.appendFile('logs/extraction-errors.log', errorLog);
+        logger.error(`Error in trackPreDeduplicationSources:`, { error });
+        throw error;
+      }
+
+      // Apply deduplication and merge
+      try {
+        multiEntityResult = deduplicateObjectsArray(multiEntityResult);
+        logger.debug("Successfully deduplicated objects array");
+      } catch (error) {
+        const errorLog = `[${new Date().toISOString()}] Error in deduplicateObjectsArray: ${JSON.stringify(error, null, 2)}\n`;
+        await fs.appendFile('logs/extraction-errors.log', errorLog);
+        logger.error(`Error in deduplicateObjectsArray:`, { error });
+        throw error;
+      }
+
+      try {
+        multiEntityResult = mergeNullValObjs(multiEntityResult);
+        logger.debug("Successfully merged null value objects");
+      } catch (error) {
+        const errorLog = `[${new Date().toISOString()}] Error in mergeNullValObjs: ${JSON.stringify(error, null, 2)}\n`;
+        await fs.appendFile('logs/extraction-errors.log', errorLog);
+        logger.error(`Error in mergeNullValObjs:`, { error });
+        throw error;
+      }
+
+      // Map sources to final deduplicated/merged items
+      try {
+        const multiEntitySources = sourceTracker.mapSourcesToFinalItems(
+          multiEntityResult,
+          multiEntityKeys,
+        );
+        Object.assign(sources, multiEntitySources);
+        logger.debug("Successfully mapped sources to final items");
+      } catch (error) {
+        const errorLog = `[${new Date().toISOString()}] Error in mapSourcesToFinalItems: ${JSON.stringify(error, null, 2)}\n`;
+        await fs.appendFile('logs/extraction-errors.log', errorLog);
+        logger.error(`Error in mapSourcesToFinalItems:`, { error });
+        throw error;
+      }
     } catch (error) {
-      logger.error(`Failed to transform array to object`, { error });
+      const errorLog = `[${new Date().toISOString()}] Failed to transform array to object\nError: ${JSON.stringify(error, null, 2)}\nStack: ${error.stack}\nMultiEntityResult: ${JSON.stringify(multiEntityResult, null, 2)}\nMultiEntityCompletions: ${JSON.stringify(multiEntityCompletions, null, 2)}\nMultiEntitySchema: ${JSON.stringify(multiEntitySchema, null, 2)}\n\n`;
+      await fs.appendFile('logs/extraction-errors.log', errorLog);
+      logger.error(`Failed to transform array to object`, { 
+        error,
+        errorMessage: error.message,
+        errorStack: error.stack,
+        multiEntityResult: JSON.stringify(multiEntityResult),
+        multiEntityCompletions: JSON.stringify(multiEntityCompletions),
+        multiEntitySchema: JSON.stringify(multiEntitySchema)
+      });
       return {
         success: false,
         error:
@@ -542,6 +631,7 @@ export async function performExtraction(
     rSchema.properties &&
     Object.keys(rSchema.properties).length > 0
   ) {
+    log["isSingleEntity"] = true;
     logger.debug("=== SINGLE PAGES ===", {
       linkCount: links.length,
       schema: rSchema,
@@ -564,6 +654,7 @@ export async function performExtraction(
         },
       ],
     });
+    log["docsSizeBeforeSingleEntityScrape"] = docsMap.size;
     const scrapePromises = links.map((url) => {
       if (!docsMap.has(normalizeUrl(url))) {
         return scrapeDocument(
@@ -580,7 +671,7 @@ export async function performExtraction(
             url,
             isMultiEntity: false,
           }),
-          request.scrapeOptions
+          request.scrapeOptions,
         );
       }
       return docsMap.get(normalizeUrl(url));
@@ -588,6 +679,7 @@ export async function performExtraction(
 
     try {
       const results = await Promise.all(scrapePromises);
+      log["docsSizeAfterSingleEntityScrape"] = docsMap.size;
 
       for (const doc of results) {
         if (doc?.metadata?.url) {
@@ -640,31 +732,53 @@ export async function performExtraction(
 
     // Generate completions
     logger.debug("Generating singleAnswer completions...");
-    let { extract: completionResult, tokenUsage: singleAnswerTokenUsage, sources: singleAnswerSources } = await singleAnswerCompletion({
+    log["singleAnswerDocsLength"] = singleAnswerDocs.length;
+    let {
+      extract: completionResult,
+      tokenUsage: singleAnswerTokenUsage,
+      sources: singleAnswerSources,
+      smartScrapeCost: singleAnswerSmartScrapeCost,
+      otherCost: singleAnswerOtherCost,
+      smartScrapeCallCount: singleAnswerSmartScrapeCallCount,
+      otherCallCount: singleAnswerOtherCallCount,
+    } = await singleAnswerCompletion({
       singleAnswerDocs,
       rSchema,
       links,
       prompt: request.prompt ?? "",
       systemPrompt: request.systemPrompt ?? "",
+      useAgent: isAgentExtractModelValid(request.agent?.model),
     });
+    costTracking.smartScrapeCost += singleAnswerSmartScrapeCost;
+    costTracking.smartScrapeCallCount += singleAnswerSmartScrapeCallCount;
+    costTracking.otherCost += singleAnswerOtherCost;
+    costTracking.otherCallCount += singleAnswerOtherCallCount;
+    costTracking.totalCost += singleAnswerSmartScrapeCost + singleAnswerOtherCost;
     logger.debug("Done generating singleAnswer completions.");
 
+    singleAnswerResult = transformArrayToObject(rSchema, completionResult);
+
+    singleAnswerResult = deduplicateObjectsArray(singleAnswerResult);
     // Track single answer extraction tokens and sources
     if (completionResult) {
       tokenUsage.push(singleAnswerTokenUsage);
-      
+
       // Add sources for top-level properties in single answer
       if (rSchema?.properties) {
-        Object.keys(rSchema.properties).forEach(key => {
+        Object.keys(rSchema.properties).forEach((key) => {
           if (completionResult[key] !== undefined) {
-            sources[key] = singleAnswerSources || singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || "");
+            sources[key] =
+              singleAnswerSources ||
+              singleAnswerDocs.map(
+                (doc) => doc.metadata.url || doc.metadata.sourceURL || "",
+              );
           }
         });
       }
     }
 
-    singleAnswerResult = completionResult;
-    singleAnswerCompletions = singleAnswerResult;
+    // singleAnswerResult = completionResult;
+    // singleAnswerCompletions = singleAnswerResult;
 
     // Update token usage in traces
     // if (completions && completions.numTokens) {
@@ -685,6 +799,9 @@ export async function performExtraction(
     //   });
     // }
   }
+
+  log["singleAnswerResult"] = singleAnswerResult;
+  log["multiEntityResult"] = multiEntityResult;
 
   let finalResult = reqSchema
     ? await mixSchemaObjects(
@@ -776,11 +893,13 @@ export async function performExtraction(
     num_tokens: totalTokensUsed,
     tokens_billed: tokensToBill,
     sources,
+    cost_tracking: costTracking,
   }).then(() => {
     updateExtract(extractId, {
       status: "completed",
       llmUsage,
       sources,
+      costTracking,
     }).catch((error) => {
       logger.error(
         `Failed to update extract ${extractId} status to completed: ${error}`,
@@ -790,14 +909,25 @@ export async function performExtraction(
 
   logger.debug("Done!");
 
-  if (request.__experimental_cacheMode == "save" && request.__experimental_cacheKey) {
+  if (
+    request.__experimental_cacheMode == "save" &&
+    request.__experimental_cacheKey
+  ) {
     logger.debug("Saving cached docs...");
     try {
-      await saveCachedDocs([...docsMap.values()], request.__experimental_cacheKey);
+      await saveCachedDocs(
+        [...docsMap.values()],
+        request.__experimental_cacheKey,
+      );
     } catch (error) {
       logger.error("Error saving cached docs", { error });
     }
   }
+
+  // fs.writeFile(
+  //   `logs/${request.urls?.[0].replaceAll("https://", "").replaceAll("http://", "").replaceAll("/", "-").replaceAll(".", "-")}-extract-${extractId}.json`,
+  //   JSON.stringify(log, null, 2),
+  // );
 
   return {
     success: true,

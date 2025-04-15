@@ -292,13 +292,6 @@ export async function scrapeController(req: Request, res: Response) {
       }
     }
 
-    const { scrapeOptions } = fromLegacyScrapeOptions(
-      pageOptions,
-      extractorOptions,
-      timeout,
-      team_id,
-    );
-
     return res.status(result.returnCode).json(result);
   } catch (error) {
     Sentry.captureException(error);

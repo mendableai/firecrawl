@@ -55,6 +55,17 @@ export const url = z.preprocess(
 const strictMessage =
   "Unrecognized key in body -- please review the v1 API documentation for request body changes";
 
+export const agentExtractModelValue = 'fire-1'
+export const isAgentExtractModelValid = (x: string | undefined) => x?.toLowerCase() === agentExtractModelValue;
+
+export const agentOptionsExtract = z
+  .object({
+    model: z.string().default(agentExtractModelValue),
+  })
+  .strict(strictMessage);
+
+export type AgentOptions = z.infer<typeof agentOptionsExtract>;
+
 export const extractOptions = z
   .object({
     mode: z.enum(["llm"]).default("llm"),
@@ -62,13 +73,53 @@ export const extractOptions = z
     systemPrompt: z
       .string()
       .max(10000)
-      .default(
-        "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required.",
-      ),
+      .default(""),
     prompt: z.string().max(10000).optional(),
     temperature: z.number().optional(),
   })
-  .strict(strictMessage);
+  .strict(strictMessage)
+  .transform((data) => ({
+    ...data,
+    systemPrompt: "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required."
+  }));
+
+export const extractOptionsWithAgent = z
+  .object({
+    mode: z.enum(["llm"]).default("llm"),
+    schema: z.any().optional(),
+    systemPrompt: z
+      .string()
+      .max(10000)
+      .default(""),
+    prompt: z.string().max(10000).optional(),
+    temperature: z.number().optional(),
+    agent: z
+      .object({
+        model: z.string().default(agentExtractModelValue),
+        prompt: z.string().optional(),
+      })
+      .optional(),
+  })
+  .strict(strictMessage)
+  .transform((data) => ({
+    ...data,
+    systemPrompt: isAgentExtractModelValid(data.agent?.model)
+      ? `You are an expert web data extractor. Your task is to analyze the provided markdown content from a web page and generate a JSON object based *strictly* on the provided schema.
+
+Key Instructions:
+1.  **Schema Adherence:** Populate the JSON object according to the structure defined in the schema.
+2.  **Content Grounding:** Extract information *only* if it is explicitly present in the provided markdown. Do NOT infer or fabricate information.
+3.  **Missing Information:** If a piece of information required by the schema cannot be found in the markdown, use \`null\` for that field's value.
+4.  **SmartScrape Recommendation:**
+    *   Assess if the *full* required data seems unavailable in the current markdown likely because:
+        - Content requires user interaction to reveal (e.g., clicking buttons, hovering, scrolling)
+        - Content uses pagination (e.g., "Load More" buttons, numbered pagination, infinite scroll)
+        - Content is dynamically loaded after user actions
+    *   If the content requires user interaction or pagination to be fully accessible, set \`shouldUseSmartscrape\` to \`true\` in your response and provide a clear \`reasoning\` and \`prompt\` for the SmartScrape tool.
+    *   If the content is simply JavaScript rendered but doesn't require interaction, set \`shouldUseSmartscrape\` to \`false\`.
+5.  **Output Format:** Your final output MUST be a single, valid JSON object conforming precisely to the schema. Do not include any explanatory text outside the JSON structure.`
+      : "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required."
+  }));
 
 export type ExtractOptions = z.infer<typeof extractOptions>;
 
@@ -253,17 +304,24 @@ const baseScrapeOptions = z
   })
   .strict(strictMessage);
 
+const fire1Refine = (obj) => {
+  if (obj.agent?.model?.toLowerCase() === "fire-1" && obj.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
+    return false;
+  }
+  return true;
+}
+const fire1RefineOpts = {
+  message: "You may only specify the FIRE-1 model in agent or jsonOptions.agent, but not both.",
+};
 const extractRefine = (obj) => {
   const hasExtractFormat = obj.formats?.includes("extract");
   const hasExtractOptions = obj.extract !== undefined;
   const hasJsonFormat = obj.formats?.includes("json");
   const hasJsonOptions = obj.jsonOptions !== undefined;
   return (
-    (hasExtractFormat && hasExtractOptions)
-    || (!hasExtractFormat && !hasExtractOptions)
-  ) && (
-    (hasJsonFormat && hasJsonOptions)
-    || (!hasJsonFormat && !hasJsonOptions)
+    ((hasExtractFormat && hasExtractOptions) ||
+      (!hasExtractFormat && !hasExtractOptions)) &&
+    ((hasJsonFormat && hasJsonOptions) || (!hasJsonFormat && !hasJsonOptions))
   );
 };
 const extractRefineOpts = {
@@ -277,7 +335,7 @@ const extractTransform = (obj) => {
       obj.extract ||
       obj.formats?.includes("json") ||
       obj.jsonOptions) &&
-    (obj.timeout === 30000)
+    obj.timeout === 30000
   ) {
     obj = { ...obj, timeout: 60000 };
   }
@@ -288,6 +346,10 @@ const extractTransform = (obj) => {
 
   if (obj.formats?.includes("changeTracking") && obj.timeout === 30000) {
     obj = { ...obj, timeout: 60000 };
+  }
+
+  if (obj.agent) {
+    obj = { ...obj, timeout: 300000 };
   }
 
   if (obj.formats?.includes("json")) {
@@ -302,6 +364,7 @@ const extractTransform = (obj) => {
         prompt: obj.jsonOptions.prompt,
         systemPrompt: obj.jsonOptions.systemPrompt,
         schema: obj.jsonOptions.schema,
+        agent: obj.jsonOptions.agent,
         mode: "llm",
       },
     };
@@ -311,6 +374,16 @@ const extractTransform = (obj) => {
 };
 
 export const scrapeOptions = baseScrapeOptions
+  .extend({
+    agent: z
+      .object({
+        model: z.string().default(agentExtractModelValue),
+        prompt: z.string().optional(),
+      })
+      .optional(),
+    extract: extractOptionsWithAgent.optional(),
+    jsonOptions: extractOptionsWithAgent.optional(),
+  })
   .refine(
     (obj) => {
       if (!obj.actions) return true;
@@ -324,11 +397,13 @@ export const scrapeOptions = baseScrapeOptions
     },
   )
   .refine(extractRefine, extractRefineOpts)
+  .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
-export type ScrapeOptions = z.infer<typeof baseScrapeOptions>;
+export type ScrapeOptions = z.infer<typeof scrapeOptions>;
 
 import Ajv from "ajv";
+import type { CostTracking } from "../../lib/extract/extraction-service";
 
 const ajv = new Ajv();
 
@@ -362,7 +437,7 @@ export const extractV1Options = z
     includeSubdomains: z.boolean().default(true),
     allowExternalLinks: z.boolean().default(false),
     enableWebSearch: z.boolean().default(false),
-    scrapeOptions: scrapeOptions.default({ onlyMainContent: false }).optional(),
+    scrapeOptions: baseScrapeOptions.default({ onlyMainContent: false }).optional(),
     origin: z.string().optional().default("api"),
     urlTrace: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().default(60000),
@@ -375,14 +450,13 @@ export const extractV1Options = z
       .enum(["direct", "save", "load"])
       .default("direct")
       .optional(),
+    agent: agentOptionsExtract.optional(),
+    __experimental_showCostTracking: z.boolean().default(false),
   })
   .strict(strictMessage)
-  .refine(
-    (obj) => obj.urls || obj.prompt,
-    {
-      message: "Either 'urls' or 'prompt' must be provided.",
-    },
-  )
+  .refine((obj) => obj.urls || obj.prompt, {
+    message: "Either 'urls' or 'prompt' must be provided.",
+  })
   .transform((obj) => ({
     ...obj,
     allowExternalLinks: obj.allowExternalLinks || obj.enableWebSearch,
@@ -390,6 +464,10 @@ export const extractV1Options = z
   .refine(
     (x) => (x.scrapeOptions ? extractRefine(x.scrapeOptions) : true),
     extractRefineOpts,
+  )
+  .refine(
+    (x) => (x.scrapeOptions ? fire1Refine(x.scrapeOptions) : true),
+    fire1RefineOpts,
   )
   .transform((x) => ({
     ...x,
@@ -407,11 +485,20 @@ export const scrapeRequestSchema = baseScrapeOptions
   .omit({ timeout: true })
   .extend({
     url,
+    agent: z
+      .object({
+        model: z.string().default(agentExtractModelValue),
+        prompt: z.string().optional(),
+      })
+      .optional(),
+    extract: extractOptionsWithAgent.optional(),
+    jsonOptions: extractOptionsWithAgent.optional(),
     origin: z.string().optional().default("api"),
     timeout: z.number().int().positive().finite().safe().default(30000),
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
+  .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
@@ -447,6 +534,7 @@ export const batchScrapeRequestSchema = baseScrapeOptions
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
+  .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
 export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
@@ -459,6 +547,7 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
+  .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
 export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
@@ -498,12 +587,13 @@ export const crawlRequestSchema = crawlerOptions
   .extend({
     url,
     origin: z.string().optional().default("api"),
-    scrapeOptions: scrapeOptions.default({}),
+    scrapeOptions: baseScrapeOptions.default({}),
     webhook: webhookSchema.optional(),
     limit: z.number().default(10000),
   })
   .strict(strictMessage)
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
+  .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
   .transform((x) => ({
     ...x,
     scrapeOptions: extractTransform(x.scrapeOptions),
@@ -563,8 +653,8 @@ export type Document = {
     screenshots?: string[];
     scrapes?: ScrapeActionContent[];
     javascriptReturns?: {
-      type: string,
-      value: unknown
+      type: string;
+      value: unknown;
     }[];
   };
   changeTracking?: {
@@ -609,6 +699,7 @@ export type Document = {
     ogLocaleAlternate?: string[];
     ogSiteName?: string;
     ogVideo?: string;
+    favicon?: string;
     dcTermsCreated?: string;
     dcDateCreated?: string;
     dcDate?: string;
@@ -628,7 +719,8 @@ export type Document = {
     statusCode: number;
     scrapeId?: string;
     error?: string;
-    [key: string]: string | string[] | number | undefined;
+    costTracking?: CostTracking;
+    // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };
   serpResults?: {
     title: string;
@@ -798,6 +890,8 @@ export type AuthCreditUsageChunk = {
     preview: number;
     crawlStatus: number;
     extractStatus: number;
+    extractAgentPreview?: number;
+    scrapeAgentPreview?: number;
   };
   concurrency: number;
 
@@ -895,7 +989,7 @@ export function fromLegacyCrawlerOptions(x: any, teamId: string): {
       ignoreQueryParameters: x.ignoreQueryParameters,
       regexOnFullURL: x.regexOnFullURL,
       maxDiscoveryDepth: x.maxDiscoveryDepth,
-   }),
+    }),
     internalOptions: {
       v0CrawlOnlyUrls: x.returnOnlyUrls,
       teamId,
@@ -1054,6 +1148,7 @@ export const searchRequestSchema = z
     "Unrecognized key in body -- please review the v1 API documentation for request body changes",
   )
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
+  .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
   .transform((x) => ({
     ...x,
     scrapeOptions: extractTransform(x.scrapeOptions),
@@ -1099,6 +1194,6 @@ export type GenerateLLMsTextRequest = z.infer<
 
 export class TimeoutSignal extends Error {
   constructor() {
-    super("Operation timed out")
+    super("Operation timed out");
   }
 }

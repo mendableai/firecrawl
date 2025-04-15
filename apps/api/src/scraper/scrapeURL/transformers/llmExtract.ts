@@ -3,16 +3,36 @@ import { TiktokenModel } from "@dqbd/tiktoken";
 import {
   Document,
   ExtractOptions,
+  isAgentExtractModelValid,
   TokenUsage,
 } from "../../../controllers/v1/types";
 import { Logger } from "winston";
 import { EngineResultsTracker, Meta } from "..";
 import { logger } from "../../../lib/logger";
 import { modelPrices } from "../../../lib/extract/usage/model-prices";
-import { generateObject, generateText, LanguageModel } from 'ai';
-import { jsonSchema } from 'ai';
+import {
+  generateObject,
+  generateText,
+  LanguageModel,
+  NoObjectGeneratedError,
+} from "ai";
+import { jsonSchema } from "ai";
 import { getModel } from "../../../lib/generic-ai";
 import { z } from "zod";
+import fs from "fs/promises";
+import Ajv from "ajv";
+import { extractData } from "../lib/extractSmartScrape";
+
+// TODO: fix this, it's horrible
+type LanguageModelV1ProviderMetadata = {
+  anthropic?: {
+    thinking?: {
+      type: "enabled" | "disabled";
+      budgetTokens?: number;
+    };
+    tool_choice?: "auto" | "none" | "required";
+  };
+};
 
 // Get max tokens from model prices
 const getModelLimits = (model: string) => {
@@ -74,7 +94,10 @@ function normalizeSchema(x: any): any {
     return {
       ...x,
       properties: Object.fromEntries(
-        Object.entries(x.properties || {}).map(([k, v]) => [k, normalizeSchema(v)]),
+        Object.entries(x.properties || {}).map(([k, v]) => [
+          k,
+          normalizeSchema(v),
+        ]),
       ),
       required: Object.keys(x.properties || {}),
       additionalProperties: false,
@@ -89,21 +112,24 @@ function normalizeSchema(x: any): any {
   }
 }
 
-
-
 interface TrimResult {
   text: string;
   numTokens: number;
   warning?: string;
 }
 
-export function trimToTokenLimit(text: string, maxTokens: number, modelId: string="gpt-4o", previousWarning?: string): TrimResult {
+export function trimToTokenLimit(
+  text: string,
+  maxTokens: number,
+  modelId: string = "gpt-4o",
+  previousWarning?: string,
+): TrimResult {
   try {
     const encoder = encoding_for_model(modelId as TiktokenModel);
     try {
       const tokens = encoder.encode(text);
       const numTokens = tokens.length;
-      
+
       if (numTokens <= maxTokens) {
         return { text, numTokens };
       }
@@ -111,7 +137,7 @@ export function trimToTokenLimit(text: string, maxTokens: number, modelId: strin
       const modifier = 3;
       // Start with 3 chars per token estimation
       let currentText = text.slice(0, Math.floor(maxTokens * modifier) - 1);
-      
+
       // Keep trimming until we're under the token limit
       while (true) {
         const currentTokens = encoder.encode(currentText);
@@ -120,14 +146,18 @@ export function trimToTokenLimit(text: string, maxTokens: number, modelId: strin
           return {
             text: currentText,
             numTokens: currentTokens.length,
-            warning: previousWarning ? `${warning} ${previousWarning}` : warning
+            warning: previousWarning
+              ? `${warning} ${previousWarning}`
+              : warning,
           };
         }
         const overflow = currentTokens.length * modifier - maxTokens - 1;
         // If still over limit, remove another chunk
-        currentText = currentText.slice(0, Math.floor(currentText.length - overflow));
+        currentText = currentText.slice(
+          0,
+          Math.floor(currentText.length - overflow),
+        );
       }
-
     } catch (e) {
       throw e;
     } finally {
@@ -138,88 +168,203 @@ export function trimToTokenLimit(text: string, maxTokens: number, modelId: strin
     const estimatedCharsPerToken = 2.8;
     const safeLength = maxTokens * estimatedCharsPerToken;
     const trimmedText = text.slice(0, Math.floor(safeLength));
-    
+
     const warning = `Failed to derive number of LLM tokens the extraction might use -- the input has been automatically trimmed to the maximum number of tokens (${maxTokens}) we support.`;
-    
+
     return {
       text: trimmedText,
       numTokens: maxTokens, // We assume we hit the max in this fallback case
-      warning: previousWarning ? `${warning} ${previousWarning}` : warning
+      warning: previousWarning ? `${warning} ${previousWarning}` : warning,
     };
   }
 }
 
-export async function generateCompletions({
-  logger,
-  options,
-  markdown,
-  previousWarning,
-  isExtractEndpoint,
-  model = getModel("gpt-4o-mini"),
-  mode = "object",
-}: {
-  model?: LanguageModel; 
+export function calculateCost(
+  model: string,
+  inputTokens: number,
+  outputTokens: number,
+) {
+  const modelCosts = {
+    "openai/o3-mini": { input_cost: 1.1, output_cost: 4.4 },
+    "google/gemini-2.0-flash-001": { input_cost: 0.15, output_cost: 0.6 },
+    "deepseek/deepseek-r1": { input_cost: 0.55, output_cost: 2.19 },
+    "google/gemini-2.0-flash-thinking-exp:free": {
+      input_cost: 0.55,
+      output_cost: 2.19,
+    },
+  };
+  let modelCost = modelCosts[model] || { input_cost: 0, output_cost: 0 };
+  //gemini-2.5-pro-exp-03-25 pricing
+  if (
+    model === "gemini-2.5-pro-exp-03-25" ||
+    model === "gemini-2.5-pro-preview-03-25"
+  ) {
+    let inputCost = 0;
+    let outputCost = 0;
+    if (inputTokens <= 200000) {
+      inputCost = 1.25;
+    } else {
+      inputCost = 2.5;
+    }
+    if (outputTokens <= 200000) {
+      outputCost = 10.0;
+    } else {
+      outputCost = 15.0;
+    }
+    modelCost = { input_cost: inputCost, output_cost: outputCost };
+  }
+  const totalCost =
+    (inputTokens * modelCost.input_cost +
+      outputTokens * modelCost.output_cost) /
+    1_000_000;
+
+  return totalCost;
+}
+
+export type GenerateCompletionsOptions = {
+  model?: LanguageModel;
   logger: Logger;
   options: ExtractOptions;
   markdown?: string;
   previousWarning?: string;
   isExtractEndpoint?: boolean;
   mode?: "object" | "no-object";
-}): Promise<{
+  providerOptions?: LanguageModelV1ProviderMetadata;
+  retryModel?: LanguageModel;
+};
+export async function generateCompletions({
+  logger,
+  options,
+  markdown,
+  previousWarning,
+  isExtractEndpoint,
+  model = getModel("gpt-4o-mini", "openai"),
+  mode = "object",
+  providerOptions,
+  retryModel = getModel("claude-3-5-sonnet-20240620", "anthropic"),
+}: GenerateCompletionsOptions): Promise<{
   extract: any;
   numTokens: number;
   warning: string | undefined;
   totalUsage: TokenUsage;
   model: string;
+  cost: number;
 }> {
   let extract: any;
   let warning: string | undefined;
+  let currentModel = model;
+  let lastError: Error | null = null;
 
   if (markdown === undefined) {
     throw new Error("document.markdown is undefined -- this is unexpected");
   }
 
-  const { maxInputTokens, maxOutputTokens } = getModelLimits(model.modelId);
+  const { maxInputTokens, maxOutputTokens } = getModelLimits(
+    currentModel.modelId,
+  );
   // Calculate 80% of max input tokens (for content)
   const maxTokensSafe = Math.floor(maxInputTokens * 0.8);
 
   // Use the new trimming function
-  const { text: trimmedMarkdown, numTokens, warning: trimWarning } = trimToTokenLimit(
-    markdown,
-    maxTokensSafe,
-    model.modelId,
-    previousWarning
-  );
+  const {
+    text: trimmedMarkdown,
+    numTokens,
+    warning: trimWarning,
+  } = trimToTokenLimit(markdown, maxTokensSafe, model.modelId, previousWarning);
 
-  markdown = trimmedMarkdown;
-  warning = trimWarning;
+  // WE USE BIG MODELS NOW
+  // markdown = trimmedMarkdown;
+  // warning = trimWarning;
 
   try {
-    const prompt = options.prompt !== undefined
-      ? `Transform the following content into structured JSON output based on the provided schema and this user request: ${options.prompt}. If schema is provided, strictly follow it.\n\n${markdown}`
-      : `Transform the following content into structured JSON output based on the provided schema if any.\n\n${markdown}`;
+    const prompt =
+      options.prompt !== undefined
+        ? `Transform the following content into structured JSON output based on the provided schema and this user request: ${options.prompt}. If schema is provided, strictly follow it.\n\n${markdown}`
+        : `Transform the following content into structured JSON output based on the provided schema if any.\n\n${markdown}`;
 
     if (mode === "no-object") {
-      const result = await generateText({
-        model: model,
-        prompt: options.prompt + (markdown ? `\n\nData:${markdown}` : ""),
-        temperature: options.temperature ?? 0,
-        system: options.systemPrompt,
-      });
+      try {
+        const result = await generateText({
+          model: currentModel,
+          prompt: options.prompt + (markdown ? `\n\nData:${markdown}` : ""),
+          system: options.systemPrompt,
+          providerOptions: {
+            anthropic: {
+              thinking: { type: "enabled", budgetTokens: 12000 },
+            },
+          },
+        });
 
-      extract = result.text;
-      
-      return {
-        extract,
-        warning,
-        numTokens,
-        totalUsage: {
-          promptTokens: numTokens,
-          completionTokens: result.usage?.completionTokens ?? 0,
-          totalTokens: numTokens + (result.usage?.completionTokens ?? 0),
-        },
-        model: model.modelId,
-      };
+        extract = result.text;
+
+        return {
+          extract,
+          warning,
+          numTokens,
+          totalUsage: {
+            promptTokens: numTokens,
+            completionTokens: result.usage?.completionTokens ?? 0,
+            totalTokens: numTokens + (result.usage?.completionTokens ?? 0),
+          },
+          model: currentModel.modelId,
+          cost: calculateCost(
+            currentModel.modelId,
+            numTokens,
+            result.usage?.completionTokens ?? 0,
+          ),
+        };
+      } catch (error) {
+        lastError = error as Error;
+        if (
+          error.message?.includes("Quota exceeded") ||
+          error.message?.includes("You exceeded your current quota") ||
+          error.message?.includes("rate limit")
+        ) {
+          logger.warn("Quota exceeded, retrying with fallback model", {
+            error: lastError.message,
+          });
+          currentModel = retryModel;
+          try {
+            const result = await generateText({
+              model: currentModel,
+              prompt: options.prompt + (markdown ? `\n\nData:${markdown}` : ""),
+              system: options.systemPrompt,
+              providerOptions: {
+                anthropic: {
+                  thinking: { type: "enabled", budgetTokens: 12000 },
+                },
+              },
+            });
+
+            extract = result.text;
+
+            return {
+              extract,
+              warning,
+              numTokens,
+              totalUsage: {
+                promptTokens: numTokens,
+                completionTokens: result.usage?.completionTokens ?? 0,
+                totalTokens: numTokens + (result.usage?.completionTokens ?? 0),
+              },
+              model: currentModel.modelId,
+              cost: calculateCost(
+                currentModel.modelId,
+                numTokens,
+                result.usage?.completionTokens ?? 0,
+              ),
+            };
+          } catch (retryError) {
+            lastError = retryError as Error;
+            logger.error("Failed with fallback model", {
+              originalError: lastError.message,
+              model: currentModel.modelId,
+            });
+            throw lastError;
+          }
+        }
+        throw lastError;
+      }
     }
 
     let schema = options.schema;
@@ -276,32 +421,114 @@ export async function generateCompletions({
           } catch (_) {}
         }
 
-        const { text: fixedText } = await generateText({
-          model: model,
-          prompt: `Fix this JSON that had the following error: ${error}\n\nOriginal text:\n${text}\n\nReturn only the fixed JSON, no explanation.`,
-          system: "You are a JSON repair expert. Your only job is to fix malformed JSON and return valid JSON that matches the original structure and intent as closely as possible. Do not include any explanation or commentary - only return the fixed JSON. Do not return it in a Markdown code block, just plain JSON."
-        });
-        return fixedText;
-      }
+        try {
+          const { text: fixedText } = await generateText({
+            model: currentModel,
+            prompt: `Fix this JSON that had the following error: ${error}\n\nOriginal text:\n${text}\n\nReturn only the fixed JSON, no explanation.`,
+            system:
+              "You are a JSON repair expert. Your only job is to fix malformed JSON and return valid JSON that matches the original structure and intent as closely as possible. Do not include any explanation or commentary - only return the fixed JSON. Do not return it in a Markdown code block, just plain JSON.",
+            providerOptions: {
+              anthropic: {
+                thinking: { type: "enabled", budgetTokens: 12000 },
+              },
+            },
+          });
+          return fixedText;
+        } catch (repairError) {
+          lastError = repairError as Error;
+          logger.error("Failed to repair JSON", { error: lastError.message });
+          throw lastError;
+        }
+      },
     };
 
     const generateObjectConfig = {
-      model: model,
+      model: currentModel,
       prompt: prompt,
-      temperature: options.temperature ?? 0,
+      providerOptions: providerOptions || undefined,
       system: options.systemPrompt,
-      ...(schema && { schema: schema instanceof z.ZodType ? schema : jsonSchema(schema) }),
-      ...(!schema && { output: 'no-schema' as const }),
+      ...(schema && {
+        schema: schema instanceof z.ZodType ? schema : jsonSchema(schema),
+      }),
+      ...(!schema && { output: "no-schema" as const }),
       ...repairConfig,
       ...(!schema && {
         onError: (error: Error) => {
+          lastError = error;
           console.error(error);
-        }
-      })
+        },
+      }),
     } satisfies Parameters<typeof generateObject>[0];
 
-    const result = await generateObject(generateObjectConfig);
-    extract = result.object;
+    // const now = new Date().getTime();
+    // await fs.writeFile(
+    //   `logs/generateObjectConfig-${now}.json`,
+    //   JSON.stringify(generateObjectConfig, null, 2),
+    // );
+
+    let result: { object: any; usage: TokenUsage } | undefined;
+    try {
+      result = await generateObject(generateObjectConfig);
+    } catch (error) {
+      lastError = error as Error;
+      if (
+        error.message?.includes("Quota exceeded") ||
+        error.message?.includes("You exceeded your current quota") ||
+        error.message?.includes("rate limit")
+      ) {
+        logger.warn("Quota exceeded, retrying with fallback model", {
+          error: lastError.message,
+        });
+        currentModel = retryModel;
+        try {
+          const retryConfig = {
+            ...generateObjectConfig,
+            model: currentModel,
+          };
+          result = await generateObject(retryConfig);
+        } catch (retryError) {
+          lastError = retryError as Error;
+          logger.error("Failed with fallback model", {
+            originalError: lastError.message,
+            model: currentModel.modelId,
+          });
+          throw lastError;
+        }
+      } else if (NoObjectGeneratedError.isInstance(error)) {
+        console.log("No object generated", error);
+        if (
+          error.text &&
+          error.text.startsWith("```json") &&
+          error?.text.endsWith("```")
+        ) {
+          try {
+            extract = JSON.parse(
+              error.text.slice("```json".length, -"```".length).trim(),
+            );
+            result = {
+              object: extract,
+              usage: {
+                promptTokens: error.usage?.promptTokens ?? 0,
+                completionTokens: error.usage?.completionTokens ?? 0,
+                totalTokens: error.usage?.totalTokens ?? 0,
+              },
+            };
+          } catch (parseError) {
+            lastError = parseError as Error;
+            logger.error("Failed to parse JSON from error text", {
+              error: lastError.message,
+            });
+            throw lastError;
+          }
+        } else {
+          throw lastError;
+        }
+      } else {
+        throw lastError;
+      }
+    }
+
+    extract = result?.object;
 
     // If the users actually wants the items object, they can specify it as 'required' in the schema
     // otherwise, we just return the items array
@@ -326,13 +553,20 @@ export async function generateCompletions({
         completionTokens,
         totalTokens: promptTokens + completionTokens,
       },
-      model: model.modelId,
+      model: currentModel.modelId,
+      cost: calculateCost(currentModel.modelId, promptTokens, completionTokens),
     };
   } catch (error) {
-    if (error.message?.includes('refused')) {
+    lastError = error as Error;
+    if (error.message?.includes("refused")) {
       throw new LLMRefusalError(error.message);
     }
-    throw error;
+    logger.error("LLM extraction failed", {
+      error: lastError.message,
+      model: currentModel.modelId,
+      mode,
+    });
+    throw lastError;
   }
 }
 
@@ -341,22 +575,139 @@ export async function performLLMExtract(
   document: Document,
 ): Promise<Document> {
   if (meta.options.formats.includes("extract")) {
-    meta.internalOptions.abort?.throwIfAborted();
-    const { extract, warning } = await generateCompletions({
+    // const originalOptions = meta.options.extract!;
+
+    // let generationOptions = { ...originalOptions }; // Start with original options
+
+    const generationOptions: GenerateCompletionsOptions = {
       logger: meta.logger.child({
         method: "performLLMExtract/generateCompletions",
       }),
       options: meta.options.extract!,
       markdown: document.markdown,
-      previousWarning: document.warning
-    });
+      previousWarning: document.warning,
+      // ... existing model and provider options ...
+      // model: getModel("o3-mini", "openai"), // Keeping existing model selection
+      // model: getModel("o3-mini", "openai"),
+      // model: getModel("qwen-qwq-32b", "groq"),
+      // model: getModel("gemini-2.0-flash", "google"),
+      // model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
+      model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
+      retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
+    };
 
-    if (meta.options.formats.includes("json")) {
-      document.json = extract;
-    } else {
-      document.extract = extract;
+    const { extractedDataArray, warning, smartScrapeCost, otherCost, costLimitExceededTokenUsage } =
+      await extractData({
+        extractOptions: generationOptions,
+        urls: [meta.url],
+        useAgent: isAgentExtractModelValid(meta.options.extract?.agent?.model),
+      });
+
+    if (warning) {
+      document.warning = warning + (document.warning ? " " + document.warning : "");
     }
-    document.warning = warning;
+
+    if (document.metadata.costTracking) {
+      document.metadata.costTracking.smartScrapeCallCount++;
+      document.metadata.costTracking.smartScrapeCost += smartScrapeCost;
+      document.metadata.costTracking.otherCallCount++;
+      document.metadata.costTracking.otherCost += otherCost;
+      document.metadata.costTracking.totalCost += smartScrapeCost + otherCost;
+      if (costLimitExceededTokenUsage) {
+        document.metadata.costTracking.costLimitExceededTokenUsage = costLimitExceededTokenUsage;
+      }
+    } else {
+      document.metadata.costTracking = {
+        smartScrapeCallCount: 1,
+        smartScrapeCost: smartScrapeCost,
+        otherCallCount: 1,
+        otherCost: otherCost,
+        totalCost: smartScrapeCost + otherCost,
+      };
+    }
+
+    // IMPORTANT: here it only get's the last page!!!
+    const extractedData =
+      extractedDataArray[extractedDataArray.length - 1] ?? undefined;
+
+    // // Prepare the schema, potentially wrapping it
+    // const { schemaToUse, schemaWasWrapped } = prepareSmartScrapeSchema(
+    //   originalOptions.schema,
+    //   meta.logger,
+    // );
+
+    // // Update generationOptions with the potentially wrapped schema
+    // generationOptions.schema = schemaToUse;
+
+    // meta.internalOptions.abort?.throwIfAborted();
+    // const {
+    //   extract: rawExtract,
+    //   warning,
+    //   totalUsage,
+    //   model,
+    // } = await generateCompletions({
+    //   logger: meta.logger.child({
+    //     method: "performLLMExtract/generateCompletions",
+    //   }),
+    //   options: generationOptions, // Use the potentially modified options
+    //   markdown: document.markdown,
+    //   previousWarning: document.warning,
+    //   // ... existing model and provider options ...
+    //   model: getModel("o3-mini", "openai"), // Keeping existing model selection
+    //   providerOptions: {
+    //     anthropic: {
+    //       thinking: { type: "enabled", budgetTokens: 12000 },
+    //     },
+    //   },
+    // });
+
+    // // Log token usage
+    // meta.logger.info("LLM extraction token usage", {
+    //   model: model,
+    //   promptTokens: totalUsage.promptTokens,
+    //   completionTokens: totalUsage.completionTokens,
+    //   totalTokens: totalUsage.totalTokens,
+    // });
+
+    // // Process the result to extract data and SmartScrape decision
+    // const {
+    //   extractedData,
+    //   shouldUseSmartscrape,
+    //   smartscrape_reasoning,
+    //   smartscrape_prompt,
+    // } = processSmartScrapeResult(rawExtract, schemaWasWrapped, meta.logger);
+
+    // // Log the SmartScrape decision if applicable
+    // if (schemaWasWrapped) {
+    //   meta.logger.info("SmartScrape decision processing result", {
+    //     shouldUseSmartscrape,
+    //     smartscrape_reasoning,
+    //     // Don't log the full prompt potentially
+    //     smartscrape_prompt_present: !!smartscrape_prompt,
+    //     extractedDataIsPresent:
+    //       extractedData !== undefined && extractedData !== null,
+    //   });
+
+    //   // TODO: Implement logic to ACTUALLY trigger SmartScrape based on the result
+    //   // For example:
+    //   // if (shouldUseSmartscrape && smartscrape_prompt) {
+    //   //   meta.logger.info("Triggering SmartScrape refinement...", { reason: smartscrape_reasoning, prompt: smartscrape_prompt });
+    //   //   // Call the smartScrape function (which needs to be implemented/imported)
+    //   //   // const smartScrapedDocs = await smartScrape(meta.url, smartscrape_prompt);
+    //   //   // Process/merge smartScrapedDocs with extractedData
+    //   //   // ... potentially update finalExtract ...
+    //   // } else {
+    //   //   meta.logger.info("SmartScrape not required based on LLM output.");
+    //   // }
+    // }
+
+    // Assign the final extracted data
+    if (meta.options.formats.includes("json")) {
+      document.json = extractedData;
+    } else {
+      document.extract = extractedData;
+    }
+    // document.warning = warning;
   }
 
   return document;
@@ -366,7 +717,7 @@ export function removeDefaultProperty(schema: any): any {
   if (typeof schema !== "object" || schema === null) return schema;
 
   const rest = { ...schema };
-  
+
   // unsupported global keys
   delete rest.default;
 
@@ -408,18 +759,22 @@ export function removeDefaultProperty(schema: any): any {
   return rest;
 }
 
-export async function generateSchemaFromPrompt(prompt: string): Promise<any> {
-  const model = getModel("gpt-4o");
+export async function generateSchemaFromPrompt(
+  prompt: string,
+): Promise<{ extract: any; cost: number }> {
+  const model = getModel("gpt-4o", "openai");
+  const retryModel = getModel("gpt-4o-mini", "openai");
   const temperatures = [0, 0.1, 0.3]; // Different temperatures to try
   let lastError: Error | null = null;
 
   for (const temp of temperatures) {
     try {
-      const { extract } = await generateCompletions({
+      const { extract, cost } = await generateCompletions({
         logger: logger.child({
           method: "generateSchemaFromPrompt/generateCompletions",
         }),
-        model: model,
+        model,
+        retryModel,
         options: {
           mode: "llm",
           systemPrompt: `You are a schema generator for a web scraping system. Generate a JSON schema based on the user's prompt.
@@ -448,13 +803,12 @@ DO NOT USE FORMATS.
 Keep it simple. Don't create too many properties, just the ones that are needed. Don't invent properties.
 Return a valid JSON schema object with properties that would capture the information requested in the prompt.`,
           prompt: `Generate a JSON schema for extracting the following information: ${prompt}`,
-          temperature: temp 
+          // temperature: temp,
         },
-        markdown: prompt
+        markdown: prompt,
       });
 
-      return extract;
-
+      return { extract, cost };
     } catch (error) {
       lastError = error as Error;
       logger.warn(`Failed attempt with temperature ${temp}: ${error.message}`);

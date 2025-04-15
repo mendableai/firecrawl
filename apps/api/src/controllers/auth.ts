@@ -1,5 +1,5 @@
 import { parseApi } from "../lib/parseApi";
-import { getRateLimiter, isTestSuiteToken } from "../services/rate-limiter";
+import { getRateLimiter } from "../services/rate-limiter";
 import {
   AuthResponse,
   NotificationType,
@@ -89,6 +89,8 @@ const mockPreviewACUC: (team_id: string, is_extract: boolean) => AuthCreditUsage
     preview: 5,
     crawlStatus: 500,
     extractStatus: 500,
+    extractAgentPreview: 1,
+    scrapeAgentPreview: 5,
   },
   price_credits: 99999999,
   credits_used: 0,
@@ -121,6 +123,8 @@ const mockACUC: () => AuthCreditUsageChunk = () => ({
     preview: 99999999,
     crawlStatus: 99999999,
     extractStatus: 99999999,
+    extractAgentPreview: 99999999,
+    scrapeAgentPreview: 99999999,
   },
   price_credits: 99999999,
   credits_used: 0,

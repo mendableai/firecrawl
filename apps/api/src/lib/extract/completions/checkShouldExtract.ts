@@ -12,7 +12,7 @@ export async function checkShouldExtract(
   prompt: string,
   multiEntitySchema: any,
   doc: Document,
-): Promise<{ tokenUsage: TokenUsage; extract: boolean }> {
+): Promise<{ tokenUsage: TokenUsage; extract: boolean; cost: number }> {
   const shouldExtractCheck = await generateCompletions({
     logger: logger.child({ method: "extractService/checkShouldExtract" }),
     options: {
@@ -37,5 +37,6 @@ export async function checkShouldExtract(
   return {
     tokenUsage: shouldExtractCheck.totalUsage,
     extract: shouldExtractCheck.extract["extract"],
+    cost: shouldExtractCheck.cost,
   };
 }
