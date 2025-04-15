@@ -603,6 +603,10 @@ export async function performLLMExtract(
         useAgent: isAgentExtractModelValid(meta.options.extract?.agent?.model),
       });
 
+    if (warning) {
+      document.warning = warning + (document.warning ? " " + document.warning : "");
+    }
+
     if (document.metadata.costTracking) {
       document.metadata.costTracking.smartScrapeCallCount++;
       document.metadata.costTracking.smartScrapeCost += smartScrapeCost;
