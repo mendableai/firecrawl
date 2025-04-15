@@ -51,7 +51,7 @@ export async function smartScrape(
   sessionId?: string,
 ): Promise<SmartScrapeResult> {
   try {
-    logger.info("Initiating smart scrape request", { url, prompt });
+    logger.info("Initiating smart scrape request", { url, prompt, sessionId });
 
     // Pass schema type as generic parameter to robustFeth
     const response = await robustFetch<typeof smartScrapeResultSchema>({
