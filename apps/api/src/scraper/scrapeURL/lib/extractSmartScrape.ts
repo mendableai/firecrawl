@@ -272,7 +272,7 @@ export async function extractData({
       let smartscrapeResults: SmartScrapeResult[];
       if (isSingleUrl) {
         smartscrapeResults = [
-          await smartScrape(urls[0], extract?.smartscrape_prompt, extractId),
+          await smartScrape(urls[0], extract?.smartscrape_prompt, undefined, extractId),
         ];
         smartScrapeCost += smartscrapeResults[0].tokenUsage;
         smartScrapeCallCount++;
@@ -284,6 +284,7 @@ export async function extractData({
             return await smartScrape(
               urls[page.page_index],
               page.smartscrape_prompt,
+              undefined,
               extractId,
             );
           }),
