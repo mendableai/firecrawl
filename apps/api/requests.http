@@ -34,6 +34,37 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 DELETE {{baseUrl}}/v1/crawl/{{crawlId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
+### Extract website
+# @name extract
+POST {{baseUrl}}/v1/extract HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json
+
+{
+  "urls": ["https://firecrawl.dev"],
+  "schema": {
+    "type": "object",
+    "properties": {
+      "companyName": {
+        "type": "string"
+      },
+      "companyDescription": {
+        "type": "string"
+      }
+    }
+  },
+  "agent": {
+    "model": "fire-1"
+  },
+  "origin": "api-sdk"
+}
+
+### Check Extract Status
+@extractId = {{extract.response.body.$.id}}
+# @name extractStatus
+GET {{baseUrl}}/v1/extract/{{extractId}} HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+
 ### Batch Scrape Websites
 # @name batchScrape
 POST {{baseUrl}}/v1/batch/scrape HTTP/1.1
@@ -53,7 +84,6 @@ content-type: application/json
 GET {{baseUrl}}/v1/crawl/{{batchScrapeId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
-
 ### Map Website
 # @name map
 POST {{baseUrl}}/v1/map HTTP/1.1
@@ -64,10 +94,6 @@ content-type: application/json
   "url": "firecrawl.dev",
   "sitemapOnly": true
 }
-
-###
-DELETE {{baseUrl}}/v1/crawl/c94136f9-86c1-4a97-966c-1c8e0274778f HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
 ### Generate LLMs TXT
 # @name generateLlmsTxt
