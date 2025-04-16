@@ -386,7 +386,7 @@ export async function generateCompletions({
     const repairConfig = {
       experimental_repairText: async ({ text, error }) => {
         // AI may output a markdown JSON code block. Remove it - mogery
-        logger.debug("Repairing text", { textType: typeof text, error });
+        logger.debug("Repairing text", { textType: typeof text, textPeek: JSON.stringify(text).slice(0, 100) + "...", error });
 
         if (typeof text === "string" && text.trim().startsWith("```")) {
           if (text.trim().startsWith("```json")) {

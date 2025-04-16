@@ -16,7 +16,7 @@ const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
     type: "boolean",
     description:
-      "Set to `true` if any of the extractedData is null and you think you can find the information by performing user-like interactions (e.g., clicking buttons/accordions to reveal hidden text, login, inputs etc.). SmartScrape can perform these actions to access the data.",
+      "Set to `true` if any of the extractedData is null and you think you can find the information by performing user-like interactions (e.g., clicking buttons/accordions to reveal hidden text, login, inputs, pagination etc.). SmartScrape can perform these actions to access the data.",
   },
   // Note: extractedData is added dynamically in prepareSmartScrapeSchema
 };
