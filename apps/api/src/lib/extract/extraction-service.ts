@@ -377,6 +377,7 @@ export async function performExtraction(
               isMultiEntity: true,
             }),
             {
+              timeout: 300000,
               ...request.scrapeOptions,
 
               // Needs to be true for multi-entity to work properly
@@ -703,7 +704,10 @@ export async function performExtraction(
               url,
               isMultiEntity: false,
             }),
-            request.scrapeOptions,
+            {
+              timeout: 300000,
+              ...request.scrapeOptions,
+            },
           );
         }
         return docsMap.get(normalizeUrl(url));
