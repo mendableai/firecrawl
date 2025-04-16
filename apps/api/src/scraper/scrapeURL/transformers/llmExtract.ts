@@ -761,6 +761,7 @@ export function removeDefaultProperty(schema: any): any {
 
 export async function generateSchemaFromPrompt(
   prompt: string,
+  logger: Logger,
 ): Promise<{ extract: any; cost: number }> {
   const model = getModel("gpt-4o", "openai");
   const retryModel = getModel("gpt-4o-mini", "openai");

@@ -211,7 +211,7 @@ export async function extractData({
 
   if (!schema && extractOptions.options.prompt) {
     logger.info("Generating schema from prompt");
-    const genRes = await generateSchemaFromPrompt(extractOptions.options.prompt);
+    const genRes = await generateSchemaFromPrompt(extractOptions.options.prompt, logger);
     otherCallCount++;
     otherCost += genRes.cost;
     schema = genRes.extract;
@@ -249,7 +249,7 @@ export async function extractData({
   } catch (error) {
     logger.error(
       "failed during extractSmartScrape.ts:generateCompletions",
-      error,
+      { error },
     );
     // console.log("failed during extractSmartScrape.ts:generateCompletions", error);
   }
@@ -260,16 +260,12 @@ export async function extractData({
   // console.log("smartscrape_reasoning", extract?.smartscrape_reasoning);
   // console.log("smartscrape_prompt", extract?.smartscrape_prompt);
   try {
-    console.log("=========================================");
-    console.log(
-      "useAgent:",
+    logger.info("Smart schema resolved", {
       useAgent,
-      "shouldUseSmartscrape:",
-      extract?.shouldUseSmartscrape,
-    );
-    console.log("url:", urls);
-    console.log("prompt:", extract?.smartscrape_prompt);
-    console.log("=========================================");
+      shouldUseSmartscrape: extract?.shouldUseSmartscrape,
+      url: urls,
+      prompt: extract?.smartscrape_prompt,
+    })
 
     if (useAgent && extract?.shouldUseSmartscrape) {
       let smartscrapeResults: SmartScrapeResult[];
