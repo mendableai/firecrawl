@@ -265,6 +265,7 @@ export async function extractData({
       shouldUseSmartscrape: extract?.shouldUseSmartscrape,
       url: urls,
       prompt: extract?.smartscrape_prompt,
+      providedExtractId: extractId,
     })
 
     if (useAgent && extract?.shouldUseSmartscrape) {
