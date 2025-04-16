@@ -1,4 +1,3 @@
-import { logger } from "../../../lib/logger";
 import {
   generateCompletions,
   GenerateCompletionsOptions,
@@ -14,6 +13,7 @@ import { getModel } from "../../generic-ai";
 
 import fs from "fs/promises";
 import { extractData } from "../../../scraper/scrapeURL/lib/extractSmartScrape";
+import type { Logger } from "winston";
 
 type BatchExtractOptions = {
   multiEntitySchema: any;
@@ -33,7 +33,7 @@ type BatchExtractOptions = {
  * @param doc - The document to extract information from
  * @returns The completion promise
  */
-export async function batchExtractPromise(options: BatchExtractOptions): Promise<{
+export async function batchExtractPromise(options: BatchExtractOptions, logger: Logger): Promise<{
   extract: any; // array of extracted data
   numTokens: number;
   totalUsage: TokenUsage;
@@ -82,7 +82,7 @@ export async function batchExtractPromise(options: BatchExtractOptions): Promise
     smCallCount = smartScrapeCallCount;
     oCallCount = otherCallCount;
   } catch (error) {
-    console.error(">>>>>>>error>>>>>\n", error);
+    logger.error("extractData failed", { error });
   }
 
   // await fs.writeFile(
