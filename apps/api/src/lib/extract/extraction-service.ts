@@ -766,7 +766,7 @@ export async function performExtraction(
             discoveredLinks: links,
           },
         ],
-        // sessionIds: [thisSessionId],
+        sessionIds: [thisSessionId],
       });
 
       // Generate completions
