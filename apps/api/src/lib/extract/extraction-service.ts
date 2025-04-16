@@ -438,7 +438,7 @@ export async function performExtraction(
             systemPrompt: request.systemPrompt ?? "",
             doc,
             useAgent: isAgentExtractModelValid(request.agent?.model)
-          });
+          }, logger);
 
           // Race between timeout and completion
           const multiEntityCompletion = (await completionPromise) as Awaited<
