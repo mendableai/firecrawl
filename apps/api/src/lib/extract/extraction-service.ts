@@ -273,27 +273,20 @@ export async function performExtraction(
   );
 
   const processedUrls = await Promise.all(urlPromises);
-  const links = processedUrls.flat().filter((url) => url);
+  let links = processedUrls.flat().filter((url) => url);
   logger.debug("Processed URLs.", {
     linkCount: links.length,
   });
 
-  log["links"] = links;
-  log["linksLength"] = links.length;
-
   if (links.length === 0) {
-    logger.error("0 links! Bailing.", {
+    links = urls.map(x => x.replace(/\*$/g, ""));
+    logger.warn("0 links! Doing just the original URLs. (without * wildcard)", {
       linkCount: links.length,
     });
-    return {
-      success: false,
-      error:
-        "No valid URLs found to scrape. Try adjusting your search criteria or including more URLs.",
-      extractId,
-      urlTrace: urlTraces,
-      totalUrlsScraped: 0,
-    };
   }
+
+  log["links"] = links;
+  log["linksLength"] = links.length;
 
   await updateExtract(extractId, {
     status: "processing",
