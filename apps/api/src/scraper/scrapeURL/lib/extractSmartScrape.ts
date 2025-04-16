@@ -181,6 +181,33 @@ export function prepareSmartScrapeSchema(
   return { schemaToUse: wrappedSchema };
 }
 
+// Resolve all $defs references in the schema
+const resolveRefs = (obj: any, defs: any): any => {
+  if (!obj || typeof obj !== 'object') return obj;
+
+  if (obj.$ref && typeof obj.$ref === 'string') {
+    // Handle $ref references
+    const refPath = obj.$ref.split('/');
+    if (refPath[0] === '#' && refPath[1] === '$defs') {
+      const defName = refPath[refPath.length - 1];
+      return resolveRefs({ ...defs[defName] }, defs);
+    }
+  }
+
+  // Handle arrays
+  if (Array.isArray(obj)) {
+    return obj.map(item => resolveRefs(item, defs));
+  }
+
+  // Handle objects
+  const resolved: any = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (key === '$defs') continue;
+    resolved[key] = resolveRefs(value, defs);
+  }
+  return resolved;
+};
+
 export async function extractData({
   extractOptions,
   urls,
@@ -219,6 +246,15 @@ export async function extractData({
     otherCallCount++;
     otherCost += genRes.cost;
     schema = genRes.extract;
+  }
+
+  if (schema) {
+    const defs = schema.$defs || {};
+    schema = resolveRefs(schema, defs);
+    delete schema.$defs;
+    logger.info("Resolved schema refs", {
+      schema,
+    });
   }
 
   const { schemaToUse } = prepareSmartScrapeSchema(schema, logger, isSingleUrl);
