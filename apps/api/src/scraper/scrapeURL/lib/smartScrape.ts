@@ -45,13 +45,21 @@ export type SmartScrapeResult = z.infer<typeof smartScrapeResultSchema>;
  * @returns A promise that resolves to an object matching the SmartScrapeResult type.
  * @throws Throws an error if the request fails or the response is invalid.
  */
-export async function smartScrape(
+export async function smartScrape({
+  url,
+  prompt,
+  sessionId,
+  extractId,
+  scrapeId,
+  beforeSubmission,
+}: {
   url: string,
   prompt: string,
   sessionId?: string,
   extractId?: string,
   scrapeId?: string,
-): Promise<SmartScrapeResult> {
+  beforeSubmission?: () => unknown,
+}): Promise<SmartScrapeResult> {
   let logger = _logger.child({
     method: "smartScrape",
     module: "smartScrape",

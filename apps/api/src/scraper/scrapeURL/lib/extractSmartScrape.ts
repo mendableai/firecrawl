@@ -315,7 +315,13 @@ export async function extractData({
       let smartscrapeResults: SmartScrapeResult[];
       if (isSingleUrl) {
         smartscrapeResults = [
-          await smartScrape(urls[0], extract?.smartscrape_prompt, sessionId, extractId, scrapeId),
+          await smartScrape({
+            url: urls[0],
+            prompt: extract?.smartscrape_prompt,
+            sessionId,
+            extractId,
+            scrapeId,
+          }),
         ];
         smartScrapeCost += smartscrapeResults[0].tokenUsage;
         smartScrapeCallCount++;
@@ -332,13 +338,13 @@ export async function extractData({
 
         smartscrapeResults = await Promise.all(
           pages.slice(0, 100).map(async (page) => {
-            return await smartScrape(
-              urls[page.page_index],
-              page.smartscrape_prompt,
-              undefined,
+            return await smartScrape({
+              url: urls[page.page_index],
+              prompt: page.smartscrape_prompt,
+              sessionId,
               extractId,
               scrapeId,
-            );
+            });
           }),
         );
         smartScrapeCost += smartscrapeResults.reduce(
@@ -364,6 +370,8 @@ export async function extractData({
           const newExtractOptions = {
             ...extractOptions,
             markdown: markdown,
+            model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
+            retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
           };
           const { extract, warning, totalUsage, model, cost } =
             await generateCompletions(newExtractOptions);
