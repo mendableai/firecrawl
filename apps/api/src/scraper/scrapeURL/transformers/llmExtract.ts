@@ -601,6 +601,7 @@ export async function performLLMExtract(
         extractOptions: generationOptions,
         urls: [meta.url],
         useAgent: isAgentExtractModelValid(meta.options.extract?.agent?.model),
+        scrapeId: meta.id,
       });
 
     if (warning) {

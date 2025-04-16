@@ -185,11 +185,13 @@ export async function extractData({
   urls,
   useAgent,
   extractId,
+  scrapeId,
 }: {
   extractOptions: GenerateCompletionsOptions;
   urls: string[];
   useAgent: boolean;
   extractId?: string;
+  scrapeId?: string;
 }): Promise<{
   extractedDataArray: any[];
   warning: any;
@@ -272,7 +274,7 @@ export async function extractData({
       let smartscrapeResults: SmartScrapeResult[];
       if (isSingleUrl) {
         smartscrapeResults = [
-          await smartScrape(urls[0], extract?.smartscrape_prompt, undefined, extractId),
+          await smartScrape(urls[0], extract?.smartscrape_prompt, undefined, extractId, scrapeId),
         ];
         smartScrapeCost += smartscrapeResults[0].tokenUsage;
         smartScrapeCallCount++;
@@ -286,6 +288,7 @@ export async function extractData({
               page.smartscrape_prompt,
               undefined,
               extractId,
+              scrapeId,
             );
           }),
         );

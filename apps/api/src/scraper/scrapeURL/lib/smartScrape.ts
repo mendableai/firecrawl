@@ -50,6 +50,7 @@ export async function smartScrape(
   prompt: string,
   sessionId?: string,
   extractId?: string,
+  scrapeId?: string,
 ): Promise<SmartScrapeResult> {
   let logger = _logger.child({
     method: "smartScrape",
@@ -58,6 +59,7 @@ export async function smartScrape(
     url,
     prompt,
     sessionId,
+    scrapeId,
   });
   try {
     logger.info("Initiating smart scrape request");
@@ -71,6 +73,7 @@ export async function smartScrape(
         prompt,
         userProvidedId: sessionId ?? undefined,
         extractId,
+        scrapeId,
         models: {
           thinkingModel: {
             model: "gemini-2.5-pro-preview-03-25",
