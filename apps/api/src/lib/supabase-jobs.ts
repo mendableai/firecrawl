@@ -76,7 +76,7 @@ export const supabaseGetJobsByCrawlId = async (crawlId: string) => {
 export const supabaseGetJobByIdOnlyData = async (jobId: string) => {
   const { data, error } = await supabase_rr_service
     .from("firecrawl_jobs")
-    .select("docs, team_id")
+    .select("team_id")
     .eq("job_id", jobId)
     .single();
 
