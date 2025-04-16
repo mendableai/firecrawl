@@ -73,5 +73,6 @@ export async function extractStatusController(
     llmUsage: extract.showLLMUsage ? extract.llmUsage : undefined,
     sources: extract.showSources ? extract.sources : undefined,
     costTracking: extract.showCostTracking ? extract.costTracking : undefined,
+    sessionIds: extract.sessionIds ? extract.sessionIds : undefined,
   });
 }

@@ -10,6 +10,7 @@ import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { getModel } from "../../../lib/generic-ai";
 import { TokenUsage } from "../../../controllers/v1/types";
 import type { SmartScrapeResult } from "./smartScrape";
+import { ExtractStep } from "src/lib/extract/extract-redis";
 
 const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
@@ -185,11 +186,13 @@ export async function extractData({
   urls,
   useAgent,
   extractId,
+  sessionId
 }: {
   extractOptions: GenerateCompletionsOptions;
   urls: string[];
   useAgent: boolean;
   extractId?: string;
+  sessionId?: string;
 }): Promise<{
   extractedDataArray: any[];
   warning: any;
@@ -275,7 +278,7 @@ export async function extractData({
       let smartscrapeResults: SmartScrapeResult[];
       if (isSingleUrl) {
         smartscrapeResults = [
-          await smartScrape(urls[0], extract?.smartscrape_prompt, extractId),
+          await smartScrape(urls[0], extract?.smartscrape_prompt, sessionId, extractId),
         ];
         smartScrapeCost += smartscrapeResults[0].tokenUsage;
         smartScrapeCallCount++;

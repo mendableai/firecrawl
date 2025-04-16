@@ -413,8 +413,23 @@ export async function performExtraction(
       chunks.push(multyEntityDocs.slice(i, i + chunkSize));
     }
 
+    const sessionIds = chunks.map(() => 'fc-' + crypto.randomUUID());
+    await updateExtract(extractId, {
+      status: "processing",
+      steps: [
+        {
+          step: ExtractStep.MULTI_ENTITY_AGENT_SCRAPE,
+          startedAt: Date.now(),
+          finishedAt: null
+        },
+      ],
+      sessionIds
+    });
+
     // Process chunks sequentially with timeout
-    for (const chunk of chunks) {
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i];
+      const sessionId = sessionIds[i];
       const chunkPromises = chunk.map(async (doc) => {
         try {
           ajv.compile(multiEntitySchema);
@@ -432,6 +447,7 @@ export async function performExtraction(
             doc,
             useAgent: isAgentExtractModelValid(request.agent?.model),
             extractId,
+            sessionId
           }, logger);
 
           // Race between timeout and completion

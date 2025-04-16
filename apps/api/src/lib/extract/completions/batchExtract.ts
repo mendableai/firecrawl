@@ -23,6 +23,7 @@ type BatchExtractOptions = {
   doc: Document;
   useAgent: boolean;
   extractId?: string;
+  sessionId?: string;
 };
 
 /**
@@ -44,9 +45,17 @@ export async function batchExtractPromise(options: BatchExtractOptions, logger: 
   otherCost: number;
   smartScrapeCallCount: number;
   otherCallCount: number;
+  sessionId?: string;
 }> {
-  const { multiEntitySchema, links, prompt, systemPrompt, doc, useAgent, extractId } = options;
-
+  const {
+    multiEntitySchema,
+    links,
+    prompt,
+    systemPrompt,
+    doc,
+    useAgent,
+    extractId,
+    sessionId } = options;
 
   const generationOptions: GenerateCompletionsOptions = {
     logger: logger.child({
@@ -71,11 +80,19 @@ export async function batchExtractPromise(options: BatchExtractOptions, logger: 
   let warning: string | undefined;
   let smCost = 0, oCost = 0, smCallCount = 0, oCallCount = 0;
   try {
-    const { extractedDataArray: e, warning: w, smartScrapeCost, otherCost, smartScrapeCallCount, otherCallCount } = await extractData({
+    const {
+      extractedDataArray: e,
+      warning: w,
+      smartScrapeCost,
+      otherCost,
+      smartScrapeCallCount,
+      otherCallCount
+    } = await extractData({
       extractOptions: generationOptions,
       urls: [doc.metadata.sourceURL || doc.metadata.url || ""],
       useAgent,
       extractId,
+      sessionId
     });
     extractedDataArray = e;
     warning = w;
