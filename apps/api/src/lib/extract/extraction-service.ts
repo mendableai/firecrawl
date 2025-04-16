@@ -750,6 +750,8 @@ export async function performExtraction(
         };
       }
 
+      let thisSessionId = 'fc-' + crypto.randomUUID();
+
       await updateExtract(extractId, {
         status: "processing",
         steps: [
@@ -760,6 +762,7 @@ export async function performExtraction(
             discoveredLinks: links,
           },
         ],
+        sessionIds: [thisSessionId],
       });
 
       // Generate completions
@@ -781,6 +784,7 @@ export async function performExtraction(
         systemPrompt: request.systemPrompt ?? "",
         useAgent: isAgentExtractModelValid(request.agent?.model),
         extractId,
+        sessionId: thisSessionId,
       });
       costTracking.smartScrapeCost += singleAnswerSmartScrapeCost;
       costTracking.smartScrapeCallCount += singleAnswerSmartScrapeCallCount;

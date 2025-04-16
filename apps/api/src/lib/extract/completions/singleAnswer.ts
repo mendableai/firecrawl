@@ -16,6 +16,7 @@ export async function singleAnswerCompletion({
   systemPrompt,
   useAgent,
   extractId,
+  sessionId,
 }: {
   singleAnswerDocs: Document[];
   rSchema: any;
@@ -24,6 +25,7 @@ export async function singleAnswerCompletion({
   systemPrompt: string;
   useAgent: boolean;
   extractId: string;
+  sessionId: string;
 }): Promise<{
   extract: any;
   tokenUsage: TokenUsage;
@@ -58,6 +60,7 @@ export async function singleAnswerCompletion({
     urls: singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || ""),
     useAgent,
     extractId,
+    sessionId,
   });
 
   const completion = {
