@@ -401,7 +401,9 @@ export async function generateCompletions({
           try {
             JSON.parse(text);
             return text;
-          } catch (_) {}
+          } catch (e) {
+            logger.error("Even after repairing, failed to parse JSON", { error: e });
+          }
         }
 
         try {
@@ -545,7 +547,7 @@ export async function generateCompletions({
       throw new LLMRefusalError(error.message);
     }
     logger.error("LLM extraction failed", {
-      error: lastError.message,
+      error: lastError,
       model: currentModel.modelId,
       mode,
     });
