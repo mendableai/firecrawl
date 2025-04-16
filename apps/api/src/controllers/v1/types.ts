@@ -61,8 +61,8 @@ export const isAgentExtractModelValid = (x: string | undefined) => x?.toLowerCas
 export const agentOptionsExtract = z
   .object({
     model: z.string().default(agentExtractModelValue),
-    // __experimental_useCache: z.boolean().default(false),
-    // cacheId: z.enum(["ycombinator", "firecrawl-login-example"]).optional(),
+    __experimental_useCache: z.boolean().default(false),
+    cacheId: z.enum(["ycombinator", "firecrawl-login-example"]).optional(),
   })
   .strict(strictMessage);
 
