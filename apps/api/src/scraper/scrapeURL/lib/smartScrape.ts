@@ -62,6 +62,7 @@ export async function smartScrape(
         url,
         prompt,
         userProvidedId: sessionId ?? undefined,
+        extractId,
         models: {
           thinkingModel: {
             model: "gemini-2.5-pro-preview-03-25",
