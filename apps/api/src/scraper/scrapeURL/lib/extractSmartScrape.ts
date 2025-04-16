@@ -307,7 +307,7 @@ export async function extractData({
           (acc, result) => acc + result.tokenUsage,
           0,
         );
-        smartScrapeCallCount += pages.length;
+        smartScrapeCallCount += smartscrapeResults.length;
       }
       // console.log("smartscrapeResults", smartscrapeResults);
 
