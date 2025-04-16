@@ -451,6 +451,12 @@ export async function generateCompletions({
     //   JSON.stringify(generateObjectConfig, null, 2),
     // );
 
+    logger.debug("Generating object...", { generateObjectConfig: {
+      ...generateObjectConfig,
+      prompt: generateObjectConfig.prompt.slice(0, 100) + "...",
+      system: generateObjectConfig.system?.slice(0, 100) + "...",
+    }, model, retryModel });
+
     let result: { object: any; usage: TokenUsage } | undefined;
     try {
       result = await generateObject(generateObjectConfig);
