@@ -215,7 +215,6 @@ export async function extractData({
   // TODO: remove the "required" fields here!! it breaks o3-mini
 
   if (!schema && extractOptions.options.prompt) {
-    logger.info("Generating schema from prompt");
     const genRes = await generateSchemaFromPrompt(extractOptions.options.prompt, logger);
     otherCallCount++;
     otherCost += genRes.cost;
@@ -229,6 +228,9 @@ export async function extractData({
   };
   // console.log("schema", schema);
   // console.log("schemaToUse", schemaToUse);
+  logger.info("Generated schema from prompt", {
+    schemaToUse,
+  });
 
   let extract: any,
     warning: string | undefined,
