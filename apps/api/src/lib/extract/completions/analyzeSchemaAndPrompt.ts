@@ -8,14 +8,15 @@ import {
   buildAnalyzeSchemaPrompt,
   buildAnalyzeSchemaUserPrompt,
 } from "../build-prompts";
-import { logger } from "../../../lib/logger";
 import { jsonSchema } from "ai";
 import { getModel } from "../../../lib/generic-ai";
+import { Logger } from "winston";
 
 export async function analyzeSchemaAndPrompt(
   urls: string[],
   schema: any,
   prompt: string,
+  logger: Logger,
 ): Promise<{
   isMultiEntity: boolean;
   multiEntityKeys: string[];
@@ -26,7 +27,7 @@ export async function analyzeSchemaAndPrompt(
 }> {
   let cost = 0;
   if (!schema) {
-    const genRes = await generateSchemaFromPrompt(prompt);
+    const genRes = await generateSchemaFromPrompt(prompt, logger);
     schema = genRes.extract;
     cost = genRes.cost;
   }
