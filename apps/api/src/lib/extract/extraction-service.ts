@@ -430,7 +430,8 @@ export async function performExtraction(
             prompt: request.prompt ?? "",
             systemPrompt: request.systemPrompt ?? "",
             doc,
-            useAgent: isAgentExtractModelValid(request.agent?.model)
+            useAgent: isAgentExtractModelValid(request.agent?.model),
+            extractId,
           }, logger);
 
           // Race between timeout and completion
@@ -741,6 +742,7 @@ export async function performExtraction(
       prompt: request.prompt ?? "",
       systemPrompt: request.systemPrompt ?? "",
       useAgent: isAgentExtractModelValid(request.agent?.model),
+      extractId,
     });
     costTracking.smartScrapeCost += singleAnswerSmartScrapeCost;
     costTracking.smartScrapeCallCount += singleAnswerSmartScrapeCallCount;

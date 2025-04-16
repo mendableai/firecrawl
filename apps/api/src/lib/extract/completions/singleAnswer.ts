@@ -14,7 +14,8 @@ export async function singleAnswerCompletion({
   links,
   prompt,
   systemPrompt,
-  useAgent
+  useAgent,
+  extractId,
 }: {
   singleAnswerDocs: Document[];
   rSchema: any;
@@ -22,6 +23,7 @@ export async function singleAnswerCompletion({
   prompt: string;
   systemPrompt: string;
   useAgent: boolean;
+  extractId?: string;
 }): Promise<{
   extract: any;
   tokenUsage: TokenUsage;
@@ -51,6 +53,7 @@ export async function singleAnswerCompletion({
     extractOptions: generationOptions,
     urls: singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || ""),
     useAgent,
+    extractId,
   });
 
   const completion = {

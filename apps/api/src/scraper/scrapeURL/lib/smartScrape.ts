@@ -49,6 +49,7 @@ export async function smartScrape(
   url: string,
   prompt: string,
   sessionId?: string,
+  extractId?: string,
 ): Promise<SmartScrapeResult> {
   try {
     logger.info("Initiating smart scrape request", { url, prompt, sessionId });

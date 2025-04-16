@@ -22,6 +22,7 @@ type BatchExtractOptions = {
   systemPrompt: string;
   doc: Document;
   useAgent: boolean;
+  extractId?: string;
 };
 
 /**
@@ -44,7 +45,7 @@ export async function batchExtractPromise(options: BatchExtractOptions, logger: 
   smartScrapeCallCount: number;
   otherCallCount: number;
 }> {
-  const { multiEntitySchema, links, prompt, systemPrompt, doc, useAgent } = options;
+  const { multiEntitySchema, links, prompt, systemPrompt, doc, useAgent, extractId } = options;
 
 
   const generationOptions: GenerateCompletionsOptions = {
@@ -74,6 +75,7 @@ export async function batchExtractPromise(options: BatchExtractOptions, logger: 
       extractOptions: generationOptions,
       urls: [doc.metadata.sourceURL || doc.metadata.url || ""],
       useAgent,
+      extractId,
     });
     extractedDataArray = e;
     warning = w;
