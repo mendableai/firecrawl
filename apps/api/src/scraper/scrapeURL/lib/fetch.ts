@@ -4,6 +4,7 @@ import * as Sentry from "@sentry/node";
 import { MockState, saveMock } from "./mock";
 import { TimeoutSignal } from "../../../controllers/v1/types";
 import { fireEngineURL } from "../engines/fire-engine/scrape";
+import { fetch, RequestInit, Response, FormData, Agent } from "undici";
 
 export type RobustFetchParams<Schema extends z.Schema<any>> = {
   url: string;
@@ -78,6 +79,10 @@ export async function robustFetch<
           ...(headers !== undefined ? headers : {}),
         },
         signal: abort,
+        dispatcher: new Agent({
+          headersTimeout: 0,
+          bodyTimeout: 0,
+        }),
         ...(body instanceof FormData
           ? {
               body,
