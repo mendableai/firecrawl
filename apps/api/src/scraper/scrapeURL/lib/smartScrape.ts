@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { logger } from "../../../lib/logger";
+import { logger as _logger } from "../../../lib/logger";
 import { robustFetch } from "./fetch";
 import fs from "fs/promises";
 import { configDotenv } from "dotenv";
@@ -50,9 +50,19 @@ export async function smartScrape(
   prompt: string,
   sessionId?: string,
   extractId?: string,
+  scrapeId?: string,
 ): Promise<SmartScrapeResult> {
+  let logger = _logger.child({
+    method: "smartScrape",
+    module: "smartScrape",
+    extractId,
+    url,
+    prompt,
+    sessionId,
+    scrapeId,
+  });
   try {
-    logger.info("Initiating smart scrape request", { url, prompt, sessionId });
+    logger.info("Initiating smart scrape request");
 
     // Pass schema type as generic parameter to robustFeth
     const response = await robustFetch<typeof smartScrapeResultSchema>({
@@ -62,6 +72,8 @@ export async function smartScrape(
         url,
         prompt,
         userProvidedId: sessionId ?? undefined,
+        extractId,
+        scrapeId,
         models: {
           thinkingModel: {
             model: "gemini-2.5-pro-preview-03-25",
@@ -115,8 +127,6 @@ export async function smartScrape(
     }
 
     logger.info("Smart scrape successful", {
-      url,
-      prompt,
       sessionId: response.sessionId,
     });
 
@@ -154,8 +164,6 @@ export async function smartScrape(
     };
 
     logger.error("Smart scrape request failed", {
-      url,
-      prompt,
       error: JSON.stringify(errorInfo),
     });
 

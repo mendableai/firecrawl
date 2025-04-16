@@ -259,23 +259,6 @@ export async function generateCompletions({
     throw new Error("document.markdown is undefined -- this is unexpected");
   }
 
-  const { maxInputTokens, maxOutputTokens } = getModelLimits(
-    currentModel.modelId,
-  );
-  // Calculate 80% of max input tokens (for content)
-  const maxTokensSafe = Math.floor(maxInputTokens * 0.8);
-
-  // Use the new trimming function
-  const {
-    text: trimmedMarkdown,
-    numTokens,
-    warning: trimWarning,
-  } = trimToTokenLimit(markdown, maxTokensSafe, model.modelId, previousWarning);
-
-  // WE USE BIG MODELS NOW
-  // markdown = trimmedMarkdown;
-  // warning = trimWarning;
-
   try {
     const prompt =
       options.prompt !== undefined
@@ -300,16 +283,16 @@ export async function generateCompletions({
         return {
           extract,
           warning,
-          numTokens,
+          numTokens: result.usage?.promptTokens ?? 0,
           totalUsage: {
-            promptTokens: numTokens,
+            promptTokens: result.usage?.promptTokens ?? 0,
             completionTokens: result.usage?.completionTokens ?? 0,
-            totalTokens: numTokens + (result.usage?.completionTokens ?? 0),
+            totalTokens: result.usage?.promptTokens ?? 0 + (result.usage?.completionTokens ?? 0),
           },
           model: currentModel.modelId,
           cost: calculateCost(
             currentModel.modelId,
-            numTokens,
+            result.usage?.promptTokens ?? 0,
             result.usage?.completionTokens ?? 0,
           ),
         };
@@ -341,16 +324,16 @@ export async function generateCompletions({
             return {
               extract,
               warning,
-              numTokens,
+              numTokens: result.usage?.promptTokens ?? 0,
               totalUsage: {
-                promptTokens: numTokens,
+                promptTokens: result.usage?.promptTokens ?? 0,
                 completionTokens: result.usage?.completionTokens ?? 0,
-                totalTokens: numTokens + (result.usage?.completionTokens ?? 0),
+                totalTokens: result.usage?.promptTokens ?? 0 + (result.usage?.completionTokens ?? 0),
               },
               model: currentModel.modelId,
               cost: calculateCost(
                 currentModel.modelId,
-                numTokens,
+                result.usage?.promptTokens ?? 0,
                 result.usage?.completionTokens ?? 0,
               ),
             };
@@ -541,13 +524,13 @@ export async function generateCompletions({
     }
 
     // Since generateObject doesn't provide token usage, we'll estimate it
-    const promptTokens = numTokens;
-    const completionTokens = result?.usage?.completionTokens ?? 0;
+    const promptTokens = result.usage?.promptTokens ?? 0;
+    const completionTokens = result.usage?.completionTokens ?? 0;
 
     return {
       extract,
       warning,
-      numTokens,
+      numTokens: promptTokens,
       totalUsage: {
         promptTokens,
         completionTokens,
@@ -601,6 +584,7 @@ export async function performLLMExtract(
         extractOptions: generationOptions,
         urls: [meta.url],
         useAgent: isAgentExtractModelValid(meta.options.extract?.agent?.model),
+        scrapeId: meta.id,
       });
 
     if (warning) {
@@ -761,6 +745,7 @@ export function removeDefaultProperty(schema: any): any {
 
 export async function generateSchemaFromPrompt(
   prompt: string,
+  logger: Logger,
 ): Promise<{ extract: any; cost: number }> {
   const model = getModel("gpt-4o", "openai");
   const retryModel = getModel("gpt-4o-mini", "openai");

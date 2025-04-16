@@ -186,13 +186,15 @@ export async function extractData({
   urls,
   useAgent,
   extractId,
-  sessionId
+  sessionId,
+  scrapeId,
 }: {
   extractOptions: GenerateCompletionsOptions;
   urls: string[];
   useAgent: boolean;
   extractId?: string;
   sessionId?: string;
+  scrapeId?: string;
 }): Promise<{
   extractedDataArray: any[];
   warning: any;
@@ -214,7 +216,7 @@ export async function extractData({
 
   if (!schema && extractOptions.options.prompt) {
     logger.info("Generating schema from prompt");
-    const genRes = await generateSchemaFromPrompt(extractOptions.options.prompt);
+    const genRes = await generateSchemaFromPrompt(extractOptions.options.prompt, logger);
     otherCallCount++;
     otherCost += genRes.cost;
     schema = genRes.extract;
@@ -252,7 +254,7 @@ export async function extractData({
   } catch (error) {
     logger.error(
       "failed during extractSmartScrape.ts:generateCompletions",
-      error,
+      { error },
     );
     // console.log("failed during extractSmartScrape.ts:generateCompletions", error);
   }
@@ -263,34 +265,41 @@ export async function extractData({
   // console.log("smartscrape_reasoning", extract?.smartscrape_reasoning);
   // console.log("smartscrape_prompt", extract?.smartscrape_prompt);
   try {
-    console.log("=========================================");
-    console.log(
-      "useAgent:",
+    logger.info("Smart schema resolved", {
       useAgent,
-      "shouldUseSmartscrape:",
-      extract?.shouldUseSmartscrape,
-    );
-    console.log("url:", urls);
-    console.log("prompt:", extract?.smartscrape_prompt);
-    console.log("=========================================");
+      shouldUseSmartscrape: extract?.shouldUseSmartscrape,
+      url: urls,
+      prompt: extract?.smartscrape_prompt,
+      providedExtractId: extractId,
+    })
 
     if (useAgent && extract?.shouldUseSmartscrape) {
       let smartscrapeResults: SmartScrapeResult[];
       if (isSingleUrl) {
         smartscrapeResults = [
-          await smartScrape(urls[0], extract?.smartscrape_prompt, sessionId, extractId),
+          await smartScrape(urls[0], extract?.smartscrape_prompt, sessionId, extractId, scrapeId),
         ];
         smartScrapeCost += smartscrapeResults[0].tokenUsage;
         smartScrapeCallCount++;
       } else {
-        const pages = extract?.smartscrapePages;
+        const pages = extract?.smartscrapePages ?? [];
         //do it async promiseall instead
+        if (pages.length > 100) {
+          logger.warn("Smart scrape pages limit exceeded, only first 100 pages will be scraped", {
+            pagesLength: pages.length,
+            extractId,
+            scrapeId,
+          });
+        }
+
         smartscrapeResults = await Promise.all(
-          pages.map(async (page) => {
+          pages.slice(0, 100).map(async (page) => {
             return await smartScrape(
               urls[page.page_index],
               page.smartscrape_prompt,
+              undefined,
               extractId,
+              scrapeId,
             );
           }),
         );

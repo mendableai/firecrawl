@@ -178,7 +178,7 @@ export async function performExtraction(
 
   let reqSchema = request.schema;
   if (!reqSchema && request.prompt) {
-    const schemaGenRes = await generateSchemaFromPrompt(request.prompt);
+    const schemaGenRes = await generateSchemaFromPrompt(request.prompt, logger);
     reqSchema = schemaGenRes.extract;
     costTracking.otherCallCount++;
     costTracking.otherCost += schemaGenRes.cost;
@@ -214,7 +214,7 @@ export async function performExtraction(
     keyIndicators,
     tokenUsage: schemaAnalysisTokenUsage,
     cost: schemaAnalysisCost,
-  } = await analyzeSchemaAndPrompt(urls, reqSchema, request.prompt ?? "");
+  } = await analyzeSchemaAndPrompt(urls, reqSchema, request.prompt ?? "", logger);
 
   logger.debug("Analyzed schema.", {
     isMultiEntity,

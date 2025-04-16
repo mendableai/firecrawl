@@ -25,7 +25,7 @@ export async function performAgent(
 
     let smartscrapeResults: SmartScrapeResult;
     try {
-      smartscrapeResults = await smartScrape(url, prompt, sessionId)
+      smartscrapeResults = await smartScrape(url, prompt, sessionId, undefined, meta.id)
     } catch (error) {
       if (error instanceof Error && error.message === "Cost limit exceeded") {
         logger.error("Cost limit exceeded", { error })

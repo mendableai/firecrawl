@@ -23,7 +23,7 @@ export async function singleAnswerCompletion({
   prompt: string;
   systemPrompt: string;
   useAgent: boolean;
-  extractId?: string;
+  extractId: string;
 }): Promise<{
   extract: any;
   tokenUsage: TokenUsage;
@@ -35,7 +35,11 @@ export async function singleAnswerCompletion({
 }> {
   const docsPrompt = `Today is: ` + new Date().toISOString() + `.\n` + prompt;
   const generationOptions: GenerateCompletionsOptions = {
-    logger: logger.child({ module: "extract", method: "generateCompletions" }),
+    logger: logger.child({
+      module: "extract",
+      method: "generateCompletions",
+      extractId,
+    }),
     options: {
       mode: "llm",
       systemPrompt:
