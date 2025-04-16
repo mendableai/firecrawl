@@ -73,7 +73,8 @@ export async function batchExtractPromise(options: BatchExtractOptions, logger: 
     },
     markdown: buildDocument(doc),
     isExtractEndpoint: true,
-    model: getModel("gemini-2.0-flash", "google"),
+    model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
+    retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
   };
 
   let extractedDataArray: any[] = [];
