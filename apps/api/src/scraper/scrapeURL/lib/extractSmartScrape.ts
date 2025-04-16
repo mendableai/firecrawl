@@ -279,10 +279,18 @@ export async function extractData({
         smartScrapeCost += smartscrapeResults[0].tokenUsage;
         smartScrapeCallCount++;
       } else {
-        const pages = extract?.smartscrapePages;
+        const pages = extract?.smartscrapePages ?? [];
         //do it async promiseall instead
+        if (pages.length > 100) {
+          logger.warn("Smart scrape pages limit exceeded, only first 100 pages will be scraped", {
+            pagesLength: pages.length,
+            extractId,
+            scrapeId,
+          });
+        }
+
         smartscrapeResults = await Promise.all(
-          pages.map(async (page) => {
+          pages.slice(0, 100).map(async (page) => {
             return await smartScrape(
               urls[page.page_index],
               page.smartscrape_prompt,
