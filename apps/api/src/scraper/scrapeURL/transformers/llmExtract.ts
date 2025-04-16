@@ -386,6 +386,8 @@ export async function generateCompletions({
     const repairConfig = {
       experimental_repairText: async ({ text, error }) => {
         // AI may output a markdown JSON code block. Remove it - mogery
+        logger.debug("Repairing text", { textType: typeof text, error });
+
         if (typeof text === "string" && text.trim().startsWith("```")) {
           if (text.trim().startsWith("```json")) {
             text = text.trim().slice("```json".length).trim();
@@ -400,6 +402,7 @@ export async function generateCompletions({
           // If this fixes the JSON, just return it. If not, continue - mogery
           try {
             JSON.parse(text);
+            logger.debug("Repaired text with string manipulation");
             return text;
           } catch (e) {
             logger.error("Even after repairing, failed to parse JSON", { error: e });
@@ -418,6 +421,7 @@ export async function generateCompletions({
               },
             },
           });
+          logger.debug("Repaired text with LLM");
           return fixedText;
         } catch (repairError) {
           lastError = repairError as Error;
