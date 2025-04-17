@@ -658,8 +658,8 @@ export async function performLLMExtract(
       // model: getModel("qwen-qwq-32b", "groq"),
       // model: getModel("gemini-2.0-flash", "google"),
       // model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
-      model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
-      retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
+      model: getModel("gpt-4o-mini", "openai"),
+      retryModel: getModel("gpt-4o", "openai"),
       costTrackingOptions: {
         costTracking: meta.costTracking,
         metadata: {

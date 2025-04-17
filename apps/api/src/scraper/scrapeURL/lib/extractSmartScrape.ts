@@ -269,8 +269,6 @@ export async function extractData({
       totalUsage: t,
     } = await generateCompletions({
       ...extractOptionsNewSchema,
-      model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
-      retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
       costTrackingOptions: {
         costTracking: extractOptions.costTrackingOptions.costTracking,
         metadata: {
