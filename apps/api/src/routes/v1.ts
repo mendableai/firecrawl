@@ -98,9 +98,9 @@ export function authMiddleware(
         rateLimiterMode = RateLimiterMode.ExtractAgentPreview;
       }
 
-      if (rateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
-        rateLimiterMode = RateLimiterMode.ScrapeAgentPreview;
-      }
+      // if (rateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
+      //   rateLimiterMode = RateLimiterMode.ScrapeAgentPreview;
+      // }
 
       const auth = await authenticateUser(req, res, rateLimiterMode);
 
