@@ -67,6 +67,14 @@ type completions = {
   sources?: string[];
 };
 
+export class CostLimitExceededError extends Error {
+  constructor() {
+    super("Cost limit exceeded");
+    this.message = "Cost limit exceeded";
+    this.name = "CostLimitExceededError";
+  }
+}
+
 export class CostTracking {
   calls: {
     type: "smartScrape" | "other",
@@ -79,14 +87,21 @@ export class CostTracking {
     },
     stack: string,
   }[] = [];
+  limit: number | null = null;
 
-  constructor() {}
+  constructor(limit: number | null = null) {
+    this.limit = limit;
+  }
 
   public addCall(call: Omit<typeof this.calls[number], "stack">) {
     this.calls.push({
       ...call,
       stack: new Error().stack!.split("\n").slice(2).join("\n"),
     });
+
+    if (this.limit !== null && this.toJSON().totalCost > this.limit) {
+      throw new CostLimitExceededError();
+    }
   }
 
   public toJSON() {
@@ -115,7 +130,8 @@ export async function performExtraction(
   let singleAnswerResult: any = {};
   let totalUrlsScraped = 0;
   let sources: Record<string, string[]> = {};
-  let costTracking: CostTracking = new CostTracking();
+
+  let costTracking = new CostTracking(subId ? null : 1.5);
 
   let log = {
     extractId,
@@ -532,6 +548,10 @@ export async function performExtraction(
 
             return null;
           } catch (error) {
+            if (error instanceof CostLimitExceededError) {
+              throw error;
+            }
+
             logger.error(`Failed to process document.`, {
               error,
               url: doc.metadata.url ?? doc.metadata.sourceURL!,

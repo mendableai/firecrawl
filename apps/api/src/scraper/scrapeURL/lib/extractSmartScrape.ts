@@ -10,7 +10,7 @@ import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { getModel } from "../../../lib/generic-ai";
 import { TokenUsage } from "../../../controllers/v1/types";
 import type { SmartScrapeResult } from "./smartScrape";
-import { CostTracking } from "../../../lib/extract/extraction-service";
+import { CostLimitExceededError, CostTracking } from "../../../lib/extract/extraction-service";
 const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
     type: "boolean",
@@ -282,6 +282,10 @@ export async function extractData({
     warning = w;
     totalUsage = t;
   } catch (error) {
+    if (error instanceof CostLimitExceededError) {
+      throw error;
+    }
+    
     logger.error(
       "failed during extractSmartScrape.ts:generateCompletions",
       { error },

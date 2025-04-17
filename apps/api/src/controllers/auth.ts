@@ -75,11 +75,11 @@ export async function setCachedACUC(
 const mockPreviewACUC: (team_id: string, is_extract: boolean) => AuthCreditUsageChunk = (team_id, is_extract) => ({
   api_key: "preview",
   team_id,
-  sub_id: "bypass",
-  sub_current_period_start: new Date().toISOString(),
-  sub_current_period_end: new Date(new Date().getTime() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-  sub_user_id: "bypass",
-  price_id: "bypass",
+  sub_id: null,
+  sub_current_period_start: null,
+  sub_current_period_end: null,
+  sub_user_id: null,
+  price_id: null,
   rate_limits: {
     crawl: 2,
     scrape: 10,
