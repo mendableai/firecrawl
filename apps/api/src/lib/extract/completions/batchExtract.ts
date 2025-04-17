@@ -10,7 +10,7 @@ import {
   buildBatchExtractSystemPrompt,
 } from "../build-prompts";
 import { getModel } from "../../generic-ai";
-import { CostTracking } from "../extraction-service";
+import { CostTracking, CostLimitExceededError } from "../extraction-service";
 import fs from "fs/promises";
 import { extractData } from "../../../scraper/scrapeURL/lib/extractSmartScrape";
 import type { Logger } from "winston";
@@ -102,6 +102,9 @@ export async function batchExtractPromise(options: BatchExtractOptions, logger: 
     extractedDataArray = e;
     warning = w;
   } catch (error) {
+    if (error instanceof CostLimitExceededError) {
+      throw error;
+    }
     logger.error("extractData failed", { error });
   }
 

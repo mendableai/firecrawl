@@ -33,7 +33,7 @@ export async function checkShouldExtract(
     },
     markdown: buildDocument(doc),
     isExtractEndpoint: true,
-    model: getModel("gpt-4o-mini"),
+    model: getModel("gpt-4o-mini", "openai"),
     costTrackingOptions: {
       costTracking,
       metadata: {
