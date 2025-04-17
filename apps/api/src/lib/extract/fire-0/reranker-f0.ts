@@ -6,7 +6,7 @@ import { extractConfig } from "../config";
 import { generateCompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { performRanking_F0 } from "./ranker-f0";
 import { buildRerankerSystemPrompt_F0, buildRerankerUserPrompt_F0 } from "./build-prompts-f0";
-
+import { CostTracking } from "../extraction-service";
 const cohere = new CohereClient({
   token: process.env.COHERE_API_KEY,
 });
@@ -166,7 +166,7 @@ export type RerankerOptions = {
   urlTraces: URLTrace[];
 };
 
-export async function rerankLinksWithLLM_F0(options: RerankerOptions): Promise<RerankerResult> {
+export async function rerankLinksWithLLM_F0(options: RerankerOptions, costTracking: CostTracking): Promise<RerankerResult> {
   const { links, searchQuery, urlTraces } = options;
   const chunkSize = 100;
   const chunks: MapDocument[][] = [];
@@ -231,7 +231,14 @@ export async function rerankLinksWithLLM_F0(options: RerankerOptions): Promise<R
               schema: schema,
             },
             markdown: linksContent,
-            isExtractEndpoint: true
+            isExtractEndpoint: true,
+            costTrackingOptions: {
+              costTracking: new CostTracking(),
+              metadata: {
+                module: "extract",
+                method: "rerankLinksWithLLM",
+              },
+            },
           });
 
           const completion = await Promise.race([

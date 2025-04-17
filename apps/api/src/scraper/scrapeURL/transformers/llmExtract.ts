@@ -11,6 +11,7 @@ import { EngineResultsTracker, Meta } from "..";
 import { logger } from "../../../lib/logger";
 import { modelPrices } from "../../../lib/extract/usage/model-prices";
 import {
+  AISDKError,
   generateObject,
   generateText,
   LanguageModel,
@@ -22,7 +23,7 @@ import { z } from "zod";
 import fs from "fs/promises";
 import Ajv from "ajv";
 import { extractData } from "../lib/extractSmartScrape";
-
+import { CostTracking } from "../../../lib/extract/extraction-service";
 // TODO: fix this, it's horrible
 type LanguageModelV1ProviderMetadata = {
   anthropic?: {
@@ -231,6 +232,10 @@ export type GenerateCompletionsOptions = {
   mode?: "object" | "no-object";
   providerOptions?: LanguageModelV1ProviderMetadata;
   retryModel?: LanguageModel;
+  costTrackingOptions: {
+    costTracking: CostTracking;
+    metadata: Record<string, any>;
+  };
 };
 export async function generateCompletions({
   logger,
@@ -242,13 +247,13 @@ export async function generateCompletions({
   mode = "object",
   providerOptions,
   retryModel = getModel("claude-3-5-sonnet-20240620", "anthropic"),
+  costTrackingOptions,
 }: GenerateCompletionsOptions): Promise<{
   extract: any;
   numTokens: number;
   warning: string | undefined;
   totalUsage: TokenUsage;
   model: string;
-  cost: number;
 }> {
   let extract: any;
   let warning: string | undefined;
@@ -278,6 +283,19 @@ export async function generateCompletions({
           },
         });
 
+        costTrackingOptions.costTracking.addCall({
+          type: "other",
+          metadata: {
+            ...costTrackingOptions.metadata,
+            gcDetails: "no-object",
+          },
+          cost: calculateCost(
+            currentModel.modelId,
+            result.usage?.promptTokens ?? 0,
+            result.usage?.completionTokens ?? 0,
+          ),
+        });
+
         extract = result.text;
 
         return {
@@ -290,11 +308,6 @@ export async function generateCompletions({
             totalTokens: result.usage?.promptTokens ?? 0 + (result.usage?.completionTokens ?? 0),
           },
           model: currentModel.modelId,
-          cost: calculateCost(
-            currentModel.modelId,
-            result.usage?.promptTokens ?? 0,
-            result.usage?.completionTokens ?? 0,
-          ),
         };
       } catch (error) {
         lastError = error as Error;
@@ -321,6 +334,19 @@ export async function generateCompletions({
 
             extract = result.text;
 
+            costTrackingOptions.costTracking.addCall({
+              type: "other",
+              metadata: {
+                ...costTrackingOptions.metadata,
+                gcDetails: "no-object fallback",
+              },
+              cost: calculateCost(
+                currentModel.modelId,
+                result.usage?.promptTokens ?? 0,
+                result.usage?.completionTokens ?? 0,
+              ),
+            });
+
             return {
               extract,
               warning,
@@ -331,11 +357,6 @@ export async function generateCompletions({
                 totalTokens: result.usage?.promptTokens ?? 0 + (result.usage?.completionTokens ?? 0),
               },
               model: currentModel.modelId,
-              cost: calculateCost(
-                currentModel.modelId,
-                result.usage?.promptTokens ?? 0,
-                result.usage?.completionTokens ?? 0,
-              ),
             };
           } catch (retryError) {
             lastError = retryError as Error;
@@ -410,7 +431,7 @@ export async function generateCompletions({
         }
 
         try {
-          const { text: fixedText } = await generateText({
+          const { text: fixedText, usage: repairUsage } = await generateText({
             model: currentModel,
             prompt: `Fix this JSON that had the following error: ${error}\n\nOriginal text:\n${text}\n\nReturn only the fixed JSON, no explanation.`,
             system:
@@ -419,6 +440,23 @@ export async function generateCompletions({
               anthropic: {
                 thinking: { type: "enabled", budgetTokens: 12000 },
               },
+            },
+          });
+
+          costTrackingOptions.costTracking.addCall({
+            type: "other",
+            metadata: {
+              ...costTrackingOptions.metadata,
+              gcDetails: "repairConfig",
+            },
+            cost: calculateCost(
+              currentModel.modelId,
+              repairUsage?.promptTokens ?? 0,
+              repairUsage?.completionTokens ?? 0,
+            ),
+            tokens: {
+              input: repairUsage?.promptTokens ?? 0,
+              output: repairUsage?.completionTokens ?? 0,
             },
           });
           logger.debug("Repaired text with LLM");
@@ -464,6 +502,23 @@ export async function generateCompletions({
     let result: { object: any; usage: TokenUsage } | undefined;
     try {
       result = await generateObject(generateObjectConfig);
+      costTrackingOptions.costTracking.addCall({
+        type: "other",
+        metadata: {
+          ...costTrackingOptions.metadata,
+          gcDetails: "generateObject",
+          gcModel: generateObjectConfig.model.modelId,
+        },
+        tokens: {
+          input: result.usage?.promptTokens ?? 0,
+          output: result.usage?.completionTokens ?? 0,
+        },
+        cost: calculateCost(
+          currentModel.modelId,
+          result.usage?.promptTokens ?? 0,
+          result.usage?.completionTokens ?? 0,
+        ),
+      });
     } catch (error) {
       lastError = error as Error;
       if (
@@ -481,6 +536,23 @@ export async function generateCompletions({
             model: currentModel,
           };
           result = await generateObject(retryConfig);
+          costTrackingOptions.costTracking.addCall({
+            type: "other",
+            metadata: {
+              ...costTrackingOptions.metadata,
+              gcDetails: "generateObject fallback",
+              gcModel: retryConfig.model.modelId,
+            },
+            tokens: {
+              input: result.usage?.promptTokens ?? 0,
+              output: result.usage?.completionTokens ?? 0,
+            },
+            cost: calculateCost(
+              currentModel.modelId,
+              result.usage?.promptTokens ?? 0,
+              result.usage?.completionTokens ?? 0,
+            ),
+          });
         } catch (retryError) {
           lastError = retryError as Error;
           logger.error("Failed with fallback model", {
@@ -549,7 +621,6 @@ export async function generateCompletions({
         totalTokens: promptTokens + completionTokens,
       },
       model: currentModel.modelId,
-      cost: calculateCost(currentModel.modelId, promptTokens, completionTokens),
     };
   } catch (error) {
     lastError = error as Error;
@@ -589,9 +660,16 @@ export async function performLLMExtract(
       // model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
       model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
       retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
+      costTrackingOptions: {
+        costTracking: meta.costTracking,
+        metadata: {
+          module: "scrapeURL",
+          method: "performLLMExtract",
+        },
+      },
     };
 
-    const { extractedDataArray, warning, smartScrapeCost, otherCost, costLimitExceededTokenUsage } =
+    const { extractedDataArray, warning, costLimitExceededTokenUsage } =
       await extractData({
         extractOptions: generationOptions,
         urls: [meta.url],
@@ -601,25 +679,6 @@ export async function performLLMExtract(
 
     if (warning) {
       document.warning = warning + (document.warning ? " " + document.warning : "");
-    }
-
-    if (document.metadata.costTracking) {
-      document.metadata.costTracking.smartScrapeCallCount++;
-      document.metadata.costTracking.smartScrapeCost += smartScrapeCost;
-      document.metadata.costTracking.otherCallCount++;
-      document.metadata.costTracking.otherCost += otherCost;
-      document.metadata.costTracking.totalCost += smartScrapeCost + otherCost;
-      if (costLimitExceededTokenUsage) {
-        document.metadata.costTracking.costLimitExceededTokenUsage = costLimitExceededTokenUsage;
-      }
-    } else {
-      document.metadata.costTracking = {
-        smartScrapeCallCount: 1,
-        smartScrapeCost: smartScrapeCost,
-        otherCallCount: 1,
-        otherCost: otherCost,
-        totalCost: smartScrapeCost + otherCost,
-      };
     }
 
     // IMPORTANT: here it only get's the last page!!!
@@ -758,7 +817,8 @@ export function removeDefaultProperty(schema: any): any {
 export async function generateSchemaFromPrompt(
   prompt: string,
   logger: Logger,
-): Promise<{ extract: any; cost: number }> {
+  costTracking: CostTracking,
+): Promise<{ extract: any }> {
   const model = getModel("gpt-4o", "openai");
   const retryModel = getModel("gpt-4o-mini", "openai");
   const temperatures = [0, 0.1, 0.3]; // Different temperatures to try
@@ -766,7 +826,7 @@ export async function generateSchemaFromPrompt(
 
   for (const temp of temperatures) {
     try {
-      const { extract, cost } = await generateCompletions({
+      const { extract } = await generateCompletions({
         logger: logger.child({
           method: "generateSchemaFromPrompt/generateCompletions",
         }),
@@ -802,10 +862,16 @@ Return a valid JSON schema object with properties that would capture the informa
           prompt: `Generate a JSON schema for extracting the following information: ${prompt}`,
           // temperature: temp,
         },
-        markdown: prompt,
+        costTrackingOptions: {
+          costTracking,
+          metadata: {
+            module: "scrapeURL",
+            method: "generateSchemaFromPrompt",
+          },
+        },
       });
 
-      return { extract, cost };
+      return { extract };
     } catch (error) {
       lastError = error as Error;
       logger.warn(`Failed attempt with temperature ${temp}: ${error.message}`);

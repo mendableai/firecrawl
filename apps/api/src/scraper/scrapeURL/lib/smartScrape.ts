@@ -3,7 +3,7 @@ import { logger as _logger } from "../../../lib/logger";
 import { robustFetch } from "./fetch";
 import fs from "fs/promises";
 import { configDotenv } from "dotenv";
-
+import { CostTracking } from "../../../lib/extract/extraction-service";
 configDotenv();
 
 // Define schemas outside the function scope
@@ -52,6 +52,7 @@ export async function smartScrape({
   extractId,
   scrapeId,
   beforeSubmission,
+  costTracking,
 }: {
   url: string,
   prompt: string,
@@ -59,6 +60,7 @@ export async function smartScrape({
   extractId?: string,
   scrapeId?: string,
   beforeSubmission?: () => unknown,
+  costTracking: CostTracking,
 }): Promise<SmartScrapeResult> {
   let logger = _logger.child({
     method: "smartScrape",
@@ -139,6 +141,16 @@ export async function smartScrape({
     });
 
     logger.info("Smart scrape cost $" + response.tokenUsage);
+    costTracking.addCall({
+      type: "smartScrape",
+      cost: response.tokenUsage,
+      metadata: {
+        module: "smartScrape",
+        method: "smartScrape",
+        url,
+        sessionId,
+      },
+    });
 
     return response; // The response type now matches SmartScrapeResult
   } catch (error) {

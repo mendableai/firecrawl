@@ -7,6 +7,7 @@ import { buildDocument } from "../build-document";
 import { Document, TokenUsage } from "../../../controllers/v1/types";
 import { getModel } from "../../../lib/generic-ai";
 import { extractData } from "../../../scraper/scrapeURL/lib/extractSmartScrape";
+import { CostTracking } from "../extraction-service";
 
 export async function singleAnswerCompletion({
   singleAnswerDocs,
@@ -17,6 +18,7 @@ export async function singleAnswerCompletion({
   useAgent,
   extractId,
   sessionId,
+  costTracking,
 }: {
   singleAnswerDocs: Document[];
   rSchema: any;
@@ -26,14 +28,11 @@ export async function singleAnswerCompletion({
   useAgent: boolean;
   extractId: string;
   sessionId: string;
+  costTracking: CostTracking;
 }): Promise<{
   extract: any;
   tokenUsage: TokenUsage;
   sources: string[];
-  smartScrapeCallCount: number;
-  smartScrapeCost: number;
-  otherCallCount: number;
-  otherCost: number;
 }> {
   const docsPrompt = `Today is: ` + new Date().toISOString() + `.\n` + prompt;
   const generationOptions: GenerateCompletionsOptions = {
@@ -49,13 +48,20 @@ export async function singleAnswerCompletion({
         "Always prioritize using the provided content to answer the question. Do not make up an answer. Do not hallucinate. In case you can't find the information and the string is required, instead of 'N/A' or 'Not speficied', return an empty string: '', if it's not a string and you can't find the information, return null. Be concise and follow the schema always if provided.",
         prompt: docsPrompt,
         schema: rSchema,
+    },
+    markdown: `${singleAnswerDocs.map((x, i) => `[START_PAGE (ID: ${i})]` + buildDocument(x)).join("\n")} [END_PAGE]\n`,
+    isExtractEndpoint: true,
+    model: getModel("gemini-2.0-flash", "google"),
+    costTrackingOptions: {
+      costTracking,
+      metadata: {
+        module: "extract",
+        method: "singleAnswerCompletion",
       },
-      markdown: `${singleAnswerDocs.map((x, i) => `[START_PAGE (ID: ${i})]` + buildDocument(x)).join("\n")} [END_PAGE]\n`,
-      isExtractEndpoint: true,
-      model: getModel("gemini-2.0-flash", "google"),
-    };
-
-  const { extractedDataArray, warning, smartScrapeCost, otherCost, smartScrapeCallCount, otherCallCount } = await extractData({
+    },
+  };
+    
+  const { extractedDataArray, warning } = await extractData({
     extractOptions: generationOptions,
     urls: singleAnswerDocs.map(doc => doc.metadata.url || doc.metadata.sourceURL || ""),
     useAgent,
@@ -100,9 +106,5 @@ export async function singleAnswerCompletion({
     sources: singleAnswerDocs.map(
       (doc) => doc.metadata.url || doc.metadata.sourceURL || "",
     ),
-    smartScrapeCost,
-    otherCost,
-    smartScrapeCallCount,
-    otherCallCount,
   };
 }

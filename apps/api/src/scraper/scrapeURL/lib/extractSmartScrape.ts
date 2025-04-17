@@ -10,8 +10,7 @@ import { parseMarkdown } from "../../../lib/html-to-markdown";
 import { getModel } from "../../../lib/generic-ai";
 import { TokenUsage } from "../../../controllers/v1/types";
 import type { SmartScrapeResult } from "./smartScrape";
-import { ExtractStep } from "src/lib/extract/extract-redis";
-
+import { CostTracking } from "../../../lib/extract/extraction-service";
 const commonSmartScrapeProperties = {
   shouldUseSmartscrape: {
     type: "boolean",
@@ -225,26 +224,16 @@ export async function extractData({
 }): Promise<{
   extractedDataArray: any[];
   warning: any;
-  smartScrapeCallCount: number;
-  otherCallCount: number;
-  smartScrapeCost: number;
-  otherCost: number;
   costLimitExceededTokenUsage: number | null;
 }> {
   let schema = extractOptions.options.schema;
   const logger = extractOptions.logger;
   const isSingleUrl = urls.length === 1;
-  let smartScrapeCost = 0;
-  let otherCost = 0;
-  let smartScrapeCallCount = 0;
-  let otherCallCount = 0;
   let costLimitExceededTokenUsage: number | null = null;
   // TODO: remove the "required" fields here!! it breaks o3-mini
 
   if (!schema && extractOptions.options.prompt) {
-    const genRes = await generateSchemaFromPrompt(extractOptions.options.prompt, logger);
-    otherCallCount++;
-    otherCost += genRes.cost;
+    const genRes = await generateSchemaFromPrompt(extractOptions.options.prompt, logger, extractOptions.costTrackingOptions.costTracking);
     schema = genRes.extract;
   }
 
@@ -278,17 +267,22 @@ export async function extractData({
       extract: e,
       warning: w,
       totalUsage: t,
-      cost: c,
     } = await generateCompletions({
       ...extractOptionsNewSchema,
       model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
       retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
+      costTrackingOptions: {
+        costTracking: extractOptions.costTrackingOptions.costTracking,
+        metadata: {
+          module: "scrapeURL",
+          method: "extractData",
+          description: "Check if using smartScrape is needed for this case"
+        },
+      },
     });
     extract = e;
     warning = w;
     totalUsage = t;
-    otherCost += c;
-    otherCallCount++;
   } catch (error) {
     logger.error(
       "failed during extractSmartScrape.ts:generateCompletions",
@@ -321,10 +315,9 @@ export async function extractData({
             sessionId,
             extractId,
             scrapeId,
+            costTracking: extractOptions.costTrackingOptions.costTracking,
           }),
         ];
-        smartScrapeCost += smartscrapeResults[0].tokenUsage;
-        smartScrapeCallCount++;
       } else {
         const pages = extract?.smartscrapePages ?? [];
         //do it async promiseall instead
@@ -344,14 +337,10 @@ export async function extractData({
               sessionId,
               extractId,
               scrapeId,
+              costTracking: extractOptions.costTrackingOptions.costTracking,
             });
           }),
         );
-        smartScrapeCost += smartscrapeResults.reduce(
-          (acc, result) => acc + result.tokenUsage,
-          0,
-        );
-        smartScrapeCallCount += smartscrapeResults.length;
       }
       // console.log("smartscrapeResults", smartscrapeResults);
 
@@ -372,11 +361,17 @@ export async function extractData({
             markdown: markdown,
             model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
             retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
+            costTrackingOptions: {
+              costTracking: extractOptions.costTrackingOptions.costTracking,
+              metadata: {
+                module: "scrapeURL",
+                method: "extractData",
+                description: "Extract data from markdown (smart-scape results)",
+              },
+            },
           };
-          const { extract, warning, totalUsage, model, cost } =
+          const { extract } =
             await generateCompletions(newExtractOptions);
-          otherCost += cost;
-          otherCallCount++;
           return extract;
         }),
       );
@@ -399,10 +394,6 @@ export async function extractData({
   return {
     extractedDataArray: extractedData,
     warning: warning,
-    smartScrapeCallCount: smartScrapeCallCount,
-    otherCallCount: otherCallCount,
-    smartScrapeCost: smartScrapeCost,
-    otherCost: otherCost,
     costLimitExceededTokenUsage: costLimitExceededTokenUsage,
   };
 }

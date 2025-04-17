@@ -21,6 +21,7 @@ import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { logger as _logger } from "../../lib/logger";
 import type { Logger } from "winston";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
+import { CostTracking } from "../../lib/extract/extraction-service";
 
 // Used for deep research
 export async function searchAndScrapeSearchResult(
@@ -32,6 +33,7 @@ export async function searchAndScrapeSearchResult(
     scrapeOptions: ScrapeOptions;
   },
   logger: Logger,
+  costTracking: CostTracking,
 ): Promise<Document[]> {
   try {
     const searchResults = await search({
@@ -48,7 +50,8 @@ export async function searchAndScrapeSearchResult(
           description: result.description
         },
         options,
-        logger
+        logger,
+        costTracking
       )
     )
   );
@@ -68,6 +71,7 @@ async function scrapeSearchResult(
     scrapeOptions: ScrapeOptions;
   },
   logger: Logger,
+  costTracking: CostTracking,
 ): Promise<Document> {
   const jobId = uuidv4();
   const jobPriority = await getJobPriority({
@@ -220,6 +224,8 @@ export async function searchController(
       });
     }
 
+    const costTracking = new CostTracking();
+
     // Scrape each non-blocked result, handling timeouts individually
     logger.info("Scraping search results");
     const scrapePromises = searchResults.map((result) =>
@@ -228,7 +234,7 @@ export async function searchController(
         origin: req.body.origin,
         timeout: req.body.timeout,
         scrapeOptions: req.body.scrapeOptions,
-      }, logger),
+      }, logger, costTracking),
     );
 
     const docs = await Promise.all(scrapePromises);
@@ -279,6 +285,7 @@ export async function searchController(
       mode: "search",
       url: req.body.query,
       origin: req.body.origin,
+      cost_tracking: costTracking,
     });
 
     return res.status(200).json({

@@ -739,7 +739,6 @@ export type Document = {
     statusCode: number;
     scrapeId?: string;
     error?: string;
-    costTracking?: CostTracking;
     // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };
   serpResults?: {

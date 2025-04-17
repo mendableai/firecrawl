@@ -11,25 +11,23 @@ import {
 import { jsonSchema } from "ai";
 import { getModel } from "../../../lib/generic-ai";
 import { Logger } from "winston";
-
+import { CostTracking } from "../extraction-service";
 export async function analyzeSchemaAndPrompt(
   urls: string[],
   schema: any,
   prompt: string,
   logger: Logger,
+  costTracking: CostTracking,
 ): Promise<{
   isMultiEntity: boolean;
   multiEntityKeys: string[];
   reasoning: string;
   keyIndicators: string[];
   tokenUsage: TokenUsage;
-  cost: number;
 }> {
-  let cost = 0;
   if (!schema) {
-    const genRes = await generateSchemaFromPrompt(prompt, logger);
+    const genRes = await generateSchemaFromPrompt(prompt, logger, costTracking);
     schema = genRes.extract;
-    cost = genRes.cost;
   }
 
   const schemaString = JSON.stringify(schema);
@@ -49,7 +47,7 @@ export async function analyzeSchemaAndPrompt(
     );
 
   try {
-    const { extract: result, totalUsage, cost: cost2 } = await generateCompletions({
+    const { extract: result, totalUsage } = await generateCompletions({
       logger,
       options: {
         mode: "llm",
@@ -59,8 +57,14 @@ export async function analyzeSchemaAndPrompt(
       },
       markdown: "",
       model,
+      costTrackingOptions: {
+        costTracking,
+        metadata: {
+          module: "extract",
+          method: "analyzeSchemaAndPrompt",
+        },
+      },
     });
-    cost += cost2;
 
     const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
       checkSchema.parse(result);
@@ -71,7 +75,6 @@ export async function analyzeSchemaAndPrompt(
       reasoning,
       keyIndicators,
       tokenUsage: totalUsage,
-      cost,
     };
   } catch (e) {
     logger.warn("(analyzeSchemaAndPrompt) Error parsing schema analysis", {
@@ -90,6 +93,5 @@ export async function analyzeSchemaAndPrompt(
       totalTokens: 0,
       model: model.modelId,
     },
-    cost: 0,
   };
 }

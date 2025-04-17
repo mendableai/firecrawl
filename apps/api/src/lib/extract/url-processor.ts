@@ -11,7 +11,7 @@ import { getModel } from "../generic-ai";
 import { calculateCost } from "../../scraper/scrapeURL/transformers/llmExtract";
 import type { CostTracking } from "./extraction-service";
 
-export async function generateBasicCompletion(prompt: string): Promise<{ text: string, cost: number } | null> {
+export async function generateBasicCompletion(prompt: string, costTracking: CostTracking): Promise<{ text: string } | null> {
   try {
     const result = await generateText({
       model: getModel("gpt-4o", "openai"),
@@ -22,7 +22,19 @@ export async function generateBasicCompletion(prompt: string): Promise<{ text: s
         },
       }
     });
-    return { text: result.text, cost: calculateCost("openai/gpt-4o", result.usage?.promptTokens ?? 0, result.usage?.completionTokens ?? 0) };
+    costTracking.addCall({
+      type: "other",
+      metadata: {
+        module: "extract",
+        method: "generateBasicCompletion",
+      },
+      cost: calculateCost("openai/gpt-4o", result.usage?.promptTokens ?? 0, result.usage?.completionTokens ?? 0),
+      tokens: {
+        input: result.usage?.promptTokens ?? 0,
+        output: result.usage?.completionTokens ?? 0,
+      },
+    });
+    return { text: result.text };
   } catch (error) {
     console.error("Error generating basic completion:", error);
     if (error?.type == "rate_limit_error") {
@@ -36,7 +48,19 @@ export async function generateBasicCompletion(prompt: string): Promise<{ text: s
             },
           }
         });
-        return { text: result.text, cost: calculateCost("openai/gpt-4o-mini", result.usage?.promptTokens ?? 0, result.usage?.completionTokens ?? 0) };
+        costTracking.addCall({
+          type: "other",
+          metadata: {
+            module: "extract",
+            method: "generateBasicCompletion",
+          },
+          cost: calculateCost("openai/gpt-4o-mini", result.usage?.promptTokens ?? 0, result.usage?.completionTokens ?? 0),
+          tokens: {
+            input: result.usage?.promptTokens ?? 0,
+            output: result.usage?.completionTokens ?? 0,
+          },
+        });
+        return { text: result.text };
       } catch (fallbackError) {
         console.error("Error generating basic completion with fallback model:", fallbackError);
         return null;
@@ -96,13 +120,11 @@ export async function processUrl(
   if (options.prompt) {
     const res = await generateBasicCompletion(
       buildRefrasedPrompt(options.prompt, baseUrl),
+      costTracking,
     );
 
     if (res) {
       searchQuery = res.text.replace('"', "").replace("/", "") ?? options.prompt;
-      costTracking.otherCallCount++;
-      costTracking.otherCost += res.cost;
-      costTracking.totalCost += res.cost;
     }
   }
 
@@ -223,13 +245,11 @@ export async function processUrl(
     try {
       const res = await generateBasicCompletion(
         buildPreRerankPrompt(rephrasedPrompt, options.schema, baseUrl),
+        costTracking,
       );
 
       if (res) {
         rephrasedPrompt = res.text;
-        costTracking.otherCallCount++;
-        costTracking.otherCost += res.cost;
-        costTracking.totalCost += res.cost;
       } else {
         rephrasedPrompt =
           "Extract the data according to the schema: " +
@@ -262,10 +282,8 @@ export async function processUrl(
       reasoning: options.reasoning,
       multiEntityKeys: options.multiEntityKeys,
       keyIndicators: options.keyIndicators,
+      costTracking,
     });
-    costTracking.otherCallCount++;
-    costTracking.otherCost += rerankerResult.cost;
-    costTracking.totalCost += rerankerResult.cost;
     mappedLinks = rerankerResult.mapDocument;
     let tokensUsed = rerankerResult.tokensUsed;
     logger.info("Reranked! (pass 1)", {
@@ -283,10 +301,8 @@ export async function processUrl(
         reasoning: options.reasoning,
         multiEntityKeys: options.multiEntityKeys,
         keyIndicators: options.keyIndicators,
+        costTracking,
       });
-      costTracking.otherCallCount++;
-      costTracking.otherCost += rerankerResult.cost;
-      costTracking.totalCost += rerankerResult.cost;
       mappedLinks = rerankerResult.mapDocument;
       tokensUsed += rerankerResult.tokensUsed;
       logger.info("Reranked! (pass 2)", {

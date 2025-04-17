@@ -11,6 +11,7 @@ import { buildRerankerSystemPrompt } from "./build-prompts";
 import { dumpToFile } from "./helpers/dump-to-file";
 import { getModel } from "../generic-ai";
 import fs from "fs/promises";
+import { CostTracking } from "./extraction-service";
 
 const THRESHOLD_FOR_SINGLEPAGE = 0.6;
 const THRESHOLD_FOR_MULTIENTITY = 0.45;
@@ -177,6 +178,7 @@ export type RerankerOptions = {
   reasoning: string;
   multiEntityKeys: string[];
   keyIndicators: string[];
+  costTracking: CostTracking;
 };
 
 export async function rerankLinksWithLLM(
@@ -315,6 +317,13 @@ export async function rerankLinksWithLLM(
               // },
               markdown: linksContent,
               isExtractEndpoint: true,
+              costTrackingOptions: {
+                costTracking: options.costTracking,
+                metadata: {
+                  module: "extract",
+                  method: "rerankLinksWithLLM",
+                },
+              },
             });
 
             completion = await completionPromise;

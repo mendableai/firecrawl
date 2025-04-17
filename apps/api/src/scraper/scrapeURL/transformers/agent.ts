@@ -30,6 +30,7 @@ export async function performAgent(
         prompt,
         sessionId,
         scrapeId: meta.id,
+        costTracking: meta.costTracking,
       })
     } catch (error) {
       if (error instanceof Error && error.message === "Cost limit exceeded") {
@@ -49,20 +50,6 @@ export async function performAgent(
     }
     if (meta.options.formats.includes("html")) {
       document.html = html
-    }
-
-    if (document.metadata.costTracking) {
-      document.metadata.costTracking.smartScrapeCallCount++;
-      document.metadata.costTracking.smartScrapeCost = document.metadata.costTracking.smartScrapeCost + smartscrapeResults.tokenUsage;
-      document.metadata.costTracking.totalCost = document.metadata.costTracking.totalCost + smartscrapeResults.tokenUsage;
-    } else {
-      document.metadata.costTracking = {
-        smartScrapeCallCount: 1,
-        smartScrapeCost: smartscrapeResults.tokenUsage,
-        otherCallCount: 0,
-        otherCost: 0,
-        totalCost: smartscrapeResults.tokenUsage,
-      }
     }
   }
 
