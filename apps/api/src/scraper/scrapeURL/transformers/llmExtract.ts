@@ -187,6 +187,7 @@ export function calculateCost(
 ) {
   const modelCosts = {
     "openai/o3-mini": { input_cost: 1.1, output_cost: 4.4 },
+    "gpt-4o-mini": { input_cost: 0.15, output_cost: 0.6 },
     "openai/gpt-4o-mini": { input_cost: 0.15, output_cost: 0.6 },
     "openai/gpt-4o": { input_cost: 2.5, output_cost: 10 },
     "google/gemini-2.0-flash-001": { input_cost: 0.15, output_cost: 0.6 },

@@ -160,7 +160,7 @@ export async function performGenerateLlmsTxt(
 
             const { extract } = await generateCompletions({
               logger,
-              model: getModel("gpt-4o-mini"),
+              model: getModel("gpt-4o-mini", "openai"),
               options: {
                 systemPrompt: "",
                 mode: "llm",
