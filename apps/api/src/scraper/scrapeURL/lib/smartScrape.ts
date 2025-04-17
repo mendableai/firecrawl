@@ -144,6 +144,7 @@ export async function smartScrape({
     costTracking.addCall({
       type: "smartScrape",
       cost: response.tokenUsage,
+      model: "firecrawl/smart-scrape",
       metadata: {
         module: "smartScrape",
         method: "smartScrape",

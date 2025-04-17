@@ -187,6 +187,8 @@ export function calculateCost(
 ) {
   const modelCosts = {
     "openai/o3-mini": { input_cost: 1.1, output_cost: 4.4 },
+    "openai/gpt-4o-mini": { input_cost: 0.15, output_cost: 0.6 },
+    "openai/gpt-4o": { input_cost: 2.5, output_cost: 10 },
     "google/gemini-2.0-flash-001": { input_cost: 0.15, output_cost: 0.6 },
     "deepseek/deepseek-r1": { input_cost: 0.55, output_cost: 2.19 },
     "google/gemini-2.0-flash-thinking-exp:free": {
@@ -289,6 +291,7 @@ export async function generateCompletions({
             ...costTrackingOptions.metadata,
             gcDetails: "no-object",
           },
+          model: currentModel.modelId,
           cost: calculateCost(
             currentModel.modelId,
             result.usage?.promptTokens ?? 0,
@@ -340,6 +343,7 @@ export async function generateCompletions({
                 ...costTrackingOptions.metadata,
                 gcDetails: "no-object fallback",
               },
+              model: currentModel.modelId,
               cost: calculateCost(
                 currentModel.modelId,
                 result.usage?.promptTokens ?? 0,
@@ -454,6 +458,7 @@ export async function generateCompletions({
               repairUsage?.promptTokens ?? 0,
               repairUsage?.completionTokens ?? 0,
             ),
+            model: currentModel.modelId,
             tokens: {
               input: repairUsage?.promptTokens ?? 0,
               output: repairUsage?.completionTokens ?? 0,
@@ -513,6 +518,7 @@ export async function generateCompletions({
           input: result.usage?.promptTokens ?? 0,
           output: result.usage?.completionTokens ?? 0,
         },
+        model: currentModel.modelId,
         cost: calculateCost(
           currentModel.modelId,
           result.usage?.promptTokens ?? 0,
@@ -547,6 +553,7 @@ export async function generateCompletions({
               input: result.usage?.promptTokens ?? 0,
               output: result.usage?.completionTokens ?? 0,
             },
+            model: currentModel.modelId,
             cost: calculateCost(
               currentModel.modelId,
               result.usage?.promptTokens ?? 0,

@@ -28,6 +28,7 @@ export async function generateBasicCompletion(prompt: string, costTracking: Cost
         module: "extract",
         method: "generateBasicCompletion",
       },
+      model: "openai/gpt-4o",
       cost: calculateCost("openai/gpt-4o", result.usage?.promptTokens ?? 0, result.usage?.completionTokens ?? 0),
       tokens: {
         input: result.usage?.promptTokens ?? 0,
@@ -54,6 +55,7 @@ export async function generateBasicCompletion(prompt: string, costTracking: Cost
             module: "extract",
             method: "generateBasicCompletion",
           },
+          model: "openai/gpt-4o-mini",
           cost: calculateCost("openai/gpt-4o-mini", result.usage?.promptTokens ?? 0, result.usage?.completionTokens ?? 0),
           tokens: {
             input: result.usage?.promptTokens ?? 0,

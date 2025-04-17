@@ -72,6 +72,7 @@ export class CostTracking {
     type: "smartScrape" | "other",
     metadata: Record<string, any>,
     cost: number,
+    model: string,
     tokens?: {
       input: number,
       output: number,
