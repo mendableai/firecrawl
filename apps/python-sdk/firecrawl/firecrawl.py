@@ -16,12 +16,20 @@ from typing import Any, Dict, Optional, List, Union, Callable, Literal, TypeVar,
 import json
 from datetime import datetime
 import re
-
+import warnings
 import requests
 import pydantic
 import websockets
 import aiohttp
 import asyncio
+from pydantic import Field
+
+# Suppress Pydantic warnings about attribute shadowing
+warnings.filterwarnings("ignore", message="Field name \"json\" in \"FirecrawlDocument\" shadows an attribute in parent \"BaseModel\"")
+warnings.filterwarnings("ignore", message="Field name \"json\" in \"ChangeTrackingData\" shadows an attribute in parent \"BaseModel\"")
+warnings.filterwarnings("ignore", message="Field name \"schema\" in \"ExtractConfig\" shadows an attribute in parent \"BaseModel\"")
+warnings.filterwarnings("ignore", message="Field name \"schema\" in \"ExtractParams\" shadows an attribute in parent \"BaseModel\"")
+
 
 def get_version():
   try:
@@ -380,41 +388,38 @@ class ChangeTrackingData(pydantic.BaseModel):
     diff: Optional[Dict[str, Any]] = None
     json: Optional[Any] = None
     
+class SearchResponse(pydantic.BaseModel):
+    """
+    Response from the search operation.
+    """
+    success: bool
+    data: List[Dict[str, Any]]
+    warning: Optional[str] = None
+    error: Optional[str] = None
+
+class ExtractParams(pydantic.BaseModel):
+    """
+    Parameters for the extract operation.
+    """
+    prompt: Optional[str] = None
+    schema_: Optional[Any] = pydantic.Field(None, alias='schema')
+    system_prompt: Optional[str] = None
+    allow_external_links: Optional[bool] = False
+    enable_web_search: Optional[bool] = False
+    # Just for backwards compatibility
+    enableWebSearch: Optional[bool] = False
+    show_sources: Optional[bool] = False
+    agent: Optional[Dict[str, Any]] = None
+
+class ExtractResponse(pydantic.BaseModel):
+    """
+    Response from the extract operation.
+    """
+    success: bool
+    data: Optional[Any] = None
+    error: Optional[str] = None
+
 class FirecrawlApp:
-    class SearchResponse(pydantic.BaseModel):
-        """
-        Response from the search operation.
-        """
-        success: bool
-        data: List[Dict[str, Any]]
-        warning: Optional[str] = None
-        error: Optional[str] = None
-
-    class ExtractParams(pydantic.BaseModel):
-        """
-        Parameters for the extract operation.
-        """
-        prompt: Optional[str] = None
-        schema_: Optional[Any] = pydantic.Field(None, alias='schema')
-        system_prompt: Optional[str] = None
-        allow_external_links: Optional[bool] = False
-        enable_web_search: Optional[bool] = False
-        # Just for backwards compatibility
-        enableWebSearch: Optional[bool] = False
-        show_sources: Optional[bool] = False
-        agent: Optional[Dict[str, Any]] = None
-
-
-
-
-    class ExtractResponse(pydantic.BaseModel):
-        """
-        Response from the extract operation.
-        """
-        success: bool
-        data: Optional[Any] = None
-        error: Optional[str] = None
-
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
         """
         Initialize the FirecrawlApp instance with API key, API URL.
