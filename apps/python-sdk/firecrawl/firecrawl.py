@@ -97,6 +97,16 @@ class ActionsResult(pydantic.BaseModel):
     """Result of actions performed during scraping."""
     screenshots: List[str]
 
+class ChangeTrackingData(pydantic.BaseModel):
+    """
+    Data for the change tracking format.
+    """
+    previousScrapeAt: Optional[str] = None
+    changeStatus: str  # "new" | "same" | "changed" | "removed"
+    visibility: str  # "visible" | "hidden"
+    diff: Optional[Dict[str, Any]] = None
+    json: Optional[Any] = None
+
 class FirecrawlDocument(pydantic.BaseModel, Generic[T]):
     """Document retrieved or processed by Firecrawl."""
     url: Optional[str] = None
@@ -111,6 +121,7 @@ class FirecrawlDocument(pydantic.BaseModel, Generic[T]):
     actions: Optional[ActionsResult] = None
     title: Optional[str] = None  # v1 search only
     description: Optional[str] = None  # v1 search only
+    changeTracking: Optional[ChangeTrackingData] = None
 
 class LocationConfig(pydantic.BaseModel):
     """Location configuration for scraping."""
@@ -124,9 +135,9 @@ class WebhookConfig(pydantic.BaseModel):
     metadata: Optional[Dict[str, str]] = None
     events: Optional[List[Literal["completed", "failed", "page", "started"]]] = None
 
-class CommonOptions(pydantic.BaseModel):
+class ScrapeOptions(pydantic.BaseModel):
     """Parameters for scraping operations."""
-    formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None
+    formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None
     headers: Optional[Dict[str, str]] = None
     includeTags: Optional[List[str]] = None
     excludeTags: Optional[List[str]] = None
@@ -193,7 +204,7 @@ class JsonConfig(pydantic.BaseModel):
     systemPrompt: Optional[str] = None
     agent: Optional[ExtractAgent] = None
 
-class ScrapeParams(CommonOptions):
+class ScrapeParams(ScrapeOptions):
     """Parameters for scraping operations."""
     extract: Optional[JsonConfig] = None
     jsonOptions: Optional[JsonConfig] = None
@@ -235,7 +246,7 @@ class CrawlParams(pydantic.BaseModel):
     allowBackwardLinks: Optional[bool] = None
     allowExternalLinks: Optional[bool] = None
     ignoreSitemap: Optional[bool] = None
-    scrapeOptions: Optional[CommonOptions] = None
+    scrapeOptions: Optional[ScrapeOptions] = None
     webhook: Optional[Union[str, WebhookConfig]] = None
     deduplicateSimilarURLs: Optional[bool] = None
     ignoreQueryParameters: Optional[bool] = None
@@ -289,7 +300,7 @@ class ExtractParams(pydantic.BaseModel):
     includeSubdomains: Optional[bool] = None
     origin: Optional[str] = None
     showSources: Optional[bool] = None
-    scrapeOptions: Optional[CommonOptions] = None
+    scrapeOptions: Optional[ScrapeOptions] = None
 
 class ExtractResponse(pydantic.BaseModel, Generic[T]):
     """Response from extract operations."""
@@ -309,7 +320,7 @@ class SearchParams(pydantic.BaseModel):
     location: Optional[str] = None
     origin: Optional[str] = "api"
     timeout: Optional[int] = 60000
-    scrapeOptions: Optional[CommonOptions] = None
+    scrapeOptions: Optional[ScrapeOptions] = None
 
 class SearchResponse(pydantic.BaseModel):
     """Response from search operations."""
@@ -377,16 +388,6 @@ class GenerateLLMsTextStatusResponse(pydantic.BaseModel):
     status: Literal["processing", "completed", "failed"]
     error: Optional[str] = None
     expiresAt: str
-
-class ChangeTrackingData(pydantic.BaseModel):
-    """
-    Data for the change tracking format.
-    """
-    previousScrapeAt: Optional[str] = None
-    changeStatus: str  # "new" | "same" | "changed" | "removed"
-    visibility: str  # "visible" | "hidden"
-    diff: Optional[Dict[str, Any]] = None
-    json: Optional[Any] = None
     
 class SearchResponse(pydantic.BaseModel):
     """
@@ -442,7 +443,7 @@ class FirecrawlApp:
             self,
             url: str,
             *,
-            formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+            formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None,
             include_tags: Optional[List[str]] = None,
             exclude_tags: Optional[List[str]] = None,
             only_main_content: Optional[bool] = None,
@@ -568,7 +569,7 @@ class FirecrawlApp:
             country: Optional[str] = None,
             location: Optional[str] = None,
             timeout: Optional[int] = None,
-            scrape_options: Optional[CommonOptions] = None,
+            scrape_options: Optional[ScrapeOptions] = None,
             params: Optional[Union[Dict[str, Any], SearchParams]] = None,
             **kwargs) -> SearchResponse:
         """
@@ -583,7 +584,7 @@ class FirecrawlApp:
             country (Optional[str]): Country code (default: "us") 
             location (Optional[str]): Geo-targeting
             timeout (Optional[int]): Request timeout in milliseconds
-            scrape_options (Optional[CommonOptions]): Result scraping configuration
+            scrape_options (Optional[ScrapeOptions]): Result scraping configuration
             params (Optional[Union[Dict[str, Any], SearchParams]]): Additional search parameters
             **kwargs: Additional keyword arguments for future compatibility
 
@@ -664,7 +665,7 @@ class FirecrawlApp:
         allow_backward_links: Optional[bool] = None,
         allow_external_links: Optional[bool] = None,
         ignore_sitemap: Optional[bool] = None,
-        scrape_options: Optional[CommonOptions] = None,
+        scrape_options: Optional[ScrapeOptions] = None,
         webhook: Optional[Union[str, WebhookConfig]] = None,
         deduplicate_similar_urls: Optional[bool] = None,
         ignore_query_parameters: Optional[bool] = None,
@@ -686,7 +687,7 @@ class FirecrawlApp:
             allow_backward_links (Optional[bool]): Follow parent directory links
             allow_external_links (Optional[bool]): Follow external domain links
             ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
-            scrape_options (Optional[CommonOptions]): Page scraping configuration
+            scrape_options (Optional[ScrapeOptions]): Page scraping configuration
             webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
             deduplicate_similar_urls (Optional[bool]): Remove similar URLs
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
@@ -768,7 +769,7 @@ class FirecrawlApp:
         allow_backward_links: Optional[bool] = None,
         allow_external_links: Optional[bool] = None,
         ignore_sitemap: Optional[bool] = None,
-        scrape_options: Optional[CommonOptions] = None,
+        scrape_options: Optional[ScrapeOptions] = None,
         webhook: Optional[Union[str, WebhookConfig]] = None,
         deduplicate_similar_urls: Optional[bool] = None,
         ignore_query_parameters: Optional[bool] = None,
@@ -789,7 +790,7 @@ class FirecrawlApp:
             allow_backward_links (Optional[bool]): Follow parent directory links
             allow_external_links (Optional[bool]): Follow external domain links
             ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
-            scrape_options (Optional[CommonOptions]): Page scraping configuration
+            scrape_options (Optional[ScrapeOptions]): Page scraping configuration
             webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
             deduplicate_similar_urls (Optional[bool]): Remove similar URLs
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
@@ -1007,7 +1008,7 @@ class FirecrawlApp:
             allow_backward_links: Optional[bool] = None,
             allow_external_links: Optional[bool] = None,
             ignore_sitemap: Optional[bool] = None,
-            scrape_options: Optional[CommonOptions] = None,
+            scrape_options: Optional[ScrapeOptions] = None,
             webhook: Optional[Union[str, WebhookConfig]] = None,
             deduplicate_similar_urls: Optional[bool] = None,
             ignore_query_parameters: Optional[bool] = None,
@@ -1028,7 +1029,7 @@ class FirecrawlApp:
             allow_backward_links (Optional[bool]): Follow parent directory links
             allow_external_links (Optional[bool]): Follow external domain links
             ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
-            scrape_options (Optional[CommonOptions]): Page scraping configuration
+            scrape_options (Optional[ScrapeOptions]): Page scraping configuration
             webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
             deduplicate_similar_urls (Optional[bool]): Remove similar URLs
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
@@ -2922,9 +2923,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
             headers
         )
 
-        if response.status_code == 200:
+        if response.get('success'):
             try:
-                id = response.json().get('id')
+                id = response.get('id')
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
             return self._monitor_job_status(id, headers, poll_interval)
@@ -3050,7 +3051,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             headers
         )
 
-        if response.status_code == 200:
+        if response.get('status_code') == 200:
             try:
                 return BatchScrapeResponse(**response.json())
             except:
@@ -3059,7 +3060,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             self._handle_error(response, 'start batch scrape job')
 
     async def crawl_url(
-                    self,
+        self,
         url: str,
         *,
         include_paths: Optional[List[str]] = None,
@@ -3070,7 +3071,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         allow_backward_links: Optional[bool] = None,
         allow_external_links: Optional[bool] = None,
         ignore_sitemap: Optional[bool] = None,
-        scrape_options: Optional[CommonOptions] = None,
+        scrape_options: Optional[ScrapeOptions] = None,
         webhook: Optional[Union[str, WebhookConfig]] = None,
         deduplicate_similar_urls: Optional[bool] = None,
         ignore_query_parameters: Optional[bool] = None,
@@ -3092,7 +3093,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             allow_backward_links (Optional[bool]): Follow parent directory links
             allow_external_links (Optional[bool]): Follow external domain links
             ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
-            scrape_options (Optional[CommonOptions]): Page scraping configuration
+            scrape_options (Optional[ScrapeOptions]): Page scraping configuration
             webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
             deduplicate_similar_urls (Optional[bool]): Remove similar URLs
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
@@ -3148,15 +3149,15 @@ class AsyncFirecrawlApp(FirecrawlApp):
         params_dict = final_params.dict(exclude_none=True)
         params_dict['url'] = url
         params_dict['origin'] = f"python-sdk@{version}"
-
         # Make request
         headers = self._prepare_headers(idempotency_key)
         response = await self._async_post_request(
           f'{self.api_url}/v1/crawl', params_dict, headers)
 
-        if response.status_code == 200:
+        print(response)
+        if response.get('success'):
             try:
-                id = response.json().get('id')
+                id = response.get('id')
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
             return self._monitor_job_status(id, headers, poll_interval)
@@ -3176,11 +3177,12 @@ class AsyncFirecrawlApp(FirecrawlApp):
         allow_backward_links: Optional[bool] = None,
         allow_external_links: Optional[bool] = None,
         ignore_sitemap: Optional[bool] = None,
-        scrape_options: Optional[CommonOptions] = None,
+        scrape_options: Optional[ScrapeOptions] = None,
         webhook: Optional[Union[str, WebhookConfig]] = None,
         deduplicate_similar_urls: Optional[bool] = None,
         ignore_query_parameters: Optional[bool] = None,
         regex_on_full_url: Optional[bool] = None,
+        poll_interval: Optional[int] = 2,
         idempotency_key: Optional[str] = None,
         **kwargs
     ) -> CrawlResponse:
@@ -3197,7 +3199,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             allow_backward_links (Optional[bool]): Follow parent directory links
             allow_external_links (Optional[bool]): Follow external domain links
             ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
-            scrape_options (Optional[CommonOptions]): Page scraping configuration
+            scrape_options (Optional[ScrapeOptions]): Page scraping configuration
             webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
             deduplicate_similar_urls (Optional[bool]): Remove similar URLs
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
@@ -3262,9 +3264,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
           headers
         )
 
-        if response.status_code == 200:
+        if response.get('success'):
             try:
-                return CrawlResponse(**response.json())
+                return CrawlResponse(**response)
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
@@ -3303,7 +3305,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             headers
         )
 
-        if status_data['status'] == 'completed':
+        if status_data.get('status') == 'completed':
             if 'data' in status_data:
                 data = status_data['data']
                 while 'next' in status_data:
@@ -3317,26 +3319,24 @@ class AsyncFirecrawlApp(FirecrawlApp):
                     data.extend(next_data.get('data', []))
                     status_data = next_data
                 status_data['data'] = data
-
-        response = {
-            'status': status_data.get('status'),
-            'total': status_data.get('total'),
-            'completed': status_data.get('completed'),
-            'creditsUsed': status_data.get('creditsUsed'),
-            'expiresAt': status_data.get('expiresAt'),
-            'data': status_data.get('data')
-        }
+        # Create CrawlStatusResponse object from status data
+        response = CrawlStatusResponse(
+            status=status_data.get('status'),
+            total=status_data.get('total'),
+            completed=status_data.get('completed'),
+            creditsUsed=status_data.get('creditsUsed'),
+            expiresAt=status_data.get('expiresAt'),
+            data=status_data.get('data'),
+            success=False if 'error' in status_data else True
+        )
 
         if 'error' in status_data:
-            response['error'] = status_data['error']
+            response.error = status_data.get('error')
 
         if 'next' in status_data:
-            response['next'] = status_data['next']
+            response.next = status_data.get('next')
 
-        return {
-            'success': False if 'error' in status_data else True,
-            **response
-        }
+        return response
 
     async def _async_monitor_job_status(self, id: str, headers: Dict[str, str], poll_interval: int = 2) -> CrawlStatusResponse:
         """
@@ -3359,7 +3359,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                 headers
             )
 
-            if status_data['status'] == 'completed':
+            if status_data.get('status') == 'completed':
                 if 'data' in status_data:
                     data = status_data['data']
                     while 'next' in status_data:
@@ -3376,15 +3376,22 @@ class AsyncFirecrawlApp(FirecrawlApp):
                     return status_data
                 else:
                     raise Exception('Job completed but no data was returned')
-            elif status_data['status'] in ['active', 'paused', 'pending', 'queued', 'waiting', 'scraping']:
+            elif status_data.get('status') in ['active', 'paused', 'pending', 'queued', 'waiting', 'scraping']:
                 await asyncio.sleep(max(poll_interval, 2))
             else:
                 raise Exception(f'Job failed or was stopped. Status: {status_data["status"]}')
 
     async def map_url(
-            self,
-            url: str,
-            params: Optional[MapParams] = None) -> MapResponse:
+        self,
+        url: str,
+        *,
+        search: Optional[str] = None,
+        ignore_sitemap: Optional[bool] = None,
+        include_subdomains: Optional[bool] = None,
+        sitemap_only: Optional[bool] = None,
+        limit: Optional[int] = None,
+        timeout: Optional[int] = None,
+        params: Optional[MapParams] = None) -> MapResponse:
         """
         Asynchronously map and discover links from a URL.
 
@@ -3409,21 +3416,40 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Raises:
           Exception: If mapping fails
         """
-        headers = self._prepare_headers()
-        json_data = {'url': url}
+        map_params = {}
         if params:
-            json_data.update(params)
-        json_data['origin'] = f"python-sdk@{version}"
+            map_params.update(params.dict(exclude_none=True))
 
+        # Add individual parameters
+        if search is not None:
+            map_params['search'] = search
+        if ignore_sitemap is not None:
+            map_params['ignoreSitemap'] = ignore_sitemap
+        if include_subdomains is not None:
+            map_params['includeSubdomains'] = include_subdomains
+        if sitemap_only is not None:
+            map_params['sitemapOnly'] = sitemap_only
+        if limit is not None:
+            map_params['limit'] = limit
+        if timeout is not None:
+            map_params['timeout'] = timeout
+
+        # Create final params object
+        final_params = MapParams(**map_params)
+        params_dict = final_params.dict(exclude_none=True)
+        params_dict['url'] = url
+        params_dict['origin'] = f"python-sdk@{version}"
+
+        # Make request
         endpoint = f'/v1/map'
         response = await self._async_post_request(
             f'{self.api_url}{endpoint}',
-            json_data,
-            headers
+            params_dict,
+            headers={"Authorization": f"Bearer {self.api_key}"}
         )
 
         if response.get('success') and 'links' in response:
-            return response
+            return MapResponse(**response)
         elif 'error' in response:
             raise Exception(f'Failed to map URL. Error: {response["error"]}')
         else:
@@ -3472,14 +3498,14 @@ class AsyncFirecrawlApp(FirecrawlApp):
             if hasattr(schema, 'model_json_schema'):
                 schema = schema.model_json_schema()
 
-        request_data = {
-            'urls': urls,
-            'allowExternalLinks': params.get('allow_external_links', params.get('allowExternalLinks', False)),
-            'enableWebSearch': params.get('enable_web_search', params.get('enableWebSearch', False)),
-            'showSources': params.get('show_sources', params.get('showSources', False)),
-            'schema': schema,
-            'origin': f'python-sdk@{version}'
-        }
+        request_data = ExtractResponse(
+            urls=urls,
+            allowExternalLinks=params.get('allow_external_links', params.get('allowExternalLinks', False)),
+            enableWebSearch=params.get('enable_web_search', params.get('enableWebSearch', False)),
+            showSources=params.get('show_sources', params.get('showSources', False)),
+            schema=schema,
+            origin=f'python-sdk@{version}'
+        )
 
         if params.get('prompt'):
             request_data['prompt'] = params['prompt']
@@ -3562,14 +3588,14 @@ class AsyncFirecrawlApp(FirecrawlApp):
                     status_data = next_data
                 status_data['data'] = data
 
-        response = {
-            'status': status_data.get('status'),
-            'total': status_data.get('total'),
-            'completed': status_data.get('completed'),
-            'creditsUsed': status_data.get('creditsUsed'),
-            'expiresAt': status_data.get('expiresAt'),
-            'data': status_data.get('data')
-        }
+        response = BatchScrapeStatusResponse(
+            status=status_data.get('status'),
+            total=status_data.get('total'),
+            completed=status_data.get('completed'),
+            creditsUsed=status_data.get('creditsUsed'),
+            expiresAt=status_data.get('expiresAt'),
+            data=status_data.get('data')
+        )
 
         if 'error' in status_data:
             response['error'] = status_data['error']
@@ -3726,14 +3752,14 @@ class AsyncFirecrawlApp(FirecrawlApp):
             if hasattr(schema, 'model_json_schema'):
                 schema = schema.model_json_schema()
 
-        request_data = {
-            'urls': urls or [],
-            'allowExternalLinks': allow_external_links,
-            'enableWebSearch': enable_web_search,
-            'showSources': show_sources,
-            'schema': schema,
-            'origin': f'python-sdk@{version}'
-        }
+        request_data = ExtractResponse(
+            urls=urls or [],
+            allowExternalLinks=allow_external_links,
+            enableWebSearch=enable_web_search,
+            showSources=show_sources,
+            schema=schema,
+            origin=f'python-sdk@{version}'
+        )
 
         if prompt:
             request_data['prompt'] = prompt
@@ -3810,7 +3836,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
             await asyncio.sleep(2)
 
-        return {'success': False, 'error': 'LLMs.txt generation job terminated unexpectedly'}
+        return GenerateLLMsTextStatusResponse(success=False, error='LLMs.txt generation job terminated unexpectedly')
 
     async def async_generate_llms_text(
             self,
@@ -3981,7 +4007,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
             await asyncio.sleep(2)
 
-        return {'success': False, 'error': 'Deep research job terminated unexpectedly'}
+        return DeepResearchStatusResponse(success=False, error='Deep research job terminated unexpectedly')
 
     async def async_deep_research(
             self,
@@ -4088,7 +4114,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             country: Optional[str] = None,
             location: Optional[str] = None,
             timeout: Optional[int] = None,
-            scrape_options: Optional[CommonOptions] = None,
+            scrape_options: Optional[ScrapeOptions] = None,
             params: Optional[Union[Dict[str, Any], SearchParams]] = None,
             **kwargs) -> SearchResponse:
         """
@@ -4103,7 +4129,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             country (Optional[str]): Country code (default: "us") 
             location (Optional[str]): Geo-targeting
             timeout (Optional[int]): Request timeout in milliseconds
-            scrape_options (Optional[CommonOptions]): Result scraping configuration
+            scrape_options (Optional[ScrapeOptions]): Result scraping configuration
             params (Optional[Union[Dict[str, Any], SearchParams]]): Additional search parameters
             **kwargs: Additional keyword arguments for future compatibility
 
