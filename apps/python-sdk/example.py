@@ -1,27 +1,27 @@
-from firecrawl.firecrawl import ExtractConfig, FirecrawlApp
+from firecrawl import JsonConfig, FirecrawlApp
 from pydantic import BaseModel, Field
 from typing import List
 import time
 app = FirecrawlApp(api_url="https://api.firecrawl.dev")
 
-# # Scrape a website:
+# Scrape a website:
 scrape_result = app.scrape_url('example.com', formats=["markdown", "html"])
 print(scrape_result.markdown)
 
 
-# # Test batch scrapeq
+# # # Test batch scrape
 urls = ['https://example.com', 'https://docs.firecrawl.dev']
-# Synchronous batch scrape
+# # Synchronous batch scrape
 batch_result = app.batch_scrape_urls(urls, formats=["markdown", "html"])
 print("Synchronous Batch Scrape Result:")
 print(batch_result.data[0].markdown)
 
-# # Asynchronous batch scrape
+# # # Asynchronous batch scrape
 async_batch_result = app.async_batch_scrape_urls(urls, formats=["markdown", "html"])
 print("\nAsynchronous Batch Scrape Result:")
 print(async_batch_result)
 
-# Crawl a website:
+# # Crawl a website:
 crawl_result = app.crawl_url('firecrawl.dev', exclude_paths=['blog/*'])
 print(crawl_result.data[0].markdown)
 
@@ -53,13 +53,13 @@ class ArticleSchema(BaseModel):
 class TopArticlesSchema(BaseModel):
     top: List[ArticleSchema] = Field(..., description="Top 5 stories")
 
-extract_config = ExtractConfig(schema=TopArticlesSchema.model_json_schema())
+extract_config = JsonConfig(schema=TopArticlesSchema.model_json_schema())
 
 llm_extraction_result = app.scrape_url('https://news.ycombinator.com', formats=["extract"], extract=extract_config)
 
 print(llm_extraction_result.extract)
 
-# # Define schema to extract contents into using json schema
+# Define schema to extract contents into using json schema
 json_schema = {
   "type": "object",
   "properties": {
@@ -75,20 +75,18 @@ json_schema = {
         },
         "required": ["title", "points", "by", "commentsURL"]
       },
-      "minItems": 5,
-      "maxItems": 5,
       "description": "Top 5 stories on Hacker News"
     }
   },
   "required": ["top"]
 }
 
-extract_config = ExtractConfig(extractionSchema=json_schema, mode="llm-extraction", pageOptions={"onlyMainContent": True})
-llm_extraction_result = app.scrape_url('https://news.ycombinator.com', formats=["extract"], extract=extract_config)
+extract_config = JsonConfig(schema=json_schema)
+llm_extraction_result = app.scrape_url('https://news.ycombinator.com', formats=["json"], json_options=extract_config)
 
-print(llm_extraction_result.extract)
+print(llm_extraction_result.json)
 
-# print(llm_extraction_result['llm_extraction'])
+print(llm_extraction_result['llm_extraction'])
 
 
 # Map a website:
@@ -107,6 +105,20 @@ extract_schema = ExtractSchema.schema()
 # Perform the extraction
 extract_result = app.extract(['https://firecrawl.dev'], prompt="Extract the title, description, and links from the website", schema=extract_schema)
 print(extract_result)
+
+
+# Deep research example
+research_result = app.deep_research(
+    "What are the latest developments in large language models?",
+    max_urls=4
+)
+print("Research Results:", research_result)
+
+# Generate LLMs.txt example
+llms_result = app.generate_llms_text(
+    "https://firecrawl.dev")
+print("LLMs.txt Results:", llms_result)
+
 
 # Crawl a website with WebSockets:
 # inside an async function...
@@ -135,3 +147,14 @@ async def start_crawl_and_watch():
 
     # Start the watcher
     await watcher.connect()
+
+
+class ExtractSchema(BaseModel):
+    company_mission: str
+    supports_sso: bool
+    is_open_source: bool
+    is_in_yc: bool
+
+extract_config = JsonConfig(schema=ExtractSchema.model_json_schema())
+data = app.scrape_url('https://docs.firecrawl.dev/', formats=['json'], json_options=extract_config)
+print(data.json)
