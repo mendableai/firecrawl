@@ -411,12 +411,12 @@ class ExtractParams(pydantic.BaseModel):
     show_sources: Optional[bool] = False
     agent: Optional[Dict[str, Any]] = None
 
-class ExtractResponse(pydantic.BaseModel):
+class ExtractResponse(pydantic.BaseModel, Generic[T]):
     """
     Response from the extract operation.
     """
     success: bool
-    data: Optional[Any] = None
+    data: Optional[T] = None
     error: Optional[str] = None
 
 class FirecrawlApp:
