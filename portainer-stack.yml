@@ -1,0 +1,188 @@
+version: '3.8' # Versão compatível com Portainer Swarm
+
+# Definições comuns reutilizadas nos serviços abaixo
+x-common-service: &common-service
+  # NOTA IMPORTANTE PARA PORTAINER/SWARM:
+  # Se o Portainer/Swarm não tiver acesso ao código-fonte nos nós para construir as imagens,
+  # comente a linha 'build:' e descomente (ou adicione) uma linha 'image:'
+  # apontando para uma imagem pré-construída em um registro (ex: Docker Hub, GHCR).
+  # Exemplo: image: seu-registro/firecrawl-api:latest
+  build:
+    context: ./apps/api # Caminho relativo ao local do docker-compose/stack file
+  # image: ghcr.io/mendableai/firecrawl # Exemplo usando imagem pré-construída
+
+  ulimits:
+    nofile:
+      soft: 65535
+      hard: 65535
+  networks:
+    # Conecta à rede externa definida no final do arquivo
+    - automatizaseNet
+  # Garante que os containers possam acessar o host (se necessário)
+  extra_hosts:
+    - "host.docker.internal:host-gateway"
+  # Configuração de deploy padrão para Swarm (similar ao n8n.yml)
+  deploy:
+    mode: replicated
+    replicas: 1
+    placement:
+      constraints:
+        - node.role == manager # Executa nos nós manager por padrão
+    # Ajuste os limites conforme sua necessidade
+    resources:
+      limits:
+        cpus: "1.0" # Exemplo: 1 CPU
+        memory: 2048M # Exemplo: 2GB RAM
+
+x-common-env: &common-env
+  # -- Configurações Principais --
+  # As variáveis REDIS_URL e PLAYWRIGHT_MICROSERVICE_URL usam os serviços internos da stack.
+  REDIS_URL: redis://redis:6379
+  REDIS_RATE_LIMIT_URL: redis://redis:6379
+  PLAYWRIGHT_MICROSERVICE_URL: http://playwright-service:3000/scrape
+  LOGGING_LEVEL: INFO
+
+  # -- Variáveis Essenciais (Definidas no .env ou Portainer) --
+  # Estas DEVEM ser fornecidas como variáveis de ambiente no Portainer.
+  OPENAI_API_KEY: ${OPENAI_API_KEY}
+  USE_DB_AUTHENTICATION: ${USE_DB_AUTHENTICATION:-false} # Padrão 'false' se não definida
+  # As variáveis Supabase só são lidas se USE_DB_AUTHENTICATION for 'true'
+  SUPABASE_ANON_TOKEN: ${SUPABASE_ANON_TOKEN}
+  SUPABASE_URL: ${SUPABASE_URL}
+  SUPABASE_SERVICE_TOKEN: ${SUPABASE_SERVICE_TOKEN}
+
+  # -- Configurações Opcionais (com padrões ou vazias) --
+  # Podem ser sobrescritas via variáveis de ambiente no Portainer se necessário.
+  OPENAI_BASE_URL: ""
+  MODEL_NAME: gpt-3.5-turbo
+  MODEL_EMBEDDING_NAME: text-embedding-ada-002
+  OLLAMA_BASE_URL: ""
+  SLACK_WEBHOOK_URL: ""
+  BULL_AUTH_KEY: ""
+  TEST_API_KEY: ""
+  POSTHOG_API_KEY: ""
+  POSTHOG_HOST: https://app.posthog.com
+  SCRAPING_BEE_API_KEY: ""
+  SELF_HOSTED_WEBHOOK_URL: ""
+  SERPER_API_KEY: ""
+  SEARCHAPI_API_KEY: ""
+  PROXY_SERVER: ""
+  PROXY_USERNAME: ""
+  PROXY_PASSWORD: ""
+  SEARXNG_ENDPOINT: ""
+  SEARXNG_ENGINES: google,bing
+  SEARXNG_CATEGORIES: general
+  BLOCK_MEDIA: "true" # Playwright service usa essa variável separadamente
+
+services:
+  playwright-service:
+    # NOTA IMPORTANTE PARA PORTAINER/SWARM: Veja a nota em 'x-common-service' sobre build vs image.
+    build:
+      context: ./apps/playwright-service-ts # Caminho relativo ao local do docker-compose/stack file
+    # image: seu-registro/firecrawl-playwright:latest # Exemplo
+    environment:
+      PORT: 3000 # Porta interna do serviço
+      # Estas são lidas diretamente pelo serviço Playwright
+      PROXY_SERVER: ${PROXY_SERVER:-""} # Pega do ambiente Portainer ou fica vazio
+      PROXY_USERNAME: ${PROXY_USERNAME:-""}
+      PROXY_PASSWORD: ${PROXY_PASSWORD:-""}
+      BLOCK_MEDIA: ${BLOCK_MEDIA:-"true"}
+    networks:
+      - automatizaseNet
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5" # Exemplo: Meio CPU
+          memory: 4096M # Aumentado para 4GB RAM
+
+  api:
+    <<: *common-service # Reutiliza a configuração comum, incluindo deploy e network
+    environment:
+      <<: *common-env # Reutiliza as variáveis de ambiente comuns
+      HOST: "0.0.0.0"
+      # A porta interna é configurada separadamente via variável PORT
+      # Não precisa estar explicitamente aqui se já está em common-env ou via label Traefik
+      PORT: ${INTERNAL_PORT:-3002}
+      FLY_PROCESS_GROUP: app # Pode ser relevante ou não dependendo do ambiente
+    depends_on:
+      - redis
+      - playwright-service
+    # 'ports' removido - Traefik gerenciará o acesso externo
+    # command mantido, requer pnpm na imagem
+    command: [ "pnpm", "run", "start:production" ]
+    # Labels do Traefik para expor a API
+    deploy:
+      # Sobrescreve/adiciona ao deploy de x-common-service
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 4096M # Aumentado para 4GB RAM
+      labels:
+        - traefik.enable=true
+        # IMPORTANTE: Altere 'firecrawl.automatizase.cloud' para o hostname desejado!
+        - traefik.http.routers.firecrawl-api.rule=Host(`firecrawl.automatizase.cloud`)
+        - traefik.http.routers.firecrawl-api.entrypoints=websecure
+        - traefik.http.routers.firecrawl-api.tls.certresolver=letsencryptresolver # Use seu cert resolver
+        - traefik.http.routers.firecrawl-api.service=firecrawl-api-service
+        # Aponta para a porta interna definida na variável de ambiente PORT (padrão 3002)
+        - traefik.http.services.firecrawl-api-service.loadbalancer.server.port=${INTERNAL_PORT:-3002}
+        - traefik.http.services.firecrawl-api-service.loadbalancer.passHostHeader=true
+        # Middleware de compressão (opcional, mas recomendado)
+        # - traefik.http.routers.firecrawl-api.middlewares=traefik-compress@file
+
+  worker:
+    <<: *common-service # Reutiliza a configuração comum, incluindo deploy e network
+    environment:
+      <<: *common-env # Reutiliza as variáveis de ambiente comuns
+      FLY_PROCESS_GROUP: worker # Pode ser relevante ou não
+    depends_on:
+      - redis
+      - playwright-service
+      - api
+    # command mantido, requer pnpm na imagem
+    command: [ "pnpm", "run", "workers" ]
+    # Workers geralmente não precisam de labels do Traefik pois não são acessados externamente
+    deploy:
+      # Sobrescreve/adiciona ao deploy de x-common-service
+      mode: replicated
+      replicas: 1 # Pode aumentar as réplicas se precisar de mais workers
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: 4096M # Aumentado para 4GB RAM
+
+  redis:
+    # Usa a imagem oficial do Redis
+    image: redis:alpine
+    networks:
+      - automatizaseNet
+    command: redis-server --bind 0.0.0.0 # Permite conexões de outros containers na rede
+    deploy:
+      mode: replicated
+      replicas: 1
+      placement:
+        constraints:
+          - node.role == manager
+      resources:
+        limits:
+          cpus: "0.5" # Exemplo
+          memory: 512M # Exemplo
+
+# Definição da rede externa que já deve existir no seu Swarm
+networks:
+  automatizaseNet:
+    external: true
+    name: automatizaseNet # Garanta que o nome aqui bate exatamente com o nome da rede no Swarm 
