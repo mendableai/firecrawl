@@ -364,7 +364,6 @@ class ChangeTrackingData(pydantic.BaseModel):
     diff: Optional[Dict[str, Any]] = None
     json: Optional[Any] = None
 
-class FirecrawlApp:
     class SearchResponse(pydantic.BaseModel):
         """
         Response from the search operation.
@@ -398,6 +397,9 @@ class FirecrawlApp:
         success: bool
         data: Optional[Any] = None
         error: Optional[str] = None
+
+class FirecrawlApp:
+
 
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
         """
