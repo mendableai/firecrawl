@@ -16,12 +16,20 @@ from typing import Any, Dict, Optional, List, Union, Callable, Literal, TypeVar,
 import json
 from datetime import datetime
 import re
-
+import warnings
 import requests
 import pydantic
 import websockets
 import aiohttp
 import asyncio
+from pydantic import Field
+
+# Suppress Pydantic warnings about attribute shadowing
+warnings.filterwarnings("ignore", message="Field name \"json\" in \"FirecrawlDocument\" shadows an attribute in parent \"BaseModel\"")
+warnings.filterwarnings("ignore", message="Field name \"json\" in \"ChangeTrackingData\" shadows an attribute in parent \"BaseModel\"")
+warnings.filterwarnings("ignore", message="Field name \"schema\" in \"ExtractConfig\" shadows an attribute in parent \"BaseModel\"")
+warnings.filterwarnings("ignore", message="Field name \"schema\" in \"ExtractParams\" shadows an attribute in parent \"BaseModel\"")
+
 
 def get_version():
   try:
