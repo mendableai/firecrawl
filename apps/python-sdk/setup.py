@@ -32,7 +32,9 @@ setup(
         'python-dotenv',
         'websockets',
         'asyncio',
-        'nest-asyncio'
+        'nest-asyncio',
+        'pydantic',
+        'aiohttp'
     ],
     python_requires=">=3.8",
     classifiers=[

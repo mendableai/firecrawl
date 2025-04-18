@@ -550,9 +550,24 @@ export interface GenerateLLMsTextStatusResponse {
 export default class FirecrawlApp {
   public apiKey: string;
   public apiUrl: string;
-
+  public version: string = "1.19.1";
+  
   private isCloudService(url: string): boolean {
     return url.includes('api.firecrawl.dev');
+  }
+
+  private async getVersion(): Promise<string> {
+    try {
+      const packageJson = await import('../package.json', { assert: { type: 'json' } });
+      return packageJson.default.version;
+    } catch (error) {
+      console.error("Error getting version:", error);
+      return "1.19.1";
+    }
+  }
+
+  private async init() {
+    this.version = await this.getVersion();
   }
 
   /**
@@ -568,6 +583,7 @@ export default class FirecrawlApp {
 
     this.apiKey = apiKey || '';
     this.apiUrl = baseUrl;
+    this.init();
   }
 
   /**
@@ -584,7 +600,7 @@ export default class FirecrawlApp {
       "Content-Type": "application/json",
       Authorization: `Bearer ${this.apiKey}`,
     } as AxiosRequestHeaders;
-    let jsonData: any = { url, ...params };
+    let jsonData: any = { url, ...params, origin: `js-sdk@${this.version}` };
     if (jsonData?.extract?.schema) {
       let schema = jsonData.extract.schema;
 
@@ -666,7 +682,7 @@ export default class FirecrawlApp {
       lang: params?.lang ?? "en",
       country: params?.country ?? "us",
       location: params?.location,
-      origin: params?.origin ?? "api",
+      origin: `js-sdk@${this.version}`,
       timeout: params?.timeout ?? 60000,
       scrapeOptions: params?.scrapeOptions ?? { formats: [] },
     };
@@ -738,7 +754,7 @@ export default class FirecrawlApp {
     idempotencyKey?: string
   ): Promise<CrawlStatusResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
-    let jsonData: any = { url, ...params };
+    let jsonData: any = { url, ...params, origin: `js-sdk@${this.version}` };
     try {
       const response: AxiosResponse = await this.postRequest(
         this.apiUrl + `/v1/crawl`,
@@ -767,7 +783,7 @@ export default class FirecrawlApp {
     idempotencyKey?: string
   ): Promise<CrawlResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
-    let jsonData: any = { url, ...params };
+    let jsonData: any = { url, ...params, origin: `js-sdk@${this.version}` };
     try {
       const response: AxiosResponse = await this.postRequest(
         this.apiUrl + `/v1/crawl`,
@@ -943,7 +959,7 @@ export default class FirecrawlApp {
    */
   async mapUrl(url: string, params?: MapParams): Promise<MapResponse | ErrorResponse> {
     const headers = this.prepareHeaders();
-    let jsonData: { url: string } & MapParams = { url, ...params };
+    let jsonData: any = { url, ...params, origin: `js-sdk@${this.version}` };
 
     try {
       const response: AxiosResponse = await this.postRequest(
@@ -981,7 +997,7 @@ export default class FirecrawlApp {
     ignoreInvalidURLs?: boolean,
   ): Promise<BatchScrapeStatusResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
-    let jsonData: any = { urls, webhook, ignoreInvalidURLs, ...params };
+    let jsonData: any = { urls, webhook, ignoreInvalidURLs, ...params, origin: `js-sdk@${this.version}` };
     if (jsonData?.extract?.schema) {
       let schema = jsonData.extract.schema;
 
@@ -1046,7 +1062,7 @@ export default class FirecrawlApp {
     ignoreInvalidURLs?: boolean,
   ): Promise<BatchScrapeResponse | ErrorResponse> {
     const headers = this.prepareHeaders(idempotencyKey);
-    let jsonData: any = { urls, webhook, ignoreInvalidURLs, ...(params ?? {}) };
+    let jsonData: any = { urls, webhook, ignoreInvalidURLs, ...params, origin: `js-sdk@${this.version}` };
     try {
       const response: AxiosResponse = await this.postRequest(
         this.apiUrl + `/v1/batch/scrape`,
@@ -1220,7 +1236,7 @@ export default class FirecrawlApp {
     try {
       const response: AxiosResponse = await this.postRequest(
         this.apiUrl + `/v1/extract`,
-        { ...jsonData, schema: jsonSchema, origin: params?.origin || "api-sdk" },
+        { ...jsonData, schema: jsonSchema, origin: `js-sdk@${this.version}` },
         headers
       );
 
@@ -1288,7 +1304,7 @@ export default class FirecrawlApp {
     try {
       const response: AxiosResponse = await this.postRequest(
         this.apiUrl + `/v1/extract`,
-        { ...jsonData, schema: jsonSchema },
+        { ...jsonData, schema: jsonSchema, origin: `js-sdk@${this.version}` },
         headers
       );
 
@@ -1579,7 +1595,7 @@ export default class FirecrawlApp {
    */
   async asyncDeepResearch(query: string, params: DeepResearchParams<zt.ZodSchema>): Promise<DeepResearchResponse | ErrorResponse> {
     const headers = this.prepareHeaders();
-    let jsonData: any = { query, ...params };
+    let jsonData: any = { query, ...params, origin: `js-sdk@${this.version}` };
 
     if (jsonData?.jsonOptions?.schema) {
       let schema = jsonData.jsonOptions.schema;
@@ -1587,7 +1603,7 @@ export default class FirecrawlApp {
       try {
         schema = zodToJsonSchema(schema);
       } catch (error) {
-        
+        // Ignore error if schema can't be parsed as Zod
       }
       jsonData = {
         ...jsonData,
@@ -1733,9 +1749,10 @@ export default class FirecrawlApp {
   async __asyncDeepResearch(topic: string, params: DeepResearchParams): Promise<DeepResearchResponse | ErrorResponse> {
     const headers = this.prepareHeaders();
     try {
+      let jsonData: any = { topic, ...params, origin: `js-sdk@${this.version}` };
       const response: AxiosResponse = await this.postRequest(
         `${this.apiUrl}/v1/deep-research`,
-        { topic, ...params },
+        jsonData,
         headers
       );
 
@@ -1845,10 +1862,11 @@ export default class FirecrawlApp {
    */
   async asyncGenerateLLMsText(url: string, params?: GenerateLLMsTextParams): Promise<GenerateLLMsTextResponse | ErrorResponse> {
     const headers = this.prepareHeaders();
+    let jsonData: any = { url, ...params, origin: `js-sdk@${this.version}` };
     try {
       const response: AxiosResponse = await this.postRequest(
         `${this.apiUrl}/v1/llmstxt`,
-        { url, ...params },
+        jsonData,
         headers
       );
 
