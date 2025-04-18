@@ -84,6 +84,15 @@ class FirecrawlDocumentMetadata(pydantic.BaseModel):
     statusCode: Optional[int] = None
     error: Optional[str] = None
 
+class AgentOptions(pydantic.BaseModel):
+    """Configuration for the agent."""
+    model: Literal["FIRE-1"] = "FIRE-1"
+    prompt: Optional[str] = None
+
+class AgentOptionsExtract(pydantic.BaseModel):
+    """Configuration for the agent in extract operations."""
+    model: Literal["FIRE-1"] = "FIRE-1"
+
 class ActionsResult(pydantic.BaseModel):
     """Result of actions performed during scraping."""
     screenshots: List[str]
@@ -172,17 +181,24 @@ class ExecuteJavascriptAction(pydantic.BaseModel):
     type: Literal["executeJavascript"]
     script: str
 
+
+class ExtractAgent(pydantic.BaseModel):
+    """Configuration for the agent in extract operations."""
+    model: Literal["FIRE-1"] = "FIRE-1"
+
 class ExtractConfig(pydantic.BaseModel):
     """Configuration for extraction."""
     prompt: Optional[str] = None
     schema: Optional[Any] = None
     systemPrompt: Optional[str] = None
+    agent: Optional[ExtractAgent] = None
 
 class ScrapeParams(CommonOptions):
     """Parameters for scraping operations."""
     extract: Optional[ExtractConfig] = None
     jsonOptions: Optional[ExtractConfig] = None
     actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None
+    agent: Optional[AgentOptions] = None
 
 class ScrapeResponse(FirecrawlDocument[T], Generic[T]):
     """Response from scraping operations."""
@@ -371,44 +387,39 @@ class ChangeTrackingData(pydantic.BaseModel):
     visibility: str  # "visible" | "hidden"
     diff: Optional[Dict[str, Any]] = None
     json: Optional[Any] = None
+    
+class SearchResponse(pydantic.BaseModel):
+    """
+    Response from the search operation.
+    """
+    success: bool
+    data: List[Dict[str, Any]]
+    warning: Optional[str] = None
+    error: Optional[str] = None
 
-    class SearchResponse(pydantic.BaseModel):
-        """
-        Response from the search operation.
-        """
-        success: bool
-        data: List[Dict[str, Any]]
-        warning: Optional[str] = None
-        error: Optional[str] = None
+class ExtractParams(pydantic.BaseModel):
+    """
+    Parameters for the extract operation.
+    """
+    prompt: Optional[str] = None
+    schema_: Optional[Any] = pydantic.Field(None, alias='schema')
+    system_prompt: Optional[str] = None
+    allow_external_links: Optional[bool] = False
+    enable_web_search: Optional[bool] = False
+    # Just for backwards compatibility
+    enableWebSearch: Optional[bool] = False
+    show_sources: Optional[bool] = False
+    agent: Optional[Dict[str, Any]] = None
 
-    class ExtractParams(pydantic.BaseModel):
-        """
-        Parameters for the extract operation.
-        """
-        prompt: Optional[str] = None
-        schema_: Optional[Any] = pydantic.Field(None, alias='schema')
-        system_prompt: Optional[str] = None
-        allow_external_links: Optional[bool] = False
-        enable_web_search: Optional[bool] = False
-        # Just for backwards compatibility
-        enableWebSearch: Optional[bool] = False
-        show_sources: Optional[bool] = False
-        agent: Optional[Dict[str, Any]] = None
-
-
-
-
-    class ExtractResponse(pydantic.BaseModel):
-        """
-        Response from the extract operation.
-        """
-        success: bool
-        data: Optional[Any] = None
-        error: Optional[str] = None
+class ExtractResponse(pydantic.BaseModel):
+    """
+    Response from the extract operation.
+    """
+    success: bool
+    data: Optional[Any] = None
+    error: Optional[str] = None
 
 class FirecrawlApp:
-
-
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
         """
         Initialize the FirecrawlApp instance with API key, API URL.
