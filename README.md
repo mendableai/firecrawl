@@ -481,17 +481,15 @@ app = FirecrawlApp(api_key="fc-YOUR_API_KEY")
 # Scrape a website:
 scrape_status = app.scrape_url(
   'https://firecrawl.dev', 
-  params={'formats': ['markdown', 'html']}
+  formats=["markdown", "html"]
 )
 print(scrape_status)
 
 # Crawl a website:
 crawl_status = app.crawl_url(
-  'https://firecrawl.dev', 
-  params={
-    'limit': 100, 
-    'scrapeOptions': {'formats': ['markdown', 'html']}
-  },
+  'https://firecrawl.dev',
+  limit=100,
+  scrapeOptions'={'formats': ['markdown', 'html']}
   poll_interval=30
 )
 print(crawl_status)
@@ -502,27 +500,20 @@ print(crawl_status)
 With LLM extraction, you can easily extract structured data from any URL. We support pydantic schemas to make it easier for you too. Here is how you to use it:
 
 ```python
-
-from firecrawl.firecrawl import FirecrawlApp
-
-app = FirecrawlApp(api_key="fc-YOUR_API_KEY")
-
 class ArticleSchema(BaseModel):
     title: str
-    points: int
+    points: int 
     by: str
     commentsURL: str
 
 class TopArticlesSchema(BaseModel):
-    top: List[ArticleSchema] = Field(..., max_items=5, description="Top 5 stories")
+    top: List[ArticleSchema] = Field(..., description="Top 5 stories")
 
-data = app.scrape_url('https://news.ycombinator.com', {
-    'formats': ['json'],
-    'jsonOptions': {
-        'schema': TopArticlesSchema.model_json_schema()
-    }
-})
-print(data["json"])
+json_config = ExtractConfig(schema=TopArticlesSchema.model_json_schema())
+
+llm_extraction_result = app.scrape_url('https://news.ycombinator.com', formats=["json"], json=json_config)
+
+print(llm_extraction_result.json)
 ```
 
 ## Using the Node SDK
