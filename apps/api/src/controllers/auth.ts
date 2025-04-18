@@ -148,7 +148,8 @@ export async function getACUC(
 ): Promise<AuthCreditUsageChunk | null> {
   let isExtract =
       mode === RateLimiterMode.Extract ||
-      mode === RateLimiterMode.ExtractStatus;
+      mode === RateLimiterMode.ExtractStatus ||
+      mode === RateLimiterMode.ExtractAgentPreview;
 
   if (api_key === process.env.PREVIEW_TOKEN) {
     const acuc = mockPreviewACUC(api_key, isExtract);
@@ -264,7 +265,8 @@ export async function getACUCTeam(
 ): Promise<AuthCreditUsageChunkFromTeam | null> {
   let isExtract =
       mode === RateLimiterMode.Extract ||
-      mode === RateLimiterMode.ExtractStatus;
+      mode === RateLimiterMode.ExtractStatus ||
+      mode === RateLimiterMode.ExtractAgentPreview;
 
   if (team_id.startsWith("preview")) {
     const acuc = mockPreviewACUC(team_id, isExtract);
