@@ -49,40 +49,40 @@ logger : logging.Logger = logging.getLogger("firecrawl")
 
 T = TypeVar('T')
 
-class FirecrawlDocumentMetadata(pydantic.BaseModel):
-    """Metadata for a Firecrawl document."""
-    title: Optional[str] = None
-    description: Optional[str] = None
-    language: Optional[str] = None
-    keywords: Optional[str] = None
-    robots: Optional[str] = None
-    ogTitle: Optional[str] = None
-    ogDescription: Optional[str] = None
-    ogUrl: Optional[str] = None
-    ogImage: Optional[str] = None
-    ogAudio: Optional[str] = None
-    ogDeterminer: Optional[str] = None
-    ogLocale: Optional[str] = None
-    ogLocaleAlternate: Optional[List[str]] = None
-    ogSiteName: Optional[str] = None
-    ogVideo: Optional[str] = None
-    dctermsCreated: Optional[str] = None
-    dcDateCreated: Optional[str] = None
-    dcDate: Optional[str] = None
-    dctermsType: Optional[str] = None
-    dcType: Optional[str] = None
-    dctermsAudience: Optional[str] = None
-    dctermsSubject: Optional[str] = None
-    dcSubject: Optional[str] = None
-    dcDescription: Optional[str] = None
-    dctermsKeywords: Optional[str] = None
-    modifiedTime: Optional[str] = None
-    publishedTime: Optional[str] = None
-    articleTag: Optional[str] = None
-    articleSection: Optional[str] = None
-    sourceURL: Optional[str] = None
-    statusCode: Optional[int] = None
-    error: Optional[str] = None
+# class FirecrawlDocumentMetadata(pydantic.BaseModel):
+#     """Metadata for a Firecrawl document."""
+#     title: Optional[str] = None
+#     description: Optional[str] = None
+#     language: Optional[str] = None
+#     keywords: Optional[str] = None
+#     robots: Optional[str] = None
+#     ogTitle: Optional[str] = None
+#     ogDescription: Optional[str] = None
+#     ogUrl: Optional[str] = None
+#     ogImage: Optional[str] = None
+#     ogAudio: Optional[str] = None
+#     ogDeterminer: Optional[str] = None
+#     ogLocale: Optional[str] = None
+#     ogLocaleAlternate: Optional[List[str]] = None
+#     ogSiteName: Optional[str] = None
+#     ogVideo: Optional[str] = None
+#     dctermsCreated: Optional[str] = None
+#     dcDateCreated: Optional[str] = None
+#     dcDate: Optional[str] = None
+#     dctermsType: Optional[str] = None
+#     dcType: Optional[str] = None
+#     dctermsAudience: Optional[str] = None
+#     dctermsSubject: Optional[str] = None
+#     dcSubject: Optional[str] = None
+#     dcDescription: Optional[str] = None
+#     dctermsKeywords: Optional[str] = None
+#     modifiedTime: Optional[str] = None
+#     publishedTime: Optional[str] = None
+#     articleTag: Optional[str] = None
+#     articleSection: Optional[str] = None
+#     sourceURL: Optional[str] = None
+#     statusCode: Optional[int] = None
+#     error: Optional[str] = None
 
 class AgentOptions(pydantic.BaseModel):
     """Configuration for the agent."""
@@ -107,7 +107,7 @@ class FirecrawlDocument(pydantic.BaseModel, Generic[T]):
     extract: Optional[T] = None
     json: Optional[T] = None
     screenshot: Optional[str] = None
-    metadata: Optional[FirecrawlDocumentMetadata] = None
+    metadata: Optional[Any] = None
     actions: Optional[ActionsResult] = None
     title: Optional[str] = None  # v1 search only
     description: Optional[str] = None  # v1 search only
