@@ -3356,12 +3356,12 @@ class AsyncFirecrawlApp(FirecrawlApp):
             job_id (str): The ID of the extraction job
 
         Returns:
-            ExtractResponse containing:
-            * success (bool): Whether extraction completed successfully
-            * data (Any): Extracted structured data
-            * error (str, optional): Error message if extraction failed
-            * warning (str, optional): Warning message if any
-            * sources (List[str], optional): Source URLs if requested
+            ExtractResponse[Any] with:
+            * success (bool): Whether request succeeded
+            * data (Optional[Any]): Extracted data matching schema
+            * error (Optional[str]): Error message if any
+            * warning (Optional[str]): Warning message if any
+            * sources (Optional[List[str]]): Source URLs if requested
 
         Raises:
             ValueError: If status check fails
@@ -3377,53 +3377,66 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
     async def async_extract(
             self,
-            urls: List[str],
-            params: Optional[ExtractParams] = None,
+            urls: Optional[List[str]] = None,
+            *,
+            prompt: Optional[str] = None,
+            schema: Optional[Any] = None,
+            system_prompt: Optional[str] = None,
+            allow_external_links: Optional[bool] = False,
+            enable_web_search: Optional[bool] = False,
+            show_sources: Optional[bool] = False,
+            agent: Optional[Dict[str, Any]] = None,
             idempotency_key: Optional[str] = None) -> ExtractResponse[Any]:
         """
         Initiate an asynchronous extraction job without waiting for completion.
 
         Args:
-            urls (List[str]): URLs to extract information from
-            params (Optional[ExtractParams]): See ExtractParams model:
-              Extraction Config:
-              * prompt - Custom extraction prompt
-              * schema - JSON schema/Pydantic model
-              * systemPrompt - System context
-              
-              Behavior Options:
-              * allowExternalLinks - Follow external links
-              * enableWebSearch - Enable web search
-              * includeSubdomains - Include subdomains
-              * showSources - Include source URLs
-              
-              Scraping Options:
-              * scrapeOptions - Page scraping config
+            urls (Optional[List[str]]): URLs to extract from
+            prompt (Optional[str]): Custom extraction prompt
+            schema (Optional[Any]): JSON schema/Pydantic model
+            system_prompt (Optional[str]): System context
+            allow_external_links (Optional[bool]): Follow external links
+            enable_web_search (Optional[bool]): Enable web search
+            show_sources (Optional[bool]): Include source URLs
+            agent (Optional[Dict[str, Any]]): Agent configuration
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
 
         Returns:
-          ExtractResponse containing:
-          * success (bool): Whether job started successfully
-          * id (str): Unique identifier for the job
-          * error (str, optional): Error message if start failed
+            ExtractResponse[Any] with:
+            * success (bool): Whether request succeeded
+            * data (Optional[Any]): Extracted data matching schema
+            * error (Optional[str]): Error message if any
 
         Raises:
-          ValueError: If job initiation fails
+            ValueError: If job initiation fails
         """
         headers = self._prepare_headers(idempotency_key)
-        
-        schema = params.get('schema') if params else None
+
+        if not prompt and not schema:
+            raise ValueError("Either prompt or schema is required")
+
+        if not urls and not prompt:
+            raise ValueError("Either urls or prompt is required")
+
         if schema:
             if hasattr(schema, 'model_json_schema'):
                 schema = schema.model_json_schema()
 
-        jsonData = {'urls': urls, **(params or {})}
         request_data = {
-            **jsonData,
-            'allowExternalLinks': params.get('allow_external_links', False) if params else False,
+            'urls': urls or [],
+            'allowExternalLinks': allow_external_links,
+            'enableWebSearch': enable_web_search,
+            'showSources': show_sources,
             'schema': schema,
             'origin': f'python-sdk@{version}'
         }
+
+        if prompt:
+            request_data['prompt'] = prompt
+        if system_prompt:
+            request_data['systemPrompt'] = system_prompt
+        if agent:
+            request_data['agent'] = agent
 
         try:
             return await self._async_post_request(
@@ -3437,16 +3450,18 @@ class AsyncFirecrawlApp(FirecrawlApp):
     async def generate_llms_text(
             self,
             url: str,
-            params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> GenerateLLMsTextStatusResponse:
+            *,
+            max_urls: Optional[int] = None,
+            show_full_text: Optional[bool] = None,
+            experimental_stream: Optional[bool] = None) -> GenerateLLMsTextStatusResponse:
         """
         Generate LLMs.txt for a given URL and monitor until completion.
 
         Args:
             url (str): Target URL to generate LLMs.txt from
-            params (Optional[Union[Dict[str, Any], GenerateLLMsTextParams]]): See GenerateLLMsTextParams model:
-              Generation Options:
-              * maxUrls - Maximum URLs to process (default: 10)
-              * showFullText - Include full text in output (default: False)
+            max_urls (Optional[int]): Maximum URLs to process (default: 10)
+            show_full_text (Optional[bool]): Include full text in output (default: False)
+            experimental_stream (Optional[bool]): Enable experimental streaming
 
         Returns:
             GenerateLLMsTextStatusResponse containing:
@@ -3461,15 +3476,15 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Raises:
             Exception: If generation fails
         """
-        if params is None:
-            params = {}
+        params = {}
+        if max_urls is not None:
+            params['maxUrls'] = max_urls
+        if show_full_text is not None:
+            params['showFullText'] = show_full_text
+        if experimental_stream is not None:
+            params['__experimental_stream'] = experimental_stream
 
-        if isinstance(params, dict):
-            generation_params = GenerateLLMsTextParams(**params)
-        else:
-            generation_params = params
-
-        response = await self.async_generate_llms_text(url, generation_params)
+        response = await self.async_generate_llms_text(url, params)
         if not response.get('success') or 'id' not in response:
             return response
 
@@ -3491,36 +3506,38 @@ class AsyncFirecrawlApp(FirecrawlApp):
     async def async_generate_llms_text(
             self,
             url: str,
-            params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> GenerateLLMsTextResponse:
+            *,
+            max_urls: Optional[int] = None,
+            show_full_text: Optional[bool] = None,
+            experimental_stream: Optional[bool] = None) -> GenerateLLMsTextResponse:
         """
         Initiate an asynchronous LLMs.txt generation job without waiting for completion.
 
         Args:
-          url (str): Target URL to generate LLMs.txt from
-          params (Optional[Union[Dict[str, Any], GenerateLLMsTextParams]]): See GenerateLLMsTextParams model:
-            Generation Options:
-            * maxUrls - Maximum URLs to process (default: 10)
-            * showFullText - Include full text in output (default: False)
+            url (str): Target URL to generate LLMs.txt from
+            max_urls (Optional[int]): Maximum URLs to process (default: 10)
+            show_full_text (Optional[bool]): Include full text in output (default: False)
+            experimental_stream (Optional[bool]): Enable experimental streaming
 
         Returns:
-          GenerateLLMsTextResponse containing:
-          * success (bool): Whether job started successfully
-          * id (str): Unique identifier for the job
-          * error (str, optional): Error message if start failed
+            GenerateLLMsTextResponse containing:
+            * success (bool): Whether job started successfully
+            * id (str): Unique identifier for the job
+            * error (str, optional): Error message if start failed
 
         Raises:
-          ValueError: If job initiation fails
+            ValueError: If job initiation fails
         """
-        if params is None:
-            params = {}
-
-        if isinstance(params, dict):
-            generation_params = GenerateLLMsTextParams(**params)
-        else:
-            generation_params = params
+        params = {}
+        if max_urls is not None:
+            params['maxUrls'] = max_urls
+        if show_full_text is not None:
+            params['showFullText'] = show_full_text
+        if experimental_stream is not None:
+            params['__experimental_stream'] = experimental_stream
 
         headers = self._prepare_headers()
-        json_data = {'url': url, **generation_params.dict(exclude_none=True)}
+        json_data = {'url': url, **params.dict(exclude_none=True)}
         json_data['origin'] = f"python-sdk@{version}"
 
         try:
@@ -3564,52 +3581,57 @@ class AsyncFirecrawlApp(FirecrawlApp):
     async def deep_research(
             self,
             query: str,
-            params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None, 
+            *,
+            max_depth: Optional[int] = None,
+            time_limit: Optional[int] = None,
+            max_urls: Optional[int] = None,
+            analysis_prompt: Optional[str] = None,
+            system_prompt: Optional[str] = None,
+            __experimental_stream_steps: Optional[bool] = None,
             on_activity: Optional[Callable[[Dict[str, Any]], None]] = None,
             on_source: Optional[Callable[[Dict[str, Any]], None]] = None) -> DeepResearchStatusResponse:
         """
-        Initiates a deep research operation on a given query and polls until completion, providing real-time updates via callbacks.
+        Initiates a deep research operation on a given query and polls until completion.
 
         Args:
-          query: Research query or topic to investigate
-
-          params: See DeepResearchParams model:
-            Research Settings:
-              * maxDepth - Maximum research depth (default: 7)
-              * timeLimit - Time limit in seconds (default: 270)
-              * maxUrls - Maximum URLs to process (default: 20)
-
-          Callbacks:
-          * on_activity - Progress callback receiving:
-              {type, status, message, timestamp, depth}
-          * on_source - Source discovery callback receiving:
-              {url, title, description}
+            query (str): Research query or topic to investigate
+            max_depth (Optional[int]): Maximum depth of research exploration
+            time_limit (Optional[int]): Time limit in seconds for research
+            max_urls (Optional[int]): Maximum number of URLs to process
+            analysis_prompt (Optional[str]): Custom prompt for analysis
+            system_prompt (Optional[str]): Custom system prompt
+            __experimental_stream_steps (Optional[bool]): Enable experimental streaming
+            on_activity (Optional[Callable]): Progress callback receiving {type, status, message, timestamp, depth}
+            on_source (Optional[Callable]): Source discovery callback receiving {url, title, description}
 
         Returns:
-          DeepResearchResponse containing:
-
-          Status:
-          * success - Whether research completed successfully
-          * status - Current state (processing/completed/failed)
-          * error - Error message if failed
-          
-          Results:
-          * id - Unique identifier for the research job
-          * data - Research findings and analysis
-          * sources - List of discovered sources
-          * activities - Research progress log
-          * summaries - Generated research summaries
+            DeepResearchStatusResponse containing:
+            * success (bool): Whether research completed successfully
+            * status (str): Current state (processing/completed/failed)
+            * error (Optional[str]): Error message if failed
+            * id (str): Unique identifier for the research job
+            * data (Any): Research findings and analysis
+            * sources (List[Dict]): List of discovered sources
+            * activities (List[Dict]): Research progress log
+            * summaries (List[str]): Generated research summaries
 
         Raises:
-          Exception: If research fails
+            Exception: If research fails
         """
-        if params is None:
-            params = {}
-
-        if isinstance(params, dict):
-            research_params = DeepResearchParams(**params)
-        else:
-            research_params = params
+        research_params = {}
+        if max_depth is not None:
+            research_params['maxDepth'] = max_depth
+        if time_limit is not None:
+            research_params['timeLimit'] = time_limit
+        if max_urls is not None:
+            research_params['maxUrls'] = max_urls
+        if analysis_prompt is not None:
+            research_params['analysisPrompt'] = analysis_prompt
+        if system_prompt is not None:
+            research_params['systemPrompt'] = system_prompt
+        if __experimental_stream_steps is not None:
+            research_params['__experimental_streamSteps'] = __experimental_stream_steps
+        research_params = DeepResearchParams(**research_params)
 
         response = await self.async_deep_research(query, research_params)
         if not response.get('success') or 'id' not in response:
@@ -3648,38 +3670,54 @@ class AsyncFirecrawlApp(FirecrawlApp):
     async def async_deep_research(
             self,
             query: str,
-            params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None) -> DeepResearchResponse:
+            *,
+            max_depth: Optional[int] = None,
+            time_limit: Optional[int] = None,
+            max_urls: Optional[int] = None,
+            analysis_prompt: Optional[str] = None,
+            system_prompt: Optional[str] = None,
+            __experimental_stream_steps: Optional[bool] = None) -> Dict[str, Any]:
         """
-        Initiate an asynchronous deep research job without waiting for completion.
+        Initiates an asynchronous deep research operation.
 
         Args:
             query (str): Research query or topic to investigate
-            params (Optional[Union[Dict[str, Any], DeepResearchParams]]): See DeepResearchParams model:
-              Research Settings:
-              * maxDepth - Maximum research depth (default: 7)
-              * timeLimit - Time limit in seconds (default: 270)
-              * maxUrls - Maximum URLs to process (default: 20)
+            max_depth (Optional[int]): Maximum depth of research exploration
+            time_limit (Optional[int]): Time limit in seconds for research
+            max_urls (Optional[int]): Maximum number of URLs to process
+            analysis_prompt (Optional[str]): Custom prompt for analysis
+            system_prompt (Optional[str]): Custom system prompt
+            __experimental_stream_steps (Optional[bool]): Enable experimental streaming
 
         Returns:
-          DeepResearchResponse containing:
-          * success (bool): Whether job started successfully
-          * id (str): Unique identifier for the job
-          * error (str, optional): Error message if start failed
+            Dict[str, Any]: A response containing:
+            * success (bool): Whether the research initiation was successful
+            * id (str): The unique identifier for the research job
+            * error (str, optional): Error message if initiation failed
 
         Raises:
-          ValueError: If job initiation fails
+            Exception: If the research initiation fails.
         """
-        if params is None:
-            params = {}
-
-        if isinstance(params, dict):
-            research_params = DeepResearchParams(**params)
-        else:
-            research_params = params
+        research_params = {}
+        if max_depth is not None:
+            research_params['maxDepth'] = max_depth
+        if time_limit is not None:
+            research_params['timeLimit'] = time_limit
+        if max_urls is not None:
+            research_params['maxUrls'] = max_urls
+        if analysis_prompt is not None:
+            research_params['analysisPrompt'] = analysis_prompt
+        if system_prompt is not None:
+            research_params['systemPrompt'] = system_prompt
+        if __experimental_stream_steps is not None:
+            research_params['__experimental_streamSteps'] = __experimental_stream_steps
+        research_params = DeepResearchParams(**research_params)
 
         headers = self._prepare_headers()
+        
         json_data = {'query': query, **research_params.dict(exclude_none=True)}
         json_data['origin'] = f"python-sdk@{version}"
+
         try:
             return await self._async_post_request(
                 f'{self.api_url}/v1/deep-research',
@@ -3691,26 +3729,28 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
     async def check_deep_research_status(self, id: str) -> DeepResearchStatusResponse:
         """
-        Check the status of an asynchronous deep research job.
+        Check the status of a deep research operation.
 
         Args:
-            id (str): The ID of the research job
+            id (str): The ID of the deep research operation.
 
         Returns:
-            DeepResearchStatusResponse containing:
-            * success (bool): Whether research completed successfully
-            * status (str): Current state (processing/completed/failed)
-            * data (Dict[str, Any], optional): Research findings and analysis
-            * error (str, optional): Error message if failed
-            * expiresAt (str): When the research data expires
-            * currentDepth (int): Current research depth
-            * maxDepth (int): Maximum research depth
-            * activities (List[Dict[str, Any]]): Research progress log
-            * sources (List[Dict[str, Any]]): Discovered sources
-            * summaries (List[str]): Generated research summaries
+            DeepResearchResponse containing:
+
+            Status:
+            * success - Whether research completed successfully
+            * status - Current state (processing/completed/failed)
+            * error - Error message if failed
+            
+            Results:
+            * id - Unique identifier for the research job
+            * data - Research findings and analysis
+            * sources - List of discovered sources
+            * activities - Research progress log
+            * summaries - Generated research summaries
 
         Raises:
-            ValueError: If status check fails
+            Exception: If the status check fails.
         """
         headers = self._prepare_headers()
         try:
@@ -3724,52 +3764,80 @@ class AsyncFirecrawlApp(FirecrawlApp):
     async def search(
             self,
             query: str,
-            params: Optional[Union[Dict[str, Any], SearchParams]] = None) -> SearchResponse:
+            *,
+            limit: Optional[int] = None,
+            tbs: Optional[str] = None,
+            filter: Optional[str] = None,
+            lang: Optional[str] = None,
+            country: Optional[str] = None,
+            location: Optional[str] = None,
+            timeout: Optional[int] = None,
+            scrape_options: Optional[CommonOptions] = None,
+            params: Optional[Union[Dict[str, Any], SearchParams]] = None,
+            **kwargs) -> SearchResponse:
         """
         Asynchronously search for content using Firecrawl.
 
         Args:
-          query (str): Search query string
-          params (Optional[Union[Dict[str, Any], SearchParams]]): See SearchParams model:
-            Search Options:
-            * limit - Max results (default: 5)
-            * tbs - Time filter (e.g. "qdr:d")
-            * filter - Custom result filter
-            
-            Localization:
-            * lang - Language code (default: "en")
-            * country - Country code (default: "us")
-            * location - Geo-targeting
-            
-            Request Options:
-            * timeout - Request timeout (ms)
-            * scrapeOptions - Result scraping config
+            query (str): Search query string
+            limit (Optional[int]): Max results (default: 5)
+            tbs (Optional[str]): Time filter (e.g. "qdr:d")
+            filter (Optional[str]): Custom result filter
+            lang (Optional[str]): Language code (default: "en")
+            country (Optional[str]): Country code (default: "us") 
+            location (Optional[str]): Geo-targeting
+            timeout (Optional[int]): Request timeout in milliseconds
+            scrape_options (Optional[CommonOptions]): Result scraping configuration
+            params (Optional[Union[Dict[str, Any], SearchParams]]): Additional search parameters
+            **kwargs: Additional keyword arguments for future compatibility
 
         Returns:
-          SearchResponse containing:
-          * success (bool): Whether search completed successfully
-          * data (List[FirecrawlDocument]): Search results
-          * warning (str, optional): Warning message if any
-          * error (str, optional): Error message if search failed
+            SearchResponse: Response containing:
+                * success (bool): Whether request succeeded
+                * data (List[FirecrawlDocument]): Search results
+                * warning (Optional[str]): Warning message if any
+                * error (Optional[str]): Error message if any
 
         Raises:
-          Exception: If search fails
+            Exception: If search fails or response cannot be parsed
         """
-        if params is None:
-            params = {}
+        # Build search parameters
+        search_params = {}
+        if params:
+            if isinstance(params, dict):
+                search_params.update(params)
+            else:
+                search_params.update(params.dict(exclude_none=True))
 
-        if isinstance(params, dict):
-            search_params = SearchParams(query=query, **params)
-        else:
-            search_params = params
-            search_params.query = query
+        # Add individual parameters
+        if limit is not None:
+            search_params['limit'] = limit
+        if tbs is not None:
+            search_params['tbs'] = tbs
+        if filter is not None:
+            search_params['filter'] = filter
+        if lang is not None:
+            search_params['lang'] = lang
+        if country is not None:
+            search_params['country'] = country
+        if location is not None:
+            search_params['location'] = location
+        if timeout is not None:
+            search_params['timeout'] = timeout
+        if scrape_options is not None:
+            search_params['scrapeOptions'] = scrape_options.dict(exclude_none=True)
+        
+        # Add any additional kwargs
+        search_params.update(kwargs)
 
-        search_params_dict = search_params.dict(exclude_none=True)
-        search_params_dict['origin'] = f"python-sdk@{version}"
+        # Create final params object
+        final_params = SearchParams(query=query, **search_params)
+        params_dict = final_params.dict(exclude_none=True)
+        params_dict['origin'] = f"python-sdk@{version}"
 
         return await self._async_post_request(
             f"{self.api_url}/v1/search",
-            search_params_dict,
+            params_dict,
             {"Authorization": f"Bearer {self.api_key}"}
         )
 
