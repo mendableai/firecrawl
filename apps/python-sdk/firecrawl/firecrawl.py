@@ -49,40 +49,40 @@ logger : logging.Logger = logging.getLogger("firecrawl")
 
 T = TypeVar('T')
 
-class FirecrawlDocumentMetadata(pydantic.BaseModel):
-    """Metadata for a Firecrawl document."""
-    title: Optional[str] = None
-    description: Optional[str] = None
-    language: Optional[str] = None
-    keywords: Optional[str] = None
-    robots: Optional[str] = None
-    ogTitle: Optional[str] = None
-    ogDescription: Optional[str] = None
-    ogUrl: Optional[str] = None
-    ogImage: Optional[str] = None
-    ogAudio: Optional[str] = None
-    ogDeterminer: Optional[str] = None
-    ogLocale: Optional[str] = None
-    ogLocaleAlternate: Optional[List[str]] = None
-    ogSiteName: Optional[str] = None
-    ogVideo: Optional[str] = None
-    dctermsCreated: Optional[str] = None
-    dcDateCreated: Optional[str] = None
-    dcDate: Optional[str] = None
-    dctermsType: Optional[str] = None
-    dcType: Optional[str] = None
-    dctermsAudience: Optional[str] = None
-    dctermsSubject: Optional[str] = None
-    dcSubject: Optional[str] = None
-    dcDescription: Optional[str] = None
-    dctermsKeywords: Optional[str] = None
-    modifiedTime: Optional[str] = None
-    publishedTime: Optional[str] = None
-    articleTag: Optional[str] = None
-    articleSection: Optional[str] = None
-    sourceURL: Optional[str] = None
-    statusCode: Optional[int] = None
-    error: Optional[str] = None
+# class FirecrawlDocumentMetadata(pydantic.BaseModel):
+#     """Metadata for a Firecrawl document."""
+#     title: Optional[str] = None
+#     description: Optional[str] = None
+#     language: Optional[str] = None
+#     keywords: Optional[str] = None
+#     robots: Optional[str] = None
+#     ogTitle: Optional[str] = None
+#     ogDescription: Optional[str] = None
+#     ogUrl: Optional[str] = None
+#     ogImage: Optional[str] = None
+#     ogAudio: Optional[str] = None
+#     ogDeterminer: Optional[str] = None
+#     ogLocale: Optional[str] = None
+#     ogLocaleAlternate: Optional[List[str]] = None
+#     ogSiteName: Optional[str] = None
+#     ogVideo: Optional[str] = None
+#     dctermsCreated: Optional[str] = None
+#     dcDateCreated: Optional[str] = None
+#     dcDate: Optional[str] = None
+#     dctermsType: Optional[str] = None
+#     dcType: Optional[str] = None
+#     dctermsAudience: Optional[str] = None
+#     dctermsSubject: Optional[str] = None
+#     dcSubject: Optional[str] = None
+#     dcDescription: Optional[str] = None
+#     dctermsKeywords: Optional[str] = None
+#     modifiedTime: Optional[str] = None
+#     publishedTime: Optional[str] = None
+#     articleTag: Optional[str] = None
+#     articleSection: Optional[str] = None
+#     sourceURL: Optional[str] = None
+#     statusCode: Optional[int] = None
+#     error: Optional[str] = None
 
 class AgentOptions(pydantic.BaseModel):
     """Configuration for the agent."""
@@ -107,7 +107,7 @@ class FirecrawlDocument(pydantic.BaseModel, Generic[T]):
     extract: Optional[T] = None
     json: Optional[T] = None
     screenshot: Optional[str] = None
-    metadata: Optional[FirecrawlDocumentMetadata] = None
+    metadata: Optional[Any] = None
     actions: Optional[ActionsResult] = None
     title: Optional[str] = None  # v1 search only
     description: Optional[str] = None  # v1 search only
@@ -402,7 +402,7 @@ class ExtractParams(pydantic.BaseModel):
     Parameters for the extract operation.
     """
     prompt: Optional[str] = None
-    schema_: Optional[Any] = pydantic.Field(None, alias='schema')
+    schema: Optional[Any] = pydantic.Field(None, alias='schema')
     system_prompt: Optional[str] = None
     allow_external_links: Optional[bool] = False
     enable_web_search: Optional[bool] = False
@@ -441,6 +441,7 @@ class FirecrawlApp:
     def scrape_url(
             self,
             url: str,
+            *,
             formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
             include_tags: Optional[List[str]] = None,
             exclude_tags: Optional[List[str]] = None,
@@ -455,7 +456,8 @@ class FirecrawlApp:
             proxy: Optional[Literal["basic", "stealth"]] = None,
             extract: Optional[ExtractConfig] = None,
             json_options: Optional[ExtractConfig] = None,
-            actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None) -> ScrapeResponse[Any]:
+            actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+            **kwargs) -> ScrapeResponse[Any]:
         """
         Scrape and extract content from a URL.
 
@@ -476,6 +478,7 @@ class FirecrawlApp:
           extract (Optional[ExtractConfig]): Content extraction settings
           json_options (Optional[ExtractConfig]): JSON extraction settings
           actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]]): Actions to perform
+
 
         Returns:
           ScrapeResponse with:
@@ -530,6 +533,7 @@ class FirecrawlApp:
             scrape_params['jsonOptions'] = json_options.dict(exclude_none=True)
         if actions:
             scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+        scrape_params.update(kwargs)
 
         # Make request
         response = requests.post(
@@ -556,6 +560,7 @@ class FirecrawlApp:
     def search(
             self,
             query: str,
+            *,
             limit: Optional[int] = None,
             tbs: Optional[str] = None,
             filter: Optional[str] = None,
@@ -647,97 +652,150 @@ class FirecrawlApp:
         else:
             self._handle_error(response, 'search')
 
-    def crawl_url(self, url: str,
-                  params: Optional[CrawlParams] = None,
-                  poll_interval: Optional[int] = 2,
-                  idempotency_key: Optional[str] = None) -> CrawlStatusResponse:
+    def crawl_url(
+        self,
+        url: str,
+        *,
+        include_paths: Optional[List[str]] = None,
+        exclude_paths: Optional[List[str]] = None,
+        max_depth: Optional[int] = None,
+        max_discovery_depth: Optional[int] = None,
+        limit: Optional[int] = None,
+        allow_backward_links: Optional[bool] = None,
+        allow_external_links: Optional[bool] = None,
+        ignore_sitemap: Optional[bool] = None,
+        scrape_options: Optional[CommonOptions] = None,
+        webhook: Optional[Union[str, WebhookConfig]] = None,
+        deduplicate_similar_urls: Optional[bool] = None,
+        ignore_query_parameters: Optional[bool] = None,
+        regex_on_full_url: Optional[bool] = None,
+        poll_interval: Optional[int] = 2,
+        idempotency_key: Optional[str] = None,
+        **kwargs
+    ) -> CrawlStatusResponse:
         """
         Crawl a website starting from a URL.
 
         Args:
-          url (str): Target URL to start crawling from
-          params (Optional[CrawlParams]): See CrawlParams model:
-            URL Discovery:
-            * includePaths - Patterns of URLs to include
-            * excludePaths - Patterns of URLs to exclude
-            * maxDepth - Maximum crawl depth
-            * maxDiscoveryDepth - Maximum depth for finding new URLs
-            * limit - Maximum pages to crawl
-
-            Link Following:
-            * allowBackwardLinks - Follow parent directory links
-            * allowExternalLinks - Follow external domain links  
-            * ignoreSitemap - Skip sitemap.xml processing
-
-            Advanced:
-            * scrapeOptions - Page scraping configuration
-            * webhook - Notification webhook settings
-            * deduplicateSimilarURLs - Remove similar URLs
-            * ignoreQueryParameters - Ignore URL parameters
-            * regexOnFullURL - Apply regex to full URLs
-          poll_interval (int): Seconds between status checks (default: 2)
-          idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            url (str): Target URL to start crawling from
+            include_paths (Optional[List[str]]): Patterns of URLs to include
+            exclude_paths (Optional[List[str]]): Patterns of URLs to exclude
+            max_depth (Optional[int]): Maximum crawl depth
+            max_discovery_depth (Optional[int]): Maximum depth for finding new URLs
+            limit (Optional[int]): Maximum pages to crawl
+            allow_backward_links (Optional[bool]): Follow parent directory links
+            allow_external_links (Optional[bool]): Follow external domain links
+            ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
+            scrape_options (Optional[CommonOptions]): Page scraping configuration
+            webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
+            deduplicate_similar_urls (Optional[bool]): Remove similar URLs
+            ignore_query_parameters (Optional[bool]): Ignore URL parameters
+            regex_on_full_url (Optional[bool]): Apply regex to full URLs
+            poll_interval (Optional[int]): Seconds between status checks (default: 2)
+            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            **kwargs: Additional parameters to pass to the API
 
         Returns:
-          CrawlStatusResponse with:
-          * Crawling status and progress
-          * Crawled page contents
-          * Success/error information
+            CrawlStatusResponse with:
+            * Crawling status and progress
+            * Crawled page contents
+            * Success/error information
 
         Raises:
-          Exception: If crawl fails
+            Exception: If crawl fails
         """
-        endpoint = f'/v1/crawl'
+        crawl_params = {}
+
+        # Add individual parameters
+        if include_paths is not None:
+            crawl_params['includePaths'] = include_paths
+        if exclude_paths is not None:
+            crawl_params['excludePaths'] = exclude_paths
+        if max_depth is not None:
+            crawl_params['maxDepth'] = max_depth
+        if max_discovery_depth is not None:
+            crawl_params['maxDiscoveryDepth'] = max_discovery_depth
+        if limit is not None:
+            crawl_params['limit'] = limit
+        if allow_backward_links is not None:
+            crawl_params['allowBackwardLinks'] = allow_backward_links
+        if allow_external_links is not None:
+            crawl_params['allowExternalLinks'] = allow_external_links
+        if ignore_sitemap is not None:
+            crawl_params['ignoreSitemap'] = ignore_sitemap
+        if scrape_options is not None:
+            crawl_params['scrapeOptions'] = scrape_options.dict(exclude_none=True)
+        if webhook is not None:
+            crawl_params['webhook'] = webhook
+        if deduplicate_similar_urls is not None:
+            crawl_params['deduplicateSimilarURLs'] = deduplicate_similar_urls
+        if ignore_query_parameters is not None:
+            crawl_params['ignoreQueryParameters'] = ignore_query_parameters
+        if regex_on_full_url is not None:
+            crawl_params['regexOnFullURL'] = regex_on_full_url
+
+        # Add any additional kwargs
+        crawl_params.update(kwargs)
+
+        # Create final params object
+        final_params = CrawlParams(**crawl_params)
+        params_dict = final_params.dict(exclude_none=True)
+        params_dict['url'] = url
+        params_dict['origin'] = f"python-sdk@{version}"
+
+        # Make request
         headers = self._prepare_headers(idempotency_key)
-        json_data = {'url': url}
-        if params:
-            json_data.update(params)
-        json_data['origin'] = f"python-sdk@{version}"
-        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
+        response = self._post_request(f'{self.api_url}/v1/crawl', params_dict, headers)
+
         if response.status_code == 200:
             try:
                 id = response.json().get('id')
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
             return self._monitor_job_status(id, headers, poll_interval)
-
         else:
             self._handle_error(response, 'start crawl job')
 
-
     def async_crawl_url(
-            self,
-            url: str,
-            params: Optional[CrawlParams] = None,
-            idempotency_key: Optional[str] = None) -> CrawlResponse:
+        self,
+        url: str,
+        *,
+        include_paths: Optional[List[str]] = None,
+        exclude_paths: Optional[List[str]] = None,
+        max_depth: Optional[int] = None,
+        max_discovery_depth: Optional[int] = None,
+        limit: Optional[int] = None,
+        allow_backward_links: Optional[bool] = None,
+        allow_external_links: Optional[bool] = None,
+        ignore_sitemap: Optional[bool] = None,
+        scrape_options: Optional[CommonOptions] = None,
+        webhook: Optional[Union[str, WebhookConfig]] = None,
+        deduplicate_similar_urls: Optional[bool] = None,
+        ignore_query_parameters: Optional[bool] = None,
+        regex_on_full_url: Optional[bool] = None,
+        idempotency_key: Optional[str] = None,
+        **kwargs
+    ) -> CrawlResponse:
         """
         Start an asynchronous crawl job.
 
         Args:
             url (str): Target URL to start crawling from
-
-            params (Optional[CrawlParams]): See CrawlParams model:
-
-              URL Discovery:
-              * includePaths - Patterns of URLs to include
-              * excludePaths - Patterns of URLs to exclude
-              * maxDepth - Maximum crawl depth
-              * maxDiscoveryDepth - Maximum depth for finding new URLs
-              * limit - Maximum pages to crawl
-
-              Link Following:
-              * allowBackwardLinks - Follow parent directory links
-              * allowExternalLinks - Follow external domain links  
-              * ignoreSitemap - Skip sitemap.xml processing
-
-              Advanced:
-              * scrapeOptions - Page scraping configuration
-              * webhook - Notification webhook settings
-              * deduplicateSimilarURLs - Remove similar URLs
-              * ignoreQueryParameters - Ignore URL parameters
-              * regexOnFullURL - Apply regex to full URLs
-
-            idempotency_key: Unique key to prevent duplicate requests
+            include_paths (Optional[List[str]]): Patterns of URLs to include
+            exclude_paths (Optional[List[str]]): Patterns of URLs to exclude
+            max_depth (Optional[int]): Maximum crawl depth
+            max_discovery_depth (Optional[int]): Maximum depth for finding new URLs
+            limit (Optional[int]): Maximum pages to crawl
+            allow_backward_links (Optional[bool]): Follow parent directory links
+            allow_external_links (Optional[bool]): Follow external domain links
+            ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
+            scrape_options (Optional[CommonOptions]): Page scraping configuration
+            webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
+            deduplicate_similar_urls (Optional[bool]): Remove similar URLs
+            ignore_query_parameters (Optional[bool]): Ignore URL parameters
+            regex_on_full_url (Optional[bool]): Apply regex to full URLs
+            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            **kwargs: Additional parameters to pass to the API
 
         Returns:
             CrawlResponse with:
@@ -749,16 +807,52 @@ class FirecrawlApp:
         Raises:
             Exception: If crawl initiation fails
         """
-        endpoint = f'/v1/crawl'
+        crawl_params = {}
+
+        # Add individual parameters
+        if include_paths is not None:
+            crawl_params['includePaths'] = include_paths
+        if exclude_paths is not None:
+            crawl_params['excludePaths'] = exclude_paths
+        if max_depth is not None:
+            crawl_params['maxDepth'] = max_depth
+        if max_discovery_depth is not None:
+            crawl_params['maxDiscoveryDepth'] = max_discovery_depth
+        if limit is not None:
+            crawl_params['limit'] = limit
+        if allow_backward_links is not None:
+            crawl_params['allowBackwardLinks'] = allow_backward_links
+        if allow_external_links is not None:
+            crawl_params['allowExternalLinks'] = allow_external_links
+        if ignore_sitemap is not None:
+            crawl_params['ignoreSitemap'] = ignore_sitemap
+        if scrape_options is not None:
+            crawl_params['scrapeOptions'] = scrape_options.dict(exclude_none=True)
+        if webhook is not None:
+            crawl_params['webhook'] = webhook
+        if deduplicate_similar_urls is not None:
+            crawl_params['deduplicateSimilarURLs'] = deduplicate_similar_urls
+        if ignore_query_parameters is not None:
+            crawl_params['ignoreQueryParameters'] = ignore_query_parameters
+        if regex_on_full_url is not None:
+            crawl_params['regexOnFullURL'] = regex_on_full_url
+
+        # Add any additional kwargs
+        crawl_params.update(kwargs)
+
+        # Create final params object
+        final_params = CrawlParams(**crawl_params)
+        params_dict = final_params.dict(exclude_none=True)
+        params_dict['url'] = url
+        params_dict['origin'] = f"python-sdk@{version}"
+
+        # Make request
         headers = self._prepare_headers(idempotency_key)
-        json_data = {'url': url}
-        if params:
-            json_data.update(params)
-        json_data['origin'] = f"python-sdk@{version}"
-        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
+        response = self._post_request(f'{self.api_url}/v1/crawl', params_dict, headers)
+
         if response.status_code == 200:
             try:
-                return response.json()
+                return CrawlResponse(**response.json())
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
@@ -840,10 +934,10 @@ class FirecrawlApp:
             if 'next' in status_data:
                 response['next'] = status_data['next']
 
-            return {
-                'success': False if 'error' in status_data else True,
+            return CrawlStatusResponse(
+                success=False if 'error' in status_data else True,
                 **response
-            }
+            )
         else:
             self._handle_error(response, 'check crawl status')
     
@@ -870,7 +964,7 @@ class FirecrawlApp:
         response = self._get_request(f'{self.api_url}/v1/crawl/{id}/errors', headers)
         if response.status_code == 200:
             try:
-                return response.json()
+                return CrawlErrorsResponse(**response.json())
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
@@ -904,254 +998,519 @@ class FirecrawlApp:
     def crawl_url_and_watch(
             self,
             url: str,
-            params: Optional[CrawlParams] = None,
-            idempotency_key: Optional[str] = None) -> 'CrawlWatcher':
+            *,
+            include_paths: Optional[List[str]] = None,
+            exclude_paths: Optional[List[str]] = None,
+            max_depth: Optional[int] = None,
+            max_discovery_depth: Optional[int] = None,
+            limit: Optional[int] = None,
+            allow_backward_links: Optional[bool] = None,
+            allow_external_links: Optional[bool] = None,
+            ignore_sitemap: Optional[bool] = None,
+            scrape_options: Optional[CommonOptions] = None,
+            webhook: Optional[Union[str, WebhookConfig]] = None,
+            deduplicate_similar_urls: Optional[bool] = None,
+            ignore_query_parameters: Optional[bool] = None,
+            regex_on_full_url: Optional[bool] = None,
+            idempotency_key: Optional[str] = None,
+            **kwargs
+    ) -> 'CrawlWatcher':
         """
         Initiate a crawl job and return a CrawlWatcher to monitor the job via WebSocket.
 
         Args:
-          url (str): Target URL to start crawling from
-          params (Optional[CrawlParams]): See CrawlParams model for configuration:
-            URL Discovery:
-            * includePaths - Patterns of URLs to include
-            * excludePaths - Patterns of URLs to exclude
-            * maxDepth - Maximum crawl depth
-            * maxDiscoveryDepth - Maximum depth for finding new URLs
-            * limit - Maximum pages to crawl
-
-            Link Following:
-            * allowBackwardLinks - Follow parent directory links
-            * allowExternalLinks - Follow external domain links  
-            * ignoreSitemap - Skip sitemap.xml processing
-
-            Advanced:
-            * scrapeOptions - Page scraping configuration
-            * webhook - Notification webhook settings
-            * deduplicateSimilarURLs - Remove similar URLs
-            * ignoreQueryParameters - Ignore URL parameters
-            * regexOnFullURL - Apply regex to full URLs
-          idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            url (str): Target URL to start crawling from
+            include_paths (Optional[List[str]]): Patterns of URLs to include
+            exclude_paths (Optional[List[str]]): Patterns of URLs to exclude
+            max_depth (Optional[int]): Maximum crawl depth
+            max_discovery_depth (Optional[int]): Maximum depth for finding new URLs
+            limit (Optional[int]): Maximum pages to crawl
+            allow_backward_links (Optional[bool]): Follow parent directory links
+            allow_external_links (Optional[bool]): Follow external domain links
+            ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
+            scrape_options (Optional[CommonOptions]): Page scraping configuration
+            webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
+            deduplicate_similar_urls (Optional[bool]): Remove similar URLs
+            ignore_query_parameters (Optional[bool]): Ignore URL parameters
+            regex_on_full_url (Optional[bool]): Apply regex to full URLs
+            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            **kwargs: Additional parameters to pass to the API
 
         Returns:
-          AsyncCrawlWatcher: An instance to monitor the crawl job via WebSocket
+            CrawlWatcher: An instance to monitor the crawl job via WebSocket
 
         Raises:
-          Exception: If crawl job fails to start
+            Exception: If crawl job fails to start
         """
-        crawl_response = self.async_crawl_url(url, params, idempotency_key)
-        if crawl_response['success'] and 'id' in crawl_response:
-            return CrawlWatcher(crawl_response['id'], self)
+        crawl_response = self.async_crawl_url(
+            url,
+            include_paths=include_paths,
+            exclude_paths=exclude_paths,
+            max_depth=max_depth,
+            max_discovery_depth=max_discovery_depth,
+            limit=limit,
+            allow_backward_links=allow_backward_links,
+            allow_external_links=allow_external_links,
+            ignore_sitemap=ignore_sitemap,
+            scrape_options=scrape_options,
+            webhook=webhook,
+            deduplicate_similar_urls=deduplicate_similar_urls,
+            ignore_query_parameters=ignore_query_parameters,
+            regex_on_full_url=regex_on_full_url,
+            idempotency_key=idempotency_key,
+            **kwargs
+        )
+        if crawl_response.success and crawl_response.id:
+            return CrawlWatcher(crawl_response.id, self)
         else:
             raise Exception("Crawl job failed to start")
 
     def map_url(
             self,
             url: str,
+            *,
+            search: Optional[str] = None,
+            ignore_sitemap: Optional[bool] = None,
+            include_subdomains: Optional[bool] = None,
+            sitemap_only: Optional[bool] = None,
+            limit: Optional[int] = None,
+            timeout: Optional[int] = None,
             params: Optional[MapParams] = None) -> MapResponse:
         """
         Map and discover links from a URL.
 
         Args:
-          url: Target URL to map
-
-          params: See MapParams model:
-
-            Discovery Options:
-            * search - Filter pattern for URLs
-            * ignoreSitemap - Skip sitemap.xml
-            * includeSubdomains - Include subdomain links
-            * sitemapOnly - Only use sitemap.xml
-            
-            Limits:
-            * limit - Max URLs to return
-            * timeout - Request timeout (ms)
+            url (str): Target URL to map
+            search (Optional[str]): Filter pattern for URLs
+            ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
+            include_subdomains (Optional[bool]): Include subdomain links
+            sitemap_only (Optional[bool]): Only use sitemap.xml
+            limit (Optional[int]): Maximum URLs to return
+            timeout (Optional[int]): Request timeout in milliseconds
+            params (Optional[MapParams]): Additional mapping parameters
 
         Returns:
-          MapResponse with:
-          * Discovered URLs
-          * Success/error status
+            MapResponse: Response containing:
+                * success (bool): Whether request succeeded
+                * links (List[str]): Discovered URLs
+                * error (Optional[str]): Error message if any
 
         Raises:
-          Exception: If mapping fails
+            Exception: If mapping fails or response cannot be parsed
         """
-        endpoint = f'/v1/map'
-        headers = self._prepare_headers()
-
-        # Prepare the base scrape parameters with the URL
-        json_data = {'url': url}
+        # Build map parameters
+        map_params = {}
         if params:
-            json_data.update(params)
-        json_data['origin'] = f"python-sdk@{version}"
+            map_params.update(params.dict(exclude_none=True))
 
-        # Make the POST request with the prepared headers and JSON data
+        # Add individual parameters
+        if search is not None:
+            map_params['search'] = search
+        if ignore_sitemap is not None:
+            map_params['ignoreSitemap'] = ignore_sitemap
+        if include_subdomains is not None:
+            map_params['includeSubdomains'] = include_subdomains
+        if sitemap_only is not None:
+            map_params['sitemapOnly'] = sitemap_only
+        if limit is not None:
+            map_params['limit'] = limit
+        if timeout is not None:
+            map_params['timeout'] = timeout
+
+        # Create final params object
+        final_params = MapParams(**map_params)
+        params_dict = final_params.dict(exclude_none=True)
+        params_dict['url'] = url
+        params_dict['origin'] = f"python-sdk@{version}"
+
+        # Make request
         response = requests.post(
-            f'{self.api_url}{endpoint}',
-            headers=headers,
-            json=json_data,
+            f"{self.api_url}/v1/map",
+            headers={"Authorization": f"Bearer {self.api_key}"},
+            json=params_dict
         )
+
         if response.status_code == 200:
             try:
-                response = response.json()
-            except:
-                raise Exception(f'Failed to parse Firecrawl response as JSON.')
-            if response['success'] and 'links' in response:
-                return response
-            elif 'error' in response:
-                raise Exception(f'Failed to map URL. Error: {response["error"]}')
-            else:
-                raise Exception(f'Failed to map URL. Error: {response}')
+                response_json = response.json()
+                if response_json.get('success') and 'links' in response_json:
+                    return MapResponse(**response_json)
+                elif "error" in response_json:
+                    raise Exception(f'Map failed. Error: {response_json["error"]}')
+                else:
+                    raise Exception(f'Map failed. Error: {response_json}')
+            except ValueError:
+                raise Exception('Failed to parse Firecrawl response as JSON.')
         else:
             self._handle_error(response, 'map')
 
-    def batch_scrape_urls(self, urls: List[str],
-                  params: Optional[ScrapeParams] = None,
-                  poll_interval: Optional[int] = 2,
-                  idempotency_key: Optional[str] = None) -> BatchScrapeStatusResponse:
+    def batch_scrape_urls(
+        self,
+        urls: List[str],
+        *,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+        include_tags: Optional[List[str]] = None,
+        exclude_tags: Optional[List[str]] = None,
+        only_main_content: Optional[bool] = None,
+        wait_for: Optional[int] = None,
+        timeout: Optional[int] = None,
+        location: Optional[LocationConfig] = None,
+        mobile: Optional[bool] = None,
+        skip_tls_verification: Optional[bool] = None,
+        remove_base64_images: Optional[bool] = None,
+        block_ads: Optional[bool] = None,
+        proxy: Optional[Literal["basic", "stealth"]] = None,
+        extract: Optional[ExtractConfig] = None,
+        json_options: Optional[ExtractConfig] = None,
+        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+        agent: Optional[AgentOptions] = None,
+        poll_interval: Optional[int] = 2,
+        idempotency_key: Optional[str] = None,
+        **kwargs
+    ) -> BatchScrapeStatusResponse:
         """
         Batch scrape multiple URLs and monitor until completion.
 
         Args:
             urls (List[str]): URLs to scrape
-            params (Optional[ScrapeParams]): See ScrapeParams model:
-              Content Options:
-              * formats - Content formats to retrieve
-              * includeTags - HTML tags to include
-              * excludeTags - HTML tags to exclude
-              * onlyMainContent - Extract main content only
-                
-              Request Options:
-              * headers - Custom HTTP headers
-              * timeout - Request timeout (ms)
-              * mobile - Use mobile user agent
-              * proxy - Proxy type
-              
-              Extraction Options:
-              * extract - Content extraction config
-              * jsonOptions - JSON extraction config
-              * actions - Actions to perform
+            formats (Optional[List[Literal]]): Content formats to retrieve
+            headers (Optional[Dict[str, str]]): Custom HTTP headers
+            include_tags (Optional[List[str]]): HTML tags to include
+            exclude_tags (Optional[List[str]]): HTML tags to exclude
+            only_main_content (Optional[bool]): Extract main content only
+            wait_for (Optional[int]): Wait time in milliseconds
+            timeout (Optional[int]): Request timeout in milliseconds
+            location (Optional[LocationConfig]): Location configuration
+            mobile (Optional[bool]): Use mobile user agent
+            skip_tls_verification (Optional[bool]): Skip TLS verification
+            remove_base64_images (Optional[bool]): Remove base64 encoded images
+            block_ads (Optional[bool]): Block advertisements
+            proxy (Optional[Literal]): Proxy type to use
+            extract (Optional[ExtractConfig]): Content extraction config
+            json_options (Optional[ExtractConfig]): JSON extraction config
+            actions (Optional[List[Union]]): Actions to perform
+            agent (Optional[AgentOptions]): Agent configuration
+            poll_interval (Optional[int]): Seconds between status checks (default: 2)
+            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            **kwargs: Additional parameters to pass to the API
 
         Returns:
-          BatchScrapeStatusResponse with:
-          * Scraping status and progress
-          * Scraped content for each URL
-          * Success/error information
+            BatchScrapeStatusResponse with:
+            * Scraping status and progress
+            * Scraped content for each URL
+            * Success/error information
 
         Raises:
-          Exception: If batch scrape fails
+            Exception: If batch scrape fails
         """
-        endpoint = f'/v1/batch/scrape'
+        scrape_params = {}
+
+        # Add individual parameters
+        if formats is not None:
+            scrape_params['formats'] = formats
+        if headers is not None:
+            scrape_params['headers'] = headers
+        if include_tags is not None:
+            scrape_params['includeTags'] = include_tags
+        if exclude_tags is not None:
+            scrape_params['excludeTags'] = exclude_tags
+        if only_main_content is not None:
+            scrape_params['onlyMainContent'] = only_main_content
+        if wait_for is not None:
+            scrape_params['waitFor'] = wait_for
+        if timeout is not None:
+            scrape_params['timeout'] = timeout
+        if location is not None:
+            scrape_params['location'] = location.dict(exclude_none=True)
+        if mobile is not None:
+            scrape_params['mobile'] = mobile
+        if skip_tls_verification is not None:
+            scrape_params['skipTlsVerification'] = skip_tls_verification
+        if remove_base64_images is not None:
+            scrape_params['removeBase64Images'] = remove_base64_images
+        if block_ads is not None:
+            scrape_params['blockAds'] = block_ads
+        if proxy is not None:
+            scrape_params['proxy'] = proxy
+        if extract is not None:
+            if hasattr(extract.schema, 'schema'):
+                extract.schema = extract.schema.schema()
+            scrape_params['extract'] = extract.dict(exclude_none=True)
+        if json_options is not None:
+            if hasattr(json_options.schema, 'schema'):
+                json_options.schema = json_options.schema.schema()
+            scrape_params['jsonOptions'] = json_options.dict(exclude_none=True)
+        if actions is not None:
+            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+        if agent is not None:
+            scrape_params['agent'] = agent.dict(exclude_none=True)
+
+        # Add any additional kwargs
+        scrape_params.update(kwargs)
+
+        # Create final params object
+        final_params = ScrapeParams(**scrape_params)
+        params_dict = final_params.dict(exclude_none=True)
+        params_dict['urls'] = urls
+        params_dict['origin'] = f"python-sdk@{version}"
+
+        # Make request
         headers = self._prepare_headers(idempotency_key)
-        json_data = {'urls': urls}
-        if params:
-            json_data.update(params)
-        json_data['origin'] = f"python-sdk@{version}"
-        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
+        response = self._post_request(f'{self.api_url}/v1/batch/scrape', params_dict, headers)
+
         if response.status_code == 200:
             try:
                 id = response.json().get('id')
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
             return self._monitor_job_status(id, headers, poll_interval)
-
         else:
             self._handle_error(response, 'start batch scrape job')
 
-
     def async_batch_scrape_urls(
-            self,
-            urls: List[str],
-            params: Optional[ScrapeParams] = None,
-            idempotency_key: Optional[str] = None) -> BatchScrapeResponse:
+        self,
+        urls: List[str],
+        *,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+        include_tags: Optional[List[str]] = None,
+        exclude_tags: Optional[List[str]] = None,
+        only_main_content: Optional[bool] = None,
+        wait_for: Optional[int] = None,
+        timeout: Optional[int] = None,
+        location: Optional[LocationConfig] = None,
+        mobile: Optional[bool] = None,
+        skip_tls_verification: Optional[bool] = None,
+        remove_base64_images: Optional[bool] = None,
+        block_ads: Optional[bool] = None,
+        proxy: Optional[Literal["basic", "stealth"]] = None,
+        extract: Optional[ExtractConfig] = None,
+        json_options: Optional[ExtractConfig] = None,
+        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+        agent: Optional[AgentOptions] = None,
+        idempotency_key: Optional[str] = None,
+        **kwargs
+    ) -> BatchScrapeResponse:
         """
         Initiate a batch scrape job asynchronously.
 
         Args:
-          urls (List[str]): List of URLs to scrape
-          params (Optional[ScrapeParams]): See ScrapeParams model for configuration:
-            Content Options:
-            * formats - Content formats to retrieve
-            * includeTags - HTML tags to include
-            * excludeTags - HTML tags to exclude
-            * onlyMainContent - Extract main content only
-            
-            Request Options:
-            * headers - Custom HTTP headers
-            * timeout - Request timeout (ms)
-            * mobile - Use mobile user agent
-            * proxy - Proxy type
-            
-            Extraction Options:
-            * extract - Content extraction config
-            * jsonOptions - JSON extraction config
-            * actions - Actions to perform
-          idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            urls (List[str]): URLs to scrape
+            formats (Optional[List[Literal]]): Content formats to retrieve
+            headers (Optional[Dict[str, str]]): Custom HTTP headers
+            include_tags (Optional[List[str]]): HTML tags to include
+            exclude_tags (Optional[List[str]]): HTML tags to exclude
+            only_main_content (Optional[bool]): Extract main content only
+            wait_for (Optional[int]): Wait time in milliseconds
+            timeout (Optional[int]): Request timeout in milliseconds
+            location (Optional[LocationConfig]): Location configuration
+            mobile (Optional[bool]): Use mobile user agent
+            skip_tls_verification (Optional[bool]): Skip TLS verification
+            remove_base64_images (Optional[bool]): Remove base64 encoded images
+            block_ads (Optional[bool]): Block advertisements
+            proxy (Optional[Literal]): Proxy type to use
+            extract (Optional[ExtractConfig]): Content extraction config
+            json_options (Optional[ExtractConfig]): JSON extraction config
+            actions (Optional[List[Union]]): Actions to perform
+            agent (Optional[AgentOptions]): Agent configuration
+            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            **kwargs: Additional parameters to pass to the API
 
         Returns:
-          BatchScrapeResponse with:
-          * success - Whether job started successfully
-          * id - Unique identifier for the job
-          * url - Status check URL
-          * error - Error message if start failed
+            BatchScrapeResponse with:
+            * success - Whether job started successfully
+            * id - Unique identifier for the job
+            * url - Status check URL
+            * error - Error message if start failed
 
         Raises:
-          Exception: If job initiation fails
+            Exception: If job initiation fails
         """
-        endpoint = f'/v1/batch/scrape'
+        scrape_params = {}
+
+        # Add individual parameters
+        if formats is not None:
+            scrape_params['formats'] = formats
+        if headers is not None:
+            scrape_params['headers'] = headers
+        if include_tags is not None:
+            scrape_params['includeTags'] = include_tags
+        if exclude_tags is not None:
+            scrape_params['excludeTags'] = exclude_tags
+        if only_main_content is not None:
+            scrape_params['onlyMainContent'] = only_main_content
+        if wait_for is not None:
+            scrape_params['waitFor'] = wait_for
+        if timeout is not None:
+            scrape_params['timeout'] = timeout
+        if location is not None:
+            scrape_params['location'] = location.dict(exclude_none=True)
+        if mobile is not None:
+            scrape_params['mobile'] = mobile
+        if skip_tls_verification is not None:
+            scrape_params['skipTlsVerification'] = skip_tls_verification
+        if remove_base64_images is not None:
+            scrape_params['removeBase64Images'] = remove_base64_images
+        if block_ads is not None:
+            scrape_params['blockAds'] = block_ads
+        if proxy is not None:
+            scrape_params['proxy'] = proxy
+        if extract is not None:
+            if hasattr(extract.schema, 'schema'):
+                extract.schema = extract.schema.schema()
+            scrape_params['extract'] = extract.dict(exclude_none=True)
+        if json_options is not None:
+            if hasattr(json_options.schema, 'schema'):
+                json_options.schema = json_options.schema.schema()
+            scrape_params['jsonOptions'] = json_options.dict(exclude_none=True)
+        if actions is not None:
+            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+        if agent is not None:
+            scrape_params['agent'] = agent.dict(exclude_none=True)
+
+        # Add any additional kwargs
+        scrape_params.update(kwargs)
+
+        # Create final params object
+        final_params = ScrapeParams(**scrape_params)
+        params_dict = final_params.dict(exclude_none=True)
+        params_dict['urls'] = urls
+        params_dict['origin'] = f"python-sdk@{version}"
+
+        # Make request
         headers = self._prepare_headers(idempotency_key)
-        json_data = {'urls': urls}
-        if params:
-            json_data.update(params)
-        json_data['origin'] = f"python-sdk@{version}"
-        response = self._post_request(f'{self.api_url}{endpoint}', json_data, headers)
+        response = self._post_request(f'{self.api_url}/v1/batch/scrape', params_dict, headers)
+
         if response.status_code == 200:
             try:
-                return response.json()
+                return BatchScrapeResponse(**response.json())
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
             self._handle_error(response, 'start batch scrape job')
     
     def batch_scrape_urls_and_watch(
-            self,
-            urls: List[str],
-            params: Optional[ScrapeParams] = None,
-            idempotency_key: Optional[str] = None) -> 'CrawlWatcher':
+        self,
+        urls: List[str],
+        *,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+        include_tags: Optional[List[str]] = None,
+        exclude_tags: Optional[List[str]] = None,
+        only_main_content: Optional[bool] = None,
+        wait_for: Optional[int] = None,
+        timeout: Optional[int] = None,
+        location: Optional[LocationConfig] = None,
+        mobile: Optional[bool] = None,
+        skip_tls_verification: Optional[bool] = None,
+        remove_base64_images: Optional[bool] = None,
+        block_ads: Optional[bool] = None,
+        proxy: Optional[Literal["basic", "stealth"]] = None,
+        extract: Optional[ExtractConfig] = None,
+        json_options: Optional[ExtractConfig] = None,
+        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+        agent: Optional[AgentOptions] = None,
+        idempotency_key: Optional[str] = None,
+        **kwargs
+    ) -> 'CrawlWatcher':
         """
         Initiate a batch scrape job and return a CrawlWatcher to monitor the job via WebSocket.
 
         Args:
-            urls (List[str]): List of URLs to scrape
-            params (Optional[ScrapeParams]): See ScrapeParams model for configuration:
-
-              Content Options:
-              * formats - Content formats to retrieve
-              * includeTags - HTML tags to include
-              * excludeTags - HTML tags to exclude
-              * onlyMainContent - Extract main content only
-              
-              Request Options:
-              * headers - Custom HTTP headers
-              * timeout - Request timeout (ms)
-              * mobile - Use mobile user agent
-              * proxy - Proxy type
-              
-              Extraction Options:
-              * extract - Content extraction config
-              * jsonOptions - JSON extraction config
-              * actions - Actions to perform
+            urls (List[str]): URLs to scrape
+            formats (Optional[List[Literal]]): Content formats to retrieve
+            headers (Optional[Dict[str, str]]): Custom HTTP headers
+            include_tags (Optional[List[str]]): HTML tags to include
+            exclude_tags (Optional[List[str]]): HTML tags to exclude
+            only_main_content (Optional[bool]): Extract main content only
+            wait_for (Optional[int]): Wait time in milliseconds
+            timeout (Optional[int]): Request timeout in milliseconds
+            location (Optional[LocationConfig]): Location configuration
+            mobile (Optional[bool]): Use mobile user agent
+            skip_tls_verification (Optional[bool]): Skip TLS verification
+            remove_base64_images (Optional[bool]): Remove base64 encoded images
+            block_ads (Optional[bool]): Block advertisements
+            proxy (Optional[Literal]): Proxy type to use
+            extract (Optional[ExtractConfig]): Content extraction config
+            json_options (Optional[ExtractConfig]): JSON extraction config
+            actions (Optional[List[Union]]): Actions to perform
+            agent (Optional[AgentOptions]): Agent configuration
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            **kwargs: Additional parameters to pass to the API
 
         Returns:
-            AsyncCrawlWatcher: An instance to monitor the batch scrape job via WebSocket
+            CrawlWatcher: An instance to monitor the batch scrape job via WebSocket
 
         Raises:
             Exception: If batch scrape job fails to start
         """
-        crawl_response = self.async_batch_scrape_urls(urls, params, idempotency_key)
-        if crawl_response['success'] and 'id' in crawl_response:
-            return CrawlWatcher(crawl_response['id'], self)
+        scrape_params = {}
+
+        # Add individual parameters
+        if formats is not None:
+            scrape_params['formats'] = formats
+        if headers is not None:
+            scrape_params['headers'] = headers
+        if include_tags is not None:
+            scrape_params['includeTags'] = include_tags
+        if exclude_tags is not None:
+            scrape_params['excludeTags'] = exclude_tags
+        if only_main_content is not None:
+            scrape_params['onlyMainContent'] = only_main_content
+        if wait_for is not None:
+            scrape_params['waitFor'] = wait_for
+        if timeout is not None:
+            scrape_params['timeout'] = timeout
+        if location is not None:
+            scrape_params['location'] = location.dict(exclude_none=True)
+        if mobile is not None:
+            scrape_params['mobile'] = mobile
+        if skip_tls_verification is not None:
+            scrape_params['skipTlsVerification'] = skip_tls_verification
+        if remove_base64_images is not None:
+            scrape_params['removeBase64Images'] = remove_base64_images
+        if block_ads is not None:
+            scrape_params['blockAds'] = block_ads
+        if proxy is not None:
+            scrape_params['proxy'] = proxy
+        if extract is not None:
+            if hasattr(extract.schema, 'schema'):
+                extract.schema = extract.schema.schema()
+            scrape_params['extract'] = extract.dict(exclude_none=True)
+        if json_options is not None:
+            if hasattr(json_options.schema, 'schema'):
+                json_options.schema = json_options.schema.schema()
+            scrape_params['jsonOptions'] = json_options.dict(exclude_none=True)
+        if actions is not None:
+            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+        if agent is not None:
+            scrape_params['agent'] = agent.dict(exclude_none=True)
+
+        # Add any additional kwargs
+        scrape_params.update(kwargs)
+
+        # Create final params object
+        final_params = ScrapeParams(**scrape_params)
+        params_dict = final_params.dict(exclude_none=True)
+        params_dict['urls'] = urls
+        params_dict['origin'] = f"python-sdk@{version}"
+
+        # Make request
+        headers = self._prepare_headers(idempotency_key)
+        response = self._post_request(f'{self.api_url}/v1/batch/scrape', params_dict, headers)
+
+        if response.status_code == 200:
+            try:
+                crawl_response = BatchScrapeResponse(**response.json())
+                if crawl_response.success and crawl_response.id:
+                    return CrawlWatcher(crawl_response.id, self)
+                else:
+                    raise Exception("Batch scrape job failed to start")
+            except:
+                raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
-            raise Exception("Batch scrape job failed to start")
+            self._handle_error(response, 'start batch scrape job')
     
     def check_batch_scrape_status(self, id: str) -> BatchScrapeStatusResponse:
         """
@@ -1201,25 +1560,17 @@ class FirecrawlApp:
                             break
                     status_data['data'] = data
 
-            response = {
+            return BatchScrapeStatusResponse(**{
+                'success': False if 'error' in status_data else True,
                 'status': status_data.get('status'),
                 'total': status_data.get('total'),
                 'completed': status_data.get('completed'),
                 'creditsUsed': status_data.get('creditsUsed'),
                 'expiresAt': status_data.get('expiresAt'),
-                'data': status_data.get('data')
-            }
-
-            if 'error' in status_data:
-                response['error'] = status_data['error']
-
-            if 'next' in status_data:
-                response['next'] = status_data['next']
-
-            return {
-                'success': False if 'error' in status_data else True,
-                **response
-            }
+                'data': status_data.get('data'),
+                'next': status_data.get('next'),
+                'error': status_data.get('error')
+            })
         else:
             self._handle_error(response, 'check batch scrape status')
 
@@ -1228,7 +1579,7 @@ class FirecrawlApp:
         Returns information about batch scrape errors.
 
         Args:
-          id (str): The ID of the crawl job.
+            id (str): The ID of the crawl job.
 
         Returns:
             CrawlErrorsResponse: A response containing:
@@ -1238,12 +1589,15 @@ class FirecrawlApp:
               * url (str): URL that caused the error
               * error (str): Error message
             * robotsBlocked (List[str]): List of URLs blocked by robots.txt
+
+        Raises:
+            Exception: If the error check request fails
         """
         headers = self._prepare_headers()
         response = self._get_request(f'{self.api_url}/v1/batch/scrape/{id}/errors', headers)
         if response.status_code == 200:
             try:
-                return response.json()
+                return CrawlErrorsResponse(**response.json())
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
@@ -1252,47 +1606,44 @@ class FirecrawlApp:
     def extract(
             self,
             urls: Optional[List[str]] = None,
-            params: Optional[ExtractParams] = None) -> ExtractResponse[Any]:
+            *,
+            prompt: Optional[str] = None,
+            schema: Optional[Any] = None,
+            system_prompt: Optional[str] = None,
+            allow_external_links: Optional[bool] = False,
+            enable_web_search: Optional[bool] = False,
+            show_sources: Optional[bool] = False,
+            agent: Optional[Dict[str, Any]] = None) -> ExtractResponse[Any]:
         """
         Extract structured information from URLs.
 
         Args:
-            urls: URLs to extract from
-
-            params: See ExtractParams model:
-
-              Extraction Config:
-              * prompt - Custom extraction prompt
-              * schema - JSON schema/Pydantic model
-              * systemPrompt - System context
-              
-              Behavior Options:
-              * allowExternalLinks - Follow external links
-              * enableWebSearch - Enable web search
-              * includeSubdomains - Include subdomains
-              * showSources - Include source URLs
-              
-              Scraping Options:
-              * scrapeOptions - Page scraping config
+            urls (Optional[List[str]]): URLs to extract from
+            prompt (Optional[str]): Custom extraction prompt
+            schema (Optional[Any]): JSON schema/Pydantic model
+            system_prompt (Optional[str]): System context
+            allow_external_links (Optional[bool]): Follow external links
+            enable_web_search (Optional[bool]): Enable web search
+            show_sources (Optional[bool]): Include source URLs
+            agent (Optional[Dict[str, Any]]): Agent configuration
 
         Returns:
-            ExtractResponse with:
-            * Structured data matching schema
-            * Source information if requested
-            * Success/error status
+            ExtractResponse[Any] with:
+            * success (bool): Whether request succeeded
+            * data (Optional[Any]): Extracted data matching schema
+            * error (Optional[str]): Error message if any
 
         Raises:
             ValueError: If prompt/schema missing or extraction fails
         """
         headers = self._prepare_headers()
 
-        if not params or (not params.get('prompt') and not params.get('schema')):
+        if not prompt and not schema:
             raise ValueError("Either prompt or schema is required")
 
-        if not urls and not params.get('prompt'):
+        if not urls and not prompt:
             raise ValueError("Either urls or prompt is required")
 
-        schema = params.get('schema')
         if schema:
             if hasattr(schema, 'model_json_schema'):
                 # Convert Pydantic model to JSON schema
@@ -1300,26 +1651,22 @@ class FirecrawlApp:
             # Otherwise assume it's already a JSON schema dict
 
         request_data = {
-            'urls': urls,
-            'allowExternalLinks': params.get('allow_external_links', params.get('allowExternalLinks', False)),
-            'enableWebSearch': params.get('enable_web_search', params.get('enableWebSearch', False)), 
-            'showSources': params.get('show_sources', params.get('showSources', False)),
+            'urls': urls or [],
+            'allowExternalLinks': allow_external_links,
+            'enableWebSearch': enable_web_search,
+            'showSources': show_sources,
             'schema': schema,
             'origin': f'python-sdk@{get_version()}'
         }
 
-        if not request_data['urls']:
-            request_data['urls'] = []
         # Only add prompt and systemPrompt if they exist
-        if params.get('prompt'):
-            request_data['prompt'] = params['prompt']
-        if params.get('system_prompt'):
-            request_data['systemPrompt'] = params['system_prompt']
-        elif params.get('systemPrompt'):  # Check legacy field name
-            request_data['systemPrompt'] = params['systemPrompt']
+        if prompt:
+            request_data['prompt'] = prompt
+        if system_prompt:
+            request_data['systemPrompt'] = system_prompt
             
-        if params.get('agent'):
-            request_data['agent'] = params['agent']
+        if agent:
+            request_data['agent'] = agent
 
         try:
             # Send the initial extract request
@@ -1350,7 +1697,7 @@ class FirecrawlApp:
                             except:
                                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
                             if status_data['status'] == 'completed':
-                                return status_data
+                                return ExtractResponse(**status_data)
                             elif status_data['status'] in ['failed', 'cancelled']:
                                 raise Exception(f'Extract job {status_data["status"]}. Error: {status_data["error"]}')
                         else:
@@ -1364,7 +1711,7 @@ class FirecrawlApp:
         except Exception as e:
             raise ValueError(str(e), 500)
 
-        return {'success': False, 'error': "Internal server error."}
+        return ExtractResponse(success=False, error="Internal server error.")
     
     def get_extract_status(self, job_id: str) -> ExtractResponse[Any]:
         """
@@ -1384,7 +1731,7 @@ class FirecrawlApp:
             response = self._get_request(f'{self.api_url}/v1/extract/{job_id}', headers)
             if response.status_code == 200:
                 try:
-                    return response.json()
+                    return ExtractResponse(**response.json())
                 except:
                     raise Exception(f'Failed to parse Firecrawl response as JSON.')
             else:
@@ -1395,60 +1742,68 @@ class FirecrawlApp:
     def async_extract(
             self,
             urls: List[str],
-            params: Optional[ExtractParams] = None,
+            *,
+            prompt: Optional[str] = None,
+            schema: Optional[Any] = None,
+            system_prompt: Optional[str] = None,
+            allow_external_links: Optional[bool] = False,
+            enable_web_search: Optional[bool] = False,
+            show_sources: Optional[bool] = False,
+            agent: Optional[Dict[str, Any]] = None,
             idempotency_key: Optional[str] = None) -> ExtractResponse[Any]:
         """
         Initiate an asynchronous extract job.
 
         Args:
             urls (List[str]): URLs to extract information from
-            params (Optional[ExtractParams]): See ExtractParams model:
-              Extraction Config:
-              * prompt - Custom extraction prompt
-              * schema - JSON schema/Pydantic model
-              * systemPrompt - System context
-              
-              Behavior Options:
-              * allowExternalLinks - Follow external links
-              * enableWebSearch - Enable web search
-              * includeSubdomains - Include subdomains
-              * showSources - Include source URLs
-              
-              Scraping Options:
-              * scrapeOptions - Page scraping config
+            prompt (Optional[str]): Custom extraction prompt
+            schema (Optional[Any]): JSON schema/Pydantic model
+            system_prompt (Optional[str]): System context
+            allow_external_links (Optional[bool]): Follow external links
+            enable_web_search (Optional[bool]): Enable web search
+            show_sources (Optional[bool]): Include source URLs
+            agent (Optional[Dict[str, Any]]): Agent configuration
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
 
         Returns:
-          ExtractResponse containing:
-          * success (bool): Whether job started successfully
-          * id (str): Unique identifier for the job
-          * error (str, optional): Error message if start failed
+            ExtractResponse[Any] with:
+            * success (bool): Whether request succeeded
+            * data (Optional[Any]): Extracted data matching schema
+            * error (Optional[str]): Error message if any
 
         Raises:
-          ValueError: If job initiation fails
+            ValueError: If job initiation fails
         """
         headers = self._prepare_headers(idempotency_key)
         
-        schema = params.get('schema') if params else None
+        schema = schema
         if schema:
             if hasattr(schema, 'model_json_schema'):
                 # Convert Pydantic model to JSON schema
                 schema = schema.model_json_schema()
             # Otherwise assume it's already a JSON schema dict
 
-        jsonData = {'urls': urls, **(params or {})}
         request_data = {
-            **jsonData,
-            'allowExternalLinks': params.get('allow_external_links', False) if params else False,
+            'urls': urls,
+            'allowExternalLinks': allow_external_links,
+            'enableWebSearch': enable_web_search,
+            'showSources': show_sources,
             'schema': schema,
             'origin': f'python-sdk@{version}'
         }
+
+        if prompt:
+            request_data['prompt'] = prompt
+        if system_prompt:
+            request_data['systemPrompt'] = system_prompt
+        if agent:
+            request_data['agent'] = agent
 
         try:
             response = self._post_request(f'{self.api_url}/v1/extract', request_data, headers)
             if response.status_code == 200:
                 try:
-                    return response.json()
+                    return ExtractResponse(**response.json())
                 except:
                     raise Exception(f'Failed to parse Firecrawl response as JSON.')
             else:
@@ -1459,41 +1814,36 @@ class FirecrawlApp:
     def generate_llms_text(
             self,
             url: str,
-            params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> GenerateLLMsTextStatusResponse:
+            *,
+            max_urls: Optional[int] = None,
+            show_full_text: Optional[bool] = None,
+            experimental_stream: Optional[bool] = None) -> GenerateLLMsTextStatusResponse:
         """
         Generate LLMs.txt for a given URL and poll until completion.
 
         Args:
-          url: Target URL to generate LLMs.txt from
-
-            params: See GenerateLLMsTextParams model:
-            params: See GenerateLLMsTextParams model:
-
-          params: See GenerateLLMsTextParams model:
-
-            Generation Options:
-            * maxUrls - Maximum URLs to process (default: 10)
-            * showFullText - Include full text in output (default: False)
+            url (str): Target URL to generate LLMs.txt from
+            max_urls (Optional[int]): Maximum URLs to process (default: 10)
+            show_full_text (Optional[bool]): Include full text in output (default: False)
+            experimental_stream (Optional[bool]): Enable experimental streaming
 
         Returns:
-          GenerateLLMsTextStatusResponse with:
-          * Generated LLMs.txt content
-          * Full version if requested
-          * Generation status
-          * Success/error information
+            GenerateLLMsTextStatusResponse with:
+            * Generated LLMs.txt content
+            * Full version if requested
+            * Generation status
+            * Success/error information
 
         Raises:
-          Exception: If generation fails
+            Exception: If generation fails
         """
-        if params is None:
-            params = {}
+        params = GenerateLLMsTextParams(
+            maxUrls=max_urls,
+            showFullText=show_full_text,
+            __experimental_stream=experimental_stream
+        )
 
-        if isinstance(params, dict):
-            generation_params = GenerateLLMsTextParams(**params)
-        else:
-            generation_params = params
-
-        response = self.async_generate_llms_text(url, generation_params)
+        response = self.async_generate_llms_text(url, params)
         if not response.get('success') or 'id' not in response:
             return response
 
@@ -1515,35 +1865,36 @@ class FirecrawlApp:
     def async_generate_llms_text(
             self,
             url: str,
-            params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> GenerateLLMsTextResponse:
+            *,
+            max_urls: Optional[int] = None,
+            show_full_text: Optional[bool] = None,
+            experimental_stream: Optional[bool] = None) -> GenerateLLMsTextResponse:
         """
         Initiate an asynchronous LLMs.txt generation operation.
 
         Args:
-          url (str): The target URL to generate LLMs.txt from. Must be a valid HTTP/HTTPS URL.
-          params (Optional[Union[Dict[str, Any], GenerateLLMsTextParams]]): Generation configuration parameters:
-            * maxUrls (int, optional): Maximum number of URLs to process (default: 10)
-            * showFullText (bool, optional): Include full text in output (default: False)
+            url (str): The target URL to generate LLMs.txt from. Must be a valid HTTP/HTTPS URL.
+            max_urls (Optional[int]): Maximum URLs to process (default: 10)
+            show_full_text (Optional[bool]): Include full text in output (default: False)
+            experimental_stream (Optional[bool]): Enable experimental streaming
 
         Returns:
-          GenerateLLMsTextResponse: A response containing:
-            - success (bool): Whether the generation initiation was successful
-            - id (str): The unique identifier for the generation job
-            - error (str, optional): Error message if initiation failed
+            GenerateLLMsTextResponse: A response containing:
+            * success (bool): Whether the generation initiation was successful
+            * id (str): The unique identifier for the generation job
+            * error (str, optional): Error message if initiation failed
 
         Raises:
-          Exception: If the generation job initiation fails.
+            Exception: If the generation job initiation fails.
         """
-        if params is None:
-            params = {}
-
-        if isinstance(params, dict):
-            generation_params = GenerateLLMsTextParams(**params)
-        else:
-            generation_params = params
+        params = GenerateLLMsTextParams(
+            maxUrls=max_urls,
+            showFullText=show_full_text,
+            __experimental_stream=experimental_stream
+        )
 
         headers = self._prepare_headers()
-        json_data = {'url': url, **generation_params.dict(exclude_none=True)}
+        json_data = {'url': url, **params.dict(exclude_none=True)}
         json_data['origin'] = f"python-sdk@{version}"
 
         try:
@@ -1565,20 +1916,20 @@ class FirecrawlApp:
         Check the status of a LLMs.txt generation operation.
 
         Args:
-          id (str): The unique identifier of the LLMs.txt generation job to check status for.
+            id (str): The unique identifier of the LLMs.txt generation job to check status for.
 
         Returns:
-          GenerateLLMsTextStatusResponse: A response containing:
-          * success (bool): Whether the generation was successful
-          * status (str): Status of generation ("processing", "completed", "failed")
-          * data (Dict[str, str], optional): Generated text with fields:
-            * llmstxt (str): Generated LLMs.txt content
-            * llmsfulltxt (str, optional): Full version if requested
-          * error (str, optional): Error message if generation failed
-          * expiresAt (str): When the generated data expires
+            GenerateLLMsTextStatusResponse: A response containing:
+            * success (bool): Whether the generation was successful
+            * status (str): Status of generation ("processing", "completed", "failed")
+            * data (Dict[str, str], optional): Generated text with fields:
+              * llmstxt (str): Generated LLMs.txt content
+              * llmsfulltxt (str, optional): Full version if requested
+            * error (str, optional): Error message if generation failed
+            * expiresAt (str): When the generated data expires
 
         Raises:
-          Exception: If the status check fails.
+            Exception: If the status check fails.
         """
         headers = self._prepare_headers()
         try:
@@ -1816,52 +2167,57 @@ class FirecrawlApp:
     def deep_research(
             self,
             query: str,
-            params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None, 
+            *,
+            max_depth: Optional[int] = None,
+            time_limit: Optional[int] = None,
+            max_urls: Optional[int] = None,
+            analysis_prompt: Optional[str] = None,
+            system_prompt: Optional[str] = None,
+            __experimental_stream_steps: Optional[bool] = None,
             on_activity: Optional[Callable[[Dict[str, Any]], None]] = None,
             on_source: Optional[Callable[[Dict[str, Any]], None]] = None) -> DeepResearchStatusResponse:
         """
         Initiates a deep research operation on a given query and polls until completion.
 
         Args:
-          query: Research query or topic to investigate
-
-          params: See DeepResearchParams model:
-            Research Settings:
-              * maxDepth - Maximum research depth (default: 7)
-              * timeLimit - Time limit in seconds (default: 270)
-              * maxUrls - Maximum URLs to process (default: 20)
-
-          Callbacks:
-          * on_activity - Progress callback receiving:
-              {type, status, message, timestamp, depth}
-          * on_source - Source discovery callback receiving:
-              {url, title, description}
+            query (str): Research query or topic to investigate
+            max_depth (Optional[int]): Maximum depth of research exploration
+            time_limit (Optional[int]): Time limit in seconds for research
+            max_urls (Optional[int]): Maximum number of URLs to process
+            analysis_prompt (Optional[str]): Custom prompt for analysis
+            system_prompt (Optional[str]): Custom system prompt
+            __experimental_stream_steps (Optional[bool]): Enable experimental streaming
+            on_activity (Optional[Callable]): Progress callback receiving {type, status, message, timestamp, depth}
+            on_source (Optional[Callable]): Source discovery callback receiving {url, title, description}
 
         Returns:
-          DeepResearchResponse containing:
-
-          Status:
-          * success - Whether research completed successfully
-          * status - Current state (processing/completed/failed)
-          * error - Error message if failed
-          
-          Results:
-          * id - Unique identifier for the research job
-          * data - Research findings and analysis
-          * sources - List of discovered sources
-          * activities - Research progress log
-          * summaries - Generated research summaries
+            DeepResearchStatusResponse containing:
+            * success (bool): Whether research completed successfully
+            * status (str): Current state (processing/completed/failed)
+            * error (Optional[str]): Error message if failed
+            * id (str): Unique identifier for the research job
+            * data (Any): Research findings and analysis
+            * sources (List[Dict]): List of discovered sources
+            * activities (List[Dict]): Research progress log
+            * summaries (List[str]): Generated research summaries
 
         Raises:
-          Exception: If research fails
+            Exception: If research fails
         """
-        if params is None:
-            params = {}
-
-        if isinstance(params, dict):
-            research_params = DeepResearchParams(**params)
-        else:
-            research_params = params
+        research_params = {}
+        if max_depth is not None:
+            research_params['maxDepth'] = max_depth
+        if time_limit is not None:
+            research_params['timeLimit'] = time_limit
+        if max_urls is not None:
+            research_params['maxUrls'] = max_urls
+        if analysis_prompt is not None:
+            research_params['analysisPrompt'] = analysis_prompt
+        if system_prompt is not None:
+            research_params['systemPrompt'] = system_prompt
+        if __experimental_stream_steps is not None:
+            research_params['__experimental_streamSteps'] = __experimental_stream_steps
+        research_params = DeepResearchParams(**research_params)
 
         response = self.async_deep_research(query, research_params)
         if not response.get('success') or 'id' not in response:
@@ -1897,19 +2253,30 @@ class FirecrawlApp:
 
         return {'success': False, 'error': 'Deep research job terminated unexpectedly'}
 
-    def async_deep_research(self, query: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None) -> Dict[str, Any]:
+    def async_deep_research(
+            self,
+            query: str,
+            *,
+            max_depth: Optional[int] = None,
+            time_limit: Optional[int] = None,
+            max_urls: Optional[int] = None,
+            analysis_prompt: Optional[str] = None,
+            system_prompt: Optional[str] = None,
+            __experimental_stream_steps: Optional[bool] = None) -> Dict[str, Any]:
         """
         Initiates an asynchronous deep research operation.
 
         Args:
-            query (str): The research query to investigate. Should be a clear, specific question or topic.
-            params (Optional[Union[Dict[str, Any], DeepResearchParams]]): Research configuration parameters:
-              * maxDepth (int, optional): Maximum depth of research exploration (default: 7)
-              * timeLimit (int, optional): Time limit in seconds for research (default: 270)
-              * maxUrls (int, optional): Maximum number of URLs to process (default: 20)
+            query (str): Research query or topic to investigate
+            max_depth (Optional[int]): Maximum depth of research exploration
+            time_limit (Optional[int]): Time limit in seconds for research
+            max_urls (Optional[int]): Maximum number of URLs to process
+            analysis_prompt (Optional[str]): Custom prompt for analysis
+            system_prompt (Optional[str]): Custom system prompt
+            __experimental_stream_steps (Optional[bool]): Enable experimental streaming
 
         Returns:
-          DeepResearchResponse: A response containing:
+            Dict[str, Any]: A response containing:
             * success (bool): Whether the research initiation was successful
             * id (str): The unique identifier for the research job
             * error (str, optional): Error message if initiation failed
@@ -1917,13 +2284,20 @@ class FirecrawlApp:
         Raises:
             Exception: If the research initiation fails.
         """
-        if params is None:
-            params = {}
-
-        if isinstance(params, dict):
-            research_params = DeepResearchParams(**params)
-        else:
-            research_params = params
+        research_params = {}
+        if max_depth is not None:
+            research_params['maxDepth'] = max_depth
+        if time_limit is not None:
+            research_params['timeLimit'] = time_limit
+        if max_urls is not None:
+            research_params['maxUrls'] = max_urls
+        if analysis_prompt is not None:
+            research_params['analysisPrompt'] = analysis_prompt
+        if system_prompt is not None:
+            research_params['systemPrompt'] = system_prompt
+        if __experimental_stream_steps is not None:
+            research_params['__experimental_streamSteps'] = __experimental_stream_steps
+        research_params = DeepResearchParams(**research_params)
 
         headers = self._prepare_headers()
         
