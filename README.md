@@ -511,7 +511,7 @@ class TopArticlesSchema(BaseModel):
 
 json_config = ExtractConfig(schema=TopArticlesSchema.model_json_schema())
 
-llm_extraction_result = app.scrape_url('https://news.ycombinator.com', formats=["extract"], json=json_config)
+llm_extraction_result = app.scrape_url('https://news.ycombinator.com', formats=["json"], json=json_config)
 
 print(llm_extraction_result.json)
 ```
