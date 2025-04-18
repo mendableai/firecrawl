@@ -840,6 +840,7 @@ export async function generateSchemaFromPrompt(
         }),
         model,
         retryModel,
+        markdown: "",
         options: {
           mode: "llm",
           systemPrompt: `You are a schema generator for a web scraping system. Generate a JSON schema based on the user's prompt.
