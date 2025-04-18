@@ -558,61 +558,96 @@ class FirecrawlApp:
     def search(
             self,
             query: str,
-            params: Optional[Union[Dict[str, Any], SearchParams]] = None) -> SearchResponse:
+            limit: Optional[int] = None,
+            tbs: Optional[str] = None,
+            filter: Optional[str] = None,
+            lang: Optional[str] = None,
+            country: Optional[str] = None,
+            location: Optional[str] = None,
+            timeout: Optional[int] = None,
+            scrape_options: Optional[CommonOptions] = None,
+            params: Optional[Union[Dict[str, Any], SearchParams]] = None,
+            **kwargs) -> SearchResponse:
         """
         Search for content using Firecrawl.
 
         Args:
-          query (str): Search query string
-
-          params (Optional[Union[Dict[str, Any], SearchParams]]): See SearchParams model:
-
-            Search Options:
-            * limit - Max results (default: 5)
-            * tbs - Time filter (e.g. "qdr:d")
-            * filter - Custom result filter
-                
-            Localization:
-            * lang - Language code (default: "en")
-            * country - Country code (default: "us")
-            * location - Geo-targeting
-            
-            Request Options:
-            * timeout - Request timeout (ms)
-            * scrapeOptions - Result scraping config, check ScrapeParams model for more details
+            query (str): Search query string
+            limit (Optional[int]): Max results (default: 5)
+            tbs (Optional[str]): Time filter (e.g. "qdr:d")
+            filter (Optional[str]): Custom result filter
+            lang (Optional[str]): Language code (default: "en")
+            country (Optional[str]): Country code (default: "us") 
+            location (Optional[str]): Geo-targeting
+            timeout (Optional[int]): Request timeout in milliseconds
+            scrape_options (Optional[CommonOptions]): Result scraping configuration
+            params (Optional[Union[Dict[str, Any], SearchParams]]): Additional search parameters
+            **kwargs: Additional keyword arguments for future compatibility
 
         Returns:
-          SearchResponse
-
+            SearchResponse: Response containing:
+                * success (bool): Whether request succeeded
+                * data (List[FirecrawlDocument]): Search results
+                * warning (Optional[str]): Warning message if any
+                * error (Optional[str]): Error message if any
 
         Raises:
-          Exception: If search fails
+            Exception: If search fails or response cannot be parsed
         """
-        if params is None:
-            params = {}
+        # Build search parameters
+        search_params = {}
+        if params:
+            if isinstance(params, dict):
+                search_params.update(params)
+            else:
+                search_params.update(params.dict(exclude_none=True))
 
-        if isinstance(params, dict):
-            search_params = SearchParams(query=query, **params)
-        else:
-            search_params = params
-            search_params.query = query
+        # Add individual parameters
+        if limit is not None:
+            search_params['limit'] = limit
+        if tbs is not None:
+            search_params['tbs'] = tbs
+        if filter is not None:
+            search_params['filter'] = filter
+        if lang is not None:
+            search_params['lang'] = lang
+        if country is not None:
+            search_params['country'] = country
+        if location is not None:
+            search_params['location'] = location
+        if timeout is not None:
+            search_params['timeout'] = timeout
+        if scrape_options is not None:
+            search_params['scrapeOptions'] = scrape_options.dict(exclude_none=True)
+        
+        # Add any additional kwargs
+        search_params.update(kwargs)
 
-        params_dict = search_params.dict(exclude_none=True)
+        # Create final params object
+        final_params = SearchParams(query=query, **search_params)
+        params_dict = final_params.dict(exclude_none=True)
         params_dict['origin'] = f"python-sdk@{version}"
 
+        # Make request
         response = requests.post(
             f"{self.api_url}/v1/search",
             headers={"Authorization": f"Bearer {self.api_key}"},
             json=params_dict
         )
 
-        if response.status_code != 200:
-            raise Exception(f"Request failed with status code {response.status_code}")
-
-        try:
-            return response.json()
-        except:
-            raise Exception(f'Failed to parse Firecrawl response as JSON.')
+        if response.status_code == 200:
+            try:
+                response_json = response.json()
+                if response_json.get('success') and 'data' in response_json:
+                    return SearchResponse(**response_json)
+                elif "error" in response_json:
+                    raise Exception(f'Search failed. Error: {response_json["error"]}')
+                else:
+                    raise Exception(f'Search failed. Error: {response_json}')
+            except ValueError:
+                raise Exception('Failed to parse Firecrawl response as JSON.')
+        else:
+            self._handle_error(response, 'search')
 
     def crawl_url(self, url: str,
                   params: Optional[CrawlParams] = None,
