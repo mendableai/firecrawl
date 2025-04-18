@@ -2,7 +2,7 @@ import time
 import nest_asyncio
 import uuid
 import asyncio
-from firecrawl.firecrawl import AsyncFirecrawlApp
+from firecrawl.firecrawl import AsyncFirecrawlApp, ScrapeOptions, JsonConfig
 from pydantic import BaseModel, Field
 from typing import List
 
@@ -84,6 +84,20 @@ async def example_map_and_extract():
     extract_result = await app.extract(['https://firecrawl.dev'], prompt="Extract the title, description, and links from the website", schema=extract_schema)
     print(extract_result)
 
+async def example_deep_research():
+    # Deep research example
+    research_result = await app.deep_research(
+        "What are the latest developments in large language models?",
+        max_urls=4
+    )
+    print("Research Results:", research_result)
+
+async def example_generate_llms_text():
+    # Generate LLMs.txt example
+    llms_result = await app.generate_llms_text(
+        "https://firecrawl.dev")
+    print("LLMs.txt Results:", llms_result)
+
 # Define event handlers for websocket
 def on_document(detail):
     print("DOC", detail)
@@ -115,6 +129,8 @@ async def main():
     await example_llm_extraction()
     await example_map_and_extract()
     await example_websocket_crawl()
+    await example_deep_research()
+    await example_generate_llms_text()
 
 if __name__ == "__main__":
     asyncio.run(main())
