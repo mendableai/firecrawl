@@ -509,7 +509,7 @@ class ArticleSchema(BaseModel):
 class TopArticlesSchema(BaseModel):
     top: List[ArticleSchema] = Field(..., description="Top 5 stories")
 
-json_config = ExtractConfig(schema=TopArticlesSchema.model_json_schema())
+json_config = JsonConfig(schema=TopArticlesSchema.model_json_schema())
 
 llm_extraction_result = app.scrape_url('https://news.ycombinator.com', formats=["json"], json=json_config)
 
