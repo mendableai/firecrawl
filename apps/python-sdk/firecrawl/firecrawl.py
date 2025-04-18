@@ -3153,7 +3153,6 @@ class AsyncFirecrawlApp(FirecrawlApp):
         response = await self._async_post_request(
           f'{self.api_url}/v1/crawl', params_dict, headers)
 
-        print(response)
         if response.get('success'):
             try:
                 id = response.get('id')
