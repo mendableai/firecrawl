@@ -278,14 +278,14 @@ v1Router.get(
 
 v1Router.post(
   "/deep-research",
-  authMiddleware(RateLimiterMode.Extract),
+  authMiddleware(RateLimiterMode.Crawl),
   checkCreditsMiddleware(1),
   wrap(deepResearchController),
 );
 
 v1Router.get(
   "/deep-research/:jobId",
-  authMiddleware(RateLimiterMode.ExtractStatus),
+  authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(deepResearchStatusController),
 );
 

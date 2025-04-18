@@ -1843,7 +1843,12 @@ class FirecrawlApp:
             __experimental_stream=experimental_stream
         )
 
-        response = self.async_generate_llms_text(url, params)
+        response = self.async_generate_llms_text(
+            url,
+            max_urls=max_urls,
+            show_full_text=show_full_text,
+            experimental_stream=experimental_stream
+        )
         if not response.get('success') or 'id' not in response:
             return response
 
@@ -2219,7 +2224,14 @@ class FirecrawlApp:
             research_params['__experimental_streamSteps'] = __experimental_stream_steps
         research_params = DeepResearchParams(**research_params)
 
-        response = self.async_deep_research(query, research_params)
+        response = self.async_deep_research(
+            query,
+            max_depth=max_depth,
+            time_limit=time_limit,
+            max_urls=max_urls,
+            analysis_prompt=analysis_prompt,
+            system_prompt=system_prompt
+        )
         if not response.get('success') or 'id' not in response:
             return response
 
@@ -3529,7 +3541,12 @@ class AsyncFirecrawlApp(FirecrawlApp):
         if experimental_stream is not None:
             params['__experimental_stream'] = experimental_stream
 
-        response = await self.async_generate_llms_text(url, params)
+        response = await self.async_generate_llms_text(
+            url,
+            max_urls=max_urls,
+            show_full_text=show_full_text,
+            experimental_stream=experimental_stream
+        )
         if not response.get('success') or 'id' not in response:
             return response
 
@@ -3678,7 +3695,14 @@ class AsyncFirecrawlApp(FirecrawlApp):
             research_params['__experimental_streamSteps'] = __experimental_stream_steps
         research_params = DeepResearchParams(**research_params)
 
-        response = await self.async_deep_research(query, research_params)
+        response = await self.async_deep_research(
+            query,
+            max_depth=max_depth,
+            time_limit=time_limit,
+            max_urls=max_urls,
+            analysis_prompt=analysis_prompt,
+            system_prompt=system_prompt
+        )
         if not response.get('success') or 'id' not in response:
             return response
 
