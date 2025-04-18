@@ -76,6 +76,15 @@ class FirecrawlDocumentMetadata(pydantic.BaseModel):
     statusCode: Optional[int] = None
     error: Optional[str] = None
 
+class AgentOptions(pydantic.BaseModel):
+    """Configuration for the agent."""
+    model: Literal["FIRE-1"] = "FIRE-1"
+    prompt: Optional[str] = None
+
+class AgentOptionsExtract(pydantic.BaseModel):
+    """Configuration for the agent in extract operations."""
+    model: Literal["FIRE-1"] = "FIRE-1"
+
 class ActionsResult(pydantic.BaseModel):
     """Result of actions performed during scraping."""
     screenshots: List[str]
@@ -164,17 +173,24 @@ class ExecuteJavascriptAction(pydantic.BaseModel):
     type: Literal["executeJavascript"]
     script: str
 
+
+class ExtractAgent(pydantic.BaseModel):
+    """Configuration for the agent in extract operations."""
+    model: Literal["FIRE-1"] = "FIRE-1"
+
 class ExtractConfig(pydantic.BaseModel):
     """Configuration for extraction."""
     prompt: Optional[str] = None
     schema: Optional[Any] = None
     systemPrompt: Optional[str] = None
+    agent: Optional[ExtractAgent] = None
 
 class ScrapeParams(CrawlScrapeOptions):
     """Parameters for scraping operations."""
     extract: Optional[ExtractConfig] = None
     jsonOptions: Optional[ExtractConfig] = None
     actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None
+    agent: Optional[AgentOptions] = None
 
 class ScrapeResponse(FirecrawlDocument[T], Generic[T]):
     """Response from scraping operations."""
@@ -363,7 +379,7 @@ class ChangeTrackingData(pydantic.BaseModel):
     visibility: str  # "visible" | "hidden"
     diff: Optional[Dict[str, Any]] = None
     json: Optional[Any] = None
-
+    
 class FirecrawlApp:
     class SearchResponse(pydantic.BaseModel):
         """
