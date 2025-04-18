@@ -42,23 +42,7 @@ while attempts > 0 and crawl_status.status != 'completed':
 crawl_status = app.check_crawl_status(async_result.id)
 print(crawl_status)
 
-# LLM Extraction:
-# Define schema to extract contents into using pydantic
-class ArticleSchema(BaseModel):
-    title: str
-    points: int 
-    by: str
-    commentsURL: str
-
-class TopArticlesSchema(BaseModel):
-    top: List[ArticleSchema] = Field(..., description="Top 5 stories")
-
-extract_config = JsonConfig(schema=TopArticlesSchema.model_json_schema())
-
-llm_extraction_result = app.scrape_url('https://news.ycombinator.com', formats=["extract"], extract=extract_config)
-
-print(llm_extraction_result.extract)
-
+# JSON format:
 # Define schema to extract contents into using json schema
 json_schema = {
   "type": "object",
@@ -85,9 +69,6 @@ extract_config = JsonConfig(schema=json_schema)
 llm_extraction_result = app.scrape_url('https://news.ycombinator.com', formats=["json"], json_options=extract_config)
 
 print(llm_extraction_result.json)
-
-print(llm_extraction_result['llm_extraction'])
-
 
 # Map a website:
 map_result = app.map_url('https://firecrawl.dev', search="blog")

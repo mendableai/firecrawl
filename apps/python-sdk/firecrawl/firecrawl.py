@@ -1742,7 +1742,7 @@ class FirecrawlApp:
 
     def async_extract(
             self,
-            urls: List[str],
+            urls: Optional[List[str]] = None,
             *,
             prompt: Optional[str] = None,
             schema: Optional[Any] = None,
@@ -1750,8 +1750,7 @@ class FirecrawlApp:
             allow_external_links: Optional[bool] = False,
             enable_web_search: Optional[bool] = False,
             show_sources: Optional[bool] = False,
-            agent: Optional[Dict[str, Any]] = None,
-            idempotency_key: Optional[str] = None) -> ExtractResponse[Any]:
+            agent: Optional[Dict[str, Any]] = None) -> ExtractResponse[Any]:
         """
         Initiate an asynchronous extract job.
 
@@ -1775,7 +1774,7 @@ class FirecrawlApp:
         Raises:
             ValueError: If job initiation fails
         """
-        headers = self._prepare_headers(idempotency_key)
+        headers = self._prepare_headers()
         
         schema = schema
         if schema:
@@ -3457,27 +3456,28 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
     async def extract(
             self,
-            urls: List[str],
-            params: Optional[ExtractParams] = None) -> ExtractResponse[Any]:
+            urls: Optional[List[str]] = None,
+            *,
+            prompt: Optional[str] = None,
+            schema: Optional[Any] = None,
+            system_prompt: Optional[str] = None,
+            allow_external_links: Optional[bool] = False,
+            enable_web_search: Optional[bool] = False,
+            show_sources: Optional[bool] = False,
+            agent: Optional[Dict[str, Any]] = None) -> ExtractResponse[Any]:
+            
         """
         Asynchronously extract structured information from URLs.
 
         Args:
-            urls (List[str]): URLs to extract from
-            params (Optional[ExtractParams]): See ExtractParams model:
-              Extraction Config:
-              * prompt - Custom extraction prompt
-              * schema - JSON schema/Pydantic model
-              * systemPrompt - System context
-              
-              Behavior Options:
-              * allowExternalLinks - Follow external links
-              * enableWebSearch - Enable web search
-              * includeSubdomains - Include subdomains
-              * showSources - Include source URLs
-              
-              Scraping Options:
-              * scrapeOptions - Page scraping config
+            urls (Optional[List[str]]): URLs to extract from
+            prompt (Optional[str]): Custom extraction prompt
+            schema (Optional[Any]): JSON schema/Pydantic model
+            system_prompt (Optional[str]): System context
+            allow_external_links (Optional[bool]): Follow external links
+            enable_web_search (Optional[bool]): Enable web search
+            show_sources (Optional[bool]): Include source URLs
+            agent (Optional[Dict[str, Any]]): Agent configuration
 
         Returns:
           ExtractResponse with:
@@ -3490,29 +3490,35 @@ class AsyncFirecrawlApp(FirecrawlApp):
         """
         headers = self._prepare_headers()
 
-        if not params or (not params.get('prompt') and not params.get('schema')):
+        if not prompt and not schema:
             raise ValueError("Either prompt or schema is required")
 
-        schema = params.get('schema')
+        if not urls and not prompt:
+            raise ValueError("Either urls or prompt is required")
+
         if schema:
             if hasattr(schema, 'model_json_schema'):
+                # Convert Pydantic model to JSON schema
                 schema = schema.model_json_schema()
+            # Otherwise assume it's already a JSON schema dict
 
-        request_data = ExtractResponse(
-            urls=urls,
-            allowExternalLinks=params.get('allow_external_links', params.get('allowExternalLinks', False)),
-            enableWebSearch=params.get('enable_web_search', params.get('enableWebSearch', False)),
-            showSources=params.get('show_sources', params.get('showSources', False)),
-            schema=schema,
-            origin=f'python-sdk@{version}'
-        )
+        request_data = {
+            'urls': urls or [],
+            'allowExternalLinks': allow_external_links,
+            'enableWebSearch': enable_web_search,
+            'showSources': show_sources,
+            'schema': schema,
+            'origin': f'python-sdk@{get_version()}'
+        }
 
-        if params.get('prompt'):
-            request_data['prompt'] = params['prompt']
-        if params.get('system_prompt'):
-            request_data['systemPrompt'] = params['system_prompt']
-        elif params.get('systemPrompt'):
-            request_data['systemPrompt'] = params['systemPrompt']
+        # Only add prompt and systemPrompt if they exist
+        if prompt:
+            request_data['prompt'] = prompt
+        if system_prompt:
+            request_data['systemPrompt'] = system_prompt
+            
+        if agent:
+            request_data['agent'] = agent
 
         response = await self._async_post_request(
             f'{self.api_url}/v1/extract',
@@ -3532,7 +3538,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                 )
 
                 if status_data['status'] == 'completed':
-                    return status_data
+                    return ExtractResponse(**status_data)
                 elif status_data['status'] in ['failed', 'cancelled']:
                     raise Exception(f'Extract job {status_data["status"]}. Error: {status_data["error"]}')
 
@@ -3715,8 +3721,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             allow_external_links: Optional[bool] = False,
             enable_web_search: Optional[bool] = False,
             show_sources: Optional[bool] = False,
-            agent: Optional[Dict[str, Any]] = None,
-            idempotency_key: Optional[str] = None) -> ExtractResponse[Any]:
+            agent: Optional[Dict[str, Any]] = None) -> ExtractResponse[Any]:
         """
         Initiate an asynchronous extraction job without waiting for completion.
 
@@ -3740,7 +3745,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Raises:
             ValueError: If job initiation fails
         """
-        headers = self._prepare_headers(idempotency_key)
+        headers = self._prepare_headers()
 
         if not prompt and not schema:
             raise ValueError("Either prompt or schema is required")
@@ -3870,6 +3875,12 @@ class AsyncFirecrawlApp(FirecrawlApp):
             params['showFullText'] = show_full_text
         if experimental_stream is not None:
             params['__experimental_stream'] = experimental_stream
+
+        params = GenerateLLMsTextParams(
+            maxUrls=max_urls,
+            showFullText=show_full_text,
+            __experimental_stream=experimental_stream
+        )
 
         headers = self._prepare_headers()
         json_data = {'url': url, **params.dict(exclude_none=True)}
