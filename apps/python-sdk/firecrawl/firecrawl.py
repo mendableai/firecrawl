@@ -461,23 +461,21 @@ class FirecrawlApp:
 
         Args:
           url (str): Target URL to scrape
-          params (Optional[ScrapeParams]): See ScrapeParams model for configuration:
-            Content Options:
-            * formats - Content types to retrieve (markdown/html/etc)
-            * includeTags - HTML tags to include
-            * excludeTags - HTML tags to exclude
-            * onlyMainContent - Extract main content only
-                
-            Request Options:
-            * headers - Custom HTTP headers
-            * timeout - Request timeout (ms)
-            * mobile - Use mobile user agent
-            * proxy - Proxy type (basic/stealth)
-                
-            Extraction Options:
-            * extract - Content extraction settings
-            * jsonOptions - JSON extraction settings
-            * actions - Actions to perform
+          formats (Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]]): Content types to retrieve (markdown/html/etc)
+          include_tags (Optional[List[str]]): HTML tags to include
+          exclude_tags (Optional[List[str]]): HTML tags to exclude
+          only_main_content (Optional[bool]): Extract main content only
+          wait_for (Optional[int]): Wait for a specific element to appear
+          timeout (Optional[int]): Request timeout (ms)
+          location (Optional[LocationConfig]): Location configuration
+          mobile (Optional[bool]): Use mobile user agent
+          skip_tls_verification (Optional[bool]): Skip TLS verification
+          remove_base64_images (Optional[bool]): Remove base64 images
+          block_ads (Optional[bool]): Block ads
+          proxy (Optional[Literal["basic", "stealth"]]): Proxy type (basic/stealth)
+          extract (Optional[ExtractConfig]): Content extraction settings
+          json_options (Optional[ExtractConfig]): JSON extraction settings
+          actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]]): Actions to perform
 
         Returns:
           ScrapeResponse with:
