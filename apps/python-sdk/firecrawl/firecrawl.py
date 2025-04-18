@@ -463,23 +463,21 @@ class FirecrawlApp:
 
         Args:
           url (str): Target URL to scrape
-          params (Optional[ScrapeParams]): See ScrapeParams model for configuration:
-            Content Options:
-            * formats - Content types to retrieve (markdown/html/etc)
-            * includeTags - HTML tags to include
-            * excludeTags - HTML tags to exclude
-            * onlyMainContent - Extract main content only
-                
-            Request Options:
-            * headers - Custom HTTP headers
-            * timeout - Request timeout (ms)
-            * mobile - Use mobile user agent
-            * proxy - Proxy type (basic/stealth)
-                
-            Extraction Options:
-            * extract - Content extraction settings
-            * jsonOptions - JSON extraction settings
-            * actions - Actions to perform
+          formats (Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]]): Content types to retrieve (markdown/html/etc)
+          include_tags (Optional[List[str]]): HTML tags to include
+          exclude_tags (Optional[List[str]]): HTML tags to exclude
+          only_main_content (Optional[bool]): Extract main content only
+          wait_for (Optional[int]): Wait for a specific element to appear
+          timeout (Optional[int]): Request timeout (ms)
+          location (Optional[LocationConfig]): Location configuration
+          mobile (Optional[bool]): Use mobile user agent
+          skip_tls_verification (Optional[bool]): Skip TLS verification
+          remove_base64_images (Optional[bool]): Remove base64 images
+          block_ads (Optional[bool]): Block ads
+          proxy (Optional[Literal["basic", "stealth"]]): Proxy type (basic/stealth)
+          extract (Optional[ExtractConfig]): Content extraction settings
+          json_options (Optional[ExtractConfig]): JSON extraction settings
+          actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]]): Actions to perform
 
 
         Returns:
@@ -2684,29 +2682,41 @@ class AsyncFirecrawlApp(FirecrawlApp):
     async def scrape_url(
             self,
             url: str,
-            params: Optional[ScrapeParams] = None) -> ScrapeResponse[Any]:
+            formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+            include_tags: Optional[List[str]] = None,
+            exclude_tags: Optional[List[str]] = None,
+            only_main_content: Optional[bool] = None,
+            wait_for: Optional[int] = None,
+            timeout: Optional[int] = None,
+            location: Optional[LocationConfig] = None,
+            mobile: Optional[bool] = None,
+            skip_tls_verification: Optional[bool] = None,
+            remove_base64_images: Optional[bool] = None,
+            block_ads: Optional[bool] = None,
+            proxy: Optional[Literal["basic", "stealth"]] = None,
+            extract: Optional[ExtractConfig] = None,
+            json_options: Optional[ExtractConfig] = None,
+            actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None) -> ScrapeResponse[Any]:
         """
-        Asynchronously scrape and extract content from a URL.
+        Scrape and extract content from a URL asynchronously.
 
         Args:
-            url (str): Target URL to scrape
-            params (Optional[ScrapeParams]): See ScrapeParams model for configuration:
-              Content Options:
-              * formats - Content types to retrieve (markdown/html/etc)
-              * includeTags - HTML tags to include
-              * excludeTags - HTML tags to exclude
-              * onlyMainContent - Extract main content only
-                  
-              Request Options:
-              * headers - Custom HTTP headers
-              * timeout - Request timeout (ms)
-              * mobile - Use mobile user agent
-              * proxy - Proxy type (basic/stealth)
-                  
-              Extraction Options:
-              * extract - Content extraction settings
-              * jsonOptions - JSON extraction settings
-              * actions - Actions to perform
+          url (str): Target URL to scrape
+          formats (Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]]): Content types to retrieve (markdown/html/etc)
+          include_tags (Optional[List[str]]): HTML tags to include
+          exclude_tags (Optional[List[str]]): HTML tags to exclude
+          only_main_content (Optional[bool]): Extract main content only
+          wait_for (Optional[int]): Wait for a specific element to appear
+          timeout (Optional[int]): Request timeout (ms)
+          location (Optional[LocationConfig]): Location configuration
+          mobile (Optional[bool]): Use mobile user agent
+          skip_tls_verification (Optional[bool]): Skip TLS verification
+          remove_base64_images (Optional[bool]): Remove base64 images
+          block_ads (Optional[bool]): Block ads
+          proxy (Optional[Literal["basic", "stealth"]]): Proxy type (basic/stealth)
+          extract (Optional[ExtractConfig]): Content extraction settings
+          json_options (Optional[ExtractConfig]): JSON extraction settings
+          actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]]): Actions to perform
 
         Returns:
           ScrapeResponse with:
@@ -2716,35 +2726,70 @@ class AsyncFirecrawlApp(FirecrawlApp):
           * Success/error status
 
         Raises:
-            Exception: If scraping fails
+          Exception: If scraping fails
         """
         headers = self._prepare_headers()
-        scrape_params = {'url': url, 'origin': f'python-sdk@{version}'}
 
-        if params:
-            extract = params.get('extract', {})
-            if extract:
-                if 'schema' in extract and hasattr(extract['schema'], 'schema'):
-                    extract['schema'] = extract['schema'].schema()
-                scrape_params['extract'] = extract
+        # Build scrape parameters
+        scrape_params = {
+            'url': url,
+            'origin': f"python-sdk@{version}"
+        }
 
-            for key, value in params.items():
-                if key not in ['extract']:
-                    scrape_params[key] = value
+        # Add optional parameters if provided and not None
+        if formats:
+            scrape_params['formats'] = formats
+        if include_tags:
+            scrape_params['includeTags'] = include_tags
+        if exclude_tags:
+            scrape_params['excludeTags'] = exclude_tags
+        if only_main_content is not None:
+            scrape_params['onlyMainContent'] = only_main_content
+        if wait_for:
+            scrape_params['waitFor'] = wait_for
+        if timeout:
+            scrape_params['timeout'] = timeout
+        if location:
+            scrape_params['location'] = location.dict(exclude_none=True)
+        if mobile is not None:
+            scrape_params['mobile'] = mobile
+        if skip_tls_verification is not None:
+            scrape_params['skipTlsVerification'] = skip_tls_verification
+        if remove_base64_images is not None:
+            scrape_params['removeBase64Images'] = remove_base64_images
+        if block_ads is not None:
+            scrape_params['blockAds'] = block_ads
+        if proxy:
+            scrape_params['proxy'] = proxy
+        if extract:
+            extract_dict = extract.dict(exclude_none=True)
+            if 'schema' in extract_dict and hasattr(extract.schema, 'schema'):
+                extract_dict['schema'] = extract.schema.schema() # Ensure pydantic model schema is converted
+            scrape_params['extract'] = extract_dict
+        if json_options:
+            json_options_dict = json_options.dict(exclude_none=True)
+            if 'schema' in json_options_dict and hasattr(json_options.schema, 'schema'):
+                 json_options_dict['schema'] = json_options.schema.schema() # Ensure pydantic model schema is converted
+            scrape_params['jsonOptions'] = json_options_dict
+        if actions:
+            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
 
+        # Make async request
         endpoint = f'/v1/scrape'
         response = await self._async_post_request(
             f'{self.api_url}{endpoint}',
             scrape_params,
             headers
         )
-        
+
         if response.get('success') and 'data' in response:
-            return response['data']
+            return ScrapeResponse(**response['data'])
         elif "error" in response:
             raise Exception(f'Failed to scrape URL. Error: {response["error"]}')
         else:
-            raise Exception(f'Failed to scrape URL. Error: {response}')
+            # Use the response content directly if possible, otherwise a generic message
+            error_content = response.get('error', str(response))
+            raise Exception(f'Failed to scrape URL. Error: {error_content}')
 
     async def batch_scrape_urls(
             self,
