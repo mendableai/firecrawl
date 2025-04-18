@@ -2792,224 +2792,471 @@ class AsyncFirecrawlApp(FirecrawlApp):
             raise Exception(f'Failed to scrape URL. Error: {error_content}')
 
     async def batch_scrape_urls(
-            self,
-            urls: List[str],
-            params: Optional[ScrapeParams] = None) -> BatchScrapeStatusResponse:
+        self,
+        urls: List[str],
+        *,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+        include_tags: Optional[List[str]] = None,
+        exclude_tags: Optional[List[str]] = None,
+        only_main_content: Optional[bool] = None,
+        wait_for: Optional[int] = None,
+        timeout: Optional[int] = None,
+        location: Optional[LocationConfig] = None,
+        mobile: Optional[bool] = None,
+        skip_tls_verification: Optional[bool] = None,
+        remove_base64_images: Optional[bool] = None,
+        block_ads: Optional[bool] = None,
+        proxy: Optional[Literal["basic", "stealth"]] = None,
+        extract: Optional[ExtractConfig] = None,
+        json_options: Optional[ExtractConfig] = None,
+        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+        agent: Optional[AgentOptions] = None,
+        poll_interval: Optional[int] = 2,
+        idempotency_key: Optional[str] = None,
+        **kwargs
+    ) -> BatchScrapeStatusResponse:
         """
         Asynchronously scrape multiple URLs and monitor until completion.
 
         Args:
             urls (List[str]): URLs to scrape
-            params (Optional[ScrapeParams]): See ScrapeParams model:
-              Content Options:
-              * formats - Content formats to retrieve
-              * includeTags - HTML tags to include
-              * excludeTags - HTML tags to exclude
-              * onlyMainContent - Extract main content only
-                
-              Request Options:
-              * headers - Custom HTTP headers
-              * timeout - Request timeout (ms)
-              * mobile - Use mobile user agent
-              * proxy - Proxy type
-              
-              Extraction Options:
-              * extract - Content extraction config
-              * jsonOptions - JSON extraction config
-              * actions - Actions to perform
+            formats (Optional[List[Literal]]): Content formats to retrieve
+            headers (Optional[Dict[str, str]]): Custom HTTP headers
+            include_tags (Optional[List[str]]): HTML tags to include
+            exclude_tags (Optional[List[str]]): HTML tags to exclude
+            only_main_content (Optional[bool]): Extract main content only
+            wait_for (Optional[int]): Wait time in milliseconds
+            timeout (Optional[int]): Request timeout in milliseconds
+            location (Optional[LocationConfig]): Location configuration
+            mobile (Optional[bool]): Use mobile user agent
+            skip_tls_verification (Optional[bool]): Skip TLS verification
+            remove_base64_images (Optional[bool]): Remove base64 encoded images
+            block_ads (Optional[bool]): Block advertisements
+            proxy (Optional[Literal]): Proxy type to use
+            extract (Optional[ExtractConfig]): Content extraction config
+            json_options (Optional[ExtractConfig]): JSON extraction config
+            actions (Optional[List[Union]]): Actions to perform
+            agent (Optional[AgentOptions]): Agent configuration
+            poll_interval (Optional[int]): Seconds between status checks (default: 2)
+            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            **kwargs: Additional parameters to pass to the API
 
         Returns:
-          BatchScrapeStatusResponse with:
-          * Scraping status and progress
-          * Scraped content for each URL
-          * Success/error information
+            BatchScrapeStatusResponse with:
+            * Scraping status and progress
+            * Scraped content for each URL
+            * Success/error information
 
         Raises:
-          Exception: If batch scrape fails
+            Exception: If batch scrape fails
         """
-        headers = self._prepare_headers()
-        json_data = {'urls': urls}
-        if params:
-            json_data.update(params)
-            json_data['origin'] = f"python-sdk@{version}"
+        scrape_params = {}
 
-        endpoint = f'/v1/batch/scrape'
+        # Add individual parameters
+        if formats is not None:
+            scrape_params['formats'] = formats
+        if headers is not None:
+            scrape_params['headers'] = headers
+        if include_tags is not None:
+            scrape_params['includeTags'] = include_tags
+        if exclude_tags is not None:
+            scrape_params['excludeTags'] = exclude_tags
+        if only_main_content is not None:
+            scrape_params['onlyMainContent'] = only_main_content
+        if wait_for is not None:
+            scrape_params['waitFor'] = wait_for
+        if timeout is not None:
+            scrape_params['timeout'] = timeout
+        if location is not None:
+            scrape_params['location'] = location.dict(exclude_none=True)
+        if mobile is not None:
+            scrape_params['mobile'] = mobile
+        if skip_tls_verification is not None:
+            scrape_params['skipTlsVerification'] = skip_tls_verification
+        if remove_base64_images is not None:
+            scrape_params['removeBase64Images'] = remove_base64_images
+        if block_ads is not None:
+            scrape_params['blockAds'] = block_ads
+        if proxy is not None:
+            scrape_params['proxy'] = proxy
+        if extract is not None:
+            if hasattr(extract.schema, 'schema'):
+                extract.schema = extract.schema.schema()
+            scrape_params['extract'] = extract.dict(exclude_none=True)
+        if json_options is not None:
+            if hasattr(json_options.schema, 'schema'):
+                json_options.schema = json_options.schema.schema()
+            scrape_params['jsonOptions'] = json_options.dict(exclude_none=True)
+        if actions is not None:
+            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+        if agent is not None:
+            scrape_params['agent'] = agent.dict(exclude_none=True)
+
+        # Add any additional kwargs
+        scrape_params.update(kwargs)
+
+        # Create final params object
+        final_params = ScrapeParams(**scrape_params)
+        params_dict = final_params.dict(exclude_none=True)
+        params_dict['urls'] = urls
+        params_dict['origin'] = f"python-sdk@{version}"
+
+        # Make request
+        headers = self._prepare_headers(idempotency_key)
         response = await self._async_post_request(
-            f'{self.api_url}{endpoint}',
-            json_data,
+            f'{self.api_url}/v1/batch/scrape',
+            params_dict,
             headers
         )
 
-        if response.get('success') and 'id' in response:
-            return await self._async_monitor_job_status(response['id'], headers)
+        if response.status_code == 200:
+            try:
+                id = response.json().get('id')
+            except:
+                raise Exception(f'Failed to parse Firecrawl response as JSON.')
+            return self._monitor_job_status(id, headers, poll_interval)
         else:
-            raise Exception(f'Failed to start batch scrape. Error: {response.get("error")}')
+            self._handle_error(response, 'start batch scrape job')
+
 
     async def async_batch_scrape_urls(
-            self,
-            urls: List[str],
-            params: Optional[ScrapeParams] = None,
-            idempotency_key: Optional[str] = None) -> BatchScrapeResponse:
+        self,
+        urls: List[str],
+        *,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        headers: Optional[Dict[str, str]] = None,
+        include_tags: Optional[List[str]] = None,
+        exclude_tags: Optional[List[str]] = None,
+        only_main_content: Optional[bool] = None,
+        wait_for: Optional[int] = None,
+        timeout: Optional[int] = None,
+        location: Optional[LocationConfig] = None,
+        mobile: Optional[bool] = None,
+        skip_tls_verification: Optional[bool] = None,
+        remove_base64_images: Optional[bool] = None,
+        block_ads: Optional[bool] = None,
+        proxy: Optional[Literal["basic", "stealth"]] = None,
+        extract: Optional[ExtractConfig] = None,
+        json_options: Optional[ExtractConfig] = None,
+        actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+        agent: Optional[AgentOptions] = None,
+        idempotency_key: Optional[str] = None,
+        **kwargs
+    ) -> BatchScrapeResponse:
         """
-        Initiate an asynchronous batch scrape job without waiting for completion.
+        Initiate a batch scrape job asynchronously.
 
         Args:
-          urls (List[str]): List of URLs to scrape
-          params (Optional[ScrapeParams]): See ScrapeParams model for configuration:
-            Content Options:
-            * formats - Content formats to retrieve
-            * includeTags - HTML tags to include
-            * excludeTags - HTML tags to exclude
-            * onlyMainContent - Extract main content only
-            
-            Request Options:
-            * headers - Custom HTTP headers
-            * timeout - Request timeout (ms)
-            * mobile - Use mobile user agent
-            * proxy - Proxy type
-            
-            Extraction Options:
-            * extract - Content extraction config
-            * jsonOptions - JSON extraction config
-            * actions - Actions to perform
-          idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            urls (List[str]): URLs to scrape
+            formats (Optional[List[Literal]]): Content formats to retrieve
+            headers (Optional[Dict[str, str]]): Custom HTTP headers
+            include_tags (Optional[List[str]]): HTML tags to include
+            exclude_tags (Optional[List[str]]): HTML tags to exclude
+            only_main_content (Optional[bool]): Extract main content only
+            wait_for (Optional[int]): Wait time in milliseconds
+            timeout (Optional[int]): Request timeout in milliseconds
+            location (Optional[LocationConfig]): Location configuration
+            mobile (Optional[bool]): Use mobile user agent
+            skip_tls_verification (Optional[bool]): Skip TLS verification
+            remove_base64_images (Optional[bool]): Remove base64 encoded images
+            block_ads (Optional[bool]): Block advertisements
+            proxy (Optional[Literal]): Proxy type to use
+            extract (Optional[ExtractConfig]): Content extraction config
+            json_options (Optional[ExtractConfig]): JSON extraction config
+            actions (Optional[List[Union]]): Actions to perform
+            agent (Optional[AgentOptions]): Agent configuration
+            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            **kwargs: Additional parameters to pass to the API
 
         Returns:
-          BatchScrapeResponse with:
-          * success - Whether job started successfully
-          * id - Unique identifier for the job
-          * url - Status check URL
-          * error - Error message if start failed
+            BatchScrapeResponse with:
+            * success - Whether job started successfully
+            * id - Unique identifier for the job
+            * url - Status check URL
+            * error - Error message if start failed
 
         Raises:
-          Exception: If job initiation fails
+            Exception: If job initiation fails
         """
-        headers = self._prepare_headers(idempotency_key)
-        json_data = {'urls': urls}
-        if params:
-            json_data.update(params)
-        json_data['origin'] = f"python-sdk@{version}"
+        scrape_params = {}
 
-        endpoint = f'/v1/batch/scrape'
-        return await self._async_post_request(
-            f'{self.api_url}{endpoint}',
-            json_data,
+        # Add individual parameters
+        if formats is not None:
+            scrape_params['formats'] = formats
+        if headers is not None:
+            scrape_params['headers'] = headers
+        if include_tags is not None:
+            scrape_params['includeTags'] = include_tags
+        if exclude_tags is not None:
+            scrape_params['excludeTags'] = exclude_tags
+        if only_main_content is not None:
+            scrape_params['onlyMainContent'] = only_main_content
+        if wait_for is not None:
+            scrape_params['waitFor'] = wait_for
+        if timeout is not None:
+            scrape_params['timeout'] = timeout
+        if location is not None:
+            scrape_params['location'] = location.dict(exclude_none=True)
+        if mobile is not None:
+            scrape_params['mobile'] = mobile
+        if skip_tls_verification is not None:
+            scrape_params['skipTlsVerification'] = skip_tls_verification
+        if remove_base64_images is not None:
+            scrape_params['removeBase64Images'] = remove_base64_images
+        if block_ads is not None:
+            scrape_params['blockAds'] = block_ads
+        if proxy is not None:
+            scrape_params['proxy'] = proxy
+        if extract is not None:
+            if hasattr(extract.schema, 'schema'):
+                extract.schema = extract.schema.schema()
+            scrape_params['extract'] = extract.dict(exclude_none=True)
+        if json_options is not None:
+            if hasattr(json_options.schema, 'schema'):
+                json_options.schema = json_options.schema.schema()
+            scrape_params['jsonOptions'] = json_options.dict(exclude_none=True)
+        if actions is not None:
+            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+        if agent is not None:
+            scrape_params['agent'] = agent.dict(exclude_none=True)
+
+        # Add any additional kwargs
+        scrape_params.update(kwargs)
+
+        # Create final params object
+        final_params = ScrapeParams(**scrape_params)
+        params_dict = final_params.dict(exclude_none=True)
+        params_dict['urls'] = urls
+        params_dict['origin'] = f"python-sdk@{version}"
+
+        # Make request
+        headers = self._prepare_headers(idempotency_key)
+        response = await self._async_post_request(
+            f'{self.api_url}/v1/batch/scrape',
+            params_dict,
             headers
         )
+
+        if response.status_code == 200:
+            try:
+                return BatchScrapeResponse(**response.json())
+            except:
+                raise Exception(f'Failed to parse Firecrawl response as JSON.')
+        else:
+            self._handle_error(response, 'start batch scrape job')
 
     async def crawl_url(
-            self,
-            url: str,
-            params: Optional[CrawlParams] = None,
-            poll_interval: int = 2,
-            idempotency_key: Optional[str] = None) -> CrawlStatusResponse:
+                    self,
+        url: str,
+        *,
+        include_paths: Optional[List[str]] = None,
+        exclude_paths: Optional[List[str]] = None,
+        max_depth: Optional[int] = None,
+        max_discovery_depth: Optional[int] = None,
+        limit: Optional[int] = None,
+        allow_backward_links: Optional[bool] = None,
+        allow_external_links: Optional[bool] = None,
+        ignore_sitemap: Optional[bool] = None,
+        scrape_options: Optional[CommonOptions] = None,
+        webhook: Optional[Union[str, WebhookConfig]] = None,
+        deduplicate_similar_urls: Optional[bool] = None,
+        ignore_query_parameters: Optional[bool] = None,
+        regex_on_full_url: Optional[bool] = None,
+        poll_interval: Optional[int] = 2,
+        idempotency_key: Optional[str] = None,
+        **kwargs
+    ) -> CrawlStatusResponse:
         """
-        Asynchronously crawl a website starting from a URL and monitor until completion.
-
-        Args:
-          url (str): Target URL to start crawling from
-          params (Optional[CrawlParams]): See CrawlParams model:
-            URL Discovery:
-            * includePaths - Patterns of URLs to include
-            * excludePaths - Patterns of URLs to exclude
-            * maxDepth - Maximum crawl depth
-            * maxDiscoveryDepth - Maximum depth for finding new URLs
-            * limit - Maximum pages to crawl
-
-            Link Following:
-            * allowBackwardLinks - Follow parent directory links
-            * allowExternalLinks - Follow external domain links  
-            * ignoreSitemap - Skip sitemap.xml processing
-
-            Advanced:
-            * scrapeOptions - Page scraping configuration
-            * webhook - Notification webhook settings
-            * deduplicateSimilarURLs - Remove similar URLs
-            * ignoreQueryParameters - Ignore URL parameters
-            * regexOnFullURL - Apply regex to full URLs
-          poll_interval (int): Seconds between status checks (default: 2)
-          idempotency_key (Optional[str]): Unique key to prevent duplicate requests
-
-        Returns:
-          CrawlStatusResponse with:
-          * Crawling status and progress
-          * Crawled page contents
-          * Success/error information
-
-        Raises:
-          Exception: If crawl fails
-        """
-        headers = self._prepare_headers(idempotency_key)
-        json_data = {'url': url}
-        if params:
-            json_data.update(params)
-        json_data['origin'] = f"python-sdk@{version}"
-
-        endpoint = f'/v1/crawl'
-        response = await self._async_post_request(
-            f'{self.api_url}{endpoint}',
-            json_data,
-            headers
-        )
-
-        if response.get('success') and 'id' in response:
-            return await self._async_monitor_job_status(response['id'], headers, poll_interval)
-        else:
-            raise Exception(f'Failed to start crawl. Error: {response.get("error")}')
-
-    async def async_crawl_url(
-            self,
-            url: str,
-            params: Optional[CrawlParams] = None,
-            idempotency_key: Optional[str] = None) -> CrawlResponse:
-        """
-        Initiate an asynchronous crawl job without waiting for completion.
+        Crawl a website starting from a URL.
 
         Args:
             url (str): Target URL to start crawling from
-            params (Optional[CrawlParams]): See CrawlParams model:
-              URL Discovery:
-              * includePaths - Patterns of URLs to include
-              * excludePaths - Patterns of URLs to exclude
-              * maxDepth - Maximum crawl depth
-              * maxDiscoveryDepth - Maximum depth for finding new URLs
-              * limit - Maximum pages to crawl
-
-              Link Following:
-              * allowBackwardLinks - Follow parent directory links
-              * allowExternalLinks - Follow external domain links  
-              * ignoreSitemap - Skip sitemap.xml processing
-
-              Advanced:
-              * scrapeOptions - Page scraping configuration
-              * webhook - Notification webhook settings
-              * deduplicateSimilarURLs - Remove similar URLs
-              * ignoreQueryParameters - Ignore URL parameters
-              * regexOnFullURL - Apply regex to full URLs
+            include_paths (Optional[List[str]]): Patterns of URLs to include
+            exclude_paths (Optional[List[str]]): Patterns of URLs to exclude
+            max_depth (Optional[int]): Maximum crawl depth
+            max_discovery_depth (Optional[int]): Maximum depth for finding new URLs
+            limit (Optional[int]): Maximum pages to crawl
+            allow_backward_links (Optional[bool]): Follow parent directory links
+            allow_external_links (Optional[bool]): Follow external domain links
+            ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
+            scrape_options (Optional[CommonOptions]): Page scraping configuration
+            webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
+            deduplicate_similar_urls (Optional[bool]): Remove similar URLs
+            ignore_query_parameters (Optional[bool]): Ignore URL parameters
+            regex_on_full_url (Optional[bool]): Apply regex to full URLs
+            poll_interval (Optional[int]): Seconds between status checks (default: 2)
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            **kwargs: Additional parameters to pass to the API
 
         Returns:
-          CrawlResponse with:
-          * success - Whether job started successfully
-          * id - Unique identifier for the job
-          * url - Status check URL
-          * error - Error message if start failed
+            CrawlStatusResponse with:
+            * Crawling status and progress
+            * Crawled page contents
+            * Success/error information
 
         Raises:
-          Exception: If job initiation fails
+            Exception: If crawl fails
         """
-        headers = self._prepare_headers(idempotency_key)
-        json_data = {'url': url}
-        if params:
-            json_data.update(params)
-        json_data['origin'] = f"python-sdk@{version}"
+        crawl_params = {}
 
-        endpoint = f'/v1/crawl'
-        return await self._async_post_request(
-            f'{self.api_url}{endpoint}',
-            json_data,
-            headers
+        # Add individual parameters
+        if include_paths is not None:
+            crawl_params['includePaths'] = include_paths
+        if exclude_paths is not None:
+            crawl_params['excludePaths'] = exclude_paths
+        if max_depth is not None:
+            crawl_params['maxDepth'] = max_depth
+        if max_discovery_depth is not None:
+            crawl_params['maxDiscoveryDepth'] = max_discovery_depth
+        if limit is not None:
+            crawl_params['limit'] = limit
+        if allow_backward_links is not None:
+            crawl_params['allowBackwardLinks'] = allow_backward_links
+        if allow_external_links is not None:
+            crawl_params['allowExternalLinks'] = allow_external_links
+        if ignore_sitemap is not None:
+            crawl_params['ignoreSitemap'] = ignore_sitemap
+        if scrape_options is not None:
+            crawl_params['scrapeOptions'] = scrape_options.dict(exclude_none=True)
+        if webhook is not None:
+            crawl_params['webhook'] = webhook
+        if deduplicate_similar_urls is not None:
+            crawl_params['deduplicateSimilarURLs'] = deduplicate_similar_urls
+        if ignore_query_parameters is not None:
+            crawl_params['ignoreQueryParameters'] = ignore_query_parameters
+        if regex_on_full_url is not None:
+            crawl_params['regexOnFullURL'] = regex_on_full_url
+
+        # Add any additional kwargs
+        crawl_params.update(kwargs)
+
+        # Create final params object
+        final_params = CrawlParams(**crawl_params)
+        params_dict = final_params.dict(exclude_none=True)
+        params_dict['url'] = url
+        params_dict['origin'] = f"python-sdk@{version}"
+
+        # Make request
+        headers = self._prepare_headers(idempotency_key)
+        response = await self._async_post_request(
+          f'{self.api_url}/v1/crawl', params_dict, headers)
+
+        if response.status_code == 200:
+            try:
+                id = response.json().get('id')
+            except:
+                raise Exception(f'Failed to parse Firecrawl response as JSON.')
+            return self._monitor_job_status(id, headers, poll_interval)
+        else:
+            self._handle_error(response, 'start crawl job')
+
+
+    async def async_crawl_url(
+       self,
+        url: str,
+        *,
+        include_paths: Optional[List[str]] = None,
+        exclude_paths: Optional[List[str]] = None,
+        max_depth: Optional[int] = None,
+        max_discovery_depth: Optional[int] = None,
+        limit: Optional[int] = None,
+        allow_backward_links: Optional[bool] = None,
+        allow_external_links: Optional[bool] = None,
+        ignore_sitemap: Optional[bool] = None,
+        scrape_options: Optional[CommonOptions] = None,
+        webhook: Optional[Union[str, WebhookConfig]] = None,
+        deduplicate_similar_urls: Optional[bool] = None,
+        ignore_query_parameters: Optional[bool] = None,
+        regex_on_full_url: Optional[bool] = None,
+        idempotency_key: Optional[str] = None,
+        **kwargs
+    ) -> CrawlResponse:
+        """
+        Start an asynchronous crawl job.
+
+        Args:
+            url (str): Target URL to start crawling from
+            include_paths (Optional[List[str]]): Patterns of URLs to include
+            exclude_paths (Optional[List[str]]): Patterns of URLs to exclude
+            max_depth (Optional[int]): Maximum crawl depth
+            max_discovery_depth (Optional[int]): Maximum depth for finding new URLs
+            limit (Optional[int]): Maximum pages to crawl
+            allow_backward_links (Optional[bool]): Follow parent directory links
+            allow_external_links (Optional[bool]): Follow external domain links
+            ignore_sitemap (Optional[bool]): Skip sitemap.xml processing
+            scrape_options (Optional[CommonOptions]): Page scraping configuration
+            webhook (Optional[Union[str, WebhookConfig]]): Notification webhook settings
+            deduplicate_similar_urls (Optional[bool]): Remove similar URLs
+            ignore_query_parameters (Optional[bool]): Ignore URL parameters
+            regex_on_full_url (Optional[bool]): Apply regex to full URLs
+            idempotency_key (Optional[str]): Unique key to prevent duplicate requests
+            **kwargs: Additional parameters to pass to the API
+
+        Returns:
+            CrawlResponse with:
+            * success - Whether crawl started successfully
+            * id - Unique identifier for the crawl job
+            * url - Status check URL for the crawl
+            * error - Error message if start failed
+
+        Raises:
+            Exception: If crawl initiation fails
+        """
+        crawl_params = {}
+
+        # Add individual parameters
+        if include_paths is not None:
+            crawl_params['includePaths'] = include_paths
+        if exclude_paths is not None:
+            crawl_params['excludePaths'] = exclude_paths
+        if max_depth is not None:
+            crawl_params['maxDepth'] = max_depth
+        if max_discovery_depth is not None:
+            crawl_params['maxDiscoveryDepth'] = max_discovery_depth
+        if limit is not None:
+            crawl_params['limit'] = limit
+        if allow_backward_links is not None:
+            crawl_params['allowBackwardLinks'] = allow_backward_links
+        if allow_external_links is not None:
+            crawl_params['allowExternalLinks'] = allow_external_links
+        if ignore_sitemap is not None:
+            crawl_params['ignoreSitemap'] = ignore_sitemap
+        if scrape_options is not None:
+            crawl_params['scrapeOptions'] = scrape_options.dict(exclude_none=True)
+        if webhook is not None:
+            crawl_params['webhook'] = webhook
+        if deduplicate_similar_urls is not None:
+            crawl_params['deduplicateSimilarURLs'] = deduplicate_similar_urls
+        if ignore_query_parameters is not None:
+            crawl_params['ignoreQueryParameters'] = ignore_query_parameters
+        if regex_on_full_url is not None:
+            crawl_params['regexOnFullURL'] = regex_on_full_url
+
+        # Add any additional kwargs
+        crawl_params.update(kwargs)
+
+        # Create final params object
+        final_params = CrawlParams(**crawl_params)
+        params_dict = final_params.dict(exclude_none=True)
+        params_dict['url'] = url
+        params_dict['origin'] = f"python-sdk@{version}"
+
+        # Make request
+        headers = self._prepare_headers(idempotency_key)
+        response = await self._async_post_request(
+          f'{self.api_url}/v1/crawl',
+          params_dict,
+          headers
         )
+
+        if response.status_code == 200:
+            try:
+                return CrawlResponse(**response.json())
+            except:
+                raise Exception(f'Failed to parse Firecrawl response as JSON.')
+        else:
+            self._handle_error(response, 'start crawl job')
 
     async def check_crawl_status(self, id: str) -> CrawlStatusResponse:
         """
