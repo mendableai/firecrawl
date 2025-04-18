@@ -91,11 +91,22 @@ export function transformArrayToObject(
   // Iterate over each item in the arrayData
   arrayData.forEach((item) => {
     let currentItem = item;
+    // Skip null items
+    if (currentItem === null) {
+      return;
+    }
     arrayKeyParts.forEach((part) => {
-      if (currentItem[part]) {
+      if (currentItem && currentItem[part]) {
         currentItem = currentItem[part];
+      } else {
+        currentItem = null;
       }
     });
+
+    // Skip if we couldn't find the nested path
+    if (currentItem === null) {
+      return;
+    }
 
     // Copy non-array properties from the parent object
     for (const key in parentSchema.properties) {
@@ -108,8 +119,8 @@ export function transformArrayToObject(
       }
     }
 
-    // Ensure that the currentItem[arrayKey] is an array before mapping
-    if (Array.isArray(currentItem[arrayKey])) {
+    // Ensure that the currentItem[arrayKey] exists and is an array before mapping
+    if (currentItem && currentItem[arrayKey] && Array.isArray(currentItem[arrayKey])) {
       currentItem[arrayKey].forEach((subItem: any) => {
         if (
           typeof subItem === "object" &&
@@ -138,14 +149,20 @@ export function transformArrayToObject(
     } else {
       console.warn(
         `Expected an array at ${arrayKey}, but found:`,
-        currentItem[arrayKey],
+        currentItem ? currentItem[arrayKey] : 'undefined'
       );
+
+      // create an array if it doesn't exist
+      if (currentLevel[arrayKey] === undefined) {
+        currentLevel[arrayKey] = [];
+      }
     }
 
     // Handle merging of array properties
     for (const key in parentSchema.properties) {
       if (
         parentSchema.properties[key].type === "array" &&
+        currentItem &&
         Array.isArray(currentItem[key])
       ) {
         if (!currentLevel[key]) {

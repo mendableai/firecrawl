@@ -12,8 +12,10 @@ import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
-import { PlanType } from "../../types";
 import { getScrapeQueue } from "../../services/queue-service";
+import { getJob } from "./crawl-status";
+import { getJobFromGCS } from "../../lib/gcs-jobs";
+import { CostTracking } from "src/lib/extract/extraction-service";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -38,7 +40,6 @@ export async function scrapeController(
 
   const startTime = new Date().getTime();
   const jobPriority = await getJobPriority({
-    plan: req.auth.plan as PlanType,
     team_id: req.auth.team_id,
     basePriority: 10,
   });
@@ -50,8 +51,7 @@ export async function scrapeController(
       mode: "single_urls",
       team_id: req.auth.team_id,
       scrapeOptions: req.body,
-      internalOptions: {},
-      plan: req.auth.plan!,
+      internalOptions: { teamId: req.auth.team_id },
       origin: req.body.origin,
       is_scrape: true,
     },
@@ -69,7 +69,7 @@ export async function scrapeController(
 
   let doc: Document;
   try {
-    doc = await waitForJob<Document>(jobId, timeout + totalWait); // TODO: better types for this
+    doc = await waitForJob(jobId, timeout + totalWait);
   } catch (e) {
     logger.error(`Error in scrapeController: ${e}`, {
       jobId,
@@ -107,8 +107,11 @@ export async function scrapeController(
     // Don't bill if we're early returning
     return;
   }
-  if (req.body.extract && req.body.formats.includes("extract")) {
+  if ((req.body.extract && req.body.formats?.includes("extract")) || (req.body.formats?.includes("changeTracking") && req.body.changeTrackingOptions?.modes?.includes("json"))) {
     creditsToBeBilled = 5;
+  }
+  if (req.body.agent?.model?.toLowerCase() === "fire-1") {
+    creditsToBeBilled = 150;
   }
 
   billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(
@@ -125,21 +128,6 @@ export async function scrapeController(
       delete doc.rawHtml;
     }
   }
-
-  logJob({
-    job_id: jobId,
-    success: true,
-    message: "Scrape completed",
-    num_docs: 1,
-    docs: [doc],
-    time_taken: timeTakenInSeconds,
-    team_id: req.auth.team_id,
-    mode: "scrape",
-    url: req.body.url,
-    scrapeOptions: req.body,
-    origin: origin,
-    num_tokens: numTokens,
-  });
 
   return res.status(200).json({
     success: true,

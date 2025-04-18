@@ -1,7 +1,6 @@
 import axios, { type AxiosResponse, type AxiosRequestHeaders, AxiosError } from "axios";
 import * as zt from "zod";
 import { zodToJsonSchema } from "zod-to-json-schema";
-import { WebSocket } from "isows";
 import { TypedEventTarget } from "typescript-event-target";
 
 /**
@@ -69,6 +68,32 @@ export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult
   screenshot?: string;
   metadata?: FirecrawlDocumentMetadata;
   actions: ActionsSchema;
+  changeTracking?: {
+    previousScrapeAt: string | null;
+    changeStatus: "new" | "same" | "changed" | "removed";
+    visibility: "visible" | "hidden";
+    diff?: {
+      text: string;
+      json: {
+        files: Array<{
+          from: string | null;
+          to: string | null;
+          chunks: Array<{
+            content: string;
+            changes: Array<{
+              type: string;
+              normal?: boolean;
+              ln?: number;
+              ln1?: number;
+              ln2?: number;
+              content: string;
+            }>;
+          }>;
+        }>;
+      };
+    };
+    json?: any;
+  };
   // v1 search only
   title?: string;
   description?: string;
@@ -79,7 +104,7 @@ export interface FirecrawlDocument<T = any, ActionsSchema extends (ActionsResult
  * Defines the options and configurations available for scraping web content.
  */
 export interface CrawlScrapeOptions {
-  formats?: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "screenshot@fullPage" | "extract" | "json")[];
+  formats?: ("markdown" | "html" | "rawHtml" | "content" | "links" | "screenshot" | "screenshot@fullPage" | "extract" | "json" | "changeTracking")[];
   headers?: Record<string, string>;
   includeTags?: string[];
   excludeTags?: string[];
@@ -136,11 +161,25 @@ export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchem
     schema?: LLMSchema;
     systemPrompt?: string;
   }
+  changeTrackingOptions?: {
+    prompt?: string;
+    schema?: any;
+    modes?: ("json" | "git-diff")[];
+  }
   actions?: ActionsSchema;
+  agent?: AgentOptions;
 }
 
 export interface ActionsResult {
   screenshots: string[];
+  scrapes: ({
+    url: string;
+    html: string;
+  })[];
+  javascriptReturns: {
+    type: string;
+    value: unknown
+  }[];
 }
 
 /**
@@ -258,6 +297,21 @@ export interface MapResponse {
  * Parameters for extracting information from URLs.
  * Defines options for extracting information from URLs.
  */
+export interface AgentOptions {
+  model?: string;
+  prompt?: string;
+  sessionId?: string;
+}
+
+/**
+ * Parameters for extracting information from URLs.
+ * Defines options for extracting information from URLs.
+ */
+export interface AgentOptionsExtract {
+  model?: string;
+  sessionId?: string;
+}
+
 export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
   prompt?: string;
   schema?: LLMSchema | object;
@@ -268,6 +322,7 @@ export interface ExtractParams<LLMSchema extends zt.ZodSchema = any> {
   origin?: string;
   showSources?: boolean;
   scrapeOptions?: CrawlScrapeOptions;
+  agent?: AgentOptionsExtract;
 }
 
 /**
@@ -356,7 +411,7 @@ export interface CrawlErrorsResponse {
  * Parameters for deep research operations.
  * Defines options for conducting deep research on a query.
  */
-export interface DeepResearchParams {
+export interface DeepResearchParams<LLMSchema extends zt.ZodSchema = any>  {
   /**
    * Maximum depth of research iterations (1-10)
    * @default 7
@@ -377,9 +432,25 @@ export interface DeepResearchParams {
    */
   analysisPrompt?: string;
   /**
+   * The system prompt to use for the research agent
+   */
+  systemPrompt?: string;
+  /**
+   * The formats to use for the final analysis
+   */
+  formats?: ("markdown" | "json")[];
+  /**
+   * The JSON options to use for the final analysis
+   */
+  jsonOptions?:{
+    prompt?: string;
+    schema?: LLMSchema;
+    systemPrompt?: string;
+  };
+  /** 
    * Experimental flag for streaming steps
    */
-  __experimental_streamSteps?: boolean;
+  // __experimental_streamSteps?: boolean;
 }
 
 /**
@@ -914,6 +985,7 @@ export default class FirecrawlApp {
    * @param pollInterval - Time in seconds for job status checks.
    * @param idempotencyKey - Optional idempotency key for the request.
    * @param webhook - Optional webhook for the batch scrape.
+   * @param ignoreInvalidURLs - Optional flag to ignore invalid URLs.
    * @returns The response from the crawl operation.
    */
   async batchScrapeUrls(
@@ -1436,7 +1508,7 @@ export default class FirecrawlApp {
    */
   async deepResearch(
     query: string, 
-    params: DeepResearchParams,
+    params: DeepResearchParams<zt.ZodSchema>,
     onActivity?: (activity: {
       type: string;
       status: string;
@@ -1521,12 +1593,30 @@ export default class FirecrawlApp {
    * @param params - Parameters for the deep research operation.
    * @returns The response containing the research job ID.
    */
-  async asyncDeepResearch(query: string, params: DeepResearchParams): Promise<DeepResearchResponse | ErrorResponse> {
+  async asyncDeepResearch(query: string, params: DeepResearchParams<zt.ZodSchema>): Promise<DeepResearchResponse | ErrorResponse> {
     const headers = this.prepareHeaders();
     let jsonData: any = { query, ...params, origin: `js-sdk@${this.version}` };
+
+    if (jsonData?.jsonOptions?.schema) {
+      let schema = jsonData.jsonOptions.schema;
+      // Try parsing the schema as a Zod schema
+      try {
+        schema = zodToJsonSchema(schema);
+      } catch (error) {
+        // Ignore error if schema can't be parsed as Zod
+      }
+      jsonData = {
+        ...jsonData,
+        jsonOptions: {
+          ...jsonData.jsonOptions,
+          schema: schema,
+        },
+      };
+    }
+
     try {
       const response: AxiosResponse = await this.postRequest(
-        this.apiUrl + `/v1/deep-research`,
+        `${this.apiUrl}/v1/deep-research`,
         jsonData,
         headers
       );

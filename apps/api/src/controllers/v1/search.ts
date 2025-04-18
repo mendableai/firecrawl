@@ -1,5 +1,4 @@
 import { Response } from "express";
-import { logger } from "../../lib/logger";
 import {
   Document,
   RequestWithAuth,
@@ -13,23 +12,28 @@ import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
-import { PlanType, Mode } from "../../types";
+import { Mode } from "../../types";
 import { getScrapeQueue } from "../../services/queue-service";
 import { search } from "../../search";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import * as Sentry from "@sentry/node";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { logger as _logger } from "../../lib/logger";
+import type { Logger } from "winston";
+import { getJobFromGCS } from "../../lib/gcs-jobs";
+import { CostTracking } from "../../lib/extract/extraction-service";
 
 // Used for deep research
 export async function searchAndScrapeSearchResult(
   query: string,
   options: {
     teamId: string;
-    plan: PlanType | undefined;
     origin: string;
     timeout: number;
     scrapeOptions: ScrapeOptions;
-  }
+  },
+  logger: Logger,
+  costTracking: CostTracking,
 ): Promise<Document[]> {
   try {
     const searchResults = await search({
@@ -45,7 +49,9 @@ export async function searchAndScrapeSearchResult(
           title: result.title,
           description: result.description
         },
-        options
+        options,
+        logger,
+        costTracking
       )
     )
   );
@@ -60,15 +66,15 @@ async function scrapeSearchResult(
   searchResult: { url: string; title: string; description: string },
   options: {
     teamId: string;
-    plan: PlanType | undefined;
     origin: string;
     timeout: number;
     scrapeOptions: ScrapeOptions;
   },
+  logger: Logger,
+  costTracking: CostTracking,
 ): Promise<Document> {
   const jobId = uuidv4();
   const jobPriority = await getJobPriority({
-    plan: options.plan as PlanType,
     team_id: options.teamId,
     basePriority: 10,
   });
@@ -77,14 +83,19 @@ async function scrapeSearchResult(
     if (isUrlBlocked(searchResult.url)) {
       throw new Error("Could not scrape url: " + BLOCKLISTED_URL_MESSAGE);
     }
+    logger.info("Adding scrape job", {
+      scrapeId: jobId,
+      url: searchResult.url,
+      teamId: options.teamId,
+      origin: options.origin,
+    });
     await addScrapeJob(
       {
         url: searchResult.url,
         mode: "single_urls" as Mode,
         team_id: options.teamId,
         scrapeOptions: options.scrapeOptions,
-        internalOptions: {},
-        plan: options.plan || "free",
+        internalOptions: { teamId: options.teamId },
         origin: options.origin,
         is_scrape: true,
       },
@@ -93,7 +104,14 @@ async function scrapeSearchResult(
       jobPriority,
     );
 
-    const doc = await waitForJob<Document>(jobId, options.timeout);
+    const doc: Document = await waitForJob(jobId, options.timeout);
+    
+    logger.info("Scrape job completed", {
+      scrapeId: jobId,
+      url: searchResult.url,
+      teamId: options.teamId,
+      origin: options.origin,
+    });
     await getScrapeQueue().remove(jobId);
 
     // Move SERP results to top level
@@ -105,6 +123,7 @@ async function scrapeSearchResult(
     };
   } catch (error) {
     logger.error(`Error in scrapeSearchResult: ${error}`, {
+      scrapeId: jobId,
       url: searchResult.url,
       teamId: options.teamId,
     });
@@ -130,16 +149,30 @@ export async function searchController(
   req: RequestWithAuth<{}, SearchResponse, SearchRequest>,
   res: Response<SearchResponse>,
 ) {
+  const jobId = uuidv4();
+  let logger = _logger.child({
+    jobId,
+    teamId: req.auth.team_id,
+    module: "search",
+    method: "searchController",
+  });
+
   try {
     req.body = searchRequestSchema.parse(req.body);
 
-    const jobId = uuidv4();
+    logger = logger.child({
+      query: req.body.query,
+      origin: req.body.origin,
+    });
+
     const startTime = new Date().getTime();
 
     let limit = req.body.limit;
 
     // Buffer results by 50% to account for filtered URLs
     const num_results_buffer = Math.floor(limit * 2);
+
+    logger.info("Searching for results");
 
     let searchResults = await search({
       query: req.body.query,
@@ -152,12 +185,17 @@ export async function searchController(
       location: req.body.location,
     });
 
+    logger.info("Searching completed", {
+      num_results: searchResults.length,
+    });
+
     // Filter blocked URLs early to avoid unnecessary billing
     if (searchResults.length > limit) {
       searchResults = searchResults.slice(0, limit);
     }
 
     if (searchResults.length === 0) {
+      logger.info("No search results found");
       return res.status(200).json({
         success: true,
         data: [],
@@ -186,18 +224,23 @@ export async function searchController(
       });
     }
 
+    const costTracking = new CostTracking();
+
     // Scrape each non-blocked result, handling timeouts individually
+    logger.info("Scraping search results");
     const scrapePromises = searchResults.map((result) =>
       scrapeSearchResult(result, {
         teamId: req.auth.team_id,
-        plan: req.auth.plan,
         origin: req.body.origin,
         timeout: req.body.timeout,
         scrapeOptions: req.body.scrapeOptions,
-      }),
+      }, logger, costTracking),
     );
 
     const docs = await Promise.all(scrapePromises);
+    logger.info("Scraping completed", {
+      num_docs: docs.length,
+    });
 
     // Bill for successful scrapes only
     billTeam(req.auth.team_id, req.acuc?.sub_id, docs.length).catch((error) => {
@@ -212,6 +255,10 @@ export async function searchController(
         doc.serpResults || (doc.markdown && doc.markdown.trim().length > 0),
     );
 
+    logger.info("Filtering completed", {
+      num_docs: filteredDocs.length,
+    });
+
     if (filteredDocs.length === 0) {
       return res.status(200).json({
         success: true,
@@ -223,6 +270,11 @@ export async function searchController(
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
 
+    logger.info("Logging job", {
+      num_docs: filteredDocs.length,
+      time_taken: timeTakenInSeconds,
+    });
+
     logJob({
       job_id: jobId,
       success: true,
@@ -233,6 +285,7 @@ export async function searchController(
       mode: "search",
       url: req.body.query,
       origin: req.body.origin,
+      cost_tracking: costTracking,
     });
 
     return res.status(200).json({

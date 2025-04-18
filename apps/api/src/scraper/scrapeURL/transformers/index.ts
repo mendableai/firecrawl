@@ -8,7 +8,9 @@ import { performLLMExtract } from "./llmExtract";
 import { uploadScreenshot } from "./uploadScreenshot";
 import { removeBase64Images } from "./removeBase64Images";
 import { saveToCache } from "./cache";
+import { performAgent } from "./agent";
 
+import { deriveDiff } from "./diff";
 export type Transformer = (
   meta: Meta,
   document: Document,
@@ -148,6 +150,35 @@ export function coerceFieldsToFormats(
     );
   }
 
+  if (!formats.has("changeTracking") && document.changeTracking !== undefined) {
+    meta.logger.warn(
+      "Removed changeTracking from Document because it wasn't in formats -- this is extremely wasteful and indicates a bug.",
+    );
+    delete document.changeTracking;
+  } else if (formats.has("changeTracking") && document.changeTracking === undefined) {
+    meta.logger.warn(
+      "Request had format changeTracking, but there was no changeTracking field in the result.",
+    );
+  }
+
+  if (document.changeTracking && 
+      (!meta.options.changeTrackingOptions?.modes?.includes("git-diff")) && 
+      document.changeTracking.diff !== undefined) {
+    meta.logger.warn(
+      "Removed diff from changeTracking because git-diff mode wasn't specified in changeTrackingOptions.modes.",
+    );
+    delete document.changeTracking.diff;
+  }
+  
+  if (document.changeTracking && 
+      (!meta.options.changeTrackingOptions?.modes?.includes("json")) && 
+      document.changeTracking.json !== undefined) {
+    meta.logger.warn(
+      "Removed structured from changeTracking because structured mode wasn't specified in changeTrackingOptions.modes.",
+    );
+    delete document.changeTracking.json;
+  }
+
   if (meta.options.actions === undefined || meta.options.actions.length === 0) {
     delete document.actions;
   }
@@ -164,6 +195,8 @@ export const transformerStack: Transformer[] = [
   deriveMetadataFromRawHTML,
   uploadScreenshot,
   performLLMExtract,
+  performAgent,
+  deriveDiff,
   coerceFieldsToFormats,
   removeBase64Images,
 ];

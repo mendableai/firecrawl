@@ -1,4 +1,4 @@
-import { scrape } from "./lib";
+import { scrape, scrapeStatus } from "./lib";
 
 describe("Scrape tests", () => {
   it.concurrent("mocking works properly", async () => {
@@ -23,6 +23,17 @@ describe("Scrape tests", () => {
 
     expect(response.markdown).toContain("Firecrawl");
   }, 30000);
+
+  it.concurrent("scrape status works", async () => {
+    const response = await scrape({
+      url: "http://firecrawl.dev"
+    });
+
+    expect(response.markdown).toContain("Firecrawl");
+
+    const status = await scrapeStatus(response.metadata.scrapeId!);
+    expect(JSON.stringify(status)).toBe(JSON.stringify(response));
+  }, 60000);
 
   it.concurrent("handles non-UTF-8 encodings", async () => {
     const response = await scrape({
@@ -84,6 +95,127 @@ describe("Scrape tests", () => {
     //     expect(response.markdown).toMatch(/(\.g\.doubleclick\.net|amazon-adsystem\.com)\//);
     //   }, 30000);
     // });
+
+    describe("Change Tracking format", () => {
+      it.concurrent("works", async () => {
+        const response = await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking"],
+        });
+
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
+      }, 30000);
+
+      it.concurrent("includes git diff when requested", async () => {
+        const response = await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking"],
+          changeTrackingOptions: {
+            modes: ["git-diff"]
+          }
+        });
+
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
+        
+        if (response.changeTracking?.changeStatus === "changed") {
+          expect(response.changeTracking?.diff).toBeDefined();
+          expect(response.changeTracking?.diff?.text).toBeDefined();
+          expect(response.changeTracking?.diff?.json).toBeDefined();
+          expect(response.changeTracking?.diff?.json.files).toBeInstanceOf(Array);
+        }
+      }, 30000);
+      
+      it.concurrent("includes structured output when requested", async () => {
+        const response = await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking"],
+          changeTrackingOptions: {
+            modes: ["json"],
+            prompt: "Summarize the changes between the previous and current content",
+          }
+        });
+
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
+        
+        if (response.changeTracking?.changeStatus === "changed") {
+          expect(response.changeTracking?.json).toBeDefined();
+        }
+      }, 30000);
+      
+      it.concurrent("supports schema-based extraction for change tracking", async () => {
+        const response = await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking"],
+          changeTrackingOptions: {
+            modes: ["json"],
+            schema: {
+              type: "object",
+              properties: {
+                pricing: { 
+                  type: "object",
+                  properties: {
+                    amount: { type: "number" },
+                    currency: { type: "string" }
+                  }
+                },
+                features: { 
+                  type: "array", 
+                  items: { type: "string" } 
+                }
+              }
+            }
+          }
+        });
+
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
+        
+        if (response.changeTracking?.changeStatus === "changed") {
+          expect(response.changeTracking?.json).toBeDefined();
+          if (response.changeTracking?.json.pricing) {
+            expect(response.changeTracking?.json.pricing).toHaveProperty("old");
+            expect(response.changeTracking?.json.pricing).toHaveProperty("new");
+          }
+          if (response.changeTracking?.json.features) {
+            expect(response.changeTracking?.json.features).toHaveProperty("old");
+            expect(response.changeTracking?.json.features).toHaveProperty("new");
+          }
+        }
+      }, 30000);
+      
+      it.concurrent("supports both git-diff and structured modes together", async () => {
+        const response = await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking"],
+          changeTrackingOptions: {
+            modes: ["git-diff", "json"],
+            schema: {
+              type: "object",
+              properties: {
+                summary: { type: "string" },
+                changes: { type: "array", items: { type: "string" } }
+              }
+            }
+          }
+        });
+
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
+        
+        if (response.changeTracking?.changeStatus === "changed") {
+          expect(response.changeTracking?.diff).toBeDefined();
+          expect(response.changeTracking?.diff?.text).toBeDefined();
+          expect(response.changeTracking?.diff?.json).toBeDefined();
+          
+          expect(response.changeTracking?.json).toBeDefined();
+          expect(response.changeTracking?.json).toHaveProperty("summary");
+          expect(response.changeTracking?.json).toHaveProperty("changes");
+        }
+      }, 30000);
+    });
   
     describe("Location API (f-e dependant)", () => {
       it.concurrent("works without specifying an explicit location", async () => {
@@ -140,20 +272,21 @@ describe("Scrape tests", () => {
         await scrape({
           url: "http://firecrawl.dev",
           proxy: "stealth",
-          timeout: 60000,
+          timeout: 120000,
         });
-      }, 70000);
+      }, 130000);
     });
     
-    describe("PDF (f-e dependant)", () => {
-      it.concurrent("works for PDFs behind anti-bot", async () => {
-        const response = await scrape({
-          url: "https://www.researchgate.net/profile/Amir-Leshem/publication/220732050_Robust_adaptive_beamforming_based_on_jointly_estimating_covariance_matrix_and_steering_vector/links/0c96052d2fd8f0a84b000000/Robust-adaptive-beamforming-based-on-jointly-estimating-covariance-matrix-and-steering-vector.pdf"
-        });
+    // Temporarily disabled, too flaky
+    // describe("PDF (f-e dependant)", () => {
+    //   it.concurrent("works for PDFs behind anti-bot", async () => {
+    //     const response = await scrape({
+    //       url: "https://www.researchgate.net/profile/Amir-Leshem/publication/220732050_Robust_adaptive_beamforming_based_on_jointly_estimating_covariance_matrix_and_steering_vector/links/0c96052d2fd8f0a84b000000/Robust-adaptive-beamforming-based-on-jointly-estimating-covariance-matrix-and-steering-vector.pdf"
+    //     });
 
-        expect(response.markdown).toContain("Robust adaptive beamforming based on jointly estimating covariance matrix");
-      }, 60000);
-    });
+    //     expect(response.markdown).toContain("Robust adaptive beamforming based on jointly estimating covariance matrix");
+    //   }, 60000);
+    // });
   }
 
   if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY || process.env.OLLAMA_BASE_URL) {

@@ -26,6 +26,7 @@ import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
 import { urlSpecificParams } from "./lib/urlSpecificParams";
 import { loadMock, MockState } from "./lib/mock";
+import { CostTracking } from "../../lib/extract/extraction-service";
 
 export type ScrapeUrlResponse = (
   | {
@@ -55,6 +56,7 @@ export type Meta = {
     url?: string;
     status: number;
   } | null | undefined; // undefined: no prefetch yet, null: prefetch came back empty
+  costTracking: CostTracking;
 };
 
 function buildFeatureFlags(
@@ -127,6 +129,7 @@ async function buildMetaObject(
   url: string,
   options: ScrapeOptions,
   internalOptions: InternalOptions,
+  costTracking: CostTracking,
 ): Promise<Meta> {
   const specParams =
     urlSpecificParams[new URL(url).hostname.replace(/^www\./, "")];
@@ -158,10 +161,13 @@ async function buildMetaObject(
         ? await loadMock(options.useMock, _logger)
         : null,
     pdfPrefetch: undefined,
+    costTracking,
   };
 }
 
 export type InternalOptions = {
+  teamId: string;
+
   priority?: number; // Passed along to fire-engine
   forceEngine?: Engine | Engine[];
   atsv?: boolean; // anti-bot solver, beta
@@ -173,6 +179,7 @@ export type InternalOptions = {
   isBackgroundIndex?: boolean;
   fromCache?: boolean; // Indicates if the document was retrieved from cache
   abort?: AbortSignal;
+  urlInvisibleInCurrentCrawl?: boolean;
 };
 
 export type EngineResultsTracker = {
@@ -227,7 +234,9 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
   const timeToRun =
     meta.options.timeout !== undefined
       ? Math.round(meta.options.timeout / Math.min(fallbackList.length, 2))
-      : undefined;
+      : (!meta.options.actions && !meta.options.jsonOptions && !meta.options.extract)
+        ? Math.round(120000 / Math.min(fallbackList.length, 2))
+        : undefined;
 
   for (const { engine, unsupportedFeatures } of fallbackList) {
     meta.internalOptions.abort?.throwIfAborted();
@@ -383,9 +392,10 @@ export async function scrapeURL(
   id: string,
   url: string,
   options: ScrapeOptions,
-  internalOptions: InternalOptions = {},
+  internalOptions: InternalOptions,
+  costTracking: CostTracking,
 ): Promise<ScrapeUrlResponse> {
-  const meta = await buildMetaObject(id, url, options, internalOptions);
+  const meta = await buildMetaObject(id, url, options, internalOptions, costTracking);
   try {
     while (true) {
       try {

@@ -1,6 +1,6 @@
 # Pick your baseUrl here:
-@baseUrl = http://localhost:3002
-#@baseUrl = https://api.firecrawl.dev
+# @baseUrl = http://localhost:3002
+@baseUrl = https://api.firecrawl.dev
 
 ### Scrape Website
 # @name scrape
@@ -9,7 +9,7 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-  "url":"https://firecrawl.dev"
+  "url": "https://firecrawl.dev"
 }
 
 ### Crawl Website
@@ -19,7 +19,7 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 content-type: application/json
 
 {
-  "url": "https://firecrawl.dev"
+  "url":"https://firecrawl.dev"
 }
 
 ### Check Crawl Status
@@ -32,6 +32,37 @@ Authorization: Bearer {{$dotenv TEST_API_KEY}}
 @crawlId = {{crawl.response.body.$.id}}
 # @name cancelCrawl
 DELETE {{baseUrl}}/v1/crawl/{{crawlId}} HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+
+### Extract website
+# @name extract
+POST {{baseUrl}}/v1/extract HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json
+
+{
+  "urls": ["https://firecrawl.dev"],
+  "schema": {
+    "type": "object",
+    "properties": {
+      "companyName": {
+        "type": "string"
+      },
+      "companyDescription": {
+        "type": "string"
+      }
+    }
+  },
+  "agent": {
+    "model": "fire-1"
+  },
+  "origin": "api-sdk"
+}
+
+### Check Extract Status
+@extractId = {{extract.response.body.$.id}}
+# @name extractStatus
+GET {{baseUrl}}/v1/extract/{{extractId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
 ### Batch Scrape Websites
@@ -53,7 +84,6 @@ content-type: application/json
 GET {{baseUrl}}/v1/crawl/{{batchScrapeId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
-
 ### Map Website
 # @name map
 POST {{baseUrl}}/v1/map HTTP/1.1
@@ -64,42 +94,6 @@ content-type: application/json
   "url": "firecrawl.dev",
   "sitemapOnly": true
 }
-
-### Extract Firecrawl Title
-# @name extractFirecrawl
-POST {{baseUrl}}/v1/extract HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
-content-type: application/json
-
-{
-  "urls": [
-    "https://firecrawl.dev/blog"
-  ],
-  "origin": "api-sdk",
-  "prompt": "Extract all the blog titles from the page, is multity entity = true",
-  "schema": {
-    "type": "object",
-    "properties": {
-      "blog_titles": {
-        "type": "array",
-        "items": {
-          "type": "string"
-        }
-      }
-    },
-    "required": ["blog_titles"]
-  }
-}
-
-###
-@extractFirecrawlId = {{extractFirecrawl.response.body.$.id}}
-# @name extractFirecrawlStatus 
-GET {{baseUrl}}/v1/extract/{{extractFirecrawlId}} HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
-
-###
-DELETE {{baseUrl}}/v1/crawl/c94136f9-86c1-4a97-966c-1c8e0274778f HTTP/1.1
-Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
 ### Generate LLMs TXT
 # @name generateLlmsTxt
@@ -120,3 +114,14 @@ content-type: application/json
 GET {{baseUrl}}/v1/llmstxt/{{generateLlmsTxtId}} HTTP/1.1
 Authorization: Bearer {{$dotenv TEST_API_KEY}}
 
+
+### Search
+# @name search
+POST {{baseUrl}}/v1/search HTTP/1.1
+Authorization: Bearer {{$dotenv TEST_API_KEY}}
+content-type: application/json
+
+{
+  "query": "firecrawl",
+  "limit": 50
+}

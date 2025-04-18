@@ -310,6 +310,7 @@ class DeepResearchParams(pydantic.BaseModel):
     timeLimit: Optional[int] = 270
     maxUrls: Optional[int] = 20
     analysisPrompt: Optional[str] = None
+    systemPrompt: Optional[str] = None
     __experimental_streamSteps: Optional[bool] = None
 
 class DeepResearchResponse(pydantic.BaseModel):
@@ -353,7 +354,51 @@ class GenerateLLMsTextStatusResponse(pydantic.BaseModel):
     error: Optional[str] = None
     expiresAt: str
 
+class ChangeTrackingData(pydantic.BaseModel):
+    """
+    Data for the change tracking format.
+    """
+    previousScrapeAt: Optional[str] = None
+    changeStatus: str  # "new" | "same" | "changed" | "removed"
+    visibility: str  # "visible" | "hidden"
+    diff: Optional[Dict[str, Any]] = None
+    json: Optional[Any] = None
+
 class FirecrawlApp:
+    class SearchResponse(pydantic.BaseModel):
+        """
+        Response from the search operation.
+        """
+        success: bool
+        data: List[Dict[str, Any]]
+        warning: Optional[str] = None
+        error: Optional[str] = None
+
+    class ExtractParams(pydantic.BaseModel):
+        """
+        Parameters for the extract operation.
+        """
+        prompt: Optional[str] = None
+        schema_: Optional[Any] = pydantic.Field(None, alias='schema')
+        system_prompt: Optional[str] = None
+        allow_external_links: Optional[bool] = False
+        enable_web_search: Optional[bool] = False
+        # Just for backwards compatibility
+        enableWebSearch: Optional[bool] = False
+        show_sources: Optional[bool] = False
+        agent: Optional[Dict[str, Any]] = None
+
+
+
+
+    class ExtractResponse(pydantic.BaseModel):
+        """
+        Response from the extract operation.
+        """
+        success: bool
+        data: Optional[Any] = None
+        error: Optional[str] = None
+
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
         """
         Initialize the FirecrawlApp instance with API key, API URL.
@@ -435,10 +480,18 @@ class FirecrawlApp:
                     json['schema'] = json['schema'].schema()
                 scrape_params['jsonOptions'] = json
 
+            change_tracking = params.get("changeTrackingOptions", {})
+            if change_tracking:
+                scrape_params['changeTrackingOptions'] = change_tracking
+
             # Include any other params directly at the top level of scrape_params
             for key, value in params.items():
-                if key not in ['jsonOptions']:
+                if key not in ['jsonOptions', 'changeTrackingOptions', 'agent']:
                     scrape_params[key] = value
+                    
+            agent = params.get('agent')
+            if agent:
+                scrape_params['agent'] = agent
 
             scrape_params['origin'] = f"python-sdk@{version}"
 
@@ -1193,6 +1246,9 @@ class FirecrawlApp:
             request_data['systemPrompt'] = params['system_prompt']
         elif params.get('systemPrompt'):  # Check legacy field name
             request_data['systemPrompt'] = params['systemPrompt']
+            
+        if params.get('agent'):
+            request_data['agent'] = params['agent']
 
         try:
             # Send the initial extract request
@@ -1770,10 +1826,7 @@ class FirecrawlApp:
 
         return {'success': False, 'error': 'Deep research job terminated unexpectedly'}
 
-    def async_deep_research(
-            self,
-            query: str,
-            params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None) -> DeepResearchResponse:
+    def async_deep_research(self, query: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None) -> Dict[str, Any]:
         """
         Initiates an asynchronous deep research operation.
 
@@ -1802,8 +1855,15 @@ class FirecrawlApp:
             research_params = params
 
         headers = self._prepare_headers()
+        
         json_data = {'query': query, **research_params.dict(exclude_none=True)}
         json_data['origin'] = f"python-sdk@{version}"
+
+        # Handle json options schema if present
+        if 'jsonOptions' in json_data:
+            json_opts = json_data['jsonOptions']
+            if json_opts and 'schema' in json_opts and hasattr(json_opts['schema'], 'schema'):
+                json_data['jsonOptions']['schema'] = json_opts['schema'].schema()
 
         try:
             response = self._post_request(f'{self.api_url}/v1/deep-research', json_data, headers)
