@@ -60,7 +60,7 @@ async def example_llm_extraction():
     class TopArticlesSchema(BaseModel):
         top: List[ArticleSchema] = Field(..., description="Top 5 stories")
 
-    extract_config = ExtractConfig(schema=TopArticlesSchema.model_json_schema())
+    extract_config = JsonConfig(schema=TopArticlesSchema.model_json_schema())
 
     llm_extraction_result = await app.scrape_url('https://news.ycombinator.com', formats=["extract"], extract=extract_config)
 

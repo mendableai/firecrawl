@@ -27,7 +27,7 @@ from pydantic import Field
 # Suppress Pydantic warnings about attribute shadowing
 warnings.filterwarnings("ignore", message="Field name \"json\" in \"FirecrawlDocument\" shadows an attribute in parent \"BaseModel\"")
 warnings.filterwarnings("ignore", message="Field name \"json\" in \"ChangeTrackingData\" shadows an attribute in parent \"BaseModel\"")
-warnings.filterwarnings("ignore", message="Field name \"schema\" in \"ExtractConfig\" shadows an attribute in parent \"BaseModel\"")
+warnings.filterwarnings("ignore", message="Field name \"schema\" in \"JsonConfig\" shadows an attribute in parent \"BaseModel\"")
 warnings.filterwarnings("ignore", message="Field name \"schema\" in \"ExtractParams\" shadows an attribute in parent \"BaseModel\"")
 
 
@@ -186,7 +186,7 @@ class ExtractAgent(pydantic.BaseModel):
     """Configuration for the agent in extract operations."""
     model: Literal["FIRE-1"] = "FIRE-1"
 
-class ExtractConfig(pydantic.BaseModel):
+class JsonConfig(pydantic.BaseModel):
     """Configuration for extraction."""
     prompt: Optional[str] = None
     schema: Optional[Any] = None
@@ -195,8 +195,8 @@ class ExtractConfig(pydantic.BaseModel):
 
 class ScrapeParams(CommonOptions):
     """Parameters for scraping operations."""
-    extract: Optional[ExtractConfig] = None
-    jsonOptions: Optional[ExtractConfig] = None
+    extract: Optional[JsonConfig] = None
+    jsonOptions: Optional[JsonConfig] = None
     actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None
     agent: Optional[AgentOptions] = None
 
@@ -454,8 +454,8 @@ class FirecrawlApp:
             remove_base64_images: Optional[bool] = None,
             block_ads: Optional[bool] = None,
             proxy: Optional[Literal["basic", "stealth"]] = None,
-            extract: Optional[ExtractConfig] = None,
-            json_options: Optional[ExtractConfig] = None,
+            extract: Optional[JsonConfig] = None,
+            json_options: Optional[JsonConfig] = None,
             actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
             **kwargs) -> ScrapeResponse[Any]:
         """
@@ -475,8 +475,8 @@ class FirecrawlApp:
           remove_base64_images (Optional[bool]): Remove base64 images
           block_ads (Optional[bool]): Block ads
           proxy (Optional[Literal["basic", "stealth"]]): Proxy type (basic/stealth)
-          extract (Optional[ExtractConfig]): Content extraction settings
-          json_options (Optional[ExtractConfig]): JSON extraction settings
+          extract (Optional[JsonConfig]): Content extraction settings
+          json_options (Optional[JsonConfig]): JSON extraction settings
           actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]]): Actions to perform
 
 
@@ -1161,8 +1161,8 @@ class FirecrawlApp:
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth"]] = None,
-        extract: Optional[ExtractConfig] = None,
-        json_options: Optional[ExtractConfig] = None,
+        extract: Optional[JsonConfig] = None,
+        json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
         agent: Optional[AgentOptions] = None,
         poll_interval: Optional[int] = 2,
@@ -1187,8 +1187,8 @@ class FirecrawlApp:
             remove_base64_images (Optional[bool]): Remove base64 encoded images
             block_ads (Optional[bool]): Block advertisements
             proxy (Optional[Literal]): Proxy type to use
-            extract (Optional[ExtractConfig]): Content extraction config
-            json_options (Optional[ExtractConfig]): JSON extraction config
+            extract (Optional[JsonConfig]): Content extraction config
+            json_options (Optional[JsonConfig]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
             agent (Optional[AgentOptions]): Agent configuration
             poll_interval (Optional[int]): Seconds between status checks (default: 2)
@@ -1285,8 +1285,8 @@ class FirecrawlApp:
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth"]] = None,
-        extract: Optional[ExtractConfig] = None,
-        json_options: Optional[ExtractConfig] = None,
+        extract: Optional[JsonConfig] = None,
+        json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
         agent: Optional[AgentOptions] = None,
         idempotency_key: Optional[str] = None,
@@ -1310,8 +1310,8 @@ class FirecrawlApp:
             remove_base64_images (Optional[bool]): Remove base64 encoded images
             block_ads (Optional[bool]): Block advertisements
             proxy (Optional[Literal]): Proxy type to use
-            extract (Optional[ExtractConfig]): Content extraction config
-            json_options (Optional[ExtractConfig]): JSON extraction config
+            extract (Optional[JsonConfig]): Content extraction config
+            json_options (Optional[JsonConfig]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
             agent (Optional[AgentOptions]): Agent configuration
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
@@ -1407,8 +1407,8 @@ class FirecrawlApp:
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth"]] = None,
-        extract: Optional[ExtractConfig] = None,
-        json_options: Optional[ExtractConfig] = None,
+        extract: Optional[JsonConfig] = None,
+        json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
         agent: Optional[AgentOptions] = None,
         idempotency_key: Optional[str] = None,
@@ -1432,8 +1432,8 @@ class FirecrawlApp:
             remove_base64_images (Optional[bool]): Remove base64 encoded images
             block_ads (Optional[bool]): Block advertisements
             proxy (Optional[Literal]): Proxy type to use
-            extract (Optional[ExtractConfig]): Content extraction config
-            json_options (Optional[ExtractConfig]): JSON extraction config
+            extract (Optional[JsonConfig]): Content extraction config
+            json_options (Optional[JsonConfig]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
             agent (Optional[AgentOptions]): Agent configuration
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
@@ -2706,8 +2706,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             remove_base64_images: Optional[bool] = None,
             block_ads: Optional[bool] = None,
             proxy: Optional[Literal["basic", "stealth"]] = None,
-            extract: Optional[ExtractConfig] = None,
-            json_options: Optional[ExtractConfig] = None,
+            extract: Optional[JsonConfig] = None,
+            json_options: Optional[JsonConfig] = None,
             actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None) -> ScrapeResponse[Any]:
         """
         Scrape and extract content from a URL asynchronously.
@@ -2726,8 +2726,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
           remove_base64_images (Optional[bool]): Remove base64 images
           block_ads (Optional[bool]): Block ads
           proxy (Optional[Literal["basic", "stealth"]]): Proxy type (basic/stealth)
-          extract (Optional[ExtractConfig]): Content extraction settings
-          json_options (Optional[ExtractConfig]): JSON extraction settings
+          extract (Optional[JsonConfig]): Content extraction settings
+          json_options (Optional[JsonConfig]): JSON extraction settings
           actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]]): Actions to perform
 
         Returns:
@@ -2820,8 +2820,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth"]] = None,
-        extract: Optional[ExtractConfig] = None,
-        json_options: Optional[ExtractConfig] = None,
+        extract: Optional[JsonConfig] = None,
+        json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
         agent: Optional[AgentOptions] = None,
         poll_interval: Optional[int] = 2,
@@ -2846,8 +2846,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             remove_base64_images (Optional[bool]): Remove base64 encoded images
             block_ads (Optional[bool]): Block advertisements
             proxy (Optional[Literal]): Proxy type to use
-            extract (Optional[ExtractConfig]): Content extraction config
-            json_options (Optional[ExtractConfig]): JSON extraction config
+            extract (Optional[JsonConfig]): Content extraction config
+            json_options (Optional[JsonConfig]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
             agent (Optional[AgentOptions]): Agent configuration
             poll_interval (Optional[int]): Seconds between status checks (default: 2)
@@ -2949,8 +2949,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
         proxy: Optional[Literal["basic", "stealth"]] = None,
-        extract: Optional[ExtractConfig] = None,
-        json_options: Optional[ExtractConfig] = None,
+        extract: Optional[JsonConfig] = None,
+        json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
         agent: Optional[AgentOptions] = None,
         idempotency_key: Optional[str] = None,
@@ -2974,8 +2974,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             remove_base64_images (Optional[bool]): Remove base64 encoded images
             block_ads (Optional[bool]): Block advertisements
             proxy (Optional[Literal]): Proxy type to use
-            extract (Optional[ExtractConfig]): Content extraction config
-            json_options (Optional[ExtractConfig]): JSON extraction config
+            extract (Optional[JsonConfig]): Content extraction config
+            json_options (Optional[JsonConfig]): JSON extraction config
             actions (Optional[List[Union]]): Actions to perform
             agent (Optional[AgentOptions]): Agent configuration
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
