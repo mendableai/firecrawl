@@ -124,7 +124,7 @@ class WebhookConfig(pydantic.BaseModel):
     metadata: Optional[Dict[str, str]] = None
     events: Optional[List[Literal["completed", "failed", "page", "started"]]] = None
 
-class CrawlScrapeOptions(pydantic.BaseModel):
+class CommonOptions(pydantic.BaseModel):
     """Parameters for scraping operations."""
     formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None
     headers: Optional[Dict[str, str]] = None
@@ -193,7 +193,7 @@ class ExtractConfig(pydantic.BaseModel):
     systemPrompt: Optional[str] = None
     agent: Optional[ExtractAgent] = None
 
-class ScrapeParams(CrawlScrapeOptions):
+class ScrapeParams(CommonOptions):
     """Parameters for scraping operations."""
     extract: Optional[ExtractConfig] = None
     jsonOptions: Optional[ExtractConfig] = None
@@ -235,7 +235,7 @@ class CrawlParams(pydantic.BaseModel):
     allowBackwardLinks: Optional[bool] = None
     allowExternalLinks: Optional[bool] = None
     ignoreSitemap: Optional[bool] = None
-    scrapeOptions: Optional[CrawlScrapeOptions] = None
+    scrapeOptions: Optional[CommonOptions] = None
     webhook: Optional[Union[str, WebhookConfig]] = None
     deduplicateSimilarURLs: Optional[bool] = None
     ignoreQueryParameters: Optional[bool] = None
@@ -289,7 +289,7 @@ class ExtractParams(pydantic.BaseModel):
     includeSubdomains: Optional[bool] = None
     origin: Optional[str] = None
     showSources: Optional[bool] = None
-    scrapeOptions: Optional[CrawlScrapeOptions] = None
+    scrapeOptions: Optional[CommonOptions] = None
 
 class ExtractResponse(pydantic.BaseModel, Generic[T]):
     """Response from extract operations."""
@@ -309,7 +309,7 @@ class SearchParams(pydantic.BaseModel):
     location: Optional[str] = None
     origin: Optional[str] = "api"
     timeout: Optional[int] = 60000
-    scrapeOptions: Optional[CrawlScrapeOptions] = None
+    scrapeOptions: Optional[CommonOptions] = None
 
 class SearchResponse(pydantic.BaseModel):
     """Response from search operations."""
@@ -441,7 +441,21 @@ class FirecrawlApp:
     def scrape_url(
             self,
             url: str,
-            params: Optional[ScrapeParams] = None) -> ScrapeResponse[Any]:
+            formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+            include_tags: Optional[List[str]] = None,
+            exclude_tags: Optional[List[str]] = None,
+            only_main_content: Optional[bool] = None,
+            wait_for: Optional[int] = None,
+            timeout: Optional[int] = None,
+            location: Optional[LocationConfig] = None,
+            mobile: Optional[bool] = None,
+            skip_tls_verification: Optional[bool] = None,
+            remove_base64_images: Optional[bool] = None,
+            block_ads: Optional[bool] = None,
+            proxy: Optional[Literal["basic", "stealth"]] = None,
+            extract: Optional[ExtractConfig] = None,
+            json_options: Optional[ExtractConfig] = None,
+            actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None) -> ScrapeResponse[Any]:
         """
         Scrape and extract content from a URL.
 
@@ -475,66 +489,69 @@ class FirecrawlApp:
         Raises:
           Exception: If scraping fails
         """
-
         headers = self._prepare_headers()
 
-        # Prepare the base scrape parameters with the URL
-        scrape_params = {'url': url}
+        # Build scrape parameters
+        scrape_params = {
+            'url': url,
+            'origin': f"python-sdk@{version}"
+        }
 
-        # If there are additional params, process them
-        if params:
-            # Handle extract (for v1)
-            extract = params.get('extract', {})
-            if extract:
-                if 'schema' in extract and hasattr(extract['schema'], 'schema'):
-                    extract['schema'] = extract['schema'].schema()
-                scrape_params['extract'] = extract
+        # Add optional parameters if provided
+        if formats:
+            scrape_params['formats'] = formats
+        if include_tags:
+            scrape_params['includeTags'] = include_tags
+        if exclude_tags:
+            scrape_params['excludeTags'] = exclude_tags
+        if only_main_content is not None:
+            scrape_params['onlyMainContent'] = only_main_content
+        if wait_for:
+            scrape_params['waitFor'] = wait_for
+        if timeout:
+            scrape_params['timeout'] = timeout
+        if location:
+            scrape_params['location'] = location.dict(exclude_none=True)
+        if mobile is not None:
+            scrape_params['mobile'] = mobile
+        if skip_tls_verification is not None:
+            scrape_params['skipTlsVerification'] = skip_tls_verification
+        if remove_base64_images is not None:
+            scrape_params['removeBase64Images'] = remove_base64_images
+        if block_ads is not None:
+            scrape_params['blockAds'] = block_ads
+        if proxy:
+            scrape_params['proxy'] = proxy
+        if extract:
+            if hasattr(extract.schema, 'schema'):
+                extract.schema = extract.schema.schema()
+            scrape_params['extract'] = extract.dict(exclude_none=True)
+        if json_options:
+            if hasattr(json_options.schema, 'schema'):
+                json_options.schema = json_options.schema.schema()
+            scrape_params['jsonOptions'] = json_options.dict(exclude_none=True)
+        if actions:
+            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
 
-            # Include any other params directly at the top level of scrape_params
-            for key, value in params.items():
-                if key not in ['extract']:
-                    scrape_params[key] = value
-
-            json = params.get("jsonOptions", {})
-            if json:
-                if 'schema' in json and hasattr(json['schema'], 'schema'):
-                    json['schema'] = json['schema'].schema()
-                scrape_params['jsonOptions'] = json
-
-            change_tracking = params.get("changeTrackingOptions", {})
-            if change_tracking:
-                scrape_params['changeTrackingOptions'] = change_tracking
-
-            # Include any other params directly at the top level of scrape_params
-            for key, value in params.items():
-                if key not in ['jsonOptions', 'changeTrackingOptions', 'agent']:
-                    scrape_params[key] = value
-                    
-            agent = params.get('agent')
-            if agent:
-                scrape_params['agent'] = agent
-
-            scrape_params['origin'] = f"python-sdk@{version}"
-
-        endpoint = f'/v1/scrape'
-        # Make the POST request with the prepared headers and JSON data
+        # Make request
         response = requests.post(
-            f'{self.api_url}{endpoint}',
+            f'{self.api_url}/v1/scrape',
             headers=headers,
             json=scrape_params,
-            timeout=(scrape_params["timeout"] + 5000 if "timeout" in scrape_params else None),
+            timeout=(timeout + 5000 if timeout else None)
         )
+
         if response.status_code == 200:
             try:
-                response = response.json()
-            except:
-                raise Exception(f'Failed to parse Firecrawl response as JSON.')
-            if response['success'] and 'data' in response:
-                return response['data']
-            elif "error" in response:
-                raise Exception(f'Failed to scrape URL. Error: {response["error"]}')
-            else:
-                raise Exception(f'Failed to scrape URL. Error: {response}')
+                response_json = response.json()
+                if response_json.get('success') and 'data' in response_json:
+                    return ScrapeResponse(**response_json['data'])
+                elif "error" in response_json:
+                    raise Exception(f'Failed to scrape URL. Error: {response_json["error"]}')
+                else:
+                    raise Exception(f'Failed to scrape URL. Error: {response_json}')
+            except ValueError:
+                raise Exception('Failed to parse Firecrawl response as JSON.')
         else:
             self._handle_error(response, 'scrape URL')
 
@@ -1701,7 +1718,7 @@ class FirecrawlApp:
                                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
                             data.extend(status_data.get('data', []))
                         status_data['data'] = data
-                        return status_data
+                        return CrawlStatusResponse(**status_data)
                     else:
                         raise Exception('Crawl job completed but no data was returned')
                 elif status_data['status'] in ['active', 'paused', 'pending', 'queued', 'waiting', 'scraping']:
