@@ -1608,47 +1608,45 @@ class FirecrawlApp:
     def extract(
             self,
             urls: Optional[List[str]] = None,
-            params: Optional[ExtractParams] = None) -> ExtractResponse[Any]:
+            *,
+            prompt: Optional[str] = None,
+            schema_: Optional[Any] = None,
+            system_prompt: Optional[str] = None,
+            allow_external_links: Optional[bool] = False,
+            enable_web_search: Optional[bool] = False,
+            show_sources: Optional[bool] = False,
+            agent: Optional[Dict[str, Any]] = None) -> ExtractResponse[Any]:
         """
         Extract structured information from URLs.
 
         Args:
-            urls: URLs to extract from
-
-            params: See ExtractParams model:
-
-              Extraction Config:
-              * prompt - Custom extraction prompt
-              * schema - JSON schema/Pydantic model
-              * systemPrompt - System context
-              
-              Behavior Options:
-              * allowExternalLinks - Follow external links
-              * enableWebSearch - Enable web search
-              * includeSubdomains - Include subdomains
-              * showSources - Include source URLs
-              
-              Scraping Options:
-              * scrapeOptions - Page scraping config
+            urls (Optional[List[str]]): URLs to extract from
+            prompt (Optional[str]): Custom extraction prompt
+            schema_ (Optional[Any]): JSON schema/Pydantic model
+            system_prompt (Optional[str]): System context
+            allow_external_links (Optional[bool]): Follow external links
+            enable_web_search (Optional[bool]): Enable web search
+            show_sources (Optional[bool]): Include source URLs
+            agent (Optional[Dict[str, Any]]): Agent configuration
 
         Returns:
-            ExtractResponse with:
-            * Structured data matching schema
-            * Source information if requested
-            * Success/error status
+            ExtractResponse[Any] with:
+            * success (bool): Whether request succeeded
+            * data (Optional[Any]): Extracted data matching schema
+            * error (Optional[str]): Error message if any
 
         Raises:
             ValueError: If prompt/schema missing or extraction fails
         """
         headers = self._prepare_headers()
 
-        if not params or (not params.get('prompt') and not params.get('schema')):
+        if not prompt and not schema_:
             raise ValueError("Either prompt or schema is required")
 
-        if not urls and not params.get('prompt'):
+        if not urls and not prompt:
             raise ValueError("Either urls or prompt is required")
 
-        schema = params.get('schema')
+        schema = schema_
         if schema:
             if hasattr(schema, 'model_json_schema'):
                 # Convert Pydantic model to JSON schema
@@ -1656,26 +1654,22 @@ class FirecrawlApp:
             # Otherwise assume it's already a JSON schema dict
 
         request_data = {
-            'urls': urls,
-            'allowExternalLinks': params.get('allow_external_links', params.get('allowExternalLinks', False)),
-            'enableWebSearch': params.get('enable_web_search', params.get('enableWebSearch', False)), 
-            'showSources': params.get('show_sources', params.get('showSources', False)),
+            'urls': urls or [],
+            'allowExternalLinks': allow_external_links,
+            'enableWebSearch': enable_web_search,
+            'showSources': show_sources,
             'schema': schema,
             'origin': f'python-sdk@{get_version()}'
         }
 
-        if not request_data['urls']:
-            request_data['urls'] = []
         # Only add prompt and systemPrompt if they exist
-        if params.get('prompt'):
-            request_data['prompt'] = params['prompt']
-        if params.get('system_prompt'):
-            request_data['systemPrompt'] = params['system_prompt']
-        elif params.get('systemPrompt'):  # Check legacy field name
-            request_data['systemPrompt'] = params['systemPrompt']
+        if prompt:
+            request_data['prompt'] = prompt
+        if system_prompt:
+            request_data['systemPrompt'] = system_prompt
             
-        if params.get('agent'):
-            request_data['agent'] = params['agent']
+        if agent:
+            request_data['agent'] = agent
 
         try:
             # Send the initial extract request
@@ -1706,7 +1700,7 @@ class FirecrawlApp:
                             except:
                                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
                             if status_data['status'] == 'completed':
-                                return status_data
+                                return ExtractResponse(**status_data)
                             elif status_data['status'] in ['failed', 'cancelled']:
                                 raise Exception(f'Extract job {status_data["status"]}. Error: {status_data["error"]}')
                         else:
@@ -1720,7 +1714,7 @@ class FirecrawlApp:
         except Exception as e:
             raise ValueError(str(e), 500)
 
-        return {'success': False, 'error': "Internal server error."}
+        return ExtractResponse(success=False, error="Internal server error.")
     
     def get_extract_status(self, job_id: str) -> ExtractResponse[Any]:
         """
@@ -1740,7 +1734,7 @@ class FirecrawlApp:
             response = self._get_request(f'{self.api_url}/v1/extract/{job_id}', headers)
             if response.status_code == 200:
                 try:
-                    return response.json()
+                    return ExtractResponse(**response.json())
                 except:
                     raise Exception(f'Failed to parse Firecrawl response as JSON.')
             else:
@@ -1751,60 +1745,68 @@ class FirecrawlApp:
     def async_extract(
             self,
             urls: List[str],
-            params: Optional[ExtractParams] = None,
+            *,
+            prompt: Optional[str] = None,
+            schema_: Optional[Any] = None,
+            system_prompt: Optional[str] = None,
+            allow_external_links: Optional[bool] = False,
+            enable_web_search: Optional[bool] = False,
+            show_sources: Optional[bool] = False,
+            agent: Optional[Dict[str, Any]] = None,
             idempotency_key: Optional[str] = None) -> ExtractResponse[Any]:
         """
         Initiate an asynchronous extract job.
 
         Args:
             urls (List[str]): URLs to extract information from
-            params (Optional[ExtractParams]): See ExtractParams model:
-              Extraction Config:
-              * prompt - Custom extraction prompt
-              * schema - JSON schema/Pydantic model
-              * systemPrompt - System context
-              
-              Behavior Options:
-              * allowExternalLinks - Follow external links
-              * enableWebSearch - Enable web search
-              * includeSubdomains - Include subdomains
-              * showSources - Include source URLs
-              
-              Scraping Options:
-              * scrapeOptions - Page scraping config
+            prompt (Optional[str]): Custom extraction prompt
+            schema_ (Optional[Any]): JSON schema/Pydantic model
+            system_prompt (Optional[str]): System context
+            allow_external_links (Optional[bool]): Follow external links
+            enable_web_search (Optional[bool]): Enable web search
+            show_sources (Optional[bool]): Include source URLs
+            agent (Optional[Dict[str, Any]]): Agent configuration
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
 
         Returns:
-          ExtractResponse containing:
-          * success (bool): Whether job started successfully
-          * id (str): Unique identifier for the job
-          * error (str, optional): Error message if start failed
+            ExtractResponse[Any] with:
+            * success (bool): Whether request succeeded
+            * data (Optional[Any]): Extracted data matching schema
+            * error (Optional[str]): Error message if any
 
         Raises:
-          ValueError: If job initiation fails
+            ValueError: If job initiation fails
         """
         headers = self._prepare_headers(idempotency_key)
         
-        schema = params.get('schema') if params else None
+        schema = schema_
         if schema:
             if hasattr(schema, 'model_json_schema'):
                 # Convert Pydantic model to JSON schema
                 schema = schema.model_json_schema()
             # Otherwise assume it's already a JSON schema dict
 
-        jsonData = {'urls': urls, **(params or {})}
         request_data = {
-            **jsonData,
-            'allowExternalLinks': params.get('allow_external_links', False) if params else False,
+            'urls': urls,
+            'allowExternalLinks': allow_external_links,
+            'enableWebSearch': enable_web_search,
+            'showSources': show_sources,
             'schema': schema,
             'origin': f'python-sdk@{version}'
         }
+
+        if prompt:
+            request_data['prompt'] = prompt
+        if system_prompt:
+            request_data['systemPrompt'] = system_prompt
+        if agent:
+            request_data['agent'] = agent
 
         try:
             response = self._post_request(f'{self.api_url}/v1/extract', request_data, headers)
             if response.status_code == 200:
                 try:
-                    return response.json()
+                    return ExtractResponse(**response.json())
                 except:
                     raise Exception(f'Failed to parse Firecrawl response as JSON.')
             else:
@@ -1815,41 +1817,36 @@ class FirecrawlApp:
     def generate_llms_text(
             self,
             url: str,
-            params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> GenerateLLMsTextStatusResponse:
+            *,
+            max_urls: Optional[int] = None,
+            show_full_text: Optional[bool] = None,
+            experimental_stream: Optional[bool] = None) -> GenerateLLMsTextStatusResponse:
         """
         Generate LLMs.txt for a given URL and poll until completion.
 
         Args:
-          url: Target URL to generate LLMs.txt from
-
-            params: See GenerateLLMsTextParams model:
-            params: See GenerateLLMsTextParams model:
-
-          params: See GenerateLLMsTextParams model:
-
-            Generation Options:
-            * maxUrls - Maximum URLs to process (default: 10)
-            * showFullText - Include full text in output (default: False)
+            url (str): Target URL to generate LLMs.txt from
+            max_urls (Optional[int]): Maximum URLs to process (default: 10)
+            show_full_text (Optional[bool]): Include full text in output (default: False)
+            experimental_stream (Optional[bool]): Enable experimental streaming
 
         Returns:
-          GenerateLLMsTextStatusResponse with:
-          * Generated LLMs.txt content
-          * Full version if requested
-          * Generation status
-          * Success/error information
+            GenerateLLMsTextStatusResponse with:
+            * Generated LLMs.txt content
+            * Full version if requested
+            * Generation status
+            * Success/error information
 
         Raises:
-          Exception: If generation fails
+            Exception: If generation fails
         """
-        if params is None:
-            params = {}
+        params = GenerateLLMsTextParams(
+            maxUrls=max_urls,
+            showFullText=show_full_text,
+            __experimental_stream=experimental_stream
+        )
 
-        if isinstance(params, dict):
-            generation_params = GenerateLLMsTextParams(**params)
-        else:
-            generation_params = params
-
-        response = self.async_generate_llms_text(url, generation_params)
+        response = self.async_generate_llms_text(url, params)
         if not response.get('success') or 'id' not in response:
             return response
 
@@ -1871,35 +1868,36 @@ class FirecrawlApp:
     def async_generate_llms_text(
             self,
             url: str,
-            params: Optional[Union[Dict[str, Any], GenerateLLMsTextParams]] = None) -> GenerateLLMsTextResponse:
+            *,
+            max_urls: Optional[int] = None,
+            show_full_text: Optional[bool] = None,
+            experimental_stream: Optional[bool] = None) -> GenerateLLMsTextResponse:
         """
         Initiate an asynchronous LLMs.txt generation operation.
 
         Args:
-          url (str): The target URL to generate LLMs.txt from. Must be a valid HTTP/HTTPS URL.
-          params (Optional[Union[Dict[str, Any], GenerateLLMsTextParams]]): Generation configuration parameters:
-            * maxUrls (int, optional): Maximum number of URLs to process (default: 10)
-            * showFullText (bool, optional): Include full text in output (default: False)
+            url (str): The target URL to generate LLMs.txt from. Must be a valid HTTP/HTTPS URL.
+            max_urls (Optional[int]): Maximum URLs to process (default: 10)
+            show_full_text (Optional[bool]): Include full text in output (default: False)
+            experimental_stream (Optional[bool]): Enable experimental streaming
 
         Returns:
-          GenerateLLMsTextResponse: A response containing:
-            - success (bool): Whether the generation initiation was successful
-            - id (str): The unique identifier for the generation job
-            - error (str, optional): Error message if initiation failed
+            GenerateLLMsTextResponse: A response containing:
+            * success (bool): Whether the generation initiation was successful
+            * id (str): The unique identifier for the generation job
+            * error (str, optional): Error message if initiation failed
 
         Raises:
-          Exception: If the generation job initiation fails.
+            Exception: If the generation job initiation fails.
         """
-        if params is None:
-            params = {}
-
-        if isinstance(params, dict):
-            generation_params = GenerateLLMsTextParams(**params)
-        else:
-            generation_params = params
+        params = GenerateLLMsTextParams(
+            maxUrls=max_urls,
+            showFullText=show_full_text,
+            __experimental_stream=experimental_stream
+        )
 
         headers = self._prepare_headers()
-        json_data = {'url': url, **generation_params.dict(exclude_none=True)}
+        json_data = {'url': url, **params.dict(exclude_none=True)}
         json_data['origin'] = f"python-sdk@{version}"
 
         try:
@@ -1921,20 +1919,20 @@ class FirecrawlApp:
         Check the status of a LLMs.txt generation operation.
 
         Args:
-          id (str): The unique identifier of the LLMs.txt generation job to check status for.
+            id (str): The unique identifier of the LLMs.txt generation job to check status for.
 
         Returns:
-          GenerateLLMsTextStatusResponse: A response containing:
-          * success (bool): Whether the generation was successful
-          * status (str): Status of generation ("processing", "completed", "failed")
-          * data (Dict[str, str], optional): Generated text with fields:
-            * llmstxt (str): Generated LLMs.txt content
-            * llmsfulltxt (str, optional): Full version if requested
-          * error (str, optional): Error message if generation failed
-          * expiresAt (str): When the generated data expires
+            GenerateLLMsTextStatusResponse: A response containing:
+            * success (bool): Whether the generation was successful
+            * status (str): Status of generation ("processing", "completed", "failed")
+            * data (Dict[str, str], optional): Generated text with fields:
+              * llmstxt (str): Generated LLMs.txt content
+              * llmsfulltxt (str, optional): Full version if requested
+            * error (str, optional): Error message if generation failed
+            * expiresAt (str): When the generated data expires
 
         Raises:
-          Exception: If the status check fails.
+            Exception: If the status check fails.
         """
         headers = self._prepare_headers()
         try:
@@ -2172,52 +2170,57 @@ class FirecrawlApp:
     def deep_research(
             self,
             query: str,
-            params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None, 
+            *,
+            max_depth: Optional[int] = None,
+            time_limit: Optional[int] = None,
+            max_urls: Optional[int] = None,
+            analysis_prompt: Optional[str] = None,
+            system_prompt: Optional[str] = None,
+            __experimental_stream_steps: Optional[bool] = None,
             on_activity: Optional[Callable[[Dict[str, Any]], None]] = None,
             on_source: Optional[Callable[[Dict[str, Any]], None]] = None) -> DeepResearchStatusResponse:
         """
         Initiates a deep research operation on a given query and polls until completion.
 
         Args:
-          query: Research query or topic to investigate
-
-          params: See DeepResearchParams model:
-            Research Settings:
-              * maxDepth - Maximum research depth (default: 7)
-              * timeLimit - Time limit in seconds (default: 270)
-              * maxUrls - Maximum URLs to process (default: 20)
-
-          Callbacks:
-          * on_activity - Progress callback receiving:
-              {type, status, message, timestamp, depth}
-          * on_source - Source discovery callback receiving:
-              {url, title, description}
+            query (str): Research query or topic to investigate
+            max_depth (Optional[int]): Maximum depth of research exploration
+            time_limit (Optional[int]): Time limit in seconds for research
+            max_urls (Optional[int]): Maximum number of URLs to process
+            analysis_prompt (Optional[str]): Custom prompt for analysis
+            system_prompt (Optional[str]): Custom system prompt
+            __experimental_stream_steps (Optional[bool]): Enable experimental streaming
+            on_activity (Optional[Callable]): Progress callback receiving {type, status, message, timestamp, depth}
+            on_source (Optional[Callable]): Source discovery callback receiving {url, title, description}
 
         Returns:
-          DeepResearchResponse containing:
-
-          Status:
-          * success - Whether research completed successfully
-          * status - Current state (processing/completed/failed)
-          * error - Error message if failed
-          
-          Results:
-          * id - Unique identifier for the research job
-          * data - Research findings and analysis
-          * sources - List of discovered sources
-          * activities - Research progress log
-          * summaries - Generated research summaries
+            DeepResearchStatusResponse containing:
+            * success (bool): Whether research completed successfully
+            * status (str): Current state (processing/completed/failed)
+            * error (Optional[str]): Error message if failed
+            * id (str): Unique identifier for the research job
+            * data (Any): Research findings and analysis
+            * sources (List[Dict]): List of discovered sources
+            * activities (List[Dict]): Research progress log
+            * summaries (List[str]): Generated research summaries
 
         Raises:
-          Exception: If research fails
+            Exception: If research fails
         """
-        if params is None:
-            params = {}
-
-        if isinstance(params, dict):
-            research_params = DeepResearchParams(**params)
-        else:
-            research_params = params
+        research_params = {}
+        if max_depth is not None:
+            research_params['maxDepth'] = max_depth
+        if time_limit is not None:
+            research_params['timeLimit'] = time_limit
+        if max_urls is not None:
+            research_params['maxUrls'] = max_urls
+        if analysis_prompt is not None:
+            research_params['analysisPrompt'] = analysis_prompt
+        if system_prompt is not None:
+            research_params['systemPrompt'] = system_prompt
+        if __experimental_stream_steps is not None:
+            research_params['__experimental_streamSteps'] = __experimental_stream_steps
+        research_params = DeepResearchParams(**research_params)
 
         response = self.async_deep_research(query, research_params)
         if not response.get('success') or 'id' not in response:
@@ -2253,19 +2256,30 @@ class FirecrawlApp:
 
         return {'success': False, 'error': 'Deep research job terminated unexpectedly'}
 
-    def async_deep_research(self, query: str, params: Optional[Union[Dict[str, Any], DeepResearchParams]] = None) -> Dict[str, Any]:
+    def async_deep_research(
+            self,
+            query: str,
+            *,
+            max_depth: Optional[int] = None,
+            time_limit: Optional[int] = None,
+            max_urls: Optional[int] = None,
+            analysis_prompt: Optional[str] = None,
+            system_prompt: Optional[str] = None,
+            __experimental_stream_steps: Optional[bool] = None) -> Dict[str, Any]:
         """
         Initiates an asynchronous deep research operation.
 
         Args:
-            query (str): The research query to investigate. Should be a clear, specific question or topic.
-            params (Optional[Union[Dict[str, Any], DeepResearchParams]]): Research configuration parameters:
-              * maxDepth (int, optional): Maximum depth of research exploration (default: 7)
-              * timeLimit (int, optional): Time limit in seconds for research (default: 270)
-              * maxUrls (int, optional): Maximum number of URLs to process (default: 20)
+            query (str): Research query or topic to investigate
+            max_depth (Optional[int]): Maximum depth of research exploration
+            time_limit (Optional[int]): Time limit in seconds for research
+            max_urls (Optional[int]): Maximum number of URLs to process
+            analysis_prompt (Optional[str]): Custom prompt for analysis
+            system_prompt (Optional[str]): Custom system prompt
+            __experimental_stream_steps (Optional[bool]): Enable experimental streaming
 
         Returns:
-          DeepResearchResponse: A response containing:
+            Dict[str, Any]: A response containing:
             * success (bool): Whether the research initiation was successful
             * id (str): The unique identifier for the research job
             * error (str, optional): Error message if initiation failed
@@ -2273,13 +2287,20 @@ class FirecrawlApp:
         Raises:
             Exception: If the research initiation fails.
         """
-        if params is None:
-            params = {}
-
-        if isinstance(params, dict):
-            research_params = DeepResearchParams(**params)
-        else:
-            research_params = params
+        research_params = {}
+        if max_depth is not None:
+            research_params['maxDepth'] = max_depth
+        if time_limit is not None:
+            research_params['timeLimit'] = time_limit
+        if max_urls is not None:
+            research_params['maxUrls'] = max_urls
+        if analysis_prompt is not None:
+            research_params['analysisPrompt'] = analysis_prompt
+        if system_prompt is not None:
+            research_params['systemPrompt'] = system_prompt
+        if __experimental_stream_steps is not None:
+            research_params['__experimental_streamSteps'] = __experimental_stream_steps
+        research_params = DeepResearchParams(**research_params)
 
         headers = self._prepare_headers()
         
