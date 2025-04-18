@@ -402,7 +402,7 @@ class ExtractParams(pydantic.BaseModel):
     Parameters for the extract operation.
     """
     prompt: Optional[str] = None
-    schema_: Optional[Any] = pydantic.Field(None, alias='schema')
+    schema: Optional[Any] = pydantic.Field(None, alias='schema')
     system_prompt: Optional[str] = None
     allow_external_links: Optional[bool] = False
     enable_web_search: Optional[bool] = False
@@ -1610,7 +1610,7 @@ class FirecrawlApp:
             urls: Optional[List[str]] = None,
             *,
             prompt: Optional[str] = None,
-            schema_: Optional[Any] = None,
+            schema: Optional[Any] = None,
             system_prompt: Optional[str] = None,
             allow_external_links: Optional[bool] = False,
             enable_web_search: Optional[bool] = False,
@@ -1622,7 +1622,7 @@ class FirecrawlApp:
         Args:
             urls (Optional[List[str]]): URLs to extract from
             prompt (Optional[str]): Custom extraction prompt
-            schema_ (Optional[Any]): JSON schema/Pydantic model
+            schema (Optional[Any]): JSON schema/Pydantic model
             system_prompt (Optional[str]): System context
             allow_external_links (Optional[bool]): Follow external links
             enable_web_search (Optional[bool]): Enable web search
@@ -1640,13 +1640,12 @@ class FirecrawlApp:
         """
         headers = self._prepare_headers()
 
-        if not prompt and not schema_:
+        if not prompt and not schema:
             raise ValueError("Either prompt or schema is required")
 
         if not urls and not prompt:
             raise ValueError("Either urls or prompt is required")
 
-        schema = schema_
         if schema:
             if hasattr(schema, 'model_json_schema'):
                 # Convert Pydantic model to JSON schema
@@ -1747,7 +1746,7 @@ class FirecrawlApp:
             urls: List[str],
             *,
             prompt: Optional[str] = None,
-            schema_: Optional[Any] = None,
+            schema: Optional[Any] = None,
             system_prompt: Optional[str] = None,
             allow_external_links: Optional[bool] = False,
             enable_web_search: Optional[bool] = False,
@@ -1760,7 +1759,7 @@ class FirecrawlApp:
         Args:
             urls (List[str]): URLs to extract information from
             prompt (Optional[str]): Custom extraction prompt
-            schema_ (Optional[Any]): JSON schema/Pydantic model
+            schema (Optional[Any]): JSON schema/Pydantic model
             system_prompt (Optional[str]): System context
             allow_external_links (Optional[bool]): Follow external links
             enable_web_search (Optional[bool]): Enable web search
@@ -1779,7 +1778,7 @@ class FirecrawlApp:
         """
         headers = self._prepare_headers(idempotency_key)
         
-        schema = schema_
+        schema = schema
         if schema:
             if hasattr(schema, 'model_json_schema'):
                 # Convert Pydantic model to JSON schema
