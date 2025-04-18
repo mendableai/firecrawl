@@ -266,13 +266,13 @@ v1Router.get(
 
 v1Router.post(
   "/llmstxt",
-  authMiddleware(RateLimiterMode.Extract),
+  authMiddleware(RateLimiterMode.Scrape),
   wrap(generateLLMsTextController),
 );
 
 v1Router.get(
   "/llmstxt/:jobId",
-  authMiddleware(RateLimiterMode.ExtractStatus),
+  authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(generateLLMsTextStatusController),
 );
 
