@@ -6,6 +6,14 @@ use serde_json::Value;
 
 use crate::{FirecrawlApp, FirecrawlError, API_VERSION};
 
+/// Agent options for extract requests
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentOptionsExtract {
+    /// Model to use for the agent
+    pub model: String,
+}
+
 /// Parameters for extract requests
 #[serde_with::skip_serializing_none]
 #[derive(Deserialize, Serialize, Debug, Default, Clone)]
@@ -49,6 +57,9 @@ pub struct ExtractParams {
 
     /// Maximum number of URLs to process
     pub limit: Option<u32>,
+
+    /// Agent options
+    pub agent: Option<AgentOptionsExtract>,
 
     /// Experimental: Stream steps information
     #[serde(rename = "__experimental_streamSteps")]

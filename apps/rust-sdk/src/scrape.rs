@@ -37,22 +37,42 @@ pub enum ScrapeFormats {
 
     /// Will result in the results of an LLM extraction.
     ///
-    /// See `ScrapeOptions.extract` for more options.
-    #[serde(rename = "extract")]
-    Extract,
+    /// See `ScrapeOptions.json_options` for more options.
+    #[serde(rename = "json")]
+    Json,
+}
+
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentOptionsJson {
+    pub model: String,
+    pub prompt: Option<String>,
 }
 
 #[serde_with::skip_serializing_none]
 #[derive(Deserialize, Serialize, Debug, Default, Clone)]
 #[serde(rename_all = "camelCase")]
-pub struct ExtractOptions {
+pub struct JsonOptions {
     /// Schema the output should adhere to, provided in JSON Schema format.
     pub schema: Option<Value>,
 
+    /// System prompt to send to the LLM agent along with the page content.
     pub system_prompt: Option<String>,
 
     /// Extraction prompt to send to the LLM agent along with the page content.
     pub prompt: Option<String>,
+
+    /// Agent options for JSON extraction.
+    pub agent: Option<AgentOptionsJson>,
+}
+
+#[derive(Deserialize, Serialize, Debug, Default, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct AgentOptions {
+    pub model: String,
+    pub prompt: Option<String>,
+    pub session_id: Option<String>,
+    pub wait_before_closing_ms: Option<u32>,
 }
 
 #[serde_with::skip_serializing_none]
@@ -84,8 +104,11 @@ pub struct ScrapeOptions {
     // Timeout before returning an error, in milliseconds. (default: `60000`)
     pub timeout: Option<u32>,
 
-    /// Extraction options, to be used in conjunction with `ScrapeFormats::Extract`.
-    pub extract: Option<ExtractOptions>,
+    /// JSON extraction options, to be used in conjunction with `ScrapeFormats::Json`.
+    pub json_options: Option<JsonOptions>,
+
+    /// Agent options for smart scrape.
+    pub agent: Option<AgentOptions>,
 }
 
 #[derive(Deserialize, Serialize, Debug, Default)]
