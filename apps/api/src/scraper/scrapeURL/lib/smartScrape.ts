@@ -3,7 +3,7 @@ import { logger as _logger } from "../../../lib/logger";
 import { robustFetch } from "./fetch";
 import fs from "fs/promises";
 import { configDotenv } from "dotenv";
-
+import { CostTracking } from "../../../lib/extract/extraction-service";
 configDotenv();
 
 // Define schemas outside the function scope
@@ -45,13 +45,23 @@ export type SmartScrapeResult = z.infer<typeof smartScrapeResultSchema>;
  * @returns A promise that resolves to an object matching the SmartScrapeResult type.
  * @throws Throws an error if the request fails or the response is invalid.
  */
-export async function smartScrape(
+export async function smartScrape({
+  url,
+  prompt,
+  sessionId,
+  extractId,
+  scrapeId,
+  beforeSubmission,
+  costTracking,
+}: {
   url: string,
   prompt: string,
   sessionId?: string,
   extractId?: string,
   scrapeId?: string,
-): Promise<SmartScrapeResult> {
+  beforeSubmission?: () => unknown,
+  costTracking: CostTracking,
+}): Promise<SmartScrapeResult> {
   let logger = _logger.child({
     method: "smartScrape",
     module: "smartScrape",
@@ -131,6 +141,17 @@ export async function smartScrape(
     });
 
     logger.info("Smart scrape cost $" + response.tokenUsage);
+    costTracking.addCall({
+      type: "smartScrape",
+      cost: response.tokenUsage,
+      model: "firecrawl/smart-scrape",
+      metadata: {
+        module: "smartScrape",
+        method: "smartScrape",
+        url,
+        sessionId,
+      },
+    });
 
     return response; // The response type now matches SmartScrapeResult
   } catch (error) {

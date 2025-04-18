@@ -98,9 +98,9 @@ export function authMiddleware(
         rateLimiterMode = RateLimiterMode.ExtractAgentPreview;
       }
 
-      if (rateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
-        rateLimiterMode = RateLimiterMode.ScrapeAgentPreview;
-      }
+      // if (rateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
+      //   rateLimiterMode = RateLimiterMode.ScrapeAgentPreview;
+      // }
 
       const auth = await authenticateUser(req, res, rateLimiterMode);
 
@@ -266,26 +266,26 @@ v1Router.get(
 
 v1Router.post(
   "/llmstxt",
-  authMiddleware(RateLimiterMode.Extract),
+  authMiddleware(RateLimiterMode.Scrape),
   wrap(generateLLMsTextController),
 );
 
 v1Router.get(
   "/llmstxt/:jobId",
-  authMiddleware(RateLimiterMode.ExtractStatus),
+  authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(generateLLMsTextStatusController),
 );
 
 v1Router.post(
   "/deep-research",
-  authMiddleware(RateLimiterMode.Extract),
+  authMiddleware(RateLimiterMode.Crawl),
   checkCreditsMiddleware(1),
   wrap(deepResearchController),
 );
 
 v1Router.get(
   "/deep-research/:jobId",
-  authMiddleware(RateLimiterMode.ExtractStatus),
+  authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(deepResearchStatusController),
 );
 

@@ -12,6 +12,7 @@ import {
 import { ExtractOptions } from "../../controllers/v1/types";
 
 import { getModel } from "../generic-ai";
+import { CostTracking } from "../extract/extraction-service";
 interface AnalysisResult {
   gaps: string[];
   nextSteps: string[];
@@ -152,6 +153,7 @@ export class ResearchLLMService {
   async generateSearchQueries(
     topic: string,
     findings: DeepResearchFinding[] = [],
+    costTracking: CostTracking,
   ): Promise<{ query: string; researchGoal: string }[]> {
     const { extract } = await generateCompletions({
       logger: this.logger.child({
@@ -194,6 +196,13 @@ export class ResearchLLMService {
           The first SERP query you generate should be a very concise, simple version of the topic. `,
       },
       markdown: "",
+      costTrackingOptions: {
+        costTracking,
+        metadata: {
+          module: "deep-research",
+          method: "generateSearchQueries",
+        },
+      },
     });
 
     return extract.queries;
@@ -204,6 +213,7 @@ export class ResearchLLMService {
     currentTopic: string,
     timeRemaining: number,
     systemPrompt: string,
+    costTracking: CostTracking,
   ): Promise<AnalysisResult | null> {
     try {
       const timeRemainingMinutes =
@@ -246,6 +256,13 @@ export class ResearchLLMService {
           ).text,
         },
         markdown: "",
+        costTrackingOptions: {
+          costTracking,
+          metadata: {
+            module: "deep-research",
+            method: "analyzeAndPlan",
+          },
+        },
       });
 
       return extract.analysis;
@@ -260,6 +277,7 @@ export class ResearchLLMService {
     findings: DeepResearchFinding[],
     summaries: string[],
     analysisPrompt: string,
+    costTracking: CostTracking,
     formats?: string[],
     jsonOptions?: ExtractOptions,
   ): Promise<any> {
@@ -312,6 +330,13 @@ export class ResearchLLMService {
       },
       markdown: "",
       model: getModel("o3-mini"),
+      costTrackingOptions: {
+        costTracking,
+        metadata: {
+          module: "deep-research",
+          method: "generateFinalAnalysis",
+        },
+      },
     });
 
     return extract;

@@ -10,7 +10,7 @@ import {
   buildBatchExtractSystemPrompt,
 } from "../build-prompts";
 import { getModel } from "../../generic-ai";
-
+import { CostTracking, CostLimitExceededError } from "../extraction-service";
 import fs from "fs/promises";
 import { extractData } from "../../../scraper/scrapeURL/lib/extractSmartScrape";
 import type { Logger } from "winston";
@@ -24,6 +24,7 @@ type BatchExtractOptions = {
   useAgent: boolean;
   extractId?: string;
   sessionId?: string;
+  costTracking: CostTracking;
 };
 
 /**
@@ -73,7 +74,15 @@ export async function batchExtractPromise(options: BatchExtractOptions, logger: 
     },
     markdown: buildDocument(doc),
     isExtractEndpoint: true,
-    model: getModel("gemini-2.0-flash", "google"),
+    model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
+    retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
+    costTrackingOptions: {
+      costTracking: options.costTracking,
+      metadata: {
+        module: "extract",
+        method: "batchExtractPromise",
+      },
+    },
   };
 
   let extractedDataArray: any[] = [];
@@ -83,24 +92,19 @@ export async function batchExtractPromise(options: BatchExtractOptions, logger: 
     const {
       extractedDataArray: e,
       warning: w,
-      smartScrapeCost,
-      otherCost,
-      smartScrapeCallCount,
-      otherCallCount
     } = await extractData({
       extractOptions: generationOptions,
       urls: [doc.metadata.sourceURL || doc.metadata.url || ""],
       useAgent,
       extractId,
-      sessionId
+      sessionId,
     });
     extractedDataArray = e;
     warning = w;
-    smCost = smartScrapeCost;
-    oCost = otherCost;
-    smCallCount = smartScrapeCallCount;
-    oCallCount = otherCallCount;
   } catch (error) {
+    if (error instanceof CostLimitExceededError) {
+      throw error;
+    }
     logger.error("extractData failed", { error });
   }
 

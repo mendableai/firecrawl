@@ -5,6 +5,7 @@ import { ResearchLLMService, ResearchStateManager } from "./research-manager";
 import { logJob } from "../../services/logging/log_job";
 import { billTeam } from "../../services/billing/credit_billing";
 import { ExtractOptions } from "../../controllers/v1/types";
+import { CostTracking } from "../extract/extraction-service";
 
 interface DeepResearchServiceOptions {
   researchId: string;
@@ -21,6 +22,7 @@ interface DeepResearchServiceOptions {
 }
 
 export async function performDeepResearch(options: DeepResearchServiceOptions) {
+  const costTracking = new CostTracking();
   const { researchId, teamId, timeLimit, subId, maxUrls } = options;
   const startTime = Date.now();
   let currentTopic = options.query;
@@ -70,6 +72,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         await llmService.generateSearchQueries(
           nextSearchTopic,
           state.getFindings(),
+          costTracking,
         )
       ).slice(0, 3);
 
@@ -109,7 +112,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
             fastMode: false,
             blockAds: false,
           },
-        }, logger);
+        }, logger, costTracking);
         return response.length > 0 ? response : [];
       });
 
@@ -205,6 +208,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         currentTopic,
         timeRemaining,
         options.systemPrompt ?? "",
+        costTracking,
       );
 
       if (!analysis) {
@@ -268,6 +272,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         state.getFindings(),
         state.getSummaries(),
         options.analysisPrompt,
+        costTracking,
         options.formats,
         options.jsonOptions,
       );
@@ -278,6 +283,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         state.getFindings(),
         state.getSummaries(),
         options.analysisPrompt,
+        costTracking,
       );
     }
 
@@ -307,6 +313,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       origin: "api",
       num_tokens: 0,
       tokens_billed: 0,
+      cost_tracking: costTracking,
     });
     await updateDeepResearch(researchId, {
       status: "completed",

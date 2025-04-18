@@ -17,14 +17,17 @@ import {
 } from "../scraper/scrapeURL";
 import { Engine } from "../scraper/scrapeURL/engines";
 import { indexPage } from "../lib/extract/index/pinecone";
+import { CostTracking } from "../lib/extract/extraction-service";
 configDotenv();
 
 export async function startWebScraperPipeline({
   job,
   token,
+  costTracking,
 }: {
   job: Job<WebScraperOptions> & { id: string };
   token: string;
+  costTracking: CostTracking;
 }) {
   return await runWebScraper({
     url: job.data.url,
@@ -52,6 +55,7 @@ export async function startWebScraperPipeline({
     is_scrape: job.data.is_scrape ?? false,
     is_crawl: !!(job.data.crawl_id && job.data.crawlerOptions !== null),
     urlInvisibleInCurrentCrawl: job.data.crawlerOptions?.urlInvisibleInCurrentCrawl ?? false,
+    costTracking,
   });
 }
 
@@ -68,6 +72,7 @@ export async function runWebScraper({
   is_scrape = false,
   is_crawl = false,
   urlInvisibleInCurrentCrawl = false,
+  costTracking,
 }: RunWebScraperParams): Promise<ScrapeUrlResponse> {
   const logger = _logger.child({
     method: "runWebScraper",
@@ -101,7 +106,7 @@ export async function runWebScraper({
         ...internalOptions,
         urlInvisibleInCurrentCrawl,
         teamId: internalOptions?.teamId ?? team_id,
-      });
+      }, costTracking);
       if (!response.success) {
         if (response.error instanceof Error) {
           throw response.error;

@@ -26,6 +26,7 @@ import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
 import { urlSpecificParams } from "./lib/urlSpecificParams";
 import { loadMock, MockState } from "./lib/mock";
+import { CostTracking } from "../../lib/extract/extraction-service";
 
 export type ScrapeUrlResponse = (
   | {
@@ -55,6 +56,7 @@ export type Meta = {
     url?: string;
     status: number;
   } | null | undefined; // undefined: no prefetch yet, null: prefetch came back empty
+  costTracking: CostTracking;
 };
 
 function buildFeatureFlags(
@@ -127,6 +129,7 @@ async function buildMetaObject(
   url: string,
   options: ScrapeOptions,
   internalOptions: InternalOptions,
+  costTracking: CostTracking,
 ): Promise<Meta> {
   const specParams =
     urlSpecificParams[new URL(url).hostname.replace(/^www\./, "")];
@@ -158,12 +161,13 @@ async function buildMetaObject(
         ? await loadMock(options.useMock, _logger)
         : null,
     pdfPrefetch: undefined,
+    costTracking,
   };
 }
 
 export type InternalOptions = {
   teamId: string;
-  
+
   priority?: number; // Passed along to fire-engine
   forceEngine?: Engine | Engine[];
   atsv?: boolean; // anti-bot solver, beta
@@ -389,8 +393,9 @@ export async function scrapeURL(
   url: string,
   options: ScrapeOptions,
   internalOptions: InternalOptions,
+  costTracking: CostTracking,
 ): Promise<ScrapeUrlResponse> {
-  const meta = await buildMetaObject(id, url, options, internalOptions);
+  const meta = await buildMetaObject(id, url, options, internalOptions, costTracking);
   try {
     while (true) {
       try {

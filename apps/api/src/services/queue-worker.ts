@@ -75,6 +75,7 @@ import { performDeepResearch } from "../lib/deep-research/deep-research-service"
 import { performGenerateLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt-service";
 import { updateGeneratedLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt-redis";
 import { performExtraction_F0 } from "../lib/extract/fire-0/extraction-service-f0";
+import { CostTracking } from "../lib/extract/extraction-service";
 
 configDotenv();
 
@@ -1010,6 +1011,7 @@ async function processJob(job: Job & { id: string }, token: string) {
   //   };
   //   return data;
   // }
+  const costTracking = new CostTracking();
 
   try {
     job.updateProgress({
@@ -1030,6 +1032,7 @@ async function processJob(job: Job & { id: string }, token: string) {
       startWebScraperPipeline({
         job,
         token,
+        costTracking,
       }),
       ...(job.data.scrapeOptions.timeout !== undefined
         ? [
@@ -1171,6 +1174,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           scrapeOptions: job.data.scrapeOptions,
           origin: job.data.origin,
           crawl_id: job.data.crawl_id,
+          cost_tracking: costTracking,
         },
         true,
       );
@@ -1276,10 +1280,6 @@ async function processJob(job: Job & { id: string }, token: string) {
 
       await finishCrawlIfNeeded(job, sc);
     } else {
-      const cost_tracking = doc?.metadata?.costTracking;
-
-      delete doc.metadata.costTracking;
-      
       await logJob({
         job_id: job.id,
         success: true,
@@ -1293,7 +1293,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         scrapeOptions: job.data.scrapeOptions,
         origin: job.data.origin,
         num_tokens: 0, // TODO: fix
-        cost_tracking,
+        cost_tracking: costTracking,
       });
       
       indexJob(job, doc);
@@ -1442,6 +1442,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         scrapeOptions: job.data.scrapeOptions,
         origin: job.data.origin,
         crawl_id: job.data.crawl_id,
+        cost_tracking: costTracking,
       },
       true,
     );

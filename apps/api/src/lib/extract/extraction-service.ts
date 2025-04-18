@@ -67,14 +67,55 @@ type completions = {
   sources?: string[];
 };
 
-export type CostTracking = {
-  smartScrapeCallCount: number;
-  smartScrapeCost: number;
-  otherCallCount: number;
-  otherCost: number;
-  totalCost: number;
-  costLimitExceededTokenUsage?: number;
-};
+export class CostLimitExceededError extends Error {
+  constructor() {
+    super("Cost limit exceeded");
+    this.message = "Cost limit exceeded";
+    this.name = "CostLimitExceededError";
+  }
+}
+
+export class CostTracking {
+  calls: {
+    type: "smartScrape" | "other",
+    metadata: Record<string, any>,
+    cost: number,
+    model: string,
+    tokens?: {
+      input: number,
+      output: number,
+    },
+    stack: string,
+  }[] = [];
+  limit: number | null = null;
+
+  constructor(limit: number | null = null) {
+    this.limit = limit;
+  }
+
+  public addCall(call: Omit<typeof this.calls[number], "stack">) {
+    this.calls.push({
+      ...call,
+      stack: new Error().stack!.split("\n").slice(2).join("\n"),
+    });
+
+    if (this.limit !== null && this.toJSON().totalCost > this.limit) {
+      throw new CostLimitExceededError();
+    }
+  }
+
+  public toJSON() {
+    return {
+      calls: this.calls,
+
+      smartScrapeCallCount: this.calls.filter(c => c.type === "smartScrape").length,
+      smartScrapeCost: this.calls.filter(c => c.type === "smartScrape").reduce((acc, c) => acc + c.cost, 0),
+      otherCallCount: this.calls.filter(c => c.type === "other").length,
+      otherCost: this.calls.filter(c => c.type === "other").reduce((acc, c) => acc + c.cost, 0),
+      totalCost: this.calls.reduce((acc, c) => acc + c.cost, 0),
+    }
+  }
+}
 
 export async function performExtraction(
   extractId: string,
@@ -89,13 +130,8 @@ export async function performExtraction(
   let singleAnswerResult: any = {};
   let totalUrlsScraped = 0;
   let sources: Record<string, string[]> = {};
-  let costTracking: CostTracking = {
-    smartScrapeCallCount: 0,
-    smartScrapeCost: 0,
-    otherCallCount: 0,
-    otherCost: 0,
-    totalCost: 0,
-  };
+
+  let costTracking = new CostTracking(subId ? null : 1.5);
 
   let log = {
     extractId,
@@ -118,13 +154,9 @@ export async function performExtraction(
       });
       const rephrasedPrompt = await generateBasicCompletion(
         buildRephraseToSerpPrompt(request.prompt),
+        costTracking,
       );
       let rptxt = rephrasedPrompt?.text.replace('"', "").replace("'", "") || "";
-      if (rephrasedPrompt) {
-        costTracking.otherCallCount++;
-        costTracking.otherCost += rephrasedPrompt.cost;
-        costTracking.totalCost += rephrasedPrompt.cost;
-      }
       const searchResults = await search({
         query: rptxt,
         num_results: 10,
@@ -197,11 +229,9 @@ export async function performExtraction(
 
     let reqSchema = request.schema;
     if (!reqSchema && request.prompt) {
-      const schemaGenRes = await generateSchemaFromPrompt(request.prompt, logger);
+      const schemaGenRes = await generateSchemaFromPrompt(request.prompt, logger, costTracking);
       reqSchema = schemaGenRes.extract;
-      costTracking.otherCallCount++;
-      costTracking.otherCost += schemaGenRes.cost;
-      costTracking.totalCost += schemaGenRes.cost;
+
 
       logger.debug("Generated request schema.", {
         originalSchema: request.schema,
@@ -232,8 +262,7 @@ export async function performExtraction(
       reasoning,
       keyIndicators,
       tokenUsage: schemaAnalysisTokenUsage,
-      cost: schemaAnalysisCost,
-    } = await analyzeSchemaAndPrompt(urls, reqSchema, request.prompt ?? "", logger);
+    } = await analyzeSchemaAndPrompt(urls, reqSchema, request.prompt ?? "", logger, costTracking);
 
     logger.debug("Analyzed schema.", {
       isMultiEntity,
@@ -242,11 +271,6 @@ export async function performExtraction(
       keyIndicators,
     });
 
-    costTracking.otherCallCount++;
-    costTracking.otherCost += schemaAnalysisCost;
-    costTracking.totalCost += schemaAnalysisCost;
-
-    // Track schema analysis tokens
     tokenUsage.push(schemaAnalysisTokenUsage);
 
     let startMap = Date.now();
@@ -377,6 +401,7 @@ export async function performExtraction(
               isMultiEntity: true,
             }),
             {
+              timeout: 300000,
               ...request.scrapeOptions,
 
               // Needs to be true for multi-entity to work properly
@@ -466,7 +491,8 @@ export async function performExtraction(
               doc,
               useAgent: isAgentExtractModelValid(request.agent?.model),
               extractId,
-              sessionId
+              sessionId,
+              costTracking,
             }, logger);
 
             // Race between timeout and completion
@@ -479,12 +505,6 @@ export async function performExtraction(
             // Track multi-entity extraction tokens
             if (multiEntityCompletion) {
               tokenUsage.push(multiEntityCompletion.totalUsage);
-
-              costTracking.smartScrapeCallCount += multiEntityCompletion.smartScrapeCallCount;
-              costTracking.smartScrapeCost += multiEntityCompletion.smartScrapeCost;
-              costTracking.otherCallCount += multiEntityCompletion.otherCallCount;
-              costTracking.otherCost += multiEntityCompletion.otherCost;
-              costTracking.totalCost += multiEntityCompletion.smartScrapeCost + multiEntityCompletion.otherCost;
 
               if (multiEntityCompletion.extract) {
                 return {
@@ -528,6 +548,10 @@ export async function performExtraction(
 
             return null;
           } catch (error) {
+            if (error instanceof CostLimitExceededError) {
+              throw error;
+            }
+
             logger.error(`Failed to process document.`, {
               error,
               url: doc.metadata.url ?? doc.metadata.sourceURL!,
@@ -703,7 +727,10 @@ export async function performExtraction(
               url,
               isMultiEntity: false,
             }),
-            request.scrapeOptions,
+            {
+              timeout: 300000,
+              ...request.scrapeOptions,
+            },
           );
         }
         return docsMap.get(normalizeUrl(url));
@@ -762,7 +789,7 @@ export async function performExtraction(
             discoveredLinks: links,
           },
         ],
-        // sessionIds: [thisSessionId],
+        sessionIds: [thisSessionId],
       });
 
       // Generate completions
@@ -772,10 +799,6 @@ export async function performExtraction(
         extract: completionResult,
         tokenUsage: singleAnswerTokenUsage,
         sources: singleAnswerSources,
-        smartScrapeCost: singleAnswerSmartScrapeCost,
-        otherCost: singleAnswerOtherCost,
-        smartScrapeCallCount: singleAnswerSmartScrapeCallCount,
-        otherCallCount: singleAnswerOtherCallCount,
       } = await singleAnswerCompletion({
         singleAnswerDocs,
         rSchema,
@@ -785,12 +808,8 @@ export async function performExtraction(
         useAgent: isAgentExtractModelValid(request.agent?.model),
         extractId,
         sessionId: thisSessionId,
+        costTracking,
       });
-      costTracking.smartScrapeCost += singleAnswerSmartScrapeCost;
-      costTracking.smartScrapeCallCount += singleAnswerSmartScrapeCallCount;
-      costTracking.otherCost += singleAnswerOtherCost;
-      costTracking.otherCallCount += singleAnswerOtherCallCount;
-      costTracking.totalCost += singleAnswerSmartScrapeCost + singleAnswerOtherCost;
       logger.debug("Done generating singleAnswer completions.");
 
       singleAnswerResult = transformArrayToObject(rSchema, completionResult);
@@ -936,7 +955,7 @@ export async function performExtraction(
         status: "completed",
         llmUsage,
         sources,
-        costTracking,
+        // costTracking,
       }).catch((error) => {
         logger.error(
           `Failed to update extract ${extractId} status to completed: ${error}`,

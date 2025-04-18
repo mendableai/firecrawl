@@ -8,6 +8,7 @@ import { extractConfig } from "../config";
 import type { Logger } from "winston";
 import { generateText } from "ai";
 import { getModel } from "../../generic-ai";
+import { CostTracking } from "../extraction-service";
 
 export async function generateBasicCompletion_FO(prompt: string) {
   const { text } = await generateText({
@@ -211,7 +212,7 @@ export async function processUrl_F0(
       links: mappedLinks,
       searchQuery: rephrasedPrompt,
       urlTraces,
-    });
+    }, new CostTracking());
     mappedLinks = rerankerResult.mapDocument;
     let tokensUsed = rerankerResult.tokensUsed;
     logger.info("Reranked! (pass 1)", {
@@ -225,7 +226,7 @@ export async function processUrl_F0(
         links: mappedLinks,
         searchQuery: rephrasedPrompt,
         urlTraces,
-      });
+      }, new CostTracking());
       mappedLinks = rerankerResult.mapDocument;
       tokensUsed += rerankerResult.tokensUsed;
       logger.info("Reranked! (pass 2)", {

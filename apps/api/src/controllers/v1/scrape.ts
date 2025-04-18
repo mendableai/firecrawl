@@ -15,6 +15,7 @@ import { getJobPriority } from "../../lib/job-priority";
 import { getScrapeQueue } from "../../services/queue-service";
 import { getJob } from "./crawl-status";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
+import { CostTracking } from "src/lib/extract/extraction-service";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -126,12 +127,6 @@ export async function scrapeController(
     if (doc && doc.rawHtml) {
       delete doc.rawHtml;
     }
-  }
-
-  const cost_tracking = doc?.metadata?.costTracking;
-
-  if (doc && doc.metadata) {
-    delete doc.metadata.costTracking;
   }
 
   return res.status(200).json({

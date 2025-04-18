@@ -11,9 +11,9 @@ For more information visit https://github.com/firecrawl/
 import logging
 import os
 
-from .firecrawl import FirecrawlApp # noqa
+from .firecrawl import FirecrawlApp, JsonConfig # noqa
 
-__version__ = "1.16.0"
+__version__ = "2.0.2"
 
 # Define the logger for the Firecrawl project
 logger: logging.Logger = logging.getLogger("firecrawl")

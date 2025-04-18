@@ -22,6 +22,7 @@ import { getJobPriority } from "../../lib/job-priority";
 import { addScrapeJobs } from "../../services/queue-jobs";
 import { callWebhook } from "../../services/webhook";
 import { logger as _logger } from "../../lib/logger";
+import { CostTracking } from "../../lib/extract/extraction-service";
 
 export async function batchScrapeController(
   req: RequestWithAuth<{}, BatchScrapeResponse, BatchScrapeRequest>,
