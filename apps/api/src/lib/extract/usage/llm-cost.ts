@@ -1,5 +1,6 @@
 import { TokenUsage } from "../../../controllers/v1/types";
 import { logger } from "../../../lib/logger";
+import { CostTracking } from "../extraction-service";
 import { modelPrices } from "./model-prices";
 
 interface ModelPricing {
@@ -10,6 +11,10 @@ interface ModelPricing {
 }
 const tokenPerCharacter = 0.5;
 const baseTokenCost = 300;
+
+export function calculateThinkingCost(costTracking: CostTracking): number {
+  return costTracking.toJSON().totalCost * 267000;
+}
 
 export function calculateFinalResultCost(data: any): number {
   return Math.floor(
