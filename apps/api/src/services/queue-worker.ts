@@ -435,19 +435,19 @@ const processExtractJobInternal = async (
     let result: ExtractResult | null = null;
 
     const model = job.data.request.agent?.model
-    // if (job.data.request.agent && model && model.toLowerCase().includes("fire-1")) {
-    //   result = await performExtraction(job.data.extractId, {
-    //     request: job.data.request,
-    //     teamId: job.data.teamId,
-    //     subId: job.data.subId,
-    //   });
-    // } else {
+    if (job.data.request.agent && model && model.toLowerCase().includes("fire-1")) {
+      result = await performExtraction(job.data.extractId, {
+        request: job.data.request,
+        teamId: job.data.teamId,
+        subId: job.data.subId,
+      });
+    } else {
       result = await performExtraction_F0(job.data.extractId, {
         request: job.data.request,
         teamId: job.data.teamId,
         subId: job.data.subId,
       });
-    // }
+    }
     // result = await performExtraction_F0(job.data.extractId, {
     //   request: job.data.request,
     //   teamId: job.data.teamId,
