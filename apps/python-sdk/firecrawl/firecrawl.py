@@ -1849,23 +1849,32 @@ class FirecrawlApp:
             show_full_text=show_full_text,
             experimental_stream=experimental_stream
         )
-        if not response.get('success') or 'id' not in response:
-            return response
+        
+        if not response.success or not response.id:
+            return GenerateLLMsTextStatusResponse(
+                success=False,
+                error='Failed to start LLMs.txt generation',
+                status='failed',
+                expiresAt=''
+            )
 
-        job_id = response['id']
+        job_id = response.id
         while True:
             status = self.check_generate_llms_text_status(job_id)
             
-            if status['status'] == 'completed':
+            if status.status == 'completed':
                 return status
-            elif status['status'] == 'failed':
-                raise Exception(f'LLMs.txt generation failed. Error: {status.get("error")}')
-            elif status['status'] != 'processing':
-                break
+            elif status.status == 'failed':
+                return status
+            elif status.status != 'processing':
+                return GenerateLLMsTextStatusResponse(
+                    success=False,
+                    error='LLMs.txt generation job terminated unexpectedly',
+                    status='failed',
+                    expiresAt=''
+                )
 
             time.sleep(2)  # Polling interval
-
-        return {'success': False, 'error': 'LLMs.txt generation job terminated unexpectedly'}
 
     def async_generate_llms_text(
             self,
@@ -1903,10 +1912,13 @@ class FirecrawlApp:
         json_data['origin'] = f"python-sdk@{version}"
 
         try:
-            response = self._post_request(f'{self.api_url}/v1/llmstxt', json_data, headers)
-            if response.status_code == 200:
+            req = self._post_request(f'{self.api_url}/v1/llmstxt', json_data, headers)
+            response = req.json()
+            print("json_data", json_data)
+            print("response", response)
+            if response.get('success'):
                 try:
-                    return response.json()
+                    return GenerateLLMsTextResponse(**response)
                 except:
                     raise Exception('Failed to parse Firecrawl response as JSON.')
             else:
@@ -1914,7 +1926,10 @@ class FirecrawlApp:
         except Exception as e:
             raise ValueError(str(e))
 
-        return {'success': False, 'error': 'Internal server error'}
+        return GenerateLLMsTextResponse(
+            success=False,
+            error='Internal server error'
+        )
 
     def check_generate_llms_text_status(self, id: str) -> GenerateLLMsTextStatusResponse:
         """
@@ -1941,9 +1956,10 @@ class FirecrawlApp:
             response = self._get_request(f'{self.api_url}/v1/llmstxt/{id}', headers)
             if response.status_code == 200:
                 try:
-                    return response.json()
-                except:
-                    raise Exception('Failed to parse Firecrawl response as JSON.')
+                    json_data = response.json()
+                    return GenerateLLMsTextStatusResponse(**json_data)
+                except Exception as e:
+                    raise Exception(f'Failed to parse Firecrawl response as GenerateLLMsTextStatusResponse: {str(e)}')
             elif response.status_code == 404:
                 raise Exception('LLMs.txt generation job not found')
             else:
@@ -1951,7 +1967,7 @@ class FirecrawlApp:
         except Exception as e:
             raise ValueError(str(e))
 
-        return {'success': False, 'error': 'Internal server error'}
+        return GenerateLLMsTextStatusResponse(success=False, error='Internal server error', status='failed', expiresAt='')
 
     def _prepare_headers(
             self,
