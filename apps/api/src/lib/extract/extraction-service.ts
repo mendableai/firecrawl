@@ -75,6 +75,8 @@ export class CostLimitExceededError extends Error {
   }
 }
 
+const nanProof = (n: number | null | undefined) => isNaN(n ?? 0) ? 0 : (n ?? 0);
+
 export class CostTracking {
   calls: {
     type: "smartScrape" | "other",
@@ -109,10 +111,10 @@ export class CostTracking {
       calls: this.calls,
 
       smartScrapeCallCount: this.calls.filter(c => c.type === "smartScrape").length,
-      smartScrapeCost: this.calls.filter(c => c.type === "smartScrape").reduce((acc, c) => acc + c.cost, 0),
+      smartScrapeCost: this.calls.filter(c => c.type === "smartScrape").reduce((acc, c) => acc + nanProof(c.cost), 0),
       otherCallCount: this.calls.filter(c => c.type === "other").length,
-      otherCost: this.calls.filter(c => c.type === "other").reduce((acc, c) => acc + c.cost, 0),
-      totalCost: this.calls.reduce((acc, c) => acc + c.cost, 0),
+      otherCost: this.calls.filter(c => c.type === "other").reduce((acc, c) => acc + nanProof(c.cost), 0),
+      totalCost: this.calls.reduce((acc, c) => acc + nanProof(c.cost), 0),
     }
   }
 }
