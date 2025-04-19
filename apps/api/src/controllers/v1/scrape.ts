@@ -13,9 +13,7 @@ import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
 import { getScrapeQueue } from "../../services/queue-service";
-import { getJob } from "./crawl-status";
-import { getJobFromGCS } from "../../lib/gcs-jobs";
-import { CostTracking } from "src/lib/extract/extraction-service";
+import { supabaseGetJobById } from "../../lib/supabase-jobs";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -110,8 +108,19 @@ export async function scrapeController(
   if ((req.body.extract && req.body.formats?.includes("extract")) || (req.body.formats?.includes("changeTracking") && req.body.changeTrackingOptions?.modes?.includes("json"))) {
     creditsToBeBilled = 5;
   }
-  if (req.body.agent?.model?.toLowerCase() === "fire-1") {
-    creditsToBeBilled = 150;
+  if (req.body.agent?.model?.toLowerCase() === "fire-1" || req.body.extract?.agent?.model?.toLowerCase() === "fire-1" || req.body.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
+    if (process.env.USE_DB_AUTHENTICATION === "true") {
+      // @Nick this is a hack pushed at 2AM pls help - mogery
+      const job = await supabaseGetJobById(jobId);
+      if (!job?.cost_tracking) {
+        logger.warn("No cost tracking found for job", {
+          jobId,
+        });
+      }
+      creditsToBeBilled = Math.ceil((job?.cost_tracking?.totalCost ?? 1) * 1800);
+    } else {
+      creditsToBeBilled = 150;
+    }
   }
 
   billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(
