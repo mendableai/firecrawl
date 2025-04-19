@@ -295,6 +295,10 @@ export async function generateCompletions({
             result.usage?.promptTokens ?? 0,
             result.usage?.completionTokens ?? 0,
           ),
+          tokens: {
+            input: result.usage?.promptTokens ?? 0,
+            output: result.usage?.completionTokens ?? 0,
+          }
         });
 
         extract = result.text;
@@ -347,6 +351,10 @@ export async function generateCompletions({
                 result.usage?.promptTokens ?? 0,
                 result.usage?.completionTokens ?? 0,
               ),
+              tokens: {
+                input: result.usage?.promptTokens ?? 0,
+                output: result.usage?.completionTokens ?? 0,
+              }
             });
 
             return {
