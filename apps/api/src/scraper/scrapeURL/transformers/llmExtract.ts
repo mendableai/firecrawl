@@ -207,12 +207,9 @@ export function calculateCost(
     let outputCost = 0;
     if (inputTokens <= 200000) {
       inputCost = 1.25;
-    } else {
-      inputCost = 2.5;
-    }
-    if (outputTokens <= 200000) {
       outputCost = 10.0;
     } else {
+      inputCost = 2.5;
       outputCost = 15.0;
     }
     modelCost = { input_cost: inputCost, output_cost: outputCost };
