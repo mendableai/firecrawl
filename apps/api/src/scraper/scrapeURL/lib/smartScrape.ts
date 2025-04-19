@@ -3,7 +3,7 @@ import { logger as _logger } from "../../../lib/logger";
 import { robustFetch } from "./fetch";
 import fs from "fs/promises";
 import { configDotenv } from "dotenv";
-import { CostTracking } from "../../../lib/extract/extraction-service";
+import { CostLimitExceededError, CostTracking } from "../../../lib/extract/extraction-service";
 configDotenv();
 
 // Define schemas outside the function scope
@@ -119,10 +119,23 @@ export async function smartScrape({
       errorResponse.success === false &&
       errorResponse.error
     ) {
-      if (errorResponse.error === "Cost limit exceeded") {
-        throw new Error("Cost limit exceeded", {
-          cause: { tokenUsage: (errorResponse as any).tokenUsage },
+      if ((errorResponse as any).tokenUsage) {
+        logger.info("Failed smart scrape cost $" + (errorResponse as any).tokenUsage);
+        costTracking.addCall({
+          type: "smartScrape",
+          cost: (errorResponse as any).tokenUsage,
+          model: "firecrawl/smart-scrape",
+          metadata: {
+            module: "smartScrape",
+            method: "smartScrape",
+            url,
+            sessionId,
+          },
         });
+      }
+
+      if (errorResponse.error === "Cost limit exceeded") {
+        throw new CostLimitExceededError();
       }
 
       logger.error("Smart scrape returned error response", {
@@ -155,6 +168,36 @@ export async function smartScrape({
 
     return response; // The response type now matches SmartScrapeResult
   } catch (error) {
+    if (error instanceof CostLimitExceededError) {
+      throw error;
+    }
+
+    if (error instanceof Error && error.message === "Request sent failure status" && error.cause && (error.cause as any).response) {
+      const response = (error.cause as any).response;
+      try {
+        const json = JSON.parse(response.body);
+
+        if (json.tokenUsage) {
+          logger.info("Failed smart scrape cost $" + json.tokenUsage);
+          costTracking.addCall({
+            type: "smartScrape",
+            cost: json.tokenUsage,
+            model: "firecrawl/smart-scrape",
+            metadata: {
+              module: "smartScrape",
+              method: "smartScrape",
+              url,
+              sessionId,
+            },
+          });
+        }
+
+        if (json.error === "Cost limit exceeded") {
+          throw new CostLimitExceededError();
+        }
+      } catch (e) {}
+    }
+
     // Safely extract error information without circular references
     const errorInfo = {
       message: error instanceof Error ? error.message : String(error),
@@ -185,7 +228,7 @@ export async function smartScrape({
     };
 
     logger.error("Smart scrape request failed", {
-      error: JSON.stringify(errorInfo),
+      error: errorInfo
     });
 
     // Rethrowing the error to be handled by the caller
