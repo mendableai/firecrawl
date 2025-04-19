@@ -13,7 +13,7 @@ const tokenPerCharacter = 0.5;
 const baseTokenCost = 300;
 
 export function calculateThinkingCost(costTracking: CostTracking): number {
-  return costTracking.toJSON().totalCost * 267000;
+  return Math.ceil(costTracking.toJSON().totalCost * 267000);
 }
 
 export function calculateFinalResultCost(data: any): number {
