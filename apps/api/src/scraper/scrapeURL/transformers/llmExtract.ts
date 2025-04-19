@@ -681,7 +681,7 @@ export async function performLLMExtract(
       await extractData({
         extractOptions: generationOptions,
         urls: [meta.url],
-        useAgent: isAgentExtractModelValid(meta.options.extract?.agent?.model),
+        useAgent: false,
         scrapeId: meta.id,
       });
 
