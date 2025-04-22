@@ -570,7 +570,6 @@ class FirecrawlApp:
             location: Optional[str] = None,
             timeout: Optional[int] = None,
             scrape_options: Optional[ScrapeOptions] = None,
-            params: Optional[Union[Dict[str, Any], SearchParams]] = None,
             **kwargs) -> SearchResponse:
         """
         Search for content using Firecrawl.
@@ -585,7 +584,6 @@ class FirecrawlApp:
             location (Optional[str]): Geo-targeting
             timeout (Optional[int]): Request timeout in milliseconds
             scrape_options (Optional[ScrapeOptions]): Result scraping configuration
-            params (Optional[Union[Dict[str, Any], SearchParams]]): Additional search parameters
             **kwargs: Additional keyword arguments for future compatibility
 
         Returns:
@@ -598,13 +596,11 @@ class FirecrawlApp:
         Raises:
             Exception: If search fails or response cannot be parsed
         """
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "search")
+
         # Build search parameters
         search_params = {}
-        if params:
-            if isinstance(params, dict):
-                search_params.update(params)
-            else:
-                search_params.update(params.dict(exclude_none=True))
 
         # Add individual parameters
         if limit is not None:
@@ -705,6 +701,9 @@ class FirecrawlApp:
         Raises:
             Exception: If crawl fails
         """
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "crawl_url")
+
         crawl_params = {}
 
         # Add individual parameters
@@ -808,6 +807,9 @@ class FirecrawlApp:
         Raises:
             Exception: If crawl initiation fails
         """
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "async_crawl_url")
+
         crawl_params = {}
 
         # Add individual parameters
@@ -1076,7 +1078,7 @@ class FirecrawlApp:
             sitemap_only: Optional[bool] = None,
             limit: Optional[int] = None,
             timeout: Optional[int] = None,
-            params: Optional[MapParams] = None) -> MapResponse:
+            **kwargs) -> MapResponse:
         """
         Map and discover links from a URL.
 
@@ -1088,7 +1090,7 @@ class FirecrawlApp:
             sitemap_only (Optional[bool]): Only use sitemap.xml
             limit (Optional[int]): Maximum URLs to return
             timeout (Optional[int]): Request timeout in milliseconds
-            params (Optional[MapParams]): Additional mapping parameters
+            **kwargs: Additional parameters to pass to the API
 
         Returns:
             MapResponse: Response containing:
@@ -1099,10 +1101,11 @@ class FirecrawlApp:
         Raises:
             Exception: If mapping fails or response cannot be parsed
         """
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "map_url")
+
         # Build map parameters
         map_params = {}
-        if params:
-            map_params.update(params.dict(exclude_none=True))
 
         # Add individual parameters
         if search is not None:
@@ -1117,6 +1120,9 @@ class FirecrawlApp:
             map_params['limit'] = limit
         if timeout is not None:
             map_params['timeout'] = timeout
+
+        # Add any additional kwargs
+        map_params.update(kwargs)
 
         # Create final params object
         final_params = MapParams(**map_params)
@@ -1205,6 +1211,9 @@ class FirecrawlApp:
         Raises:
             Exception: If batch scrape fails
         """
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "batch_scrape_urls")
+
         scrape_params = {}
 
         # Add individual parameters
@@ -1328,6 +1337,9 @@ class FirecrawlApp:
         Raises:
             Exception: If job initiation fails
         """
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "async_batch_scrape_urls")
+
         scrape_params = {}
 
         # Add individual parameters
@@ -1446,6 +1458,9 @@ class FirecrawlApp:
         Raises:
             Exception: If batch scrape job fails to start
         """
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "batch_scrape_urls_and_watch")
+
         scrape_params = {}
 
         # Add individual parameters
@@ -2394,6 +2409,56 @@ class FirecrawlApp:
 
         return {'success': False, 'error': 'Internal server error'}
 
+    def _validate_kwargs(self, kwargs: Dict[str, Any], method_name: str) -> None:
+        """
+        Validate additional keyword arguments before they are passed to the API.
+        This provides early validation before the Pydantic model validation.
+
+        Args:
+            kwargs (Dict[str, Any]): Additional keyword arguments to validate
+            method_name (str): Name of the method these kwargs are for
+
+        Raises:
+            ValueError: If kwargs contain invalid or unsupported parameters
+        """
+        if not kwargs:
+            return
+
+        # Known parameter mappings for each method
+        method_params = {
+            "scrape_url": {"formats", "include_tags", "exclude_tags", "only_main_content", "wait_for", 
+                          "timeout", "location", "mobile", "skip_tls_verification", "remove_base64_images",
+                          "block_ads", "proxy", "extract", "json_options", "actions"},
+            "search": {"limit", "tbs", "filter", "lang", "country", "location", "timeout", "scrape_options"},
+            "crawl_url": {"include_paths", "exclude_paths", "max_depth", "max_discovery_depth", "limit",
+                         "allow_backward_links", "allow_external_links", "ignore_sitemap", "scrape_options",
+                         "webhook", "deduplicate_similar_urls", "ignore_query_parameters", "regex_on_full_url"},
+            "map_url": {"search", "ignore_sitemap", "include_subdomains", "sitemap_only", "limit", "timeout"},
+            "batch_scrape_urls": {"formats", "headers", "include_tags", "exclude_tags", "only_main_content",
+                                 "wait_for", "timeout", "location", "mobile", "skip_tls_verification",
+                                 "remove_base64_images", "block_ads", "proxy", "extract", "json_options",
+                                 "actions", "agent"},
+            "async_batch_scrape_urls": {"formats", "headers", "include_tags", "exclude_tags", "only_main_content",
+                                       "wait_for", "timeout", "location", "mobile", "skip_tls_verification",
+                                       "remove_base64_images", "block_ads", "proxy", "extract", "json_options",
+                                       "actions", "agent"},
+            "batch_scrape_urls_and_watch": {"formats", "headers", "include_tags", "exclude_tags", "only_main_content",
+                                           "wait_for", "timeout", "location", "mobile", "skip_tls_verification",
+                                           "remove_base64_images", "block_ads", "proxy", "extract", "json_options",
+                                           "actions", "agent"}
+        }
+
+        # Get allowed parameters for this method
+        allowed_params = method_params.get(method_name, set())
+        
+        # Check for unknown parameters
+        unknown_params = set(kwargs.keys()) - allowed_params
+        if unknown_params:
+            raise ValueError(f"Unsupported parameter(s) for {method_name}: {', '.join(unknown_params)}. Please refer to the API documentation for the correct parameters.")
+
+        # Additional type validation can be added here if needed
+        # For now, we rely on Pydantic models for detailed type validation
+
 class CrawlWatcher:
     """
     A class to watch and handle crawl job events via WebSocket connection.
@@ -2710,7 +2775,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
     async def scrape_url(
             self,
             url: str,
-            formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+            *,
+            formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None,
             include_tags: Optional[List[str]] = None,
             exclude_tags: Optional[List[str]] = None,
             only_main_content: Optional[bool] = None,
@@ -2724,9 +2790,10 @@ class AsyncFirecrawlApp(FirecrawlApp):
             proxy: Optional[Literal["basic", "stealth"]] = None,
             extract: Optional[JsonConfig] = None,
             json_options: Optional[JsonConfig] = None,
-            actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None) -> ScrapeResponse[Any]:
+            actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+            **kwargs) -> ScrapeResponse[Any]:
         """
-        Scrape and extract content from a URL asynchronously.
+        Scrape a single URL asynchronously.
 
         Args:
           url (str): Target URL to scrape
@@ -2745,17 +2812,26 @@ class AsyncFirecrawlApp(FirecrawlApp):
           extract (Optional[JsonConfig]): Content extraction settings
           json_options (Optional[JsonConfig]): JSON extraction settings
           actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]]): Actions to perform
+          **kwargs: Additional parameters to pass to the API
 
         Returns:
-          ScrapeResponse with:
-          * Requested content formats
-          * Page metadata
-          * Extraction results
-          * Success/error status
+            ScrapeResponse with:
+            * success - Whether scrape was successful
+            * markdown - Markdown content if requested
+            * html - HTML content if requested
+            * rawHtml - Raw HTML content if requested
+            * links - Extracted links if requested
+            * screenshot - Screenshot if requested
+            * extract - Extracted data if requested
+            * json - JSON data if requested
+            * error - Error message if scrape failed
 
         Raises:
-          Exception: If scraping fails
+            Exception: If scraping fails
         """
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "scrape_url")
+
         headers = self._prepare_headers()
 
         # Build scrape parameters
@@ -2879,6 +2955,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Raises:
             Exception: If batch scrape fails
         """
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "batch_scrape_urls")
+
         scrape_params = {}
 
         # Add individual parameters
@@ -3007,6 +3086,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Raises:
             Exception: If job initiation fails
         """
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "async_batch_scrape_urls")
+
         scrape_params = {}
 
         # Add individual parameters
@@ -3126,6 +3208,9 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Raises:
             Exception: If crawl fails
         """
+        # Validate any additional kwargs
+        self._validate_kwargs(kwargs, "crawl_url")
+
         crawl_params = {}
 
         # Add individual parameters
