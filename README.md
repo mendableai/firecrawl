@@ -72,6 +72,7 @@ To use the API, you need to sign up on [Firecrawl](https://firecrawl.dev) and ge
 - [**Scrape**](#scraping): scrapes a URL and get its content in LLM-ready format (markdown, structured data via [LLM Extract](#llm-extraction-beta), screenshot, html)
 - [**Crawl**](#crawling): scrapes all the URLs of a web page and return content in LLM-ready format
 - [**Map**](#map-alpha): input a website and get all the website urls - extremely fast
+- [**Search**](#search): search the web and get full content from results
 - [**Extract**](#extract): get structured data from single page, multiple pages or entire websites with AI.
 
 ### Powerful Capabilities
@@ -186,7 +187,7 @@ Response:
 }
 ```
 
-### Map (Alpha)
+### Map
 
 Used to map a URL and get urls of the website. This returns most links present on the website.
 
@@ -241,7 +242,63 @@ Response will be an ordered list from the most relevant to the least relevant.
 }
 ```
 
-### Extract
+### Search
+
+Search the web and get full content from results
+
+Firecrawl’s search API allows you to perform web searches and optionally scrape the search results in one operation.
+
+- Choose specific output formats (markdown, HTML, links, screenshots)
+- Search the web with customizable parameters (language, country, etc.)
+- Optionally retrieve content from search results in various formats
+- Control the number of results and set timeouts
+
+```bash
+curl -X POST https://api.firecrawl.dev/v1/search \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer fc-YOUR_API_KEY" \
+  -d '{
+    "query": "what is firecrawl?",
+    "limit": 5
+  }'
+```
+
+#### Response
+
+```json
+{
+  "success": true,
+  "data": [
+    {
+      "url": "https://firecrawl.dev",
+      "title": "Firecrawl | Home Page",
+      "description": "Turn websites into LLM-ready data with Firecrawl"
+    },
+    {
+      "url": "https://docs.firecrawl.dev",
+      "title": "Documentation | Firecrawl",
+      "description": "Learn how to use Firecrawl in your own applications"
+    }
+  ]
+}
+```
+
+#### With content scraping
+
+```bash
+curl -X POST https://api.firecrawl.dev/v1/search \
+  -H "Content-Type: application/json" \
+  -H "Authorization: Bearer fc-YOUR_API_KEY" \
+  -d '{
+    "query": "what is firecrawl?",
+    "limit": 5,
+    "scrapeOptions": {
+      "formats": ["markdown", "links"]
+    }
+  }'
+```
+
+### Extract (Beta)
 
 Get structured data from entire websites with a prompt and/or a schema.
 
@@ -435,33 +492,7 @@ curl -X POST https://api.firecrawl.dev/v1/batch/scrape \
     }'
 ```
 
-### Search
 
-The search endpoint combines web search with Firecrawl’s scraping capabilities to return full page content for any query.
-
-Include `scrapeOptions` with `formats: ["markdown"]` to get complete markdown content for each search result otherwise it defaults to getting SERP results (url, title, description).
-
-```bash
-curl -X POST https://api.firecrawl.dev/v1/search \
-    -H 'Content-Type: application/json' \
-    -H 'Authorization: Bearer YOUR_API_KEY' \
-    -d '{
-      "query": "What is Mendable?"
-    }'
-```
-
-```json
-{
-  "success": true,
-  "data": [
-    {
-      "url": "https://mendable.ai",
-      "title": "Mendable | AI for CX and Sales",
-      "description": "AI for CX and Sales"
-    }
-  ]
-}
-```
 
 ## Using Python SDK
 
