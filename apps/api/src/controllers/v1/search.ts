@@ -246,7 +246,7 @@ export async function searchController(
     }
 
     // Bill team once for all successful results
-    await billTeam(req.auth.team_id, req.acuc?.sub_id, responseData.data.length).catch((error) => {
+    billTeam(req.auth.team_id, req.acuc?.sub_id, responseData.data.length).catch((error) => {
       logger.error(
         `Failed to bill team ${req.auth.team_id} for ${responseData.data.length} credits: ${error}`,
       );
