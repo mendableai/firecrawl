@@ -12,8 +12,6 @@ const testEngines: (Engine | undefined)[] = [
   "fire-engine;chrome-cdp",
   "fire-engine;playwright",
   "fire-engine;tlsclient",
-  "scrapingbee",
-  "scrapingbeeLoad",
   "fetch",
 ];
 
@@ -21,8 +19,6 @@ const testEnginesScreenshot: (Engine | undefined)[] = [
   undefined,
   "fire-engine;chrome-cdp",
   "fire-engine;playwright",
-  "scrapingbee",
-  "scrapingbeeLoad",
 ];
 
 describe("Standalone scrapeURL tests", () => {
