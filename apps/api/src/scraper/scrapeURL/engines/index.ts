@@ -13,6 +13,7 @@ import { scrapeCache } from "./cache";
 
 export type Engine =
   | "fire-engine;chrome-cdp"
+  | "fire-engine(retry);chrome-cdp"
   | "fire-engine;playwright"
   | "fire-engine;tlsclient"
   | "playwright"
@@ -36,6 +37,7 @@ export const engines: Engine[] = [
   ...(useFireEngine
     ? [
         "fire-engine;chrome-cdp" as const,
+        "fire-engine(retry);chrome-cdp" as const,
         "fire-engine;playwright" as const,
         "fire-engine;tlsclient" as const,
       ]
@@ -109,6 +111,7 @@ const engineHandlers: {
 } = {
   cache: scrapeCache,
   "fire-engine;chrome-cdp": scrapeURLWithFireEngineChromeCDP,
+  "fire-engine(retry);chrome-cdp": scrapeURLWithFireEngineChromeCDP,
   "fire-engine;playwright": scrapeURLWithFireEnginePlaywright,
   "fire-engine;tlsclient": scrapeURLWithFireEngineTLSClient,
   playwright: scrapeURLWithPlaywright,
@@ -160,6 +163,23 @@ export const engineOptions: {
       stealthProxy: true,
     },
     quality: 50,
+  },
+  "fire-engine(retry);chrome-cdp": {
+    features: {
+      actions: true,
+      waitFor: true, // through actions transform
+      screenshot: true, // through actions transform
+      "screenshot@fullScreen": true, // through actions transform
+      pdf: false,
+      docx: false,
+      atsv: false,
+      location: true,
+      mobile: true,
+      skipTlsVerification: true,
+      useFastMode: false,
+      stealthProxy: true,
+    },
+    quality: 45,
   },
   "fire-engine;playwright": {
     features: {
@@ -273,7 +293,7 @@ export function buildFallbackList(meta: Meta): {
     ...engines,
     
     // enable fire-engine in self-hosted testing environment when mocks are supplied
-    ...((!useFireEngine && meta.mock !== null) ? ["fire-engine;chrome-cdp", "fire-engine;playwright", "fire-engine;tlsclient"] as Engine[] : [])
+    ...((!useFireEngine && meta.mock !== null) ? ["fire-engine;chrome-cdp", "fire-engine(retry);chrome-cdp", "fire-engine;playwright", "fire-engine;tlsclient"] as Engine[] : [])
   ];
 
   if (meta.internalOptions.useCache !== true) {
