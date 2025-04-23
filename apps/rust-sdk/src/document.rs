@@ -57,12 +57,12 @@ pub struct Document {
     pub markdown: Option<String>,
 
     /// The HTML of the page, present if `ScrapeFormats::HTML` is present in `ScrapeOptions.formats`.
-    /// 
+    ///
     /// This contains HTML that has non-content tags removed. If you need the original HTML, use `ScrapeFormats::RawHTML`.
     pub html: Option<String>,
 
     /// The raw HTML of the page, present if `ScrapeFormats::RawHTML` is present in `ScrapeOptions.formats`.
-    /// 
+    ///
     /// This contains the original, untouched HTML on the page. If you only need human-readable content, use `ScrapeFormats::HTML`.
     pub raw_html: Option<String>,
 
@@ -83,4 +83,3 @@ pub struct Document {
     /// The warning message will contain any errors encountered during the extraction.
     pub warning: Option<String>,
 }
-

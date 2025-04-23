@@ -40,3 +40,4 @@ apps/js-sdk/firecrawl/dist
 .vscode
 llm-links.txt
 mapped-links.txt
+gke-key.json

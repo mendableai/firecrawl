@@ -20,7 +20,6 @@ describe("Deep Research Redis Operations", () => {
   const mockResearch: StoredDeepResearch = {
     id: "test-id",
     team_id: "team-1",
-    plan: "pro",
     createdAt: Date.now(),
     status: "processing",
     currentDepth: 0,

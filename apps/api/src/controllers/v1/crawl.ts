@@ -25,7 +25,6 @@ export async function crawlController(
     module: "api/v1",
     method: "crawlController",
     teamId: req.auth.team_id,
-    plan: req.auth.plan,
   });
   logger.debug("Crawl " + id + " starting", {
     request: req.body,
@@ -84,7 +83,6 @@ export async function crawlController(
     internalOptions: { disableSmartWaitCache: true, teamId: req.auth.team_id }, // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
     team_id: req.auth.team_id,
     createdAt: Date.now(),
-    plan: req.auth.plan,
   };
 
   const crawler = crawlToCrawler(id, sc);
@@ -104,7 +102,6 @@ export async function crawlController(
       url: req.body.url,
       mode: "kickoff" as const,
       team_id: req.auth.team_id,
-      plan: req.auth.plan,
       crawlerOptions,
       scrapeOptions: sc.scrapeOptions,
       internalOptions: sc.internalOptions,

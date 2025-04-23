@@ -1,5 +1,6 @@
 import { redisConnection } from "../../services/queue-service";
 import { logger as _logger } from "../logger";
+import { CostTracking } from "./extraction-service";
 
 export enum ExtractStep {
   INITIAL = "initial",
@@ -7,6 +8,7 @@ export enum ExtractStep {
   MAP_RERANK = "map-rerank",
   MULTI_ENTITY = "multi-entity",
   MULTI_ENTITY_SCRAPE = "multi-entity-scrape",
+  MULTI_ENTITY_AGENT_SCRAPE = "multi-entity-agent-scrape",
   MULTI_ENTITY_EXTRACT = "multi-entity-extract",
   SCRAPE = "scrape",
   EXTRACT = "extract",
@@ -16,7 +18,7 @@ export enum ExtractStep {
 export type ExtractedStep = {
   step: ExtractStep;
   startedAt: number;
-  finishedAt: number;
+  finishedAt: number | null;
   error?: any;
   discoveredLinks?: string[];
 };
@@ -24,7 +26,6 @@ export type ExtractedStep = {
 export type StoredExtract = {
   id: string;
   team_id: string;
-  plan?: string;
   createdAt: number;
   status: "processing" | "completed" | "failed" | "cancelled";
   error?: any;
@@ -33,9 +34,12 @@ export type StoredExtract = {
   showLLMUsage?: boolean;
   showSources?: boolean;
   llmUsage?: number;
+  showCostTracking?: boolean;
+  costTracking?: CostTracking;
   sources?: {
     [key: string]: string[];
   };
+  sessionIds?: string[];
 };
 
 // Reduce TTL to 6 hours instead of 24
@@ -104,6 +108,8 @@ export async function updateExtract(
       discoveredLinks: step.discoveredLinks?.slice(0, STEPS_MAX_DISCOVERED_LINKS)
     }))
   };
+
+  console.log(minimalExtract.sessionIds)
 
   await redisConnection.set("extract:" + id, JSON.stringify(minimalExtract));
   await redisConnection.expire("extract:" + id, EXTRACT_TTL);

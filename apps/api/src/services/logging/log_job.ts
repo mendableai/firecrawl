@@ -1,10 +1,10 @@
-import { ExtractorOptions } from "./../../lib/entities";
 import { supabase_service } from "../supabase";
 import { FirecrawlJob } from "../../types";
 import { posthog } from "../posthog";
 import "dotenv/config";
 import { logger } from "../../lib/logger";
 import { configDotenv } from "dotenv";
+import { saveJobToGCS } from "../../lib/gcs-jobs";
 configDotenv();
 
 function cleanOfNull<T>(x: T): T {
@@ -89,7 +89,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       success: job.success,
       message: job.message,
       num_docs: job.num_docs,
-      docs: cleanOfNull(job.docs),
+      docs: ((job.mode === "single_urls" || job.mode === "scrape") && process.env.GCS_BUCKET_NAME) ? null : cleanOfNull(job.docs),
       time_taken: job.time_taken,
       team_id: (job.team_id === "preview" || job.team_id?.startsWith("preview_"))? null : job.team_id,
       mode: job.mode,
@@ -101,11 +101,17 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       retry: !!job.retry,
       crawl_id: job.crawl_id,
       tokens_billed: job.tokens_billed,
+      is_migrated: true,
+      cost_tracking: job.cost_tracking,
     };
 
     // Send job to external server
     if (process.env.FIRE_INDEX_SERVER_URL) {
       indexJob(job);
+    }
+
+    if (process.env.GCS_BUCKET_NAME) {
+      await saveJobToGCS(job);
     }
 
     if (force) {
@@ -176,6 +182,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
           num_tokens: job.num_tokens,
           retry: job.retry,
           tokens_billed: job.tokens_billed,
+          cost_tracking: job.cost_tracking,
         },
       };
       if (job.mode !== "single_urls") {

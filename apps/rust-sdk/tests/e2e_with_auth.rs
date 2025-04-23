@@ -1,4 +1,3 @@
-use assert_matches::assert_matches;
 use dotenvy::dotenv;
 use firecrawl::scrape::{ExtractOptions, ScrapeFormats, ScrapeOptions};
 use firecrawl::{FirecrawlApp, FirecrawlError};
@@ -24,11 +23,8 @@ use std::env;
 async fn test_successful_response_with_valid_preview_token() {
     dotenv().ok();
     let api_url = env::var("API_URL").unwrap();
-    let app = FirecrawlApp::new_selfhosted(
-        api_url,
-        Some(env::var("PREVIEW_TOKEN").unwrap()),
-    )
-    .unwrap();
+    let app =
+        FirecrawlApp::new_selfhosted(api_url, Some(env::var("PREVIEW_TOKEN").unwrap())).unwrap();
     let result = app
         .scrape_url("https://roastmywebsite.ai", None)
         .await
@@ -58,7 +54,7 @@ async fn test_successful_response_with_valid_api_key_and_include_html() {
     let api_key = env::var("TEST_API_KEY").ok();
     let app = FirecrawlApp::new_selfhosted(api_url, api_key).unwrap();
     let params = ScrapeOptions {
-        formats: vec! [ ScrapeFormats::Markdown, ScrapeFormats::HTML ].into(),
+        formats: vec![ScrapeFormats::Markdown, ScrapeFormats::HTML].into(),
         ..Default::default()
     };
     let result = app
@@ -82,7 +78,8 @@ async fn test_successful_response_for_valid_scrape_with_pdf_file() {
         .await
         .unwrap();
     assert!(result.markdown.is_some());
-    assert!(result.markdown
+    assert!(result
+        .markdown
         .unwrap()
         .contains("We present spectrophotometric observations of the Broad Line Radio Galaxy"));
 }
@@ -98,11 +95,11 @@ async fn test_successful_response_for_valid_scrape_with_pdf_file_without_explici
         .await
         .unwrap();
     assert!(result.markdown.is_some());
-    assert!(result.markdown
+    assert!(result
+        .markdown
         .unwrap()
         .contains("We present spectrophotometric observations of the Broad Line Radio Galaxy"));
 }
-
 
 // #[tokio::test]
 // async fn test_should_return_error_for_blocklisted_url() {
@@ -159,14 +156,18 @@ async fn test_llm_extraction() {
 #[test]
 fn test_api_key_requirements() {
     dotenv().ok();
-    
+
     let api_url = env::var("API_URL").unwrap_or("http://localhost:3002".to_string());
     let api_key = env::var("TEST_API_KEY").ok();
 
     match (api_url.contains("api.firecrawl.dev"), api_key) {
         (false, _) => {
             let result = FirecrawlApp::new_selfhosted(&api_url, None::<String>);
-            assert!(result.is_ok(), "Local setup failed: {:?}", result.err().unwrap());
+            assert!(
+                result.is_ok(),
+                "Local setup failed: {:?}",
+                result.err().unwrap()
+            );
         }
         (true, None) => {
             let result = FirecrawlApp::new_selfhosted(&api_url, None::<String>);
