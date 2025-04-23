@@ -59,11 +59,16 @@ function compareExtractedData(previousData: any, currentData: any): any {
 
 export async function deriveDiff(meta: Meta, document: Document): Promise<Document> {
   if (meta.options.formats.includes("changeTracking")) {
+    const start = Date.now();
     const res = await supabase_service
         .rpc("diff_get_last_scrape_3", {
             i_team_id: meta.internalOptions.teamId,
             i_url: document.metadata.sourceURL ?? meta.url,
         });
+    const end = Date.now();
+    if (end - start > 1000) {
+        meta.logger.debug("Diffing took a while", { time: end - start, params: { i_team_id: meta.internalOptions.teamId, i_url: document.metadata.sourceURL ?? meta.url } });
+    }
 
     const data: {
         o_job_id: string,
