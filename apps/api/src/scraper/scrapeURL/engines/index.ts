@@ -7,7 +7,6 @@ import {
   scrapeURLWithFireEngineTLSClient,
 } from "./fire-engine";
 import { scrapePDF } from "./pdf";
-import { scrapeURLWithScrapingBee } from "./scrapingbee";
 import { scrapeURLWithFetch } from "./fetch";
 import { scrapeURLWithPlaywright } from "./playwright";
 import { scrapeCache } from "./cache";
@@ -16,17 +15,12 @@ export type Engine =
   | "fire-engine;chrome-cdp"
   | "fire-engine;playwright"
   | "fire-engine;tlsclient"
-  | "scrapingbee"
-  | "scrapingbeeLoad"
   | "playwright"
   | "fetch"
   | "pdf"
   | "docx"
   | "cache";
 
-const useScrapingBee =
-  process.env.SCRAPING_BEE_API_KEY !== "" &&
-  process.env.SCRAPING_BEE_API_KEY !== undefined;
 const useFireEngine =
   process.env.FIRE_ENGINE_BETA_URL !== "" &&
   process.env.FIRE_ENGINE_BETA_URL !== undefined;
@@ -45,9 +39,6 @@ export const engines: Engine[] = [
         "fire-engine;playwright" as const,
         "fire-engine;tlsclient" as const,
       ]
-    : []),
-  ...(useScrapingBee
-    ? ["scrapingbee" as const, "scrapingbeeLoad" as const]
     : []),
   ...(usePlaywright ? ["playwright" as const] : []),
   "fetch",
@@ -120,8 +111,6 @@ const engineHandlers: {
   "fire-engine;chrome-cdp": scrapeURLWithFireEngineChromeCDP,
   "fire-engine;playwright": scrapeURLWithFireEnginePlaywright,
   "fire-engine;tlsclient": scrapeURLWithFireEngineTLSClient,
-  scrapingbee: scrapeURLWithScrapingBee("domcontentloaded"),
-  scrapingbeeLoad: scrapeURLWithScrapingBee("networkidle2"),
   playwright: scrapeURLWithPlaywright,
   fetch: scrapeURLWithFetch,
   pdf: scrapePDF,
@@ -188,40 +177,6 @@ export const engineOptions: {
       stealthProxy: true,
     },
     quality: 40,
-  },
-  scrapingbee: {
-    features: {
-      actions: false,
-      waitFor: true,
-      screenshot: true,
-      "screenshot@fullScreen": true,
-      pdf: false,
-      docx: false,
-      atsv: false,
-      location: false,
-      mobile: false,
-      skipTlsVerification: false,
-      useFastMode: false,
-      stealthProxy: false,
-    },
-    quality: 30,
-  },
-  scrapingbeeLoad: {
-    features: {
-      actions: false,
-      waitFor: true,
-      screenshot: true,
-      "screenshot@fullScreen": true,
-      pdf: false,
-      docx: false,
-      atsv: false,
-      location: false,
-      mobile: false,
-      skipTlsVerification: false,
-      useFastMode: false,
-      stealthProxy: false,
-    },
-    quality: 29,
   },
   playwright: {
     features: {
