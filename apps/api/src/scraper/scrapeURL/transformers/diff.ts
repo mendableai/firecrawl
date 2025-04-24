@@ -66,7 +66,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
             i_url: document.metadata.sourceURL ?? meta.url,
         });
     const end = Date.now();
-    if (end - start > 300) {
+    if (end - start > 100) {
         meta.logger.debug("Diffing took a while", { time: end - start, params: { i_team_id: meta.internalOptions.teamId, i_url: document.metadata.sourceURL ?? meta.url } });
     }
 
