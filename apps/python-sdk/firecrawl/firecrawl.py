@@ -3022,7 +3022,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                 id = response.get('id')
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
-            return self._monitor_job_status(id, headers, poll_interval)
+            return await self._async_monitor_job_status(id, headers, poll_interval)
         else:
             self._handle_error(response, 'start batch scrape job')
 
@@ -3259,7 +3259,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                 id = response.get('id')
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
-            return self._monitor_job_status(id, headers, poll_interval)
+            return await self._async_monitor_job_status(id, headers, poll_interval)
         else:
             self._handle_error(response, 'start crawl job')
 
@@ -3472,7 +3472,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                         data.extend(next_data.get('data', []))
                         status_data = next_data
                     status_data['data'] = data
-                    return status_data
+                    return CrawlStatusResponse(**status_data)
                 else:
                     raise Exception('Job completed but no data was returned')
             elif status_data.get('status') in ['active', 'paused', 'pending', 'queued', 'waiting', 'scraping']:
