@@ -222,6 +222,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
     blockAds: meta.options.blockAds,
     mobileProxy: meta.options.proxy === undefined ? undefined : meta.options.proxy === "stealth" ? true : false,
+    saveScrapeResultToGCS: meta.internalOptions.saveScrapeResultToGCS,
     // TODO: scrollXPaths
   };
 

@@ -49,7 +49,10 @@ export async function scrapeController(
       mode: "single_urls",
       team_id: req.auth.team_id,
       scrapeOptions: req.body,
-      internalOptions: { teamId: req.auth.team_id },
+      internalOptions: {
+        teamId: req.auth.team_id,
+        saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+      },
       origin: req.body.origin,
       is_scrape: true,
     },

@@ -69,6 +69,8 @@ export async function scrapeHelper(
     team_id,
   );
 
+  internalOptions.saveScrapeResultToGCS = process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false;
+
   await addScrapeJob(
     {
       url,
