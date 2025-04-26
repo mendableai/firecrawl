@@ -304,6 +304,9 @@ class ExtractParams(pydantic.BaseModel):
 
 class ExtractResponse(pydantic.BaseModel, Generic[T]):
     """Response from extract operations."""
+    id: Optional[str] = None
+    status: Optional[Literal["processing", "completed", "failed"]] = None
+    expiresAt: Optional[datetime] = None
     success: bool = True
     data: Optional[T] = None
     error: Optional[str] = None
@@ -411,14 +414,6 @@ class ExtractParams(pydantic.BaseModel):
     enableWebSearch: Optional[bool] = False
     show_sources: Optional[bool] = False
     agent: Optional[Dict[str, Any]] = None
-
-class ExtractResponse(pydantic.BaseModel, Generic[T]):
-    """
-    Response from the extract operation.
-    """
-    success: bool
-    data: Optional[T] = None
-    error: Optional[str] = None
 
 class FirecrawlApp:
     def __init__(self, api_key: Optional[str] = None, api_url: Optional[str] = None) -> None:
