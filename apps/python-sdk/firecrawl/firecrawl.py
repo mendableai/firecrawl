@@ -210,6 +210,7 @@ class ScrapeParams(ScrapeOptions):
     jsonOptions: Optional[JsonConfig] = None
     actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None
     agent: Optional[AgentOptions] = None
+    webhook: Optional[WebhookConfig] = None
 
 class ScrapeResponse(FirecrawlDocument[T], Generic[T]):
     """Response from scraping operations."""
@@ -2432,15 +2433,15 @@ class FirecrawlApp:
             "batch_scrape_urls": {"formats", "headers", "include_tags", "exclude_tags", "only_main_content",
                                  "wait_for", "timeout", "location", "mobile", "skip_tls_verification",
                                  "remove_base64_images", "block_ads", "proxy", "extract", "json_options",
-                                 "actions", "agent"},
+                                 "actions", "agent", "webhook"},
             "async_batch_scrape_urls": {"formats", "headers", "include_tags", "exclude_tags", "only_main_content",
                                        "wait_for", "timeout", "location", "mobile", "skip_tls_verification",
                                        "remove_base64_images", "block_ads", "proxy", "extract", "json_options",
-                                       "actions", "agent"},
+                                       "actions", "agent", "webhook"},
             "batch_scrape_urls_and_watch": {"formats", "headers", "include_tags", "exclude_tags", "only_main_content",
                                            "wait_for", "timeout", "location", "mobile", "skip_tls_verification",
                                            "remove_base64_images", "block_ads", "proxy", "extract", "json_options",
-                                           "actions", "agent"}
+                                           "actions", "agent", "webhook"}
         }
 
         # Get allowed parameters for this method
