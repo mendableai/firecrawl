@@ -13,7 +13,7 @@ import os
 
 from .firecrawl import FirecrawlApp, JsonConfig, ScrapeOptions # noqa
 
-__version__ = "2.4.0"
+__version__ = "2.4.3"
 
 # Define the logger for the Firecrawl project
 logger: logging.Logger = logging.getLogger("firecrawl")
