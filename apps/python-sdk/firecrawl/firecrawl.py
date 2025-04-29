@@ -540,9 +540,9 @@ class FirecrawlApp:
                 json_options["schema"] = self._ensure_schema_dict(json_options["schema"])
             scrape_params['jsonOptions'] = json_options if isinstance(json_options, dict) else json_options.dict(exclude_none=True)
         if actions:
-            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+            scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(exclude_none=True) for action in actions]
         if change_tracking_options:
-            scrape_params['changeTrackingOptions'] = change_tracking_options.dict(exclude_none=True)
+            scrape_params['changeTrackingOptions'] = change_tracking_options if isinstance(change_tracking_options, dict) else change_tracking_options.dict(exclude_none=True)
         
         scrape_params.update(kwargs)
 
@@ -2924,7 +2924,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                 json_options["schema"] = self._ensure_schema_dict(json_options["schema"])
             scrape_params['jsonOptions'] = json_options if isinstance(json_options, dict) else json_options.dict(exclude_none=True)
         if actions:
-            scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+            scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(exclude_none=True) for action in actions]
 
         if 'extract' in scrape_params and scrape_params['extract'] and 'schema' in scrape_params['extract']:
             scrape_params['extract']['schema'] = self._ensure_schema_dict(scrape_params['extract']['schema'])
