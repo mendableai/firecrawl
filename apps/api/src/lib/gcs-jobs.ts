@@ -2,6 +2,7 @@ import { FirecrawlJob } from "../types";
 import { Storage } from "@google-cloud/storage";
 import { logger } from "./logger";
 import { Document } from "../controllers/v1/types";
+import fs from "fs/promises";
 
 const credentials = process.env.GCS_CREDENTIALS ? JSON.parse(atob(process.env.GCS_CREDENTIALS)) : undefined;
 
@@ -103,7 +104,8 @@ export async function getJobFromGCS(jobId: string): Promise<Document[] | null> {
     }
 }
 
-export async function getDocFromGCS(url: string): Promise<string | null> {
+// TODO: fix the any type (we have multiple Document types in the codebase)
+export async function getDocFromGCS(url: string): Promise<any | null> {
   logger.info(`Getting f-engine document from GCS`, {
     url,
   });
@@ -121,7 +123,7 @@ export async function getDocFromGCS(url: string): Promise<string | null> {
       }
       const [blobContent] = await blob.download();
       const parsed = JSON.parse(blobContent.toString());
-      return parsed.content;
+      return parsed;
   } catch (error) {
       logger.error(`Error getting f-engine document from GCS`, {
           error,

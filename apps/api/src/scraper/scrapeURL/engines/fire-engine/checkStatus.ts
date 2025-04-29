@@ -120,7 +120,7 @@ export async function fireEngineCheckStatus(
   mock: MockState | null,
   abort?: AbortSignal,
 ): Promise<FireEngineCheckStatusSuccess> {
-  const status = await Sentry.startSpan(
+  let status = await Sentry.startSpan(
     {
       name: "fire-engine: Check status",
       attributes: {
@@ -149,7 +149,8 @@ export async function fireEngineCheckStatus(
   if (!status.content && status.docUrl) {
     const doc = await getDocFromGCS(status.docUrl.split('/').pop() ?? "");
     if (doc) {
-      status.content = doc;
+      status = { ...status, ...doc };
+      delete status.docUrl;
     }
   }
 
