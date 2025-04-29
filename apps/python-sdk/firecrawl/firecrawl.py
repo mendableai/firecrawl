@@ -135,6 +135,12 @@ class WebhookConfig(pydantic.BaseModel):
     metadata: Optional[Dict[str, str]] = None
     events: Optional[List[Literal["completed", "failed", "page", "started"]]] = None
 
+class ChangeTrackingOptions(pydantic.BaseModel):
+    """Configuration for change tracking."""
+    modes: Optional[List[Literal["git-diff", "json"]]] = None
+    schema: Optional[Any] = None
+    prompt: Optional[str] = None
+
 class ScrapeOptions(pydantic.BaseModel):
     """Parameters for scraping operations."""
     formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None
@@ -150,6 +156,7 @@ class ScrapeOptions(pydantic.BaseModel):
     removeBase64Images: Optional[bool] = None
     blockAds: Optional[bool] = None
     proxy: Optional[Literal["basic", "stealth"]] = None
+    changeTrackingOptions: Optional[ChangeTrackingOptions] = None
 
 class WaitAction(pydantic.BaseModel):
     """Wait action to perform during scraping."""
@@ -454,6 +461,7 @@ class FirecrawlApp:
             extract: Optional[JsonConfig] = None,
             json_options: Optional[JsonConfig] = None,
             actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
+            change_tracking_options: Optional[ChangeTrackingOptions] = None,
             **kwargs) -> ScrapeResponse[Any]:
         """
         Scrape and extract content from a URL.
@@ -475,6 +483,7 @@ class FirecrawlApp:
           extract (Optional[JsonConfig]): Content extraction settings
           json_options (Optional[JsonConfig]): JSON extraction settings
           actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]]): Actions to perform
+          change_tracking_options (Optional[ChangeTrackingOptions]): Change tracking settings
 
 
         Returns:
@@ -530,6 +539,9 @@ class FirecrawlApp:
             scrape_params['jsonOptions'] = json_options.dict(exclude_none=True)
         if actions:
             scrape_params['actions'] = [action.dict(exclude_none=True) for action in actions]
+        if change_tracking_options:
+            scrape_params['changeTrackingOptions'] = change_tracking_options.dict(exclude_none=True)
+        
         scrape_params.update(kwargs)
 
         # Make request
@@ -2424,7 +2436,7 @@ class FirecrawlApp:
         method_params = {
             "scrape_url": {"formats", "include_tags", "exclude_tags", "only_main_content", "wait_for", 
                           "timeout", "location", "mobile", "skip_tls_verification", "remove_base64_images",
-                          "block_ads", "proxy", "extract", "json_options", "actions"},
+                          "block_ads", "proxy", "extract", "json_options", "actions", "change_tracking_options"},
             "search": {"limit", "tbs", "filter", "lang", "country", "location", "timeout", "scrape_options"},
             "crawl_url": {"include_paths", "exclude_paths", "max_depth", "max_discovery_depth", "limit",
                          "allow_backward_links", "allow_external_links", "ignore_sitemap", "scrape_options",
