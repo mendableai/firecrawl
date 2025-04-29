@@ -102,3 +102,32 @@ export async function getJobFromGCS(jobId: string): Promise<Document[] | null> {
         return null;
     }
 }
+
+// TODO: fix the any type (we have multiple Document types in the codebase)
+export async function getDocFromGCS(url: string): Promise<any | null> {
+  logger.info(`Getting f-engine document from GCS`, {
+    url,
+  });
+  try {
+      if (!process.env.GCS_FIRE_ENGINE_BUCKET_NAME) {
+          return null;
+      }
+
+      const storage = new Storage({ credentials });
+      const bucket = storage.bucket(process.env.GCS_FIRE_ENGINE_BUCKET_NAME);
+      const blob = bucket.file(`${url}`);
+      const [exists] = await blob.exists();
+      if (!exists) {
+          return null;
+      }
+      const [blobContent] = await blob.download();
+      const parsed = JSON.parse(blobContent.toString());
+      return parsed;
+  } catch (error) {
+      logger.error(`Error getting f-engine document from GCS`, {
+          error,
+          url,
+      });
+      return null;
+  }
+}

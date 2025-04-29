@@ -80,7 +80,11 @@ export async function crawlController(
     originUrl: req.body.url,
     crawlerOptions: toLegacyCrawlerOptions(crawlerOptions),
     scrapeOptions,
-    internalOptions: { disableSmartWaitCache: true, teamId: req.auth.team_id }, // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
+    internalOptions: {
+      disableSmartWaitCache: true,
+      teamId: req.auth.team_id,
+      saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+    }, // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
     team_id: req.auth.team_id,
     createdAt: Date.now(),
   };
