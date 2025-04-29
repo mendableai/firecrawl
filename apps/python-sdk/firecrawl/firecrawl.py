@@ -29,7 +29,7 @@ warnings.filterwarnings("ignore", message="Field name \"json\" in \"FirecrawlDoc
 warnings.filterwarnings("ignore", message="Field name \"json\" in \"ChangeTrackingData\" shadows an attribute in parent \"BaseModel\"")
 warnings.filterwarnings("ignore", message="Field name \"schema\" in \"JsonConfig\" shadows an attribute in parent \"BaseModel\"")
 warnings.filterwarnings("ignore", message="Field name \"schema\" in \"ExtractParams\" shadows an attribute in parent \"BaseModel\"")
-
+warnings.filterwarnings("ignore", message="Field name \"schema\" in \"ChangeTrackingOptions\" shadows an attribute in parent \"BaseModel\"")
 
 def get_version():
   try:
