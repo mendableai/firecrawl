@@ -38,7 +38,6 @@ SUPABASE_SERVICE_TOKEN=
 
 # Other Optionals
 TEST_API_KEY= # use if you've set up authentication and want to test with a real API key
-SCRAPING_BEE_API_KEY= #Set if you'd like to use scraping Bee to handle JS blocking
 OPENAI_API_KEY= # add for LLM dependednt features (image alt generation, etc.)
 BULL_AUTH_KEY= @
 PLAYWRIGHT_MICROSERVICE_URL=  # set if you'd like to run a playwright fallback

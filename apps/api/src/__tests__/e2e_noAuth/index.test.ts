@@ -18,7 +18,6 @@ describe("E2E Tests for API Routes with No Authentication", () => {
     process.env.SUPABASE_ANON_TOKEN = "";
     process.env.SUPABASE_URL = "";
     process.env.SUPABASE_SERVICE_TOKEN = "";
-    process.env.SCRAPING_BEE_API_KEY = "";
     process.env.OPENAI_API_KEY = "";
     process.env.BULL_AUTH_KEY = "";
     process.env.PLAYWRIGHT_MICROSERVICE_URL = "";

@@ -1,4 +1,4 @@
-import { scrape } from "./lib";
+import { scrape, scrapeStatus } from "./lib";
 
 describe("Scrape tests", () => {
   it.concurrent("mocking works properly", async () => {
@@ -66,6 +66,17 @@ describe("Scrape tests", () => {
   });
 
   if (!process.env.TEST_SUITE_SELF_HOSTED) {
+    it.concurrent("scrape status works", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev"
+      });
+  
+      expect(response.markdown).toContain("Firecrawl");
+  
+      const status = await scrapeStatus(response.metadata.scrapeId!);
+      expect(JSON.stringify(status)).toBe(JSON.stringify(response));
+    }, 60000);
+    
     // describe("Ad blocking (f-e dependant)", () => {
     //   it.concurrent("blocks ads by default", async () => {
     //     const response = await scrape({

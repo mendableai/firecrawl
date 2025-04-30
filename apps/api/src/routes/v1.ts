@@ -6,6 +6,7 @@ import { crawlStatusController } from "../controllers/v1/crawl-status";
 import { mapController } from "../controllers/v1/map";
 import {
   ErrorResponse,
+  isAgentExtractModelValid,
   RequestWithACUC,
   RequestWithAuth,
   RequestWithMaybeAuth,
@@ -93,6 +94,14 @@ export function authMiddleware(
 ): (req: RequestWithMaybeAuth, res: Response, next: NextFunction) => void {
   return (req, res, next) => {
     (async () => {
+      if (rateLimiterMode === RateLimiterMode.Extract && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
+        rateLimiterMode = RateLimiterMode.ExtractAgentPreview;
+      }
+
+      // if (rateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
+      //   rateLimiterMode = RateLimiterMode.ScrapeAgentPreview;
+      // }
+
       const auth = await authenticateUser(req, res, rateLimiterMode);
 
       if (!auth.success) {
@@ -257,26 +266,26 @@ v1Router.get(
 
 v1Router.post(
   "/llmstxt",
-  authMiddleware(RateLimiterMode.Extract),
+  authMiddleware(RateLimiterMode.Scrape),
   wrap(generateLLMsTextController),
 );
 
 v1Router.get(
   "/llmstxt/:jobId",
-  authMiddleware(RateLimiterMode.ExtractStatus),
+  authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(generateLLMsTextStatusController),
 );
 
 v1Router.post(
   "/deep-research",
-  authMiddleware(RateLimiterMode.Extract),
+  authMiddleware(RateLimiterMode.Crawl),
   checkCreditsMiddleware(1),
   wrap(deepResearchController),
 );
 
 v1Router.get(
   "/deep-research/:jobId",
-  authMiddleware(RateLimiterMode.ExtractStatus),
+  authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(deepResearchStatusController),
 );
 

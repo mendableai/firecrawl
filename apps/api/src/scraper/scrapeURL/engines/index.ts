@@ -7,26 +7,21 @@ import {
   scrapeURLWithFireEngineTLSClient,
 } from "./fire-engine";
 import { scrapePDF } from "./pdf";
-import { scrapeURLWithScrapingBee } from "./scrapingbee";
 import { scrapeURLWithFetch } from "./fetch";
 import { scrapeURLWithPlaywright } from "./playwright";
 import { scrapeCache } from "./cache";
 
 export type Engine =
   | "fire-engine;chrome-cdp"
+  | "fire-engine(retry);chrome-cdp"
   | "fire-engine;playwright"
   | "fire-engine;tlsclient"
-  | "scrapingbee"
-  | "scrapingbeeLoad"
   | "playwright"
   | "fetch"
   | "pdf"
   | "docx"
   | "cache";
 
-const useScrapingBee =
-  process.env.SCRAPING_BEE_API_KEY !== "" &&
-  process.env.SCRAPING_BEE_API_KEY !== undefined;
 const useFireEngine =
   process.env.FIRE_ENGINE_BETA_URL !== "" &&
   process.env.FIRE_ENGINE_BETA_URL !== undefined;
@@ -42,12 +37,10 @@ export const engines: Engine[] = [
   ...(useFireEngine
     ? [
         "fire-engine;chrome-cdp" as const,
+        "fire-engine(retry);chrome-cdp" as const,
         "fire-engine;playwright" as const,
         "fire-engine;tlsclient" as const,
       ]
-    : []),
-  ...(useScrapingBee
-    ? ["scrapingbee" as const, "scrapingbeeLoad" as const]
     : []),
   ...(usePlaywright ? ["playwright" as const] : []),
   "fetch",
@@ -118,10 +111,9 @@ const engineHandlers: {
 } = {
   cache: scrapeCache,
   "fire-engine;chrome-cdp": scrapeURLWithFireEngineChromeCDP,
+  "fire-engine(retry);chrome-cdp": scrapeURLWithFireEngineChromeCDP,
   "fire-engine;playwright": scrapeURLWithFireEnginePlaywright,
   "fire-engine;tlsclient": scrapeURLWithFireEngineTLSClient,
-  scrapingbee: scrapeURLWithScrapingBee("domcontentloaded"),
-  scrapingbeeLoad: scrapeURLWithScrapingBee("networkidle2"),
   playwright: scrapeURLWithPlaywright,
   fetch: scrapeURLWithFetch,
   pdf: scrapePDF,
@@ -172,6 +164,23 @@ export const engineOptions: {
     },
     quality: 50,
   },
+  "fire-engine(retry);chrome-cdp": {
+    features: {
+      actions: true,
+      waitFor: true, // through actions transform
+      screenshot: true, // through actions transform
+      "screenshot@fullScreen": true, // through actions transform
+      pdf: false,
+      docx: false,
+      atsv: false,
+      location: true,
+      mobile: true,
+      skipTlsVerification: true,
+      useFastMode: false,
+      stealthProxy: true,
+    },
+    quality: 45,
+  },
   "fire-engine;playwright": {
     features: {
       actions: false,
@@ -188,40 +197,6 @@ export const engineOptions: {
       stealthProxy: true,
     },
     quality: 40,
-  },
-  scrapingbee: {
-    features: {
-      actions: false,
-      waitFor: true,
-      screenshot: true,
-      "screenshot@fullScreen": true,
-      pdf: false,
-      docx: false,
-      atsv: false,
-      location: false,
-      mobile: false,
-      skipTlsVerification: false,
-      useFastMode: false,
-      stealthProxy: false,
-    },
-    quality: 30,
-  },
-  scrapingbeeLoad: {
-    features: {
-      actions: false,
-      waitFor: true,
-      screenshot: true,
-      "screenshot@fullScreen": true,
-      pdf: false,
-      docx: false,
-      atsv: false,
-      location: false,
-      mobile: false,
-      skipTlsVerification: false,
-      useFastMode: false,
-      stealthProxy: false,
-    },
-    quality: 29,
   },
   playwright: {
     features: {
@@ -318,7 +293,7 @@ export function buildFallbackList(meta: Meta): {
     ...engines,
     
     // enable fire-engine in self-hosted testing environment when mocks are supplied
-    ...((!useFireEngine && meta.mock !== null) ? ["fire-engine;chrome-cdp", "fire-engine;playwright", "fire-engine;tlsclient"] as Engine[] : [])
+    ...((!useFireEngine && meta.mock !== null) ? ["fire-engine;chrome-cdp", "fire-engine(retry);chrome-cdp", "fire-engine;playwright", "fire-engine;tlsclient"] as Engine[] : [])
   ];
 
   if (meta.internalOptions.useCache !== true) {

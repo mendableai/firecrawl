@@ -6,7 +6,7 @@ import gitDiff from 'git-diff';
 import parseDiff from 'parse-diff';
 import { generateCompletions } from "./llmExtract";
 
-async function extractDataWithSchema(content: string, meta: Meta): Promise<any> {
+async function extractDataWithSchema(content: string, meta: Meta): Promise<{ extract: any } | null> {
     try {
         const { extract } = await generateCompletions({
             logger: meta.logger.child({
@@ -18,9 +18,16 @@ async function extractDataWithSchema(content: string, meta: Meta): Promise<any> 
                 systemPrompt: "Extract the requested information from the content based on the provided schema.",
                 temperature: 0
             },
-            markdown: content
+            markdown: content,
+            costTrackingOptions: {
+                costTracking: meta.costTracking,
+                metadata: {
+                    module: "extract",
+                    method: "extractDataWithSchema",
+                },
+            },
         });
-        return extract;
+        return { extract };
     } catch (error) {
         meta.logger.error("Error extracting data with schema", { error });
         return null;
@@ -52,11 +59,16 @@ function compareExtractedData(previousData: any, currentData: any): any {
 
 export async function deriveDiff(meta: Meta, document: Document): Promise<Document> {
   if (meta.options.formats.includes("changeTracking")) {
+    const start = Date.now();
     const res = await supabase_service
         .rpc("diff_get_last_scrape_3", {
             i_team_id: meta.internalOptions.teamId,
             i_url: document.metadata.sourceURL ?? meta.url,
         });
+    const end = Date.now();
+    if (end - start > 100) {
+        meta.logger.debug("Diffing took a while", { time: end - start, params: { i_team_id: meta.internalOptions.teamId, i_url: document.metadata.sourceURL ?? meta.url } });
+    }
 
     const data: {
         o_job_id: string,
@@ -144,7 +156,7 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
                     await extractDataWithSchema(currentMarkdown, meta) : null;
                 
                 if (previousData && currentData) {
-                    document.changeTracking.json = compareExtractedData(previousData, currentData);
+                    document.changeTracking.json = compareExtractedData(previousData.extract, currentData.extract);
                 } else {
                     const { extract } = await generateCompletions({
                         logger: meta.logger.child({
@@ -158,9 +170,16 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
                             temperature: 0
                         },
                         markdown: `Previous Content:\n${previousMarkdown}\n\nCurrent Content:\n${currentMarkdown}`,
-                        previousWarning: document.warning
+                        previousWarning: document.warning,
+                        costTrackingOptions: {
+                            costTracking: meta.costTracking,
+                            metadata: {
+                                module: "diff",
+                                method: "deriveDiff",
+                            },
+                        },
                     });
-                    
+
                     document.changeTracking.json = extract;
                 }
             } catch (error) {

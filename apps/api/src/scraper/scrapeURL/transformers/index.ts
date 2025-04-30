@@ -8,6 +8,8 @@ import { performLLMExtract } from "./llmExtract";
 import { uploadScreenshot } from "./uploadScreenshot";
 import { removeBase64Images } from "./removeBase64Images";
 import { saveToCache } from "./cache";
+import { performAgent } from "./agent";
+
 import { deriveDiff } from "./diff";
 export type Transformer = (
   meta: Meta,
@@ -193,6 +195,7 @@ export const transformerStack: Transformer[] = [
   deriveMetadataFromRawHTML,
   uploadScreenshot,
   performLLMExtract,
+  performAgent,
   deriveDiff,
   coerceFieldsToFormats,
   removeBase64Images,

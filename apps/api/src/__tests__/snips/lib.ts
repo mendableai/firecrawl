@@ -34,6 +34,23 @@ export async function scrape(body: ScrapeRequestInput): Promise<Document> {
     return raw.body.data;
 }
 
+export async function scrapeStatusRaw(jobId: string) {
+    return await request(TEST_URL)
+        .get("/v1/scrape/" + encodeURIComponent(jobId))
+        .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+        .send();
+}
+
+export async function scrapeStatus(jobId: string): Promise<Document> {
+    const raw = await scrapeStatusRaw(jobId);
+    expect(raw.statusCode).toBe(200);
+    expect(raw.body.success).toBe(true);
+    expect(typeof raw.body.data).toBe("object");
+    expect(raw.body.data).not.toBeNull();
+    expect(raw.body.data).toBeDefined();
+    return raw.body.data;
+}
+
 // =========================================
 // Crawl API
 // =========================================

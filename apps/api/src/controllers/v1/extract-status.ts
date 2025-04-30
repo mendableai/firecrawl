@@ -72,5 +72,7 @@ export async function extractStatusController(
     steps: extract.showSteps ? extract.steps : undefined,
     llmUsage: extract.showLLMUsage ? extract.llmUsage : undefined,
     sources: extract.showSources ? extract.sources : undefined,
+    costTracking: extract.showCostTracking ? extract.costTracking : undefined,
+    sessionIds: extract.sessionIds ? extract.sessionIds : undefined,
   });
 }

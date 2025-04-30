@@ -30,6 +30,7 @@ import { fromLegacyScrapeOptions } from "../v1/types";
 import { ZodError } from "zod";
 import { Document as V0Document } from "./../../lib/entities";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { getJobFromGCS } from "../../lib/gcs-jobs";
 
 export async function scrapeHelper(
   jobId: string,
@@ -68,6 +69,8 @@ export async function scrapeHelper(
     team_id,
   );
 
+  internalOptions.saveScrapeResultToGCS = process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false;
+
   await addScrapeJob(
     {
       url,
@@ -93,7 +96,7 @@ export async function scrapeHelper(
     },
     async (span) => {
       try {
-        doc = await waitForJob<Document>(jobId, timeout);
+        doc = await waitForJob(jobId, timeout);
       } catch (e) {
         if (
           e instanceof Error &&
@@ -290,29 +293,6 @@ export async function scrapeController(req: Request, res: Response) {
         delete (doc as V0Document).markdown;
       }
     }
-
-    const { scrapeOptions } = fromLegacyScrapeOptions(
-      pageOptions,
-      extractorOptions,
-      timeout,
-      team_id,
-    );
-
-    logJob({
-      job_id: jobId,
-      success: result.success,
-      message: result.error,
-      num_docs: 1,
-      docs: [doc],
-      time_taken: timeTakenInSeconds,
-      team_id: team_id,
-      mode: "scrape",
-      url: req.body.url,
-      crawlerOptions: crawlerOptions,
-      scrapeOptions,
-      origin: origin,
-      num_tokens: numTokens,
-    });
 
     return res.status(result.returnCode).json(result);
   } catch (error) {
