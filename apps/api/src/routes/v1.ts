@@ -296,6 +296,12 @@ v1Router.delete(
   authMiddleware(RateLimiterMode.CrawlStatus),
   crawlCancelController,
 );
+
+v1Router.delete(
+  "/batch/scrape/:jobId",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  crawlCancelController,
+);
 // v1Router.get("/checkJobStatus/:jobId", crawlJobStatusPreviewController);
 
 // // Auth route for key based authentication
