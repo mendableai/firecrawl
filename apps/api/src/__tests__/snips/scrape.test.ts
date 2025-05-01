@@ -24,17 +24,6 @@ describe("Scrape tests", () => {
     expect(response.markdown).toContain("Firecrawl");
   }, 30000);
 
-  it.concurrent("scrape status works", async () => {
-    const response = await scrape({
-      url: "http://firecrawl.dev"
-    });
-
-    expect(response.markdown).toContain("Firecrawl");
-
-    const status = await scrapeStatus(response.metadata.scrapeId!);
-    expect(JSON.stringify(status)).toBe(JSON.stringify(response));
-  }, 60000);
-
   it.concurrent("handles non-UTF-8 encodings", async () => {
     const response = await scrape({
       url: "https://www.rtpro.yamaha.co.jp/RT/docs/misc/kanji-sjis.html",
@@ -77,6 +66,17 @@ describe("Scrape tests", () => {
   });
 
   if (!process.env.TEST_SUITE_SELF_HOSTED) {
+    it.concurrent("scrape status works", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev"
+      });
+  
+      expect(response.markdown).toContain("Firecrawl");
+  
+      const status = await scrapeStatus(response.metadata.scrapeId!);
+      expect(JSON.stringify(status)).toBe(JSON.stringify(response));
+    }, 60000);
+    
     // describe("Ad blocking (f-e dependant)", () => {
     //   it.concurrent("blocks ads by default", async () => {
     //     const response = await scrape({

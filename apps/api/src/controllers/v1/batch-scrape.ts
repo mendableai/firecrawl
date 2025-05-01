@@ -82,7 +82,11 @@ export async function batchScrapeController(
     : {
         crawlerOptions: null,
         scrapeOptions: req.body,
-        internalOptions: { disableSmartWaitCache: true, teamId: req.auth.team_id }, // NOTE: smart wait disabled for batch scrapes to ensure contentful scrape, speed does not matter
+        internalOptions: {
+          disableSmartWaitCache: true,
+          teamId: req.auth.team_id,
+          saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+        }, // NOTE: smart wait disabled for batch scrapes to ensure contentful scrape, speed does not matter
         team_id: req.auth.team_id,
         createdAt: Date.now(),
       };
@@ -121,6 +125,9 @@ export async function batchScrapeController(
         sitemapped: true,
         v1: true,
         webhook: req.body.webhook,
+        internalOptions: {
+          saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+        },
       },
       opts: {
         jobId: uuidv4(),

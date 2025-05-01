@@ -8,7 +8,6 @@ import { billTeam } from "../services/billing/credit_billing";
 import { Document } from "../controllers/v1/types";
 import { supabase_service } from "../services/supabase";
 import { logger as _logger } from "../lib/logger";
-import { ScrapeEvents } from "../lib/scrape-events";
 import { configDotenv } from "dotenv";
 import {
   EngineResultsTracker,
@@ -146,35 +145,35 @@ export async function runWebScraper({
     }
   }
 
-  const engineOrder = Object.entries(engines)
-    .sort((a, b) => a[1].startedAt - b[1].startedAt)
-    .map((x) => x[0]) as Engine[];
+  // const engineOrder = Object.entries(engines)
+  //   .sort((a, b) => a[1].startedAt - b[1].startedAt)
+  //   .map((x) => x[0]) as Engine[];
 
-  for (const engine of engineOrder) {
-    const result = engines[engine] as Exclude<
-      EngineResultsTracker[Engine],
-      undefined
-    >;
-    ScrapeEvents.insert(bull_job_id, {
-      type: "scrape",
-      url,
-      method: engine,
-      result: {
-        success: result.state === "success",
-        response_code:
-          result.state === "success" ? result.result.statusCode : undefined,
-        response_size:
-          result.state === "success" ? result.result.html.length : undefined,
-        error:
-          result.state === "error"
-            ? result.error
-            : result.state === "timeout"
-              ? "Timed out"
-              : undefined,
-        time_taken: result.finishedAt - result.startedAt,
-      },
-    });
-  }
+  // for (const engine of engineOrder) {
+  //   const result = engines[engine] as Exclude<
+  //     EngineResultsTracker[Engine],
+  //     undefined
+  //   >;
+  //   ScrapeEvents.insert(bull_job_id, {
+  //     type: "scrape",
+  //     url,
+  //     method: engine,
+  //     result: {
+  //       success: result.state === "success",
+  //       response_code:
+  //         result.state === "success" ? result.result.statusCode : undefined,
+  //       response_size:
+  //         result.state === "success" ? result.result.html.length : undefined,
+  //       error:
+  //         result.state === "error"
+  //           ? result.error
+  //           : result.state === "timeout"
+  //             ? "Timed out"
+  //             : undefined,
+  //       time_taken: result.finishedAt - result.startedAt,
+  //     },
+  //   });
+  // }
 
   if (error === undefined && response?.success) {
     return response;
@@ -228,7 +227,7 @@ const saveJob = async (
       //     // I think the job won't exist here anymore
       //   }
     }
-    ScrapeEvents.logJobEvent(job, "completed");
+    // ScrapeEvents.logJobEvent(job, "completed");
   } catch (error) {
     _logger.error(`🐂 Failed to update job status`, {
       module: "runWebScraper",

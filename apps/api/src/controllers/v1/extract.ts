@@ -10,6 +10,7 @@ import * as Sentry from "@sentry/node";
 import { saveExtract } from "../../lib/extract/extract-redis";
 import { getTeamIdSyncB } from "../../lib/extract/team-id-sync";
 import { performExtraction } from "../../lib/extract/extraction-service";
+import { performExtraction_F0 } from "../../lib/extract/fire-0/extraction-service-f0";
 
 export async function oldExtract(
   req: RequestWithAuth<{}, ExtractResponse, ExtractRequest>,
@@ -19,11 +20,21 @@ export async function oldExtract(
   // Means that are in the non-queue system
   // TODO: Remove this once all teams have transitioned to the new system
   try {
-    const result = await performExtraction(extractId, {
-      request: req.body,
-      teamId: req.auth.team_id,
-      subId: req.acuc?.sub_id ?? undefined,
-    });
+    let result;
+    const model = req.body.agent?.model
+    if (req.body.agent && model && model.toLowerCase().includes("fire-1")) {
+      result = await performExtraction(extractId, {
+        request: req.body,
+        teamId: req.auth.team_id,
+        subId: req.acuc?.sub_id ?? undefined,
+      });
+    } else {
+      result = await performExtraction_F0(extractId, {
+        request: req.body,
+        teamId: req.auth.team_id,
+        subId: req.acuc?.sub_id ?? undefined,
+      });
+    }
 
     return res.status(200).json(result);
   } catch (error) {

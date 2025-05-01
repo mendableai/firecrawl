@@ -95,9 +95,10 @@ async function scrapeSearchResult(
         mode: "single_urls" as Mode,
         team_id: options.teamId,
         scrapeOptions: options.scrapeOptions,
-        internalOptions: { teamId: options.teamId },
+        internalOptions: { teamId: options.teamId, useCache: true },
         origin: options.origin,
         is_scrape: true,
+        
       },
       {},
       jobId,
@@ -157,6 +158,13 @@ export async function searchController(
     method: "searchController",
   });
 
+  let responseData: SearchResponse = {
+    success: true,
+    data: [],
+  };
+  const startTime = new Date().getTime();
+  const costTracking = new CostTracking();
+
   try {
     req.body = searchRequestSchema.parse(req.body);
 
@@ -164,8 +172,6 @@ export async function searchController(
       query: req.body.query,
       origin: req.body.origin,
     });
-
-    const startTime = new Date().getTime();
 
     let limit = req.body.limit;
 
@@ -196,90 +202,69 @@ export async function searchController(
 
     if (searchResults.length === 0) {
       logger.info("No search results found");
-      return res.status(200).json({
-        success: true,
-        data: [],
-        warning: "No search results found",
-      });
-    }
-
-    if (
+      responseData.warning = "No search results found";
+    } else if (
       !req.body.scrapeOptions.formats ||
       req.body.scrapeOptions.formats.length === 0
     ) {
-      billTeam(req.auth.team_id, req.acuc?.sub_id, searchResults.length).catch(
-        (error) => {
-          logger.error(
-            `Failed to bill team ${req.auth.team_id} for ${searchResults.length} credits: ${error}`,
-          );
-        },
+      responseData.data = searchResults.map((r) => ({
+        url: r.url,
+        title: r.title,
+        description: r.description,
+      })) as Document[];
+    } else {
+      logger.info("Scraping search results");
+      const scrapePromises = searchResults.map((result) =>
+        scrapeSearchResult(result, {
+          teamId: req.auth.team_id,
+          origin: req.body.origin,
+          timeout: req.body.timeout,
+          scrapeOptions: req.body.scrapeOptions,
+        }, logger, costTracking),
       );
-      return res.status(200).json({
-        success: true,
-        data: searchResults.map((r) => ({
-          url: r.url,
-          title: r.title,
-          description: r.description,
-        })) as Document[],
+
+      const docs = await Promise.all(scrapePromises);
+      logger.info("Scraping completed", {
+        num_docs: docs.length,
       });
+
+      const filteredDocs = docs.filter(
+        (doc) =>
+          doc.serpResults || (doc.markdown && doc.markdown.trim().length > 0),
+      );
+
+      logger.info("Filtering completed", {
+        num_docs: filteredDocs.length,
+      });
+
+      if (filteredDocs.length === 0) {
+        responseData.data = docs;
+        responseData.warning = "No content found in search results";
+      } else {
+        responseData.data = filteredDocs;
+      }
     }
 
-    const costTracking = new CostTracking();
-
-    // Scrape each non-blocked result, handling timeouts individually
-    logger.info("Scraping search results");
-    const scrapePromises = searchResults.map((result) =>
-      scrapeSearchResult(result, {
-        teamId: req.auth.team_id,
-        origin: req.body.origin,
-        timeout: req.body.timeout,
-        scrapeOptions: req.body.scrapeOptions,
-      }, logger, costTracking),
-    );
-
-    const docs = await Promise.all(scrapePromises);
-    logger.info("Scraping completed", {
-      num_docs: docs.length,
-    });
-
-    // Bill for successful scrapes only
-    billTeam(req.auth.team_id, req.acuc?.sub_id, docs.length).catch((error) => {
+    // Bill team once for all successful results
+    billTeam(req.auth.team_id, req.acuc?.sub_id, responseData.data.length).catch((error) => {
       logger.error(
-        `Failed to bill team ${req.auth.team_id} for ${docs.length} credits: ${error}`,
+        `Failed to bill team ${req.auth.team_id} for ${responseData.data.length} credits: ${error}`,
       );
     });
-
-    // Filter out empty content but keep docs with SERP results
-    const filteredDocs = docs.filter(
-      (doc) =>
-        doc.serpResults || (doc.markdown && doc.markdown.trim().length > 0),
-    );
-
-    logger.info("Filtering completed", {
-      num_docs: filteredDocs.length,
-    });
-
-    if (filteredDocs.length === 0) {
-      return res.status(200).json({
-        success: true,
-        data: docs,
-        warning: "No content found in search results",
-      });
-    }
 
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
 
     logger.info("Logging job", {
-      num_docs: filteredDocs.length,
+      num_docs: responseData.data.length,
       time_taken: timeTakenInSeconds,
     });
 
     logJob({
       job_id: jobId,
       success: true,
-      num_docs: filteredDocs.length,
-      docs: filteredDocs,
+      num_docs: responseData.data.length,
+      docs: responseData.data,
       time_taken: timeTakenInSeconds,
       team_id: req.auth.team_id,
       mode: "search",
@@ -288,10 +273,8 @@ export async function searchController(
       cost_tracking: costTracking,
     });
 
-    return res.status(200).json({
-      success: true,
-      data: filteredDocs,
-    });
+    return res.status(200).json(responseData);
+
   } catch (error) {
     if (
       error instanceof Error &&

@@ -6,7 +6,7 @@ The Firecrawl Python SDK is a library that allows you to easily scrape and crawl
 
 To install the Firecrawl Python SDK, you can use pip:
 
-```bash
+```bash 
 pip install firecrawl-py
 ```
 
@@ -17,26 +17,23 @@ pip install firecrawl-py
 
 Here's an example of how to use the SDK:
 
-```python
-from firecrawl.firecrawl import FirecrawlApp
+```python 
+from firecrawl import FirecrawlApp, ScrapeOptions
 
 app = FirecrawlApp(api_key="fc-YOUR_API_KEY")
 
 # Scrape a website:
-scrape_status = app.scrape_url(
+data = app.scrape_url(
   'https://firecrawl.dev', 
-  params={'formats': ['markdown', 'html']}
+  formats=['markdown', 'html']
 )
-print(scrape_status)
+print(data)
 
 # Crawl a website:
 crawl_status = app.crawl_url(
   'https://firecrawl.dev', 
-  params={
-    'limit': 100, 
-    'scrapeOptions': {'formats': ['markdown', 'html']}
-  }, 
-  poll_interval=30
+  limit=100, 
+  scrape_options=ScrapeOptions(formats=['markdown', 'html'])
 )
 print(crawl_status)
 ```
@@ -45,80 +42,80 @@ print(crawl_status)
 
 To scrape a single URL, use the `scrape_url` method. It takes the URL as a parameter and returns the scraped data as a dictionary.
 
-```python
-url = 'https://example.com'
-scraped_data = app.scrape_url(url)
-```
-
-### Extracting structured data from a URL
-
-With LLM extraction, you can easily extract structured data from any URL. We support pydantic schemas to make it easier for you too. Here is how you to use it:
-
-```python
-class ArticleSchema(BaseModel):
-    title: str
-    points: int
-    by: str
-    commentsURL: str
-
-class TopArticlesSchema(BaseModel):
-    top: List[ArticleSchema] = Field(..., max_items=5, description="Top 5 stories")
-
-data = app.scrape_url('https://news.ycombinator.com', {
-    'extractorOptions': {
-        'extractionSchema': TopArticlesSchema.model_json_schema(),
-        'mode': 'llm-extraction'
-    },
-    'pageOptions':{
-        'onlyMainContent': True
-    }
-})
-print(data["llm_extraction"])
+```python 
+# Scrape a website:
+scrape_result = app.scrape_url('firecrawl.dev', formats=['markdown', 'html'])
+print(scrape_result)
 ```
 
 ### Crawling a Website
 
 To crawl a website, use the `crawl_url` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
 
-```python
-idempotency_key = str(uuid.uuid4()) # optional idempotency key
-crawl_result = app.crawl_url('firecrawl.dev', {'excludePaths': ['blog/*']}, 2, idempotency_key)
-print(crawl_result)
+```python 
+crawl_status = app.crawl_url(
+  'https://firecrawl.dev', 
+  limit=100, 
+  scrape_options=ScrapeOptions(formats=['markdown', 'html']),
+  poll_interval=30
+)
+print(crawl_status)
 ```
 
-### Asynchronous Crawl a Website
+### Asynchronous Crawling
 
-To crawl a website asynchronously, use the `async_crawl_url` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
+<Tip>Looking for async operations? Check out the [Async Class](#async-class) section below.</Tip>
 
-```python
-crawl_result = app.async_crawl_url('firecrawl.dev', {'excludePaths': ['blog/*']}, "")
-print(crawl_result)
+To crawl a website asynchronously, use the `crawl_url_async` method. It returns the crawl `ID` which you can use to check the status of the crawl job. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
+
+```python 
+crawl_status = app.async_crawl_url(
+  'https://firecrawl.dev', 
+  limit=100, 
+  scrape_options=ScrapeOptions(formats=['markdown', 'html']),
+)
+print(crawl_status)
 ```
 
 ### Checking Crawl Status
 
 To check the status of a crawl job, use the `check_crawl_status` method. It takes the job ID as a parameter and returns the current status of the crawl job.
 
-```python
-id = crawl_result['id']
-status = app.check_crawl_status(id)
+```python 
+crawl_status = app.check_crawl_status("<crawl_id>")
+print(crawl_status)
+```
+
+### Cancelling a Crawl
+
+To cancel an asynchronous crawl job, use the `cancel_crawl` method. It takes the job ID of the asynchronous crawl as a parameter and returns the cancellation status.
+
+```python 
+cancel_crawl = app.cancel_crawl(id)
+print(cancel_crawl)
 ```
 
 ### Map a Website
 
 Use `map_url` to generate a list of URLs from a website. The `params` argument let you customize the mapping process, including options to exclude subdomains or to utilize the sitemap.
 
-```python
+```python 
 # Map a website:
-map_result = app.map_url('https://example.com')
+map_result = app.map_url('https://firecrawl.dev')
 print(map_result)
 ```
 
-### Crawl a website with WebSockets
+{/* ### Extracting Structured Data from Websites
+
+  To extract structured data from websites, use the `extract` method. It takes the URLs to extract data from, a prompt, and a schema as arguments. The schema is a Pydantic model that defines the structure of the extracted data.
+
+  <ExtractPythonShort /> */}
+
+### Crawling a Website with WebSockets
 
 To crawl a website with WebSockets, use the `crawl_url_and_watch` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the crawl job, such as the maximum number of pages to crawl, allowed domains, and the output format.
 
-```python
+```python 
 # inside an async function...
 nest_asyncio.apply()
 
@@ -135,70 +132,7 @@ def on_done(detail):
     # Function to start the crawl and watch process
 async def start_crawl_and_watch():
     # Initiate the crawl job and get the watcher
-    watcher = app.crawl_url_and_watch('firecrawl.dev', { 'excludePaths': ['blog/*'], 'limit': 5 })
-
-    # Add event listeners
-    watcher.add_event_listener("document", on_document)
-    watcher.add_event_listener("error", on_error)
-    watcher.add_event_listener("done", on_done)
-
-    # Start the watcher
-    await watcher.connect()
-
-# Run the event loop
-await start_crawl_and_watch()
-```
-
-### Scraping multiple URLs in batch
-
-To batch scrape multiple URLs, use the `batch_scrape_urls` method. It takes the URLs and optional parameters as arguments. The `params` argument allows you to specify additional options for the scraper such as the output formats.
-
-```python
-idempotency_key = str(uuid.uuid4()) # optional idempotency key
-batch_scrape_result = app.batch_scrape_urls(['firecrawl.dev', 'mendable.ai'], {'formats': ['markdown', 'html']}, 2, idempotency_key)
-print(batch_scrape_result)
-```
-
-### Asynchronous batch scrape
-
-To run a batch scrape asynchronously, use the `async_batch_scrape_urls` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the scraper, such as the output formats.
-
-```python
-batch_scrape_result = app.async_batch_scrape_urls(['firecrawl.dev', 'mendable.ai'], {'formats': ['markdown', 'html']})
-print(batch_scrape_result)
-```
-
-### Checking batch scrape status
-
-To check the status of an asynchronous batch scrape job, use the `check_batch_scrape_status` method. It takes the job ID as a parameter and returns the current status of the batch scrape job.
-
-```python
-id = batch_scrape_result['id']
-status = app.check_batch_scrape_status(id)
-```
-
-### Batch scrape with WebSockets
-
-To use batch scrape with WebSockets, use the `batch_scrape_urls_and_watch` method. It takes the starting URL and optional parameters as arguments. The `params` argument allows you to specify additional options for the scraper, such as the output formats.
-
-```python
-# inside an async function...
-nest_asyncio.apply()
-
-# Define event handlers
-def on_document(detail):
-    print("DOC", detail)
-
-def on_error(detail):
-    print("ERR", detail['error'])
-
-def on_done(detail):
-    print("DONE", detail['status'])
-
-# Function to start the crawl and watch process
-async def start_crawl_and_watch():
-    # Initiate the crawl job and get the watcher
-    watcher = app.batch_scrape_urls_and_watch(['firecrawl.dev', 'mendable.ai'], {'formats': ['markdown', 'html']})
+    watcher = app.crawl_url_and_watch('firecrawl.dev', exclude_paths=['blog/*'], limit=5)
 
     # Add event listeners
     watcher.add_event_listener("document", on_document)
@@ -216,36 +150,22 @@ await start_crawl_and_watch()
 
 The SDK handles errors returned by the Firecrawl API and raises appropriate exceptions. If an error occurs during a request, an exception will be raised with a descriptive error message.
 
-## Running the Tests with Pytest
+## Async Class
 
-To ensure the functionality of the Firecrawl Python SDK, we have included end-to-end tests using `pytest`. These tests cover various aspects of the SDK, including URL scraping, web searching, and website crawling.
+For async operations, you can use the `AsyncFirecrawlApp` class. Its methods are the same as the `FirecrawlApp` class, but they don't block the main thread.
 
-### Running the Tests
+```python 
+from firecrawl import AsyncFirecrawlApp
 
-To run the tests, execute the following commands:
+app = AsyncFirecrawlApp(api_key="YOUR_API_KEY")
 
-Install pytest:
+# Async Scrape
+async def example_scrape():
+  scrape_result = await app.scrape_url(url="https://example.com")
+  print(scrape_result)
 
-```bash
-pip install pytest
+# Async Crawl
+async def example_crawl():
+  crawl_result = await app.crawl_url(url="https://example.com")
+  print(crawl_result)
 ```
-
-Run:
-
-```bash
-pytest firecrawl/__tests__/e2e_withAuth/test.py
-```
-
-## Contributing
-
-Contributions to the Firecrawl Python SDK are welcome! If you find any issues or have suggestions for improvements, please open an issue or submit a pull request on the GitHub repository.
-
-## License
-
-The Firecrawl Python SDK is licensed under the MIT License. This means you are free to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the SDK, subject to the following conditions:
-
-- The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
-Please note that while this SDK is MIT licensed, it is part of a larger project which may be under different licensing terms. Always refer to the license information in the root directory of the main project for overall licensing details.

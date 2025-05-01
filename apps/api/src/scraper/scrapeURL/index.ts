@@ -180,6 +180,8 @@ export type InternalOptions = {
   fromCache?: boolean; // Indicates if the document was retrieved from cache
   abort?: AbortSignal;
   urlInvisibleInCurrentCrawl?: boolean;
+
+  saveScrapeResultToGCS?: boolean; // Passed along to fire-engine
 };
 
 export type EngineResultsTracker = {

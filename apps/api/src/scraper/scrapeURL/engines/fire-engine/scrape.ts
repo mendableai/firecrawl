@@ -40,6 +40,7 @@ export type FireEngineScrapeRequestChromeCDP = {
   mobile?: boolean;
   disableSmartWaitCache?: boolean;
   blockAds?: boolean; // default: true
+  saveScrapeResultToGCS?: boolean;
 };
 
 export type FireEngineScrapeRequestPlaywright = {

@@ -11,6 +11,7 @@ import {
 } from "../../error";
 import { MockState } from "../../lib/mock";
 import { fireEngineURL } from "./scrape";
+import { getDocFromGCS } from "../../../../lib/gcs-jobs";
 
 const successSchema = z.object({
   jobId: z.string(),
@@ -81,6 +82,8 @@ const successSchema = z.object({
     })
     .optional()
     .or(z.null()),
+
+  docUrl: z.string().optional(),
 });
 
 export type FireEngineCheckStatusSuccess = z.infer<typeof successSchema>;
@@ -117,7 +120,7 @@ export async function fireEngineCheckStatus(
   mock: MockState | null,
   abort?: AbortSignal,
 ): Promise<FireEngineCheckStatusSuccess> {
-  const status = await Sentry.startSpan(
+  let status = await Sentry.startSpan(
     {
       name: "fire-engine: Check status",
       attributes: {
@@ -141,6 +144,15 @@ export async function fireEngineCheckStatus(
       });
     },
   );
+
+  // Fire-engine now saves the content to GCS
+  if (!status.content && status.docUrl) {
+    const doc = await getDocFromGCS(status.docUrl.split('/').pop() ?? "");
+    if (doc) {
+      status = { ...status, ...doc };
+      delete status.docUrl;
+    }
+  }
 
   const successParse = successSchema.safeParse(status);
   const processingParse = processingSchema.safeParse(status);
