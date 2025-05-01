@@ -13,7 +13,7 @@ This example demonstrates how to use the Firecrawl API with the Qwen3 30B A3B mo
 
 - Python 3.7+
 - Firecrawl API key
-- OpenRouter API key (or OpenAI API key configured for OpenRouter)
+- OpenRouter API key
 
 ## Setup
 
@@ -25,7 +25,6 @@ This example demonstrates how to use the Firecrawl API with the Qwen3 30B A3B mo
 3. Create a `.env` file based on the `.env.example` template and add your API keys:
    ```
    FIRECRAWL_API_KEY=your_firecrawl_api_key_here
-   OPENAI_API_KEY=your_openai_api_key_here
    OPENROUTER_API_KEY=your_openrouter_api_key_here
    ```
 
