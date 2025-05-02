@@ -110,7 +110,6 @@ export type CrawlerOptions = {
   mode?: "default" | "fast"; // have a mode of some sort
   allowBackwardCrawling?: boolean;
   allowExternalContentLinks?: boolean;
-  delay?: number; // Delay in seconds between crawl requests
 };
 
 export type WebScraperOptions = {
