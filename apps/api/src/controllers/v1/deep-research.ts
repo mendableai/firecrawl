@@ -52,7 +52,6 @@ export async function deepResearchController(
   const jobData = {
     request: req.body,
     teamId: req.auth.team_id,
-    plan: req.auth.plan,
     subId: req.acuc?.sub_id,
     researchId,
   };
@@ -60,7 +59,6 @@ export async function deepResearchController(
   await saveDeepResearch(researchId, {
     id: researchId,
     team_id: req.auth.team_id,
-    plan: req.auth.plan,
     createdAt: Date.now(),
     status: "processing",
     currentDepth: 0,

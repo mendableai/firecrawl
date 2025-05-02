@@ -24,7 +24,7 @@ jobs:
         run: echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > ~/.npmrc
       - name: Publish
         run: |
-          npm ci
+          npm install
           npm run build
           npm publish --access public
           sed -i 's/"name": "@mendable\/firecrawl-js"/"name": "@mendable\/firecrawl"/g' package.json

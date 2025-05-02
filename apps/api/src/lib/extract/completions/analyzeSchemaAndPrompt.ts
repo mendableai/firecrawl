@@ -8,28 +8,31 @@ import {
   buildAnalyzeSchemaPrompt,
   buildAnalyzeSchemaUserPrompt,
 } from "../build-prompts";
-import { logger } from "../../../lib/logger";
 import { jsonSchema } from "ai";
 import { getModel } from "../../../lib/generic-ai";
-
+import { Logger } from "winston";
+import { CostTracking } from "../extraction-service";
 export async function analyzeSchemaAndPrompt(
   urls: string[],
   schema: any,
   prompt: string,
+  logger: Logger,
+  costTracking: CostTracking,
 ): Promise<{
   isMultiEntity: boolean;
   multiEntityKeys: string[];
-  reasoning?: string;
-  keyIndicators?: string[];
+  reasoning: string;
+  keyIndicators: string[];
   tokenUsage: TokenUsage;
 }> {
   if (!schema) {
-    schema = await generateSchemaFromPrompt(prompt);
+    const genRes = await generateSchemaFromPrompt(prompt, logger, costTracking);
+    schema = genRes.extract;
   }
 
   const schemaString = JSON.stringify(schema);
 
-  const model = getModel("gpt-4o");
+  const model = getModel("gpt-4o", "openai");
 
   const checkSchema = z
     .object({
@@ -54,6 +57,13 @@ export async function analyzeSchemaAndPrompt(
       },
       markdown: "",
       model,
+      costTrackingOptions: {
+        costTracking,
+        metadata: {
+          module: "extract",
+          method: "analyzeSchemaAndPrompt",
+        },
+      },
     });
 
     const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =

@@ -1,16 +1,15 @@
 import { logger as _logger } from "../logger";
 import { updateDeepResearch } from "./deep-research-redis";
-import { PlanType } from "../../types";
 import { searchAndScrapeSearchResult } from "../../controllers/v1/search";
 import { ResearchLLMService, ResearchStateManager } from "./research-manager";
 import { logJob } from "../../services/logging/log_job";
 import { billTeam } from "../../services/billing/credit_billing";
 import { ExtractOptions } from "../../controllers/v1/types";
+import { CostTracking } from "../extract/extraction-service";
 
 interface DeepResearchServiceOptions {
   researchId: string;
   teamId: string;
-  plan: string;
   query: string;
   maxDepth: number;
   maxUrls: number;
@@ -23,7 +22,8 @@ interface DeepResearchServiceOptions {
 }
 
 export async function performDeepResearch(options: DeepResearchServiceOptions) {
-  const { researchId, teamId, plan, timeLimit, subId, maxUrls } = options;
+  const costTracking = new CostTracking();
+  const { researchId, teamId, timeLimit, subId, maxUrls } = options;
   const startTime = Date.now();
   let currentTopic = options.query;
   let urlsAnalyzed = 0;
@@ -39,7 +39,6 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
   const state = new ResearchStateManager(
     researchId,
     teamId,
-    plan,
     options.maxDepth,
     logger,
     options.query,
@@ -73,6 +72,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         await llmService.generateSearchQueries(
           nextSearchTopic,
           state.getFindings(),
+          costTracking,
         )
       ).slice(0, 3);
 
@@ -98,7 +98,6 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
 
         const response = await searchAndScrapeSearchResult(searchQuery.query, {
           teamId: options.teamId,
-          plan: options.plan as PlanType,
           origin: "deep-research",
           timeout: 10000,
           scrapeOptions: {
@@ -113,7 +112,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
             fastMode: false,
             blockAds: false,
           },
-        });
+        }, logger, costTracking);
         return response.length > 0 ? response : [];
       });
 
@@ -209,6 +208,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         currentTopic,
         timeRemaining,
         options.systemPrompt ?? "",
+        costTracking,
       );
 
       if (!analysis) {
@@ -272,6 +272,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         state.getFindings(),
         state.getSummaries(),
         options.analysisPrompt,
+        costTracking,
         options.formats,
         options.jsonOptions,
       );
@@ -282,6 +283,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         state.getFindings(),
         state.getSummaries(),
         options.analysisPrompt,
+        costTracking,
       );
     }
 
@@ -311,6 +313,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       origin: "api",
       num_tokens: 0,
       tokens_billed: 0,
+      cost_tracking: costTracking,
     });
     await updateDeepResearch(researchId, {
       status: "completed",

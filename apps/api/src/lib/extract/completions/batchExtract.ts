@@ -1,5 +1,7 @@
-import { logger } from "../../../lib/logger";
-import { generateCompletions } from "../../../scraper/scrapeURL/transformers/llmExtract";
+import {
+  generateCompletions,
+  GenerateCompletionsOptions,
+} from "../../../scraper/scrapeURL/transformers/llmExtract";
 import { buildDocument } from "../build-document";
 import { ExtractResponse, TokenUsage } from "../../../controllers/v1/types";
 import { Document } from "../../../controllers/v1/types";
@@ -7,6 +9,23 @@ import {
   buildBatchExtractPrompt,
   buildBatchExtractSystemPrompt,
 } from "../build-prompts";
+import { getModel } from "../../generic-ai";
+import { CostTracking, CostLimitExceededError } from "../extraction-service";
+import fs from "fs/promises";
+import { extractData } from "../../../scraper/scrapeURL/lib/extractSmartScrape";
+import type { Logger } from "winston";
+
+type BatchExtractOptions = {
+  multiEntitySchema: any;
+  links: string[];
+  prompt: string;
+  systemPrompt: string;
+  doc: Document;
+  useAgent: boolean;
+  extractId?: string;
+  sessionId?: string;
+  costTracking: CostTracking;
+};
 
 /**
  * Batch extract information from a list of URLs using a multi-entity schema.
@@ -17,20 +36,29 @@ import {
  * @param doc - The document to extract information from
  * @returns The completion promise
  */
-export async function batchExtractPromise(
-  multiEntitySchema: any,
-  links: string[],
-  prompt: string,
-  systemPrompt: string,
-  doc: Document,
-): Promise<{
-  extract: any;
+export async function batchExtractPromise(options: BatchExtractOptions, logger: Logger): Promise<{
+  extract: any; // array of extracted data
   numTokens: number;
   totalUsage: TokenUsage;
   warning?: string;
   sources: string[];
+  smartScrapeCost: number;
+  otherCost: number;
+  smartScrapeCallCount: number;
+  otherCallCount: number;
+  sessionId?: string;
 }> {
-  const completion = await generateCompletions({
+  const {
+    multiEntitySchema,
+    links,
+    prompt,
+    systemPrompt,
+    doc,
+    useAgent,
+    extractId,
+    sessionId } = options;
+
+  const generationOptions: GenerateCompletionsOptions = {
     logger: logger.child({
       method: "extractService/generateCompletions",
     }),
@@ -45,13 +73,61 @@ export async function batchExtractPromise(
       schema: multiEntitySchema,
     },
     markdown: buildDocument(doc),
-    isExtractEndpoint: true
-  });
+    isExtractEndpoint: true,
+    model: getModel("gemini-2.5-pro-preview-03-25", "vertex"),
+    retryModel: getModel("gemini-2.5-pro-preview-03-25", "google"),
+    costTrackingOptions: {
+      costTracking: options.costTracking,
+      metadata: {
+        module: "extract",
+        method: "batchExtractPromise",
+      },
+    },
+  };
 
+  let extractedDataArray: any[] = [];
+  let warning: string | undefined;
+  let smCost = 0, oCost = 0, smCallCount = 0, oCallCount = 0;
+  try {
+    const {
+      extractedDataArray: e,
+      warning: w,
+    } = await extractData({
+      extractOptions: generationOptions,
+      urls: [doc.metadata.sourceURL || doc.metadata.url || ""],
+      useAgent,
+      extractId,
+      sessionId,
+    });
+    extractedDataArray = e;
+    warning = w;
+  } catch (error) {
+    if (error instanceof CostLimitExceededError) {
+      throw error;
+    }
+    logger.error("extractData failed", { error });
+  }
+
+  // await fs.writeFile(
+  //   `logs/extractedDataArray-${crypto.randomUUID()}.json`,
+  //   JSON.stringify(extractedDataArray, null, 2),
+  // );
+
+  // TODO: fix this
   return {
-    extract: completion.extract,
-    numTokens: completion.numTokens,
-    totalUsage: completion.totalUsage,
-    sources: [doc.metadata.url || doc.metadata.sourceURL || ""]
+    extract: extractedDataArray,
+    numTokens: 0,
+    totalUsage: {
+      promptTokens: 0,
+      completionTokens: 0,
+      totalTokens: 0,
+      model: "gemini-2.0-flash",
+    },
+    warning: warning,
+    sources: [doc.metadata.url || doc.metadata.sourceURL || ""],
+    smartScrapeCost: smCost,
+    otherCost: oCost,
+    smartScrapeCallCount: smCallCount,
+    otherCallCount: oCallCount,
   };
 }

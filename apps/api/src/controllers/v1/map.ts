@@ -50,7 +50,6 @@ export async function getMapResults({
   includeSubdomains = true,
   crawlerOptions = {},
   teamId,
-  plan,
   origin,
   includeMetadata = false,
   allowExternalLinks,
@@ -65,7 +64,6 @@ export async function getMapResults({
   includeSubdomains?: boolean;
   crawlerOptions?: any;
   teamId: string;
-  plan?: string;
   origin?: string;
   includeMetadata?: boolean;
   allowExternalLinks?: boolean;
@@ -88,7 +86,6 @@ export async function getMapResults({
     internalOptions: { teamId },
     team_id: teamId,
     createdAt: Date.now(),
-    plan: plan,
   };
 
   const crawler = crawlToCrawler(id, sc);
@@ -322,7 +319,6 @@ export async function mapController(
         crawlerOptions: req.body,
         origin: req.body.origin,
         teamId: req.auth.team_id,
-        plan: req.auth.plan,
         abort: abort.signal,
         mock: req.body.useMock,
         filterByPath: req.body.filterByPath !== false,
