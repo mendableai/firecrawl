@@ -259,6 +259,7 @@ class CrawlParams(pydantic.BaseModel):
     deduplicateSimilarURLs: Optional[bool] = None
     ignoreQueryParameters: Optional[bool] = None
     regexOnFullURL: Optional[bool] = None
+    delay: Optional[int] = None  # Delay in seconds between scrapes
 
 class CrawlResponse(pydantic.BaseModel):
     """Response from crawling operations."""
@@ -681,6 +682,7 @@ class FirecrawlApp:
         deduplicate_similar_urls: Optional[bool] = None,
         ignore_query_parameters: Optional[bool] = None,
         regex_on_full_url: Optional[bool] = None,
+        delay: Optional[int] = None,
         poll_interval: Optional[int] = 2,
         idempotency_key: Optional[str] = None,
         **kwargs
@@ -703,6 +705,7 @@ class FirecrawlApp:
             deduplicate_similar_urls (Optional[bool]): Remove similar URLs
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
             regex_on_full_url (Optional[bool]): Apply regex to full URLs
+            delay (Optional[int]): Delay in seconds between scrapes
             poll_interval (Optional[int]): Seconds between status checks (default: 2)
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
@@ -748,6 +751,8 @@ class FirecrawlApp:
             crawl_params['ignoreQueryParameters'] = ignore_query_parameters
         if regex_on_full_url is not None:
             crawl_params['regexOnFullURL'] = regex_on_full_url
+        if delay is not None:
+            crawl_params['delay'] = delay
 
         # Add any additional kwargs
         crawl_params.update(kwargs)
@@ -788,6 +793,7 @@ class FirecrawlApp:
         deduplicate_similar_urls: Optional[bool] = None,
         ignore_query_parameters: Optional[bool] = None,
         regex_on_full_url: Optional[bool] = None,
+        delay: Optional[int] = None,
         idempotency_key: Optional[str] = None,
         **kwargs
     ) -> CrawlResponse:
@@ -854,6 +860,8 @@ class FirecrawlApp:
             crawl_params['ignoreQueryParameters'] = ignore_query_parameters
         if regex_on_full_url is not None:
             crawl_params['regexOnFullURL'] = regex_on_full_url
+        if delay is not None:
+            crawl_params['delay'] = delay
 
         # Add any additional kwargs
         crawl_params.update(kwargs)
@@ -3240,6 +3248,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         deduplicate_similar_urls: Optional[bool] = None,
         ignore_query_parameters: Optional[bool] = None,
         regex_on_full_url: Optional[bool] = None,
+        delay: Optional[int] = None,
         poll_interval: Optional[int] = 2,
         idempotency_key: Optional[str] = None,
         **kwargs
@@ -3262,6 +3271,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             deduplicate_similar_urls (Optional[bool]): Remove similar URLs
             ignore_query_parameters (Optional[bool]): Ignore URL parameters
             regex_on_full_url (Optional[bool]): Apply regex to full URLs
+            delay (Optional[int]): Delay in seconds between scrapes
             poll_interval (Optional[int]): Seconds between status checks (default: 2)
             idempotency_key (Optional[str]): Unique key to prevent duplicate requests
             **kwargs: Additional parameters to pass to the API
@@ -3307,6 +3317,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             crawl_params['ignoreQueryParameters'] = ignore_query_parameters
         if regex_on_full_url is not None:
             crawl_params['regexOnFullURL'] = regex_on_full_url
+        if delay is not None:
+            crawl_params['delay'] = delay
 
         # Add any additional kwargs
         crawl_params.update(kwargs)
@@ -3348,6 +3360,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         deduplicate_similar_urls: Optional[bool] = None,
         ignore_query_parameters: Optional[bool] = None,
         regex_on_full_url: Optional[bool] = None,
+        delay: Optional[int] = None,
         poll_interval: Optional[int] = 2,
         idempotency_key: Optional[str] = None,
         **kwargs
@@ -3412,6 +3425,8 @@ class AsyncFirecrawlApp(FirecrawlApp):
             crawl_params['ignoreQueryParameters'] = ignore_query_parameters
         if regex_on_full_url is not None:
             crawl_params['regexOnFullURL'] = regex_on_full_url
+        if delay is not None:
+            crawl_params['delay'] = delay
 
         # Add any additional kwargs
         crawl_params.update(kwargs)
