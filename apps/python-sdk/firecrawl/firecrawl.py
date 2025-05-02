@@ -259,7 +259,7 @@ class CrawlParams(pydantic.BaseModel):
     deduplicateSimilarURLs: Optional[bool] = None
     ignoreQueryParameters: Optional[bool] = None
     regexOnFullURL: Optional[bool] = None
-    delay: Optional[int] = None  # Delay in seconds between crawl requests
+    delay: Optional[int] = None  # Delay in seconds between scrapes
 
 class CrawlResponse(pydantic.BaseModel):
     """Response from crawling operations."""
