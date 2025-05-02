@@ -22,7 +22,7 @@ import { configDotenv } from "dotenv";
 import type { Job, JobState, Queue } from "bullmq";
 import { logger } from "../../lib/logger";
 import { supabase_rr_service, supabase_service } from "../../services/supabase";
-import { getConcurrencyLimitedJobs } from "../../lib/concurrency-limit";
+import { getConcurrencyLimitedJobs, getCrawlConcurrencyLimitedJobs } from "../../lib/concurrency-limit";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
 configDotenv();
 
