@@ -6,6 +6,6 @@ docker buildx build \
 
  docker buildx build \
   --platform linux/amd64,linux/arm64 \
-  -t logicalsight/firecrawl-playwright:1.0.6-xvfb-ms-1.51.1-jammy-1 \
+  -t logicalsight/firecrawl-playwright:1.1.2 \
   ./apps/playwright-service-ts \
   --push
