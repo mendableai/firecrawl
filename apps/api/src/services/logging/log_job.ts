@@ -5,6 +5,7 @@ import "dotenv/config";
 import { logger } from "../../lib/logger";
 import { configDotenv } from "dotenv";
 import { saveJobToGCS } from "../../lib/gcs-jobs";
+import { logStealthUsage } from "./temp-stealth-log";
 configDotenv();
 
 function cleanOfNull<T>(x: T): T {
@@ -108,6 +109,10 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
     // Send job to external server
     if (process.env.FIRE_INDEX_SERVER_URL) {
       indexJob(job);
+    }
+    
+    if (job.scrapeOptions?.proxy === "stealth" && job.team_id) {
+      logStealthUsage(job.team_id);
     }
 
     if (process.env.GCS_BUCKET_NAME) {
