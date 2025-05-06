@@ -112,7 +112,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
 
     await saveCrawl(id, sc);
 
-    const crawler = crawlToCrawler(id, sc);
+    const crawler = crawlToCrawler(id, sc, auth.chunk?.flags ?? null);
 
     await finishCrawlKickoff(id);
 

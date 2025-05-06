@@ -173,7 +173,7 @@ export async function crawlController(req: Request, res: Response) {
       createdAt: Date.now(),
     };
 
-    const crawler = crawlToCrawler(id, sc);
+    const crawler = crawlToCrawler(id, sc, auth.chunk?.flags ?? null);
 
     try {
       sc.robots = await crawler.getRobotsTxt();

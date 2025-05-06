@@ -914,10 +914,15 @@ export type AuthCreditUsageChunk = {
     scrapeAgentPreview?: number;
   };
   concurrency: number;
+  flags: TeamFlags;
 
   // appended on JS-side
   is_extract?: boolean;
 };
+
+export type TeamFlags = {
+  ignoreRobots?: boolean;
+} | null;
 
 export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;
 
