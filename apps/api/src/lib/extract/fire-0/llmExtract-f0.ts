@@ -293,14 +293,176 @@ export async function generateCompletions_F0({
       ...(schema && { schema: schema instanceof z.ZodType ? schema : jsonSchema(schema) }),
       ...(!schema && { output: 'no-schema' as const }),
       ...repairConfig,
-      ...(!schema && {
-        onError: (error: Error) => {
-          console.error(error);
-        }
-      })
+      onError: (error: Error) => {
+        logger.error("Error in generateObject", { error });
+      },
+      maxRetries: 2
     } satisfies Parameters<typeof generateObject>[0];
 
-    const result = await generateObject(generateObjectConfig);
+    // Debug log the request in cURL format
+    const debugRequestPayload = {
+      model: model.modelId,
+      messages: [
+        ...(options.systemPrompt ? [{ role: "system", content: options.systemPrompt }] : []),
+        { role: "user", content: prompt }
+      ],
+      temperature: options.temperature ?? 0,
+    };
+
+    // Use console.log for better visibility of the request
+    console.log('=================================================================');
+    console.log(`✨ LLM REQUEST - Model: ${model.modelId}`);
+    console.log('=================================================================');
+    console.log('System prompt:', options.systemPrompt);
+    console.log('User prompt:', prompt.substring(0, 500) + (prompt.length > 500 ? '...' : ''));
+    
+    if (schema) {
+      console.log('Schema provided:', typeof schema === 'object' ? 'Object with structure' : typeof schema);
+    } else {
+      console.log('No schema provided');
+    }
+    
+    console.log('Temperature:', options.temperature ?? 0);
+    console.log('=================================================================');
+    
+    // Also log to the standard logger
+    logger.info("LLM Request details", { 
+      module: "extract", 
+      method: "generateObject",
+      modelId: model.modelId,
+      systemPromptLength: options.systemPrompt?.length,
+      promptLength: prompt?.length,
+      temperature: options.temperature ?? 0,
+      hasSchema: !!schema
+    });
+
+    let result;
+    try {
+      result = await generateObject(generateObjectConfig);
+      
+      // Log the successful response
+      logger.info("LLM Response:", {
+        module: "extract",
+        method: "generateObject",
+        responseSuccess: true,
+        extractLength: result?.object ? JSON.stringify(result.object).length : 0,
+        usage: result?.usage
+      });
+    } catch (error) {
+      // Log detailed error information with console.log for better visibility
+      console.log('=================================================================');
+      console.log(`❌ AI GENERATION ERROR - Model: ${model.modelId}`);
+      console.log('=================================================================');
+      console.log('Error name:', error.name);
+      console.log('Error message:', error.message);
+      console.log('Error stack:', error.stack);
+      console.log('=================================================================');
+      
+      // Also log to the standard logger
+      logger.error("Error in AI generation", {
+        module: "extract",
+        method: "generateObject",
+        errorName: error.name,
+        errorMessage: error.message,
+        modelId: model.modelId
+      });
+      
+      // Handle specific AI error for no object generated
+      if (error.name === 'AI_NoObjectGeneratedError') {
+        logger.warn("AI did not generate a structured object", { 
+          error: error.message,
+          modelId: model.modelId
+        });
+        
+        // If using Meta models (llama), try to use OpenAI as a fallback
+        if (model.modelId.includes('llama') || model.modelId.includes('meta')) {
+          logger.info("Attempting to use fallback OpenAI model", {
+            module: "extract",
+            method: "generateObject",
+            originalModel: model.modelId
+          });
+          
+          try {
+            // Try GPT as a fallback when Llama fails
+            const fallbackModel = getModel("gpt-4o");
+            
+            const fallbackResult = await generateObject({
+              model: fallbackModel,
+              prompt: prompt,
+              temperature: options.temperature ?? 0,
+              system: options.systemPrompt,
+              ...(schema && { schema: schema instanceof z.ZodType ? schema : jsonSchema(schema) }),
+              ...(!schema && { output: 'no-schema' as const }),
+              ...repairConfig
+            });
+            
+            logger.info("Fallback model succeeded", {
+              module: "extract",
+              method: "generateObject",
+              originalModel: model.modelId,
+              fallbackModel: fallbackModel.modelId
+            });
+            
+            return {
+              extract: fallbackResult.object,
+              warning: "Used fallback model due to primary model failure",
+              numTokens,
+              totalUsage: {
+                promptTokens: numTokens,
+                completionTokens: fallbackResult.usage?.completionTokens ?? 0,
+                totalTokens: numTokens + (fallbackResult.usage?.completionTokens ?? 0),
+              },
+              model: fallbackModel.modelId,
+            };
+          } catch (fallbackError) {
+            logger.error("Fallback model also failed", {
+              module: "extract",
+              method: "generateObject",
+              originalModel: model.modelId,
+              fallbackError: fallbackError.message
+            });
+          }
+        }
+        
+        // Fall back to text generation when object generation fails
+        const textResult = await generateText({
+          model: model,
+          prompt: `${prompt}\n\nPlease structure your response as JSON.`,
+          temperature: options.temperature ?? 0,
+          system: `${options.systemPrompt || ''}\n\nIMPORTANT: You MUST provide a response in JSON format that follows the schema.`
+        });
+        
+        try {
+          // Try to parse the text as JSON
+          const parsedObject = JSON.parse(textResult.text);
+          return {
+            extract: parsedObject,
+            warning: "Used fallback text generation method",
+            numTokens,
+            totalUsage: {
+              promptTokens: numTokens,
+              completionTokens: textResult.usage?.completionTokens ?? 0,
+              totalTokens: numTokens + (textResult.usage?.completionTokens ?? 0),
+            },
+            model: model.modelId,
+          };
+        } catch (jsonError) {
+          // If JSON parsing fails, return the text response as is
+          return {
+            extract: textResult.text,
+            warning: "Tool call failed and JSON parsing failed",
+            numTokens,
+            totalUsage: {
+              promptTokens: numTokens,
+              completionTokens: textResult.usage?.completionTokens ?? 0,
+              totalTokens: numTokens + (textResult.usage?.completionTokens ?? 0),
+            },
+            model: model.modelId,
+          };
+        }
+      }
+      throw error;
+    }
     extract = result.object;
 
     // If the users actually wants the items object, they can specify it as 'required' in the schema

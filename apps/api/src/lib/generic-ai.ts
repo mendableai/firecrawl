@@ -1,4 +1,4 @@
-import { openai } from "@ai-sdk/openai";
+import { openai, createOpenAI } from "@ai-sdk/openai";
 import { createOllama } from "ollama-ai-provider";
 import { anthropic } from "@ai-sdk/anthropic";
 import { groq } from "@ai-sdk/groq";
@@ -22,8 +22,18 @@ const defaultProvider: Provider = process.env.OLLAMA_BASE_URL
   ? "ollama"
   : "openai";
 
+// Configure OpenAI provider with custom base URL if provided
+// This allows using OpenAI-compatible providers by setting the OPENAI_BASE_URL environment variable
+// The provider will use the standard OPENAI_API_KEY for authentication
+const configuredOpenAI = process.env.OPENAI_BASE_URL
+  ? createOpenAI({
+      baseURL: process.env.OPENAI_BASE_URL,
+      apiKey: process.env.OPENAI_API_KEY || '',
+    })
+  : openai;
+
 const providerList: Record<Provider, any> = {
-  openai, //OPENAI_API_KEY
+  openai: configuredOpenAI, //OPENAI_API_KEY with optional OPENAI_BASE_URL
   ollama: createOllama({
     baseURL: process.env.OLLAMA_BASE_URL,
   }),
