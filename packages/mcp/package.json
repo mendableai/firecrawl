@@ -1,0 +1,22 @@
+{
+  "name": "firecrawl-mcp",
+  "version": "1.0.0",
+  "description": "Improved Model Context Protocol implementation for Firecrawl",
+  "main": "index.ts",
+  "scripts": {
+    "start": "ts-node index.ts",
+    "build": "tsc"
+  },
+  "dependencies": {
+    "@mendable/firecrawl-js": "^1.0.0",
+    "@modelcontextprotocol/sdk": "^1.0.0",
+    "dotenv": "^16.0.0",
+    "express": "^4.18.0"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.13",
+    "@types/node": "^18.0.0",
+    "ts-node": "^10.9.0",
+    "typescript": "^4.9.0"
+  }
+}
