@@ -46,7 +46,7 @@ x-common-env: &common-env
 
 services:
   playwright-service:
-    image: sipingxiaoe/playwright-service-ts
+    image: jcr.savorcare.com/docker/sipingxiaoe/playwright-service-ts:latest	
     environment:
       PORT: 3000
       PROXY_SERVER: ${PROXY_SERVER}
@@ -88,7 +88,7 @@ services:
     # NOTE: If you want to use Valkey (open source) instead of Redis (source available),
     # uncomment the Valkey statement and comment out the Redis statement.
     # Using Valkey with Firecrawl is untested and not guaranteed to work. Use with caution.
-    image: redis:alpine
+    image: jcr.savorcare.com/docker/redis:alpine
     # image: valkey/valkey:alpine
 
     networks:
