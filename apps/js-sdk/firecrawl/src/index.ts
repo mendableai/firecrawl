@@ -215,6 +215,11 @@ export interface CrawlParams {
   deduplicateSimilarURLs?: boolean;
   ignoreQueryParameters?: boolean;
   regexOnFullURL?: boolean;
+  /**
+   * Delay in seconds between scrapes. This helps respect website rate limits.
+   * If not provided, the crawler may use the robots.txt crawl delay if available.
+   */
+  delay?: number;
 }
 
 /**

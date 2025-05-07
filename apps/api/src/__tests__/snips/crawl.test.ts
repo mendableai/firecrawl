@@ -1,4 +1,5 @@
 import { crawl } from "./lib";
+import { describe, it, expect } from "@jest/globals";
 
 describe("Crawl tests", () => {
     it.concurrent("works", async () => {
@@ -37,6 +38,14 @@ describe("Crawl tests", () => {
         }
     }, 120000);
 
+    it.concurrent("delay parameter works", async () => {
+        await crawl({
+            url: "https://firecrawl.dev",
+            limit: 3,
+            delay: 5,
+        });
+    }, 300000);
+    
     // TEMP: Flaky
     // it.concurrent("discovers URLs properly when origin is not included", async () => {
     //     const res = await crawl({
@@ -63,7 +72,6 @@ describe("Crawl tests", () => {
     //         maxDiscoveryDepth: 1,
     //         limit: 10,
     //     });
-
     //     expect(res.success).toBe(true);
     //     if (res.success) {
     //         expect(res.data.length).toBeGreaterThan(1);

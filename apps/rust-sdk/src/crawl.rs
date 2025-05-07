@@ -138,6 +138,8 @@ pub struct CrawlOptions {
     #[serde(skip)]
     pub idempotency_key: Option<String>,
 
+    pub delay: Option<u32>,
+
     /// When using `FirecrawlApp::crawl_url`, this is how often the status of the job should be checked, in milliseconds. (default: `2000`)
     #[serde(skip)]
     pub poll_interval: Option<u64>,
