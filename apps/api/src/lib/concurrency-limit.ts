@@ -56,6 +56,7 @@ export type ConcurrencyLimitedJob = {
 export async function takeConcurrencyLimitedJob(
   team_id: string,
 ): Promise<ConcurrencyLimitedJob | null> {
+  await redisConnection.zremrangebyscore(constructQueueKey(team_id), -Infinity, Date.now());
   const res = await redisConnection.zmpop(1, constructQueueKey(team_id), "MIN");
   if (res === null || res === undefined) {
     return null;
@@ -67,10 +68,11 @@ export async function takeConcurrencyLimitedJob(
 export async function pushConcurrencyLimitedJob(
   team_id: string,
   job: ConcurrencyLimitedJob,
+  timeout: number,
 ) {
   await redisConnection.zadd(
     constructQueueKey(team_id),
-    job.priority ?? 1,
+    Date.now() + timeout,
     JSON.stringify(job),
   );
 }
