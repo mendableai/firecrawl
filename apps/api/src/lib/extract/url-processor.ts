@@ -1,4 +1,4 @@
-import { MapDocument, URLTrace } from "../../controllers/v1/types";
+import { MapDocument, TeamFlags, URLTrace } from "../../controllers/v1/types";
 import { getMapResults } from "../../controllers/v1/map";
 import { removeDuplicateUrls } from "../validateUrl";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
@@ -93,6 +93,7 @@ export async function processUrl(
   updateExtractCallback: (links: string[]) => void,
   logger: Logger,
   costTracking: CostTracking,
+  teamFlags: TeamFlags,
 ): Promise<string[]> {
   const trace: URLTrace = {
     url: options.url,
@@ -104,7 +105,7 @@ export async function processUrl(
   urlTraces.push(trace);
 
   if (!options.url.includes("/*") && !options.allowExternalLinks) {
-    if (!isUrlBlocked(options.url)) {
+    if (!isUrlBlocked(options.url, teamFlags)) {
       trace.usedInCompletion = true;
       return [options.url];
     }
@@ -144,6 +145,7 @@ export async function processUrl(
       ignoreSitemap: false,
       includeMetadata: true,
       includeSubdomains: options.includeSubdomains,
+      flags: teamFlags,
     });
 
     let mappedLinks = mapResults.mapResults as MapDocument[];
@@ -181,6 +183,7 @@ export async function processUrl(
         ignoreSitemap: false,
         includeMetadata: true,
         includeSubdomains: options.includeSubdomains,
+        flags: teamFlags,
       });
 
       mappedLinks = retryMapResults.mapResults as MapDocument[];

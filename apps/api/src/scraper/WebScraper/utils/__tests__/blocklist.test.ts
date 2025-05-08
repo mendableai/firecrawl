@@ -53,22 +53,25 @@ describe("isUrlBlocked function", () => {
   });
 
   test("Blocks exact domain with and without protocol", () => {
-    expect(isUrlBlocked(decryptAES("KZfBtpwjOpdSoqacRbz7og==", hashKey))).toBe(
+    expect(isUrlBlocked(decryptAES("KZfBtpwjOpdSoqacRbz7og==", hashKey), null)).toBe(
       true,
     );
     expect(
       isUrlBlocked(
         decryptAES("TemsdmaA9kBK9cVJTaAmZksAh4WcS5779jwuGJ26ows=", hashKey),
+        null,
       ),
     ).toBe(true);
     expect(
       isUrlBlocked(
         decryptAES("0pCVMPgc7+IMrLjIA5lFV0ttO4rKIA14yZBb+2FDG7I=", hashKey),
+        null,
       ),
     ).toBe(true);
     expect(
       isUrlBlocked(
         decryptAES("m+PjIWE9E4GF3lA/B9cUMDj3smbHhZYOGxP74UTmd3M=", hashKey),
+        null,
       ),
     ).toBe(true);
   });
@@ -77,53 +80,57 @@ describe("isUrlBlocked function", () => {
     expect(
       isUrlBlocked(
         decryptAES("m+PjIWE9E4GF3lA/B9cUMDj3smbHhZYOGxP74UTmd3M=", hashKey),
+        null,
       ),
     ).toBe(true);
     expect(
       isUrlBlocked(
         decryptAES("o/ClKrW6Qo0uidbD2X8cVjj3smbHhZYOGxP74UTmd3M=", hashKey),
+        null,
       ),
     ).toBe(true);
     expect(
       isUrlBlocked(
         decryptAES("Z53Ny7rvn7cBX/2bYpOZrRDosKfU7BiSM0OClb4bdWY=", hashKey),
+        null,
       ),
     ).toBe(true);
   });
 
   test("Blocks different TLDs (BLOCKED-DOMAIN.pt, BLOCKED-DOMAIN.io)", () => {
-    expect(isUrlBlocked(decryptAES("vUMeqQdqk7ajwczYBr6prA==", hashKey))).toBe(
+    expect(isUrlBlocked(decryptAES("vUMeqQdqk7ajwczYBr6prA==", hashKey), null)).toBe(
       true,
     );
-    expect(isUrlBlocked(decryptAES("WOjW9VwGwrPu846jDo6VQg==", hashKey))).toBe(
+    expect(isUrlBlocked(decryptAES("WOjW9VwGwrPu846jDo6VQg==", hashKey), null)).toBe(
       true,
     );
-    expect(isUrlBlocked(decryptAES("Ti3vVa6sRew3wyTZ7a/Yag==", hashKey))).toBe(
+    expect(isUrlBlocked(decryptAES("Ti3vVa6sRew3wyTZ7a/Yag==", hashKey), null)).toBe(
       true,
     );
     expect(
       isUrlBlocked(
         decryptAES("0pCVMPgc7+IMrLjIA5lFV5cYWcOWC5LGWwvlbCW2GH4=", hashKey),
+        null,
       ),
     ).toBe(true);
   });
 
   test("Allows unrelated domains like whateverfacebook.com", () => {
-    expect(isUrlBlocked("whateverfacebook.com")).toBe(false);
-    expect(isUrlBlocked("https://whateverfacebook.com")).toBe(false);
+    expect(isUrlBlocked("whateverfacebook.com", null)).toBe(false);
+    expect(isUrlBlocked("https://whateverfacebook.com", null)).toBe(false);
   });
 
   test("Blocks other domains from the blocklist", () => {
-    expect(isUrlBlocked(decryptAES("e3HFXLVgxhaVoadYpwb2BA==", hashKey))).toBe(
+    expect(isUrlBlocked(decryptAES("e3HFXLVgxhaVoadYpwb2BA==", hashKey), null)).toBe(
       true,
     );
-    expect(isUrlBlocked(decryptAES("XS61fAjZb5JfAWsyzzOoCQ==", hashKey))).toBe(
+    expect(isUrlBlocked(decryptAES("XS61fAjZb5JfAWsyzzOoCQ==", hashKey), null)).toBe(
       true,
     );
-    expect(isUrlBlocked(decryptAES("Indtl4yxJMHCKBGF4KABCQ==", hashKey))).toBe(
+    expect(isUrlBlocked(decryptAES("Indtl4yxJMHCKBGF4KABCQ==", hashKey), null)).toBe(
       true,
     );
-    expect(isUrlBlocked(decryptAES("86ZDUI7vmp4MvNq3fvZrGQ==", hashKey))).toBe(
+    expect(isUrlBlocked(decryptAES("86ZDUI7vmp4MvNq3fvZrGQ==", hashKey), null)).toBe(
       true,
     );
   });
@@ -135,23 +142,34 @@ describe("isUrlBlocked function", () => {
           "4H7Uyz6sSCwE3mne1SsGU+6gs7VssjM3e5C6qsyUPUnhsthhQp2bAQwZ9xSCJsjB",
           hashKey,
         ),
+        null,
       ),
     ).toBe(false);
     expect(
       isUrlBlocked(
         decryptAES("rNA7JWR/voEnzAqpC4QJAYgZUratpaNBCBVujdFqDb0=", hashKey),
+        null,
       ),
     ).toBe(false);
     expect(
       isUrlBlocked(
         decryptAES("ipHiDz83ep6vbIMee94+4XtxxVy1YMYWlaGnWKcG9gQ=", hashKey),
+        null,
       ),
     ).toBe(false);
   });
 
   test("Should return false if the URL is invalid", () => {
-    expect(isUrlBlocked("randomstring")).toBe(false);
-    expect(isUrlBlocked("htp://bad.url")).toBe(false);
-    expect(isUrlBlocked("")).toBe(false);
+    expect(isUrlBlocked("randomstring", null)).toBe(false);
+    expect(isUrlBlocked("htp://bad.url", null)).toBe(false);
+      expect(isUrlBlocked("", null)).toBe(false);
+  });
+
+  test("Should respect flags", () => {
+    const decryptedDomain = decryptAES("e3HFXLVgxhaVoadYpwb2BA==", hashKey);
+
+    expect(isUrlBlocked(decryptedDomain, {
+      unblockedDomains: [decryptedDomain],
+    })).toBe(false);
   });
 });

@@ -6,6 +6,7 @@ import {
   SearchResponse,
   searchRequestSchema,
   ScrapeOptions,
+  TeamFlags,
 } from "./types";
 import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from "uuid";
@@ -34,6 +35,7 @@ export async function searchAndScrapeSearchResult(
   },
   logger: Logger,
   costTracking: CostTracking,
+  flags: TeamFlags,
 ): Promise<Document[]> {
   try {
     const searchResults = await search({
@@ -51,7 +53,8 @@ export async function searchAndScrapeSearchResult(
         },
         options,
         logger,
-        costTracking
+        costTracking,
+        flags
       )
     )
   );
@@ -72,6 +75,7 @@ async function scrapeSearchResult(
   },
   logger: Logger,
   costTracking: CostTracking,
+  flags: TeamFlags,
 ): Promise<Document> {
   const jobId = uuidv4();
   const jobPriority = await getJobPriority({
@@ -80,7 +84,7 @@ async function scrapeSearchResult(
   });
 
   try {
-    if (isUrlBlocked(searchResult.url)) {
+    if (isUrlBlocked(searchResult.url, flags)) {
       throw new Error("Could not scrape url: " + BLOCKLISTED_URL_MESSAGE);
     }
     logger.info("Adding scrape job", {
@@ -220,7 +224,7 @@ export async function searchController(
           origin: req.body.origin,
           timeout: req.body.timeout,
           scrapeOptions: req.body.scrapeOptions,
-        }, logger, costTracking),
+        }, logger, costTracking, req.acuc?.flags ?? null),
       );
 
       const docs = await Promise.all(scrapePromises);

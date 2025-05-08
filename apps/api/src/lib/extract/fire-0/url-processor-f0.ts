@@ -1,4 +1,4 @@
-import { MapDocument, URLTrace } from "../../../controllers/v1/types";
+import { MapDocument, TeamFlags, URLTrace } from "../../../controllers/v1/types";
 import { getMapResults } from "../../../controllers/v1/map";
 import { removeDuplicateUrls } from "../../validateUrl";
 import { isUrlBlocked } from "../../../scraper/WebScraper/utils/blocklist";
@@ -9,6 +9,7 @@ import type { Logger } from "winston";
 import { generateText } from "ai";
 import { getModel } from "../../generic-ai";
 import { CostTracking } from "../extraction-service";
+import { getACUCTeam } from "../../../controllers/auth";
 
 export async function generateBasicCompletion_FO(prompt: string) {
   const { text } = await generateText({
@@ -34,6 +35,7 @@ export async function processUrl_F0(
   urlTraces: URLTrace[],
   updateExtractCallback: (links: string[]) => void,
   logger: Logger,
+  teamFlags: TeamFlags,
 ): Promise<string[]> {
   const trace: URLTrace = {
     url: options.url,
@@ -45,7 +47,7 @@ export async function processUrl_F0(
   urlTraces.push(trace);
 
   if (!options.url.includes("/*") && !options.allowExternalLinks) {
-    if (!isUrlBlocked(options.url)) {
+    if (!isUrlBlocked(options.url, teamFlags)) {
       trace.usedInCompletion = true;
       return [options.url];
     }
@@ -85,6 +87,7 @@ export async function processUrl_F0(
       ignoreSitemap: false,
       includeMetadata: true,
       includeSubdomains: options.includeSubdomains,
+      flags: teamFlags,
     });
 
     let mappedLinks = mapResults.mapResults as MapDocument[];
@@ -121,6 +124,7 @@ export async function processUrl_F0(
         ignoreSitemap: false,
         includeMetadata: true,
         includeSubdomains: options.includeSubdomains,
+        flags: teamFlags,
       });
 
       mappedLinks = retryMapResults.mapResults as MapDocument[];

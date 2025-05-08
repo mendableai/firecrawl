@@ -80,6 +80,7 @@ import { performGenerateLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt
 import { updateGeneratedLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt-redis";
 import { performExtraction_F0 } from "../lib/extract/fire-0/extraction-service-f0";
 import { CostTracking } from "../lib/extract/extraction-service";
+import { getACUCTeam } from "../controllers/auth";
 
 configDotenv();
 
@@ -144,6 +145,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
       const crawler = crawlToCrawler(
         job.data.crawl_id,
         sc,
+        (await getACUCTeam(job.data.team_id))?.flags ?? null,
         sc.originUrl!,
         job.data.crawlerOptions,
       );
@@ -871,7 +873,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
 
   try {
     const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
-    const crawler = crawlToCrawler(job.data.crawl_id, sc);
+    const crawler = crawlToCrawler(job.data.crawl_id, sc, (await getACUCTeam(job.data.team_id))?.flags ?? null);
 
     logger.debug("Locking URL...");
     await lockURL(job.data.crawl_id, sc, job.data.url);
@@ -1135,7 +1137,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           normalizeURL(doc.metadata.sourceURL, sc) &&
         job.data.crawlerOptions !== null // only on crawls, don't care on batch scrape
       ) {
-        const crawler = crawlToCrawler(job.data.crawl_id, sc);
+        const crawler = crawlToCrawler(job.data.crawl_id, sc, (await getACUCTeam(job.data.team_id))?.flags ?? null);
         if (
           crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL) ===
             null &&
@@ -1160,7 +1162,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           await saveCrawl(job.data.crawl_id, sc);
         }
 
-        if (isUrlBlocked(doc.metadata.url)) {
+        if (isUrlBlocked(doc.metadata.url, (await getACUCTeam(job.data.team_id))?.flags ?? null)) {
           throw new Error(BLOCKLISTED_URL_MESSAGE); // TODO: make this its own error type that is ignored by error tracking
         }
 
@@ -1219,6 +1221,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           const crawler = crawlToCrawler(
             job.data.crawl_id,
             sc,
+            (await getACUCTeam(job.data.team_id))?.flags ?? null,
             doc.metadata.url ?? doc.metadata.sourceURL ?? sc.originUrl!,
             job.data.crawlerOptions,
           );

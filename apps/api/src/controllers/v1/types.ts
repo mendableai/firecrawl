@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { countries } from "../../lib/validate-country";
 import {
@@ -10,7 +9,6 @@ import {
   Document as V0Document,
 } from "../../lib/entities";
 import { InternalOptions } from "../../scraper/scrapeURL";
-import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 export type Format =
   | "markdown"
@@ -49,7 +47,7 @@ export const url = z.preprocess(
         return false;
       }
     }, "Invalid URL")
-    .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
+    // .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
 );
 
 const strictMessage =
@@ -914,10 +912,16 @@ export type AuthCreditUsageChunk = {
     scrapeAgentPreview?: number;
   };
   concurrency: number;
+  flags: TeamFlags;
 
   // appended on JS-side
   is_extract?: boolean;
 };
+
+export type TeamFlags = {
+  ignoreRobots?: boolean;
+  unblockedDomains?: string[];
+} | null;
 
 export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;
 

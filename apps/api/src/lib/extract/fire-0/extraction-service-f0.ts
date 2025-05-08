@@ -32,6 +32,7 @@ import { mixSchemaObjects_F0 } from "./helpers/mix-schema-objs-f0";
 import { singleAnswerCompletion_F0 } from "./completions/singleAnswer-f0";
 import { calculateFinalResultCost_F0, estimateTotalCost_F0 } from "./usage/llm-cost-f0";
 import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
+import { getACUCTeam } from "../../../controllers/auth";
 
   
   interface ExtractServiceOptions {
@@ -77,6 +78,8 @@ import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
     let singleAnswerResult: any = {};
     let totalUrlsScraped = 0;
     let sources: Record<string, string[]> = {};
+
+    const acuc = await getACUCTeam(teamId);
   
   
     const logger = _logger.child({
@@ -174,6 +177,7 @@ import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
           });
         },
         logger.child({ module: "extract", method: "processUrl", url }),
+        acuc?.flags ?? null,
       ),
     );
   

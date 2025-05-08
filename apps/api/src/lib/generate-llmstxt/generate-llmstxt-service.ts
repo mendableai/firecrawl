@@ -12,6 +12,7 @@ import { logJob } from "../../services/logging/log_job";
 import { getModel } from "../generic-ai";
 import { generateCompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { CostTracking } from "../extract/extraction-service";
+import { getACUCTeam } from "../../controllers/auth";
 interface GenerateLLMsTextServiceOptions {
   generationId: string;
   teamId: string;
@@ -72,6 +73,7 @@ export async function performGenerateLlmsTxt(
     teamId,
   });
   const costTracking = new CostTracking();
+  const acuc = await getACUCTeam(teamId);
 
   try {
     // Enforce max URL limit
@@ -116,6 +118,7 @@ export async function performGenerateLlmsTxt(
       includeSubdomains: false,
       ignoreSitemap: false,
       includeMetadata: true,
+      flags: acuc?.flags ?? null,
     });
 
     if (!mapResult || !mapResult.links) {

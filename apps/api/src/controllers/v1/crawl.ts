@@ -89,7 +89,7 @@ export async function crawlController(
     createdAt: Date.now(),
   };
 
-  const crawler = crawlToCrawler(id, sc);
+  const crawler = crawlToCrawler(id, sc, req.acuc.flags ?? null);
 
   try {
     sc.robots = await crawler.getRobotsTxt(scrapeOptions.skipTlsVerification);
