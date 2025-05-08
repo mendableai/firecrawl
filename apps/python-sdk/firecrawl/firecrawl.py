@@ -161,8 +161,14 @@ class ScrapeOptions(pydantic.BaseModel):
 class WaitAction(pydantic.BaseModel):
     """Wait action to perform during scraping."""
     type: Literal["wait"]
-    milliseconds: int
+    milliseconds: Optional[int] = None
     selector: Optional[str] = None
+    
+    @pydantic.model_validator(mode="after")
+    def validate_one_of_millisecs_selector(self) -> "WaitAction":
+        if (self.milliseconds is None) == (self.selector is None):
+            raise ValueError("Exactly one of milliseconds or selector must be provided")
+        return self
 
 class ScreenshotAction(pydantic.BaseModel):
     """Screenshot action to perform during scraping."""
