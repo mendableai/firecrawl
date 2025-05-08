@@ -3,6 +3,10 @@ import { supabase_service } from "../../../services/supabase";
 import { normalizeUrl } from "../../../lib/canonical-url";
 
 export async function getCachedDocs(urls: string[], cacheKey: string): Promise<Document[]> {
+  if (process.env.USE_DB_AUTHENTICATION !== "true") {
+    return [];
+  }
+  
   const normalizedUrls = urls.map(normalizeUrl);
   const { data, error } = await supabase_service
     .from('cached_scrapes')
@@ -28,6 +32,10 @@ export async function getCachedDocs(urls: string[], cacheKey: string): Promise<D
 }
 
 export async function saveCachedDocs(docs: Document[], cacheKey: string): Promise<void> {
+  if (process.env.USE_DB_AUTHENTICATION !== "true") {
+    return;
+  }
+  
   for (const doc of docs) {
     if (!doc.metadata.url) {
       throw new Error("Document has no URL");

@@ -8,13 +8,15 @@ export async function createIdempotencyKey(req: Request): Promise<string> {
     throw new Error("No idempotency key provided in the request headers.");
   }
 
-  const { data, error } = await supabase_service
-    .from("idempotency_keys")
-    .insert({ key: idempotencyKey });
+  if (process.env.USE_DB_AUTHENTICATION === "true") {
+    const { data, error } = await supabase_service
+      .from("idempotency_keys")
+      .insert({ key: idempotencyKey });
 
-  if (error) {
-    logger.error(`Failed to create idempotency key: ${error}`);
-    throw error;
+    if (error) {
+      logger.error(`Failed to create idempotency key: ${error}`);
+      throw error;
+    }
   }
 
   return idempotencyKey;

@@ -250,11 +250,13 @@ export async function searchController(
     }
 
     // Bill team once for all successful results
-    billTeam(req.auth.team_id, req.acuc?.sub_id, responseData.data.length).catch((error) => {
-      logger.error(
-        `Failed to bill team ${req.auth.team_id} for ${responseData.data.length} credits: ${error}`,
-      );
-    });
+    if (process.env.USE_DB_AUTHENTICATION === "true") {
+      billTeam(req.auth.team_id, req.acuc?.sub_id, responseData.data.length).catch((error) => {
+        logger.error(
+          `Failed to bill team ${req.auth.team_id} for ${responseData.data.length} credits: ${error}`,
+        );
+      });
+    }
 
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
@@ -264,18 +266,20 @@ export async function searchController(
       time_taken: timeTakenInSeconds,
     });
 
-    logJob({
-      job_id: jobId,
-      success: true,
-      num_docs: responseData.data.length,
-      docs: responseData.data,
-      time_taken: timeTakenInSeconds,
-      team_id: req.auth.team_id,
-      mode: "search",
-      url: req.body.query,
-      origin: req.body.origin,
-      cost_tracking: costTracking,
-    });
+    if (process.env.USE_DB_AUTHENTICATION === "true") {
+      logJob({
+        job_id: jobId,
+        success: true,
+        num_docs: responseData.data.length,
+        docs: responseData.data,
+        time_taken: timeTakenInSeconds,
+        team_id: req.auth.team_id,
+        mode: "search",
+        url: req.body.query,
+        origin: req.body.origin,
+        cost_tracking: costTracking,
+      });
+    }
 
     return res.status(200).json(responseData);
 

@@ -282,16 +282,18 @@ export async function getMapResults({
 
   //
 
-  await getIndexQueue().add(
-    id,
-    {
-      originUrl: url,
-      visitedUrls: linksToReturn,
-    },
-    {
-      priority: 10,
-    },
-  );
+  if (process.env.USE_DB_AUTHENTICATION === "true") {
+    await getIndexQueue().add(
+      id,
+      {
+        originUrl: url,
+        visitedUrls: linksToReturn,
+      },
+      {
+        priority: 10,
+      },
+    );
+  }
 
   return {
     success: true,

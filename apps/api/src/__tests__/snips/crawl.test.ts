@@ -80,4 +80,24 @@ describe("Crawl tests", () => {
     //         }
     //     }
     // }, 300000);
+    it.concurrent("works with USE_DB_AUTHENTICATION=false", async () => {
+        const originalEnv = process.env.USE_DB_AUTHENTICATION;
+        
+        try {
+            process.env.USE_DB_AUTHENTICATION = "false";
+            
+            const res = await crawl({
+                url: "https://firecrawl.dev",
+                limit: 5,
+                ignoreSitemap: true // To ensure we don't depend on sitemap functionality
+            });
+    
+            expect(res.success).toBe(true);
+            if (res.success) {
+                expect(res.data.length).toBeGreaterThan(0);
+            }
+        } finally {
+            process.env.USE_DB_AUTHENTICATION = originalEnv;
+        }
+    }, 120000);
 });

@@ -281,13 +281,20 @@ async function supaBillTeam(
   _logger.info(`Batch billing team ${team_id} for ${credits} credits`);
 
   // Perform the actual database operation
-  const { data, error } = await supabase_service.rpc("bill_team_4_tally", {
-    _team_id: team_id,
-    sub_id: subscription_id ?? null,
-    fetch_subscription: subscription_id === undefined,
-    credits,
-    is_extract_param: is_extract,
-  });
+  let data: any[] = [];
+  let error: any = null;
+  
+  if (process.env.USE_DB_AUTHENTICATION === "true") {
+    const result = await supabase_service.rpc("bill_team_4_tally", {
+      _team_id: team_id,
+      sub_id: subscription_id ?? null,
+      fetch_subscription: subscription_id === undefined,
+      credits,
+      is_extract_param: is_extract,
+    });
+    data = result.data || [];
+    error = result.error;
+  }
 
   if (error) {
     Sentry.captureException(error);
@@ -334,4 +341,4 @@ process.on("beforeExit", async () => {
     logger.info("Stopped periodic billing batch processing");
   }
   await processBillingBatch();
-}); 
+});      
