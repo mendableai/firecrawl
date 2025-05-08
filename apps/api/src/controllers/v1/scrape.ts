@@ -155,10 +155,6 @@ export async function scrapeController(
     }
   }
 
-  if (req.body.proxy === "stealth") {
-    creditsToBeBilled += 4;
-  }
-
   billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(
     (error) => {
       logger.error(
