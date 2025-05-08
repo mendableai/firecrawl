@@ -131,14 +131,18 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         ),
       );
 
-      const lastUrls: string[] = (
-        (
-          await supabase_service.rpc("diff_get_last_crawl_urls", {
-            i_team_id: job.data.team_id,
-            i_url: sc.originUrl!,
-          })
-        ).data ?? []
-      ).map((x) => x.url);
+      let lastUrls: string[] = [];
+      const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
+      if (useDbAuthentication) {
+        lastUrls = (
+          (
+            await supabase_service.rpc("diff_get_last_crawl_urls", {
+              i_team_id: job.data.team_id,
+              i_url: sc.originUrl!,
+            })
+          ).data ?? []
+        ).map((x) => x.url);
+      }
 
       const lastUrlsSet = new Set(lastUrls);
 
@@ -230,7 +234,8 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
       if (
         visitedUrls.length > 0 &&
         job.data.crawlerOptions !== null &&
-        originUrl
+        originUrl &&
+        process.env.USE_DB_AUTHENTICATION === "true"
       ) {
         // Queue the indexing job instead of doing it directly
         await getIndexQueue().add(
