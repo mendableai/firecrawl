@@ -89,12 +89,19 @@ services:
     # uncomment the Valkey statement and comment out the Redis statement.
     # Using Valkey with Firecrawl is untested and not guaranteed to work. Use with caution.
     image: jcr.savorcare.com/docker/redis:alpine
+    restart: always
     # image: valkey/valkey:alpine
-
+    volumes:
+      # Mount the redis data directory to the container.
+      - redis:/data
     networks:
       - backend
     command: redis-server --bind 0.0.0.0
+    healthcheck:
+      test: [ 'CMD', 'redis-cli', 'ping' ]
 
 networks:
   backend:
     driver: bridge
+volumes:
+  redis:
