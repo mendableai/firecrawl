@@ -4,10 +4,6 @@ import { logger } from "../logger";
 import { withAuth } from "../withAuth";
 
 async function getTeamIdSyncBOriginal(teamId: string) {
-  if (process.env.USE_DB_AUTHENTICATION !== "true") {
-    return null;
-  }
-  
   try {
     const { data, error } = await supabase_rr_service
       .from("eb-sync")

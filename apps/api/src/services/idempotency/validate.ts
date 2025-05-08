@@ -18,10 +18,6 @@ export async function validateIdempotencyKey(req: Request): Promise<boolean> {
     return false;
   }
 
-  if (process.env.USE_DB_AUTHENTICATION !== "true") {
-    return true;
-  }
-
   const { data, error } = await supabase_rr_service
     .from("idempotency_keys")
     .select("key")

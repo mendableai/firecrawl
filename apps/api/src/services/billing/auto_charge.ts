@@ -164,14 +164,12 @@ export async function autoCharge(
               }
 
               // Record the auto-recharge transaction
-              if (process.env.USE_DB_AUTHENTICATION === "true") {
-                await supabase_service.from("auto_recharge_transactions").insert({
-                  team_id: chunk.team_id,
-                  initial_payment_status: paymentStatus.return_status,
-                  credits_issued: issueCreditsSuccess ? AUTO_RECHARGE_CREDITS : 0,
-                  stripe_charge_id: paymentStatus.charge_id,
-                });
-              }
+              await supabase_service.from("auto_recharge_transactions").insert({
+                team_id: chunk.team_id,
+                initial_payment_status: paymentStatus.return_status,
+                credits_issued: issueCreditsSuccess ? AUTO_RECHARGE_CREDITS : 0,
+                stripe_charge_id: paymentStatus.charge_id,
+              });
 
               // Send a notification if credits were successfully issued
               if (issueCreditsSuccess) {

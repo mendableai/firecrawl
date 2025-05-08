@@ -8,10 +8,6 @@ import * as Sentry from "@sentry/node";
  * @returns {any | null} Job
  */
 export const supabaseGetJobById = async (jobId: string) => {
-  if (process.env.USE_DB_AUTHENTICATION !== "true") {
-    return null;
-  }
-  
   const { data, error } = await supabase_rr_service
     .from("firecrawl_jobs")
     .select("*")
@@ -35,10 +31,6 @@ export const supabaseGetJobById = async (jobId: string) => {
  * @returns {any[]} Jobs
  */
 export const supabaseGetJobsById = async (jobIds: string[]) => {
-  if (process.env.USE_DB_AUTHENTICATION !== "true") {
-    return [];
-  }
-  
   const { data, error } = await supabase_rr_service
     .from("firecrawl_jobs")
     .select()
@@ -63,10 +55,6 @@ export const supabaseGetJobsById = async (jobIds: string[]) => {
  * @returns {any[]} Jobs
  */
 export const supabaseGetJobsByCrawlId = async (crawlId: string) => {
-  if (process.env.USE_DB_AUTHENTICATION !== "true") {
-    return [];
-  }
-  
   const { data, error } = await supabase_rr_service
     .from("firecrawl_jobs")
     .select()
@@ -86,10 +74,6 @@ export const supabaseGetJobsByCrawlId = async (crawlId: string) => {
 };
 
 export const supabaseGetJobByIdOnlyData = async (jobId: string) => {
-  if (process.env.USE_DB_AUTHENTICATION !== "true") {
-    return null;
-  }
-  
   const { data, error } = await supabase_rr_service
     .from("firecrawl_jobs")
     .select("team_id")
