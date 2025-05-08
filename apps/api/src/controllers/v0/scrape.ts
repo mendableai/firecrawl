@@ -9,6 +9,7 @@ import { RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
 import {
   fromLegacyCombo,
+  TeamFlags,
   toLegacyDocument,
   url as urlSchema,
 } from "../v1/types";
@@ -40,6 +41,7 @@ export async function scrapeHelper(
   pageOptions: PageOptions,
   extractorOptions: ExtractorOptions,
   timeout: number,
+  flags: TeamFlags,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -51,7 +53,7 @@ export async function scrapeHelper(
     return { success: false, error: "Url is required", returnCode: 400 };
   }
 
-  if (isUrlBlocked(url)) {
+  if (isUrlBlocked(url, flags)) {
     return {
       success: false,
       error: BLOCKLISTED_URL_MESSAGE,
@@ -241,6 +243,7 @@ export async function scrapeController(req: Request, res: Response) {
       pageOptions,
       extractorOptions,
       timeout,
+      chunk?.flags ?? null,
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;

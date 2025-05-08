@@ -115,7 +115,7 @@ export async function crawlController(req: Request, res: Response) {
         .json({ error: e.message ?? e });
     }
 
-    if (isUrlBlocked(url)) {
+    if (isUrlBlocked(url, auth.chunk?.flags ?? null)) {
       return res.status(403).json({
         error: BLOCKLISTED_URL_MESSAGE,
       });

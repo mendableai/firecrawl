@@ -80,7 +80,7 @@ import { performGenerateLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt
 import { updateGeneratedLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt-redis";
 import { performExtraction_F0 } from "../lib/extract/fire-0/extraction-service-f0";
 import { CostTracking } from "../lib/extract/extraction-service";
-import { getACUCTeam } from "src/controllers/auth";
+import { getACUCTeam } from "../controllers/auth";
 
 configDotenv();
 
@@ -1162,7 +1162,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           await saveCrawl(job.data.crawl_id, sc);
         }
 
-        if (isUrlBlocked(doc.metadata.url)) {
+        if (isUrlBlocked(doc.metadata.url, (await getACUCTeam(job.data.team_id))?.flags ?? null)) {
           throw new Error(BLOCKLISTED_URL_MESSAGE); // TODO: make this its own error type that is ignored by error tracking
         }
 

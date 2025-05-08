@@ -1,4 +1,4 @@
-import { MapDocument, URLTrace } from "../../../controllers/v1/types";
+import { MapDocument, TeamFlags, URLTrace } from "../../../controllers/v1/types";
 import { isUrlBlocked } from "../../../scraper/WebScraper/utils/blocklist";
 import { logger } from "../../logger";
 import { CohereClient } from "cohere-ai";
@@ -48,6 +48,7 @@ export async function rerankLinks_F0(
   mappedLinks: MapDocument[],
   searchQuery: string,
   urlTraces: URLTrace[],
+  flags: TeamFlags,
 ): Promise<MapDocument[]> {
   // console.log("Going to rerank links");
   const mappedLinksRerank = mappedLinks.map(
@@ -65,6 +66,7 @@ export async function rerankLinks_F0(
     mappedLinks,
     linksAndScores,
     extractConfig.RERANKING.INITIAL_SCORE_THRESHOLD_FOR_RELEVANCE,
+    flags,
   );
 
   // If we don't have enough high-quality links, try with lower threshold
@@ -76,6 +78,7 @@ export async function rerankLinks_F0(
       mappedLinks,
       linksAndScores,
       extractConfig.RERANKING.FALLBACK_SCORE_THRESHOLD_FOR_RELEVANCE,
+      flags,
     );
 
     if (filteredLinks.length === 0) {
@@ -89,7 +92,7 @@ export async function rerankLinks_F0(
         .map((x) => mappedLinks.find((link) => link.url === x.link))
         .filter(
           (x): x is MapDocument =>
-            x !== undefined && x.url !== undefined && !isUrlBlocked(x.url),
+            x !== undefined && x.url !== undefined && !isUrlBlocked(x.url, flags),
         );
     }
   }
@@ -145,13 +148,14 @@ function filterAndProcessLinks_F0(
     originalIndex: number;
   }[],
   threshold: number,
+  flags: TeamFlags,
 ): MapDocument[] {
   return linksAndScores
     .filter((x) => x.score > threshold)
     .map((x) => mappedLinks.find((link) => link.url === x.link))
     .filter(
       (x): x is MapDocument =>
-        x !== undefined && x.url !== undefined && !isUrlBlocked(x.url),
+        x !== undefined && x.url !== undefined && !isUrlBlocked(x.url, flags),
     );
 }
 

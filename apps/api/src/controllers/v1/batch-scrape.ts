@@ -23,6 +23,8 @@ import { addScrapeJobs } from "../../services/queue-jobs";
 import { callWebhook } from "../../services/webhook";
 import { logger as _logger } from "../../lib/logger";
 import { CostTracking } from "../../lib/extract/extraction-service";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";  
 
 export async function batchScrapeController(
   req: RequestWithAuth<{}, BatchScrapeResponse, BatchScrapeRequest>,
@@ -54,9 +56,22 @@ export async function batchScrapeController(
     for (const u of pendingURLs) {
       try {
         const nu = urlSchema.parse(u);
-        urls.push(nu);
+        if (!isUrlBlocked(nu, req.acuc?.flags ?? null)) {
+          urls.push(nu);
+        } else {
+          invalidURLs.push(u);
+        }
       } catch (_) {
         invalidURLs.push(u);
+      }
+    }
+  } else {
+    if (req.body.urls?.some((url: string) => isUrlBlocked(url, req.acuc?.flags ?? null))) {
+      if (!res.headersSent) {
+        return res.status(403).json({
+          success: false,
+          error: BLOCKLISTED_URL_MESSAGE,
+        });
       }
     }
   }

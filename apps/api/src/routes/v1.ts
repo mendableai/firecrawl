@@ -147,8 +147,8 @@ function idempotencyMiddleware(
   })().catch((err) => next(err));
 }
 
-function blocklistMiddleware(req: Request, res: Response, next: NextFunction) {
-  if (typeof req.body.url === "string" && isUrlBlocked(req.body.url)) {
+function blocklistMiddleware(req: RequestWithACUC<any, any, any>, res: Response, next: NextFunction) {
+  if (typeof req.body.url === "string" && isUrlBlocked(req.body.url, req.acuc?.flags ?? null)) {
     if (!res.headersSent) {
       return res.status(403).json({
         success: false,
@@ -267,6 +267,7 @@ v1Router.get(
 v1Router.post(
   "/llmstxt",
   authMiddleware(RateLimiterMode.Scrape),
+  blocklistMiddleware,
   wrap(generateLLMsTextController),
 );
 
