@@ -144,7 +144,7 @@ class ChangeTrackingOptions(pydantic.BaseModel):
 
 class ScrapeOptions(pydantic.BaseModel):
     """Parameters for scraping operations."""
-    formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None
+    formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None
     headers: Optional[Dict[str, str]] = None
     includeTags: Optional[List[str]] = None
     excludeTags: Optional[List[str]] = None
@@ -448,7 +448,7 @@ class FirecrawlApp:
             self,
             url: str,
             *,
-            formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None,
+            formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None,
             include_tags: Optional[List[str]] = None,
             exclude_tags: Optional[List[str]] = None,
             only_main_content: Optional[bool] = None,
@@ -470,7 +470,7 @@ class FirecrawlApp:
 
         Args:
           url (str): Target URL to scrape
-          formats (Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]]): Content types to retrieve (markdown/html/etc)
+          formats (Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]]): Content types to retrieve (markdown/html/etc)
           include_tags (Optional[List[str]]): HTML tags to include
           exclude_tags (Optional[List[str]]): HTML tags to exclude
           only_main_content (Optional[bool]): Extract main content only
@@ -1179,7 +1179,7 @@ class FirecrawlApp:
         self,
         urls: List[str],
         *,
-        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
         headers: Optional[Dict[str, str]] = None,
         include_tags: Optional[List[str]] = None,
         exclude_tags: Optional[List[str]] = None,
@@ -1313,7 +1313,7 @@ class FirecrawlApp:
         self,
         urls: List[str],
         *,
-        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
         headers: Optional[Dict[str, str]] = None,
         include_tags: Optional[List[str]] = None,
         exclude_tags: Optional[List[str]] = None,
@@ -1445,7 +1445,7 @@ class FirecrawlApp:
         self,
         urls: List[str],
         *,
-        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
         headers: Optional[Dict[str, str]] = None,
         include_tags: Optional[List[str]] = None,
         exclude_tags: Optional[List[str]] = None,
@@ -2844,7 +2844,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             self,
             url: str,
             *,
-            formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None,
+            formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None,
             include_tags: Optional[List[str]] = None,
             exclude_tags: Optional[List[str]] = None,
             only_main_content: Optional[bool] = None,
@@ -2865,7 +2865,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
         Args:
           url (str): Target URL to scrape
-          formats (Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]]): Content types to retrieve (markdown/html/etc)
+          formats (Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]]): Content types to retrieve (markdown/html/etc)
           include_tags (Optional[List[str]]): HTML tags to include
           exclude_tags (Optional[List[str]]): HTML tags to exclude
           only_main_content (Optional[bool]): Extract main content only
@@ -2972,7 +2972,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         self,
         urls: List[str],
         *,
-        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
         headers: Optional[Dict[str, str]] = None,
         include_tags: Optional[List[str]] = None,
         exclude_tags: Optional[List[str]] = None,
@@ -3111,7 +3111,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         self,
         urls: List[str],
         *,
-        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
         headers: Optional[Dict[str, str]] = None,
         include_tags: Optional[List[str]] = None,
         exclude_tags: Optional[List[str]] = None,
