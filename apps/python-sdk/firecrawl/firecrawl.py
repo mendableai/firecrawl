@@ -23,6 +23,7 @@ import websockets
 import aiohttp
 import asyncio
 from pydantic import Field
+from .utils import convert_dict_keys_to_snake_case, convert_to_dot_dict
 
 # Suppress Pydantic warnings about attribute shadowing
 warnings.filterwarnings("ignore", message="Field name \"json\" in \"FirecrawlDocument\" shadows an attribute in parent \"BaseModel\"")
@@ -2270,8 +2271,9 @@ class FirecrawlApp:
             * status (str): Current state (processing/completed/failed)
             * error (Optional[str]): Error message if failed
             * id (str): Unique identifier for the research job
-            * data (Any): Research findings and analysis
-            * sources (List[Dict]): List of discovered sources
+            * data (Any): Research findings and analysis with dot notation access
+                * final_analysis (str): Final analysis of the research (converted from camelCase)
+                * sources (List[Dict]): List of discovered sources
             * activities (List[Dict]): Research progress log
             * summaries (List[str]): Generated research summaries
 
@@ -2301,38 +2303,41 @@ class FirecrawlApp:
             analysis_prompt=analysis_prompt,
             system_prompt=system_prompt
         )
-        if not response.get('success') or 'id' not in response:
-            return response
+        
+        dot_dict_response = convert_to_dot_dict(response)
+        
+        if not dot_dict_response.get('success') or 'id' not in dot_dict_response:
+            return dot_dict_response
 
-        job_id = response['id']
+        job_id = dot_dict_response.id
         last_activity_count = 0
         last_source_count = 0
 
         while True:
             status = self.check_deep_research_status(job_id)
             
-            if on_activity and 'activities' in status:
-                new_activities = status['activities'][last_activity_count:]
+            if on_activity and hasattr(status, 'activities'):
+                new_activities = status.activities[last_activity_count:]
                 for activity in new_activities:
                     on_activity(activity)
-                last_activity_count = len(status['activities'])
+                last_activity_count = len(status.activities)
             
-            if on_source and 'sources' in status:
-                new_sources = status['sources'][last_source_count:]
+            if on_source and hasattr(status, 'sources'):
+                new_sources = status.sources[last_source_count:]
                 for source in new_sources:
                     on_source(source)
-                last_source_count = len(status['sources'])
+                last_source_count = len(status.sources)
             
-            if status['status'] == 'completed':
+            if status.status == 'completed':
                 return status
-            elif status['status'] == 'failed':
+            elif status.status == 'failed':
                 raise Exception(f'Deep research failed. Error: {status.get("error")}')
-            elif status['status'] != 'processing':
+            elif status.status != 'processing':
                 break
 
             time.sleep(2)  # Polling interval
 
-        return {'success': False, 'error': 'Deep research job terminated unexpectedly'}
+        return convert_to_dot_dict({'success': False, 'error': 'Deep research job terminated unexpectedly'})
 
     def async_deep_research(
             self,
@@ -2422,8 +2427,9 @@ class FirecrawlApp:
             
             Results:
             * id - Unique identifier for the research job
-            * data - Research findings and analysis
-            * sources - List of discovered sources
+            * data - Research findings and analysis with dot notation access
+                * final_analysis - Final analysis of the research (converted from camelCase)
+                * sources - List of discovered sources
             * activities - Research progress log
             * summaries - Generated research summaries
 
@@ -2435,7 +2441,13 @@ class FirecrawlApp:
             response = self._get_request(f'{self.api_url}/v1/deep-research/{id}', headers)
             if response.status_code == 200:
                 try:
-                    return response.json()
+                    json_response = response.json()
+                    
+                    snake_case_response = convert_dict_keys_to_snake_case(json_response)
+                    
+                    dot_dict_response = convert_to_dot_dict(snake_case_response)
+                    
+                    return dot_dict_response
                 except:
                     raise Exception('Failed to parse Firecrawl response as JSON.')
             elif response.status_code == 404:
