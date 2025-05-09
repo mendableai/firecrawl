@@ -109,7 +109,16 @@ const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 const runningJobs: Set<string> = new Set();
 
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
+  const logger = _logger.child({
+    module: "queue-worker",
+    method: "finishCrawlIfNeeded",
+    jobId: job.id,
+    scrapeId: job.id,
+    crawlId: job.data.crawl_id,
+  });
+
   if (await finishCrawlPre(job.data.crawl_id)) {
+    logger.info("Crawl is pre-finished, checking if we need to add more jobs");
     if (
       job.data.crawlerOptions &&
       !(await redisConnection.exists(
@@ -131,6 +140,10 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         ),
       );
 
+      logger.info("Visited URLs", {
+        visitedUrls: visitedUrls.size,
+      });
+
       const lastUrls: string[] = (
         (
           await supabase_service.rpc("diff_get_last_crawl_urls", {
@@ -141,6 +154,10 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
       ).map((x) => x.url);
 
       const lastUrlsSet = new Set(lastUrls);
+
+      logger.info("Last URLs", {
+        lastUrls: lastUrlsSet.size,
+      });
 
       const crawler = crawlToCrawler(
         job.data.crawl_id,
@@ -162,15 +179,12 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           : sc.crawlerOptions.limit -
             (await getDoneJobsOrderedLength(job.data.crawl_id));
 
-      console.log(
-        sc.originUrl!,
-        univistedUrls,
-        visitedUrls,
-        lastUrls,
-        addableJobCount,
-      );
-
       if (univistedUrls.length !== 0 && addableJobCount > 0) {
+        logger.info("Adding jobs", {
+          univistedUrls: univistedUrls.length,
+          addableJobCount,
+        });
+
         const jobs = univistedUrls.slice(0, addableJobCount).map((url) => {
           const uuid = uuidv4();
           return {
@@ -212,10 +226,15 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         );
         await addScrapeJobs(lockedJobs);
 
+        logger.info("Added jobs, not going for the full finish", {
+          lockedJobs: lockedJobs.length,
+        });
+
         return;
       }
     }
 
+    logger.info("Finishing crawl");
     await finishCrawl(job.data.crawl_id);
 
     (async () => {
@@ -267,6 +286,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         )
         .filter((x) => x !== null);
 
+      logger.info("Logging crawl NOW!");
       await logJob({
         job_id: job.data.crawl_id,
         success: jobStatus === "completed",
@@ -281,6 +301,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         crawlerOptions: sc.crawlerOptions,
         origin: job.data.origin,
       });
+      logger.info("Logged crawl!");
 
       const data = {
         success: jobStatus !== "failed",
