@@ -23,7 +23,7 @@ import websockets
 import aiohttp
 import asyncio
 from pydantic import Field
-from .utils import convert_dict_keys_to_snake_case, convert_to_dot_dict, DeepResearchResponse, DeepResearchData, DeepResearchDataSource
+from .utils import convert_dict_keys_to_snake_case, convert_to_dot_dict, DotDict, DeepResearchResponse, DeepResearchData, DeepResearchDataSource
 
 # Suppress Pydantic warnings about attribute shadowing
 warnings.filterwarnings("ignore", message="Field name \"json\" in \"FirecrawlDocument\" shadows an attribute in parent \"BaseModel\"")
@@ -2410,7 +2410,7 @@ class FirecrawlApp:
 
         return {'success': False, 'error': 'Internal server error'}
 
-    def check_deep_research_status(self, id: str) -> DeepResearchStatusResponse:
+    def check_deep_research_status(self, id: str) -> Union[DotDict[DeepResearchResponse], Dict[str, Any]]:
         """
         Check the status of a deep research operation.
 
