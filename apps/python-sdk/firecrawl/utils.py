@@ -2,7 +2,35 @@
 Utility functions for the Firecrawl SDK.
 """
 import re
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, TypeVar, Generic, Optional, TypedDict
+
+
+T = TypeVar('T')
+
+
+class DeepResearchDataSource(TypedDict, total=False):
+    """Type definition for a source in deep research data."""
+    url: str
+    title: str
+    content: str
+    summary: str
+
+
+class DeepResearchData(TypedDict, total=False):
+    """Type definition for deep research data."""
+    final_analysis: str
+    sources: List[DeepResearchDataSource]
+
+
+class DeepResearchResponse(TypedDict, total=False):
+    """Type definition for deep research response."""
+    success: bool
+    status: str
+    current_depth: int
+    max_depth: int
+    activities: List[Dict[str, Any]]
+    summaries: List[str]
+    data: DeepResearchData
 
 
 def camel_to_snake(name: str) -> str:
@@ -40,7 +68,7 @@ def convert_dict_keys_to_snake_case(data: Any) -> Any:
         return data
 
 
-class DotDict(dict):
+class DotDict(dict, Generic[T]):
     """
     A dictionary that supports dot notation access to its items.
     
@@ -59,25 +87,25 @@ class DotDict(dict):
             elif isinstance(value, list):
                 self[key] = [DotDict(item) if isinstance(item, dict) else item for item in value]
     
-    def __getattr__(self, key):
+    def __getattr__(self, key: str) -> Any:
         try:
             return self[key]
         except KeyError:
             raise AttributeError(f"'DotDict' object has no attribute '{key}'")
     
-    def __setattr__(self, key, value):
+    def __setattr__(self, key: str, value: Any) -> None:
         self[key] = value
 
 
-def convert_to_dot_dict(data: Union[Dict, List, Any]) -> Union[DotDict, List, Any]:
+def convert_to_dot_dict(data: Union[Dict[str, Any], List[Any], Any]) -> Union[DotDict[Any], List[Any], Any]:
     """
     Convert a dictionary or list of dictionaries to DotDict objects.
     
     Args:
-        data (Union[Dict, List, Any]): The data to convert.
+        data (Union[Dict[str, Any], List[Any], Any]): The data to convert.
         
     Returns:
-        Union[DotDict, List, Any]: The converted data with DotDict objects.
+        Union[DotDict[Any], List[Any], Any]: The converted data with DotDict objects.
     """
     if isinstance(data, dict):
         return DotDict(data)
