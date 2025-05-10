@@ -160,6 +160,7 @@ export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchem
     prompt?: string;
     schema?: LLMSchema;
     systemPrompt?: string;
+    agent?: AgentOptionsExtract;
   }
   changeTrackingOptions?: {
     prompt?: string;
@@ -1485,15 +1486,22 @@ export default class FirecrawlApp {
    * @param {AxiosResponse} response - The response from the API.
    * @param {string} action - The action being performed when the error occurred.
    */
-  handleError(response: AxiosResponse, action: string): void {
+  handleError(response: AxiosResponse | undefined, action: string): void {
+    if (!response) {
+      throw new FirecrawlError(
+        `Failed to ${action}. No response received.`,
+        500
+      );
+    }
+
     if ([400, 402, 403, 408, 409, 500].includes(response.status)) {
       const errorMessage: string =
-        response.data.error || "Unknown error occurred";
-      const details = response.data.details ? ` - ${JSON.stringify(response.data.details)}` : '';
+        response.data?.error || "Unknown error occurred";
+      const details = response.data?.details ? ` - ${JSON.stringify(response.data.details)}` : '';
       throw new FirecrawlError(
         `Failed to ${action}. Status code: ${response.status}. Error: ${errorMessage}${details}`,
         response.status,
-        response?.data?.details
+        response.data?.details
       );
     } else {
       throw new FirecrawlError(

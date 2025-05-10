@@ -99,6 +99,12 @@ export const extractOptionsWithAgent = z
       .optional(),
   })
   .strict(strictMessage)
+  .refine(
+    (data) => !(data.agent && data.agent.prompt),
+    {
+      message: "The 'prompt' field is not allowed inside 'jsonOptions.agent'. Use the top-level 'jsonOptions.prompt' instead.",
+    }
+  )
   .transform((data) => ({
     ...data,
     systemPrompt: isAgentExtractModelValid(data.agent?.model)
@@ -311,6 +317,23 @@ const fire1Refine = (obj) => {
 const fire1RefineOpts = {
   message: "You may only specify the FIRE-1 model in agent or jsonOptions.agent, but not both.",
 };
+
+const fire1JsonOptionsRefine = (obj) => {
+  const hasJsonFormat = obj.formats?.includes("json");
+  const hasTopLevelAgent = obj.agent !== undefined;
+
+  if (hasJsonFormat && hasTopLevelAgent) {
+    // If format is 'json' AND top-level agent is specified, it's invalid.
+    return false;
+  }
+  // Otherwise (either format is not json, or top-level agent is missing), it's valid according to this rule.
+  return true;
+}
+
+const fire1JsonOptionsRefineOpts = {
+  message: "When using the 'json' format, you cannot specify the top-level 'agent' option. Use 'jsonOptions.agent' instead if needed.",
+};
+
 const extractRefine = (obj) => {
   const hasExtractFormat = obj.formats?.includes("extract");
   const hasExtractOptions = obj.extract !== undefined;
@@ -403,6 +426,7 @@ export const scrapeOptions = baseScrapeOptions
   )
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
+  .refine(fire1JsonOptionsRefine, fire1JsonOptionsRefineOpts)
   .transform(extractTransform);
 
 export type BaseScrapeOptions = z.infer<typeof baseScrapeOptions>;
@@ -517,6 +541,7 @@ export const scrapeRequestSchema = baseScrapeOptions
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
   .refine(fire1Refine, fire1RefineOpts)
+  .refine(fire1JsonOptionsRefine, fire1JsonOptionsRefineOpts)
   .transform(extractTransform);
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
