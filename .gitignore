@@ -41,3 +41,4 @@ apps/js-sdk/firecrawl/dist
 llm-links.txt
 mapped-links.txt
 gke-key.json
+**/.claude/settings.local.json

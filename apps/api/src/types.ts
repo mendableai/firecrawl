@@ -12,7 +12,7 @@ import type { CostTracking } from "./lib/extract/extraction-service";
 
 type Mode = "crawl" | "single_urls" | "sitemap";
 
-export { Mode };
+export type { Mode };
 
 export interface CrawlResult {
   source: string;

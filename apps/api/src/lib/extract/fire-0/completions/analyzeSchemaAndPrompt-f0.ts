@@ -44,20 +44,122 @@ export async function analyzeSchemaAndPrompt_F0(
     );
 
   try {
-    const { extract: result, totalUsage } = await generateCompletions_F0({
-      logger,
-      options: {
-        mode: "llm",
-        schema: checkSchema,
-        prompt: buildAnalyzeSchemaUserPrompt(schemaString, prompt, urls),
-        systemPrompt: buildAnalyzeSchemaPrompt(),
-      },
-      markdown: "",
-      model,
+    // Debug log: Generate a cURL request for the schema analysis
+    const schemaAnalysisPrompt = buildAnalyzeSchemaUserPrompt(schemaString, prompt, urls);
+    const systemPrompt = buildAnalyzeSchemaPrompt();
+    
+    // Use console.log for better visibility in the logs
+    console.log('=================================================================');
+    console.log(`✨ SCHEMA ANALYSIS REQUEST - Model: ${model.modelId}`);
+    console.log('=================================================================');
+    console.log('Schema:', schemaString.substring(0, 300) + (schemaString.length > 300 ? '...' : ''));
+    console.log('Prompt:', prompt.substring(0, 300) + (prompt.length > 300 ? '...' : ''));
+    console.log('URLs:', urls);
+    console.log('System prompt:', systemPrompt.substring(0, 300) + (systemPrompt.length > 300 ? '...' : ''));
+    console.log('=================================================================');
+    
+    // Also log to standard logger
+    logger.info("Schema Analysis Request", { 
+      module: "extract", 
+      method: "analyzeSchemaAndPrompt",
+      modelId: model.modelId,
+      promptLength: prompt.length,
+      schemaLength: schemaString.length,
+      urlCount: urls.length
     });
+    
+    // First try with the provided model
+    let extract, totalUsage;
+    try {
+      const result = await generateCompletions_F0({
+        logger,
+        options: {
+          mode: "llm",
+          schema: checkSchema,
+          prompt: schemaAnalysisPrompt,
+          systemPrompt: systemPrompt,
+        },
+        markdown: "",
+        model,
+      });
+      
+      extract = result.extract;
+      totalUsage = result.totalUsage;
+    } catch (error) {
+      logger.error("Schema analysis failed with primary model", {
+        module: "extract",
+        method: "analyzeSchemaAndPrompt",
+        model: model.modelId,
+        error: error.message
+      });
+      
+      // If the primary model fails and it's a Meta model, try with GPT as a fallback
+      if (model.modelId.includes('llama') || model.modelId.includes('meta')) {
+        logger.info("Attempting schema analysis with fallback OpenAI model", {
+          module: "extract",
+          method: "analyzeSchemaAndPrompt",
+          originalModel: model.modelId,
+          fallbackModel: "gpt-4o"
+        });
+        
+        try {
+          const fallbackModel = getModel("gpt-4o");
+          const fallbackResult = await generateCompletions_F0({
+            logger,
+            options: {
+              mode: "llm",
+              schema: checkSchema,
+              prompt: schemaAnalysisPrompt,
+              systemPrompt: systemPrompt,
+            },
+            markdown: "",
+            model: fallbackModel,
+          });
+          
+          extract = fallbackResult.extract;
+          totalUsage = fallbackResult.totalUsage;
+          
+          logger.info("Fallback model succeeded for schema analysis", {
+            module: "extract",
+            method: "analyzeSchemaAndPrompt",
+            fallbackModel: "gpt-4o"
+          });
+        } catch (fallbackError) {
+          logger.error("Fallback model also failed for schema analysis", {
+            module: "extract",
+            method: "analyzeSchemaAndPrompt",
+            originalModel: model.modelId,
+            fallbackError: fallbackError.message
+          });
+          throw error; // Re-throw the original error if fallback also fails
+        }
+      } else {
+        throw error; // Re-throw if not using a Meta model
+      }
+    }
+
+    // Handle case where extract might be null or undefined
+    if (!extract) {
+      logger.warn("(analyzeSchemaAndPrompt) No result returned from AI", {
+        model: model.modelId,
+        prompt,
+      });
+      return {
+        isMultiEntity: false,
+        multiEntityKeys: [],
+        reasoning: "AI did not return a structured result",
+        keyIndicators: [],
+        tokenUsage: totalUsage || {
+          promptTokens: 0,
+          completionTokens: 0,
+          totalTokens: 0,
+          model: model.modelId,
+        },
+      };
+    }
 
     const { isMultiEntity, multiEntityKeys, reasoning, keyIndicators } =
-      checkSchema.parse(result);
+      checkSchema.parse(extract);
 
     return {
       isMultiEntity,

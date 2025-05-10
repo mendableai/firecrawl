@@ -1,6 +1,7 @@
 // TODO: refactor
 
-import { AnyNode, Cheerio, load } from "cheerio"; // rustified
+import { load } from "cheerio"; // rustified
+import type { CheerioAPI } from "cheerio";
 import { ScrapeOptions } from "../../../controllers/v1/types";
 import { transformHtml } from "../../../lib/html-transformer";
 import { logger } from "../../../lib/logger";
@@ -110,7 +111,7 @@ export const htmlTransform = async (
     scrapeOptions.excludeTags.filter((x) => x.trim().length !== 0).length > 0
   ) {
     scrapeOptions.excludeTags.forEach((tag) => {
-      let elementsToRemove: Cheerio<AnyNode>;
+      let elementsToRemove;
       if (tag.startsWith("*") && tag.endsWith("*")) {
         let classMatch = false;
 

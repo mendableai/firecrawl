@@ -31,13 +31,13 @@ interface RankingResult {
 }
 
 export async function rerankDocuments(
-  documents: (string | Record<string, string>)[],
+  documents: string[],
   query: string,
   topN = 3,
   model = "rerank-english-v3.0",
 ) {
   const rerank = await cohere.v2.rerank({
-    documents,
+    documents: documents as any,
     query,
     topN,
     model,
