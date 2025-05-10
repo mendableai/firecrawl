@@ -10,8 +10,6 @@ x-common-service: &common-service
     nofile:
       soft: 65535
       hard: 65535
-  networks:
-    - backend
   extra_hosts:
     - "host.docker.internal:host-gateway"
 
@@ -72,6 +70,19 @@ services:
     ports:
       - "${PORT:-3002}:${INTERNAL_PORT:-3002}"
     command: [ "pnpm", "run", "start:production" ]
+    networks:
+      - backend
+      - reverse-proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.firecrawl.rule=Host(`firecrawl.savorcare.com`)"
+      - "traefik.http.routers.firecrawl.entrypoints=websecure"
+      - "traefik.http.routers.firecrawl.tls.certresolver=myresolver"
+      - "traefik.http.routers.firecrawl.tls.domains[0].main=savorcare.com"
+      - "traefik.http.routers.firecrawl.tls.domains[0].sans=*.savorcare.com"
+      - "traefik.http.routers.firecrawlhttp.rule=Host(`firecrawl.savorcare.com`)"
+      - "traefik.http.routers.firecrawlhttp.entrypoints=web"
+      - "traefik.docker.network=reverse-proxy"
 
   worker:
     <<: *common-service
@@ -82,6 +93,8 @@ services:
       - redis
       - playwright-service
       - api
+    networks:
+      - backend
     command: [ "pnpm", "run", "workers" ]
 
   redis:
@@ -103,5 +116,8 @@ services:
 networks:
   backend:
     driver: bridge
+  reverse-proxy:
+    name: reverse-proxy
+    external: true
 volumes:
   redis:
