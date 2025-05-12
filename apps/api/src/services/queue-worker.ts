@@ -1355,11 +1355,20 @@ async function processJob(job: Job & { id: string }, token: string) {
 
     if (job.data.is_scrape !== true) {
       let creditsToBeBilled = 1; // Assuming 1 credit per document
-      if (job.data.scrapeOptions.extract) {
+      if ((job.data.scrapeOptions.extract && job.data.scrapeOptions.formats?.includes("extract")) || (job.data.scrapeOptions.formats?.includes("changeTracking") && job.data.scrapeOptions.changeTrackingOptions?.modes?.includes("json"))) {
         creditsToBeBilled = 5;
       }
-      if (job.data.scrapeOptions.agent?.model?.toLowerCase() === "fire-1") {
-        creditsToBeBilled = 150;
+
+      if (job.data.scrapeOptions.agent?.model?.toLowerCase() === "fire-1" || job.data.scrapeOptions.extract?.agent?.model?.toLowerCase() === "fire-1" || job.data.scrapeOptions.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
+        if (process.env.USE_DB_AUTHENTICATION === "true") {
+          creditsToBeBilled = Math.ceil((costTracking.toJSON().totalCost ?? 1) * 1800);
+        } else {
+          creditsToBeBilled = 150;
+        }
+      }
+
+      if (job.data.scrapeOptions.proxy === "stealth") {
+        creditsToBeBilled += 4;
       }
 
       if (
