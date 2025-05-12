@@ -161,7 +161,7 @@ class ScrapeOptions(pydantic.BaseModel):
 class WaitAction(pydantic.BaseModel):
     """Wait action to perform during scraping."""
     type: Literal["wait"]
-    milliseconds: int
+    milliseconds: Optional[int] = None
     selector: Optional[str] = None
 
 class ScreenshotAction(pydantic.BaseModel):
