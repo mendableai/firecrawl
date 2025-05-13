@@ -23,16 +23,16 @@ export const checkAndUpdateURL = (url: string) => {
 
   const { error, urlObj } = getURLobj(url);
   if (error) {
-    return { error: true, urlObj: null, url };
+    throw new Error("Invalid URL");
   }
 
   const typedUrlObj = urlObj as URL;
 
   if (typedUrlObj.protocol !== "http:" && typedUrlObj.protocol !== "https:") {
-    return { error: true, urlObj: null, url };
+    throw new Error("Invalid URL");
   }
 
-  return { error: false, urlObj: typedUrlObj, url: url };
+  return { urlObj: typedUrlObj, url: url };
 };
 
 export const checkUrl = (url: string) => {
