@@ -1142,7 +1142,7 @@ export const searchRequestSchema = z
       .positive()
       .finite()
       .safe()
-      .max(50)
+      .max(100)
       .optional()
       .default(5),
     tbs: z.string().optional(),
