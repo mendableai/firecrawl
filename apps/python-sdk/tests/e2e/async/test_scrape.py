@@ -40,11 +40,11 @@ async def test_scrape_url_async_all_params_with_extract_screenshot():
         WriteAction(type="write", text="test input"),
         PressAction(type="press", key="Enter"),
         ScrollAction(type="scroll", direction="down"),
-        ExecuteJavascriptAction(type="executeJavascript", script="function getTitle() { return document.title; }; getTitle();")
+        ExecuteJavascriptAction(type="execute_javascript", script="function get_title() { return document.title; }; get_title();")
     ]
     response = await app.scrape_url(
         url=TEST_URL,
-        formats=["markdown", "html", "rawHtml", "links", "screenshot", "extract", "changeTracking"],
+        formats=["markdown", "html", "raw_html", "links", "screenshot", "extract", "change_tracking"],
         include_tags=["h1", "p"],
         exclude_tags=["footer"],
         only_main_content=True,
@@ -64,12 +64,12 @@ async def test_scrape_url_async_all_params_with_extract_screenshot():
     assert response.success
     assert hasattr(response, "markdown")
     assert hasattr(response, "html")
-    assert hasattr(response, "rawHtml")
+    assert hasattr(response, "raw_html")
     assert hasattr(response, "links")
     assert hasattr(response, "screenshot")
     assert hasattr(response, "extract")
     assert hasattr(response, "metadata")
-    assert hasattr(response, "changeTracking")
+    assert hasattr(response, "change_tracking")
 
 @pytest.mark.asyncio
 async def test_scrape_url_async_all_params_with_extract_full_page_screenshot():
@@ -83,11 +83,11 @@ async def test_scrape_url_async_all_params_with_extract_full_page_screenshot():
         WriteAction(type="write", text="test input"),
         PressAction(type="press", key="Enter"),
         ScrollAction(type="scroll", direction="down"),
-        ExecuteJavascriptAction(type="executeJavascript", script="function getTitle() { return document.title; }; getTitle();")
+        ExecuteJavascriptAction(type="execute_javascript", script="function get_title() { return document.title; }; get_title();")
     ]
     response = await app.scrape_url(
         url=TEST_URL,
-        formats=["markdown", "html", "rawHtml", "links", "screenshot@fullPage", "extract", "changeTracking"],
+        formats=["markdown", "html", "raw_html", "links", "screenshot@full_page", "extract", "change_tracking"],
         include_tags=["h1", "p"],
         exclude_tags=["footer"],
         only_main_content=True,
@@ -107,12 +107,12 @@ async def test_scrape_url_async_all_params_with_extract_full_page_screenshot():
     assert response.success
     assert hasattr(response, "markdown")
     assert hasattr(response, "html")
-    assert hasattr(response, "rawHtml")
+    assert hasattr(response, "raw_html")
     assert hasattr(response, "links")
     assert hasattr(response, "screenshot")
     assert hasattr(response, "extract")
     assert hasattr(response, "metadata")
-    assert hasattr(response, "changeTracking")
+    assert hasattr(response, "change_tracking")
 
 @pytest.mark.asyncio
 async def test_scrape_url_async_all_params_with_json_options():
@@ -126,11 +126,11 @@ async def test_scrape_url_async_all_params_with_json_options():
         WriteAction(type="write", text="test input"),
         PressAction(type="press", key="Enter"),
         ScrollAction(type="scroll", direction="down"),
-        ExecuteJavascriptAction(type="executeJavascript", script="function getTitle() { return document.title; }; getTitle();")
+        ExecuteJavascriptAction(type="execute_javascript", script="function get_title() { return document.title; }; get_title();")
     ]
     response = await app.scrape_url(
         url=TEST_URL,
-        formats=["markdown", "html", "rawHtml", "links", "screenshot", "json", "changeTracking"],
+        formats=["markdown", "html", "raw_html", "links", "screenshot", "json", "change_tracking"],
         include_tags=["h1", "p"],
         exclude_tags=["footer"],
         only_main_content=True,
@@ -150,9 +150,9 @@ async def test_scrape_url_async_all_params_with_json_options():
     assert response.success
     assert hasattr(response, "markdown")
     assert hasattr(response, "html")
-    assert hasattr(response, "rawHtml")
+    assert hasattr(response, "raw_html")
     assert hasattr(response, "links")
     assert hasattr(response, "screenshot")
     assert hasattr(response, "json")
     assert hasattr(response, "metadata")
-    assert hasattr(response, "changeTracking") 
+    assert hasattr(response, "change_tracking") 

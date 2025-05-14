@@ -42,11 +42,11 @@ async def test_batch_scrape_urls_async_all_params_with_extract():
         WriteAction(type="write", text="test input"),
         PressAction(type="press", key="Enter"),
         ScrollAction(type="scroll", direction="down"),
-        ExecuteJavascriptAction(type="executeJavascript", script="function getTitle() { return document.title; }; getTitle();")
+        ExecuteJavascriptAction(type="execute_javascript", script="function get_title() { return document.title; }; get_title();")
     ]
     result = await app.batch_scrape_urls(
         TEST_URLS,
-        formats=["markdown", "html", "rawHtml", "links", "screenshot", "extract"],
+        formats=["markdown", "html", "raw_html", "links", "screenshot", "extract"],
         include_tags=["h1", "p"],
         exclude_tags=["footer"],
         only_main_content=True,
@@ -68,7 +68,7 @@ async def test_batch_scrape_urls_async_all_params_with_extract():
     for doc in result.data:
         assert hasattr(doc, "markdown")
         assert hasattr(doc, "html")
-        assert hasattr(doc, "rawHtml")
+        assert hasattr(doc, "raw_html")
         assert hasattr(doc, "links")
         assert hasattr(doc, "screenshot")
         assert hasattr(doc, "extract")
@@ -85,11 +85,11 @@ async def test_batch_scrape_urls_async_all_params_with_json_options():
         WriteAction(type="write", text="test input"),
         PressAction(type="press", key="Enter"),
         ScrollAction(type="scroll", direction="down"),
-        ExecuteJavascriptAction(type="executeJavascript", script="function getTitle() { return document.title; }; getTitle();")
+        ExecuteJavascriptAction(type="execute_javascript", script="function get_title() { return document.title; }; get_title();")
     ]
     result = await app.batch_scrape_urls(
         TEST_URLS,
-        formats=["markdown", "html", "rawHtml", "links", "screenshot", "json"],
+        formats=["markdown", "html", "raw_html", "links", "screenshot", "json"],
         include_tags=["h1", "p"],
         exclude_tags=["footer"],
         only_main_content=True,
@@ -110,7 +110,7 @@ async def test_batch_scrape_urls_async_all_params_with_json_options():
     for doc in result.data:
         assert hasattr(doc, "markdown")
         assert hasattr(doc, "html")
-        assert hasattr(doc, "rawHtml")
+        assert hasattr(doc, "raw_html")
         assert hasattr(doc, "links")
         assert hasattr(doc, "screenshot")
         assert hasattr(doc, "json")
