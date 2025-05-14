@@ -285,6 +285,16 @@ describe("Scrape tests", () => {
 
         expect(res.metadata.proxyUsed).toBe("basic");
       }, 130000);
+
+      it.concurrent("auto works properly on 'stealth' site (faked for reliabile testing)", async () => {
+        const res = await scrape({
+          url: "https://httpstat.us/403",
+          proxy: "auto",
+          timeout: 120000,
+        });
+
+        expect(res.metadata.proxyUsed).toBe("stealth");
+      }, 130000);
     });
     
     // Temporarily disabled, too flaky
