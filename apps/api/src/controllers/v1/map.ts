@@ -325,7 +325,7 @@ export async function mapController(
         abort: abort.signal,
         mock: req.body.useMock,
         filterByPath: req.body.filterByPath !== false,
-        flags: req.acuc.flags ?? null,
+        flags: req.acuc?.flags ?? null,
       }),
       ...(req.body.timeout !== undefined ? [
         new Promise((resolve, reject) => setTimeout(() => {
