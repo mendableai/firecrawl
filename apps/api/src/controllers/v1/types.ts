@@ -24,8 +24,18 @@ export type Format =
 export const url = z.preprocess(
   (x) => {
     if (!protocolIncluded(x as string)) {
-      return `http://${x}`;
+      x = `http://${x}`;
     }
+    
+    try {
+      const urlObj = new URL(x as string);
+      if (urlObj.search) {
+        const searchParams = new URLSearchParams(urlObj.search.substring(1));
+        return `${urlObj.origin}${urlObj.pathname}?${searchParams.toString()}`;
+      }
+    } catch (e) {
+    }
+    
     return x;
   },
   z
