@@ -145,6 +145,7 @@ async function scrapeSearchResult(
       metadata: {
         statusCode,
         error: error.message,
+        proxyUsed: "basic",
       },
     };
   }

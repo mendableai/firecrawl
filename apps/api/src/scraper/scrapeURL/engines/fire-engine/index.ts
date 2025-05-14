@@ -221,7 +221,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     timeout, // TODO: better timeout logic
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
     blockAds: meta.options.blockAds,
-    mobileProxy: meta.options.proxy === undefined ? undefined : meta.options.proxy === "stealth" ? true : false,
+    mobileProxy: meta.featureFlags.has("stealthProxy"),
     saveScrapeResultToGCS: meta.internalOptions.saveScrapeResultToGCS,
     // TODO: scrollXPaths
   };
@@ -302,7 +302,7 @@ export async function scrapeURLWithFireEnginePlaywright(
     wait: meta.options.waitFor,
     geolocation: meta.options.geolocation ?? meta.options.location,
     blockAds: meta.options.blockAds,
-    mobileProxy: meta.options.proxy === undefined ? undefined : meta.options.proxy === "stealth" ? true : false,
+    mobileProxy: meta.featureFlags.has("stealthProxy"),
 
     timeout,
   };
@@ -358,7 +358,7 @@ export async function scrapeURLWithFireEngineTLSClient(
     atsv: meta.internalOptions.atsv,
     geolocation: meta.options.geolocation ?? meta.options.location,
     disableJsDom: meta.internalOptions.v0DisableJsDom,
-    mobileProxy: meta.options.proxy === undefined ? undefined : meta.options.proxy === "stealth" ? true : false,
+    mobileProxy: meta.featureFlags.has("stealthProxy"),
 
     timeout,
   };

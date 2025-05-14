@@ -275,6 +275,16 @@ describe("Scrape tests", () => {
           timeout: 120000,
         });
       }, 130000);
+
+      it.concurrent("auto works properly on non-stealth site", async () => {
+        const res = await scrape({
+          url: "http://firecrawl.dev",
+          proxy: "auto",
+          timeout: 120000,
+        });
+
+        expect(res.metadata.proxyUsed).toBe("basic");
+      }, 130000);
     });
     
     // Temporarily disabled, too flaky

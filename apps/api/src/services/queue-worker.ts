@@ -1367,7 +1367,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         }
       }
 
-      if (job.data.scrapeOptions.proxy === "stealth") {
+      if (doc.metadata?.proxyUsed === "stealth") {
         creditsToBeBilled += 4;
       }
 
