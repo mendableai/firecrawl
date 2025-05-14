@@ -153,6 +153,9 @@ export async function scrapeController(
     } else {
       creditsToBeBilled = 150;
     }
+  } else if (doc.metadata.numPages !== undefined && doc.metadata.numPages > 1) {
+    const creditsPerPDFPage = 5;
+    creditsToBeBilled = creditsPerPDFPage * doc.metadata.numPages;
   }
 
   if (req.body.proxy === "stealth") {

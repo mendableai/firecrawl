@@ -12,7 +12,7 @@ import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { Response } from "undici";
 
-type PDFProcessorResult = { html: string; markdown?: string };
+type PDFProcessorResult = { html: string; markdown?: string; numPages: number };
 
 const MAX_FILE_SIZE = 19 * 1024 * 1024; // 19MB
 
@@ -45,6 +45,7 @@ async function scrapePDFWithRunPodMU(
     schema: z.object({
       output: z.object({
         markdown: z.string(),
+        num_pages: z.number(),
       }),
     }),
     mock: meta.mock,
@@ -53,6 +54,7 @@ async function scrapePDFWithRunPodMU(
   return {
     markdown: result.output.markdown,
     html: await marked.parse(result.output.markdown, { async: true }),
+    numPages: result.output.num_pages,
   };
 }
 
@@ -68,6 +70,7 @@ async function scrapePDFWithParsePDF(
   return {
     markdown: escaped,
     html: escaped,
+    numPages: result.numpages,
   };
 }
 
@@ -172,7 +175,8 @@ export async function scrapePDF(
   return {
     url: response.url ?? meta.url,
     statusCode: response.status,
-    html: result?.html ?? "",
-    markdown: result?.markdown ?? "",
+    html: result.html ?? "",
+    markdown: result.markdown ?? "",
+    numPages: result.numPages,
   };
 }
