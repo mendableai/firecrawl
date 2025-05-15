@@ -1,16 +1,33 @@
 import { Request, Response } from "express";
-import { RequestWithAuth } from "./types";
+import { extractOptions, RequestWithAuth } from "./types";
 import { getDeepResearchQueue } from "../../services/queue-service";
 import * as Sentry from "@sentry/node";
 import { saveDeepResearch } from "../../lib/deep-research/deep-research-redis";
 import { z } from "zod";
 
 export const deepResearchRequestSchema = z.object({
-  topic: z.string().describe('The topic or question to research'),
-  maxDepth: z.number().min(1).max(10).default(7).describe('Maximum depth of research iterations'),
+  query: z.string().describe('The query or topic to search for').optional(),
+  maxDepth: z.number().min(1).max(12).default(7).describe('Maximum depth of research iterations'),
+  maxUrls: z.number().min(1).max(1000).default(20).describe('Maximum number of URLs to analyze'),
   timeLimit: z.number().min(30).max(600).default(300).describe('Time limit in seconds'),
-  __experimental_streamSteps: z.boolean().optional(),
-});
+  analysisPrompt: z.string().describe('The prompt to use for the final analysis').optional(),
+  systemPrompt: z.string().describe('The system prompt to use for the research agent').optional(),
+  formats: z.array(z.enum(['markdown', 'json'])).default(['markdown']),
+  // @deprecated Use query instead
+  topic: z.string().describe('The topic or question to research').optional(),
+  jsonOptions: extractOptions.optional(),
+}).refine(data => data.query || data.topic, {
+  message: "Either query or topic must be provided"
+}).refine((obj) => {
+  const hasJsonFormat = obj.formats?.includes("json");
+  const hasJsonOptions = obj.jsonOptions !== undefined;
+  return (hasJsonFormat && hasJsonOptions) || (!hasJsonFormat && !hasJsonOptions);
+}, {
+  message: "When 'json' format is specified, jsonOptions must be provided, and vice versa"
+}).transform(data => ({
+  ...data,
+  query: data.topic || data.query // Use topic as query if provided
+}));
 
 export type DeepResearchRequest = z.infer<typeof deepResearchRequestSchema>;
 
@@ -35,7 +52,6 @@ export async function deepResearchController(
   const jobData = {
     request: req.body,
     teamId: req.auth.team_id,
-    plan: req.auth.plan,
     subId: req.acuc?.sub_id,
     researchId,
   };
@@ -43,7 +59,6 @@ export async function deepResearchController(
   await saveDeepResearch(researchId, {
     id: researchId,
     team_id: req.auth.team_id,
-    plan: req.auth.plan,
     createdAt: Date.now(),
     status: "processing",
     currentDepth: 0,

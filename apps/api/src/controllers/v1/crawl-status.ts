@@ -13,7 +13,7 @@ import {
   getDoneJobsOrderedLength,
   isCrawlKickoffFinished,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue, QueueFunction } from "../../services/queue-service";
+import { getScrapeQueue } from "../../services/queue-service";
 import {
   supabaseGetJobById,
   supabaseGetJobsById,
@@ -21,8 +21,9 @@ import {
 import { configDotenv } from "dotenv";
 import type { Job, JobState, Queue } from "bullmq";
 import { logger } from "../../lib/logger";
-import { supabase_service } from "../../services/supabase";
-import { getConcurrencyLimitedJobs } from "../../lib/concurrency-limit";
+import { supabase_rr_service, supabase_service } from "../../services/supabase";
+import { getConcurrencyLimitedJobs, getCrawlConcurrencyLimitedJobs } from "../../lib/concurrency-limit";
+import { getJobFromGCS } from "../../lib/gcs-jobs";
 configDotenv();
 
 export type PseudoJob<T> = {
@@ -39,14 +40,20 @@ export type PseudoJob<T> = {
 export type DBJob = { docs: any, success: boolean, page_options: any, date_added: any, message: string | null }
 
 export async function getJob(id: string): Promise<PseudoJob<any> | null> {
-  const [bullJob, dbJob] = await Promise.all([
+  const [bullJob, dbJob, gcsJob] = await Promise.all([
     getScrapeQueue().getJob(id),
     (process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobById(id) : null) as Promise<DBJob | null>,
+    (process.env.GCS_BUCKET_NAME ? getJobFromGCS(id) : null) as Promise<any | null>,
   ]);
 
   if (!bullJob && !dbJob) return null;
 
-  const data = dbJob?.docs ?? bullJob?.returnvalue;
+  const data = gcsJob ?? dbJob?.docs ?? bullJob?.returnvalue;
+  if (gcsJob === null && data) {
+    logger.warn("GCS Job not found", {
+      jobId: id,
+    });
+  }
 
   const job: PseudoJob<any> = {
     id,
@@ -65,13 +72,15 @@ export async function getJob(id: string): Promise<PseudoJob<any> | null> {
 }
 
 export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
-  const [bullJobs, dbJobs] = await Promise.all([
+  const [bullJobs, dbJobs, gcsJobs] = await Promise.all([
     Promise.all(ids.map((x) => getScrapeQueue().getJob(x))).then(x => x.filter(x => x)) as Promise<(Job<any, any, string> & { id: string })[]>,
     process.env.USE_DB_AUTHENTICATION === "true" ? supabaseGetJobsById(ids) : [],
+    process.env.GCS_BUCKET_NAME ? Promise.all(ids.map(async (x) => ({ id: x, job: await getJobFromGCS(x) }))).then(x => x.filter(x => x.job)) as Promise<({ id: string, job: any | null })[]> : [],
   ]);
 
   const bullJobMap = new Map<string, PseudoJob<any>>();
   const dbJobMap = new Map<string, DBJob>();
+  const gcsJobMap = new Map<string, any>();
 
   for (const job of bullJobs) {
     bullJobMap.set(job.id, job);
@@ -81,15 +90,25 @@ export async function getJobs(ids: string[]): Promise<PseudoJob<any>[]> {
     dbJobMap.set(job.job_id, job);
   }
 
+  for (const job of gcsJobs) {
+    gcsJobMap.set(job.id, job.job);
+  }
+
   const jobs: PseudoJob<any>[] = [];
 
   for (const id of ids) {
     const bullJob = bullJobMap.get(id);
     const dbJob = dbJobMap.get(id);
+    const gcsJob = gcsJobMap.get(id);
 
     if (!bullJob && !dbJob) continue;
 
-    const data = dbJob?.docs ?? bullJob?.returnvalue;
+    const data = gcsJob ?? dbJob?.docs ?? bullJob?.returnvalue;
+    if (gcsJob === null && data) {
+      logger.warn("GCS Job not found", {
+        jobId: id,
+      });
+    }
 
     const job: PseudoJob<any> = {
       id,
@@ -138,7 +157,9 @@ export async function crawlStatusController(
     ),
   );
 
-  const throttledJobsSet = await getConcurrencyLimitedJobs(req.auth.team_id);
+  const teamThrottledJobsSet = await getConcurrencyLimitedJobs(req.auth.team_id);
+  const crawlThrottledJobsSet = sc.crawlerOptions?.delay ? await getCrawlConcurrencyLimitedJobs(req.params.jobId) : new Set();
+  const throttledJobsSet = new Set([...teamThrottledJobsSet, ...crawlThrottledJobsSet]);
 
   const validJobStatuses: [string, JobState | "unknown"][] = [];
   const validJobIDs: string[] = [];
@@ -246,7 +267,7 @@ export async function crawlStatusController(
   let totalCount = jobIDs.length;
 
   if (totalCount === 0 && process.env.USE_DB_AUTHENTICATION === "true") {
-    const x = await supabase_service
+    const x = await supabase_rr_service
       .from('firecrawl_jobs')
       .select('*', { count: 'exact', head: true })
       .eq("crawl_id", req.params.jobId)
@@ -260,7 +281,11 @@ export async function crawlStatusController(
     status,
     completed: doneJobsLength,
     total: totalCount,
-    creditsUsed: totalCount,
+    creditsUsed: totalCount * (
+      sc.scrapeOptions?.extract
+        ? 5
+        : 1
+    ),
     expiresAt: (await getCrawlExpiry(req.params.jobId)).toISOString(),
     next:
       status !== "scraping" && start + data.length === doneJobsLength // if there's not gonna be any documents after this

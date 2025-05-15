@@ -86,9 +86,6 @@ USE_DB_AUTHENTICATION=false
 # Use if you've set up authentication and want to test with a real API key
 # TEST_API_KEY=
 
-# You can add this to enable ScrapingBee as a fallback scraping engine.
-# SCRAPING_BEE_API_KEY=
-
 # This key lets you access the queue admin panel. Change this if your deployment is publicly accessible.
 BULL_AUTH_KEY=CHANGEME
 

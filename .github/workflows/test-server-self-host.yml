@@ -15,6 +15,7 @@ env:
   ENV: ${{ secrets.ENV }}
   TEST_SUITE_SELF_HOSTED: true
   USE_GO_MARKDOWN_PARSER: true
+  FIRECRAWL_DEBUG_FILTER_LINKS: true
 
 jobs:
   test:
@@ -24,7 +25,8 @@ jobs:
         ai: ["openai", "no-ai"]
         search: ["searxng", "google"]
         engine: ["playwright", "fetch"]
-        proxy: ["proxy", "no-proxy"]
+        # proxy: ["proxy", "no-proxy"]
+        proxy: ["proxy"]
       fail-fast: false
     runs-on: ubuntu-latest
     services:

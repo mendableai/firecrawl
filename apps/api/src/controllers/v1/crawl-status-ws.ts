@@ -191,9 +191,9 @@ export async function crawlStatusWSController(
       });
     }
 
-    const { team_id, plan } = auth;
+    const { team_id } = auth;
 
-    req.auth = { team_id, plan };
+    req.auth = { team_id };
 
     await crawlStatusWS(ws, req);
   } catch (err) {

@@ -55,7 +55,7 @@ describe('FirecrawlApp<"v0"> E2E Tests', () => {
     "should return successful response with valid preview token",
     async () => {
       const app = new FirecrawlApp<"v0">({
-        apiKey: "this_is_just_a_preview_token",
+        apiKey: process.env.PREVIEW_TOKEN,
         apiUrl: API_URL,
         version: "v0",
       });

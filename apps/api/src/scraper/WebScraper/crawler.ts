@@ -23,13 +23,17 @@ export class WebCrawler {
   private limit: number;
   private robotsTxtUrl: string;
   public robots: Robot;
+  private robotsCrawlDelay: number | null = null;
   private generateImgAltText: boolean;
   private allowBackwardCrawling: boolean;
   private allowExternalContentLinks: boolean;
   private allowSubdomains: boolean;
   private ignoreRobotsTxt: boolean;
+  private regexOnFullURL: boolean;
   private logger: typeof _logger;
   private sitemapsHit: Set<string> = new Set();
+  private maxDiscoveryDepth: number | undefined;
+  private currentDiscoveryDepth: number;
 
   constructor({
     jobId,
@@ -45,6 +49,9 @@ export class WebCrawler {
     allowExternalContentLinks = false,
     allowSubdomains = false,
     ignoreRobotsTxt = false,
+    regexOnFullURL = false,
+    maxDiscoveryDepth,
+    currentDiscoveryDepth,
   }: {
     jobId: string;
     initialUrl: string;
@@ -59,6 +66,9 @@ export class WebCrawler {
     allowExternalContentLinks?: boolean;
     allowSubdomains?: boolean;
     ignoreRobotsTxt?: boolean;
+    regexOnFullURL?: boolean;
+    maxDiscoveryDepth?: number;
+    currentDiscoveryDepth?: number;
   }) {
     this.jobId = jobId;
     this.initialUrl = initialUrl;
@@ -76,7 +86,10 @@ export class WebCrawler {
     this.allowExternalContentLinks = allowExternalContentLinks ?? false;
     this.allowSubdomains = allowSubdomains ?? false;
     this.ignoreRobotsTxt = ignoreRobotsTxt ?? false;
+    this.regexOnFullURL = regexOnFullURL ?? false;
     this.logger = _logger.child({ crawlId: this.jobId, module: "WebCrawler" });
+    this.maxDiscoveryDepth = maxDiscoveryDepth;
+    this.currentDiscoveryDepth = currentDiscoveryDepth ?? 0;
   }
 
   public filterLinks(
@@ -85,6 +98,11 @@ export class WebCrawler {
     maxDepth: number,
     fromMap: boolean = false,
   ): string[] {
+    if (this.currentDiscoveryDepth === this.maxDiscoveryDepth) {
+      this.logger.debug("Max discovery depth hit, filtering off all links", { currentDiscoveryDepth: this.currentDiscoveryDepth, maxDiscoveryDepth: this.maxDiscoveryDepth });
+      return [];
+    }
+
     // If the initial URL is a sitemap.xml, skip filtering
     if (this.initialUrl.endsWith("sitemap.xml") && fromMap) {
       return sitemapLinks.slice(0, limit);
@@ -109,16 +127,24 @@ export class WebCrawler {
 
         // Check if the link exceeds the maximum depth allowed
         if (depth > maxDepth) {
+          if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+            this.logger.debug(`${link} DEPTH FAIL`);
+          }
           return false;
         }
+
+        const excincPath = this.regexOnFullURL ? link : path;
 
         // Check if the link should be excluded
         if (this.excludes.length > 0 && this.excludes[0] !== "") {
           if (
             this.excludes.some((excludePattern) =>
-              new RegExp(excludePattern).test(path),
+              new RegExp(excludePattern).test(excincPath),
             )
           ) {
+            if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+              this.logger.debug(`${link} EXCLUDE FAIL`);
+            }
             return false;
           }
         }
@@ -127,9 +153,12 @@ export class WebCrawler {
         if (this.includes.length > 0 && this.includes[0] !== "") {
           if (
             !this.includes.some((includePattern) =>
-              new RegExp(includePattern).test(path),
+              new RegExp(includePattern).test(excincPath),
             )
           ) {
+            if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+              this.logger.debug(`${link} INCLUDE FAIL`);
+            }
             return false;
           }
         }
@@ -140,6 +169,9 @@ export class WebCrawler {
         try {
           normalizedLink = new URL(link);
         } catch (_) {
+          if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+            this.logger.debug(`${link} URL PARSE FAIL`);
+          }
           return false;
         }
         const initialHostname = normalizedInitialUrl.hostname.replace(
@@ -158,26 +190,38 @@ export class WebCrawler {
           if (
             !normalizedLink.pathname.startsWith(normalizedInitialUrl.pathname)
           ) {
+            if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+              this.logger.debug(`${link} BACKWARDS FAIL ${normalizedLink.pathname} ${normalizedInitialUrl.pathname}`);
+            }
             return false;
           }
         }
 
         const isAllowed = this.ignoreRobotsTxt
           ? true
-          : (this.robots.isAllowed(link, "FireCrawlAgent") ?? true);
+          : ((this.robots.isAllowed(link, "FireCrawlAgent") || this.robots.isAllowed(link, "FirecrawlAgent")) ?? true);
         // Check if the link is disallowed by robots.txt
         if (!isAllowed) {
           this.logger.debug(`Link disallowed by robots.txt: ${link}`, {
             method: "filterLinks",
             link,
           });
+          if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+            this.logger.debug(`${link} ROBOTS FAIL`);
+          }
           return false;
         }
 
         if (this.isFile(link)) {
+          if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+            this.logger.debug(`${link} FILE FAIL`);
+          }
           return false;
         }
 
+        if (process.env.FIRECRAWL_DEBUG_FILTER_LINKS) {
+          this.logger.debug(`${link} OK`);
+        }
         return true;
       })
       .slice(0, limit);
@@ -200,6 +244,12 @@ export class WebCrawler {
 
   public importRobotsTxt(txt: string) {
     this.robots = robotsParser(this.robotsTxtUrl, txt);
+    const delay = this.robots.getCrawlDelay("FireCrawlAgent") || this.robots.getCrawlDelay("FirecrawlAgent");
+    this.robotsCrawlDelay = delay !== undefined ? delay : null;
+  }
+  
+  public getRobotsCrawlDelay(): number | null {
+    return this.robotsCrawlDelay;
   }
 
   public async tryGetSitemap(
@@ -225,10 +275,10 @@ export class WebCrawler {
 
     const _urlsHandler = async (urls: string[]) => {
       if (fromMap && onlySitemap) {
-        return urlsHandler(urls);
+        return await urlsHandler(urls);
       } else {
         let filteredLinks = this.filterLinks(
-          [...new Set(urls)],
+          [...new Set(urls)].filter(x => this.filterURL(x, this.initialUrl) !== null),
           leftOfLimit,
           this.maxCrawledDepth,
           fromMap,
@@ -252,7 +302,7 @@ export class WebCrawler {
           "NX",
         );
         if (uniqueURLs.length > 0) {
-          return urlsHandler(uniqueURLs);
+          return await urlsHandler(uniqueURLs);
         }
       }
     };
@@ -341,7 +391,6 @@ export class WebCrawler {
           await redisConnection.expire(
             "crawl:" + this.jobId + ":robots_blocked",
             24 * 60 * 60,
-            "NX",
           );
         })();
       }
@@ -413,7 +462,7 @@ export class WebCrawler {
         }
       }).filter(x => x !== null) as string[])];
     } catch (error) {
-      this.logger.error("Failed to call html-transformer! Falling back to cheerio...", {
+      this.logger.warn("Failed to call html-transformer! Falling back to cheerio...", {
         error,
         module: "scrapeURL", method: "extractMetadata"
       });
@@ -429,7 +478,7 @@ export class WebCrawler {
     return ignoreRobotsTxt
       ? true
       : this.robots
-        ? (this.robots.isAllowed(url, "FireCrawlAgent") ?? true)
+        ? ((this.robots.isAllowed(url, "FireCrawlAgent") || this.robots.isAllowed(url, "FirecrawlAgent")) ?? true)
         : true;
   }
 

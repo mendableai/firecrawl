@@ -5,8 +5,14 @@ import {
   DeepResearchSource,
   updateDeepResearch,
 } from "./deep-research-redis";
-import { generateCompletions, trimToTokenLimit } from "../../scraper/scrapeURL/transformers/llmExtract";
+import {
+  generateCompletions,
+  trimToTokenLimit,
+} from "../../scraper/scrapeURL/transformers/llmExtract";
+import { ExtractOptions } from "../../controllers/v1/types";
 
+import { getModel } from "../generic-ai";
+import { CostTracking } from "../extract/extraction-service";
 interface AnalysisResult {
   gaps: string[];
   nextSteps: string[];
@@ -25,11 +31,10 @@ export class ResearchStateManager {
   private completedSteps: number = 0;
   private readonly totalExpectedSteps: number;
   private seenUrls: Set<string> = new Set();
-
+  private sources: DeepResearchSource[] = [];
   constructor(
     private readonly researchId: string,
     private readonly teamId: string,
-    private readonly plan: string,
     private readonly maxDepth: number,
     private readonly logger: Logger,
     private readonly topic: string,
@@ -50,20 +55,20 @@ export class ResearchStateManager {
     return this.seenUrls;
   }
 
-  async addActivity(activity: DeepResearchActivity): Promise<void> {
-    if (activity.status === "complete") {
+  async addActivity(activities: DeepResearchActivity[]): Promise<void> {
+    if (activities.some((activity) => activity.status === "complete")) {
       this.completedSteps++;
     }
 
     await updateDeepResearch(this.researchId, {
-      activities: [activity],
+      activities: activities,
       completedSteps: this.completedSteps,
     });
   }
 
-  async addSource(source: DeepResearchSource): Promise<void> {
+  async addSources(sources: DeepResearchSource[]): Promise<void> {
     await updateDeepResearch(this.researchId, {
-      sources: [source],
+      sources: sources,
     });
   }
 
@@ -136,6 +141,10 @@ export class ResearchStateManager {
   getUrlToSearch(): string {
     return this.urlToSearch;
   }
+
+  getSources(): DeepResearchSource[] {
+    return this.sources;
+  }
 }
 
 export class ResearchLLMService {
@@ -144,6 +153,7 @@ export class ResearchLLMService {
   async generateSearchQueries(
     topic: string,
     findings: DeepResearchFinding[] = [],
+    costTracking: CostTracking,
   ): Promise<{ query: string; researchGoal: string }[]> {
     const { extract } = await generateCompletions({
       logger: this.logger.child({
@@ -185,7 +195,14 @@ export class ResearchLLMService {
           Every search query is a new SERP query so make sure the whole context is added without overwhelming the search engine.
           The first SERP query you generate should be a very concise, simple version of the topic. `,
       },
-      markdown: ""
+      markdown: "",
+      costTrackingOptions: {
+        costTracking,
+        metadata: {
+          module: "deep-research",
+          method: "generateSearchQueries",
+        },
+      },
     });
 
     return extract.queries;
@@ -195,6 +212,8 @@ export class ResearchLLMService {
     findings: DeepResearchFinding[],
     currentTopic: string,
     timeRemaining: number,
+    systemPrompt: string,
+    costTracking: CostTracking,
   ): Promise<AnalysisResult | null> {
     try {
       const timeRemainingMinutes =
@@ -207,6 +226,7 @@ export class ResearchLLMService {
         options: {
           mode: "llm",
           systemPrompt:
+            systemPrompt +
             "You are an expert research agent that is analyzing findings. Your goal is to synthesize information and identify gaps for further research. Today's date is " +
             new Date().toISOString().split("T")[0],
           schema: {
@@ -236,6 +256,13 @@ export class ResearchLLMService {
           ).text,
         },
         markdown: "",
+        costTrackingOptions: {
+          costTracking,
+          metadata: {
+            module: "deep-research",
+            method: "analyzeAndPlan",
+          },
+        },
       });
 
       return extract.analysis;
@@ -249,42 +276,69 @@ export class ResearchLLMService {
     topic: string,
     findings: DeepResearchFinding[],
     summaries: string[],
-  ): Promise<string> {
+    analysisPrompt: string,
+    costTracking: CostTracking,
+    formats?: string[],
+    jsonOptions?: ExtractOptions,
+  ): Promise<any> {
+    if (!formats) {
+      formats = ["markdown"];
+    }
+    if (!jsonOptions) {
+      jsonOptions = undefined;
+    }
+
     const { extract } = await generateCompletions({
       logger: this.logger.child({
         method: "generateFinalAnalysis",
       }),
+      mode: formats.includes("json") ? "object" : "no-object",
       options: {
         mode: "llm",
-        systemPrompt:
-          "You are an expert research analyst who creates comprehensive, well-structured reports. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations. Today's date is " +
-          new Date().toISOString().split("T")[0],
-        schema: {
-          type: "object",
-          properties: {
-            report: { type: "string" },
-          },
-        },
+        ...(formats.includes("json") && {
+          ...jsonOptions,
+        }),
+        systemPrompt: formats.includes("json")
+          ? "You are an expert research analyst who creates comprehensive, structured analysis following the provided JSON schema exactly."
+          : "You are an expert research analyst who creates comprehensive, well-structured reports.  Don't begin the report by saying 'Here is the report', nor 'Below is the report', nor something similar. ALWAYS start with a great title that reflects the research topic and findings. Your reports are detailed, properly formatted in Markdown, and include clear sections with citations. Today's date is " +
+            new Date().toISOString().split("T")[0],
         prompt: trimToTokenLimit(
-          `Create a comprehensive research report on "${topic}" based on the collected findings and analysis.
+          analysisPrompt
+            ? `${analysisPrompt}\n\nResearch data:\n${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}`
+            : formats.includes("json")
+              ? `Analyze the following research data on "${topic}" and structure the output according to the provided schema: Schema: ${JSON.stringify(jsonOptions?.schema)}\n\nFindings:\n\n${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}`
+              : `Create a comprehensive research report on "${topic}" based on the collected findings and analysis.
   
-            Research data:
-            ${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}
-  
-            Requirements:
-            - Format the report in Markdown with proper headers and sections
-            - Include specific citations to sources where appropriate
-            - Provide detailed analysis in each section
-            - Make it comprehensive and thorough (aim for 4+ pages worth of content)
-            - Include all relevant findings and insights from the research
-            - Cite sources
-            - Use bullet points and lists where appropriate for readability`,
+                Research data:
+                ${findings.map((f) => `[From ${f.source}]: ${f.text}`).join("\n")}
+    
+                Requirements:
+                - Format the report in Markdown with proper headers and sections
+                - Include specific citations to sources where appropriate
+                - Provide detailed analysis in each section
+                - Make it comprehensive and thorough (aim for 4+ pages worth of content)
+                - Include all relevant findings and insights from the research
+                - Cite sources
+                - Cite sources throughout the report
+                - Use bullet points and lists where appropriate for readability
+                - Don't begin the report by saying "Here is the report", nor "Below is the report", nor something similar.
+                - ALWAYS Start with a great title that reflects the research topic and findings - concise and to the point. That's the first thing you should output.
+                
+                Begin!`,
           100000,
         ).text,
       },
       markdown: "",
+      model: getModel("o3-mini"),
+      costTrackingOptions: {
+        costTracking,
+        metadata: {
+          module: "deep-research",
+          method: "generateFinalAnalysis",
+        },
+      },
     });
 
-    return extract.report;
+    return extract;
   }
 }

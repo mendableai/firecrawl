@@ -3,6 +3,7 @@ import { WebCrawler } from "./crawler";
 import { scrapeURL } from "../scrapeURL";
 import { scrapeOptions, TimeoutSignal } from "../../controllers/v1/types";
 import type { Logger } from "winston";
+import { CostTracking } from "../../lib/extract/extraction-service";
 const useFireEngine =
   process.env.FIRE_ENGINE_BETA_URL !== "" &&
   process.env.FIRE_ENGINE_BETA_URL !== undefined;
@@ -47,7 +48,9 @@ export async function getLinksFromSitemap(
           ],
           v0DisableJsDom: true,
           abort,
+          teamId: "sitemap",
         },
+        new CostTracking(),
       );
 
       if (

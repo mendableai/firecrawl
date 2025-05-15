@@ -1,15 +1,13 @@
 import { NotificationType } from "../../types";
 import { withAuth } from "../../lib/withAuth";
 import { sendNotification } from "../notification/email_notification";
-import { supabase_service } from "../supabase";
+import { supabase_rr_service, supabase_service } from "../supabase";
 import { logger } from "../../lib/logger";
 import * as Sentry from "@sentry/node";
 import { AuthCreditUsageChunk } from "../../controllers/v1/types";
-import { getACUC, setCachedACUC } from "../../controllers/auth";
-import { issueCredits } from "./issue_credits";
-import { redlock } from "../redlock";
 import { autoCharge } from "./auto_charge";
 import { getValue, setValue } from "../redis";
+import { queueBillingOperation } from "./batch_billing";
 import type { Logger } from "winston";
 
 // Deprecated, done via rpc
@@ -25,14 +23,16 @@ export async function billTeam(
   logger?: Logger,
   is_extract: boolean = false,
 ) {
-  return withAuth(supaBillTeam, { success: true, message: "No DB, bypassed." })(
-    team_id,
-    subscription_id,
-    credits,
-    logger,
-    is_extract,
-  );
+  // Maintain the withAuth wrapper for authentication
+  return withAuth(
+    async (team_id, subscription_id, credits, logger, is_extract) => {
+      // Within the authenticated context, queue the billing operation
+      return queueBillingOperation(team_id, subscription_id, credits, is_extract);
+    }, 
+    { success: true, message: "No DB, bypassed." }
+  )(team_id, subscription_id, credits, logger, is_extract);
 }
+
 export async function supaBillTeam(
   team_id: string,
   subscription_id: string | null | undefined,
@@ -40,6 +40,8 @@ export async function supaBillTeam(
   __logger?: Logger,
   is_extract: boolean = false,
 ) {
+  // This function should no longer be called directly
+  // It has been moved to batch_billing.ts
   const _logger = (__logger ?? logger).child({
     module: "credit_billing",
     method: "supaBillTeam",
@@ -48,39 +50,16 @@ export async function supaBillTeam(
     credits,
   });
 
-  if (team_id === "preview" || team_id.startsWith("preview_")) {
-    return { success: true, message: "Preview team, no credits used" };
-  }
-  _logger.info(`Billing team ${team_id} for ${credits} credits`);
-
-  const { data, error } = await supabase_service.rpc("bill_team_w_extract_3", {
-    _team_id: team_id,
-    sub_id: subscription_id ?? null,
-    fetch_subscription: subscription_id === undefined,
-    credits,
-    is_extract_param: is_extract,
+  _logger.warn("supaBillTeam was called directly. This function is deprecated and should only be called from batch_billing.ts");
+  queueBillingOperation(team_id, subscription_id, credits, is_extract).catch((err) => {
+    _logger.error("Error queuing billing operation", { err });
+    Sentry.captureException(err);
   });
-
-  if (error) {
-    Sentry.captureException(error);
-    _logger.error("Failed to bill team.", { error });
-    return;
-  }
-
-  (async () => {
-    for (const apiKey of (data ?? []).map((x) => x.api_key)) {
-      await setCachedACUC(apiKey, (acuc) =>
-        acuc
-          ? {
-              ...acuc,
-              credits_used: acuc.credits_used + credits,
-              adjusted_credits_used: acuc.adjusted_credits_used + credits,
-              remaining_credits: acuc.remaining_credits - credits,
-            }
-          : null,
-      );
-    }
-  })();
+  // Forward to the batch billing system
+  return {
+    success: true,
+    message: "Billing operation queued",
+  };
 }
 
 export type CheckTeamCreditsResponse = {
@@ -135,7 +114,7 @@ export async function supaCheckTeamCredits(
     isAutoRechargeEnabled = parsedData.auto_recharge;
     autoRechargeThreshold = parsedData.auto_recharge_threshold;
   } else {
-    const { data, error } = await supabase_service
+    const { data, error } = await supabase_rr_service
       .from("teams")
       .select("auto_recharge, auto_recharge_threshold")
       .eq("id", team_id)

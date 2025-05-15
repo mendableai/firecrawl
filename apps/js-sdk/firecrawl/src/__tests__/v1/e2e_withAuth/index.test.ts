@@ -40,7 +40,7 @@ describe('FirecrawlApp E2E Tests', () => {
   });
 
   test.concurrent('should return successful response with valid preview token', async () => {
-    const app = new FirecrawlApp({ apiKey: "this_is_just_a_preview_token", apiUrl: API_URL });
+    const app = new FirecrawlApp({ apiKey: process.env.PREVIEW_TOKEN, apiUrl: API_URL });
     const response = await app.scrapeUrl('https://roastmywebsite.ai');
     if (!response.success) {
       throw new Error(response.error);
@@ -365,7 +365,7 @@ describe('FirecrawlApp E2E Tests', () => {
   });
 
   test.concurrent('should return successful response with valid preview token', async () => {
-    const app = new FirecrawlApp({ apiKey: "this_is_just_a_preview_token", apiUrl: API_URL });
+    const app = new FirecrawlApp({ apiKey: process.env.PREVIEW_TOKEN, apiUrl: API_URL });
     const response = await app.mapUrl('https://roastmywebsite.ai') as MapResponse;
     expect(response).not.toBeNull();
     expect(response.links?.length).toBeGreaterThan(0);

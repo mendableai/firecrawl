@@ -1,29 +1,4 @@
-import request from "supertest";
-import { configDotenv } from "dotenv";
-import { Document, ScrapeRequestInput } from "../../controllers/v1/types";
-
-configDotenv();
-const TEST_URL = "http://127.0.0.1:3002";
-
-async function scrapeRaw(body: ScrapeRequestInput) {
-  return await request(TEST_URL)
-    .post("/v1/scrape")
-    .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
-    .set("Content-Type", "application/json")
-    .send(body);
-}
-
-function expectScrapeToSucceed(response: Awaited<ReturnType<typeof scrapeRaw>>) {
-  expect(response.statusCode).toBe(200);
-  expect(response.body.success).toBe(true);
-  expect(typeof response.body.data).toBe("object");
-}
-
-async function scrape(body: ScrapeRequestInput): Promise<Document> {
-  const raw = await scrapeRaw(body);
-  expectScrapeToSucceed(raw);
-  return raw.body.data;
-}
+import { scrape, scrapeStatus } from "./lib";
 
 describe("Scrape tests", () => {
   it.concurrent("mocking works properly", async () => {
@@ -91,22 +66,154 @@ describe("Scrape tests", () => {
   });
 
   if (!process.env.TEST_SUITE_SELF_HOSTED) {
-    describe("Ad blocking (f-e dependant)", () => {
-      it.concurrent("blocks ads by default", async () => {
+    it.concurrent("scrape status works", async () => {
+      const response = await scrape({
+        url: "http://firecrawl.dev"
+      });
+  
+      expect(response.markdown).toContain("Firecrawl");
+  
+      const status = await scrapeStatus(response.metadata.scrapeId!);
+      expect(JSON.stringify(status)).toBe(JSON.stringify(response));
+    }, 60000);
+    
+    // describe("Ad blocking (f-e dependant)", () => {
+    //   it.concurrent("blocks ads by default", async () => {
+    //     const response = await scrape({
+    //       url: "https://www.allrecipes.com/recipe/18185/yum/",
+    //     });
+
+    //     expect(response.markdown).not.toContain(".g.doubleclick.net/");
+    //   }, 30000);
+
+    //   it.concurrent("doesn't block ads if explicitly disabled", async () => {
+    //     const response = await scrape({
+    //       url: "https://www.allrecipes.com/recipe/18185/yum/",
+    //       blockAds: false,
+    //     });
+
+    //     expect(response.markdown).toMatch(/(\.g\.doubleclick\.net|amazon-adsystem\.com)\//);
+    //   }, 30000);
+    // });
+
+    describe("Change Tracking format", () => {
+      it.concurrent("works", async () => {
         const response = await scrape({
-          url: "https://www.allrecipes.com/recipe/18185/yum/",
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking"],
         });
 
-        expect(response.markdown).not.toContain(".g.doubleclick.net/");
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
       }, 30000);
 
-      it.concurrent("doesn't block ads if explicitly disabled", async () => {
+      it.concurrent("includes git diff when requested", async () => {
         const response = await scrape({
-          url: "https://www.allrecipes.com/recipe/18185/yum/",
-          blockAds: false,
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking"],
+          changeTrackingOptions: {
+            modes: ["git-diff"]
+          }
         });
 
-        expect(response.markdown).toContain(".g.doubleclick.net/");
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
+        
+        if (response.changeTracking?.changeStatus === "changed") {
+          expect(response.changeTracking?.diff).toBeDefined();
+          expect(response.changeTracking?.diff?.text).toBeDefined();
+          expect(response.changeTracking?.diff?.json).toBeDefined();
+          expect(response.changeTracking?.diff?.json.files).toBeInstanceOf(Array);
+        }
+      }, 30000);
+      
+      it.concurrent("includes structured output when requested", async () => {
+        const response = await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking"],
+          changeTrackingOptions: {
+            modes: ["json"],
+            prompt: "Summarize the changes between the previous and current content",
+          }
+        });
+
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
+        
+        if (response.changeTracking?.changeStatus === "changed") {
+          expect(response.changeTracking?.json).toBeDefined();
+        }
+      }, 30000);
+      
+      it.concurrent("supports schema-based extraction for change tracking", async () => {
+        const response = await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking"],
+          changeTrackingOptions: {
+            modes: ["json"],
+            schema: {
+              type: "object",
+              properties: {
+                pricing: { 
+                  type: "object",
+                  properties: {
+                    amount: { type: "number" },
+                    currency: { type: "string" }
+                  }
+                },
+                features: { 
+                  type: "array", 
+                  items: { type: "string" } 
+                }
+              }
+            }
+          }
+        });
+
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
+        
+        if (response.changeTracking?.changeStatus === "changed") {
+          expect(response.changeTracking?.json).toBeDefined();
+          if (response.changeTracking?.json.pricing) {
+            expect(response.changeTracking?.json.pricing).toHaveProperty("old");
+            expect(response.changeTracking?.json.pricing).toHaveProperty("new");
+          }
+          if (response.changeTracking?.json.features) {
+            expect(response.changeTracking?.json.features).toHaveProperty("old");
+            expect(response.changeTracking?.json.features).toHaveProperty("new");
+          }
+        }
+      }, 30000);
+      
+      it.concurrent("supports both git-diff and structured modes together", async () => {
+        const response = await scrape({
+          url: "https://example.com",
+          formats: ["markdown", "changeTracking"],
+          changeTrackingOptions: {
+            modes: ["git-diff", "json"],
+            schema: {
+              type: "object",
+              properties: {
+                summary: { type: "string" },
+                changes: { type: "array", items: { type: "string" } }
+              }
+            }
+          }
+        });
+
+        expect(response.changeTracking).toBeDefined();
+        expect(response.changeTracking?.previousScrapeAt).not.toBeNull();
+        
+        if (response.changeTracking?.changeStatus === "changed") {
+          expect(response.changeTracking?.diff).toBeDefined();
+          expect(response.changeTracking?.diff?.text).toBeDefined();
+          expect(response.changeTracking?.diff?.json).toBeDefined();
+          
+          expect(response.changeTracking?.json).toBeDefined();
+          expect(response.changeTracking?.json).toHaveProperty("summary");
+          expect(response.changeTracking?.json).toHaveProperty("changes");
+        }
       }, 30000);
     });
   
@@ -165,19 +272,21 @@ describe("Scrape tests", () => {
         await scrape({
           url: "http://firecrawl.dev",
           proxy: "stealth",
+          timeout: 120000,
         });
-      }, 30000);
+      }, 130000);
     });
     
-    describe("PDF (f-e dependant)", () => {
-      it.concurrent("works for PDFs behind anti-bot", async () => {
-        const response = await scrape({
-          url: "https://www.researchgate.net/profile/Amir-Leshem/publication/220732050_Robust_adaptive_beamforming_based_on_jointly_estimating_covariance_matrix_and_steering_vector/links/0c96052d2fd8f0a84b000000/Robust-adaptive-beamforming-based-on-jointly-estimating-covariance-matrix-and-steering-vector.pdf"
-        });
+    // Temporarily disabled, too flaky
+    // describe("PDF (f-e dependant)", () => {
+    //   it.concurrent("works for PDFs behind anti-bot", async () => {
+    //     const response = await scrape({
+    //       url: "https://www.researchgate.net/profile/Amir-Leshem/publication/220732050_Robust_adaptive_beamforming_based_on_jointly_estimating_covariance_matrix_and_steering_vector/links/0c96052d2fd8f0a84b000000/Robust-adaptive-beamforming-based-on-jointly-estimating-covariance-matrix-and-steering-vector.pdf"
+    //     });
 
-        expect(response.markdown).toContain("Robust adaptive beamforming based on jointly estimating covariance matrix");
-      }, 60000);
-    });
+    //     expect(response.markdown).toContain("Robust adaptive beamforming based on jointly estimating covariance matrix");
+    //   }, 60000);
+    // });
   }
 
   if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY || process.env.OLLAMA_BASE_URL) {

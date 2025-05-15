@@ -197,8 +197,22 @@ const EXCLUDE_NON_MAIN_TAGS: [&str; 41] = [
     "#cookie",
 ];
 
-const FORCE_INCLUDE_MAIN_TAGS: [&str; 1] = [
-    "#main"
+const FORCE_INCLUDE_MAIN_TAGS: [&str; 13] = [
+    "#main",
+
+    // swoogo event software as .widget in all of their content
+    ".swoogo-cols",
+    ".swoogo-text",
+    ".swoogo-table-div",
+    ".swoogo-space",
+    ".swoogo-alert",
+    ".swoogo-sponsors",
+    ".swoogo-title",
+    ".swoogo-tabs",
+    ".swoogo-logo",
+    ".swoogo-image",
+    ".swoogo-button",
+    ".swoogo-agenda",
 ];
 
 #[derive(Deserialize)]

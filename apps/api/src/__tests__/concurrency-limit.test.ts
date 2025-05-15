@@ -9,8 +9,6 @@ import {
   getConcurrencyQueueJobsCount,
   ConcurrencyLimitedJob,
 } from "../lib/concurrency-limit";
-import { CONCURRENCY_LIMIT, getConcurrencyLimitMax } from "../services/rate-limiter";
-import { PlanType } from "../types";
 
 // Mock Redis client
 jest.mock("../services/queue-service", () => ({
@@ -128,7 +126,7 @@ describe("Concurrency Limit", () => {
 
     describe("pushConcurrencyLimitedJob", () => {
       it("should add job to queue with priority", async () => {
-        await pushConcurrencyLimitedJob(mockTeamId, mockJob);
+        await pushConcurrencyLimitedJob(mockTeamId, mockJob, 30000);
 
         expect(redisConnection.zadd).toHaveBeenCalledWith(
           "concurrency-limit-queue:test-team-id",
@@ -141,7 +139,7 @@ describe("Concurrency Limit", () => {
         const jobWithoutPriority = { ...mockJob };
         delete jobWithoutPriority.priority;
 
-        await pushConcurrencyLimitedJob(mockTeamId, jobWithoutPriority);
+        await pushConcurrencyLimitedJob(mockTeamId, jobWithoutPriority, 30000);
 
         expect(redisConnection.zadd).toHaveBeenCalledWith(
           "concurrency-limit-queue:test-team-id",
@@ -174,34 +172,6 @@ describe("Concurrency Limit", () => {
     });
   });
 
-  describe("getConcurrencyLimitMax", () => {
-    it("should return correct limit for free plan", () => {
-      const result = getConcurrencyLimitMax("free");
-      expect(result).toBe(2);
-    });
-
-    it("should return correct limit for standard plan", () => {
-      const result = getConcurrencyLimitMax("standard");
-      expect(result).toBe(CONCURRENCY_LIMIT.standard);
-    });
-
-    it("should return correct limit for scale plan", () => {
-      const result = getConcurrencyLimitMax("scale");
-      expect(result).toBe(CONCURRENCY_LIMIT.scale);
-    });
-
-    it("should return default limit for unknown plan", () => {
-      const result = getConcurrencyLimitMax("unknown" as PlanType);
-      expect(result).toBe(10);
-    });
-
-    it("should handle special team IDs", () => {
-      process.env.DEV_B_TEAM_ID = "dev-b-team";
-      const result = getConcurrencyLimitMax("free", "dev-b-team");
-      expect(result).toBe(120);
-    });
-  });
-
   describe("Integration Scenarios", () => {
     it("should handle complete job lifecycle", async () => {
       const mockJob: ConcurrencyLimitedJob = {
@@ -211,7 +181,7 @@ describe("Concurrency Limit", () => {
       };
 
       // Push job to queue
-      await pushConcurrencyLimitedJob(mockTeamId, mockJob);
+      await pushConcurrencyLimitedJob(mockTeamId, mockJob, 30000);
       expect(redisConnection.zadd).toHaveBeenCalled();
 
       // Take job from queue

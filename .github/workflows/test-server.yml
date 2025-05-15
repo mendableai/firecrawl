@@ -17,10 +17,10 @@ env:
   OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
   PORT: ${{ secrets.PORT }}
   REDIS_URL: ${{ secrets.REDIS_URL }}
-  SCRAPING_BEE_API_KEY: ${{ secrets.SCRAPING_BEE_API_KEY }}
   SUPABASE_ANON_TOKEN: ${{ secrets.SUPABASE_ANON_TOKEN }}
   SUPABASE_SERVICE_TOKEN: ${{ secrets.SUPABASE_SERVICE_TOKEN }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_REPLICA_URL: ${{ secrets.SUPABASE_REPLICA_URL }}
   TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
   FIRE_ENGINE_BETA_URL: ${{ secrets.FIRE_ENGINE_BETA_URL }}
   USE_DB_AUTHENTICATION: true
@@ -28,6 +28,12 @@ env:
   ENV: ${{ secrets.ENV }}
   RUNPOD_MU_POD_ID: ${{ secrets.RUNPOD_MU_POD_ID }}
   RUNPOD_MU_API_KEY: ${{ secrets.RUNPOD_MU_API_KEY }}
+  GCS_CREDENTIALS: ${{ secrets.GCS_CREDENTIALS }}
+  GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
+  GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
+  GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+  ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
+  VERTEX_CREDENTIALS: ${{ secrets.VERTEX_CREDENTIALS }}
   USE_GO_MARKDOWN_PARSER: true
 
 jobs:
@@ -72,14 +78,30 @@ jobs:
           chmod +x html-to-markdown.so
         working-directory: ./apps/api/sharedLibs/go-html-to-md
       - name: Start the application
-        run: npm start &
+        run: npm start > api.log 2>&1 &
         working-directory: ./apps/api
         id: start_app
-      - name: Start workers
-        run: npm run workers &
+      - name: Start worker
+        run: npm run workers > worker.log 2>&1 &
         working-directory: ./apps/api
         id: start_workers
+      - name: Start index worker
+        run: npm run index-worker &
+        working-directory: ./apps/api
+        id: start_index_worker
+      - name: Wait for API
+        run: pnpx wait-on tcp:3002 -t 15s
       - name: Run snippet tests
         run: |
           npm run test:snips
         working-directory: ./apps/api
+      - name: Kill instances
+        if: always()
+        run: pkill -9 node
+      # - uses: actions/upload-artifact@v4
+      #   if: always()
+      #   with:
+      #     name: Logs
+      #     path: |
+      #       ./apps/api/api.log
+      #       ./apps/api/worker.log

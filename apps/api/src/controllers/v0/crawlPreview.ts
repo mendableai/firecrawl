@@ -24,14 +24,12 @@ export async function crawlPreviewController(req: Request, res: Response) {
 
     const incomingIP = (req.headers["x-forwarded-for"] ||
       req.socket.remoteAddress) as string;
-    const iptoken = incomingIP + "this_is_just_a_preview_token";
+    const iptoken = incomingIP + process.env.PREVIEW_TOKEN;
     const team_id = `preview_${iptoken}`;
 
     if (!auth.success) {
       return res.status(auth.status).json({ error: auth.error });
     }
-
-    const { plan } = auth;
 
     let url = req.body.url;
     if (!url) {
@@ -45,7 +43,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
         .json({ error: e.message ?? e });
     }
 
-    if (isUrlBlocked(url)) {
+    if (isUrlBlocked(url, auth.chunk?.flags ?? null)) {
       return res.status(403).json({
         error: BLOCKLISTED_URL_MESSAGE,
       });
@@ -99,6 +97,7 @@ export async function crawlPreviewController(req: Request, res: Response) {
       pageOptions,
       undefined,
       undefined,
+      team_id
     );
 
     const sc: StoredCrawl = {
@@ -107,14 +106,13 @@ export async function crawlPreviewController(req: Request, res: Response) {
       scrapeOptions,
       internalOptions,
       team_id,
-      plan,
       robots,
       createdAt: Date.now(),
     };
 
     await saveCrawl(id, sc);
 
-    const crawler = crawlToCrawler(id, sc);
+    const crawler = crawlToCrawler(id, sc, auth.chunk?.flags ?? null);
 
     await finishCrawlKickoff(id);
 
@@ -129,7 +127,6 @@ export async function crawlPreviewController(req: Request, res: Response) {
                 url,
                 mode: "single_urls",
                 team_id,
-                plan: plan!,
                 crawlerOptions,
                 scrapeOptions,
                 internalOptions,
@@ -152,7 +149,6 @@ export async function crawlPreviewController(req: Request, res: Response) {
           url,
           mode: "single_urls",
           team_id,
-          plan: plan!,
           crawlerOptions,
           scrapeOptions,
           internalOptions,

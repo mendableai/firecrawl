@@ -1,0 +1,3 @@
+firecrawl-py
+groq
+python-dotenv

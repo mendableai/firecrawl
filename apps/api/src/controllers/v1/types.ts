@@ -1,8 +1,6 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
-import { PlanType } from "../../types";
 import { countries } from "../../lib/validate-country";
 import {
   ExtractorOptions,
@@ -11,7 +9,6 @@ import {
   Document as V0Document,
 } from "../../lib/entities";
 import { InternalOptions } from "../../scraper/scrapeURL";
-import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 export type Format =
   | "markdown"
@@ -20,7 +17,9 @@ export type Format =
   | "links"
   | "screenshot"
   | "screenshot@fullPage"
-  | "extract";
+  | "extract"
+  | "json"
+  | "changeTracking";
 
 export const url = z.preprocess(
   (x) => {
@@ -48,11 +47,22 @@ export const url = z.preprocess(
         return false;
       }
     }, "Invalid URL")
-    .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
+    // .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
 );
 
 const strictMessage =
   "Unrecognized key in body -- please review the v1 API documentation for request body changes";
+
+export const agentExtractModelValue = 'fire-1'
+export const isAgentExtractModelValid = (x: string | undefined) => x?.toLowerCase() === agentExtractModelValue;
+
+export const agentOptionsExtract = z
+  .object({
+    model: z.string().default(agentExtractModelValue),
+  })
+  .strict(strictMessage);
+
+export type AgentOptions = z.infer<typeof agentOptionsExtract>;
 
 export const extractOptions = z
   .object({
@@ -61,13 +71,53 @@ export const extractOptions = z
     systemPrompt: z
       .string()
       .max(10000)
-      .default(
-        "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required.",
-      ),
+      .default(""),
     prompt: z.string().max(10000).optional(),
     temperature: z.number().optional(),
   })
-  .strict(strictMessage);
+  .strict(strictMessage)
+  .transform((data) => ({
+    ...data,
+    systemPrompt: "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required."
+  }));
+
+export const extractOptionsWithAgent = z
+  .object({
+    mode: z.enum(["llm"]).default("llm"),
+    schema: z.any().optional(),
+    systemPrompt: z
+      .string()
+      .max(10000)
+      .default(""),
+    prompt: z.string().max(10000).optional(),
+    temperature: z.number().optional(),
+    agent: z
+      .object({
+        model: z.string().default(agentExtractModelValue),
+        prompt: z.string().optional(),
+      })
+      .optional(),
+  })
+  .strict(strictMessage)
+  .transform((data) => ({
+    ...data,
+    systemPrompt: isAgentExtractModelValid(data.agent?.model)
+      ? `You are an expert web data extractor. Your task is to analyze the provided markdown content from a web page and generate a JSON object based *strictly* on the provided schema.
+
+Key Instructions:
+1.  **Schema Adherence:** Populate the JSON object according to the structure defined in the schema.
+2.  **Content Grounding:** Extract information *only* if it is explicitly present in the provided markdown. Do NOT infer or fabricate information.
+3.  **Missing Information:** If a piece of information required by the schema cannot be found in the markdown, use \`null\` for that field's value.
+4.  **SmartScrape Recommendation:**
+    *   Assess if the *full* required data seems unavailable in the current markdown likely because:
+        - Content requires user interaction to reveal (e.g., clicking buttons, hovering, scrolling)
+        - Content uses pagination (e.g., "Load More" buttons, numbered pagination, infinite scroll)
+        - Content is dynamically loaded after user actions
+    *   If the content requires user interaction or pagination to be fully accessible, set \`shouldUseSmartscrape\` to \`true\` in your response and provide a clear \`reasoning\` and \`prompt\` for the SmartScrape tool.
+    *   If the content is simply JavaScript rendered but doesn't require interaction, set \`shouldUseSmartscrape\` to \`false\`.
+5.  **Output Format:** Your final output MUST be a single, valid JSON object conforming precisely to the schema. Do not include any explanatory text outside the JSON structure.`
+      : "Based on the information on the page, extract all the information from the schema in JSON format. Try to extract all the fields even those that might not be marked as required."
+  }));
 
 export type ExtractOptions = z.infer<typeof extractOptions>;
 
@@ -114,6 +164,7 @@ export const actionsSchema = z
       z.object({
         type: z.literal("click"),
         selector: z.string(),
+        all: z.boolean().default(false),
       }),
       z.object({
         type: z.literal("screenshot"),
@@ -164,6 +215,7 @@ const baseScrapeOptions = z
         "screenshot@fullPage",
         "extract",
         "json",
+        "changeTracking",
       ])
       .array()
       .optional()
@@ -171,6 +223,10 @@ const baseScrapeOptions = z
       .refine(
         (x) => !(x.includes("screenshot") && x.includes("screenshot@fullPage")),
         "You may only specify either screenshot or screenshot@fullPage",
+      )
+      .refine(
+        (x) => !x.includes("changeTracking") || x.includes("markdown"),
+        "The changeTracking format requires the markdown format to be specified as well",
       ),
     headers: z.record(z.string(), z.string()).optional(),
     includeTags: z.string().array().optional(),
@@ -189,6 +245,13 @@ const baseScrapeOptions = z
     extract: extractOptions.optional(),
     // New
     jsonOptions: extractOptions.optional(),
+    changeTrackingOptions: z
+      .object({
+        prompt: z.string().optional(),
+        schema: z.any().optional(),
+        modes: z.enum(["json", "git-diff"]).array().optional().default([]),
+      })
+      .optional(),
     mobile: z.boolean().default(false),
     parsePDF: z.boolean().default(true),
     actions: actionsSchema.optional(),
@@ -239,17 +302,24 @@ const baseScrapeOptions = z
   })
   .strict(strictMessage);
 
+const fire1Refine = (obj) => {
+  if (obj.agent?.model?.toLowerCase() === "fire-1" && obj.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
+    return false;
+  }
+  return true;
+}
+const fire1RefineOpts = {
+  message: "You may only specify the FIRE-1 model in agent or jsonOptions.agent, but not both.",
+};
 const extractRefine = (obj) => {
   const hasExtractFormat = obj.formats?.includes("extract");
   const hasExtractOptions = obj.extract !== undefined;
   const hasJsonFormat = obj.formats?.includes("json");
   const hasJsonOptions = obj.jsonOptions !== undefined;
   return (
-    (hasExtractFormat && hasExtractOptions)
-    || (!hasExtractFormat && !hasExtractOptions)
-  ) && (
-    (hasJsonFormat && hasJsonOptions)
-    || (!hasJsonFormat && !hasJsonOptions)
+    ((hasExtractFormat && hasExtractOptions) ||
+      (!hasExtractFormat && !hasExtractOptions)) &&
+    ((hasJsonFormat && hasJsonOptions) || (!hasJsonFormat && !hasJsonOptions))
   );
 };
 const extractRefineOpts = {
@@ -263,9 +333,25 @@ const extractTransform = (obj) => {
       obj.extract ||
       obj.formats?.includes("json") ||
       obj.jsonOptions) &&
-    (obj.timeout === 30000)
+    obj.timeout === 30000
   ) {
     obj = { ...obj, timeout: 60000 };
+  }
+
+  if (obj.formats?.includes("changeTracking") && (obj.waitFor === undefined || obj.waitFor < 5000)) {
+    obj = { ...obj, waitFor: 5000 };
+  }
+
+  if (obj.formats?.includes("changeTracking") && obj.timeout === 30000) {
+    obj = { ...obj, timeout: 60000 };
+  }
+
+  if (obj.agent) {
+    obj = { ...obj, timeout: 300000 };
+  }
+
+  if (obj.proxy === "stealth" && obj.timeout === 30000) {
+    obj = { ...obj, timeout: 120000 };
   }
 
   if (obj.formats?.includes("json")) {
@@ -280,6 +366,7 @@ const extractTransform = (obj) => {
         prompt: obj.jsonOptions.prompt,
         systemPrompt: obj.jsonOptions.systemPrompt,
         schema: obj.jsonOptions.schema,
+        agent: obj.jsonOptions.agent,
         mode: "llm",
       },
     };
@@ -289,6 +376,19 @@ const extractTransform = (obj) => {
 };
 
 export const scrapeOptions = baseScrapeOptions
+  .extend({
+    agent: z
+      .object({
+        model: z.string().default(agentExtractModelValue),
+        prompt: z.string().optional(),
+        sessionId: z.string().optional(),
+        waitBeforeClosingMs: z.number().optional(),
+      })
+      .optional(),
+    extract: extractOptionsWithAgent.optional(),
+    jsonOptions: extractOptionsWithAgent.optional(),
+  })
+  .strict(strictMessage)
   .refine(
     (obj) => {
       if (!obj.actions) return true;
@@ -302,11 +402,24 @@ export const scrapeOptions = baseScrapeOptions
     },
   )
   .refine(extractRefine, extractRefineOpts)
+  .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
-export type ScrapeOptions = z.infer<typeof baseScrapeOptions>;
+export type BaseScrapeOptions = z.infer<typeof baseScrapeOptions>;
+
+export type ScrapeOptions = BaseScrapeOptions & {
+  extract?: z.infer<typeof extractOptionsWithAgent>,
+  jsonOptions?: z.infer<typeof extractOptionsWithAgent>,
+  agent?: {
+    model: string,
+    prompt: string,
+    sessionId?: string,
+    waitBeforeClosingMs?: number,
+  },
+};
 
 import Ajv from "ajv";
+import type { CostTracking } from "../../lib/extract/extraction-service";
 
 const ajv = new Ajv();
 
@@ -314,7 +427,8 @@ export const extractV1Options = z
   .object({
     urls: url
       .array()
-      .max(10, "Maximum of 10 URLs allowed per request while in beta."),
+      .max(10, "Maximum of 10 URLs allowed per request while in beta.")
+      .optional(),
     prompt: z.string().max(10000).optional(),
     systemPrompt: z.string().max(10000).optional(),
     schema: z
@@ -339,7 +453,7 @@ export const extractV1Options = z
     includeSubdomains: z.boolean().default(true),
     allowExternalLinks: z.boolean().default(false),
     enableWebSearch: z.boolean().default(false),
-    scrapeOptions: scrapeOptions.default({ onlyMainContent: false }).optional(),
+    scrapeOptions: baseScrapeOptions.default({ onlyMainContent: false }).optional(),
     origin: z.string().optional().default("api"),
     urlTrace: z.boolean().default(false),
     timeout: z.number().int().positive().finite().safe().default(60000),
@@ -352,8 +466,13 @@ export const extractV1Options = z
       .enum(["direct", "save", "load"])
       .default("direct")
       .optional(),
+    agent: agentOptionsExtract.optional(),
+    __experimental_showCostTracking: z.boolean().default(false),
   })
   .strict(strictMessage)
+  .refine((obj) => obj.urls || obj.prompt, {
+    message: "Either 'urls' or 'prompt' must be provided.",
+  })
   .transform((obj) => ({
     ...obj,
     allowExternalLinks: obj.allowExternalLinks || obj.enableWebSearch,
@@ -361,6 +480,10 @@ export const extractV1Options = z
   .refine(
     (x) => (x.scrapeOptions ? extractRefine(x.scrapeOptions) : true),
     extractRefineOpts,
+  )
+  .refine(
+    (x) => (x.scrapeOptions ? fire1Refine(x.scrapeOptions) : true),
+    fire1RefineOpts,
   )
   .transform((x) => ({
     ...x,
@@ -378,11 +501,22 @@ export const scrapeRequestSchema = baseScrapeOptions
   .omit({ timeout: true })
   .extend({
     url,
+    agent: z
+      .object({
+        model: z.string().default(agentExtractModelValue),
+        prompt: z.string().optional(),
+        sessionId: z.string().optional(),
+        waitBeforeClosingMs: z.number().optional(),
+      })
+      .optional(),
+    extract: extractOptionsWithAgent.optional(),
+    jsonOptions: extractOptionsWithAgent.optional(),
     origin: z.string().optional().default("api"),
     timeout: z.number().int().positive().finite().safe().default(30000),
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
+  .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
 export type ScrapeRequest = z.infer<typeof scrapeRequestSchema>;
@@ -418,6 +552,7 @@ export const batchScrapeRequestSchema = baseScrapeOptions
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
+  .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
 export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
@@ -430,6 +565,7 @@ export const batchScrapeRequestSchemaNoURLValidation = baseScrapeOptions
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
+  .refine(fire1Refine, fire1RefineOpts)
   .transform(extractTransform);
 
 export type BatchScrapeRequest = z.infer<typeof batchScrapeRequestSchema>;
@@ -440,6 +576,7 @@ const crawlerOptions = z
     includePaths: z.string().array().default([]),
     excludePaths: z.string().array().default([]),
     maxDepth: z.number().default(10), // default?
+    maxDiscoveryDepth: z.number().optional(),
     limit: z.number().default(10000), // default?
     allowBackwardLinks: z.boolean().default(false), // >> TODO: CHANGE THIS NAME???
     allowExternalLinks: z.boolean().default(false),
@@ -448,6 +585,8 @@ const crawlerOptions = z
     ignoreSitemap: z.boolean().default(false),
     deduplicateSimilarURLs: z.boolean().default(true),
     ignoreQueryParameters: z.boolean().default(false),
+    regexOnFullURL: z.boolean().default(false),
+    delay: z.number().positive().optional(),
   })
   .strict(strictMessage);
 
@@ -467,12 +606,13 @@ export const crawlRequestSchema = crawlerOptions
   .extend({
     url,
     origin: z.string().optional().default("api"),
-    scrapeOptions: scrapeOptions.default({}),
+    scrapeOptions: baseScrapeOptions.default({}),
     webhook: webhookSchema.optional(),
     limit: z.number().default(10000),
   })
   .strict(strictMessage)
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
+  .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
   .transform((x) => ({
     ...x,
     scrapeOptions: extractTransform(x.scrapeOptions),
@@ -501,9 +641,10 @@ export const mapRequestSchema = crawlerOptions
     search: z.string().optional(),
     ignoreSitemap: z.boolean().default(false),
     sitemapOnly: z.boolean().default(false),
-    limit: z.number().min(1).max(5000).default(5000),
+    limit: z.number().min(1).max(30000).default(5000),
     timeout: z.number().positive().finite().optional(),
     useMock: z.string().optional(),
+    filterByPath: z.boolean().default(true),
   })
   .strict(strictMessage);
 
@@ -530,7 +671,37 @@ export type Document = {
   actions?: {
     screenshots?: string[];
     scrapes?: ScrapeActionContent[];
+    javascriptReturns?: {
+      type: string;
+      value: unknown;
+    }[];
   };
+  changeTracking?: {
+    previousScrapeAt: string | null;
+    changeStatus: "new" | "same" | "changed" | "removed";
+    visibility: "visible" | "hidden";
+    diff?: {
+      text: string;
+      json: {
+        files: Array<{
+          from: string | null;
+          to: string | null;
+          chunks: Array<{
+            content: string;
+            changes: Array<{
+              type: string;
+              normal?: boolean;
+              ln?: number;
+              ln1?: number;
+              ln2?: number;
+              content: string;
+            }>;
+          }>;
+        }>;
+      };
+    };
+    json?: any;
+  }
   metadata: {
     title?: string;
     description?: string;
@@ -547,6 +718,7 @@ export type Document = {
     ogLocaleAlternate?: string[];
     ogSiteName?: string;
     ogVideo?: string;
+    favicon?: string;
     dcTermsCreated?: string;
     dcDateCreated?: string;
     dcDate?: string;
@@ -566,7 +738,7 @@ export type Document = {
     statusCode: number;
     scrapeId?: string;
     error?: string;
-    [key: string]: string | string[] | number | undefined;
+    // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };
   serpResults?: {
     title: string;
@@ -703,7 +875,6 @@ export type CrawlErrorsResponse =
 
 type AuthObject = {
   team_id: string;
-  plan: PlanType | undefined;
 };
 
 type Account = {
@@ -716,17 +887,43 @@ export type AuthCreditUsageChunk = {
   sub_id: string | null;
   sub_current_period_start: string | null;
   sub_current_period_end: string | null;
+  sub_user_id: string | null;
   price_id: string | null;
   price_credits: number; // credit limit with assoicated price, or free_credits (500) if free plan
   credits_used: number;
   coupon_credits: number; // do not rely on this number to be up to date after calling a billTeam
-  coupons: any[];
   adjusted_credits_used: number; // credits this period minus coupons used
   remaining_credits: number;
-  sub_user_id: string | null;
   total_credits_sum: number;
+  plan_priority: {
+    bucketLimit: number;
+    planModifier: number;
+  };
+  rate_limits: {
+    crawl: number;
+    scrape: number;
+    search: number;
+    map: number;
+    extract: number;
+    preview: number;
+    crawlStatus: number;
+    extractStatus: number;
+    extractAgentPreview?: number;
+    scrapeAgentPreview?: number;
+  };
+  concurrency: number;
+  flags: TeamFlags;
+
+  // appended on JS-side
   is_extract?: boolean;
 };
+
+export type TeamFlags = {
+  ignoreRobots?: boolean;
+  unblockedDomains?: string[];
+} | null;
+
+export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;
 
 export interface RequestWithMaybeACUC<
   ReqParams = {},
@@ -791,10 +988,14 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     ignoreSitemap: x.ignoreSitemap,
     deduplicateSimilarURLs: x.deduplicateSimilarURLs,
     ignoreQueryParameters: x.ignoreQueryParameters,
+    regexOnFullURL: x.regexOnFullURL,
+    maxDiscoveryDepth: x.maxDiscoveryDepth,
+    currentDiscoveryDepth: 0,
+    delay: x.delay,
   };
 }
 
-export function fromLegacyCrawlerOptions(x: any): {
+export function fromLegacyCrawlerOptions(x: any, teamId: string): {
   crawlOptions: CrawlerOptions;
   internalOptions: InternalOptions;
 } {
@@ -811,9 +1012,13 @@ export function fromLegacyCrawlerOptions(x: any): {
       ignoreSitemap: x.ignoreSitemap,
       deduplicateSimilarURLs: x.deduplicateSimilarURLs,
       ignoreQueryParameters: x.ignoreQueryParameters,
+      regexOnFullURL: x.regexOnFullURL,
+      maxDiscoveryDepth: x.maxDiscoveryDepth,
+      delay: x.delay,
     }),
     internalOptions: {
       v0CrawlOnlyUrls: x.returnOnlyUrls,
+      teamId,
     },
   };
 }
@@ -827,6 +1032,7 @@ export function fromLegacyScrapeOptions(
   pageOptions: PageOptions,
   extractorOptions: ExtractorOptions | undefined,
   timeout: number | undefined,
+  teamId: string,
 ): { scrapeOptions: ScrapeOptions; internalOptions: InternalOptions } {
   return {
     scrapeOptions: scrapeOptions.parse({
@@ -876,6 +1082,7 @@ export function fromLegacyScrapeOptions(
     internalOptions: {
       atsv: pageOptions.atsv,
       v0DisableJsDom: pageOptions.disableJsDom,
+      teamId,
     },
     // TODO: fallback, fetchPageContent, replaceAllPathsWithAbsolutePaths, includeLinks
   };
@@ -886,13 +1093,15 @@ export function fromLegacyCombo(
   extractorOptions: ExtractorOptions | undefined,
   timeout: number | undefined,
   crawlerOptions: any,
+  teamId: string,
 ): { scrapeOptions: ScrapeOptions; internalOptions: InternalOptions } {
   const { scrapeOptions, internalOptions: i1 } = fromLegacyScrapeOptions(
     pageOptions,
     extractorOptions,
     timeout,
+    teamId,
   );
-  const { internalOptions: i2 } = fromLegacyCrawlerOptions(crawlerOptions);
+  const { internalOptions: i2 } = fromLegacyCrawlerOptions(crawlerOptions, teamId);
   return { scrapeOptions, internalOptions: Object.assign(i1, i2) };
 }
 
@@ -933,7 +1142,7 @@ export const searchRequestSchema = z
       .positive()
       .finite()
       .safe()
-      .max(20)
+      .max(100)
       .optional()
       .default(5),
     tbs: z.string().optional(),
@@ -965,6 +1174,7 @@ export const searchRequestSchema = z
     "Unrecognized key in body -- please review the v1 API documentation for request body changes",
   )
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
+  .refine((x) => fire1Refine(x.scrapeOptions), fire1RefineOpts)
   .transform((x) => ({
     ...x,
     scrapeOptions: extractTransform(x.scrapeOptions),
@@ -994,7 +1204,7 @@ export const generateLLMsTextRequestSchema = z.object({
   maxUrls: z
     .number()
     .min(1)
-    .max(100)
+    .max(5000)
     .default(10)
     .describe("Maximum number of URLs to process"),
   showFullText: z
@@ -1010,6 +1220,6 @@ export type GenerateLLMsTextRequest = z.infer<
 
 export class TimeoutSignal extends Error {
   constructor() {
-    super("Operation timed out")
+    super("Operation timed out");
   }
 }

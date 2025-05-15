@@ -10,6 +10,7 @@ import {
   getIndexQueue,
   getGenerateLlmsTxtQueue,
   getDeepResearchQueue,
+  getBillingQueue,
 } from "./services/queue-service";
 import { v0Router } from "./routes/v0";
 import os from "os";
@@ -24,6 +25,7 @@ import { ErrorResponse, ResponseWithSentry } from "./controllers/v1/types";
 import { ZodError } from "zod";
 import { v4 as uuidv4 } from "uuid";
 import { RateLimiterMode } from "./types";
+import { attachWsProxy } from "./services/agentLivecastWS";
 
 const { createBullBoard } = require("@bull-board/api");
 const { BullAdapter } = require("@bull-board/api/bullAdapter");
@@ -38,7 +40,9 @@ const cacheable = new CacheableLookup();
 cacheable.install(http.globalAgent);
 cacheable.install(https.globalAgent);
 
-const ws = expressWs(express());
+// Initialize Express with WebSocket support
+const expressApp = express();
+const ws = expressWs(expressApp);
 const app = ws.app;
 
 global.isProduction = process.env.IS_PRODUCTION === "true";
@@ -58,6 +62,7 @@ const { addQueue, removeQueue, setQueues, replaceQueues } = createBullBoard({
     new BullAdapter(getIndexQueue()),
     new BullAdapter(getGenerateLlmsTxtQueue()),
     new BullAdapter(getDeepResearchQueue()),
+    new BullAdapter(getBillingQueue()),
   ],
   serverAdapter: serverAdapter,
 });
@@ -85,11 +90,11 @@ const DEFAULT_PORT = process.env.PORT ?? 3002;
 const HOST = process.env.HOST ?? "localhost";
 
 function startServer(port = DEFAULT_PORT) {
+  // Attach WebSocket proxy to the Express app
+  attachWsProxy(app);
+  
   const server = app.listen(Number(port), HOST, () => {
     logger.info(`Worker ${process.pid} listening on port ${port}`);
-    logger.info(
-      `For the Queue UI, open: http://${HOST}:${port}/admin/${process.env.BULL_AUTH_KEY}/queues`,
-    );
   });
 
   const exitHandler = () => {

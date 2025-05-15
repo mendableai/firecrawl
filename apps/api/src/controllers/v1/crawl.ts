@@ -25,7 +25,6 @@ export async function crawlController(
     module: "api/v1",
     method: "crawlController",
     teamId: req.auth.team_id,
-    plan: req.auth.plan,
   });
   logger.debug("Crawl " + id + " starting", {
     request: req.body,
@@ -81,16 +80,23 @@ export async function crawlController(
     originUrl: req.body.url,
     crawlerOptions: toLegacyCrawlerOptions(crawlerOptions),
     scrapeOptions,
-    internalOptions: { disableSmartWaitCache: true }, // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
+    internalOptions: {
+      disableSmartWaitCache: true,
+      teamId: req.auth.team_id,
+      saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+    }, // NOTE: smart wait disabled for crawls to ensure contentful scrape, speed does not matter
     team_id: req.auth.team_id,
     createdAt: Date.now(),
-    plan: req.auth.plan,
   };
 
-  const crawler = crawlToCrawler(id, sc);
+  const crawler = crawlToCrawler(id, sc, req.acuc?.flags ?? null);
 
   try {
     sc.robots = await crawler.getRobotsTxt(scrapeOptions.skipTlsVerification);
+    const robotsCrawlDelay = crawler.getRobotsCrawlDelay();
+    if (robotsCrawlDelay !== null && !sc.crawlerOptions.delay) {
+      sc.crawlerOptions.delay = robotsCrawlDelay;
+    }
   } catch (e) {
     logger.debug("Failed to get robots.txt (this is probably fine!)", {
       error: e,
@@ -104,11 +110,10 @@ export async function crawlController(
       url: req.body.url,
       mode: "kickoff" as const,
       team_id: req.auth.team_id,
-      plan: req.auth.plan,
       crawlerOptions,
       scrapeOptions: sc.scrapeOptions,
       internalOptions: sc.internalOptions,
-      origin: "api",
+      origin: req.body.origin,
       crawl_id: id,
       webhook: req.body.webhook,
       v1: true,

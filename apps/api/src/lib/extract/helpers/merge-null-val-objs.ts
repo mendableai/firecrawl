@@ -145,6 +145,11 @@ export function mergeNullValObjs(objArray: { [key: string]: any[] }): {
         `Expected an array at objArray[${key}], but found:`,
         objArray[key],
       );
+
+      // create an array if it doesn't exist
+      if (objArray[key] === undefined) {
+        objArray[key] = [];
+      }
       return objArray;
     }
   }

@@ -4,7 +4,7 @@ import {
   checkTeamCredits,
 } from "../../services/billing/credit_billing";
 import { authenticateUser } from "../auth";
-import { PlanType, RateLimiterMode } from "../../types";
+import { RateLimiterMode } from "../../types";
 import { logJob } from "../../services/logging/log_job";
 import { PageOptions, SearchOptions } from "../../lib/entities";
 import { search } from "../../search";
@@ -20,8 +20,10 @@ import {
   Document,
   fromLegacyCombo,
   fromLegacyScrapeOptions,
+  TeamFlags,
   toLegacyDocument,
 } from "../v1/types";
+import { getJobFromGCS } from "../../lib/gcs-jobs";
 
 export async function searchHelper(
   jobId: string,
@@ -31,7 +33,7 @@ export async function searchHelper(
   crawlerOptions: any,
   pageOptions: PageOptions,
   searchOptions: SearchOptions,
-  plan: PlanType | undefined,
+  flags: TeamFlags,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -72,6 +74,7 @@ export async function searchHelper(
     undefined,
     60000,
     crawlerOptions,
+    team_id,
   );
 
   if (justSearch) {
@@ -84,7 +87,7 @@ export async function searchHelper(
     return { success: true, data: res, returnCode: 200 };
   }
 
-  res = res.filter((r) => !isUrlBlocked(r.url));
+  res = res.filter((r) => !isUrlBlocked(r.url, flags));
   if (res.length > num_results) {
     res = res.slice(0, num_results);
   }
@@ -93,7 +96,7 @@ export async function searchHelper(
     return { success: true, error: "No search results found", returnCode: 200 };
   }
 
-  const jobPriority = await getJobPriority({ plan, team_id, basePriority: 20 });
+  const jobPriority = await getJobPriority({ team_id, basePriority: 20 });
 
   // filter out social media links
 
@@ -123,7 +126,7 @@ export async function searchHelper(
 
   const docs = (
     await Promise.all(
-      jobDatas.map((x) => waitForJob<Document>(x.opts.jobId, 60000)),
+      jobDatas.map((x) => waitForJob(x.opts.jobId, 60000)),
     )
   ).map((x) => toLegacyDocument(x, internalOptions));
 
@@ -162,7 +165,7 @@ export async function searchController(req: Request, res: Response) {
     if (!auth.success) {
       return res.status(auth.status).json({ error: auth.error });
     }
-    const { team_id, plan, chunk } = auth;
+    const { team_id, chunk } = auth;
 
     redisConnection.sadd("teams_using_v0", team_id)
       .catch(error => logger.error("Failed to add team to teams_using_v0", { error, team_id }));
@@ -201,7 +204,7 @@ export async function searchController(req: Request, res: Response) {
       crawlerOptions,
       pageOptions,
       searchOptions,
-      plan,
+      chunk?.flags ?? null,
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;

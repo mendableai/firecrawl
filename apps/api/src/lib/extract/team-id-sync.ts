@@ -1,9 +1,11 @@
-import { supabase_service } from "../../services/supabase";
+import { supabase_rr_service, supabase_service } from "../../services/supabase";
 import { logger } from "../logger";
 
-export async function getTeamIdSyncB(teamId: string) {
+import { withAuth } from "../withAuth";
+
+async function getTeamIdSyncBOriginal(teamId: string) {
   try {
-    const { data, error } = await supabase_service
+    const { data, error } = await supabase_rr_service
       .from("eb-sync")
       .select("team_id")
       .eq("team_id", teamId)
@@ -17,3 +19,5 @@ export async function getTeamIdSyncB(teamId: string) {
     return null;
   }
 }
+
+export const getTeamIdSyncB = withAuth(getTeamIdSyncBOriginal, null);

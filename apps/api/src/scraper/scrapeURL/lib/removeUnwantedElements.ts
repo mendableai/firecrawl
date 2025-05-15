@@ -49,7 +49,21 @@ const excludeNonMainTags = [
   "#cookie",
 ];
 
-const forceIncludeMainTags = ["#main"];
+const forceIncludeMainTags = [
+  "#main",
+  ".swoogo-cols",
+  ".swoogo-text",
+  ".swoogo-table-div",
+  ".swoogo-space",
+  ".swoogo-alert",
+  ".swoogo-sponsors",
+  ".swoogo-title",
+  ".swoogo-tabs",
+  ".swoogo-logo",
+  ".swoogo-image",
+  ".swoogo-button",
+  ".swoogo-agenda"
+];
 
 export const htmlTransform = async (
   html: string,
@@ -65,7 +79,7 @@ export const htmlTransform = async (
       only_main_content: scrapeOptions.onlyMainContent,
     })
   } catch (error) {
-    logger.error("Failed to call html-transformer! Falling back to cheerio...", {
+    logger.warn("Failed to call html-transformer! Falling back to cheerio...", {
         error,
         module: "scrapeURL", method: "extractLinks"
       });

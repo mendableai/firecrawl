@@ -22,6 +22,9 @@ import { getJobPriority } from "../../lib/job-priority";
 import { addScrapeJobs } from "../../services/queue-jobs";
 import { callWebhook } from "../../services/webhook";
 import { logger as _logger } from "../../lib/logger";
+import { CostTracking } from "../../lib/extract/extraction-service";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";  
 
 export async function batchScrapeController(
   req: RequestWithAuth<{}, BatchScrapeResponse, BatchScrapeRequest>,
@@ -40,7 +43,6 @@ export async function batchScrapeController(
     module: "api/v1",
     method: "batchScrapeController",
     teamId: req.auth.team_id,
-    plan: req.auth.plan,
   });
 
   let urls = req.body.urls;
@@ -54,9 +56,22 @@ export async function batchScrapeController(
     for (const u of pendingURLs) {
       try {
         const nu = urlSchema.parse(u);
-        urls.push(nu);
+        if (!isUrlBlocked(nu, req.acuc?.flags ?? null)) {
+          urls.push(nu);
+        } else {
+          invalidURLs.push(u);
+        }
       } catch (_) {
         invalidURLs.push(u);
+      }
+    }
+  } else {
+    if (req.body.urls?.some((url: string) => isUrlBlocked(url, req.acuc?.flags ?? null))) {
+      if (!res.headersSent) {
+        return res.status(403).json({
+          success: false,
+          error: BLOCKLISTED_URL_MESSAGE,
+        });
       }
     }
   }
@@ -82,10 +97,13 @@ export async function batchScrapeController(
     : {
         crawlerOptions: null,
         scrapeOptions: req.body,
-        internalOptions: { disableSmartWaitCache: true }, // NOTE: smart wait disabled for batch scrapes to ensure contentful scrape, speed does not matter
+        internalOptions: {
+          disableSmartWaitCache: true,
+          teamId: req.auth.team_id,
+          saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+        }, // NOTE: smart wait disabled for batch scrapes to ensure contentful scrape, speed does not matter
         team_id: req.auth.team_id,
         createdAt: Date.now(),
-        plan: req.auth.plan,
       };
 
   if (!req.body.appendToId) {
@@ -99,7 +117,6 @@ export async function batchScrapeController(
   if (urls.length > 1000) {
     // set base to 21
     jobPriority = await getJobPriority({
-      plan: req.auth.plan,
       team_id: req.auth.team_id,
       basePriority: 21,
     });
@@ -116,7 +133,6 @@ export async function batchScrapeController(
         url: x,
         mode: "single_urls" as const,
         team_id: req.auth.team_id,
-        plan: req.auth.plan!,
         crawlerOptions: null,
         scrapeOptions,
         origin: "api",
@@ -124,6 +140,9 @@ export async function batchScrapeController(
         sitemapped: true,
         v1: true,
         webhook: req.body.webhook,
+        internalOptions: {
+          saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+        },
       },
       opts: {
         jobId: uuidv4(),
