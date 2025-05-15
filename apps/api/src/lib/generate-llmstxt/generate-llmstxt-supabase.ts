@@ -24,7 +24,7 @@ export async function getLlmsTextFromCache(
       .from("llm_texts")
       .select("*")
       .eq("origin_url", originUrl)
-      .eq("max_urls", maxUrls) // Use exact match instead of gte to ensure cache hits only for exact URL count
+      .gte("max_urls", maxUrls) // Changed to gte since we want cached results with more URLs than requested
       .order("updated_at", { ascending: false })
       .limit(1)
       .single();
@@ -41,7 +41,7 @@ export async function getLlmsTextFromCache(
       return null;
     }
 
-    return data;
+    return data.slice(0, maxUrls);
   } catch (error) {
     logger.error("Failed to fetch LLMs text from cache", { error, originUrl });
     return null;
