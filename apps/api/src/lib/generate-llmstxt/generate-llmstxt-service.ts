@@ -19,7 +19,7 @@ interface GenerateLLMsTextServiceOptions {
   url: string;
   maxUrls: number;
   showFullText: boolean;
-  bypassCache?: boolean;
+  cache?: boolean;
   subId?: string;
 }
 
@@ -64,7 +64,7 @@ function limitLlmsTxtEntries(llmstxt: string, maxEntries: number): string {
 export async function performGenerateLlmsTxt(
   options: GenerateLLMsTextServiceOptions,
 ) {
-  const { generationId, teamId, url, maxUrls = 100, showFullText, bypassCache = false, subId } =
+  const { generationId, teamId, url, maxUrls = 100, showFullText, cache = true, subId } =
     options;
   const startTime = Date.now();
   const logger = _logger.child({
@@ -80,8 +80,8 @@ export async function performGenerateLlmsTxt(
     // Enforce max URL limit
     const effectiveMaxUrls = Math.min(maxUrls, 5000);
 
-    // Check cache first, unless bypass is requested
-    const cachedResult = !bypassCache ? await getLlmsTextFromCache(url, effectiveMaxUrls) : null;
+    // Check cache first, unless cache is set to false
+    const cachedResult = cache ? await getLlmsTextFromCache(url, effectiveMaxUrls) : null;
     if (cachedResult) {
       logger.info("Found cached LLMs text", { url });
 

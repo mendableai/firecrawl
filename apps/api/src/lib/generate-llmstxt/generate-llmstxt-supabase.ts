@@ -33,11 +33,11 @@ export async function getLlmsTextFromCache(
       return null;
     }
 
-    // Check if data is older than 24 hours
-    const oneDayAgo = new Date();
-    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
+    // Check if data is older than 1 week
+    const oneWeekAgo = new Date();
+    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
     
-    if (!data || new Date(data.updated_at) < oneDayAgo) {
+    if (!data || new Date(data.updated_at) < oneWeekAgo) {
       return null;
     }
 
