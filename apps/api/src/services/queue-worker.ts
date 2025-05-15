@@ -1366,7 +1366,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           creditsToBeBilled = 150;
         }
       } else if (doc.metadata.numPages !== undefined && doc.metadata.numPages > 1) {
-        const creditsPerPDFPage = 5;
+        const creditsPerPDFPage = 1;
         creditsToBeBilled = creditsPerPDFPage * doc.metadata.numPages;
       }
 
