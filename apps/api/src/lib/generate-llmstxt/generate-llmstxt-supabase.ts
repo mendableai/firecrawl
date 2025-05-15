@@ -1,6 +1,6 @@
 import { supabase_service } from "../../services/supabase";
 import { logger } from "../logger";
-import { normalizeUrlOnlyHostname } from "../canonical-url";
+import { normalizeUrl } from "../canonical-url";
 
 interface LlmsTextCache {
   origin_url: string;
@@ -17,14 +17,14 @@ export async function getLlmsTextFromCache(
     return null;
   }
 
-  const originUrl = normalizeUrlOnlyHostname(url);
+  const originUrl = normalizeUrl(url);
 
   try {
     const { data, error } = await supabase_service
       .from("llm_texts")
       .select("*")
       .eq("origin_url", originUrl)
-      .gte("max_urls", maxUrls) // Changed to gte since we want cached results with more URLs than requested
+      .eq("max_urls", maxUrls) // Use exact match instead of gte to ensure cache hits only for exact URL count
       .order("updated_at", { ascending: false })
       .limit(1)
       .single();
@@ -33,11 +33,11 @@ export async function getLlmsTextFromCache(
       return null;
     }
 
-    // Check if data is older than 1 week
-    const oneWeekAgo = new Date();
-    oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+    // Check if data is older than 24 hours
+    const oneDayAgo = new Date();
+    oneDayAgo.setDate(oneDayAgo.getDate() - 1);
     
-    if (!data || new Date(data.updated_at) < oneWeekAgo) {
+    if (!data || new Date(data.updated_at) < oneDayAgo) {
       return null;
     }
 
@@ -58,7 +58,7 @@ export async function saveLlmsTextToCache(
     return;
   }
 
-  const originUrl = normalizeUrlOnlyHostname(url);
+  const originUrl = normalizeUrl(url);
 
   try {
     // First check if there's an existing entry

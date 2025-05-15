@@ -42,6 +42,7 @@ export async function generateLLMsTextController(
     url: req.body.url,
     maxUrls: req.body.maxUrls,
     showFullText: req.body.showFullText,
+    bypassCache: req.body.bypassCache,
     generatedText: "",
     fullText: "",
   });
