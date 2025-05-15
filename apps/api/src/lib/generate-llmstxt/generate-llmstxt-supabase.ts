@@ -1,6 +1,6 @@
 import { supabase_service } from "../../services/supabase";
 import { logger } from "../logger";
-import { normalizeUrl } from "../canonical-url";
+import { normalizeUrl, normalizeUrlOnlyHostname } from "../canonical-url";
 
 interface LlmsTextCache {
   origin_url: string;
@@ -17,7 +17,7 @@ export async function getLlmsTextFromCache(
     return null;
   }
 
-  const originUrl = normalizeUrl(url);
+  const originUrl = normalizeUrlOnlyHostname(url);
 
   try {
     const { data, error } = await supabase_service
@@ -58,7 +58,7 @@ export async function saveLlmsTextToCache(
     return;
   }
 
-  const originUrl = normalizeUrl(url);
+  const originUrl = normalizeUrlOnlyHostname(url);
 
   try {
     // First check if there's an existing entry
