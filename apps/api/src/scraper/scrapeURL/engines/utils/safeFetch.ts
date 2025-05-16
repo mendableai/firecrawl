@@ -2,6 +2,7 @@ import type { Socket } from "net";
 import type { TLSSocket } from "tls";
 import * as undici from "undici";
 import { Address6 } from "ip-address";
+import { cacheableLookup } from "../../lib/cacheableLookup";
 
 export class InsecureConnectionError extends Error {
   constructor() {
@@ -46,7 +47,7 @@ export function makeSecureDispatcher(
   const agentOpts: undici.Agent.Options = {
     connect: {
       rejectUnauthorized: false, // bypass SSL failures -- this is fine
-      // lookup: secureLookup,
+      lookup: cacheableLookup.lookup,
     },
     maxRedirections: 5000,
     ...options,
