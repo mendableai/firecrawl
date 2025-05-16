@@ -11,7 +11,7 @@ For more information visit https://github.com/firecrawl/
 import logging
 import os
 
-from .firecrawl import FirecrawlApp, AsyncFirecrawlApp, JsonConfig, ScrapeOptions, ChangeTrackingOptions # noqa
+from .firecrawl import FirecrawlApp, AsyncFirecrawlApp, JsonConfig, ScrapeOptions, ChangeTrackingOptions, LocationConfig # noqa
 
 __version__ = "2.6.0"
 
