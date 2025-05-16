@@ -49,6 +49,12 @@ export class RemoveFeatureError extends Error {
   }
 }
 
+export class SSLError extends Error {
+  constructor() {
+    super("An SSL error occurred while scraping the URL. If you're not inputting any sensitive data, try scraping with `skipTlsVerification: true`.");
+  }
+}
+
 export class SiteError extends Error {
   public code: string;
   constructor(code: string) {

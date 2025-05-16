@@ -11,6 +11,7 @@ import { PDFAntibotError, RemoveFeatureError, UnsupportedFileError } from "../..
 import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { Response } from "undici";
+import { getPdfResultFromCache, savePdfResultToCache } from "../../../../lib/gcs-pdf-cache";
 
 type PDFProcessorResult = { html: string; markdown?: string };
 
@@ -25,6 +26,22 @@ async function scrapePDFWithRunPodMU(
   meta.logger.debug("Processing PDF document with RunPod MU", {
     tempFilePath,
   });
+
+  try {
+    const cachedResult = await getPdfResultFromCache(base64Content);
+    
+    if (cachedResult) {
+      meta.logger.info("Using cached RunPod MU result for PDF", {
+        tempFilePath,
+      });
+      return cachedResult;
+    }
+  } catch (error) {
+    meta.logger.warn("Error checking PDF cache, proceeding with RunPod MU", {
+      error,
+      tempFilePath,
+    });
+  }
 
   const result = await robustFetch({
     url:
@@ -50,10 +67,21 @@ async function scrapePDFWithRunPodMU(
     mock: meta.mock,
   });
 
-  return {
+  const processorResult = {
     markdown: result.output.markdown,
     html: await marked.parse(result.output.markdown, { async: true }),
   };
+
+  try {
+    await savePdfResultToCache(base64Content, processorResult);
+  } catch (error) {
+    meta.logger.warn("Error saving PDF to cache", {
+      error,
+      tempFilePath,
+    });
+  }
+
+  return processorResult;
 }
 
 async function scrapePDFWithParsePDF(
