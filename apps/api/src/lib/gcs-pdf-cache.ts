@@ -7,15 +7,16 @@ const PDF_CACHE_PREFIX = "pdf-cache/";
 
 /**
  * Creates a SHA-256 hash of the PDF content to use as a cache key
+ * Directly hashes the base64 content without converting it first
  */
 export function createPdfCacheKey(pdfContent: string | Buffer): string {
-  const contentBuffer = typeof pdfContent === 'string' 
-    ? Buffer.from(pdfContent, 'base64') 
+  const base64Content = Buffer.isBuffer(pdfContent)
+    ? pdfContent.toString('base64')
     : pdfContent;
   
   return crypto
     .createHash('sha256')
-    .update(contentBuffer)
+    .update(base64Content)
     .digest('hex');
 }
 
@@ -40,6 +41,11 @@ export async function savePdfResultToCache(
       try {
         await blob.save(JSON.stringify(result), {
           contentType: "application/json",
+          metadata: {
+            source: "runpod_pdf_conversion",
+            cache_type: "pdf_markdown",
+            created_at: new Date().toISOString(),
+          }
         });
         
         logger.info(`Saved PDF RunPod result to GCS cache`, {

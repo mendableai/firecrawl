@@ -1,7 +1,7 @@
 import { createPdfCacheKey, savePdfResultToCache, getPdfResultFromCache } from '../../lib/gcs-pdf-cache';
 
 jest.mock('@google-cloud/storage', () => {
-  const mockSave = jest.fn().mockResolvedValue();
+  const mockSave = jest.fn().mockResolvedValue(undefined);
   const mockExists = jest.fn().mockResolvedValue([true]);
   const mockDownload = jest.fn().mockResolvedValue([Buffer.from(JSON.stringify({
     markdown: 'cached markdown',
@@ -41,6 +41,21 @@ describe('PDF Caching', () => {
     expect(key1).not.toBe(key3); // Different content should generate different key
     
     expect(key1).toMatch(/^[a-f0-9]{64}$/);
+  });
+  
+  test('createPdfCacheKey works directly with base64 content', () => {
+    const base64Content = 'JVBERi0xLjMKJcTl8uXrp/Og0MTGCjQgMCBvYmoKPDwgL0xlbmd0aCA1IDAgUiAvRmlsdGVyIC9GbGF0ZURlY29kZSA+PgpzdHJlYW0KeAFLy';
+    
+    const key = createPdfCacheKey(base64Content);
+    
+    expect(key).toMatch(/^[a-f0-9]{64}$/);
+    
+    expect(createPdfCacheKey(base64Content)).toBe(key);
+    
+    const bufferContent = Buffer.from(base64Content);
+    const bufferKey = createPdfCacheKey(bufferContent);
+    
+    expect(bufferKey).toBe(key);
   });
 
   test('savePdfResultToCache saves results to GCS', async () => {
