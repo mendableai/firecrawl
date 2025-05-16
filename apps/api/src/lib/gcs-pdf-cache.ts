@@ -7,16 +7,12 @@ const PDF_CACHE_PREFIX = "pdf-cache/";
 
 /**
  * Creates a SHA-256 hash of the PDF content to use as a cache key
- * Directly hashes the base64 content without converting it first
+ * Directly hashes the content without any conversion
  */
 export function createPdfCacheKey(pdfContent: string | Buffer): string {
-  const base64Content = Buffer.isBuffer(pdfContent)
-    ? pdfContent.toString('base64')
-    : pdfContent;
-  
   return crypto
     .createHash('sha256')
-    .update(base64Content)
+    .update(pdfContent)
     .digest('hex');
 }
 

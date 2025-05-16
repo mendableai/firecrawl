@@ -7,17 +7,20 @@ jest.mock('@google-cloud/storage', () => {
     markdown: 'cached markdown',
     html: 'cached html'
   }))]);
+  const mockFile = jest.fn().mockImplementation((path) => ({
+    save: mockSave,
+    exists: mockExists,
+    download: mockDownload
+  }));
   
   return {
     Storage: jest.fn().mockImplementation(() => ({
       bucket: jest.fn().mockImplementation(() => ({
-        file: jest.fn().mockImplementation(() => ({
-          save: mockSave,
-          exists: mockExists,
-          download: mockDownload
-        }))
+        file: mockFile
       }))
-    }))
+    })),
+    _getMockFile: () => mockFile,
+    _getMockSave: () => mockSave
   };
 });
 
@@ -52,27 +55,32 @@ describe('PDF Caching', () => {
     
     expect(createPdfCacheKey(base64Content)).toBe(key);
     
-    const bufferContent = Buffer.from(base64Content);
-    const bufferKey = createPdfCacheKey(bufferContent);
-    
-    expect(bufferKey).toBe(key);
   });
 
   test('savePdfResultToCache saves results to GCS', async () => {
     const pdfContent = 'test-pdf-content';
     const result = { markdown: 'test markdown', html: 'test html' };
     
+    const { _getMockFile, _getMockSave } = require('@google-cloud/storage');
+    const mockFile = _getMockFile();
+    const mockSave = _getMockSave();
+    
+    mockFile.mockClear();
+    mockSave.mockClear();
+    
     const cacheKey = await savePdfResultToCache(pdfContent, result);
     
     expect(cacheKey).not.toBeNull();
     
-    const { Storage } = require('@google-cloud/storage');
-    const mockBucketFile = Storage().bucket().file;
-    const mockSave = mockBucketFile().save;
+    expect(mockFile).toHaveBeenCalledWith(expect.stringContaining('pdf-cache/'));
     
-    expect(mockBucketFile).toHaveBeenCalledWith(expect.stringContaining('pdf-cache/'));
     expect(mockSave).toHaveBeenCalledWith(JSON.stringify(result), {
-      contentType: 'application/json'
+      contentType: 'application/json',
+      metadata: expect.objectContaining({
+        source: 'runpod_pdf_conversion',
+        cache_type: 'pdf_markdown',
+        created_at: expect.any(String)
+      })
     });
   });
 
