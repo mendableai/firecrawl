@@ -21,6 +21,7 @@ import {
   SiteError,
   TimeoutError,
   UnsupportedFileError,
+  SSLError,
 } from "./error";
 import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
@@ -323,6 +324,8 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
         throw error;
       } else if (error instanceof SiteError) {
         throw error;
+      } else if (error instanceof SSLError) {
+        throw error;
       } else if (error instanceof ActionError) {
         throw error;
       } else if (error instanceof UnsupportedFileError) {
@@ -470,6 +473,8 @@ export async function scrapeURL(
       // TODO: results?
     } else if (error instanceof SiteError) {
       meta.logger.warn("scrapeURL: Site failed to load in browser", { error });
+    } else if (error instanceof SSLError) {
+      meta.logger.warn("scrapeURL: SSL error", { error });
     } else if (error instanceof ActionError) {
       meta.logger.warn("scrapeURL: Action(s) failed to complete", { error });
     } else if (error instanceof UnsupportedFileError) {

@@ -20,6 +20,7 @@ import {
   Document,
   fromLegacyCombo,
   fromLegacyScrapeOptions,
+  TeamFlags,
   toLegacyDocument,
 } from "../v1/types";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
@@ -32,6 +33,7 @@ export async function searchHelper(
   crawlerOptions: any,
   pageOptions: PageOptions,
   searchOptions: SearchOptions,
+  flags: TeamFlags,
 ): Promise<{
   success: boolean;
   error?: string;
@@ -85,7 +87,7 @@ export async function searchHelper(
     return { success: true, data: res, returnCode: 200 };
   }
 
-  res = res.filter((r) => !isUrlBlocked(r.url));
+  res = res.filter((r) => !isUrlBlocked(r.url, flags));
   if (res.length > num_results) {
     res = res.slice(0, num_results);
   }
@@ -202,6 +204,7 @@ export async function searchController(req: Request, res: Response) {
       crawlerOptions,
       pageOptions,
       searchOptions,
+      chunk?.flags ?? null,
     );
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;

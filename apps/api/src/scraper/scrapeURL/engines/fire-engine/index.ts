@@ -17,6 +17,7 @@ import {
   ActionError,
   EngineError,
   SiteError,
+  SSLError,
   TimeoutError,
   UnsupportedFileError,
 } from "../../error";
@@ -94,6 +95,7 @@ async function performFireEngineScrape<
       } else if (
         error instanceof EngineError ||
         error instanceof SiteError ||
+        error instanceof SSLError ||
         error instanceof ActionError ||
         error instanceof UnsupportedFileError
       ) {

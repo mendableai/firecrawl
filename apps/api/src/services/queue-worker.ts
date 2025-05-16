@@ -53,9 +53,13 @@ import { configDotenv } from "dotenv";
 import { scrapeOptions } from "../controllers/v1/types";
 import {
   cleanOldConcurrencyLimitEntries,
+  cleanOldCrawlConcurrencyLimitEntries,
   pushConcurrencyLimitActiveJob,
+  pushCrawlConcurrencyLimitActiveJob,
   removeConcurrencyLimitActiveJob,
+  removeCrawlConcurrencyLimitActiveJob,
   takeConcurrencyLimitedJob,
+  takeCrawlConcurrencyLimitedJob,
 } from "../lib/concurrency-limit";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
@@ -76,6 +80,7 @@ import { performGenerateLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt
 import { updateGeneratedLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt-redis";
 import { performExtraction_F0 } from "../lib/extract/fire-0/extraction-service-f0";
 import { CostTracking } from "../lib/extract/extraction-service";
+import { getACUCTeam } from "../controllers/auth";
 
 configDotenv();
 
@@ -104,7 +109,16 @@ const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 const runningJobs: Set<string> = new Set();
 
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
+  const logger = _logger.child({
+    module: "queue-worker",
+    method: "finishCrawlIfNeeded",
+    jobId: job.id,
+    scrapeId: job.id,
+    crawlId: job.data.crawl_id,
+  });
+
   if (await finishCrawlPre(job.data.crawl_id)) {
+    logger.info("Crawl is pre-finished, checking if we need to add more jobs");
     if (
       job.data.crawlerOptions &&
       !(await redisConnection.exists(
@@ -126,6 +140,10 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         ),
       );
 
+      logger.info("Visited URLs", {
+        visitedUrls: visitedUrls.size,
+      });
+
       const lastUrls: string[] = (
         (
           await supabase_service.rpc("diff_get_last_crawl_urls", {
@@ -137,9 +155,14 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
 
       const lastUrlsSet = new Set(lastUrls);
 
+      logger.info("Last URLs", {
+        lastUrls: lastUrlsSet.size,
+      });
+
       const crawler = crawlToCrawler(
         job.data.crawl_id,
         sc,
+        (await getACUCTeam(job.data.team_id))?.flags ?? null,
         sc.originUrl!,
         job.data.crawlerOptions,
       );
@@ -156,15 +179,12 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           : sc.crawlerOptions.limit -
             (await getDoneJobsOrderedLength(job.data.crawl_id));
 
-      console.log(
-        sc.originUrl!,
-        univistedUrls,
-        visitedUrls,
-        lastUrls,
-        addableJobCount,
-      );
-
       if (univistedUrls.length !== 0 && addableJobCount > 0) {
+        logger.info("Adding jobs", {
+          univistedUrls: univistedUrls.length,
+          addableJobCount,
+        });
+
         const jobs = univistedUrls.slice(0, addableJobCount).map((url) => {
           const uuid = uuidv4();
           return {
@@ -206,10 +226,15 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         );
         await addScrapeJobs(lockedJobs);
 
+        logger.info("Added jobs, not going for the full finish", {
+          lockedJobs: lockedJobs.length,
+        });
+
         return;
       }
     }
 
+    logger.info("Finishing crawl");
     await finishCrawl(job.data.crawl_id);
 
     (async () => {
@@ -261,6 +286,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         )
         .filter((x) => x !== null);
 
+      logger.info("Logging crawl NOW!");
       await logJob({
         job_id: job.data.crawl_id,
         success: jobStatus === "completed",
@@ -275,6 +301,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         crawlerOptions: sc.crawlerOptions,
         origin: job.data.origin,
       });
+      logger.info("Logged crawl!");
 
       const data = {
         success: jobStatus !== "failed",
@@ -728,11 +755,37 @@ const workerFun = async (
           runningJobs.delete(job.id);
         }
 
+        if (job.id && job.data.crawl_id && job.data.crawlerOptions?.delay) {
+          await removeCrawlConcurrencyLimitActiveJob(job.data.crawl_id, job.id);
+          cleanOldCrawlConcurrencyLimitEntries(job.data.crawl_id);
+
+          const delayInSeconds = job.data.crawlerOptions.delay;
+          const delayInMs = delayInSeconds * 1000;
+
+          await new Promise(resolve => setTimeout(resolve, delayInMs));
+
+          const nextCrawlJob = await takeCrawlConcurrencyLimitedJob(job.data.crawl_id);
+          if (nextCrawlJob !== null) {
+            await pushCrawlConcurrencyLimitActiveJob(job.data.crawl_id, nextCrawlJob.id, 60 * 1000);
+
+            await queue.add(
+              nextCrawlJob.id,
+              {
+                ...nextCrawlJob.data,
+              },
+              {
+                ...nextCrawlJob.opts,
+                jobId: nextCrawlJob.id,
+                priority: nextCrawlJob.priority,
+              },
+            );
+          }
+        }
+
         if (job.id && job.data && job.data.team_id) {
           await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
           cleanOldConcurrencyLimitEntries(job.data.team_id);
 
-          // Queue up next job, if it exists
           // No need to check if we're under the limit here -- if the current job is finished,
           // we are 1 under the limit, assuming the job insertion logic never over-inserts. - MG
           const nextJob = await takeConcurrencyLimitedJob(job.data.team_id);
@@ -841,7 +894,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
 
   try {
     const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
-    const crawler = crawlToCrawler(job.data.crawl_id, sc);
+    const crawler = crawlToCrawler(job.data.crawl_id, sc, (await getACUCTeam(job.data.team_id))?.flags ?? null);
 
     logger.debug("Locking URL...");
     await lockURL(job.data.crawl_id, sc, job.data.url);
@@ -1105,7 +1158,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           normalizeURL(doc.metadata.sourceURL, sc) &&
         job.data.crawlerOptions !== null // only on crawls, don't care on batch scrape
       ) {
-        const crawler = crawlToCrawler(job.data.crawl_id, sc);
+        const crawler = crawlToCrawler(job.data.crawl_id, sc, (await getACUCTeam(job.data.team_id))?.flags ?? null);
         if (
           crawler.filterURL(doc.metadata.url, doc.metadata.sourceURL) ===
             null &&
@@ -1130,7 +1183,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           await saveCrawl(job.data.crawl_id, sc);
         }
 
-        if (isUrlBlocked(doc.metadata.url)) {
+        if (isUrlBlocked(doc.metadata.url, (await getACUCTeam(job.data.team_id))?.flags ?? null)) {
           throw new Error(BLOCKLISTED_URL_MESSAGE); // TODO: make this its own error type that is ignored by error tracking
         }
 
@@ -1189,6 +1242,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           const crawler = crawlToCrawler(
             job.data.crawl_id,
             sc,
+            (await getACUCTeam(job.data.team_id))?.flags ?? null,
             doc.metadata.url ?? doc.metadata.sourceURL ?? sc.originUrl!,
             job.data.crawlerOptions,
           );
@@ -1301,11 +1355,20 @@ async function processJob(job: Job & { id: string }, token: string) {
 
     if (job.data.is_scrape !== true) {
       let creditsToBeBilled = 1; // Assuming 1 credit per document
-      if (job.data.scrapeOptions.extract) {
+      if ((job.data.scrapeOptions.extract && job.data.scrapeOptions.formats?.includes("extract")) || (job.data.scrapeOptions.formats?.includes("changeTracking") && job.data.scrapeOptions.changeTrackingOptions?.modes?.includes("json"))) {
         creditsToBeBilled = 5;
       }
-      if (job.data.scrapeOptions.agent?.model?.toLowerCase() === "fire-1") {
-        creditsToBeBilled = 150;
+
+      if (job.data.scrapeOptions.agent?.model?.toLowerCase() === "fire-1" || job.data.scrapeOptions.extract?.agent?.model?.toLowerCase() === "fire-1" || job.data.scrapeOptions.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
+        if (process.env.USE_DB_AUTHENTICATION === "true") {
+          creditsToBeBilled = Math.ceil((costTracking.toJSON().totalCost ?? 1) * 1800);
+        } else {
+          creditsToBeBilled = 150;
+        }
+      }
+
+      if (job.data.scrapeOptions.proxy === "stealth") {
+        creditsToBeBilled += 4;
       }
 
       if (

@@ -11,6 +11,8 @@ import { saveExtract } from "../../lib/extract/extract-redis";
 import { getTeamIdSyncB } from "../../lib/extract/team-id-sync";
 import { performExtraction } from "../../lib/extract/extraction-service";
 import { performExtraction_F0 } from "../../lib/extract/fire-0/extraction-service-f0";
+import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
+import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 
 export async function oldExtract(
   req: RequestWithAuth<{}, ExtractResponse, ExtractRequest>,
@@ -57,6 +59,15 @@ export async function extractController(
 ) {
   const selfHosted = process.env.USE_DB_AUTHENTICATION !== "true";
   req.body = extractRequestSchema.parse(req.body);
+
+  if (req.body.urls?.some((url: string) => isUrlBlocked(url, req.acuc?.flags ?? null))) {
+    if (!res.headersSent) {
+      return res.status(403).json({
+        success: false,
+        error: BLOCKLISTED_URL_MESSAGE,
+      });
+    }
+  }
 
   const extractId = crypto.randomUUID();
   const jobData = {

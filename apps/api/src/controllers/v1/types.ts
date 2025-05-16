@@ -1,6 +1,5 @@
 import { Request, Response } from "express";
 import { z } from "zod";
-import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { protocolIncluded, checkUrl } from "../../lib/validateUrl";
 import { countries } from "../../lib/validate-country";
 import {
@@ -10,7 +9,6 @@ import {
   Document as V0Document,
 } from "../../lib/entities";
 import { InternalOptions } from "../../scraper/scrapeURL";
-import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 
 export type Format =
   | "markdown"
@@ -49,7 +47,7 @@ export const url = z.preprocess(
         return false;
       }
     }, "Invalid URL")
-    .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
+    // .refine((x) => !isUrlBlocked(x as string), BLOCKLISTED_URL_MESSAGE),
 );
 
 const strictMessage =
@@ -588,6 +586,7 @@ const crawlerOptions = z
     deduplicateSimilarURLs: z.boolean().default(true),
     ignoreQueryParameters: z.boolean().default(false),
     regexOnFullURL: z.boolean().default(false),
+    delay: z.number().positive().optional(),
   })
   .strict(strictMessage);
 
@@ -913,10 +912,16 @@ export type AuthCreditUsageChunk = {
     scrapeAgentPreview?: number;
   };
   concurrency: number;
+  flags: TeamFlags;
 
   // appended on JS-side
   is_extract?: boolean;
 };
+
+export type TeamFlags = {
+  ignoreRobots?: boolean;
+  unblockedDomains?: string[];
+} | null;
 
 export type AuthCreditUsageChunkFromTeam = Omit<AuthCreditUsageChunk, "api_key">;
 
@@ -986,6 +991,7 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     regexOnFullURL: x.regexOnFullURL,
     maxDiscoveryDepth: x.maxDiscoveryDepth,
     currentDiscoveryDepth: 0,
+    delay: x.delay,
   };
 }
 
@@ -1008,6 +1014,7 @@ export function fromLegacyCrawlerOptions(x: any, teamId: string): {
       ignoreQueryParameters: x.ignoreQueryParameters,
       regexOnFullURL: x.regexOnFullURL,
       maxDiscoveryDepth: x.maxDiscoveryDepth,
+      delay: x.delay,
     }),
     internalOptions: {
       v0CrawlOnlyUrls: x.returnOnlyUrls,
@@ -1135,7 +1142,7 @@ export const searchRequestSchema = z
       .positive()
       .finite()
       .safe()
-      .max(50)
+      .max(100)
       .optional()
       .default(5),
     tbs: z.string().optional(),

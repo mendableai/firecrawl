@@ -115,7 +115,7 @@ export async function crawlController(req: Request, res: Response) {
         .json({ error: e.message ?? e });
     }
 
-    if (isUrlBlocked(url)) {
+    if (isUrlBlocked(url, auth.chunk?.flags ?? null)) {
       return res.status(403).json({
         error: BLOCKLISTED_URL_MESSAGE,
       });
@@ -173,7 +173,7 @@ export async function crawlController(req: Request, res: Response) {
       createdAt: Date.now(),
     };
 
-    const crawler = crawlToCrawler(id, sc);
+    const crawler = crawlToCrawler(id, sc, auth.chunk?.flags ?? null);
 
     try {
       sc.robots = await crawler.getRobotsTxt();

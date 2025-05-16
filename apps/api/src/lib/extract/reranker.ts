@@ -1,4 +1,4 @@
-import { MapDocument, URLTrace } from "../../controllers/v1/types";
+import { MapDocument, TeamFlags, URLTrace } from "../../controllers/v1/types";
 import { performRanking } from "../ranker";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { logger } from "../logger";
@@ -57,6 +57,7 @@ export async function rerankLinks(
   mappedLinks: MapDocument[],
   searchQuery: string,
   urlTraces: URLTrace[],
+  flags: TeamFlags,
 ): Promise<MapDocument[]> {
   // console.log("Going to rerank links");
   const mappedLinksRerank = mappedLinks.map(
@@ -74,6 +75,7 @@ export async function rerankLinks(
     mappedLinks,
     linksAndScores,
     extractConfig.RERANKING.INITIAL_SCORE_THRESHOLD_FOR_RELEVANCE,
+    flags,
   );
 
   // If we don't have enough high-quality links, try with lower threshold
@@ -85,6 +87,7 @@ export async function rerankLinks(
       mappedLinks,
       linksAndScores,
       extractConfig.RERANKING.FALLBACK_SCORE_THRESHOLD_FOR_RELEVANCE,
+      flags,
     );
 
     if (filteredLinks.length === 0) {
@@ -98,7 +101,7 @@ export async function rerankLinks(
         .map((x) => mappedLinks.find((link) => link.url === x.link))
         .filter(
           (x): x is MapDocument =>
-            x !== undefined && x.url !== undefined && !isUrlBlocked(x.url),
+            x !== undefined && x.url !== undefined && !isUrlBlocked(x.url, flags),
         );
     }
   }
@@ -154,13 +157,14 @@ function filterAndProcessLinks(
     originalIndex: number;
   }[],
   threshold: number,
+  flags: TeamFlags,
 ): MapDocument[] {
   return linksAndScores
     .filter((x) => x.score > threshold)
     .map((x) => mappedLinks.find((link) => link.url === x.link))
     .filter(
       (x): x is MapDocument =>
-        x !== undefined && x.url !== undefined && !isUrlBlocked(x.url),
+        x !== undefined && x.url !== undefined && !isUrlBlocked(x.url, flags),
     );
 }
 

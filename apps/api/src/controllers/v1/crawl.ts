@@ -89,10 +89,14 @@ export async function crawlController(
     createdAt: Date.now(),
   };
 
-  const crawler = crawlToCrawler(id, sc);
+  const crawler = crawlToCrawler(id, sc, req.acuc?.flags ?? null);
 
   try {
     sc.robots = await crawler.getRobotsTxt(scrapeOptions.skipTlsVerification);
+    const robotsCrawlDelay = crawler.getRobotsCrawlDelay();
+    if (robotsCrawlDelay !== null && !sc.crawlerOptions.delay) {
+      sc.crawlerOptions.delay = robotsCrawlDelay;
+    }
   } catch (e) {
     logger.debug("Failed to get robots.txt (this is probably fine!)", {
       error: e,

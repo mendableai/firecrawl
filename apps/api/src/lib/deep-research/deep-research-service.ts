@@ -6,7 +6,7 @@ import { logJob } from "../../services/logging/log_job";
 import { billTeam } from "../../services/billing/credit_billing";
 import { ExtractOptions } from "../../controllers/v1/types";
 import { CostTracking } from "../extract/extraction-service";
-
+import { getACUCTeam } from "../../controllers/auth";
 interface DeepResearchServiceOptions {
   researchId: string;
   teamId: string;
@@ -44,6 +44,8 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
     options.query,
   );
   const llmService = new ResearchLLMService(logger);
+
+  const acuc = await getACUCTeam(teamId);
 
   try {
     while (!state.hasReachedMaxDepth() && urlsAnalyzed < maxUrls) {
@@ -112,7 +114,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
             fastMode: false,
             blockAds: false,
           },
-        }, logger, costTracking);
+        }, logger, costTracking, acuc?.flags ?? null);
         return response.length > 0 ? response : [];
       });
 
