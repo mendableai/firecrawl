@@ -82,6 +82,9 @@ import { performExtraction_F0 } from "../lib/extract/fire-0/extraction-service-f
 import { CostTracking } from "../lib/extract/extraction-service";
 import { getACUCTeam } from "../controllers/auth";
 import Express from "express";
+import http from "http";
+import https from "https";
+import CacheableLookup from "cacheable-lookup";
 
 configDotenv();
 
@@ -108,6 +111,14 @@ const connectionMonitorInterval =
 const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 
 const runningJobs: Set<string> = new Set();
+
+const cacheable = new CacheableLookup({
+  lookup: false,
+});
+
+// Install cacheable lookup for all other requests
+cacheable.install(http.globalAgent);
+cacheable.install(https.globalAgent);
 
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   const logger = _logger.child({
