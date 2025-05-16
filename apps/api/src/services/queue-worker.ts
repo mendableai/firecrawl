@@ -653,6 +653,7 @@ const processGenerateLlmsTxtJobInternal = async (
       maxUrls: job.data.request.maxUrls,
       showFullText: job.data.request.showFullText,
       subId: job.data.subId,
+      cache: job.data.request.cache,
     });
 
     if (result.success) {

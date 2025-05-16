@@ -1211,6 +1211,10 @@ export const generateLLMsTextRequestSchema = z.object({
     .boolean()
     .default(false)
     .describe("Whether to show the full LLMs-full.txt in the response"),
+  cache: z
+    .boolean()
+    .default(true)
+    .describe("Whether to use cached content if available"),
   __experimental_stream: z.boolean().optional(),
 });
 

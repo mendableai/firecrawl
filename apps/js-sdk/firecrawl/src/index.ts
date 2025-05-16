@@ -521,6 +521,11 @@ export interface GenerateLLMsTextParams {
    */
   showFullText?: boolean;
   /**
+   * Whether to use cached content if available
+   * @default true
+   */
+  cache?: boolean;
+  /**
    * Experimental flag for streaming
    */
   __experimental_stream?: boolean;

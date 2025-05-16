@@ -9,6 +9,7 @@ export interface GenerationData {
   url: string;
   maxUrls: number;
   showFullText: boolean;
+  cache?: boolean;
   generatedText: string;
   fullText: string;
   error?: string;
@@ -66,4 +67,4 @@ export async function updateGeneratedLlmsTxtStatus(
   if (error !== undefined) updates.error = error;
   
   await updateGeneratedLlmsTxt(id, updates);
-} 
+}    
