@@ -41,7 +41,7 @@ export async function getLlmsTextFromCache(
       return null;
     }
 
-    return data.slice(0, maxUrls);
+    return data
   } catch (error) {
     logger.error("Failed to fetch LLMs text from cache", { error, originUrl });
     return null;
