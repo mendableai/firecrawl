@@ -34,7 +34,9 @@ const { ExpressAdapter } = require("@bull-board/express");
 const numCPUs = process.env.ENV === "local" ? 2 : os.cpus().length;
 logger.info(`Number of CPUs: ${numCPUs} available`);
 
-const cacheable = new CacheableLookup();
+const cacheable = new CacheableLookup({
+  lookup: false,
+});
 
 // Install cacheable lookup for all other requests
 cacheable.install(http.globalAgent);
