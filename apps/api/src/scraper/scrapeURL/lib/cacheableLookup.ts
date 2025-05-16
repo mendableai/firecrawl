@@ -1,8 +1,4 @@
 import CacheableLookup from 'cacheable-lookup';
+import dns from 'dns';
 
-export const cacheableLookup = new CacheableLookup({});
-
-if (process.env.ENV === "production" && process.env.SENTRY_ENVIRONMENT === "dev") {
-    console.log(cacheableLookup.servers);
-    cacheableLookup.servers.push("100.100.100.100");
-}
+export const cacheableLookup = (process.env.ENV === "production" && process.env.SENTRY_ENVIRONMENT !== "dev" ? { lookup: dns.lookup, install: () => {} } : new CacheableLookup({ lookup: false }));
