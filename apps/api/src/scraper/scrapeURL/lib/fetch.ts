@@ -5,6 +5,7 @@ import { MockState, saveMock } from "./mock";
 import { TimeoutSignal } from "../../../controllers/v1/types";
 import { fireEngineURL } from "../engines/fire-engine/scrape";
 import { fetch, RequestInit, Response, FormData, Agent } from "undici";
+import { cacheableLookup } from "./cacheableLookup";
 
 export type RobustFetchParams<Schema extends z.Schema<any>> = {
   url: string;
@@ -82,6 +83,9 @@ export async function robustFetch<
         dispatcher: new Agent({
           headersTimeout: 0,
           bodyTimeout: 0,
+          connect: {
+            lookup: cacheableLookup.lookup,
+          },
         }),
         ...(body instanceof FormData
           ? {
