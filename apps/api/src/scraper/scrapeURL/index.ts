@@ -368,6 +368,7 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       url: result.result.url,
       statusCode: result.result.statusCode,
       error: result.result.error,
+      numPages: result.result.numPages,
     },
   };
 
