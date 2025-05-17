@@ -31,6 +31,11 @@ function expectScrapeToSucceed(response: Awaited<ReturnType<typeof scrapeRaw>>) 
 export async function scrape(body: ScrapeRequestInput): Promise<Document> {
     const raw = await scrapeRaw(body);
     expectScrapeToSucceed(raw);
+    if (body.proxy === "stealth") {
+        expect(raw.body.data.metadata.proxyUsed).toBe("stealth");
+    } else if (!body.proxy || body.proxy === "basic") {
+        expect(raw.body.data.metadata.proxyUsed).toBe("basic");
+    }
     return raw.body.data;
 }
 
