@@ -41,6 +41,7 @@ export async function serper_search(
       url: a.link,
       title: a.title,
       description: a.snippet,
+      others: a,
     }));
   } else {
     return [];
