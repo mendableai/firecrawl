@@ -200,13 +200,23 @@ export async function searchController(
     });
 
     // Filter blocked URLs early to avoid unnecessary billing
+    if (req.body.filterBlockedUrls) {
+      const originalLength = searchResults.length;
+      searchResults = searchResults.filter((result) => !isUrlBlocked(result.url, req.acuc?.flags ?? null));
+      
+      if (originalLength > searchResults.length) {
+        const filteredCount = originalLength - searchResults.length;
+        responseData.warning = `${filteredCount} blocked URLs were filtered out from search results.`;
+      }
+    }
+
     if (searchResults.length > limit) {
       searchResults = searchResults.slice(0, limit);
     }
 
     if (searchResults.length === 0) {
-      logger.info("No search results found");
-      responseData.warning = "No search results found";
+      logger.info("No search results found" + (responseData.warning ? " after filtering blocked URLs" : ""));
+      responseData.warning = responseData.warning || "No search results found";
     } else if (
       !req.body.scrapeOptions.formats ||
       req.body.scrapeOptions.formats.length === 0
