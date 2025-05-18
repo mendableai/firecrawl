@@ -38,7 +38,7 @@ describe('Search Controller URL Filtering', () => {
       scrapeOptions: {
         formats: [],
       },
-      filterBlockedUrls: true,
+      ignoreInvalidURLs: true,
     },
   };
 
@@ -49,7 +49,7 @@ describe('Search Controller URL Filtering', () => {
     });
   });
 
-  it('should filter out blocked URLs when filterBlockedUrls is true', async () => {
+  it('should filter out invalid URLs when ignoreInvalidURLs is true', async () => {
     await searchController(mockRequest, mockResponse);
 
     expect(mockResponse.json).toHaveBeenCalledWith(expect.objectContaining({
@@ -57,7 +57,8 @@ describe('Search Controller URL Filtering', () => {
       data: expect.arrayContaining([
         expect.objectContaining({ url: 'https://example.com' }),
       ]),
-      warning: expect.stringContaining('blocked URLs were filtered'),
+      warning: expect.stringContaining('unsupported/invalid URLs were filtered'),
+      invalidURLs: expect.arrayContaining(['https://blocked-site.com']),
     }));
 
     expect(mockResponse.json).toHaveBeenCalledWith(expect.objectContaining({
@@ -67,12 +68,12 @@ describe('Search Controller URL Filtering', () => {
     }));
   });
 
-  it('should not filter out blocked URLs when filterBlockedUrls is false', async () => {
+  it('should not filter out invalid URLs when ignoreInvalidURLs is false', async () => {
     const request = {
       ...mockRequest,
       body: {
         ...mockRequest.body,
-        filterBlockedUrls: false,
+        ignoreInvalidURLs: false,
       },
     };
 
@@ -87,7 +88,8 @@ describe('Search Controller URL Filtering', () => {
     }));
 
     expect(mockResponse.json).not.toHaveBeenCalledWith(expect.objectContaining({
-      warning: expect.stringContaining('blocked URLs were filtered'),
+      warning: expect.stringContaining('unsupported/invalid URLs were filtered'),
+      invalidURLs: expect.anything(),
     }));
   });
 

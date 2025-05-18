@@ -1152,7 +1152,7 @@ export const searchRequestSchema = z
     location: z.string().optional(),
     origin: z.string().optional().default("api"),
     timeout: z.number().int().positive().finite().safe().default(60000),
-    filterBlockedUrls: z.boolean().optional().default(true),
+    ignoreInvalidURLs: z.boolean().optional().default(true),
     scrapeOptions: baseScrapeOptions
       .extend({
         formats: z
@@ -1190,6 +1190,7 @@ export type SearchResponse =
       success: true;
       warning?: string;
       data: Document[];
+      invalidURLs?: string[];
     };
 
 export type TokenUsage = {

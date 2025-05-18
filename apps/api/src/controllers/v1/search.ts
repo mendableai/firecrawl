@@ -165,6 +165,7 @@ export async function searchController(
   let responseData: SearchResponse = {
     success: true,
     data: [],
+    invalidURLs: undefined,
   };
   const startTime = new Date().getTime();
   const costTracking = new CostTracking();
@@ -199,14 +200,22 @@ export async function searchController(
       num_results: searchResults.length,
     });
 
-    // Filter blocked URLs early to avoid unnecessary billing
-    if (req.body.filterBlockedUrls) {
+    // Filter invalid URLs early to avoid unnecessary billing
+    if (req.body.ignoreInvalidURLs) {
       const originalLength = searchResults.length;
-      searchResults = searchResults.filter((result) => !isUrlBlocked(result.url, req.acuc?.flags ?? null));
+      const invalidURLs: string[] = [];
       
-      if (originalLength > searchResults.length) {
-        const filteredCount = originalLength - searchResults.length;
-        responseData.warning = `${filteredCount} blocked URLs were filtered out from search results.`;
+      searchResults = searchResults.filter((result) => {
+        const isInvalid = isUrlBlocked(result.url, req.acuc?.flags ?? null);
+        if (isInvalid) {
+          invalidURLs.push(result.url);
+        }
+        return !isInvalid;
+      });
+      
+      if (invalidURLs.length > 0) {
+        responseData.invalidURLs = invalidURLs;
+        responseData.warning = `${invalidURLs.length} unsupported/invalid URLs were filtered out from search results.`;
       }
     }
 
@@ -215,9 +224,9 @@ export async function searchController(
     }
 
     if (searchResults.length === 0) {
-      logger.info("No search results found" + (responseData.warning ? " after filtering blocked URLs" : ""));
+      logger.info("No search results found" + (responseData.warning ? " after filtering unsupported/invalid URLs" : ""));
       responseData.warning = responseData.warning || "No search results found";
-    } else if (
+    }else if (
       !req.body.scrapeOptions.formats ||
       req.body.scrapeOptions.formats.length === 0
     ) {
