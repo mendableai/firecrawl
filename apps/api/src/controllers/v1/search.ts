@@ -274,6 +274,7 @@ export async function searchController(
       team_id: req.auth.team_id,
       mode: "search",
       url: req.body.query,
+      scrapeOptions: req.body.scrapeOptions,
       origin: req.body.origin,
       cost_tracking: costTracking,
     });

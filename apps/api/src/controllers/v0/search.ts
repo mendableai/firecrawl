@@ -218,6 +218,7 @@ export async function searchController(req: Request, res: Response) {
       team_id: team_id,
       mode: "search",
       url: req.body.query,
+      scrapeOptions: fromLegacyScrapeOptions(req.body.pageOptions, undefined, 60000, team_id),
       crawlerOptions: crawlerOptions,
       origin: origin,
     });
