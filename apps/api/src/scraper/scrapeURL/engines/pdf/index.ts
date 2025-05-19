@@ -27,6 +27,8 @@ async function scrapePDFWithRunPodMU(
     tempFilePath,
   });
 
+  const preCacheCheckStartTime = Date.now();
+
   try {
     const cachedResult = await getPdfResultFromCache(base64Content);
     
@@ -54,6 +56,8 @@ async function scrapePDFWithRunPodMU(
       input: {
         file_content: base64Content,
         filename: path.basename(tempFilePath) + ".pdf",
+        timeout: timeToRun ? timeToRun - (Date.now() - preCacheCheckStartTime) : undefined,
+        created_at: Date.now(),
       },
     },
     logger: meta.logger.child({
@@ -103,6 +107,8 @@ export async function scrapePDF(
   meta: Meta,
   timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
+  const startTime = Date.now();
+  
   if (!meta.options.parsePDF) {
     if (meta.pdfPrefetch !== undefined && meta.pdfPrefetch !== null) {
       const content = (await readFile(meta.pdfPrefetch.filePath)).toString("base64");
@@ -167,7 +173,7 @@ export async function scrapePDF(
           }),
         },
         tempFilePath,
-        timeToRun,
+        timeToRun ? (timeToRun - (Date.now() - startTime)) : undefined,
         base64Content,
       );
     } catch (error) {
