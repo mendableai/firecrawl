@@ -4,24 +4,27 @@ import * as blocklist from '../../scraper/WebScraper/utils/blocklist';
 import { SearchResponse } from '../../controllers/v1/types';
 
 jest.mock('../../services/billing/credit_billing', () => ({
-  billTeam: jest.fn().mockReturnValue(Promise.resolve()),
+  billTeam: jest.fn().mockImplementation(() => Promise.resolve({ success: true })),
 }));
 
 jest.mock('../../search', () => ({
-  search: jest.fn().mockImplementation(() => [
+  search: jest.fn().mockImplementation(() => Promise.resolve([
     { url: 'https://example.com', title: 'Example Site', description: 'An example website' },
     { url: 'https://blocked-site.com', title: 'Blocked Site', description: 'A blocked website' }
-  ])
+  ]))
 }));
 
 jest.mock('../../services/redis', () => ({
-  getValue: jest.fn().mockReturnValue(Promise.resolve()),
-  setValue: jest.fn().mockReturnValue(Promise.resolve()),
+  getValue: jest.fn().mockImplementation(() => Promise.resolve(null)),
+  setValue: jest.fn().mockImplementation(() => Promise.resolve(null)),
+  redisConnection: {
+    sadd: jest.fn().mockImplementation(() => Promise.resolve(null))
+  }
 }));
 
 jest.mock('../../services/queue-jobs', () => ({
-  addScrapeJob: jest.fn().mockReturnValue(Promise.resolve()),
-  waitForJob: jest.fn().mockReturnValue(Promise.resolve({})),
+  addScrapeJob: jest.fn().mockImplementation(() => Promise.resolve({})),
+  waitForJob: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
 jest.mock('../../services/queue-service', () => ({
