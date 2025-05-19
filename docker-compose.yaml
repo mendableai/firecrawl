@@ -1,7 +1,7 @@
 name: firecrawl
 
 x-common-service: &common-service
-  # NOTE: If you want to build the service locally,
+  # NOTE: If you don't want to build the service locally,
   # uncomment the build: statement and comment out the image: statement
   # image: ghcr.io/mendableai/firecrawl
   build: apps/api
