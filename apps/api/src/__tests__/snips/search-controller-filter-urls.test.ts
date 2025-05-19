@@ -3,8 +3,32 @@ import { searchController } from '../../controllers/v1/search';
 import * as blocklist from '../../scraper/WebScraper/utils/blocklist';
 import { SearchResponse } from '../../controllers/v1/types';
 
-jest.mock('../../services/billing/credit_billing');
-jest.mock('../../search');
+jest.mock('../../services/billing/credit_billing', () => ({
+  billTeam: jest.fn().mockReturnValue(Promise.resolve()),
+}));
+
+jest.mock('../../search', () => ({
+  search: jest.fn().mockImplementation(() => [
+    { url: 'https://example.com', title: 'Example Site', description: 'An example website' },
+    { url: 'https://blocked-site.com', title: 'Blocked Site', description: 'A blocked website' }
+  ])
+}));
+
+jest.mock('../../services/redis', () => ({
+  getValue: jest.fn().mockReturnValue(Promise.resolve()),
+  setValue: jest.fn().mockReturnValue(Promise.resolve()),
+}));
+
+jest.mock('../../services/queue-jobs', () => ({
+  addScrapeJob: jest.fn().mockReturnValue(Promise.resolve()),
+  waitForJob: jest.fn().mockReturnValue(Promise.resolve({})),
+}));
+
+jest.mock('../../services/queue-service', () => ({
+  getScrapeQueue: jest.fn().mockReturnValue({ 
+    remove: jest.fn().mockReturnValue(Promise.resolve()) 
+  }),
+}));
 
 
 jest.mock('../../services/logging/log_job', () => ({
@@ -13,6 +37,13 @@ jest.mock('../../services/logging/log_job', () => ({
 
 jest.mock('@sentry/node', () => ({
   captureException: jest.fn(),
+}));
+
+jest.mock('../../lib/extract/extraction-service', () => ({
+  CostTracking: jest.fn().mockImplementation(() => ({
+    addCost: jest.fn(),
+    getCost: jest.fn().mockReturnValue({})
+  }))
 }));
 
 describe('Search Controller URL Filtering', () => {
@@ -27,6 +58,7 @@ describe('Search Controller URL Filtering', () => {
     },
     acuc: {
       flags: null,
+      sub_id: 'test-sub-id',
     },
     body: {
       query: 'test query',
@@ -52,6 +84,7 @@ describe('Search Controller URL Filtering', () => {
   it('should filter out invalid URLs when ignoreInvalidURLs is true', async () => {
     await searchController(mockRequest, mockResponse);
 
+    expect(blocklist.isUrlBlocked).toHaveBeenCalledWith('https://blocked-site.com', null);
     expect(mockResponse.json).toHaveBeenCalledWith(expect.objectContaining({
       success: true,
       data: expect.arrayContaining([
@@ -98,10 +131,12 @@ describe('Search Controller URL Filtering', () => {
     
     await searchController(mockRequest, mockResponse);
 
+    expect(blocklist.isUrlBlocked).toHaveBeenCalled();
     expect(mockResponse.json).toHaveBeenCalledWith(expect.objectContaining({
       success: true,
       data: expect.arrayContaining([]),
-      warning: expect.stringContaining('No search results found'),
+      warning: expect.stringContaining('unsupported/invalid URLs were filtered'),
+      invalidURLs: expect.arrayContaining(['https://example.com', 'https://blocked-site.com']),
     }));
   });
 });
