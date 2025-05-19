@@ -140,6 +140,7 @@ export async function scrapeController(
   if ((req.body.extract && req.body.formats?.includes("extract")) || (req.body.formats?.includes("changeTracking") && req.body.changeTrackingOptions?.modes?.includes("json"))) {
     creditsToBeBilled = 5;
   }
+
   if (req.body.agent?.model?.toLowerCase() === "fire-1" || req.body.extract?.agent?.model?.toLowerCase() === "fire-1" || req.body.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
     if (process.env.USE_DB_AUTHENTICATION === "true") {
       // @Nick this is a hack pushed at 2AM pls help - mogery
@@ -155,7 +156,7 @@ export async function scrapeController(
     }
   }
 
-  if (req.body.proxy === "stealth") {
+  if (doc?.metadata?.proxyUsed === "stealth") {
     creditsToBeBilled += 4;
   }
 
