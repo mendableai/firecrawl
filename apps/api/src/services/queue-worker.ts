@@ -1553,11 +1553,11 @@ app.get("/liveness", (req, res) => {
   } else {
     // networking check
     robustFetch({
-      url: "https://api.firecrawl.dev",
+      url: "http://firecrawl-api-service:3002",
       method: "GET",
       mock: null,
       logger: _logger,
-      abort: AbortSignal.timeout(2500),
+      abort: AbortSignal.timeout(5000),
       ignoreResponse: true,
     })
       .then(() => {
