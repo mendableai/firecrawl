@@ -145,13 +145,21 @@ export async function extractMetadata(
               } else {
                 customMetadata[name] = [customMetadata[name] as string, content];
               }
-            } else {
+            } else if (name === "description") {
               if (customMetadata[name] === undefined) {
                 customMetadata[name] = content;
               } else {
                 customMetadata[name] = Array.isArray(customMetadata[name]) 
                   ? [...customMetadata[name] as string[], content].join(", ") 
                   : `${customMetadata[name]}, ${content}`;
+              }
+            } else {
+              if (customMetadata[name] === undefined) {
+                customMetadata[name] = content;
+              } else if (Array.isArray(customMetadata[name])) {
+                (customMetadata[name] as string[]).push(content);
+              } else {
+                customMetadata[name] = [customMetadata[name] as string, content];
               }
             }
           }

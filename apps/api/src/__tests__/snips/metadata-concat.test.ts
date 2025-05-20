@@ -2,7 +2,7 @@ import { extractMetadata } from "../../scraper/scrapeURL/lib/extractMetadata";
 import { jest, describe, it, expect } from "@jest/globals";
 
 describe("Metadata concatenation", () => {
-  it("should concatenate array values into strings except for ogLocaleAlternate", async () => {
+  it("should concatenate description field into a string while preserving arrays for other metadata fields", async () => {
     const html = `
       <html>
         <head>
@@ -10,6 +10,8 @@ describe("Metadata concatenation", () => {
           <meta name="description" content="Second description">
           <meta property="og:locale:alternate" content="en_US">
           <meta property="og:locale:alternate" content="fr_FR">
+          <meta name="keywords" content="first keyword">
+          <meta name="keywords" content="second keyword">
         </head>
         <body></body>
       </html>
@@ -34,5 +36,9 @@ describe("Metadata concatenation", () => {
     expect(metadata.ogLocaleAlternate).toBeDefined();
     expect(Array.isArray(metadata.ogLocaleAlternate)).toBe(true);
     expect(metadata.ogLocaleAlternate).toEqual(["en_US", "fr_FR"]);
+    
+    expect(metadata.keywords).toBeDefined();
+    expect(Array.isArray(metadata.keywords)).toBe(true);
+    expect(metadata.keywords).toEqual(["first keyword", "second keyword"]);
   });
 });
