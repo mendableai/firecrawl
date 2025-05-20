@@ -5,6 +5,7 @@ x-common-service: &common-service
   # uncomment the build: statement and comment out the image: statement
   image: jcr.savorcare.com/ghcr/mendableai/firecrawl
   #build: apps/api
+  restart: unless-stopped
 
   ulimits:
     nofile:
@@ -44,7 +45,8 @@ x-common-env: &common-env
 
 services:
   playwright-service:
-    image: jcr.savorcare.com/docker/sipingxiaoe/playwright-service-ts:latest	
+    image: jcr.savorcare.com/docker/sipingxiaoe/playwright-service-ts:latest
+    restart: unless-stopped
     environment:
       PORT: 3000
       PROXY_SERVER: ${PROXY_SERVER}
