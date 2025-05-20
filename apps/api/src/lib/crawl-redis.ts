@@ -1,5 +1,5 @@
 import { InternalOptions } from "../scraper/scrapeURL";
-import { ScrapeOptions } from "../controllers/v1/types";
+import { ScrapeOptions, TeamFlags } from "../controllers/v1/types";
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import { redisConnection } from "../services/queue-service";
 import { logger as _logger } from "./logger";
@@ -383,6 +383,7 @@ export async function lockURLsIndividually(
 export function crawlToCrawler(
   id: string,
   sc: StoredCrawl,
+  teamFlags: TeamFlags,
   newBase?: string,
   crawlerOptions?: any,
 ): WebCrawler {
@@ -403,7 +404,7 @@ export function crawlToCrawler(
     allowExternalContentLinks:
       sc.crawlerOptions?.allowExternalContentLinks ?? false,
     allowSubdomains: sc.crawlerOptions?.allowSubdomains ?? false,
-    ignoreRobotsTxt: sc.crawlerOptions?.ignoreRobotsTxt ?? false,
+    ignoreRobotsTxt: teamFlags?.ignoreRobots ?? sc.crawlerOptions?.ignoreRobotsTxt ?? false,
     regexOnFullURL: sc.crawlerOptions?.regexOnFullURL ?? false,
     maxDiscoveryDepth: sc.crawlerOptions?.maxDiscoveryDepth,
     currentDiscoveryDepth: crawlerOptions?.currentDiscoveryDepth ?? 0,

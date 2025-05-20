@@ -32,6 +32,7 @@ import { mixSchemaObjects_F0 } from "./helpers/mix-schema-objs-f0";
 import { singleAnswerCompletion_F0 } from "./completions/singleAnswer-f0";
 import { calculateFinalResultCost_F0, estimateTotalCost_F0 } from "./usage/llm-cost-f0";
 import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
+import { getACUCTeam } from "../../../controllers/auth";
 
   
   interface ExtractServiceOptions {
@@ -77,6 +78,8 @@ import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
     let singleAnswerResult: any = {};
     let totalUrlsScraped = 0;
     let sources: Record<string, string[]> = {};
+
+    const acuc = await getACUCTeam(teamId);
   
   
     const logger = _logger.child({
@@ -102,6 +105,22 @@ import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
     if (request.urls && request.urls.length === 0) {
       logger.error("No search results found", {
         query: request.prompt,
+      });
+      logJob({
+        job_id: extractId,
+        success: false,
+        message: "No search results found",
+        num_docs: 1,
+        docs: [],
+        time_taken: (new Date().getTime() - Date.now()) / 1000,
+        team_id: teamId,
+        mode: "extract",
+        url: request.urls?.join(", ") || "",
+        scrapeOptions: request,
+        origin: request.origin ?? "api",
+        num_tokens: 0,
+        tokens_billed: 0,
+        sources,
       });
       return {
         success: false,
@@ -174,6 +193,7 @@ import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
           });
         },
         logger.child({ module: "extract", method: "processUrl", url }),
+        acuc?.flags ?? null,
       ),
     );
   
@@ -186,6 +206,22 @@ import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
     if (links.length === 0) {
       logger.error("0 links! Bailing.", {
         linkCount: links.length,
+      });
+      logJob({
+        job_id: extractId,
+        success: false,
+        message: "No valid URLs found to scrape",
+        num_docs: 1,
+        docs: [],
+        time_taken: (new Date().getTime() - Date.now()) / 1000,
+        team_id: teamId,
+        mode: "extract",
+        url: request.urls?.join(", ") || "",
+        scrapeOptions: request,
+        origin: request.origin ?? "api",
+        num_tokens: 0,
+        tokens_billed: 0,
+        sources,
       });
       return {
         success: false,
@@ -520,6 +556,22 @@ import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
   
       } catch (error) {
         logger.error(`Failed to transform array to object`, { error });
+        logJob({
+          job_id: extractId,
+          success: false,
+          message: "Failed to transform array to object",
+          num_docs: 1,
+          docs: [],
+          time_taken: (new Date().getTime() - Date.now()) / 1000,
+          team_id: teamId,
+          mode: "extract",
+          url: request.urls?.join(", ") || "",
+          scrapeOptions: request,
+          origin: request.origin ?? "api",
+          num_tokens: 0,
+          tokens_billed: 0,
+          sources,
+        });
         return {
           success: false,
           error:
@@ -598,6 +650,23 @@ import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
   
         logger.debug("Scrapes finished.", { docCount: validResults.length });
       } catch (error) {
+        logger.error("Failed to scrape documents", { error });
+        logJob({
+          job_id: extractId,
+          success: false,
+          message: "Failed to scrape documents",
+          num_docs: 1,
+          docs: [],
+          time_taken: (new Date().getTime() - Date.now()) / 1000,
+          team_id: teamId,
+          mode: "extract",
+          url: request.urls?.join(", ") || "",
+          scrapeOptions: request,
+          origin: request.origin ?? "api",
+          num_tokens: 0,
+          tokens_billed: 0,
+          sources,
+        });
         return {
           success: false,
           error: error.message,
@@ -610,6 +679,22 @@ import { SourceTracker_F0 } from "./helpers/source-tracker-f0";
       if (docsMap.size == 0) {
         // All urls are invalid
         logger.error("All provided URLs are invalid!");
+        logJob({
+          job_id: extractId,
+          success: false,
+          message: "All provided URLs are invalid",
+          num_docs: 1,
+          docs: [],
+          time_taken: (new Date().getTime() - Date.now()) / 1000,
+          team_id: teamId,
+          mode: "extract",
+          url: request.urls?.join(", ") || "",
+          scrapeOptions: request,
+          origin: request.origin ?? "api",
+          num_tokens: 0,
+          tokens_billed: 0,
+          sources,
+        });
         return {
           success: false,
           error:

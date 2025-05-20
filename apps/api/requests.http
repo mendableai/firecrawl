@@ -104,7 +104,8 @@ content-type: application/json
 {
   "url": "https://firecrawl.dev",
   "maxUrls": 1,
-  "showFullText": false
+  "showFullText": false,
+  "cache": true
 }
 
 

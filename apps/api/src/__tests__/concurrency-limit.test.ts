@@ -126,7 +126,7 @@ describe("Concurrency Limit", () => {
 
     describe("pushConcurrencyLimitedJob", () => {
       it("should add job to queue with priority", async () => {
-        await pushConcurrencyLimitedJob(mockTeamId, mockJob);
+        await pushConcurrencyLimitedJob(mockTeamId, mockJob, 30000);
 
         expect(redisConnection.zadd).toHaveBeenCalledWith(
           "concurrency-limit-queue:test-team-id",
@@ -139,7 +139,7 @@ describe("Concurrency Limit", () => {
         const jobWithoutPriority = { ...mockJob };
         delete jobWithoutPriority.priority;
 
-        await pushConcurrencyLimitedJob(mockTeamId, jobWithoutPriority);
+        await pushConcurrencyLimitedJob(mockTeamId, jobWithoutPriority, 30000);
 
         expect(redisConnection.zadd).toHaveBeenCalledWith(
           "concurrency-limit-queue:test-team-id",
@@ -181,7 +181,7 @@ describe("Concurrency Limit", () => {
       };
 
       // Push job to queue
-      await pushConcurrencyLimitedJob(mockTeamId, mockJob);
+      await pushConcurrencyLimitedJob(mockTeamId, mockJob, 30000);
       expect(redisConnection.zadd).toHaveBeenCalled();
 
       // Take job from queue

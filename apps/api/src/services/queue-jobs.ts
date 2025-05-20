@@ -46,7 +46,7 @@ async function _addScrapeJobToConcurrencyQueue(
       jobId: jobId,
     },
     priority: jobPriority,
-  });
+  }, webScraperOptions.crawl_id ? Infinity :(webScraperOptions.scrapeOptions?.timeout ?? (60 * 1000)));
 }
 
 async function _addCrawlScrapeJobToConcurrencyQueue(
