@@ -137,15 +137,7 @@ export async function extractMetadata(
           const content = soup(elem).attr("content");
 
           if (name && content) {
-            if (name === "og:locale:alternate") {
-              if (customMetadata[name] === undefined) {
-                customMetadata[name] = [content];
-              } else if (Array.isArray(customMetadata[name])) {
-                (customMetadata[name] as string[]).push(content);
-              } else {
-                customMetadata[name] = [customMetadata[name] as string, content];
-              }
-            } else if (name === "description") {
+            if (name === "description") {
               if (customMetadata[name] === undefined) {
                 customMetadata[name] = content;
               } else {

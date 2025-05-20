@@ -131,9 +131,7 @@ pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut lib
                         Value::String(existing) => {
                             if name == "description" {
                                 out.insert(name.to_string(), Value::String(format!("{}, {}", existing, content)));
-                            } else if name != "title" && name != "og:locale:alternate" {
-                                out.insert(name.to_string(), Value::Array(vec! [Value::String(existing.clone()), Value::String(content.to_string())]));
-                            } else if name == "og:locale:alternate" {
+                            } else if name != "title" { // preserve title tag in metadata
                                 out.insert(name.to_string(), Value::Array(vec! [Value::String(existing.clone()), Value::String(content.to_string())]));
                             }
                         },
