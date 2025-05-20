@@ -45,6 +45,8 @@ async function scrapePDFWithRunPodMU(
     });
   }
 
+  const timeout = timeToRun ? timeToRun - (Date.now() - preCacheCheckStartTime) : undefined;
+
   const result = await robustFetch({
     url:
       "https://api.runpod.ai/v2/" + process.env.RUNPOD_MU_POD_ID + "/runsync",
@@ -56,7 +58,7 @@ async function scrapePDFWithRunPodMU(
       input: {
         file_content: base64Content,
         filename: path.basename(tempFilePath) + ".pdf",
-        timeout: timeToRun ? timeToRun - (Date.now() - preCacheCheckStartTime) : undefined,
+        timeout,
         created_at: Date.now(),
       },
     },
@@ -69,6 +71,7 @@ async function scrapePDFWithRunPodMU(
       }),
     }),
     mock: meta.mock,
+    abort: timeout ? AbortSignal.timeout(timeout) : undefined,
   });
 
   const processorResult = {
