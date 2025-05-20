@@ -2553,6 +2553,7 @@ class CrawlWatcher:
         """
         async with websockets.connect(
             self.ws_url,
+            max_size=None,
             additional_headers=[("Authorization", f"Bearer {self.app.api_key}")]
         ) as websocket:
             await self._listen(websocket)
