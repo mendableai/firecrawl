@@ -85,7 +85,7 @@ import Express from "express";
 import http from "http";
 import https from "https";
 import { cacheableLookup } from "../scraper/scrapeURL/lib/cacheableLookup";
-import { robustFetch } from "src/scraper/scrapeURL/lib/fetch";
+import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
 
 configDotenv();
 
