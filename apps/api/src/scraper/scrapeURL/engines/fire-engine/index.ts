@@ -48,6 +48,7 @@ async function performFireEngineScrape<
     logger.child({ method: "fireEngineScrape" }),
     request,
     mock,
+    abort,
   );
 
   const startTime = Date.now();
@@ -56,6 +57,7 @@ async function performFireEngineScrape<
   let status: FireEngineCheckStatusSuccess | undefined = undefined;
 
   while (status === undefined) {
+    abort?.throwIfAborted();
     if (errors.length >= errorLimit) {
       logger.error("Error limit hit.", { errors });
       fireEngineDelete(
@@ -236,7 +238,7 @@ export async function scrapeURLWithFireEngineChromeCDP(
     request,
     timeout,
     meta.mock,
-    meta.internalOptions.abort,
+    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
   );
 
   if (
@@ -317,7 +319,7 @@ export async function scrapeURLWithFireEnginePlaywright(
     request,
     timeout,
     meta.mock,
-    meta.internalOptions.abort,
+    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
   );
 
   if (!response.url) {
@@ -373,7 +375,7 @@ export async function scrapeURLWithFireEngineTLSClient(
     request,
     timeout,
     meta.mock,
-    meta.internalOptions.abort,
+    meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
   );
 
   if (!response.url) {

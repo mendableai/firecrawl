@@ -142,6 +142,7 @@ export async function fireEngineCheckStatus(
             : {}),
         },
         mock,
+        abort,
       });
     },
   );
