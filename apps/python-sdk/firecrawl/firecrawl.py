@@ -23,6 +23,7 @@ import websockets
 import aiohttp
 import asyncio
 from pydantic import Field
+from .utils import convert_dict_keys_to_snake_case, convert_to_dot_dict, DotDict, DeepResearchResponse, DeepResearchData, DeepResearchDataSource
 
 # Suppress Pydantic warnings about attribute shadowing
 warnings.filterwarnings("ignore", message="Field name \"json\" in \"FirecrawlDocument\" shadows an attribute in parent \"BaseModel\"")
@@ -143,7 +144,7 @@ class ChangeTrackingOptions(pydantic.BaseModel):
 
 class ScrapeOptions(pydantic.BaseModel):
     """Parameters for scraping operations."""
-    formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None
+    formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None
     headers: Optional[Dict[str, str]] = None
     includeTags: Optional[List[str]] = None
     excludeTags: Optional[List[str]] = None
@@ -448,7 +449,7 @@ class FirecrawlApp:
             self,
             url: str,
             *,
-            formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None,
+            formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None,
             include_tags: Optional[List[str]] = None,
             exclude_tags: Optional[List[str]] = None,
             only_main_content: Optional[bool] = None,
@@ -470,7 +471,7 @@ class FirecrawlApp:
 
         Args:
           url (str): Target URL to scrape
-          formats (Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]]): Content types to retrieve (markdown/html/etc)
+          formats (Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]]): Content types to retrieve (markdown/html/etc)
           include_tags (Optional[List[str]]): HTML tags to include
           exclude_tags (Optional[List[str]]): HTML tags to exclude
           only_main_content (Optional[bool]): Extract main content only
@@ -1179,7 +1180,7 @@ class FirecrawlApp:
         self,
         urls: List[str],
         *,
-        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
         headers: Optional[Dict[str, str]] = None,
         include_tags: Optional[List[str]] = None,
         exclude_tags: Optional[List[str]] = None,
@@ -1313,7 +1314,7 @@ class FirecrawlApp:
         self,
         urls: List[str],
         *,
-        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
         headers: Optional[Dict[str, str]] = None,
         include_tags: Optional[List[str]] = None,
         exclude_tags: Optional[List[str]] = None,
@@ -1445,7 +1446,7 @@ class FirecrawlApp:
         self,
         urls: List[str],
         *,
-        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
         headers: Optional[Dict[str, str]] = None,
         include_tags: Optional[List[str]] = None,
         exclude_tags: Optional[List[str]] = None,
@@ -2257,7 +2258,7 @@ class FirecrawlApp:
             system_prompt: Optional[str] = None,
             __experimental_stream_steps: Optional[bool] = None,
             on_activity: Optional[Callable[[Dict[str, Any]], None]] = None,
-            on_source: Optional[Callable[[Dict[str, Any]], None]] = None) -> DeepResearchStatusResponse:
+            on_source: Optional[Callable[[Dict[str, Any]], None]] = None) -> Union[DotDict[DeepResearchResponse], Dict[str, Any]]:
         """
         Initiates a deep research operation on a given query and polls until completion.
 
@@ -2278,8 +2279,9 @@ class FirecrawlApp:
             * status (str): Current state (processing/completed/failed)
             * error (Optional[str]): Error message if failed
             * id (str): Unique identifier for the research job
-            * data (Any): Research findings and analysis
-            * sources (List[Dict]): List of discovered sources
+            * data (Any): Research findings and analysis with dot notation access
+                * final_analysis (str): Final analysis of the research (converted from camelCase)
+                * sources (List[Dict]): List of discovered sources
             * activities (List[Dict]): Research progress log
             * summaries (List[str]): Generated research summaries
 
@@ -2309,38 +2311,41 @@ class FirecrawlApp:
             analysis_prompt=analysis_prompt,
             system_prompt=system_prompt
         )
-        if not response.get('success') or 'id' not in response:
-            return response
+        
+        dot_dict_response = convert_to_dot_dict(response)
+        
+        if not dot_dict_response.get('success') or 'id' not in dot_dict_response:
+            return dot_dict_response
 
-        job_id = response['id']
+        job_id = dot_dict_response.id
         last_activity_count = 0
         last_source_count = 0
 
         while True:
             status = self.check_deep_research_status(job_id)
             
-            if on_activity and 'activities' in status:
-                new_activities = status['activities'][last_activity_count:]
+            if on_activity and hasattr(status, 'activities'):
+                new_activities = status.activities[last_activity_count:]
                 for activity in new_activities:
                     on_activity(activity)
-                last_activity_count = len(status['activities'])
+                last_activity_count = len(status.activities)
             
-            if on_source and 'sources' in status:
-                new_sources = status['sources'][last_source_count:]
+            if on_source and hasattr(status, 'sources'):
+                new_sources = status.sources[last_source_count:]
                 for source in new_sources:
                     on_source(source)
-                last_source_count = len(status['sources'])
+                last_source_count = len(status.sources)
             
-            if status['status'] == 'completed':
+            if status.status == 'completed':
                 return status
-            elif status['status'] == 'failed':
+            elif status.status == 'failed':
                 raise Exception(f'Deep research failed. Error: {status.get("error")}')
-            elif status['status'] != 'processing':
+            elif status.status != 'processing':
                 break
 
             time.sleep(2)  # Polling interval
 
-        return {'success': False, 'error': 'Deep research job terminated unexpectedly'}
+        return convert_to_dot_dict({'success': False, 'error': 'Deep research job terminated unexpectedly'})
 
     def async_deep_research(
             self,
@@ -2413,7 +2418,7 @@ class FirecrawlApp:
 
         return {'success': False, 'error': 'Internal server error'}
 
-    def check_deep_research_status(self, id: str) -> DeepResearchStatusResponse:
+    def check_deep_research_status(self, id: str) -> Union[DotDict[DeepResearchResponse], Dict[str, Any]]:
         """
         Check the status of a deep research operation.
 
@@ -2430,8 +2435,9 @@ class FirecrawlApp:
             
             Results:
             * id - Unique identifier for the research job
-            * data - Research findings and analysis
-            * sources - List of discovered sources
+            * data - Research findings and analysis with dot notation access
+                * final_analysis - Final analysis of the research (converted from camelCase)
+                * sources - List of discovered sources
             * activities - Research progress log
             * summaries - Generated research summaries
 
@@ -2443,7 +2449,13 @@ class FirecrawlApp:
             response = self._get_request(f'{self.api_url}/v1/deep-research/{id}', headers)
             if response.status_code == 200:
                 try:
-                    return response.json()
+                    json_response = response.json()
+                    
+                    snake_case_response = convert_dict_keys_to_snake_case(json_response)
+                    
+                    dot_dict_response = convert_to_dot_dict(snake_case_response)
+                    
+                    return dot_dict_response
                 except:
                     raise Exception('Failed to parse Firecrawl response as JSON.')
             elif response.status_code == 404:
@@ -2840,7 +2852,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             self,
             url: str,
             *,
-            formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None,
+            formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json", "changeTracking"]]] = None,
             include_tags: Optional[List[str]] = None,
             exclude_tags: Optional[List[str]] = None,
             only_main_content: Optional[bool] = None,
@@ -2861,7 +2873,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
 
         Args:
           url (str): Target URL to scrape
-          formats (Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]]): Content types to retrieve (markdown/html/etc)
+          formats (Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]]): Content types to retrieve (markdown/html/etc)
           include_tags (Optional[List[str]]): HTML tags to include
           exclude_tags (Optional[List[str]]): HTML tags to exclude
           only_main_content (Optional[bool]): Extract main content only
@@ -2968,7 +2980,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         self,
         urls: List[str],
         *,
-        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
         headers: Optional[Dict[str, str]] = None,
         include_tags: Optional[List[str]] = None,
         exclude_tags: Optional[List[str]] = None,
@@ -3107,7 +3119,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         self,
         urls: List[str],
         *,
-        formats: Optional[List[Literal["markdown", "html", "rawHtml", "content", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
+        formats: Optional[List[Literal["markdown", "html", "rawHtml", "links", "screenshot", "screenshot@fullPage", "extract", "json"]]] = None,
         headers: Optional[Dict[str, str]] = None,
         include_tags: Optional[List[str]] = None,
         exclude_tags: Optional[List[str]] = None,
