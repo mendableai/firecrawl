@@ -1558,6 +1558,7 @@ app.get("/liveness", (req, res) => {
       mock: null,
       logger: _logger,
       abort: AbortSignal.timeout(2500),
+      ignoreResponse: true,
     })
       .then(() => {
         res.status(200).json({ ok: true });
