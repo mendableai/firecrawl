@@ -105,11 +105,11 @@ BULL_AUTH_KEY=CHANGEME
 # POSTHOG_HOST=
 
 ## === System Resource Configuration ===
-# Maximum CPU usage threshold (0.0-1.0). Server will reject new connections when CPU usage exceeds this value.
+# Maximum CPU usage threshold (0.0-1.0). Worker will reject new jobs when CPU usage exceeds this value.
 # Default: 0.8 (80%)
 # MAX_CPU=0.8
 
-# Maximum RAM usage threshold (0.0-1.0). Server will reject new connections when memory usage exceeds this value.
+# Maximum RAM usage threshold (0.0-1.0). Worker will reject new jobs when memory usage exceeds this value.
 # Default: 0.8 (80%)
 # MAX_RAM=0.8
 ```
