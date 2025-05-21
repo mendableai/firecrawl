@@ -196,6 +196,10 @@ export async function searchController(
       location: req.body.location,
     });
 
+    if (req.body.ignoreBlockedURLs) {
+      searchResults = searchResults.filter((result) => !isUrlBlocked(result.url, req.acuc?.flags ?? null));
+    }
+
     logger.info("Searching completed", {
       num_results: searchResults.length,
     });
