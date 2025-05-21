@@ -91,6 +91,8 @@ services:
     environment:
       <<: *common-env
       FLY_PROCESS_GROUP: worker
+      MAX_CPU: 8
+      MAX_RAM: 0.85
     depends_on:
       - redis
       - playwright-service
