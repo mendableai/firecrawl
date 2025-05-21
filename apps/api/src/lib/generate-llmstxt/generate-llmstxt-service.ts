@@ -144,7 +144,7 @@ export async function performGenerateLlmsTxt(
               {
                 url,
                 teamId,
-                origin: url,
+                origin: "llmstxt",
                 timeout: 30000,
                 isSingleUrl: true,
               },
