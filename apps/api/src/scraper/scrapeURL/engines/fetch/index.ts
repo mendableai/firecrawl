@@ -59,7 +59,7 @@ export async function scrapeURLWithFetch(
           dispatcher: await makeSecureDispatcher(meta.url),
           redirect: "follow",
           headers: meta.options.headers,
-          signal: meta.internalOptions.abort,
+          signal: meta.internalOptions.abort ?? AbortSignal.timeout(timeout),
         }),
         (async () => {
           await new Promise((resolve) =>

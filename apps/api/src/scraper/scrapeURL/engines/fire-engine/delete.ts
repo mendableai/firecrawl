@@ -9,6 +9,7 @@ export async function fireEngineDelete(
   logger: Logger,
   jobId: string,
   mock: MockState | null,
+  abort?: AbortSignal,
 ) {
   await Sentry.startSpan(
     {
@@ -33,6 +34,7 @@ export async function fireEngineDelete(
         ignoreFailure: true,
         logger: logger.child({ method: "fireEngineDelete/robustFetch", jobId }),
         mock,
+        abort,
       });
     },
   );
