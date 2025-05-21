@@ -239,11 +239,15 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         );
         await addScrapeJobs(lockedJobs);
 
-        logger.info("Added jobs, not going for the full finish", {
-          lockedJobs: lockedJobs.length,
-        });
+        if (lockedJobs.length > 0) {
+          logger.info("Added jobs, not going for the full finish", {
+            lockedJobs: lockedJobs.length,
+          });
 
-        return;
+          return;
+        } else {
+          logger.info("No jobs added (all discovered URLs were locked), finishing crawl");
+        }
       }
     }
 
