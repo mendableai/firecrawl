@@ -1250,6 +1250,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           origin: job.data.origin,
           crawl_id: job.data.crawl_id,
           cost_tracking: costTracking,
+          pdf_num_pages: doc.metadata.numPages,
         },
         true,
       );
@@ -1370,6 +1371,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         origin: job.data.origin,
         num_tokens: 0, // TODO: fix
         cost_tracking: costTracking,
+        pdf_num_pages: doc.metadata.numPages,
       });
       
       indexJob(job, doc);

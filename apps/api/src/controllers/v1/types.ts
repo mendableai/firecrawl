@@ -749,6 +749,7 @@ export type Document = {
     statusCode: number;
     scrapeId?: string;
     error?: string;
+    numPages?: number;
     proxyUsed: "basic" | "stealth";
     // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };

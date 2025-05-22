@@ -103,6 +103,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       tokens_billed: job.tokens_billed,
       is_migrated: true,
       cost_tracking: job.cost_tracking,
+      pdf_num_pages: job.pdf_num_pages ?? null,
     };
 
     // Send job to external server
@@ -183,6 +184,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
           retry: job.retry,
           tokens_billed: job.tokens_billed,
           cost_tracking: job.cost_tracking,
+          pdf_num_pages: job.pdf_num_pages,
         },
       };
       if (job.mode !== "single_urls") {
