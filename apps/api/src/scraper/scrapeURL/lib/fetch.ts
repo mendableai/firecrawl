@@ -6,6 +6,7 @@ import { TimeoutSignal } from "../../../controllers/v1/types";
 import { fireEngineURL } from "../engines/fire-engine/scrape";
 import { fetch, RequestInit, Response, FormData, Agent } from "undici";
 import { cacheableLookup } from "./cacheableLookup";
+import { log } from "console";
 
 export type RobustFetchParams<Schema extends z.Schema<any>> = {
   url: string;
@@ -58,6 +59,19 @@ export async function robustFetch<
     abort,
   };
 
+  // omit pdf file content from logs
+  const logParams = {
+    ...params,
+    body: body?.input ? {
+      ...body,
+      input: {
+        ...body.input,
+        file_content: undefined,
+      },
+    } : body,
+    logger: undefined,
+  }
+
   let response: {
     status: number;
     headers: Headers;
@@ -105,7 +119,7 @@ export async function robustFetch<
         if (tryCount > 1) {
           logger.debug(
             "Request failed, trying " + (tryCount - 1) + " more times",
-            { params, error, requestId },
+            { params: logParams, error, requestId },
           );
           return await robustFetch({
             ...params,
@@ -114,7 +128,7 @@ export async function robustFetch<
             mock,
           });
         } else {
-          logger.debug("Request failed", { params, error, requestId });
+          logger.debug("Request failed", { params: logParams, error, requestId });
           throw new Error("Request failed", {
             cause: {
               params,
@@ -181,7 +195,7 @@ export async function robustFetch<
     if (tryCount > 1) {
       logger.debug(
         "Request sent failure status, trying " + (tryCount - 1) + " more times",
-        { params: { ...params, logger: undefined }, response: { status: response.status, body: response.body }, requestId },
+        { params: logParams, response: { status: response.status, body: response.body }, requestId },
       );
       if (tryCooldown !== undefined) {
         await new Promise((resolve) =>
@@ -196,13 +210,13 @@ export async function robustFetch<
       });
     } else {
       logger.debug("Request sent failure status", {
-        params: { ...params, logger: undefined },
+        params: logParams,
         response: { status: response.status, body: response.body },
         requestId,
       });
       throw new Error("Request sent failure status", {
         cause: {
-          params: { ...params, logger: undefined },
+          params: logParams,
           response: { status: response.status, body: response.body },
           requestId,
         },
@@ -227,13 +241,13 @@ export async function robustFetch<
     data = JSON.parse(response.body);
   } catch (error) {
     logger.debug("Request sent malformed JSON", {
-      params: { ...params, logger: undefined },
+      params: logParams,
       response: { status: response.status, body: response.body },
       requestId,
     });
     throw new Error("Request sent malformed JSON", {
       cause: {
-        params: { ...params, logger: undefined },
+        params: logParams,
         response,
         requestId,
       },
@@ -246,7 +260,7 @@ export async function robustFetch<
     } catch (error) {
       if (error instanceof ZodError) {
         logger.debug("Response does not match provided schema", {
-          params: { ...params, logger: undefined },
+          params: logParams,
           response: { status: response.status, body: response.body },
           requestId,
           error,
@@ -254,7 +268,7 @@ export async function robustFetch<
         });
         throw new Error("Response does not match provided schema", {
           cause: {
-            params: { ...params, logger: undefined },
+            params: logParams,
             response,
             requestId,
             error,
@@ -263,7 +277,7 @@ export async function robustFetch<
         });
       } else {
         logger.debug("Parsing response with provided schema failed", {
-          params: { ...params, logger: undefined },
+          params: logParams,
           response: { status: response.status, body: response.body },
           requestId,
           error,
@@ -271,7 +285,7 @@ export async function robustFetch<
         });
         throw new Error("Parsing response with provided schema failed", {
           cause: {
-            params: { ...params, logger: undefined },
+            params: logParams,
             response,
             requestId,
             error,
