@@ -9,7 +9,7 @@ import {
 import { wrap } from "./v1";
 import { acucCacheClearController } from "../controllers/v0/admin/acuc-cache-clear";
 import { checkFireEngine } from "../controllers/v0/admin/check-fire-engine";
-import { cclogController } from "src/controllers/v0/admin/cclog";
+import { cclogController } from "../controllers/v0/admin/cclog";
 
 export const adminRouter = express.Router();
 
