@@ -62,7 +62,9 @@ export async function extractController(
   const originalRequest = { ...req.body };
   req.body = extractRequestSchema.parse(req.body);
 
-  if (req.body.urls?.some((url: string) => isUrlBlocked(url, req.acuc?.flags ?? null))) {
+  const invalidURLs: string[] = req.body.urls?.filter((url: string) => isUrlBlocked(url, req.acuc?.flags ?? null)) ?? [];
+
+  if (invalidURLs.length > 0 && !req.body.ignoreInvalidURLs) {
     if (!res.headersSent) {
       return res.status(403).json({
         success: false,
@@ -144,5 +146,8 @@ export async function extractController(
     success: true,
     id: extractId,
     urlTrace: [],
+    ...(invalidURLs.length > 0 && req.body.ignoreInvalidURLs ? {
+      invalidURLs,
+    } : {}),
   });
 }
