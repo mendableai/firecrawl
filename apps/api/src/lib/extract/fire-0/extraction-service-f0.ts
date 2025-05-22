@@ -338,7 +338,7 @@ import { getACUCTeam } from "../../../controllers/auth";
             {
               url,
               teamId,
-              origin: request.origin || "api",
+              origin: "extract",
               timeout,
             },
             urlTraces,
@@ -616,7 +616,7 @@ import { getACUCTeam } from "../../../controllers/auth";
             {
               url,
               teamId,
-              origin: request.origin || "api",
+              origin: "extract",
               timeout,
             },
             urlTraces,
