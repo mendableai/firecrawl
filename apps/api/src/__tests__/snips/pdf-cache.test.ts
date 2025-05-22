@@ -59,7 +59,7 @@ describe('PDF Caching', () => {
 
   test('savePdfResultToCache saves results to GCS', async () => {
     const pdfContent = 'test-pdf-content';
-    const result = { markdown: 'test markdown', html: 'test html' };
+    const result = { markdown: 'test markdown', html: 'test html', numPages: 5 };
     
     const { _getMockFile, _getMockSave } = require('@google-cloud/storage');
     const mockFile = _getMockFile();
@@ -92,6 +92,7 @@ describe('PDF Caching', () => {
     expect(result).not.toBeNull();
     expect(result?.markdown).toBe('cached markdown');
     expect(result?.html).toBe('cached html');
+    expect(result?.numPages).toBe(5);
   });
 
   test('getPdfResultFromCache returns null when cache miss', async () => {

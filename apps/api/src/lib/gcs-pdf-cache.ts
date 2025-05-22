@@ -21,7 +21,7 @@ export function createPdfCacheKey(pdfContent: string | Buffer): string {
  */
 export async function savePdfResultToCache(
   pdfContent: string, 
-  result: { markdown: string; html: string }
+  result: { markdown: string; html: string; numPages: number }
 ): Promise<string | null> {
   try {
     if (!process.env.GCS_BUCKET_NAME) {
@@ -76,7 +76,7 @@ export async function savePdfResultToCache(
  */
 export async function getPdfResultFromCache(
   pdfContent: string
-): Promise<{ markdown: string; html: string } | null> {
+): Promise<{ markdown: string; html: string; numPages: number } | null> {
   try {
     if (!process.env.GCS_BUCKET_NAME) {
       return null;
@@ -102,7 +102,10 @@ export async function getPdfResultFromCache(
       cacheKey,
     });
     
-    return result;
+    return {
+      ...result,
+      numPages: result.numPages ?? 1, // default to 1 page if cache is old
+    };
   } catch (error) {
     logger.error(`Error retrieving PDF RunPod result from GCS cache`, {
       error,

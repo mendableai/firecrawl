@@ -6,7 +6,6 @@ import {
 } from "../../services/billing/credit_billing";
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../types";
-import { logJob } from "../../services/logging/log_job";
 import {
   fromLegacyCombo,
   TeamFlags,

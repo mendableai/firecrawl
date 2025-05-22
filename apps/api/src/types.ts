@@ -94,6 +94,7 @@ export interface FirecrawlJob {
   tokens_billed?: number;
   sources?: Record<string, string[]>;
   cost_tracking?: CostTracking;
+  pdf_num_pages?: number;
 }
 
 export interface FirecrawlScrapeResponse {

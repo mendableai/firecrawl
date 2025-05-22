@@ -109,6 +109,8 @@ export type EngineScrapeResult = {
       value: unknown
     }[];
   };
+
+  numPages?: number;
 };
 
 const engineHandlers: {
