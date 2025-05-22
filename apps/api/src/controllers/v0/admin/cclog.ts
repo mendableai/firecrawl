@@ -1,6 +1,6 @@
-import { redisConnection } from "src/services/queue-service";
-import { supabase_service } from "src/services/supabase";
-import { logger as _logger } from "src/lib/logger";
+import { redisConnection } from "../../../services/queue-service";
+import { supabase_service } from "../../../services/supabase";
+import { logger as _logger } from "../../../lib/logger";
 import { Request, Response } from "express";
 
 async function cclog() {
