@@ -16,7 +16,7 @@ class RustPDFParser {
 
     private constructor() {
         const lib = koffi.load(rustExecutablePath);
-        this._getPageCount = lib.func("get_page_count", "i32", ["string"]);
+        this._getPageCount = lib.func("get_page_count", "int32", ["string"]);
     }
 
     public static async isParserAvailable(): Promise<boolean> {
