@@ -28,10 +28,30 @@ function expectScrapeToSucceed(response: Awaited<ReturnType<typeof scrapeRaw>>) 
     expect(typeof response.body.data).toBe("object");
 }
 
+function expectScrapeToFail(response: Awaited<ReturnType<typeof scrapeRaw>>) {
+    expect(response.statusCode).not.toBe(200);
+    expect(response.body.success).toBe(false);
+    expect(typeof response.body.error).toBe("string");
+}
+
 export async function scrape(body: ScrapeRequestInput): Promise<Document> {
     const raw = await scrapeRaw(body);
     expectScrapeToSucceed(raw);
+    if (body.proxy === "stealth") {
+        expect(raw.body.data.metadata.proxyUsed).toBe("stealth");
+    } else if (!body.proxy || body.proxy === "basic") {
+        expect(raw.body.data.metadata.proxyUsed).toBe("basic");
+    }
     return raw.body.data;
+}
+
+export async function scrapeWithFailure(body: ScrapeRequestInput): Promise<{
+    success: false;
+    error: string;
+}> {
+    const raw = await scrapeRaw(body);
+    expectScrapeToFail(raw);
+    return raw.body;
 }
 
 export async function scrapeStatusRaw(jobId: string) {
@@ -270,4 +290,65 @@ export async function tokenUsage(): Promise<{ remaining_tokens: number }> {
         .get("/v1/team/token-usage")
         .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
         .set("Content-Type", "application/json")).body.data;
+}
+
+// =========================================
+// =========================================
+
+async function deepResearchStart(body: {
+  query?: string;
+  maxDepth?: number;
+  maxUrls?: number;
+  timeLimit?: number;
+  analysisPrompt?: string;
+  systemPrompt?: string;
+  formats?: string[];
+  topic?: string;
+  jsonOptions?: any;
+}) {
+  return await request(TEST_URL)
+    .post("/v1/deep-research")
+    .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    .set("Content-Type", "application/json")
+    .send(body);
+}
+
+async function deepResearchStatus(id: string) {
+  return await request(TEST_URL)
+    .get("/v1/deep-research/" + encodeURIComponent(id))
+    .set("Authorization", `Bearer ${process.env.TEST_API_KEY}`)
+    .send();
+}
+
+function expectDeepResearchStartToSucceed(response: Awaited<ReturnType<typeof deepResearchStart>>) {
+  expect(response.statusCode).toBe(200);
+  expect(response.body.success).toBe(true);
+  expect(typeof response.body.id).toBe("string");
+}
+
+export async function deepResearch(body: {
+  query?: string;
+  maxDepth?: number;
+  maxUrls?: number;
+  timeLimit?: number;
+  analysisPrompt?: string;
+  systemPrompt?: string;
+  formats?: string[];
+  topic?: string;
+  jsonOptions?: any;
+}) {
+  const ds = await deepResearchStart(body);
+  expectDeepResearchStartToSucceed(ds);
+
+  let x;
+  
+  do {
+    x = await deepResearchStatus(ds.body.id);
+    expect(x.statusCode).toBe(200);
+    expect(typeof x.body.status).toBe("string");
+  } while (x.body.status === "processing");
+
+  expect(x.body.success).toBe(true);
+  expect(x.body.status).toBe("completed");
+  return x.body;
 }

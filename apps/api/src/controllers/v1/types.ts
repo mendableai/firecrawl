@@ -24,8 +24,18 @@ export type Format =
 export const url = z.preprocess(
   (x) => {
     if (!protocolIncluded(x as string)) {
-      return `http://${x}`;
+      x = `http://${x}`;
     }
+    
+    try {
+      const urlObj = new URL(x as string);
+      if (urlObj.search) {
+        const searchParams = new URLSearchParams(urlObj.search.substring(1));
+        return `${urlObj.origin}${urlObj.pathname}?${searchParams.toString()}`;
+      }
+    } catch (e) {
+    }
+    
     return x;
   },
   z
@@ -298,7 +308,7 @@ const baseScrapeOptions = z
     fastMode: z.boolean().default(false),
     useMock: z.string().optional(),
     blockAds: z.boolean().default(true),
-    proxy: z.enum(["basic", "stealth"]).optional(),
+    proxy: z.enum(["basic", "stealth", "auto"]).optional(),
   })
   .strict(strictMessage);
 
@@ -350,7 +360,7 @@ const extractTransform = (obj) => {
     obj = { ...obj, timeout: 300000 };
   }
 
-  if (obj.proxy === "stealth" && obj.timeout === 30000) {
+  if ((obj.proxy === "stealth" || obj.proxy === "auto") && obj.timeout === 30000) {
     obj = { ...obj, timeout: 120000 };
   }
 
@@ -468,6 +478,7 @@ export const extractV1Options = z
       .optional(),
     agent: agentOptionsExtract.optional(),
     __experimental_showCostTracking: z.boolean().default(false),
+    ignoreInvalidURLs: z.boolean().default(false),
   })
   .strict(strictMessage)
   .refine((obj) => obj.urls || obj.prompt, {
@@ -739,6 +750,7 @@ export type Document = {
     scrapeId?: string;
     error?: string;
     numPages?: number;
+    proxyUsed: "basic" | "stealth";
     // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };
   serpResults?: {
@@ -1153,6 +1165,7 @@ export const searchRequestSchema = z
     location: z.string().optional(),
     origin: z.string().optional().default("api"),
     timeout: z.number().int().positive().finite().safe().default(60000),
+    ignoreInvalidURLs: z.boolean().optional().default(false),
     scrapeOptions: baseScrapeOptions
       .extend({
         formats: z
@@ -1212,6 +1225,10 @@ export const generateLLMsTextRequestSchema = z.object({
     .boolean()
     .default(false)
     .describe("Whether to show the full LLMs-full.txt in the response"),
+  cache: z
+    .boolean()
+    .default(true)
+    .describe("Whether to use cached content if available"),
   __experimental_stream: z.boolean().optional(),
 });
 

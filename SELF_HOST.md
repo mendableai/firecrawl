@@ -103,6 +103,15 @@ BULL_AUTH_KEY=CHANGEME
 # Set if you'd like to send posthog events like job logs
 # POSTHOG_API_KEY=
 # POSTHOG_HOST=
+
+## === System Resource Configuration ===
+# Maximum CPU usage threshold (0.0-1.0). Worker will reject new jobs when CPU usage exceeds this value.
+# Default: 0.8 (80%)
+# MAX_CPU=0.8
+
+# Maximum RAM usage threshold (0.0-1.0). Worker will reject new jobs when memory usage exceeds this value.
+# Default: 0.8 (80%)
+# MAX_RAM=0.8
 ```
 
 3.  Build and run the Docker containers:

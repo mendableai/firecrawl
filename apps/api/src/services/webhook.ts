@@ -1,5 +1,5 @@
 import axios from "axios";
-import { logger } from "../lib/logger";
+import { logger as _logger } from "../lib/logger";
 import { supabase_rr_service, supabase_service } from "./supabase";
 import { WebhookEventType } from "../types";
 import { configDotenv } from "dotenv";
@@ -16,9 +16,24 @@ export const callWebhook = async (
   eventType: WebhookEventType = "crawl.page",
   awaitWebhook: boolean = false,
 ) => {
+  const logger = _logger.child({
+    module: "webhook",
+    method: "callWebhook",
+    teamId, team_id: teamId,
+    crawlId: id,
+    eventType,
+    awaitWebhook,
+    webhook: specified,
+    isV1: v1,
+  });
+
   if (specified) {
     let subType = eventType.split(".")[1];
     if (!specified.events.includes(subType as any)) {
+      logger.debug("Webhook event type not in specified events", {
+        subType,
+        specified,
+      });
       return false;
     }
   }
@@ -43,7 +58,10 @@ export const callWebhook = async (
         .limit(1);
       if (error) {
         logger.error(
-          `Error fetching webhook URL for team ID: ${teamId}, error: ${error.message}`,
+          `Error fetching webhook URL for team`,
+          {
+            error,
+          },
         );
         return null;
       }
@@ -57,11 +75,6 @@ export const callWebhook = async (
 
     logger.debug("Calling webhook...", {
       webhookUrl,
-      teamId,
-      specified,
-      v1,
-      eventType,
-      awaitWebhook,
     });
 
     if (!webhookUrl) {
@@ -118,7 +131,10 @@ export const callWebhook = async (
         );
       } catch (error) {
         logger.error(
-          `Axios error (0) sending webhook for team ID: ${teamId}, error: ${error.message}`,
+          `Failed to send webhook`,
+          {
+            error,
+          },
         );
       }
     } else {
@@ -150,13 +166,19 @@ export const callWebhook = async (
         )
         .catch((error) => {
           logger.error(
-            `Axios error sending webhook for team ID: ${teamId}, error: ${error.message}`,
+            `Failed to send webhook`,
+            {
+              error,
+            },
           );
         });
     }
   } catch (error) {
     logger.debug(
-      `Error sending webhook for team ID: ${teamId}, error: ${error.message}`,
+      `Error sending webhook`,
+      {
+        error,
+      },
     );
   }
 };
