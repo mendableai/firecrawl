@@ -7,15 +7,17 @@ import * as Sentry from "@sentry/node";
 import escapeHtml from "escape-html";
 import PdfParse from "pdf-parse";
 import { downloadFile, fetchFileToBuffer } from "../utils/downloadFile";
-import { PDFAntibotError, RemoveFeatureError, UnsupportedFileError } from "../../error";
+import { PDFAntibotError, PDFInsufficientTimeError, RemoveFeatureError, TimeoutError } from "../../error";
 import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { Response } from "undici";
 import { getPdfResultFromCache, savePdfResultToCache } from "../../../../lib/gcs-pdf-cache";
+import { getPageCount } from "../../../../lib/pdf-parser";
 
-type PDFProcessorResult = { html: string; markdown?: string; numPages: number };
+type PDFProcessorResult = { html: string; markdown?: string; };
 
 const MAX_FILE_SIZE = 19 * 1024 * 1024; // 19MB
+const MILLISECONDS_PER_PAGE = 150;
 
 async function scrapePDFWithRunPodMU(
   meta: Meta,
@@ -46,8 +48,13 @@ async function scrapePDFWithRunPodMU(
   }
 
   const timeout = timeToRun ? timeToRun - (Date.now() - preCacheCheckStartTime) : undefined;
+  if (timeout && timeout < 0) {
+    throw new TimeoutError("MU PDF parser already timed out before call");
+  }
 
-  const result = await robustFetch({
+  const abort = timeout ? AbortSignal.timeout(timeout) : undefined;
+
+  const podStart = await robustFetch({
     url:
       "https://api.runpod.ai/v2/" + process.env.RUNPOD_MU_POD_ID + "/runsync",
     method: "POST",
@@ -63,22 +70,63 @@ async function scrapePDFWithRunPodMU(
       },
     },
     logger: meta.logger.child({
-      method: "scrapePDFWithRunPodMU/robustFetch",
+      method: "scrapePDFWithRunPodMU/runsync/robustFetch",
     }),
     schema: z.object({
+      id: z.string(),
+      status: z.string(),
       output: z.object({
         markdown: z.string(),
-        num_pages: z.number(),
-      }),
+      }).optional(),
     }),
     mock: meta.mock,
-    abort: timeout ? AbortSignal.timeout(timeout) : undefined,
+    abort,
   });
 
+  let status: string = podStart.status;
+  let result: { markdown: string } | undefined = podStart.output;
+
+  if (status === "IN_QUEUE" || status === "IN_PROGRESS") {
+    meta.logger.info("RunPod MU returned while in status " + status);
+    do {
+      abort?.throwIfAborted();
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      abort?.throwIfAborted();
+      const podStatus = await robustFetch({
+        url: `https://api.runpod.ai/v2/${process.env.RUNPOD_MU_POD_ID}/status/${podStart.id}`,
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${process.env.RUNPOD_MU_API_KEY}`,
+        },
+        logger: meta.logger.child({
+          method: "scrapePDFWithRunPodMU/status/robustFetch",
+        }),
+        schema: z.object({
+          status: z.string(),
+          output: z.object({
+            markdown: z.string(),
+          }).optional(),
+        }),
+        mock: meta.mock,
+        abort,
+      });
+      meta.logger.info("RunPod MU status " + podStatus.status);
+      status = podStatus.status;
+      result = podStatus.output;
+    } while (status !== "COMPLETED" && status !== "FAILED");
+  }
+
+  if (status === "FAILED") {
+    throw new Error("RunPod MU failed to parse PDF");
+  }
+
+  if (!result) {
+    throw new Error("RunPod MU returned no result");
+  }
+
   const processorResult = {
-    markdown: result.output.markdown,
-    html: await marked.parse(result.output.markdown, { async: true }),
-    numPages: result.output.num_pages,
+    markdown: result.markdown,
+    html: await marked.parse(result.markdown, { async: true }),
   };
 
   try {
@@ -105,7 +153,6 @@ async function scrapePDFWithParsePDF(
   return {
     markdown: escaped,
     html: escaped,
-    numPages: result.numpages,
   };
 }
 
@@ -158,6 +205,11 @@ export async function scrapePDF(
     if (ct && !ct.includes("application/pdf")) { // if downloaded file wasn't a PDF
       throw new PDFAntibotError();
     }
+  }
+
+  const pageCount = await getPageCount(tempFilePath);
+  if (pageCount * MILLISECONDS_PER_PAGE > (timeToRun ?? Infinity)) {
+    throw new PDFInsufficientTimeError(pageCount, pageCount * MILLISECONDS_PER_PAGE + 5000);
   }
 
   let result: PDFProcessorResult | null = null;
@@ -214,5 +266,6 @@ export async function scrapePDF(
     statusCode: response.status,
     html: result?.html ?? "",
     markdown: result?.markdown ?? "",
+    numPages: pageCount,
   };
 }
