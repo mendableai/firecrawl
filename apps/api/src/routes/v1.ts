@@ -100,6 +100,10 @@ export function authMiddleware(
           model: (req.body as any)?.agent?.model,
         });
         rateLimiterMode = RateLimiterMode.ExtractAgentPreview;
+      } else if (rateLimiterMode === RateLimiterMode.ExtractAgentPreview) {
+        logger.warn("EAP passed into authMiddleware directly?", {
+          body: req.body,
+        });
       }
 
       // if (rateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
