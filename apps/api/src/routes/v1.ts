@@ -95,6 +95,10 @@ export function authMiddleware(
   return (req, res, next) => {
     (async () => {
       if (rateLimiterMode === RateLimiterMode.Extract && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
+        logger.debug("Picking extract agent preview mode", {
+          body: req.body,
+          model: (req.body as any)?.agent?.model,
+        });
         rateLimiterMode = RateLimiterMode.ExtractAgentPreview;
       }
 
