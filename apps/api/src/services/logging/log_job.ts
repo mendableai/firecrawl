@@ -47,18 +47,18 @@ async function indexJob(job: FirecrawlJob): Promise<void> {
 
     if (!response.ok) {
       const errorData = await response.json();
-      logger.error(`Failed to send job to external server: ${response.status} ${response.statusText}`, {
-        error: errorData,
-        scrapeId: job.job_id,
-      });
+      // logger.error(`Failed to send job to external server: ${response.status} ${response.statusText}`, {
+      //   error: errorData,
+      //   scrapeId: job.job_id,
+      // });
     } else {
-      logger.debug("Job sent to external server successfully!", { scrapeId: job.job_id });
+      // logger.debug("Job sent to external server successfully!", { scrapeId: job.job_id });
     }
   } catch (error) {
-    logger.error(`Error sending job to external server: ${error.message}`, {
-      error,
-      scrapeId: job.job_id,
-    });
+    // logger.error(`Error sending job to external server: ${error.message}`, {
+    //   error,
+    //   scrapeId: job.job_id,
+    // });
   }
 }
 
