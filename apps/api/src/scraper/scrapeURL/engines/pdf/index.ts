@@ -238,7 +238,10 @@ export async function scrapePDF(
         || error instanceof TimeoutError
       ) {
         throw error;
-      } else if (error instanceof Error && error.name === "TimeoutError") {
+      } else if (
+        (error instanceof Error && error.name === "TimeoutError")
+        || (error instanceof Error && error.message === "Request failed" && error.cause && error.cause instanceof Error && error.cause.name === "TimeoutError")
+      ) {
         throw new TimeoutError("PDF parsing timed out, please increase the timeout parameter in your scrape request");
       }
       meta.logger.warn(
