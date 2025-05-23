@@ -233,8 +233,13 @@ export async function scrapePDF(
         base64Content,
       );
     } catch (error) {
-      if (error instanceof RemoveFeatureError) {
+      if (
+        error instanceof RemoveFeatureError
+        || error instanceof TimeoutError
+      ) {
         throw error;
+      } else if (error instanceof Error && error.name === "TimeoutError") {
+        throw new TimeoutError("PDF parsing timed out, please increase the timeout parameter in your scrape request");
       }
       meta.logger.warn(
         "RunPod MU failed to parse PDF (could be due to timeout) -- falling back to parse-pdf",
