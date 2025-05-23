@@ -104,6 +104,10 @@ export function authMiddleware(
         logger.warn("EAP passed into authMiddleware directly?", {
           body: req.body,
           callStack: new Error().stack,
+          modes: {
+            extract: RateLimiterMode.Extract,
+            extractAgentPreview: RateLimiterMode.ExtractAgentPreview,
+          }
         });
       }
 
