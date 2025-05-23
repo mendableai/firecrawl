@@ -91,6 +91,10 @@ function checkCreditsMiddleware(
 
 export function authMiddleware(
   rateLimiterMode: RateLimiterMode,
+  reference?: {
+    extract: RateLimiterMode,
+    extractAgentPreview: RateLimiterMode,
+  }
 ): (req: RequestWithMaybeAuth, res: Response, next: NextFunction) => void {
   const middlewareSpawn = new Error().stack;
   return (req, res, next) => {
@@ -110,6 +114,7 @@ export function authMiddleware(
             extractAgentPreview: RateLimiterMode.ExtractAgentPreview,
           },
           middlewareSpawn,
+          reference,
         });
       }
 
@@ -268,7 +273,10 @@ v1Router.ws("/crawl/:jobId", crawlStatusWSController);
 
 v1Router.post(
   "/extract",
-  authMiddleware(RateLimiterMode.Extract),
+  authMiddleware(RateLimiterMode.Extract, {
+    extract: RateLimiterMode.Extract,
+    extractAgentPreview: RateLimiterMode.ExtractAgentPreview,
+  }),
   checkCreditsMiddleware(1),
   wrap(extractController),
 );
