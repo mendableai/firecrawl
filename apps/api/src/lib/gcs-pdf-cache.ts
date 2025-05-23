@@ -3,7 +3,7 @@ import { logger } from "./logger";
 import crypto from "crypto";
 
 const credentials = process.env.GCS_CREDENTIALS ? JSON.parse(atob(process.env.GCS_CREDENTIALS)) : undefined;
-const PDF_CACHE_PREFIX = "pdf-cache/";
+const PDF_CACHE_PREFIX = "pdf-cache_v2/";
 
 /**
  * Creates a SHA-256 hash of the PDF content to use as a cache key
@@ -38,7 +38,7 @@ export async function savePdfResultToCache(
         await blob.save(JSON.stringify(result), {
           contentType: "application/json",
           metadata: {
-            source: "runpod_pdf_conversion",
+            source: "runpod_pdf_conversion_v2",
             cache_type: "pdf_markdown",
             created_at: new Date().toISOString(),
           }
