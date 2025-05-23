@@ -32,11 +32,17 @@ RUN cd /app/sharedLibs/html-transformer && \
     cargo build --release && \
     chmod +x target/release/libhtml_transformer.so
 
+# Install Rust dependencies and build PDF parser lib
+RUN cd /app/sharedLibs/pdf-parser && \
+    cargo build --release && \
+    chmod +x target/release/libpdf_parser.so
+
 FROM base
 COPY --from=build /app/dist /app/dist
 COPY --from=prod-deps /app/node_modules /app/node_modules
 COPY --from=go-base /app/sharedLibs/go-html-to-md/html-to-markdown.so /app/sharedLibs/go-html-to-md/html-to-markdown.so
 COPY --from=rust-base /app/sharedLibs/html-transformer/target/release/libhtml_transformer.so /app/sharedLibs/html-transformer/target/release/libhtml_transformer.so
+COPY --from=rust-base /app/sharedLibs/pdf-parser/target/release/libpdf_parser.so /app/sharedLibs/pdf-parser/target/release/libpdf_parser.so
 
 # Install git
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*

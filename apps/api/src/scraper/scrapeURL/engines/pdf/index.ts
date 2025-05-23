@@ -7,15 +7,17 @@ import * as Sentry from "@sentry/node";
 import escapeHtml from "escape-html";
 import PdfParse from "pdf-parse";
 import { downloadFile, fetchFileToBuffer } from "../utils/downloadFile";
-import { PDFAntibotError, RemoveFeatureError, UnsupportedFileError } from "../../error";
+import { PDFAntibotError, PDFInsufficientTimeError, RemoveFeatureError } from "../../error";
 import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { Response } from "undici";
 import { getPdfResultFromCache, savePdfResultToCache } from "../../../../lib/gcs-pdf-cache";
+import { getPageCount } from "../../../../lib/pdf-parser";
 
 type PDFProcessorResult = { html: string; markdown?: string; numPages: number };
 
 const MAX_FILE_SIZE = 19 * 1024 * 1024; // 19MB
+const MILLISECONDS_PER_PAGE = 1000;
 
 async function scrapePDFWithRunPodMU(
   meta: Meta,
@@ -158,6 +160,11 @@ export async function scrapePDF(
     if (ct && !ct.includes("application/pdf")) { // if downloaded file wasn't a PDF
       throw new PDFAntibotError();
     }
+  }
+
+  const pageCount = await getPageCount(tempFilePath);
+  if (pageCount !== null && pageCount * MILLISECONDS_PER_PAGE > (timeToRun ?? 0)) {
+    throw new PDFInsufficientTimeError(pageCount);
   }
 
   let result: PDFProcessorResult | null = null;
