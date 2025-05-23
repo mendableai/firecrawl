@@ -17,7 +17,7 @@ import { getPageCount } from "../../../../lib/pdf-parser";
 type PDFProcessorResult = { html: string; markdown?: string; };
 
 const MAX_FILE_SIZE = 19 * 1024 * 1024; // 19MB
-const MILLISECONDS_PER_PAGE = 1000;
+const MILLISECONDS_PER_PAGE = 150;
 
 async function scrapePDFWithRunPodMU(
   meta: Meta,
