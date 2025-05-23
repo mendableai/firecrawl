@@ -90,39 +90,20 @@ function checkCreditsMiddleware(
 }
 
 export function authMiddleware(
-  rateLimiterMode: RateLimiterMode,
-  reference?: {
-    extract: RateLimiterMode,
-    extractAgentPreview: RateLimiterMode,
-  }
+  rateLimiterMode: RateLimiterMode
 ): (req: RequestWithMaybeAuth, res: Response, next: NextFunction) => void {
-  const middlewareSpawn = new Error().stack;
   return (req, res, next) => {
     (async () => {
-      if (rateLimiterMode === RateLimiterMode.Extract && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
-        logger.debug("Picking extract agent preview mode", {
-          body: req.body,
-          model: (req.body as any)?.agent?.model,
-        });
-        rateLimiterMode = RateLimiterMode.ExtractAgentPreview;
-      } else if (rateLimiterMode === RateLimiterMode.ExtractAgentPreview) {
-        logger.warn("EAP passed into authMiddleware directly?", {
-          body: req.body,
-          callStack: new Error().stack,
-          modes: {
-            extract: RateLimiterMode.Extract,
-            extractAgentPreview: RateLimiterMode.ExtractAgentPreview,
-          },
-          middlewareSpawn,
-          reference,
-        });
+      let currentRateLimiterMode = rateLimiterMode;
+      if (currentRateLimiterMode === RateLimiterMode.Extract && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
+        currentRateLimiterMode = RateLimiterMode.ExtractAgentPreview;
       }
 
-      // if (rateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
-      //   rateLimiterMode = RateLimiterMode.ScrapeAgentPreview;
+      // if (currentRateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
+      //   currentRateLimiterMode = RateLimiterMode.ScrapeAgentPreview;
       // }
 
-      const auth = await authenticateUser(req, res, rateLimiterMode);
+      const auth = await authenticateUser(req, res, currentRateLimiterMode);
 
       if (!auth.success) {
         if (!res.headersSent) {
@@ -273,10 +254,7 @@ v1Router.ws("/crawl/:jobId", crawlStatusWSController);
 
 v1Router.post(
   "/extract",
-  authMiddleware(RateLimiterMode.Extract, {
-    extract: RateLimiterMode.Extract,
-    extractAgentPreview: RateLimiterMode.ExtractAgentPreview,
-  }),
+  authMiddleware(RateLimiterMode.Extract),
   checkCreditsMiddleware(1),
   wrap(extractController),
 );
