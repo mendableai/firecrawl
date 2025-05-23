@@ -103,6 +103,7 @@ export function authMiddleware(
       } else if (rateLimiterMode === RateLimiterMode.ExtractAgentPreview) {
         logger.warn("EAP passed into authMiddleware directly?", {
           body: req.body,
+          callStack: new Error().stack,
         });
       }
 
