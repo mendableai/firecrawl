@@ -87,7 +87,6 @@ async function scrapePDFWithRunPodMU(
   let result: { markdown: string } | undefined = podStart.output;
 
   if (status === "IN_QUEUE" || status === "IN_PROGRESS") {
-    meta.logger.info("RunPod MU returned while in status " + status);
     do {
       abort?.throwIfAborted();
       await new Promise(resolve => setTimeout(resolve, 2500));
@@ -110,7 +109,6 @@ async function scrapePDFWithRunPodMU(
         mock: meta.mock,
         abort,
       });
-      meta.logger.info("RunPod MU status " + podStatus.status);
       status = podStatus.status;
       result = podStatus.output;
     } while (status !== "COMPLETED" && status !== "FAILED");
