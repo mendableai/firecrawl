@@ -64,11 +64,7 @@ class RustPDFParser {
 
 export async function getPageCount(
     path: string,
-): Promise<number | null> {
-    if (!(await RustPDFParser.isParserAvailable())) {
-        return null;
-    }
-
+): Promise<number> {
     const converter = await RustPDFParser.getInstance();
     return await converter.getPageCount(path);
 }

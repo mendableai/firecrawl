@@ -14,7 +14,7 @@ import type { Response } from "undici";
 import { getPdfResultFromCache, savePdfResultToCache } from "../../../../lib/gcs-pdf-cache";
 import { getPageCount } from "../../../../lib/pdf-parser";
 
-type PDFProcessorResult = { html: string; markdown?: string; numPages: number };
+type PDFProcessorResult = { html: string; markdown?: string; };
 
 const MAX_FILE_SIZE = 19 * 1024 * 1024; // 19MB
 const MILLISECONDS_PER_PAGE = 1000;
@@ -70,7 +70,6 @@ async function scrapePDFWithRunPodMU(
     schema: z.object({
       output: z.object({
         markdown: z.string(),
-        num_pages: z.number(),
       }),
     }),
     mock: meta.mock,
@@ -80,7 +79,6 @@ async function scrapePDFWithRunPodMU(
   const processorResult = {
     markdown: result.output.markdown,
     html: await marked.parse(result.output.markdown, { async: true }),
-    numPages: result.output.num_pages,
   };
 
   try {
@@ -107,7 +105,6 @@ async function scrapePDFWithParsePDF(
   return {
     markdown: escaped,
     html: escaped,
-    numPages: result.numpages,
   };
 }
 
@@ -163,7 +160,7 @@ export async function scrapePDF(
   }
 
   const pageCount = await getPageCount(tempFilePath);
-  if (pageCount !== null && pageCount * MILLISECONDS_PER_PAGE > (timeToRun ?? 0)) {
+  if (pageCount * MILLISECONDS_PER_PAGE > (timeToRun ?? 0)) {
     throw new PDFInsufficientTimeError(pageCount);
   }
 
@@ -221,5 +218,6 @@ export async function scrapePDF(
     statusCode: response.status,
     html: result?.html ?? "",
     markdown: result?.markdown ?? "",
+    numPages: pageCount,
   };
 }
