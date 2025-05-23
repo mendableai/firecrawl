@@ -1,4 +1,4 @@
-import { scrape, scrapeStatus } from "./lib";
+import { scrape, scrapeStatus, scrapeWithFailure } from "./lib";
 
 describe("Scrape tests", () => {
   it.concurrent("mocking works properly", async () => {
@@ -297,16 +297,35 @@ describe("Scrape tests", () => {
       }, 130000);
     });
     
-    // Temporarily disabled, too flaky
-    // describe("PDF (f-e dependant)", () => {
-    //   it.concurrent("works for PDFs behind anti-bot", async () => {
-    //     const response = await scrape({
-    //       url: "https://www.researchgate.net/profile/Amir-Leshem/publication/220732050_Robust_adaptive_beamforming_based_on_jointly_estimating_covariance_matrix_and_steering_vector/links/0c96052d2fd8f0a84b000000/Robust-adaptive-beamforming-based-on-jointly-estimating-covariance-matrix-and-steering-vector.pdf"
-    //     });
+    describe("PDF (f-e dependant)", () => {
+      // Temporarily disabled, too flaky
+      // it.concurrent("works for PDFs behind anti-bot", async () => {
+      //   const response = await scrape({
+      //     url: "https://www.researchgate.net/profile/Amir-Leshem/publication/220732050_Robust_adaptive_beamforming_based_on_jointly_estimating_covariance_matrix_and_steering_vector/links/0c96052d2fd8f0a84b000000/Robust-adaptive-beamforming-based-on-jointly-estimating-covariance-matrix-and-steering-vector.pdf"
+      //   });
 
-    //     expect(response.markdown).toContain("Robust adaptive beamforming based on jointly estimating covariance matrix");
-    //   }, 60000);
-    // });
+      //   expect(response.markdown).toContain("Robust adaptive beamforming based on jointly estimating covariance matrix");
+      // }, 60000);
+
+      it.concurrent("blocks long PDFs with insufficient timeout", async () => {
+        const response = await scrapeWithFailure({
+          url: "https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf",
+          timeout: 30000,
+        });
+
+        expect(response.error).toContain("Insufficient time to process PDF");
+      }, 30000);
+
+      it.concurrent("scrapes long PDFs with sufficient timeout", async () => {
+        const response = await scrape({
+          url: "https://ecma-international.org/wp-content/uploads/ECMA-262_15th_edition_june_2024.pdf",
+          timeout: 300000,
+        });
+
+        // text on the last page
+        expect(response.markdown).toContain("Redistribution and use in source and binary forms, with or without modification");
+      }, 310000);
+    });
   }
 
   if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.OPENAI_API_KEY || process.env.OLLAMA_BASE_URL) {

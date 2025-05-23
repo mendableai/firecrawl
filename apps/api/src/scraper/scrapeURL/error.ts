@@ -88,7 +88,7 @@ export class PDFAntibotError extends Error {
 }
 
 export class PDFInsufficientTimeError extends Error {
-  constructor(pageCount: number) {
-    super(`Insufficient time to process PDF of ${pageCount} pages. Please increase the timeout parameter in your scrape request.`);
+  constructor(pageCount: number, minTimeout: number) {
+    super(`Insufficient time to process PDF of ${pageCount} pages. Please increase the timeout parameter in your scrape request to at least ${minTimeout}ms.`);
   }
 }
