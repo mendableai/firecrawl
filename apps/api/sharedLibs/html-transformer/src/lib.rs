@@ -98,7 +98,7 @@ pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut lib
                     _ => unreachable!(),
                 }
             } else {
-                out.insert("og:locale:alternate".to_string(), Value::Array(vec! [Value::String(content.to_string())]));
+                out.insert("ogLocaleAlternate".to_string(), Value::Array(vec! [Value::String(content.to_string())]));
             }
         }
     }
