@@ -7,7 +7,7 @@ import * as Sentry from "@sentry/node";
 import escapeHtml from "escape-html";
 import PdfParse from "pdf-parse";
 import { downloadFile, fetchFileToBuffer } from "../utils/downloadFile";
-import { PDFAntibotError, PDFInsufficientTimeError, RemoveFeatureError } from "../../error";
+import { PDFAntibotError, PDFInsufficientTimeError, RemoveFeatureError, TimeoutError } from "../../error";
 import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { Response } from "undici";
@@ -48,6 +48,10 @@ async function scrapePDFWithRunPodMU(
   }
 
   const timeout = timeToRun ? timeToRun - (Date.now() - preCacheCheckStartTime) : undefined;
+  if (timeout && timeout < 0) {
+    throw new TimeoutError("MU PDF parser already timed out before call");
+  }
+
   const abort = timeout ? AbortSignal.timeout(timeout) : undefined;
 
   const podStart = await robustFetch({
