@@ -92,6 +92,7 @@ function checkCreditsMiddleware(
 export function authMiddleware(
   rateLimiterMode: RateLimiterMode,
 ): (req: RequestWithMaybeAuth, res: Response, next: NextFunction) => void {
+  const middlewareSpawn = new Error().stack;
   return (req, res, next) => {
     (async () => {
       if (rateLimiterMode === RateLimiterMode.Extract && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
@@ -107,7 +108,8 @@ export function authMiddleware(
           modes: {
             extract: RateLimiterMode.Extract,
             extractAgentPreview: RateLimiterMode.ExtractAgentPreview,
-          }
+          },
+          middlewareSpawn,
         });
       }
 
