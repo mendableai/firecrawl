@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "firecrawl.fullname" . }}-playwright
+  labels:
+    app: {{ include "firecrawl.name" . }}-playwright
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ include "firecrawl.name" . }}-playwright
+  template:
+    metadata:
+      labels:
+        app: {{ include "firecrawl.name" . }}-playwright
+    spec:
+      {{- if .Values.image.dockerSecretEnabled }}
+      imagePullSecrets:
+        {{- toYaml .Values.imagePullSecrets | nindent 8 }}
+      {{- end }}
+      containers:
+        - name: playwright-service
+          image: "{{ .Values.playwright.repository }}:{{ .Values.playwright.tag }}"
+          imagePullPolicy: {{ .Values.playwright.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.service.playwright.port }}
+          envFrom:
+            - configMapRef:
+                name: {{ include "firecrawl.fullname" . }}-playwright-config
+          livenessProbe:
+            httpGet:
+              path: /health/liveness
+              port: {{ .Values.service.playwright.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /health/readiness
+              port: {{ .Values.service.playwright.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 5
+            successThreshold: 1
+            failureThreshold: 3
