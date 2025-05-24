@@ -4,7 +4,9 @@ x-common-service: &common-service
   # NOTE: If you don't want to build the service locally,
   # uncomment the build: statement and comment out the image: statement
   # image: ghcr.io/mendableai/firecrawl
-  build: apps/api
+  build:
+    context: apps/api
+    network: host
 
   ulimits:
     nofile:
@@ -46,7 +48,9 @@ x-common-env: &common-env
 
 services:
   playwright-service:
-    build: apps/playwright-service-ts
+    build:
+      context: apps/playwright-service-ts
+      network: host
     environment:
       PORT: 3000
       PROXY_SERVER: ${PROXY_SERVER}
