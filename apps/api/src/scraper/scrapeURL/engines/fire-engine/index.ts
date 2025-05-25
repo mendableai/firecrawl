@@ -245,18 +245,18 @@ export async function scrapeURLWithFireEngineChromeCDP(
     meta.options.formats.includes("screenshot") ||
     meta.options.formats.includes("screenshot@fullPage")
   ) {
-    meta.logger.debug(
-      "Transforming screenshots from actions into screenshot field",
-      { screenshots: response.screenshots },
-    );
+    // meta.logger.debug(
+    //   "Transforming screenshots from actions into screenshot field",
+    //   { screenshots: response.screenshots },
+    // );
     if (response.screenshots) {
       response.screenshot = response.screenshots.slice(-1)[0];
       response.screenshots = response.screenshots.slice(0, -1);
     }
-    meta.logger.debug("Screenshot transformation done", {
-      screenshots: response.screenshots,
-      screenshot: response.screenshot,
-    });
+    // meta.logger.debug("Screenshot transformation done", {
+    //   screenshots: response.screenshots,
+    //   screenshot: response.screenshot,
+    // });
   }
 
   if (!response.url) {
