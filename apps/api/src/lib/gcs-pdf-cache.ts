@@ -102,7 +102,9 @@ export async function getPdfResultFromCache(
       cacheKey,
     });
     
-    return result;
+    return {
+      ...result,
+    };
   } catch (error) {
     logger.error(`Error retrieving PDF RunPod result from GCS cache`, {
       error,

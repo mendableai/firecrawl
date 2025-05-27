@@ -90,7 +90,7 @@ pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut lib
         let attrs = meta.attributes.borrow();
 
         if let Some(content) = attrs.get("content") {
-            if let Some(v) = out.get_mut("og:locale:alternate") {
+            if let Some(v) = out.get_mut("ogLocaleAlternate") {
                 match v {
                     Value::Array(x) => {
                         x.push(Value::String(content.to_string()));
@@ -98,7 +98,7 @@ pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut lib
                     _ => unreachable!(),
                 }
             } else {
-                out.insert("og:locale:alternate".to_string(), Value::Array(vec! [Value::String(content.to_string())]));
+                out.insert("ogLocaleAlternate".to_string(), Value::Array(vec! [Value::String(content.to_string())]));
             }
         }
     }

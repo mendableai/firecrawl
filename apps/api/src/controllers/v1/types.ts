@@ -478,6 +478,7 @@ export const extractV1Options = z
       .optional(),
     agent: agentOptionsExtract.optional(),
     __experimental_showCostTracking: z.boolean().default(false),
+    ignoreInvalidURLs: z.boolean().default(false),
   })
   .strict(strictMessage)
   .refine((obj) => obj.urls || obj.prompt, {
@@ -748,6 +749,7 @@ export type Document = {
     statusCode: number;
     scrapeId?: string;
     error?: string;
+    numPages?: number;
     proxyUsed: "basic" | "stealth";
     // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };
@@ -1163,6 +1165,7 @@ export const searchRequestSchema = z
     location: z.string().optional(),
     origin: z.string().optional().default("api"),
     timeout: z.number().int().positive().finite().safe().default(60000),
+    ignoreInvalidURLs: z.boolean().optional().default(false),
     scrapeOptions: baseScrapeOptions
       .extend({
         formats: z

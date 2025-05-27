@@ -33,11 +33,12 @@ export type PseudoJob<T> = {
   timestamp: number,
   data: {
     scrapeOptions: any,
+    teamId?: string,
   },
   failedReason?: string,
 }
 
-export type DBJob = { docs: any, success: boolean, page_options: any, date_added: any, message: string | null }
+export type DBJob = { docs: any, success: boolean, page_options: any, date_added: any, message: string | null, team_id: string}
 
 export async function getJob(id: string): Promise<PseudoJob<any> | null> {
   const [bullJob, dbJob, gcsJob] = await Promise.all([

@@ -28,6 +28,12 @@ function expectScrapeToSucceed(response: Awaited<ReturnType<typeof scrapeRaw>>) 
     expect(typeof response.body.data).toBe("object");
 }
 
+function expectScrapeToFail(response: Awaited<ReturnType<typeof scrapeRaw>>) {
+    expect(response.statusCode).not.toBe(200);
+    expect(response.body.success).toBe(false);
+    expect(typeof response.body.error).toBe("string");
+}
+
 export async function scrape(body: ScrapeRequestInput): Promise<Document> {
     const raw = await scrapeRaw(body);
     expectScrapeToSucceed(raw);
@@ -37,6 +43,15 @@ export async function scrape(body: ScrapeRequestInput): Promise<Document> {
         expect(raw.body.data.metadata.proxyUsed).toBe("basic");
     }
     return raw.body.data;
+}
+
+export async function scrapeWithFailure(body: ScrapeRequestInput): Promise<{
+    success: false;
+    error: string;
+}> {
+    const raw = await scrapeRaw(body);
+    expectScrapeToFail(raw);
+    return raw.body;
 }
 
 export async function scrapeStatusRaw(jobId: string) {

@@ -10,7 +10,6 @@ import {
 import { billTeam } from "../../services/billing/credit_billing";
 import { v4 as uuidv4 } from "uuid";
 import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
-import { logJob } from "../../services/logging/log_job";
 import { getJobPriority } from "../../lib/job-priority";
 import { getScrapeQueue } from "../../services/queue-service";
 import { supabaseGetJobById } from "../../lib/supabase-jobs";

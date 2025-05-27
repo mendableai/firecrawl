@@ -109,6 +109,8 @@ export type EngineScrapeResult = {
       value: unknown
     }[];
   };
+
+  numPages?: number;
 };
 
 const engineHandlers: {
@@ -381,9 +383,8 @@ export function buildFallbackList(meta: Meta): {
     if (cacheIndex !== -1) {
       _engines.splice(cacheIndex, 1);
     }
-  } else {
-    meta.logger.debug("Cache engine enabled by useCache option");
   }
+  
   const prioritySum = [...meta.featureFlags].reduce(
     (a, x) => a + featureFlagOptions[x].priority,
     0,
@@ -422,24 +423,6 @@ export function buildFallbackList(meta: Meta): {
 
     if (supportScore >= priorityThreshold) {
       selectedEngines.push({ engine, supportScore, unsupportedFeatures });
-      meta.logger.debug(`Engine ${engine} meets feature priority threshold`, {
-        supportScore,
-        prioritySum,
-        priorityThreshold,
-        featureFlags: [...meta.featureFlags],
-        unsupportedFeatures,
-      });
-    } else {
-      meta.logger.debug(
-        `Engine ${engine} does not meet feature priority threshold`,
-        {
-          supportScore,
-          prioritySum,
-          priorityThreshold,
-          featureFlags: [...meta.featureFlags],
-          unsupportedFeatures,
-        },
-      );
     }
   }
 
@@ -456,6 +439,10 @@ export function buildFallbackList(meta: Meta): {
         engineOptions[b.engine].quality - engineOptions[a.engine].quality,
     );
   }
+
+  meta.logger.info("Selected engines", {
+    selectedEngines,
+  });
 
   return selectedEngines;
 }

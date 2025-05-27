@@ -90,19 +90,20 @@ function checkCreditsMiddleware(
 }
 
 export function authMiddleware(
-  rateLimiterMode: RateLimiterMode,
+  rateLimiterMode: RateLimiterMode
 ): (req: RequestWithMaybeAuth, res: Response, next: NextFunction) => void {
   return (req, res, next) => {
     (async () => {
-      if (rateLimiterMode === RateLimiterMode.Extract && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
-        rateLimiterMode = RateLimiterMode.ExtractAgentPreview;
+      let currentRateLimiterMode = rateLimiterMode;
+      if (currentRateLimiterMode === RateLimiterMode.Extract && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
+        currentRateLimiterMode = RateLimiterMode.ExtractAgentPreview;
       }
 
-      // if (rateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
-      //   rateLimiterMode = RateLimiterMode.ScrapeAgentPreview;
+      // if (currentRateLimiterMode === RateLimiterMode.Scrape && isAgentExtractModelValid((req.body as any)?.agent?.model)) {
+      //   currentRateLimiterMode = RateLimiterMode.ScrapeAgentPreview;
       // }
 
-      const auth = await authenticateUser(req, res, rateLimiterMode);
+      const auth = await authenticateUser(req, res, currentRateLimiterMode);
 
       if (!auth.success) {
         if (!res.headersSent) {

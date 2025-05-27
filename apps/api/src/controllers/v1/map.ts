@@ -307,7 +307,14 @@ export async function mapController(
   req: RequestWithAuth<{}, MapResponse, MapRequest>,
   res: Response<MapResponse>,
 ) {
+  const originalRequest = req.body;
   req.body = mapRequestSchema.parse(req.body);
+
+  logger.info("Map request", {
+    request: req.body,
+    originalRequest,
+    teamId: req.auth.team_id,
+  });
 
   let result: Awaited<ReturnType<typeof getMapResults>>;
   const abort = new AbortController();

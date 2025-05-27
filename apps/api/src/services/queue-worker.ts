@@ -54,6 +54,7 @@ import { scrapeOptions } from "../controllers/v1/types";
 import {
   cleanOldConcurrencyLimitEntries,
   cleanOldCrawlConcurrencyLimitEntries,
+  getConcurrencyLimitActiveJobs,
   pushConcurrencyLimitActiveJob,
   pushCrawlConcurrencyLimitActiveJob,
   removeConcurrencyLimitActiveJob,
@@ -86,6 +87,7 @@ import http from "http";
 import https from "https";
 import { cacheableLookup } from "../scraper/scrapeURL/lib/cacheableLookup";
 import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
+import { RateLimiterMode } from "../types";
 
 configDotenv();
 
@@ -239,11 +241,15 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         );
         await addScrapeJobs(lockedJobs);
 
-        logger.info("Added jobs, not going for the full finish", {
-          lockedJobs: lockedJobs.length,
-        });
+        if (lockedJobs.length > 0) {
+          logger.info("Added jobs, not going for the full finish", {
+            lockedJobs: lockedJobs.length,
+          });
 
-        return;
+          return;
+        } else {
+          logger.info("No jobs added (all discovered URLs were locked), finishing crawl");
+        }
       }
     }
 
@@ -801,31 +807,37 @@ const workerFun = async (
         }
 
         if (job.id && job.data && job.data.team_id) {
+          const maxConcurrency = (await getACUCTeam(job.data.team_id, false, true, job.data.is_extract ? RateLimiterMode.Extract : RateLimiterMode.Crawl))?.concurrency ?? 2;
+
           await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
-          cleanOldConcurrencyLimitEntries(job.data.team_id);
+          await cleanOldConcurrencyLimitEntries(job.data.team_id);
 
-          // No need to check if we're under the limit here -- if the current job is finished,
-          // we are 1 under the limit, assuming the job insertion logic never over-inserts. - MG
-          const nextJob = await takeConcurrencyLimitedJob(job.data.team_id);
-          if (nextJob !== null) {
-            await pushConcurrencyLimitActiveJob(
-              job.data.team_id,
-              nextJob.id,
-              60 * 1000,
-            ); // 60s initial timeout
+          // Check if we're under the concurrency limit before adding a new job
+          const currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(job.data.team_id)).length;
+          const concurrencyLimited = currentActiveConcurrency >= maxConcurrency;
 
-            await queue.add(
-              nextJob.id,
-              {
-                ...nextJob.data,
-                concurrencyLimitHit: true,
-              },
-              {
-                ...nextJob.opts,
-                jobId: nextJob.id,
-                priority: nextJob.priority,
-              },
-            );
+          if (!concurrencyLimited) {
+            const nextJob = await takeConcurrencyLimitedJob(job.data.team_id);
+            if (nextJob !== null) {
+              await pushConcurrencyLimitActiveJob(
+                job.data.team_id,
+                nextJob.id,
+                60 * 1000,
+              ); // 60s initial timeout
+
+              await queue.add(
+                nextJob.id,
+                {
+                  ...nextJob.data,
+                  concurrencyLimitHit: true,
+                },
+                {
+                  ...nextJob.opts,
+                  jobId: nextJob.id,
+                  priority: nextJob.priority,
+                },
+              );
+            }
           }
         }
       }
@@ -1246,6 +1258,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           origin: job.data.origin,
           crawl_id: job.data.crawl_id,
           cost_tracking: costTracking,
+          pdf_num_pages: doc.metadata.numPages,
         },
         true,
       );
@@ -1366,6 +1379,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         origin: job.data.origin,
         num_tokens: 0, // TODO: fix
         cost_tracking: costTracking,
+        pdf_num_pages: doc.metadata.numPages,
       });
       
       indexJob(job, doc);

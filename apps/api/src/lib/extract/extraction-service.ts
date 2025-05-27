@@ -403,7 +403,7 @@ export async function performExtraction(
             {
               url,
               teamId,
-              origin: request.origin || "api",
+              origin: "extract",
               timeout,
             },
             urlTraces,
@@ -736,7 +736,7 @@ export async function performExtraction(
             {
               url,
               teamId,
-              origin: request.origin || "api",
+              origin: "extract",
               timeout,
             },
             urlTraces,
