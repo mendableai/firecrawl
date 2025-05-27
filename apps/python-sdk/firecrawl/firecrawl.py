@@ -3355,68 +3355,48 @@ class AsyncFirecrawlApp(FirecrawlApp):
         headers = self._prepare_headers()
         response = await self._async_get_request(f'{self.api_url}{endpoint}', headers)
 
-        if response.get('success'):
-            try:
-                status_data = response.json()
-            except:
-                raise Exception(f'Failed to parse Firecrawl response as JSON.')
-            
-            while status_data['status'] != 'completed':
-                time.sleep(poll_interval)
+        try:
+            while response.get('status') != 'completed':
+                await asyncio.sleep(poll_interval)
                 response = await self._async_get_request(f'{self.api_url}{endpoint}', headers)
-                if response.get('success'):
-                    status_data = response.get('data')
-                else:
-                    self._handle_error(response, 'check batch scrape status')
 
-            if 'data' in status_data:
-                data = status_data['data']
-                while 'next' in status_data:
-                    if len(status_data['data']) == 0:
-                        break
-                    next_url = status_data.get('next')
-                    if not next_url:
-                        logger.warning("Expected 'next' URL is missing.")
-                        break
-                    try:
-                        status_response = await self._async_get_request(next_url, headers)
-                        if not status_response.get('success'):
-                            logger.error(f"Failed to fetch next page: {status_response.status_code}")
+                if 'data' in response:
+                    data = response.get('data')
+                    while 'next' in response:
+                        if len(response.get('data')) == 0:
+                            break
+                        next_url = response.get('next')
+                        if not next_url:
+                            logger.warning("Expected 'next' URL is missing.")
                             break
                         try:
-                            next_data = status_response.json()
-                        except:
-                            raise Exception(f'Failed to parse Firecrawl response as JSON.')
-                        data.extend(next_data.get('data', []))
-                        status_data = next_data
-                    except Exception as e:
-                        logger.error(f"Error during pagination request: {e}")
-                        break
+                            response = await self._async_get_request(next_url, headers)
+                            next_data = response.get('data')
+                            if next_data:
+                                data.extend(next_data.get('data', []))
+                        except Exception as e:
+                            logger.error(f"Error during pagination request: {e}")
+                            break
 
-                # Apply format transformations to each document in the data
-                if data:
-                    for document in data:
-                        scrape_formats_response_transform(document)
+                    # Apply format transformations to each document in the data
+                    if data:
+                        for document in data:
+                            scrape_formats_response_transform(document)
 
             response = {
-                'status': status_data.get('status'),
-                'total': status_data.get('total'),
-                'completed': status_data.get('completed'),
-                'credits_used': status_data.get('creditsUsed'),
-                'expires_at': status_data.get('expiresAt'),
+                'status': response.get('status'),
+                'total': response.get('total'),
+                'completed': response.get('completed'),
+                'credits_used': response.get('creditsUsed'),
+                'expires_at': response.get('expiresAt'),
                 'data': data,
-                'next': status_data.get('next'),
-                'error': status_data.get('error')
+                'next': response.get('next'),
+                'error': response.get('error')
             }
 
-            if 'error' in status_data:
-                response['error'] = status_data['error']
-
-            if 'next' in status_data:
-                response['next'] = status_data['next']
-
             return BatchScrapeStatusResponse(**response)
-        else:
+        
+        except Exception as e:
             await self._handle_error(response, 'check batch scrape status')
 
     async def check_batch_scrape_errors(self, id: str) -> CrawlErrorsResponse:
