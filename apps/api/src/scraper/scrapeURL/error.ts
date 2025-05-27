@@ -86,3 +86,9 @@ export class PDFAntibotError extends Error {
     super("PDF scrape was prevented by anti-bot")
   }
 }
+
+export class PDFInsufficientTimeError extends Error {
+  constructor(pageCount: number, minTimeout: number) {
+    super(`Insufficient time to process PDF of ${pageCount} pages. Please increase the timeout parameter in your scrape request to at least ${minTimeout}ms.`);
+  }
+}

@@ -30,6 +30,7 @@ export async function scrapeURLWithPlaywright(
         pageError: z.string().optional(),
       }),
       mock: meta.mock,
+      abort: AbortSignal.timeout(timeout),
     }),
     (async () => {
       await new Promise((resolve) => setTimeout(() => resolve(null), timeout));

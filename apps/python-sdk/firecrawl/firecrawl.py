@@ -347,6 +347,7 @@ class GenerateLLMsTextParams(pydantic.BaseModel):
     """
     maxUrls: Optional[int] = 10
     showFullText: Optional[bool] = False
+    cache: Optional[bool] = True
     __experimental_stream: Optional[bool] = None
 
 class DeepResearchParams(pydantic.BaseModel):
@@ -1870,6 +1871,7 @@ class FirecrawlApp:
             *,
             max_urls: Optional[int] = None,
             show_full_text: Optional[bool] = None,
+            cache: Optional[bool] = None,
             experimental_stream: Optional[bool] = None) -> GenerateLLMsTextStatusResponse:
         """
         Generate LLMs.txt for a given URL and poll until completion.
@@ -1878,6 +1880,7 @@ class FirecrawlApp:
             url (str): Target URL to generate LLMs.txt from
             max_urls (Optional[int]): Maximum URLs to process (default: 10)
             show_full_text (Optional[bool]): Include full text in output (default: False)
+            cache (Optional[bool]): Whether to use cached content if available (default: True)
             experimental_stream (Optional[bool]): Enable experimental streaming
 
         Returns:
@@ -1893,6 +1896,7 @@ class FirecrawlApp:
         params = GenerateLLMsTextParams(
             maxUrls=max_urls,
             showFullText=show_full_text,
+            cache=cache,
             __experimental_stream=experimental_stream
         )
 
@@ -1900,6 +1904,7 @@ class FirecrawlApp:
             url,
             max_urls=max_urls,
             show_full_text=show_full_text,
+            cache=cache,
             experimental_stream=experimental_stream
         )
         
@@ -1935,6 +1940,7 @@ class FirecrawlApp:
             *,
             max_urls: Optional[int] = None,
             show_full_text: Optional[bool] = None,
+            cache: Optional[bool] = None,
             experimental_stream: Optional[bool] = None) -> GenerateLLMsTextResponse:
         """
         Initiate an asynchronous LLMs.txt generation operation.
@@ -1943,6 +1949,7 @@ class FirecrawlApp:
             url (str): The target URL to generate LLMs.txt from. Must be a valid HTTP/HTTPS URL.
             max_urls (Optional[int]): Maximum URLs to process (default: 10)
             show_full_text (Optional[bool]): Include full text in output (default: False)
+            cache (Optional[bool]): Whether to use cached content if available (default: True)
             experimental_stream (Optional[bool]): Enable experimental streaming
 
         Returns:
@@ -1957,6 +1964,7 @@ class FirecrawlApp:
         params = GenerateLLMsTextParams(
             maxUrls=max_urls,
             showFullText=show_full_text,
+            cache=cache,
             __experimental_stream=experimental_stream
         )
 
@@ -2545,6 +2553,7 @@ class CrawlWatcher:
         """
         async with websockets.connect(
             self.ws_url,
+            max_size=None,
             additional_headers=[("Authorization", f"Bearer {self.app.api_key}")]
         ) as websocket:
             await self._listen(websocket)
@@ -4001,6 +4010,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             url,
             max_urls=max_urls,
             show_full_text=show_full_text,
+            cache=cache,
             experimental_stream=experimental_stream
         )
         if not response.get('success') or 'id' not in response:
@@ -4027,6 +4037,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             *,
             max_urls: Optional[int] = None,
             show_full_text: Optional[bool] = None,
+            cache: Optional[bool] = None,
             experimental_stream: Optional[bool] = None) -> GenerateLLMsTextResponse:
         """
         Initiate an asynchronous LLMs.txt generation job without waiting for completion.
@@ -4035,6 +4046,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             url (str): Target URL to generate LLMs.txt from
             max_urls (Optional[int]): Maximum URLs to process (default: 10)
             show_full_text (Optional[bool]): Include full text in output (default: False)
+            cache (Optional[bool]): Whether to use cached content if available (default: True)
             experimental_stream (Optional[bool]): Enable experimental streaming
 
         Returns:
@@ -4057,6 +4069,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         params = GenerateLLMsTextParams(
             maxUrls=max_urls,
             showFullText=show_full_text,
+            cache=cache,
             __experimental_stream=experimental_stream
         )
 

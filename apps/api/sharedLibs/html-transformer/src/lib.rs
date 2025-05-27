@@ -90,7 +90,7 @@ pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut lib
         let attrs = meta.attributes.borrow();
 
         if let Some(content) = attrs.get("content") {
-            if let Some(v) = out.get_mut("og:locale:alternate") {
+            if let Some(v) = out.get_mut("ogLocaleAlternate") {
                 match v {
                     Value::Array(x) => {
                         x.push(Value::String(content.to_string()));
@@ -98,7 +98,7 @@ pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut lib
                     _ => unreachable!(),
                 }
             } else {
-                out.insert("og:locale:alternate".to_string(), Value::Array(vec! [Value::String(content.to_string())]));
+                out.insert("ogLocaleAlternate".to_string(), Value::Array(vec! [Value::String(content.to_string())]));
             }
         }
     }
@@ -128,17 +128,30 @@ pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut lib
             if let Some(content) = attrs.get("content") {
                 if let Some(v) = out.get(name) {
                     match v {
-                        Value::String(_) => {
-                            if name != "title" { // preserve title tag in metadata
-                                out.insert(name.to_string(), Value::Array(vec! [v.clone(), Value::String(content.to_string())]));
+                        Value::String(existing) => {
+                            if name == "description" {
+                                out.insert(name.to_string(), Value::String(format!("{}, {}", existing, content)));
+                            } else if name != "title" { // preserve title tag in metadata
+                                out.insert(name.to_string(), Value::Array(vec! [Value::String(existing.clone()), Value::String(content.to_string())]));
                             }
                         },
-                        Value::Array(_) => {
-                            match out.get_mut(name) {
-                                Some(Value::Array(x)) => {
-                                    x.push(Value::String(content.to_string()));
-                                },
-                                _ => unreachable!(),
+                        Value::Array(existing_array) => {
+                            if name == "description" {
+                                let mut values: Vec<String> = existing_array.iter()
+                                    .filter_map(|v| match v {
+                                        Value::String(s) => Some(s.clone()),
+                                        _ => None,
+                                    })
+                                    .collect();
+                                values.push(content.to_string());
+                                out.insert(name.to_string(), Value::String(values.join(", ")));
+                            } else {
+                                match out.get_mut(name) {
+                                    Some(Value::Array(x)) => {
+                                        x.push(Value::String(content.to_string()));
+                                    },
+                                    _ => unreachable!(),
+                                }
                             }
                         },
                         _ => unreachable!(),

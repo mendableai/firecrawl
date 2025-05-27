@@ -105,9 +105,9 @@ export async function getJobFromGCS(jobId: string): Promise<Document[] | null> {
 
 // TODO: fix the any type (we have multiple Document types in the codebase)
 export async function getDocFromGCS(url: string): Promise<any | null> {
-  logger.info(`Getting f-engine document from GCS`, {
-    url,
-  });
+//   logger.info(`Getting f-engine document from GCS`, {
+//     url,
+//   });
   try {
       if (!process.env.GCS_FIRE_ENGINE_BUCKET_NAME) {
           return null;

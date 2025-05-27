@@ -54,6 +54,7 @@ import { scrapeOptions } from "../controllers/v1/types";
 import {
   cleanOldConcurrencyLimitEntries,
   cleanOldCrawlConcurrencyLimitEntries,
+  getConcurrencyLimitActiveJobs,
   pushConcurrencyLimitActiveJob,
   pushCrawlConcurrencyLimitActiveJob,
   removeConcurrencyLimitActiveJob,
@@ -81,6 +82,12 @@ import { updateGeneratedLlmsTxt } from "../lib/generate-llmstxt/generate-llmstxt
 import { performExtraction_F0 } from "../lib/extract/fire-0/extraction-service-f0";
 import { CostTracking } from "../lib/extract/extraction-service";
 import { getACUCTeam } from "../controllers/auth";
+import Express from "express";
+import http from "http";
+import https from "https";
+import { cacheableLookup } from "../scraper/scrapeURL/lib/cacheableLookup";
+import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
+import { RateLimiterMode } from "../types";
 
 configDotenv();
 
@@ -107,6 +114,10 @@ const connectionMonitorInterval =
 const gotJobInterval = Number(process.env.CONNECTION_MONITOR_INTERVAL) || 20;
 
 const runningJobs: Set<string> = new Set();
+
+// Install cacheable lookup for all other requests
+cacheableLookup.install(http.globalAgent);
+cacheableLookup.install(https.globalAgent);
 
 async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
   const logger = _logger.child({
@@ -139,19 +150,23 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           "crawl:" + job.data.crawl_id + ":visited_unique",
         ),
       );
-
+      
       logger.info("Visited URLs", {
         visitedUrls: visitedUrls.size,
       });
 
-      const lastUrls: string[] = (
-        (
-          await supabase_service.rpc("diff_get_last_crawl_urls", {
-            i_team_id: job.data.team_id,
-            i_url: sc.originUrl!,
-          })
-        ).data ?? []
-      ).map((x) => x.url);
+      let lastUrls: string[] = [];
+      const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
+      if (useDbAuthentication) {
+        lastUrls = (
+          (
+            await supabase_service.rpc("diff_get_last_crawl_urls", {
+              i_team_id: job.data.team_id,
+              i_url: sc.originUrl!,
+            })
+          ).data ?? []
+        ).map((x) => x.url);
+      }
 
       const lastUrlsSet = new Set(lastUrls);
 
@@ -226,11 +241,15 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         );
         await addScrapeJobs(lockedJobs);
 
-        logger.info("Added jobs, not going for the full finish", {
-          lockedJobs: lockedJobs.length,
-        });
+        if (lockedJobs.length > 0) {
+          logger.info("Added jobs, not going for the full finish", {
+            lockedJobs: lockedJobs.length,
+          });
 
-        return;
+          return;
+        } else {
+          logger.info("No jobs added (all discovered URLs were locked), finishing crawl");
+        }
       }
     }
 
@@ -249,7 +268,8 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
       if (
         visitedUrls.length > 0 &&
         job.data.crawlerOptions !== null &&
-        originUrl
+        originUrl &&
+        process.env.USE_DB_AUTHENTICATION === "true"
       ) {
         // Queue the indexing job instead of doing it directly
         await getIndexQueue().add(
@@ -640,6 +660,7 @@ const processGenerateLlmsTxtJobInternal = async (
       maxUrls: job.data.request.maxUrls,
       showFullText: job.data.request.showFullText,
       subId: job.data.subId,
+      cache: job.data.request.cache,
     });
 
     if (result.success) {
@@ -688,6 +709,7 @@ const processGenerateLlmsTxtJobInternal = async (
 };
 
 let isShuttingDown = false;
+let isWorkerStalled = false;
 
 process.on("SIGINT", () => {
   console.log("Received SIGTERM. Shutting down gracefully...");
@@ -731,7 +753,9 @@ const workerFun = async (
       logger.info("Can't accept connection due to RAM/CPU load");
       cantAcceptConnectionCount++;
 
-      if (cantAcceptConnectionCount >= 25) {
+      isWorkerStalled = cantAcceptConnectionCount >= 25;
+
+      if (isWorkerStalled) {
         logger.error("WORKER STALLED", {
           cpuUsage: await monitor.checkCpuUsage(),
           memoryUsage: await monitor.checkMemoryUsage(),
@@ -783,31 +807,37 @@ const workerFun = async (
         }
 
         if (job.id && job.data && job.data.team_id) {
+          const maxConcurrency = (await getACUCTeam(job.data.team_id, false, true, job.data.is_extract ? RateLimiterMode.Extract : RateLimiterMode.Crawl))?.concurrency ?? 2;
+
           await removeConcurrencyLimitActiveJob(job.data.team_id, job.id);
-          cleanOldConcurrencyLimitEntries(job.data.team_id);
+          await cleanOldConcurrencyLimitEntries(job.data.team_id);
 
-          // No need to check if we're under the limit here -- if the current job is finished,
-          // we are 1 under the limit, assuming the job insertion logic never over-inserts. - MG
-          const nextJob = await takeConcurrencyLimitedJob(job.data.team_id);
-          if (nextJob !== null) {
-            await pushConcurrencyLimitActiveJob(
-              job.data.team_id,
-              nextJob.id,
-              60 * 1000,
-            ); // 60s initial timeout
+          // Check if we're under the concurrency limit before adding a new job
+          const currentActiveConcurrency = (await getConcurrencyLimitActiveJobs(job.data.team_id)).length;
+          const concurrencyLimited = currentActiveConcurrency >= maxConcurrency;
 
-            await queue.add(
-              nextJob.id,
-              {
-                ...nextJob.data,
-                concurrencyLimitHit: true,
-              },
-              {
-                ...nextJob.opts,
-                jobId: nextJob.id,
-                priority: nextJob.priority,
-              },
-            );
+          if (!concurrencyLimited) {
+            const nextJob = await takeConcurrencyLimitedJob(job.data.team_id);
+            if (nextJob !== null) {
+              await pushConcurrencyLimitActiveJob(
+                job.data.team_id,
+                nextJob.id,
+                60 * 1000,
+              ); // 60s initial timeout
+
+              await queue.add(
+                nextJob.id,
+                {
+                  ...nextJob.data,
+                  concurrencyLimitHit: true,
+                },
+                {
+                  ...nextJob.opts,
+                  jobId: nextJob.id,
+                  priority: nextJob.priority,
+                },
+              );
+            }
           }
         }
       }
@@ -1228,6 +1258,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           origin: job.data.origin,
           crawl_id: job.data.crawl_id,
           cost_tracking: costTracking,
+          pdf_num_pages: doc.metadata.numPages,
         },
         true,
       );
@@ -1348,6 +1379,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         origin: job.data.origin,
         num_tokens: 0, // TODO: fix
         cost_tracking: costTracking,
+        pdf_num_pages: doc.metadata.numPages,
       });
       
       indexJob(job, doc);
@@ -1367,7 +1399,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         }
       }
 
-      if (job.data.scrapeOptions.proxy === "stealth") {
+      if (doc.metadata?.proxyUsed === "stealth") {
         creditsToBeBilled += 4;
       }
 
@@ -1526,6 +1558,35 @@ async function processJob(job: Job & { id: string }, token: string) {
 // wsq.on("removed", j => ScrapeEvents.logJobEvent(j, "removed"));
 
 // Start all workers
+const app = Express();
+
+app.get("/liveness", (req, res) => {
+  // stalled check
+  if (isWorkerStalled) {
+    res.status(500).json({ ok: false });
+  } else {
+    // networking check
+    robustFetch({
+      url: "http://firecrawl-app-service:3002",
+      method: "GET",
+      mock: null,
+      logger: _logger,
+      abort: AbortSignal.timeout(5000),
+      ignoreResponse: true,
+    })
+      .then(() => {
+        res.status(200).json({ ok: true });
+      }).catch(e => {
+        _logger.error("WORKER NETWORKING CHECK FAILED", { error: e });
+        res.status(500).json({ ok: false });
+      });
+  }
+});
+
+app.listen(3005, () => {
+  _logger.info("Liveness endpoint is running on port 3005");
+});
+
 (async () => {
   await Promise.all([
     workerFun(getScrapeQueue(), processJobInternal),

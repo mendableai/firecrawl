@@ -47,18 +47,18 @@ async function indexJob(job: FirecrawlJob): Promise<void> {
 
     if (!response.ok) {
       const errorData = await response.json();
-      logger.error(`Failed to send job to external server: ${response.status} ${response.statusText}`, {
-        error: errorData,
-        scrapeId: job.job_id,
-      });
+      // logger.error(`Failed to send job to external server: ${response.status} ${response.statusText}`, {
+      //   error: errorData,
+      //   scrapeId: job.job_id,
+      // });
     } else {
-      logger.debug("Job sent to external server successfully!", { scrapeId: job.job_id });
+      // logger.debug("Job sent to external server successfully!", { scrapeId: job.job_id });
     }
   } catch (error) {
-    logger.error(`Error sending job to external server: ${error.message}`, {
-      error,
-      scrapeId: job.job_id,
-    });
+    // logger.error(`Error sending job to external server: ${error.message}`, {
+    //   error,
+    //   scrapeId: job.job_id,
+    // });
   }
 }
 
@@ -103,6 +103,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       tokens_billed: job.tokens_billed,
       is_migrated: true,
       cost_tracking: job.cost_tracking,
+      pdf_num_pages: job.pdf_num_pages ?? null,
     };
 
     // Send job to external server
@@ -183,6 +184,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
           retry: job.retry,
           tokens_billed: job.tokens_billed,
           cost_tracking: job.cost_tracking,
+          pdf_num_pages: job.pdf_num_pages,
         },
       };
       if (job.mode !== "single_urls") {

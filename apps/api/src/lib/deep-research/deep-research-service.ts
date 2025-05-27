@@ -47,11 +47,29 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
 
   const acuc = await getACUCTeam(teamId);
 
+  const checkTimeLimit = () => {
+    const timeElapsed = Date.now() - startTime;
+    const isLimitReached = timeElapsed >= timeLimit * 1000;
+    if (isLimitReached) {
+      logger.debug("[Deep Research] Time limit reached", { 
+        timeElapsed: timeElapsed / 1000, 
+        timeLimit 
+      });
+    }
+    return isLimitReached;
+  };
+
   try {
     while (!state.hasReachedMaxDepth() && urlsAnalyzed < maxUrls) {
       logger.debug("[Deep Research] Current depth:", state.getCurrentDepth());
-      const timeElapsed = Date.now() - startTime;
-      if (timeElapsed >= timeLimit * 1000) {
+      logger.debug("[Deep Research] URL analysis count:", { 
+        urlsAnalyzed, 
+        maxUrls,
+        timeElapsed: (Date.now() - startTime) / 1000,
+        timeLimit 
+      });
+      
+      if (checkTimeLimit()) {
         logger.debug("[Deep Research] Time limit reached, stopping research");
         break;
       }
@@ -142,15 +160,25 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       }
 
       // Filter out already seen URLs and track new ones
-      const newSearchResults = searchResults.filter(async (result) => {
+      const newSearchResults: typeof searchResults = [];
+      for (const result of searchResults) {
         if (!result.url || state.hasSeenUrl(result.url)) {
-          return false;
+          continue;
         }
         state.addSeenUrl(result.url);
         
         urlsAnalyzed++;
-        return true;
-      });
+        if (urlsAnalyzed >= maxUrls) {
+          logger.debug("[Deep Research] Max URLs limit reached", { urlsAnalyzed, maxUrls });
+          break;
+        }
+        newSearchResults.push(result);
+      }
+      
+      if (checkTimeLimit()) {
+        logger.debug("[Deep Research] Time limit reached during URL filtering");
+        break;
+      }
 
       await state.addSources(newSearchResults.map((result) => ({
         url: result.url ?? "",
@@ -205,6 +233,11 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
       const timeRemaining = timeLimit * 1000 - (Date.now() - startTime);
       logger.debug("[Deep Research] Time remaining (ms):", { timeRemaining });
 
+      if (checkTimeLimit()) {
+        logger.debug("[Deep Research] Time limit reached before analysis");
+        break;
+      }
+      
       const analysis = await llmService.analyzeAndPlan(
         state.getFindings(),
         currentTopic,
@@ -212,6 +245,11 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
         options.systemPrompt ?? "",
         costTracking,
       );
+      
+      if (checkTimeLimit()) {
+        logger.debug("[Deep Research] Time limit reached after analysis");
+        break;
+      }
 
       if (!analysis) {
         logger.debug("[Deep Research] Analysis failed");
@@ -258,6 +296,12 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
 
     // Final synthesis
     logger.debug("[Deep Research] Starting final synthesis");
+    
+    // Check time limit before final synthesis
+    if (checkTimeLimit()) {
+      logger.debug("[Deep Research] Time limit reached before final synthesis");
+    }
+    
     await state.addActivity([{
       type: "synthesis",
       status: "processing",

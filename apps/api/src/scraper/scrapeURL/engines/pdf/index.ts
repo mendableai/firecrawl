@@ -7,14 +7,17 @@ import * as Sentry from "@sentry/node";
 import escapeHtml from "escape-html";
 import PdfParse from "pdf-parse";
 import { downloadFile, fetchFileToBuffer } from "../utils/downloadFile";
-import { PDFAntibotError, RemoveFeatureError, UnsupportedFileError } from "../../error";
+import { PDFAntibotError, PDFInsufficientTimeError, RemoveFeatureError, TimeoutError } from "../../error";
 import { readFile, unlink } from "node:fs/promises";
 import path from "node:path";
 import type { Response } from "undici";
+import { getPdfResultFromCache, savePdfResultToCache } from "../../../../lib/gcs-pdf-cache";
+import { getPageCount } from "../../../../lib/pdf-parser";
 
-type PDFProcessorResult = { html: string; markdown?: string };
+type PDFProcessorResult = { html: string; markdown?: string; };
 
 const MAX_FILE_SIZE = 19 * 1024 * 1024; // 19MB
+const MILLISECONDS_PER_PAGE = 150;
 
 async function scrapePDFWithRunPodMU(
   meta: Meta,
@@ -26,7 +29,32 @@ async function scrapePDFWithRunPodMU(
     tempFilePath,
   });
 
-  const result = await robustFetch({
+  const preCacheCheckStartTime = Date.now();
+
+  try {
+    const cachedResult = await getPdfResultFromCache(base64Content);
+    
+    if (cachedResult) {
+      meta.logger.info("Using cached RunPod MU result for PDF", {
+        tempFilePath,
+      });
+      return cachedResult;
+    }
+  } catch (error) {
+    meta.logger.warn("Error checking PDF cache, proceeding with RunPod MU", {
+      error,
+      tempFilePath,
+    });
+  }
+
+  const timeout = timeToRun ? timeToRun - (Date.now() - preCacheCheckStartTime) : undefined;
+  if (timeout && timeout < 0) {
+    throw new TimeoutError("MU PDF parser already timed out before call");
+  }
+
+  const abort = timeout ? AbortSignal.timeout(timeout) : undefined;
+
+  const podStart = await robustFetch({
     url:
       "https://api.runpod.ai/v2/" + process.env.RUNPOD_MU_POD_ID + "/runsync",
     method: "POST",
@@ -37,23 +65,78 @@ async function scrapePDFWithRunPodMU(
       input: {
         file_content: base64Content,
         filename: path.basename(tempFilePath) + ".pdf",
+        timeout,
+        created_at: Date.now(),
       },
     },
     logger: meta.logger.child({
-      method: "scrapePDFWithRunPodMU/robustFetch",
+      method: "scrapePDFWithRunPodMU/runsync/robustFetch",
     }),
     schema: z.object({
+      id: z.string(),
+      status: z.string(),
       output: z.object({
         markdown: z.string(),
-      }),
+      }).optional(),
     }),
     mock: meta.mock,
+    abort,
   });
 
-  return {
-    markdown: result.output.markdown,
-    html: await marked.parse(result.output.markdown, { async: true }),
+  let status: string = podStart.status;
+  let result: { markdown: string } | undefined = podStart.output;
+
+  if (status === "IN_QUEUE" || status === "IN_PROGRESS") {
+    do {
+      abort?.throwIfAborted();
+      await new Promise(resolve => setTimeout(resolve, 2500));
+      abort?.throwIfAborted();
+      const podStatus = await robustFetch({
+        url: `https://api.runpod.ai/v2/${process.env.RUNPOD_MU_POD_ID}/status/${podStart.id}`,
+        method: "GET",
+        headers: {
+          Authorization: `Bearer ${process.env.RUNPOD_MU_API_KEY}`,
+        },
+        logger: meta.logger.child({
+          method: "scrapePDFWithRunPodMU/status/robustFetch",
+        }),
+        schema: z.object({
+          status: z.string(),
+          output: z.object({
+            markdown: z.string(),
+          }).optional(),
+        }),
+        mock: meta.mock,
+        abort,
+      });
+      status = podStatus.status;
+      result = podStatus.output;
+    } while (status !== "COMPLETED" && status !== "FAILED");
+  }
+
+  if (status === "FAILED") {
+    throw new Error("RunPod MU failed to parse PDF");
+  }
+
+  if (!result) {
+    throw new Error("RunPod MU returned no result");
+  }
+
+  const processorResult = {
+    markdown: result.markdown,
+    html: await marked.parse(result.markdown, { async: true }),
   };
+
+  try {
+    await savePdfResultToCache(base64Content, processorResult);
+  } catch (error) {
+    meta.logger.warn("Error saving PDF to cache", {
+      error,
+      tempFilePath,
+    });
+  }
+
+  return processorResult;
 }
 
 async function scrapePDFWithParsePDF(
@@ -75,6 +158,8 @@ export async function scrapePDF(
   meta: Meta,
   timeToRun: number | undefined,
 ): Promise<EngineScrapeResult> {
+  const startTime = Date.now();
+  
   if (!meta.options.parsePDF) {
     if (meta.pdfPrefetch !== undefined && meta.pdfPrefetch !== null) {
       const content = (await readFile(meta.pdfPrefetch.filePath)).toString("base64");
@@ -120,6 +205,11 @@ export async function scrapePDF(
     }
   }
 
+  const pageCount = await getPageCount(tempFilePath);
+  if (pageCount * MILLISECONDS_PER_PAGE > (timeToRun ?? Infinity)) {
+    throw new PDFInsufficientTimeError(pageCount, pageCount * MILLISECONDS_PER_PAGE + 5000);
+  }
+
   let result: PDFProcessorResult | null = null;
 
   const base64Content = (await readFile(tempFilePath)).toString("base64");
@@ -139,12 +229,20 @@ export async function scrapePDF(
           }),
         },
         tempFilePath,
-        timeToRun,
+        timeToRun ? (timeToRun - (Date.now() - startTime)) : undefined,
         base64Content,
       );
     } catch (error) {
-      if (error instanceof RemoveFeatureError) {
+      if (
+        error instanceof RemoveFeatureError
+        || error instanceof TimeoutError
+      ) {
         throw error;
+      } else if (
+        (error instanceof Error && error.name === "TimeoutError")
+        || (error instanceof Error && error.message === "Request failed" && error.cause && error.cause instanceof Error && error.cause.name === "TimeoutError")
+      ) {
+        throw new TimeoutError("PDF parsing timed out, please increase the timeout parameter in your scrape request");
       }
       meta.logger.warn(
         "RunPod MU failed to parse PDF (could be due to timeout) -- falling back to parse-pdf",
@@ -174,5 +272,6 @@ export async function scrapePDF(
     statusCode: response.status,
     html: result?.html ?? "",
     markdown: result?.markdown ?? "",
+    numPages: pageCount,
   };
 }
