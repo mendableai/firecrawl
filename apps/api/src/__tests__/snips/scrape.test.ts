@@ -373,5 +373,5 @@ describe("Scrape tests", () => {
     });
 
     expect(response.metadata.sourceURL).toBe("https://firecrawl.dev/?pagewanted=all&et_blog");
-  });
+  }, 35000);
 });

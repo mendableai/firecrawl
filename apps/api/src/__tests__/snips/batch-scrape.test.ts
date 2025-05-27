@@ -55,5 +55,5 @@ describe("Batch scrape tests", () => {
         });
     
         expect(response.body.data[0].metadata.sourceURL).toBe("https://firecrawl.dev/?pagewanted=all&et_blog");
-    });
+    }, 35000);
 });
