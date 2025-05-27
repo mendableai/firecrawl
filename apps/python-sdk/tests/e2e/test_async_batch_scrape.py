@@ -14,8 +14,8 @@ API_KEY = os.getenv("TEST_API_KEY")
 app = FirecrawlApp(api_url=API_URL, api_key=API_KEY)
 
 TEST_URLS = [
-    "https://example.com",
-    "https://www.iana.org"
+    "https://firecrawl-e2e-test-git-main-rafaelsideguides-projects.vercel.app/actions",
+    "https://firecrawl-e2e-test-git-main-rafaelsideguides-projects.vercel.app/numbered-pagination"
 ]
 
 def wait_for_batch_completion(app, job_id, timeout=60):
@@ -33,66 +33,43 @@ def test_async_batch_scrape_urls_simple():
     )
     assert job.id is not None
     status = wait_for_batch_completion(app, job.id)
+    
+    # Basic response assertions
     assert status.success
     assert hasattr(status, "data")
+    assert status.data is not None
+    assert isinstance(status.data, list)
     assert len(status.data) == len(TEST_URLS)
-    assert any("Example Domain" in doc.markdown for doc in status.data)
-    assert any("Internet Assigned Numbers Authority" in doc.markdown for doc in status.data)
-
-def test_async_batch_scrape_urls_all_params_with_extract():
-    location = LocationConfig(country="us", languages=["en"])
-    extract_schema = {"type": "object", "properties": {"title": {"type": "string"}}}
-    extract = JsonConfig(prompt="Extract the title", schema=extract_schema)
-    actions = [
-        WaitAction(type="wait", milliseconds=500),
-        ScreenshotAction(type="screenshot", fullPage=True),
-        WriteAction(type="write", text="test input"),
-        PressAction(type="press", key="Enter"),
-        ScrollAction(type="scroll", direction="down"),
-        ExecuteJavascriptAction(type="execute_javascript", script="function get_title() { return document.title; }; get_title();")
-    ]
-    job = app.async_batch_scrape_urls(
-        TEST_URLS,
-        formats=["markdown", "html", "raw_html", "links", "screenshot", "extract"],
-        include_tags=["h1", "p"],
-        exclude_tags=["footer"],
-        only_main_content=True,
-        wait_for=1000,
-        timeout=15000,
-        location=location,
-        mobile=True,
-        skip_tls_verification=True,
-        remove_base64_images=True,
-        block_ads=True,
-        proxy="basic",
-        extract=extract,
-        actions=actions
-    )
-    assert job.id is not None
-    status = wait_for_batch_completion(app, job.id)
-    assert status.success
-    assert hasattr(status, "data")
-    assert len(status.data) == len(TEST_URLS)
+    
+    # Content assertions for each document
     for doc in status.data:
         assert hasattr(doc, "markdown")
-        assert hasattr(doc, "html")
-        assert hasattr(doc, "raw_html")
-        assert hasattr(doc, "links")
-        assert hasattr(doc, "screenshot")
-        assert hasattr(doc, "extract")
+        assert doc.markdown is not None
+        assert isinstance(doc.markdown, str)
+        assert len(doc.markdown) > 0
+        
         assert hasattr(doc, "metadata")
+        assert doc.metadata is not None
+        assert isinstance(doc.metadata, dict)
+        assert "url" in doc.metadata
+        assert doc.metadata["url"] in TEST_URLS
+    
+    # Check that we got content from both test pages
+    markdown_contents = [doc.markdown for doc in status.data]
+    assert any("This page is used for end-to-end (e2e) testing with Firecrawl." in content for content in markdown_contents)
+    assert any("Numbered Pagination" in content for content in markdown_contents)
 
 def test_async_batch_scrape_urls_all_params_with_json_options():
     location = LocationConfig(country="us", languages=["en"])
     json_schema = {"type": "object", "properties": {"title": {"type": "string"}}}
     json_options = JsonConfig(prompt="Extract the title as JSON", schema=json_schema)
     actions = [
-        WaitAction(type="wait", milliseconds=500),
-        ScreenshotAction(type="screenshot", fullPage=True),
-        WriteAction(type="write", text="test input"),
-        PressAction(type="press", key="Enter"),
-        ScrollAction(type="scroll", direction="down"),
-        ExecuteJavascriptAction(type="execute_javascript", script="function get_title() { return document.title; }; get_title();")
+        WaitAction(milliseconds=500),
+        ScreenshotAction(fullPage=True),
+        WriteAction(text="test input"),
+        PressAction(key="Enter"),
+        ScrollAction(direction="down"),
+        ExecuteJavascriptAction(script="function get_title() { return document.title; }; get_title();")
     ]
     job = app.async_batch_scrape_urls(
         TEST_URLS,
@@ -101,7 +78,7 @@ def test_async_batch_scrape_urls_all_params_with_json_options():
         exclude_tags=["footer"],
         only_main_content=True,
         wait_for=1000,
-        timeout=15000,
+        timeout=30000,
         location=location,
         mobile=True,
         skip_tls_verification=True,
@@ -113,14 +90,135 @@ def test_async_batch_scrape_urls_all_params_with_json_options():
     )
     assert job.id is not None
     status = wait_for_batch_completion(app, job.id)
+    
+    # Basic response assertions
     assert status.success
     assert hasattr(status, "data")
+    assert status.data is not None
+    assert isinstance(status.data, list)
     assert len(status.data) == len(TEST_URLS)
+    
+    # Detailed content assertions for each document
     for doc in status.data:
+        # Markdown assertions
         assert hasattr(doc, "markdown")
+        assert doc.markdown is not None
+        assert isinstance(doc.markdown, str)
+        assert len(doc.markdown) > 0
+        
+        # HTML assertions
         assert hasattr(doc, "html")
+        assert doc.html is not None
+        assert isinstance(doc.html, str)
+        assert len(doc.html) > 0
+        
+        # Raw HTML assertions
         assert hasattr(doc, "raw_html")
+        assert doc.raw_html is not None
+        assert isinstance(doc.raw_html, str)
+        assert len(doc.raw_html) > 0
+        
+        # Links assertions
         assert hasattr(doc, "links")
+        assert doc.links is not None
+        assert isinstance(doc.links, list)
+        
+        # Screenshot assertions
         assert hasattr(doc, "screenshot")
+        assert doc.screenshot is not None
+        assert isinstance(doc.screenshot, str)
+        assert doc.screenshot.startswith("https://")
+        
+        # JSON assertions
         assert hasattr(doc, "json")
-        assert hasattr(doc, "metadata") 
+        assert doc.json is not None
+        assert isinstance(doc.json, dict)
+        
+        # Metadata assertions
+        assert hasattr(doc, "metadata")
+        assert doc.metadata is not None
+        assert isinstance(doc.metadata, dict)
+        assert "url" in doc.metadata
+        assert doc.metadata["url"] in TEST_URLS
+
+def test_async_batch_scrape_urls_all_params_with_json_options_full_page_screenshot():
+    location = LocationConfig(country="us", languages=["en"])
+    json_schema = {"type": "object", "properties": {"title": {"type": "string"}}}
+    json_options = JsonConfig(prompt="Extract the title as JSON", schema=json_schema)
+    actions = [
+        WaitAction(milliseconds=500),
+        ScreenshotAction(fullPage=True),
+        WriteAction(text="test input"),
+        PressAction(key="Enter"),
+        ScrollAction(direction="down"),
+        ExecuteJavascriptAction(script="function get_title() { return document.title; }; get_title();")
+    ]
+    job = app.async_batch_scrape_urls(
+        TEST_URLS,
+        formats=["markdown", "html", "raw_html", "links", "screenshot@full_page", "json"],
+        include_tags=["h1", "p"],
+        exclude_tags=["footer"],
+        only_main_content=True,
+        wait_for=1000,
+        timeout=30000,
+        location=location,
+        mobile=True,
+        skip_tls_verification=True,
+        remove_base64_images=True,
+        block_ads=True,
+        proxy="basic",
+        json_options=json_options,
+        actions=actions
+    )
+    assert job.id is not None
+    status = wait_for_batch_completion(app, job.id)
+    
+    # Basic response assertions
+    assert status.success
+    assert hasattr(status, "data")
+    assert status.data is not None
+    assert isinstance(status.data, list)
+    assert len(status.data) == len(TEST_URLS)
+    
+    # Detailed content assertions for each document
+    for doc in status.data:
+        # Markdown assertions
+        assert hasattr(doc, "markdown")
+        assert doc.markdown is not None
+        assert isinstance(doc.markdown, str)
+        assert len(doc.markdown) > 0
+        
+        # HTML assertions
+        assert hasattr(doc, "html")
+        assert doc.html is not None
+        assert isinstance(doc.html, str)
+        assert len(doc.html) > 0
+        
+        # Raw HTML assertions
+        assert hasattr(doc, "raw_html")
+        assert doc.raw_html is not None
+        assert isinstance(doc.raw_html, str)
+        assert len(doc.raw_html) > 0
+        
+        # Links assertions
+        assert hasattr(doc, "links")
+        assert doc.links is not None
+        assert isinstance(doc.links, list)
+        
+        # Screenshot assertions (full page)
+        assert hasattr(doc, "screenshot")
+        assert doc.screenshot is not None
+        assert isinstance(doc.screenshot, str)
+        assert doc.screenshot.startswith("https://")
+        
+        # JSON assertions
+        assert hasattr(doc, "json")
+        assert doc.json is not None
+        assert isinstance(doc.json, dict)
+        
+        # Metadata assertions
+        assert hasattr(doc, "metadata")
+        assert doc.metadata is not None
+        assert isinstance(doc.metadata, dict)
+        assert "url" in doc.metadata
+        assert doc.metadata["url"] in TEST_URLS 
