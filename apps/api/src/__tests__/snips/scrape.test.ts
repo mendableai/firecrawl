@@ -366,4 +366,12 @@ describe("Scrape tests", () => {
       }, 30000);
     });
   }
+
+  it.concurrent("sourceURL stays unnormalized", async () => {
+    const response = await scrape({
+      url: "https://firecrawl.dev/?pagewanted=all&et_blog",
+    });
+
+    expect(response.metadata.sourceURL).toBe("https://firecrawl.dev/?pagewanted=all&et_blog");
+  }, 35000);
 });

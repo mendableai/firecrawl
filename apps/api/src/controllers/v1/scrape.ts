@@ -51,6 +51,7 @@ export async function scrapeController(
       internalOptions: {
         teamId: req.auth.team_id,
         saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+        unnormalizedSourceURL: preNormalizedBody.url,
       },
       origin: req.body.origin,
       is_scrape: true,

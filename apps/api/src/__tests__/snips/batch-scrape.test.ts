@@ -48,4 +48,12 @@ describe("Batch scrape tests", () => {
             }, 180000);
         });
     }
+
+    it.concurrent("sourceURL stays unnormalized", async () => {
+        const response = await batchScrape({
+            urls: ["https://firecrawl.dev/?pagewanted=all&et_blog"],
+        });
+    
+        expect(response.body.data[0].metadata.sourceURL).toBe("https://firecrawl.dev/?pagewanted=all&et_blog");
+    }, 35000);
 });
