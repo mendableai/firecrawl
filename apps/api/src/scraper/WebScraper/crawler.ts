@@ -334,6 +334,12 @@ export class WebCrawler {
         count++;
       }
 
+      await redisConnection.expire(
+        "sitemap:" + this.jobId + ":links",
+        3600,
+        "NX",
+      );
+
       return count;
     } catch (error) {
       if (error.message === "Sitemap fetch timeout") {
