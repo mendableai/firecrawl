@@ -1,4 +1,4 @@
-import { redisEvictConnection } from "src/services/redis";
+import { redisEvictConnection } from "../../services/redis";
 import { logger as _logger } from "../logger";
 import { CostTracking } from "./extraction-service";
 
