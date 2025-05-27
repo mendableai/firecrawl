@@ -1,0 +1,90 @@
+import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { logger } from "../lib/logger";
+import { configDotenv } from "dotenv";
+import { Storage } from "@google-cloud/storage";
+configDotenv();
+
+// SupabaseService class initializes the Supabase client conditionally based on environment variables.
+class IndexSupabaseService {
+  private client: SupabaseClient | null = null;
+
+  constructor() {
+    const supabaseUrl = process.env.INDEX_SUPABASE_URL;
+    const supabaseServiceToken = process.env.INDEX_SUPABASE_SERVICE_TOKEN;
+    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
+    // Only initialize the Supabase client if both URL and Service Token are provided.
+    if (!useDbAuthentication) {
+      // Warn the user that Authentication is disabled by setting the client to null
+      logger.warn(
+        "Authentication is disabled. Index supabase client will not be initialized.",
+      );
+      this.client = null;
+    } else if (!supabaseUrl || !supabaseServiceToken) {
+      logger.error(
+        "Index supabase environment variables aren't configured correctly. Index supabase client will not be initialized. Fix ENV configuration or disable DB authentication with USE_DB_AUTHENTICATION env variable",
+      );
+    } else {
+      this.client = createClient(supabaseUrl, supabaseServiceToken);
+    }
+  }
+
+  // Provides access to the initialized Supabase client, if available.
+  getClient(): SupabaseClient | null {
+    return this.client;
+  }
+}
+
+const serv = new IndexSupabaseService();
+
+// Using a Proxy to handle dynamic access to the Supabase client or service methods.
+// This approach ensures that if Supabase is not configured, any attempt to use it will result in a clear error.
+export const index_supabase_service: SupabaseClient = new Proxy(
+  serv,
+  {
+    get: function (target, prop, receiver) {
+      const client = target.getClient();
+      // If the Supabase client is not initialized, intercept property access to provide meaningful error feedback.
+      if (client === null) {
+        return () => {
+          throw new Error("Index supabase client is not configured.");
+        };
+      }
+      // Direct access to SupabaseService properties takes precedence.
+      if (prop in target) {
+        return Reflect.get(target, prop, receiver);
+      }
+      // Otherwise, delegate access to the Supabase client.
+      return Reflect.get(client, prop, receiver);
+    },
+  },
+) as unknown as SupabaseClient;
+
+const credentials = process.env.GCS_CREDENTIALS ? JSON.parse(atob(process.env.GCS_CREDENTIALS)) : undefined;
+
+export async function getIndexFromGCS(url: string): Promise<any | null> {
+    //   logger.info(`Getting f-engine document from GCS`, {
+    //     url,
+    //   });
+    try {
+        if (!process.env.GCS_INDEX_BUCKET_NAME) {
+            return null;
+        }
+
+        const storage = new Storage({ credentials });
+        const bucket = storage.bucket(process.env.GCS_INDEX_BUCKET_NAME);
+        const blob = bucket.file(`${url}`);
+        const [exists] = await blob.exists();
+        if (!exists) {
+            return null;
+        }
+        const [blobContent] = await blob.download();
+        const parsed = JSON.parse(blobContent.toString());
+        return parsed;
+    } catch (error) {
+        logger.error(`Error getting f-engine document from GCS`, {
+            error,
+            url,
+        });
+        return null;
+    }
+}

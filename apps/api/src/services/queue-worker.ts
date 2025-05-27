@@ -1046,25 +1046,6 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
   }
 }
 
-async function indexJob(job: Job & { id: string }, document: Document) {
-  if (
-    document &&
-    document.markdown &&
-    job.data.team_id === process.env.BACKGROUND_INDEX_TEAM_ID!
-  ) {
-    // indexPage({
-    //   document: document,
-    //   originUrl: job.data.crawl_id
-    //     ? (await getCrawl(job.data.crawl_id))?.originUrl!
-    //     : document.metadata.sourceURL!,
-    //   crawlId: job.data.crawl_id,
-    //   teamId: job.data.team_id,
-    // }).catch((error) => {
-    //   _logger.error("Error indexing page", { error });
-    // });
-  }
-}
-
 async function processJob(job: Job & { id: string }, token: string) {
   const logger = _logger.child({
     module: "queue-worker",
@@ -1263,8 +1244,6 @@ async function processJob(job: Job & { id: string }, token: string) {
         true,
       );
 
-      indexJob(job, doc);
-
       logger.debug("Declaring job as done...");
       await addCrawlJobDone(job.data.crawl_id, job.id, true);
 
@@ -1381,8 +1360,6 @@ async function processJob(job: Job & { id: string }, token: string) {
         cost_tracking: costTracking,
         pdf_num_pages: doc.metadata.numPages,
       });
-      
-      indexJob(job, doc);
     }
 
     if (job.data.is_scrape !== true) {
