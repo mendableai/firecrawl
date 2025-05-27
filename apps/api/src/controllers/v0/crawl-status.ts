@@ -1,7 +1,8 @@
 import { Request, Response } from "express";
 import { authenticateUser } from "../auth";
 import { RateLimiterMode } from "../../../src/types";
-import { getScrapeQueue, redisConnection } from "../../../src/services/queue-service";
+import { getScrapeQueue } from "../../../src/services/queue-service";
+import { redisEvictConnection } from "../../../src/services/redis";
 import { logger } from "../../../src/lib/logger";
 import { getCrawl, getCrawlJobs } from "../../../src/lib/crawl-redis";
 import { supabaseGetJobsByCrawlId } from "../../../src/lib/supabase-jobs";
@@ -80,7 +81,7 @@ export async function crawlStatusController(req: Request, res: Response) {
 
     const { team_id } = auth;
 
-    redisConnection.sadd("teams_using_v0", team_id)
+    redisEvictConnection.sadd("teams_using_v0", team_id)
       .catch(error => logger.error("Failed to add team to teams_using_v0", { error, team_id }));
 
     const sc = await getCrawl(req.params.jobId);

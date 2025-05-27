@@ -1,4 +1,4 @@
-import { redisConnection } from "../../../services/queue-service";
+import { redisEvictConnection } from "../../../services/redis";
 import { supabase_service } from "../../../services/supabase";
 import { logger as _logger } from "../../../lib/logger";
 import { Request, Response } from "express";
@@ -10,7 +10,7 @@ async function cclog() {
 
     let cursor = 0;
     do {
-        const result = await redisConnection.scan(cursor, "MATCH", "concurrency-limiter:*", "COUNT", 100000);
+        const result = await redisEvictConnection.scan(cursor, "MATCH", "concurrency-limiter:*", "COUNT", 100000);
         cursor = parseInt(result[0], 10);
         const usable = result[1].filter(x => !x.includes("preview_"));
 
@@ -25,7 +25,7 @@ async function cclog() {
 
             for (const x of usable) {
                 const at = new Date();
-                const concurrency = await redisConnection.zrangebyscore(x, Date.now(), Infinity);
+                const concurrency = await redisEvictConnection.zrangebyscore(x, Date.now(), Infinity);
                 if (concurrency) {
                     entries.push({
                         team_id: x.split(":")[1],
