@@ -105,7 +105,7 @@ services:
     # NOTE: If you want to use Valkey (open source) instead of Redis (source available),
     # uncomment the Valkey statement and comment out the Redis statement.
     # Using Valkey with Firecrawl is untested and not guaranteed to work. Use with caution.
-    image: jcr.savorcare.com/docker/redis:alpine
+    image: jcr.savorcare.com/docker/redis:6-alpine
     restart: always
     # image: valkey/valkey:alpine
     volumes:
@@ -113,9 +113,12 @@ services:
       - redis:/data
     networks:
       - backend
-    command: redis-server --bind 0.0.0.0
+    # command: redis-server --bind 0.0.0.0
     healthcheck:
-      test: [ 'CMD', 'redis-cli', 'ping' ]
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 networks:
   backend:
