@@ -162,7 +162,6 @@ class ExecuteJavascriptAction(pydantic.BaseModel):
     type: Literal["executeJavascript"] = pydantic.Field(default="executeJavascript")
     script: str
 
-
 class ExtractAgent(pydantic.BaseModel):
     """Configuration for the agent in extract operations."""
     model: Literal["FIRE-1"] = "FIRE-1"
@@ -303,66 +302,6 @@ class SearchResponse(pydantic.BaseModel):
     data: List[FirecrawlDocument]
     warning: Optional[str] = None
     error: Optional[str] = None
-
-class GenerateLLMsTextParams(pydantic.BaseModel):
-    """
-    Parameters for the LLMs.txt generation operation.
-    """
-    max_urls: Optional[int] = 10
-    show_full_text: Optional[bool] = False
-    __experimental_stream: Optional[bool] = None
-
-class DeepResearchParams(pydantic.BaseModel):
-    """
-    Parameters for the deep research operation.
-    """
-    max_depth: Optional[int] = 7
-    time_limit: Optional[int] = 270
-    max_urls: Optional[int] = 20
-    analysis_prompt: Optional[str] = None
-    system_prompt: Optional[str] = None
-    __experimental_stream_steps: Optional[bool] = None
-
-class DeepResearchResponse(pydantic.BaseModel):
-    """
-    Response from the deep research operation.
-    """
-    success: bool
-    id: str
-    error: Optional[str] = None
-
-class DeepResearchStatusResponse(pydantic.BaseModel):
-    """
-    Status response from the deep research operation.
-    """
-    success: bool
-    data: Optional[Dict[str, Any]] = None
-    status: str
-    error: Optional[str] = None
-    expires_at: str
-    current_depth: int
-    max_depth: int
-    activities: List[Dict[str, Any]]
-    sources: List[Dict[str, Any]]
-    summaries: List[str]
-
-class GenerateLLMsTextResponse(pydantic.BaseModel):
-    """Response from LLMs.txt generation operations."""
-    success: bool = True
-    id: str
-    error: Optional[str] = None
-
-class GenerateLLMsTextStatusResponseData(pydantic.BaseModel):
-    llmstxt: str
-    llmsfulltxt: Optional[str] = None
-
-class GenerateLLMsTextStatusResponse(pydantic.BaseModel):
-    """Status response from LLMs.txt generation operations."""
-    success: bool = True
-    data: Optional[GenerateLLMsTextStatusResponseData] = None
-    status: Literal["processing", "completed", "failed"]
-    error: Optional[str] = None
-    expires_at: str
     
 class SearchResponse(pydantic.BaseModel):
     """
