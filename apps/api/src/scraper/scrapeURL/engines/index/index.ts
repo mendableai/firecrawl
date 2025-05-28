@@ -6,11 +6,16 @@ import { EngineError, IndexMissError } from "../../error";
 import crypto from "crypto";
 
 export async function sendDocumentToIndex(meta: Meta, document: Document) {
-    if (meta.winnerEngine === "cache" || meta.winnerEngine === "index") {
-        return document;
-    }
+    const shouldCache = meta.winnerEngine !== "cache"
+        && meta.winnerEngine !== "index"
+        && meta.winnerEngine !== "index;documents"
+        && !meta.featureFlags.has("actions")
+        && (
+            meta.options.headers === undefined
+            || Object.keys(meta.options.headers).length === 0
+        );
 
-    if (meta.featureFlags.has("actions")) {
+    if (!shouldCache) {
         return document;
     }
 
@@ -48,6 +53,13 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
             url_splits_hash: urlSplitsHash,
             original_url: document.metadata.sourceURL ?? meta.url,
             resolved_url: document.metadata.url ?? document.metadata.sourceURL ?? meta.url,
+            has_screenshot: document.screenshot !== undefined && meta.featureFlags.has("screenshot"),
+            has_screenshot_fullscreen: document.screenshot !== undefined && meta.featureFlags.has("screenshot@fullScreen"),
+            is_mobile: meta.options.mobile,
+            block_ads: meta.options.blockAds,
+            location: meta.options.location?.country ?? null,
+            languages: meta.options.location?.languages ?? null,
+            status: document.metadata.statusCode,
         });
 
     if (error) {
@@ -64,11 +76,32 @@ export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult
     const normalizedURL = normalizeURLForIndex(meta.url);
     const urlHash = await hashURL(normalizedURL);
 
-    const { data, error } = await index_supabase_service
+    let selector = index_supabase_service
         .from("index")
         .select("id, created_at")
         .eq("url_hash", urlHash)
         .gte("created_at", new Date(Date.now() - meta.options.maxAge).toISOString())
+        .eq("is_mobile", meta.options.mobile)
+        .eq("block_ads", meta.options.blockAds);
+    
+    if (meta.featureFlags.has("screenshot")) {
+        selector = selector.eq("has_screenshot", true);
+    }
+    if (meta.featureFlags.has("screenshot@fullScreen")) {
+        selector = selector.eq("has_screenshot_fullscreen", true);
+    }
+    if (meta.options.location?.country) {
+        selector = selector.eq("location_country", meta.options.location.country);
+    } else {
+        selector = selector.is("location_country", null);
+    }
+    if (meta.options.location?.languages) {
+        selector = selector.overlaps("location_languages", meta.options.location.languages);
+    } else {
+        selector = selector.is("location_languages", null);
+    }
+
+    const { data, error } = await selector
         .order("created_at", { ascending: false })
         .limit(1);
     

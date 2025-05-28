@@ -27,7 +27,8 @@ export type Engine =
   | "pdf"
   | "docx"
   | "cache"
-  | "index";
+  | "index"
+  | "index;documents";
 
 const useFireEngine =
   process.env.FIRE_ENGINE_BETA_URL !== "" &&
@@ -41,7 +42,7 @@ const useCache =
 
 export const engines: Engine[] = [
   ...(useCache ? ["cache" as const] : []),
-  ...(useIndex ? ["index" as const] : []),
+  ...(useIndex ? ["index" as const, "index;documents" as const] : []),
   ...(useFireEngine
     ? [
         "fire-engine;chrome-cdp" as const,
@@ -129,6 +130,7 @@ const engineHandlers: {
 } = {
   cache: scrapeCache,
   index: scrapeURLWithIndex,
+  "index;documents": scrapeURLWithIndex,
   "fire-engine;chrome-cdp": scrapeURLWithFireEngineChromeCDP,
   "fire-engine(retry);chrome-cdp": scrapeURLWithFireEngineChromeCDP,
   "fire-engine;chrome-cdp;stealth": scrapeURLWithFireEngineChromeCDP,
@@ -174,15 +176,15 @@ export const engineOptions: {
     features: {
       actions: false,
       waitFor: true,
-      screenshot: false,
-      "screenshot@fullScreen": false,
+      screenshot: true,
+      "screenshot@fullScreen": true,
       pdf: false,
       docx: false,
       atsv: false,
-      mobile: false,
-      location: false,
-      skipTlsVerification: false,
-      useFastMode: false,
+      mobile: true,
+      location: true,
+      skipTlsVerification: true,
+      useFastMode: true,
       stealthProxy: false,
     },
     quality: 999, // index should always be tried second ? - MG
@@ -221,6 +223,23 @@ export const engineOptions: {
     },
     quality: 45,
   },
+  "index;documents": {
+    features: {
+      actions: false,
+      waitFor: true,
+      screenshot: true,
+      "screenshot@fullScreen": true,
+      pdf: true,
+      docx: true,
+      atsv: false,
+      location: true,
+      mobile: true,
+      skipTlsVerification: true,
+      useFastMode: true,
+      stealthProxy: false,
+    },
+    quality: -1,
+  },
   "fire-engine;chrome-cdp;stealth": {
     features: {
       actions: true,
@@ -236,7 +255,7 @@ export const engineOptions: {
       useFastMode: false,
       stealthProxy: true,
     },
-    quality: -1,
+    quality: -2,
   },
   "fire-engine(retry);chrome-cdp;stealth": {
     features: {
@@ -411,10 +430,27 @@ export function buildFallbackList(meta: Meta): {
     }
   }
 
-  if (meta.options.maxAge === 0) {
+  const shouldUseIndex =
+    !meta.options.formats.includes("changeTracking")
+    && meta.options.maxAge !== 0
+    && (
+      meta.options.headers === undefined
+      || Object.keys(meta.options.headers).length === 0
+    )
+    && (
+      meta.options.actions === undefined
+      || Object.keys(meta.options.actions).length === 0
+    )
+    && meta.options.proxy !== "stealth";
+
+  if (!shouldUseIndex) {
     const indexIndex = _engines.indexOf("index");
     if (indexIndex !== -1) {
       _engines.splice(indexIndex, 1);
+    }
+    const indexDocumentsIndex = _engines.indexOf("index;documents");
+    if (indexDocumentsIndex !== -1) {
+      _engines.splice(indexDocumentsIndex, 1);
     }
   }
   
