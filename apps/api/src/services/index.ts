@@ -2,6 +2,7 @@ import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { logger } from "../lib/logger";
 import { configDotenv } from "dotenv";
 import { Storage } from "@google-cloud/storage";
+import crypto from "crypto";
 configDotenv();
 
 // SupabaseService class initializes the Supabase client conditionally based on environment variables.
@@ -129,4 +130,61 @@ export async function saveIndexToGCS(id: string, doc: {
       cause: error,
     });
   }
+}
+
+export const useIndex =
+    process.env.INDEX_SUPABASE_URL !== "" &&
+    process.env.INDEX_SUPABASE_URL !== undefined;
+
+export function normalizeURLForIndex(url: string): string {
+    const urlObj = new URL(url);
+    urlObj.hash = "";
+    urlObj.protocol = "https";
+
+    if (urlObj.port === "80" || urlObj.port === "443") {
+        urlObj.port = "";
+    }
+
+    if (urlObj.hostname.startsWith("www.")) {
+        urlObj.hostname = urlObj.hostname.slice(4);
+    }
+
+    if (urlObj.pathname.endsWith("/index.html")) {
+        urlObj.pathname = urlObj.pathname.slice(0, -10);
+    } else if (urlObj.pathname.endsWith("/index.php")) {
+        urlObj.pathname = urlObj.pathname.slice(0, -9);
+    } else if (urlObj.pathname.endsWith("/index.htm")) {
+        urlObj.pathname = urlObj.pathname.slice(0, -9);
+    } else if (urlObj.pathname.endsWith("/index.shtml")) {
+        urlObj.pathname = urlObj.pathname.slice(0, -11);
+    } else if (urlObj.pathname.endsWith("/index.xml")) {
+        urlObj.pathname = urlObj.pathname.slice(0, -9);
+    }
+
+    if (urlObj.pathname.endsWith("/")) {
+        urlObj.pathname = urlObj.pathname.slice(0, -1);
+    }
+
+    return urlObj.toString();
+}
+
+export async function hashURL(url: string): Promise<string> {
+    return "\\x" + crypto.createHash("sha256").update(url).digest("hex");
+}
+
+export function generateURLSplits(url: string): string[] {
+  const urls: string[] = [];
+  const urlObj = new URL(url);
+  urlObj.hash = "";
+  urlObj.search = "";
+  const pathnameParts = urlObj.pathname.split("/");
+
+  for (let i = 0; i <= pathnameParts.length; i++) {
+      urlObj.pathname = pathnameParts.slice(0, i).join("/");
+      urls.push(urlObj.href);
+  }
+
+  urls.push(url);
+
+  return [...new Set(urls.map(x => normalizeURLForIndex(x)))];
 }

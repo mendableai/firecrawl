@@ -10,7 +10,8 @@ import { scrapePDF } from "./pdf";
 import { scrapeURLWithFetch } from "./fetch";
 import { scrapeURLWithPlaywright } from "./playwright";
 import { scrapeCache } from "./cache";
-import { scrapeURLWithIndex, useIndex } from "./index/index";
+import { scrapeURLWithIndex } from "./index/index";
+import { useIndex } from "../../../services";
 
 export type Engine =
   | "fire-engine;chrome-cdp"

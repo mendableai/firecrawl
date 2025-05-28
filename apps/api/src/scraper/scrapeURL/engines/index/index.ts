@@ -1,45 +1,9 @@
 import { Document } from "../../../../controllers/v1/types";
 import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
-import { getIndexFromGCS, index_supabase_service, saveIndexToGCS } from "../../../../services";
+import { getIndexFromGCS, hashURL, index_supabase_service, normalizeURLForIndex, saveIndexToGCS, generateURLSplits } from "../../../../services";
 import { EngineError, IndexMissError } from "../../error";
 import crypto from "crypto";
-
-export const useIndex =
-    process.env.INDEX_SUPABASE_URL !== "" &&
-    process.env.INDEX_SUPABASE_URL !== undefined;
-
-function normalizeURLForIndex(url: string): string {
-    const urlObj = new URL(url);
-    urlObj.hash = "";
-    urlObj.protocol = "https";
-
-    if (urlObj.port === "80" || urlObj.port === "443") {
-        urlObj.port = "";
-    }
-
-    if (urlObj.pathname.endsWith("/index.html")) {
-        urlObj.pathname = urlObj.pathname.slice(0, -10);
-    } else if (urlObj.pathname.endsWith("/index.php")) {
-        urlObj.pathname = urlObj.pathname.slice(0, -9);
-    } else if (urlObj.pathname.endsWith("/index.htm")) {
-        urlObj.pathname = urlObj.pathname.slice(0, -9);
-    } else if (urlObj.pathname.endsWith("/index.shtml")) {
-        urlObj.pathname = urlObj.pathname.slice(0, -11);
-    } else if (urlObj.pathname.endsWith("/index.xml")) {
-        urlObj.pathname = urlObj.pathname.slice(0, -9);
-    }
-
-    if (urlObj.pathname.endsWith("/")) {
-        urlObj.pathname = urlObj.pathname.slice(0, -1);
-    }
-
-    return urlObj.toString();
-}
-
-async function hashURL(url: string): Promise<string> {
-    return "\\x" + crypto.createHash("sha256").update(url).digest("hex");
-}
 
 export async function sendDocumentToIndex(meta: Meta, document: Document) {
     if (meta.winnerEngine === "cache" || meta.winnerEngine === "index") {
@@ -53,7 +17,7 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
     const normalizedURL = normalizeURLForIndex(meta.url);
     const urlHash = await hashURL(normalizedURL);
 
-    const urlSplits = []; // TODO
+    const urlSplits = generateURLSplits(normalizedURL);
     const urlSplitsHash = await Promise.all(urlSplits.map(split => hashURL(split)));
 
     const indexId = crypto.randomUUID();
@@ -82,6 +46,8 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
             url_hash: urlHash,
             url_splits: urlSplits,
             url_splits_hash: urlSplitsHash,
+            original_url: document.metadata.sourceURL ?? meta.url,
+            resolved_url: document.metadata.url ?? document.metadata.sourceURL ?? meta.url,
         });
 
     if (error) {
