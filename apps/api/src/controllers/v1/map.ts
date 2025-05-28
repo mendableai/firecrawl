@@ -25,7 +25,7 @@ import { logger } from "../../lib/logger";
 import Redis from "ioredis";
 import { querySitemapIndex } from "../../scraper/WebScraper/sitemap-index";
 import { getIndexQueue } from "../../services/queue-service";
-import { hashURL, index_supabase_service, normalizeURLForIndex } from "../../services/index";
+import { hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -168,12 +168,14 @@ export async function getMapResults({
     // Parallelize sitemap index query with search results
     const [sitemapIndexResult, { data: indexResults, error: indexError }, ...searchResults] = await Promise.all([
       querySitemapIndex(url, abort),
-      index_supabase_service
-        .from("index")
-        .select("resolved_url")
-        .overlaps("url_splits_hash", [await hashURL(normalizeURLForIndex(url))])
-        .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
-        .limit(limit),
+      useIndex ? (
+        index_supabase_service
+          .from("index")
+          .select("resolved_url")
+          .overlaps("url_splits_hash", [await hashURL(normalizeURLForIndex(url))])
+          .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
+          .limit(limit)
+      ) : Promise.resolve({ data: [], error: null }),
       ...(cachedResult ? [] : pagePromises),
     ]);
 
