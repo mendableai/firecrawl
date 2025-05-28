@@ -25,6 +25,7 @@ import { logger } from "../../lib/logger";
 import Redis from "ioredis";
 import { querySitemapIndex } from "../../scraper/WebScraper/sitemap-index";
 import { getIndexQueue } from "../../services/queue-service";
+import { hashURL, index_supabase_service, normalizeURLForIndex } from "../../services/index";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -165,10 +166,22 @@ export async function getMapResults({
     }
 
     // Parallelize sitemap index query with search results
-    const [sitemapIndexResult, ...searchResults] = await Promise.all([
+    const [sitemapIndexResult, { data: indexResults, error: indexError }, ...searchResults] = await Promise.all([
       querySitemapIndex(url, abort),
+      index_supabase_service
+        .from("index")
+        .select("resolved_url")
+        .overlaps("url_splits_hash", [await hashURL(normalizeURLForIndex(url))])
+        .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
+        .limit(limit),
       ...(cachedResult ? [] : pagePromises),
     ]);
+
+    if (indexError) {
+      logger.warn("Error querying index", { error: indexError });
+    } else if (indexResults.length > 0) {
+      links.push(...indexResults.map((x) => x.resolved_url));
+    }
 
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);

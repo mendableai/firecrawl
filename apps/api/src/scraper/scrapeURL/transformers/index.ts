@@ -11,7 +11,8 @@ import { saveToCache } from "./cache";
 import { performAgent } from "./agent";
 
 import { deriveDiff } from "./diff";
-import { sendDocumentToIndex, useIndex } from "../engines/index/index";
+import { useIndex } from "../../../services/index";
+import { sendDocumentToIndex } from "../engines/index/index";
 
 export type Transformer = (
   meta: Meta,
