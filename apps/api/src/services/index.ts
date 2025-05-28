@@ -12,18 +12,13 @@ class IndexSupabaseService {
   constructor() {
     const supabaseUrl = process.env.INDEX_SUPABASE_URL;
     const supabaseServiceToken = process.env.INDEX_SUPABASE_SERVICE_TOKEN;
-    const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
     // Only initialize the Supabase client if both URL and Service Token are provided.
-    if (!useDbAuthentication) {
+    if (!supabaseUrl || !supabaseServiceToken) {
       // Warn the user that Authentication is disabled by setting the client to null
       logger.warn(
-        "Authentication is disabled. Index supabase client will not be initialized.",
+        "Index supabase client will not be initialized.",
       );
       this.client = null;
-    } else if (!supabaseUrl || !supabaseServiceToken) {
-      logger.error(
-        "Index supabase environment variables aren't configured correctly. Index supabase client will not be initialized. Fix ENV configuration or disable DB authentication with USE_DB_AUTHENTICATION env variable",
-      );
     } else {
       this.client = createClient(supabaseUrl, supabaseServiceToken);
     }
