@@ -439,9 +439,18 @@ export function buildFallbackList(meta: Meta): {
     )
     && (
       meta.options.actions === undefined
-      || Object.keys(meta.options.actions).length === 0
+      || meta.options.actions.length === 0
     )
     && meta.options.proxy !== "stealth";
+  
+  meta.logger.warn("shouldUseIndex", {
+    shouldUseIndex,
+    formatsNoChangeTracking: !meta.options.formats.includes("changeTracking"),
+    maxAge: meta.options.maxAge !== 0,
+    headers: meta.options.headers === undefined || Object.keys(meta.options.headers).length === 0,
+    actions: meta.options.actions === undefined || meta.options.actions.length === 0,
+    proxy: meta.options.proxy !== "stealth",
+  });
 
   if (!shouldUseIndex) {
     const indexIndex = _engines.indexOf("index");

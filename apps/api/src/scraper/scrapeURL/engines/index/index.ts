@@ -15,6 +15,13 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
             || Object.keys(meta.options.headers).length === 0
         );
 
+    meta.logger.warn("shouldCache", {
+        shouldCache,
+        winnerEngine: meta.winnerEngine !== "cache" && meta.winnerEngine !== "index" && meta.winnerEngine !== "index;documents",
+        featureFlags: !meta.featureFlags.has("actions"),
+        headers: meta.options.headers === undefined || Object.keys(meta.options.headers).length === 0,
+    });
+
     if (!shouldCache) {
         return document;
     }
@@ -57,8 +64,8 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
             has_screenshot_fullscreen: document.screenshot !== undefined && meta.featureFlags.has("screenshot@fullScreen"),
             is_mobile: meta.options.mobile,
             block_ads: meta.options.blockAds,
-            location: meta.options.location?.country ?? null,
-            languages: meta.options.location?.languages ?? null,
+            location_country: meta.options.location?.country ?? null,
+            location_languages: meta.options.location?.languages ?? null,
             status: document.metadata.statusCode,
         });
 
