@@ -131,7 +131,3 @@ export function getBillingQueue() {
   }
   return billingQueue;
 }
-
-// === REMOVED IN FAVOR OF POLLING -- NOT RELIABLE
-// import { QueueEvents } from 'bullmq';
-// export const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection.duplicate() });
