@@ -88,3 +88,45 @@ export async function getIndexFromGCS(url: string): Promise<any | null> {
         return null;
     }
 }
+
+
+export async function saveIndexToGCS(id: string, doc: {
+  url: string;
+  html: string;
+  statusCode: number;
+  error?: string;
+  screenshot?: string;
+  numPages?: number;
+}): Promise<void> {
+  try {
+      if (!process.env.GCS_INDEX_BUCKET_NAME) {
+          return;
+      }
+
+      const storage = new Storage({ credentials });
+      const bucket = storage.bucket(process.env.GCS_INDEX_BUCKET_NAME);
+      const blob = bucket.file(`${id}.json`);
+      for (let i = 0; i < 3; i++) {
+          try {
+              await blob.save(JSON.stringify(doc), { 
+                  contentType: "application/json",
+              });
+              break;
+          } catch (error) {
+              if (i === 2) {
+                  throw error;
+              } else {
+                  logger.error(`Error saving index document to GCS, retrying`, {
+                      error,
+                      indexId: id,
+                      i,
+                  });
+              }
+          }
+      }
+  } catch (error) {
+    throw new Error("Error saving index document to GCS", {
+      cause: error,
+    });
+  }
+}

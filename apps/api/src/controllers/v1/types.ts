@@ -309,6 +309,7 @@ const baseScrapeOptions = z
     useMock: z.string().optional(),
     blockAds: z.boolean().default(true),
     proxy: z.enum(["basic", "stealth", "auto"]).optional(),
+    maxAge: z.number().int().gte(0).safe().default(0),
   })
   .strict(strictMessage);
 
@@ -751,6 +752,8 @@ export type Document = {
     error?: string;
     numPages?: number;
     proxyUsed: "basic" | "stealth";
+    cacheState?: "hit" | "miss";
+    cachedAt?: string;
     // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };
   serpResults?: {

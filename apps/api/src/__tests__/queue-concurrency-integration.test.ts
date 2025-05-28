@@ -64,6 +64,7 @@ describe("Queue Concurrency Integration", () => {
     removeBase64Images: true,
     fastMode: false,
     blockAds: true,
+    maxAge: 0,
   };
 
   beforeEach(() => {

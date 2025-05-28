@@ -10,6 +10,7 @@ import { scrapePDF } from "./pdf";
 import { scrapeURLWithFetch } from "./fetch";
 import { scrapeURLWithPlaywright } from "./playwright";
 import { scrapeCache } from "./cache";
+import { scrapeURLWithIndex, useIndex } from "./index/index";
 
 export type Engine =
   | "fire-engine;chrome-cdp"
@@ -24,7 +25,8 @@ export type Engine =
   | "fetch"
   | "pdf"
   | "docx"
-  | "cache";
+  | "cache"
+  | "index";
 
 const useFireEngine =
   process.env.FIRE_ENGINE_BETA_URL !== "" &&
@@ -38,6 +40,7 @@ const useCache =
 
 export const engines: Engine[] = [
   ...(useCache ? ["cache" as const] : []),
+  ...(useIndex ? ["index" as const] : []),
   ...(useFireEngine
     ? [
         "fire-engine;chrome-cdp" as const,
@@ -111,6 +114,10 @@ export type EngineScrapeResult = {
   };
 
   numPages?: number;
+
+  cacheInfo?: {
+    created_at: Date;
+  };
 };
 
 const engineHandlers: {
@@ -120,6 +127,7 @@ const engineHandlers: {
   ) => Promise<EngineScrapeResult>;
 } = {
   cache: scrapeCache,
+  index: scrapeURLWithIndex,
   "fire-engine;chrome-cdp": scrapeURLWithFireEngineChromeCDP,
   "fire-engine(retry);chrome-cdp": scrapeURLWithFireEngineChromeCDP,
   "fire-engine;chrome-cdp;stealth": scrapeURLWithFireEngineChromeCDP,
@@ -160,6 +168,23 @@ export const engineOptions: {
       stealthProxy: false,
     },
     quality: 1000, // cache should always be tried first
+  },
+  index: {
+    features: {
+      actions: false,
+      waitFor: true,
+      screenshot: false,
+      "screenshot@fullScreen": false,
+      pdf: false,
+      docx: false,
+      atsv: false,
+      mobile: false,
+      location: false,
+      skipTlsVerification: false,
+      useFastMode: false,
+      stealthProxy: false,
+    },
+    quality: 999, // index should always be tried second ? - MG
   },
   "fire-engine;chrome-cdp": {
     features: {
@@ -382,6 +407,13 @@ export function buildFallbackList(meta: Meta): {
     const cacheIndex = _engines.indexOf("cache");
     if (cacheIndex !== -1) {
       _engines.splice(cacheIndex, 1);
+    }
+  }
+
+  if (meta.options.maxAge === 0) {
+    const indexIndex = _engines.indexOf("index");
+    if (indexIndex !== -1) {
+      _engines.splice(indexIndex, 1);
     }
   }
   
