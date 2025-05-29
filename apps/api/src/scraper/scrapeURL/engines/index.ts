@@ -111,6 +111,8 @@ export type EngineScrapeResult = {
   };
 
   numPages?: number;
+
+  contentType?: string;
 };
 
 const engineHandlers: {

@@ -373,5 +373,14 @@ describe("Scrape tests", () => {
     });
 
     expect(response.metadata.sourceURL).toBe("https://firecrawl.dev/?pagewanted=all&et_blog");
-  }, 35000);
+  }, 30000);
+
+  it.concurrent("application/json content type is markdownified properly", async () => {
+    const response = await scrape({
+      url: "https://jsonplaceholder.typicode.com/todos/1",
+      formats: ["markdown"],
+    });
+
+    expect(response.markdown).toContain("```json");
+  }, 30000);
 });
