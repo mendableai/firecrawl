@@ -752,6 +752,7 @@ export type Document = {
     scrapeId?: string;
     error?: string;
     numPages?: number;
+    contentType?: string;
     proxyUsed: "basic" | "stealth";
     cacheState?: "hit" | "miss";
     cachedAt?: string;

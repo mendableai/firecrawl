@@ -184,6 +184,7 @@ export type InternalOptions = {
   fromCache?: boolean; // Indicates if the document was retrieved from cache
   abort?: AbortSignal;
   urlInvisibleInCurrentCrawl?: boolean;
+  unnormalizedSourceURL?: string;
 
   saveScrapeResultToGCS?: boolean; // Passed along to fire-engine
 };
@@ -387,11 +388,12 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
     screenshot: result.result.screenshot,
     actions: result.result.actions,
     metadata: {
-      sourceURL: meta.url,
+      sourceURL: meta.internalOptions.unnormalizedSourceURL ?? meta.url,
       url: result.result.url,
       statusCode: result.result.statusCode,
       error: result.result.error,
       numPages: result.result.numPages,
+      contentType: result.result.contentType,
       proxyUsed: meta.featureFlags.has("stealthProxy") ? "stealth" : "basic",
       ...(results["index"] ? (
         result.result.cacheInfo ? {

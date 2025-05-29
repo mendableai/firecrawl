@@ -120,6 +120,8 @@ export type EngineScrapeResult = {
   cacheInfo?: {
     created_at: Date;
   };
+  
+  contentType?: string;
 };
 
 const engineHandlers: {

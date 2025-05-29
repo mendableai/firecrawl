@@ -30,7 +30,7 @@ export async function scrapeURLWithFetch(
     url: string;
     body: string,
     status: number;
-    headers: any;
+    headers: [string, string][];
   };
 
   if (meta.mock !== null) {
@@ -117,5 +117,8 @@ export async function scrapeURLWithFetch(
     url: response.url,
     html: response.body,
     statusCode: response.status,
+    contentType: (response.headers.find(
+      (x) => x[0].toLowerCase() === "content-type",
+    ) ?? [])[1] ?? undefined,
   };
 }

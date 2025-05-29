@@ -6,11 +6,8 @@ import {
   getScrapeQueue,
   getExtractQueue,
   getDeepResearchQueue,
-  redisConnection,
-  scrapeQueueName,
-  extractQueueName,
-  deepResearchQueueName,
   getIndexQueue,
+  redisConnection,
   getGenerateLlmsTxtQueue,
   getBillingQueue,
 } from "./queue-service";
@@ -88,6 +85,7 @@ import https from "https";
 import { cacheableLookup } from "../scraper/scrapeURL/lib/cacheableLookup";
 import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
 import { RateLimiterMode } from "../types";
+import { redisEvictConnection } from "./redis";
 
 configDotenv();
 
@@ -132,11 +130,11 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
     logger.info("Crawl is pre-finished, checking if we need to add more jobs");
     if (
       job.data.crawlerOptions &&
-      !(await redisConnection.exists(
+      !(await redisEvictConnection.exists(
         "crawl:" + job.data.crawl_id + ":invisible_urls",
       ))
     ) {
-      await redisConnection.set(
+      await redisEvictConnection.set(
         "crawl:" + job.data.crawl_id + ":invisible_urls",
         "done",
         "EX",
@@ -146,7 +144,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
       const sc = (await getCrawl(job.data.crawl_id))!;
 
       const visitedUrls = new Set(
-        await redisConnection.smembers(
+        await redisEvictConnection.smembers(
           "crawl:" + job.data.crawl_id + ":visited_unique",
         ),
       );
@@ -261,7 +259,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         ? normalizeUrlOnlyHostname(sc.originUrl)
         : undefined;
       // Get all visited unique URLs from Redis
-      const visitedUrls = await redisConnection.smembers(
+      const visitedUrls = await redisEvictConnection.smembers(
         "crawl:" + job.data.crawl_id + ":visited_unique",
       );
       // Upload to Supabase if we have URLs and this is a crawl (not a batch scrape)
@@ -1144,21 +1142,6 @@ async function processJob(job: Job & { id: string }, token: string) {
       document: doc,
     };
 
-    if (job.data.webhook && job.data.mode !== "crawl" && job.data.v1) {
-      logger.debug("Calling webhook with success...", {
-        webhook: job.data.webhook,
-      });
-      await callWebhook(
-        job.data.team_id,
-        job.data.crawl_id,
-        data,
-        job.data.webhook,
-        job.data.v1,
-        job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
-        true,
-      );
-    }
-
     if (job.data.crawl_id) {
       const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
 
@@ -1211,7 +1194,7 @@ async function processJob(job: Job & { id: string }, token: string) {
 
           // Prevent redirect target from being visited in the crawl again
           // See lockURL
-          const x = await redisConnection.sadd(
+          const x = await redisEvictConnection.sadd(
             "crawl:" + job.data.crawl_id + ":visited",
             ...p1.map((x) => x.href),
           );
@@ -1243,6 +1226,23 @@ async function processJob(job: Job & { id: string }, token: string) {
         },
         true,
       );
+
+      if (job.data.webhook && job.data.mode !== "crawl" && job.data.v1) {
+        logger.debug("Calling webhook with success...", {
+          webhook: job.data.webhook,
+        });
+        await callWebhook(
+          job.data.team_id,
+          job.data.crawl_id,
+          data,
+          job.data.webhook,
+          job.data.v1,
+          job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
+          true,
+        );
+      }
+
+      indexJob(job, doc);
 
       logger.debug("Declaring job as done...");
       await addCrawlJobDone(job.data.crawl_id, job.id, true);
@@ -1429,7 +1429,7 @@ async function processJob(job: Job & { id: string }, token: string) {
 
       logger.debug("Declaring job as done...");
       await addCrawlJobDone(job.data.crawl_id, job.id, false);
-      await redisConnection.srem(
+      await redisEvictConnection.srem(
         "crawl:" + job.data.crawl_id + ":visited_unique",
         normalizeURL(job.data.url, sc),
       );
