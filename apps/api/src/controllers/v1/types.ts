@@ -310,6 +310,7 @@ const baseScrapeOptions = z
     blockAds: z.boolean().default(true),
     proxy: z.enum(["basic", "stealth", "auto"]).optional(),
     maxAge: z.number().int().gte(0).safe().default(0),
+    dontStoreInCache: z.boolean().default(false),
   })
   .strict(strictMessage);
 

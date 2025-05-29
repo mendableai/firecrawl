@@ -6,7 +6,8 @@ import { EngineError, IndexMissError } from "../../error";
 import crypto from "crypto";
 
 export async function sendDocumentToIndex(meta: Meta, document: Document) {
-    const shouldCache = meta.winnerEngine !== "cache"
+    const shouldCache = !meta.options.dontStoreInCache
+        && meta.winnerEngine !== "cache"
         && meta.winnerEngine !== "index"
         && meta.winnerEngine !== "index;documents"
         && !meta.featureFlags.has("actions")
