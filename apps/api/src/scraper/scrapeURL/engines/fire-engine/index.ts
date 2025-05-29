@@ -273,6 +273,10 @@ export async function scrapeURLWithFireEngineChromeCDP(
     error: response.pageError,
     statusCode: response.pageStatusCode,
 
+    contentType: (Object.entries(response.responseHeaders ?? {}).find(
+      (x) => x[0].toLowerCase() === "content-type",
+    ) ?? [])[1] ?? undefined,
+
     screenshot: response.screenshot,
     ...(actions.length > 0
       ? {
@@ -336,6 +340,10 @@ export async function scrapeURLWithFireEnginePlaywright(
     error: response.pageError,
     statusCode: response.pageStatusCode,
 
+    contentType: (Object.entries(response.responseHeaders ?? {}).find(
+      (x) => x[0].toLowerCase() === "content-type",
+    ) ?? [])[1] ?? undefined,
+
     ...(response.screenshots !== undefined && response.screenshots.length > 0
       ? {
           screenshot: response.screenshots[0],
@@ -391,5 +399,9 @@ export async function scrapeURLWithFireEngineTLSClient(
     html: response.content,
     error: response.pageError,
     statusCode: response.pageStatusCode,
+
+    contentType: (Object.entries(response.responseHeaders ?? {}).find(
+      (x) => x[0].toLowerCase() === "content-type",
+    ) ?? [])[1] ?? undefined,
   };
 }

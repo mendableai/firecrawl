@@ -61,6 +61,17 @@ export async function deriveMarkdownFromHTML(
     );
   }
 
+  if (document.metadata.contentType?.includes("application/json")) {
+    if (document.rawHtml === undefined) {
+      throw new Error(
+        "rawHtml is undefined -- this transformer is being called out of order",
+      );
+    }
+
+    document.markdown = "```json\n" + document.rawHtml + "\n```";
+    return document;
+  }
+
   document.markdown = await parseMarkdown(document.html);
   return document;
 }
