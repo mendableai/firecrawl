@@ -23,7 +23,7 @@ import aiohttp
 import asyncio
 from pydantic import Field
 from .utils import parse_scrape_options, ensure_schema_dict, scrape_formats_transform, scrape_formats_response_transform, change_tracking_response_transform
-from .types import LocationConfig, WebhookConfig, ChangeTrackingOptions, ScrapeOptions, ScrapeResponse, SearchResponse, CrawlStatusResponse, WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, JsonConfig, CrawlResponse, CrawlErrorsResponse, CrawlParams, MapParams, MapResponse, AgentOptions, BatchScrapeStatusResponse, BatchScrapeResponse, ExtractResponse, ScrapeParams, SearchParams
+from .types import LocationConfig, WebhookConfig, ChangeTrackingOptions, ScrapeOptions, ScrapeResponse, SearchResponse, CrawlStatusResponse, WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction, JsonConfig, CrawlResponse, CrawlErrorsResponse, CrawlParams, MapParams, MapResponse, AgentOptions, BatchScrapeStatusResponse, BatchScrapeResponse, ExtractResponse, SearchParams
 
 def get_version():
   try:
@@ -335,7 +335,23 @@ class FirecrawlApp:
         if ignore_sitemap is not None:
             crawl_params['ignoreSitemap'] = ignore_sitemap
         if scrape_options is not None:
-            crawl_params['scrapeOptions'] = parse_scrape_options(scrape_options)
+            crawl_params['scrapeOptions'] = parse_scrape_options(
+                formats=scrape_options.formats,
+                include_tags=scrape_options.include_tags,
+                exclude_tags=scrape_options.exclude_tags,
+                only_main_content=scrape_options.only_main_content,
+                wait_for=scrape_options.wait_for,
+                timeout=scrape_options.timeout,
+                location=scrape_options.location,
+                mobile=scrape_options.mobile,
+                skip_tls_verification=scrape_options.skip_tls_verification,
+                remove_base64_images=scrape_options.remove_base64_images,
+                block_ads=scrape_options.block_ads,
+                proxy=scrape_options.proxy,
+                json_options=scrape_options.json_options,
+                actions=scrape_options.actions,
+                change_tracking_options=scrape_options.change_tracking_options
+            )
         if webhook is not None:
             crawl_params['webhook'] = webhook
         if deduplicate_similar_urls is not None:
@@ -351,14 +367,12 @@ class FirecrawlApp:
         crawl_params.update(kwargs)
 
         # Create final params object
-        final_params = CrawlParams(**crawl_params)
-        params_dict = final_params.model_dump(exclude_none=True)
-        params_dict['url'] = url
-        params_dict['origin'] = f"python-sdk@{version}"
+        crawl_params['url'] = url
+        crawl_params['origin'] = f"python-sdk@{version}"
 
         # Make request
         headers = self._prepare_headers(idempotency_key)
-        response = self._post_request(f'{self.api_url}/v1/crawl', params_dict, headers)
+        response = self._post_request(f'{self.api_url}/v1/crawl', crawl_params, headers)
 
         if response.status_code == 200:
             try:
@@ -444,7 +458,23 @@ class FirecrawlApp:
         if ignore_sitemap is not None:
             crawl_params['ignoreSitemap'] = ignore_sitemap
         if scrape_options is not None:
-            crawl_params['scrapeOptions'] = scrape_options.model_dump(exclude_none=True)
+            crawl_params['scrapeOptions'] = parse_scrape_options(
+                formats=scrape_options.formats,
+                include_tags=scrape_options.include_tags,
+                exclude_tags=scrape_options.exclude_tags,
+                only_main_content=scrape_options.only_main_content,
+                wait_for=scrape_options.wait_for,
+                timeout=scrape_options.timeout,
+                location=scrape_options.location,
+                mobile=scrape_options.mobile,
+                skip_tls_verification=scrape_options.skip_tls_verification,
+                remove_base64_images=scrape_options.remove_base64_images,
+                block_ads=scrape_options.block_ads,
+                proxy=scrape_options.proxy,
+                json_options=scrape_options.json_options,
+                actions=scrape_options.actions,
+                change_tracking_options=scrape_options.change_tracking_options
+            )
         if webhook is not None:
             crawl_params['webhook'] = webhook
         if deduplicate_similar_urls is not None:
@@ -460,18 +490,22 @@ class FirecrawlApp:
         crawl_params.update(kwargs)
 
         # Create final params object
-        final_params = CrawlParams(**crawl_params)
-        params_dict = final_params.model_dump(exclude_none=True)
-        params_dict['url'] = url
-        params_dict['origin'] = f"python-sdk@{version}"
+        crawl_params['url'] = url
+        crawl_params['origin'] = f"python-sdk@{version}"
 
         # Make request
         headers = self._prepare_headers(idempotency_key)
-        response = self._post_request(f'{self.api_url}/v1/crawl', params_dict, headers)
+        response = self._post_request(f'{self.api_url}/v1/crawl', crawl_params, headers)
 
         if response.status_code == 200:
             try:
-                return CrawlResponse(**response.json())
+                status_data = response.json()
+                return CrawlResponse(
+                    id=status_data.get('id'),
+                    url=status_data.get('url'),
+                    success=True,
+                    error=status_data.get('error')
+                )
             except:
                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
         else:
@@ -538,24 +572,19 @@ class FirecrawlApp:
                             break
                     status_data['data'] = data
 
-            response = {
-                'status': status_data.get('status'),
-                'total': status_data.get('total'),
-                'completed': status_data.get('completed'),
-                'credits_used': status_data.get('creditsUsed'),
-                'expires_at': status_data.get('expiresAt'),
-                'data': data,
-                'next': status_data.get('next'),
-                'error': status_data.get('error')
-            }
+                    for doc in data:
+                        doc = scrape_formats_response_transform(doc)
 
-            if 'error' in status_data:
-                response['error'] = status_data['error']
-
-            if 'next' in status_data:
-                response['next'] = status_data['next']
-
-            return CrawlStatusResponse(**response)
+            return CrawlStatusResponse(
+                status=status_data.get('status'),
+                total=status_data.get('total'),
+                completed=status_data.get('completed'),
+                credits_used=status_data.get('creditsUsed'),
+                expires_at=status_data.get('expiresAt'),
+                data=status_data.get('data'),
+                next=status_data.get('next'),
+                error=status_data.get('error')
+            )
         else:
             self._handle_error(response, 'check crawl status')
     
@@ -1089,7 +1118,7 @@ class FirecrawlApp:
         scrape_params.update(kwargs)
 
         # Create final params object
-        final_params = ScrapeParams(**scrape_params)
+        final_params = ScrapeOptions(**scrape_params)
         params_dict = final_params.model_dump(exclude_none=True)
         params_dict['urls'] = urls
         params_dict['origin'] = f"python-sdk@{version}"
@@ -1585,7 +1614,21 @@ class FirecrawlApp:
                                 raise Exception(f'Failed to parse Firecrawl response as JSON.')
                             data.extend(status_data.get('data', []))
                         status_data['data'] = data
-                        return CrawlStatusResponse(**status_data)
+                        crawl_response = {
+                            'success': True,
+                            'status': status_data['status'],
+                            'completed': status_data.get('completed'),
+                            'total': status_data.get('total'),
+                            'credits_used': status_data.get('creditsUsed'),
+                            'expires_at': status_data.get('expiresAt'),
+                            'next': status_data.get('next'),
+                            'data': data
+                        }
+
+                        for doc in data:
+                            doc = scrape_formats_response_transform(doc)
+
+                        return CrawlStatusResponse(**crawl_response)
                     else:
                         raise Exception('Crawl job completed but no data was returned')
                 elif status_data['status'] in ['active', 'paused', 'pending', 'queued', 'waiting', 'scraping']:
@@ -1995,14 +2038,14 @@ class AsyncFirecrawlApp(FirecrawlApp):
     async def batch_scrape_urls_and_watch(
             self,
             urls: List[str],
-            params: Optional[ScrapeParams] = None,
+            params: Optional[ScrapeOptions] = None,
             idempotency_key: Optional[str] = None) -> 'AsyncCrawlWatcher':
         """
         Initiate an async batch scrape job and return an AsyncCrawlWatcher to monitor progress.
 
         Args:
             urls (List[str]): List of URLs to scrape
-            params (Optional[ScrapeParams]): See ScrapeParams model for configuration:
+            params (Optional[ScrapeOptions]): See ScrapeOptions model for configuration:
 
               Content Options:
               * formats - Content formats to retrieve
@@ -2428,7 +2471,23 @@ class AsyncFirecrawlApp(FirecrawlApp):
         if ignore_sitemap is not None:
             crawl_params['ignoreSitemap'] = ignore_sitemap
         if scrape_options is not None:
-            crawl_params['scrapeOptions'] = scrape_options.model_dump(exclude_none=True)
+            crawl_params['scrapeOptions'] = parse_scrape_options(
+                formats=scrape_options.formats,
+                include_tags=scrape_options.include_tags,
+                exclude_tags=scrape_options.exclude_tags,
+                only_main_content=scrape_options.only_main_content,
+                wait_for=scrape_options.wait_for,
+                timeout=scrape_options.timeout,
+                location=scrape_options.location,
+                mobile=scrape_options.mobile,
+                skip_tls_verification=scrape_options.skip_tls_verification,
+                remove_base64_images=scrape_options.remove_base64_images,
+                block_ads=scrape_options.block_ads,
+                proxy=scrape_options.proxy,
+                json_options=scrape_options.json_options,
+                actions=scrape_options.actions,
+                change_tracking_options=scrape_options.change_tracking_options
+            )
         if webhook is not None:
             crawl_params['webhook'] = webhook
         if deduplicate_similar_urls is not None:
@@ -2444,14 +2503,12 @@ class AsyncFirecrawlApp(FirecrawlApp):
         crawl_params.update(kwargs)
 
         # Create final params object
-        final_params = CrawlParams(**crawl_params)
-        params_dict = final_params.model_dump(exclude_none=True)
-        params_dict['url'] = url
-        params_dict['origin'] = f"python-sdk@{version}"
+        crawl_params['url'] = url
+        crawl_params['origin'] = f"python-sdk@{version}"
         # Make request
         headers = self._prepare_headers(idempotency_key)
         response = await self._async_post_request(
-          f'{self.api_url}/v1/crawl', params_dict, headers)
+          f'{self.api_url}/v1/crawl', crawl_params, headers)
 
         if response.get('success'):
             try:
@@ -2536,7 +2593,23 @@ class AsyncFirecrawlApp(FirecrawlApp):
         if ignore_sitemap is not None:
             crawl_params['ignoreSitemap'] = ignore_sitemap
         if scrape_options is not None:
-            crawl_params['scrapeOptions'] = scrape_options.model_dump(exclude_none=True)
+            crawl_params['scrapeOptions'] = parse_scrape_options(
+                formats=scrape_options.formats,
+                include_tags=scrape_options.include_tags,
+                exclude_tags=scrape_options.exclude_tags,
+                only_main_content=scrape_options.only_main_content,
+                wait_for=scrape_options.wait_for,
+                timeout=scrape_options.timeout,
+                location=scrape_options.location,
+                mobile=scrape_options.mobile,
+                skip_tls_verification=scrape_options.skip_tls_verification,
+                remove_base64_images=scrape_options.remove_base64_images,
+                block_ads=scrape_options.block_ads,
+                proxy=scrape_options.proxy,
+                json_options=scrape_options.json_options,
+                actions=scrape_options.actions,
+                change_tracking_options=scrape_options.change_tracking_options
+            )
         if webhook is not None:
             crawl_params['webhook'] = webhook
         if deduplicate_similar_urls is not None:
@@ -2552,16 +2625,14 @@ class AsyncFirecrawlApp(FirecrawlApp):
         crawl_params.update(kwargs)
 
         # Create final params object
-        final_params = CrawlParams(**crawl_params)
-        params_dict = final_params.model_dump(exclude_none=True)
-        params_dict['url'] = url
-        params_dict['origin'] = f"python-sdk@{version}"
+        crawl_params['url'] = url
+        crawl_params['origin'] = f"python-sdk@{version}"
 
         # Make request
         headers = self._prepare_headers(idempotency_key)
         response = await self._async_post_request(
           f'{self.api_url}/v1/crawl',
-          params_dict,
+          crawl_params,
           headers
         )
 
@@ -2598,46 +2669,49 @@ class AsyncFirecrawlApp(FirecrawlApp):
         Raises:
             Exception: If status check fails
         """
-        headers = self._prepare_headers()
         endpoint = f'/v1/crawl/{id}'
-        
-        status_data = await self._async_get_request(
-            f'{self.api_url}{endpoint}',
-            headers
-        )
 
-        if status_data.get('status') == 'completed':
-            if 'data' in status_data:
-                data = status_data['data']
-                while 'next' in status_data:
-                    if len(status_data['data']) == 0:
-                        break
-                    next_url = status_data.get('next')
-                    if not next_url:
-                        logger.warning("Expected 'next' URL is missing.")
-                        break
-                    next_data = await self._async_get_request(next_url, headers)
-                    data.extend(next_data.get('data', []))
-                    status_data = next_data
-                status_data['data'] = data
-        # Create CrawlStatusResponse object from status data
-        response = CrawlStatusResponse(
-            status=status_data.get('status'),
-            total=status_data.get('total'),
-            completed=status_data.get('completed'),
-            creditsUsed=status_data.get('creditsUsed'),
-            expiresAt=status_data.get('expiresAt'),
-            data=data,
-            success=False if 'error' in status_data else True
-        )
+        headers = self._prepare_headers()
 
-        if 'error' in status_data:
-            response.error = status_data.get('error')
+        try:
+            response = await self._async_get_request(f'{self.api_url}{endpoint}', headers)
+            try:
+                status_data = response
+            except:
+                raise Exception(f'Failed to parse Firecrawl response as JSON.')
+            if status_data['status'] == 'completed':
+                if 'data' in status_data:
+                    data = status_data['data']
+                    while 'next' in status_data:
+                        if len(status_data['data']) == 0:
+                            break
+                        next_url = status_data.get('next')
+                        if not next_url:
+                            logger.warning("Expected 'next' URL is missing.")
+                            break
+                        try:
+                            status_data = await self._async_get_request(next_url, headers)
+                            data.extend(status_data.get('data', []))
+                        except Exception as e:
+                            logger.error(f"Error during pagination request: {e}")
+                            break
+                    status_data['data'] = data
 
-        if 'next' in status_data:
-            response.next = status_data.get('next')
+                    for doc in data:
+                        doc = scrape_formats_response_transform(doc)
 
-        return response
+            return CrawlStatusResponse(
+                status=status_data.get('status'),
+                total=status_data.get('total'),
+                completed=status_data.get('completed'),
+                credits_used=status_data.get('creditsUsed'),
+                expires_at=status_data.get('expiresAt'),
+                data=status_data.get('data'),
+                next=status_data.get('next'),
+                error=status_data.get('error')
+            )
+        except Exception as e:
+            await self._handle_error(response, 'check crawl status')
 
     async def _async_monitor_job_status(self, id: str, headers: Dict[str, str], poll_interval: int = 2) -> CrawlStatusResponse:
         """
@@ -2660,27 +2734,41 @@ class AsyncFirecrawlApp(FirecrawlApp):
                 headers
             )
 
-            if status_data.get('status') == 'completed':
+            if status_data['status'] == 'completed':
                 if 'data' in status_data:
                     data = status_data['data']
                     while 'next' in status_data:
                         if len(status_data['data']) == 0:
                             break
-                        next_url = status_data.get('next')
-                        if not next_url:
-                            logger.warning("Expected 'next' URL is missing.")
-                            break
-                        next_data = await self._async_get_request(next_url, headers)
-                        data.extend(next_data.get('data', []))
-                        status_data = next_data
+                        status_response = await self._async_get_request(status_data['next'], headers)
+                        try:
+                            status_data = status_response.json()
+                        except:
+                            raise Exception(f'Failed to parse Firecrawl response as JSON.')
+                        data.extend(status_data.get('data', []))
                     status_data['data'] = data
-                    return CrawlStatusResponse(**status_data)
+                    crawl_response = {
+                        'success': True,
+                        'status': status_data['status'],
+                        'completed': status_data.get('completed'),
+                        'total': status_data.get('total'),
+                        'credits_used': status_data.get('creditsUsed'),
+                        'expires_at': status_data.get('expiresAt'),
+                        'next': status_data.get('next'),
+                        'data': data
+                    }
+
+                    for doc in data:
+                        doc = scrape_formats_response_transform(doc)
+
+                    return CrawlStatusResponse(**crawl_response)
                 else:
-                    raise Exception('Job completed but no data was returned')
-            elif status_data.get('status') in ['active', 'paused', 'pending', 'queued', 'waiting', 'scraping']:
-                await asyncio.sleep(max(poll_interval, 2))
+                    raise Exception('Crawl job completed but no data was returned')
+            elif status_data['status'] in ['active', 'paused', 'pending', 'queued', 'waiting', 'scraping']:
+                poll_interval=max(poll_interval,2)
+                await asyncio.sleep(poll_interval)  # Wait for the specified interval before checking again
             else:
-                raise Exception(f'Job failed or was stopped. Status: {status_data["status"]}')
+                raise Exception(f'Crawl job failed or was stopped. Status: {status_data["status"]}')
 
     async def map_url(
         self,
@@ -2889,7 +2977,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
                     # Apply format transformations to each document in the data
                     if data:
                         for document in data:
-                            scrape_formats_response_transform(document)
+                            document = scrape_formats_response_transform(document)
 
             response = {
                 'status': response.get('status'),

@@ -70,6 +70,17 @@ class ChangeTrackingData(pydantic.BaseModel):
     diff: Optional[Dict[str, Any]] = None
     json: Optional[Any] = None
 
+class ExtractAgent(pydantic.BaseModel):
+    """Configuration for the agent in extract operations."""
+    model: Literal["FIRE-1"] = "FIRE-1"
+
+class JsonConfig(pydantic.BaseModel):
+    """Configuration for extraction."""
+    prompt: Optional[str] = None
+    schema: Optional[Any] = None
+    system_prompt: Optional[str] = None
+    agent: Optional[ExtractAgent] = None
+
 class FirecrawlDocument(pydantic.BaseModel, Generic[T]):
     """Document retrieved or processed by Firecrawl."""
     url: Optional[str] = None
@@ -103,23 +114,6 @@ class ChangeTrackingOptions(pydantic.BaseModel):
     modes: Optional[List[Literal["git-diff", "json"]]] = None
     schema: Optional[Any] = None
     prompt: Optional[str] = None
-
-class ScrapeOptions(pydantic.BaseModel):
-    """Parameters for scraping operations."""
-    formats: Optional[List[Literal["markdown", "html", "raw_html", "links", "screenshot", "screenshot@full_page", "extract", "json", "change_tracking"]]] = None
-    headers: Optional[Dict[str, str]] = None
-    include_tags: Optional[List[str]] = None
-    exclude_tags: Optional[List[str]] = None
-    only_main_content: Optional[bool] = None
-    wait_for: Optional[int] = None
-    timeout: Optional[int] = None
-    location: Optional[LocationConfig] = None
-    mobile: Optional[bool] = None
-    skip_tls_verification: Optional[bool] = None
-    remove_base64_images: Optional[bool] = None
-    block_ads: Optional[bool] = None
-    proxy: Optional[Literal["basic", "stealth"]] = None
-    change_tracking_options: Optional[ChangeTrackingOptions] = None
 
 class WaitAction(pydantic.BaseModel):
     """Wait action to perform during scraping."""
@@ -162,24 +156,26 @@ class ExecuteJavascriptAction(pydantic.BaseModel):
     type: Literal["executeJavascript"] = pydantic.Field(default="executeJavascript")
     script: str
 
-class ExtractAgent(pydantic.BaseModel):
-    """Configuration for the agent in extract operations."""
-    model: Literal["FIRE-1"] = "FIRE-1"
-
-class JsonConfig(pydantic.BaseModel):
-    """Configuration for extraction."""
-    prompt: Optional[str] = None
-    schema: Optional[Any] = None
-    system_prompt: Optional[str] = None
-    agent: Optional[ExtractAgent] = None
-
-class ScrapeParams(ScrapeOptions):
+class ScrapeOptions(pydantic.BaseModel):
     """Parameters for scraping operations."""
+    formats: Optional[List[Literal["markdown", "html", "raw_html", "links", "screenshot", "screenshot@full_page", "extract", "json", "change_tracking"]]] = None
+    headers: Optional[Dict[str, str]] = None
+    include_tags: Optional[List[str]] = None
+    exclude_tags: Optional[List[str]] = None
+    only_main_content: Optional[bool] = None
+    wait_for: Optional[int] = None
+    timeout: Optional[int] = None
+    location: Optional[LocationConfig] = None
+    mobile: Optional[bool] = None
+    skip_tls_verification: Optional[bool] = None
+    remove_base64_images: Optional[bool] = None
+    block_ads: Optional[bool] = None
+    proxy: Optional[Literal["basic", "stealth"]] = None
+    change_tracking_options: Optional[ChangeTrackingOptions] = None
     extract: Optional[JsonConfig] = None
     json_options: Optional[JsonConfig] = None
     actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None
     agent: Optional[AgentOptions] = None
-    webhook: Optional[WebhookConfig] = None
 
 class ScrapeResponse(FirecrawlDocument[T], Generic[T]):
     """Response from scraping operations."""
@@ -239,7 +235,8 @@ class CrawlStatusResponse(pydantic.BaseModel):
     credits_used: int
     expires_at: datetime
     next: Optional[str] = None
-    data: List[FirecrawlDocument]
+    data: Optional[List[FirecrawlDocument]] = None
+    error: Optional[str] = None
 
 class CrawlErrorsResponse(pydantic.BaseModel):
     """Response from crawl/batch scrape error monitoring."""

@@ -38,6 +38,37 @@ async def test_scrape_url_async_simple():
     assert response.metadata is not None
 
 @pytest.mark.asyncio
+async def test_scrape_url_async_with_html():
+    """Test async scraping with HTML format"""
+    response = await app.scrape_url(
+        TEST_URL,
+        formats=["markdown", "html"]
+    )
+    
+    # Basic response assertions
+    assert response.success
+    assert hasattr(response, "markdown")
+    assert response.markdown is not None
+    assert isinstance(response.markdown, str)
+    assert len(response.markdown) > 0
+    
+    # HTML assertions
+    assert hasattr(response, "html")
+    assert response.html is not None
+    assert isinstance(response.html, str)
+    assert len(response.html) > 0
+    
+    # Basic HTML structure check
+    html_lower = response.html.lower()
+    assert "<html" in html_lower or "<body" in html_lower or "<div" in html_lower
+    # Content validation
+    assert "firecrawl" in html_lower or "e2e" in html_lower or "testing" in html_lower
+    
+    # Metadata assertions
+    assert hasattr(response, "metadata")
+    assert response.metadata is not None
+
+@pytest.mark.asyncio
 async def test_scrape_url_async_all_params_with_json_options():
     location = LocationConfig(country="us", languages=["en"])
     json_schema = {"type": "object", "properties": {"title": {"type": "string"}}}
@@ -85,14 +116,45 @@ async def test_scrape_url_async_all_params_with_json_options():
     assert isinstance(response.html, str)
     assert len(response.html) > 0
     
+    # HTML content validation
+    html_lower = response.html.lower()
+    # Check for basic HTML structure
+    assert "<html" in html_lower or "<body" in html_lower or "<div" in html_lower
+    # Ensure HTML contains some meaningful content (not just empty tags)
+    assert len(response.html.strip()) > 100  # Reasonable minimum for actual content
+    # Check for common HTML elements that should be present
+    assert any(tag in html_lower for tag in ["<p", "<div", "<span", "<h1", "<h2", "<h3"])
+    # Verify HTML is properly formed (has closing tags)
+    if "<body" in html_lower:
+        assert "</body>" in html_lower
+    if "<html" in html_lower:
+        assert "</html>" in html_lower
+    # Content validation - ensure HTML contains expected test content
+    assert "firecrawl" in html_lower or "e2e" in html_lower or "testing" in html_lower
+    
     assert hasattr(response, "raw_html")
     assert response.raw_html is not None
     assert isinstance(response.raw_html, str)
     assert len(response.raw_html) > 0
     
+    # Raw HTML validation
+    raw_html_lower = response.raw_html.lower()
+    # Raw HTML should be substantial and contain raw HTML characteristics
+    assert len(response.raw_html) >= len(response.html) * 0.5  # Raw HTML should be substantial
+    # Check for raw HTML characteristics
+    assert any(indicator in raw_html_lower for indicator in ["<!doctype", "<html", "<head", "<meta"])
+    # Raw HTML should also contain the test content
+    assert "firecrawl" in raw_html_lower or "e2e" in raw_html_lower or "testing" in raw_html_lower
+    
     assert hasattr(response, "links")
     assert response.links is not None
     assert isinstance(response.links, list)
+    
+    # Validate links format
+    for link in response.links:
+        assert isinstance(link, str)
+        # Links should be valid URLs or relative paths
+        assert link.startswith(("http://", "https://", "/", "#")) or "." in link
     
     assert hasattr(response, "screenshot")
     assert response.screenshot is not None
@@ -175,14 +237,45 @@ async def test_scrape_url_async_all_params_with_json_options_full_page_screensho
     assert isinstance(response.html, str)
     assert len(response.html) > 0
     
+    # HTML content validation
+    html_lower = response.html.lower()
+    # Check for basic HTML structure
+    assert "<html" in html_lower or "<body" in html_lower or "<div" in html_lower
+    # Ensure HTML contains some meaningful content (not just empty tags)
+    assert len(response.html.strip()) > 100  # Reasonable minimum for actual content
+    # Check for common HTML elements that should be present
+    assert any(tag in html_lower for tag in ["<p", "<div", "<span", "<h1", "<h2", "<h3"])
+    # Verify HTML is properly formed (has closing tags)
+    if "<body" in html_lower:
+        assert "</body>" in html_lower
+    if "<html" in html_lower:
+        assert "</html>" in html_lower
+    # Content validation - ensure HTML contains expected test content
+    assert "firecrawl" in html_lower or "e2e" in html_lower or "testing" in html_lower
+    
     assert hasattr(response, "raw_html")
     assert response.raw_html is not None
     assert isinstance(response.raw_html, str)
     assert len(response.raw_html) > 0
     
+    # Raw HTML validation
+    raw_html_lower = response.raw_html.lower()
+    # Raw HTML should be substantial and contain raw HTML characteristics
+    assert len(response.raw_html) >= len(response.html) * 0.5  # Raw HTML should be substantial
+    # Check for raw HTML characteristics
+    assert any(indicator in raw_html_lower for indicator in ["<!doctype", "<html", "<head", "<meta"])
+    # Raw HTML should also contain the test content
+    assert "firecrawl" in raw_html_lower or "e2e" in raw_html_lower or "testing" in raw_html_lower
+    
     assert hasattr(response, "links")
     assert response.links is not None
     assert isinstance(response.links, list)
+    
+    # Validate links format
+    for link in response.links:
+        assert isinstance(link, str)
+        # Links should be valid URLs or relative paths
+        assert link.startswith(("http://", "https://", "/", "#")) or "." in link
     
     assert hasattr(response, "screenshot")
     assert response.screenshot is not None

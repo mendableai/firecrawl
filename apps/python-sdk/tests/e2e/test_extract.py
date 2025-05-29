@@ -78,7 +78,7 @@ def test_extract_all_params():
         prompt="Extract the title, description, links, and author from the website",
         schema=schema,
         system_prompt="You are a helpful extraction agent.",
-        allow_external_links=True,
+        allow_external_links=False,
         enable_web_search=True,
         show_sources=True,
         agent={"model": "FIRE-1"}
