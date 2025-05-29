@@ -1,9 +1,18 @@
 import { Response } from "express";
 import { supabaseGetJobByIdOnlyData } from "../../lib/supabase-jobs";
 import { getJob } from "./crawl-status";
+import { logger as _logger } from "../../lib/logger";
 
 export async function scrapeStatusController(req: any, res: any) {
-  const job = await supabaseGetJobByIdOnlyData(req.params.jobId);
+  const logger = _logger.child({
+    module: "scrape-status",
+    method: "scrapeStatusController",
+    teamId: req.auth.team_id,
+    jobId: req.params.jobId,
+    scrapeId: req.params.jobId,
+  });
+
+  const job = await supabaseGetJobByIdOnlyData(req.params.jobId, logger);
 
   if (!job) {
     return res.status(404).json({
