@@ -132,13 +132,13 @@ async function addScrapeJobRaw(
     // If above by 2x, send them an email
     // No need to 2x as if there are more than the max concurrency in the concurrency queue, it is already 2x
     if(concurrencyQueueJobs > maxConcurrency) {
-      logger.info("Concurrency limited 2x (single) - ", "Concurrency queue jobs: ", concurrencyQueueJobs, "Max concurrency: ", maxConcurrency, "Team ID: ", webScraperOptions.team_id);
+      // logger.info("Concurrency limited 2x (single) - ", "Concurrency queue jobs: ", concurrencyQueueJobs, "Max concurrency: ", maxConcurrency, "Team ID: ", webScraperOptions.team_id);
 
       // Only send notification if it's not a crawl or batch scrape
         const shouldSendNotification = await shouldSendConcurrencyLimitNotification(webScraperOptions.team_id);
         if (shouldSendNotification) {
           sendNotificationWithCustomDays(webScraperOptions.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false).catch((error) => {
-            logger.error("Error sending notification (concurrency limit reached): ", error);
+            logger.error("Error sending notification (concurrency limit reached)", { error });
           });
         }
     }
@@ -231,13 +231,13 @@ export async function addScrapeJobs(
 
   // equals 2x the max concurrency
   if(addToCQ.length > maxConcurrency) {
-    logger.info(`Concurrency limited 2x (multiple) - Concurrency queue jobs: ${addToCQ.length} Max concurrency: ${maxConcurrency} Team ID: ${jobs[0].data.team_id}`);
+    // logger.info(`Concurrency limited 2x (multiple) - Concurrency queue jobs: ${addToCQ.length} Max concurrency: ${maxConcurrency} Team ID: ${jobs[0].data.team_id}`);
     // Only send notification if it's not a crawl or batch scrape
     if (!isCrawlOrBatchScrape(dontAddToCCQ[0].data)) {
       const shouldSendNotification = await shouldSendConcurrencyLimitNotification(dontAddToCCQ[0].data.team_id);
       if (shouldSendNotification) {
         sendNotificationWithCustomDays(dontAddToCCQ[0].data.team_id, NotificationType.CONCURRENCY_LIMIT_REACHED, 15, false).catch((error) => {
-          logger.error("Error sending notification (concurrency limit reached): ", error);
+          logger.error("Error sending notification (concurrency limit reached)", { error });
         });
       }
     }

@@ -750,6 +750,7 @@ export type Document = {
     scrapeId?: string;
     error?: string;
     numPages?: number;
+    contentType?: string;
     proxyUsed: "basic" | "stealth";
     // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };
