@@ -88,6 +88,7 @@ import https from "https";
 import { cacheableLookup } from "../scraper/scrapeURL/lib/cacheableLookup";
 import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
 import { RateLimiterMode } from "../types";
+import { calculateCreditsToBeBilled } from "../lib/scrape-billing";
 
 configDotenv();
 
@@ -1386,25 +1387,7 @@ async function processJob(job: Job & { id: string }, token: string) {
     }
 
     if (job.data.is_scrape !== true) {
-      let creditsToBeBilled = 1; // Assuming 1 credit per document
-      if ((job.data.scrapeOptions.extract && job.data.scrapeOptions.formats?.includes("extract")) || (job.data.scrapeOptions.formats?.includes("changeTracking") && job.data.scrapeOptions.changeTrackingOptions?.modes?.includes("json"))) {
-        creditsToBeBilled = 5;
-      }
-
-      if (job.data.scrapeOptions.agent?.model?.toLowerCase() === "fire-1" || job.data.scrapeOptions.extract?.agent?.model?.toLowerCase() === "fire-1" || job.data.scrapeOptions.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
-        if (process.env.USE_DB_AUTHENTICATION === "true") {
-          creditsToBeBilled = Math.ceil((costTracking.toJSON().totalCost ?? 1) * 1800);
-        } else {
-          creditsToBeBilled = 150;
-        }
-      } else if (doc.metadata.numPages !== undefined && doc.metadata.numPages > 1) {
-        const creditsPerPDFPage = 1;
-        creditsToBeBilled = creditsPerPDFPage * doc.metadata.numPages;
-      }
-
-      if (doc.metadata?.proxyUsed === "stealth") {
-        creditsToBeBilled += 4;
-      }
+      let creditsToBeBilled = await calculateCreditsToBeBilled(job.data.scrapeOptions, doc, job.id, costTracking);
 
       if (
         job.data.team_id !== process.env.BACKGROUND_INDEX_TEAM_ID! &&
