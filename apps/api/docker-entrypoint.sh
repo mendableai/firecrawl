@@ -11,14 +11,24 @@ fi
 
 if [ "$FLY_PROCESS_GROUP" = "app" ]; then
   echo "RUNNING app"
-  node --max-old-space-size=8192 dist/src/index.js
+  exec node --max-old-space-size=6144 dist/src/index.js &
 elif [ "$FLY_PROCESS_GROUP" = "worker" ]; then
   echo "RUNNING worker"
-  node --max-old-space-size=8192 dist/src/services/queue-worker.js
+  exec node --max-old-space-size=3072 dist/src/services/queue-worker.js &
 elif [ "$FLY_PROCESS_GROUP" = "index-worker" ]; then
   echo "RUNNING index worker"
-  node --max-old-space-size=8192 dist/src/services/indexing/index-worker.js
+  exec node --max-old-space-size=3072 dist/src/services/indexing/index-worker.js &
 else
   echo "NO FLY PROCESS GROUP"
-  node --max-old-space-size=8192 dist/src/index.js
+  exec node --max-old-space-size=8192 dist/src/index.js &
 fi
+
+FC_PID=$!
+
+trap 'kill -SIGTERM $FC_PID; wait $FC_PID' SIGTERM
+trap 'kill -SIGINT $FC_PID; wait $FC_PID' SIGINT
+trap 'kill -SIGKILL $FC_PID; wait $FC_PID' SIGKILL
+
+wait $FC_PID
+
+echo "ALL PROCESSES TERMINATED"
