@@ -103,7 +103,7 @@ export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult
         selector = selector.is("location_country", null);
     }
     if (meta.options.location?.languages) {
-        selector = selector.overlaps("location_languages", meta.options.location.languages);
+        selector = selector.eq("location_languages", meta.options.location.languages);
     } else {
         selector = selector.is("location_languages", null);
     }
