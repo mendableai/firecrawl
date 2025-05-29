@@ -1,4 +1,5 @@
 import { scrape, scrapeStatus, scrapeWithFailure } from "./lib";
+import crypto from "crypto";
 
 describe("Scrape tests", () => {
   it.concurrent("mocking works properly", async () => {
@@ -95,6 +96,43 @@ describe("Scrape tests", () => {
     //     expect(response.markdown).toMatch(/(\.g\.doubleclick\.net|amazon-adsystem\.com)\//);
     //   }, 30000);
     // });
+
+    describe("Index", () => {
+      it.concurrent("caches properly", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://firecrawl.dev/?testId=" + id;
+
+        const response1 = await scrape({
+          url,
+          maxAge: 120000,
+          dontStoreInCache: true,
+        });
+
+        expect(response1.metadata.cacheState).toBe("miss");
+
+        const response2 = await scrape({
+          url,
+          maxAge: 120000,
+        });
+
+        expect(response2.metadata.cacheState).toBe("miss");
+
+        const response3 = await scrape({
+          url,
+          maxAge: 120000,
+        });
+
+        expect(response3.metadata.cacheState).toBe("miss");
+        expect(response3.metadata.cachedAt).toBeDefined();
+        
+        const response4 = await scrape({
+          url,
+          maxAge: 1,
+        });
+        
+        expect(response4.metadata.cacheState).toBe("miss");
+      }, 150000);
+    });
 
     describe("Change Tracking format", () => {
       it.concurrent("works", async () => {
