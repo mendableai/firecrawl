@@ -255,7 +255,13 @@ export async function searchController(
     }
 
     // Bill team once for all successful results
-    billTeam(req.auth.team_id, req.acuc?.sub_id, responseData.data.length).catch((error) => {
+    billTeam(req.auth.team_id, req.acuc?.sub_id, responseData.data.reduce((a,x) => {
+      if (x.metadata?.numPages !== undefined && x.metadata.numPages > 0) {
+        return a + x.metadata.numPages;
+      } else {
+        return a + 1;
+      }
+    }, 0)).catch((error) => {
       logger.error(
         `Failed to bill team ${req.auth.team_id} for ${responseData.data.length} credits: ${error}`,
       );
