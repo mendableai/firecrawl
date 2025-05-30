@@ -65,6 +65,7 @@ describe("Queue Concurrency Integration", () => {
     fastMode: false,
     blockAds: true,
     maxAge: 0,
+    dontStoreInCache: false,
   };
 
   beforeEach(() => {

@@ -25,7 +25,7 @@ import { logger } from "../../lib/logger";
 import Redis from "ioredis";
 import { querySitemapIndex } from "../../scraper/WebScraper/sitemap-index";
 import { getIndexQueue } from "../../services/queue-service";
-import { hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
+import { generateURLSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -165,6 +165,8 @@ export async function getMapResults({
       await redis.set(cacheKey, JSON.stringify(allResults), "EX", 48 * 60 * 60); // Cache for 48 hours
     }
 
+    const urlSplitsHash = generateURLSplits(url).map(x => hashURL(x));
+
     // Parallelize sitemap index query with search results
     const [sitemapIndexResult, { data: indexResults, error: indexError }, ...searchResults] = await Promise.all([
       querySitemapIndex(url, abort),
@@ -172,7 +174,7 @@ export async function getMapResults({
         index_supabase_service
           .from("index")
           .select("resolved_url")
-          .overlaps("url_splits_hash", [await hashURL(normalizeURLForIndex(url))])
+          .eq("url_split_" + (urlSplitsHash.length - 1) + "_hash", urlSplitsHash[urlSplitsHash.length - 1])
           .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
           .limit(limit)
       ) : Promise.resolve({ data: [], error: null }),

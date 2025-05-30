@@ -1242,8 +1242,6 @@ async function processJob(job: Job & { id: string }, token: string) {
         );
       }
 
-      indexJob(job, doc);
-
       logger.debug("Declaring job as done...");
       await addCrawlJobDone(job.data.crawl_id, job.id, true);
 

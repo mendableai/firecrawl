@@ -68,6 +68,10 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
             location_country: meta.options.location?.country ?? null,
             location_languages: meta.options.location?.languages ?? null,
             status: document.metadata.statusCode,
+            ...(urlSplitsHash.slice(0, 10).reduce((a,x,i) => ({
+                ...a,
+                [`url_split_${i}_hash`]: x,
+            }), {})),
         });
 
     if (error) {
