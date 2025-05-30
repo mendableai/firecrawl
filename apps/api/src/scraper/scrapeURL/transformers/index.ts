@@ -11,6 +11,9 @@ import { saveToCache } from "./cache";
 import { performAgent } from "./agent";
 
 import { deriveDiff } from "./diff";
+import { useIndex } from "../../../services/index";
+import { sendDocumentToIndex } from "../engines/index/index";
+
 export type Transformer = (
   meta: Meta,
   document: Document,
@@ -205,6 +208,7 @@ export const transformerStack: Transformer[] = [
   deriveLinksFromHTML,
   deriveMetadataFromRawHTML,
   uploadScreenshot,
+  ...(useIndex ? [sendDocumentToIndex] : []),
   performLLMExtract,
   performAgent,
   deriveDiff,

@@ -10,6 +10,8 @@ import { scrapePDF } from "./pdf";
 import { scrapeURLWithFetch } from "./fetch";
 import { scrapeURLWithPlaywright } from "./playwright";
 import { scrapeCache } from "./cache";
+import { scrapeURLWithIndex } from "./index/index";
+import { useIndex } from "../../../services";
 
 export type Engine =
   | "fire-engine;chrome-cdp"
@@ -24,7 +26,9 @@ export type Engine =
   | "fetch"
   | "pdf"
   | "docx"
-  | "cache";
+  | "cache"
+  | "index"
+  | "index;documents";
 
 const useFireEngine =
   process.env.FIRE_ENGINE_BETA_URL !== "" &&
@@ -38,6 +42,7 @@ const useCache =
 
 export const engines: Engine[] = [
   ...(useCache ? ["cache" as const] : []),
+  ...(useIndex ? ["index" as const, "index;documents" as const] : []),
   ...(useFireEngine
     ? [
         "fire-engine;chrome-cdp" as const,
@@ -112,6 +117,10 @@ export type EngineScrapeResult = {
 
   numPages?: number;
 
+  cacheInfo?: {
+    created_at: Date;
+  };
+  
   contentType?: string;
 };
 
@@ -122,6 +131,8 @@ const engineHandlers: {
   ) => Promise<EngineScrapeResult>;
 } = {
   cache: scrapeCache,
+  index: scrapeURLWithIndex,
+  "index;documents": scrapeURLWithIndex,
   "fire-engine;chrome-cdp": scrapeURLWithFireEngineChromeCDP,
   "fire-engine(retry);chrome-cdp": scrapeURLWithFireEngineChromeCDP,
   "fire-engine;chrome-cdp;stealth": scrapeURLWithFireEngineChromeCDP,
@@ -163,6 +174,23 @@ export const engineOptions: {
     },
     quality: 1000, // cache should always be tried first
   },
+  index: {
+    features: {
+      actions: false,
+      waitFor: true,
+      screenshot: true,
+      "screenshot@fullScreen": true,
+      pdf: false,
+      docx: false,
+      atsv: false,
+      mobile: true,
+      location: true,
+      skipTlsVerification: true,
+      useFastMode: true,
+      stealthProxy: false,
+    },
+    quality: 999, // index should always be tried second ? - MG
+  },
   "fire-engine;chrome-cdp": {
     features: {
       actions: true,
@@ -197,6 +225,23 @@ export const engineOptions: {
     },
     quality: 45,
   },
+  "index;documents": {
+    features: {
+      actions: false,
+      waitFor: true,
+      screenshot: true,
+      "screenshot@fullScreen": true,
+      pdf: true,
+      docx: true,
+      atsv: false,
+      location: true,
+      mobile: true,
+      skipTlsVerification: true,
+      useFastMode: true,
+      stealthProxy: false,
+    },
+    quality: -1,
+  },
   "fire-engine;chrome-cdp;stealth": {
     features: {
       actions: true,
@@ -212,7 +257,7 @@ export const engineOptions: {
       useFastMode: false,
       stealthProxy: true,
     },
-    quality: -1,
+    quality: -2,
   },
   "fire-engine(retry);chrome-cdp;stealth": {
     features: {
@@ -384,6 +429,39 @@ export function buildFallbackList(meta: Meta): {
     const cacheIndex = _engines.indexOf("cache");
     if (cacheIndex !== -1) {
       _engines.splice(cacheIndex, 1);
+    }
+  }
+
+  const shouldUseIndex =
+    !meta.options.formats.includes("changeTracking")
+    && meta.options.maxAge !== 0
+    && (
+      meta.options.headers === undefined
+      || Object.keys(meta.options.headers).length === 0
+    )
+    && (
+      meta.options.actions === undefined
+      || meta.options.actions.length === 0
+    )
+    && meta.options.proxy !== "stealth";
+  
+  meta.logger.warn("shouldUseIndex", {
+    shouldUseIndex,
+    formatsNoChangeTracking: !meta.options.formats.includes("changeTracking"),
+    maxAge: meta.options.maxAge !== 0,
+    headers: meta.options.headers === undefined || Object.keys(meta.options.headers).length === 0,
+    actions: meta.options.actions === undefined || meta.options.actions.length === 0,
+    proxy: meta.options.proxy !== "stealth",
+  });
+
+  if (!shouldUseIndex) {
+    const indexIndex = _engines.indexOf("index");
+    if (indexIndex !== -1) {
+      _engines.splice(indexIndex, 1);
+    }
+    const indexDocumentsIndex = _engines.indexOf("index;documents");
+    if (indexDocumentsIndex !== -1) {
+      _engines.splice(indexDocumentsIndex, 1);
     }
   }
   

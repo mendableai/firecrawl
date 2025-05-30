@@ -92,3 +92,9 @@ export class PDFInsufficientTimeError extends Error {
     super(`Insufficient time to process PDF of ${pageCount} pages. Please increase the timeout parameter in your scrape request to at least ${minTimeout}ms.`);
   }
 }
+
+export class IndexMissError extends Error {
+  constructor() {
+    super("Index doesn't have the page we're looking for");
+  }
+}
