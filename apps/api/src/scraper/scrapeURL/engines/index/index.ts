@@ -84,13 +84,15 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
     return document;
 }
 
+const errorCountToRegister = 3;
+
 export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult> {
     const normalizedURL = normalizeURLForIndex(meta.url);
     const urlHash = await hashURL(normalizedURL);
 
     let selector = index_supabase_service
         .from("index")
-        .select("id, created_at")
+        .select("id, created_at, status")
         .eq("url_hash", urlHash)
         .gte("created_at", new Date(Date.now() - meta.options.maxAge).toISOString())
         .eq("is_mobile", meta.options.mobile)
@@ -115,7 +117,7 @@ export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult
 
     const { data, error } = await selector
         .order("created_at", { ascending: false })
-        .limit(1);
+        .limit(5);
     
     if (error) {
         throw new EngineError("Failed to retrieve URL from DB index", {
@@ -123,7 +125,23 @@ export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult
         });
     }
 
-    if (data.length === 0) {
+    let selectedRow: {
+        id: string;
+        created_at: string;
+        status: number;
+    } | null = null;
+
+    if (data.length > 0) {
+        const newest200Index = data.findIndex(x => x.status >= 200 && x.status < 300);
+        // If the newest 200 index is further back than the allowed error count, we should display the errored index entry
+        if (newest200Index >= errorCountToRegister || newest200Index === -1) {
+            selectedRow = data[0];
+        } else {
+            selectedRow = data[newest200Index];
+        }
+    }
+
+    if (selectedRow === null || selectedRow === undefined) {
         throw new IndexMissError();
     }
 
