@@ -104,6 +104,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
       is_migrated: true,
       cost_tracking: job.cost_tracking,
       pdf_num_pages: job.pdf_num_pages ?? null,
+      credits_billed: job.credits_billed ?? null,
     };
 
     // Send job to external server

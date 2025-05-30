@@ -31,7 +31,6 @@ export async function scrapeController(
   });
 
   req.body = scrapeRequestSchema.parse(req.body);
-  let earlyReturn = false;
 
   const origin = req.body.origin;
   const timeout = req.body.timeout;
@@ -55,7 +54,7 @@ export async function scrapeController(
         unnormalizedSourceURL: preNormalizedBody.url,
       },
       origin: req.body.origin,
-      is_scrape: true,
+      startTime,
     },
     {},
     jobId,
@@ -124,30 +123,6 @@ export async function scrapeController(
   }
 
   await getScrapeQueue().remove(jobId);
-
-  const endTime = new Date().getTime();
-  const timeTakenInSeconds = (endTime - startTime) / 1000;
-  const numTokens =
-    doc && doc.extract
-      ? // ? numTokensFromString(doc.markdown, "gpt-3.5-turbo")
-        0 // TODO: fix
-      : 0;
-
-  if (earlyReturn) {
-    // Don't bill if we're early returning
-    return;
-  }
-
-  let creditsToBeBilled = await calculateCreditsToBeBilled(req.body, doc, jobId);
-
-  billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(
-    (error) => {
-      logger.error(
-        `Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`,
-      );
-      // Optionally, you could notify an admin or add to a retry queue here
-    },
-  );
 
   if (!req.body.formats.includes("rawHtml")) {
     if (doc && doc.rawHtml) {

@@ -102,7 +102,7 @@ async function scrapeSearchResult(
         internalOptions: { teamId: options.teamId, useCache: true },
         origin: options.origin,
         is_scrape: true,
-        
+        startTime: Date.now(),
       },
       {},
       jobId,
