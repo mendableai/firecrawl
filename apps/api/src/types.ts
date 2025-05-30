@@ -47,6 +47,7 @@ export interface WebScraperOptions {
   is_scrape?: boolean;
   isCrawlSourceScrape?: boolean;
   from_extract?: boolean;
+  startTime?: number;
 }
 
 export interface RunWebScraperParams {
@@ -95,6 +96,7 @@ export interface FirecrawlJob {
   sources?: Record<string, string[]>;
   cost_tracking?: CostTracking;
   pdf_num_pages?: number;
+  credits_billed?: number | null;
 }
 
 export interface FirecrawlScrapeResponse {
