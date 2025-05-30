@@ -1130,10 +1130,6 @@ async function processJob(job: Job & { id: string }, token: string) {
   logger.info(`🐂 Worker taking job ${job.id}`, { url: job.data.url });
   const start = job.data.startTime ?? Date.now();
   const remainingTime = job.data.scrapeOptions.timeout ? (job.data.scrapeOptions.timeout - (Date.now() - start)) : undefined;
-  if (remainingTime !== undefined && remainingTime < 0) {
-    throw new Error("timeout");
-  }
-  const signal = remainingTime ? AbortSignal.timeout(remainingTime) : undefined;
 
   const costTracking = new CostTracking();
 
@@ -1144,6 +1140,11 @@ async function processJob(job: Job & { id: string }, token: string) {
       current_step: "SCRAPING",
       current_url: "",
     });
+
+    if (remainingTime !== undefined && remainingTime < 0) {
+      throw new Error("timeout");
+    }
+    const signal = remainingTime ? AbortSignal.timeout(remainingTime) : undefined;
 
     if (job.data.crawl_id) {
       const sc = (await getCrawl(job.data.crawl_id)) as StoredCrawl;
