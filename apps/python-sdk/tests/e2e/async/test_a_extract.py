@@ -6,22 +6,24 @@ from pydantic import BaseModel
 from typing import List
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
-from firecrawl.firecrawl import FirecrawlApp
+from firecrawl.firecrawl import AsyncFirecrawlApp
 
 load_dotenv()
 
 API_URL = os.getenv("TEST_API_URL") or "https://api.firecrawl.dev"
 API_KEY = os.getenv("TEST_API_KEY")
 
-app = FirecrawlApp(api_url=API_URL, api_key=API_KEY)
+app = AsyncFirecrawlApp(api_url=API_URL, api_key=API_KEY)
 
 class ExtractSchema(BaseModel):
     title: str
     description: str
     links: List[str]
 
-def test_extract_simple_schema_class():
-    result = app.extract(
+
+@pytest.mark.asyncio
+async def test_extract_simple_schema_class():
+    result = await app.extract(
         ["https://example.com"],
         prompt="Extract the title, description, and links from the website",
         schema=ExtractSchema
@@ -83,8 +85,28 @@ def test_extract_simple_schema_class():
     if result.status is not None:
         assert result.status in ["processing", "completed", "failed"]
 
-def test_extract_simple_schema_dict():
-    result = app.extract(
+    # Sources validation
+    assert hasattr(result, "sources")
+    if result.sources is not None:
+        if isinstance(result.sources, dict):
+            # Sources returned as dictionary with keys like 'links[0]'
+            for key, source_list in result.sources.items():
+                assert isinstance(key, str)
+                assert isinstance(source_list, list)
+                for source_url in source_list:
+                    assert isinstance(source_url, str)
+                    assert len(source_url) > 0
+                    # Sources should be valid URLs
+                    assert source_url.startswith(("http://", "https://"))
+        elif isinstance(result.sources, list):
+            # Sources returned as simple list (fallback)
+            for source in result.sources:
+                assert isinstance(source, str)
+                assert len(source) > 0
+
+@pytest.mark.asyncio
+async def test_extract_simple_schema_dict():
+    result = await app.extract(
         ["https://example.com"],
         prompt="Extract the title, description, and links from the website",
         schema=ExtractSchema.schema()
@@ -164,7 +186,8 @@ def test_extract_simple_schema_dict():
                 assert isinstance(source, str)
                 assert len(source) > 0
 
-def test_extract_simple_schema_json():
+@pytest.mark.asyncio
+async def test_extract_simple_schema_json():
     schema = None
     if hasattr(ExtractSchema, "model_json_schema"):
         schema = ExtractSchema.model_json_schema()
@@ -173,7 +196,7 @@ def test_extract_simple_schema_json():
     else:
         pytest.skip("No JSON schema export method available on ExtractSchema")
     
-    result = app.extract(
+    result = await app.extract(
         ["https://example.com"],
         prompt="Extract the title, description, and links from the website",
         schema=schema
@@ -253,7 +276,8 @@ def test_extract_simple_schema_json():
                 assert isinstance(source, str)
                 assert len(source) > 0
 
-def test_extract_all_params():
+@pytest.mark.asyncio
+async def test_extract_all_params():
     class AllParamsSchema(BaseModel):
         title: str
         description: str
@@ -261,7 +285,7 @@ def test_extract_all_params():
         author: str
     
     schema = AllParamsSchema.schema()
-    result = app.extract(
+    result = await app.extract(
         ["https://www.iana.org"],
         prompt="Extract the title, description, links, and author from the website",
         schema=schema,
@@ -354,7 +378,8 @@ def test_extract_all_params():
     assert hasattr(result, "expires_at")
     # expires_at can be None or a datetime, so we just check it exists
 
-def test_extract_multiple_urls():
+@pytest.mark.asyncio
+async def test_extract_multiple_urls():
     """Test extraction with multiple URLs."""
     class MultiUrlSchema(BaseModel):
         title: str
@@ -362,7 +387,7 @@ def test_extract_multiple_urls():
         links: List[str]
     
     urls = ["https://example.com", "https://www.iana.org"]
-    result = app.extract(
+    result = await app.extract(
         urls,
         prompt="Extract the title, description, and links from the websites",
         schema=MultiUrlSchema
@@ -377,6 +402,25 @@ def test_extract_multiple_urls():
     # Error handling assertions
     assert hasattr(result, "error")
     assert result.error is None
+    
+    # Sources validation
+    assert hasattr(result, "sources")
+    if result.sources is not None:
+        if isinstance(result.sources, dict):
+            # Sources returned as dictionary with keys like 'links[0]'
+            for key, source_list in result.sources.items():
+                assert isinstance(key, str)
+                assert isinstance(source_list, list)
+                for source_url in source_list:
+                    assert isinstance(source_url, str)
+                    assert len(source_url) > 0
+                    # Sources should be valid URLs
+                    assert source_url.startswith(("http://", "https://"))
+        elif isinstance(result.sources, list):
+            # Sources returned as simple list (fallback)
+            for source in result.sources:
+                assert isinstance(source, str)
+                assert len(source) > 0
     
     # Handle both dictionary and object responses
     if isinstance(result.data, dict):
@@ -414,13 +458,14 @@ def test_extract_multiple_urls():
             # Links should be valid URLs or relative paths
             assert link.startswith(("http://", "https://", "/", "#")) or "." in link
 
-def test_extract_with_system_prompt():
+@pytest.mark.asyncio
+async def test_extract_with_system_prompt():
     """Test extraction with custom system prompt."""
     class SystemPromptSchema(BaseModel):
         title: str
         summary: str
     
-    result = app.extract(
+    result = await app.extract(
         ["https://example.com"],
         prompt="Extract the title and create a brief summary",
         schema=SystemPromptSchema,
@@ -436,6 +481,25 @@ def test_extract_with_system_prompt():
     # Error handling assertions
     assert hasattr(result, "error")
     assert result.error is None
+    
+    # Sources validation
+    assert hasattr(result, "sources")
+    if result.sources is not None:
+        if isinstance(result.sources, dict):
+            # Sources returned as dictionary with keys like 'links[0]'
+            for key, source_list in result.sources.items():
+                assert isinstance(key, str)
+                assert isinstance(source_list, list)
+                for source_url in source_list:
+                    assert isinstance(source_url, str)
+                    assert len(source_url) > 0
+                    # Sources should be valid URLs
+                    assert source_url.startswith(("http://", "https://"))
+        elif isinstance(result.sources, list):
+            # Sources returned as simple list (fallback)
+            for source in result.sources:
+                assert isinstance(source, str)
+                assert len(source) > 0
     
     # Handle both dictionary and object responses
     if isinstance(result.data, dict):

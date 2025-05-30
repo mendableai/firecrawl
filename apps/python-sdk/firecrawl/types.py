@@ -279,7 +279,7 @@ class ExtractResponse(pydantic.BaseModel, Generic[T]):
     data: Optional[T] = None
     error: Optional[str] = None
     warning: Optional[str] = None
-    sources: Optional[List[str]] = None
+    sources: Optional[Union[List[str], Dict[str, List[str]]]] = None
 
 class SearchParams(pydantic.BaseModel):
     query: str
