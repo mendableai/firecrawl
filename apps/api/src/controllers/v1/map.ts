@@ -59,6 +59,7 @@ export async function getMapResults({
   mock,
   filterByPath = true,
   flags,
+  ignoreIndex = false,
 }: {
   url: string;
   search?: string;
@@ -74,6 +75,7 @@ export async function getMapResults({
   mock?: string;
   filterByPath?: boolean;
   flags: TeamFlags;
+  ignoreIndex?: boolean;
 }): Promise<MapResult> {
   const id = uuidv4();
   let links: string[] = [url];
@@ -170,7 +172,7 @@ export async function getMapResults({
     // Parallelize sitemap index query with search results
     const [sitemapIndexResult, { data: indexResults, error: indexError }, ...searchResults] = await Promise.all([
       querySitemapIndex(url, abort),
-      useIndex ? (
+      useIndex && !ignoreIndex ? (
         index_supabase_service
           .from("index")
           .select("resolved_url")
@@ -350,6 +352,7 @@ export async function mapController(
         mock: req.body.useMock,
         filterByPath: req.body.filterByPath !== false,
         flags: req.acuc?.flags ?? null,
+        ignoreIndex: req.body.ignoreIndex,
       }),
       ...(req.body.timeout !== undefined ? [
         new Promise((resolve, reject) => setTimeout(() => {

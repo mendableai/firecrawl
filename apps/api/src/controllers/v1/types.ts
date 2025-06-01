@@ -658,6 +658,7 @@ export const mapRequestSchema = crawlerOptions
     timeout: z.number().positive().finite().optional(),
     useMock: z.string().optional(),
     filterByPath: z.boolean().default(true),
+    ignoreIndex: z.boolean().default(false),
   })
   .strict(strictMessage);
 
