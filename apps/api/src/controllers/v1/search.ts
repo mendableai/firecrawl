@@ -102,11 +102,11 @@ async function scrapeSearchResult(
         internalOptions: { teamId: options.teamId, useCache: true },
         origin: options.origin,
         is_scrape: true,
-        
       },
       {},
       jobId,
       jobPriority,
+      true,
     );
 
     const doc: Document = await waitForJob(jobId, options.timeout);
