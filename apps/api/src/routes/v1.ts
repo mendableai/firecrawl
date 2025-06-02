@@ -215,15 +215,15 @@ v1Router.post(
 );
 
 v1Router.get(
-  "/crawl/:jobId",
-  authMiddleware(RateLimiterMode.CrawlStatus),
-  wrap(crawlStatusController),
-);
-
-v1Router.get(
   "/crawl/ongoing",
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(ongoingCrawlsController),
+);
+
+v1Router.get(
+  "/crawl/:jobId",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(crawlStatusController),
 );
 
 v1Router.get(
