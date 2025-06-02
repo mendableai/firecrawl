@@ -35,6 +35,7 @@ import { generateLLMsTextStatusController } from "../controllers/v1/generate-llm
 import { deepResearchController } from "../controllers/v1/deep-research";
 import { deepResearchStatusController } from "../controllers/v1/deep-research-status";
 import { tokenUsageController } from "../controllers/v1/token-usage";
+import { ongoingCrawlsController } from "../controllers/v1/crawl-ongoing";
 
 function checkCreditsMiddleware(
   minimum?: number,
@@ -217,6 +218,12 @@ v1Router.get(
   "/crawl/:jobId",
   authMiddleware(RateLimiterMode.CrawlStatus),
   wrap(crawlStatusController),
+);
+
+v1Router.get(
+  "/crawl/ongoing",
+  authMiddleware(RateLimiterMode.CrawlStatus),
+  wrap(ongoingCrawlsController),
 );
 
 v1Router.get(

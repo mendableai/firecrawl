@@ -875,6 +875,13 @@ export type CrawlStatusResponse =
       data: Document[];
     };
 
+export type OngoingCrawlsResponse =
+  | ErrorResponse
+  | {
+      success: true;
+      ids: string[];
+  };
+      
 export type CrawlErrorsResponse =
   | ErrorResponse
   | {
