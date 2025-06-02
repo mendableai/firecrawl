@@ -54,13 +54,13 @@ describe("Crawl tests", () => {
 
         const ongoing = await crawlOngoing();
 
-        expect(ongoing.ids).toContain(res.id)
+        expect(ongoing.crawls.find(x => x.id === res.id)).toBeDefined();
 
         await asyncCrawlWaitForFinish(res.id);
 
         const ongoing2 = await crawlOngoing();
 
-        expect(ongoing2.ids).not.toContain(res.id);
+        expect(ongoing2.crawls.find(x => x.id === res.id)).toBeUndefined();
     }, 120000);
     
     // TEMP: Flaky
