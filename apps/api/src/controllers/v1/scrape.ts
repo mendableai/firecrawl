@@ -52,6 +52,7 @@ export async function scrapeController(
         teamId: req.auth.team_id,
         saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
         unnormalizedSourceURL: preNormalizedBody.url,
+        useCache: req.body.__experimental_cache ? true : false,
       },
       origin: req.body.origin,
       startTime,
