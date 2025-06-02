@@ -76,6 +76,7 @@ async function scrapeSearchResult(
   logger: Logger,
   costTracking: CostTracking,
   flags: TeamFlags,
+  directToBullMQ: boolean = false,
 ): Promise<Document> {
   const jobId = uuidv4();
   const jobPriority = await getJobPriority({
@@ -106,7 +107,7 @@ async function scrapeSearchResult(
       {},
       jobId,
       jobPriority,
-      true,
+      directToBullMQ,
     );
 
     const doc: Document = await waitForJob(jobId, options.timeout);
@@ -229,7 +230,7 @@ export async function searchController(
           origin: req.body.origin,
           timeout: req.body.timeout,
           scrapeOptions: req.body.scrapeOptions,
-        }, logger, costTracking, req.acuc?.flags ?? null),
+        }, logger, costTracking, req.acuc?.flags ?? null, (req.acuc?.price_credits ?? 0) <= 3000),
       );
 
       const docs = await Promise.all(scrapePromises);
