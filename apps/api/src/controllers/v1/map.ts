@@ -172,7 +172,7 @@ export async function getMapResults({
     // Parallelize sitemap index query with search results
     const [sitemapIndexResult, { data: indexResults, error: indexError }, ...searchResults] = await Promise.all([
       querySitemapIndex(url, abort),
-      useIndex && !ignoreIndex ? (
+      useIndex && !ignoreIndex && process.env.FIRECRAWL_INDEX_WRITE_ONLY !== "true" ? (
         index_supabase_service
           .from("index")
           .select("resolved_url")

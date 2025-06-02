@@ -86,7 +86,7 @@ import { cacheableLookup } from "../scraper/scrapeURL/lib/cacheableLookup";
 import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
 import { RateLimiterMode } from "../types";
 import { redisEvictConnection } from "./redis";
-import { generateURLSplits, hashURL, index_supabase_service } from "./index";
+import { generateURLSplits, hashURL, index_supabase_service, useIndex } from "./index";
 import { val } from "node_modules/cheerio/lib/api/attributes";
 
 configDotenv();
@@ -1034,7 +1034,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
 
     const urlSplits = generateURLSplits(trimmedURL.href).map(x => hashURL(x));
 
-    const index = sc.crawlerOptions.ignoreSitemap
+      const index = (sc.crawlerOptions.ignoreSitemap || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true" || !useIndex)
       ? []
       : sc.crawlerOptions.allowBackwardCrawling
         ? (await index_supabase_service
