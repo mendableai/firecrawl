@@ -61,7 +61,6 @@ import {
 } from "../lib/concurrency-limit";
 import { isUrlBlocked } from "../scraper/WebScraper/utils/blocklist";
 import { BLOCKLISTED_URL_MESSAGE } from "../lib/strings";
-import { indexPage } from "../lib/extract/index/pinecone";
 import { Document } from "../controllers/v1/types";
 import {
   ExtractResult,
@@ -1046,25 +1045,6 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
   }
 }
 
-async function indexJob(job: Job & { id: string }, document: Document) {
-  if (
-    document &&
-    document.markdown &&
-    job.data.team_id === process.env.BACKGROUND_INDEX_TEAM_ID!
-  ) {
-    // indexPage({
-    //   document: document,
-    //   originUrl: job.data.crawl_id
-    //     ? (await getCrawl(job.data.crawl_id))?.originUrl!
-    //     : document.metadata.sourceURL!,
-    //   crawlId: job.data.crawl_id,
-    //   teamId: job.data.team_id,
-    // }).catch((error) => {
-    //   _logger.error("Error indexing page", { error });
-    // });
-  }
-}
-
 async function billScrapeJob(job: Job & { id: string }, document: Document, logger: Logger, costTracking?: CostTracking) {
   let creditsToBeBilled: number | null = null;
 
@@ -1447,8 +1427,6 @@ async function processJob(job: Job & { id: string }, token: string) {
         pdf_num_pages: doc.metadata.numPages,
         credits_billed,
       });
-      
-      indexJob(job, doc);
     }
 
     logger.info(`🐂 Job done ${job.id}`);
