@@ -69,6 +69,7 @@ export const featureFlags = [
   "skipTlsVerification",
   "useFastMode",
   "stealthProxy",
+  "disableAdblock",
 ] as const;
 
 export type FeatureFlag = (typeof featureFlags)[number];
@@ -90,6 +91,7 @@ export const featureFlagOptions: {
   mobile: { priority: 10 },
   skipTlsVerification: { priority: 10 },
   stealthProxy: { priority: 20 },
+  disableAdblock: { priority: 10 },
 } as const;
 
 export type EngineScrapeResult = {
@@ -160,6 +162,7 @@ export const engineOptions: {
       skipTlsVerification: false,
       useFastMode: false,
       stealthProxy: false,
+      disableAdblock: false,
     },
     quality: 1000, // cache should always be tried first
   },
@@ -177,6 +180,7 @@ export const engineOptions: {
       skipTlsVerification: true,
       useFastMode: false,
       stealthProxy: false,
+      disableAdblock: false,
     },
     quality: 50,
   },
@@ -194,6 +198,7 @@ export const engineOptions: {
       skipTlsVerification: true,
       useFastMode: false,
       stealthProxy: false,
+      disableAdblock: false,
     },
     quality: 45,
   },
@@ -211,6 +216,7 @@ export const engineOptions: {
       skipTlsVerification: true,
       useFastMode: false,
       stealthProxy: true,
+      disableAdblock: false,
     },
     quality: -1,
   },
@@ -228,6 +234,7 @@ export const engineOptions: {
       skipTlsVerification: true,
       useFastMode: false,
       stealthProxy: true,
+      disableAdblock: false,
     },
     quality: -5,
   },
@@ -245,6 +252,7 @@ export const engineOptions: {
       skipTlsVerification: false,
       useFastMode: false,
       stealthProxy: false,
+      disableAdblock: true,
     },
     quality: 40,
   },
@@ -262,6 +270,7 @@ export const engineOptions: {
       skipTlsVerification: false,
       useFastMode: false,
       stealthProxy: true,
+      disableAdblock: true,
     },
     quality: -10,
   },
@@ -279,6 +288,7 @@ export const engineOptions: {
       skipTlsVerification: false,
       useFastMode: false,
       stealthProxy: false,
+      disableAdblock: false,
     },
     quality: 20,
   },
@@ -296,6 +306,7 @@ export const engineOptions: {
       skipTlsVerification: false,
       useFastMode: true,
       stealthProxy: false,
+      disableAdblock: false,
     },
     quality: 10,
   },
@@ -313,6 +324,7 @@ export const engineOptions: {
       skipTlsVerification: false,
       useFastMode: true,
       stealthProxy: true,
+      disableAdblock: false,
     },
     quality: -15,
   },
@@ -330,6 +342,7 @@ export const engineOptions: {
       skipTlsVerification: false,
       useFastMode: true,
       stealthProxy: false,
+      disableAdblock: false,
     },
     quality: 5,
   },
@@ -347,6 +360,7 @@ export const engineOptions: {
       skipTlsVerification: false,
       useFastMode: true,
       stealthProxy: true, // kinda...
+      disableAdblock: true,
     },
     quality: -20,
   },
@@ -364,6 +378,7 @@ export const engineOptions: {
       skipTlsVerification: false,
       useFastMode: true,
       stealthProxy: true, // kinda...
+      disableAdblock: true,
     },
     quality: -20,
   },
