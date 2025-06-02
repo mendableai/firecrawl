@@ -127,7 +127,7 @@ jobs:
       - name: Kill SearXNG
         if: always() && matrix.search == 'searxng'
         run: |
-          docker logs searxng > searxng/searxng.log 2>&1
+          docker logs searxng > searxng.log 2>&1
           docker kill searxng
         working-directory: ./
       - uses: actions/upload-artifact@v4
@@ -148,5 +148,4 @@ jobs:
         with:
           name: SearXNG (${{ matrix.ai }}, ${{ matrix.engine }}, ${{ matrix.proxy }})
           path: |
-            ./searxng/searxng.log
-            ./searxng/settings.yml
+            ./searxng.log
