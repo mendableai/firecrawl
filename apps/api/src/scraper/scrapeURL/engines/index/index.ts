@@ -1,7 +1,7 @@
 import { Document } from "../../../../controllers/v1/types";
 import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
-import { getIndexFromGCS, hashURL, index_supabase_service, normalizeURLForIndex, saveIndexToGCS, generateURLSplits } from "../../../../services";
+import { getIndexFromGCS, hashURL, index_supabase_service, normalizeURLForIndex, saveIndexToGCS, generateURLSplits, addIndexInsertJob } from "../../../../services";
 import { EngineError, IndexMissError } from "../../error";
 import crypto from "crypto";
 
@@ -51,9 +51,8 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
         return document;
     }
 
-    const { error } = await index_supabase_service
-        .from("index")
-        .insert({
+    try {
+        await addIndexInsertJob({
             id: indexId,
             url: normalizedURL,
             url_hash: urlHash,
@@ -73,12 +72,10 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
                 [`url_split_${i}_hash`]: x,
             }), {})),
         });
-
-    if (error) {
-        meta.logger.error("Failed to save document to index", {
+    } catch (error) {
+        meta.logger.error("Failed to add document to index insert queue", {
             error,
         });
-        return document;
     }
 
     return document;

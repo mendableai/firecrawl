@@ -3,6 +3,7 @@ import { logger } from "../lib/logger";
 import { configDotenv } from "dotenv";
 import { Storage } from "@google-cloud/storage";
 import crypto from "crypto";
+import { redisEvictConnection } from "./redis";
 configDotenv();
 
 // SupabaseService class initializes the Supabase client conditionally based on environment variables.
@@ -182,4 +183,34 @@ export function generateURLSplits(url: string): string[] {
   urls.push(url);
 
   return [...new Set(urls.map(x => normalizeURLForIndex(x)))];
+}
+
+const INDEX_INSERT_QUEUE_KEY = "index-insert-queue";
+const INDEX_INSERT_BATCH_SIZE = 1000;
+
+export async function addIndexInsertJob(data: any) {
+  await redisEvictConnection.rpush(INDEX_INSERT_QUEUE_KEY, JSON.stringify(data));
+}
+
+export async function getIndexInsertJobs(): Promise<any[]> {
+  const jobs = (await redisEvictConnection.lpop(INDEX_INSERT_QUEUE_KEY, INDEX_INSERT_BATCH_SIZE)) ?? [];
+  return jobs.map(x => JSON.parse(x));
+}
+
+export async function processIndexInsertJobs() {
+  const jobs = await getIndexInsertJobs();
+  if (jobs.length === 0) {
+    return;
+  }
+  logger.info(`Index inserter found jobs to insert`, { jobCount: jobs.length });
+  try {
+    await index_supabase_service.from("index").insert(jobs);
+    logger.info(`Index inserter inserted jobs`, { jobCount: jobs.length });
+  } catch (error) {
+    logger.error(`Index inserter failed to insert jobs`, { error, jobCount: jobs.length });
+  }
+}
+
+export async function getIndexInsertQueueLength(): Promise<number> {
+  return await redisEvictConnection.llen(INDEX_INSERT_QUEUE_KEY) ?? 0;
 }

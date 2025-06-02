@@ -433,7 +433,8 @@ export function buildFallbackList(meta: Meta): {
   }
 
   const shouldUseIndex =
-    !meta.options.formats.includes("changeTracking")
+    useIndex
+    && !meta.options.formats.includes("changeTracking")
     && meta.options.maxAge !== 0
     && (
       meta.options.headers === undefined
