@@ -110,6 +110,8 @@ describe("Scrape tests", () => {
 
         expect(response1.metadata.cacheState).toBe("miss");
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response2 = await scrape({
           url,
           maxAge: 120000,
@@ -117,12 +119,14 @@ describe("Scrape tests", () => {
 
         expect(response2.metadata.cacheState).toBe("miss");
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response3 = await scrape({
           url,
           maxAge: 120000,
         });
 
-        expect(response3.metadata.cacheState).toBe("miss");
+        expect(response3.metadata.cacheState).toBe("hit");
         expect(response3.metadata.cachedAt).toBeDefined();
         
         const response4 = await scrape({
@@ -131,7 +135,7 @@ describe("Scrape tests", () => {
         });
         
         expect(response4.metadata.cacheState).toBe("miss");
-      }, 150000);
+      }, 150000 + 2 * 17000);
     });
 
     describe("Change Tracking format", () => {
