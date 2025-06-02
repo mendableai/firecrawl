@@ -118,6 +118,10 @@ function buildFeatureFlags(
     flags.add("docx");
   }
 
+  if (options.blockAds === false) {
+    flags.add("disableAdblock");
+  }
+
   return flags;
 }
 
