@@ -110,7 +110,7 @@ jobs:
         run: pnpx wait-on tcp:3002 -t 15s
       - name: Run snippet tests
         run: |
-          npm run test:snips -- scrape.test.ts
+          npm run test:snips
         working-directory: ./apps/api
       - name: Kill instances
         if: always()
