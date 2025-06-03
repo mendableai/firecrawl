@@ -41,6 +41,15 @@ describe("Scrape tests", () => {
 
       expect(response.markdown?.trim()).toBe(process.env.PROXY_SERVER!.split("://").slice(-1)[0].split(":")[0]);
     }, 30000);
+
+    it.concurrent("self-hosted proxy works on playwright", async () => {
+      const response = await scrape({
+        url: "https://icanhazip.com",
+        waitFor: 100,
+      });
+
+      expect(response.markdown?.trim()).toBe(process.env.PROXY_SERVER!.split("://").slice(-1)[0].split(":")[0]);
+    }, 30000);
   }
 
   if (!process.env.TEST_SUITE_SELF_HOSTED || process.env.PLAYWRIGHT_MICROSERVICE_URL) {
