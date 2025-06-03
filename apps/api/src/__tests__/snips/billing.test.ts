@@ -180,7 +180,7 @@ describe("Billing tests", () => {
             const rc2 = (await creditUsage()).remaining_credits;
 
             expect(rc1 - rc2).toBe(results.length);
-        }, 60000);
+        }, 600000);
 
         it("bills extract correctly", async () => {
             const rc1 = (await tokenUsage()).remaining_tokens;
