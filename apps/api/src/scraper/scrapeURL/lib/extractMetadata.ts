@@ -133,7 +133,7 @@ export async function extractMetadata(
       // Extract all meta tags for custom metadata
       soup("meta").each((i, elem) => {
         try {
-          const name = soup(elem).attr("name") || soup(elem).attr("property");
+          const name = soup(elem).attr("name") || soup(elem).attr("property") || soup(elem).attr("itemprop");
           const content = soup(elem).attr("content");
 
           if (name && content) {
