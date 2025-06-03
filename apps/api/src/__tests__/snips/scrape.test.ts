@@ -97,8 +97,8 @@ describe("Scrape tests", () => {
       }, 30000);
     });
 
-    describe.only("Index", () => {
-      it.only("caches properly", async () => {
+    describe("Index", () => {
+      it.concurrent("caches properly", async () => {
         const id = crypto.randomUUID();
         const url = "https://firecrawl.dev/?testId=" + id;
 

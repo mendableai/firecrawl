@@ -33,6 +33,7 @@ env:
   RUNPOD_MU_API_KEY: ${{ secrets.RUNPOD_MU_API_KEY }}
   GCS_CREDENTIALS: ${{ secrets.GCS_CREDENTIALS }}
   GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
+  GCS_INDEX_BUCKET_NAME: ${{ secrets.GCS_INDEX_BUCKET_NAME }}
   GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
   GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -115,11 +116,11 @@ jobs:
       - name: Kill instances
         if: always()
         run: pkill -9 node
-      - uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: Logs
-          path: |
-            ./apps/api/api.log
-            ./apps/api/worker.log
-            ./apps/api/index-worker.log
+      # - uses: actions/upload-artifact@v4
+      #   if: always()
+      #   with:
+      #     name: Logs
+      #     path: |
+      #       ./apps/api/api.log
+      #       ./apps/api/worker.log
+      #       ./apps/api/index-worker.log
