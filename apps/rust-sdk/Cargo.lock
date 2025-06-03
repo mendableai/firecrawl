@@ -680,7 +680,7 @@ checksum = "9fc0510504f03c51ada170672ac806f1f105a88aa97a5281117e1ddc3368e51a"
 
 [[package]]
 name = "firecrawl"
-version = "1.1.0"
+version = "1.2.0"
 dependencies = [
  "assert_matches",
  "axum",

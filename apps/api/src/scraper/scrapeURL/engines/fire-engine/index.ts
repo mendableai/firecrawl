@@ -224,7 +224,6 @@ export async function scrapeURLWithFireEngineChromeCDP(
     mobile: meta.options.mobile,
     timeout, // TODO: better timeout logic
     disableSmartWaitCache: meta.internalOptions.disableSmartWaitCache,
-    blockAds: meta.options.blockAds,
     mobileProxy: meta.featureFlags.has("stealthProxy"),
     saveScrapeResultToGCS: meta.internalOptions.saveScrapeResultToGCS,
     // TODO: scrollXPaths

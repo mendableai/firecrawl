@@ -133,6 +133,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
             blockAds: false,
             maxAge: 0,
             dontStoreInCache: false,
+            __experimental_cache: true,
           },
         }, logger, costTracking, acuc?.flags ?? null);
         return response.length > 0 ? response : [];

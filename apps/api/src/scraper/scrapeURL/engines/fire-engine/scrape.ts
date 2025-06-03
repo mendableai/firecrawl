@@ -12,7 +12,6 @@ export type FireEngineScrapeRequestCommon = {
   headers?: { [K: string]: string };
 
   blockMedia?: boolean; // default: true
-  blockAds?: boolean; // default: true
   // pageOptions?: any; // unused, .scrollXPaths is considered on FE side
 
   // useProxy?: boolean; // unused, default: true
@@ -39,7 +38,6 @@ export type FireEngineScrapeRequestChromeCDP = {
   blockMedia?: true; // cannot be false
   mobile?: boolean;
   disableSmartWaitCache?: boolean;
-  blockAds?: boolean; // default: true
   saveScrapeResultToGCS?: boolean;
 };
 
@@ -58,7 +56,6 @@ export type FireEngineScrapeRequestTLSClient = {
   engine: "tlsclient";
   atsv?: boolean; // v0 only, default: false
   disableJsDom?: boolean; // v0 only, default: false
-  // blockAds?: boolean; // default: true
 };
 
 const schema = z.object({

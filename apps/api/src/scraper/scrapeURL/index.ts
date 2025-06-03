@@ -120,6 +120,10 @@ function buildFeatureFlags(
     flags.add("docx");
   }
 
+  if (options.blockAds === false) {
+    flags.add("disableAdblock");
+  }
+
   return flags;
 }
 
@@ -187,6 +191,7 @@ export type InternalOptions = {
   unnormalizedSourceURL?: string;
 
   saveScrapeResultToGCS?: boolean; // Passed along to fire-engine
+  bypassBilling?: boolean;
 };
 
 export type EngineResultsTracker = {

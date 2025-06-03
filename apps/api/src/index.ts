@@ -95,8 +95,13 @@ function startServer(port = DEFAULT_PORT) {
     logger.info(`Worker ${process.pid} listening on port ${port}`);
   });
 
-  const exitHandler = () => {
+  const exitHandler = async () => {
     logger.info("SIGTERM signal received: closing HTTP server");
+    if (process.env.IS_KUBERNETES === "true") {
+      // Account for GCE load balancer drain timeout
+      logger.info("Waiting 60s for GCE load balancer drain timeout");
+      await new Promise((resolve) => setTimeout(resolve, 60000));
+    }
     server.close(() => {
       logger.info("Server closed.");
       process.exit(0);

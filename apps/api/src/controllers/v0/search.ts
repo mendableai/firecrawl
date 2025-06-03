@@ -112,6 +112,7 @@ export async function searchHelper(
         team_id: team_id,
         scrapeOptions,
         internalOptions,
+        startTime: Date.now(),
       },
       opts: {
         jobId: uuid,
