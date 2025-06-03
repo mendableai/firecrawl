@@ -16,13 +16,6 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
             || Object.keys(meta.options.headers).length === 0
         );
 
-    meta.logger.warn("shouldCache", {
-        shouldCache,
-        winnerEngine: meta.winnerEngine !== "cache" && meta.winnerEngine !== "index" && meta.winnerEngine !== "index;documents",
-        featureFlags: !meta.featureFlags.has("actions"),
-        headers: meta.options.headers === undefined || Object.keys(meta.options.headers).length === 0,
-    });
-
     if (!shouldCache) {
         return document;
     }
