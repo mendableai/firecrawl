@@ -70,8 +70,6 @@ describe("Scrape tests", () => {
         formats: ["rawHtml"],
       });
 
-      console.log(response.rawHtml, response.metadata.contentType);
-
       const obj = JSON.parse(response.rawHtml!);
       expect(obj.id).toBe(1);
     }, 30000);

@@ -3,6 +3,7 @@ import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
 import { TimeoutError } from "../../error";
 import { robustFetch } from "../../lib/fetch";
+import { getInnerJSON } from "../../../../lib/html-transformer";
 
 export async function scrapeURLWithPlaywright(
   meta: Meta,
@@ -41,6 +42,10 @@ export async function scrapeURLWithPlaywright(
       );
     })(),
   ]);
+
+  if (response.contentType?.includes("application/json")) {
+    response.content = await getInnerJSON(response.content);
+  }
 
   return {
     url: meta.url, // TODO: impove redirect following
