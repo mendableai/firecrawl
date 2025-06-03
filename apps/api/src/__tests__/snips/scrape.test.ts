@@ -72,6 +72,9 @@ describe("Scrape tests", () => {
       });
   
       expect(response.markdown).toContain("Firecrawl");
+
+      // Give time to propagate to read replica
+      await new Promise(resolve => setTimeout(resolve, 1000));
   
       const status = await scrapeStatus(response.metadata.scrapeId!);
       expect(JSON.stringify(status)).toBe(JSON.stringify(response));
