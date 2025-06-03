@@ -1,7 +1,7 @@
 import { batchScrape, crawl, creditUsage, extract, map, scrape, search, tokenUsage } from "./lib";
 
 const sleep = (ms: number) => new Promise(x => setTimeout(() => x(true), ms));
-const sleepForBatchBilling = () => sleep(20000);
+const sleepForBatchBilling = () => sleep(40000);
 
 beforeAll(async () => {
     // Wait for previous test runs to stop billing processing
