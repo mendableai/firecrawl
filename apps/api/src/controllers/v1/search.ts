@@ -77,6 +77,7 @@ async function scrapeSearchResult(
   costTracking: CostTracking,
   flags: TeamFlags,
   directToBullMQ: boolean = false,
+  bypassBilling: boolean = false,
 ): Promise<Document> {
   const jobId = uuidv4();
   const jobPriority = await getJobPriority({
@@ -100,7 +101,7 @@ async function scrapeSearchResult(
         mode: "single_urls" as Mode,
         team_id: options.teamId,
         scrapeOptions: options.scrapeOptions,
-        internalOptions: { teamId: options.teamId, useCache: true },
+        internalOptions: { teamId: options.teamId, useCache: true, bypassBilling },
         origin: options.origin,
         is_scrape: true,
         startTime: Date.now(),
@@ -242,6 +243,7 @@ export async function searchController(
           costTracking,
           req.acuc?.flags ?? null,
           (req.acuc?.price_credits ?? 0) <= 3000,
+          isSearchPreview,
         ),
       );
 
