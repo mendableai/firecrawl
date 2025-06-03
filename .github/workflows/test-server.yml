@@ -21,6 +21,9 @@ env:
   SUPABASE_SERVICE_TOKEN: ${{ secrets.SUPABASE_SERVICE_TOKEN }}
   SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   SUPABASE_REPLICA_URL: ${{ secrets.SUPABASE_REPLICA_URL }}
+  INDEX_SUPABASE_SERVICE_TOKEN: ${{ secrets.INDEX_SUPABASE_SERVICE_TOKEN }}
+  INDEX_SUPABASE_ANON_TOKEN: ${{ secrets.INDEX_SUPABASE_ANON_TOKEN }}
+  INDEX_SUPABASE_URL: ${{ secrets.INDEX_SUPABASE_URL }}
   TEST_API_KEY: ${{ secrets.TEST_API_KEY }}
   FIRE_ENGINE_BETA_URL: ${{ secrets.FIRE_ENGINE_BETA_URL }}
   USE_DB_AUTHENTICATION: true
@@ -30,6 +33,7 @@ env:
   RUNPOD_MU_API_KEY: ${{ secrets.RUNPOD_MU_API_KEY }}
   GCS_CREDENTIALS: ${{ secrets.GCS_CREDENTIALS }}
   GCS_BUCKET_NAME: ${{ secrets.GCS_BUCKET_NAME }}
+  GCS_INDEX_BUCKET_NAME: ${{ secrets.GCS_INDEX_BUCKET_NAME }}
   GOOGLE_GENERATIVE_AI_API_KEY: ${{ secrets.GOOGLE_GENERATIVE_AI_API_KEY }}
   GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
   ANTHROPIC_API_KEY: ${{ secrets.ANTHROPIC_API_KEY }}
@@ -100,11 +104,11 @@ jobs:
         working-directory: ./apps/api
         id: start_workers
       - name: Start index worker
-        run: npm run index-worker &
+        run: npm run index-worker > index-worker.log 2>&1 &
         working-directory: ./apps/api
         id: start_index_worker
       - name: Wait for API
-        run: pnpx wait-on tcp:3002 -t 15s
+        run: pnpx wait-on tcp:3002 -t 30s
       - name: Run snippet tests
         run: |
           npm run test:snips
@@ -119,3 +123,4 @@ jobs:
       #     path: |
       #       ./apps/api/api.log
       #       ./apps/api/worker.log
+      #       ./apps/api/index-worker.log

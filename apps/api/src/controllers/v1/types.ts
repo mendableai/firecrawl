@@ -309,6 +309,8 @@ const baseScrapeOptions = z
     useMock: z.string().optional(),
     blockAds: z.boolean().default(true),
     proxy: z.enum(["basic", "stealth", "auto"]).optional(),
+    maxAge: z.number().int().gte(0).safe().default(0),
+    storeInCache: z.boolean().default(true),
     __experimental_cache: z.boolean().default(false).optional(),
     __searchPreviewToken: z.string().optional(),
   })
@@ -658,6 +660,7 @@ export const mapRequestSchema = crawlerOptions
     timeout: z.number().positive().finite().optional(),
     useMock: z.string().optional(),
     filterByPath: z.boolean().default(true),
+    useIndex: z.boolean().default(true),
   })
   .strict(strictMessage);
 
@@ -754,6 +757,8 @@ export type Document = {
     numPages?: number;
     contentType?: string;
     proxyUsed: "basic" | "stealth";
+    cacheState?: "hit" | "miss";
+    cachedAt?: string;
     // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };
   serpResults?: {

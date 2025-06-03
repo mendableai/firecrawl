@@ -131,6 +131,8 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
             removeBase64Images: false,
             fastMode: false,
             blockAds: false,
+            maxAge: 0,
+            storeInCache: true,
             __experimental_cache: true,
           },
         }, logger, costTracking, acuc?.flags ?? null);

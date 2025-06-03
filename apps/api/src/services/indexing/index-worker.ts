@@ -14,6 +14,7 @@ import { saveCrawlMap } from "./crawl-maps-index";
 import { processBillingBatch, queueBillingOperation, startBillingBatchProcessing } from "../billing/batch_billing";
 import systemMonitor from "../system-monitor";
 import { v4 as uuidv4 } from "uuid";
+import { processIndexInsertJobs } from "..";
 
 const workerLockDuration = Number(process.env.WORKER_LOCK_DURATION) || 60000;
 const workerStalledCheckInterval =
@@ -226,6 +227,8 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
   process.exit(0);
 };
 
+const INDEX_INSERT_INTERVAL = 15000;
+
 // Start the workers
 (async () => {
   // Start index worker
@@ -234,7 +237,17 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
   // Start billing worker and batch processing
   startBillingBatchProcessing();
   const billingWorkerPromise = workerFun(getBillingQueue(), processBillingJobInternal);
-  
+
+  const indexInserterInterval = setInterval(async () => {
+    if (isShuttingDown) {
+      return;
+    }
+    
+    await processIndexInsertJobs();
+  }, INDEX_INSERT_INTERVAL);
+
   // Wait for both workers to complete (which should only happen on shutdown)
   await Promise.all([indexWorkerPromise, billingWorkerPromise]);
+
+  clearInterval(indexInserterInterval);
 })();

@@ -23,6 +23,7 @@ import {
   UnsupportedFileError,
   SSLError,
   PDFInsufficientTimeError,
+  IndexMissError,
 } from "./error";
 import { executeTransformers } from "./transformers";
 import { LLMRefusalError } from "./transformers/llmExtract";
@@ -59,6 +60,7 @@ export type Meta = {
     status: number;
   } | null | undefined; // undefined: no prefetch yet, null: prefetch came back empty
   costTracking: CostTracking;
+  winnerEngine?: Engine;
 };
 
 function buildFeatureFlags(
@@ -296,11 +298,23 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
           unsupportedFeatures,
           result: engineResult as EngineScrapeResult & { markdown: string },
         };
+        meta.winnerEngine = engine;
         break;
       }
     } catch (error) {
       if (error instanceof EngineError) {
-        meta.logger.info("Engine " + engine + " could not scrape the page.", {
+        meta.logger.warn("Engine " + engine + " could not scrape the page.", {
+          error,
+        });
+        results[engine] = {
+          state: "error",
+          error: safeguardCircularError(error),
+          unexpected: false,
+          startedAt,
+          finishedAt: Date.now(),
+        };
+      } else if (error instanceof IndexMissError) {
+        meta.logger.info("Engine " + engine + " could not find the page in the index.", {
           error,
         });
         results[engine] = {
@@ -386,6 +400,14 @@ async function scrapeURLLoop(meta: Meta): Promise<ScrapeUrlResponse> {
       numPages: result.result.numPages,
       contentType: result.result.contentType,
       proxyUsed: meta.featureFlags.has("stealthProxy") ? "stealth" : "basic",
+      ...(results["index"] ? (
+        result.result.cacheInfo ? {
+          cacheState: "hit",
+          cachedAt: result.result.cacheInfo.created_at.toISOString(),
+        } : {
+          cacheState: "miss",
+        }
+      ) : {})
     },
   };
 
