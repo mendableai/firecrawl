@@ -28,6 +28,7 @@ export async function scrapeURLWithPlaywright(
         content: z.string(),
         pageStatusCode: z.number(),
         pageError: z.string().optional(),
+        contentType: z.string().optional(),
       }),
       mock: meta.mock,
       abort: AbortSignal.timeout(timeout),
@@ -46,5 +47,6 @@ export async function scrapeURLWithPlaywright(
     html: response.content,
     statusCode: response.pageStatusCode,
     error: response.pageError,
+    contentType: response.contentType,
   };
 }
