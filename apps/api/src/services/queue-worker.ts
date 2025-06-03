@@ -86,7 +86,7 @@ import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
 import { RateLimiterMode } from "../types";
 import { calculateCreditsToBeBilled } from "../lib/scrape-billing";
 import { redisEvictConnection } from "./redis";
-import { generateURLSplits, hashURL, index_supabase_service, useIndex } from "./index";
+import { generateURLSplits, queryIndexAtSplitLevel } from "./index";
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import type { Logger } from "winston";
 
@@ -916,29 +916,20 @@ const workerFun = async (
 };
 
 async function kickoffGetIndexLinks(sc: StoredCrawl, crawler: WebCrawler, url: string) {
+  if (sc.crawlerOptions.ignoreSitemap) {
+    return [];
+  }
+
   const trimmedURL = new URL(url);
   trimmedURL.search = "";
 
-  const urlSplits = generateURLSplits(trimmedURL.href).map(x => hashURL(x));
+  const index = await queryIndexAtSplitLevel(
+    sc.crawlerOptions.allowBackwardCrawling ? generateURLSplits(trimmedURL.href)[0] : trimmedURL.href,
+    sc.crawlerOptions.limit ?? 100,
+  );
 
-  const index = (sc.crawlerOptions.ignoreSitemap || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true" || !useIndex)
-    ? []
-    : sc.crawlerOptions.allowBackwardCrawling
-      ? (await index_supabase_service
-        .from("index")
-        .select("resolved_url")
-        .eq("url_split_0_hash", urlSplits[0])
-        .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
-        .limit(sc.crawlerOptions.limit ?? 100)).data ?? []
-      : (await index_supabase_service
-        .from("index")
-        .select("resolved_url")
-        .eq("url_split_" + (urlSplits.length - 1) + "_hash", urlSplits[urlSplits.length - 1])
-        .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
-        .limit(sc.crawlerOptions.limit ?? 100)).data ?? [];
-  
   const validIndexLinks = crawler.filterLinks(
-    [...new Set(index.map(x => x.resolved_url))].filter(x => crawler.filterURL(x, trimmedURL.href) !== null),
+    index.filter(x => crawler.filterURL(x, trimmedURL.href) !== null),
     sc.crawlerOptions.limit ?? 100,
     sc.crawlerOptions.maxDepth ?? 10,
     false,
