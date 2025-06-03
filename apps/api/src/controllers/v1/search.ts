@@ -40,24 +40,24 @@ export async function searchAndScrapeSearchResult(
   try {
     const searchResults = await search({
       query,
-      num_results: 5
-  });
+      num_results: 5,
+    });
 
-  const documents = await Promise.all(
-    searchResults.map(result => 
-      scrapeSearchResult(
-        {
-          url: result.url,
-          title: result.title,
-          description: result.description
-        },
-        options,
-        logger,
-        costTracking,
-        flags
-      )
-    )
-  );
+    const documents = await Promise.all(
+      searchResults.map((result) =>
+        scrapeSearchResult(
+          {
+            url: result.url,
+            title: result.title,
+            description: result.description,
+          },
+          options,
+          logger,
+          costTracking,
+          flags,
+        ),
+      ),
+    );
 
     return documents;
   } catch (error) {
@@ -77,6 +77,7 @@ async function scrapeSearchResult(
   costTracking: CostTracking,
   flags: TeamFlags,
   directToBullMQ: boolean = false,
+  isSearchPreview: boolean = false,
 ): Promise<Document> {
   const jobId = uuidv4();
   const jobPriority = await getJobPriority({
@@ -100,7 +101,7 @@ async function scrapeSearchResult(
         mode: "single_urls" as Mode,
         team_id: options.teamId,
         scrapeOptions: options.scrapeOptions,
-        internalOptions: { teamId: options.teamId, useCache: true },
+        internalOptions: { teamId: options.teamId, useCache: true, bypassBilling: true },
         origin: options.origin,
         is_scrape: true,
         startTime: Date.now(),
@@ -112,7 +113,7 @@ async function scrapeSearchResult(
     );
 
     const doc: Document = await waitForJob(jobId, options.timeout);
-    
+
     logger.info("Scrape job completed", {
       scrapeId: jobId,
       url: searchResult.url,
@@ -171,6 +172,7 @@ export async function searchController(
   };
   const startTime = new Date().getTime();
   const costTracking = new CostTracking();
+  const isSearchPreview = process.env.SEARCH_PREVIEW_TOKEN !== undefined && process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
 
   try {
     req.body = searchRequestSchema.parse(req.body);
@@ -199,7 +201,9 @@ export async function searchController(
     });
 
     if (req.body.ignoreInvalidURLs) {
-      searchResults = searchResults.filter((result) => !isUrlBlocked(result.url, req.acuc?.flags ?? null));
+      searchResults = searchResults.filter(
+        (result) => !isUrlBlocked(result.url, req.acuc?.flags ?? null),
+      );
     }
 
     logger.info("Searching completed", {
@@ -226,12 +230,20 @@ export async function searchController(
     } else {
       logger.info("Scraping search results");
       const scrapePromises = searchResults.map((result) =>
-        scrapeSearchResult(result, {
-          teamId: req.auth.team_id,
-          origin: req.body.origin,
-          timeout: req.body.timeout,
-          scrapeOptions: req.body.scrapeOptions,
-        }, logger, costTracking, req.acuc?.flags ?? null, (req.acuc?.price_credits ?? 0) <= 3000),
+        scrapeSearchResult(
+          result,
+          {
+            teamId: req.auth.team_id,
+            origin: req.body.origin,
+            timeout: req.body.timeout,
+            scrapeOptions: req.body.scrapeOptions,
+          },
+          logger,
+          costTracking,
+          req.acuc?.flags ?? null,
+          (req.acuc?.price_credits ?? 0) <= 3000,
+          isSearchPreview,
+        ),
       );
 
       const docs = await Promise.all(scrapePromises);
@@ -257,17 +269,23 @@ export async function searchController(
     }
 
     // Bill team once for all successful results
-    billTeam(req.auth.team_id, req.acuc?.sub_id, responseData.data.reduce((a,x) => {
-      if (x.metadata?.numPages !== undefined && x.metadata.numPages > 0) {
-        return a + x.metadata.numPages;
-      } else {
-        return a + 1;
-      }
-    }, 0)).catch((error) => {
-      logger.error(
-        `Failed to bill team ${req.auth.team_id} for ${responseData.data.length} credits: ${error}`,
-      );
-    });
+    if (!isSearchPreview) {
+      billTeam(
+        req.auth.team_id,
+        req.acuc?.sub_id,
+        responseData.data.reduce((a, x) => {
+          if (x.metadata?.numPages !== undefined && x.metadata.numPages > 0) {
+            return a + x.metadata.numPages;
+          } else {
+            return a + 1;
+          }
+        }, 0),
+      ).catch((error) => {
+        logger.error(
+          `Failed to bill team ${req.auth.team_id} for ${responseData.data.length} credits: ${error}`,
+        );
+      });
+    }
 
     const endTime = new Date().getTime();
     const timeTakenInSeconds = (endTime - startTime) / 1000;
@@ -277,22 +295,25 @@ export async function searchController(
       time_taken: timeTakenInSeconds,
     });
 
-    logJob({
-      job_id: jobId,
-      success: true,
-      num_docs: responseData.data.length,
-      docs: responseData.data,
-      time_taken: timeTakenInSeconds,
-      team_id: req.auth.team_id,
-      mode: "search",
-      url: req.body.query,
-      scrapeOptions: req.body.scrapeOptions,
-      origin: req.body.origin,
-      cost_tracking: costTracking,
-    });
+    logJob(
+      {
+        job_id: jobId,
+        success: true,
+        num_docs: responseData.data.length,
+        docs: responseData.data,
+        time_taken: timeTakenInSeconds,
+        team_id: req.auth.team_id,
+        mode: "search",
+        url: req.body.query,
+        scrapeOptions: req.body.scrapeOptions,
+        origin: req.body.origin,
+        cost_tracking: costTracking,
+      },
+      false,
+      isSearchPreview,
+    );
 
     return res.status(200).json(responseData);
-
   } catch (error) {
     if (
       error instanceof Error &&

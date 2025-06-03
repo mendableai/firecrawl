@@ -194,7 +194,7 @@ export async function addScrapeJob(
       },
     );
   } else {
-    await addScrapeJobRaw(webScraperOptions, options, jobId, jobPriority);
+    await addScrapeJobRaw(webScraperOptions, options, jobId, jobPriority, directToBullMQ);
   }
 }
 

@@ -21,12 +21,13 @@ function cleanOfNull<T>(x: T): T {
   }
 }
 
-export async function logJob(job: FirecrawlJob, force: boolean = false) {
+export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLogging: boolean = false) {
   try {
     const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
     if (!useDbAuthentication) {
       return;
     }
+    
 
     // Redact any pages that have an authorization header
     // actually, Don't. we use the db to retrieve results now. this breaks authed crawls - mogery
@@ -68,6 +69,10 @@ export async function logJob(job: FirecrawlJob, force: boolean = false) {
 
     if (process.env.GCS_BUCKET_NAME) {
       await saveJobToGCS(job);
+    }
+
+    if (bypassLogging) {
+      return;
     }
 
     if (force) {

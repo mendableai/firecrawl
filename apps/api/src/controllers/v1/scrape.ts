@@ -42,6 +42,8 @@ export async function scrapeController(
   });
   // 
 
+  const isDirectToBullMQ = process.env.SEARCH_PREVIEW_TOKEN !== undefined && process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
+  
   await addScrapeJob(
     {
       url: req.body.url,
@@ -52,6 +54,8 @@ export async function scrapeController(
         teamId: req.auth.team_id,
         saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
         unnormalizedSourceURL: preNormalizedBody.url,
+        useCache: req.body.__experimental_cache ? true : false,
+        bypassBilling: isDirectToBullMQ,
       },
       origin: req.body.origin,
       startTime,
@@ -59,6 +63,7 @@ export async function scrapeController(
     {},
     jobId,
     jobPriority,
+    isDirectToBullMQ,
   );
 
   const totalWait =
@@ -129,6 +134,7 @@ export async function scrapeController(
       delete doc.rawHtml;
     }
   }
+
 
   return res.status(200).json({
     success: true,
