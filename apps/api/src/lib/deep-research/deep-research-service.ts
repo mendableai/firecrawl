@@ -132,7 +132,7 @@ export async function performDeepResearch(options: DeepResearchServiceOptions) {
             fastMode: false,
             blockAds: false,
             maxAge: 0,
-            dontStoreInCache: false,
+            storeInCache: true,
             __experimental_cache: true,
           },
         }, logger, costTracking, acuc?.flags ?? null);
