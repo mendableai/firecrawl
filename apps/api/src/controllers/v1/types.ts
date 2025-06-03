@@ -310,7 +310,7 @@ const baseScrapeOptions = z
     blockAds: z.boolean().default(true),
     proxy: z.enum(["basic", "stealth", "auto"]).optional(),
     maxAge: z.number().int().gte(0).safe().default(0),
-    dontStoreInCache: z.boolean().default(false),
+    storeInCache: z.boolean().default(true),
   })
   .strict(strictMessage);
 
@@ -658,7 +658,7 @@ export const mapRequestSchema = crawlerOptions
     timeout: z.number().positive().finite().optional(),
     useMock: z.string().optional(),
     filterByPath: z.boolean().default(true),
-    ignoreIndex: z.boolean().default(false),
+    useIndex: z.boolean().default(true),
   })
   .strict(strictMessage);
 

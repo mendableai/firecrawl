@@ -25,7 +25,7 @@ import { logger } from "../../lib/logger";
 import Redis from "ioredis";
 import { querySitemapIndex } from "../../scraper/WebScraper/sitemap-index";
 import { getIndexQueue } from "../../services/queue-service";
-import { generateURLSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
+import { generateURLSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex as globalUseIndex } from "../../services/index";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -59,7 +59,7 @@ export async function getMapResults({
   mock,
   filterByPath = true,
   flags,
-  ignoreIndex = false,
+  useIndex = true,
 }: {
   url: string;
   search?: string;
@@ -75,7 +75,7 @@ export async function getMapResults({
   mock?: string;
   filterByPath?: boolean;
   flags: TeamFlags;
-  ignoreIndex?: boolean;
+  useIndex?: boolean;
 }): Promise<MapResult> {
   const id = uuidv4();
   let links: string[] = [url];
@@ -172,7 +172,7 @@ export async function getMapResults({
     // Parallelize sitemap index query with search results
     const [sitemapIndexResult, { data: indexResults, error: indexError }, ...searchResults] = await Promise.all([
       querySitemapIndex(url, abort),
-      useIndex && !ignoreIndex && process.env.FIRECRAWL_INDEX_WRITE_ONLY !== "true" ? (
+      globalUseIndex && useIndex && process.env.FIRECRAWL_INDEX_WRITE_ONLY !== "true" ? (
         index_supabase_service
           .from("index")
           .select("resolved_url")
@@ -352,7 +352,7 @@ export async function mapController(
         mock: req.body.useMock,
         filterByPath: req.body.filterByPath !== false,
         flags: req.acuc?.flags ?? null,
-        ignoreIndex: req.body.ignoreIndex,
+        useIndex: req.body.useIndex,
       }),
       ...(req.body.timeout !== undefined ? [
         new Promise((resolve, reject) => setTimeout(() => {

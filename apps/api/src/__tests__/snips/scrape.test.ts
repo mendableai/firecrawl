@@ -105,7 +105,7 @@ describe("Scrape tests", () => {
         const response1 = await scrape({
           url,
           maxAge: 120000,
-          dontStoreInCache: true,
+          storeInCache: false,
         });
 
         expect(response1.metadata.cacheState).toBe("miss");

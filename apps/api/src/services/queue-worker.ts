@@ -87,7 +87,7 @@ import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
 import { RateLimiterMode } from "../types";
 import { redisEvictConnection } from "./redis";
 import { generateURLSplits, hashURL, index_supabase_service, useIndex } from "./index";
-import { val } from "node_modules/cheerio/lib/api/attributes";
+import { WebCrawler } from "../scraper/WebScraper/crawler";
 
 configDotenv();
 
@@ -912,6 +912,38 @@ const workerFun = async (
   }
 };
 
+async function kickoffGetIndexLinks(sc: StoredCrawl, crawler: WebCrawler, url: string) {
+  const trimmedURL = new URL(url);
+  trimmedURL.search = "";
+
+  const urlSplits = generateURLSplits(trimmedURL.href).map(x => hashURL(x));
+
+  const index = (sc.crawlerOptions.ignoreSitemap || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true" || !useIndex)
+    ? []
+    : sc.crawlerOptions.allowBackwardCrawling
+      ? (await index_supabase_service
+        .from("index")
+        .select("resolved_url")
+        .eq("url_split_0_hash", urlSplits[0])
+        .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
+        .limit(sc.crawlerOptions.limit ?? 100)).data ?? []
+      : (await index_supabase_service
+        .from("index")
+        .select("resolved_url")
+        .eq("url_split_" + (urlSplits.length - 1) + "_hash", urlSplits[urlSplits.length - 1])
+        .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
+        .limit(sc.crawlerOptions.limit ?? 100)).data ?? [];
+  
+  const validIndexLinks = crawler.filterLinks(
+    [...new Set(index.map(x => x.resolved_url))].filter(x => crawler.filterURL(x, trimmedURL.href) !== null),
+    sc.crawlerOptions.limit ?? 100,
+    sc.crawlerOptions.maxDepth ?? 10,
+    false,
+  );
+
+  return validIndexLinks;
+}
+
 async function processKickoffJob(job: Job & { id: string }, token: string) {
   const logger = _logger.child({
     module: "queue-worker",
@@ -1029,37 +1061,11 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
       });
     }
 
-    const trimmedURL = new URL(job.data.url);
-    trimmedURL.search = "";
+    const indexLinks = await kickoffGetIndexLinks(sc, crawler, job.data.url);
 
-    const urlSplits = generateURLSplits(trimmedURL.href).map(x => hashURL(x));
-
-      const index = (sc.crawlerOptions.ignoreSitemap || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true" || !useIndex)
-      ? []
-      : sc.crawlerOptions.allowBackwardCrawling
-        ? (await index_supabase_service
-          .from("index")
-          .select("resolved_url")
-          .eq("url_split_0_hash", urlSplits[0])
-          .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
-          .limit(sc.crawlerOptions.limit ?? 100)).data ?? []
-        : (await index_supabase_service
-          .from("index")
-          .select("resolved_url")
-          .eq("url_split_" + (urlSplits.length - 1) + "_hash", urlSplits[urlSplits.length - 1])
-          .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
-          .limit(sc.crawlerOptions.limit ?? 100)).data ?? [];
-    
-    const validIndexLinks = crawler.filterLinks(
-      [...new Set(index.map(x => x.resolved_url))].filter(x => crawler.filterURL(x, trimmedURL.href) !== null),
-      sc.crawlerOptions.limit ?? 100,
-      sc.crawlerOptions.maxDepth ?? 10,
-      false,
-    );
-
-    if (validIndexLinks.length > 0) {
-      logger.debug("Using index links of length " + validIndexLinks.length, {
-        indexLinksLength: validIndexLinks.length,
+    if (indexLinks.length > 0) {
+      logger.debug("Using index links of length " + indexLinks.length, {
+        indexLinksLength: indexLinks.length,
       });
 
       let jobPriority = await getJobPriority({
@@ -1068,7 +1074,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
       });
       logger.debug("Using job priority " + jobPriority, { jobPriority });
 
-      const jobs = validIndexLinks.map((url) => {
+      const jobs = indexLinks.map((url) => {
         const uuid = uuidv4();
         return {
           name: uuid,
