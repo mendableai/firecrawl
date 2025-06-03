@@ -20,56 +20,64 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
         return document;
     }
 
-    const normalizedURL = normalizeURLForIndex(meta.url);
-    const urlHash = await hashURL(normalizedURL);
+    (async () => {
+        try {
+            const normalizedURL = normalizeURLForIndex(meta.url);
+            const urlHash = await hashURL(normalizedURL);
 
-    const urlSplits = generateURLSplits(normalizedURL);
-    const urlSplitsHash = await Promise.all(urlSplits.map(split => hashURL(split)));
+            const urlSplits = generateURLSplits(normalizedURL);
+            const urlSplitsHash = await Promise.all(urlSplits.map(split => hashURL(split)));
 
-    const indexId = crypto.randomUUID();
+            const indexId = crypto.randomUUID();
 
-    try {
-        await saveIndexToGCS(indexId, {
-            url: normalizedURL,
-            html: document.rawHtml!,
-            statusCode: document.metadata.statusCode,
-            error: document.metadata.error,
-            screenshot: document.screenshot,
-            numPages: document.metadata.numPages,
-        });
-    } catch (error) {
-        meta.logger.error("Failed to save document to index", {
-            error,
-        });
-        return document;
-    }
+            try {
+                await saveIndexToGCS(indexId, {
+                    url: normalizedURL,
+                    html: document.rawHtml!,
+                    statusCode: document.metadata.statusCode,
+                    error: document.metadata.error,
+                    screenshot: document.screenshot,
+                    numPages: document.metadata.numPages,
+                });
+            } catch (error) {
+                meta.logger.error("Failed to save document to index", {
+                    error,
+                });
+                return document;
+            }
 
-    try {
-        await addIndexInsertJob({
-            id: indexId,
-            url: normalizedURL,
-            url_hash: urlHash,
-            url_splits: urlSplits,
-            url_splits_hash: urlSplitsHash,
-            original_url: document.metadata.sourceURL ?? meta.url,
-            resolved_url: document.metadata.url ?? document.metadata.sourceURL ?? meta.url,
-            has_screenshot: document.screenshot !== undefined && meta.featureFlags.has("screenshot"),
-            has_screenshot_fullscreen: document.screenshot !== undefined && meta.featureFlags.has("screenshot@fullScreen"),
-            is_mobile: meta.options.mobile,
-            block_ads: meta.options.blockAds,
-            location_country: meta.options.location?.country ?? null,
-            location_languages: meta.options.location?.languages ?? null,
-            status: document.metadata.statusCode,
-            ...(urlSplitsHash.slice(0, 10).reduce((a,x,i) => ({
-                ...a,
-                [`url_split_${i}_hash`]: x,
-            }), {})),
-        });
-    } catch (error) {
-        meta.logger.error("Failed to add document to index insert queue", {
-            error,
-        });
-    }
+            try {
+                await addIndexInsertJob({
+                    id: indexId,
+                    url: normalizedURL,
+                    url_hash: urlHash,
+                    url_splits: urlSplits,
+                    url_splits_hash: urlSplitsHash,
+                    original_url: document.metadata.sourceURL ?? meta.url,
+                    resolved_url: document.metadata.url ?? document.metadata.sourceURL ?? meta.url,
+                    has_screenshot: document.screenshot !== undefined && meta.featureFlags.has("screenshot"),
+                    has_screenshot_fullscreen: document.screenshot !== undefined && meta.featureFlags.has("screenshot@fullScreen"),
+                    is_mobile: meta.options.mobile,
+                    block_ads: meta.options.blockAds,
+                    location_country: meta.options.location?.country ?? null,
+                    location_languages: meta.options.location?.languages ?? null,
+                    status: document.metadata.statusCode,
+                    ...(urlSplitsHash.slice(0, 10).reduce((a,x,i) => ({
+                        ...a,
+                        [`url_split_${i}_hash`]: x,
+                    }), {})),
+                });
+            } catch (error) {
+                meta.logger.error("Failed to add document to index insert queue", {
+                    error,
+                });
+            }
+        } catch (error) {
+            meta.logger.error("Failed to save document to index (outer)", {
+                error,
+            });
+        }
+    })();
 
     return document;
 }
