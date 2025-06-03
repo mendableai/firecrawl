@@ -319,7 +319,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         scrapeOptions: sc.scrapeOptions,
         crawlerOptions: sc.crawlerOptions,
         origin: job.data.origin,
-      });
+      }, false, job.data.internalOptions?.bypassBilling ?? false);
       logger.info("Logged crawl!");
 
       const data = {
@@ -371,7 +371,9 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
           origin: job.data.origin,
         },
         true,
+        job.data.internalOptions?.bypassBilling ?? false,
       );
+
 
       // v1 web hooks, call when done with no data, but with event completed
       if (job.data.v1 && job.data.webhook) {
@@ -1048,7 +1050,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
 async function billScrapeJob(job: Job & { id: string }, document: Document, logger: Logger, costTracking?: CostTracking) {
   let creditsToBeBilled: number | null = null;
 
-  if (job.data.is_scrape !== true) {
+  if (job.data.is_scrape !== true && !job.data.internalOptions?.bypassBilling) {
     creditsToBeBilled = await calculateCreditsToBeBilled(job.data.scrapeOptions, document, job.id, costTracking);
 
     if (
@@ -1378,6 +1380,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           credits_billed,
         },
         true,
+        job.data.internalOptions?.bypassBilling ?? false,
       );
 
       if (job.data.webhook && job.data.mode !== "crawl" && job.data.v1) {
@@ -1424,7 +1427,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         cost_tracking: costTracking,
         pdf_num_pages: doc.metadata.numPages,
         credits_billed,
-      });
+      }, false, job.data.internalOptions?.bypassBilling ?? false);
     }
 
     logger.info(`🐂 Job done ${job.id}`);
@@ -1523,6 +1526,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         cost_tracking: costTracking,
       },
       true,
+      job.data.internalOptions?.bypassBilling ?? false,
     );
     return data;
   }

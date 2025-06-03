@@ -189,6 +189,7 @@ export type InternalOptions = {
   unnormalizedSourceURL?: string;
 
   saveScrapeResultToGCS?: boolean; // Passed along to fire-engine
+  bypassBilling?: boolean;
 };
 
 export type EngineResultsTracker = {
