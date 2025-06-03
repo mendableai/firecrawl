@@ -34,8 +34,6 @@ describe("Scrape tests", () => {
   }, 30000);
 
   if (process.env.TEST_SUITE_SELF_HOSTED && process.env.PROXY_SERVER) {
-    console.log("Proxy server tests will run");
-
     it.concurrent("self-hosted proxy works", async () => {
       const response = await scrape({
         url: "https://icanhazip.com"
@@ -51,7 +49,6 @@ describe("Scrape tests", () => {
       });
 
       expect(response.markdown?.trim()).toBe(process.env.PROXY_SERVER!.split("://").slice(-1)[0].split(":")[0]);
-      console.log("Self-hosted proxy works on playwright");
     }, 30000);
   }
 
