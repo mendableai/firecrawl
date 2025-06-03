@@ -42,7 +42,7 @@ export async function scrapeController(
   });
   // 
 
-  const isDirectToBullMQ = process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
+  const isDirectToBullMQ = process.env.SEARCH_PREVIEW_TOKEN !== undefined && process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
   
   await addScrapeJob(
     {
