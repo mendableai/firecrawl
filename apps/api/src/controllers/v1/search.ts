@@ -172,8 +172,7 @@ export async function searchController(
   };
   const startTime = new Date().getTime();
   const costTracking = new CostTracking();
-  const isSearchPreview =
-    process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
+  const isSearchPreview = process.env.SEARCH_PREVIEW_TOKEN !== undefined && process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
 
   try {
     req.body = searchRequestSchema.parse(req.body);

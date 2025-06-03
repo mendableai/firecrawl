@@ -10,16 +10,15 @@ export async function creditUsageController(
 ): Promise<void> {
   try {
     // If we already have the credit usage info from auth, use it
-    // TEMP: cache issues - mogery
-    // if (req.acuc) {
-    //   res.json({
-    //     success: true,
-    //     data: {
-    //       remaining_credits: req.acuc.remaining_credits,
-    //     },
-    //   });
-    //   return;
-    // }
+    if (req.acuc) {
+      res.json({
+        success: true,
+        data: {
+          remaining_credits: req.acuc.remaining_credits,
+        },
+      });
+      return;
+    }
 
     // Otherwise fetch fresh data
     const chunk = await getACUCTeam(req.auth.team_id, false, false, RateLimiterMode.Scrape);

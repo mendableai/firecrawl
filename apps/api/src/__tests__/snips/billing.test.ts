@@ -107,6 +107,7 @@ describe("Billing tests", () => {
                 // crawl 1: regular fc.dev crawl (x credits)
                 crawl({
                     url: "https://firecrawl.dev",
+                    limit: 10,
                 }),
                 
                 // crawl 2: fc.dev crawl with json (5y credits)
@@ -123,7 +124,8 @@ describe("Billing tests", () => {
                                 required: ["four_word_summary"],
                             },
                         },
-                    }
+                    },
+                    limit: 10,
                 })
             ]);
             

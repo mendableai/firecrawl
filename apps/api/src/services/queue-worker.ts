@@ -1049,6 +1049,15 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
 
 async function billScrapeJob(job: Job & { id: string }, document: Document, logger: Logger, costTracking?: CostTracking) {
   let creditsToBeBilled: number | null = null;
+  logger.warn("Billing scrape job", {
+    jobId: job.id,
+    teamId: job.data.team_id,
+    creditsToBeBilled,
+    is_scrape: job.data.is_scrape,
+    bypassBilling: job.data.internalOptions?.bypassBilling,
+    isTeamId: job.data.team_id === process.env.BACKGROUND_INDEX_TEAM_ID!,
+    isDBAuthentication: process.env.USE_DB_AUTHENTICATION === "true",
+  });
 
   if (job.data.is_scrape !== true && !job.data.internalOptions?.bypassBilling) {
     creditsToBeBilled = await calculateCreditsToBeBilled(job.data.scrapeOptions, document, job.id, costTracking);
