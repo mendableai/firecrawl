@@ -102,8 +102,8 @@ jobs:
         run: npm run workers > worker.log 2>&1 &
         working-directory: ./apps/api
         id: start_workers
-      - name: Start index worker > index-worker.log 2>&1 &
-        run: npm run index-worker &
+      - name: Start index worker
+        run: npm run index-worker > index-worker.log 2>&1 &
         working-directory: ./apps/api
         id: start_index_worker
       - name: Wait for API
