@@ -43,6 +43,12 @@ export async function scrapeController(
   // 
 
   const isDirectToBullMQ = process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
+  logger.debug("isDirectToBullMQ", {
+    isDirectToBullMQ,
+    searchPreviewToken: req.body.__searchPreviewToken,
+    searchPreviewTokenEnv: process.env.SEARCH_PREVIEW_TOKEN,
+    jobId,
+  });
   await addScrapeJob(
     {
       url: req.body.url,
