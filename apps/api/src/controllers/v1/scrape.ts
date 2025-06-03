@@ -54,6 +54,7 @@ export async function scrapeController(
         saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
         unnormalizedSourceURL: preNormalizedBody.url,
         useCache: req.body.__experimental_cache ? true : false,
+        bypassBilling: isDirectToBullMQ,
       },
       origin: req.body.origin,
       startTime,
@@ -132,6 +133,7 @@ export async function scrapeController(
       delete doc.rawHtml;
     }
   }
+
 
   return res.status(200).json({
     success: true,

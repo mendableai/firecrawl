@@ -1169,6 +1169,7 @@ export const searchRequestSchema = z
     origin: z.string().optional().default("api"),
     timeout: z.number().int().positive().finite().safe().default(60000),
     ignoreInvalidURLs: z.boolean().optional().default(false),
+    __searchPreviewToken: z.string().optional(),
     scrapeOptions: baseScrapeOptions
       .extend({
         formats: z
