@@ -25,7 +25,7 @@ import { logger } from "../../lib/logger";
 import Redis from "ioredis";
 import { querySitemapIndex } from "../../scraper/WebScraper/sitemap-index";
 import { getIndexQueue } from "../../services/queue-service";
-import { generateURLSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex as globalUseIndex } from "../../services/index";
+import { generateURLSplits, hashURL, index_supabase_service, useIndex as globalUseIndex } from "../../services/index";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -42,6 +42,28 @@ interface MapResult {
   job_id: string;
   time_taken: number;
   mapResults: MapDocument[];
+}
+
+async function queryIndex(url: string, limit: number, useIndex: boolean): Promise<string[]> {
+  if (!globalUseIndex || !useIndex || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true") {
+    return [];
+  }
+
+  const urlSplitsHash = generateURLSplits(url).map(x => hashURL(x));
+
+  const { data, error } = await index_supabase_service
+      .from("index")
+      .select("resolved_url")
+      .eq("url_split_" + (urlSplitsHash.length - 1) + "_hash", urlSplitsHash[urlSplitsHash.length - 1])
+      .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
+      .limit(limit)
+
+  if (error) {
+    logger.warn("Error querying index", { error });
+    return [];
+  }
+
+  return (data ?? []).map((x) => x.resolved_url);
 }
 
 export async function getMapResults({
@@ -167,26 +189,15 @@ export async function getMapResults({
       await redis.set(cacheKey, JSON.stringify(allResults), "EX", 48 * 60 * 60); // Cache for 48 hours
     }
 
-    const urlSplitsHash = generateURLSplits(url).map(x => hashURL(x));
-
     // Parallelize sitemap index query with search results
-    const [sitemapIndexResult, { data: indexResults, error: indexError }, ...searchResults] = await Promise.all([
+    const [sitemapIndexResult, indexResults, ...searchResults] = await Promise.all([
       querySitemapIndex(url, abort),
-      globalUseIndex && useIndex && process.env.FIRECRAWL_INDEX_WRITE_ONLY !== "true" ? (
-        index_supabase_service
-          .from("index")
-          .select("resolved_url")
-          .eq("url_split_" + (urlSplitsHash.length - 1) + "_hash", urlSplitsHash[urlSplitsHash.length - 1])
-          .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
-          .limit(limit)
-      ) : Promise.resolve({ data: [], error: null }),
+      queryIndex(url, limit, useIndex),
       ...(cachedResult ? [] : pagePromises),
     ]);
 
-    if (indexError) {
-      logger.warn("Error querying index", { error: indexError });
-    } else if (indexResults.length > 0) {
-      links.push(...indexResults.map((x) => x.resolved_url));
+    if (indexResults.length > 0) {
+      links.push(...indexResults);
     }
 
     const twoDaysAgo = new Date();
