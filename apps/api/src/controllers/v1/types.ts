@@ -882,6 +882,18 @@ export type CrawlStatusResponse =
       data: Document[];
     };
 
+export type OngoingCrawlsResponse =
+  | ErrorResponse
+  | {
+      success: true;
+      crawls: {
+        id: string;
+        teamId: string;
+        url: string;
+        options: CrawlerOptions;
+      }[];
+  };
+      
 export type CrawlErrorsResponse =
   | ErrorResponse
   | {
@@ -1014,6 +1026,25 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     currentDiscoveryDepth: 0,
     delay: x.delay,
   };
+}
+
+export function toNewCrawlerOptions(x: any): CrawlerOptions {
+  return {
+    includePaths: x.includes,
+    excludePaths: x.excludes,
+    limit: x.limit,
+    maxDepth: x.maxDepth,
+    allowBackwardLinks: x.allowBackwardCrawling,
+    allowExternalLinks: x.allowExternalContentLinks,
+    allowSubdomains: x.allowSubdomains,
+    ignoreRobotsTxt: x.ignoreRobotsTxt,
+    ignoreSitemap: x.ignoreSitemap,
+    deduplicateSimilarURLs: x.deduplicateSimilarURLs,
+    ignoreQueryParameters: x.ignoreQueryParameters,
+    regexOnFullURL: x.regexOnFullURL,
+    maxDiscoveryDepth: x.maxDiscoveryDepth,
+    delay: x.delay,
+  }
 }
 
 export function fromLegacyCrawlerOptions(x: any, teamId: string): {
