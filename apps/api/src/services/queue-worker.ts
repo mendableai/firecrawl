@@ -1460,6 +1460,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           cost_tracking: costTracking,
           pdf_num_pages: doc.metadata.numPages,
           credits_billed,
+          change_tracking_tag: job.data.scrapeOptions.changeTrackingOptions?.tag ?? null,
         },
         true,
         job.data.internalOptions?.bypassBilling ?? false,
@@ -1509,6 +1510,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         cost_tracking: costTracking,
         pdf_num_pages: doc.metadata.numPages,
         credits_billed,
+        change_tracking_tag: job.data.scrapeOptions.changeTrackingOptions?.tag ?? null,
       }, false, job.data.internalOptions?.bypassBilling ?? false);
     }
 

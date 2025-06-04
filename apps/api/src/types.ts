@@ -102,6 +102,7 @@ export interface FirecrawlJob {
   cost_tracking?: CostTracking;
   pdf_num_pages?: number;
   credits_billed?: number | null;
+  change_tracking_tag?: string | null;
 }
 
 export interface FirecrawlScrapeResponse {

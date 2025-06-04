@@ -260,6 +260,7 @@ const baseScrapeOptions = z
         prompt: z.string().optional(),
         schema: z.any().optional(),
         modes: z.enum(["json", "git-diff"]).array().optional().default([]),
+        tag: z.string().or(z.null()).default(null),
       })
       .optional(),
     mobile: z.boolean().default(false),

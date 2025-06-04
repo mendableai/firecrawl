@@ -269,6 +269,37 @@ describe("Scrape tests", () => {
           expect(response.changeTracking?.json).toHaveProperty("changes");
         }
       }, 30000);
+
+      it.concurrent("supports tags properly", async () => {
+        const uuid1 = crypto.randomUUID();
+        const uuid2 = crypto.randomUUID();
+
+        const response1 = await scrape({
+          url: "https://firecrawl.dev/",
+          formats: ["markdown", "changeTracking"],
+          changeTrackingOptions: { tag: uuid1 }
+        });
+
+        const response2 = await scrape({
+          url: "https://firecrawl.dev/",
+          formats: ["markdown", "changeTracking"],
+          changeTrackingOptions: { tag: uuid2 }
+        });
+
+        expect(response1.changeTracking?.previousScrapeAt).toBeNull();
+        expect(response1.changeTracking?.changeStatus).toBe("new");
+        expect(response2.changeTracking?.previousScrapeAt).toBeNull();
+        expect(response2.changeTracking?.changeStatus).toBe("new");
+
+        const response3 = await scrape({
+          url: "https://firecrawl.dev/",
+          formats: ["markdown", "changeTracking"],
+          changeTrackingOptions: { tag: uuid1 }
+        });
+
+        expect(response3.changeTracking?.previousScrapeAt).not.toBeNull();
+        expect(response3.changeTracking?.changeStatus).not.toBe("new");
+      }, 120000);
     });
   
     describe("Location API (f-e dependant)", () => {
