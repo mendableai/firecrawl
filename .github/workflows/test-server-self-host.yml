@@ -114,7 +114,7 @@ jobs:
         env:
           PORT: 3003
       - name: Wait for server
-        run: pnpx wait-on tcp:3002 -t 15s
+        run: pnpx wait-on tcp:3002 -t 60s
       - name: Wait for playwright
         if: matrix.engine == 'playwright'
         run: pnpx wait-on tcp:3003 -t 15s
