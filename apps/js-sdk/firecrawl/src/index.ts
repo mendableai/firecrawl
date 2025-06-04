@@ -166,6 +166,7 @@ export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchem
     prompt?: string;
     schema?: any;
     modes?: ("json" | "git-diff")[];
+    tag?: string | null;
   }
   actions?: ActionsSchema;
   agent?: AgentOptions;
