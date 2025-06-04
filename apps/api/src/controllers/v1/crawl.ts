@@ -31,7 +31,6 @@ export async function crawlController(
     originalRequest: preNormalizedBody,
     account: req.account,
   });
-  logger.debug("[crawl - crawlController] Integration: " + req.body.integration);
 
   await logCrawl(id, req.auth.team_id);
 

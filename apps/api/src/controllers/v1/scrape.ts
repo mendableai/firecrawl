@@ -29,7 +29,6 @@ export async function scrapeController(
     teamId: req.auth.team_id,
     account: req.account,
   });
-  logger.debug("[scrape - scrapeController] Integration: " + req.body.integration);
 
   req.body = scrapeRequestSchema.parse(req.body);
 

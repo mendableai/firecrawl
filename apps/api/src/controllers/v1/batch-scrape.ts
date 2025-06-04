@@ -85,7 +85,6 @@ export async function batchScrapeController(
     appendToId: req.body.appendToId,
     account: req.account,
   });
-  logger.debug("[batch-scrape - batchScrapeController] Integration: " + req.body.integration);
 
   if (!req.body.appendToId) {
     await logCrawl(id, req.auth.team_id);

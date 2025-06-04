@@ -331,7 +331,6 @@ export async function mapController(
     originalRequest,
     teamId: req.auth.team_id,
   });
-  logger.debug("[map - mapController] Integration: " + req.body.integration);
 
   let result: Awaited<ReturnType<typeof getMapResults>>;
   const abort = new AbortController();
