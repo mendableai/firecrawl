@@ -340,16 +340,16 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
 
       // v0 web hooks, call when done with all the data
       if (!job.data.v1) {
-        callWebhook(
-          job.data.team_id,
-          job.data.crawl_id,
+        callWebhook({
+          teamId: job.data.team_id,
+          crawlId: job.data.crawl_id,
           data,
-          job.data.webhook,
-          job.data.v1,
-          job.data.crawlerOptions !== null
+          webhook: job.data.webhook,
+          v1: job.data.v1,
+          eventType: job.data.crawlerOptions !== null
             ? "crawl.completed"
             : "batch_scrape.completed",
-        );
+        });
       }
     } else {
       const num_docs = await getDoneJobsOrderedLength(job.data.crawl_id);
@@ -379,16 +379,16 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
 
       // v1 web hooks, call when done with no data, but with event completed
       if (job.data.v1 && job.data.webhook) {
-        callWebhook(
-          job.data.team_id,
-          job.data.crawl_id,
-          [],
-          job.data.webhook,
-          job.data.v1,
-          job.data.crawlerOptions !== null
+        callWebhook({
+          teamId: job.data.team_id,
+          crawlId: job.data.crawl_id,
+          data: [],
+          webhook: job.data.webhook,
+          v1: job.data.v1,
+          eventType: job.data.crawlerOptions !== null
             ? "crawl.completed"
             : "batch_scrape.completed",
-        );
+        });
       }
     }
   }
@@ -982,14 +982,14 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
       logger.debug("Calling webhook with crawl.started...", {
         webhook: job.data.webhook,
       });
-      await callWebhook(
-        job.data.team_id,
-        job.data.crawl_id,
-        null,
-        job.data.webhook,
-        true,
-        "crawl.started",
-      );
+      callWebhook({
+        teamId: job.data.team_id,
+        crawlId: job.data.crawl_id,
+        data: null,
+        webhook: job.data.webhook,
+        v1: job.data.v1,
+        eventType: "crawl.started",
+      });
     }
 
     const sitemap = sc.crawlerOptions.ignoreSitemap
@@ -1467,15 +1467,15 @@ async function processJob(job: Job & { id: string }, token: string) {
         logger.debug("Calling webhook with success...", {
           webhook: job.data.webhook,
         });
-        await callWebhook(
-          job.data.team_id,
-          job.data.crawl_id,
+        callWebhook({
+          teamId: job.data.team_id,
+          crawlId: job.data.crawl_id,
+          scrapeId: job.id,
           data,
-          job.data.webhook,
-          job.data.v1,
-          job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
-          true,
-        );
+          webhook: job.data.webhook,
+          v1: job.data.v1,
+          eventType: job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
+        });
       }
 
       logger.debug("Declaring job as done...");
@@ -1570,14 +1570,15 @@ async function processJob(job: Job & { id: string }, token: string) {
     };
 
     if (!job.data.v1 && (job.data.mode === "crawl" || job.data.crawl_id)) {
-      callWebhook(
-        job.data.team_id,
-        job.data.crawl_id ?? (job.id as string),
+      callWebhook({
+        teamId: job.data.team_id,
+        crawlId: job.data.crawl_id ?? (job.id as string),
+        scrapeId: job.id,
         data,
-        job.data.webhook,
-        job.data.v1,
-        job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
-      );
+        webhook: job.data.webhook,
+        v1: job.data.v1,
+        eventType: job.data.crawlerOptions !== null ? "crawl.page" : "batch_scrape.page",
+      });
     }
 
     const end = Date.now();
