@@ -3,6 +3,7 @@ import { EngineScrapeResult } from "..";
 import { Meta } from "../..";
 import { TimeoutError } from "../../error";
 import { robustFetch } from "../../lib/fetch";
+import { getInnerJSON } from "../../../../lib/html-transformer";
 
 export async function scrapeURLWithPlaywright(
   meta: Meta,
@@ -28,6 +29,7 @@ export async function scrapeURLWithPlaywright(
         content: z.string(),
         pageStatusCode: z.number(),
         pageError: z.string().optional(),
+        contentType: z.string().optional(),
       }),
       mock: meta.mock,
       abort: AbortSignal.timeout(timeout),
@@ -41,10 +43,15 @@ export async function scrapeURLWithPlaywright(
     })(),
   ]);
 
+  if (response.contentType?.includes("application/json")) {
+    response.content = await getInnerJSON(response.content);
+  }
+
   return {
     url: meta.url, // TODO: impove redirect following
     html: response.content,
     statusCode: response.pageStatusCode,
     error: response.pageError,
+    contentType: response.contentType,
   };
 }

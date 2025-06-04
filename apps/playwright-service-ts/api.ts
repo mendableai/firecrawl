@@ -136,9 +136,10 @@ const scrapePage = async (page: Page, url: string, waitUntil: 'load' | 'networki
   }
 
   let headers = null, content = await page.content();
+  let ct: string | undefined = undefined;
   if (response) {
     headers = await response.allHeaders();
-    const ct = Object.entries(headers).find(x => x[0].toLowerCase() === "content-type");
+    ct = Object.entries(headers).find(x => x[0].toLowerCase() === "content-type")?.[1];
     if (ct && (ct[1].includes("application/json") || ct[1].includes("text/plain"))) {
       content = (await response.body()).toString("utf8"); // TODO: determine real encoding
     }
@@ -148,6 +149,7 @@ const scrapePage = async (page: Page, url: string, waitUntil: 'load' | 'networki
     content,
     status: response ? response.status() : null,
     headers,
+    contentType: ct,
   };
 };
 
@@ -214,6 +216,7 @@ app.post('/scrape', async (req: Request, res: Response) => {
   res.json({
     content: result.content,
     pageStatusCode: result.status,
+    contentType: result.contentType,
     ...(pageError && { pageError })
   });
 });

@@ -96,7 +96,7 @@ jobs:
           chmod +x target/release/libpdf_parser.so
         working-directory: ./apps/api/sharedLibs/pdf-parser
       - name: Start the application
-        run: npm start > api.log 2>&1 &
+        run: npm run start:production > api.log 2>&1 &
         working-directory: ./apps/api
         id: start_app
       - name: Start worker
@@ -108,7 +108,7 @@ jobs:
         working-directory: ./apps/api
         id: start_index_worker
       - name: Wait for API
-        run: pnpx wait-on tcp:3002 -t 30s
+        run: pnpx wait-on tcp:3002 -t 60s
       - name: Run snippet tests
         run: |
           npm run test:snips

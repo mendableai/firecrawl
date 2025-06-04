@@ -102,7 +102,7 @@ jobs:
           pnpx wait-on tcp:3434 -t 30s
         working-directory: ./
       - name: Start server
-        run: npm start > api.log 2>&1 &
+        run: npm run start:production > api.log 2>&1 &
         working-directory: ./apps/api
       - name: Start worker
         run: npm run workers > worker.log 2>&1 &
@@ -114,7 +114,7 @@ jobs:
         env:
           PORT: 3003
       - name: Wait for server
-        run: pnpx wait-on tcp:3002 -t 15s
+        run: pnpx wait-on tcp:3002 -t 60s
       - name: Wait for playwright
         if: matrix.engine == 'playwright'
         run: pnpx wait-on tcp:3003 -t 15s

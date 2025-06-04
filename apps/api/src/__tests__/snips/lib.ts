@@ -139,7 +139,7 @@ export async function asyncCrawlWaitForFinish(id: string): Promise<Exclude<Crawl
     return x.body;
 }
 
-export async function crawl(body: CrawlRequestInput): Promise<CrawlStatusResponse> {
+export async function crawl(body: CrawlRequestInput): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
     const cs = await crawlStart(body);
     expectCrawlStartToSucceed(cs);
 
@@ -174,7 +174,7 @@ async function batchScrapeStatus(id: string) {
         .send();
 }
 
-function expectBatchScrapeStartToSucceed(response: Awaited<ReturnType<typeof batchScrape>>) {
+function expectBatchScrapeStartToSucceed(response: Awaited<ReturnType<typeof batchScrapeStart>>) {
     expect(response.statusCode).toBe(200);
     expect(response.body.success).toBe(true);
     expect(typeof response.body.id).toBe("string");
@@ -190,7 +190,7 @@ function expectBatchScrapeToSucceed(response: Awaited<ReturnType<typeof batchScr
     expect(response.body.data.length).toBeGreaterThan(0);
 }
 
-export async function batchScrape(body: BatchScrapeRequestInput): ReturnType<typeof batchScrapeStatus> {
+export async function batchScrape(body: BatchScrapeRequestInput): Promise<Exclude<CrawlStatusResponse, ErrorResponse>> {
     const bss = await batchScrapeStart(body);
     expectBatchScrapeStartToSucceed(bss);
 
@@ -203,7 +203,7 @@ export async function batchScrape(body: BatchScrapeRequestInput): ReturnType<typ
     } while (x.body.status === "scraping");
 
     expectBatchScrapeToSucceed(x);
-    return x;
+    return x.body;
 }
 
 // =========================================

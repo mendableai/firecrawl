@@ -169,16 +169,17 @@ export async function finishCrawlPre(id: string) {
     const set = await redisEvictConnection.setnx("crawl:" + id + ":finished_pre", "yes");
     await redisEvictConnection.expire("crawl:" + id + ":finished_pre", 24 * 60 * 60);
     return set === 1;
-  } else {
-    // _logger.debug("Crawl can not be pre-finished yet, not marking as finished.", {
-    //   module: "crawl-redis",
-    //   method: "finishCrawlPre",
-    //   crawlId: id,
-    //   jobs_done: await redisEvictConnection.scard("crawl:" + id + ":jobs_done"),
-    //   jobs: await redisEvictConnection.scard("crawl:" + id + ":jobs"),
-    //   kickoff_finished:
-    //     (await redisEvictConnection.get("crawl:" + id + ":kickoff:finish")) !== null,
-    // });
+  }
+}
+
+export async function unPreFinishCrawl(id: string) {
+  if (await isCrawlFinished(id)) {
+    _logger.debug("Un-pre-finishing crawl.", {
+      module: "crawl-redis",
+      method: "unPreFinishCrawl",
+      crawlId: id,
+    });
+    await redisEvictConnection.del("crawl:" + id + ":finished_pre");
   }
 }
 
