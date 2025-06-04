@@ -222,7 +222,8 @@ export async function searchController(req: Request, res: Response) {
       url: req.body.query,
       scrapeOptions: fromLegacyScrapeOptions(req.body.pageOptions, undefined, 60000, team_id),
       crawlerOptions: crawlerOptions,
-      origin: origin,
+      origin,
+      integration: req.body.integration,
     });
     return res.status(result.returnCode).json(result);
   } catch (error) {

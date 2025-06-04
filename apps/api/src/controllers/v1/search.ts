@@ -181,6 +181,7 @@ export async function searchController(
       query: req.body.query,
       origin: req.body.origin,
     });
+    logger.debug("[search - searchController] Integration: " + req.body.integration);
 
     let limit = req.body.limit;
 
@@ -307,6 +308,7 @@ export async function searchController(
         url: req.body.query,
         scrapeOptions: req.body.scrapeOptions,
         origin: req.body.origin,
+        integration: req.body.integration,
         cost_tracking: costTracking,
       },
       false,

@@ -81,6 +81,7 @@ export async function scrapeHelper(
       scrapeOptions,
       internalOptions,
       origin: req.body.origin ?? defaultOrigin,
+      integration: req.body.integration,
       is_scrape: true,
       startTime: Date.now(),
     },

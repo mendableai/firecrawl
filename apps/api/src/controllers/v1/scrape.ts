@@ -29,6 +29,7 @@ export async function scrapeController(
     teamId: req.auth.team_id,
     account: req.account,
   });
+  logger.debug("[scrape - scrapeController] Integration: " + req.body.integration);
 
   req.body = scrapeRequestSchema.parse(req.body);
 
@@ -57,7 +58,8 @@ export async function scrapeController(
         useCache: req.body.__experimental_cache ? true : false,
         bypassBilling: isDirectToBullMQ,
       },
-      origin: req.body.origin,
+      origin,
+      integration: req.body.integration,
       startTime,
     },
     {},

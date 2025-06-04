@@ -48,6 +48,7 @@ export async function saveJobToGCS(job: FirecrawlJob): Promise<void> {
                         crawler_options: JSON.stringify(job.crawlerOptions),
                         page_options: JSON.stringify(job.scrapeOptions),
                         origin: job.origin,
+                        integration: job.integration ?? null,
                         num_tokens: job.num_tokens ?? null,
                         retry: !!job.retry,
                         crawl_id: job.crawl_id ?? null,

@@ -31,6 +31,7 @@ export async function crawlController(
     originalRequest: preNormalizedBody,
     account: req.account,
   });
+  logger.debug("[crawl - crawlController] Integration: " + req.body.integration);
 
   await logCrawl(id, req.auth.team_id);
 
@@ -114,6 +115,7 @@ export async function crawlController(
       scrapeOptions: sc.scrapeOptions,
       internalOptions: sc.internalOptions,
       origin: req.body.origin,
+      integration: req.body.integration,
       crawl_id: id,
       webhook: req.body.webhook,
       v1: true,

@@ -83,6 +83,7 @@ export async function extractController(
     subId: req.acuc?.sub_id,
     extractId,
   });
+  _logger.debug("[extract - extractController] Integration: " + req.body.integration);
 
   const jobData = {
     request: req.body,
