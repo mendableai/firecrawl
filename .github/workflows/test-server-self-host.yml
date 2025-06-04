@@ -102,7 +102,7 @@ jobs:
           pnpx wait-on tcp:3434 -t 30s
         working-directory: ./
       - name: Start server
-        run: npm start:production > api.log 2>&1 &
+        run: npm run start:production > api.log 2>&1 &
         working-directory: ./apps/api
       - name: Start worker
         run: npm run workers > worker.log 2>&1 &
