@@ -1,11 +1,43 @@
 import axios, { AxiosError } from "axios";
-import { logger as _logger } from "../lib/logger";
+import { logger as _logger, logger } from "../lib/logger";
 import { supabase_rr_service, supabase_service } from "./supabase";
 import { WebhookEventType } from "../types";
 import { configDotenv } from "dotenv";
 import { z } from "zod";
 import { webhookSchema } from "../controllers/v1/types";
+import { redisEvictConnection } from "./redis";
+import { index_supabase_service } from ".";
 configDotenv();
+
+const WEBHOOK_INSERT_QUEUE_KEY = "webhook-insert-queue";
+const WEBHOOK_INSERT_BATCH_SIZE = 1000;
+
+async function addWebhookInsertJob(data: any) {
+  await redisEvictConnection.rpush(WEBHOOK_INSERT_QUEUE_KEY, JSON.stringify(data));
+}
+
+export async function getWebhookInsertQueueLength(): Promise<number> {
+  return await redisEvictConnection.llen(WEBHOOK_INSERT_QUEUE_KEY) ?? 0;
+}
+
+async function getWebhookInsertJobs(): Promise<any[]> {
+  const jobs = (await redisEvictConnection.lpop(WEBHOOK_INSERT_QUEUE_KEY, WEBHOOK_INSERT_BATCH_SIZE)) ?? [];
+  return jobs.map(x => JSON.parse(x));
+}
+
+export async function processWebhookInsertJobs() {
+  const jobs = await getWebhookInsertJobs();
+  if (jobs.length === 0) {
+    return;
+  }
+  logger.info(`Webhook inserter found jobs to insert`, { jobCount: jobs.length });
+  try {
+    await supabase_service.from("webhook_logs").insert(jobs);
+    logger.info(`Webhook inserter inserted jobs`, { jobCount: jobs.length });
+  } catch (error) {
+    logger.error(`Webhook inserter failed to insert jobs`, { error, jobCount: jobs.length });
+  }
+}
 
 async function logWebhook(data: {
   success: boolean;
@@ -18,19 +50,16 @@ async function logWebhook(data: {
   event: WebhookEventType
 }) {
   try {
-    await supabase_service
-      .from("webhook_logs")
-      .insert({
-        success: data.success,
-        error: data.error ?? null,
-        team_id: data.teamId,
-        crawl_id: data.crawlId,
-        scrape_id: data.scrapeId ?? null,
-        url: data.url,
-        status_code: data.statusCode ?? null,
-        event: data.event,
-      })
-      .throwOnError();
+    await addWebhookInsertJob({
+      success: data.success,
+      error: data.error ?? null,
+      team_id: data.teamId,
+      crawl_id: data.crawlId,
+      scrape_id: data.scrapeId ?? null,
+      url: data.url,
+      status_code: data.statusCode ?? null,
+      event: data.event,
+    });
   } catch (error) {
     _logger.error("Error logging webhook", { error, crawlId: data.crawlId, scrapeId: data.scrapeId, teamId: data.teamId, team_id: data.teamId, module: "webhook", method: "logWebhook" });
   }
