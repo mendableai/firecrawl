@@ -26,6 +26,7 @@ import {
   crawlToCrawler,
   finishCrawl,
   finishCrawlPre,
+  unPreFinishCrawl,
   finishCrawlKickoff,
   generateURLPermutations,
   getCrawl,
@@ -247,6 +248,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
             lockedJobs: lockedJobs.length,
           });
 
+          await unPreFinishCrawl(job.data.crawl_id);
           return;
         } else {
           logger.info("No jobs added (all discovered URLs were locked), finishing crawl");
