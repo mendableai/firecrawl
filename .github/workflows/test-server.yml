@@ -96,7 +96,7 @@ jobs:
           chmod +x target/release/libpdf_parser.so
         working-directory: ./apps/api/sharedLibs/pdf-parser
       - name: Start the application
-        run: npm start > api.log 2>&1 &
+        run: npm start:production > api.log 2>&1 &
         working-directory: ./apps/api
         id: start_app
       - name: Start worker
