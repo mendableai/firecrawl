@@ -173,14 +173,12 @@ export async function finishCrawlPre(id: string) {
 }
 
 export async function unPreFinishCrawl(id: string) {
-  if (await isCrawlFinished(id)) {
-    _logger.debug("Un-pre-finishing crawl.", {
-      module: "crawl-redis",
-      method: "unPreFinishCrawl",
-      crawlId: id,
-    });
-    await redisEvictConnection.del("crawl:" + id + ":finished_pre");
-  }
+  _logger.debug("Un-pre-finishing crawl.", {
+    module: "crawl-redis",
+    method: "unPreFinishCrawl",
+    crawlId: id,
+  });
+  await redisEvictConnection.del("crawl:" + id + ":finished_pre");
 }
 
 export async function finishCrawl(id: string) {
