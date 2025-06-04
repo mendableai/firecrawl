@@ -65,6 +65,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLo
       cost_tracking: job.cost_tracking,
       pdf_num_pages: job.pdf_num_pages ?? null,
       credits_billed: job.credits_billed ?? null,
+      change_tracking_tag: job.change_tracking_tag ?? null,
     };
 
     if (process.env.GCS_BUCKET_NAME) {
@@ -145,6 +146,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLo
           tokens_billed: job.tokens_billed,
           cost_tracking: job.cost_tracking,
           pdf_num_pages: job.pdf_num_pages,
+          change_tracking_tag: job.change_tracking_tag ?? null,
         },
       };
       if (job.mode !== "single_urls") {
