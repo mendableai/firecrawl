@@ -160,6 +160,351 @@ describe("Scrape tests", () => {
         
         expect(response4.metadata.cacheState).toBe("miss");
       }, 150000 + 2 * 17000);
+
+      it.concurrent("respects screenshot", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://firecrawl.dev/?testId=" + id;
+
+        const response1 = await scrape({
+          url,
+          formats: ["screenshot"],
+          timeout: 60000,
+        });
+
+        expect(response1.screenshot).toBeDefined();
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response2 = await scrape({
+          url,
+          formats: ["screenshot"],
+          timeout: 60000,
+          maxAge: 120000,
+        });
+
+        expect(response2.screenshot).toBe(response1.screenshot);
+
+        const response3 = await scrape({
+          url,
+          formats: ["screenshot@fullPage"],
+          timeout: 60000,
+          maxAge: 180000,
+        });
+
+        expect(response3.screenshot).not.toBe(response1.screenshot);
+        expect(response3.metadata.cacheState).toBe("miss");
+      }, 207000);
+
+      it.concurrent("respects screenshot@fullPage", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://firecrawl.dev/?testId=" + id;
+
+        const response1 = await scrape({
+          url,
+          formats: ["screenshot@fullPage"],
+          timeout: 60000,
+        });
+
+        expect(response1.screenshot).toBeDefined();
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response2 = await scrape({ 
+          url,
+          formats: ["screenshot@fullPage"],
+          timeout: 60000,
+          maxAge: 120000,
+        });
+
+        expect(response2.screenshot).toBe(response1.screenshot);
+
+        const response3 = await scrape({
+          url,
+          formats: ["screenshot"],
+          timeout: 60000,
+          maxAge: 180000,
+        });
+
+        expect(response3.screenshot).not.toBe(response1.screenshot);
+        expect(response3.metadata.cacheState).toBe("miss");
+      }, 207000);
+
+      it.concurrent("respects changeTracking", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://firecrawl.dev/?testId=" + id;
+
+        await scrape({
+          url,
+          formats: ["markdown", "changeTracking"],
+          timeout: 60000,
+        });
+
+        const response1 = await scrape({
+          url,
+          formats: ["markdown", "changeTracking"],
+          timeout: 60000,
+          maxAge: 120000,
+        });
+
+        expect(response1.metadata.cacheState).not.toBeDefined();
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response2 = await scrape({
+          url,
+          formats: ["markdown"],
+          timeout: 60000,
+          maxAge: 180000,
+        });
+
+        expect(response2.metadata.cacheState).toBe("hit");
+      }, 147000);
+
+      it.concurrent("respects headers", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://firecrawl.dev/?testId=" + id;
+
+        await scrape({
+          url,
+          headers: {
+            "X-Test": "test",
+          },
+          timeout: 60000,
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response = await scrape({
+          url,
+          timeout: 60000,
+          maxAge: 120000,
+        });
+
+        expect(response.metadata.cacheState).toBe("miss");
+      }, 147000);
+
+      it.concurrent("respects mobile", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://firecrawl.dev/?testId=" + id;
+
+        await scrape({
+          url,
+          timeout: 60000,
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response1 = await scrape({
+          url,
+          timeout: 60000,
+          maxAge: 120000,
+          mobile: true,
+        });
+
+        expect(response1.metadata.cacheState).toBe("miss");
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response2 = await scrape({
+          url,
+          timeout: 60000,
+          maxAge: 180000,
+          mobile: true,
+        });
+
+        expect(response2.metadata.cacheState).toBe("hit");
+      }, 224000);
+
+      it.concurrent("respects actions", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://firecrawl.dev/?testId=" + id;
+
+        const response1 = await scrape({
+          url,
+          timeout: 60000,
+          maxAge: 60000,
+          actions: [{
+            "type": "wait",
+            "milliseconds": 1000,
+          }]
+        });
+
+        expect(response1.metadata.cacheState).not.toBeDefined();
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response2 = await scrape({
+          url,
+          timeout: 60000,
+          maxAge: 120000,
+        });
+
+        expect(response2.metadata.cacheState).toBe("miss");
+      }, 147000);
+
+      it.concurrent("respects location", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://firecrawl.dev/?testId=" + id;
+
+        await scrape({
+          url,
+          timeout: 60000,
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response1 = await scrape({
+          url,
+          location: { country: "BR" },
+          maxAge: 120000,
+          timeout: 60000,
+        });
+
+        expect(response1.metadata.cacheState).toBe("miss");
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response2 = await scrape({
+          url,
+          location: { country: "BR" },
+          timeout: 60000,
+          maxAge: 180000,
+        });
+
+        expect(response2.metadata.cacheState).toBe("hit");
+      }, 224000);
+
+      it.concurrent("respects blockAds", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://firecrawl.dev/?testId=" + id;
+
+        await scrape({
+          url,
+          blockAds: true,
+          timeout: 60000,
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response0 = await scrape({
+          url,
+          blockAds: true,
+          timeout: 60000,
+          maxAge: 120000,
+        });
+
+        expect(response0.metadata.cacheState).toBe("hit");
+
+        const response1 = await scrape({
+          url,
+          blockAds: false,
+          timeout: 60000,
+          maxAge: 180000,
+        });
+
+        expect(response1.metadata.cacheState).toBe("miss");
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response2 = await scrape({
+          url,
+          blockAds: false,
+          timeout: 60000,
+          maxAge: 240000,
+        });
+
+        expect(response2.metadata.cacheState).toBe("hit");
+      }, 284000);
+
+      it.concurrent("respects proxy: stealth", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://firecrawl.dev/?testId=" + id;
+
+        const response1 = await scrape({
+          url,
+          proxy: "stealth",
+          timeout: 60000,
+          maxAge: 60000,
+        });
+
+        expect(response1.metadata.proxyUsed).toBe("stealth");
+        expect(response1.metadata.cacheState).not.toBeDefined();
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response2 = await scrape({
+          url,
+          timeout: 60000,
+          maxAge: 120000,
+        });
+
+        expect(response2.metadata.cacheState).toBe("hit");
+
+        const response3 = await scrape({
+          url,
+          proxy: "stealth",
+          timeout: 60000,
+          maxAge: 180000,
+        });
+
+        expect(response3.metadata.cacheState).not.toBeDefined();
+      }, 207000);
+
+      it.concurrent("works properly on pages returning 200", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://httpstat.us/200?testId=" + id;
+
+        await scrape({
+          url,
+          timeout: 60000,
+        });
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response = await scrape({
+          url,
+          timeout: 60000,
+          maxAge: 120000,
+        });
+
+        expect(response.metadata.cacheState).toBe("hit");
+      }, 147000);
+
+      it.concurrent("works properly on pages returning errors", async () => {
+        const id = crypto.randomUUID();
+        const url = "https://httpstat.us/404?testId=" + id;
+
+        await scrape({
+          url,
+          timeout: 60000,
+        });
+
+        const response1 = await scrape({
+          url,
+          timeout: 60000,
+          maxAge: 120000,
+        });
+
+        expect(response1.metadata.cacheState).toBe("miss");
+
+        const response2 = await scrape({
+          url,
+          timeout: 60000,
+          maxAge: 180000,
+        });
+
+        expect(response2.metadata.cacheState).toBe("miss");
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
+        const response3 = await scrape({
+          url,
+          timeout: 60000,
+          maxAge: 240000,
+        });
+
+        expect(response3.metadata.cacheState).toBe("hit");
+      }, 284000);
     });
 
     describe("Change Tracking format", () => {

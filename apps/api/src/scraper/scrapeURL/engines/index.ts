@@ -191,7 +191,7 @@ export const engineOptions: {
       skipTlsVerification: true,
       useFastMode: true,
       stealthProxy: false,
-      disableAdblock: false,
+      disableAdblock: true,
     },
     quality: 999, // index should always be tried second ? - MG
   },
