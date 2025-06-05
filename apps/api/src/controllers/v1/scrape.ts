@@ -129,14 +129,17 @@ export async function scrapeController(
     }
   }
 
+  logger.info("Scrape completed");
+
   await getScrapeQueue().remove(jobId);
+  
+  logger.info("Job removed from queue");
 
   if (!req.body.formats.includes("rawHtml")) {
     if (doc && doc.rawHtml) {
       delete doc.rawHtml;
     }
   }
-
 
   return res.status(200).json({
     success: true,
