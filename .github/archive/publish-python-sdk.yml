@@ -5,6 +5,7 @@ on: []
 env:
   PYPI_USERNAME: ${{ secrets.PYPI_USERNAME }}
   PYPI_PASSWORD: ${{ secrets.PYPI_PASSWORD }}
+  DOCS_REPO: "mendableai/firecrawl-docs"
 
 jobs:
   build-and-publish:
@@ -23,12 +24,56 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install setuptools wheel twine build requests packaging
+          # Install jq for JSON parsing in later steps
+          sudo apt-get update && sudo apt-get install -y jq
 
       - name: Run version check script
         id: version_check_script
         run: |
           VERSION_INCREMENTED=$(python .github/scripts/check_version_has_incremented.py python ./apps/python-sdk/firecrawl firecrawl-py)
           echo "VERSION_INCREMENTED=$VERSION_INCREMENTED" >> $GITHUB_ENV
+
+      - name: Install Python SDK dependencies
+        if: ${{ env.VERSION_INCREMENTED == 'true' }}
+        run: |
+          echo "Installing Python SDK dependencies..."
+          cd apps/python-sdk
+          pip install -r requirements.txt
+          pip install -e .
+
+      - name: Generate Python SDK examples
+        if: ${{ env.VERSION_INCREMENTED == 'true' }}
+        run: |
+          echo "Generating Python SDK examples..."
+          cd apps/python-sdk
+          python scripts/generate_examples.py
+        
+      - name: Commit and push generated examples and OpenAPI file
+        if: ${{ env.VERSION_INCREMENTED == 'true' }}
+        run: |
+          git config --local user.email "action@github.com"
+          git config --local user.name "GitHub Action"
+          
+          # Add generated examples
+          git add apps/python-sdk/examples/ || echo "No examples directory to add"
+          
+          # Add updated OpenAPI file with examples
+          git add apps/api/v1-openapi-with-examples.json || echo "No OpenAPI file to add"
+          
+          # Check if there are changes to commit
+          if git diff --staged --quiet; then
+            echo "No changes to commit"
+          else
+            echo "Committing generated files..."
+            git commit -m "Auto-generate Python SDK examples and update OpenAPI with examples [skip ci]"
+            
+            # Try to push with different tokens
+            if ! git push; then
+              echo "Push with default token failed, trying with GH_REPO_TOKEN..."
+              git remote set-url origin https://x-access-token:${{ secrets.GH_REPO_TOKEN }}@github.com/${{ github.repository }}.git
+              git push
+            fi
+          fi
 
       - name: Build the package
         if: ${{ env.VERSION_INCREMENTED == 'true' }}
@@ -44,4 +89,53 @@ jobs:
         run: |
           twine upload dist/*
         working-directory: ./apps/python-sdk
+
+      - name: Trigger documentation update in firecrawl-docs repo
+        if: ${{ env.VERSION_INCREMENTED == 'true' }}
+        run: |
+          echo "Triggering documentation update in firecrawl-docs repository..."
+          
+          # Prepare the payload
+          PAYLOAD='{"event_type":"python-sdk-updated","client_payload":{"repository":"${{ github.repository }}","ref":"${{ github.ref }}","sha":"${{ github.sha }}","version_incremented":true}}'
+          
+          # Try with GITHUB_TOKEN first
+          echo "Attempting to trigger with GITHUB_TOKEN..."
+          TRIGGER_RESULT=$(curl -s -w "%{http_code}" -X POST \
+            -H "Authorization: token ${{ github.token }}" \
+            -H "Accept: application/vnd.github.v3+json" \
+            -H "Content-Type: application/json" \
+            "https://api.github.com/repos/${{ env.DOCS_REPO }}/dispatches" \
+            -d "$PAYLOAD")
+          
+          HTTP_CODE="${TRIGGER_RESULT: -3}"
+          RESPONSE_BODY="${TRIGGER_RESULT%???}"
+          
+          echo "HTTP Code: $HTTP_CODE"
+          echo "Response: $RESPONSE_BODY"
+          
+          # Check if the request failed and try with GH_REPO_TOKEN if it did
+          if [[ "$HTTP_CODE" != "204" ]]; then
+            echo "GITHUB_TOKEN failed (HTTP $HTTP_CODE), trying with GH_REPO_TOKEN..."
+            
+            TRIGGER_RESULT=$(curl -s -w "%{http_code}" -X POST \
+              -H "Authorization: token ${{ secrets.GH_REPO_TOKEN }}" \
+              -H "Accept: application/vnd.github.v3+json" \
+              -H "Content-Type: application/json" \
+              "https://api.github.com/repos/${{ env.DOCS_REPO }}/dispatches" \
+              -d "$PAYLOAD")
+            
+            HTTP_CODE="${TRIGGER_RESULT: -3}"
+            RESPONSE_BODY="${TRIGGER_RESULT%???}"
+            
+            echo "HTTP Code with GH_REPO_TOKEN: $HTTP_CODE"
+            echo "Response: $RESPONSE_BODY"
+            
+            if [[ "$HTTP_CODE" != "204" ]]; then
+              echo "Failed to trigger documentation update. HTTP Code: $HTTP_CODE"
+              echo "Response: $RESPONSE_BODY"
+              exit 1
+            fi
+          fi
+          
+          echo "Documentation update trigger sent successfully (HTTP $HTTP_CODE)"
 
