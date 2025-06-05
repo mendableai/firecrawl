@@ -238,7 +238,6 @@ export async function queryIndexAtSplitLevel(url: string, limit: number): Promis
         i_url_hash: urlSplitsHash[level],
         i_newer_than: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
       })
-      .limit(1000)
       .range(iteration * 1000, (iteration + 1) * 1000)
 
     // If there's an error, return the links we have
