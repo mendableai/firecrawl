@@ -57,6 +57,7 @@ export async function logJob(job: FirecrawlJob, force: boolean = false, bypassLo
       crawler_options: job.crawlerOptions,
       page_options: job.scrapeOptions,
       origin: job.origin,
+      integration: job.integration ?? null,
       num_tokens: job.num_tokens,
       retry: !!job.retry,
       crawl_id: job.crawl_id,

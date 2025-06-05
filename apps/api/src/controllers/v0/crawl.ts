@@ -204,6 +204,7 @@ export async function crawlController(req: Request, res: Response) {
                 internalOptions,
                 team_id,
                 origin: req.body.origin ?? defaultOrigin,
+                integration: req.body.integration,
                 crawl_id: id,
                 sitemapped: true,
               },
@@ -245,6 +246,7 @@ export async function crawlController(req: Request, res: Response) {
           internalOptions,
           team_id,
           origin: req.body.origin ?? defaultOrigin,
+          integration: req.body.integration,
           crawl_id: id,
         },
         {

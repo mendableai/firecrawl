@@ -323,6 +323,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
         scrapeOptions: sc.scrapeOptions,
         crawlerOptions: sc.crawlerOptions,
         origin: job.data.origin,
+        integration: job.data.integration,
       }, false, job.data.internalOptions?.bypassBilling ?? false);
       logger.info("Logged crawl!");
 
@@ -373,6 +374,7 @@ async function finishCrawlIfNeeded(job: Job & { id: string }, sc: StoredCrawl) {
             (job.data.crawlerOptions === null ? "Batch Scrape" : "Unknown"),
           crawlerOptions: sc.crawlerOptions,
           origin: job.data.origin,
+          integration: job.data.integration,
         },
         true,
         job.data.internalOptions?.bypassBilling ?? false,
@@ -1456,6 +1458,7 @@ async function processJob(job: Job & { id: string }, token: string) {
           crawlerOptions: sc.crawlerOptions,
           scrapeOptions: job.data.scrapeOptions,
           origin: job.data.origin,
+          integration: job.data.integration,
           crawl_id: job.data.crawl_id,
           cost_tracking: costTracking,
           pdf_num_pages: doc.metadata.numPages,
@@ -1506,6 +1509,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         url: job.data.url,
         scrapeOptions: job.data.scrapeOptions,
         origin: job.data.origin,
+        integration: job.data.integration,
         num_tokens: 0, // TODO: fix
         cost_tracking: costTracking,
         pdf_num_pages: doc.metadata.numPages,
@@ -1606,6 +1610,7 @@ async function processJob(job: Job & { id: string }, token: string) {
         crawlerOptions: job.data.crawlerOptions,
         scrapeOptions: job.data.scrapeOptions,
         origin: job.data.origin,
+        integration: job.data.integration,
         crawl_id: job.data.crawl_id,
         cost_tracking: costTracking,
       },

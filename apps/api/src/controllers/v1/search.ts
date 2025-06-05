@@ -307,6 +307,7 @@ export async function searchController(
         url: req.body.query,
         scrapeOptions: req.body.scrapeOptions,
         origin: req.body.origin,
+        integration: req.body.integration,
         cost_tracking: costTracking,
       },
       false,

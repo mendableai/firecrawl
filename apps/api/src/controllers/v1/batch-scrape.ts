@@ -134,6 +134,7 @@ export async function batchScrapeController(
         crawlerOptions: null,
         scrapeOptions,
         origin: "api",
+        integration: req.body.integration,
         crawl_id: id,
         sitemapped: true,
         v1: true,
