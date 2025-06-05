@@ -87,12 +87,21 @@ export async function getJobFromGCS(jobId: string): Promise<Document[] | null> {
         const storage = new Storage({ credentials });
         const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
         const blob = bucket.file(`${jobId}.json`);
+        const time1 = Date.now();
         const [exists] = await blob.exists();
+        const time2 = Date.now();
         if (!exists) {
             return null;
         }
         const [content] = await blob.download();
+        const time3 = Date.now();
         const x = JSON.parse(content.toString());
+        logger.debug("getJobFromGCS time insights", {
+            existsTook: time2 - time1,
+            downloadTook: time3 - time2,
+            jobId,
+            scrapeId: jobId,
+        });
         return x;
     } catch (error) {
         logger.error(`Error getting job from GCS`, {

@@ -19,6 +19,7 @@ import { shouldSendConcurrencyLimitNotification } from './notification/notificat
 import { getACUC, getACUCTeam } from "../controllers/auth";
 import { getJobFromGCS } from "../lib/gcs-jobs";
 import { Document } from "../controllers/v1/types";
+import type { Logger } from "winston";
 
 /**
  * Checks if a job is a crawl or batch scrape based on its options
@@ -348,6 +349,7 @@ export async function addScrapeJobs(
 export function waitForJob(
   jobId: string,
   timeout: number,
+  logger?: Logger,
 ): Promise<Document> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
@@ -358,6 +360,7 @@ export function waitForJob(
       } else {
         const state = await getScrapeQueue().getJobState(jobId);
         if (state === "completed") {
+          logger?.info("Job completed, getting document");
           clearInterval(int);
           let doc: Document;
           doc = (await getScrapeQueue().getJob(jobId))!.returnvalue;
@@ -369,6 +372,8 @@ export function waitForJob(
             }
             doc = docs[0];
           }
+
+          logger?.info("Document retrieved");
 
           resolve(doc);
         } else if (state === "failed") {
