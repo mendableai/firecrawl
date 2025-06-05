@@ -10,6 +10,14 @@ export async function sendDocumentToIndex(meta: Meta, document: Document) {
         && meta.winnerEngine !== "cache"
         && meta.winnerEngine !== "index"
         && meta.winnerEngine !== "index;documents"
+        && (
+            meta.internalOptions.teamId === "sitemap"
+            || (
+                meta.winnerEngine !== "fire-engine;tlsclient"
+                && meta.winnerEngine !== "fire-engine;tlsclient;stealth"
+                && meta.winnerEngine !== "fetch"
+            )
+        )
         && !meta.featureFlags.has("actions")
         && (
             meta.options.headers === undefined
