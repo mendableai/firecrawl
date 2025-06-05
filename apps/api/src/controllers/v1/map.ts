@@ -302,7 +302,7 @@ export async function getMapResults({
     id,
     {
       originUrl: url,
-      visitedUrls: linksToReturn,
+      visitedUrls: linksToReturn.filter(link => link !== url),
     },
     {
       priority: 10,
