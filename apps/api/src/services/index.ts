@@ -225,17 +225,42 @@ export async function queryIndexAtSplitLevel(url: string, limit: number): Promis
 
   const urlSplitsHash = generateURLSplits(urlObj.href).map(x => hashURL(x));
 
-  const { data, error } = await index_supabase_service
-      .from("index")
-      .select("resolved_url")
-      .eq("url_split_" + (urlSplitsHash.length - 1) + "_hash", urlSplitsHash[urlSplitsHash.length - 1])
-      .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
-      .limit(limit)
+  const level = urlSplitsHash.length - 1;
 
-  if (error) {
-    logger.warn("Error querying index", { error, url, limit });
-    return [];
+  let links: Set<string> = new Set();
+  let iteration = 0;
+
+  while (true) {
+    // Query the index for the next set of links
+    const { data: _data, error } = await index_supabase_service
+      .rpc("query_index_at_split_level", {
+        i_level: level,
+        i_url_hash: urlSplitsHash[level],
+        i_newer_than: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
+      })
+      .limit(1000)
+      .range(iteration * 1000, (iteration + 1) * 1000)
+
+    // If there's an error, return the links we have
+    if (error) {
+      logger.warn("Error querying index", { error, url, limit });
+      return [...links].slice(0, limit);
+    }
+
+    // Add the links to the set
+    const data = _data ?? [];
+    data.forEach((x) => links.add(x.resolved_url));
+
+    // If we have enough links, return them
+    if (links.size >= limit) {
+      return [...links].slice(0, limit);
+    }
+
+    // If we get less than 1000 links from the query, we're done
+    if (data.length < 1000) {
+      return [...links].slice(0, limit);
+    }
+
+    iteration++;
   }
-
-  return [...new Set((data ?? []).map((x) => x.resolved_url))];
 }

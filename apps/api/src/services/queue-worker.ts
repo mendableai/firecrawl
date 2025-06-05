@@ -930,12 +930,12 @@ async function kickoffGetIndexLinks(sc: StoredCrawl, crawler: WebCrawler, url: s
 
   const index = await queryIndexAtSplitLevel(
     sc.crawlerOptions.allowBackwardCrawling ? generateURLSplits(trimmedURL.href)[0] : trimmedURL.href,
-    sc.crawlerOptions.limit ?? 100,
+    sc.crawlerOptions.limit ?? 10000,
   );
 
   const validIndexLinks = crawler.filterLinks(
     index.filter(x => crawler.filterURL(x, trimmedURL.href) !== null),
-    sc.crawlerOptions.limit ?? 100,
+    sc.crawlerOptions.limit ?? 10000,
     sc.crawlerOptions.maxDepth ?? 10,
     false,
   );
