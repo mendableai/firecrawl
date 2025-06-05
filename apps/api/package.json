@@ -69,7 +69,6 @@
     "@google-cloud/storage": "^7.16.0",
     "@nangohq/node": "^0.40.8",
     "@openrouter/ai-sdk-provider": "^0.4.5",
-    "@pinecone-database/pinecone": "^4.0.0",
     "@sentry/cli": "^2.33.1",
     "@sentry/node": "^8.26.0",
     "@sentry/profiling-node": "^8.26.0",

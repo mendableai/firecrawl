@@ -97,6 +97,7 @@ async function addScrapeJobRaw(
   options: any,
   jobId: string,
   jobPriority: number,
+  directToBullMQ: boolean = false,
 ) {
   const hasCrawlDelay = webScraperOptions.crawl_id && webScraperOptions.crawlerOptions?.delay;
 
@@ -127,7 +128,7 @@ async function addScrapeJobRaw(
 
   const concurrencyQueueJobs = await getConcurrencyQueueJobsCount(webScraperOptions.team_id);
 
-  if (concurrencyLimited) {
+  if (concurrencyLimited && !directToBullMQ) {
     // Detect if they hit their concurrent limit
     // If above by 2x, send them an email
     // No need to 2x as if there are more than the max concurrency in the concurrency queue, it is already 2x
@@ -161,6 +162,7 @@ export async function addScrapeJob(
   options: any = {},
   jobId: string = uuidv4(),
   jobPriority: number = 10,
+  directToBullMQ: boolean = false,
 ) {
   if (Sentry.isInitialized()) {
     const size = JSON.stringify(webScraperOptions).length;
@@ -187,11 +189,12 @@ export async function addScrapeJob(
           options,
           jobId,
           jobPriority,
+          directToBullMQ,
         );
       },
     );
   } else {
-    await addScrapeJobRaw(webScraperOptions, options, jobId, jobPriority);
+    await addScrapeJobRaw(webScraperOptions, options, jobId, jobPriority, directToBullMQ);
   }
 }
 

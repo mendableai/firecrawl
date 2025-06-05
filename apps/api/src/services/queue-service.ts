@@ -66,10 +66,10 @@ export function getIndexQueue() {
       connection: redisConnection,
       defaultJobOptions: {
         removeOnComplete: {
-          age: 90000, // 25 hours
+          age: 3600, // 1 hour
         },
         removeOnFail: {
-          age: 90000, // 25 hours
+          age: 3600, // 1 hour
         },
       },
     });
@@ -120,10 +120,10 @@ export function getBillingQueue() {
       connection: redisConnection,
       defaultJobOptions: {
         removeOnComplete: {
-          age: 90000, // 25 hours
+          age: 3600, // 1 hour
         },
         removeOnFail: {
-          age: 90000, // 25 hours
+          age: 3600, // 1 hour
         },
       },
     });
@@ -131,7 +131,3 @@ export function getBillingQueue() {
   }
   return billingQueue;
 }
-
-// === REMOVED IN FAVOR OF POLLING -- NOT RELIABLE
-// import { QueueEvents } from 'bullmq';
-// export const scrapeQueueEvents = new QueueEvents(scrapeQueueName, { connection: redisConnection.duplicate() });

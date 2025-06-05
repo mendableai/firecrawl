@@ -124,7 +124,7 @@ pub unsafe extern "C" fn extract_metadata(html: *const libc::c_char) -> *mut lib
         let meta = meta.as_node().as_element().unwrap();
         let attrs = meta.attributes.borrow();
 
-        if let Some(name) = attrs.get("name").or_else(|| attrs.get("property")) {
+        if let Some(name) = attrs.get("name").or_else(|| attrs.get("property")).or_else(|| attrs.get("itemprop")) {
             if let Some(content) = attrs.get("content") {
                 if let Some(v) = out.get(name) {
                     match v {

@@ -155,7 +155,7 @@ class ScrapeOptions(pydantic.BaseModel):
     skipTlsVerification: Optional[bool] = None
     removeBase64Images: Optional[bool] = None
     blockAds: Optional[bool] = None
-    proxy: Optional[Literal["basic", "stealth"]] = None
+    proxy: Optional[Literal["basic", "stealth", "auto"]] = None
     changeTrackingOptions: Optional[ChangeTrackingOptions] = None
 
 class WaitAction(pydantic.BaseModel):
@@ -459,7 +459,7 @@ class FirecrawlApp:
             skip_tls_verification: Optional[bool] = None,
             remove_base64_images: Optional[bool] = None,
             block_ads: Optional[bool] = None,
-            proxy: Optional[Literal["basic", "stealth"]] = None,
+            proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
             extract: Optional[JsonConfig] = None,
             json_options: Optional[JsonConfig] = None,
             actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
@@ -481,7 +481,7 @@ class FirecrawlApp:
           skip_tls_verification (Optional[bool]): Skip TLS verification
           remove_base64_images (Optional[bool]): Remove base64 images
           block_ads (Optional[bool]): Block ads
-          proxy (Optional[Literal["basic", "stealth"]]): Proxy type (basic/stealth)
+          proxy (Optional[Literal["basic", "stealth", "auto"]]): Proxy type (basic/stealth)
           extract (Optional[JsonConfig]): Content extraction settings
           json_options (Optional[JsonConfig]): JSON extraction settings
           actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]]): Actions to perform
@@ -1191,7 +1191,7 @@ class FirecrawlApp:
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
-        proxy: Optional[Literal["basic", "stealth"]] = None,
+        proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
@@ -1325,7 +1325,7 @@ class FirecrawlApp:
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
-        proxy: Optional[Literal["basic", "stealth"]] = None,
+        proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
@@ -1457,7 +1457,7 @@ class FirecrawlApp:
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
-        proxy: Optional[Literal["basic", "stealth"]] = None,
+        proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
@@ -2852,7 +2852,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
             skip_tls_verification: Optional[bool] = None,
             remove_base64_images: Optional[bool] = None,
             block_ads: Optional[bool] = None,
-            proxy: Optional[Literal["basic", "stealth"]] = None,
+            proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
             extract: Optional[JsonConfig] = None,
             json_options: Optional[JsonConfig] = None,
             actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
@@ -2873,7 +2873,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
           skip_tls_verification (Optional[bool]): Skip TLS verification
           remove_base64_images (Optional[bool]): Remove base64 images
           block_ads (Optional[bool]): Block ads
-          proxy (Optional[Literal["basic", "stealth"]]): Proxy type (basic/stealth)
+          proxy (Optional[Literal["basic", "stealth", "auto"]]): Proxy type (basic/stealth)
           extract (Optional[JsonConfig]): Content extraction settings
           json_options (Optional[JsonConfig]): JSON extraction settings
           actions (Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]]): Actions to perform
@@ -2981,7 +2981,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
-        proxy: Optional[Literal["basic", "stealth"]] = None,
+        proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
@@ -3120,7 +3120,7 @@ class AsyncFirecrawlApp(FirecrawlApp):
         skip_tls_verification: Optional[bool] = None,
         remove_base64_images: Optional[bool] = None,
         block_ads: Optional[bool] = None,
-        proxy: Optional[Literal["basic", "stealth"]] = None,
+        proxy: Optional[Literal["basic", "stealth", "auto"]] = None,
         extract: Optional[JsonConfig] = None,
         json_options: Optional[JsonConfig] = None,
         actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,

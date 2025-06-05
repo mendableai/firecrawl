@@ -10,6 +10,7 @@ import { wrap } from "./v1";
 import { acucCacheClearController } from "../controllers/v0/admin/acuc-cache-clear";
 import { checkFireEngine } from "../controllers/v0/admin/check-fire-engine";
 import { cclogController } from "../controllers/v0/admin/cclog";
+import { indexQueuePrometheus } from "../controllers/v0/admin/index-queue-prometheus";
 
 export const adminRouter = express.Router();
 
@@ -48,4 +49,9 @@ adminRouter.get(
 adminRouter.get(
   `/admin/${process.env.BULL_AUTH_KEY}/cclog`,
   wrap(cclogController),
+);
+
+adminRouter.get(
+  `/admin/${process.env.BULL_AUTH_KEY}/index-queue-prometheus`,
+  wrap(indexQueuePrometheus),
 );

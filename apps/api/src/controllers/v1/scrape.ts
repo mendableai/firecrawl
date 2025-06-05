@@ -13,6 +13,7 @@ import { addScrapeJob, waitForJob } from "../../services/queue-jobs";
 import { getJobPriority } from "../../lib/job-priority";
 import { getScrapeQueue } from "../../services/queue-service";
 import { supabaseGetJobById } from "../../lib/supabase-jobs";
+import { calculateCreditsToBeBilled } from "../../lib/scrape-billing";
 
 export async function scrapeController(
   req: RequestWithAuth<{}, ScrapeResponse, ScrapeRequest>,
@@ -30,7 +31,6 @@ export async function scrapeController(
   });
 
   req.body = scrapeRequestSchema.parse(req.body);
-  let earlyReturn = false;
 
   const origin = req.body.origin;
   const timeout = req.body.timeout;
@@ -42,6 +42,8 @@ export async function scrapeController(
   });
   // 
 
+  const isDirectToBullMQ = process.env.SEARCH_PREVIEW_TOKEN !== undefined && process.env.SEARCH_PREVIEW_TOKEN === req.body.__searchPreviewToken;
+  
   await addScrapeJob(
     {
       url: req.body.url,
@@ -51,13 +53,17 @@ export async function scrapeController(
       internalOptions: {
         teamId: req.auth.team_id,
         saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+        unnormalizedSourceURL: preNormalizedBody.url,
+        useCache: req.body.__experimental_cache ? true : false,
+        bypassBilling: isDirectToBullMQ,
       },
       origin: req.body.origin,
-      is_scrape: true,
+      startTime,
     },
     {},
     jobId,
     jobPriority,
+    isDirectToBullMQ,
   );
 
   const totalWait =
@@ -123,56 +129,12 @@ export async function scrapeController(
 
   await getScrapeQueue().remove(jobId);
 
-  const endTime = new Date().getTime();
-  const timeTakenInSeconds = (endTime - startTime) / 1000;
-  const numTokens =
-    doc && doc.extract
-      ? // ? numTokensFromString(doc.markdown, "gpt-3.5-turbo")
-        0 // TODO: fix
-      : 0;
-
-  let creditsToBeBilled = 1; // Assuming 1 credit per document
-  if (earlyReturn) {
-    // Don't bill if we're early returning
-    return;
-  }
-  if ((req.body.extract && req.body.formats?.includes("extract")) || (req.body.formats?.includes("changeTracking") && req.body.changeTrackingOptions?.modes?.includes("json"))) {
-    creditsToBeBilled = 5;
-  }
-
-  if (req.body.agent?.model?.toLowerCase() === "fire-1" || req.body.extract?.agent?.model?.toLowerCase() === "fire-1" || req.body.jsonOptions?.agent?.model?.toLowerCase() === "fire-1") {
-    if (process.env.USE_DB_AUTHENTICATION === "true") {
-      // @Nick this is a hack pushed at 2AM pls help - mogery
-      const job = await supabaseGetJobById(jobId);
-      if (!job?.cost_tracking) {
-        logger.warn("No cost tracking found for job", {
-          jobId,
-        });
-      }
-      creditsToBeBilled = Math.ceil((job?.cost_tracking?.totalCost ?? 1) * 1800);
-    } else {
-      creditsToBeBilled = 150;
-    }
-  }
-
-  if (doc?.metadata?.proxyUsed === "stealth") {
-    creditsToBeBilled += 4;
-  }
-
-  billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch(
-    (error) => {
-      logger.error(
-        `Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`,
-      );
-      // Optionally, you could notify an admin or add to a retry queue here
-    },
-  );
-
   if (!req.body.formats.includes("rawHtml")) {
     if (doc && doc.rawHtml) {
       delete doc.rawHtml;
     }
   }
+
 
   return res.status(200).json({
     success: true,

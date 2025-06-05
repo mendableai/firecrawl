@@ -9,7 +9,7 @@ import { getACUC, setCachedACUC, setCachedACUCTeam } from "../../controllers/aut
 // Configuration constants
 const BATCH_KEY = "billing_batch";
 const BATCH_LOCK_KEY = "billing_batch_lock";
-const BATCH_SIZE = 50; // Batch size for processing
+const BATCH_SIZE = 100; // Batch size for processing
 const BATCH_TIMEOUT = 15000; // 15 seconds processing interval
 const LOCK_TIMEOUT = 30000; // 30 seconds lock timeout
 

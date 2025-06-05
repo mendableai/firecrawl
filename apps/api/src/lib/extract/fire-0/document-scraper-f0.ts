@@ -47,6 +47,7 @@ export async function scrapeDocument_F0(
         origin: options.origin,
         is_scrape: true,
         from_extract: true,
+        startTime: Date.now(),
       },
       {},
       jobId,

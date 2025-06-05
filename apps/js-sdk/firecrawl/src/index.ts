@@ -119,7 +119,8 @@ export interface CrawlScrapeOptions {
   skipTlsVerification?: boolean;
   removeBase64Images?: boolean;
   blockAds?: boolean;
-  proxy?: "basic" | "stealth";
+  proxy?: "basic" | "stealth" | "auto";
+  storeInCache?: boolean;
 }
 
 export type Action = {
@@ -165,6 +166,7 @@ export interface ScrapeParams<LLMSchema extends zt.ZodSchema = any, ActionsSchem
     prompt?: string;
     schema?: any;
     modes?: ("json" | "git-diff")[];
+    tag?: string | null;
   }
   actions?: ActionsSchema;
   agent?: AgentOptions;

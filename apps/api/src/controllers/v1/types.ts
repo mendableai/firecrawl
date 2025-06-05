@@ -260,6 +260,7 @@ const baseScrapeOptions = z
         prompt: z.string().optional(),
         schema: z.any().optional(),
         modes: z.enum(["json", "git-diff"]).array().optional().default([]),
+        tag: z.string().or(z.null()).default(null),
       })
       .optional(),
     mobile: z.boolean().default(false),
@@ -309,6 +310,10 @@ const baseScrapeOptions = z
     useMock: z.string().optional(),
     blockAds: z.boolean().default(true),
     proxy: z.enum(["basic", "stealth", "auto"]).optional(),
+    maxAge: z.number().int().gte(0).safe().default(0),
+    storeInCache: z.boolean().default(true),
+    __experimental_cache: z.boolean().default(false).optional(),
+    __searchPreviewToken: z.string().optional(),
   })
   .strict(strictMessage);
 
@@ -656,6 +661,7 @@ export const mapRequestSchema = crawlerOptions
     timeout: z.number().positive().finite().optional(),
     useMock: z.string().optional(),
     filterByPath: z.boolean().default(true),
+    useIndex: z.boolean().default(true),
   })
   .strict(strictMessage);
 
@@ -750,7 +756,10 @@ export type Document = {
     scrapeId?: string;
     error?: string;
     numPages?: number;
+    contentType?: string;
     proxyUsed: "basic" | "stealth";
+    cacheState?: "hit" | "miss";
+    cachedAt?: string;
     // [key: string]: string | string[] | number | { smartScrape: number; other: number; total: number } | undefined;
   };
   serpResults?: {
@@ -874,6 +883,18 @@ export type CrawlStatusResponse =
       data: Document[];
     };
 
+export type OngoingCrawlsResponse =
+  | ErrorResponse
+  | {
+      success: true;
+      crawls: {
+        id: string;
+        teamId: string;
+        url: string;
+        options: CrawlerOptions;
+      }[];
+  };
+      
 export type CrawlErrorsResponse =
   | ErrorResponse
   | {
@@ -1006,6 +1027,25 @@ export function toLegacyCrawlerOptions(x: CrawlerOptions) {
     currentDiscoveryDepth: 0,
     delay: x.delay,
   };
+}
+
+export function toNewCrawlerOptions(x: any): CrawlerOptions {
+  return {
+    includePaths: x.includes,
+    excludePaths: x.excludes,
+    limit: x.limit,
+    maxDepth: x.maxDepth,
+    allowBackwardLinks: x.allowBackwardCrawling,
+    allowExternalLinks: x.allowExternalContentLinks,
+    allowSubdomains: x.allowSubdomains,
+    ignoreRobotsTxt: x.ignoreRobotsTxt,
+    ignoreSitemap: x.ignoreSitemap,
+    deduplicateSimilarURLs: x.deduplicateSimilarURLs,
+    ignoreQueryParameters: x.ignoreQueryParameters,
+    regexOnFullURL: x.regexOnFullURL,
+    maxDiscoveryDepth: x.maxDiscoveryDepth,
+    delay: x.delay,
+  }
 }
 
 export function fromLegacyCrawlerOptions(x: any, teamId: string): {
@@ -1166,6 +1206,7 @@ export const searchRequestSchema = z
     origin: z.string().optional().default("api"),
     timeout: z.number().int().positive().finite().safe().default(60000),
     ignoreInvalidURLs: z.boolean().optional().default(false),
+    __searchPreviewToken: z.string().optional(),
     scrapeOptions: baseScrapeOptions
       .extend({
         formats: z

@@ -4,6 +4,7 @@ import { googleSearch } from "./googlesearch";
 import { searchapi_search } from "./searchapi";
 import { serper_search } from "./serper";
 import { searxng_search } from "./searxng";
+import { fire_engine_search } from "./fireEngine";
 
 export async function search({
   query,
@@ -31,8 +32,19 @@ export async function search({
   timeout?: number;
 }): Promise<SearchResult[]> {
   try {
+    if (process.env.FIRE_ENGINE_BETA_URL) {
+      const results = await fire_engine_search(query, {
+        numResults: num_results,
+        tbs,
+        filter,
+        lang,
+        country,
+        location,
+      });
+      if (results.length > 0) return results;
+    }
     if (process.env.SERPER_API_KEY) {
-      return await serper_search(query, {
+      const results = await serper_search(query, {
         num_results,
         tbs,
         filter,
@@ -40,9 +52,10 @@ export async function search({
         country,
         location,
       });
+      if (results.length > 0) return results;
     }
     if (process.env.SEARCHAPI_API_KEY) {
-      return await searchapi_search(query, {
+      const results = await searchapi_search(query, {
         num_results,
         tbs,
         filter,
@@ -50,9 +63,10 @@ export async function search({
         country,
         location,
       });
+      if (results.length > 0) return results;
     }
     if (process.env.SEARXNG_ENDPOINT) {
-      return await searxng_search(query, {
+      const results = await searxng_search(query, {
         num_results,
         tbs,
         filter,
@@ -60,6 +74,7 @@ export async function search({
         country,
         location,
       });
+      if (results.length > 0) return results;
     }
     return await googleSearch(
       query,
