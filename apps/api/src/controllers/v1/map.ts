@@ -25,7 +25,11 @@ import { logger } from "../../lib/logger";
 import Redis from "ioredis";
 import { querySitemapIndex } from "../../scraper/WebScraper/sitemap-index";
 import { getIndexQueue } from "../../services/queue-service";
+<<<<<<< HEAD
 import { queryIndexAtSplitLevel } from "../../services/index";
+=======
+import { generateURLSplits, hashURL, index_supabase_service, normalizeURLForIndex, useIndex } from "../../services/index";
+>>>>>>> parent of da9a9b0d (cleanup)
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -67,7 +71,7 @@ export async function getMapResults({
   mock,
   filterByPath = true,
   flags,
-  useIndex = true,
+  ignoreIndex = false,
 }: {
   url: string;
   search?: string;
@@ -83,7 +87,7 @@ export async function getMapResults({
   mock?: string;
   filterByPath?: boolean;
   flags: TeamFlags;
-  useIndex?: boolean;
+  ignoreIndex?: boolean;
 }): Promise<MapResult> {
   const id = uuidv4();
   let links: string[] = [url];
@@ -178,7 +182,18 @@ export async function getMapResults({
     // Parallelize sitemap index query with search results
     const [sitemapIndexResult, indexResults, ...searchResults] = await Promise.all([
       querySitemapIndex(url, abort),
+<<<<<<< HEAD
       queryIndex(url, limit, useIndex),
+=======
+      useIndex && !ignoreIndex && process.env.FIRECRAWL_INDEX_WRITE_ONLY !== "true" ? (
+        index_supabase_service
+          .from("index")
+          .select("resolved_url")
+          .eq("url_split_" + (urlSplitsHash.length - 1) + "_hash", urlSplitsHash[urlSplitsHash.length - 1])
+          .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
+          .limit(limit)
+      ) : Promise.resolve({ data: [], error: null }),
+>>>>>>> parent of da9a9b0d (cleanup)
       ...(cachedResult ? [] : pagePromises),
     ]);
 
@@ -349,7 +364,7 @@ export async function mapController(
         mock: req.body.useMock,
         filterByPath: req.body.filterByPath !== false,
         flags: req.acuc?.flags ?? null,
-        useIndex: req.body.useIndex,
+        ignoreIndex: req.body.ignoreIndex,
       }),
       ...(req.body.timeout !== undefined ? [
         new Promise((resolve, reject) => setTimeout(() => {

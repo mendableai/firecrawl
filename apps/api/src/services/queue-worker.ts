@@ -86,9 +86,14 @@ import { robustFetch } from "../scraper/scrapeURL/lib/fetch";
 import { RateLimiterMode } from "../types";
 import { calculateCreditsToBeBilled } from "../lib/scrape-billing";
 import { redisEvictConnection } from "./redis";
+<<<<<<< HEAD
 import { generateURLSplits, queryIndexAtSplitLevel } from "./index";
 import { WebCrawler } from "../scraper/WebScraper/crawler";
 import type { Logger } from "winston";
+=======
+import { generateURLSplits, hashURL, index_supabase_service, useIndex } from "./index";
+import { val } from "node_modules/cheerio/lib/api/attributes";
+>>>>>>> parent of da9a9b0d (cleanup)
 
 configDotenv();
 
@@ -915,6 +920,7 @@ const workerFun = async (
   }
 };
 
+<<<<<<< HEAD
 async function kickoffGetIndexLinks(sc: StoredCrawl, crawler: WebCrawler, url: string) {
   if (sc.crawlerOptions.ignoreSitemap) {
     return [];
@@ -938,6 +944,8 @@ async function kickoffGetIndexLinks(sc: StoredCrawl, crawler: WebCrawler, url: s
   return validIndexLinks;
 }
 
+=======
+>>>>>>> parent of da9a9b0d (cleanup)
 async function processKickoffJob(job: Job & { id: string }, token: string) {
   const logger = _logger.child({
     module: "queue-worker",
@@ -1055,11 +1063,37 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
       });
     }
 
-    const indexLinks = await kickoffGetIndexLinks(sc, crawler, job.data.url);
+    const trimmedURL = new URL(job.data.url);
+    trimmedURL.search = "";
 
-    if (indexLinks.length > 0) {
-      logger.debug("Using index links of length " + indexLinks.length, {
-        indexLinksLength: indexLinks.length,
+    const urlSplits = generateURLSplits(trimmedURL.href).map(x => hashURL(x));
+
+      const index = (sc.crawlerOptions.ignoreSitemap || process.env.FIRECRAWL_INDEX_WRITE_ONLY === "true" || !useIndex)
+      ? []
+      : sc.crawlerOptions.allowBackwardCrawling
+        ? (await index_supabase_service
+          .from("index")
+          .select("resolved_url")
+          .eq("url_split_0_hash", urlSplits[0])
+          .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
+          .limit(sc.crawlerOptions.limit ?? 100)).data ?? []
+        : (await index_supabase_service
+          .from("index")
+          .select("resolved_url")
+          .eq("url_split_" + (urlSplits.length - 1) + "_hash", urlSplits[urlSplits.length - 1])
+          .gte("created_at", new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString())
+          .limit(sc.crawlerOptions.limit ?? 100)).data ?? [];
+    
+    const validIndexLinks = crawler.filterLinks(
+      [...new Set(index.map(x => x.resolved_url))].filter(x => crawler.filterURL(x, trimmedURL.href) !== null),
+      sc.crawlerOptions.limit ?? 100,
+      sc.crawlerOptions.maxDepth ?? 10,
+      false,
+    );
+
+    if (validIndexLinks.length > 0) {
+      logger.debug("Using index links of length " + validIndexLinks.length, {
+        indexLinksLength: validIndexLinks.length,
       });
 
       let jobPriority = await getJobPriority({
@@ -1068,7 +1102,7 @@ async function processKickoffJob(job: Job & { id: string }, token: string) {
       });
       logger.debug("Using job priority " + jobPriority, { jobPriority });
 
-      const jobs = indexLinks.map((url) => {
+      const jobs = validIndexLinks.map((url) => {
         const uuid = uuidv4();
         return {
           name: uuid,

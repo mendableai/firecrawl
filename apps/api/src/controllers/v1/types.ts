@@ -310,9 +310,13 @@ const baseScrapeOptions = z
     blockAds: z.boolean().default(true),
     proxy: z.enum(["basic", "stealth", "auto"]).optional(),
     maxAge: z.number().int().gte(0).safe().default(0),
+<<<<<<< HEAD
     storeInCache: z.boolean().default(true),
     __experimental_cache: z.boolean().default(false).optional(),
     __searchPreviewToken: z.string().optional(),
+=======
+    dontStoreInCache: z.boolean().default(false),
+>>>>>>> parent of da9a9b0d (cleanup)
   })
   .strict(strictMessage);
 
@@ -660,7 +664,7 @@ export const mapRequestSchema = crawlerOptions
     timeout: z.number().positive().finite().optional(),
     useMock: z.string().optional(),
     filterByPath: z.boolean().default(true),
-    useIndex: z.boolean().default(true),
+    ignoreIndex: z.boolean().default(false),
   })
   .strict(strictMessage);
 

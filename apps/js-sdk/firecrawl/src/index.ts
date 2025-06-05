@@ -120,7 +120,7 @@ export interface CrawlScrapeOptions {
   removeBase64Images?: boolean;
   blockAds?: boolean;
   proxy?: "basic" | "stealth" | "auto";
-  storeInCache?: boolean;
+  dontStoreInCache?: boolean;
 }
 
 export type Action = {
