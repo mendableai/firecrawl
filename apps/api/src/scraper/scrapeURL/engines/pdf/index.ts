@@ -41,7 +41,6 @@ async function scrapePDFWithRunPodMU(
 
   try {
     const cachedResult = await getPdfResultFromCache(base64Content);
-
     if (cachedResult) {
       meta.logger.info("Using cached RunPod MU result for PDF", {
         tempFilePath,
