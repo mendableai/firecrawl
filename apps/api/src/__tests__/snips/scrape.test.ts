@@ -191,7 +191,8 @@ describe("Scrape tests", () => {
           maxAge: 180000,
         });
 
-        expect(response3.screenshot).not.toBeDefined();
+        expect(response3.screenshot).not.toBe(response1.screenshot);
+        expect(response3.metadata.cacheState).toBe("miss");
       }, 207000);
 
       it.concurrent("respects screenshot@fullPage", async () => {
@@ -199,7 +200,7 @@ describe("Scrape tests", () => {
         const url = "https://firecrawl.dev/?testId=" + id;
 
         const response1 = await scrape({
-          url: "https://firecrawl.dev/",
+          url,
           formats: ["screenshot@fullPage"],
           timeout: 60000,
         });
@@ -224,7 +225,8 @@ describe("Scrape tests", () => {
           maxAge: 180000,
         });
 
-        expect(response3.screenshot).not.toBeDefined();
+        expect(response3.screenshot).not.toBe(response1.screenshot);
+        expect(response3.metadata.cacheState).toBe("miss");
       }, 207000);
 
       it.concurrent("respects changeTracking", async () => {
