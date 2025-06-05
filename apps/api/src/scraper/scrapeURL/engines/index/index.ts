@@ -121,14 +121,10 @@ export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult
         selector = selector.is("location_languages", null);
     }
 
-    const time1 = Date.now();
-
     const { data, error } = await selector
         .order("created_at", { ascending: false })
         .limit(5);
 
-    const time2 = Date.now();
-    
     if (error) {
         throw new EngineError("Failed to retrieve URL from DB index", {
             cause: error,
@@ -162,13 +158,6 @@ export async function scrapeURLWithIndex(meta: Meta): Promise<EngineScrapeResult
         throw new EngineError("Document not found in GCS");
     }
     
-    const time3 = Date.now();
-
-    meta.logger.debug("scrapeURLWithIndex time insights", {
-        dbTook: time2 - time1,
-        downloadTook: time3 - time2,
-    });
-
     return {
         url: doc.url,
         html: doc.html,

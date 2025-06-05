@@ -349,7 +349,6 @@ export async function addScrapeJobs(
 export function waitForJob(
   jobId: string,
   timeout: number,
-  logger?: Logger,
 ): Promise<Document> {
   return new Promise((resolve, reject) => {
     const start = Date.now();
@@ -360,7 +359,6 @@ export function waitForJob(
       } else {
         const state = await getScrapeQueue().getJobState(jobId);
         if (state === "completed") {
-          logger?.info("Job completed, getting document");
           clearInterval(int);
           let doc: Document;
           doc = (await getScrapeQueue().getJob(jobId))!.returnvalue;
@@ -373,11 +371,8 @@ export function waitForJob(
             doc = docs[0];
           }
 
-          logger?.info("Document retrieved");
-
           resolve(doc);
         } else if (state === "failed") {
-          // console.log("failed", (await getScrapeQueue().getJob(jobId)).failedReason);
           const job = await getScrapeQueue().getJob(jobId);
           if (job && job.failedReason !== "Concurrency limit hit") {
             clearInterval(int);

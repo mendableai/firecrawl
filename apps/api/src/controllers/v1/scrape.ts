@@ -81,9 +81,9 @@ export async function scrapeController(
 
   let doc: Document;
   try {
-    doc = await waitForJob(jobId, timeout + totalWait, logger.child({ module: "queue-jobs", method: "waitForJob" }));
+    doc = await waitForJob(jobId, timeout + totalWait);
   } catch (e) {
-    logger.error(`Error in scrapeController: ${e}`, {
+    logger.error(`Error in scrapeController`, {
       startTime,
     });
     
@@ -129,12 +129,8 @@ export async function scrapeController(
     }
   }
 
-  logger.info("Scrape completed");
-
   await getScrapeQueue().remove(jobId);
   
-  logger.info("Job removed from queue");
-
   if (!req.body.formats.includes("rawHtml")) {
     if (doc && doc.rawHtml) {
       delete doc.rawHtml;

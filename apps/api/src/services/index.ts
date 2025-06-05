@@ -71,13 +71,8 @@ export async function getIndexFromGCS(url: string, logger?: Logger): Promise<any
         const storage = new Storage({ credentials });
         const bucket = storage.bucket(process.env.GCS_INDEX_BUCKET_NAME);
         const blob = bucket.file(`${url}`);
-        const time1 = Date.now();
         const [blobContent] = await blob.download();
-        const time2 = Date.now();
         const parsed = JSON.parse(blobContent.toString());
-        logger?.debug("getIndexFromGCS time insights", {
-          downloadTook: time2 - time1,
-        });
         return parsed;
     } catch (error) {
         if (error instanceof ApiError && error.code === 404 && error.message.includes("No such object:")) {

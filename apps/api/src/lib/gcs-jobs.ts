@@ -87,15 +87,8 @@ export async function getJobFromGCS(jobId: string): Promise<Document[] | null> {
         const storage = new Storage({ credentials });
         const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
         const blob = bucket.file(`${jobId}.json`);
-        const time1 = Date.now();
         const [content] = await blob.download();
-        const time2 = Date.now();
         const x = JSON.parse(content.toString());
-        logger.debug("getJobFromGCS time insights", {
-            downloadTook: time2 - time1,
-            jobId,
-            scrapeId: jobId,
-        });
         return x;
     } catch (error) {
         if (error instanceof ApiError && error.code === 404 && error.message.includes("No such object:")) {
