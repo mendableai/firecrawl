@@ -41,7 +41,6 @@ async function scrapePDFWithRunPodMU(
 
   try {
     const cachedResult = await getPdfResultFromCache(base64Content);
-
     if (cachedResult) {
       meta.logger.info("Using cached RunPod MU result for PDF", {
         tempFilePath,
@@ -65,38 +64,6 @@ async function scrapePDFWithRunPodMU(
   const abort = timeout ? AbortSignal.timeout(timeout) : undefined;
 
   const podStart = await robustFetch({
-    url:
-      "https://api.runpod.ai/v2/" + process.env.RUNPOD_MU_POD_ID + "/runsync",
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${process.env.RUNPOD_MU_API_KEY}`,
-    },
-    body: {
-      input: {
-        file_content: base64Content,
-        filename: path.basename(tempFilePath) + ".pdf",
-        timeout,
-        created_at: Date.now(),
-      },
-    },
-    logger: meta.logger.child({
-      method: "scrapePDFWithRunPodMU/runsync/robustFetch",
-    }),
-    schema: z.object({
-      id: z.string(),
-      status: z.string(),
-      output: z
-        .object({
-          markdown: z.string(),
-        })
-        .optional(),
-    }),
-    mock: meta.mock,
-    abort,
-  });
-
-  //this is just so we can test in parallel and compare results
-  robustFetch({
     url:
       "https://api.runpod.ai/v2/" + process.env.RUNPOD_MUV2_POD_ID + "/runsync",
     method: "POST",
@@ -125,11 +92,6 @@ async function scrapePDFWithRunPodMU(
     }),
     mock: meta.mock,
     abort,
-  }).catch(error => {
-    meta.logger.warn("Error scraping PDF with RunPod MU V2", {
-      error,
-      tempFilePath,
-    });
   });
 
   let status: string = podStart.status;
