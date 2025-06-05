@@ -140,6 +140,7 @@ class ChangeTrackingOptions(pydantic.BaseModel):
     modes: Optional[List[Literal["git-diff", "json"]]] = None
     schema: Optional[Any] = None
     prompt: Optional[str] = None
+    tag: Optional[str] = None
 
 class ScrapeOptions(pydantic.BaseModel):
     """Parameters for scraping operations."""
@@ -157,6 +158,8 @@ class ScrapeOptions(pydantic.BaseModel):
     blockAds: Optional[bool] = None
     proxy: Optional[Literal["basic", "stealth", "auto"]] = None
     changeTrackingOptions: Optional[ChangeTrackingOptions] = None
+    maxAge: Optional[int] = None
+    storeInCache: Optional[bool] = None
 
 class WaitAction(pydantic.BaseModel):
     """Wait action to perform during scraping."""
@@ -292,6 +295,7 @@ class MapParams(pydantic.BaseModel):
     sitemapOnly: Optional[bool] = None
     limit: Optional[int] = None
     timeout: Optional[int] = None
+    useIndex: Optional[bool] = None
 
 class MapResponse(pydantic.BaseModel):
     """Response from mapping operations."""
@@ -464,6 +468,8 @@ class FirecrawlApp:
             json_options: Optional[JsonConfig] = None,
             actions: Optional[List[Union[WaitAction, ScreenshotAction, ClickAction, WriteAction, PressAction, ScrollAction, ScrapeAction, ExecuteJavascriptAction]]] = None,
             change_tracking_options: Optional[ChangeTrackingOptions] = None,
+            max_age: Optional[int] = None,
+            store_in_cache: Optional[bool] = None,
             **kwargs) -> ScrapeResponse[Any]:
         """
         Scrape and extract content from a URL.
@@ -545,6 +551,10 @@ class FirecrawlApp:
             scrape_params['actions'] = [action if isinstance(action, dict) else action.dict(exclude_none=True) for action in actions]
         if change_tracking_options:
             scrape_params['changeTrackingOptions'] = change_tracking_options if isinstance(change_tracking_options, dict) else change_tracking_options.dict(exclude_none=True)
+        if max_age is not None:
+            scrape_params['maxAge'] = max_age
+        if store_in_cache is not None:
+            scrape_params['storeInCache'] = store_in_cache
         
         scrape_params.update(kwargs)
 
@@ -1102,6 +1112,7 @@ class FirecrawlApp:
             sitemap_only: Optional[bool] = None,
             limit: Optional[int] = None,
             timeout: Optional[int] = None,
+            use_index: Optional[bool] = None,
             **kwargs) -> MapResponse:
         """
         Map and discover links from a URL.
@@ -1144,7 +1155,9 @@ class FirecrawlApp:
             map_params['limit'] = limit
         if timeout is not None:
             map_params['timeout'] = timeout
-
+        if use_index is not None:
+            map_params['useIndex'] = use_index
+        
         # Add any additional kwargs
         map_params.update(kwargs)
 
