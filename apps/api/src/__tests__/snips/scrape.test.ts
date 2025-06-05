@@ -173,6 +173,8 @@ describe("Scrape tests", () => {
 
         expect(response1.screenshot).toBeDefined();
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response2 = await scrape({
           url,
           formats: ["screenshot"],
@@ -190,7 +192,7 @@ describe("Scrape tests", () => {
         });
 
         expect(response3.screenshot).not.toBeDefined();
-      }, 190000);
+      }, 207000);
 
       it.concurrent("respects screenshot@fullPage", async () => {
         const id = crypto.randomUUID();
@@ -203,6 +205,8 @@ describe("Scrape tests", () => {
         });
 
         expect(response1.screenshot).toBeDefined();
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
 
         const response2 = await scrape({ 
           url,
@@ -221,7 +225,7 @@ describe("Scrape tests", () => {
         });
 
         expect(response3.screenshot).not.toBeDefined();
-      }, 190000);
+      }, 207000);
 
       it.concurrent("respects changeTracking", async () => {
         const id = crypto.randomUUID();
@@ -242,6 +246,8 @@ describe("Scrape tests", () => {
 
         expect(response1.metadata.cacheState).not.toBeDefined();
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response2 = await scrape({
           url,
           formats: ["markdown"],
@@ -250,7 +256,7 @@ describe("Scrape tests", () => {
         });
 
         expect(response2.metadata.cacheState).toBe("hit");
-      }, 130000);
+      }, 147000);
 
       it.concurrent("respects headers", async () => {
         const id = crypto.randomUUID();
@@ -264,6 +270,8 @@ describe("Scrape tests", () => {
           timeout: 60000,
         });
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response = await scrape({
           url,
           timeout: 60000,
@@ -271,7 +279,7 @@ describe("Scrape tests", () => {
         });
 
         expect(response.metadata.cacheState).toBe("miss");
-      }, 130000);
+      }, 147000);
 
       it.concurrent("respects mobile", async () => {
         const id = crypto.randomUUID();
@@ -282,6 +290,8 @@ describe("Scrape tests", () => {
           timeout: 60000,
         });
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response1 = await scrape({
           url,
           timeout: 60000,
@@ -291,6 +301,8 @@ describe("Scrape tests", () => {
 
         expect(response1.metadata.cacheState).toBe("miss");
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response2 = await scrape({
           url,
           timeout: 60000,
@@ -299,7 +311,7 @@ describe("Scrape tests", () => {
         });
 
         expect(response2.metadata.cacheState).toBe("hit");
-      }, 190000);
+      }, 224000);
 
       it.concurrent("respects actions", async () => {
         const id = crypto.randomUUID();
@@ -317,6 +329,8 @@ describe("Scrape tests", () => {
 
         expect(response1.metadata.cacheState).not.toBeDefined();
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response2 = await scrape({
           url,
           timeout: 60000,
@@ -324,7 +338,7 @@ describe("Scrape tests", () => {
         });
 
         expect(response2.metadata.cacheState).toBe("miss");
-      }, 130000);
+      }, 147000);
 
       it.concurrent("respects location", async () => {
         const id = crypto.randomUUID();
@@ -335,6 +349,8 @@ describe("Scrape tests", () => {
           timeout: 60000,
         });
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response1 = await scrape({
           url,
           location: { country: "BR" },
@@ -344,6 +360,8 @@ describe("Scrape tests", () => {
 
         expect(response1.metadata.cacheState).toBe("miss");
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response2 = await scrape({
           url,
           location: { country: "BR" },
@@ -352,7 +370,7 @@ describe("Scrape tests", () => {
         });
 
         expect(response2.metadata.cacheState).toBe("hit");
-      }, 190000);
+      }, 224000);
 
       it.concurrent("respects blockAds", async () => {
         const id = crypto.randomUUID();
@@ -363,6 +381,8 @@ describe("Scrape tests", () => {
           blockAds: true,
           timeout: 60000,
         });
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
 
         const response0 = await scrape({
           url,
@@ -382,6 +402,8 @@ describe("Scrape tests", () => {
 
         expect(response1.metadata.cacheState).toBe("miss");
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response2 = await scrape({
           url,
           blockAds: false,
@@ -390,7 +412,7 @@ describe("Scrape tests", () => {
         });
 
         expect(response2.metadata.cacheState).toBe("hit");
-      }, 250000);
+      }, 284000);
 
       it.concurrent("respects proxy: stealth", async () => {
         const id = crypto.randomUUID();
@@ -405,6 +427,8 @@ describe("Scrape tests", () => {
 
         expect(response1.metadata.proxyUsed).toBe("stealth");
         expect(response1.metadata.cacheState).not.toBeDefined();
+
+        await new Promise(resolve => setTimeout(resolve, 17000));
 
         const response2 = await scrape({
           url,
@@ -422,7 +446,7 @@ describe("Scrape tests", () => {
         });
 
         expect(response3.metadata.cacheState).not.toBeDefined();
-      }, 190000);
+      }, 207000);
 
       it.concurrent("works properly on pages returning 200", async () => {
         const id = crypto.randomUUID();
@@ -433,6 +457,8 @@ describe("Scrape tests", () => {
           timeout: 60000,
         });
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response = await scrape({
           url,
           timeout: 60000,
@@ -440,7 +466,7 @@ describe("Scrape tests", () => {
         });
 
         expect(response.metadata.cacheState).toBe("hit");
-      }, 130000);
+      }, 147000);
 
       it.concurrent("works properly on pages returning errors", async () => {
         const id = crypto.randomUUID();
@@ -467,6 +493,8 @@ describe("Scrape tests", () => {
 
         expect(response2.metadata.cacheState).toBe("miss");
 
+        await new Promise(resolve => setTimeout(resolve, 17000));
+
         const response3 = await scrape({
           url,
           timeout: 60000,
@@ -474,7 +502,7 @@ describe("Scrape tests", () => {
         });
 
         expect(response3.metadata.cacheState).toBe("hit");
-      }, 250000);
+      }, 284000);
     });
 
     describe("Change Tracking format", () => {
