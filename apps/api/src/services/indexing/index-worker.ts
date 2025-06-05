@@ -15,6 +15,7 @@ import { processBillingBatch, queueBillingOperation, startBillingBatchProcessing
 import systemMonitor from "../system-monitor";
 import { v4 as uuidv4 } from "uuid";
 import { processIndexInsertJobs } from "..";
+import { processWebhookInsertJobs } from "../webhook";
 
 const workerLockDuration = Number(process.env.WORKER_LOCK_DURATION) || 60000;
 const workerStalledCheckInterval =
@@ -228,6 +229,7 @@ const workerFun = async (queue: Queue, jobProcessor: (token: string, job: Job) =
 };
 
 const INDEX_INSERT_INTERVAL = 15000;
+const WEBHOOK_INSERT_INTERVAL = 15000;
 
 // Start the workers
 (async () => {
@@ -246,8 +248,16 @@ const INDEX_INSERT_INTERVAL = 15000;
     await processIndexInsertJobs();
   }, INDEX_INSERT_INTERVAL);
 
+  const webhookInserterInterval = setInterval(async () => {
+    if (isShuttingDown) {
+      return;
+    }
+    await processWebhookInsertJobs();
+  }, WEBHOOK_INSERT_INTERVAL);
+
   // Wait for both workers to complete (which should only happen on shutdown)
   await Promise.all([indexWorkerPromise, billingWorkerPromise]);
 
   clearInterval(indexInserterInterval);
+  clearInterval(webhookInserterInterval);
 })();

@@ -171,14 +171,14 @@ export async function batchScrapeController(
     logger.debug("Calling webhook with batch_scrape.started...", {
       webhook: req.body.webhook,
     });
-    await callWebhook(
-      req.auth.team_id,
-      id,
-      null,
-      req.body.webhook,
-      true,
-      "batch_scrape.started",
-    );
+    await callWebhook({
+      teamId: req.auth.team_id,
+      crawlId: id,
+      data: null,
+      webhook: req.body.webhook,
+      v1: true,
+      eventType: "batch_scrape.started",
+    });
   }
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";
