@@ -1,9 +1,10 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import { logger } from "../lib/logger";
+import { logger as _logger } from "../lib/logger";
 import { configDotenv } from "dotenv";
-import { Storage } from "@google-cloud/storage";
+import { ApiError, Storage } from "@google-cloud/storage";
 import crypto from "crypto";
 import { redisEvictConnection } from "./redis";
+import type { Logger } from "winston";
 configDotenv();
 
 // SupabaseService class initializes the Supabase client conditionally based on environment variables.
@@ -16,7 +17,7 @@ class IndexSupabaseService {
     // Only initialize the Supabase client if both URL and Service Token are provided.
     if (!supabaseUrl || !supabaseServiceToken) {
       // Warn the user that Authentication is disabled by setting the client to null
-      logger.warn(
+      _logger.warn(
         "Index supabase client will not be initialized.",
       );
       this.client = null;
@@ -58,7 +59,7 @@ export const index_supabase_service: SupabaseClient = new Proxy(
 
 const credentials = process.env.GCS_CREDENTIALS ? JSON.parse(atob(process.env.GCS_CREDENTIALS)) : undefined;
 
-export async function getIndexFromGCS(url: string): Promise<any | null> {
+export async function getIndexFromGCS(url: string, logger?: Logger): Promise<any | null> {
     //   logger.info(`Getting f-engine document from GCS`, {
     //     url,
     //   });
@@ -70,15 +71,21 @@ export async function getIndexFromGCS(url: string): Promise<any | null> {
         const storage = new Storage({ credentials });
         const bucket = storage.bucket(process.env.GCS_INDEX_BUCKET_NAME);
         const blob = bucket.file(`${url}`);
-        const [exists] = await blob.exists();
-        if (!exists) {
-            return null;
-        }
+        const time1 = Date.now();
         const [blobContent] = await blob.download();
+        const time2 = Date.now();
         const parsed = JSON.parse(blobContent.toString());
+        logger?.debug("getIndexFromGCS time insights", {
+          downloadTook: time2 - time1,
+        });
         return parsed;
     } catch (error) {
-        logger.error(`Error getting f-engine document from GCS`, {
+        if (error instanceof ApiError && error.code === 404 && error.message.includes("No such object:")) {
+          // Object does not exist
+          return null;
+        }
+
+        (logger ?? _logger).error(`Error getting Index document from GCS`, {
             error,
             url,
         });
@@ -113,7 +120,7 @@ export async function saveIndexToGCS(id: string, doc: {
               if (i === 2) {
                   throw error;
               } else {
-                  logger.error(`Error saving index document to GCS, retrying`, {
+                  _logger.error(`Error saving index document to GCS, retrying`, {
                       error,
                       indexId: id,
                       i,
@@ -202,12 +209,12 @@ export async function processIndexInsertJobs() {
   if (jobs.length === 0) {
     return;
   }
-  logger.info(`Index inserter found jobs to insert`, { jobCount: jobs.length });
+  _logger.info(`Index inserter found jobs to insert`, { jobCount: jobs.length });
   try {
     await index_supabase_service.from("index").insert(jobs);
-    logger.info(`Index inserter inserted jobs`, { jobCount: jobs.length });
+    _logger.info(`Index inserter inserted jobs`, { jobCount: jobs.length });
   } catch (error) {
-    logger.error(`Index inserter failed to insert jobs`, { error, jobCount: jobs.length });
+    _logger.error(`Index inserter failed to insert jobs`, { error, jobCount: jobs.length });
   }
 }
 
@@ -242,7 +249,7 @@ export async function queryIndexAtSplitLevel(url: string, limit: number): Promis
 
     // If there's an error, return the links we have
     if (error) {
-      logger.warn("Error querying index", { error, url, limit });
+      _logger.warn("Error querying index", { error, url, limit });
       return [...links].slice(0, limit);
     }
 
