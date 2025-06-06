@@ -3,15 +3,14 @@ name: firecrawl
 x-common-service: &common-service
   # NOTE: If you don't want to build the service locally,
   # uncomment the build: statement and comment out the image: statement
-  # image: ghcr.io/mendableai/firecrawl
-  build: apps/api
+  image: jcr.savorcare.com/ghcr/mendableai/firecrawl
+  #build: apps/api
+  restart: unless-stopped
 
   ulimits:
     nofile:
       soft: 65535
       hard: 65535
-  networks:
-    - backend
   extra_hosts:
     - "host.docker.internal:host-gateway"
 
@@ -48,19 +47,24 @@ services:
   playwright-service:
     # NOTE: If you don't want to build the service locally,
     # uncomment the build: statement and comment out the image: statement
-    # image: ghcr.io/mendableai/playwright-service:latest
-    build: apps/playwright-service-ts
+    image: jcr.savorcare.com/ghcr/mendableai/playwright-service:latest
+    #build: apps/playwright-service-ts
+
+    restart: unless-stopped
     environment:
       PORT: 3000
       PROXY_SERVER: ${PROXY_SERVER}
       PROXY_USERNAME: ${PROXY_USERNAME}
       PROXY_PASSWORD: ${PROXY_PASSWORD}
       BLOCK_MEDIA: ${BLOCK_MEDIA}
+    ports:
+      - "3031:3000"
     networks:
       - backend
 
   api:
     <<: *common-service
+    container_name: firecrawl
     environment:
       <<: *common-env
       HOST: "0.0.0.0"
@@ -72,29 +76,59 @@ services:
     ports:
       - "${PORT:-3002}:${INTERNAL_PORT:-3002}"
     command: [ "pnpm", "run", "start:production" ]
+    networks:
+      - backend
+      - reverse-proxy
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.firecrawl.rule=Host(`firecrawl.savorcare.com`)"
+      - "traefik.http.routers.firecrawl.entrypoints=websecure"
+      - "traefik.http.routers.firecrawl.tls.certresolver=myresolver"
+      - "traefik.http.routers.firecrawl.tls.domains[0].main=savorcare.com"
+      - "traefik.http.routers.firecrawl.tls.domains[0].sans=*.savorcare.com"
+      - "traefik.http.routers.firecrawlhttp.rule=Host(`firecrawl.savorcare.com`)"
+      - "traefik.http.routers.firecrawlhttp.entrypoints=web"
+      - "traefik.docker.network=reverse-proxy"
 
   worker:
     <<: *common-service
     environment:
       <<: *common-env
       FLY_PROCESS_GROUP: worker
+      MAX_CPU: 8
+      MAX_RAM: 0.85
     depends_on:
       - redis
       - playwright-service
       - api
+    networks:
+      - backend
     command: [ "pnpm", "run", "workers" ]
 
   redis:
     # NOTE: If you want to use Valkey (open source) instead of Redis (source available),
     # uncomment the Valkey statement and comment out the Redis statement.
     # Using Valkey with Firecrawl is untested and not guaranteed to work. Use with caution.
-    image: redis:alpine
+    image: jcr.savorcare.com/docker/redis:alpine
+    restart: always
     # image: valkey/valkey:alpine
-
+    volumes:
+      # Mount the redis data directory to the container.
+      - redis:/data
     networks:
       - backend
-    command: redis-server --bind 0.0.0.0
+    # command: redis-server --bind 0.0.0.0
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
 networks:
   backend:
     driver: bridge
+  reverse-proxy:
+    name: reverse-proxy
+    external: true
+volumes:
+  redis:
