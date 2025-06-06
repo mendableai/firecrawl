@@ -1,4 +1,4 @@
-import { batchScrape, crawl, creditUsage, extract, map, scrape, search, tokenUsage } from "./lib";
+import { batchScrape, crawl, creditUsage, extract, map, scrape, search, tokenUsage, expectMapToSucceed } from "./lib";
 
 const sleep = (ms: number) => new Promise(x => setTimeout(() => x(true), ms));
 const sleepForBatchBilling = () => sleep(40000);
@@ -207,5 +207,71 @@ describe("Billing tests", () => {
 
             expect(rc1 - rc2).toBe(305);
         }, 300000);
+
+        it("should populate credits_billed for map endpoint", async () => {
+            const rc1 = (await creditUsage()).remaining_credits;
+            
+            const response = await map({
+                url: "https://firecrawl.dev",
+                limit: 5
+            });
+            
+            expectMapToSucceed(response);
+            
+            await sleepForBatchBilling();
+            
+            const rc2 = (await creditUsage()).remaining_credits;
+            expect(rc1 - rc2).toBe(1);
+        });
+
+        it("should populate credits_billed for search endpoint", async () => {
+            const rc1 = (await creditUsage()).remaining_credits;
+            
+            const results = await search({
+                query: "firecrawl",
+                limit: 3
+            });
+            
+            expect(results.length).toBeGreaterThan(0);
+            
+            await sleepForBatchBilling();
+            
+            const rc2 = (await creditUsage()).remaining_credits;
+            expect(rc1 - rc2).toBeGreaterThan(0);
+        });
+
+        it("should populate credits_billed for crawl endpoint", async () => {
+            const rc1 = (await creditUsage()).remaining_credits;
+            
+            const response = await crawl({
+                url: "https://firecrawl.dev",
+                limit: 3
+            });
+            
+            expect(response.success).toBe(true);
+            
+            await sleepForBatchBilling();
+            
+            const rc2 = (await creditUsage()).remaining_credits;
+            expect(rc1 - rc2).toBeGreaterThan(0);
+        });
+
+        it("should populate credits_billed for batch scrape endpoint", async () => {
+            const rc1 = (await creditUsage()).remaining_credits;
+            
+            const response = await batchScrape({
+                urls: [
+                    "https://firecrawl.dev",
+                    "https://firecrawl.dev/pricing"
+                ]
+            });
+            
+            expect(response.success).toBe(true);
+            
+            await sleepForBatchBilling();
+            
+            const rc2 = (await creditUsage()).remaining_credits;
+            expect(rc1 - rc2).toBe(2);
+        });
     }
 });

@@ -369,10 +369,12 @@ export async function mapController(
     }
   }
 
+  const creditsToBeBilled = 1;
+
   // Bill the team
-  billTeam(req.auth.team_id, req.acuc?.sub_id, 1).catch((error) => {
+  billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch((error) => {
     logger.error(
-      `Failed to bill team ${req.auth.team_id} for 1 credit: ${error}`,
+      `Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`,
     );
   });
 
@@ -392,6 +394,7 @@ export async function mapController(
     origin: req.body.origin ?? "api",
     integration: req.body.integration,
     num_tokens: 0,
+    credits_billed: creditsToBeBilled,
   });
 
   const response = {

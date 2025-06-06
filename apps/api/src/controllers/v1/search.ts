@@ -268,21 +268,23 @@ export async function searchController(
       }
     }
 
+    const creditsToBeBilled = responseData.data.reduce((a, x) => {
+      if (x.metadata?.numPages !== undefined && x.metadata.numPages > 0) {
+        return a + x.metadata.numPages;
+      } else {
+        return a + 1;
+      }
+    }, 0);
+
     // Bill team once for all successful results
     if (!isSearchPreview) {
       billTeam(
         req.auth.team_id,
         req.acuc?.sub_id,
-        responseData.data.reduce((a, x) => {
-          if (x.metadata?.numPages !== undefined && x.metadata.numPages > 0) {
-            return a + x.metadata.numPages;
-          } else {
-            return a + 1;
-          }
-        }, 0),
+        creditsToBeBilled,
       ).catch((error) => {
         logger.error(
-          `Failed to bill team ${req.auth.team_id} for ${responseData.data.length} credits: ${error}`,
+          `Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`,
         );
       });
     }
@@ -309,6 +311,7 @@ export async function searchController(
         origin: req.body.origin,
         integration: req.body.integration,
         cost_tracking: costTracking,
+        credits_billed: isSearchPreview ? 0 : creditsToBeBilled,
       },
       false,
       isSearchPreview,

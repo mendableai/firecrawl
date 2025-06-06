@@ -11,6 +11,9 @@ import { crawlToCrawler, saveCrawl, StoredCrawl } from "../../lib/crawl-redis";
 import { logCrawl } from "../../services/logging/crawl_log";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { logger as _logger } from "../../lib/logger";
+import { billTeam } from "../../services/billing/credit_billing";
+import { logJob } from "../../services/logging/log_job";
+import { calculateCrawlCreditsToBeBilled } from "../../lib/scrape-billing";
 
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
@@ -123,6 +126,33 @@ export async function crawlController(
     crypto.randomUUID(),
     10,
   );
+
+  const creditsToBeBilled = calculateCrawlCreditsToBeBilled(crawlerOptions.limit);
+
+  billTeam(req.auth.team_id, req.acuc?.sub_id, creditsToBeBilled).catch((error) => {
+    logger.error(
+      `Failed to bill team ${req.auth.team_id} for ${creditsToBeBilled} credits: ${error}`,
+    );
+  });
+
+  logJob({
+    job_id: id,
+    success: true,
+    message: "Crawl started",
+    num_docs: 0,
+    docs: [],
+    time_taken: 0,
+    team_id: req.auth.team_id,
+    mode: "crawl",
+    url: req.body.url,
+    crawlerOptions: crawlerOptions,
+    scrapeOptions: sc.scrapeOptions,
+    origin: req.body.origin ?? "api",
+    integration: req.body.integration,
+    crawl_id: id,
+    num_tokens: 0,
+    credits_billed: creditsToBeBilled,
+  });
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";
 
