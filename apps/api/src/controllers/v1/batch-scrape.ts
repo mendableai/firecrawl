@@ -23,7 +23,8 @@ import { addScrapeJobs } from "../../services/queue-jobs";
 import { callWebhook } from "../../services/webhook";
 import { logger as _logger } from "../../lib/logger";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
-import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";  
+import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
+  
 
 export async function batchScrapeController(
   req: RequestWithAuth<{}, BatchScrapeResponse, BatchScrapeRequest>,

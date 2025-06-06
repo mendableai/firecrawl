@@ -47,3 +47,11 @@ export async function calculateCreditsToBeBilled(options: ScrapeOptions, documen
 
     return creditsToBeBilled;
 }
+
+export function calculateCrawlCreditsToBeBilled(numPages: number): number {
+    return Math.max(1, numPages);
+}
+
+export function calculateBatchScrapeCredits(numUrls: number): number {
+    return Math.max(1, numUrls);
+}

@@ -12,6 +12,7 @@ import { logCrawl } from "../../services/logging/crawl_log";
 import { _addScrapeJobToBullMQ } from "../../services/queue-jobs";
 import { logger as _logger } from "../../lib/logger";
 
+
 export async function crawlController(
   req: RequestWithAuth<{}, CrawlResponse, CrawlRequest>,
   res: Response<CrawlResponse>,
