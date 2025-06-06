@@ -22,7 +22,7 @@ import { configDotenv } from "dotenv";
 import type { Job, JobState, Queue } from "bullmq";
 import { logger } from "../../lib/logger";
 import { supabase_rr_service, supabase_service } from "../../services/supabase";
-import { getConcurrencyLimitedJobs, getCrawlConcurrencyLimitedJobs } from "../../lib/concurrency-limit";
+import { getConcurrencyLimitedJobs } from "../../lib/concurrency-limit";
 import { getJobFromGCS } from "../../lib/gcs-jobs";
 configDotenv();
 
@@ -158,9 +158,7 @@ export async function crawlStatusController(
     ),
   );
 
-  const teamThrottledJobsSet = await getConcurrencyLimitedJobs(req.auth.team_id);
-  const crawlThrottledJobsSet = sc.crawlerOptions?.delay ? await getCrawlConcurrencyLimitedJobs(req.params.jobId) : new Set();
-  const throttledJobsSet = new Set([...teamThrottledJobsSet, ...crawlThrottledJobsSet]);
+  const throttledJobsSet = new Set(await getConcurrencyLimitedJobs(req.auth.team_id));
 
   const validJobStatuses: [string, JobState | "unknown"][] = [];
   const validJobIDs: string[] = [];

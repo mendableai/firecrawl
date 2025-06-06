@@ -583,6 +583,7 @@ export const batchScrapeRequestSchema = baseScrapeOptions
     webhook: webhookSchema.optional(),
     appendToId: z.string().uuid().optional(),
     ignoreInvalidURLs: z.boolean().default(false),
+    maxConcurrency: z.number().positive().int().optional(),
   })
   .strict(strictMessage)
   .refine(extractRefine, extractRefineOpts)
@@ -645,6 +646,7 @@ export const crawlRequestSchema = crawlerOptions
     scrapeOptions: baseScrapeOptions.default({}),
     webhook: webhookSchema.optional(),
     limit: z.number().default(10000),
+    maxConcurrency: z.number().positive().int().optional(),
   })
   .strict(strictMessage)
   .refine((x) => extractRefine(x.scrapeOptions), extractRefineOpts)
