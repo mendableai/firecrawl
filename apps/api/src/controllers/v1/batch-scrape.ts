@@ -102,6 +102,7 @@ export async function batchScrapeController(
         }, // NOTE: smart wait disabled for batch scrapes to ensure contentful scrape, speed does not matter
         team_id: req.auth.team_id,
         createdAt: Date.now(),
+        maxConcurrency: req.body.maxConcurrency,
       };
 
   if (!req.body.appendToId) {
