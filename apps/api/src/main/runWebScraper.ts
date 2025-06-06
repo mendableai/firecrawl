@@ -15,7 +15,6 @@ import {
   ScrapeUrlResponse,
 } from "../scraper/scrapeURL";
 import { Engine } from "../scraper/scrapeURL/engines";
-import { indexPage } from "../lib/extract/index/pinecone";
 import { CostTracking } from "../lib/extract/extraction-service";
 configDotenv();
 

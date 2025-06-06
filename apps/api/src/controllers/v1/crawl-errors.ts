@@ -8,7 +8,8 @@ import {
   getCrawl,
   getCrawlJobs,
 } from "../../lib/crawl-redis";
-import { getScrapeQueue, redisConnection } from "../../services/queue-service";
+import { getScrapeQueue } from "../../services/queue-service";
+import { redisEvictConnection } from "../../../src/services/redis";
 import { configDotenv } from "dotenv";
 import { Job } from "bullmq";
 configDotenv();
@@ -65,7 +66,7 @@ export async function crawlErrorsController(
       url: x.data.url,
       error: x.failedReason,
     })),
-    robotsBlocked: await redisConnection.smembers(
+    robotsBlocked: await redisEvictConnection.smembers(
       "crawl:" + req.params.jobId + ":robots_blocked",
     ),
   });

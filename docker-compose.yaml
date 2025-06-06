@@ -47,9 +47,9 @@ services:
   playwright-service:
     # NOTE: If you don't want to build the service locally,
     # uncomment the build: statement and comment out the image: statement
-    # image: ghcr.io/mendableai/playwright-service:latest
-    #build: apps/playwright-service-ts
     image: jcr.savorcare.com/ghcr/mendableai/playwright-service:latest
+    #build: apps/playwright-service-ts
+
     restart: unless-stopped
     environment:
       PORT: 3000

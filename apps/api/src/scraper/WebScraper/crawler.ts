@@ -7,7 +7,7 @@ import { getURLDepth } from "./utils/maxDepthUtils";
 import { axiosTimeout } from "../../lib/timeout";
 import { logger as _logger } from "../../lib/logger";
 import https from "https";
-import { redisConnection } from "../../services/queue-service";
+import { redisEvictConnection } from "../../services/redis";
 import { extractLinks } from "../../lib/html-transformer";
 import { TimeoutSignal } from "../../controllers/v1/types";
 export class WebCrawler {
@@ -287,7 +287,7 @@ export class WebCrawler {
         let uniqueURLs: string[] = [];
         for (const url of filteredLinks) {
           if (
-            await redisConnection.sadd(
+            await redisEvictConnection.sadd(
               "sitemap:" + this.jobId + ":links",
               normalizeUrl(url),
             )
@@ -296,7 +296,7 @@ export class WebCrawler {
           }
         }
 
-        await redisConnection.expire(
+        await redisEvictConnection.expire(
           "sitemap:" + this.jobId + ":links",
           3600,
           "NX",
@@ -324,7 +324,7 @@ export class WebCrawler {
 
       if (count > 0) {
         if (
-          await redisConnection.sadd(
+          await redisEvictConnection.sadd(
             "sitemap:" + this.jobId + ":links",
             normalizeUrl(this.initialUrl),
           )
@@ -333,6 +333,12 @@ export class WebCrawler {
         }
         count++;
       }
+
+      await redisEvictConnection.expire(
+        "sitemap:" + this.jobId + ":links",
+        3600,
+        "NX",
+      );
 
       return count;
     } catch (error) {
@@ -384,11 +390,11 @@ export class WebCrawler {
         !this.isRobotsAllowed(fullUrl, this.ignoreRobotsTxt)
       ) {
         (async () => {
-          await redisConnection.sadd(
+          await redisEvictConnection.sadd(
             "crawl:" + this.jobId + ":robots_blocked",
             fullUrl,
           );
-          await redisConnection.expire(
+          await redisEvictConnection.expire(
             "crawl:" + this.jobId + ":robots_blocked",
             24 * 60 * 60,
           );

@@ -4,7 +4,6 @@ import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";
 import { logger } from "../logger";
 import { CohereClient } from "cohere-ai";
 import { extractConfig } from "./config";
-import { searchSimilarPages } from "./index/pinecone";
 import { generateCompletions } from "../../scraper/scrapeURL/transformers/llmExtract";
 import { buildRerankerUserPrompt } from "./build-prompts";
 import { buildRerankerSystemPrompt } from "./build-prompts";

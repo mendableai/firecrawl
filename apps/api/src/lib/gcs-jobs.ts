@@ -1,5 +1,5 @@
 import { FirecrawlJob } from "../types";
-import { Storage } from "@google-cloud/storage";
+import { ApiError, Storage } from "@google-cloud/storage";
 import { logger } from "./logger";
 import { Document } from "../controllers/v1/types";
 
@@ -48,6 +48,7 @@ export async function saveJobToGCS(job: FirecrawlJob): Promise<void> {
                         crawler_options: JSON.stringify(job.crawlerOptions),
                         page_options: JSON.stringify(job.scrapeOptions),
                         origin: job.origin,
+                        integration: job.integration ?? null,
                         num_tokens: job.num_tokens ?? null,
                         retry: !!job.retry,
                         crawl_id: job.crawl_id ?? null,
@@ -86,14 +87,15 @@ export async function getJobFromGCS(jobId: string): Promise<Document[] | null> {
         const storage = new Storage({ credentials });
         const bucket = storage.bucket(process.env.GCS_BUCKET_NAME);
         const blob = bucket.file(`${jobId}.json`);
-        const [exists] = await blob.exists();
-        if (!exists) {
-            return null;
-        }
         const [content] = await blob.download();
         const x = JSON.parse(content.toString());
         return x;
     } catch (error) {
+        if (error instanceof ApiError && error.code === 404 && error.message.includes("No such object:")) {
+            // Object does not exist
+            return null;
+        }
+        
         logger.error(`Error getting job from GCS`, {
             error,
             jobId,

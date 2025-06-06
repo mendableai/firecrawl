@@ -22,7 +22,6 @@ import { getJobPriority } from "../../lib/job-priority";
 import { addScrapeJobs } from "../../services/queue-jobs";
 import { callWebhook } from "../../services/webhook";
 import { logger as _logger } from "../../lib/logger";
-import { CostTracking } from "../../lib/extract/extraction-service";
 import { BLOCKLISTED_URL_MESSAGE } from "../../lib/strings";
 import { isUrlBlocked } from "../../scraper/WebScraper/utils/blocklist";  
 
@@ -30,6 +29,8 @@ export async function batchScrapeController(
   req: RequestWithAuth<{}, BatchScrapeResponse, BatchScrapeRequest>,
   res: Response<BatchScrapeResponse>,
 ) {
+  const preNormalizedBody = { ...req.body };
+
   if (req.body?.ignoreInvalidURLs === true) {
     req.body = batchScrapeRequestSchemaNoURLValidation.parse(req.body);
   } else {
@@ -46,6 +47,7 @@ export async function batchScrapeController(
   });
 
   let urls = req.body.urls;
+  let unnormalizedURLs = preNormalizedBody.urls;
   let invalidURLs: string[] | undefined = undefined;
 
   if (req.body.ignoreInvalidURLs) {
@@ -53,11 +55,13 @@ export async function batchScrapeController(
 
     let pendingURLs = urls;
     urls = [];
+    unnormalizedURLs = [];
     for (const u of pendingURLs) {
       try {
         const nu = urlSchema.parse(u);
         if (!isUrlBlocked(nu, req.acuc?.flags ?? null)) {
           urls.push(nu);
+          unnormalizedURLs.push(u);
         } else {
           invalidURLs.push(u);
         }
@@ -84,12 +88,6 @@ export async function batchScrapeController(
 
   if (!req.body.appendToId) {
     await logCrawl(id, req.auth.team_id);
-  }
-
-  let { remainingCredits } = req.account!;
-  const useDbAuthentication = process.env.USE_DB_AUTHENTICATION === "true";
-  if (!useDbAuthentication) {
-    remainingCredits = Infinity;
   }
 
   const sc: StoredCrawl = req.body.appendToId
@@ -127,7 +125,7 @@ export async function batchScrapeController(
   delete (scrapeOptions as any).urls;
   delete (scrapeOptions as any).appendToId;
 
-  const jobs = urls.map((x) => {
+  const jobs = urls.map((x, i) => {
     return {
       data: {
         url: x,
@@ -136,12 +134,14 @@ export async function batchScrapeController(
         crawlerOptions: null,
         scrapeOptions,
         origin: "api",
+        integration: req.body.integration,
         crawl_id: id,
         sitemapped: true,
         v1: true,
         webhook: req.body.webhook,
         internalOptions: {
           saveScrapeResultToGCS: process.env.GCS_FIRE_ENGINE_BUCKET_NAME ? true : false,
+          unnormalizedSourceURL: unnormalizedURLs[i],
         },
       },
       opts: {
@@ -171,14 +171,14 @@ export async function batchScrapeController(
     logger.debug("Calling webhook with batch_scrape.started...", {
       webhook: req.body.webhook,
     });
-    await callWebhook(
-      req.auth.team_id,
-      id,
-      null,
-      req.body.webhook,
-      true,
-      "batch_scrape.started",
-    );
+    await callWebhook({
+      teamId: req.auth.team_id,
+      crawlId: id,
+      data: null,
+      webhook: req.body.webhook,
+      v1: true,
+      eventType: "batch_scrape.started",
+    });
   }
 
   const protocol = process.env.ENV === "local" ? req.protocol : "https";

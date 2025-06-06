@@ -114,6 +114,7 @@ export async function crawlController(
       scrapeOptions: sc.scrapeOptions,
       internalOptions: sc.internalOptions,
       origin: req.body.origin,
+      integration: req.body.integration,
       crawl_id: id,
       webhook: req.body.webhook,
       v1: true,

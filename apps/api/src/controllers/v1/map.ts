@@ -25,6 +25,7 @@ import { logger } from "../../lib/logger";
 import Redis from "ioredis";
 import { querySitemapIndex } from "../../scraper/WebScraper/sitemap-index";
 import { getIndexQueue } from "../../services/queue-service";
+import { queryIndexAtSplitLevel } from "../../services/index";
 
 configDotenv();
 const redis = new Redis(process.env.REDIS_URL!);
@@ -43,6 +44,14 @@ interface MapResult {
   mapResults: MapDocument[];
 }
 
+async function queryIndex(url: string, limit: number, useIndex: boolean): Promise<string[]> {
+  if (!useIndex) {
+    return [];
+  }
+
+  return await queryIndexAtSplitLevel(url, limit);
+}
+
 export async function getMapResults({
   url,
   search,
@@ -58,6 +67,7 @@ export async function getMapResults({
   mock,
   filterByPath = true,
   flags,
+  useIndex = true,
 }: {
   url: string;
   search?: string;
@@ -73,6 +83,7 @@ export async function getMapResults({
   mock?: string;
   filterByPath?: boolean;
   flags: TeamFlags;
+  useIndex?: boolean;
 }): Promise<MapResult> {
   const id = uuidv4();
   let links: string[] = [url];
@@ -165,10 +176,15 @@ export async function getMapResults({
     }
 
     // Parallelize sitemap index query with search results
-    const [sitemapIndexResult, ...searchResults] = await Promise.all([
+    const [sitemapIndexResult, indexResults, ...searchResults] = await Promise.all([
       querySitemapIndex(url, abort),
+      queryIndex(url, limit, useIndex),
       ...(cachedResult ? [] : pagePromises),
     ]);
+
+    if (indexResults.length > 0) {
+      links.push(...indexResults);
+    }
 
     const twoDaysAgo = new Date();
     twoDaysAgo.setDate(twoDaysAgo.getDate() - 2);
@@ -286,7 +302,7 @@ export async function getMapResults({
     id,
     {
       originUrl: url,
-      visitedUrls: linksToReturn,
+      visitedUrls: linksToReturn.filter(link => link !== url),
     },
     {
       priority: 10,
@@ -333,6 +349,7 @@ export async function mapController(
         mock: req.body.useMock,
         filterByPath: req.body.filterByPath !== false,
         flags: req.acuc?.flags ?? null,
+        useIndex: req.body.useIndex,
       }),
       ...(req.body.timeout !== undefined ? [
         new Promise((resolve, reject) => setTimeout(() => {
@@ -373,6 +390,7 @@ export async function mapController(
     crawlerOptions: {},
     scrapeOptions: {},
     origin: req.body.origin ?? "api",
+    integration: req.body.integration,
     num_tokens: 0,
   });
 

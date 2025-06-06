@@ -11,6 +11,9 @@ import { saveToCache } from "./cache";
 import { performAgent } from "./agent";
 
 import { deriveDiff } from "./diff";
+import { useIndex } from "../../../services/index";
+import { sendDocumentToIndex } from "../engines/index/index";
+
 export type Transformer = (
   meta: Meta,
   document: Document,
@@ -59,6 +62,17 @@ export async function deriveMarkdownFromHTML(
     throw new Error(
       "html is undefined -- this transformer is being called out of order",
     );
+  }
+
+  if (document.metadata.contentType?.includes("application/json")) {
+    if (document.rawHtml === undefined) {
+      throw new Error(
+        "rawHtml is undefined -- this transformer is being called out of order",
+      );
+    }
+
+    document.markdown = "```json\n" + document.rawHtml + "\n```";
+    return document;
   }
 
   document.markdown = await parseMarkdown(document.html);
@@ -194,6 +208,7 @@ export const transformerStack: Transformer[] = [
   deriveLinksFromHTML,
   deriveMetadataFromRawHTML,
   uploadScreenshot,
+  ...(useIndex ? [sendDocumentToIndex] : []),
   performLLMExtract,
   performAgent,
   deriveDiff,

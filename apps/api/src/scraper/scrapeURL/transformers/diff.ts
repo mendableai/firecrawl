@@ -61,9 +61,10 @@ export async function deriveDiff(meta: Meta, document: Document): Promise<Docume
   if (meta.options.formats.includes("changeTracking")) {
     const start = Date.now();
     const res = await supabase_service
-        .rpc("diff_get_last_scrape_3", {
+        .rpc("diff_get_last_scrape_4", {
             i_team_id: meta.internalOptions.teamId,
             i_url: document.metadata.sourceURL ?? meta.url,
+            i_tag: meta.options.changeTrackingOptions?.tag ?? null,
         });
     const end = Date.now();
     if (end - start > 100) {
