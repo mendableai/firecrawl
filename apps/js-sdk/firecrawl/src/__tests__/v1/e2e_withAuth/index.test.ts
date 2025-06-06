@@ -239,7 +239,6 @@ describe('FirecrawlApp E2E Tests', () => {
     const app = new FirecrawlApp({ apiUrl: API_URL, apiKey: TEST_API_KEY });
     const response = await app.search("firecrawl");
     expect(response.success).toBe(true);
-    console.log(response.data);
     expect(response.data?.length).toBeGreaterThan(0);
     expect(response.data?.[0]?.markdown).not.toBeDefined();
     expect(response.data?.[0]?.title).toBeDefined();
